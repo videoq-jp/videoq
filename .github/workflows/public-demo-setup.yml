@@ -1,7 +1,11 @@
 name: Prepare Production Public Demo
+run-name: Public demo ${{ inputs.operation }} ${{ inputs.db_rotation_id }}
 on:
   workflow_dispatch:
     inputs:
+      db_rotation_id:
+        description: Internal database rotation verification identifier
+        type: string
       operation:
         description: Audit, or provision the dedicated five-lesson demo with 100 answers/month
         type: choice
@@ -15,7 +19,7 @@ concurrency:
 jobs:
   setup:
     if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
-    environment: production-app
+    environment: ${{ inputs.operation == 'provision' && 'production-db-demo' || 'production-db-audit' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -33,4 +37,4 @@ jobs:
       - name: Audit or prepare only the dedicated public demo
         env:
           OPERATION: ${{ inputs.operation }}
-        run: python3 .github/scripts/with-neon-credentials.py node .github/scripts/provision-public-demo.mjs
+        run: python3 .github/scripts/with-neon-credentials.py ${{ inputs.operation == 'provision' && 'demo' || 'audit' }} node .github/scripts/provision-public-demo.mjs

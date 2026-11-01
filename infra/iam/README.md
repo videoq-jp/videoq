@@ -98,41 +98,25 @@ aws iam create-policy-version \
 
 ## Neon database access
 
-All production database jobs (migrations, smoke tests, backup/restore, public demo)
-assume `videoq-github-actions-neon` using OIDC in `production-app`. This role can
-read only `/videoq/security/prod/db-migration`, a JSON SecureString containing
-`DATABASE_URL`. It cannot read the administrator parameter or change infrastructure.
-The existing deployment role is not used for database access.
+Database jobs use separate `production-db-*` Environments and OIDC roles, with an
+exact single-parameter `ssm:GetParameter` grant for each purpose. Their immutable
+subject includes the canonical repository IDs and the dedicated Environment name.
+`production-app` is not trusted by these roles. Provision the environments/roles
+with `python3 infra/scripts/setup_neon_access.py`; it does not retrieve DB values.
+The script fails outside the expected AWS account and rejects extra branch policies.
 
-Apply the dedicated trust and inline permissions once, using an authenticated AWS
-administrator session (the existing migration parameter must already exist):
+`videoq-github-actions-neon-rotation` is a separate maintenance role trusted only
+from `production-infra`. It can read the administrator credential, read/write the
+seven fixed consumer parameters and encrypted rotation journal, and refresh only
+`videoq-worker-prod`. It cannot modify IAM policies or retrieve arbitrary secrets.
+Its two-hour session covers the Lambda invocation grace period and verification.
+The existing `CLOUDFLARE_INFRA_TOKEN` supplies Hyperdrive update permissions.
 
-```bash
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed "s/<ACCOUNT_ID>/${ACCOUNT_ID}/g" infra/iam/videoq-github-actions-neon-trust.json > /tmp/videoq-neon-trust.json
-sed "s/<ACCOUNT_ID>/${ACCOUNT_ID}/g" infra/iam/videoq-neon-parameter-read.json > /tmp/videoq-neon-read.json
-aws iam create-role --role-name videoq-github-actions-neon --assume-role-policy-document file:///tmp/videoq-neon-trust.json
-aws iam put-role-policy --role-name videoq-github-actions-neon --policy-name videoq-neon-parameter-read --policy-document file:///tmp/videoq-neon-read.json
-gh secret set AWS_GITHUB_ACTIONS_NEON_ROLE_ARN --repo videoq-jp/videoq --env production-app --body "arn:aws:iam::${ACCOUNT_ID}:role/videoq-github-actions-neon"
-```
+The parameters use the default AWS-managed `aws/ssm` key. Customer-managed keys
+require an explicit, exact-key decrypt grant restricted by `kms:ViaService` and the
+parameter encryption context; do not replace it with unrestricted KMS permissions.
 
-For an existing role use `aws iam update-assume-role-policy` instead of create-role.
-The policy assumes the parameter uses the default AWS-managed `aws/ssm` key.
-If it uses a customer-managed KMS key, also grant `kms:Decrypt` on that exact key,
-restricted by `kms:ViaService` to `ssm.ap-northeast-1.amazonaws.com` and the
-`kms:EncryptionContext:PARAMETER_ARN` to this exact parameter ARN; its key policy
-must also permit the role.
-
-Merge the workflow changes only after provisioning the role and Environment secret.
-Run CD and the production operations workflows and verify successful OIDC role
-assumption, SSM retrieval and database access before deleting the old secret:
-
-```bash
-gh secret delete DATABASE_URL --repo videoq-jp/videoq --env production-app
-```
-
-No database credential is stored in GitHub after this removal. The runner masks the
-URL and password, passes `DATABASE_URL` only to the database command, and removes
-AWS credentials and GitHub OIDC endpoint variables from that child process.
-Neon still uses PostgreSQL password authentication; this change centralizes the
-password in SSM rather than making the Neon connection passwordless.
+After all scoped jobs succeed, retire the legacy `videoq-github-actions-neon` role
+and its `production-app.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` secret. Migration credentials
+must not be used for audits, backups or smoke checks. See [DB security](../DB_SECURITY.md)
+for the complete privilege boundaries, rollout, rotation and recovery procedure.
