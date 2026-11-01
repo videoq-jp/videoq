@@ -23,7 +23,7 @@ test('an absolute API URL allows its origin for API requests and protected media
   for (const directive of ['img', 'media', 'connect']) {
     assert.match(output, new RegExp(`${directive}-src [^;]*https://api\\.example\\.edu:9443 `));
   }
-  assert.doesNotMatch(output, /example\.edu:9443\/api/);
+  assert.equal(output.includes('example.edu:9443/api'), false);
   assert.throws(() => nginxHeaders(source, 'javascript:alert(1)'));
   assert.throws(() => nginxHeaders(source, 'https://user:password@example.edu/api'));
   assert.throws(() => nginxHeaders('/*\n  X-Frame-Options: DENY\n'), /must define a CSP/);
