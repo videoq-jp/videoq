@@ -1,7 +1,6 @@
 import { MAX_VIDEO_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
 
-const PLAN_CODES = ["free", "basic", "pro"] as const;
-export type PlanCode = (typeof PLAN_CODES)[number];
+export type PlanCode = "free" | "basic" | "pro";
 
 export const PAID_LOOKUP_KEYS = [
   "basic_monthly",

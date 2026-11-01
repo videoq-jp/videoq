@@ -237,7 +237,7 @@ test('provider demo suffix ranges and invalid seeks follow HTTP range semantics'
 test('static files and hashed JavaScript retain content types and security headers', async () => {
   const response = await worker.fetch('/');
   const html = await response.text();
-  const asset = html.match(/src="(\/assets\/[^\"]+\.js)"/)?.[1];
+  const asset = html.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert.ok(asset, 'Vite entry script must exist');
   for (const [path, type] of [[asset, /javascript/], ['/robots.txt', /text\/plain/], ['/sitemap.xml', /xml/]]) {
     const result = await worker.fetch(path);

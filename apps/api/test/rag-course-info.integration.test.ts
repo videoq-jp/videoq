@@ -102,8 +102,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
     }
   });
 
-  it.each([{ userId: "owner" }, { userId: "member" }, { shareToken: "public-course" }])
-    ("uses the authorized course for %j with stable pagination and compact evidence", async (access) => {
+  it.each([{ userId: "owner" }, { userId: "member" }, { shareToken: "public-course" }])("uses the authorized course for %j with stable pagination and compact evidence", async (access) => {
       const scope = await getCourseWithMembers(env, { courseId: 3, ...access });
       expect(scope).toMatchObject({ id: 3, userId: "owner", memberVideoIds: [60, 61] });
       const contexts: string[] = [];

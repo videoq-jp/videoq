@@ -20,6 +20,23 @@ class LockPolicyTests(unittest.TestCase):
     def test_registry_package(self):
         self.assertEqual(len(policy.npm_packages(self.lock, [])), 1)
 
+    def test_aliases_are_scanned_under_the_registry_name(self):
+        self.lock["packages"]["node_modules/native"] = {
+            **self.entry, "name": "typescript",
+        }
+        packages = policy.npm_packages(self.lock, [])
+        self.assertIn(("npm", "typescript", "1.0.0"), packages)
+        self.assertNotIn(("npm", "native", "1.0.0"), packages)
+        # Renaming an installed package does not introduce a new release.
+        del self.lock["packages"]["node_modules/native"]["name"]
+        self.lock["packages"]["node_modules/typescript"] = self.lock["packages"].pop("node_modules/native")
+        self.assertEqual(policy.check_changes(packages, policy.npm_packages(self.lock, [])), [])
+
+    def test_aliases_cannot_hide_unreviewed_lifecycle_scripts(self):
+        self.entry.update(name="unreviewed", hasInstallScript=True)
+        with self.assertRaises(ValueError):
+            policy.npm_packages(self.lock, ["example"])
+
     def test_rejects_registry_spoofs_and_unpinned_sources(self):
         for source in ["http://registry.npmjs.org/pkg", "https://registry.npmjs.org.evil.test/pkg",
                        "https://evil@registry.npmjs.org/pkg", "git+https://github.com/evil/pkg", "file:../evil"]:

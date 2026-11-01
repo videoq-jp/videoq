@@ -27,8 +27,7 @@ const env = {
 // Only the username-allocation query uses Drizzle directly. Fixture names are
 // distinct from the provider's candidate; all auth persistence uses memoryAdapter.
 const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }) } as unknown as Db;
-const makeAuth = () => createAuth(env, db);
-type Auth = ReturnType<typeof makeAuth>;
+type Auth = ReturnType<typeof createAuth>;
 let keys: Awaited<ReturnType<typeof generateKeyPair>>;
 let otherKeys: Awaited<ReturnType<typeof generateKeyPair>>;
 let jwks: object;

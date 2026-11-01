@@ -23,7 +23,9 @@ def npm_packages(lock, allowed_scripts):
     for location, package in lock["packages"].items():
         if "node_modules/" not in location:
             continue  # Workspace manifests, not downloaded packages.
-        name = location.rsplit("node_modules/", 1)[1]
+        # npm aliases retain their registry identity in the lockfile's name.
+        # Audit the actual package, not the alias used to install it.
+        name = package.get("name", location.rsplit("node_modules/", 1)[1])
         if package.get("link"):
             target = package.get("resolved", "")
             if (not target or target.startswith("/") or ".." in target.split("/") or

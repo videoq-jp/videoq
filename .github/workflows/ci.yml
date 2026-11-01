@@ -208,6 +208,7 @@ jobs:
               - '.github/scripts/runtime-versions.py'
               - '.github/scripts/package-managers.py'
             hono:
+              - 'eslint.shared.mjs'
               - 'apps/api/**'
               - 'apps/worker/**'
               - 'packages/trpc/**'
@@ -239,6 +240,8 @@ jobs:
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             frontend:
+              - 'scripts/test-eslint.mjs'
+              - 'eslint.shared.mjs'
               - 'apps/web/**'
               - 'apps/demo-video/**'
               - 'packages/trpc/**'
@@ -256,6 +259,7 @@ jobs:
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             docs:
+              - 'eslint.shared.mjs'
               - 'apps/docs/**'
               - 'docs/**'
               - 'package.json'
@@ -344,6 +348,8 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run cf-typegen:check --workspace @videoq/api
+          npm run lint --workspace @videoq/trpc
+          npm run lint --workspace @videoq/api
           npm run typecheck --workspace @videoq/trpc
           npm run typecheck --workspace @videoq/api
           npm run db:check --workspace @videoq/api
@@ -441,6 +447,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint --workspace @videoq/web
+      - name: Verify compiler and lint compatibility in every workspace
+        run: npm run test:lint
       - name: Type check
         run: npm run typecheck --workspace @videoq/web
 
@@ -523,6 +531,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build
         run: npm run build --workspace @videoq/web
+      - name: Lint demo compositions
+        run: npm run lint --workspace @videoq/demo-video
       - name: Check demo composition types
         run: npm run typecheck --workspace @videoq/demo-video
       - name: Verify published demo videos
@@ -611,7 +621,9 @@ jobs:
         with:
           manager: npm
       - name: Install dependencies
-        run: npm ci --ignore-scripts --workspace @videoq/docs
+        run: npm ci --ignore-scripts --workspace @videoq/docs --include-workspace-root
+      - name: Lint
+        run: npm run lint --workspace @videoq/docs
       - name: Type check
         run: npm run typecheck --workspace @videoq/docs
       - name: Build documentation and check links

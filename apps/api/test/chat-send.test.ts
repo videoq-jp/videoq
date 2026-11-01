@@ -242,7 +242,7 @@ function stubOpenAi(opts: {
     const raw = isRequest
       ? await (input as Request).clone().text()
       : String(init?.body ?? "");
-    let body: Record<string, unknown> = {};
+    let body: Record<string, unknown>;
     try {
       body = JSON.parse(raw);
     } catch {
