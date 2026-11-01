@@ -105,6 +105,7 @@ test('state-machine metadata contains no secret fetches, preserves grace periods
   assert.equal(spec.States.RetireRollback.Next, 'SmokeAfterRollbackRetirement');
   assert.equal(spec.States.SmokeAfterRollbackRetirement.Next, 'CompleteRollback');
   assert.equal(spec.States.Release.Parameters.ExpressionAttributeValues[':execution']['S.$'], '$$.Execution.Id');
+  assert.equal(spec.States.Deploy.Next, 'SmokeStandalone');
   for (const state of Object.values(spec.States)) {
     if (state.Next) assert.ok(spec.States[state.Next]);
     if (state.Default) assert.ok(spec.States[state.Default]);

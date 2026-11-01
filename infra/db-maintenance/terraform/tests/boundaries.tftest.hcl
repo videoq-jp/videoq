@@ -41,7 +41,7 @@ run "credential_and_control_boundaries" {
   }
 
   assert {
-    condition = alltrue([for purpose in ["maintenance", "migration", "backup", "smoke"] : alltrue([
+    condition = alltrue([for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"] : alltrue([
       for statement in jsondecode(aws_iam_role_policy.broker[purpose].policy).Statement :
       !contains(statement.Action, "ssm:GetParameter") && !contains(statement.Action, "codebuild:StartBuild")
     ])])

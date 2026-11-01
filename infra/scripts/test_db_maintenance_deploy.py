@@ -42,6 +42,10 @@ class FakeAWS:
         elif command == "update-state-machine": self.definition = value["definition"]
         elif command == "update-alias":
             self.aliases[value["FunctionName"]] = value["FunctionVersion"]
+            if self.fail == "external_alias_change":
+                self.fail = None
+                self.aliases[value["FunctionName"]] = "99"
+                raise RuntimeError("operator changed the alias concurrently")
             if self.fail == "lost_alias_response":
                 self.fail = None
                 raise RuntimeError("response lost after mutation")
@@ -95,6 +99,13 @@ class DeploymentTest(unittest.TestCase):
         self.assertLess(max(i for i, c in enumerate(commands) if c == "invoke"), commands.index("update-project"))
         self.assertEqual(json.loads(output.getvalue())["source_commit"], SHA)
         self.assertFalse(any(service in ["ssm", "iam"] for service, _, _ in api.calls))
+
+    def test_rollback_does_not_overwrite_an_external_alias_change(self):
+        api = FakeAWS("external_alias_change")
+        with self.assertRaisesRegex(RuntimeError, "DEPLOYMENT_ROLLBACK_INCOMPLETE"):
+            deploy.promote(self.path, SHA, api)
+        self.assertEqual(list(api.aliases.values()).count("99"), 1)
+        self.assertTrue(all(v["sourceVersion"] == "old-object" for v in api.projects.values()))
 
 
 if __name__ == "__main__": unittest.main()
