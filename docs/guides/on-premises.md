@@ -150,7 +150,7 @@ HTTPS ingress rather than the plain-HTTP local nginx listener.
 After building the image, check its headers and cache/error behavior:
 
 ```bash
-node --test apps/web/scripts/nginx-headers.test.mjs
+node --test apps/web/scripts/test-nginx-headers.mjs
 node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
 ```
 

@@ -1,3 +1,4 @@
+// Run with node --test; keep this separate from Vitest's jsdom discovery.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';

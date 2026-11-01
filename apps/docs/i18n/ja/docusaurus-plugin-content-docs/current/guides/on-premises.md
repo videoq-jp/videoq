@@ -118,7 +118,7 @@ COEP・CORPは全体には設定しません。VideoQはクロスオリジン分
 ビルド後、実イメージでヘッダー、キャッシュ、エラー応答を確認できます。
 
 ```bash
-node --test apps/web/scripts/nginx-headers.test.mjs
+node --test apps/web/scripts/test-nginx-headers.mjs
 node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
 ```
 

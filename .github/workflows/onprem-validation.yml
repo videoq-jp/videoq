@@ -87,7 +87,7 @@ jobs:
         run: node scripts/smoke-node.mjs videoq-api:onprem-ci
       - name: Verify web image security headers and storage CSP
         run: |
-          node --test apps/web/scripts/nginx-headers.test.mjs
+          node --test apps/web/scripts/test-nginx-headers.mjs
           node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
       - name: Exercise migration command and worker imports in production images
         run: |
