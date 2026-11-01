@@ -126,9 +126,11 @@ risks; this design removes direct credential access from routine GitHub jobs.
 With an operator session, confirm there is no running maintenance execution/build,
 apply the new deployment resources with `schedule_enabled` preserving its current
 value, and build a clean committed bundle. For the one-time ownership handoff,
-use `deploy.promote()` from the reviewed `deploy.py` with the operator session to
-install the extended state-machine definition and all five starter versions.
-Existing aliases are unchanged until candidates pass their non-mutating tests.
+publish the reviewed broker ZIP, test its immutable candidates and promote all
+five starter aliases, then install the validated extended state-machine definition.
+Keep existing DB job source versions unchanged during this bootstrap. The first
+automatic CD promotes those job artifacts under the shared lock. Existing
+operations remain compatible with the extended starters and state machine.
 Do not provision the GitHub deploy invoker before this handoff succeeds.
 
 Provision `production-db-deploy` as main-only and install the invocation-only role
