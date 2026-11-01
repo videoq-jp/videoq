@@ -17,6 +17,19 @@ describe('VideoUploadFormFields', () => {
     vi.clearAllMocks()
   })
 
+  it('shows the selected audio language and allows changing it', () => {
+    const change = vi.fn()
+    const { rerender } = render(<VideoUploadFormFields {...defaultProps} transcriptionLanguage="ja" setTranscriptionLanguage={change} />)
+    const select = screen.getByRole('combobox')
+    expect(select).toHaveValue('ja')
+    fireEvent.change(select, { target: { value: 'en' } })
+    expect(change).toHaveBeenLastCalledWith('en')
+    fireEvent.change(select, { target: { value: 'auto' } })
+    expect(change).toHaveBeenLastCalledWith('auto')
+    rerender(<VideoUploadFormFields {...defaultProps} transcriptionLanguage="en" setTranscriptionLanguage={change} isUploading />)
+    expect(screen.getByRole('combobox')).toBeDisabled()
+  })
+
   it('should render form fields', () => {
     render(<VideoUploadFormFields {...defaultProps} />)
     

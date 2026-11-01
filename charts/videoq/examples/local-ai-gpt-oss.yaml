@@ -1,0 +1,21 @@
+# Pair with videoq-inference/examples/gpt-oss-embeddinggemma.yaml.
+# Endpoints assume namespace=videoq and inference fullname=videoq-inference.
+ai:
+  openaiBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1
+  llmBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1
+  llmModel: videoq-chat
+  reasoningEffort: low
+  preserveToolReasoning: true
+  separateToolSchema: true
+  requestTimeoutMs: 600000
+  streamTimeoutMs: 600000
+  embeddingBaseUrl: http://videoq-inference-embedding.videoq.svc.cluster.local:8000/v1
+  embeddingModel: embeddinggemma-2-f9972ac
+  embeddingProfile: embeddinggemma2
+  whisperBackend: local
+  whisperChunkSeconds: 30
+  whisperLocalUrl: http://videoq-inference-whisper.videoq.svc.cluster.local:8080/v1
+config:
+  videoVisualEnabled: false
+networkPolicy:
+  localEgressOnly: true

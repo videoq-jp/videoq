@@ -15,8 +15,8 @@ For documentation-only changes, go to [Update the documentation](../guides/docum
 |---|---|
 | Git and repository access | Get the source code |
 | Docker and Docker Compose | Run the database, API, video processing, and related services |
-| Node.js 22.12 or later and npm | Install dependencies and configure a local account |
-| An OpenAI API key for development | Transcription, search data generation, and AI answers |
+| Node.js and npm (the version in `.node-version`) | Install dependencies and configure a local account |
+| An OpenRouter API key for development | Transcription, search data generation, and AI answers |
 
 The video processing and AI answers in this guide incur external API usage charges. Use a development key and a short test video. A separate SearchAPI key is needed only for YouTube imports.
 
@@ -39,12 +39,13 @@ Edit the matching entries in `.env` to use these values. Set `OPENROUTER_API_KEY
 OPENROUTER_API_KEY=your-development-key
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=openai/gpt-6-luna
-WHISPER_BACKEND=openai
-
-EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_MODEL=openai/text-embedding-3-small
+WHISPER_BACKEND=openrouter
 ```
 
-Answer generation and image inspection share `LLM_MODEL`, which defaults to GPT-6 Luna (`gpt-6-luna`). With visual Q&A enabled, choose a model that supports image input, tool calling, and strict JSON output. See [model settings](../architecture/prompt-engineering.md#model-settings-and-limits).
+These are the values already in `.env.example`, so you normally only add the key. `WHISPER_BACKEND=openai` is the legacy direct route and would need a separate `OPENAI_API_KEY`.
+
+Answer generation and image inspection share `LLM_MODEL`, set here to GPT-6 Luna through OpenRouter. With visual Q&A enabled, choose a model that supports image input, tool calling, and strict JSON output. See [model settings](../architecture/prompt-engineering.md#model-settings-and-limits).
 
 The templates already use these embedding defaults. Dimensions are fixed at 1536; no dimension environment variable is needed. The API and worker must use the same provider and model. For private llama.cpp/vLLM endpoints and diagnostic commands, see [embedding configuration](../guides/embeddings.md).
 

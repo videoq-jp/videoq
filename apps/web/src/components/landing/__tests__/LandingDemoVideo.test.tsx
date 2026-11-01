@@ -11,7 +11,7 @@ describe('LandingDemoVideo',()=>{
   it('waits for an explicit play and then exposes native controls',()=>{
     const {container}=render(<LandingDemoVideo/>);
     const video=container.querySelector('video')!;
-    expect(video).toHaveAttribute('src','/demo/provider-demo-ja.mp4?v=3');
+    expect(video).toHaveAttribute('src','/demo/provider-demo-ja.mp4?v=4');
     expect(video.parentElement).toHaveStyle({aspectRatio:'16 / 9'});
     expect(video).toHaveAttribute('preload','none');
     expect(video.autoplay).toBe(false);
@@ -36,10 +36,10 @@ describe('LandingDemoVideo',()=>{
     fireEvent.play(container.querySelector('video')!);
     globalThis.__setMockLanguage('en');rerender(<LandingDemoVideo/>);
     const video=container.querySelector('video')!;
-    expect(video).toHaveAttribute('src','/demo/provider-demo-en.mp4?v=3');
-    expect(video).toHaveAttribute('poster','/demo/provider-demo-en-poster.webp?v=3');
+    expect(video).toHaveAttribute('src','/demo/provider-demo-en.mp4?v=4');
+    expect(video).toHaveAttribute('poster','/demo/provider-demo-en-poster.webp?v=4');
     expect(video.parentElement).toHaveStyle({aspectRatio:'16 / 9'});
-    expect(container.querySelector('track')).toHaveAttribute('src','/demo/provider-demo-en.vtt?v=3');
+    expect(container.querySelector('track')).toHaveAttribute('src','/demo/provider-demo-en.vtt?v=4');
     expect(container.querySelector('track')).toHaveAttribute('srcLang','en');
     expect(screen.getByRole('button',{name:'landing.film.play'})).toBeInTheDocument();
   });

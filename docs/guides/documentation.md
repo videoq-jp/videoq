@@ -50,6 +50,8 @@ Navigation and sidebar translations are in the JSON files under `apps/docs/i18n/
 
 The site and GitHub repository are public. Keep development explanations and generic procedures here; store confidential operational records in an access-controlled system outside this repository. A page excluded from the site is still visible in the repository.
 
+Production runbooks in `docs/operations/` are intentionally left out of `public-content.json`, so they have no Japanese translation or sidebar entry. Link to them with GitHub URLs from published pages.
+
 Use generic dashboard links and example values. Do not include real account IDs, contact email addresses, credentials, signed URLs, customer data, or production logs. Review images and downloadable files too; files under `apps/docs/static/` require a separate entry in `public-content.json`'s `staticAssets` list.
 
 The build scans both source languages and all generated files, including search indexes and JavaScript, for common sensitive-data patterns. It also checks approved page routes and translation completeness. A passing check does not replace a content review. Removing a published value does not remove it from Git history or copies already obtained by others.

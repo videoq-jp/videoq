@@ -1,0 +1,40 @@
+name: Prepare Production Public Demo
+run-name: Public demo ${{ inputs.operation }} ${{ inputs.db_rotation_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      db_rotation_id:
+        description: Internal database rotation verification identifier
+        type: string
+      operation:
+        description: Audit, or provision the dedicated five-lesson demo with 100 answers/month
+        type: choice
+        options: [audit, provision]
+        default: audit
+permissions:
+  contents: read
+concurrency:
+  group: production-public-demo-setup
+  cancel-in-progress: false
+jobs:
+  setup:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
+    environment: ${{ inputs.operation == 'provision' && 'production-db-demo' || 'production-db-audit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-operations-tools
+      - uses: ./.github/actions/neon-credentials
+      - name: Audit or prepare only the dedicated public demo
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: python3 .github/scripts/with-neon-credentials.py ${{ inputs.operation == 'provision' && 'demo' || 'audit' }} node .github/scripts/provision-public-demo.mjs

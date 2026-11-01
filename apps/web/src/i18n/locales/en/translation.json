@@ -1,7 +1,7 @@
 {
   "site": {
-    "title": "Let your lectures answer student questions | VideoQ",
-    "description": "For course creators and instructors. Upload your lecture videos and get an AI help desk for your students. Every answer links to the source moment, and students just open a link to ask. Try it free with one lecture."
+    "title": "Answer online course questions from your lecture videos | VideoQ",
+    "description": "For course creators and instructors. Upload your lecture videos and student questions get answered automatically, right from your lectures. Every answer links to the source moment, and students just open a link to ask. Try it free with one lecture."
   },
   "common": {
     "notProvided": "Not provided",
@@ -84,11 +84,12 @@
     "logoutFailed": "Could not log out. You may still be signed in. Please try again.",
     "menu": "All menus",
     "closeMenu": "Close menu",
-    "admin": "Admin"
+    "admin": "Admin",
+    "guides": "Guides"
   },
   "layout": {
     "authBranding": {
-      "tagline": "Search and transcribe lecture videos"
+      "tagline": "Automatic answers from your course videos"
     },
     "authFooter": "© {{year}} VideoQ"
   },
@@ -160,19 +161,30 @@
       "upgrade": "Upgrade your plan"
     }
   },
+  "tryDemo": {
+    "title": "Try it without signing up | VideoQ",
+    "description": "Ask a sample course a question as a student would. Every answer links to the source moment. No signup needed.",
+    "intro": "A sample course with lessons in Japanese. Ask as a student would, then jump to the moment behind the answer. Please don't enter personal information.",
+    "signup": "Create a course for free",
+    "questions": {
+      "derivative": "What does a derivative actually mean?",
+      "dna": "How does DNA lead to proteins?",
+      "price": "How do supply and demand set prices?"
+    }
+  },
   "landing": {
     "badge": "For course creators and instructors",
     "title": "Student questions?",
     "titleAccent": "Let your lectures answer.",
-    "lead": "Upload your lecture videos and get an AI help desk for your students.\nEvery answer links to the moment in your lecture, so it stays true to how you teach.",
+    "lead": "Upload your lecture videos and student questions get answered automatically, right from your lectures.\nEvery answer links to the moment in your lecture, so it stays true to how you teach.",
     "start": "Create a course for free",
     "tryOwn": "Try it with one lecture",
     "login": "Already have an account? Log in",
-    "watchDemo": "Watch the 30-second demo",
+    "tryDemo": "Ask a question without signing up",
     "startNote": "Start free with a single lecture video",
     "capabilities": {
       "title": "What you can do with VideoQ",
-      "create": "Turn lectures into an AI help desk",
+      "create": "Automatic answers from your lectures",
       "source": "Answers link to the source moment",
       "share": "Students just open a link",
       "insights": "See question trends on a dashboard"
@@ -183,7 +195,7 @@
       "intro": "Instead of answering the same question again and again, let your lectures respond.",
       "answer": {
         "title": "Answers come from your lectures.",
-        "body": "AI answers using the videos in your course. Not generic web knowledge, but the explanations you gave in class.",
+        "body": "Questions are answered automatically using the videos in your course. Not generic web knowledge, but the explanations you gave in class.",
         "example": "What does a derivative actually mean?",
         "result": "Answered from Lecture 3"
       },
@@ -193,7 +205,7 @@
       },
       "share": {
         "title": "No setup for students.",
-        "body": "Send a course link and students can ask questions without signing in. Use member invitations to limit access. AI usage counts against the course owner’s allowance, so students pay nothing.",
+        "body": "Send a course link and students can ask questions without signing in. Use member invitations to limit access. Answers count against the course owner’s allowance, so students pay nothing.",
         "example": "Send the course link",
         "exampleDetail": "Students ask without signing in"
       },
@@ -265,7 +277,7 @@
       "intro": "Create a free account and add your first lecture.",
       "upload": {
         "title": "Upload a lecture video",
-        "body": "MP4, MOV, WebM, and more. AI transcribes it and prepares it for questions."
+        "body": "MP4, MOV, WebM, and more. It’s transcribed automatically and prepared for questions."
       },
       "course": {
         "title": "Group it into a course",
@@ -282,25 +294,26 @@
       "title": "A few good questions.",
       "free": {
         "question": "Can I really start for free?",
-        "answer": "Yes. Try video transcription and AI questions within the free plan’s allowance, with no credit card required. See the pricing page for usage limits and paid plans."
+        "answer": "Yes. Try video transcription and automatic answers within the free plan’s allowance, with no credit card required. See the pricing page for usage limits and paid plans."
       },
       "accounts": {
         "question": "Do students need an account?",
         "answer": "Not with a course link. Anyone with the link can view and ask questions without signing in. To limit access, use member invitations."
       },
       "cost": {
-        "question": "Who pays for AI usage?",
-        "answer": "AI answers count against the course owner’s allowance. Students pay nothing."
+        "question": "Who pays for automatic answers?",
+        "answer": "Automatic answers count against the course owner’s allowance. Students pay nothing."
       },
       "accuracy": {
-        "question": "Can the AI give wrong answers?",
-        "answer": "Answers are based on your lectures and show the source moment. AI answers and transcripts can still contain mistakes, so students can always check the original explanation in context."
+        "question": "Can it give wrong answers?",
+        "answer": "Answers are based on your lectures and show the source moment. AI-generated answers and transcripts can still contain mistakes, so students can always check the original explanation in context."
       },
       "history": {
         "question": "Can I see what students asked?",
         "answer": "Yes. You can review and export the course’s question and answer history. For invited members, usernames and email addresses are also shown."
       },
-      "pricing": "Check plans and limits"
+      "pricing": "Check plans and limits",
+      "guides": "Read the guides to course questions"
     },
     "next": {
       "eyebrow": "Start free",
@@ -313,10 +326,10 @@
     "free": {
       "eyebrow": "Build your course, free",
       "title": "One lecture is all it takes.",
-      "intro": "Transcription and AI questions included.\nTry the student experience with your own lecture video.",
+      "intro": "Transcription and automatic answers included.\nTry the student experience with your own lecture video.",
       "processing": "Video transcription",
       "minutes": "{{minutes}} min / month",
-      "answers": "AI answers",
+      "answers": "Automatic answers",
       "answerCount": "{{count}} / month",
       "answerCount_one": "{{count}} / month",
       "answerCount_other": "{{count}} / month",
@@ -340,7 +353,7 @@
         "answer": "Students ask",
         "review": "Review history"
       },
-      "note": "A walkthrough recreated on the app’s real screens with real course data and an AI answer; the English edit uses a translated answer. Waiting times have been shortened. The opening messages are an illustration.",
+      "note": "A walkthrough recreated on the app’s real screens with real course data and an automatic answer; the English edit uses a translated answer. Waiting times have been shortened. The opening messages are an illustration.",
       "error": "The video could not load.",
       "blocked": "Use the video’s play button to start.",
       "retry": "Reload video"
@@ -384,6 +397,9 @@
       "clearFilters": "Clear conditions"
     },
     "upload": {
+      "languageLabel": "Audio language",
+      "languageAuto": "Detect automatically",
+      "languageHelp": "Select the language spoken in the video. Defaults to your display language.",
       "title": "Upload video",
       "description": "Upload and manage your video files.",
       "fileLabel": "File",
@@ -611,7 +627,7 @@
   "courseSharing": {
     "link": "Anyone with the link can view and chat without signing in.",
     "invitation": "Invited members can view and chat, but cannot edit. The owner can see each questioner’s username and email.",
-    "quotaAndHistory": "AI answers use the owner’s allowance. The owner can read and export questions and answers."
+    "quotaAndHistory": "Answers use the owner’s allowance. The owner can read and export questions and answers."
   },
   "courseInvitation": {
     "badge": "Course invitation",
@@ -802,7 +818,7 @@
       }
     },
     "title": "Chat",
-    "teacher": "Teacher",
+    "answerLabel": "Automatic answer",
     "newConsultation": "New chat",
     "history": "Conversation history",
     "historyEmpty": "No history available",
@@ -815,6 +831,8 @@
     "assistantGreeting": "Hello! Ask me anything about your videos.",
     "error": "An error occurred in the chat.",
     "errorOverQuota": "AI chat is unavailable because your storage is over the configured limit. Please delete videos to free up space.",
+    "errorAnswersLimit": "This course has reached its answer limit for this month, so it can't reply right now.",
+    "errorRateLimited": "Too many questions in a short time. Please try again a little later.",
     "citationGroup": "Sources ({{count}})"
   },
   "validation": {
@@ -850,10 +868,10 @@
     "limits": {
       "storage": "{{gb}} GB storage",
       "processing": "{{minutes}} transcription minutes / month",
-      "answers": "{{count}} AI answers / month",
+      "answers": "{{count}} automatic answers / month",
       "monthlyUpload": "{{gb}} GB uploads / month"
     },
-    "ownerNote": "Students ask for free. Questions from students who join through a course link or invitation count against the course owner’s AI answer allowance.",
+    "ownerNote": "Students ask for free. Questions from students who join through a course link or invitation count against the course owner’s automatic answer allowance.",
     "plans": {
       "free": {
         "name": "Free",
@@ -1313,5 +1331,26 @@
     "invitationAuthRequired": "Sign in with the invited account. Contact your administrator if you need an account.",
     "settingsSubtitle": "Manage your account and connections from internal systems.",
     "localIntegrations": "System integrations"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The URL may be wrong, or the page may have moved or been removed.",
+    "home": "Back to the home page"
+  },
+  "guides": {
+    "title": "Guides to answering course questions",
+    "intro": "How to answer student questions from your lecture videos, by use case. These guides explain what VideoQ does and what to check before you start.",
+    "eyebrow": "Guides",
+    "updated": "Updated",
+    "home": "Home",
+    "toc": "On this page",
+    "related": "Related guides",
+    "readMore": "Read more",
+    "ctaTitle": "Check an answer and its source moment",
+    "ctaBody": "Start with the sample course without signing up. For your own lectures, try transcription and AI questions within the Free plan's limits. No credit card is required.",
+    "tryDemo": "Ask without signing up",
+    "cta": "Create a course for free",
+    "pricing": "Check pricing and limits",
+    "author": "VideoQ team"
   }
 }

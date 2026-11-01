@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://docs.videoq.jp/sitemap.xml
+Sitemap: https://docs.videoq.jp/ja/sitemap.xml

@@ -40,6 +40,8 @@ interface VideoUploadModalProps {
  */
 export function VideoUploadModal({ isOpen, onClose, autoCloseDelayMs = 2000 }: VideoUploadModalProps) {
   const {
+    transcriptionLanguage,
+    setTranscriptionLanguage,
     sourceMode,
     youtubeUrl,
     title,
@@ -155,6 +157,8 @@ export function VideoUploadModal({ isOpen, onClose, autoCloseDelayMs = 2000 }: V
 
                   {sourceMode === 'file' ? (
                     <VideoUploadFormFields
+                      transcriptionLanguage={transcriptionLanguage}
+                      setTranscriptionLanguage={setTranscriptionLanguage}
                       title={title}
                       description={description}
                       isUploading={isUploading}

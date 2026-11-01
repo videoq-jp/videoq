@@ -47,5 +47,7 @@ flowchart LR
 | MCPのAPIキー・OAuth | `apikey`、`oauth_*` など |
 | 未配送のジョブ | `external_tasks` |
 | workerの実行記録 | `job_executions` |
+| 文字起こし・画像キャッシュのチェックポイント | `video_transcription_*`、`video_visual_*` |
+| アップロード動画の画像キャッシュ | R2 / Garage内の非公開オブジェクト `media/<file_key>.frames-v1.json`、`.focus-v1.bin` |
 
 **関連:** [データ辞書](data-dictionary.md)、[ER図](er-diagram.md)、[ジョブの配送と回復](../architecture/flowchart.md)。

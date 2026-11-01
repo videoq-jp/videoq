@@ -1,5 +1,6 @@
 import { deploymentEdition } from "@videoq/trpc/deployment";
 import type { Bindings } from "../types/bindings";
+import { resolveEmbeddingConfig } from "../lib/embedding-contract";
 
 type Environment = Record<string, string | undefined>;
 
@@ -32,6 +33,7 @@ export function integerSetting(source: Environment, key: string, fallback: numbe
 
 /** Explicit configuration: never inherit development credentials or CF bindings. */
 export function nodeBindings(source: Environment): Bindings {
+  resolveEmbeddingConfig(source);
   const databaseURL = required(source, "DATABASE_URL");
   if (!["postgres:", "postgresql:"].includes(parseURL(databaseURL, "DATABASE_URL").protocol)) {
     throw new Error("DATABASE_URL must be a PostgreSQL URL");
@@ -79,11 +81,13 @@ export function nodeBindings(source: Environment): Bindings {
     LLM_MODEL: source.LLM_MODEL || "gpt-6-luna",
     LLM_REASONING_EFFORT: reasoningEffort as Bindings["LLM_REASONING_EFFORT"],
     LLM_SEPARATE_TOOL_SCHEMA: source.LLM_SEPARATE_TOOL_SCHEMA || "false",
+    LLM_PRESERVE_TOOL_REASONING: source.LLM_PRESERVE_TOOL_REASONING || "false",
     LLM_REQUEST_TIMEOUT_MS: String(integerSetting(source, "LLM_REQUEST_TIMEOUT_MS", 120_000, 1000, 900_000)),
     LLM_STREAM_TIMEOUT_MS: String(integerSetting(source, "LLM_STREAM_TIMEOUT_MS", 300_000, 1000, 900_000)),
     EMBEDDING_BASE_URL: source.EMBEDDING_BASE_URL, EMBEDDING_API_KEY: source.EMBEDDING_API_KEY,
     EMBEDDING_MODEL: source.EMBEDDING_MODEL || "",
-    PGVECTOR_COLLECTION_NAME: source.PGVECTOR_COLLECTION_NAME || "scene_embeddings",
+    EMBEDDING_PROFILE: source.EMBEDDING_PROFILE || "openai",
+    PGVECTOR_COLLECTION_NAME: source.PGVECTOR_COLLECTION_NAME || (source.EMBEDDING_PROFILE === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings"),
     VIDEO_VISUAL_ENABLED: source.VIDEO_VISUAL_ENABLED || "true",
     USE_S3_STORAGE: "true",
     R2_ACCESS_KEY_ID: required(source, "R2_ACCESS_KEY_ID"),

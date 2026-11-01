@@ -3,7 +3,9 @@ import { readFileSync } from 'fs'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { describe, expect, it } from 'vitest'
-import { SITE_ORIGIN, absoluteUrl } from '@/lib/seo'
+import { SITE_ORIGIN, absoluteUrl, buildSitemap } from '@/lib/seo'
+import { GUIDE_CATALOG, guidePath } from '@/lib/guideCatalog'
+import { homeStructuredData } from '@/lib/structuredData'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -36,15 +38,22 @@ describe('robots.txt', () => {
 })
 
 describe('sitemap.xml', () => {
-  const content = readFileSync(resolve(__dirname, '../../public/sitemap.xml'), 'utf-8')
+  const content = buildSitemap()
 
   it('is an XML urlset', () => {
     expect(content).toContain('<?xml version="1.0"')
     expect(content).toContain('<urlset')
   })
 
+  it('dates only guides, from their real edit date', () => {
+    for (const guide of GUIDE_CATALOG) {
+      expect(content).toContain(`<loc>${absoluteUrl(guidePath(guide.slug), 'ja')}</loc>\n    <lastmod>${guide.updated}</lastmod>`)
+    }
+    expect(content).not.toContain(`<loc>${absoluteUrl('/pricing', 'ja')}</loc>\n    <lastmod>`)
+  })
+
   it('lists every public index path in Japanese and English', () => {
-    for (const path of ['/', '/pricing', '/terms', '/privacy', '/refund', '/legal']) {
+    for (const path of ['/', '/pricing', '/terms', '/privacy', '/refund', '/legal', '/guides', ...GUIDE_CATALOG.map(guide => guidePath(guide.slug))]) {
       expect(content).toContain(`<loc>${absoluteUrl(path, 'ja')}</loc>`)
       expect(content).toContain(`<loc>${absoluteUrl(path, 'en')}</loc>`)
     }
@@ -73,11 +82,18 @@ describe('index.html crawler copy', () => {
     expect(html).not.toContain('https://videoq.jp/ja/')
   })
 
-  it('keeps JSON-LD aligned with the lecture-search product', () => {
-    expect(html).toContain('EducationalApplication')
-    expect(html).toContain('AggregateOffer')
-    expect(html).not.toContain('AI動画ナビゲーター')
-    expect(html).not.toContain('PGVector')
-    expect(html).not.toContain('Web, Docker')
+  it('leaves page JSON-LD to the prerendered page bodies', () => {
+    expect(html).not.toContain('application/ld+json')
+  })
+})
+
+describe('home structured data', () => {
+  const data = JSON.stringify(homeStructuredData('en', 'Description', 'Demo'))
+
+  it('describes the product and its demo in the page language', () => {
+    expect(data).toContain('EducationalApplication')
+    expect(data).toContain('AggregateOffer')
+    expect(data).toContain('https://videoq.jp/demo/provider-demo-en.mp4')
+    expect(data).toContain('"inLanguage":"en"')
   })
 })

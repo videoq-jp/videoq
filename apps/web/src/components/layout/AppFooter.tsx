@@ -28,6 +28,9 @@ export function AppFooter() {
             <Link href="/pricing">{t('navigation.pricing')}</Link>
           </UtilityLink>
           <UtilityLink asChild>
+            <Link href="/guides">{t('navigation.guides')}</Link>
+          </UtilityLink>
+          <UtilityLink asChild>
             <Link href="/terms">{t('legal.terms.title')}</Link>
           </UtilityLink>
           <UtilityLink asChild>
@@ -47,7 +50,8 @@ export function AppFooter() {
             <Link href="/signup">{t('auth.signup.submit')}</Link>
           </UtilityLink>}
         </nav>
-        <p className="text-oln-14N-100 text-solid-gray-600">
+        {/* The prerendered year can predate the visit. */}
+        <p className="text-oln-14N-100 text-solid-gray-600" suppressHydrationWarning>
           © {new Date().getFullYear()} VideoQ
         </p>
       </div>

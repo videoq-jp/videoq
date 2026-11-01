@@ -83,7 +83,7 @@ Describe the specific behavior before and after the change and report the checks
 
 Reviewers can check the static build and Chromium test results in the [CI](../../.github/workflows/ci.yml) job named `Frontend Storybook`. Also check `Frontend Lint & Type Check`, `Frontend Tests`, and `Frontend Build` on the same PR. Path filters skip these jobs for unrelated changes.
 
-The static site is available in the successful CI run's `frontend-storybook` artifact, retained for seven days. Download and extract it, run the following command in the extracted directory, and open the displayed local URL.
+Ordinary PR and push CI does not store the static site. Run CI manually (Actions → CI → Run workflow) to get a `frontend-storybook` artifact, retained for seven days. Download and extract it, run the following command in the extracted directory, and open the displayed local URL.
 
 ```bash
 python3 -m http.server 6007 --bind 127.0.0.1
@@ -110,6 +110,7 @@ The following components and pages set `parameters.a11y.test: 'error'` in their 
 | Notifications and confirmation dialogs | [FeedbackProvider](src/components/common/FeedbackProvider.stories.tsx), [MessageAlert](src/components/common/MessageAlert.stories.tsx) |
 | Loading and processing states | [LoadingSpinner](src/components/common/LoadingSpinner.stories.tsx), [StatusBadge](src/components/common/StatusBadge.stories.tsx) |
 | Forms and authentication errors | [FormField](src/components/auth/FormField.stories.tsx), [ErrorMessage](src/components/auth/ErrorMessage.stories.tsx) |
+| Course sharing notice | [CourseSharingNotice](src/components/video/course-detail/CourseSharingNotice.stories.tsx) |
 | Landing page and shared color theme | [LandingPage](src/pages/LandingPage.stories.tsx), [VideoQTheme](src/styles/VideoQTheme.stories.tsx) |
 
 To check only the shared components and form/authentication stories, run:

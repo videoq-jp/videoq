@@ -12,10 +12,11 @@ VideoQはシーンの埋め込みを `scene_embeddings.embedding vector(1536)` �
 埋め込みは OpenAI 互換 API に統一しています。標準設定は次のとおりです。
 
 ```dotenv
-EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+EMBEDDING_MODEL=openai/text-embedding-3-small
 ```
 
-社内の llama.cpp／vLLM も同じ形式を使い、接続先とモデル名を明示します。
+API・worker の両方に `OPENROUTER_API_KEY` を設定します。モデルは1536次元の OpenAI text-embedding-3-small のままで、OpenRouter の名前空間を付けただけでは再索引は不要です。社内の llama.cpp／vLLM も同じ形式を使い、接続先とモデル名を明示します。
 
 ```dotenv
 EMBEDDING_BASE_URL=http://embedding.intranet:8000/v1
@@ -24,7 +25,7 @@ EMBEDDING_MODEL=gte-qwen2-1.5b-q4km-124fbdad
 ```
 
 認証不要の社内サーバーでは仮のキーを使います。`EMBEDDING_API_KEY` が空なら
-`OPENAI_API_KEY`、`EMBEDDING_BASE_URL` が空なら `OPENAI_BASE_URL` を使用するため、
+接続先に応じたキー（OpenRouter なら `OPENROUTER_API_KEY`、それ以外は `OPENAI_API_KEY`）、`EMBEDDING_BASE_URL` が空なら `OPENAI_BASE_URL` を使用するため、
 埋め込みを別サービスに配置する場合は専用 URL を必ず設定してください。
 Compose からホストの 8001 番ポートに接続する例は `http://host.docker.internal:8001/v1` です。
 API・worker のモデル名と接続先を揃えます。LLM と Whisper の設定は独立しています。

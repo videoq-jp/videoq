@@ -1,30 +1,30 @@
 # VideoQ
 
-**Ask your videos. Find the explanation.**
+**Automatic answers to student questions, from your lecture videos.**
 
-VideoQ helps you study with your own lecture videos. Ask a question in your own words, read an answer grounded in your course material, and select a source timestamp to rewatch the relevant explanation.
+VideoQ is for course creators, instructors, and training owners. Upload recordings or import YouTube lectures, group them into a course, and share it. Students ask in their own words and get an answer based on the course, with a timestamp that jumps to the explanation.
 
-Upload recordings or import YouTube lectures, organize them into courses, and share them with learners. Course owners can review question history and feedback to see where learners need help.
+Answers use the course owner's allowance. Owners can review question history and feedback to see where students need help.
 
-**[Try VideoQ](https://videoq.jp/en/) · [Developer docs](https://docs.videoq.jp/) · [Quick start](#quick-start)**
+**[Try VideoQ](https://videoq.jp/en/) · [No-signup demo](https://videoq.jp/en/try) · [Developer docs](https://docs.videoq.jp/) · [Quick start](#quick-start)**
 
 ## Watch the demo
 
-[![Play the 30-second English demo: ask a question, read a source-backed answer, and jump to the lecture scene](apps/web/public/demo/student-demo-en-poster.webp)](https://videoq.jp/demo/student-demo-en.mp4?v=4)
+[![Play the 30-second English demo: an instructor shares a course, a student asks a question and jumps to the cited scene, and the instructor finds that question in the history](apps/web/public/demo/provider-demo-en-poster.webp)](https://videoq.jp/demo/provider-demo-en.mp4?v=4)
 
-**[▶ Play the English demo (30 seconds)](https://videoq.jp/demo/student-demo-en.mp4?v=4)** · [Watch on the website with captions](https://videoq.jp/en/#landing-demo)
+**[▶ Play the English demo (30 seconds)](https://videoq.jp/demo/provider-demo-en.mp4?v=4)** · [Watch on the website with captions](https://videoq.jp/en/#landing-demo)
 
-The demo follows a learner through a five-subject course: open a lecture, ask what a derivative means, read the AI answer, and click its timestamp to revisit the explanation.
+An instructor uploads a lecture and shares the course, a student asks a question and plays the cited moment, and the instructor finds that question in the conversation history.
 
-*English adaptation of a walkthrough using real course data and an AI answer. Waiting times have been shortened.*
+*Recreated walkthrough using real course data and a captured AI answer; the opening is an illustration, and the English edit translates the interface, question, and answer. Waiting times have been shortened.*
 
 ## Features
 
-- **Ask across a course** — Find explanations across your lecture videos using questions in your own words.
+- **Automatic answers across a course** — Students ask in their own words and get answers drawn from your lecture videos.
 - **Check the source** — Follow timestamps from an answer to the relevant video scenes and review them in context.
-- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats, or import YouTube transcripts using your SearchAPI key.
-- **Organize and share** — Group videos into courses, label them with tags, and give learners access through share links or email invitations.
-- **Review learning activity** — Explore question history, answer feedback, analytics, and CSV exports.
+- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats with a selectable spoken language, or import YouTube transcripts using your SearchAPI key.
+- **Organize and share** — Group videos into courses, label them with tags, and give students access through share links (no login needed) or email invitations.
+- **Review student questions** — Explore question history, answer feedback, analytics, and CSV exports.
 - **Use Japanese or English** — Switch between Japanese and English interfaces.
 - **Connect MCP clients** — Use Claude Code and other compatible tools to manage videos and courses or inspect question history through OAuth or API keys.
 - **Manage usage** — Configure user quotas, storage limits, reindex jobs, and optional Stripe subscriptions.
@@ -43,8 +43,8 @@ For the research behind the AI pipeline, see [AI methods and references](docs/re
 | Async jobs | Python worker → Amazon SQS / AWS Lambda |
 | Database | Neon PostgreSQL + pgvector through Hyperdrive (local: PostgreSQL 17 + pgvector) |
 | Object storage | Cloudflare R2 (local: Garage) |
-| Edge state | Durable Objects (rate limits and task recovery scheduling) |
-| External services | OpenAI / optional local AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
+| Edge state | Durable Objects (rate limits, task recovery scheduling, and chat execution) |
+| External services | OpenRouter (hosted AI) / optional local AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 
@@ -62,28 +62,28 @@ Browser → Garage (signed uploads)          ↓
 
 The SPA shares the typed `/api/trpc` contract in `packages/trpc`. Hono also serves Better Auth, MCP, chat streaming, media, CSV exports, and the Stripe webhook. Browser authentication uses cookies; MCP uses API keys or OAuth access tokens.
 
-Async processing runs transcription → scene indexing. Jobs are recorded in a database outbox and delivered to SQS, and the worker tracks job IDs to handle retries. The `TASK_SCHEDULER` Durable Object schedules recovery for pending deliveries and abandoned uploads. A daily `17 3 * * *` UTC cron performs retention cleanup and recovery; there is no five-minute polling cron.
+Async processing runs transcription (saved interval by interval for uploaded files) → scene indexing, plus optional visual caches for uploads. Jobs are recorded in a database outbox and delivered to SQS, and the worker tracks job IDs to handle retries. The `TASK_SCHEDULER` Durable Object schedules recovery for pending deliveries and abandoned uploads. A daily `17 3 * * *` UTC cron performs retention cleanup and recovery; there is no five-minute polling cron.
 
-Package READMEs: [`apps/`](apps/README.md) · [`apps/api/`](apps/api/README.md) · [`apps/web/`](apps/web/README.md) · [`apps/worker/`](apps/worker/README.md)
+Package READMEs: [`apps/`](apps/README.md) · [`apps/api/`](apps/api/README.md) · [`apps/web/`](apps/web/README.md) · [`apps/worker/`](apps/worker/README.md) · [`apps/docs/`](apps/docs/README.md) · [`apps/demo-video/`](apps/demo-video/README.md) · [`packages/trpc/`](packages/trpc/README.md)
 
 ## Quick Start
 
 ### Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed
-- An [OpenAI API key](https://platform.openai.com/api-keys) for the default AI configuration
+- An [OpenRouter API key](https://openrouter.ai/settings/keys) for the default AI configuration
 - A [SearchAPI API key](https://www.searchapi.io/) if you want to import YouTube videos (configured per user in Settings)
-- Node.js 22.12+ and npm for the account promotion command below and development outside Docker
-- Python 3.12+ only if you run or test the Python worker outside Docker
+- Node.js and npm for the account promotion command below and development outside Docker. CI and the images use the version in `.node-version`
+- Python 3.12+ only if you run or test the Python worker outside Docker. CI and the images use the version in `.python-version`
 
-### Step 1: Get an OpenAI API key for the default setup
+### Step 1: Get an OpenRouter API key for the default setup
 
-1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
+1. Go to [OpenRouter API keys](https://openrouter.ai/settings/keys)
 2. Sign up or log in
-3. Click "Create new secret key"
-4. Copy the key, which starts with `sk-...`
+3. Create a key
+4. Copy the key, which starts with `sk-or-...`
 
-The setup below uses OpenAI for transcription, embeddings, and chat. Optional local AI configuration is described [below](#optional-reduce-costs-with-local-ai).
+The setup below uses OpenRouter for transcription, embeddings, and chat. Optional local AI configuration is described [below](#optional-reduce-costs-with-local-ai).
 
 ### Step 2: Set up VideoQ
 
@@ -104,9 +104,6 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=openai/gpt-6-luna
 EMBEDDING_MODEL=openai/text-embedding-3-small
 WHISPER_BACKEND=openrouter
-WHISPER_BACKEND=openai
-
-EMBEDDING_MODEL=text-embedding-3-small
 
 # Docker API startup currently forwards AUTH_JWT_SECRET as the auth fallback.
 # AUTH_JWT_SECRET: openssl rand -base64 48
@@ -115,16 +112,15 @@ AUTH_JWT_SECRET=
 USER_SECRET_ENCRYPTION_KEY=
 ```
 
-The hosted configuration uses OpenRouter for answers, image inspection, embeddings,
-and transcription. Prefer workload identity federation: configure separate
-`OPENROUTER_FEDERATION_POLICY_ID` values for the API and worker, using AWS STS
-identities and OpenRouter Business/Enterprise policies. A fixed
-`OPENROUTER_API_KEY` is retained for explicit development compatibility.
-The existing GPT-6 Luna and 1536-dimensional `text-embedding-3-small` models are
-preserved; only transcription changes to `openai/whisper-large-v3-turbo`.
+A fixed `OPENROUTER_API_KEY` is the simplest option for local development. Shared
+and production deployments should prefer workload identity federation: configure
+separate `OPENROUTER_FEDERATION_POLICY_ID` values for the API and worker, using AWS
+STS identities and OpenRouter Business/Enterprise policies.
+The hosted models are GPT-6 Luna, 1536-dimensional `text-embedding-3-small`, and
+`openai/whisper-large-v3-turbo`.
 OpenRouter uses qualified `openai/...` model IDs. The adapters also qualify the
-existing unprefixed default model names when the selected endpoint is OpenRouter.
-This alias change alone does not require rebuilding existing embedding vectors.
+unprefixed default model names when the selected endpoint is OpenRouter.
+This alias alone does not require rebuilding existing embedding vectors.
 
 For Cloudflare, configure the API policy ID and `AWS_REGION` in production
 Wrangler vars and grant STS token permission to its existing AWS principal. For
@@ -143,9 +139,9 @@ subtitle timing is accepted. See the [release runbook](docs/operations/openai-tr
 [OpenRouter transcription](https://openrouter.ai/docs/guides/overview/multimodal/stt),
 and [embeddings](https://openrouter.ai/docs/api_reference/embeddings).
 
-Answer generation and image inspection share `LLM_MODEL`, which defaults to GPT-6 Luna (`gpt-6-luna`). With visual Q&A enabled, the model must support image input as well as tool calling and strict JSON output. See [model settings](docs/architecture/prompt-engineering.md#model-settings-and-limits) and [model references](docs/reference/ai-references.md#gpt-6-luna).
+Answer generation and image inspection share `LLM_MODEL`. The template selects GPT-6 Luna through OpenRouter (`openai/gpt-6-luna`). With visual Q&A enabled, the model must support image input as well as tool calling and strict JSON output. See [model settings](docs/architecture/prompt-engineering.md#model-settings-and-limits) and [model references](docs/reference/ai-references.md#gpt-6-luna).
 
-Embedding dimensions are fixed at 1536 in the API, worker, and DB. The templates use OpenAI / `text-embedding-3-small`; no dimension setting is needed. Configure the same provider and model for both runtimes. See [embedding configuration and diagnostics](docs/guides/embeddings.md).
+Embedding dimensions are fixed at 1536 in the API, worker, and DB. The templates use `openai/text-embedding-3-small` through OpenRouter; no dimension setting is needed. Configure the same provider and model for both runtimes. See [embedding configuration and diagnostics](docs/guides/embeddings.md).
 
 Docker Compose supplies development-only fallback secrets when these fields are blank. The API container generates `apps/api/.dev.vars` using [`docker-dev.sh`](apps/api/scripts/docker-dev.sh), which currently forwards `AUTH_JWT_SECRET`, not `BETTER_AUTH_SECRET`. Host-run API development and production use `BETTER_AUTH_SECRET` directly. Configure independent secrets for shared deployments.
 
@@ -185,11 +181,16 @@ npm ci
 npm run user:admin --workspace @videoq/api -- your-username-or-email
 ```
 
-If a migrated local account reports `Password not found`, restore a local-only
-temporary password (the command prints it once):
+If a migrated local account reports `Password not found`, set a new local-only
+password. The command reads it from `VIDEOQ_LOCAL_PASSWORD` (12–128 characters) and
+refuses non-local databases:
 
 ```bash
+read -rsp 'New local password (12–128 characters): ' VIDEOQ_LOCAL_PASSWORD
+echo
+export VIDEOQ_LOCAL_PASSWORD
 npm run user:password:local --workspace @videoq/api -- your-username-or-email
+unset VIDEOQ_LOCAL_PASSWORD
 ```
 
 3. Log in at [http://localhost/login](http://localhost/login).
@@ -265,7 +266,7 @@ Frontend `VITE_*` values are build-time settings; changes require rebuilding `we
 <details>
 <summary><strong>Optional: reduce costs with local AI</strong></summary>
 
-**This step is optional.** Skip it if the default OpenAI setup works for you.
+**This step is optional.** Skip it if the default hosted setup works for you.
 
 Transcription, chat, and embeddings can use local services. Configure each component together with the API and worker that consume it.
 
@@ -351,7 +352,7 @@ See [diagnostics and migration constraints](docs/guides/embeddings.md).
 
 See [the workflow map](.github/WORKFLOWS.md) for CI, deployment, automatic dependency updates, and operations checks.
 
-Run npm commands from the repository root. Dependencies for `apps/api`, `apps/docs`, `apps/web`, and `packages/trpc` share the root lockfile.
+Run npm commands from the repository root. Dependencies for `apps/api`, `apps/demo-video`, `apps/docs`, `apps/web`, and `packages/trpc` share the root lockfile.
 
 ```bash
 npm ci
@@ -408,9 +409,9 @@ Set `BETTER_AUTH_SECRET`, `USER_SECRET_ENCRYPTION_KEY`, and `OPENROUTER_API_KEY`
 BETTER_AUTH_URL=http://localhost:3000
 FRONTEND_URL=http://localhost:3000
 OAUTH_ISSUER_URL=http://localhost:3000
-OPENAI_BASE_URL=https://api.openai.com/v1
-
-EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=openai/gpt-6-luna
+EMBEDDING_MODEL=openai/text-embedding-3-small
 ```
 
 Keep the Garage / ElasticMQ settings from `.dev.vars.example`, use the same user-secret encryption key as the Python worker, then run `npm run dev:api` in another terminal. Wrangler's local Hyperdrive connection targets `localhost:55432`; override it if you changed the database credentials. The Compose dependencies and Python worker continue running.
@@ -436,7 +437,7 @@ Do not hand-edit generated DDL SQL, snapshots, or the journal. Data-only backfil
 
 ```bash
 cd apps/worker
-python3.12 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pytest tests/ -q
@@ -450,21 +451,19 @@ PostgreSQL integration tests additionally use `DATABASE_URL`. Running transcript
 09:00 Asia/Tokyo. It covers the root npm workspaces, the Python worker's
 `pyproject.toml` / `uv.lock`, GitHub Actions, Dockerfiles, Docker Compose,
 Terraform (including `infra/bootstrap`), and the optional `whisper.cpp` submodule.
-Related npm packages are updated together; remaining minor and patch updates are
-grouped by ecosystem, while major updates are reviewed separately. GitHub Actions
-updates share one group. Version-update PRs are limited to five per ecosystem
-(one for the submodule).
+[Runtime Updates](.github/RUNTIME-UPDATES.md) separately checks daily for Node.js,
+Python, npm, pip, and uv releases.
 
-The configuration takes effect on GitHub's default branch (`main`). Dependabot
-alerts and security updates are separate repository settings under
-**Settings → Advanced Security**; keep both enabled. npm and Python security fixes
-are grouped separately from scheduled version updates. Verified minor and patch
-updates for npm, Python, Docker, Compose, Terraform providers, and SHA-pinned
-GitHub Actions are automatically merged after required checks pass. Major updates,
-submodules, deployment tools, and source changes require review. Terraform provider
-minor/patch updates also apply automatically after merge; ordinary infrastructure
-changes retain production approval. See [dependency automation](.github/dependency-automation.md).
-CI and production worker builds install hash-verified binary dependencies from `uv.lock`.
+Dependabot alerts and security updates are separate repository settings under
+**Settings → Advanced Security**; keep both enabled. After CI succeeds,
+[Dependency Automation](.github/dependency-automation.md) verifies each update's
+origin and files, then queues eligible Dependabot major/minor/patch updates and
+current-line runtime PRs in GitHub Merge Queue. It can send repairable CI failures
+to an isolated Claude worker. New runtime lines and PRs with unverified changes
+require human review. Terraform provider minor/patch updates also apply
+automatically after merge; ordinary infrastructure changes and provider majors
+retain production approval. CI and production worker builds install hash-verified
+binary dependencies from `uv.lock`.
 
 ## Deployment
 
@@ -483,11 +482,11 @@ Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack
 
 VideoQ exposes a remote MCP server at `/api/mcp` (Streamable HTTP via `@hono/mcp`). Connect a compatible client using the endpoint URL and an API key, or use the OAuth authorization flow. Older clients can use the `mcp-remote` bridge below.
 
-> 🛡️ **Permission policy:** Read tools accept `read_only` API keys or OAuth tokens with `videoq.read`. Video upload and course management tools require an `all` API key or the OAuth `videoq.write` scope. Missing API-key permission metadata defaults to read-only. Sending RAG chat questions is intentionally excluded from MCP.
+> 🛡️ **Permission policy:** Read tools accept `read_only` API keys or OAuth tokens with `videoq.read`. Video upload and course management tools require an `all` API key or the OAuth `videoq.write` scope. The server sets each API key's permissions from the type selected at creation. Sending RAG chat questions is intentionally excluded from MCP.
 
 ### Available tools
 
-VideoQ exposes 9 read-only tools and 5 write tools. The MCP metadata and tests enforce
+VideoQ exposes 7 read-only tools and 5 write tools. The MCP metadata and tests enforce
 that split, including each tool's input/output schema and safety annotations.
 
 | Tool | Purpose |
@@ -587,13 +586,18 @@ For a local file, Claude Code generates an idempotency key, calls `request_video
 ## Repository layout
 
 ```text
-apps/api/        Hono + tRPC on Cloudflare Workers
+apps/api/        Hono + tRPC on Cloudflare Workers (or Node.js on-prem)
 apps/web/        React SPA
 apps/worker/     Python async pipeline (SQS / Lambda)
+apps/docs/       Documentation site and Japanese translations
+apps/demo-video/ Remotion demo films
+apps/inference/  Private speech gateway and engine images for on-prem
 packages/trpc/   Shared Hono ↔ React tRPC router and contract
 package.json     npm workspace root
+charts/          Helm charts for on-prem application and inference
 infra/           Terraform (SQS, Lambda, ECR, IAM) + deploy notes
-docs/            Architecture and design docs
+docs/            Architecture, design, and operations docs
+assets/brand/    Brand masters
 whisper.cpp/     Optional local transcription server (Git submodule)
 .github/workflows/   CI, CD, Terraform, Cloudflare resource management
 docker-compose.yml   Local full stack

@@ -148,14 +148,15 @@ Environment and uses OIDC authentication for validated main commits.
 Environment branch restrictions evaluate `GITHUB_REF` and do not replace validation
 of the event that triggered `workflow_run`. CD's validation job has neither
 production secrets nor OIDC permissions and executes validation code from a
-trusted workflow revision. Only the Lambda deployment job receives AWS OIDC permissions.
+trusted workflow revision. Lambda deployment and database jobs receive separate, narrowly scoped AWS OIDC permissions.
 
 ### GitHub Actions secret locations
 
 | Secret | Location | Purpose |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Environment secrets in `production-app` and `production-infra` | Workers deployment / checking secret names during resource sync |
-| `DATABASE_URL` | Environment secrets in `production-app` | Production database migrations only; not passed during dependency installation |
+| `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Separate `production-db-*` Environment secrets | Purpose-specific OIDC role with read access to exactly one Neon parameter; see [setup](iam/README.md#neon-database-access) |
+| `AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN` | `production-infra` Environment secret | Dedicated database credential maintenance role |
 | `CLOUDFLARE_INFRA_TOKEN` | Environment secrets in `production-infra` | Hyperdrive and R2 CORS updates in the target account |
 | `CLOUDFLARE_ACCOUNT_ID` | Repository secrets (non-sensitive ID) | Cloudflare account ID |
 
@@ -191,14 +192,13 @@ and PRs. Confirm that all four entries in the table are registered before deleti
 secrets. Leaving identically named Repository secrets makes them available to
 workflows without an environment, so isolation is incomplete.
 
-If the original migration connection string is unavailable locally, an administrator
-can retrieve it from the SSM SecureString `/videoq/security/prod/db-migration` and
-register it again. `/videoq/prod/db`, referenced by Lambda's `DB_PARAM_NAME`, is for
-the application only and cannot be used for migrations. Do not reset the database
-password and interrupt active connections. The old CD workflow does not select an
-environment, so perform this secret migration and merge the workflow change in the
-same maintenance period without starting another deployment. Do not delete the old
-secrets before the new registrations are complete.
+Database jobs read the existing JSON SecureString
+`/videoq/security/prod/db-migration` through their dedicated migration OIDC role. Other operations use separate scoped parameters; see [DB security](DB_SECURITY.md). Follow
+[Neon database access setup](iam/README.md#neon-database-access) before merging
+the workflow changes. After verifying database jobs, delete `DATABASE_URL` from
+GitHub Environment and Repository secrets if present. `/videoq/prod/db`, referenced
+by Lambda's `DB_PARAM_NAME`, is for the application only and cannot be used for
+migrations. No database password reset is needed for this change.
 
 The manual resource-sync workflow also checks that the names of all required Worker
 secrets exist in production. It does not retrieve or print their values.

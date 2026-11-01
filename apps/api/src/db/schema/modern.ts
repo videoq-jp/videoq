@@ -285,6 +285,7 @@ export const videos = pgTable(
 			maxValue: 9223372036854775807,
 			cache: 1,
 		}),
+		transcriptionLanguage: varchar("transcription_language", { length: 3 }),
 		file: varchar({ length: 100 }).notNull(),
 		multipartUpload: jsonb("multipart_upload").$type<{
 			uploadId: string;
@@ -776,6 +777,24 @@ export const sceneEmbeddings = pgTable(
 	(table) => [
 		index("scene_embeddings_user_id_idx").on(table.userId),
 		index("scene_embeddings_video_id_idx").on(table.videoId),
+	],
+);
+
+// Keep the hosted index intact during the explicit local-model cutover.
+// Different model spaces are never searched together, even for the same video.
+export const sceneEmbeddings768 = pgTable(
+	"scene_embeddings_768",
+	{
+		langchainId: uuid("langchain_id").primaryKey().notNull(),
+		content: text().notNull(),
+		embedding: vector({ dimensions: 768 }).notNull(),
+		userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+		videoId: bigint("video_id", { mode: "number" }).notNull().references(() => videos.id, { onDelete: "cascade" }),
+		langchainMetadata: json("langchain_metadata"),
+	},
+	(table) => [
+		index("scene_embeddings_768_user_id_idx").on(table.userId),
+		index("scene_embeddings_768_video_id_idx").on(table.videoId),
 	],
 );
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_UPLOAD_PARTS, MAX_VIDEO_UPLOAD_BYTES } from "../video-upload";
+import { MAX_UPLOAD_PARTS, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "../video-upload";
 
 const id = z.number().int().positive();
 const title = z.string().trim().min(1).max(255);
@@ -20,6 +20,7 @@ export const videosInputSchemas = {
     contentType: z.string().trim().min(1).max(100),
     fileSize: z.number().int().positive().max(MAX_VIDEO_UPLOAD_BYTES),
     multipart: z.boolean().optional(),
+    transcriptionLanguage: z.enum(Object.keys(TRANSCRIPTION_LANGUAGES) as [keyof typeof TRANSCRIPTION_LANGUAGES, ...Array<keyof typeof TRANSCRIPTION_LANGUAGES>]).optional(),
     title,
     description: z.string().default(""),
   }),

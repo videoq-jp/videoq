@@ -1,5 +1,5 @@
 import { isOnprem } from "@/lib/deployment";
-import { lazy } from 'react';
+import { lazy, useSyncExternalStore } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { addLocalePrefix, getSavedLocale, useLocaleSync } from '@/lib/i18n';
 import { defaultLocale, locales, type Locale } from '@/i18n/config';
@@ -7,6 +7,7 @@ import { withQueryAndHash } from '@/lib/seo';
 import { AppRouteLayout, AuthRouteLayout, type AppPageRoute } from '@/components/layout/AppRouteLayout';
 import { RouteContent } from '@/components/layout/RouteContent';
 import HomePage from '@/pages/HomePage';
+import NotFoundPage from '@/pages/NotFoundPage';
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const SignupPage = isOnprem ? null : lazy(() => import('@/pages/SignupPage'));
@@ -24,20 +25,29 @@ const VideoCourseDetailPage = lazy(() => import('@/pages/VideoCourseDetailPage')
 const SharePage = lazy(() => import('@/pages/SharePage'));
 const CourseInvitationPage = lazy(() => import('@/pages/CourseInvitationPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const TryPage = isOnprem ? null : lazy(() => import('@/pages/TryPage'));
 const PricingPage = isOnprem ? null : lazy(() => import('@/pages/PricingPage'));
 const LegalPage = isOnprem ? null : lazy(() => import('@/pages/LegalPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const GuideIndexPage = isOnprem ? null : lazy(() => import('@/pages/GuideIndexPage'));
+const GuidePage = isOnprem ? null : lazy(() => import('@/pages/GuidePage'));
+
+const hydrationSubscription = () => () => undefined;
+const clientReady = () => true;
+const serverReady = () => false;
 
 function LocaleGate() {
   const params = useParams<{ locale?: string }>();
   const location = useLocation();
   const locale = params.locale;
+  // The first browser render must match prerendered HTML before preference redirects.
+  const mounted = useSyncExternalStore(hydrationSubscription, clientReady, serverReady);
 
   // Must be called unconditionally (rules-of-hooks)
   useLocaleSync();
 
   if (locale && !locales.includes(locale as Locale)) {
-    return <Navigate to="/" replace />;
+    return <NotFoundPage />;
   }
 
   // Use the router-decoded locale to normalize only the matched prefix:
@@ -53,7 +63,7 @@ function LocaleGate() {
 
   // Returning visitors who explicitly chose English. Never use Accept-Language
   // here — Googlebot would be sent to /en/ and index English as the homepage.
-  if (!locale) {
+  if (!locale && mounted) {
     const saved = getSavedLocale();
     if (saved && saved !== defaultLocale) {
       const nextPath = withQueryAndHash(
@@ -75,7 +85,9 @@ const appPageRoutes: AppPageRoute[] = [
   { path: 'videos/courses', element: <VideoCoursesPage />, handle: { activePage: 'courses' } },
   { path: 'videos/courses/:id', element: <VideoCourseDetailPage />, handle: { activePage: 'courses', variant: 'workspace' } },
   { path: 'settings', element: <SettingsPage />, handle: { activePage: 'settings' } },
-  ...(!isOnprem && PricingPage && LegalPage ? [
+  ...(!isOnprem && PricingPage && LegalPage && GuideIndexPage && GuidePage ? [
+  { path: 'guides', element: <GuideIndexPage />, handle: {} },
+  { path: 'guides/:slug', element: <GuidePage />, handle: {} },
   { path: 'pricing', element: <PricingPage />, handle: { activePage: 'pricing' } },
   { path: 'terms', element: <LegalPage page="terms" />, handle: {} },
   { path: 'privacy', element: <LegalPage page="privacy" />, handle: {} },
@@ -108,6 +120,7 @@ const routeChildren = (
     {/* Public shared courses have their own header and full-screen UI. */}
     <Route element={<RouteContent />}>
       <Route path="share/:token" element={<SharePage />} />
+      {TryPage && <Route path="try" element={<TryPage />} />}
     </Route>
   </>
 );
@@ -124,7 +137,7 @@ export default function App() {
       <Route path=":locale" element={<LocaleGate />}>
         {routeChildren}
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

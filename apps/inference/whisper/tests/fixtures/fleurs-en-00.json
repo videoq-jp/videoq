@@ -1,0 +1,12 @@
+{
+  "name": "fleurs-en-00",
+  "file": "fleurs-en-00.mp3",
+  "duration": 5.832,
+  "reference": "The cabbage juice changes color depending on how acidic or basic (alkaline) the chemical is.",
+  "sha256": "76f31e31953f6ef3e13db2dbecf7581a4c7750e38ca7fcc2b55f0c6c5180d98b",
+  "dataset_id": 1728,
+  "source": "google/fleurs en_us test",
+  "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+  "parquet_sha256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d",
+  "license": "CC BY 4.0"
+}

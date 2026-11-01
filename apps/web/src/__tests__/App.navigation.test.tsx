@@ -285,6 +285,13 @@ it.each([
   expect(screen.getByRole('contentinfo')).toBeInTheDocument();
 });
 
+it.each(['/no-such-page', '/en/no/such/page'])('shows the 404 page at %s without redirecting', async (path) => {
+  renderApp(path);
+  expect(await screen.findByRole('heading', { level: 1, name: i18n.t('notFound.title') })).toBeInTheDocument();
+  expect(window.location.pathname).toBe(path);
+  expect(document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? 'noindex, nofollow').toContain('noindex');
+});
+
 it('keeps the admin layout visible during the authentication check', async () => {
   getAccount.mockReturnValue(new Promise(() => {}));
   renderApp('/admin');
@@ -309,6 +316,15 @@ it('keeps one authentication layout across login and signup', async () => {
   expect(screen.getByRole('banner')).toBe(header);
   expect(screen.getByRole('main')).toBe(main);
   expect(screen.queryByRole('navigation', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+});
+
+it('opens the no-signup demo for signed-out visitors with its own page title', async () => {
+  globalThis.__setMockAuthSession(null);
+  globalThis.__setTrpcHandler('courses.shared', () => ({ id: 1, name: 'Sample course', description: '', videos: [] }));
+  renderApp('/try');
+  await screen.findByText(i18n.t('tryDemo.intro'));
+  expect(window.location.pathname).toBe('/try');
+  expect(document.title).toBe(i18n.t('tryDemo.title'));
 });
 
 it('contains a page render error inside the layout and recovers on navigation', async () => {

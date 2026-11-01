@@ -9,7 +9,6 @@ import urllib.request
 from worker_python.env import env_str
 from .ai_connection import shared_api_key, shared_base_url, is_openrouter
 from .embedding_contract import (
-    EMBEDDING_DIMENSIONS,
     EmbeddingConfig,
     EmbeddingContractError,
     invalid_output,
@@ -18,20 +17,24 @@ from .embedding_contract import (
 )
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
+def embed_texts(texts: list[str], *, input_type: str = "document") -> list[list[float]]:
     if not texts:
         return []
     config = resolve_embedding_config()
-    return _embed_openai_batch(texts, config)
+    return _embed_openai_batch(texts, config, input_type=input_type)
 
 
-def _embed_openai_batch(texts: list[str], config: EmbeddingConfig) -> list[list[float]]:
+def _embed_openai_batch(texts: list[str], config: EmbeddingConfig, *, input_type: str = "document") -> list[list[float]]:
     base = (env_str("EMBEDDING_BASE_URL") or shared_base_url()).rstrip("/")
     api_key = (shared_api_key(base) if is_openrouter(base) and env_str("OPENROUTER_FEDERATION_POLICY_ID")
                else env_str("EMBEDDING_API_KEY") or shared_api_key(base))
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY, OPENAI_API_KEY or EMBEDDING_API_KEY is required for embeddings")
-    body: dict = {"model": config.model, "input": texts, "encoding_format": "float", "dimensions": EMBEDDING_DIMENSIONS}
+    body: dict = {"model": config.model, "input": texts, "encoding_format": "float", "dimensions": config.dimensions}
+    if config.profile == "embeddinggemma2":
+        if input_type not in {"query", "document"}:
+            raise ValueError("input_type must be query or document")
+        body["input_type"] = input_type
 
     req = urllib.request.Request(
         f"{base}/embeddings",

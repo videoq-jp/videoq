@@ -2,7 +2,7 @@
 import "dotenv/config";
 import pg from "pg";
 import { assertEmbeddingSchema } from "../src/lib/embedding-schema";
-import { EMBEDDING_DIMENSIONS, embeddingDiagnostic, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
+import { embeddingDimensions, embeddingDiagnostic, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 import { embedQuery } from "../src/lib/embeddings";
 
 const config = resolveEmbeddingConfig(process.env);
@@ -13,7 +13,7 @@ try {
   await assertEmbeddingSchema(client, config);
   if (process.argv.includes("--probe")) {
     const vector = await embedQuery(process.env, "VideoQ embedding preflight");
-    console.info(JSON.stringify(embeddingDiagnostic(config, { db_dimensions: EMBEDDING_DIMENSIONS, actual_dimensions: vector.length })));
+    console.info(JSON.stringify(embeddingDiagnostic(config, { db_dimensions: embeddingDimensions(config), actual_dimensions: vector.length })));
   }
 } finally {
   await client.end();

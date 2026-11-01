@@ -39,7 +39,7 @@ const modes: UploadMode[] = ["presigned", "multipart"];
         status text NOT NULL, source_type text NOT NULL, source_url text NOT NULL,
         youtube_video_id text NOT NULL, transcript text NOT NULL, error_message text NOT NULL,
         processing_seconds integer NOT NULL DEFAULT 0, uploaded_at timestamptz NOT NULL,
-        multipart_upload jsonb, upload_heartbeat_at timestamptz, upload_usage_period_start timestamptz
+        transcription_language varchar(3), multipart_upload jsonb, upload_heartbeat_at timestamptz, upload_usage_period_start timestamptz
       );
       CREATE TABLE scene_embeddings (video_id integer);
       CREATE TABLE tags (id integer PRIMARY KEY, name text, color text);
@@ -95,6 +95,22 @@ const modes: UploadMode[] = ["presigned", "multipart"];
         file: new File([new Uint8Array(bytes)], "clip.mp4", { type: "video/mp4" }), title: "Clip", description: "",
       });
   }
+
+  it.each(modes)('persists the selected audio language (%s)', async mode => {
+    if (mode === 'presigned') {
+      await requestPresignedUpload(env, 'owner', {
+        filename: 'clip.mp4', content_type: 'video/mp4', file_size: 1,
+        title: 'Clip', description: '', transcriptionLanguage: 'ja',
+      });
+    } else {
+      await createVideoFromMultipart({ ...env, USE_S3_STORAGE: 'false' }, 'owner', {
+        file: new File(['x'], 'clip.mp4', { type: 'video/mp4' }),
+        title: 'Clip', description: '', transcriptionLanguage: 'en',
+      });
+    }
+    expect((await admin.query('SELECT transcription_language FROM videos')).rows)
+      .toEqual([{ transcription_language: mode === 'presigned' ? 'ja' : 'en' }]);
+  });
 
   function expectMonthlyLimit(result: unknown, mode: UploadMode) {
     expect(result).toEqual(mode === "presigned"

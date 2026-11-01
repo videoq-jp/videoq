@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { ProgressIndicator, ProgressIndicatorLinear } from '@/components/ui/progress-indicator';
 import { VideoUploadButton } from './VideoUploadButton';
 import { useTranslation } from 'react-i18next';
-import { VIDEO_UPLOAD_TYPES } from '@videoq/trpc/video-upload';
+import { VIDEO_UPLOAD_TYPES, TRANSCRIPTION_LANGUAGES, type TranscriptionLanguage } from '@videoq/trpc/video-upload';
 import type { CompressionPreset } from '@/lib/videoCompression';
 
 const acceptedVideoTypes = Object.keys(VIDEO_UPLOAD_TYPES).join(',');
 
 interface VideoUploadFormFieldsProps {
+  transcriptionLanguage?: TranscriptionLanguage | 'auto';
+  setTranscriptionLanguage?: (language: TranscriptionLanguage | 'auto') => void;
   title: string;
   description: string;
   isUploading: boolean;
@@ -38,6 +40,8 @@ interface VideoUploadFormFieldsProps {
 }
 
 export function VideoUploadFormFields({
+  transcriptionLanguage = 'auto',
+  setTranscriptionLanguage,
   title,
   description,
   isUploading,
@@ -80,6 +84,20 @@ export function VideoUploadFormFields({
           required
         />
       </div>
+
+      {setTranscriptionLanguage && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="transcription-language">{t('videos.upload.languageLabel')}</Label>
+          <select id="transcription-language" value={transcriptionLanguage}
+            onChange={event => setTranscriptionLanguage(event.target.value as TranscriptionLanguage | 'auto')}
+            disabled={isUploading || disabled} aria-describedby="transcription-language-help"
+            className="h-12 rounded-8 border border-solid-gray-600 bg-white px-4 text-std-16N-170">
+            {Object.entries(TRANSCRIPTION_LANGUAGES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            <option value="auto">{t('videos.upload.languageAuto')}</option>
+          </select>
+          <p id="transcription-language-help" className="text-std-14N-170 text-solid-gray-700">{t('videos.upload.languageHelp')}</p>
+        </div>
+      )}
 
       {setCompressionPreset && (
         <fieldset className="space-y-2" disabled={isUploading || disabled}>

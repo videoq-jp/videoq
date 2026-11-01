@@ -1,67 +1,104 @@
-# 定期運用の自動化
+# Recurring operations automation
 
-監視の入口は `operations.yml`（Operations）に統一する。
-手動実行時は `check` で対象を選び、`all` はDB復元を含む全項目を実行する。
-日次はDB復元を除く全監視とオンプレミス検証、毎週月曜は推論互換性、月次はDB復元、CD成功後は本番スモークだけを実行する。
+`operations.yml` (Operations) is the single entry point for monitoring. For manual runs,
+choose a target with `check`; `all` runs everything, including the database restore.
+Daily runs cover all monitors except the database restore, plus on-prem validation.
+Mondays add inference compatibility, the monthly run performs the database restore, and a
+successful CD runs only the production smoke.
 
-## Actionsの一時保存容量
+## Temporary Actions storage
 
-通常のpush・PRのCIは、ビルドとテストを実施しても、画面・Storybook・ドキュメントの複製は保存しません。CDは自分の実行内で検証済みの配信用成果物を生成するため、CIの複製は使いません。調査用のコピーが必要なときはCIを手動実行すると、従来どおり7日間保存できます。手動CIは変更差分に関係なくこれらのビルドを選び、自動デプロイの起点にはしません。別ジョブが読むカバレッジの受け渡しは維持します。
+Ordinary push and PR CI builds and tests, but does not store copies of the app, Storybook,
+or documentation. CD generates verified deployable artifacts within its own run and does
+not use CI's copies. When you need a copy for investigation, run CI manually: it can still
+keep them for seven days. Manual CI selects these builds regardless of the changed files
+and does not start an automatic deployment. Passing coverage to jobs that read it remains.
 
-オンプレミス用の大容量画像アーカイブは、全publishジョブで公開・署名が成功した後に、同じ実行・コミット・試行番号の8種類だけを削除します。後続処理は公開済みのダイジェストを使います。ビルド側と公開側の権限分離、脆弱性検査、署名・証拠の保存期間は維持します。失敗・キャンセル時のアーカイブには既存の1日間の有効期限が適用されます。
+Large on-prem image archives are deleted only after every publish job has published and
+signed successfully, and only the eight archives from the same run, commit, and attempt.
+Later steps use the published digests. Separation of build and publish permissions,
+vulnerability scanning, and retention of signatures and evidence are unchanged. Archives
+from failed or cancelled runs use the existing one-day expiry.
 
-VideoQ は公開リポジトリです。この保存方針の整理を、別の非公開リポジトリの保存枠不足の解消とは扱いません。[GitHub の課金仕様](https://docs.github.com/en/billing/concepts/product-billing/github-actions)に従い、公開／非公開リポジトリの利用量と請求を区別して確認します。過去の成果物を整理する際は、実行中の処理を保護し、元のZIPとメタデータを退避してSHA-256とZIPの整合性を確認してから削除します。GitHub上での削除は元に戻せず、削除前に発生した使用量も取り消されません。
+VideoQ is a public repository. This storage policy is not a way to resolve a storage
+shortage in a separate private repository. Per [GitHub's billing rules](https://docs.github.com/en/billing/concepts/product-billing/github-actions),
+check public and private repository usage and billing separately. When cleaning up past
+artifacts, protect running work, set aside the original ZIP and metadata, and verify the
+SHA-256 and ZIP integrity before deleting. Deleting on GitHub is irreversible and does
+not cancel usage incurred beforehand.
 
-## 定期チェック
+## Recurring checks
 
-| 対象 | 実行タイミング（JST、GitHub側の遅延あり） | 結果 |
+| Target | When (JST; GitHub may delay) | Result |
 | --- | --- | --- |
-| CodeQL | PR・main更新、毎週月曜11:11 | Security > Code scanning |
-| 全依存関係のOSV検査 | 毎日09:17 | Actionsの実行結果・サマリー |
-| オンプレミス用の固定した上流イメージ（llama.cpp・whisper.cpp）の脆弱性検査 | 毎日09:17 | Actionsの実行結果・サマリー |
+| CodeQL | PRs, main updates, Mondays 11:11 | Security > Code scanning |
+| OSV scan of all dependencies | Daily 09:17 | Actions run and summary |
+| Vulnerability scan of pinned upstream on-prem images (llama.cpp, whisper.cpp) | Daily 09:17 | Actions run and summary |
+| Public page SEO audit (`seo-monitor.yml`) | Daily 08:43 | Report kept for 90 days |
+| API AWS key age audit (`api-aws-key-rotation.yml`) | Mondays 11:23 | Fails when an active key reaches 80 days |
 
-定期ワークフローはmainからのみ実行します。ActionsのRun workflowでも確認できます。
-依存関係はインストールせず、全てのレビュー済みロックファイルをデータとして検査します。
-検査サービスのエラー・未完了は正常扱いしません。脆弱性の発見で定期検査は失敗し、修正版が未提供のものも通知します。
-既存のPR向け「新規導入バージョン」検査と、定期的な全体検査を併用します。
-固定した上流イメージは、ダイジェストを変えない限り内容が変わりません。新しい脆弱性情報の追加だけで検査が失敗するため、CIでは固定値や検査設定を変えたPRだけで検査し、無関係なPRを止めません。日次のオンプレミス検証では常に検査し、修正版が未提供のものも失敗として通知します。
+Scheduled workflows run only from main. You can also use Run workflow in Actions.
+Dependencies are not installed; all reviewed lockfiles are scanned as data.
+Scan service errors and incomplete results do not count as passing. A finding fails the
+scheduled scan, and findings without a fixed version are reported too.
+PR scans of newly introduced versions run alongside the recurring full scan.
+A pinned upstream image cannot change unless its digest changes, and new advisory data alone
+can fail a scan. CI therefore scans only PRs that change the pins or scan settings, so
+unrelated PRs are not blocked. Daily on-prem validation always scans and fails on findings
+without a fixed version.
 
-運用監視はIssueを作成・更新・再オープンしません。結果と詳細はActionsの実行結果・サマリーに記録します。
-異常時のワークフロー失敗は維持します。通知の受信はGitHubのActions通知設定に従います。
-Dependabot・ランタイム更新PRの作成、Claudeの修正、マージキューの自動処理は継続します。
-Cloudflareトークン期限の監視もIssueを作成せず、期限7日前以降はActionsを失敗させます。
+Operations monitoring does not create, update, or reopen Issues. Results and details go to
+Actions runs and summaries. Workflows still fail on problems; delivery follows GitHub's Actions
+notification settings. Dependabot and runtime update PRs, Claude repairs, and Merge Queue
+processing continue. Cloudflare token expiry monitoring also creates no Issues and fails
+Actions from seven days before expiry.
 
-| VideoQの追加監視 | 実行タイミング（JST） | 内容 |
+| VideoQ-specific monitor | When (JST) | What it does |
 | --- | --- | --- |
-| 本番スモークテスト | CD成功後・毎日09:17 | health/ready・ログイン画面・専用ユーザーで動画アップロード、処理、文字起こし、埋め込み、一覧画面 |
-| 本番コンテナ検査 | 毎日09:17 | Lambdaが実際に参照するECR digestをTrivyで検査。HIGH/CRITICAL、未修正版も含む |
-| Terraform差分検査 | 毎日09:17 | planのみ。applyはせず、属性値を公開しない |
-| 論理バックアップ復元テスト | 毎月1日13:41 | 読み取り専用の同一スナップショットからdumpし、隔離PostgreSQLへ復元、全アプリテーブル件数・制約を検証 |
+| Production smoke test | After CD success; daily 09:17 | health/ready, login page, video upload with a dedicated user, processing, transcription, embeddings, and list pages. Manual runs can add paid cited Q&A with `verify_ai_answers=true` |
+| Production container scan | Daily 09:17 | Trivy scan of the ECR digest Lambda actually references: HIGH/CRITICAL, including unfixed |
+| Terraform drift check | Daily 09:17 | Plan only. Never applies and does not publish attribute values |
+| Logical backup restore test | 1st of each month 13:41 | Dumps from one read-only snapshot, restores to isolated PostgreSQL, and verifies all application table counts and constraints |
 
-本番DBにアクセスするジョブはmain限定の `production-app` を使います。
-権限を持つステップより先に、別ロックファイル `.github/operations-tools` のツールをライフサイクルスクリプト無効でインストールし、署名を検証します。
-運用ツールと復元用イメージの更新はDependabotがPRを作成します。自動化ポリシーの対象外の変更は人が確認します。
+Jobs that access the production database use the main-only `production-app` environment.
+Before any privileged step, tools from the separate `.github/operations-tools` lockfile are
+installed with lifecycle scripts disabled, and their signatures are verified.
+Dependabot creates PRs for operations tools and the restore image. Changes outside the
+automation policy are reviewed by a person.
 
-スモーク用ユーザーはランダムID、無効なメールドメイン、一般権限、処理1分・保存0.01GBの上限を持ちます。
-メール送信はせず、テスト動画を通常のAPIから削除した後に、複数の識別子が一致する専用ユーザーのみ削除します。
-処理中の動画は削除せず通知し、次回実行で再確認します。前回分が処理中なら新しいアップロードは作りません。
-DB接続情報・Cookie・署名付きURL・利用者のデータ・画面キャプチャをログやartifactへ出力しません。
-日次実行では短い動画の処理・AI埋め込みに通常の従量課金が発生します。
+The smoke user has a random ID, an invalid email domain, ordinary permissions, and limits of
+one processing minute and 0.01 GB of storage. It sends no email. After deleting the test
+video through the normal API, only the dedicated user matching several identifiers is deleted.
+A video still processing is not deleted; the run reports it and rechecks next time. If the
+previous video is still processing, no new upload is created.
+Database credentials, cookies, signed URLs, user data, and screenshots are not written to logs
+or artifacts. Daily runs incur normal usage charges for processing a short video and AI embeddings.
 
-復元テストのdumpはランナー内の一時ファイルだけに保存し、隔離コンテナとともに削除します。
-この検査は論理バックアップの復元可能性を確認するもので、長期保管、NeonのPITR、R2動画ファイルの復元テストは含みません。
-PostgreSQLのメジャーバージョンが変わった場合は復元クライアントをレビューするまでエラーにします。
+The restore test's dump stays in a temporary runner file and is removed with the isolated
+container. This checks that the logical backup can be restored. It does not cover long-term
+retention, Neon PITR, or restoring R2 video files. A PostgreSQL major version change is an
+error until the restore client has been reviewed.
 
-TerraformとECRの監視は既存の読み取り専用AWS plan roleを利用します。
-信頼条件は既存のpull_requestに加えて、このリポジトリのmain refのみを許可します。
-`infra/iam/videoq-github-actions-plan-trust.json` にAWSアカウントIDを置換して適用してください。
-Terraformの状態・planファイル・属性値は公開しません。標準のバックエンドロックで実行中のapplyと調整します。
-承認待ちのapplyが日次検査を止めないよう、Actionsの同時実行グループは分離しています。
-監視はインフラを変更せず、状態ファイルの排他制御に必要な一時ロックだけを取得・解除します。
-プロバイダー更新時は `terraform providers lock -platform=linux_amd64` でCI用の展開済みハッシュも記録します。
-PRのTerraform検証もロックファイルを読み取り専用にして、CI内の暗黙更新で問題が隠れないようにしています。
-通常のインフラ変更に対する `production-infra` の承認と、検証済みDependabot minor/patch自動適用の条件はそのままです。
+Terraform and ECR monitoring use the existing read-only AWS plan role. Its trust condition adds
+only this repository's main ref to the existing pull_request access. Replace the AWS account ID
+in `infra/iam/videoq-github-actions-plan-trust.json` and apply it.
+Terraform state, plan files, and attribute values are not published. Standard backend locking
+coordinates with a running apply. The Actions concurrency groups are separate so an apply awaiting
+approval does not block the daily check. Monitoring changes no infrastructure and only takes and
+releases the temporary lock required for state file exclusion.
+When updating providers, record CI's unpacked hashes with `terraform providers lock -platform=linux_amd64`.
+PR Terraform validation also treats the lockfile as read-only so implicit updates in CI cannot hide problems.
+The `production-infra` approval for ordinary infrastructure changes and the conditions for
+automatically applying verified Dependabot minor/patch updates are unchanged.
 
-Terraform Apply は承認要求の前に、読み取り専用のplan roleで差分を確認します。差分なしなら承認・適用ジョブをスキップして正常終了し、production-infraのデプロイ記録を作りません。差分がある場合だけ既存の承認または依存更新の自動適用へ進みます。plan失敗時は適用を止め、値や状態ファイルはログ・artifactに公開しません。
+Terraform Apply checks for differences with the read-only plan role before requesting approval.
+With no differences, it skips the approval and apply jobs, succeeds, and creates no
+production-infra deployment record. Only with differences does it continue to the existing
+approval or automatic dependency apply. A plan failure stops the apply, and values and state
+files are not published to logs or artifacts.
 
-Runtime Updates は毎日09:13 JSTにNode.js・Python・npm・pip・uvの更新PRを準備します。配布物のハッシュ確認、系列別PR、実行環境での検証は [RUNTIME-UPDATES.md](RUNTIME-UPDATES.md) を参照してください。
+Runtime Updates prepares update PRs for Node.js, Python, npm, pip, and uv daily at 09:13 JST.
+See [RUNTIME-UPDATES.md](RUNTIME-UPDATES.md) for distribution hash checks, per-line PRs, and
+validation in the runtime environment.
+
+Production runbooks are in [`docs/operations/`](../docs/operations/).

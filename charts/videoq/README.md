@@ -11,7 +11,7 @@ To keep chat, embeddings and uploaded-audio transcription on the site too, use
 the optional [local inference chart](../videoq-inference/README.md) and this
 chart's `examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml` overlay. It includes CPU and NVIDIA GPU
 provisioning instructions, model caches, acceptance checks and egress controls.
-The default application values continue to select hosted OpenAI inference.
+The default application values continue to select hosted OpenRouter inference.
 
 The default Cloudflare Workers/Lambda deployment remains available. The on-prem
 API uses Hono directly on Node, PostgreSQL row locks for shared rate limits,
@@ -41,7 +41,7 @@ through the same authentication, permissions, quota and streaming routes.
 - An ingress controller, DNS and TLS. Route `/api`, `/.well-known`, `/health`
   and `/ready` to API port 8787, and the remaining paths to web port 80. The
   optional Ingress does this routing, preserving paths without rewriting.
-- OpenAI access or separately deployed compatible inference services. For a
+- OpenRouter access or separately deployed compatible inference services. For a
   closed network, configure all three: chat, embeddings and Whisper.
   The on-prem edition disables Google sign-in, YouTube/SearchAPI, Mailgun and
   Stripe. Chat models must support the existing tool/JSON contract and,
@@ -105,8 +105,8 @@ Generate independent secrets with `openssl rand -base64 48` and
 key must be identical for API and worker, and retained to decrypt existing user
 secrets. S3 credentials and queue credentials are separate pairs. Optional Secret
 keys include `MAILGUN_API_KEY`, `MAILGUN_SENDER_DOMAIN`, `GOOGLE_CLIENT_ID`,
-`GOOGLE_CLIENT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`AWS_SESSION_TOKEN`, and Modal configuration when that backend is chosen.
+`GOOGLE_CLIENT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and
+`AWS_SESSION_TOKEN`.
 
 Hosted chat prefers `ai.federationPolicyId` with an AWS identity; `OPENROUTER_API_KEY` is an explicit development fallback. Local chat requires a nonempty `LLM_API_KEY` or `OPENAI_API_KEY` even for an OpenAI-compatible local
 server without authentication; use a local placeholder such as `local-inference`
@@ -242,16 +242,15 @@ Linux CI uses host networking by default.
 
 ## Security updates and automation boundary
 
-Dependabot proposes dependency updates. Eligible minor/patch PRs may auto-merge
-after the repository's required checks. A successful merge currently deploys
-the existing Cloudflare/Lambda service. This chart does **not** publish images,
-connect to a site's cluster, update its image digests, or apply Helm upgrades.
+Dependabot proposes dependency updates. Eligible PRs enter the Merge Queue after
+the repository's required checks. A successful merge deploys the existing
+Cloudflare/Lambda service, and the separate On-prem Release workflow publishes
+signed images and charts. This chart does **not** connect to a site's cluster, update its image digests, or apply Helm upgrades.
 An operator-managed delivery system must build and scan an image, verify its
 provenance, propose the new digest in the site configuration, and gate rollout
 on migration/health checks. Preserve approval for breaking migrations.
 
-SBOM inventories support investigation; signed image publication, admission-time
-signature verification, running Kubernetes image rescans, host/Kubernetes
+SBOM inventories support investigation; admission-time signature verification, running Kubernetes image rescans, host/Kubernetes
 patching and site backup recovery need their own operational configuration.
 The existing daily container monitor covers production Lambda, not site clusters.
 Image scan results are specific to each build. Inspect the current CI and signed

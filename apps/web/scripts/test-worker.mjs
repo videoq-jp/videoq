@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { readFile, stat } from 'node:fs/promises';
 import { unstable_dev } from 'wrangler';
+import { htmlText } from './html-text.mjs';
 
 let worker;
 before(async () => {
@@ -44,6 +45,87 @@ test('rewrites Japanese and English deep links before the SPA starts', async () 
     if (path === '/en/pricing') {
       assert.match(html, /<title>Pricing/);
       assert.match(html, /property="og:locale" content="en_US"/);
+    }
+  }
+});
+
+test('public pages carry their body and metadata in the first HTML', async () => {
+  for (const [path, lang, heading, title] of [
+    ['/', 'ja', '受講生の質問に', /動画講座の質問対応/],
+    ['/en/', 'en', 'Student questions', /Answer online course questions/],
+    ['/pricing', 'ja', '料金', /料金プラン/],
+    ['/guides', 'ja', '動画講座の質問対応ガイド', /動画講座の質問対応ガイド/],
+    ['/guides/online-course-questions', 'ja', '動画講座の質問対応をAIで軽くする方法', /動画講座の質問対応をAIで軽くする方法/],
+    ['/en/guides/how-ai-answers-work', 'en', 'How VideoQ AI answers work', /How VideoQ AI answers work/],
+  ]) {
+    const response = await worker.fetch(path);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    assert.match(html, new RegExp(`<html[^>]+lang="${lang}"`), path);
+    assert.equal(html.match(/<title>(.*?)<\/title>/)[1].match(title) !== null, true, path);
+    const [h1] = html.match(/<h1[\s\S]*?<\/h1>/) ?? [''];
+    assert.ok(htmlText(h1).includes(heading), `${path}: ${h1}`);
+    assert.equal(html.match(/<h1[\s>]/g).length, 1, path);
+    assert.doesNotMatch(html, /<noscript>/);
+    assert.doesNotMatch(html, /<script(?![^>]*(type="application\/ld\+json"|type="module"[^>]*src=))/, path);
+  }
+  const guide = await (await worker.fetch('/guides/online-course-questions')).text();
+  assert.match(guide, /"@type":"Article"/);
+  assert.match(guide, /"@type":"BreadcrumbList"/);
+  assert.match(await (await worker.fetch('/')).text(), /"@type":"VideoObject"/);
+});
+
+test('application routes start from the empty shell', async () => {
+  for (const path of ['/videos', '/en/settings', '/share/token']) {
+    const html = await (await worker.fetch(path)).text();
+    assert.match(html, /<div id="root"><\/div>/, path);
+  }
+});
+
+test('unknown paths answer 404 with noindex, and the shell has no URL of its own', async () => {
+  for (const path of ['/no-such-page', '/en/no-such-page', '/guides/unknown', '/en/guides/unknown', '/a/b/c', '/app-shell']) {
+    const response = await worker.fetch(path);
+    assert.equal(response.status, 404, path);
+    securityHeaders(response);
+    const html = await response.text();
+    assert.match(html, /name="robots" content="noindex, nofollow"/, path);
+    assert.match(html, /<title>(ページが見つかりません|Page not found)/, path);
+  }
+});
+
+test('HEAD matches GET on rewritten HTML', async () => {
+  for (const [path, status] of [['/', 200], ['/en/pricing', 200], ['/videos', 200], ['/no-such-page', 404]]) {
+    const response = await worker.fetch(path, { method: 'HEAD' });
+    assert.equal(response.status, status, path);
+    assert.match(response.headers.get('content-type'), /text\/html/);
+    assert.equal(await response.text(), '');
+  }
+});
+
+test('each page has one URL', async () => {
+  for (const [path, expected] of [['/en', '/en/'], ['/pricing/', '/pricing'], ['/en/guides/', '/en/guides'], ['/guides//', '/guides']]) {
+    const response = await worker.fetch(path, { redirect: 'manual' });
+    assert.equal(response.status, 301, path);
+    assert.equal(new URL(response.headers.get('location')).pathname, expected);
+  }
+});
+
+test('generated sitemap lists only pages that answer 200', async () => {
+  const response = await worker.fetch('/sitemap.xml');
+  assert.equal(response.status, 200);
+  const urls = [...(await response.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map(match => new URL(match[1]).pathname);
+  assert.ok(urls.includes('/guides/online-course-questions'));
+  for (const path of urls) assert.equal((await worker.fetch(path)).status, 200, path);
+});
+
+test('retired API documentation answers 404 instead of redirecting', async () => {
+  for (const path of ['/docs/videos', '/en/docs/videos', '/docs/videos?source=search', '/en/docs/videos?next=https://example.com', '/docs/plog', '/en/docs/plog', '/docs/unknown', '/docs/videos/123']) {
+    for (const method of ['GET', 'HEAD']) {
+      const response = await worker.fetch(path, { method, redirect: 'manual' });
+      assert.equal(response.status, 404, path);
+      assert.equal(response.headers.get('location'), null, path);
+      securityHeaders(response);
+      if (method === 'GET') assert.match(await response.text(), /name="robots" content="noindex, nofollow"/, path);
     }
   }
 });
@@ -181,4 +263,35 @@ test('local development is marked noindex and has no production API access', asy
   } finally {
     await preview.stop();
   }
+});
+
+// Requires a browser only when explicitly enabled by the frontend build job.
+// Exercise the emitted assets: DOM-only unit tests cannot catch orphaned SSR nodes.
+test('saved language redirects hydrate one complete pricing page', {
+  skip: process.env.VERIFY_PRERENDER_HYDRATION !== 'true',
+}, async () => {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ channel: process.env.CI ? 'chrome' : undefined });
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.name));
+    page.on('console', message => {
+      if (message.type() === 'error' && /hydration|Minified React error/i.test(message.text())) errors.push('hydration');
+    });
+    await page.route('**/api/**', route => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (request.method() !== 'GET') return route.fulfill({ status: 204 });
+      const body = url.pathname.includes('/auth/') ? 'null'
+        : JSON.stringify(url.pathname.split('/trpc/').at(-1).split(',').map(() => ({ result: { data: [] } })));
+      return route.fulfill({ status: 200, contentType: 'application/json', body });
+    });
+    await page.addInitScript(() => localStorage.setItem('videoq.locale', 'en'));
+    await page.goto(`http://${worker.address}:${worker.port}/pricing`, { waitUntil: 'networkidle' });
+    await page.waitForURL('**/en/pricing');
+    await page.waitForFunction(() => document.querySelectorAll('h1').length === 1 && document.querySelector('h1').textContent === 'Pricing');
+    assert.equal(await page.locator('h1').count(), 1);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
 });

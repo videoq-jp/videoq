@@ -42,10 +42,11 @@ def test_chunk_offsets_are_applied_once_even_without_segment_end(
     ]
 
 
+@pytest.mark.parametrize("language", [None, "ja"])
 @pytest.mark.parametrize("backend", ["openai", "local"])
 @pytest.mark.parametrize("failure", [None, "transcribe", "split"])
 def test_large_audio_processes_and_removes_one_chunk_at_a_time(
-    monkeypatch, tmp_path, backend, failure
+    monkeypatch, tmp_path, backend, failure, language
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("WHISPER_BACKEND", backend)
@@ -69,6 +70,11 @@ def test_large_audio_processes_and_removes_one_chunk_at_a_time(
         )
 
     def transcribe(request):
+        if language:
+            assert b'name="language"' in request.content
+            assert b"\r\n\r\nja\r\n" in request.content
+        else:
+            assert b'name="language"' not in request.content
         index = len([event for event in events if event[0] == "transcribe"])
         events.append(("transcribe", index))
         assert [path.name for path in tmp_path.glob("chunk_*.mp3")] == [
@@ -89,12 +95,12 @@ def test_large_audio_processes_and_removes_one_chunk_at_a_time(
         monkeypatch.setattr(openai, "OpenAI", lambda **_: client)
         if failure == "transcribe":
             with pytest.raises(openai.InternalServerError):
-                transcription._whisper_transcribe(audio)
+                transcription._whisper_transcribe(audio, language=language)
         elif failure == "split":
             with pytest.raises(RuntimeError, match="ffmpeg chunk split failed"):
-                transcription._whisper_transcribe(audio)
+                transcription._whisper_transcribe(audio, language=language)
         else:
-            assert transcription._whisper_transcribe(audio) == [
+            assert transcription._whisper_transcribe(audio, language=language) == [
                 {"start": start + 1, "end": start + 2, "text": "Caption"}
                 for start in [0, 600, 1200]
             ]
@@ -288,3 +294,48 @@ def test_openrouter_backend_requires_its_own_key(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "direct-only")
     with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
         transcription._whisper_client()
+
+
+@pytest.mark.parametrize("language", [None, "ja", "en"])
+def test_whisper_sends_selected_language_in_provider_request(tmp_path, language):
+    audio = tmp_path / "clip.mp3"
+    audio.write_bytes(b"audio")
+    def respond(request):
+        body = request.content
+        if language:
+            assert b'name="language"' in body
+            assert ("\r\n\r\n" + language + "\r\n").encode() in body
+        else:
+            assert b'name="language"' not in body
+        return httpx.Response(200, json={"segments": [{"start": 0, "end": 1, "text": "音声"}]})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as transport:
+        with openai.OpenAI(api_key="test", http_client=transport) as client:
+            assert _whisper_file(client, audio, "whisper-1", offset=0, language=language)[0]["text"] == "音声"
+
+
+@pytest.mark.parametrize("language", [None, "ja", "en"])
+def test_segmented_jobs_forward_saved_language_after_retry(monkeypatch, language):
+    from worker_python import transcription_checkpoints as checkpoints
+    from worker_python.tasks import segmented_transcription as tasks
+
+    run = checkpoints.TranscriptionRun(
+        video_id=42, run_id="run", file_key="clip.mp4", transcript_hash="hash",
+        duration_ms=600000, chunk_seconds=300, chunk_count=2,
+        completed=False, transcription_language=language,
+    )
+    monkeypatch.setattr(checkpoints, "load_run", lambda *_: run)
+    monkeypatch.setattr(checkpoints, "chunk_state", lambda *_: (True, False))
+    monkeypatch.setattr(checkpoints, "save_chunk", MagicMock(return_value=True))
+    monkeypatch.setattr(checkpoints, "record_chunk_failure", MagicMock())
+    monkeypatch.setattr(tasks, "resolve_media_input", lambda key: key)
+    monkeypatch.setattr(tasks, "_dispatch_pending", MagicMock())
+    provider = MagicMock(side_effect=[RuntimeError("temporary"), [], []])
+    monkeypatch.setattr(tasks, "transcribe_audio_interval", provider)
+    with pytest.raises(RuntimeError, match="temporary"):
+        tasks.transcribe_video_chunk(42, "run", 0)
+    tasks.transcribe_video_chunk(42, "run", 0)
+    tasks.transcribe_video_chunk(42, "run", 1)
+    assert [call.args for call in provider.call_args_list] == [
+        ("clip.mp4", 0, 300), ("clip.mp4", 0, 300), ("clip.mp4", 300, 300),
+    ]
+    assert all(call.kwargs.get("language") == language for call in provider.call_args_list)

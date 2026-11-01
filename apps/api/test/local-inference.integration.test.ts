@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { HumanMessage } from "@langchain/core/messages";
 import { generateReply, streamReply } from "../src/lib/llm";
 import { embedQuery } from "../src/lib/embeddings";
+import { embeddingDimensions, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 import { createChatModel } from "../src/lib/chat-model";
 import { streamRag } from "../src/lib/rag";
 import { openSceneSearch } from "../src/repositories/vector-repository";
@@ -23,7 +24,9 @@ const chatBase = process.env.LOCAL_AI_TEST_CHAT_BASE_URL;
 const embeddingBase = process.env.LOCAL_AI_TEST_EMBEDDING_BASE_URL;
 const env = {
   OPENAI_API_KEY: process.env.LOCAL_AI_TEST_API_KEY || "local-inference", OPENAI_BASE_URL: chatBase,
-  LLM_MODEL: process.env.LOCAL_AI_TEST_MODEL || "videoq-chat", LLM_REASONING_EFFORT: "none",
+  LLM_MODEL: process.env.LOCAL_AI_TEST_MODEL || "videoq-chat", LLM_REASONING_EFFORT: process.env.LOCAL_AI_TEST_REASONING_EFFORT || "none",
+  LLM_PRESERVE_TOOL_REASONING: process.env.LOCAL_AI_TEST_PRESERVE_TOOL_REASONING || "false",
+  EMBEDDING_PROFILE: process.env.LOCAL_AI_TEST_EMBEDDING_PROFILE || "openai",
   LLM_SEPARATE_TOOL_SCHEMA: process.env.LOCAL_AI_TEST_SEPARATE_TOOL_SCHEMA || "true",
   EMBEDDING_BASE_URL: embeddingBase, EMBEDDING_API_KEY: process.env.LOCAL_AI_TEST_EMBEDDING_API_KEY, EMBEDDING_MODEL: process.env.LOCAL_AI_TEST_EMBEDDING_MODEL || "gte-qwen2-1.5b-q4km-124fbdad",
   VIDEO_VISUAL_ENABLED: "false", LLM_REQUEST_TIMEOUT_MS: "600000", LLM_STREAM_TIMEOUT_MS: "600000",
@@ -53,9 +56,9 @@ withModels("real local inference compatibility", () => {
     const answer = await model.invoke([new HumanMessage('Call lookup_video with name "Amber Lantern". Use the tool now.')]);
     expect(answer.tool_calls).toContainEqual(expect.objectContaining({ name: "lookup_video", args: { name: "Amber Lantern" } }));
   }, 180_000);
-  it("generates the exact 1536-dimensional query vector used by pgvector", async () => {
+  it("generates the selected profile's query vector used by pgvector", async () => {
     const vector = await embedQuery(env, "database backup retention");
-    expect(vector).toHaveLength(1536);
+    expect(vector).toHaveLength(embeddingDimensions(resolveEmbeddingConfig(env)));
     expect(vector.every(Number.isFinite)).toBe(true);
     expect(vector.some(value => value !== 0)).toBe(true);
   }, 120_000);
@@ -68,15 +71,35 @@ withModels("real local inference compatibility", () => {
       env: { PATH: process.env.PATH, OPENAI_API_KEY: env.OPENAI_API_KEY,
         OPENAI_BASE_URL: "http://chat-must-not-receive-embeddings.invalid/v1", EMBEDDING_BASE_URL: env.EMBEDDING_BASE_URL,
         EMBEDDING_API_KEY: env.EMBEDDING_API_KEY,
-        EMBEDDING_MODEL: env.EMBEDDING_MODEL },
+        EMBEDDING_MODEL: env.EMBEDDING_MODEL, EMBEDDING_PROFILE: env.EMBEDDING_PROFILE },
     });
     const batch = JSON.parse(stdout) as number[][];
     expect(batch).toHaveLength(2);
-    expect(batch.every(vector => vector.length === 1536 && vector.every(Number.isFinite))).toBe(true);
+    expect(batch.every(vector => vector.length === embeddingDimensions(resolveEmbeddingConfig(env)) && vector.every(Number.isFinite))).toBe(true);
     const cosine = (a: number[], b: number[]) => a.reduce((sum, value, index) => sum + value * b[index], 0)
       / Math.sqrt(a.reduce((sum, value) => sum + value ** 2, 0) * b.reduce((sum, value) => sum + value ** 2, 0));
-    expect(cosine(query, batch[0])).toBeGreaterThan(0.999);
+    // Asymmetric query/document prompts intentionally produce distinct vectors.
+    if (env.EMBEDDING_PROFILE !== "embeddinggemma2") expect(cosine(query, batch[0])).toBeGreaterThan(0.999);
     expect(cosine(query, batch[0])).toBeGreaterThan(cosine(query, batch[1]));
+  }, 150_000);
+  it.each([
+    { query: "バックアップは何日間保存されますか？", document: "Database backups are retained for seven days." },
+    { query: "How long are database backups kept?", document: "データベースのバックアップは7日間保存します。" },
+  ])("retrieves across Japanese and English: $query", async ({ query: question, document }) => {
+    if (!process.env.LOCAL_AI_TEST_WORKER_PYTHON) return;
+    const query = await embedQuery(env, question);
+    const { stdout } = await promisify(execFile)(process.env.LOCAL_AI_TEST_WORKER_PYTHON, ["-c",
+      "import json,sys; from worker_python.pipeline.embeddings import embed_texts; print(json.dumps(embed_texts(json.loads(sys.argv[1]))))",
+      JSON.stringify([document, "This cooking lesson explains how to bake a chocolate cake."])], {
+      cwd: fileURLToPath(new URL("../../worker", import.meta.url)), timeout: 120_000,
+      env: { PATH: process.env.PATH, OPENAI_API_KEY: env.OPENAI_API_KEY,
+        OPENAI_BASE_URL: "http://chat-must-not-receive-embeddings.invalid/v1", EMBEDDING_BASE_URL: env.EMBEDDING_BASE_URL,
+        EMBEDDING_API_KEY: env.EMBEDDING_API_KEY, EMBEDDING_MODEL: env.EMBEDDING_MODEL, EMBEDDING_PROFILE: env.EMBEDDING_PROFILE },
+    });
+    const vectors = JSON.parse(stdout) as number[][];
+    const score = (v: number[]) => v.reduce((sum, x, i) => sum + x * query[i], 0)
+      / Math.sqrt(v.reduce((sum, x) => sum + x * x, 0) * query.reduce((sum, x) => sum + x * x, 0));
+    expect(score(vectors[0])).toBeGreaterThan(score(vectors[1]));
   }, 150_000);
   it("searches and emits timestamp citations through the production streaming RAG agent", async () => {
     let final;

@@ -1,0 +1,36 @@
+# Default fully local model selection for new installations.
+# One NVIDIA GPU for gpt-oss; EmbeddingGemma 2 and Whisper run on CPU.
+# Build the shared CPU image from this source (it includes embedding_server.py).
+backend: vllm
+servers:
+  chat:
+    engine: vllm
+    servedModel: videoq-chat
+    modelRepo: openai/gpt-oss-20b
+    modelRevision: 6cee5e81ee83917806bbde320786a8fb61efebee
+    modelFile: ""
+    modelSha256: ""
+    toolCallParser: openai
+    reasoningParser: openai_gptoss
+    contextLength: 8192
+    persistence: { size: 20Gi }
+    nodeSelector: { kubernetes.io/arch: amd64 }
+    extraArgs: [--gpu-memory-utilization, "0.85", --max-num-seqs, "2"]
+    resources:
+      requests: { cpu: "2", memory: 8Gi, nvidia.com/gpu: 1 }
+      limits: { cpu: "8", memory: 16Gi, nvidia.com/gpu: 1 }
+  embedding:
+    engine: embeddinggemma2
+    servedModel: embeddinggemma-2-f9972ac
+    modelRepo: google/embeddinggemma-2
+    modelRevision: f9972ac22e696a105c482202646979e33e4b5a1e
+    modelFile: ""
+    modelSha256: ""
+    contextLength: 8192
+    cpuThreads: 2
+    extraArgs: []
+    persistence: { size: 5Gi }
+    resources:
+      requests: { cpu: "1", memory: 2Gi }
+      limits: { cpu: "2", memory: 4Gi }
+# The unchanged speech defaults select large-v3-turbo Q5_0 with whisper.cpp.

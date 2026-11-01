@@ -30,7 +30,7 @@ sequenceDiagram
     Worker->>DB: Save transcript and processing results
 ```
 
-The API's registration response and video processing completion are separate events. See [state transitions](state-diagram.md) for subsequent indexing.
+The API's registration response and video processing completion are separate events. See [state transitions](state-diagram.md) for subsequent indexing. Files of at least 100 MiB use [multipart upload](../guides/api.md#large-video-uploads) instead of one signed URL, and uploaded files are transcribed through [separate interval jobs](../guides/worker.md#message-format).
 
 ## Browser login
 

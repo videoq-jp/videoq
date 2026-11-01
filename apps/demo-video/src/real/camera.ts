@@ -4,7 +4,7 @@ import type { Locale } from './film';
 // Centres of the real controls, measured in the product viewport.
 const targets = {
   ja: { share: { x: 1306, y: 154 }, citation: { x: 1386, y: 590 }, history: { x: 1523, y: 219 } },
-  en: { share: { x: 1280, y: 154 }, citation: { x: 1286, y: 590 }, history: { x: 1481, y: 219 } },
+  en: { share: { x: 1280, y: 154 }, citation: { x: 1378, y: 590 }, history: { x: 1481, y: 219 } },
 };
 const uploadButton = { x: 980, y: 729 };
 const copyButton = { x: 550, y: 627 };

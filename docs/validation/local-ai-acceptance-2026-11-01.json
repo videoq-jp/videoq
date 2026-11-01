@@ -1,0 +1,295 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-10-31T15:18:30.258645+00:00",
+  "applicationRuntime": "K3s v1.37.1+k3s1 on VPS; isolated model validation namespace",
+  "inferenceRuntime": "Ephemeral Modal L40S container; inference was not scheduled on a Kubernetes GPU node",
+  "gpu": "NVIDIA L40S, 46068 MiB, 33581 MiB",
+  "models": {
+    "chat": {
+      "repository": "openai/gpt-oss-20b",
+      "revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+      "runtime": "vLLM 0.32.0, MXFP4 Marlin",
+      "toolParser": "openai",
+      "reasoningParser": "openai_gptoss",
+      "reasoningEffort": "low",
+      "separateToolSchema": true,
+      "preserveToolReasoning": true,
+      "contextLength": 8192,
+      "maxNumSequences": 2,
+      "validationGpuMemoryUtilization": 0.75
+    },
+    "embedding": {
+      "repository": "google/embeddinggemma-2",
+      "revision": "f9972ac22e696a105c482202646979e33e4b5a1e",
+      "runtime": "sentence-transformers 6.2.0 on CPU",
+      "parametersLoaded": 271002624,
+      "dimensions": 768,
+      "queryPrompt": "SearchQuery",
+      "documentPrompt": "Document",
+      "normalized": true,
+      "visionAndAudioEncoders": false
+    },
+    "transcription": {
+      "repository": "ggerganov/whisper.cpp",
+      "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+      "file": "ggml-large-v3-turbo-q5_0.bin",
+      "runtime": "whisper.cpp CPU, AVX2, 2 threads",
+      "engineCommit": "d1be6fde11ac6e0407606b4e42fe72d34add8037"
+    }
+  },
+  "storage": {
+    "activeTable": "scene_embeddings_768",
+    "activeRows": 2,
+    "dimensions": 768,
+    "legacyTable": "scene_embeddings",
+    "legacyRows": 0,
+    "migration": "0042_embeddinggemma2_index; additive, retains existing 1536d table"
+  },
+  "speechFixtures": [
+    {
+      "name": "fleurs-ja-00",
+      "file": "fleurs-ja-00.mp3",
+      "duration": 10.44,
+      "reference": "インターネットで「敵対的環境コース」について検索すると、おそらく現地企業の住所が出てくるでしょう。",
+      "regions": [],
+      "sha256": "383c9ab832a5d546bebec1552a0c4e3d49bfd2155b468fa62c08d892a44553d4",
+      "dataset_id": 1828
+    },
+    {
+      "name": "fleurs-en-00",
+      "file": "fleurs-en-00.mp3",
+      "duration": 5.832,
+      "reference": "The cabbage juice changes color depending on how acidic or basic (alkaline) the chemical is.",
+      "sha256": "76f31e31953f6ef3e13db2dbecf7581a4c7750e38ca7fcc2b55f0c6c5180d98b",
+      "dataset_id": 1728,
+      "source": "google/fleurs en_us test",
+      "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+      "parquet_sha256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d",
+      "license": "CC BY 4.0"
+    }
+  ],
+  "endToEnd": {
+    "status": "passed",
+    "inference": "real models; no protocol fixtures",
+    "models": [
+      "gpt-oss-20b",
+      "EmbeddingGemma 2 text-only 768d",
+      "Whisper large-v3-turbo Q5_0"
+    ],
+    "courseId": 1,
+    "videos": {
+      "ja": {
+        "id": 2,
+        "transcript": "1\n00:00:01,488 --> 00:00:08,188\nインターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。\n",
+        "processingSeconds": 75.179070754
+      },
+      "en": {
+        "id": 3,
+        "transcript": "1\n00:00:00,000 --> 00:00:02,900\nThe cabbage juice changes color depending on how acidic,\n\n2\n00:00:02,900 --> 00:00:05,680\nbasic, alkaline the chemical is.\n",
+        "processingSeconds": 70.978573916
+      }
+    },
+    "cases": [
+      {
+        "audioLanguage": "ja",
+        "questionLanguage": "ja",
+        "question": "動画によると、インターネットで「敵対的環境コース」を検索すると、何の住所が出てきますか？",
+        "answer": {
+          "segments": [
+            {
+              "text": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+              "sourceIds": [
+                1
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "id": 1,
+              "video_id": 2,
+              "title": "FLEURS ja real model acceptance",
+              "start_time": "00:00:01,488",
+              "end_time": "00:00:08,188"
+            },
+            {
+              "id": 2,
+              "video_id": 3,
+              "title": "FLEURS en real model acceptance",
+              "start_time": "00:00:00,000",
+              "end_time": "00:00:05,680"
+            }
+          ]
+        },
+        "streamedAnswer": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+        "elapsedSeconds": 10.501122222000005
+      },
+      {
+        "audioLanguage": "ja",
+        "questionLanguage": "en",
+        "question": "According to the video, searching online for hostile environment courses will probably return whose addresses? Answer in English.",
+        "answer": {
+          "segments": [
+            {
+              "text": "According to the video, searching online for hostile environment courses will probably return the addresses of local companies.",
+              "sourceIds": [
+                1
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "id": 1,
+              "video_id": 2,
+              "title": "FLEURS ja real model acceptance",
+              "start_time": "00:00:01,488",
+              "end_time": "00:00:08,188"
+            },
+            {
+              "id": 2,
+              "video_id": 3,
+              "title": "FLEURS en real model acceptance",
+              "start_time": "00:00:00,000",
+              "end_time": "00:00:05,680"
+            }
+          ]
+        },
+        "streamedAnswer": "According to the video, searching online for hostile environment courses will probably return the addresses of local companies.",
+        "elapsedSeconds": 6.864399747000018
+      },
+      {
+        "audioLanguage": "en",
+        "questionLanguage": "en",
+        "question": "According to the video, what determines the color of cabbage juice? Answer in English.",
+        "answer": {
+          "segments": [
+            {
+              "text": "The color of cabbage juice changes depending on the acidity or alkalinity of the solution it is mixed with.",
+              "sourceIds": [
+                1
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "id": 1,
+              "video_id": 3,
+              "title": "FLEURS en real model acceptance",
+              "start_time": "00:00:00,000",
+              "end_time": "00:00:05,680"
+            },
+            {
+              "id": 2,
+              "video_id": 2,
+              "title": "FLEURS ja real model acceptance",
+              "start_time": "00:00:01,488",
+              "end_time": "00:00:08,188"
+            }
+          ]
+        },
+        "streamedAnswer": "The color of cabbage juice changes depending on the acidity or alkalinity of the solution it is mixed with.",
+        "elapsedSeconds": 5.630010360999993
+      },
+      {
+        "audioLanguage": "en",
+        "questionLanguage": "ja",
+        "question": "動画によると、キャベツの汁の色は何によって変わりますか？日本語で答えてください。",
+        "answer": {
+          "segments": [
+            {
+              "text": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的性質によって変わります。",
+              "sourceIds": [
+                1
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "id": 1,
+              "video_id": 3,
+              "title": "FLEURS en real model acceptance",
+              "start_time": "00:00:00,000",
+              "end_time": "00:00:05,680"
+            },
+            {
+              "id": 2,
+              "video_id": 2,
+              "title": "FLEURS ja real model acceptance",
+              "start_time": "00:00:01,488",
+              "end_time": "00:00:08,188"
+            }
+          ]
+        },
+        "streamedAnswer": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的性質によって変わります。",
+        "elapsedSeconds": 7.385703159999975
+      }
+    ]
+  },
+  "browser": {
+    "status": "passed",
+    "records": [
+      {
+        "language": "ja",
+        "id": 2,
+        "citationTime": 1.488,
+        "rangeStatus": 206,
+        "currentTime": 1.599849,
+        "duration": 10.44,
+        "error": null,
+        "javaScriptErrors": []
+      },
+      {
+        "language": "en",
+        "id": 3,
+        "citationTime": 0,
+        "rangeStatus": 206,
+        "currentTime": 0.120973,
+        "duration": 5.76,
+        "error": null,
+        "javaScriptErrors": []
+      }
+    ]
+  },
+  "checks": {
+    "apiUnitTests": 1160,
+    "apiSkippedOptionalTests": 606,
+    "workerUnitTests": 492,
+    "workerSkippedOptionalTests": 105,
+    "inferenceServiceUnitTests": 44,
+    "inferenceSkippedOptionalTests": 1,
+    "crossLanguageStorageTests": 2,
+    "realModelCompatibilityTests": 8,
+    "finalHelmChartTests": 19,
+    "apiTypecheck": "passed",
+    "migrationCheck": "passed",
+    "migrationProvenance": "43 entries verified",
+    "apiWorkerAndCpuInferenceImages": "built; CPU model server import checked"
+  },
+  "scopeLimits": [
+    "Two short public FLEURS speech clips, not a quality/capacity benchmark",
+    "GPU runtime tested on Modal, not a site Kubernetes GPU node/device plugin",
+    "Public egress blocking and long recordings were not exercised in this trial"
+  ],
+  "cleanup": {
+    "validationGpuAppsStopped": true,
+    "activeValidationGpuContainers": 0,
+    "temporaryModelVolumeDeleted": true,
+    "localValidationWorkerStopped": true,
+    "localValidationCronJobsSuspended": true
+  },
+  "sourceManifestSha256": {
+    "apps/api/src/lib/chat-model.ts": "aa7bd0696ed72d2b41ce6a565ac88cb580b0500cb00fb53ae669949d9e9e66ec",
+    "apps/api/src/lib/embedding-contract.ts": "28e23f601d3631814cc828fda333e3b8785295b0a0a4cf5147b3276ada0ed17d",
+    "apps/api/src/lib/embeddings.ts": "984418124e53eb05aa7fc58baff25f0c9222eb6535c849b12fe3f3e1e68993b8",
+    "apps/api/src/runtime/node-config.ts": "008d4c6a402dd102b3278bb043945e17f9b94f43a9c64742903fb3d188e23746",
+    "apps/api/src/repositories/vector-repository.ts": "2a869c7c64c678b9085b66f9a9f3cb5d1efee9161f41c3c010ce5b33d3bbb7d5",
+    "apps/api/drizzle/0042_embeddinggemma2_index.sql": "50d72a5df9be7bf1ad676a773fa51f5e8accedd409879697987823cee99f2ac6",
+    "apps/worker/worker_python/pipeline/embedding_contract.py": "88a9080025bf294e8f6c2ec8d7600f06c3976fa7ac171ca68843d9aaa7ab024a",
+    "apps/worker/worker_python/pipeline/embeddings.py": "04372ba3944c4e4026b3ff387d4009290b461aeb2aee592b9259c04a39c19994",
+    "apps/worker/worker_python/pipeline/vector_index.py": "821ae3ffa471f124021f8340f68d4ebf32eadcfccc6c05ff6c9c8c51be028b05",
+    "apps/inference/whisper/embedding_server.py": "abf0f3691e15eb032cb154115624a3df94312cbc0e85fe1b01516a1e5538a0fe",
+    "apps/inference/whisper/provision.py": "a6423eb168856b6f729c7fc3eafaefee437df04c659fd78bb438cd0890e25898",
+    "apps/inference/whisper/uv.lock": "a2765664324dca0b81d4f41cdcc429f3a8113b0da690bcf770e7d00635bba0eb",
+    "charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml": "25aac98cc701a11a8e88d3ff69f73e7e8a8a9da0714635885d3b1ea611bc2ecb",
+    "charts/videoq/examples/local-ai-gpt-oss.yaml": "a21c0a8154976535a86b72baf7689468f0bbe754977a9bb9ce39b55b288ce1de"
+  }
+}

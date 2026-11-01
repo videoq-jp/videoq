@@ -59,7 +59,8 @@ def video_db():
         conn.execute("""
             CREATE TEMP TABLE videos (
                 id bigint PRIMARY KEY, user_id text, title text, transcript text,
-                status text, source_type text, file text, youtube_video_id text
+                status text, source_type text, file text, youtube_video_id text,
+                transcription_language varchar(3)
             )
         """)
         yield conn, returned_rows
@@ -73,8 +74,8 @@ def test_task_metadata_does_not_transfer_existing_transcript(video_db, status):
     conn.execute(
         """
         INSERT INTO videos
-            (id, user_id, title, transcript, status, source_type, file, youtube_video_id)
-        VALUES (109, 'owner', 'Title', %s, %s, 'youtube', NULL, 'abcdefghijk')
+            (id, user_id, title, transcript, status, source_type, file, youtube_video_id, transcription_language)
+        VALUES (109, 'owner', 'Title', %s, %s, 'youtube', NULL, 'abcdefghijk', 'ja')
         """,
         (transcript, status),
     )
@@ -83,6 +84,7 @@ def test_task_metadata_does_not_transfer_existing_transcript(video_db, status):
 
     assert video is not None
     assert video.transcript is None
+    assert video.transcription_language == "ja"
     assert (video.id, video.user_id, video.title, video.status) == (109, "owner", "Title", status)
     assert (video.source_type, video.file_key, video.youtube_video_id) == ("youtube", None, "abcdefghijk")
     # Inspect the actual database response, before the row mapper can drop data.

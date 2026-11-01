@@ -3,8 +3,11 @@ import { EMBEDDING_DIMENSIONS } from "./embedding-dimensions";
 
 export { EMBEDDING_DIMENSIONS };
 
-export type EmbeddingConfig = { provider: "openai"; model: string };
-export type EmbeddingSettings = { EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
+export type EmbeddingConfig = { provider: "openai"; model: string; profile?: "embeddinggemma2" };
+export type EmbeddingSettings = { EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
+
+export const embeddingDimensions = (config?: EmbeddingConfig): number => config?.profile === "embeddinggemma2" ? 768 : EMBEDDING_DIMENSIONS;
+export const embeddingTable = (config: EmbeddingConfig): string => config.profile === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings";
 export type EmbeddingReason =
   | "EMBEDDING_CONFIG_INVALID"
   | "EMBEDDING_SCHEMA_MISMATCH"
@@ -14,7 +17,7 @@ export function embeddingDiagnostic(
   config: EmbeddingConfig | undefined,
   details: { reason?: EmbeddingReason; db_dimensions?: number | null; actual_dimensions?: number | null } = {},
 ) {
-  return { event: "embedding.validation", ...config, expected_dimensions: EMBEDDING_DIMENSIONS, ...details };
+  return { event: "embedding.validation", ...config, expected_dimensions: embeddingDimensions(config), ...details };
 }
 
 export class EmbeddingConfigurationError extends LlmConfigurationError {
@@ -41,9 +44,16 @@ export class EmbeddingValidationError extends LlmProviderError {
 }
 
 export function resolveEmbeddingConfig(env: EmbeddingSettings): EmbeddingConfig {
+  const profile = env.EMBEDDING_PROFILE?.trim() || "openai";
+  if (!["openai", "embeddinggemma2"].includes(profile)) {
+    throw new EmbeddingConfigurationError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROFILE must be openai or embeddinggemma2.");
+  }
+  if (profile === "embeddinggemma2" && (!env.EMBEDDING_MODEL?.trim() || !env.EMBEDDING_BASE_URL?.trim())) {
+    throw new EmbeddingConfigurationError("EMBEDDING_CONFIG_INVALID", "EmbeddingGemma 2 requires EMBEDDING_MODEL and a dedicated EMBEDDING_BASE_URL.");
+  }
   const model = env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
   const baseURL = openAiBaseUrl({ ...env, OPENAI_BASE_URL: env.EMBEDDING_BASE_URL || env.OPENAI_BASE_URL });
-  return { provider: "openai", model: providerModel(model, baseURL) };
+  return { provider: "openai", model: providerModel(model, baseURL), ...(profile === "embeddinggemma2" ? { profile } : {}) };
 }
 
 export function validateEmbedding(
@@ -52,7 +62,7 @@ export function validateEmbedding(
   config?: EmbeddingConfig,
 ): number[] {
   if (
-    !Array.isArray(value) || value.length !== EMBEDDING_DIMENSIONS ||
+    !Array.isArray(value) || value.length !== embeddingDimensions(config) ||
     !value.every((v: unknown) => typeof v === "number" && Number.isFinite(v) && Number.isFinite(Math.fround(v))) ||
     !value.some((v: number) => Math.fround(v) !== 0)
   ) {

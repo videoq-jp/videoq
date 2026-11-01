@@ -1,6 +1,6 @@
 import type { VideoUploadRequest, apiClient } from './api';
 import type { appTrpcClient } from './trpc';
-import { videoUploadContentType } from '@videoq/trpc/video-upload';
+import { videoUploadContentType, type TranscriptionLanguage } from '@videoq/trpc/video-upload';
 
 interface UploadApi {
   uploadVideo: typeof apiClient.uploadVideo;
@@ -9,7 +9,7 @@ interface UploadApi {
 }
 
 type UploadDraft = { title: string; description: string } & (
-  | { source: 'file'; file: File | null; maxSizeMb: number }
+  | { source: 'file'; file: File | null; maxSizeMb: number; transcriptionLanguage?: TranscriptionLanguage }
   | { source: 'youtube'; youtubeUrl: string }
 );
 
@@ -39,7 +39,7 @@ export function prepareVideoUpload(input: UploadDraft): UploadPreparation {
       };
     }
     const title = input.title.trim() || file.name.replace(/\.[^/.]+$/, '');
-    return { isValid: true, upload: { source: 'file', data: { file, title, description } } };
+    return { isValid: true, upload: { source: 'file', data: { file, title, description, ...(input.transcriptionLanguage ? { transcriptionLanguage: input.transcriptionLanguage } : {}) } } };
   }
 
   const youtubeUrl = input.youtubeUrl.trim();

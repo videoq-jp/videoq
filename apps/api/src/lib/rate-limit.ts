@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { PUBLIC_DEMO_SHARE_SLUG } from "@videoq/trpc/public-demo";
 import type { AppEnv, Bindings } from "../types/bindings";
 
 /**
@@ -6,6 +7,8 @@ import type { AppEnv, Bindings } from "../types/bindings";
  */
 export const THROTTLE_RATES = {
   chat_share_token_ip: { limit: 100, periodSec: 3600 },
+  // 公開デモは誰でも開けるので、1 人が所有者の回答枠を使い切れないよう狭くする。
+  chat_public_demo_ip: { limit: 10, periodSec: 3600 },
   chat_authenticated: { limit: 300, periodSec: 3600 },
   login_ip: { limit: 5, periodSec: 60 },
   login_username: { limit: 5, periodSec: 60 },
@@ -209,6 +212,19 @@ export async function enforceThrottles(
     consumed.push({ key, windowSec: rate.periodSec, cost });
   }
   return null;
+}
+
+/** チャット送信に掛けるスコープ。REST とストリームの両経路で共有する。 */
+export function chatThrottleChecks(
+  c: Context<AppEnv>,
+  userId: string | null | undefined,
+  shareSlug: string | null | undefined,
+): ThrottleCheck[] {
+  return [
+    { scope: "chat_authenticated", ident: userId },
+    { scope: "chat_share_token_ip", ident: shareSlug ? clientIp(c) : null },
+    { scope: "chat_public_demo_ip", ident: shareSlug === PUBLIC_DEMO_SHARE_SLUG ? clientIp(c) : null },
+  ];
 }
 
 /** レート制限超過を共通エラー形式で返す。 */

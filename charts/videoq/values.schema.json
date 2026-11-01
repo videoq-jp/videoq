@@ -67,8 +67,12 @@
     "ai": {
       "type": "object",
       "properties": {
-        "federationPolicyId": { "type": "string" },
-        "federationAudience": { "type": "string" },
+        "federationPolicyId": {
+          "type": "string"
+        },
+        "federationAudience": {
+          "type": "string"
+        },
         "separateToolSchema": {
           "type": "boolean"
         },
@@ -125,6 +129,15 @@
         "whisperLocalModel": {
           "type": "string",
           "minLength": 1
+        },
+        "embeddingProfile": {
+          "enum": [
+            "openai",
+            "embeddinggemma2"
+          ]
+        },
+        "preserveToolReasoning": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

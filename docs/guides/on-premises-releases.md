@@ -127,7 +127,7 @@ helm test videoq -n videoq --timeout 2m
 For fully local AI, install the verified inference archive with
 `verified-inference.json` last, and the application with the matching local AI
 overlay before `verified-images.json`. See the
-[local inference guide](local-inference.md). Hosted OpenAI remains the application
+[local inference guide](local-inference.md). Hosted OpenRouter remains the application
 default; downloading the inference chart alone does not switch AI endpoints.
 
 The chart enforces digests but does not itself enforce signatures. The verifier

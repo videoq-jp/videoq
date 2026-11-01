@@ -4,7 +4,7 @@ The documentation site uses Docusaurus 3. English is the default language at `/`
 
 ## Start and build
 
-Use Node.js 22.12 or later and run these commands from the repository root:
+Use the Node.js version in `.node-version` (the site requires 22.12 or later) and run these commands from the repository root:
 
 ```bash
 npm ci
@@ -24,13 +24,13 @@ npm run preview:docs
 
 The development server runs one language at a time. Use `build:docs` followed by `preview:docs` to verify the language switcher and full-text search across both builds.
 
-The root npm overrides keep Docusaurus's transitive `serialize-javascript` at 7.0.5 or later
+The root npm overrides keep Docusaurus's transitive `serialize-javascript` at 7.1.4 or later
 and SockJS's CommonJS-compatible `uuid` at 11.1.1 or later for their security fixes
 ([serializer advisory](https://github.com/yahoo/serialize-javascript/security/advisories/GHSA-qj8w-gfj5-8c6v),
 [UUID advisory](https://github.com/uuidjs/uuid/security/advisories/GHSA-w5hq-g745-h8pq)).
 Remove the overrides once upstream dependencies require patched versions; verify both
 locale builds and the documentation dev server when changing them.
-Use npm 11.20 or later when updating these dependencies: older npm versions can ignore
+Use npm 11.20 or later (the repository pins its npm version in `package.json`) when updating these dependencies: older npm versions can ignore
 overrides across workspace links. To use it without changing the global installation,
 run `npm exec --yes --package=npm@11.20.0 -- npm update serialize-javascript uuid`.
 
@@ -48,7 +48,7 @@ run `npm exec --yes --package=npm@11.20.0 -- npm update serialize-javascript uui
 | Japanese sidebar categories | `apps/docs/i18n/ja/docusaurus-plugin-content-docs/current.json` |
 
 - Keep the same relative paths, document IDs, and slugs in both languages. Add each new page to both content roots and register it in `sidebars.ts` in reading order.
-- Add a reviewed page's exact relative path to `public-content.json`. Only listed pages are built in either language; adding a file or sidebar item does not approve it for publication.
+- Add a reviewed page's exact relative path to `public-content.json`. Only listed pages are built in either language; adding a file or sidebar item does not approve it for publication. Runbooks in `docs/operations/` are intentionally unlisted.
 - Update both languages when instructions change. The prebuild check requires both files for each approved page; review their contents to keep translations complete and current.
 - The sidebar groups pages into Get started, AI behavior, Core concepts, Development guides, Design reference, Operations, and the Glossary. Organize around reader goals as well as document types.
 - Public pages use ordinary Markdown (`.md`). Supporting React components in `.mdx` requires reviewing the publication policy and embedded content; the current manifest rejects `.mdx` files.
@@ -58,7 +58,7 @@ run `npm exec --yes --package=npm@11.20.0 -- npm update serialize-javascript uui
 - The edit-page link targets the displayed language's source file.
 - English and Japanese search indexes are generated at build time. No external search service or API key is needed.
 
-CI detects changes to the documents and site configuration, then runs type checking, publication-policy tests, content checks, builds both languages, and validates links and anchors. Generated output is checked before it is saved in the `documentation-build` artifact.
+CI detects changes to the documents and site configuration, then runs type checking, publication-policy tests, content checks, builds both languages, and validates links and anchors. Generated output is checked; only manually run CI saves it as the `documentation-build` artifact.
 
 ## Public information policy
 

@@ -1,4 +1,7 @@
-# VideoQ demo for university students
+# VideoQ demo films
+
+Three Remotion films live here. The landing pages serve the instructor film; the student film and the sample course behind it remain for `/try`, older URLs and ads.
+
 
 ## X ad video (shared Japanese/English format, 2026-10-06)
 
@@ -69,7 +72,10 @@ Output goes to `apps/web/public/demo/provider-demo-{ja,en}.mp4` with matching
 WebP posters and VTT captions. Rendering needs a full `ffmpeg` with VP9 and
 `ffprobe` on `PATH`, Python with Pillow, and network access for Noto Sans JP.
 
-## Student demo for Japanese and English landing pages
+## Student demo (legacy landing URLs)
+
+`npm run render` selects this film when `--film` is omitted. The landing pages no longer serve it, but its URLs stay available for compatibility.
+
 
 A 30-second, 1920×1080, 60 fps walkthrough built with Remotion. It smoothly zooms to
 interactions in the style of Screen Studio, showing the cursor, clicks, typing,
@@ -139,6 +145,17 @@ HTTPS `--origin` and `VIDEOQ_DEMO_COOKIE_FILE`. Store the cookie in a file with 
 different material or share slugs are not overwritten. When changing course
 material, switch to a new slug and register again.
 
+The no-signup demo at `/try` serves this course from production, so register it there
+before deploying the page. Use a dedicated owner and raise its AI answer limit in the
+admin screen: every visitor question uses that owner's quota, and the limit caps the
+monthly spend. Each IP may ask 10 questions per hour (`chat_public_demo_ip`). The slug is
+also `PUBLIC_DEMO_SHARE_SLUG` in `packages/trpc/src/public-demo.ts`; keep them equal.
+
+```bash
+VIDEOQ_DEMO_COOKIE_FILE=<cookie-file> npm run demo:students --workspace @videoq/api -- --origin https://videoq.jp
+npm run demo:students --workspace @videoq/api -- --origin https://videoq.jp --check
+```
+
 Use `VIDEOQ_DEMO_ORIGIN` to change the origin used to retrieve answers. After updating
 an answer or its references, verify that the subject selected in the video matches
 the cited material.
@@ -170,8 +187,9 @@ frame rate, resolution, fast start, and file size. It has also been verified to
 detect anomalies in known broken older videos. Videos that fail remain in `review/`
 and do not replace existing landing page files. Results are saved in
 `review/*-quality.json`. Run the following commands for manual checks.
-CI's Frontend Build also checks every frame in the Japanese and English MP4 files
-to be served; it does not rerender them with Remotion.
+CI's Frontend Build also checks every frame in the Japanese and English
+`student-demo` MP4 files; it does not rerender them with Remotion, and it does not
+run this check on the `provider-demo` files the landing pages serve.
 
 ```bash
 python3 apps/demo-video/scripts/verify-video.py apps/web/public/demo/student-demo-ja.mp4

@@ -25,7 +25,7 @@ Shared layouts are managed by parent routes in `src/App.tsx`. Add new pages as c
 
 - `AppRouteLayout`: Home, lists, settings, administration, pricing, terms, and video/course details. The header persists across routes; detail pages omit the footer. Each View manages its content width and tab layout.
 - `AuthRouteLayout`: Sign-in, sign-up, email verification, course invitations, and related pages. Shares the authentication header and content width.
-- Public shared pages have their own layouts.
+- Public shared pages and the `/try` demo have their own layouts.
 
 Page and video Views return only their main content. Lint rules prohibit direct imports of `AppPageShell`, `AppNav`, `AppFooter`, `AuthLayout`, and similar layout components. Add regular pages to `appPageRoutes` in `App.tsx`, and use `handle` to specify the selected navigation item and required layout variant. `AppRouteLayout` matches the same definitions through `matchRoutes`, keeping path precedence, case sensitivity, and URL encoding behavior consistent with the router.
 
@@ -47,7 +47,7 @@ Validation on file selection displays format and size errors immediately. Submis
 
 See the [Storybook change and review workflow](STORYBOOK.md) for adding, updating, and reviewing stories when changing the UI.
 
-Node.js 22.12 or later is recommended. Run these commands at the repository root:
+Use the Node.js version in `.node-version`. Run these commands at the repository root:
 
 ```bash
 npm ci
@@ -62,7 +62,7 @@ The catalog covers chat answers, message bodies, search progress, and input fiel
 authentication forms and fields; error and notification banners; loading states; confirmation dialogs; and toasts.
 Video cards and lists, tag badges, selection and filtering, and processing status badges can be checked with fixed counts and tag volumes.
 Chat lists and history cover long conversations, waiting for only the final answer, authors, feedback states, and CSV export in progress.
-Analytics dashboards, evaluation summaries, time-series charts, and feedback pie charts include empty data and skewed values.
+Analytics dashboards, time-series charts, and feedback pie charts include empty data and skewed values.
 Tag and course creation dialogs cover input, previews, creation in progress, and retry after failure.
 The catalog also includes page headers, navigation for different sign-in states, and listing/revoking OAuth-connected apps.
 Upload and tag management modals cover nested tag creation, submission in progress, deletion confirmation, and retry after failure.
@@ -73,13 +73,13 @@ Form input updates story-local state; submitting forms does not send authenticat
 Buttons reopen them; changing confirmation text or notification arrays in Controls resets the state.
 Notifications normally use `durationMs: 0` to stay visible; `AutoDismiss` verifies automatic dismissal after one second.
 `ConfirmWithKeyboard`, `CancelConfirmation`, and `DismissWithKeyboard` show the state after interaction.
-For forms, `KeyboardSubmit` and `KeyboardInput` verify typing, focus, and submission.
+For form fields, `KeyboardInput` verifies typing and focus.
 
 `Chat/ChatMessagesView` creates a scroll ref and feedback state for each story.
 The start/end buttons in `LongConversation` scroll the fixed-height conversation area; the `height` Control changes its height.
 `AwaitingLastResponse` verifies that earlier empty answers do not show a waiting indicator, and `FeedbackUpdating` verifies that only the item being updated is disabled.
 `Chat/ChatHistoryView` displays fixed ISO timestamps in the viewer's time zone and the app's selected language.
-`MissingMetrics` distinguishes unavailable metrics from 0%; `KeyboardExportAndCitation` operates CSV export and citations by keyboard.
+`KeyboardExportAndCitation` operates CSV export and citations by keyboard.
 CSV export only records a mock callback; no file is downloaded.
 
 `Dashboard/` switches between fixed dates and aggregates without an API connection, showing question trends and user feedback.
@@ -88,7 +88,7 @@ Charts have a parent with a defined width and render a 220px-high SVG through th
 `KeyboardTooltip` verifies arrow-key interaction after focus and, for time-series charts, opening/closing with Enter.
 Pie chart keyboard interaction uses the [Recharts 3.8.1 fix](https://github.com/recharts/recharts/pull/7140).
 `HoverTooltip` checks mouse interaction with pie charts; `AllZeroHidden` checks that charts are hidden when all values are zero.
-Recharts is pre-optimized in `vitest.storybook.config.ts` to prevent dependency optimization from reloading the first browser test. Vitest uses version 4, matching the API, and limits concurrent Chromium pages to two.
+Recharts is pre-optimized in `vitest.storybook.config.ts` to prevent dependency optimization from reloading the first browser test. Vitest uses the same major version as the API and limits concurrent Chromium pages to two.
 
 `Video/TagCreateDialog` and `Video/VideoCourseCreateModal` open the real dialogs from buttons.
 `KeyboardCreate` checks typing, tag color selection, submission, and focus returning to the trigger; `CancelAndReopen` checks input reset.
@@ -226,7 +226,7 @@ For incremental SSE responses and interruptions, see the [ChatPanel stories](src
 Storybook runs as a separate browser project and does not reuse the API mocks in `vitest.setup.ts`.
 `typecheck` checks the app and Storybook separately.
 CI runs a static build and verifies stories in Chromium.
-Accessibility checks are required for six components, including shared notifications, loading indicators, and forms; violations fail CI. Other components report findings only. See the [workflow guide](STORYBOOK.md#accessibility-checks) for the covered components and how to add more.
+Accessibility checks are required for the components and pages listed in the workflow guide, including shared notifications, loading indicators, forms, and the landing page; violations fail CI. Other components report findings only. See the [workflow guide](STORYBOOK.md#accessibility-checks) for the covered components and how to add more.
 
 ## API client
 
@@ -297,7 +297,7 @@ After synchronizing upstream files, verify that `index.css` still loads `videoq-
 
 ## Instructor landing page
 
-`/` and `/en` are landing pages for course creators, instructors and training owners: an AI help desk that answers student questions from their lecture videos (see PR #1249, 2026-10-30).
+`/` and `/en` are landing pages for course creators, instructors and training owners: automatic answers to student questions from their lecture videos (see PR #1249, 2026-10-30).
 Visitors can switch between online course, school and internal training examples. The page only claims features that exist today: course share links without login, member invitations, AI answers billed to the course owner, the course dashboard and question history export.
 Free-tier information comes from the same `billing.plans` source as the pricing page; if it cannot be loaded, visitors are directed to the pricing page.
 
@@ -317,6 +317,10 @@ See [demo-video/README.md](../demo-video/README.md) for production steps and cou
 The demo can be served entirely as static files. Registering the course in the public environment is not required to publish the landing page.
 `worker/landing-media.ts` handles MP4 Range requests and limits reads to 16 MiB per video.
 Legacy `explain-{ja,en}.mp4` / `student-demo-{ja,en}.mp4` URLs remain for compatibility.
+
+### No-signup demo
+
+`/try` and `/en/try` let visitors ask the sample course `PUBLIC_DEMO_SHARE_SLUG` (`packages/trpc/src/public-demo.ts`) without an account. Each question uses the dedicated demo owner's allowance and the per-IP limit of 10 questions per hour. See [the production preparation runbook](../../docs/operations/public-demo.md) and [demo-video/README.md](../demo-video/README.md). The on-prem build omits this page.
 
 ### Instructor ads
 

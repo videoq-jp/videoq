@@ -1,3 +1,4 @@
+import { videosInputSchemas } from "../../../packages/trpc/src/inputs/videos";
 import { describe, it, expect, vi } from "vitest";
 import { MAX_VIDEO_UPLOAD_BYTES, multipartPartSize } from "@videoq/trpc/video-upload";
 import {
@@ -159,4 +160,15 @@ describe("pending upload file key（FR-Q3 予約埋め込み）", () => {
     expect(parseReservedBytesFromFileKey("videos/7/video_1700000000000.mp4")).toBeNull();
   });
 
+});
+
+
+describe('upload transcription language validation', () => {
+  const input = { filename: 'clip.mp4', contentType: 'video/mp4', fileSize: 1, title: 'Clip' };
+  it.each([undefined, 'ja', 'en', 'ko'])('accepts %s', transcriptionLanguage => {
+    expect(videosInputSchemas['videos.requestUpload'].safeParse({ ...input, transcriptionLanguage }).success).toBe(true);
+  });
+  it.each(['auto', 'ja-JP', 'invalid', '', null])('rejects invalid language %s', transcriptionLanguage => {
+    expect(videosInputSchemas['videos.requestUpload'].safeParse({ ...input, transcriptionLanguage }).success).toBe(false);
+  });
 });

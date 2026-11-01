@@ -501,6 +501,7 @@ export async function reserveAndCreatePendingVideo(
   title: string,
   description: string,
   idempotency?: CreationIdempotency,
+  transcriptionLanguage?: string,
 ): Promise<PendingVideoReservation> {
   return withDb(env, async (db) =>
     db.transaction(async (tx) => {
@@ -538,6 +539,7 @@ export async function reserveAndCreatePendingVideo(
         .values({
           userId,
           file: fileKey,
+          transcriptionLanguage,
           title,
           description,
           status: "uploading",

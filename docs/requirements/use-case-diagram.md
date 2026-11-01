@@ -25,6 +25,7 @@ The same person can register materials and learn from them. These roles do not r
 
 | Goal | Operation | Expected result |
 |---|---|---|
+| Try before signing up | Ask the sample course at `/try` | See an answer and its cited scene without an account |
 | Prepare learning materials | Upload a file or import from YouTube | Transcript and search data are ready |
 | Organize materials | Add or reorder course videos and assign tags | Videos are easy to find and the question scope is clear |
 | Explore content | Ask questions in course chat | Review an answer and its supporting scenes |

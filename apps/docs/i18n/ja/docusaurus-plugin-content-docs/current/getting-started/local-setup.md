@@ -15,8 +15,8 @@ description: Docker Compose で VideoQ を起動し、ローカルアカウン�
 |---|---|
 | Git とリポジトリへのアクセス | ソースコードの取得 |
 | Docker と Docker Compose | DB、API、動画処理などの起動 |
-| Node.js 22.12 以上と npm | 依存関係の導入、ローカルアカウントの設定 |
-| 開発用の OpenAI API キー | 文字起こし、検索用データの生成、AI回答 |
+| Node.js と npm（`.node-version` の版） | 依存関係の導入、ローカルアカウントの設定 |
+| 開発用の OpenRouter API キー | 文字起こし、検索用データの生成、AI回答 |
 
 この手順の動画処理・AI回答では外部APIの利用料金が発生します。開発用のキーと短い検証動画を使ってください。YouTube取り込みを試す場合だけ、別途 SearchAPI のキーが必要です。
 
@@ -33,18 +33,19 @@ npm ci
 
 ## 2. 開発用のAI設定を入れる
 
-`.env` の同名項目を次の値に編集します。`OPENAI_API_KEY` には自分の開発用キーを入れてください。
+`.env` の同名項目を次の値に編集します。`OPENROUTER_API_KEY` には自分の開発用キーを入れてください。
 
 ```dotenv
-OPENAI_API_KEY=ここに開発用キーを入力
-OPENAI_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-6-luna
-WHISPER_BACKEND=openai
-
-EMBEDDING_MODEL=text-embedding-3-small
+OPENROUTER_API_KEY=ここに開発用キーを入力
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=openai/gpt-6-luna
+EMBEDDING_MODEL=openai/text-embedding-3-small
+WHISPER_BACKEND=openrouter
 ```
 
-回答生成と画像確認は共通の `LLM_MODEL` を使い、既定値はGPT-6 Luna（`gpt-6-luna`）です。映像確認を有効にする場合は、画像入力・ツール呼び出し・厳密なJSON出力に対応したモデルを指定してください。[モデル設定](../architecture/prompt-engineering.md#モデル設定と処理の上限)も参照してください。
+いずれも `.env.example` の値と同じなので、通常はキーを追加するだけです。`WHISPER_BACKEND=openai` は旧来の直接接続で、別途 `OPENAI_API_KEY` が必要です。
+
+回答生成と画像確認は共通の `LLM_MODEL` を使い、ここでは OpenRouter 経由の GPT-6 Luna を指定しています。映像確認を有効にする場合は、画像入力・ツール呼び出し・厳密なJSON出力に対応したモデルを指定してください。[モデル設定](../architecture/prompt-engineering.md#モデル設定と処理の上限)も参照してください。
 
 設定テンプレートも上記の埋め込み設定を使用します。次元は1536固定で、次元数の環境変数は不要です。API・workerのproviderとmodelを揃えてください。社内の llama.cpp／vLLM の接続設定と診断コマンドは[埋め込みの設定と検証](../guides/embeddings.md)を参照してください。
 

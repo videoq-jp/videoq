@@ -1,4 +1,4 @@
-import { HumanMessage, SystemMessage, type AIMessageChunk } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { createChatModel, toLlmError } from "./chat-model";
 import { answerResponseFormat, AnswerTextStream, assertCompletedAnswer, parseModelAnswer } from "./structured-answer";
 import type { ModelAnswer } from "@videoq/trpc/chat";
@@ -53,7 +53,7 @@ export async function generateReply(
 }
 
 /**
- * ストリーミング（`llm.stream`）。segmentごとの本文差分と、最後に検証済み回答を返す。
+ * ストリーミング（`llm.streamEvents`）。segmentごとの本文差分と、最後に検証済み回答を返す。
  *
  * `signal` にはクライアント接続の中断シグナルを渡す。切断後も OpenAI からの
  * 受信を続けるとサーバー側キーの課金だけが進むため、上流ごと止める。
@@ -76,34 +76,23 @@ export async function* streamReply(
     deadlineSignal(llmTimeoutMs(env, true), signal),
     lifecycle.signal,
   ]);
-  let iterator: AsyncIterator<AIMessageChunk> | undefined;
   try {
-    const stream = await model.stream(promptMessages(systemPrompt, queryText), {
+    const stream = model.streamEvents(promptMessages(systemPrompt, queryText), {
       signal: requestSignal,
       response_format: answerResponseFormat,
     });
-    iterator = stream[Symbol.asyncIterator]();
     const parser = new AnswerTextStream();
-    let aggregate: AIMessageChunk | undefined;
-    // Manual iteration lets finally abort fetch before awaiting iterator.return.
-    // A for-await loop closes the prefetched iterator first and can hang on a
-    // stalled upstream when our consumer stops after a yielded text delta.
-    for (;;) {
-      const { value: chunk, done } = await iterator.next();
-      if (done) break;
+    for await (const text of stream.text) {
       requestSignal.throwIfAborted();
-      aggregate = aggregate ? aggregate.concat(chunk) : chunk;
-      for (const delta of parser.push(chunk.text)) yield delta;
+      for (const delta of parser.push(text)) yield delta;
     }
     // SDK が中断を正常なストリーム終端として返す場合も成功にはしない。
     requestSignal.throwIfAborted();
-    assertCompletedAnswer(aggregate);
+    assertCompletedAnswer(await stream);
     yield { answer: parser.finish() };
   } catch (error) {
     throw toLlmError(error);
   } finally {
     lifecycle.abort();
-    // Cleanup must not replace the original refusal/provider/abort error.
-    await iterator?.return?.().catch(() => {});
   }
 }

@@ -79,6 +79,7 @@ export interface ChatRequest {
 export type { ChatStreamEvent } from '@videoq/trpc/chat';
 
 export interface VideoUploadRequest {
+  transcriptionLanguage?: import("@videoq/trpc/video-upload").TranscriptionLanguage;
   file: File;
   title: string;
   description?: string;

@@ -36,6 +36,10 @@
       "types": "./src/course-invitations.ts",
       "default": "./src/course-invitations.ts"
     },
+    "./public-demo": {
+      "types": "./src/public-demo.ts",
+      "default": "./src/public-demo.ts"
+    },
     "./deployment": {
       "types": "./src/deployment.ts",
       "default": "./src/deployment.ts"

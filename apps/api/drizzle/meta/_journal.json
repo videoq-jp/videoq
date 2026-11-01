@@ -288,6 +288,20 @@
       "when": 1792752000000,
       "tag": "0040_restore_openai_transcription_allowances",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793430989255,
+      "tag": "0041_transcription_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793457198518,
+      "tag": "0042_embeddinggemma2_index",
+      "breakpoints": true
     }
   ]
 }

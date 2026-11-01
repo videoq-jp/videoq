@@ -63,11 +63,13 @@ ai:
   llmModel: openai/gpt-6-luna
   reasoningEffort: ""
   separateToolSchema: false
+  preserveToolReasoning: false
   requestTimeoutMs: 120000
   streamTimeoutMs: 300000
   # OpenAI-compatible embedding service; empty reuses openaiBaseUrl.
   embeddingBaseUrl: ""
   embeddingModel: openai/text-embedding-3-small
+  embeddingProfile: openai
   whisperBackend: openrouter
   # CPU overlay reduces this to 30; hosted/NVIDIA profiles use 300.
   whisperChunkSeconds: 300

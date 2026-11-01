@@ -26,6 +26,7 @@ class VideoRow:
     file_key: str | None
     youtube_video_id: str | None
     transcript_hash: str | None = None
+    transcription_language: str | None = None
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ def _row_to_video(row: dict[str, Any]) -> VideoRow:
         file_key=file_val if file_val else None,
         youtube_video_id=row.get("youtube_video_id") or None,
         transcript_hash=row.get("transcript_hash"),
+        transcription_language=row.get("transcription_language"),
     )
 
 
@@ -62,7 +64,7 @@ def get_video_for_task(
     row = conn.execute(
         f"""
         SELECT id, user_id, title, {transcript_column}, status, source_type,
-               file, youtube_video_id
+               file, youtube_video_id, transcription_language
           FROM videos
          WHERE id = %s
         """,

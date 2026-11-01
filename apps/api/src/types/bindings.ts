@@ -49,8 +49,10 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     LLM_API_KEY?: string;
     EMBEDDING_BASE_URL?: string;
     EMBEDDING_API_KEY?: string;
+    EMBEDDING_PROFILE?: string;
     LLM_REASONING_EFFORT?: "none" | "minimal" | "low" | "medium" | "high";
     LLM_SEPARATE_TOOL_SCHEMA?: string;
+    LLM_PRESERVE_TOOL_REASONING?: string;
     LLM_REQUEST_TIMEOUT_MS?: string;
     LLM_STREAM_TIMEOUT_MS?: string;
     AWS_SESSION_TOKEN?: string;

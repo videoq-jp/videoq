@@ -1,7 +1,7 @@
 {
   "name": "VideoQ",
   "short_name": "VideoQ",
-  "description": "AI動画学習プラットフォーム。動画をアップロードするだけでAIが自動文字起こし・即検索。",
+  "description": "講義動画をもとに、受講生の質問へ自動で回答するサービス。回答には講義の該当場面が付きます。",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#3159dc",

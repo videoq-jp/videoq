@@ -10,7 +10,7 @@ import {
   sessionMethod,
 } from "../../middleware/auth";
 import { toErrorBody } from "../../shared/errors";
-import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
+import { chatThrottleChecks, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
 import type { AppEnv } from "../../types/bindings";
 import { chatMessageBodySchema } from "./schemas";
 import { limitChatRequestBody } from "./body-limit";
@@ -48,10 +48,7 @@ const optionalShareAuth = createMiddleware<AppEnv>(async (c, next) => {
 
 const chatThrottle = createMiddleware<AppEnv>(async (c, next) => {
   const shareSlug = requestShareSlug(c);
-  const denied = await enforceThrottles(c.env, [
-    { scope: "chat_authenticated", ident: c.var.userId },
-    { scope: "chat_share_token_ip", ident: shareSlug ? clientIp(c) : null },
-  ]);
+  const denied = await enforceThrottles(c.env, chatThrottleChecks(c, c.var.userId, shareSlug));
   if (denied) return throttledResponse(c, denied);
   await next();
 });

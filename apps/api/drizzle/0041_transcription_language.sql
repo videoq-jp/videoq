@@ -1,0 +1,1 @@
+ALTER TABLE "videos" ADD COLUMN "transcription_language" varchar(3);

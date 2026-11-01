@@ -42,8 +42,8 @@ export default defineConfig({
   }] : [])],
   resolve: {
     alias: [
-      ...(onprem ? ['LandingPage', 'PricingPage', 'LegalPage', 'SignupPage', 'SignupCheckEmailPage',
-        'SignupCompletePage', 'ForgotPasswordPage', 'VerifyEmailPage', 'EmailChangeConfirmPage'].map(page => ({
+      ...(onprem ? ['LandingPage', 'TryPage', 'PricingPage', 'LegalPage', 'SignupPage', 'SignupCheckEmailPage',
+        'SignupCompletePage', 'ForgotPasswordPage', 'VerifyEmailPage', 'EmailChangeConfirmPage', 'GuideIndexPage', 'GuidePage'].map(page => ({
         find: new RegExp(`^@/pages/${page}$`), replacement: path.resolve(__dirname, 'src/pages/UnavailablePage.tsx'),
       })) : []),
       { find: '@', replacement: path.resolve(__dirname, './src') },

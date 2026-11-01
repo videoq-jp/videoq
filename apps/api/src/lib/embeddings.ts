@@ -6,17 +6,18 @@ import {
   isOpenRouter,
 } from "./openai";
 import { deadlineSignal } from "./request-timeout";
-import { EMBEDDING_DIMENSIONS, EmbeddingValidationError, resolveEmbeddingConfig, validateEmbedding, type EmbeddingConfig } from "./embedding-contract";
+import { embeddingDimensions, EmbeddingValidationError, resolveEmbeddingConfig, validateEmbedding, type EmbeddingConfig } from "./embedding-contract";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 
 /**
  * 検索クエリの埋め込みベクトルを生成する。
- * Hosted and private OpenAI-compatible APIs use the same 1536-dimensional contract.
+ * The selected profile defines dimensions and the query/document task contract.
  */
 
 const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export type EmbeddingEnv = {
+  EMBEDDING_PROFILE?: string;
   EMBEDDING_MODEL?: string;
   OPENAI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
@@ -43,7 +44,8 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
       model: config.model,
       input: text,
       encoding_format: "float",
-      dimensions: EMBEDDING_DIMENSIONS,
+      dimensions: embeddingDimensions(config),
+      ...(config.profile === "embeddinggemma2" ? { input_type: "query" } : {}),
     };
 
     let res: Response;

@@ -101,15 +101,26 @@ describe('presigned upload content types', () => {
     vi.stubEnv('VITE_USE_S3_STORAGE', 'true');
     vi.resetModules();
     const { createApiClient } = await import('../api');
-    const video = { id: 7, title: 'Video', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
+    const video = { id: 7, title: 'Video', description: '', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
     const fetchFn = vi.fn().mockResolvedValueOnce(trpcSuccess({ video, upload_url: 'https://objects.example.test/upload' })).mockResolvedValueOnce(trpcSuccess(video));
     const client = createApiClient({ baseUrl: BASE_URL, fetchFn });
     const put = vi.spyOn(client, 'uploadToPresignedUrl').mockResolvedValue();
     const file = new File(['content'], name, { type });
-    await expect(client.uploadVideo({ file, title: 'Video' })).resolves.toMatchObject({ id: 7 });
-    expect(JSON.parse(fetchFn.mock.calls[0][1].body)['0']).toMatchObject({ filename: name, contentType, fileSize: file.size });
+    await expect(client.uploadVideo({ file, title: 'Video', transcriptionLanguage: 'ja' })).resolves.toMatchObject({ id: 7 });
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)['0']).toMatchObject({ filename: name, contentType, fileSize: file.size, transcriptionLanguage: 'ja' });
     expect(put).toHaveBeenCalledExactlyOnceWith('https://objects.example.test/upload', file, contentType, undefined);
     expect(fetchFn.mock.calls[1][0]).toContain('videos.confirmUpload');
+  });
+
+  it.each(['ja', undefined] as const)('sends optional language in local upload form (%s)', async transcriptionLanguage => {
+    vi.stubEnv('VITE_USE_S3_STORAGE', 'false');
+    vi.resetModules();
+    const { createApiClient } = await import('../api');
+    const video = { id: 7, title: 'Video', description: '', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
+    const fetchFn = vi.fn().mockResolvedValue(rawJson(video));
+    const client = createApiClient({ baseUrl: BASE_URL, fetchFn });
+    await client.uploadVideo({ file: new File(['x'], 'clip.mp4', { type: 'video/mp4' }), title: 'Video', transcriptionLanguage });
+    expect((fetchFn.mock.calls[0][1].body as FormData).get('transcriptionLanguage')).toBe(transcriptionLanguage ?? null);
   });
 
   it('requests multipart for a 45.16 GB video and routes part signing and completion through tRPC', async () => {
@@ -117,7 +128,7 @@ describe('presigned upload content types', () => {
     vi.resetModules();
     const { createApiClient } = await import('../api');
     const transfer = await import('../multipartUpload');
-    const video = { id: 7, title: 'Video', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
+    const video = { id: 7, title: 'Video', description: '', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
     const session = { part_size: 64 * 1024 ** 2, part_count: 673 };
     const fetchFn = vi.fn()
       .mockResolvedValueOnce(trpcSuccess({ video, upload_url: null, multipart: session }))
@@ -131,8 +142,8 @@ describe('presigned upload content types', () => {
     const put = vi.spyOn(client, 'uploadToPresignedUrl');
     const file = new File([], 'recording.mkv', { type: 'video/matroska' });
     Object.defineProperty(file, 'size', { value: 45_160_000_000 });
-    await expect(client.uploadVideo({ file, title: 'Video' })).resolves.toMatchObject({ id: 7 });
-    expect(JSON.parse(fetchFn.mock.calls[0][1].body)['0']).toMatchObject({ multipart: true, fileSize: file.size });
+    await expect(client.uploadVideo({ file, title: 'Video', transcriptionLanguage: 'ja' })).resolves.toMatchObject({ id: 7 });
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)['0']).toMatchObject({ multipart: true, fileSize: file.size, transcriptionLanguage: 'ja' });
     expect(multipart).toHaveBeenCalledWith(file, 'video/matroska', session, expect.any(Object), undefined);
     expect(fetchFn.mock.calls[1][0]).toContain('videos.uploadPartUrl');
     expect(fetchFn.mock.calls[2][0]).toContain('videos.completeMultipartUpload');
@@ -144,7 +155,7 @@ describe('presigned upload content types', () => {
     vi.resetModules();
     const { createApiClient } = await import('../api');
     const transfer = await import('../multipartUpload');
-    const video = { id: 7, title: 'Video', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
+    const video = { id: 7, title: 'Video', description: '', file: null, source_type: 'uploaded', status: 'pending', uploaded_at: '2026-09-28T00:00:00Z' };
     const fresh = { ...video, id: 8 };
     const session = { part_size: 64 * 1024 ** 2, part_count: 673 };
     const fetchFn = vi.fn()

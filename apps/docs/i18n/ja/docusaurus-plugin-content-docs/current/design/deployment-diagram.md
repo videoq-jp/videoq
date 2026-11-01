@@ -37,6 +37,8 @@ flowchart TB
     SQS --> Lambda[Python worker Lambda]
     Lambda --> Neon
     Lambda --> R2
+    API --> AI[OpenRouter]
+    Lambda --> AI
 ```
 
 ## デプロイ単位
@@ -50,6 +52,7 @@ flowchart TB
 | Cloudflare binding | Wrangler (`wrangler.jsonc`) |
 | Hyperdrive cache / R2 CORS | 手動承認付き `cloudflare-resources.yml` |
 | AWS worker infrastructure | Terraform |
+| ホスト型AIへの接続 | OpenRouterのポリシーとAWSのワークロードID。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照 |
 | ドキュメント | 関連する変更が`main`へ入り、CIが成功すると、GitHub Actions CDが両言語をCloudflare Worker `videoq-docs`へ公開 |
 
 上のコマンドは各作業の入口です。本番のAPI・worker・DBは `.github/workflows/cd.yml` の手順と順序も確認します。

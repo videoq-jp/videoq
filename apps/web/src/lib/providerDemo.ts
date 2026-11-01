@@ -2,7 +2,7 @@ export const PROVIDER_DEMO_STEPS = ['prepare', 'share', 'answer', 'review'] as c
 
 export function providerDemoMedia(language?: string) {
   const locale = language?.startsWith('en') ? 'en' : 'ja';
-  const version = 3;
+  const version = 4;
   return {
     locale,
     aspectRatio: '16 / 9',

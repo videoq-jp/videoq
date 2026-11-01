@@ -62,7 +62,7 @@ export function TranscriptPanel({
     <div
       className={`min-w-0 lg:col-span-4 lg:relative ${isMobile && mobileTab !== 'transcript' ? 'hidden' : ''}`}
     >
-      <div className="flex min-h-[31.25rem] flex-col border border-solid-gray-420 bg-white lg:absolute lg:inset-0 lg:min-h-0">
+      <div className={`flex min-h-[31.25rem] flex-col border border-solid-gray-420 bg-white lg:absolute lg:inset-0 lg:min-h-0 ${isTranscriptEditing ? 'h-[70dvh] lg:h-auto' : ''}`}>
         <div className="p-4 border-b border-solid-gray-200 flex flex-col gap-3 shrink-0">
           <div className="flex justify-between items-center">
             <Heading size="18">
@@ -98,7 +98,7 @@ export function TranscriptPanel({
         </div>
 
         {isTranscriptEditing ? (
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="min-h-0 flex-1 overflow-hidden flex flex-col">
             <div className="flex shrink-0 flex-col gap-3 border-b border-solid-gray-200 bg-solid-gray-50 p-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex shrink-0 gap-2">
                 <Button
@@ -127,15 +127,17 @@ export function TranscriptPanel({
                 <ErrorMessage message={transcriptSaveError} />
               </div>
             )}
-            <Textarea
-              autoFocus
-              aria-label={t('videos.detail.transcriptSection')}
-              value={editedTranscript}
-              onChange={(event) => onEditedTranscriptChange(event.target.value)}
-              disabled={isTranscriptSaving}
-              spellCheck={false}
-              className="min-h-0 flex-1 resize-none rounded-none border-0 font-mono text-dns-14N-130 leading-relaxed focus:outline-none focus:ring-0"
-            />
+            <div className="min-h-0 flex-1 [&>span]:h-full">
+              <Textarea
+                autoFocus
+                aria-label={t('videos.detail.transcriptSection')}
+                value={editedTranscript}
+                onChange={(event) => onEditedTranscriptChange(event.target.value)}
+                disabled={isTranscriptSaving}
+                spellCheck={false}
+                className="h-full min-h-0 resize-none rounded-none border-0 font-mono text-dns-14N-130 leading-relaxed focus:outline-none focus:ring-0"
+              />
+            </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">

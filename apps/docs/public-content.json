@@ -44,6 +44,7 @@
     "requirements/use-case-diagram.md"
   ],
   "staticAssets": [
+    "robots.txt",
     "img/favicon.ico",
     "img/videoq-icon.png"
   ]

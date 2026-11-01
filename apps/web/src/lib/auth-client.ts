@@ -7,7 +7,7 @@ import { fetchJsonResponse } from './jsonFetch';
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787/api';
 
 /** Origin hosting Better Auth (`/api/auth`). */
-const AUTH_BASE_URL = (rawApiUrl.replace(/\/api\/?$/, '') || window.location.origin).replace(
+const AUTH_BASE_URL = (rawApiUrl.replace(/\/api\/?$/, '') || (globalThis.location?.origin ?? 'http://localhost')).replace(
   /\/+$/,
   '',
 );

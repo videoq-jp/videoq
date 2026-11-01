@@ -67,7 +67,7 @@ def run_transcription(
     elif not video.file_key:
         raise RuntimeError(f"Video {video.id} has no file key for uploaded transcription.")
     else:
-        raw_srt = _transcribe_uploaded(video.file_key, reserve_processing, video_id=video.id)
+        raw_srt = _transcribe_uploaded(video.file_key, reserve_processing, video_id=video.id, language=video.transcription_language)
 
     return raw_srt
 
@@ -75,7 +75,7 @@ def run_transcription(
 def _transcribe_uploaded(
     file_key: str,
     reserve_processing: Callable[[int], None] | None = None,
-    *, video_id: int | None = None,
+    *, video_id: int | None = None, language: str | None = None,
 ) -> str:
     with tempfile.TemporaryDirectory(prefix="videoq-tx-") as tmp:
         tmp_dir = Path(tmp)
@@ -85,7 +85,7 @@ def _transcribe_uploaded(
             reserve_processing(max(1, math.ceil(duration)))
         audio_path = tmp_dir / "audio.mp3"
         _ffmpeg_extract_mp3(video_path, audio_path)
-        segments = _whisper_transcribe(audio_path)
+        segments = _whisper_transcribe(audio_path, **({"language": language} if language else {}))
         srt = create_srt_from_whisper_segments(segments)
         if not srt.strip():
             raise RuntimeError("Whisper returned an empty transcript")
@@ -151,6 +151,7 @@ def _check_extracted_audio(proc, audio_path: Path) -> None:
 
 def transcribe_audio_interval(
     source: Path | ObjectMediaSource, start_seconds: float, duration_seconds: float,
+    *, language: str | None = None,
 ) -> list[dict[str, Any]]:
     """A bounded input range and one Whisper call; timestamps remain source-relative."""
     max_duration = 300
@@ -167,7 +168,7 @@ def transcribe_audio_interval(
         _check_extracted_audio(result, audio)
         client, model = _whisper_client()
         with client:
-            segments = _whisper_file(client, audio, model, offset=start_seconds)
+            segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
     end_seconds = start_seconds + duration_seconds
     result = []
     for segment in segments:
@@ -213,25 +214,25 @@ def _whisper_client():
     return client, model
 
 
-def _whisper_transcribe(audio_path: Path) -> list[dict[str, Any]]:
+def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> list[dict[str, Any]]:
     client, model = _whisper_client()
     with client:
         # Whisper API soft limit ~25MB; split longer audio into ~10min chunks if needed.
         size_mb = audio_path.stat().st_size / (1024 * 1024)
         if size_mb <= 24:
-            return _whisper_file(client, audio_path, model, offset=0.0)
+            return _whisper_file(client, audio_path, model, offset=0.0, **({"language": language} if language else {}))
 
         all_segments: list[dict[str, Any]] = []
         with closing(_split_audio_chunks(audio_path, chunk_seconds=600)) as chunks:
             for offset, chunk_path in chunks:
                 all_segments.extend(
-                    _whisper_file(client, chunk_path, model, offset=offset)
+                    _whisper_file(client, chunk_path, model, offset=offset, **({"language": language} if language else {}))
                 )
         return all_segments
 
 
 def _whisper_file(
-    client: Any, audio_path: Path, model: str, *, offset: float
+    client: Any, audio_path: Path, model: str, *, offset: float, language: str | None = None
 ) -> list[dict[str, Any]]:
     if model == "openai/whisper-large-v3-turbo" and env_str("OPENROUTER_FEDERATION_POLICY_ID"):
         # A warm worker can process several chunks after the initial client is created.
@@ -242,6 +243,7 @@ def _whisper_file(
             file=fh,
             response_format="verbose_json",
             timestamp_granularities=["segment"],
+            **({"language": language} if language else {}),
         )
     segments = getattr(result, "segments", None) or []
     out: list[dict[str, Any]] = []

@@ -7,7 +7,6 @@ import logging
 
 from worker_python.db import db_connection
 from .embedding_contract import (
-    EMBEDDING_DIMENSIONS,
     EmbeddingConfig,
     EmbeddingContractError,
     embedding_diagnostic,
@@ -25,11 +24,11 @@ EMBEDDING_SCHEMA_SQL = """
 
 
 def assert_embedding_schema(conn, config: EmbeddingConfig) -> None:
-    row = conn.execute(EMBEDDING_SCHEMA_SQL, ("public.scene_embeddings",)).fetchone()
+    row = conn.execute(EMBEDDING_SCHEMA_SQL, (f"public.{config.table}",)).fetchone()
     dimensions = row["dimensions"] if row else None
-    if not row or row["type_name"] != "vector" or dimensions != EMBEDDING_DIMENSIONS:
+    if not row or row["type_name"] != "vector" or dimensions != config.dimensions:
         raise EmbeddingContractError(
-            "EMBEDDING_SCHEMA_MISMATCH", "Embedding storage must use vector(1536). Check the database schema.",
+            "EMBEDDING_SCHEMA_MISMATCH", f"Embedding storage must use vector({config.dimensions}). Check the database schema.",
             config, db_dimensions=dimensions,
         )
     logger.info(json.dumps(embedding_diagnostic(config, db_dimensions=dimensions)))

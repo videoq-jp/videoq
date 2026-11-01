@@ -52,6 +52,8 @@ def checkpoint_db(monkeypatch):
                 migration = Path(__file__).parents[2] / "api/drizzle/0031_resumable_transcription.sql"
                 # Execute the generated production DDL in this isolated test schema.
                 conn.execute(migration.read_text().replace('"public".', ''))
+                language_migration = Path(__file__).parents[2] / "api/drizzle/0041_transcription_language.sql"
+                conn.execute(language_migration.read_text())
                 fallback_migration = Path(__file__).parents[2] / "api/drizzle/0037_resumable_transcription_fallback.sql"
                 conn.execute(fallback_migration.read_text())
             for module in (checkpoints, tasks, transcription):
@@ -315,3 +317,19 @@ def test_short_cpu_intervals_cannot_exceed_the_queue_checkpoint_contract(monkeyp
     source = MagicMock(file_key="video.mp4", transcript_hash="fingerprint")
     with pytest.raises(ValueError, match="10,000-checkpoint"):
         checkpoints.initialize_run(source, 300001)
+
+
+def test_saved_video_language_is_reused_for_every_chunk_and_retry(checkpoint_db, monkeypatch):
+    with checkpoint_db() as conn:
+        conn.execute("UPDATE videos SET transcription_language = 'ja' WHERE id = 42")
+    run = checkpoints.initialize_run(video(checkpoint_db), 601)
+    provider = MagicMock(side_effect=[RuntimeError("temporary failure"), [], [], []])
+    monkeypatch.setattr(tasks, "transcribe_audio_interval", provider)
+    monkeypatch.setattr(tasks, "resolve_media_input", lambda key: key)
+    monkeypatch.setattr(tasks, "enqueue_job", MagicMock(return_value="message"))
+    with pytest.raises(RuntimeError, match="temporary failure"):
+        tasks.transcribe_video_chunk(42, run.run_id, 0)
+    for index in range(3):
+        tasks.transcribe_video_chunk(42, run.run_id, index)
+    assert len(provider.call_args_list) == 4
+    assert all(call.kwargs == {"language": "ja"} for call in provider.call_args_list)

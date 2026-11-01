@@ -77,7 +77,7 @@ def transcribe_video_chunk(video_id: int, run_id: str, chunk_index: int) -> None
         if not completed:
             start = chunk_index * run.chunk_seconds
             duration = min(run.chunk_seconds, run.duration_ms / 1000 - start)
-            segments = transcribe_audio_interval(source, start, duration)
+            segments = transcribe_audio_interval(source, start, duration, **({"language": run.transcription_language} if run.transcription_language else {}))
             if not checkpoints.save_chunk(run, chunk_index, segments):
                 return
             logger.info("Transcription checkpoint saved: video=%d chunk=%d/%d", video_id, chunk_index + 1, run.chunk_count)

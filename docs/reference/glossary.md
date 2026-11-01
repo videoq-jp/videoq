@@ -23,11 +23,13 @@ You do not need to memorize everything. Use this page to connect unfamiliar term
 | R2 / Garage | Storage for video files and other objects / compatible local storage |
 | Neon / PostgreSQL | The production database service / its underlying database |
 | Hyperdrive | Connects Cloudflare Workers to PostgreSQL |
-| Durable Object (DO) | A stateful Cloudflare execution unit, used for rate limits and job recovery scheduling |
+| Durable Object (DO) | A stateful Cloudflare execution unit, used for rate limits, job recovery scheduling, and running chat answers |
 | Embedding | A numeric array for comparing text meaning. API questions and worker subtitles must use the same model and dimensions |
 | pgvector | A PostgreSQL extension for storing and searching embeddings |
 | RAG | Retrieval-augmented generation: finding relevant material before producing an answer. VideoQ refers to video subtitles and metadata |
 | LLM | A language model used to generate answers |
+| OpenRouter | The hosted gateway for answers, image inspection, embeddings, and transcription. Private servers can replace it on-premises |
+| Workload identity federation | Lets a workload call OpenRouter with its AWS identity instead of a stored API key |
 | Agent / tool call | The answer model chooses a registered operation, such as course metadata or scene search; the API validates and executes it within the authorized scope |
 | Structured answer / `ChatAnswer` | The shared answer format: `segments` pair text with source IDs, while `sources` contains server-owned video and timestamp metadata |
 | Outbox | Records jobs awaiting delivery in the same DB as business data, enabling recovery from missed dispatches |

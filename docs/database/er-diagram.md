@@ -55,6 +55,18 @@ erDiagram
     VIDEOS ||--o{ SCENE_EMBEDDINGS : indexed
 ```
 
+## Resumable processing
+
+```mermaid
+erDiagram
+    VIDEOS ||--o| VIDEO_TRANSCRIPTION_RUNS : plans
+    VIDEO_TRANSCRIPTION_RUNS ||--o{ VIDEO_TRANSCRIPTION_CHUNKS : saves
+    VIDEOS ||--o| VIDEO_VISUAL_RUNS : plans
+    VIDEO_VISUAL_RUNS ||--o{ VIDEO_VISUAL_CHUNKS : tracks
+```
+
+Each video has at most one current plan of each kind. Deleting a video removes its plans and chunks by foreign-key cascade.
+
 ## Before changing the schema
 
 [modern.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/db/schema/modern.ts) is the source of truth for business data. Check related-row handling when users or videos are deleted, duplicate-prevention constraints, and query indexes together.

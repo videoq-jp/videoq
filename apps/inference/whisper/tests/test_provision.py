@@ -54,8 +54,9 @@ def test_snapshot_downloads_only_serving_data_and_detects_missing_cached_weights
     env = {**settings(tmp_path), "MODEL_FILE": "", "MODEL_SHA256": ""}
     calls = []
 
-    def snapshot(repo, *, revision, local_dir, allow_patterns):
+    def snapshot(repo, *, revision, local_dir, allow_patterns, ignore_patterns):
         assert "*.py" not in allow_patterns and "*.bin" not in allow_patterns
+        assert "original/**" in ignore_patterns
         calls.append(revision)
         (local_dir / "config.json").write_text("{}")
         (local_dir / "model.safetensors").write_bytes(b"weights")

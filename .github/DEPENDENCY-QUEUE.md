@@ -1,46 +1,47 @@
 # GitHub Merge Queue
 
-mainへのマージ順と統合用CIはGitHub標準のMerge Queueで管理する。
-通常の開発PRもmainへマージする際はこのキューを使う。
-Dependency Automationが自動投入するのは、検証済みのDependabot major/minor/patch更新と
-管理Botの`runtime/*-current` PR。ランタイムの新系列・除外PRは人が判断する。
-自動処理の対象外でも、人がキューへ投入したPRをコントローラーが取り消すことはない。
-自動更新Bot自身が投入した予約だけを、由来の検証失敗や除外指定に応じて取り消す。
+GitHub's standard Merge Queue manages merge order into main and integration CI.
+Ordinary development PRs also use this queue when merging to main.
+Dependency Automation automatically queues only verified Dependabot major/minor/patch updates
+and managed-bot `runtime/*-current` PRs. People decide on new runtime lines and excluded PRs.
+The controller never removes a PR that a person queued, even if it is outside automatic processing.
+It removes only entries queued by the update bot itself, when origin verification fails or an exclusion applies.
 
-通常のPR CIが成功すると、コントローラーが現在のhead SHAを指定してキューへ投入する。
-GitHubは最新mainと対象PRを統合したコミットを作り、`merge_group`のCIを実行する。
-統合用ビルドは同時1件、マージグループは1 PRとし、先行PRのマージで後続の投機ビルドが
-無効になるのを防ぐ。通常のmain更新では待機中PRのブランチを再生成・rebaseしない。
+After normal PR CI succeeds, the controller queues the PR by its current head SHA.
+GitHub creates a commit merging latest main with the PR and runs `merge_group` CI.
+Integration builds run one at a time and a merge group holds one PR, so merging an earlier PR
+does not invalidate later speculative builds. Ordinary main updates do not regenerate or rebase waiting PR branches.
 
-必須チェックはGitHub Actionsの`CI Success`、`Supply Chain Security`、
-`Terraform Plan`、`Container Validation`。管理者にも適用する。
-「ブランチを最新に保つ」は無効にし、代わりにMerge Queueを必須にする。
-設定は[.github/native-merge-queue.json](native-merge-queue.json)を参照する。
-キューの待機上限は120分で、90分上限のオンプレミス検証も待てるようにしている。
+The required checks are GitHub Actions' `CI Success`, `Supply Chain Security`,
+`Terraform Plan`, and `Container Validation`, and they apply to administrators.
+"Require branches to be up to date" is disabled; Merge Queue is required instead.
+See [.github/native-merge-queue.json](native-merge-queue.json) for the settings.
+The queue's wait limit is 120 minutes, so it can wait for on-prem validation's 90-minute limit.
 
-## CI失敗・競合とClaude修正
+## CI failures, conflicts, and Claude repairs
 
-キュー上での失敗は、実際のworkflow ID、リポジトリ、現在のPR headの祖先関係、
-Botの更新由来を確認する。必要な場合だけそのPRを最新mainへ追従し、通常PR CIで再現する。
-この再現はPR全体で最大2回。合成されたキュー用コミットを直接Claudeへ渡さない。
-通常のPR CIが修正対象として検証できた場合に、既存のClaude判定へ進む。
-競合があるDependabot PRも、署名済みの元更新と現在のmainを検証してClaudeへ渡す。
-設定・生成型・テストを含めて互換性を直し、通常CIと同じキューへ戻す。
-CI修正・競合解消はそれぞれ最大8回、同じheadも実行完了後に再試行可能。実行中は重複起動しない。
-セキュリティ検査の失敗、未検証の変更、修正上限は引き続き人による確認が必要。
+For a failure in the queue, the controller checks the actual workflow ID, repository,
+ancestry against the current PR head, and the bot update's origin. Only when needed does it bring
+that PR up to main and reproduce the failure in normal PR CI, at most twice per PR.
+The synthetic queue commit is never handed to Claude directly.
+Once normal PR CI verifies a repairable failure, the existing Claude decision applies.
+A conflicting Dependabot PR also goes to Claude after verifying the signed original update and current main.
+Claude fixes compatibility across configuration, generated types, and tests, then the PR returns to the same queue through normal CI.
+CI repair and conflict resolution each allow up to eight attempts; the same head can retry after a run completes, and duplicate runs are not started while one is active.
+Failed security scans, unverified changes, and reaching the repair limit still need human review.
 
-状態用Issue、実行枠確認ジョブ、独自の必須チェックは使用しない。
-PRイベント、main push、CIとClaudeワーカーの完了イベントで動き、main追従の定期確認は行わない。
-ランタイムの日次探索は、新しい公式リリースを見つけるために継続する。
+No status Issues, runner-availability jobs, or custom required checks are used.
+It runs on PR events, main pushes, and CI and Claude worker completion events, without scheduled polling to follow main.
+Runtime daily discovery continues in order to find new official releases.
 
-## 運用
+## Operation
 
-- `DEPENDENCY_AUTOMERGE_ENABLED=true`で自動更新コントローラーを有効にする。
-- `RUNTIME_AUTOMERGE_ENABLED=false`はランタイムPRの自動投入を停止する。
-- `CLAUDE_DEPENDENCY_REPAIR_ENABLED=true`は、対応するCI失敗の修正を許可する。
-- `no-automerge`、`no-runtime-update`、`no-rebase`、`no-claude`などの除外は
-  [依存更新の自動化](dependency-automation.md)を参照する。
+- `DEPENDENCY_AUTOMERGE_ENABLED=true` enables the automatic update controller.
+- `RUNTIME_AUTOMERGE_ENABLED=false` stops automatically queueing runtime PRs.
+- `CLAUDE_DEPENDENCY_REPAIR_ENABLED=true` permits repairing eligible CI failures.
+- See [dependency automation](dependency-automation.md) for exclusions such as `no-automerge`,
+  `no-runtime-update`, `no-rebase`, and `no-claude`.
 
-自動投入を止める場合は`DEPENDENCY_AUTOMERGE_ENABLED=false`にする。
-mainのMerge Queueルールと必須チェックは維持し、通常の開発PRは引き続きキューでマージする。
-既に投入されたPRはキュー画面から個別に除外する。保護設定を外して直接マージしない。
+To stop automatic queueing, set `DEPENDENCY_AUTOMERGE_ENABLED=false`.
+Keep main's Merge Queue rule and required checks; ordinary development PRs still merge through the queue.
+Remove already queued PRs individually in the queue view. Do not disable protection to merge directly.

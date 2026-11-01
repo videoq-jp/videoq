@@ -6,7 +6,7 @@ description: Setup, core concepts, and development guides for new VideoQ contrib
 
 # VideoQ developer documentation
 
-VideoQ is a **learning app that lets you ask questions about videos and jump straight to the scenes that support the answers**. Organize videos into courses, share them, and learn through Q&A.
+VideoQ **automatically answers student questions from lecture videos and links each answer to the scene that supports it**. Course creators and instructors organize videos into courses and share them; students ask questions and jump to the cited scenes.
 
 This site helps new contributors run the app and make their first small change. You do not need to read every design diagram before getting started.
 
@@ -18,7 +18,7 @@ Then explore [transcription and scene search](architecture/transcription-and-sea
 
 [AI methods and references](reference/ai-references.md) lists original papers, official model sources, implementation mappings, and reusable BibTeX citations.
 
-The current pipeline uses **independent questions, tool-based retrieval, and structured answers**. Answer text and citations stream during generation; completed course answers are saved after validation. No post-answer AI scoring runs. The former Study mode and PLOG learning graph have been removed. The [AI overview](concepts/how-ai-works.md) reflects the implementation checked on 2026-10-01.
+The current pipeline uses **independent questions, tool-based retrieval, and structured answers**. Answer text and citations stream during generation; completed course answers are saved after validation. No post-answer AI scoring runs. The former Study mode and PLOG learning graph have been removed. The [AI overview](concepts/how-ai-works.md) reflects the implementation checked on 2026-10-31.
 
 ## New to the project?
 

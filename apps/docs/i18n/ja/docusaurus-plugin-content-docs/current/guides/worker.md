@@ -32,7 +32,7 @@ description: ジョブの入口、処理本体、再試行の考え方とロー�
 
 上記は形式の例です。通常はAPIの操作でジョブを作り、手でキューへ投入する必要はありません。
 
-処理は概ね `transcribe_video` → `index_video_transcript` の順です。
+アップロード動画では、`transcribe_video` が区間の計画を作り、`transcribe_video_chunk` が区間ごとに保存し、`finish_video_transcription` がそれらを結合してから `index_video_transcript` と画像キャッシュのジョブ（`build_video_visual_chunk` → `finish_video_visuals`）を開始します。YouTube取り込みに区間ジョブはありません。[動画の状態](../design/state-diagram.md)も参照してください。
 
 開始できる状態は各タスクで検証し、DBの条件付き更新でも保存済みの状態を確認します。
 文字起こしは pending/error から開始し、processing は再開、indexing は索引タスクへ

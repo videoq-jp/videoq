@@ -10,12 +10,15 @@ from sqlalchemy.engine import make_url
 
 from worker_python.db import db_connection
 from worker_python.pipeline import vector_index
+from worker_python.pipeline.embedding_contract import resolve_embedding_config
+
+config = resolve_embedding_config()
 from worker_python.pipeline.langchain_embeddings import VideoQEmbeddings
 from worker_python.video_sql import get_video_for_task
 
 
 def embed(texts):
-    return [[1.0 if i == 0 else 0.0 for i in range(1536)] for _ in texts]
+    return [[1.0 if i == 0 else 0.0 for i in range(config.dimensions)] for _ in texts]
 
 
 with patch.object(vector_index, "embed_texts", side_effect=embed):
@@ -41,7 +44,7 @@ engine = PGEngine.from_connection_string(
 )
 try:
     store = PGVectorStore.create_sync(
-        engine=engine, table_name="scene_embeddings", embedding_service=VideoQEmbeddings(),
+        engine=engine, table_name=config.table, embedding_service=VideoQEmbeddings(),
         metadata_columns=["user_id", "video_id"],
     )
     store.apply_vector_index(HNSWIndex(name="python_embedding_hnsw"))

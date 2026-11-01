@@ -45,6 +45,26 @@ export const ActiveSegment: Story = { args: { activeSegmentIdx: 1 }, async play(
 export const Search: Story = { async play({ canvas, userEvent }) { await userEvent.type(canvas.getByRole('searchbox'), '座標'); await expect(canvas.getByRole('button', { name: /00:00:05/ })).toBeVisible(); await expect(canvas.queryByRole('button', { name: /00:00:12/ })).not.toBeInTheDocument(); } };
 export const NoSearchResults: Story = { args: { transcriptSearch: '見つからない語句' }, async play({ canvas }) { await expect(canvas.getByText(label('transcriptNotFound'))).toBeVisible(); } };
 export const Editing: Story = { async play({ canvas, userEvent }) { await userEvent.click(canvas.getByRole('button', { name: label('editTranscriptButton') })); await expect(canvas.getByRole('textbox', { name: label('transcriptSection') })).toHaveFocus(); } };
+const longEditableTranscript = Array.from({ length: 150 }, (_, index) => `字幕 ${index + 1}: 長い文字起こしの編集内容です。`).join('\n');
+export const EditingFullHeight: Story = {
+  args: { video: { ...detailVideo, transcript: longEditableTranscript } },
+  async play(context) {
+    await Editing.play!(context);
+    const textbox = context.canvas.getByRole('textbox') as HTMLTextAreaElement;
+    const panel = context.canvas.getByRole('heading').closest('div.flex.min-h-\\[31\\.25rem\\]')!;
+    await expect(textbox.clientHeight).toBeGreaterThan(250);
+    await expect(Math.abs(textbox.getBoundingClientRect().bottom - panel.getBoundingClientRect().bottom)).toBeLessThan(3);
+    textbox.scrollTop = textbox.scrollHeight;
+    await expect(textbox.scrollTop).toBeGreaterThan(0);
+    await expect(textbox.scrollTop + textbox.clientHeight).toBeGreaterThanOrEqual(textbox.scrollHeight - 1);
+    await expect(textbox).toHaveValue(longEditableTranscript);
+  },
+};
+export const EditingFullHeightMobile: Story = {
+  ...EditingFullHeight,
+  globals: { viewport: { value: 'mobile', isRotated: false } },
+  args: { ...EditingFullHeight.args, isMobile: true },
+};
 export const Saving: Story = { parameters: { outcome: 'pending' }, async play(context) { await Editing.play!(context); await context.userEvent.click(context.canvas.getByRole('button', { name: label('saveTranscriptButton') })); for (const control of context.canvas.getAllByRole('button')) await expect(control).toBeDisabled(); await expect(context.canvas.getByRole('textbox')).toBeDisabled(); } };
 export const SaveFailed: Story = { parameters: { outcome: 'error' }, async play(context) { await Editing.play!(context); await context.userEvent.type(context.canvas.getByRole('textbox'), '\n修正内容'); await context.userEvent.click(context.canvas.getByRole('button', { name: label('saveTranscriptButton') })); await expect(context.canvas.getByRole('alert')).toHaveTextContent(saveError); await expect(context.canvas.getByRole('textbox')).toHaveValue(transcript + '\n修正内容'); await waitFor(() => expect(context.canvas.getByRole('alert').parentElement).toHaveFocus()); } };
 export const SaveSucceeded: Story = { async play(context) { await Editing.play!(context); await context.userEvent.clear(context.canvas.getByRole('textbox')); await context.userEvent.type(context.canvas.getByRole('textbox'), '更新した字幕'); await context.userEvent.click(context.canvas.getByRole('button', { name: label('saveTranscriptButton') })); await expect(context.canvas.getByText('更新した字幕')).toBeVisible(); await expect(context.canvas.getByRole('button', { name: label('editTranscriptButton') })).toHaveFocus(); } };

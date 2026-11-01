@@ -15,6 +15,7 @@ Run these commands from the repository root.
 |---|---|---|
 | Shared TypeScript contracts | `npm run typecheck` | Dependencies installed with `npm ci` |
 | Frontend | `npm run lint` / `npm run test:web` / `npm run build` | Node.js |
+| Public-page Worker and landing media | `npm run test:worker --workspace @videoq/web` | `npm run build` first |
 | API | `npm run test:api` | Node.js and the Workers test runtime |
 | DB schema | `npm run db:check` / `npm run db:verify` | Generated migrations |
 | UI interactions and appearance | `npm run test:storybook` / `npm run build:storybook` | Chromium |

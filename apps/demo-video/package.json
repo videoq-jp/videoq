@@ -11,11 +11,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@remotion/bundler": "4.0.537",
-    "@remotion/cli": "4.0.537",
-    "@remotion/renderer": "4.0.537",
+    "@remotion/bundler": "4.0.538",
+    "@remotion/cli": "4.0.538",
+    "@remotion/renderer": "4.0.538",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "remotion": "4.0.537"
+    "remotion": "4.0.538"
   }
 }

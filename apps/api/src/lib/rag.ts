@@ -1,5 +1,7 @@
 import { createAgent, createMiddleware, providerStrategy, tool, type ToolRuntime } from "langchain";
-import { HumanMessage, SystemMessage, isAIMessage, type BaseMessage } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
+import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+import type { ChatModelStreamEvent } from "@langchain/core/language_models/event";
 import { z } from "zod";
 import { createChatModel, toLlmError } from "./chat-model";
 import { deadlineSignal } from "./request-timeout";
@@ -172,6 +174,19 @@ function sceneSearchTool(
   );
 }
 
+/** Use Core's event assembler; the graph's custom channel only forwards events. */
+class ModelStreamHandler extends BaseCallbackHandler {
+  name = "videoqModelStream";
+  lc_prefer_chat_model_stream_events = true;
+  awaitHandlers = true;
+
+  constructor(private readonly writer: ((chunk: unknown) => void) | undefined) { super(); }
+
+  handleChatModelStreamEvent(modelEvent: ChatModelStreamEvent) {
+    this.writer?.({ modelEvent });
+  }
+}
+
 /** 検索スコープを固定した ReAct エージェントを組み立てる。 */
 function prepareAgent(
   env: Bindings,
@@ -181,6 +196,7 @@ function prepareAgent(
     timeoutMs: number;
     scope: RagParams;
     signal: AbortSignal;
+    streaming?: boolean;
   },
 ) {
   const collector = new SceneCollector();
@@ -235,6 +251,10 @@ function prepareAgent(
         // 引数不備の繰り返しも含め、最終ターンはツールなしで回答させる。
         wrapModelCall: (request, handler) => handler({
           ...request,
+          modelSettings: {
+            ...request.modelSettings,
+            ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
+          },
           tools: ++modelCalls > MAX_TOOL_ROUNDS ? [] : request.tools,
         }),
       }),
@@ -382,59 +402,57 @@ export async function* streamRag(
       timeoutMs: llmTimeoutMs(env, true),
       scope: params,
       signal: requestSignal,
+      streaming: true,
     });
 
     const stream = await prepared.agent.stream(prepared.input, {
-      streamMode: ["values", "custom", "messages"],
+      streamMode: ["values", "custom"],
       signal: requestSignal,
       recursionLimit: RECURSION_LIMIT,
     });
 
-    // LangGraph's messages mode streams the model invocation itself. Keep parsers
-    // per model turn: tool arguments and natural-language search preambles are
-    // never interpreted as answer text. Only segments[].text is displayed.
+    // Core assembles each model turn from native events, including scalar
+    // finish metadata. Forward those events through the graph writer so tool
+    // progress, error delivery and cancellation keep the same graph lifecycle.
+    // Only segments[].text is displayed; tool preambles are not answer text.
     let messages: readonly BaseMessage[] = [];
     let structuredResponse: unknown;
-    let currentMessageId: string | undefined;
     let parser = new AnswerContentStream();
     let toolTurn = false;
     let emittedAnswer = false;
     let sentSources = 0;
     for await (const [mode, chunk] of stream) {
-      if (mode === "custom") {
+      if (mode === "values") {
+        messages = chunk.messages;
+        structuredResponse = chunk.structuredResponse;
+        continue;
+      }
+      if (!chunk || typeof chunk !== "object" || !("modelEvent" in chunk)) {
         const progress = searchProgressSchema.safeParse(chunk);
         if (progress.success) yield progress.data;
         else {
           const toolProgress = toolProgressSchema.safeParse(chunk);
           if (toolProgress.success) yield toolProgress.data;
         }
-      } else if (mode === "messages") {
-        const [message] = chunk;
-        if (!isAIMessage(message)) continue;
-        if (message.id !== currentMessageId) {
+      } else {
+        const message = chunk.modelEvent as ChatModelStreamEvent;
+        if (message.event === "message-start") {
           if (emittedAnswer) throw new LlmProviderError("Model continued after streaming an answer.");
-          currentMessageId = message.id;
           parser = new AnswerContentStream();
           toolTurn = false;
         }
-        if (("tool_call_chunks" in message && Array.isArray(message.tool_call_chunks) && message.tool_call_chunks.length)
-          || message.tool_calls?.length) {
-          // A provider mixing structured answer text with tools cannot retract
-          // already displayed text. Fail the stream instead of saving that text.
+        if (message.event === "content-block-start" && message.content.type === "tool_call_chunk") {
           if (emittedAnswer) throw new LlmProviderError("Model called a tool after streaming an answer.");
           toolTurn = true;
         }
-        if (toolTurn || message.additional_kwargs.refusal) continue;
+        if (toolTurn || message.event !== "content-block-delta" || message.delta.type !== "text-delta") continue;
         const sources = prepared.sources();
         for (const source of sources.slice(sentSources)) yield { source };
         sentSources = sources.length;
-        for (const part of parser.push(message.text, sources)) {
+        for (const part of parser.push(message.delta.text, sources)) {
           emittedAnswer = true;
           yield { part };
         }
-      } else {
-        messages = chunk.messages;
-        structuredResponse = chunk.structuredResponse;
       }
     }
     requestSignal.throwIfAborted();

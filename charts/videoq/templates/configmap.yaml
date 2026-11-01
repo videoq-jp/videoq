@@ -33,10 +33,12 @@ data:
   LLM_MODEL: {{ .Values.ai.llmModel | quote }}
   LLM_REASONING_EFFORT: {{ .Values.ai.reasoningEffort | quote }}
   LLM_SEPARATE_TOOL_SCHEMA: {{ .Values.ai.separateToolSchema | quote }}
+  LLM_PRESERVE_TOOL_REASONING: {{ .Values.ai.preserveToolReasoning | quote }}
   LLM_REQUEST_TIMEOUT_MS: {{ .Values.ai.requestTimeoutMs | quote }}
   LLM_STREAM_TIMEOUT_MS: {{ .Values.ai.streamTimeoutMs | quote }}
   EMBEDDING_BASE_URL: {{ .Values.ai.embeddingBaseUrl | quote }}
   EMBEDDING_MODEL: {{ .Values.ai.embeddingModel | quote }}
+  EMBEDDING_PROFILE: {{ .Values.ai.embeddingProfile | quote }}
   WHISPER_CHUNK_SECONDS: {{ .Values.ai.whisperChunkSeconds | quote }}
   WHISPER_BACKEND: {{ .Values.ai.whisperBackend | quote }}
   WHISPER_LOCAL_URL: {{ .Values.ai.whisperLocalUrl | quote }}

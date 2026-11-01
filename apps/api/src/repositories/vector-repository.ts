@@ -3,18 +3,20 @@ import type { EmbeddingsInterface } from "@langchain/core/embeddings";
 import pg from "pg";
 import { databaseConnectionString } from "../db/pool";
 import { embedQuery } from "../lib/embeddings";
-import { resolveEmbeddingConfig } from "../lib/embedding-contract";
+import { embeddingTable, resolveEmbeddingConfig } from "../lib/embedding-contract";
 import { assertEmbeddingSchema } from "../lib/embedding-schema";
 import type { Bindings } from "../types/bindings";
 import type { AnswerCostLedger } from "../lib/answer-cost-ledger";
 
-const ALLOWED_TABLES = new Set(["scene_embeddings"]);
+const ALLOWED_TABLES = new Set(["scene_embeddings", "scene_embeddings_768"]);
 
 function resolveVectorTable(env: Bindings): string {
-  const name = env.PGVECTOR_COLLECTION_NAME || "scene_embeddings";
+  const expected = embeddingTable(resolveEmbeddingConfig(env));
+  const name = env.PGVECTOR_COLLECTION_NAME || expected;
   if (!ALLOWED_TABLES.has(name)) {
     throw new Error(`vector table '${name}' is not in the allowed list`);
   }
+  if (name !== expected) throw new Error("Vector table does not match the selected embedding profile.");
   return name; // allowlist 済みなので式内展開は安全
 }
 

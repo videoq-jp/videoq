@@ -1,5 +1,5 @@
-# apps/api（Web API）ローカル開発用の機密変数の雛形。
-# コピーして `.dev.vars` を作成（.gitignore 済み）。wrangler dev が自動で読み込む。
+# Template for local apps/api secrets.
+# Copy to `.dev.vars` (ignored by Git). wrangler dev loads it automatically.
 
 # Independent application secrets. Generate new values for every environment.
 # Better Auth signing secret (preferred). AUTH_JWT_SECRET is a deprecated fallback only.
@@ -12,20 +12,20 @@ BETTER_AUTH_URL="http://localhost:8787"
 # Base64url-encoded 32-byte AES-GCM key.
 USER_SECRET_ENCRYPTION_KEY=""
 
-# OpenRouter: 回答・画像確認・埋め込みで共有。worker にも同じキーを設定。
+# OpenRouter: shared by answers, image inspection and embeddings. Set the same key on the worker.
 # OPENROUTER_API_KEY=""
 
-# ローカル llama.cpp / vLLM（ツール呼び出し・JSON Schema 対応モデルが必要）。
+# Local llama.cpp / vLLM (the model must support tool calling and JSON Schema).
 # OPENAI_API_KEY="local-inference"
 # OPENAI_BASE_URL="http://127.0.0.1:8000/v1"
 # LLM_MODEL="videoq-chat"
 # VIDEO_VISUAL_ENABLED="false"
-# 埋め込みは専用の OpenAI 互換 API。API・worker のモデル名を揃える。
+# Embeddings use a dedicated OpenAI-compatible API. Keep the API and worker model names equal.
 # EMBEDDING_BASE_URL="http://127.0.0.1:8001/v1"
 # EMBEDDING_API_KEY="local-inference"
 # EMBEDDING_MODEL="gte-qwen2-1.5b-q4km-124fbdad"
 
-# Stripe Billing（restricted key rk_ を推奨）。未設定なら /api/billing/plans はカタログ金額を返す。
+# Stripe Billing (a restricted rk_ key is recommended). Without it, billing.plans returns catalog amounts.
 # STRIPE_SECRET_KEY=""
 # STRIPE_WEBHOOK_SECRET=""
 
@@ -39,20 +39,20 @@ USE_S3_STORAGE="true"
 R2_ACCESS_KEY_ID="GK00000000000000000000000000000000"
 R2_SECRET_ACCESS_KEY="0000000000000000000000000000000000000000000000000000000000000000"
 R2_S3_ENDPOINT="http://127.0.0.1:9000"
-# compose 内 API のみ: Head/Delete 用（ブラウザ署名は上の公開 URL）
+# API inside Compose only: for Head/Delete (browser signatures use the public URL above)
 # R2_S3_INTERNAL_ENDPOINT="http://garage:3900"
 R2_BUCKET_NAME="videoq-media"
 R2_S3_REGION="garage"
 
 # --- Local ElasticMQ (docker compose up -d elasticmq) ---
 # Queue: http://127.0.0.1:9324/000000000000/videoq-jobs  Stats UI: :9325
-# Dummy keys（ElasticMQ は署名を緩く受理）。Garage の R2_* とは別。
+# Dummy keys (ElasticMQ accepts loose signatures). Separate from Garage's R2_* values.
 SQS_QUEUE_URL="http://127.0.0.1:9324/000000000000/videoq-jobs"
 AWS_REGION="us-east-1"
 AWS_ACCESS_KEY_ID="local"
 AWS_SECRET_ACCESS_KEY="local"
 
-# OAuth / OIDC（任意）
+# OAuth / OIDC (optional)
 # OAUTH_ISSUER_URL="http://localhost:8787"
 
 # Uploaded-video visual evidence is on by default. Set false on API and worker to opt out.

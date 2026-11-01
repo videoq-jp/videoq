@@ -1,8 +1,8 @@
 # VideoQ
 
-> VideoQは、大学生の講義の復習・試験勉強を助ける動画検索・質問サービスです。講義動画に自分の言葉で質問し、答えと根拠の場面を確認できます。
+> VideoQは、動画講座の運営者・講師のためのサービスです。講義動画をアップロードすると、受講生の質問に動画の内容から自動で回答します。回答には講義の該当場面が付きます。
 
-VideoQ helps university students review lectures and prepare for exams. Ask questions about your lecture videos and revisit the source explanation. Upload videos you have the right to use.
+VideoQ is for course creators and instructors. Upload lecture videos and student questions get answered automatically from them, with every answer linked to the source moment. Upload videos you have the right to use.
 
 ## Key Features
 
@@ -36,26 +36,49 @@ VideoQ is free to start. No credit card is required. Plans are Free, Basic, and 
 
 ## Use Cases
 
-### 講義の復習 / Lecture revision
+### オンライン講座・動画教材 / Online courses
 
-授業で聞き逃した用語や式を、自分の言葉で質問。説明の場面に戻り、自分のペースで復習できます。
+販売中の講座動画をもとに受講生の質問へ自動で回答し、講師の説明へ案内します。
 
-For university education: ask about a term or formula you missed, then return to the explanation and review at your own pace.
+For online education: answer student questions automatically from paid course videos and point students back to the instructor's explanation.
 
-### 試験勉強 / Exam preparation
+### 塾・スクール / Schools
 
-科目ごとに講義動画をまとめ、混同しやすい概念を質問。回答と元の説明を見比べて理解を確かめられます。
+授業の録画を、欠席した回や試験前の復習に使える教材にします。
 
-Organize lectures by subject, compare confusing concepts, and check answers against the original explanation as you prepare for exams.
+Turn class recordings into education material for missed lessons and exam review.
+
+### 社内研修 / Staff training
+
+研修動画の手順や説明を、質問して該当場面で確認できるようにします。
+
+Let staff ask about training videos and check the relevant moment.
+
+## Guides
+
+- [動画講座の質問対応をAIで軽くする方法](https://videoq.jp/guides/online-course-questions)
+- [How to reduce online course support with AI answers](https://videoq.jp/en/guides/online-course-questions)
+- [授業の録画を、生徒が質問できる復習教材にする方法](https://videoq.jp/guides/class-recordings-for-review)
+- [How to turn class recordings into review material students can ask](https://videoq.jp/en/guides/class-recordings-for-review)
+- [社内研修の動画に質問できるようにする方法](https://videoq.jp/guides/training-video-questions)
+- [How to let staff ask questions about training videos](https://videoq.jp/en/guides/training-video-questions)
+- [VideoQのAI回答の仕組みと、確認しておきたいこと](https://videoq.jp/guides/how-ai-answers-work)
+- [How VideoQ AI answers work and what to check](https://videoq.jp/en/guides/how-ai-answers-work)
 
 ## Product demo
 
-日英のLPは共通の30秒・横長フォーマットで、講義への質問から根拠の場面の再生までを紹介しています。実データを使った操作の再現で、英語版は講座・教材・取得済みのAI回答の英訳です。
+日英のLPに、講座の公開から受講生の質問までを紹介する30秒の操作デモがあります。
 
-The Japanese and English landing pages share the same 30-second widescreen walkthrough, including scene order, layout and animation. Both demonstrate asking questions and replaying cited lecture scenes using real course data and an AI answer; the English version translates the original course, lesson and recorded answer.
+The Japanese and English landing pages include a 30-second walkthrough from publishing a course to student questions.
 
-- [学生向けの利用例](https://videoq.jp/?audience=student)
+登録なしでサンプル講座に質問することもできます。
+
+Visitors can also ask a sample course without signing up.
+
+- [デモ](https://videoq.jp/#landing-demo)
 - [English demo](https://videoq.jp/en/#landing-demo)
+- [登録なしで試す](https://videoq.jp/try)
+- [Try without signing up](https://videoq.jp/en/try)
 
 ## Integrations
 
@@ -75,7 +98,7 @@ VideoQ acts as an MCP server, allowing clients such as Claude Code to upload or 
 - Read tools accept `read_only` API keys; write tools require an `all` API key or OAuth `videoq.write`
 - Create/reserve tools require a retry-safe `idempotency_key`
 - Transcripts and chat history use bounded pagination/chunks
-- Tool set: 9 read-only tools and 5 write tools, each with input/output schemas and safety annotations
+- Tool set: 7 read-only tools and 5 write tools, each with input/output schemas and safety annotations
 
 ## Legal
 

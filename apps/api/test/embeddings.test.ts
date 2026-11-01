@@ -26,6 +26,26 @@ describe("embedding contract", () => {
 });
 
 describe("embedQuery", () => {
+  it("uses the dedicated 768-dimensional query contract without accepting hosted vectors", async () => {
+    const env = { ...baseEnv, EMBEDDING_PROFILE: "embeddinggemma2", EMBEDDING_MODEL: "embeddinggemma-2-f9972ac", EMBEDDING_BASE_URL: "http://embedding.test/v1" };
+    const vector = [1, ...Array(767).fill(0)];
+    const fetch = vi.fn(async (_url: unknown, _init: RequestInit) => Response.json({ data: [{ index: 0, embedding: vector }] }));
+    vi.stubGlobal("fetch", fetch);
+    expect(await embedQuery(env, "バックアップの保存期間は？")).toEqual(vector);
+    expect(JSON.parse(String(fetch.mock.calls[0][1].body))).toMatchObject({ dimensions: 768, input_type: "query" });
+    const query = vi.fn(async (_sql: string, _values: string[]) => ({ rows: [{ type_name: "vector", dimensions: 768 }] }));
+    await assertEmbeddingSchema({ query }, resolveEmbeddingConfig(env));
+    expect(query.mock.calls[0][1]).toEqual(["public.scene_embeddings_768"]);
+    await expect(assertEmbeddingSchema({ query }, resolveEmbeddingConfig({})))
+      .rejects.toMatchObject({ reason: "EMBEDDING_SCHEMA_MISMATCH" });
+  });
+  it.each([
+    { EMBEDDING_PROFILE: "unknown" },
+    { EMBEDDING_PROFILE: "embeddinggemma2" },
+    { EMBEDDING_PROFILE: "embeddinggemma2", EMBEDDING_MODEL: "local" },
+  ])("rejects incomplete local embedding configuration before provider I/O: %j", settings => {
+    expect(() => resolveEmbeddingConfig(settings)).toThrowError(expect.objectContaining({ reason: "EMBEDDING_CONFIG_INVALID" }));
+  });
   it("routes embeddings to their own endpoint and credential without changing chat settings", async () => {
     const fetch = vi.fn(async () => Response.json({ data: [{ index: 0, embedding: embedding(1) }] }));
     vi.stubGlobal("fetch", fetch);

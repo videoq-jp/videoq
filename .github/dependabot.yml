@@ -22,8 +22,9 @@ updates:
       time: "09:00"
       timezone: Asia/Tokyo
     open-pull-requests-limit: 5
-    # Cloudflare's Vitest plugin currently requires Vitest 4.
-    # Revisit this exception when @cloudflare/vitest-plugin supports Vitest 5.
+    # This exception was added while Cloudflare's Vitest plugin required Vitest 4.
+    # @cloudflare/vitest-plugin 1.4.6 accepts Vitest 5 and the repo uses it, so the
+    # vitest entries below only hold back 5.x updates and can be reviewed for removal.
     ignore:
       # Compiler-API consumers (ESLint, tests, docs) do not support native TS 7.
       # API-only native compiler patch/minor updates remain eligible.

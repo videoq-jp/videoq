@@ -3,6 +3,7 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { useI18nLocation, useI18nNavigate } from '@/lib/i18n';
 import { isPublicAuthPath } from '@/lib/authConfig';
+import { isKnownPath } from '@/lib/seo';
 import { TRPC_UNAUTHORIZED_EVENT } from '@/lib/trpc';
 import { useAuthSession } from '@/lib/authSession';
 import { appQueryClient, replaceAppQueryClient } from '@/lib/queryClient';
@@ -38,7 +39,8 @@ export function AuthProvider({ children, initialQueryClient = appQueryClient }: 
 
   useEffect(() => {
     const unavailable = sessionError && sessionError.status !== 401 && sessionError.status !== 403;
-    if (!sessionPending && !unavailable && !userId && !isPublicAuthPath(location.pathname)) {
+    // Unknown URLs stay put so they show the 404 page instead of a login redirect.
+    if (!sessionPending && !unavailable && !userId && !isPublicAuthPath(location.pathname) && isKnownPath(location.pathname)) {
       navigate('/login');
     }
   }, [location.pathname, navigate, sessionError, sessionPending, userId]);

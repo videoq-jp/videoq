@@ -52,7 +52,7 @@ function HistoryItem({
         <div className="max-w-[90%] space-y-2 border border-solid-gray-420 border-l-4 border-l-key-900 bg-white p-4 text-std-16N-170">
           <div className="flex items-center gap-2 text-dns-14B-120 font-bold text-key-900">
             <BookOpen className="h-3.5 w-3.5" />
-            AI {t('chat.teacher')}
+            {t('chat.answerLabel')}
           </div>
           <MessageBody
             answer={item.answer}

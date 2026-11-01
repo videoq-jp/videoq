@@ -14,6 +14,7 @@ from psycopg.types.json import Json
 from worker_python.db import db_connection
 from worker_python.env import env_str
 from worker_python.pipeline.embeddings import embed_texts
+from worker_python.pipeline.embedding_contract import resolve_embedding_config
 from worker_python.pipeline.embedding_schema import check_embedding_storage
 from worker_python.pipeline.srt import parse_srt_scenes
 from worker_python.pipeline.scene_otsu import apply_scene_splitting
@@ -21,13 +22,16 @@ from worker_python.video_sql import VideoRow
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_TABLES = frozenset({"scene_embeddings"})
+ALLOWED_TABLES = frozenset({"scene_embeddings", "scene_embeddings_768"})
 
 
 def _table_name() -> str:
-    name = env_str("PGVECTOR_COLLECTION_NAME", "scene_embeddings")
+    expected = resolve_embedding_config().table
+    name = env_str("PGVECTOR_COLLECTION_NAME", expected)
     if name not in ALLOWED_TABLES:
         raise ValueError(f"vector table '{name}' is not in the allowed list")
+    if name != expected:
+        raise ValueError("Vector table does not match the selected embedding profile.")
     return name
 
 

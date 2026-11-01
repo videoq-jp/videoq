@@ -27,6 +27,7 @@ class TranscriptionRun:
     chunk_seconds: int
     chunk_count: int
     completed: bool
+    transcription_language: str | None = None
 
 
 class TranscriptionQuotaError(RuntimeError):
@@ -41,13 +42,14 @@ def _run(row) -> TranscriptionRun | None:
         transcript_hash=row["transcript_hash"], duration_ms=row["duration_ms"],
         chunk_seconds=row["chunk_seconds"], chunk_count=row["chunk_count"],
         completed=row["completed_at"] is not None,
+        transcription_language=row.get("transcription_language"),
     )
 
 
 def load_run(video_id: int, run_id: str | None = None) -> TranscriptionRun | None:
     with db_connection() as conn:
         return _run(conn.execute("""
-            SELECT r.* FROM video_transcription_runs r JOIN videos v ON v.id = r.video_id
+            SELECT r.*, v.transcription_language FROM video_transcription_runs r JOIN videos v ON v.id = r.video_id
              WHERE r.video_id = %s AND (%s::uuid IS NULL OR r.run_id = %s::uuid)
                AND r.file_key = v.file
         """, (video_id, run_id, run_id)).fetchone())

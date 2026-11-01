@@ -379,10 +379,18 @@ jobs:
   db-migrate:
     name: Drizzle DB Migrate
     runs-on: ubuntu-latest
-    environment: production-app
+    environment: production-db-migration
+    concurrency:
+      group: production-db-maintenance
+      cancel-in-progress: false
     timeout-minutes: 15
     needs: [changes]
     if: needs.changes.outputs.migrate == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -401,13 +409,12 @@ jobs:
         run: npm audit signatures
       - name: Expose only the reviewed migration dependencies
         run: ln -s .github/deploy-tools/node_modules node_modules
+      - uses: ./.github/actions/neon-credentials
       - name: Run trusted migration scripts
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STRUCTURED_ANSWER_WRITERS_STOPPED: ${{ vars.STRUCTURED_ANSWER_WRITERS_STOPPED }}
         run: |
-          test -n "$DATABASE_URL"
-          sh apps/api/scripts/db-migrate.sh
+          python3 .github/scripts/with-neon-credentials.py migration sh apps/api/scripts/db-migrate.sh
 
   worker-build:
     name: Build Lambda image without AWS credentials

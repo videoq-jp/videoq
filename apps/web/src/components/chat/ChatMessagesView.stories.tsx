@@ -108,7 +108,7 @@ export const AwaitingLastResponse: Story = {
     const indicators = canvas.getAllByRole('status');
     await expect(indicators).toHaveLength(1);
     await expect(indicators[0]).toHaveTextContent(i18n.t('chat.generating'));
-    const bubbles = canvas.getAllByText(`AI ${i18n.t('chat.teacher')}`);
+    const bubbles = canvas.getAllByText(i18n.t('chat.answerLabel'));
     await expect(bubbles.at(-1)!.parentElement).toContainElement(indicators[0]);
   },
 };

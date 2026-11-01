@@ -5,6 +5,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const { chromium } = require('playwright');
+const { createParser } = require('eventsource-parser');
+const { verifyStream } = createRequire(import.meta.url)('./production-stream-proof.cjs');
 const { hashPassword } = await import(require.resolve('better-auth/crypto'));
 const { ORIGIN, synthetic, uploadAllowed, completed, deletable, fixtureValid, waitForCleanup, citedAnswerValid } = createRequire(import.meta.url)('./production-smoke-policy.cjs');
 const db = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15_000,
@@ -31,27 +33,24 @@ async function login(user, password) {
   if (!response.ok) throw new Error('Synthetic sign-in failed');
   cookie = response.headers.getSetCookie().map(value => value.split(';', 1)[0]).join('; ');
   if (!cookie.includes('session_token=')) throw new Error('No signed session');
-  await db.query("UPDATE session SET expires_at = LEAST(expires_at, now() + interval '1 hour') WHERE user_id = $1", [user.id]);
+  await db.query("SELECT videoq_security.smoke_expire($1)", [user.id]);
 }
 async function cleanup(user) {
   if (!synthetic(user)) throw new Error('Unsafe cleanup target');
-  const { rows } = await db.query('SELECT id, status FROM videos WHERE user_id = $1', [user.id]);
+  const { rows } = await db.query('SELECT id, status FROM videoq_security.smoke_videos WHERE user_id = $1', [user.id]);
   // Do not race a running worker or orphan its uploads. A later run retries terminal videos.
   if (rows.some(video => !deletable(video.status))) return false;
-  const visual = await db.query(`SELECT count(*) FROM video_visual_runs r JOIN videos v ON v.id = r.video_id
+  const visual = await db.query(`SELECT count(*) FROM videoq_security.smoke_visual_runs r JOIN videoq_security.smoke_videos v ON v.id = r.video_id
     WHERE v.user_id = $1 AND r.status = 'processing'`, [user.id]);
   if (Number(visual.rows[0].count)) return false;
   for (const video of rows) await rpc('videos.delete', { id: Number(video.id) }, true);
-  const pending = await db.query(`SELECT count(*) FROM external_tasks WHERE kind = 'storage_cleanup'
-    AND payload->>'user_id' = $1 AND completed_at IS NULL`, [user.id]);
+  const pending = await db.query(`SELECT count(*) FROM videoq_security.smoke_external_tasks WHERE kind = 'storage_cleanup'
+    AND user_id = $1 AND completed_at IS NULL`, [user.id]);
   if (Number(pending.rows[0].count)) return false;
-  const courses = await db.query('SELECT id FROM video_courses WHERE user_id = $1', [user.id]);
+  const courses = await db.query('SELECT id FROM videoq_security.smoke_courses WHERE user_id = $1', [user.id]);
   for (const course of courses.rows) await rpc('courses.delete', { id: Number(course.id) }, true);
-  const removed = await db.query(`DELETE FROM users WHERE id = $1 AND username = $2 AND email = $3
-    AND name = $4 AND role = 'user' AND quota_source = 'admin'
-    AND NOT EXISTS (SELECT 1 FROM videos WHERE user_id = $1) RETURNING id`,
-  [user.id, user.username, user.email, user.name]);
-  return removed.rowCount === 1;
+  const removed = await db.query('SELECT videoq_security.smoke_delete($1) AS removed', [user.id]);
+  return removed.rows[0].removed === true;
 }
 let report = { status: 'error', summary: '本番の動作確認を完了できませんでした。', details: [] };
 try {
@@ -62,7 +61,7 @@ try {
   }
   progress('database-and-cleanup');
   await db.connect();
-  const old = await db.query(`SELECT id, username, email, name, role, quota_source FROM users
+  const old = await db.query(`SELECT id, username, email, name, role, quota_source FROM videoq_security.smoke_users
     WHERE username = 'ops_smoke_' || id AND email = id || '@example.invalid'
       AND name = 'VideoQ automated smoke check' AND role = 'user' AND quota_source = 'admin'
     ORDER BY created_at LIMIT 10`);
@@ -70,7 +69,7 @@ try {
     if (!synthetic(user)) continue;
     const password = randomBytes(32).toString('base64url');
     const hash = await hashPassword(password);
-    await db.query("UPDATE account SET password = $1 WHERE user_id = $2 AND provider_id = 'credential'", [hash, user.id]);
+    await db.query("SELECT videoq_security.smoke_password($1,$2)", [user.id, hash]);
     await login(user, password);
     if (!await waitForCleanup(() => cleanup(user), delay)) throw new Error('Earlier smoke video still processing; no additional upload');
   }
@@ -80,12 +79,7 @@ try {
     name: 'VideoQ automated smoke check', role: 'user', quota_source: 'admin' };
   const hash = await hashPassword(password);
   await db.query('BEGIN');
-  await db.query(`INSERT INTO users (id, username, email, name, role, email_verified, password_reset_required,
-    is_over_quota, used_ai_answers, used_processing_seconds, used_storage_bytes, quota_source,
-    processing_limit_minutes, ai_answers_limit, storage_limit_gb, monthly_upload_limit_gb)
-    VALUES ($1,$2,$3,$4,'user',true,false,false,0,0,0,'admin',1,$5,0.01,0.01)`,
-  [id, currentUser.username, currentUser.email, currentUser.name, verifyAi ? 1 : 0]);
-  await db.query("INSERT INTO account (id, account_id, provider_id, user_id, password) VALUES ($1,$2,'credential',$2,$3)", [randomUUID(), id, hash]);
+  await db.query('SELECT videoq_security.smoke_create($1::uuid,$2,$3)', [id, hash, verifyAi]);
   await db.query('COMMIT');
   progress('synthetic-sign-in');
   await login(currentUser, password);
@@ -111,7 +105,7 @@ try {
     await delay(Math.min(20_000, Math.max(0, deadline - Date.now())));
   }
   if (!video || !completed(video) || !video.transcript?.trim()) throw new Error('Video processing did not finish');
-  const embedded = await db.query('SELECT count(*) FROM scene_embeddings WHERE user_id = $1 AND video_id = $2', [id, video.id]);
+  const embedded = await db.query('SELECT count(*) FROM videoq_security.smoke_scene_embeddings WHERE user_id = $1 AND video_id = $2', [id, video.id]);
   if (Number(embedded.rows[0].count) < 1) throw new Error('No scene embeddings');
   if (verifyAi) {
     progress('cited-question-answer');
@@ -120,6 +114,21 @@ try {
     const answer = await rpc('chat.send', { courseId: course.id,
       messages: [{ role: 'user', content: 'What is said in this video? Summarize it and cite the transcript evidence.' }] }, true, 180_000);
     if (!citedAnswerValid(answer, Number(video.id))) throw new Error('No cited answer from the uploaded video');
+    for (const scoped of [true, false]) {
+      progress(scoped ? 'cited-streaming-answer' : 'unscoped-streaming-answer');
+      const response = await request('/api/chat/messages/stream', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: ORIGIN },
+        body: JSON.stringify({ messages: [{ role: 'user', content: scoped
+          ? 'Summarize what is said in this video and cite its transcript evidence.'
+          : 'Briefly explain what a video transcript is.' }], ...(scoped ? { course_id: course.id } : {}) }),
+        signal: AbortSignal.timeout(180_000),
+      });
+      const chatLogId = await verifyStream(response, createParser, scoped ? Number(video.id) : undefined);
+      if (scoped) {
+        const stored = await db.query('SELECT id FROM videoq_security.smoke_chat_logs WHERE id = $1 AND user_id = $2', [chatLogId, id]);
+        if (stored.rows.length !== 1) throw new Error('Streamed answer persistence not confirmed');
+      }
+    }
   }
   progress('browser');
   browser = await chromium.launch({ channel: 'chrome' });
@@ -137,7 +146,7 @@ try {
   await page.goto(ORIGIN + '/videos', { waitUntil: 'networkidle', timeout: 60_000 });
   await page.getByText(title, { exact: true }).first().waitFor({ timeout: 30_000 });
   if (errors.length) throw new Error('Browser JavaScript error');
-  report = { status: 'ok', summary: '本番の画面・API・DB・短い動画の処理・文字起こし・埋め込みを確認しました。' + (verifyAi ? ' 検索と引用付き Q&A も確認しました。' : ''), details: [] };
+  report = { status: 'ok', summary: '本番の画面・API・DB・短い動画の処理・文字起こし・埋め込みを確認しました。' + (verifyAi ? ' 検索・引用付き Q&A・講座あり／なしのストリーミングも確認しました。' : ''), details: [] };
 } catch {
   try { await db.query('ROLLBACK'); } catch { /* connection may be unavailable */ }
   report.details = ['- 失敗した段階: `' + stage + '`。認証情報や利用者のデータはログに出力していません。'];

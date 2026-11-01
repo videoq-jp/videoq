@@ -7,21 +7,61 @@ description: LLM・埋め込み生成・Whisper をオンプレのネットワ�
 
 Web・API・ワーカーに加えて、LLM・埋め込み生成・Whisper も社内に配置できます。
 導入時はコンテナイメージとモデルをダウンロードし、運用中の動画・音声・AI リクエストは
-社内のサービスで処理します。アプリ用 Helm Chart の標準設定は外部 OpenAI API のため、
+社内のサービスで処理します。アプリ用 Helm Chart の標準設定はホスト型の OpenRouter のため、
 ローカル用の設定を明示的に適用します。
 
 | 構成 | LLM・埋め込み生成 | アプリ側の設定 |
 |---|---|---|
+| 推奨：NVIDIA + CPU | gpt-oss-20b を vLLM、EmbeddingGemma 2 を CPU で実行 | `local-ai-gpt-oss.yaml` |
 | CPU | llama.cpp。回答用・埋め込み用を別サービスに配置 | `local-ai-llamacpp.yaml` |
 | NVIDIA GPU | vLLM CUDA。回答用・埋め込み用を別サービスに配置 | `local-ai-vllm.yaml` |
 | AMD GPU | vLLM ROCm。実機での受け入れ検証が必要 | `local-ai-vllm.yaml` |
+
+推奨するモデルは **gpt-oss-20b + EmbeddingGemma 2 + Whisper large-v3-turbo** です。
+推論側の `charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml` と、
+アプリ側の `charts/videoq/examples/local-ai-gpt-oss.yaml` を組み合わせます。
+LLM に NVIDIA GPU を1台割り当て、埋め込みと whisper.cpp は CPU で動かします。
+従来の Qwen 構成も互換性確認用に残しています。小さい CPU 専用 VPS では、
+LLM の接続先を別の社内 GPU サーバーに設定してください。
+
+EmbeddingGemma 2 は270Mのテキスト用部分だけを読み込みます。質問には `SearchQuery`、
+字幕には `Document` のプロンプトを適用し、正規化した768次元を返します。
+`ai.embeddingProfile: embeddinggemma2` を API・ワーカーの両方に適用します。
+専用 API は OpenAI 互換の入力に加え、`input_type: query|document` を受け付けます。
+未知のモデル、異なる次元数、長すぎる入力は受け付けません。
+
+新しいアプリを起動する前に DB マイグレーションを適用します。768次元用の
+`scene_embeddings_768` テーブルを追加し、従来の1536次元データは変更しません。
+アップロードと字幕編集を停止したメンテナンス時間に、新しい設定のワーカーで再生成します。
+
+```sh
+kubectl -n videoq exec deployment/videoq-worker -- python -c \
+  'from worker_python.tasks.reindexing import reindex_all_videos_embeddings; reindex_all_videos_embeddings()'
+```
+
+完了まで検索を公開しないでください。新しい構成には従来の
+`PGVECTOR_COLLECTION_NAME=scene_embeddings` を設定しません。設定を戻すと旧テーブルを
+参照しますが、切り替え後に追加・編集した動画は旧構成でも再生成が必要です。
+異なるモデルのベクトルを混ぜたり、切り詰め・ゼロ埋めで次元を合わせることはしません。
+
+gpt-oss は `reasoningEffort: low`、OpenAI 用のツール・推論パーサーを使います。
+`preserveToolReasoning: true` でツール呼び出し後の推論情報を内部的に引き継ぎ、回答文には
+混ぜません。gpt-oss はテキスト専用のため視覚解析は無効です。EmbeddingGemma 2 も画像・音声の
+エンコーダーは読み込みません。映像を直接検索するには別途インデックス処理の実装が必要です。
+`separateToolSchema: true` で、検索ツールを選ぶ処理と最終回答の JSON 形式の強制を分けます。
+検索を最終回答用の制約で抑制しないための互換設定です。
+
+CPU 推論イメージには、新しい `embedding_server.py` とロック済み依存関係が必要です。
+旧 Whisper 専用イメージでは動作しません。ソースからのビルドと導入は
+[推論用 Chart の推奨構成](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#recommended-gpt-oss--embeddinggemma-2--whisper-profile)
+を参照してください。
 
 文字起こしは **CPU で whisper.cpp、NVIDIA／AMD GPU で vLLM** を使います。
 どちらも社内の共通 API を経由し、VAD と音量補正の後に認識し、字幕時刻を元の動画へ戻します。
 Mac の手元開発では、Metal を使うネイティブの whisper.cpp も利用できます。
 アプリの設定名は `WHISPER_BACKEND=local` に統一し、`WHISPER_LOCAL_URL` で接続先を指定します。
 
-GPU プロファイルの API は音声2件までを受け付け、各音声から最大4区間を並行して vLLM に送信します。
+従来の `vllm-nvidia.yaml` の API は音声2件までを受け付け、各音声から最大4区間を並行して vLLM に送信します。
 vLLM は最大8区間を動的にまとめて推論します。動画が8件たまるのを待つ方式ではありません。
 CPU は音声1件ずつ処理し、ワーカーの永続チェックポイントは30秒、GPU は300秒です。
 `ai.whisperChunkSeconds` で30〜300秒に調整できます。CPU の標準モデルは多言語の
@@ -50,7 +90,7 @@ CPU の基本構成では、テキスト専用モデルを使うため映像の�
 [署名付き Public 配布](on-premises-releases.md)に文字起こしゲートウェイと推論用 Chart を含めます。
 上流の CUDA／ROCm vLLM イメージは Chart で digest を固定して直接使用します。
 検証スクリプトが推論用の `verified-inference.json` とアプリ用の `verified-images.json` を生成します。
-導入先での Whisper ビルドは不要です。外部 OpenAI の API キーは不要で、SDK 向けの仮の値として
+導入先での Whisper ビルドは不要です。外部の AI サービス（OpenRouter・OpenAI）の API キーは不要で、SDK 向けの仮の値として
 `OPENAI_API_KEY=local-inference` を設定します。その他の Secret は
 [アプリの導入手順](on-premises.md)に従います。
 

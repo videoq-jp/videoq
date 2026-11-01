@@ -63,10 +63,13 @@ flowchart TB
 
 APIはHyperdrive経由、Python workerはPostgreSQL接続で同じDBを利用します。DBの列を変更するときは両方への影響を確認します。
 
+ホスト型のAI呼び出しは、APIとworkerのどちらもOpenRouterを経由します。本番の認証にはAWSのワークロードIDフェデレーションを使います。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照してください。オンプレでDurable Objectsとホスト型サービスを置き換える構成は[オンプレで動かす](../guides/on-premises.md)で説明しています。
+
 ## Durable Objectsの役割
 
 - `RATE_LIMITER`: 短時間の過剰なリクエストを制限します。
 - `TASK_SCHEDULER`: 未配送ジョブや放棄されたアップロードの回復を予約します。
+- `CHAT_EXECUTION`: 回答ごとにSQLite対応のオブジェクトで実行し、長いツールループが通常のWorkerのCPU上限に左右されないようにします。[回答の配信のトラブル](../guides/troubleshooting.md)を参照してください。
 
 回復処理はDOのアラームで予定されます。現在の定期実行は日次の `17 3 * * *`（UTC）で、古い記録の整理と回復を行います。5分ごとのcronを前提に運用しないでください。
 

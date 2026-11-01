@@ -198,6 +198,16 @@ describe("native structured LLM output", () => {
     await expect(generateReply(ENV, "S", "Q")).rejects.toThrow(LlmProviderError);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it("accepts repeated stop notifications through the library event assembler", async () => {
+    vi.stubGlobal("fetch", async () => sseResponse([
+      frame(JSON.stringify(modelAnswer)), frame("", "stop"), frame("", "stop"),
+      `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } })}\n\n`,
+      "data: [DONE]\n\n",
+    ]));
+    const chunks = [];
+    for await (const chunk of streamReply(ENV, "S", "Q")) chunks.push(chunk);
+    expect(chunks).toEqual([{ segmentIndex: 0, text: "answer" }, { answer: modelAnswer }]);
+  });
   it("rejects a stream without an explicit successful finish", async () => {
     vi.stubGlobal("fetch", async () => sseResponse([frame(JSON.stringify(modelAnswer)), "data: [DONE]\n\n"]));
     const consume = async () => { for await (const chunk of streamReply(ENV, "S", "Q")) void chunk; };

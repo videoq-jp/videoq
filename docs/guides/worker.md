@@ -32,7 +32,7 @@ All of these files are under `apps/worker/`. Also check the API's message format
 
 This illustrates the format. Normally, API operations create jobs; you do not need to submit queue messages manually.
 
-Processing follows `transcribe_video` → `index_video_transcript`. See [video states](../design/state-diagram.md).
+For an uploaded file, `transcribe_video` creates an interval plan, `transcribe_video_chunk` saves each interval, and `finish_video_transcription` joins them, then starts `index_video_transcript` and the visual-cache jobs (`build_video_visual_chunk` → `finish_video_visuals`). YouTube imports have no interval jobs. See [video states](../design/state-diagram.md).
 
 Each task checks its entry status, and conditional database updates recheck the
 stored status before changing it. Transcription starts for pending/error videos,

@@ -461,6 +461,23 @@
                 "nvidia",
                 "amd"
               ]
+            },
+            "engine": {
+              "enum": [
+                "llamacpp",
+                "vllm"
+              ]
+            },
+            "toolCallParser": {
+              "enum": [
+                "hermes",
+                "openai"
+              ]
+            },
+            "reasoningParser": {
+              "enum": [
+                "openai_gptoss"
+              ]
             }
           },
           "additionalProperties": false
@@ -552,6 +569,13 @@
                 "",
                 "nvidia",
                 "amd"
+              ]
+            },
+            "engine": {
+              "enum": [
+                "llamacpp",
+                "vllm",
+                "embeddinggemma2"
               ]
             }
           },

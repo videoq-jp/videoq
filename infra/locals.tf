@@ -8,8 +8,9 @@ locals {
 
   lambda_basic_execution_policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   common_lambda_environment = {
-    DB_PARAM_NAME                   = aws_ssm_parameter.db.name
+    DB_PARAM_NAME                   = "/${local.name_prefix}/${var.env_name}/worker-db"
     APP_PARAM_NAME                  = aws_ssm_parameter.app.name
+    PGSSLROOTCERT                   = "/etc/pki/tls/certs/ca-bundle.crt"
     USE_S3_STORAGE                  = "true"
     SQS_QUEUE_NAME                  = aws_sqs_queue.main.name
     SQS_QUEUE_URL                   = aws_sqs_queue.main.id

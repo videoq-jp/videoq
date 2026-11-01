@@ -91,6 +91,20 @@ withHelm("on-prem Helm distribution", () => {
     expect(policy.spec.egress[0].to).toEqual([{ namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "default" } } }]);
     expect(policy.spec.egress[1].ports.every((port: { port: number }) => port.port === 53)).toBe(true);
   });
+  it("selects gpt-oss and the same EmbeddingGemma 2 contract for API and worker", () => {
+    const resources = render("-f", `${chart}/examples/local-ai-gpt-oss.yaml`);
+    const config = resources.find(resource => resource.kind === "ConfigMap").data;
+    expect(config).toMatchObject({
+      LLM_MODEL: "videoq-chat", LLM_REASONING_EFFORT: "low", LLM_PRESERVE_TOOL_REASONING: "true",
+      LLM_SEPARATE_TOOL_SCHEMA: "true", EMBEDDING_PROFILE: "embeddinggemma2",
+      EMBEDDING_MODEL: "embeddinggemma-2-f9972ac", WHISPER_BACKEND: "local", VIDEO_VISUAL_ENABLED: "false",
+    });
+    expect(config.LLM_BASE_URL).toBe(config.OPENAI_BASE_URL);
+    for (const key of ["LLM_BASE_URL", "OPENAI_BASE_URL", "EMBEDDING_BASE_URL", "WHISPER_LOCAL_URL"]) {
+      expect(config[key]).toContain(".svc.cluster.local");
+    }
+    expect(resources.some(resource => resource.kind === "NetworkPolicy")).toBe(true);
+  });
   it("routes compatible chat and embedding services independently", () => {
     const resources = render("-f", `${chart}/examples/local-ai-llamacpp.yaml`);
     const config = resources.find(resource => resource.kind === "ConfigMap").data;

@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import * as chatService from "../../features/chat/service";
 import * as messageService from "../../features/chat/message-service";
-import { clientIp, enforceThrottles } from "../../lib/rate-limit";
+import { chatThrottleChecks, enforceThrottles } from "../../lib/rate-limit";
 import type { AppEnv } from "../../types/bindings";
 import { apiStatusToTrpcCode, requireUserId, rpcError, type HandlersFor } from "./shared";
 
@@ -10,10 +10,7 @@ async function enforceChatThrottle(
   userId: string | null,
   shareSlug?: string,
 ) {
-  const denied = await enforceThrottles(c.env, [
-    { scope: "chat_authenticated", ident: userId },
-    { scope: "chat_share_token_ip", ident: shareSlug ? clientIp(c) : null },
-  ]);
+  const denied = await enforceThrottles(c.env, chatThrottleChecks(c, userId, shareSlug));
   if (denied) {
     return rpcError(
       "TOO_MANY_REQUESTS",

@@ -429,6 +429,7 @@ export class ApiClient {
         fileSize: data.file.size,
         title: data.title,
         description: data.description,
+        transcriptionLanguage: data.transcriptionLanguage,
         ...(data.file.size >= MULTIPART_UPLOAD_THRESHOLD ? { multipart: true } : {}),
       });
 
@@ -457,6 +458,7 @@ export class ApiClient {
     formData.append('file', data.file.slice(0, data.file.size, contentType), data.file.name);
     formData.append('title', data.title);
     formData.append('description', data.description ?? '');
+    if (data.transcriptionLanguage) formData.append('transcriptionLanguage', data.transcriptionLanguage);
 
     const response = await this.fetchFn(this.buildUrl('/videos'), {
       method: 'POST',

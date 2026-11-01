@@ -47,5 +47,7 @@ The stream's `done` follows answer persistence. Responses without a course are n
 | MCP API keys and OAuth | `apikey`, `oauth_*`, and related tables |
 | Undelivered jobs | `external_tasks` |
 | Worker execution records | `job_executions` |
+| Transcription and visual-cache checkpoints | `video_transcription_*` and `video_visual_*` |
+| Visual caches for uploads | Private `media/<file_key>.frames-v1.json` and `.focus-v1.bin` objects in R2 / Garage |
 
 **Related:** [Data dictionary](data-dictionary.md), [ER diagrams](er-diagram.md), [Job delivery and recovery](../architecture/flowchart.md).

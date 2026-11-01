@@ -38,7 +38,7 @@ import { processExternalTaskById } from "../../lib/external-tasks";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { ABANDONED_UPLOAD_MS } from "../../lib/upload-reconcile";
 import type { CreationIdempotency } from "../../repositories/mcp-idempotency-repository";
-import { MAX_SINGLE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
+import { MAX_SINGLE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "@videoq/trpc/video-upload";
 import { initializeMultipartUpload, completeMultipartVideoUpload } from "../../repositories/multipart-upload-repository";
 
 export { getMultipartUploadPartUrl, UploadSessionError } from "../../repositories/multipart-upload-repository";
@@ -50,6 +50,7 @@ export {
 
 type UploadRequest = {
   multipart?: boolean;
+  transcriptionLanguage?: string;
   filename: string;
   content_type: string;
   file_size: number;
@@ -168,6 +169,7 @@ export async function requestPresignedUpload(
     body.title,
     body.description,
     idempotency,
+    body.transcriptionLanguage,
   );
   if ("monthlyUploadExceeded" in pending) {
     return { badRequest: "Monthly upload allowance exceeded.", code: "MONTHLY_UPLOAD_LIMIT_EXCEEDED" } as const;
@@ -455,6 +457,13 @@ export async function createVideoFromMultipart(
   }
   const description =
     typeof form.description === "string" ? form.description : "";
+  const transcriptionLanguage = form.transcriptionLanguage;
+  if (transcriptionLanguage !== undefined && (typeof transcriptionLanguage !== 'string' || !Object.hasOwn(TRANSCRIPTION_LANGUAGES, transcriptionLanguage))) {
+    return { ok: false, status: 400, body: { error: {
+      code: 'VALIDATION_ERROR', message: 'Invalid transcription language.',
+      details: { transcriptionLanguage: ['Invalid transcription language.'] },
+    } } };
+  }
   const title = titleRaw;
 
   const ext = fileExtension(file.name || "");
@@ -497,6 +506,8 @@ export async function createVideoFromMultipart(
     fileKey,
     title,
     description,
+    undefined,
+    transcriptionLanguage,
   );
   if ("monthlyUploadExceeded" in pending) {
     return { ok: false, status: 400, body: { error: {

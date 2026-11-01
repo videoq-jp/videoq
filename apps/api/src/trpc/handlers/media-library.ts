@@ -68,6 +68,7 @@ export function mediaLibraryHandlers(
         title: input.title,
         description: input.description ?? "",
         multipart: input.multipart,
+        transcriptionLanguage: input.transcriptionLanguage,
       });
       if ("fieldError" in result && result.fieldError) {
         return rpcError("BAD_REQUEST", Object.values(result.fieldError)[0]?.[0] ?? "Invalid input", {

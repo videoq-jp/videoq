@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { applyChatPart, plainChatAnswer, chatAnswerText, type ChatAnswer, type ChatContentPart } from '@videoq/trpc/chat';
+import { PUBLIC_DEMO_SHARE_SLUG } from '@videoq/trpc/public-demo';
 import { apiClient, ApiError } from '@/lib/api';
 import { trackLandingEvent } from '@/lib/landingAnalytics';
 import { trpc } from '@/lib/trpc';
@@ -47,6 +48,12 @@ interface UseChatMessagesReturn {
   handleKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleFeedback: (chatLogId: number, value: 'good' | 'bad') => Promise<void>;
 }
+
+const CHAT_ERROR_KEYS: Record<string, string> = {
+  OVER_QUOTA: 'chat.errorOverQuota',
+  AI_ANSWERS_LIMIT_EXCEEDED: 'chat.errorAnswersLimit',
+  LIMIT_EXCEEDED: 'chat.errorRateLimited',
+};
 
 export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions): UseChatMessagesReturn {
   const { t } = useTranslation();
@@ -119,9 +126,10 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
   }, []);
 
   const handleStreamError = useCallback((event: ChatStreamErrorEvent) => {
+    const knownError = CHAT_ERROR_KEYS[event.code];
     const errorMessage =
-      event.code === 'OVER_QUOTA'
-        ? tRef.current('chat.errorOverQuota')
+      knownError
+        ? tRef.current(knownError)
         : import.meta.env.DEV && event.message?.trim()
           ? `${tRef.current('chat.error')} (${event.code}: ${event.message})`
           : tRef.current('chat.error');
@@ -176,6 +184,7 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
     const historyForApi = [userMessage];
 
     sendInFlightRef.current = true;
+    if (shareToken === PUBLIC_DEMO_SHARE_SLUG) trackLandingEvent('demo_question');
     const request = new AbortController();
     streamAbortRef.current = request;
     followLatestRef.current = true;
@@ -221,10 +230,9 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
       if (request.signal.aborted) return;
       streamController.abort();
       console.error('Chat error:', error);
-      const errorMessage =
-        error instanceof ApiError && error.code === 'OVER_QUOTA'
-          ? tRef.current('chat.errorOverQuota')
-          : tRef.current('chat.error');
+      const errorMessage = tRef.current(
+        (error instanceof ApiError && error.code && CHAT_ERROR_KEYS[error.code]) || 'chat.error',
+      );
       replaceLastAssistantMessage(errorMessage);
     } finally {
       if (streamAbortRef.current === request) {

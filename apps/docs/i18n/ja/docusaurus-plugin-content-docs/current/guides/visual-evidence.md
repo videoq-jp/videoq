@@ -66,7 +66,7 @@ API・Python worker・Docker・Terraformの既定値で、アップロード動�
 
 ```dotenv
 VIDEO_VISUAL_ENABLED=true
-LLM_MODEL=gpt-6-luna
+LLM_MODEL=openai/gpt-6-luna
 ```
 
 ```bash
@@ -75,8 +75,8 @@ docker compose up -d --force-recreate api worker
 
 ホスト上のAPIでは `apps/api/.dev.vars` に同じ値を設定します。Python workerには
 実際の動画処理には `ENABLE_HEAVY_PIPELINE=1` が必要です。
-画像確認と回答生成はAPIの `LLM_MODEL`・`OPENAI_API_KEY`・`OPENAI_BASE_URL` を共用します。
-モデルの既定値は `gpt-6-luna` です。GPT-6 Lunaへのリクエストでは
+画像確認と回答生成はAPIの `LLM_MODEL`・`LLM_API_KEY`・`LLM_BASE_URL`（共通のキーと `OPENAI_BASE_URL` を任意で上書き）を共用します。
+ホスト型の構成は `OPENROUTER_API_KEY` と `openai/gpt-6-luna` を使います。GPT-6 Lunaへのリクエストでは
 `reasoning_effort=none` を指定します。画像入力と厳密なJSON Schema出力を扱えるモデルが必要です。
 通常の回答モデルには引き続きツール呼び出しへの対応が必要です。無効にする場合はAPIとworkerの
 両方で `VIDEO_VISUAL_ENABLED=false` にしてください。以前の設定に明示的な false がある場合は、

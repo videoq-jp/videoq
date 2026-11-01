@@ -1,85 +1,86 @@
-# 依存更新の自動化
+# Dependency update automation
 
-更新自動化の入口は `dependency-queue.yml`（Dependency Automation）だけにする。
-PRの検証、修正の許可、自動投入の判断をここで行う。実行順と最新mainでの統合検査・マージはGitHub Merge Queueが担当する。
-アプリ・コンテナ・TerraformのPR検証は `ci.yml` の1実行にまとめる。
-デプロイとTerraform本番適用は、それぞれの権限・承認を持つワークフローに残す。
-構成全体は [WORKFLOWS.md](WORKFLOWS.md) を参照する。
+`dependency-queue.yml` (Dependency Automation) is the only entry point for update automation.
+It verifies PRs, permits repairs, and decides on automatic queueing. Execution order and
+integration checks and merges against latest main are handled by GitHub Merge Queue.
+PR validation for the app, containers, and Terraform runs in one `ci.yml` run.
+Deployment and production Terraform applies stay in workflows holding their own permissions and approvals.
+See [WORKFLOWS.md](WORKFLOWS.md) for the overall structure.
 
-| ファイル | 責務 |
+| File | Responsibility |
 | --- | --- |
-| `runtime-updates.yml` | 日次の公式リリース探索、または指定ランタイムの再生成。整合した更新PRと公開記録を作る |
-| `dependency-queue.yml` | Dependabotとcurrent-lineランタイムPRの検証、CI結果確認、修正の許可、標準キューへの投入 |
-| `claude-dependency-worker.yml` | 許可されたCI失敗の修正、別runnerでのパッチ検証・反映。手動の認証テストも担当 |
+| `runtime-updates.yml` | Daily discovery of official releases, or regeneration of a specified runtime. Creates consistent update PRs and published records |
+| `dependency-queue.yml` | Verifies Dependabot and current-line runtime PRs, checks CI results, permits repairs, and queues to the standard queue |
+| `claude-dependency-worker.yml` | Repairs permitted CI failures, verifies and applies patches on a separate runner, and handles manual authentication tests |
 
 ```mermaid
 flowchart TD
-  D[Dependabot] --> P[更新PR]
+  D[Dependabot] --> P[Update PR]
   R[Runtime Updates] --> P
-  P --> V[通常PR CI]
-  V -->|成功| C[Dependency Automationで由来とheadを検証]
+  P --> V[Normal PR CI]
+  V -->|success| C[Dependency Automation verifies origin and head]
   C --> Q[GitHub Merge Queue]
-  Q --> G[最新mainとの統合用CI]
-  G -->|成功| M[GitHubがマージ]
-  G -->|失敗| F[対象PRだけ通常CIで再現]
+  Q --> G[Integration CI with latest main]
+  G -->|success| M[GitHub merges]
+  G -->|failure| F[Reproduce in normal CI for that PR only]
   F --> V
-  V -->|修正可能な失敗| A[許可済みClaude Worker]
-  A -->|検証したパッチを反映| P
+  V -->|repairable failure| A[Permitted Claude Worker]
+  A -->|applies a verified patch| P
 ```
 
-## 運用
+## Operation
 
-キューの状態・有効化・停止手順は [DEPENDENCY-QUEUE.md](DEPENDENCY-QUEUE.md)、
-ランタイムの更新対象は [RUNTIME-UPDATES.md](RUNTIME-UPDATES.md) を参照する。
-main追従とキューの処理はイベント起動だけで、定期ポーリングはない。
-Runtime Updatesの日次実行は新しいリリースを見つけるためのもの。
+See [DEPENDENCY-QUEUE.md](DEPENDENCY-QUEUE.md) for queue state and enable/stop steps, and
+[RUNTIME-UPDATES.md](RUNTIME-UPDATES.md) for runtime update targets.
+Following main and queue processing are event-driven only; there is no scheduled polling.
+Runtime Updates' daily run exists to find new releases.
 
-- `DEPENDENCY_AUTOMERGE_ENABLED=true` でコントローラーを有効にする。
-- `RUNTIME_AUTOMERGE_ENABLED=false` はランタイムPRを手動レビューへ回す。
-- `CLAUDE_DEPENDENCY_REPAIR_ENABLED=true` は対応するCI失敗の修正を許可する。
-- `no-automerge` はPRの自動処理を停止する。`no-rebase` はDependabotのmain追従を停止する。
-- `no-runtime-update` はランタイムPRの再生成も停止する。
-- `no-claude` または既存の `no-codex` はClaude修正を停止する。
-- 旧ワークフローの自動案内コメントは停止理由にしない。現在の署名・差分・除外ラベルで判断する。
+- `DEPENDENCY_AUTOMERGE_ENABLED=true` enables the controller.
+- `RUNTIME_AUTOMERGE_ENABLED=false` sends runtime PRs to manual review.
+- `CLAUDE_DEPENDENCY_REPAIR_ENABLED=true` permits repairing eligible CI failures.
+- `no-automerge` stops automatic processing of a PR. `no-rebase` stops Dependabot following main.
+- `no-runtime-update` also stops regenerating runtime PRs.
+- `no-claude` or the existing `no-codex` stops Claude repairs.
+- Automatic guidance comments from old workflows are not a reason to stop. Decisions use the current signature, diff, and exclusion labels.
 
-失敗したheadは修正待ちとして残し、他のPRを先に進める。新しいコミットが追加されると再び候補になる。
-ワーカー完了イベントで再判定する。同じheadも完了済みワーカーの後に、各モードの最大8回の上限内で再試行する。
-最終試行の完了後、モード別の上限に達した場合は理由と実行ログをPRへ一度だけ通知する。
-途中の失敗はActionsログで確認し、同じエラーの案内コメントは毎回投稿しない。
-セキュリティ検査の未成功や、アプリ修正の対象外のCI失敗も、現在のheadに理由とCIリンクを一度だけ案内する。
-修正対象のCIはコントローラーが最新の実行から確認する。手動再試行でも修正回数の上限はリセットしない。
+A failed head stays waiting for a repair while other PRs proceed. A new commit makes it a candidate again.
+Worker completion events trigger a new decision. The same head can retry after a completed worker, within each mode's limit of eight attempts.
+After the final attempt, reaching a mode's limit posts the reason and run log to the PR once.
+Check Actions logs for failures along the way; the same error's guidance comment is not posted every time.
+Security scans that did not succeed and CI failures outside app repair also post the reason and CI link once on the current head.
+The controller checks the CI to repair from its latest run. Manual retries do not reset the repair limit.
 
-## Claudeの認証
+## Claude authentication
 
-`claude setup-token`で発行した値をActions Secret `CLAUDE_CODE_OAUTH_TOKEN`へ保存する。
-トークンをPR、ログ、チャットへ貼らない。認証確認はClaude Dependency Repair Workerを
-mainから`authentication_test=true`で実行する。PR番号などは指定不要で、PRは変更しない。
-Claudeの利用枠・認証エラー・ワーカーの実行失敗はPRまたはActionsログへ表示する。
-投入済みPRの停止はGitHubのキュー画面から対象を除外する。
+Store the value issued by `claude setup-token` in the Actions secret `CLAUDE_CODE_OAUTH_TOKEN`.
+Do not paste the token into PRs, logs, or chat. To check authentication, run the Claude Dependency Repair Worker
+from main with `authentication_test=true`. It needs no PR number and changes no PR.
+Claude usage, authentication errors, and worker failures appear on the PR or in Actions logs.
+To stop a queued PR, remove it in GitHub's queue view.
 
-## 検証と権限
+## Verification and permissions
 
-- 対象は同一リポジトリのmain向けDependabot major/minor/patch、または管理Botのcurrent-lineランタイムPR。
-  ランタイムの新系列・fork・人が追記した未検証コミットは自動マージしない。
-- 元のDependabot署名と更新種別、許可した変更ファイルをAPIで検証する。
-  GitHubのrebaseで署名が引き継がれなくても、元の署名済み差分と追従記録を毎回照合する。
-  Terraformの本番自動適用でも同じ検証を使う。ただしprovider major更新の本番適用は承認を維持する。
-- mainの必須CI、管理者への適用、標準Merge Queueを維持する。PRのCI完了後に現在のhead SHAを
-  指定して投入し、GitHubが最新mainと統合したコミットで4つの必須チェックを再確認してからマージする。
-- CI修正と競合解消を同じ隔離ワーカーで扱い、それぞれPR全体で最大8回、同じheadも実行完了後に再試行可能。
-  起動予約・実行記録から重複実行を防ぐ。旧2回制限の記録は残し、新しい対応範囲はpolicy v2として数える。
-  Supply Chain SecurityとDeployment Security Testsが成功していなければClaudeを起動しない。
-- Claudeの実行ジョブは読み取り専用GitHub tokenを使う。コントローラーの秘密鍵や書き込みtokenは渡さない。
-  別runnerが新しいcheckoutで、アプリのソース・設定・テスト・生成型を32ファイル以下・2000変更行以下で検証する。
-  通常CI修正では依存manifest/lockを維持する。競合解消では承認したmainを取り込み、manifest/lockも統合する。
-  依頼された直接依存の更新と、それ以外のmainの直接依存を維持し、元headと承認mainを親に持つcommitを作る。
-  CI、保護ルール、資格情報、インフラの変更は許可しない。
-- Workerはmain上の実際のコントローラーrun ID、対象CI（CI修正時）、現在のhead、競合解消時のmain SHA、許可記録を再検証する。
-  PR targetイベントからモデルを直接起動せず、mainの実行へ引き継ぐ。同じ許可の重複使用を拒否する。
-- パッチ反映はGitHub Appで行い、通常CIへ戻す。Claude自身にはpush・マージを任せない。
-  コントローラーは現在のheadを指定してキューへ投入し、最終マージはGitHubが行う。
+- Targets are same-repository Dependabot major/minor/patch PRs to main, or the managed bot's current-line runtime PRs.
+  New runtime lines, forks, and unverified commits added by people do not automerge.
+- The original Dependabot signature, update type, and permitted changed files are verified through the API.
+  Even when a GitHub rebase does not carry the signature, the original signed diff and follow-up record are compared every time.
+  Terraform's automatic production apply uses the same verification, but production applies of provider major updates keep approval.
+- main's required CI, enforcement for administrators, and the standard Merge Queue stay in place. After PR CI completes, the PR is
+  queued by its current head SHA, and GitHub rechecks the four required checks on a commit merged with latest main before merging.
+- CI repair and conflict resolution use the same isolated worker, each up to eight attempts per PR; the same head can retry after a run completes.
+  Reservations and run records prevent duplicate runs. Old records from the two-attempt limit remain, and the new scope counts as policy v2.
+  Claude does not start unless Supply Chain Security and Deployment Security Tests succeeded.
+- Claude's job uses a read-only GitHub token. It receives neither the controller's private key nor a write token.
+  A separate runner verifies app source, configuration, tests, and generated types from a fresh checkout, within 32 files and 2000 changed lines.
+  Normal CI repairs keep dependency manifests and lockfiles. Conflict resolution takes in the approved main and also merges manifests and lockfiles.
+  It keeps the requested direct dependency update and main's other direct dependencies, creating a commit whose parents are the original head and the approved main.
+  Changes to CI, protection rules, credentials, and infrastructure are not permitted.
+- The worker reverifies the actual controller run ID on main, the target CI (for CI repairs), the current head, main's SHA for conflict resolution, and the permission record.
+  A PR target event never starts the model directly; it hands off to a run on main. Reuse of the same permission is rejected.
+- Patches are applied by a GitHub App and return to normal CI. Claude itself is not trusted to push or merge.
+  The controller queues by the current head, and GitHub performs the final merge.
 
-検証コマンド:
+Verification commands:
 
 ```sh
 node --test .github/scripts/*.test.cjs

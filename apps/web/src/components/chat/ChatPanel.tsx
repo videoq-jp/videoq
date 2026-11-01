@@ -17,6 +17,8 @@ interface ChatPanelProps {
   className?: string;
   showHistory?: boolean;
   suggestedQuestions?: string[];
+  /** Send a suggested question on click instead of only filling the composer. */
+  sendSuggestedQuestions?: boolean;
 }
 
 type PanelTab = 'chat' | 'history';
@@ -34,6 +36,7 @@ function ChatPanelSession({
   className,
   showHistory = true,
   suggestedQuestions,
+  sendSuggestedQuestions = false,
 }: ChatPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PanelTab>('chat');
@@ -149,7 +152,11 @@ function ChatPanelSession({
                   variant="outline"
                   size="sm"
                   disabled={isLoading}
-                  onClick={() => setInput(question)}
+                  className="h-auto whitespace-normal py-1.5 text-left leading-snug text-balance [word-break:auto-phrase]"
+                  onClick={() => {
+                    if (sendSuggestedQuestions) void handleSend(question);
+                    else setInput(question);
+                  }}
                 >
                   {question}
                 </Button>

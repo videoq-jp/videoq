@@ -46,7 +46,7 @@ describeWithPostgres("AI回答枠の実PostgreSQL並列制御", () => {
     `);
     await admin.query(`
       CREATE TABLE ${quotedSchema}.videos (
-        multipart_upload jsonb, upload_heartbeat_at timestamptz, upload_usage_period_start timestamptz,
+        transcription_language varchar(3), multipart_upload jsonb, upload_heartbeat_at timestamptz, upload_usage_period_start timestamptz,
         id bigserial PRIMARY KEY,
         user_id text NOT NULL,
         file varchar(255) NOT NULL UNIQUE,

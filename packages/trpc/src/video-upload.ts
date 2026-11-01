@@ -1,3 +1,10 @@
+export const TRANSCRIPTION_LANGUAGES = {
+  ja: '日本語', en: 'English', zh: '中文', ko: '한국어',
+  es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
+  it: 'Italiano', ru: 'Русский', hi: 'हिन्दी', ar: 'العربية',
+} as const;
+export type TranscriptionLanguage = keyof typeof TRANSCRIPTION_LANGUAGES;
+
 /** Shared upload formats, ordered for validation messages. */
 export const VIDEO_UPLOAD_TYPES = {
   '.3gp': 'video/3gpp',

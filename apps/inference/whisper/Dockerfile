@@ -1,5 +1,5 @@
 FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
-FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS native
+FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS native
 # Only VideoQ audio preprocessing lives here; whisper.cpp runs in its upstream image.
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates xz-utils && rm -rf /var/lib/apt/lists/*
 ARG TARGETARCH
@@ -15,7 +15,7 @@ RUN set -eu; \
     echo "$archive_sha  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
     mkdir /ffmpeg; tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /ffmpeg
 
-FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS dependencies
+FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -51,7 +51,7 @@ COPY --from=native /ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-COPY server.py provision.py provision_audio.py ./
+COPY server.py provision.py provision_audio.py embedding_server.py ./
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib

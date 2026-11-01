@@ -10,4 +10,4 @@ class VideoQEmbeddings(Embeddings):
         return embed_texts(texts)
 
     def embed_query(self, text: str) -> list[float]:
-        return embed_texts([text])[0]
+        return embed_texts([text], input_type="query")[0]

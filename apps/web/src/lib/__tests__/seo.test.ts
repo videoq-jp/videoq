@@ -2,9 +2,12 @@ import { DEFAULT_COPY, resolveFirstByteCopy } from '../pageCopy'
 import {
   absoluteUrl,
   hreflangEntries,
+  isKnownPath,
   isNoindexPath,
+  isPublicPath,
   localizedPath,
   pageMetaKey,
+  serializeJsonLd,
   withQueryAndHash,
 } from '../seo'
 
@@ -25,6 +28,7 @@ describe('isNoindexPath', () => {
 
   it('keeps public marketing and legal pages indexable', () => {
     expect(isNoindexPath('/pricing')).toBe(false)
+    expect(isNoindexPath('/try')).toBe(false)
     expect(isNoindexPath('/terms')).toBe(false)
   })
 })
@@ -83,5 +87,29 @@ describe('resolveFirstByteCopy', () => {
 describe('withQueryAndHash', () => {
   it('keeps search and hash when stripping a locale prefix', () => {
     expect(withQueryAndHash('/pricing', '?plan=pro', '#plans')).toBe('/pricing?plan=pro#plans')
+  })
+})
+
+describe('page classification', () => {
+  it('treats guides as public pages', () => {
+    expect(isPublicPath('/guides')).toBe(true)
+    expect(isPublicPath('/guides/online-course-questions')).toBe(true)
+    expect(resolveFirstByteCopy('en', '/guides/online-course-questions').title).toContain('online course')
+  })
+
+  it('does not treat unknown guides or paths as real pages', () => {
+    expect(isKnownPath('/guides/unknown')).toBe(false)
+    expect(isKnownPath('/no-such-page')).toBe(false)
+    expect(resolveFirstByteCopy('ja', '/guides/unknown')).toEqual(DEFAULT_COPY.ja)
+  })
+
+  it('keeps application routes known', () => {
+    expect(isKnownPath('/videos/12')).toBe(true)
+  })
+})
+
+describe('serializeJsonLd', () => {
+  it('cannot close its script element', () => {
+    expect(serializeJsonLd({ text: '</script><script>alert(1)</script>' })).not.toContain('<')
   })
 })

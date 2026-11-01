@@ -3,7 +3,10 @@
 This optional chart installs selectable private LLM / embedding servers and
 whisper.cpp (CPU) / vLLM (NVIDIA or AMD) speech services. llama.cpp is the CPU default; vLLM supports NVIDIA CUDA and AMD ROCm GPU profiles. Install it separately from the application chart so
 model caches, GPU scheduling and application upgrades have separate lifecycles.
-The application chart's default still uses hosted OpenAI; explicitly apply its
+For new local installations, use the explicit **gpt-oss-20b + EmbeddingGemma 2 +
+Whisper** profile below. The chart's unoverlaid Qwen defaults are retained for
+compatibility with existing CPU deployments.
+The application chart's default still uses hosted OpenRouter; explicitly apply its
 `examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml` overlay to select these services.
 
 Mac development runs whisper.cpp natively with Metal, outside this Linux
@@ -38,7 +41,7 @@ local vision model supporting images, tool calls and strict JSON Schema,
 validate it, and change both charts' chat model plus `config.videoVisualEnabled`.
 
 The site provides PostgreSQL/pgvector, S3 and a persistent SQS-compatible queue
-as described in the application chart. No Cloudflare, Modal or OpenAI account
+as described in the application chart. No Cloudflare, OpenRouter or OpenAI account
 is required for this local configuration. Initial image/model downloads use the
 internet. During processing, video, audio, prompts and embeddings stay on the
 configured site services.
@@ -97,6 +100,7 @@ engine code. Never copy CPU PyTorch or NumPy into a GPU image.
 
 | Recipe | Inference values | Application values | Model placement |
 |---|---|---|---|
+| Recommended | `examples/gpt-oss-embeddinggemma.yaml` | `charts/videoq/examples/local-ai-gpt-oss.yaml` | One GPU for gpt-oss; CPU EmbeddingGemma 2 and Whisper |
 | llama.cpp CPU | defaults or `examples/llamacpp-cpu.yaml` | `charts/videoq/examples/local-ai-llamacpp.yaml` | Separate CPU chat and embedding Pods; Whisper CPU |
 | vLLM NVIDIA | `examples/vllm-nvidia.yaml` | `charts/videoq/examples/local-ai-vllm.yaml` | Three CUDA GPUs, one each for chat, embedding and Whisper |
 | vLLM AMD | `examples/vllm-amd.yaml` | `charts/videoq/examples/local-ai-vllm.yaml` | Three ROCm GPUs, one each for chat, embedding and Whisper; hardware acceptance pending |
@@ -112,9 +116,9 @@ Authentication for existing protected inference services is configured by the
 site; these recipe services rely on private ClusterIP and NetworkPolicy.
 
 The same app configuration can point to separately operated compatible servers,
-including different chat and embedding runtimes. The chart-level `backend` supplies the default; `servers.chat.backend` and
-`servers.embedding.backend` can select each runtime independently. Empty role
-settings inherit the chart defaults. Model templates, tool parsers and JSON Schema
+including different chat and embedding runtimes. The chart-level `backend` supplies the default; `servers.chat.engine` and
+`servers.embedding.engine` can select each runtime independently. Empty role
+settings inherit the chart defaults. The `backend` role setting remains supported; when both `engine` and `backend` are supplied they must agree. Model templates, tool parsers and JSON Schema
 behavior must pass the common acceptance suite; API compatibility alone does not
 establish VideoQ compatibility. The tested Qwen3/llama.cpp recipe requires
 `separateToolSchema=true`. The vLLM recipe starts with
@@ -136,6 +140,88 @@ quantization, pooling or preprocessing**, even if both configurations return
 worker must receive the same alias and endpoint. When replacing weights, change
 both `servers.embedding.servedModel` and `ai.embeddingModel` rather than reusing
 an old alias. The existing database does not automatically migrate vector spaces.
+
+## Recommended gpt-oss + EmbeddingGemma 2 + Whisper profile
+
+This profile pins `openai/gpt-oss-20b` and `google/embeddinggemma-2` to immutable
+Hugging Face revisions. Chat uses vLLM's OpenAI tool and reasoning parsers with
+low reasoning effort. Embeddings use `embedding_server.py` in a separate CPU
+Pod, loading only the 270M text encoder. Whisper remains the existing
+large-v3-turbo Q5_0 whisper.cpp service. The GPU must support the pinned vLLM
+runtime and gpt-oss quantization; measure VRAM with the configured 8192-token
+context and concurrency on the target GPU. CPU-only inference for gpt-oss is
+not provided by this profile.
+
+Use `separateToolSchema: true` in the application profile: make tool decisions
+without the final-answer grammar, then enforce the strict JSON schema on the
+terminal answer. The real-model compatibility check requires this separation
+with the pinned vLLM runtime. Preserve gpt-oss reasoning internally across tool
+continuations with `preserveToolReasoning: true`.
+
+The CPU image must include this version's `embedding_server.py` and locked
+sentence-transformers dependencies. Build from this source and record the
+resulting digest; do not reuse an older Whisper-only image:
+
+```sh
+docker build -t registry.example.edu/videoq/inference-cpu:YOUR_TAG apps/inference/whisper
+docker push registry.example.edu/videoq/inference-cpu:YOUR_TAG
+```
+
+Set `whisper.image.repository`, `whisper.image.tag` and `whisper.image.digest`
+in an operator-owned `/secure/inference-site.yaml` to that reviewed build. The
+shared CPU image supplies the speech gateway, embedding server and setup-only
+model downloader in separate containers. It does not share a loaded model
+between Pods. Use a signed release built from the same source when available;
+retain its scan, SBOM and provenance checks.
+
+```sh
+helm upgrade --install inference charts/videoq-inference -n videoq --create-namespace \
+  -f charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml \
+  -f /secure/inference-site.yaml --wait --timeout 30m
+helm upgrade --install videoq charts/videoq -n videoq -f /secure/site.yaml \
+  -f charts/videoq/examples/local-ai-gpt-oss.yaml --wait --timeout 15m
+```
+
+The application migration adds `scene_embeddings_768`. API queries and worker
+documents use separate model prompts and the same 768-dimensional space; the
+existing 1536-dimensional table is retained. Both app processes must use
+`EMBEDDING_PROFILE=embeddinggemma2`, the same pinned model alias and the dedicated
+embedding endpoint. Leave `PGVECTOR_COLLECTION_NAME` unset so the profile selects
+the correct table. Reindex existing transcripts in a maintenance window before
+opening search, using the [cutover instructions](../../docs/guides/local-inference.md).
+Changing back to an old model requires rebuilding any subsequently changed videos.
+
+The private `/v1/embeddings` service requires `input_type: query|document`,
+applies the pinned `SearchQuery`/`Document` prompts, normalizes vectors, and
+rejects unknown models, non-768 output requests and overlong inputs. It uses
+local weights, disables image/audio encoders and never enables remote code.
+Multimodal indexing is not enabled by selecting this profile.
+
+For a real-model protocol check, set private endpoint URLs and run the opt-in
+suite (it uses public, nonsensitive text and never calls hosted defaults):
+
+```sh
+LOCAL_AI_TEST_CHAT_BASE_URL=http://127.0.0.1:8000/v1 \
+LOCAL_AI_TEST_MODEL=videoq-chat LOCAL_AI_TEST_REASONING_EFFORT=low \
+LOCAL_AI_TEST_SEPARATE_TOOL_SCHEMA=true LOCAL_AI_TEST_PRESERVE_TOOL_REASONING=true \
+LOCAL_AI_TEST_EMBEDDING_BASE_URL=http://127.0.0.1:8001/v1 \
+LOCAL_AI_TEST_EMBEDDING_MODEL=embeddinggemma-2-f9972ac \
+LOCAL_AI_TEST_EMBEDDING_PROFILE=embeddinggemma2 \
+LOCAL_AI_TEST_WORKER_PYTHON="$PWD/apps/worker/.venv/bin/python" \
+npm run test:unit --workspace @videoq/api -- test/local-inference.integration.test.ts
+```
+
+Protected endpoints also need `LOCAL_AI_TEST_API_KEY` and, if different,
+`LOCAL_AI_TEST_EMBEDDING_API_KEY`. Pass them privately through the environment.
+The suite checks tool calls, final JSON, SSE, CPU/Python indexing compatibility
+and Japanese-to-English/English-to-Japanese retrieval. End-to-end acceptance on
+a disposable site additionally uses `.github/onprem-lab/model-e2e.mjs`: prepare
+`ja.mp4` and `en.mp4` from the attributed public speech fixtures and provision
+`models_lab` / `model-validation@example.invalid` into `activation.json`. It
+checks real upload, transcription, indexing and cited Q&A in all four language
+combinations. This is a small acceptance sample, not a production quality or
+capacity benchmark. The runtime's image/driver compatibility and private egress
+policy still need validation on the deployment hardware.
 
 ## Install llama.cpp or vLLM
 
@@ -373,8 +459,8 @@ batch-size/device/compute-type fields are removed and rejected by the schema.
 
 The CPU application profile uses 30-second durable checkpoints; GPU and cloud
 use 300 seconds. `ai.whisperChunkSeconds` / `WHISPER_CHUNK_SECONDS` accepts 30–300
-seconds. Short CPU checkpoints keep individual calls within the worker's
-120-second inference deadline without extending queue leases. Completed results
+seconds. Short CPU checkpoints keep individual calls within the gateway's 600-second
+budget and the worker's 660-second deadline without extending queue leases. Completed results
 are reused after retries and their offsets remain relative to the source video.
 Existing plans keep their recorded interval size. Drain incomplete plans on
 the previous release before changing runtimes or CPU/GPU profiles; a retry
@@ -382,7 +468,7 @@ does not resize an existing plan. No retired-provider fallback is retained.
 The serial on-prem poller defaults to one message at a time. Measure service
 capacity before increasing worker replicas or admission limits.
 
-CPU's quantized multilingual small model is a small acceptance baseline, not a promise of
+CPU's quantized multilingual large-v3-turbo model is a small acceptance baseline, not a promise of
 Japanese recognition accuracy. Larger checkpoints need more CPU/RAM and may need
 shorter worker intervals. Review weights, checksums, source coverage, silence,
 Japanese accuracy and throughput with representative site recordings.

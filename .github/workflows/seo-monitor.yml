@@ -1,0 +1,38 @@
+name: Daily public SEO checks
+
+on:
+  schedule:
+    - cron: '43 23 * * *' # 08:43 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: ./.github/actions/setup-package-manager
+        with:
+          manager: npm
+      - name: Install the locked HTML parser without package scripts
+        run: npm ci --ignore-scripts --workspace @videoq/web
+      - name: Check public HTML, status codes and internal links
+        run: node apps/web/scripts/seo-audit.mjs --output seo-audit.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: public-seo-audit
+          path: seo-audit.json
+          retention-days: 90
+          if-no-files-found: warn
+
+# This job checks the public site only. It cannot measure Google rankings or
+# inspect Search Console, and it never changes production content.

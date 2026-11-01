@@ -20,12 +20,13 @@ describe('LandingPage', () => {
     )
   })
 
-  it('offers the instructor demo without an interactive sample chat', () => {
+  it('links to the no-signup sample course instead of embedding a chat', () => {
     const { container } = render(<LandingPage />)
 
     expect(screen.getByRole('heading', { level: 2, name: 'landing.film.title' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'landing.film.play' })).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'landing.tryDemo' })[0]).toHaveAttribute('href', '/try')
     expect(screen.getByRole('list', { name: 'landing.film.stepsLabel' }).children).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: 'landing.tryOwn' })[0]).toHaveAttribute('href', '/signup')
     expect(container.innerHTML).not.toContain('/share/')

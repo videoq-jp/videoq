@@ -40,7 +40,7 @@ separate machine; API and video workers call its endpoint.
 
 For a concrete CPU or NVIDIA GPU deployment of local chat, embeddings and
 Whisper, see [local inference](local-inference.md). The default application
-values use external OpenAI APIs; the local overlay is an explicit opt-in.
+values use hosted OpenRouter; the local overlay is an explicit opt-in.
 
 ## How it differs from Cloudflare
 

@@ -18,17 +18,20 @@ description: 目的からテーブルを探し、実際の列定義へ進むた�
 | `apikey` | MCP用APIキーとアクセス範囲の情報 |
 | `jwks` | OAuthトークンの署名に使う鍵 |
 | `account_deletion_requests` | アカウント削除依頼 |
+| `device_code` | Better Authのデバイス認可（RFC 8628）の要求 |
 
 ## 動画・講座・タグ
 
 | テーブル | 保存するもの |
 |---|---|
-| `videos` | 動画のタイトル・所有者・ファイル参照・文字起こし・処理状態 |
+| `videos` | 動画のタイトル・所有者・ファイル参照・話されている言語（`transcription_language`。nullは自動判定）・文字起こし・処理状態 |
 | `video_courses` | 講座、所有者、共有に関する設定 |
 | `video_course_members` | 講座に含める**動画**と表示順 |
 | `video_course_memberships` | 講座を利用する**人**の参加情報 |
 | `video_course_invitations` | 講座への招待と状態 |
 | `tags` / `video_tags` | 利用者のタグ / 動画との対応 |
+| `video_transcription_runs` / `video_transcription_chunks` | 動画ごとの再開可能な文字起こし計画 / 区間ごとの保存済みセグメント、再試行、エラー |
+| `video_visual_runs` / `video_visual_chunks` | 動画ごとの画像キャッシュ作成計画と状態 / チャンクごとの状態 |
 
 ## 質問・回答・評価
 
@@ -37,6 +40,7 @@ description: 目的からテーブルを探し、実際の列定義へ進むた�
 | `chat_logs` | 質問、`response` JSONB内の構造化回答（`segments` と `sources`）、取得資料、利用者のフィードバック |
 | `chat_log_evaluations` | 廃止前の回答評価。新規の書き込みなし |
 | `course_evaluation_snapshots` | 廃止前の講座単位の評価集計 |
+| `ai_answer_attempts` | 回答ごとの匿名の費用記録。利用者ID、プロンプト、回答、提供元の認証情報は含まない |
 
 回答の正本は `chat_logs.response` です。旧形式の独立した `answer` 列と `citations` 列は削除されています。履歴も同じ構造を返し、CSV出力用の本文はsegmentのtextを連結して導出します。[回答の契約](../architecture/prompt-engineering.md#構造化回答引用と権限)と[既存データの変換](../architecture/structured-answers.md)を参照してください。
 
@@ -54,6 +58,7 @@ description: 目的からテーブルを探し、実際の列定義へ進むた�
 | `job_executions` | workerが受け取ったジョブの実行状態 |
 | `mcp_idempotency_records` | MCP操作の再実行による重複を防ぐ記録 |
 | `stripe_events` | 受信したStripeイベントの重複処理を防ぐ記録 |
+| `runtime_rate_limits` | オンプレのNode.js実行環境で共有する利用制限の記録。Cloudflare Workersは `RATE_LIMITER` のDurable Objectを使用 |
 
 ## OAuth
 

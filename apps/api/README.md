@@ -67,14 +67,14 @@ Better Auth (`/api/auth/*`) is the source of truth.
 
 ### API keys / OAuth
 
-- API keys: `@better-auth/api-key` (prefix `vq_`; access level stored in metadata)
+- API keys: `@better-auth/api-key` (prefix `vq_`; the server sets `permissions` from the selected configuration)
 - MCP / third parties: `@better-auth/oauth-provider`
   (unauthenticated DCR is allowed for MCP; registration is rate-limited, and confidential client secrets expire after 30 days)
 - Better Auth 1.7's protected resource is fixed at `/api/mcp`. When migrating to 1.7,
-  revoke legacy DCR clients and tokens and register again. Access tokens last 15 minutes;
+  revoke legacy DCR clients and tokens and register again. Access tokens last five minutes;
   both Bearer and DPoP are validated
 - tRPC and browser-facing raw routes use cookie sessions; MCP uses API keys / OAuth Bearer tokens
-- MCP OAuth validates `videoq.read` / `videoq.write`; API keys without metadata default to read-only
+- MCP OAuth validates `videoq.read` / `videoq.write`; the `default` API-key configuration is read-only and `read-write` adds write access
 - MCP creation operations use `mcp_idempotency_records` for 30-day idempotency, with per-tool output schemas, safety annotations, and per-user rate limits
 - The SPA determines sign-in status with Better Auth's `useSession`; profiles come from `account.me`
 - User IDs are Better Auth's standard text UUIDs (existing rows were remapped to UUIDs by `0006_user_id_uuid`, invalidating sessions / OAuth tokens)
@@ -89,20 +89,22 @@ User-specific external API keys are encrypted with AES-256-GCM.
 - Envelope: `v1.<nonce>.<ciphertext+tag>`
 - Nonce: 12 bytes generated for each encryption operation
 
-Manage `BETTER_AUTH_SECRET`, the OpenAI key, and S3/SQS credentials through
+Manage `BETTER_AUTH_SECRET`, any fixed AI provider keys, and S3/SQS credentials through
 `wrangler secret` or a local `.dev.vars` file.
 
 ## Q&A agent
 
-Q&A uses ReAct with the following tools, scoped to the current course after access
-has been verified:
+Q&A uses ReAct with the following core tools, scoped to the current course after access
+has been verified. The agent can also use `read_video_window`, `overview_video`, `skim_video`,
+`inspect_clip`, and `focus_clip`; see [video navigation and visual evidence](../../docs/guides/visual-evidence.md).
 
 - `get_course_info`: Retrieves the course name, registered description, and total video count, plus each video's ID, title, description, position, and processing state. Up to 20 videos per page and 5 calls per answer. Course descriptions are limited to 2,000 characters and video descriptions to 500, with truncation indicated. Fetch subsequent videos using `videos_meta.next_offset`.
 - `search_scenes`: Semantic search over transcripts. Optional `video_ids` narrow the search to specific videos in the course. Omitting them searches the entire course; IDs outside the course or an empty selection are invalid. Up to 3 calls per answer.
 
 Course names, video counts, and similar questions can be answered from metadata
 alone, without a vector search connection or embedding API calls. Explanations of
-lesson content search transcripts and cite sources with `[N]`. Metadata is also
+lesson content search transcripts and pair answer segments with source IDs
+([structured answers](../../docs/architecture/prompt-engineering.md#structured-answers-citations-and-permissions)). Metadata is also
 saved in `retrieved_contexts` as material retrieved for the answer, but is not given
 scene citation numbers or timestamps.
 
@@ -115,7 +117,7 @@ or not a description exists.
 
 A video's `position` is its one-based display position; `order` is its stored sort
 value. These are distinct from lecture numbers such as "Lecture 7" in a title.
-The model can use tools for up to 8 turns, after which tools are removed and a final
+The model can use tools for up to 19 turns (`MAX_TOOL_ROUNDS`), after which tools are removed and a final
 answer is generated. Both streaming and non-streaming paths are supported.
 
 Verification: `test/rag-agent.test.ts`, `test/chat-send.test.ts`, and
@@ -140,9 +142,9 @@ Drizzle's modern schema is the only runtime model.
 
 Main table groups:
 
-- Auth (Better Auth): `users` (text UUID PK), `session`, `account`, `verification`, `apikey`, `jwks`, `oauth_*`
-- Video: `videos`, `video_courses`, `video_course_members`, `tags`, `video_tags`
-- Chat: `chat_logs`. `chat_log_evaluations` and `course_evaluation_snapshots` retain data from before evaluation was removed; no new evaluations are performed.
+- Auth (Better Auth): `users` (text UUID PK), `session`, `account`, `verification`, `apikey`, `jwks`, `device_code`, `oauth_*`
+- Video: `videos`, `video_courses`, `video_course_members`, `video_course_memberships`, `video_course_invitations`, `tags`, `video_tags`, `video_transcription_*`, `video_visual_*`
+- Chat: `chat_logs`, `ai_answer_attempts`. `chat_log_evaluations` and `course_evaluation_snapshots` retain data from before evaluation was removed; no new evaluations are performed.
 - Vector: `scene_embeddings` (both the worker and Hono use PGVectorStore; Hono searches are scoped to the owner and videos in the course)
 
 Admin procedures: `admin.listUsers`, `admin.patch*`, and `admin.reindexAll`.
@@ -194,9 +196,8 @@ with the journal, exact agreement between generated DDL and snapshot differences
 and the absence of DDL in custom migrations.
 
 Migration `0023` removes existing tables as part of retiring the learning features.
-For existing environments, stop traffic and jobs before setting
-`STUDY_REMOVAL_MAINTENANCE=true` and migrating. Without it, `db:migrate` stops before
-making changes. See the [deployment procedure](../../docs/design/deployment-diagram.md#deploying-the-learning-feature-removal).
+Existing environments deploy that removal in two releases; no maintenance variable is
+needed. See the [deployment procedure](../../docs/design/deployment-diagram.md#deploying-the-learning-feature-removal).
 
 ## Asynchronous jobs
 
@@ -237,6 +238,7 @@ there is no repository root directory setting in the Cloudflare Dashboard.
 | `VIDEO_BUCKET` | Videos, transcripts, and thumbnails |
 | `RATE_LIMITER` | Distributed rate limiting |
 | `TASK_SCHEDULER` | Scheduled recovery for undelivered jobs, abandoned uploads, etc. (Durable Object) |
+| `CHAT_EXECUTION` | Runs each chat answer in its own SQLite-backed Durable Object |
 
 See `wrangler.jsonc` and `.dev.vars.example` for R2's S3-compatible endpoint, SQS,
 LLM/embedding settings, the OAuth issuer, and related configuration.
@@ -274,6 +276,6 @@ docker compose up -d postgres garage garage-init elasticmq worker
 ```
 
 For separately hosted OpenAI-compatible embeddings, set `EMBEDDING_BASE_URL` and
-optionally `EMBEDDING_API_KEY`; unset values reuse `OPENAI_BASE_URL` and
-`OPENAI_API_KEY`. Embeddings always use the OpenAI-compatible protocol, including
+optionally `EMBEDDING_API_KEY`; unset values reuse `OPENAI_BASE_URL` and the key for
+that endpoint (`OPENROUTER_API_KEY` on OpenRouter, otherwise `OPENAI_API_KEY`). Embeddings always use the OpenAI-compatible protocol, including
 private llama.cpp/vLLM services. The worker must use the same model and endpoint.

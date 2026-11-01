@@ -6,7 +6,7 @@ description: 既存の Kubernetes または K3s に Helm で VideoQ を導入す
 # VideoQ をオンプレで動かす
 
 LLM・埋め込み生成・Whisper も社内で動かす場合は、[ローカル推論](local-inference.md)
-の手順を使います。アプリ用 Chart の標準設定は外部 OpenAI API です。
+の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenRouter です。
 ローカル構成では、推論用 Chart と接続先を切り替える設定を明示的に適用します。
 
 VideoQ の Web・Node.js API・Python ワーカーを、既存の Kubernetes に配置できます。
@@ -91,3 +91,6 @@ API Pod 内で `node dist/provision-user.mjs --reset USER_ID` を実行します
 動画・コース管理、アップロード動画の文字起こし、検索・引用付きチャット、利用量表示、
 ローカルの API キー／MCP、社内向け共有は利用できます。AI の接続先は別途設定し、
 社内で完結させる場合は対応するローカル推論用の設定を適用します。
+[エディションと初期設定の手順](https://github.com/videoq-jp/videoq/blob/main/charts/videoq/README.md#on-prem-application-edition)を参照してください。
+
+インターネットに接続できる環境では、成果物の検証、検証環境での自動リハーサル、本番への昇格について[署名付きリリースと更新](on-premises-releases.md)を参照してください。

@@ -1,71 +1,82 @@
-# ワークフローの見取り図
+# Workflow map
 
-普段見る入口は **CI・CD・Dependency Automation・Operations**。
-PRの検証はCIの1実行にまとまり、監視はOperationsの1画面にまとまる。
+The everyday entry points are **CI, CD, Dependency Automation, and Operations**.
+PR validation runs in one CI run, and monitoring is collected in one Operations view.
 
 ```mermaid
 flowchart LR
-  PR[PR] --> CI[CI: アプリ・コンテナ・Terraform]
-  CI --> Q[GitHub Merge Queueで統合検証]
-  Q --> M[mainへマージ]
+  PR[PR] --> CI[CI: app, containers, Terraform]
+  CI --> Q[GitHub Merge Queue integration check]
+  Q --> M[Merge to main]
   M --> CI
-  CI -->|mainの検証成功| CD[CD]
-  CD -->|成功| O[Operations: 本番スモーク]
+  CI -->|main validated| CD[CD]
+  CD -->|success| O[Operations: production smoke]
   D[Dependabot / Runtime Updates] --> PR
   CI --> A[Dependency Automation]
-  A -->|成功| Q
-  A -->|修正が必要| C[隔離Claude Worker]
+  A -->|success| Q
+  A -->|needs a fix| C[Isolated Claude Worker]
   C --> PR
-  T[日次 / 月次 / 手動] --> O
+  T[Daily / monthly / manual] --> O
 ```
 
-## 入口と部品
+## Entry points and components
 
-| 入口 | 役割 |
+| Entry point | Role |
 | --- | --- |
-| `ci.yml` | PR・Merge Queue・mainの検証。変更検出は1回。4つの必須チェックをここに集約 |
-| `cd.yml` | 検証済みmainをビルドし、書き込み権限を分離して本番へデプロイ |
-| `dependency-queue.yml` | 更新PRの由来を確認し、CI成功なら標準キューへ、修正が必要ならClaudeへ |
-| `operations.yml` | 定期監視6種類とオンプレミス・推論検証、CD成功後のスモーク、手動の項目選択 |
-| `runtime-updates.yml` | 日次のランタイム更新PR作成 |
-| `claude-dependency-worker.yml` | 許可された修正の実行。別runnerで検証・反映 |
-| `codeql.yml` | GitHubのコード解析 |
-| `terraform-apply.yml` | Terraformの本番適用と承認 |
-| `cloudflare-resources.yml` | Cloudflareリソース同期 |
-| `onprem-release.yml` | 公開コンテナ・チャートの署名付きリリース |
+| `ci.yml` | Validates PRs, Merge Queue, and main. Detects changes once and aggregates the four required checks |
+| `cd.yml` | Builds validated main and deploys to production with separated write permissions |
+| `dependency-queue.yml` | Verifies an update PR's origin, then sends it to the standard queue after CI success, or to Claude if it needs a fix |
+| `operations.yml` | Six recurring monitors plus on-prem and inference validation, post-CD smoke, and manual selection |
+| `runtime-updates.yml` | Creates daily runtime update PRs |
+| `claude-dependency-worker.yml` | Runs permitted repairs; verifies and applies them on a separate runner |
+| `codeql.yml` | GitHub code analysis |
+| `terraform-apply.yml` | Production Terraform apply and approval |
+| `cloudflare-resources.yml` | Cloudflare resource sync |
+| `onprem-release.yml` | Signed public container and chart releases |
+| `seo-monitor.yml` | Read-only daily audit of public pages; see [search engine visibility](../docs/operations/seo.md) |
+| `api-aws-key-rotation.yml` | Weekly read-only key-age audit and staged rotation of the production API AWS key; see [the runbook](../docs/operations/api-aws-key-rotation.md) |
+| `openrouter-identity.yml` | Manual inspection and setup of OpenRouter workload identity; see [cloud AI](../docs/operations/openai-transcription.md) |
+| `ai-credential-audit.yml` | Manual inventory of remaining hosted AI credential copies, without printing values |
+| `retire-ai-credentials.yml` | Manual plan and guarded retirement of reviewed direct AI keys |
+| `public-demo-setup.yml` | Manual audit and provisioning of the `/try` sample course; see [public demo](../docs/operations/public-demo.md) |
 
-`container-validation.yml`・`terraform-plan.yml`・`onprem-validation.yml`・
-`local-inference-basic.yml` はCI・Operationsから呼ぶ検証部品で、独自のイベント起動は持たない。
-権限の違う処理を一つのrunnerに混ぜず、ジョブごとの権限・環境・承認を維持する。
+`container-validation.yml`, `terraform-plan.yml`, `onprem-validation.yml`, and
+`local-inference-basic.yml` are validation components called from CI and Operations.
+They have no event triggers of their own. Keep per-job permissions, environments, and
+approvals rather than mixing differently privileged work on one runner.
 
-移管時だけ必要だったPackage Namespace BootstrapとRetired Package Cleanupの
-ワークフロー・CLI・専用テストは削除した。必要ならGit履歴を参照する。
-公開パッケージ・過去の署名・リリースは削除しない。
+The Package Namespace Bootstrap and Retired Package Cleanup workflows, CLIs, and tests
+needed only for the repository transfer were removed; see Git history if needed.
+Published packages, past signatures, and releases are not deleted.
 
-旧Djangoからの一度限りのETL・切り替え・テーブル削除ツールとnpmの入口、
-適用済みSQLの生成専用ツール、旧LP動画ジェネレーター、未使用のWhisper API PoCも削除した。
-適用済みSQLと配信中の動画は維持する。現行のDB更新は `apps/api/scripts/db-migrate.sh`、
-動画生成は `apps/demo-video` を使う。過去のSQL内にある生成コマンドは当時の記録として残す。
+Also removed: the one-time Django ETL, cutover, and table-removal tools with their npm
+entry points, generators used only for already-applied SQL, the old landing-video
+generator, and an unused Whisper API proof of concept. Applied SQL and served videos
+stay. Current database updates use `apps/api/scripts/db-migrate.sh`, and videos are
+generated with `apps/demo-video`. Generation commands inside old SQL remain as records.
 
-依存更新の順番管理はGitHub Merge Queueに統一した。旧キュー用のREBASE分岐と
-移管時の手動追従入力、日次のPR滞留レポートは廃止した。
-実際の統合CI失敗時の自動追従とClaude修正はイベントで起動する。
+Dependency merge ordering now uses only GitHub Merge Queue. The old queue's REBASE
+branch, manual follow-up inputs from the transfer, and the daily stale-PR report were
+retired. Automatic follow-up after a real integration CI failure and Claude repair
+start from events.
 
-## 手動で確認する
+## Run a check manually
 
 ```sh
-# 一つの監視だけを実行する
- gh workflow run operations.yml -f check=tokens
-# トークン期限をシミュレーションする（本物の通知失敗にはしない）
- gh workflow run operations.yml -f check=tokens -f dry_run=true -f preview_date=2026-12-10
-# 全監視（本番スモークとDB復元テストも含む）
- gh workflow run operations.yml -f check=all
+# Run a single monitor
+gh workflow run operations.yml -f check=tokens
+# Simulate token expiry (does not cause a real notification failure)
+gh workflow run operations.yml -f check=tokens -f dry_run=true -f preview_date=2026-12-10
+# All monitors, including production smoke and the database restore test
+gh workflow run operations.yml -f check=all
 ```
 
-Operationsの日次実行は09:17 JST、推論互換性は毎週月曜11:17 JST、DB復元は毎月1日13:41 JST。
-`check=onprem` では `validate_real_cpu`・`validate_whisper_gpu` を明示して追加検証できる。
-CIのオンプレミス検証では、固定した上流イメージ（llama.cpp・whisper.cpp）の脆弱性検査を、
-その固定値や検査設定を変えたPRと手動CIに限る。日次のOperationsでは常に検査する。
-監視はIssueを起票せず、結果をジョブのサマリーへ記録する。
-更新処理の詳細は [dependency-automation.md](dependency-automation.md)、
-監視の内容は [OPERATIONS.md](OPERATIONS.md) を参照。
+Operations runs daily at 09:17 JST, inference compatibility every Monday at 11:17 JST,
+and the database restore on the 1st of each month at 13:41 JST.
+`check=onprem` can add validation with explicit `validate_real_cpu` and `validate_whisper_gpu`.
+In CI's on-prem validation, vulnerability scans of pinned upstream images (llama.cpp and
+whisper.cpp) are limited to PRs that change those pins or scan settings, and to manual CI.
+Daily Operations always scans them.
+Monitors do not open Issues; results go to the job summary.
+See [dependency-automation.md](dependency-automation.md) for update processing and
+[OPERATIONS.md](OPERATIONS.md) for what the monitors do.

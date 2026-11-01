@@ -117,7 +117,7 @@ const jsonTurn = (turn: Exclude<Turn, { status: number }>) =>
       };
 
 /** 送信順に turns を返す偽 OpenAI。埋め込みは使われない想定だが念のため応答する。 */
-function stubOpenAi(turns: Turn[]) {
+function stubOpenAi(turns: Turn[], duplicateFinish = false) {
   const bodies: Record<string, unknown>[] = [];
   let index = 0;
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
@@ -132,6 +132,11 @@ function stubOpenAi(turns: Turn[]) {
     const turn = turns[Math.min(index++, turns.length - 1)];
     if ("status" in turn) {
       return new Response("upstream failed", { status: turn.status });
+    }
+    if (body.stream && duplicateFinish) {
+      const frames = chatCompletionFrames(jsonTurn(turn), `chatcmpl-${index}`);
+      frames.splice(-2, 0, frames.at(-3)!);
+      return new Response(frames.join(""), { headers: { "content-type": "text/event-stream" } });
     }
     return chatCompletionResponse(jsonTurn(turn), body.stream, `chatcmpl-${index}`);
   });
@@ -714,6 +719,21 @@ describe("RAG エージェント（ストリーミング）", () => {
       finishSearch?.([]);
       await stream.return();
     }
+  });
+
+  it("completes retrieval and a cited answer with repeated provider finish notifications", async () => {
+    hitsByQuery = () => [scene(1)];
+    stubOpenAi([
+      { toolCall: { name: "search_scenes", args: { query: "量子化とは" } } },
+      { content: "連続値を離散値に変換します。", sourceIds: [1] },
+    ], true);
+    const chunks: RagStreamChunk[] = [];
+    for await (const chunk of streamRag(ENV, PARAMS)) chunks.push(chunk);
+    expect(chunks.at(-1)).toMatchObject({ final: { answer: {
+      segments: [{ text: "連続値を離散値に変換します。", sourceIds: [1] }],
+    } } });
+    expect(chunks.filter(chunk => "part" in chunk && chunk.part.type === "citation")).toHaveLength(1);
+    expect(closed).toBe(1);
   });
 
   it("reports a failed tool without exposing its exception or generating a final answer", async () => {

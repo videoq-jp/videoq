@@ -63,10 +63,13 @@ flowchart TB
 
 The API reaches the shared database through Hyperdrive; the Python worker uses a PostgreSQL connection. Check both when changing database columns.
 
+Hosted AI calls from both runtimes go through OpenRouter, authenticated with AWS workload identity federation in production. See the [cloud AI runbook](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md). On-premises deployments replace Durable Objects and hosted services as described in [Run VideoQ on-premises](../guides/on-premises.md).
+
 ## Durable Object roles
 
 - `RATE_LIMITER`: Limits excessive requests over short periods.
 - `TASK_SCHEDULER`: Schedules recovery of undelivered jobs and abandoned uploads.
+- `CHAT_EXECUTION`: Runs each chat answer in its own SQLite-backed object, so long tool loops do not depend on the ordinary Worker CPU limit. See [answer streaming troubleshooting](../guides/troubleshooting.md#answer-streaming-fails-or-citations-arrive-later).
 
 Recovery is scheduled with Durable Object alarms. The current cron schedule is daily at `17 3 * * *` (UTC), for cleanup and recovery. Do not assume a five-minute cron schedule.
 

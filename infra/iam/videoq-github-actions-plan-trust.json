@@ -11,7 +11,6 @@
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
           "token.actions.githubusercontent.com:sub": [
-            "repo:videoq-jp@349188820/videoq@1083911938:pull_request",
             "repo:videoq-jp@349188820/videoq@1083911938:ref:refs/heads/main"
           ]
         }

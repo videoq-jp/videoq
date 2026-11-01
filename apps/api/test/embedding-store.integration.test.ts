@@ -20,8 +20,13 @@ const migrations = fileURLToPath(new URL("../drizzle", import.meta.url));
 
 afterEach(() => vi.unstubAllGlobals());
 
-(databaseUrl ? describe : describe.skip)("1536-dimensional cross-language storage", () => {
+(databaseUrl ? describe : describe.skip).each([
+  { profile: "openai", model: "text-embedding-3-small", dimensions: 1536, table: "scene_embeddings" },
+  { profile: "embeddinggemma2", model: "embeddinggemma-2-f9972ac", dimensions: 768, table: "scene_embeddings_768" },
+])("$profile cross-language storage", ({ profile, model, dimensions, table }) => {
   it("migrates an empty DB, writes through Python, searches through the API and builds both HNSW indexes", async () => {
+    const vector = () => embedding(1).slice(0, dimensions);
+    const settings = { EMBEDDING_PROFILE: profile, EMBEDDING_MODEL: model, EMBEDDING_BASE_URL: "http://embedding.test/v1" };
     const name = `videoq_embedding_${crypto.randomUUID().replaceAll("-", "")}`;
     const admin = new Pool({ connectionString: databaseUrl });
     admin.on("error", () => {});
@@ -33,14 +38,14 @@ afterEach(() => vi.unstubAllGlobals());
       pool = new Pool({ connectionString: url.toString(), max: 1 });
       pool.on("error", () => {});
       await migrate(drizzle(pool), { migrationsFolder: migrations });
-      await assertEmbeddingSchema(pool, resolveEmbeddingConfig({}));
+      await assertEmbeddingSchema(pool, resolveEmbeddingConfig(settings));
       const { stdout } = await exec(process.env.VIDEOQ_TEST_PYTHON || "python3", [pythonHelper], {
         cwd: workerPath,
-        env: { ...process.env, DATABASE_URL: url.toString(), EMBEDDING_MODEL: "text-embedding-3-small", PYTHONPATH: workerPath },
+        env: { ...process.env, DATABASE_URL: url.toString(), ...settings, PYTHONPATH: workerPath },
       });
       expect(stdout).toContain("python_save_search_hnsw_ok");
-      const env = { HYPERDRIVE: { connectionString: url.toString() }, OPENAI_API_KEY: "test-key" } as Bindings;
-      const fetch = vi.fn(async () => Response.json({ data: [{ index: 0, embedding: embedding(1) }] }));
+      const env = { HYPERDRIVE: { connectionString: url.toString() }, OPENAI_API_KEY: "test-key", ...settings } as Bindings;
+      const fetch = vi.fn(async () => Response.json({ data: [{ index: 0, embedding: vector() }] }));
       vi.stubGlobal("fetch", fetch);
       const search = await openSceneSearch(env, { userId: "allowed-owner", videoIds: [60] });
       try {
@@ -54,7 +59,7 @@ afterEach(() => vi.unstubAllGlobals());
       } finally { await search.close(); }
 
       const engine = PGEngine.fromPool(pool);
-      const store = await PGVectorStore.initialize(engine, { embedQuery: async () => embedding(1), embedDocuments: async (texts) => texts.map(() => embedding(1)) }, "scene_embeddings", { metadataColumns: ["user_id", "video_id"] });
+      const store = await PGVectorStore.initialize(engine, { embedQuery: async () => vector(), embedDocuments: async (texts) => texts.map(() => vector()) }, table, { metadataColumns: ["user_id", "video_id"] });
       await store.applyVectorIndex(new HNSWIndex({ name: "js_embedding_hnsw" }));
       expect(await store.isValidIndex("js_embedding_hnsw")).toBe(true);
       const hits = await store.similaritySearch("water", 10, { user_id: "allowed-owner", video_id: 60 });
@@ -62,14 +67,14 @@ afterEach(() => vi.unstubAllGlobals());
       await store.dropVectorIndex("js_embedding_hnsw");
 
       // The table is deliberately empty: checking rows would miss this mismatch.
-      await pool.query("TRUNCATE scene_embeddings");
-      await pool.query("ALTER TABLE scene_embeddings ALTER COLUMN embedding TYPE vector(1024)");
+      await pool.query(`TRUNCATE ${table}`);
+      await pool.query(`ALTER TABLE ${table} ALTER COLUMN embedding TYPE vector(1024)`);
       fetch.mockClear();
       await expect(openSceneSearch(env, { userId: "allowed-owner", videoIds: [60] })).rejects.toMatchObject({ reason: "EMBEDDING_SCHEMA_MISMATCH" });
       for (const ddl of [
-        "ALTER TABLE scene_embeddings ALTER COLUMN embedding TYPE vector",
-        "ALTER TABLE scene_embeddings ALTER COLUMN embedding TYPE text USING embedding::text",
-        "ALTER TABLE scene_embeddings DROP COLUMN embedding",
+        `ALTER TABLE ${table} ALTER COLUMN embedding TYPE vector`,
+        `ALTER TABLE ${table} ALTER COLUMN embedding TYPE text USING embedding::text`,
+        `ALTER TABLE ${table} DROP COLUMN embedding`,
       ]) {
         await pool.query(ddl);
         await expect(openSceneSearch(env, { userId: "allowed-owner", videoIds: [60] }))

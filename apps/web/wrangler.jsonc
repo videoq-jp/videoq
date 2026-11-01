@@ -8,7 +8,8 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
+    // The Worker chooses the shell itself: `/` is prerendered and unknown paths are 404.
+    "not_found_handling": "none",
     // HTML must pass through the locale/SEO rewriter. Hashed assets need no code.
     "run_worker_first": ["/*", "!/assets/*"]
   },

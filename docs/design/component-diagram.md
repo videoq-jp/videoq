@@ -59,7 +59,10 @@ flowchart TD
     Event[SQS event] --> Decode[Native job decode]
     Decode --> Registry[Task registry]
     Registry --> Transcription
+    Transcription --> Chunks[Interval jobs and finalizer]
     Registry --> Indexing
+    Registry --> Visuals[Visual cache chunks and finalizer]
+    Registry --> Reindexing
     Registry --> AccountDeletion
 ```
 

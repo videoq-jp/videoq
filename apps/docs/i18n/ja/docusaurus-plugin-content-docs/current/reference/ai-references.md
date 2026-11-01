@@ -5,7 +5,7 @@ description: VideoQで使う手法の原論文、モデルの公式資料、実�
 
 # AIの手法と参考文献
 
-VideoQで使う研究手法とモデルサービスの出典を、対応する実装とともに示します。**2026-10-08**にリポジトリのコードと設定例を確認しました。実際の稼働環境ではモデルを変更できます。このページはシステムの手法に関する参考文献です。Q&Aの時刻リンクは、利用者の動画内の根拠を引用します。
+VideoQで使う研究手法とモデルサービスの出典を、対応する実装とともに示します。**2026-10-31**にリポジトリのコードと設定例を確認しました。実際の稼働環境ではモデルを変更できます。このページはシステムの手法に関する参考文献です。Q&Aの時刻リンクは、利用者の動画内の根拠を引用します。
 
 回答・画像モデルの設定と出典は、**2026-10-14**に現在の既定値であるGPT-6 Lunaへ更新しました。
 
@@ -15,7 +15,7 @@ VideoQで使う研究手法とモデルサービスの出典を、対応する�
 |---|---|---|
 | 講座の根拠を検索して回答する | [RAG: Lewis et al., 2020](#rag) | 検索と生成を組み合わせる構成を採用。論文のRAGモデルの学習は行わない |
 | ツールを選び、結果を見て次の行動を決める | [ReAct: Yao et al., 2023](#react) | LangChainを通じてReAct型のツールループを利用 |
-| アップロード音声を文字起こしする | [Whisper: Radford et al., 2023](#whisper) | OpenAIまたはローカルのWhisperサーバーで学習済みモデルを利用 |
+| アップロード音声を文字起こしする | [Whisper: Radford et al., 2023](#whisper) | OpenRouter、直接接続のOpenAI、またはローカルのWhisperサーバーで学習済みモデルを利用 |
 | 長い字幕区間を分割する | [大津法: Otsu, 1979](#otsu) | クラス間分散の基準を時系列の文章埋め込みへ応用 |
 | 動画を異なる時間範囲で調べる | [VideoSeek: Lin et al., 2026](#videoseek) | overview / skim / focusのツール設計を参考に実装 |
 | 字幕と検索文を埋め込みにする | [OpenAIの埋め込み](#openai-embeddings)、任意で[Qwen3 Embedding](#qwen3-embedding) | 設定された学習済み埋め込みモデルを呼び出す |
@@ -44,7 +44,7 @@ VideoQは、モデルがツールを選択し、実行結果を読み、制限�
 
 Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. **“Robust Speech Recognition via Large-Scale Weak Supervision.”** *ICML*, PMLR 202, pp. 28492–28518, 2023。プレプリント初公開は2022年。[論文集と出版社のBibTeX](https://proceedings.mlr.press/v202/radford23a.html)。BibTeXキー: `radford2023whisper`。
 
-`WHISPER_BACKEND=openai` では、アップロードした音声に `whisper-1` を使います。ローカル経路ではWhisper互換サーバーを呼び、重みはサーバー起動時に選びます。READMEの `large-v3-turbo` には[公式モデルカード](https://huggingface.co/openai/whisper-large-v3-turbo)もあります。モデル系列の出典にWhisper論文を引用し、ローカル実験では実際のチェックポイントも記録してください。YouTube登録はSearchAPIで既存字幕を取得し、VideoQのWhisper経路は使いません。
+ホスト型の構成では、アップロードした音声を OpenRouter 経由の `openai/whisper-large-v3-turbo` へ送ります（`WHISPER_BACKEND=openrouter`）。旧来の直接接続（`WHISPER_BACKEND=openai`）では `whisper-1` を使います。ローカル経路ではWhisper互換サーバーを呼び、重みはサーバー起動時に選びます。READMEの `large-v3-turbo` には[公式モデルカード](https://huggingface.co/openai/whisper-large-v3-turbo)もあります。モデル系列の出典にWhisper論文を引用し、ローカル実験では実際のチェックポイントも記録してください。YouTube登録はSearchAPIで既存字幕を取得し、VideoQのWhisper経路は使いません。
 
 対応実装: [transcription.py](https://github.com/videoq-jp/videoq/blob/main/apps/worker/worker_python/pipeline/transcription.py)。任意のローカル推論ソフトウェアは[whisper.cpp](https://github.com/ggml-org/whisper.cpp)です。
 
@@ -80,7 +80,7 @@ OpenAI. **“New embedding models and API updates.”** 2024年1月25日。[公�
 
 OpenAI. **“GPT-6 Luna.”** [公式モデル資料](https://developers.openai.com/api/docs/models/gpt-6-luna)、2026年10月14日参照。公開日は記載されていません。BibTeXキー: `openaiGpt6Luna`。
 
-回答生成と画像確認は共通の `LLM_MODEL` を使います。既定値は `gpt-6-luna` で、開発・本番向けのWrangler設定にも指定しています。映像確認を有効にする場合は、画像入力・ツール呼び出し・厳密なJSON出力に対応したモデルが必要です。VideoQはGPT-6 Lunaの回答・画像リクエストに `reasoning_effort=none` を指定します。公式資料では、Chat Completionsでツールを呼び出す際にこの設定が必要です。モデルの変更やスナップショットの指定は別途記録してください。リポジトリの既定値だけでは、本番で使ったモデルは特定できません。
+回答生成と画像確認は共通の `LLM_MODEL` を使います。既定値は `gpt-6-luna` で、開発用と本番用のWrangler設定ではOpenRouter向けに `openai/gpt-6-luna` を指定しています。映像確認を有効にする場合は、画像入力・ツール呼び出し・厳密なJSON出力に対応したモデルが必要です。VideoQはGPT-6 Lunaの回答・画像リクエストに `reasoning_effort=none` を指定します。公式資料では、Chat Completionsでツールを呼び出す際にこの設定が必要です。モデルの変更やスナップショットの指定は別途記録してください。リポジトリの既定値だけでは、本番で使ったモデルは特定できません。
 
 対応実装: [openai.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/openai.ts)、[chat-model.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/chat-model.ts)、[visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts)、[wrangler.jsonc](https://github.com/videoq-jp/videoq/blob/main/apps/api/wrangler.jsonc)。
 

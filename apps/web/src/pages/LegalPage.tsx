@@ -58,7 +58,7 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
   const { t } = useTranslation();
 
   return (
-    <>
+    <div className={page === 'scta' ? 'w-full' : 'mx-auto w-full max-w-3xl [overflow-wrap:anywhere]'}>
       <AppPageHeader
         title={t(`legal.${page}.title`)}
         description={t(`legal.${page}.updated`)}
@@ -81,7 +81,7 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
           ))}
         </dl>
       ) : (
-        <div className="flex max-w-3xl flex-col gap-8">
+        <div className="flex flex-col gap-8">
           {ARTICLE_SECTIONS[page].map((section) => (
             <section key={section}>
               <Heading size="18" className="mb-3">
@@ -106,6 +106,6 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
           ),
         )}
       </nav>
-    </>
+    </div>
   );
 }

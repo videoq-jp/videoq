@@ -13,7 +13,7 @@ Prerequisite: Complete [Run the development environment](local-setup.md) and log
 
 ## 1. Add a short video
 
-Open the video library and upload a short video with spoken explanations. A video whose content you already know makes the first check easier.
+Open the video library and upload a short video with spoken explanations. A video whose content you already know makes the first check easier. The form asks for the spoken language and starts with your display language; choose automatic detection if the language differs or is mixed.
 
 To import from YouTube, save your own SearchAPI key in settings before registering the URL. File uploads do not need SearchAPI.
 

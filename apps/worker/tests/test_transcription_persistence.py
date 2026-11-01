@@ -29,7 +29,7 @@ def transcription_db(monkeypatch):
                 CREATE TABLE {}.videos (
                     id bigint PRIMARY KEY, user_id text, title text, transcript text,
                     status text, source_type text, file text, youtube_video_id text,
-                    error_message text DEFAULT ''
+                    error_message text DEFAULT '', transcription_language varchar(3)
                 )
             """).format(sql.Identifier(schema)))
 
@@ -38,7 +38,7 @@ def transcription_db(monkeypatch):
 
             with connect() as conn:
                 conn.execute("""
-                    INSERT INTO videos VALUES
+                    INSERT INTO videos (id, user_id, title, transcript, status, source_type, file, youtube_video_id, error_message) VALUES
                         (42, 'owner', 'Video', %s, 'processing', 'uploaded', 'video.mp4', '', '')
                 """, (ORIGINAL,))
             monkeypatch.setattr(transcription, "db_connection", connect)

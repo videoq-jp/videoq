@@ -1,9 +1,10 @@
-import { MAX_VIDEO_UPLOAD_BYTES } from '@videoq/trpc/video-upload';
+import { MAX_VIDEO_UPLOAD_BYTES, type TranscriptionLanguage } from '@videoq/trpc/video-upload';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { getApiError } from '@/lib/api-error';
 import { invalidateAfterVideoUpload } from '@/lib/cacheInvalidation';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { appTrpcClient } from '@/lib/trpc';
 import { trackLandingEvent } from '@/lib/landingAnalytics';
@@ -16,6 +17,8 @@ import {
 } from '@/lib/videoUpload';
 
 interface UseVideoUploadReturn {
+  transcriptionLanguage: TranscriptionLanguage | 'auto';
+  setTranscriptionLanguage: (language: TranscriptionLanguage | 'auto') => void;
   sourceMode: UploadSourceMode;
   youtubeUrl: string;
   title: string;
@@ -50,6 +53,10 @@ interface RunUploadMutationVariables {
 
 export function useVideoUpload(): UseVideoUploadReturn {
   const { user } = useAuth();
+  const { i18n } = useTranslation();
+  const locale = (i18n.resolvedLanguage ?? i18n.language).startsWith('en') ? 'en' : 'ja';
+  const [languageOverride, setLanguageOverride] = useState<TranscriptionLanguage | 'auto' | null>(null);
+  const transcriptionLanguage = languageOverride ?? locale;
   const [sourceMode, setSourceMode] = useState<UploadSourceMode>('file');
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -149,6 +156,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
   const reset = useCallback(() => {
     setSourceMode('file');
+    setLanguageOverride(null);
     setFile(null);
     setYoutubeUrl('');
     setTitle('');
@@ -173,7 +181,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
     const validation = prepareVideoUpload(sourceMode === 'youtube'
       ? { source: 'youtube', youtubeUrl, title, description }
-      : { source: 'file', file, title, description, maxSizeMb: Infinity });
+      : { source: 'file', file, title, description, maxSizeMb: Infinity, transcriptionLanguage: transcriptionLanguage === 'auto' ? undefined : transcriptionLanguage });
     if (!validation.isValid) {
       setError(validation.error);
       setErrorParams(validation.errorParams ?? {});
@@ -233,9 +241,11 @@ export function useVideoUpload(): UseVideoUploadReturn {
       await compressed?.dispose();
       uploadInFlight.current = false;
     }
-  }, [sourceMode, youtubeUrl, title, description, file, user, tagIds, uploadMutation, compressionPreset]);
+  }, [sourceMode, youtubeUrl, title, description, file, user, tagIds, uploadMutation, compressionPreset, transcriptionLanguage]);
 
   return {
+    transcriptionLanguage,
+    setTranscriptionLanguage: setLanguageOverride,
     sourceMode,
     youtubeUrl,
     title,

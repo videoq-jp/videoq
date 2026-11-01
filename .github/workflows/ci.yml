@@ -187,6 +187,7 @@ jobs:
               - '.github/actions/setup-package-manager/**'
               - '.github/operations-tools/**'
               - '.github/scripts/backup-restore*'
+              - '.github/scripts/production-*'
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
@@ -384,7 +385,7 @@ jobs:
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:
-    name: Worker Python (django-free)
+    name: Worker Python
     runs-on: ${{ matrix.runner }}
     needs: changes
     if: needs.changes.outputs.worker == 'true'
@@ -573,6 +574,8 @@ jobs:
           npm run cf-typegen --workspace @videoq/web
           git diff --exit-code -- apps/web/worker/env.d.ts
       - name: Test frontend Worker and static assets
+        env:
+          VERIFY_PRERENDER_HYDRATION: "true"
         run: npm run test:worker --workspace @videoq/web
       - name: Verify upload-only web deployment
         run: bash .github/scripts/verify-prebuilt-deployment.sh web
@@ -686,9 +689,6 @@ jobs:
     uses: ./.github/workflows/terraform-plan.yml
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
-    secrets: inherit
 
   terraform-result:
     name: Terraform Plan
@@ -714,6 +714,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-operations-tools
+      - run: node --test .github/scripts/production-stream-proof.integration.cjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'

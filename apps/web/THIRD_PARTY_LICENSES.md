@@ -1,12 +1,12 @@
 # Third-Party Licenses
 
-VideoQ includes adapted, source-distributed UI components from the unofficial
-`shadcn-digital-agency-jp` component registry, inspired by the Digital Agency
-Design System. The local components implement its specifications, appearance,
+`apps/web` syncs selected components from `shadcn-digital-agency-jp`, an
+**unofficial** shadcn/ui native component registry inspired by the Digital Agency
+Design System. That registry reimplements component specifications, appearance,
 accessibility behavior, and implementation structure in a shadcn/ui native form.
 
-The following third-party projects are referenced and this project retains their
-required copyright and license notices in accordance with the MIT License.
+The following third-party projects are referenced by that registry, and their
+required copyright and license notices are retained in accordance with the MIT License.
 
 ---
 
@@ -16,12 +16,10 @@ required copyright and license notices in accordance with the MIT License.
 - **Repository:** https://github.com/digital-go-jp/design-system-example-components-react
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2025 デジタル庁
-- **Usage in this project:** This project references the upstream component
-  specifications, visual appearance, accessibility behavior, API, and
-  implementation structure, and reimplements them as shadcn/ui native,
-  source-distributed components. VideoQ retains the adapted component source under
-  `src/components/ui/` and the required notices here; VideoQ does not include
-  the design-system repository as an `upstream/` Git submodule.
+- **Usage:** The registry references the upstream component specifications,
+  visual appearance, accessibility behavior, API, and implementation structure,
+  and reimplements them as shadcn/ui native, source-distributed components. This
+  repository does not include the upstream repository or import it at runtime.
 
 ```
 MIT License

@@ -1,4 +1,5 @@
 name: Operations
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Operations {0} {1}', inputs.check, inputs.db_rotation_id) || 'Operations' }}
 on:
   schedule:
     - cron: '17 0 * * *' # Daily checks, 09:17 JST.
@@ -16,6 +17,9 @@ on:
       - '.github/workflows/operations.yml'
   workflow_dispatch:
     inputs:
+      db_rotation_id:
+        description: Internal database rotation verification identifier
+        type: string
       check:
         description: Check to run (all includes the backup rehearsal)
         type: choice
@@ -40,7 +44,7 @@ on:
         default: ''
 
       verify_ai_answers:
-        description: Include one paid cited Q&A in the production smoke check
+        description: Include paid cited Q&A and course/unscoped streaming in the production smoke check
         type: boolean
         default: false
       validate_whisper_gpu:
@@ -259,24 +263,27 @@ jobs:
     concurrency:
       group: production-smoke
       cancel-in-progress: false
-    environment: production-app
+    environment: production-db-smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
+      id-token: write
       contents: read
+    env:
+      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-operations-tools
+      - uses: ./.github/actions/neon-credentials
       - name: Verify the hosted runner browser
         run: google-chrome --version
       - name: Check production with a temporary low-quota user
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           VERIFY_AI_ANSWERS: ${{ inputs.verify_ai_answers && 'true' || 'false' }}
-        run: node .github/scripts/production-smoke.mjs
+        run: python3 .github/scripts/with-neon-credentials.py smoke node .github/scripts/production-smoke.mjs
       - uses: ./.github/actions/report-operations
         if: always()
         with:
@@ -290,21 +297,23 @@ jobs:
     concurrency:
       group: backup-restore
       cancel-in-progress: false
-    environment: production-app
+    environment: production-db-backup
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
+      id-token: write
       contents: read
+    env:
+      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-operations-tools
+      - uses: ./.github/actions/neon-credentials
       - name: Back up a read-only snapshot and restore into an ephemeral database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: node .github/scripts/backup-restore.mjs
+        run: python3 .github/scripts/with-neon-credentials.py backup node .github/scripts/backup-restore.mjs
       - uses: ./.github/actions/report-operations
         if: always()
         with:

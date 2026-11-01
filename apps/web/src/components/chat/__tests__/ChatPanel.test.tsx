@@ -187,6 +187,20 @@ describe('ChatPanel', () => {
     expect(screen.getByLabelText(/chat.placeholder/)).toHaveValue('CNNとは？')
   })
 
+  it('sends a suggested question on click when asked to', async () => {
+    vi.mocked(apiClient.chatStream).mockImplementation(async function* () {
+      yield { type: 'done', chat_log_id: 1, feedback: null }
+    })
+    render(<ChatPanel courseId={1} shareToken="token123" suggestedQuestions={['CNNとは？']} sendSuggestedQuestions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'CNNとは？' }))
+
+    await waitFor(() => expect(apiClient.chatStream).toHaveBeenCalledWith(
+      expect.objectContaining({ messages: [expect.objectContaining({ content: 'CNNとは？' })], share_slug: 'token123' }),
+      expect.anything(),
+    ))
+  })
+
   it('shows clickable timestamps while the response is still streaming', async () => {
     const onVideoPlay = vi.fn()
     const citations = [{ id: 1, video_id: 1, title: 'Test Video', start_time: '00:01:30', end_time: '00:15:30' }]

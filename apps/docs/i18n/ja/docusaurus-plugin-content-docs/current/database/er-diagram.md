@@ -55,6 +55,18 @@ erDiagram
     VIDEOS ||--o{ SCENE_EMBEDDINGS : indexed
 ```
 
+## 再開可能な処理
+
+```mermaid
+erDiagram
+    VIDEOS ||--o| VIDEO_TRANSCRIPTION_RUNS : plans
+    VIDEO_TRANSCRIPTION_RUNS ||--o{ VIDEO_TRANSCRIPTION_CHUNKS : saves
+    VIDEOS ||--o| VIDEO_VISUAL_RUNS : plans
+    VIDEO_VISUAL_RUNS ||--o{ VIDEO_VISUAL_CHUNKS : tracks
+```
+
+動画ごとに、種類別の現在の計画は最大1件です。動画を削除すると、外部キーのカスケードで計画とチャンクも削除されます。
+
 ## 変更する前に
 
 業務データの定義は [modern.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/db/schema/modern.ts)が基準です。利用者や動画を削除した場合の関連行の扱い、重複を防ぐ制約、検索のindexを合わせて確認します。

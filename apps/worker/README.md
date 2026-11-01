@@ -29,7 +29,9 @@ Supported operations:
 | `transcribe_video` | FFmpeg / Whisper / YouTube transcription, preserving original subtitle cues |
 | `transcribe_video_chunk` | Transcribe a bounded interval and save its result in PostgreSQL |
 | `finish_video_transcription` | Join completed intervals and enqueue indexing and visual caches |
-| `build_video_visuals` | Build one optional visual cache independently of transcription |
+| `build_video_visual_chunk` | Build one bounded chunk of the optional visual caches |
+| `finish_video_visuals` | Publish the visual caches once every chunk is saved |
+| `build_video_visuals` | Compatibility: move an older queued whole-video job to the chunk pipeline |
 | `index_video_transcript` | Group cues into search scenes, generate embeddings and atomically replace searchable scenes |
 | `reindex_video_transcript` | Reindex a single video |
 | `reindex_all_videos_embeddings` | Reindex all videos |
@@ -73,7 +75,7 @@ Apply `0011_job_delivery_guards.sql` before updating the worker.
 Uploaded-video processing also requires `0031_resumable_transcription.sql` and
 `0037_resumable_transcription_fallback.sql`.
 The parent reserves processing quota once and creates a persisted plan with
-configured intervals for cloud OpenAI and local inference.
+configured intervals for hosted and local inference.
 Finish incomplete plans of any other interval size before upgrading.
 Four SQS lanes process the intervals; each saved checkpoint
 enqueues the next interval in its lane. Results and follow-up IDs survive retries,
@@ -119,8 +121,7 @@ See [local inference](../../docs/guides/local-inference.md).
 `WHISPER_CHUNK_SECONDS` controls durable worker intervals (30–300 seconds,
 default 300). The CPU profile uses 30 seconds. GPU dynamic batching is separate:
 the gateway forwards speech spans concurrently to vLLM, without waiting for a
-batch of uploaded videos. The dated comparison report records the experiments
-before adoption; its retired Modal-only commands are historical.
+batch of uploaded videos.
 
 Cloud transcription uses OpenRouter's `openai/whisper-large-v3-turbo` model with real segment timestamps. See
 [the switch runbook](../../docs/operations/openai-transcription.md).
@@ -157,7 +158,7 @@ HTTPS verifies the server certificate, network inputs cannot read local files,
 and signed URLs are removed from subprocess diagnostics and command logging.
 
 Each uploaded transcription job extracts at most 300 seconds of 64 kbps mono MP3
-with a 16 MiB file cap and a 300-second subprocess deadline. OpenAI/local calls use a 120-second timeout and at most two retries. Only
+with a 16 MiB file cap and a 300-second subprocess deadline. Hosted calls use a 120-second timeout and local calls a 660-second timeout, each with at most two retries. Only
 one interval's audio is stored
 locally, and the next interval runs in a new invocation. Indexing and the two
 optional visual caches have separate jobs; failed visual work cannot lose the

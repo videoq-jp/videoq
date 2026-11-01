@@ -1,5 +1,6 @@
 import {
-  EMBEDDING_DIMENSIONS,
+  embeddingDimensions,
+  embeddingTable,
   EmbeddingConfigurationError,
   embeddingDiagnostic,
   type EmbeddingConfig,
@@ -17,13 +18,13 @@ type SchemaConnection = {
 };
 
 export async function assertEmbeddingSchema(client: SchemaConnection, config: EmbeddingConfig): Promise<void> {
-  const { rows } = await client.query(EMBEDDING_SCHEMA_SQL, ["public.scene_embeddings"]);
+  const { rows } = await client.query(EMBEDDING_SCHEMA_SQL, [`public.${embeddingTable(config)}`]);
   const row = rows[0];
   const dimensions = typeof row?.dimensions === "number" ? row.dimensions : null;
-  if (row?.type_name !== "vector" || dimensions !== EMBEDDING_DIMENSIONS) {
+  if (row?.type_name !== "vector" || dimensions !== embeddingDimensions(config)) {
     throw new EmbeddingConfigurationError(
       "EMBEDDING_SCHEMA_MISMATCH",
-      "Embedding storage must use vector(1536). Ask an administrator to check the database schema.",
+      `Embedding storage must use vector(${embeddingDimensions(config)}). Ask an administrator to check the database schema.`,
       config,
       dimensions,
     );

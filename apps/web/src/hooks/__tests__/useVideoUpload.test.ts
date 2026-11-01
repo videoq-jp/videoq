@@ -41,6 +41,7 @@ vi.mock('@/hooks/useAuth', () => ({
 describe('useVideoUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.__setMockLanguage('ja')
     quotaUser.used_upload_bytes = 0
     quotaUser.upload_resets_at = undefined
     vi.mocked(apiClient.uploadVideo).mockReset()
@@ -49,6 +50,31 @@ describe('useVideoUpload', () => {
     addTagsToVideo.mockReset()
     globalThis.__setTrpcHandler('videos.createYoutube', createYoutubeVideo)
     globalThis.__setTrpcHandler('memberships.addTags', addTagsToVideo)
+  })
+
+  it.each(['ja', 'en'] as const)('uses %s display language and restores it on reset', (locale) => {
+    globalThis.__setMockLanguage(locale)
+    const { result, rerender } = renderHook(() => useVideoUpload())
+    expect(result.current.transcriptionLanguage).toBe(locale)
+    act(() => result.current.setTranscriptionLanguage('ko'))
+    globalThis.__setMockLanguage(locale === 'ja' ? 'en' : 'ja')
+    rerender()
+    expect(result.current.transcriptionLanguage).toBe('ko')
+    act(() => result.current.reset())
+    expect(result.current.transcriptionLanguage).toBe(locale === 'ja' ? 'en' : 'ja')
+  })
+
+  it.each(['en', 'auto'] as const)('uploads with the selected %s language after compression', async (language) => {
+    const file = new File(['audio'], 'clip.mp4', { type: 'video/mp4' })
+    vi.mocked(apiClient.uploadVideo).mockResolvedValue({ id: 1 } as never)
+    const { result } = renderHook(() => useVideoUpload())
+    act(() => {
+      result.current.handleFileChange({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>)
+      result.current.setTranscriptionLanguage(language)
+    })
+    await act(() => result.current.handleSubmit({ preventDefault: vi.fn() } as unknown as React.FormEvent))
+    const request = vi.mocked(apiClient.uploadVideo).mock.calls[0][0]
+    expect(request.transcriptionLanguage).toBe(language === 'auto' ? undefined : language)
   })
 
   it('should initialize with default values', () => {
@@ -76,7 +102,7 @@ describe('useVideoUpload', () => {
     expect(result.current.error).toBeNull()
     await act(() => result.current.handleSubmit({ preventDefault: vi.fn() } as unknown as React.FormEvent))
     expect(compressVideo).toHaveBeenCalledWith(source, '1080p', expect.objectContaining({ maxBytes: 20 * 1024 ** 3 }))
-    expect(apiClient.uploadVideo).toHaveBeenCalledWith({ file: compressed, title: 'game', description: undefined }, expect.any(Function))
+    expect(apiClient.uploadVideo).toHaveBeenCalledWith({ file: compressed, title: 'game', description: undefined, transcriptionLanguage: 'ja' }, expect.any(Function))
     expect(dispose).toHaveBeenCalledTimes(1)
     expect(result.current.compressedSizes).toEqual({ before: source.size, after: compressed.size })
     expect(result.current.success).toBe(true)
@@ -289,7 +315,7 @@ describe('useVideoUpload', () => {
 
     await waitFor(() => {
       expect(apiClient.uploadVideo).toHaveBeenCalledWith(
-        { file, title: 'Test Video', description: undefined },
+        { file, title: 'Test Video', description: undefined, transcriptionLanguage: 'ja' },
         expect.any(Function),
       )
       expect(result.current.success).toBe(true)
@@ -350,7 +376,7 @@ describe('useVideoUpload', () => {
 
     await waitFor(() => {
       expect(apiClient.uploadVideo).toHaveBeenCalledWith(
-        { file, title: 'my-video', description: undefined },
+        { file, title: 'my-video', description: undefined, transcriptionLanguage: 'ja' },
         expect.any(Function),
       )
     })

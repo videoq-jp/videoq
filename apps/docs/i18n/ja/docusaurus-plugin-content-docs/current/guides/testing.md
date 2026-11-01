@@ -15,6 +15,7 @@ description: 変更箇所ごとに必要な確認を選び、DB・ブラウザ�
 |---|---|---|
 | TypeScriptの共有契約 | `npm run typecheck` | `npm ci` 済み |
 | 画面 | `npm run lint` / `npm run test:web` / `npm run build` | Node.js |
+| 公開ページのWorkerとLPの動画配信 | `npm run test:worker --workspace @videoq/web` | 先に `npm run build` |
 | API | `npm run test:api` | Node.jsとWorkersのテスト実行環境 |
 | DB定義 | `npm run db:check` / `npm run db:verify` | 生成したmigration |
 | UIの操作と見た目 | `npm run test:storybook` / `npm run build:storybook` | Chromium |

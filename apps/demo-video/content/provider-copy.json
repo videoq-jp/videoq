@@ -27,7 +27,7 @@
       ]
     },
     "outro": {
-      "sub": "AI回答は講座の所有者の利用枠から。受講生は無料。",
+      "sub": "自動回答は講座の所有者の利用枠から。受講生は無料。",
       "title": [
         "受講生の質問に、",
         "あなたの講義が答える。"
@@ -64,7 +64,7 @@
       ]
     },
     "outro": {
-      "sub": "AI usage is on the course owner. Free for students.",
+      "sub": "Answers use the course owner’s allowance. Free for students.",
       "title": [
         "Student questions?",
         "Let your lectures answer."

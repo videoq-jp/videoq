@@ -7,9 +7,11 @@ description: Follow a question from video preparation through scene search, an A
 
 VideoQ prepares text from videos, retrieves material relevant to a question, and asks a language model to write an answer using that material. This is **RAG** (retrieval-augmented generation; [Lewis et al., 2020](../reference/ai-references.md#rag)). The steps below describe the current implementation; they are not a claim that every answer is correct. [AI methods and references](../reference/ai-references.md) connects each method to its original paper or official model documentation and explains VideoQ's adaptations.
 
+To see answers and citations in the student interface, [try the sample course without signing up](https://videoq.jp/en/try). For the instructor workflow, see [how to answer online course questions from your lectures](https://videoq.jp/en/guides/online-course-questions).
+
 ## Current behavior at a glance
 
-Checked against the implementation on **2026-10-01**.
+Checked against the implementation on **2026-10-31**.
 
 | Stage | Current behavior |
 |---|---|
@@ -34,6 +36,7 @@ The system has several distinct AI jobs:
 | Transcription for uploads | Extracted audio | Timestamped text |
 | Embedding | Subtitle text or a search query | Numbers used to compare meaning |
 | Q&A | Latest question, instructions, and tool results | Structured text segments and source IDs |
+| Image inspection (uploads only) | Selected stills from the video | Text observations with timestamps |
 
 An embedding does not write an answer. It helps find text for the language model to read. [See transcription and scene search](../architecture/transcription-and-search.md) for the preparation steps.
 
@@ -113,7 +116,7 @@ Instructions ask the model to stay within the retrieved evidence and acknowledge
 
 ## Where the data goes
 
-Audio transcription, embeddings, and answer generation call their configured model services. These services receive the audio or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
+Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which are reached through OpenRouter in the hosted profile. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
 
 This describes the application's data flow. It does not establish a provider's retention or training policy. No production credentials or account identifiers are needed to understand or configure the flow.
 

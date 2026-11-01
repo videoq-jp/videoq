@@ -241,6 +241,7 @@ describe('useChatMessages streaming', () => {
     { scenario: 'production diagnostics', dev: false, code: 'LLM_PROVIDER_ERROR', message: 'Private provider details', expected: 'chat.error' },
     { scenario: 'development quota error', dev: true, code: 'OVER_QUOTA', message: 'Private quota details', expected: 'chat.errorOverQuota' },
     { scenario: 'production quota error', dev: false, code: 'OVER_QUOTA', message: 'Private quota details', expected: 'chat.errorOverQuota' },
+    { scenario: 'answer limit error', dev: false, code: 'AI_ANSWERS_LIMIT_EXCEEDED', message: 'Limit: 30', expected: 'chat.errorAnswersLimit' },
   ])('shows the appropriate error and allows retry for $scenario', async ({ dev, code, message, expected }) => {
     vi.stubEnv('DEV', dev)
     vi.mocked(apiClient.chatStream).mockImplementation(async function* () {

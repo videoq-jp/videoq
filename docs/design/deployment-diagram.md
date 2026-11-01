@@ -37,6 +37,8 @@ flowchart TB
     SQS --> Lambda[Python worker Lambda]
     Lambda --> Neon
     Lambda --> R2
+    API --> AI[OpenRouter]
+    Lambda --> AI
 ```
 
 ## Deployment units
@@ -50,6 +52,7 @@ flowchart TB
 | Cloudflare bindings | Wrangler (`wrangler.jsonc`) |
 | Hyperdrive cache / R2 CORS | `cloudflare-resources.yml` with manual approval |
 | AWS worker infrastructure | Terraform |
+| Hosted AI access | OpenRouter policies and AWS workload identity; see the [cloud AI runbook](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md) |
 | Documentation | GitHub Actions CD publishes both languages to Cloudflare Worker `videoq-docs` after relevant changes reach `main` and CI succeeds |
 
 These commands are entry points for each task. Also check the steps and ordering in `.github/workflows/cd.yml`

@@ -78,7 +78,7 @@ video image tools and cache preparation. These are the Docker `.env` defaults:
 
 ```dotenv
 VIDEO_VISUAL_ENABLED=true
-LLM_MODEL=gpt-6-luna
+LLM_MODEL=openai/gpt-6-luna
 ```
 
 Recreate the API and worker to load them:
@@ -96,15 +96,22 @@ JSON-schema output. The normal answer model still needs tool calling. To opt out
 set `VIDEO_VISUAL_ENABLED=false` on both API and worker. Existing explicit false
 overrides remain effective until changed and the processes restarted.
 
-New uploaded videos get coarse and dense frame caches during transcription. A
-failed cache does not fail a usable transcript; a warning identifies the affected
-video and cache type. Failure of one cache does not prevent attempting the other.
+After transcription, new uploads register independent jobs that process the video
+60 seconds at a time. The SQS event source's concurrency limit (10 in production) controls parallelism.
+Interval jobs do not start one another, so long videos finish with
+[AWS Lambda recursive loop detection](https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html)
+left on. Each interval saves its images and completion state, and retries do not
+reread saved intervals. Subtitle completion and visual readiness are reported
+separately. A failed extraction keeps the subtitles and logs its exit code or signal.
 Existing uploads can be backfilled without Whisper or embedding calls. From
 `apps/worker`, with database and media storage settings configured:
 
 ```bash
 python scripts/prepare_visual_frames.py --video-id 42
 ```
+
+With SQS configured, the command queues the interval jobs. Local environments without
+SQS process the intervals in order.
 
 The backfill builds both caches, including dense focus data for older uploads
 that already have coarse images. Embedding reindexing does not build frame caches. YouTube imports have no local

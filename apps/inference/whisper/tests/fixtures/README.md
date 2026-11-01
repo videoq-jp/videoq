@@ -10,6 +10,13 @@ The adjacent JSON records the reference, duration and MP3 SHA-256. The original 
 Credit: Google FLEURS dataset contributors; audio/text redistributed and
 converted under CC BY 4.0. No private recording or user data is included.
 
+`fleurs-en-00.mp3` is English test ID 1728 (cabbage juice and acidity), from the
+same immutable conversion revision, `en_us/test/0000.parquet`. Its source Parquet
+SHA256 is `6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d`.
+The adjacent JSON records the reference and converted audio SHA256. It is also
+CC BY 4.0, credited to Google FLEURS dataset contributors. Together these two
+short public recordings support Japanese/English end-to-end acceptance.
+
 
 ## Prepare local validation fixtures
 

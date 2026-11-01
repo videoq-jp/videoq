@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { createChatModel } from "../src/lib/chat-model";
 import { answerResponseFormat } from "../src/lib/structured-answer";
 import type { Bindings } from "../src/types/bindings";
@@ -18,6 +18,23 @@ const model = () => createChatModel(env, { maxTokens: 1024, timeoutMs: 1000 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("local tools and native final-answer schema", () => {
+  it.each(["reasoning", "reasoning_content"])("replays gpt-oss %s for tool continuations without putting it in answer text", async key => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      requests.push(body);
+      return Response.json(completion(requests.length === 1
+        ? { content: null, [key]: "private model reasoning", tool_calls: [{ id: "oss-search", type: "function", function: { name: "search_scenes", arguments: '{"query":"backup"}' } }] }
+        : { content: "Seven days." }, requests.length === 1 ? "tool_calls" : "stop"));
+    });
+    const chat = createChatModel({ ...env, LLM_SEPARATE_TOOL_SCHEMA: "false", LLM_REASONING_EFFORT: "low", LLM_PRESERVE_TOOL_REASONING: "true" }, { maxTokens: 2048, timeoutMs: 1000 });
+    const decision = await chat.invoke(messages, { tools });
+    expect(decision.text).not.toContain("private model reasoning");
+    await chat.invoke([...messages, decision, new ToolMessage({ content: "Source 1: Seven days.", tool_call_id: "oss-search" })], { tools });
+    const assistant = (requests[1].messages as Array<Record<string, unknown>>).find(message => message.role === "assistant");
+    expect(assistant?.[key]).toBe("private model reasoning");
+    expect(requests[0].reasoning_effort).toBe("low");
+  });
   it.each([false, true])("preserves function calls without the final-answer grammar (stream=%s)", async streaming => {
     const fetch = vi.fn(async (_url: unknown, init: RequestInit) => {
       const body = JSON.parse(String(init.body));

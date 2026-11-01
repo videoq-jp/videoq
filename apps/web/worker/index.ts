@@ -1,4 +1,4 @@
-import { resolveFirstByteCopy } from '../src/lib/pageCopy';
+import { NOT_FOUND_COPY, resolveFirstByteCopy } from '../src/lib/pageCopy';
 import headerRules from '../public/_headers';
 import { collectLandingEvent } from './landing-events';
 import { serveLandingVideo } from './landing-media';
@@ -6,6 +6,7 @@ import {
   absoluteUrl,
   hreflangEntries,
   isNoindexPath,
+  isPublicPath,
 } from '../src/lib/seo';
 
 function splitLocale(pathname: string): { locale: 'en' | 'ja'; path: string } {
@@ -20,6 +21,10 @@ function splitLocale(pathname: string): { locale: 'en' | 'ja'; path: string } {
 // responses too: Workers Static Assets only applies it to asset responses.
 const securityHeaders = [...headerRules.matchAll(/^[ \t]+([^:\r\n]+):[ \t]*(.+)$/gm)]
   .map(([, name, value]) => [name.trim(), value.trim()] as const);
+
+function isHtml(response: Response): boolean {
+  return (response.headers.get('content-type') ?? '').includes('text/html');
+}
 
 async function serve(request: Request, env: WebEnv): Promise<Response> {
   const url = new URL(request.url);
@@ -54,15 +59,31 @@ async function serve(request: Request, env: WebEnv): Promise<Response> {
     return new Response('Not Found', { status: 404 });
   }
 
-  const response = await env.ASSETS.fetch(request);
-  const contentType = response.headers.get('content-type') ?? '';
-  if (!contentType.includes('text/html')) {
+  const { locale, path } = splitLocale(pathname);
+  // One URL per page, so crawlers never split signals across slash variants.
+  if (pathname === '/en' || (pathname.length > 1 && pathname !== '/en/' && pathname.endsWith('/'))) {
+    url.pathname = pathname === '/en' ? '/en/' : `/${pathname.replace(/^\/+|\/+$/g, '')}`;
+    return Response.redirect(url.href, 301);
+  }
+  const shell = () => env.ASSETS.fetch(new URL('/app-shell', url));
+  // HTMLRewriter cannot transform the bodyless response to HEAD. Render as GET;
+  // the response wrapper below drops the body again.
+  const assetRequest = request.method === 'HEAD' ? new Request(request, { method: 'GET' }) : request;
+  const isApp = !isPublicPath(path) && isNoindexPath(path);
+  let response = isApp ? await shell() : await env.ASSETS.fetch(assetRequest);
+  // Unknown paths answer 404 and the same React app renders the message. The
+  // shell's own URL lands here too, so it cannot be indexed as a page.
+  const notFound = !isApp && (response.status === 404 || (!isPublicPath(path) && isHtml(response)));
+  if (notFound) {
+    const { body, headers } = await shell();
+    response = new Response(body, { status: 404, headers });
+  }
+  if (!isHtml(response)) {
     return response;
   }
 
-  const { locale, path } = splitLocale(pathname);
-  const copy = resolveFirstByteCopy(locale, path);
-  const robots = env.ENVIRONMENT !== 'production' || isNoindexPath(path)
+  const copy = notFound ? NOT_FOUND_COPY[locale] : resolveFirstByteCopy(locale, path);
+  const robots = env.ENVIRONMENT !== 'production' || notFound || isNoindexPath(path)
     ? 'noindex, nofollow' : 'index, follow';
   const canonical = absoluteUrl(path, locale);
   const alternates = hreflangEntries(path);
@@ -130,7 +151,7 @@ async function serve(request: Request, env: WebEnv): Promise<Response> {
 export default {
   async fetch(request, env) {
     const original = await serve(request, env);
-    const response = new Response(original.body, original);
+    const response = new Response(request.method === 'HEAD' ? null : original.body, original);
     for (const [name, value] of securityHeaders) response.headers.set(name, value);
     if (env.ENVIRONMENT !== 'production') {
       response.headers.set('X-Robots-Tag', 'noindex, nofollow');

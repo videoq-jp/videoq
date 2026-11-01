@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { fn, mocked } from 'storybook/test';
 import { useVideoUpload } from '@/hooks/useVideoUpload';
+import { useTranslation } from 'react-i18next';
+import type { TranscriptionLanguage } from '@videoq/trpc/video-upload';
 import type { CompressionPreset } from '@/lib/videoCompression';
 
 export interface UploadScenario {
@@ -16,6 +18,10 @@ export const uploadError = 'アップロードを完了できませんでした 
 
 // Stateful UI fixture. Validation and transport remain covered by the real hook's tests.
 function useUploadFixture(scenario: UploadScenario): ReturnType<typeof useVideoUpload> {
+  const { i18n } = useTranslation();
+  const locale = i18n.language.startsWith('en') ? 'en' : 'ja';
+  const [languageOverride, setTranscriptionLanguage] = useState<TranscriptionLanguage | 'auto' | null>(null);
+  const transcriptionLanguage = languageOverride ?? locale;
   const [sourceMode, setSourceMode] = useState<'file' | 'youtube'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -31,11 +37,13 @@ function useUploadFixture(scenario: UploadScenario): ReturnType<typeof useVideoU
   const [isCompressing, setIsCompressing] = useState(false);
   const attempts = useRef(0);
   const reset = useCallback(() => {
+    setTranscriptionLanguage(null);
     setSourceMode('file'); setFile(null); setYoutubeUrl(''); setTitle(''); setDescription('');
     setTagIds([]); setIsUploading(false); setProgress(0); setError(null); setSuccess(false); setWarning(null);
     setCompressionPreset('1080p'); setIsCompressing(false);
   }, []);
   return {
+    transcriptionLanguage, setTranscriptionLanguage,
     sourceMode, youtubeUrl, title, description, tagIds, isUploading, progress, error, success, warning,
     compressionPreset, setCompressionPreset, isCompressing,
     compressionSupported: scenario.compressionSupported ?? true,

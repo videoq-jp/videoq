@@ -5,6 +5,7 @@ import i18n from '@/i18n/config';
 import { VideoUploadFormFields } from './VideoUploadFormFields';
 
 function UploadFormExample(args: ComponentProps<typeof VideoUploadFormFields>) {
+  const [language, setLanguage] = useState<NonNullable<ComponentProps<typeof VideoUploadFormFields>['transcriptionLanguage']>>(args.transcriptionLanguage ?? (i18n.language.startsWith('en') ? 'en' : 'ja'));
   const [title, setTitle] = useState(args.title);
   const [description, setDescription] = useState(args.description);
   const [compressionPreset, setCompressionPreset] = useState<'1080p' | '720p'>(args.compressionPreset ?? '1080p');
@@ -12,6 +13,8 @@ function UploadFormExample(args: ComponentProps<typeof VideoUploadFormFields>) {
     <form className="space-y-4" style={{ maxWidth: 560 }} onSubmit={(event) => event.preventDefault()}>
       <VideoUploadFormFields
         {...args}
+        transcriptionLanguage={language}
+        setTranscriptionLanguage={value => { args.setTranscriptionLanguage?.(value); setLanguage(value); }}
         title={title}
         description={description}
         compressionPreset={compressionPreset}
@@ -98,4 +101,14 @@ export const FillForm: Story = {
 export const EnglishMobile: Story = {
   args: { title: 'Linear algebra: rotation matrices', description: 'A lecture about coordinate transformations.', compressionPreset: '720p', isUploading: true, isCompressing: true, progress: 46 },
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } },
+};
+
+export const SelectAudioLanguage: Story = {
+  async play({ canvas, userEvent }) {
+    const language = canvas.getByRole('combobox', { name: i18n.t('videos.upload.languageLabel') });
+    await userEvent.selectOptions(language, 'ja');
+    await expect(language).toHaveValue('ja');
+    await userEvent.selectOptions(language, 'en');
+    await expect(language).toHaveValue('en');
+  },
 };

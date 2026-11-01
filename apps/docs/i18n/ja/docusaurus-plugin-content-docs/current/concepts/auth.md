@@ -31,7 +31,27 @@ React側のログイン判定は `useSession`、プロフィールの取得は `
 
 認証プラグインの管理APIにも2種類のロール制約を適用します。`set-role` / `update-user` を直接呼んでも、自分の管理者権限は解除できません。
 
-## 仕様を見直した判断
+## 実装の境界
+
+Better Authの公式オプション、プラグイン、サーバー・クライアントAPIを優先します。パスワードのハッシュ化、セッションCookie、メール確認、Googleトークンの検証、OAuthプロトコルの検証、プロバイダートークンの暗号化はBetter Authに任せます。型もBetter Authから推論されたものを使います。障害によるセッション取得の失敗はログアウトとして扱わず、サーバー側の認証拒否だけをアプリの通常の未認証応答へ変換します。
+
+| 要件 | Better Authの実装 |
+|---|---|
+| パスワード・ユーザー名ログイン、Googleログイン、メール確認・変更、復旧、Cookie | コアのオプション、Googleプロバイダー、`username` プラグイン |
+| 管理者ロールとアカウント停止 | `admin` プラグインの `setRole`、`banUser`、`unbanUser`、`adminUpdateUser` API |
+| APIキーの作成、保存、権限、検証、失効 | `@better-auth/api-key` の設定と `permissions`、公式の `verifyApiKey` とアクセス制御ヘルパー |
+| OAuth/OIDC、PKCE、更新トークンのローテーション、再利用検知 | `@better-auth/oauth-provider` と `jwt` |
+| MCPリソースの検出とBearer/DPoPチャレンジ | 公式のOAuth Resource Clientと `createResourceServerChallenge` |
+| VideoQのアカウント状態確認と、連携解除後の更新停止 | 補助プラグイン `videoq-auth-security` |
+| 検証済みAPIキーまたはOAuthトークンによるMCPアクセス | サーバー専用プラグイン `videoq-resource-access` のAPI |
+
+補助プラグインが追加するのは、標準プラグインにないアプリ固有のポリシーだけです。リソースの検証は `auth.api.verifyVideoqApiKey` と `auth.api.verifyVideoqOAuth` でだけ行い、どちらも標準の検証にVideoQのアカウント・アクセスのポリシーを加えます。Honoは認証方式の選択と、結果のアプリ権限・HTTP応答への対応付けだけを担当します。
+
+CloudflareのWorkerは同じゾーンの自分のRouteを取得できないため、リソースプラグインはBetter Authの公開JWT・DPoPヘルパーとJWTプラグインのプロセス内JWKSエンドポイントを組み合わせます。DPoPの再利用防止には、Worker間で共有されるBetter Auth標準のDBバックエンド `createDpopReplayStore` を使います。設定済みのロガーは、プロバイダーの応答、トークンを含むURL、SQLの詳細をライブラリログから除外します。
+
+Better Authの更新時は、実際のrouteを使う回帰テストを維持してください。同じ動作を提供する機能がライブラリに追加されたら回避策を削除し、独自の認証ロジックは実証済みの不足またはVideoQ固有の要件がある場合だけ追加します。
+
+### 仕様を見直した判断
 
 標準機能と公式プラグインを優先し、次の範囲に絞ります。
 
@@ -50,6 +70,18 @@ React側のログイン判定は `useSession`、プロフィールの取得は `
 利用者が同じアプリに明示的に再同意すると、期限内・未使用の認可コードは現在許可された範囲で交換できる場合があります。削除済みの更新トークンは復活しません。解除と同時に進んでいた更新でトークンが残った場合も、次回の使用時に現在の同意を確認します。解除中のコード交換は拒否し、そのコードは公式処理で消費されるため再連携後にも再利用できません。
 
 パスワード再設定は、コアの `verification.storeIdentifier` に `reset-password:` 用の `"hashed"` を設定し、有効期限を15分、`revokeSessionsOnPasswordReset` を有効にします。単回利用も公式が原子的に処理します。別々に発行したリンクは、メールやパスワードの変更後もそれぞれの使用・期限切れまで有効です。復旧時のコールバックはアプリの旧 `passwordResetRequired` フラグを更新するだけです。
+
+APIキーの権限は公式[API Key](https://better-auth.com/docs/plugins/api-key)プラグインの `permissions` で管理します。`default` 設定は読み取り、`read-write` 設定は読み書きを許可し、ブラウザは設定IDを選択します。権限自体の設定はサーバーが行います。旧メタデータの `accessLevel` / `access_level` による独自判定は使用しません。
+
+MCPの公開メタデータと認証チャレンジは公式OAuth Resource Clientと `createResourceServerChallenge` を使用します。公式[MCP](https://better-auth.com/docs/plugins/mcp)プラグインは1.7.5も確認しましたが、リクエスト検証はHTTPのJWKS URLを受け取り、Worker内の鍵取得関数は指定できません。そのため、同じWorker内でJWKSを取得する接続処理は拡張として残します。JWT・DPoPの検証と再利用検知はBetter Authの公開APIを利用します。VideoQの各ツールに必要なスコープの対応付けはアプリ固有の設定として残し、リクエストの判別はMCP SDKの公式スキーマ、権限不足の応答はBetter Authの公式機能に任せます。
+
+### 既存環境の移行
+
+既存環境への移行には `0021_better_auth_permissions_and_account_state.sql` の適用が必要です。旧アプリによる認証・管理情報の更新を一時停止し、通常のDrizzleマイグレーションを実行してから新コードを反映してください。旧APIキーの権限、利用停止状態、管理者フラグを公式フィールドへ移します。APIキーのハッシュは変更せず、再発行も不要です。
+
+旧 `is_staff` / `is_superuser` 列を削除する `0028_remove_legacy_user_roles` は、既存の `role` を保持します。本番ではこの整理が完了しています。古い環境では、これらの列を読むAPIから切り替えてから `0028` を適用してください。
+
+再設定リンクの保存方式を変更する前に `0022_standard_password_reset_identifiers.sql` も適用します。旧形式の接頭辞付き16進SHA-256を公式のbase64url形式に変換し、発行済みリンクと元の有効期限を維持します。他用途の確認情報や旧平文リンクは変更しません。移行からコード反映まで認証情報の書き込みを止め、旧形式のレコードが再作成されることを防いでください。15分の期限は新規リンクに適用されます。
 
 ## tRPCでの確認
 
@@ -72,14 +104,6 @@ React側のログイン判定は `useSession`、プロフィールの取得は `
 APIキーは設定画面で管理します。OAuthでは利用者がクライアントへのアクセスを許可し、`videoq.read` / `videoq.write` などの範囲で操作します。ブラウザのセッションとMCPのトークンを同じものとして扱わないでください。
 
 接続時の認証応答はスコープを読み取りだけに絞らず、公開メタデータから読み取り・書き込みの両方を要求できるようにします。読み取り専用のOAuthトークンで書き込みツールを呼ぶと、Better Authの公式機能でHTTP 403と `insufficient_scope`、必要な両スコープを返し、クライアントから再同意を求められるようにします。既存トークンの権限は自動で増えません。動的登録で `videoq.read` だけを要求しても、Better Authはサーバー設定で許可した登録上の権限を保持するため、同じクライアントの再認可・追加同意で書き込みを許可できます。クライアントの再登録は不要です。追加認可の要求に対応しないクライアントでは、認可をやり直して両スコープを要求してください。
-
-APIキーの権限は公式API Keyプラグインの `permissions` で管理します。`default` 設定は読み取り、`read-write` 設定は読み書きを許可し、ブラウザは設定IDを選択します。権限自体の設定はサーバーが行います。旧メタデータの `accessLevel` / `access_level` による独自判定は使用しません。
-
-MCPの公開メタデータと認証チャレンジは公式OAuth Resource Clientと `createResourceServerChallenge` を使用します。公式MCPプラグインは1.7.5も確認しましたが、リクエスト検証はHTTPのJWKS URLを受け取り、Worker内の鍵取得関数は指定できません。そのため、同じWorker内でJWKSを取得する接続処理は拡張として残します。JWT・DPoPの検証と再利用検知はBetter Authの公開APIを利用します。VideoQの各ツールに必要なスコープの対応付けはアプリ固有の設定として残し、リクエストの判別はMCP SDKの公式スキーマ、権限不足の応答はBetter Authの公式機能に任せます。
-
-既存環境への移行には `0021_better_auth_permissions_and_account_state.sql` の適用が必要です。旧アプリによる認証・管理情報の更新を一時停止し、通常のDrizzleマイグレーションを実行してから新コードを反映してください。旧APIキーの権限、利用停止状態、管理者フラグを公式フィールドへ移します。APIキーのハッシュは変更せず、再発行も不要です。
-
-再設定リンクの保存方式を変更する前に `0022_standard_password_reset_identifiers.sql` も適用します。旧形式の接頭辞付き16進SHA-256を公式のbase64url形式に変換し、発行済みリンクと元の有効期限を維持します。他用途の確認情報や旧平文リンクは変更しません。移行からコード反映まで認証情報の書き込みを止め、旧形式のレコードが再作成されることを防いでください。15分の期限は新規リンクに適用されます。
 
 連携解除では、その利用者と対象アプリの同意情報・アクセス／リフレッシュトークンのレコードを一つのトランザクションで削除します。以後の発行には現在の同意とスコープの一致が必要です。再連携をまたぐ独自の世代管理は行いません。
 

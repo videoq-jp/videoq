@@ -3,7 +3,7 @@
 Docker Compose uses Garage for local S3 storage. Production continues to use
 Cloudflare R2 with the existing bindings and credentials.
 
-Garage is pinned to v2.4.1 and its image digest. It runs as one node with
+Garage is pinned by version and image digest in `docker-compose.yml`. It runs as one node with
 `replication_factor = 1`; both object data and metadata persist in `garage_data`.
 The `--single-node --default-bucket` startup flags create the local layout, access
 key, and bucket. The `garage-init` service applies browser CORS using the worker

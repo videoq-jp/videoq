@@ -99,8 +99,9 @@ migrationDescribe("Drizzle migration chain", () => {
             }
           }
           if (table === "videos") {
-            // Existing videos gain nullable session fields without changing media or state.
+            // Existing videos gain nullable upload and language fields without changing media or state.
             for (const { row } of preservedRows[table] as { row: Record<string, unknown> }[]) {
+              row.transcription_language = null;
               row.multipart_upload = null;
               row.upload_heartbeat_at = null;
               row.upload_usage_period_start = null;

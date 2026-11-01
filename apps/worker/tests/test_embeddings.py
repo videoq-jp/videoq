@@ -24,6 +24,26 @@ def test_fixed_dimension():
     assert EMBEDDING_DIMENSIONS == 1536
 
 
+def test_embeddinggemma_document_and_query_contract(monkeypatch):
+    monkeypatch.setenv("EMBEDDING_PROFILE", "embeddinggemma2")
+    monkeypatch.setenv("EMBEDDING_MODEL", "embeddinggemma-2-f9972ac")
+    vector = [1.0] + [0.0] * 767
+    http = response(monkeypatch, {"data": [{"index": 0, "embedding": vector}]})
+    monkeypatch.setenv("EMBEDDING_BASE_URL", "http://embedding.test/v1")
+    assert embeddings.embed_texts(["バックアップは7日間保存します。"]) == [vector]
+    body = json.loads(http.call_args.args[0].data)
+    assert body["input_type"] == "document" and body["dimensions"] == 768
+    embeddings.embed_texts(["How long are backups retained?"], input_type="query")
+    assert json.loads(http.call_args.args[0].data)["input_type"] == "query"
+    config = resolve_embedding_config()
+    conn = MagicMock()
+    conn.execute.return_value.fetchone.return_value = {"type_name": "vector", "dimensions": 768}
+    assert_embedding_schema(conn, config)
+    assert conn.execute.call_args.args[1] == ("public.scene_embeddings_768",)
+    with pytest.raises(EmbeddingContractError):
+        validate_embedding(VECTOR, config)
+
+
 @pytest.mark.parametrize("environ, model", [
     ({"OPENROUTER_API_KEY": "router-key"}, "openai/text-embedding-3-small"),
     ({"EMBEDDING_BASE_URL": "https://openrouter.ai/api/v1"}, "openai/text-embedding-3-small"),
@@ -32,7 +52,7 @@ def test_fixed_dimension():
     ({"EMBEDDING_MODEL": " CustomModel "}, "CustomModel"),
 ])
 def test_settings(environ, model):
-    assert asdict(resolve_embedding_config(environ)) == {"provider": "openai", "model": model}
+    assert asdict(resolve_embedding_config(environ)) == {"provider": "openai", "model": model, "profile": "openai"}
 
 
 @pytest.mark.parametrize("vector", [
