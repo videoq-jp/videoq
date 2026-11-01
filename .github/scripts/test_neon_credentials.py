@@ -28,8 +28,15 @@ class CredentialsTest(unittest.TestCase):
                 else:
                     self.assertIn("    environment: production-db-" + ("migration" if name == "db-migrate" else name) + "\n", job)
                 self.assertRegex(job, r"    permissions:\n(?:      .+\n)*      id-token: write\n")
-                auth = job.index("uses: ./.github/actions/neon-credentials")
-                command = job.index("with-neon-credentials.py")
+                if name == "setup":
+                    auth = job.index("uses: ./.github/actions/neon-credentials")
+                    command = job.index("with-neon-credentials.py")
+                else:
+                    auth = job.index("uses: ./.github/actions/aws-db-invocation")
+                    command = job.index("run-aws-db.py")
+                    self.assertIn("AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN", job)
+                    self.assertNotIn("with-neon-credentials.py", job)
+                    self.assertNotIn("setup-operations-tools", job)
                 self.assertLess(auth, command)
 
     def response(self, value=None, kind="SecureString", code=0):

@@ -1,6 +1,11 @@
 resource "aws_iam_role" "worker" {
   name               = local.names.worker
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+
+  # The AWS operator owns this ceiling independently of routine GitHub applies.
+  lifecycle {
+    ignore_changes = [permissions_boundary]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "worker_basic_execution" {

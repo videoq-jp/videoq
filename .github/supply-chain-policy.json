@@ -2,7 +2,8 @@
   "npm_lockfiles": [
     "package-lock.json",
     ".github/deploy-tools/package-lock.json",
-    ".github/operations-tools/package-lock.json"
+    ".github/operations-tools/package-lock.json",
+    "infra/db-maintenance/runtime/package-lock.json"
   ],
   "reviewed_install_script_packages": [
     "@swc/core",

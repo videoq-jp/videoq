@@ -1,0 +1,578 @@
+{
+  "Comment": "AWS-only Neon maintenance; no credential material in execution data",
+  "StartAt": "Operation",
+  "TimeoutSeconds": 7200,
+  "States": {
+    "Operation": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.kind",
+          "StringEquals": "migration",
+          "Next": "Migrate"
+        },
+        {
+          "Variable": "$.kind",
+          "StringEquals": "backup",
+          "Next": "BackupStandalone"
+        },
+        {
+          "Variable": "$.kind",
+          "StringEquals": "smoke",
+          "Next": "SmokeStandalone"
+        }
+      ],
+      "Default": "Prepare"
+    },
+    "Migrate": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_migration}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "migration",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_WRITERS_STOPPED",
+            "Value.$": "States.Format('{}', $.writers_stopped)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 1200,
+      "Next": "Release"
+    },
+    "BackupStandalone": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_backup}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "backup",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "Release"
+    },
+    "SmokeStandalone": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_smoke}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "smoke",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "VERIFY_AI_ANSWERS",
+            "Value.$": "States.Format('{}', $.verify_ai_answers)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "Release"
+    },
+    "Prepare": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "prepare",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "ReadMetadata"
+    },
+    "ReadMetadata": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${table}",
+        "Key": {
+          "pk": {
+            "S.$": "States.Format('run#{}', $.run_id)"
+          }
+        },
+        "ConsistentRead": true,
+        "ProjectionExpression": "payload"
+      },
+      "ResultSelector": {
+        "payload.$": "States.StringToJson($.Item.payload.S)"
+      },
+      "ResultPath": "$.decision",
+      "Next": "Phase"
+    },
+    "Phase": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.decision.payload.phase",
+          "StringEquals": "complete",
+          "Next": "Release"
+        },
+        {
+          "Variable": "$.decision.payload.phase",
+          "StringEquals": "promoted",
+          "Next": "SmokeBeforeRetirement"
+        },
+        {
+          "Variable": "$.decision.payload.phase",
+          "StringEquals": "retired",
+          "Next": "SmokeAfterRetirement"
+        },
+        {
+          "Variable": "$.decision.payload.phase",
+          "StringEquals": "rollback_pending",
+          "Next": "SmokeBeforeRollbackRetirement"
+        },
+        {
+          "Variable": "$.decision.payload.phase",
+          "StringEquals": "rollback_retired",
+          "Next": "SmokeAfterRollbackRetirement"
+        }
+      ],
+      "Default": "InvalidPhase"
+    },
+    "SmokeBeforeRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_smoke}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "smoke",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "BackupBeforeRetirement"
+    },
+    "BackupBeforeRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_backup}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "backup",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "AuditBeforeRetirement"
+    },
+    "AuditBeforeRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_audit}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "audit",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "WaitForInvocations"
+    },
+    "WaitForInvocations": {
+      "Type": "Wait",
+      "TimestampPath": "$.decision.payload.retire_after",
+      "Next": "Retire"
+    },
+    "Retire": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "retire",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "SmokeAfterRetirement"
+    },
+    "SmokeAfterRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_smoke}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "smoke",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "Complete"
+    },
+    "Complete": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "complete",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "Release"
+    },
+    "SmokeBeforeRollbackRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_smoke}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "smoke",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "WaitForRollbackInvocations"
+    },
+    "WaitForRollbackInvocations": {
+      "Type": "Wait",
+      "TimestampPath": "$.decision.payload.rollback_after",
+      "Next": "RetireRollback"
+    },
+    "RetireRollback": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "retire-rollback",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "SmokeAfterRollbackRetirement"
+    },
+    "SmokeAfterRollbackRetirement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_smoke}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "smoke",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "CompleteRollback"
+    },
+    "CompleteRollback": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "complete-rollback",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "Release"
+    },
+    "Release": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:deleteItem",
+      "Parameters": {
+        "TableName": "${table}",
+        "Key": {
+          "pk": {
+            "S": "maintenance"
+          }
+        },
+        "ConditionExpression": "execution_arn = :execution",
+        "ExpressionAttributeValues": {
+          ":execution": {
+            "S.$": "$$.Execution.Id"
+          }
+        }
+      },
+      "ResultPath": null,
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "InvalidPhase": {
+      "Type": "Fail",
+      "Error": "INVALID_DATABASE_MAINTENANCE_PHASE"
+    }
+  }
+}

@@ -21,15 +21,18 @@ The authoritative profile map is [.github/scripts/neon-profiles.json](../.github
 | Production smoke | `videoq_smoke_access` | `/videoq/security/prod/db-smoke` | `production-db-smoke` |
 | Public demo preparation | `videoq_demo_access` | `/videoq/security/prod/db-demo` | `production-db-demo` |
 
-Each GitHub Environment permits only the canonical `main` branch, has its own
-OIDC role, and stores only that role ARN in `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN`.
-Each IAM role can read exactly one parameter. A different purpose argument to the
-wrapper therefore cannot obtain another consumer's credential. The application
-Environment has no database credential. PR workflows never receive AWS planning
-credentials or production state. The main-only planning role explicitly denies
-protected SSM values/history and all recursive parameter reads; ReadOnlyAccess
-alone is not a database-secret boundary. Lambda can read its own DB parameter and
-application settings, and cannot read API, migration, audit or backup credentials.
+Each GitHub Environment permits only canonical `main`. Migration, backup, smoke
+and maintenance jobs store a request-role ARN in
+`AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN`; these roles can invoke only their fixed
+AWS starter alias. They cannot fetch SSM values, upload executable bundles,
+start arbitrary builds, or update AWS maintenance code/roles. The demo/audit
+Environments retain their separate exact-parameter readers in
+`AWS_GITHUB_ACTIONS_NEON_ROLE_ARN`. AWS job roles enforce the same purpose map.
+The application Environment has no database credential. PR workflows never
+receive AWS planning credentials or production state. The main-only planning role
+explicitly denies protected SSM values/history and recursive parameter reads.
+Lambda can read its own DB parameter and application settings, and cannot read
+API, migration, audit or backup credentials.
 
 The API has DML on current application tables, without access to retired Django
 and OAuth tables. It cannot create/drop objects or access the migration ledger.
@@ -53,87 +56,55 @@ demo identity and preserves usage counters. Public EXECUTE is revoked; functions
 use an explicit search_path and qualified object names. These controls are in
 [infra/sql/neon-security.sql](sql/neon-security.sql).
 
-## Automatic rotation
+## AWS execution and automatic rotation
 
-[Maintain Neon Credentials](../.github/workflows/neon-credentials.yml) checks daily
-and rotates service/operations credentials when they reach 90 days. Manual runs
-default to an age audit; choose `rotate` to resume an unfinished rotation or set
-`force` to rotate sooner. It runs in main-only `production-db-maintenance` using a dedicated rotation
-role, not the Terraform deployment role. The workflow and CD migration job share
-`production-db-maintenance` concurrency and never cancel an active rotation.
+EventBridge Scheduler checks ages daily; credentials rotate at 90 days. Step
+Functions Standard sequences scoped CodeBuild jobs and waits without keeping a
+build running during the invocation grace period. Manual requests use
+[Maintain Neon Credentials](../.github/workflows/neon-credentials.yml), which
+invokes the fixed AWS starter and observes metadata. GitHub receives no DB URL,
+DB administrator credential or Hyperdrive maintenance token from this flow.
 
-1. Generate new random LOGIN roles and persist encrypted recovery material in
-   `/videoq/security/prod/db-rotation` before making any consumer change.
-2. Grant each login only its stable access role. Verify actual allowed operations
-   and SQLSTATE 42501 denials. Migration URLs set the stable schema-owner role at
-   connection startup so new objects/default grants do not belong to a transient login.
-3. Update Hyperdrive's origin login, preserving its TLS configuration and disabling
-   query caching. Update the exact SSM parameters. External changes to a parameter
-   or an unexpected Hyperdrive/Lambda target stop the rotation.
-4. Refresh Lambda with its worker parameter and a generation marker. This starts
-   new execution environments rather than relying on a warm container to reload SSM.
-5. Run smoke, logical backup/restore and read-only demo audit on canonical main.
-   Verify successful runs with the exact rotation identifier and source SHA.
-6. Wait at least the maximum Lambda invocation lifetime (15 minutes) plus one minute after configuration refresh.
-   Existing invocations can reconnect with cached old credentials until then.
-7. Verify privileges/readiness again. Refuse to retire a role with an active query.
-   Disable old logins, clear their passwords and terminate only idle sessions.
-   Verify that every old credential is rejected, then recheck the new logins.
-8. Run smoke after retirement. Only after success discard the old recovery secrets
-   from the current journal value. No LOGIN role is dropped while it owns objects.
+1. Persist encrypted recovery material before creating new purpose LOGIN roles.
+2. Verify actual allowed operations and SQLSTATE 42501 denials. Migration URLs set
+   the stable schema-owner role at connection startup.
+3. Change Hyperdrive's origin login, preserve TLS, keep caching disabled, update
+   the exact SSM parameters, and refresh Lambda with its dedicated parameter.
+4. Run AWS production smoke, logical backup/restore and read-only demo audit.
+5. Wait at least the maximum Lambda invocation lifetime (15 minutes) plus one
+   minute after configuration refresh.
+6. Refuse retirement while an old role has an active query. Disable old logins,
+   clear passwords, terminate only idle sessions and prove old credentials fail.
+7. Recheck current privileges and run production smoke after retirement.
+8. Only then remove recovery credentials from the current journal value.
 
-A failure retains the encrypted journal. Running `rotate` resumes prepared,
-promoted or retired stages; it does not silently generate another credential set.
-The workflow does not print URLs, passwords, SQL/HTTP error bodies or SDK responses.
-CLI inputs containing secrets use private temporary files removed after each call.
-The one-command credential wrapper passes the URL only to its child process and
-removes AWS/OIDC credentials. Mask directives are emitted only on GitHub Actions.
+The global DynamoDB lock serializes AWS rotation, migration, backup and smoke.
+It does not expire based on elapsed time. Failed rotations block migrations until
+explicit recovery; the starter checks execution/build status before resuming.
+The workflow never automatically retries credential mutations. Manual `rotate`
+resumes the persisted phase; `rollback` restores old consumers, checks production,
+waits, disables abandoned candidates and checks production again.
 
-For a recovery requiring the previous configuration, run the workflow with
-`operation=rollback` while the journal still contains its recovery entries. This
-restores the prior logins, Hyperdrive and SSM values and refreshes Lambda. After a
-processing smoke and the invocation grace period it disables the abandoned new
-logins, verifies they cannot authenticate, and runs smoke again. A rolled-back
-rotation requires review and a manually forced rotation before automatic changes
-resume. A completed rotation has cleared that recovery
-material and must be recovered through the administrator connection. Old SSM
-parameter versions remain subject to the same exact-parameter IAM permissions;
-retired database passwords no longer authenticate.
+Only metadata enters Step Functions history and starter responses. Credential
+reads stay inside AWS job processes; raw SQL/HTTP/subprocess errors are captured.
+CLI secret inputs use private temporary files. GitHub masking commands are never
+used in CloudWatch. Old SSM versions remain protected; retired passwords no longer
+authenticate. The break-glass `neondb_owner` credential remains manually managed
+in `/videoq/security/prod/db-admin` outside automatic service-login rotation.
 
-The administrative `neondb_owner` credential remains a manually managed break-glass
-secret in `/videoq/security/prod/db-admin`, outside the automatic service-login
-rotation. Only the dedicated maintenance role and administrators may read it.
-Do not copy it into application parameters or GitHub. Its emergency reset and
-recovery are separate administrative operations.
+The privileged operator bundle uses an immutable S3 object version. Its deployment
+and independent Terraform state require an operator AWS session; routine GitHub
+roles cannot update either. Migrations independently validate the requested
+canonical-main SHA before AWS downloads it. Approved migration code and runtime
+dependencies remain trusted inputs; AWS execution does not eliminate their risks.
 
-## Initial setup and validation
-
-Use an administrator AWS session and install the separately locked operations tools
-before reading credentials:
-
-```bash
-npm ci --ignore-scripts --prefix .github/operations-tools
-python3 infra/scripts/setup_neon_access.py
-node .github/scripts/neon-admin.cjs bootstrap
-```
-
-`bootstrap` installs scoped roles/views/functions and initializes new operations
-parameters. It does not change Hyperdrive or disable current application logins.
-The worker parameter is independent of the API parameter. Grant Lambda permission
-to read it before changing DB_PARAM_NAME; after a real processing smoke succeeds,
-remove Lambda permission to read `/videoq/prod/db`. Keep Terraform aligned with the
-worker parameter and preserve the maintenance-owned credential generation marker.
-
-After merging the workflows, run `Maintain Neon Credentials` with `operation=rotate`
-and verify the post-retirement smoke, then remove the legacy shared GitHub OIDC
-role and its Environment ARN secret. Confirm that each purpose role denies other
-parameters and that runtime roles cannot create objects. The verifier's negative
-checks treat missing tables/network failures as failures, not as permission proof.
+See [AWS database maintenance](db-maintenance/README.md) for packaging, infrastructure,
+verification, staged cutover, retirement of old GitHub reader roles and recovery.
 
 ## Connection-source restrictions
 
-IP allowlisting is a separate rollout after checking the Neon plan and all egress
-paths. Neon IP Allow requires the Scale plan. Hyperdrive uses shared Cloudflare IP
+Production currently uses Neon Free. IP allowlisting is a separate paid rollout
+after reviewing the plan and all egress paths. Neon IP Allow requires the Scale plan. Hyperdrive uses shared Cloudflare IP
 ranges, not a unique source IP for this account. The current Lambda has no VPC,
 and standard GitHub-hosted runners do not provide a dedicated fixed egress IP.
 Enabling an allowlist now would block valid production/migration connections.

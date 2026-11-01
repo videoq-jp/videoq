@@ -247,25 +247,22 @@ jobs:
       cancel-in-progress: false
     environment: production-db-smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 125
     permissions:
       id-token: write
       contents: read
     env:
-      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
+      AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-operations-tools
-      - uses: ./.github/actions/neon-credentials
-      - name: Verify the hosted runner browser
-        run: google-chrome --version
-      - name: Check production with a temporary low-quota user
+      - uses: ./.github/actions/aws-db-invocation
+      - name: Request the production smoke test in AWS
         env:
           VERIFY_AI_ANSWERS: ${{ inputs.verify_ai_answers && 'true' || 'false' }}
-        run: python3 .github/scripts/with-neon-credentials.py smoke node .github/scripts/production-smoke.mjs
+        run: python3 .github/scripts/run-aws-db.py smoke
       - uses: ./.github/actions/report-operations
         if: always()
         with:
@@ -281,21 +278,20 @@ jobs:
       cancel-in-progress: false
     environment: production-db-backup
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 125
     permissions:
       id-token: write
       contents: read
     env:
-      AWS_NEON_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN }}
+      AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-operations-tools
-      - uses: ./.github/actions/neon-credentials
-      - name: Back up a read-only snapshot and restore into an ephemeral database
-        run: python3 .github/scripts/with-neon-credentials.py backup node .github/scripts/backup-restore.mjs
+      - uses: ./.github/actions/aws-db-invocation
+      - name: Request the read-only backup and isolated restore in AWS
+        run: python3 .github/scripts/run-aws-db.py backup
       - uses: ./.github/actions/report-operations
         if: always()
         with:

@@ -44,15 +44,19 @@ test('smoke and demo operators have no direct writes and use purpose-scoped envi
  assert.doesNotMatch(sql,/GRANT (?:ALL|UPDATE|INSERT|DELETE).*TO videoq_(?:smoke|audit|demo)_access/);
 });
 test('rotation never revokes a credential before the Lambda grace period and verified jobs',()=>{
- const source=readFileSync('.github/scripts/neon-rotate.cjs','utf8');
- assert.ok(source.indexOf("await smoke(journal.generation);")<source.indexOf('await retire(journal)'));
- assert.ok(source.indexOf('while(Date.now()<Date.parse(journal.retire_after))')<source.indexOf('await retire(journal)'));
- assert.ok(source.indexOf('await retire(journal)')<source.indexOf("await smoke(journal.generation+'-retired')"));
+ const {definition}=require('../../infra/db-maintenance/state-machine.cjs');
+ const {States:states}=definition({table:'metadata',projects:{rotation:'admin',migration:'migrate',backup:'backup',smoke:'smoke',audit:'audit'}});
+ assert.equal(states.SmokeBeforeRetirement.Next,'BackupBeforeRetirement');
+ assert.equal(states.AuditBeforeRetirement.Next,'WaitForInvocations');
+ assert.equal(states.WaitForInvocations.TimestampPath,'$.decision.payload.retire_after');
+ assert.equal(states.WaitForInvocations.Next,'Retire');
+ assert.equal(states.Retire.Next,'SmokeAfterRetirement');
  const workflow=readFileSync('.github/workflows/neon-credentials.yml','utf8');
  assert.match(workflow,/group: production-db-maintenance/);
  assert.match(workflow,/cancel-in-progress: false/);
  assert.match(workflow,/environment: production-db-maintenance/);
- assert.match(workflow,/AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN/);
+ assert.match(workflow,/AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN/);
+ assert.doesNotMatch(workflow,/neon-admin\.cjs|neon-rotate\.cjs|ssm:|GH_TOKEN|schedule:/);
 });
 
 test('retirement rejects missing or invalid grace periods before accessing any credentials',async()=>{

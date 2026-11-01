@@ -11,7 +11,10 @@
       "Sid": "TfStateObjectRW",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/*"
+      "Resource": [
+        "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate",
+        "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate.tflock"
+      ]
     },
     {
       "Sid": "CallerIdentity",

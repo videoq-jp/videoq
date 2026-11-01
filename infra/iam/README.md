@@ -29,7 +29,8 @@ repository back to name-only subjects to work around a trust mismatch.
 | `videoq-backend-cd` | Push images to ECR and update Lambda code | cd.yml |
 | `videoq-terraform-deploy` | Infrastructure CRUD operations | terraform-apply |
 
-Scope policy: `iam`/`PassRole` is limited to `videoq-*` roles; SSM is limited to
+Scope policy: `iam`/`PassRole` is limited to the existing worker role. Creation,
+deletion and permissions-boundary changes require an operator session; SSM is limited to
 `parameter/videoq/prod/*`; SQS/Lambda/ECR permissions are limited to the relevant
 resources. `videoq-terraform-deploy` also includes narrowly scoped permissions to
 delete legacy Secrets Manager resources.
@@ -98,33 +99,34 @@ aws iam create-policy-version \
 
 ## Neon database access
 
-Database jobs use separate `production-db-*` Environments and OIDC roles, with an
-exact single-parameter `ssm:GetParameter` grant for each purpose. Their immutable
-subject includes the canonical repository IDs and the dedicated Environment name.
-`production-app` is not trusted by these roles. Provision the environments/roles
-with `python3 infra/scripts/setup_neon_access.py`; it does not retrieve DB values.
-The script fails outside the expected AWS account and rejects extra branch policies.
+Routine migration, backup, smoke and credential-maintenance GitHub jobs use
+main-only `production-db-*` Environments and distinct invocation roles. Their
+`AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN` secrets identify roles with only
+`lambda:InvokeFunction` on the exact published starter alias. No SSM read,
+CodeBuild start/override, code upload or maintenance IAM permissions are granted.
+The starters validate operations and canonical-main migration sources, acquire
+an AWS global lock, and start the fixed state machine. They hold no DB credentials.
 
-`videoq-github-actions-neon-rotation` is a separate maintenance role trusted only
-from main-only `production-db-maintenance`. It can read the administrator credential, read/write the
-seven fixed consumer parameters and encrypted rotation journal, and refresh only
-`videoq-worker-prod`. It cannot modify IAM policies or retrieve arbitrary secrets.
-Its two-hour session covers the Lambda invocation grace period and verification.
-The reviewer-protected `Initialize Neon Maintenance` workflow hands off the existing
-`CLOUDFLARE_INFRA_TOKEN` to a protected SSM parameter using a separate write-only
-bootstrap role. The maintenance role reads that parameter for Hyperdrive updates.
+AWS CodeBuild service roles hold purpose-specific parameter grants. Only the
+rotation role can read the administrator and Hyperdrive credentials or write
+consumer parameters. Its operator source is an immutable S3 object version,
+deployed with a separate operator session. The independent maintenance state is
+outside GitHub's state-write grant. `videoq-tfstate-access` is limited to the main
+state object and its lock, rather than every object in the bucket.
 
-The parameters use the default AWS-managed `aws/ssm` key. Customer-managed keys
-require an explicit, exact-key decrypt grant restricted by `kms:ViaService` and the
-parameter encryption context; do not replace it with unrestricted KMS permissions.
+The demo preparation and read-only demo audit jobs retain exact single-parameter
+SSM readers in `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN`. The planning role remains
+main-only and explicitly denies protected SSM values/history and all recursive
+reads. Lambda's runtime role reads its worker DB parameter and application settings.
 
-After all scoped jobs succeed, retire the legacy `videoq-github-actions-neon` role
-and its `production-app.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` secret. Migration credentials
-must not be used for audits, backups or smoke checks. See [DB security](../DB_SECURITY.md)
-for the complete privilege boundaries, rollout, rotation and recovery procedure.
+Provision new starters first, then run `python3 infra/scripts/setup_neon_access.py`
+with an operator AWS session. It validates the account and published aliases,
+configures new invocation roles without changing old readers, and stores their
+ARNs in the dedicated Environments. Retire old migration/backup/smoke readers and
+the old GitHub rotation role only after successful main workflow cutover.
 
-The plan role also has `deny-protected-neon-credentials`, sourced from
-`videoq-neon-plan-deny.json`. This overrides the managed ReadOnlyAccess policy for
-protected database parameters and blocks recursive GetParametersByPath reads,
-including ancestor paths. PRs run Terraform format/validate/mock tests without AWS
-credentials or production state; the existing main apply workflow owns live plans.
+The reviewer-protected initial Hyperdrive handoff still uses its write-only
+bootstrap role and protected SSM parameter. Reinitialize it when the existing
+Cloudflare infrastructure token is renewed. DB administrator credentials are
+never exposed by that handoff. See [DB security](../DB_SECURITY.md) and the
+[AWS rollout procedure](../db-maintenance/README.md).
