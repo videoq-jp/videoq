@@ -350,7 +350,7 @@ jobs:
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:
-    name: Worker Python (django-free)
+    name: Worker Python
     runs-on: ${{ matrix.runner }}
     needs: changes
     if: needs.changes.outputs.worker == 'true'
