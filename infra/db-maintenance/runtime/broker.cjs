@@ -51,7 +51,6 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
         }
       }
     }
-    if (request.kind === 'migration' && await fetchMain() !== request.source_sha) throw new Error('MIGRATION_MUST_MATCH_CURRENT_MAIN');
     const {Item: lock} = await get('maintenance');
     if (lock) {
       const previous = await execution(lock);
@@ -62,6 +61,8 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       await aws('ddb', 'DeleteItem', {TableName: table, Key: {pk: {S: 'maintenance'}},
         ConditionExpression: 'execution_arn = :old', ExpressionAttributeValues: {':old': lock.execution_arn}});
     }
+    // Waiting requests must not spend GitHub's anonymous API quota.
+    if (request.kind === 'migration' && await fetchMain() !== request.source_sha) throw new Error('MIGRATION_MUST_MATCH_CURRENT_MAIN');
     const name = 'db-' + run_id;
     const arn = executionArn(machine, name);
     const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, ...request, run_id});
@@ -80,14 +81,16 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     return {run_id, status: 'RUNNING'};
   };
 }
-async function currentMain() {
+async function currentMain(fetcher = fetch) {
   const options = () => ({headers: {'User-Agent': 'videoq-aws-db-maintenance', Accept: 'application/vnd.github+json'}, redirect: 'error', signal: AbortSignal.timeout(15000)});
-  const identity = await fetch('https://api.github.com/repositories/1083911938', options());
+  const identity = await fetcher('https://api.github.com/repositories/1083911938', options());
+  if (!identity.ok) throw new Error('GITHUB_API_HTTP_' + identity.status);
   const repository = await identity.json();
-  if (!identity.ok || repository.id !== 1083911938 || repository.owner?.id !== 349188820 || repository.full_name !== REPOSITORY || repository.default_branch !== 'main' || repository.private !== false) throw new Error('CANONICAL_REPOSITORY_VERIFICATION_FAILED');
-  const response = await fetch(`https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main`, options());
+  if (repository.id !== 1083911938 || repository.owner?.id !== 349188820 || repository.full_name !== REPOSITORY || repository.default_branch !== 'main' || repository.private !== false) throw new Error('CANONICAL_REPOSITORY_VERIFICATION_FAILED');
+  const response = await fetcher(`https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main`, options());
+  if (!response.ok) throw new Error('GITHUB_API_HTTP_' + response.status);
   const data = await response.json();
-  if (!response.ok || !/^[a-f0-9]{40}$/.test(data.object?.sha || '')) throw new Error('MAIN_SOURCE_VERIFICATION_FAILED');
+  if (!/^[a-f0-9]{40}$/.test(data.object?.sha || '')) throw new Error('MAIN_SOURCE_VERIFICATION_FAILED');
   return data.object.sha;
 }
 let broker;
