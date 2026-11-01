@@ -18,6 +18,6 @@ i18n.use(initReactI18next).init({
   lng: initialLocale,
   fallbackLng: defaultLocale,
   interpolation: { escapeValue: false },
-});
+}).catch((error: unknown) => { console.error('Failed to initialize translations', error); });
 
 export default i18n;

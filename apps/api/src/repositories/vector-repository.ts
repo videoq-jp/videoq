@@ -64,7 +64,7 @@ function parseMetadataColumn(rows: Array<Record<string, unknown>>): void {
  * 文字列のままだと TypeError で落ちる。ここでクエリ結果を正規化してから渡す。
  */
 function withMetadataParsing(pool: pg.Pool): pg.Pool {
-  const rawQuery = pool.query.bind(pool) as (...args: unknown[]) => Promise<pg.QueryResult> | void;
+  const rawQuery = pool.query.bind(pool) as (...args: unknown[]) => Promise<pg.QueryResult<Record<string, unknown>>> | void;
   const rawConnect = pool.connect.bind(pool) as (...args: unknown[]) => Promise<pg.PoolClient> | void;
   const wrappedClients = new WeakSet<pg.PoolClient>();
 
@@ -80,7 +80,7 @@ function withMetadataParsing(pool: pg.Pool): pg.Pool {
     return rawConnect(...args)?.then((client) => {
       if (!wrappedClients.has(client)) {
         wrappedClients.add(client);
-        const rawClientQuery = client.query.bind(client) as (...args: unknown[]) => Promise<pg.QueryResult> | void;
+        const rawClientQuery = client.query.bind(client) as (...args: unknown[]) => Promise<pg.QueryResult<Record<string, unknown>>> | void;
         (client as unknown as { query: unknown }).query = (...queryArgs: unknown[]) => {
           return rawClientQuery(...queryArgs)?.then((result) => {
             parseMetadataColumn(result.rows);
@@ -95,7 +95,7 @@ function withMetadataParsing(pool: pg.Pool): pg.Pool {
   return pool;
 }
 
-const text = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+const text = (v: unknown) => (typeof v === "string" ? v : (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") ? String(v) : "");
 
 /**
  * リクエストスコープのシーン検索ハンドル。

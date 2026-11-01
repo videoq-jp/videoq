@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { readFileSync } from "node:fs";
 
 // Integration tests use isolated search_path schemas rather than public.

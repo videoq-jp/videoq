@@ -148,9 +148,10 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
 
   it("does not authorize a video added only after its share link was revoked", async () => {
     await admin.query("DELETE FROM video_course_members WHERE course_id = 10");
-    const originalEnd = pg.Client.prototype.end;
+    const promiseClient = pg.Client.prototype as { end(this: pg.Client): Promise<void> };
+    const originalEnd = promiseClient.end;
     let changed = false;
-    vi.spyOn(pg.Client.prototype, "end").mockImplementation(async function (this: pg.Client) {
+    vi.spyOn(promiseClient, "end").mockImplementation(async function (this: pg.Client) {
       await originalEnd.call(this);
       if (this !== admin && !changed) {
         changed = true;

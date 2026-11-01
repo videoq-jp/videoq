@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Bindings } from "../src/types/bindings";
 import { runRag, streamRag } from "../src/lib/rag";
@@ -32,7 +33,7 @@ describe.each([false, true].flatMap(streaming =>
     let agentTurns = 0;
     let visualCalls = 0;
     vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
-      const request = JSON.parse(String(init.body));
+      const request = JSON.parse(requestBodyText(init.body));
       expect(request.model).toBe(model ?? "gpt-6-luna");
       if (!model) {
         expect(request.reasoning_effort).toBe("none");

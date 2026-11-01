@@ -24,7 +24,7 @@ describe('structured text and math rendering', () => {
       { type: 'text', value: String.raw`prefix \[a {b\] still text ` }, { type: 'math', value: 'c', display: false }, { type: 'text', value: ' [1]' },
     ]],
     ['$ x[01] $ [2]', [{ type: 'math', value: ' x[01] ', display: false }, { type: 'text', value: ' [2]' }]],
-  ])('preserves syntax and literal prose: %s', (text, nodes) => expect(parse(text as string)).toEqual(nodes))
+  ])('preserves syntax and literal prose: %s', (text, nodes) => expect(parse(text)).toEqual(nodes))
 
   it('keeps line context across structural citations', () => {
     expect(parseMessageContent([

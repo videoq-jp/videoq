@@ -34,6 +34,12 @@ ESLintなど従来のコンパイラAPIを使うツールには、公式の `@ty
 個別実行は `npm run lint --workspace @videoq/api` などです。
 共通ルールは `eslint.shared.mjs` にあり、ReactではHooks、WebではFast Refreshとレイアウトのimport制約も確認します。
 `npm run test:lint` は全ワークスペースでネイティブコンパイラとESLintが併用でき、違反を検出できることを確認します。
+TypeScriptには `recommendedTypeChecked` を適用し、Promiseの処理漏れ、同期コールバックへのasync関数の受け渡し、不適切なawaitを検出します。
+各ワークスペースの `tsconfig.eslint.json` はテストと設定ファイルも含め、WebのWorkerには実行環境専用のtsconfigを使います。
+本番ビルドの対象範囲を変えずにすべてを検査するため、`parserOptions.project` でこれらの設定を明示しています。
+テスト用モックやStorybookでは不正入力を再現する自由度を残しますが、Promiseの検査は無効にしていません。
+併用テストは実際に存在する一時ソースを使い、未処理Promiseと誤ったasyncコールバックを検出し、await・catch済みPromiseを許容することも確認します。
+メモリに型情報を蓄積しないよう、ワークスペースごとに別プロセスで実行します。
 CIでも各ワークスペースの既存チェックと一緒にLintを実行します。
 
 Dependabotはコンパイラと互換パッケージをまとめて更新し、安定版のメジャー更新も対象にします。

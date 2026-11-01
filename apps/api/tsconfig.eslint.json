@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "worker-configuration.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    ".wrangler",
+    ".docusaurus",
+    "storybook-static",
+    "worker/env.d.ts"
+  ]
+}

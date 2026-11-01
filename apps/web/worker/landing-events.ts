@@ -9,7 +9,7 @@ export async function collectLandingEvent(request: Request, environment: string)
   if (request.headers.get('Origin') !== new URL(request.url).origin) return reply(403);
   if (request.headers.get('Content-Type')?.split(';')[0] !== 'application/json') return reply(415);
   if (Number(request.headers.get('Content-Length')) > MAX_BYTES) return reply(413);
-  const reader = request.body?.getReader();
+  const reader = (request.body as ReadableStream<Uint8Array> | null)?.getReader();
   if (!reader) return reply(400);
   try {
     const decoder = new TextDecoder();

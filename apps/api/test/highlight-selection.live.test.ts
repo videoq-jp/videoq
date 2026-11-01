@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 /** Opt-in real planner + vision evaluation against externally supplied v1 caches.
  * VIDEOQ_HIGHLIGHT_EVAL=1 VIDEOQ_HIGHLIGHT_FIXTURE=/path/to/fixture npm run test:unit -- test/highlight-selection.live.test.ts
  * Fixture: metadata.json {id,title,transcript}, coarse.json, focus.bin. Never commit private media.
@@ -107,5 +108,5 @@ it.skipIf(!enabled).each([1, 2, 3])("captures short highlight request, run %i", 
   expect(visualUsage.filter(record => record.mode === "focus").length).toBeGreaterThan(0);
   expect(visualUsage.length).toBeLessThanOrEqual(4);
   expect(visualUsage.reduce((sum, record) => sum + Number(record.frames), 0)).toBeLessThanOrEqual(48);
-  console.log(JSON.stringify({ run, text: chatAnswerText(final!.answer), elapsed_seconds: (Date.now() - started) / 1000 }));
+  console.log(JSON.stringify({ run, text: chatAnswerText(final.answer), elapsed_seconds: (Date.now() - started) / 1000 }));
 }, 300_000);

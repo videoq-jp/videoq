@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { readFocusFrames } from "../src/lib/focus-frames";
 import { inspectVideoClip } from "../src/lib/visual-inspection";
@@ -76,7 +77,7 @@ it.each(["gpt-4o-mini", "gpt-4o-mini-2024-07-18"])("sends all sixteen high-detai
   let requests = 0;
   vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
     requests++;
-    const request = JSON.parse(String(init.body));
+    const request = JSON.parse(requestBodyText(init.body));
     const parts = request.messages[1].content as { type: string; text?: string; image_url?: { detail: string } }[];
     const images = parts.filter(p => p.type === "image_url");
     expect(images).toHaveLength(4);

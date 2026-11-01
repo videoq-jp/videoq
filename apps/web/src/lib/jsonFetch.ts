@@ -23,7 +23,7 @@ function waitForRetry(signal?: AbortSignal | null): Promise<void> {
   return new Promise((resolve, reject) => {
     const abort = () => {
       clearTimeout(timer);
-      reject(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+      reject(signal?.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError'));
     };
     const timer = setTimeout(() => {
       signal?.removeEventListener('abort', abort);

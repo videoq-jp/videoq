@@ -22,20 +22,22 @@ function FeedbackControls({ mode, triggerLabel, confirmation, notifications, onR
   const [result, setResult] = useState<boolean | null>(null);
   const english = i18n.language === 'en';
 
+  const handleAction = async () => {
+    if (mode === 'toast') {
+      notifications.forEach(toast);
+      return;
+    }
+    const confirmed = await confirm(confirmation);
+    onResult(confirmed);
+    setResult(confirmed);
+  };
+
   return (
     <div className="space-y-4">
       <Button
         type="button"
         variant="outline"
-        onClick={async () => {
-          if (mode === 'toast') {
-            notifications.forEach(toast);
-            return;
-          }
-          const confirmed = await confirm(confirmation);
-          onResult(confirmed);
-          setResult(confirmed);
-        }}
+        onClick={() => { void handleAction(); }}
       >
         {triggerLabel}
       </Button>

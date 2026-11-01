@@ -3,7 +3,7 @@ import { hashPassword } from "better-auth/crypto";
 
 // Exercise real reset/verification endpoints and password hashing. Only
 // persistence and outbound mail are replaced; no real mailbox is contacted.
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };

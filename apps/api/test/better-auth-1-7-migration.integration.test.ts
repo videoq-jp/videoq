@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import {
   cpSync,
   mkdirSync,
@@ -14,7 +15,6 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
-import type { Db } from "../src/db/pool";
 import { createAuth } from "../src/lib/auth";
 import {
   createMemoryRateLimitBackend,
@@ -214,7 +214,7 @@ migrationDescribe("Better Auth 1.7 Drizzle migration", () => {
           FRONTEND_URL: "https://videoq.jp",
           CORS_ALLOW_ORIGIN: "https://videoq.jp",
         } as Bindings,
-        db as unknown as Db,
+        db,
       );
       const dcrResponse = await auth.handler(
         new Request("https://videoq.jp/api/auth/oauth2/register", {
@@ -229,10 +229,10 @@ migrationDescribe("Better Auth 1.7 Drizzle migration", () => {
         }),
       );
       expect(dcrResponse.status).toBe(201);
-      const registered = (await dcrResponse.json()) as {
+      const registered = (await dcrResponse.json<{
         client_id: string;
         resources: string[];
-      };
+      }>());
       expect(registered.resources).toEqual(["https://videoq.jp/api/mcp"]);
 
       const resourceLink = await db.execute(sql`

@@ -36,4 +36,4 @@ function Benchmark() {
     <div id="answer">{last?.role === 'assistant' && <MessageBody answer={last.answer} onVideoNavigate={() => {}} />}</div>
   </>;
 }
-createRoot(document.getElementById('root')!).render(<QueryClientProvider client={new QueryClient()}><Benchmark /></QueryClientProvider>);
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient()}><Benchmark /></QueryClientProvider>);

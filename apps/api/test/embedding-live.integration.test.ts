@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

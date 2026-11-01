@@ -12,6 +12,7 @@ export async function provisionOnpremUser(env: Bindings, input: {
   input = { ...input, email: input.email.trim().toLowerCase(), username: input.username.trim().toLowerCase() };
   return withDb(env, db => db.transaction(async tx => {
     let activationUrl: string | undefined;
+    // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
     const auth = createAuth(env, tx, "full", { passwordReset: async ({ url }) => { activationUrl = url; } });
     // A random credential is never returned. The user chooses their password
     // through Better Auth's short-lived, single-use reset token instead.
@@ -34,6 +35,7 @@ export async function resetOnpremUserAccess(env: Bindings, id: string) {
     const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, id)).limit(1);
     if (!user) throw apiNotFound("User not found");
     let activationUrl: string | undefined;
+    // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
     const auth = createAuth(env, db, "full", { passwordReset: async ({ url }) => { activationUrl = url; } });
     await auth.api.requestPasswordReset({ body: { email: user.email, redirectTo: `${authBaseURL(env)}/reset-password` } });
     if (!activationUrl) throw new Error("Could not create an account activation link");

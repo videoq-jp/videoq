@@ -31,11 +31,11 @@ interface UseVideosReturn {
   isLoading: boolean;
   error: string | null;
   hasNextPage: boolean;
-  fetchNextPage: () => void;
+  fetchNextPage: () => Promise<unknown>;
   isFetchingNextPage: boolean;
   isFetching: boolean;
   isFetchNextPageError: boolean;
-  refetch: () => void;
+  refetch: () => Promise<unknown>;
   totalCount: number;
   sentinelRef: React.RefCallback<HTMLElement>;
 }

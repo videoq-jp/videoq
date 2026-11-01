@@ -49,7 +49,7 @@ describe('FormField', () => {
   it('should display value', () => {
     render(<FormField {...defaultProps} value="testuser" />)
     
-    const input = screen.getByLabelText(/Username/) as HTMLInputElement
+    const input = screen.getByLabelText<HTMLInputElement>(/Username/)
     expect(input.value).toBe('testuser')
   })
 

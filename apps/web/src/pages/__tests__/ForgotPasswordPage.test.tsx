@@ -82,7 +82,7 @@ describe('ForgotPasswordPage', () => {
     const pendingRequest = new Promise<void>((resolve) => {
       resolveRequest = resolve
     })
-    ; (apiClient.requestPasswordReset as ReturnType<typeof vi.fn>).mockImplementation(
+    ; vi.mocked(apiClient.requestPasswordReset).mockImplementation(
       () => pendingRequest
     )
 

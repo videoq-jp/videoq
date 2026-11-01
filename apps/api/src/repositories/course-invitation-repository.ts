@@ -344,8 +344,8 @@ export async function listCourseParticipants(
         email: row.email,
         status: effectiveInvitationStatus(row.status as InvitationStatus, new Date(row.expiresAt), now),
         delivery_status: row.deliveryStatus as InvitationDeliveryStatus,
-        expires_at: toUtcIso(row.expiresAt)!,
-        created_at: toUtcIso(row.createdAt)!,
+        expires_at: toUtcIso(row.expiresAt),
+        created_at: toUtcIso(row.createdAt),
         last_sent_at: row.lastSentAt ? toUtcIso(row.lastSentAt) : null,
         send_attempts: row.sendAttempts,
       })),
@@ -353,7 +353,7 @@ export async function listCourseParticipants(
         user_id: row.userId,
         username: row.username,
         email: row.email,
-        joined_at: toUtcIso(row.joinedAt)!,
+        joined_at: toUtcIso(row.joinedAt),
       })),
     };
   });
@@ -396,7 +396,7 @@ export async function getCourseInvitationByTokenHash(
       inviter_name: row.inviterName.trim() || row.inviterUsername,
       email: row.email,
       status: row.status as InvitationStatus,
-      expires_at: toUtcIso(row.expiresAt)!,
+      expires_at: toUtcIso(row.expiresAt),
     };
   });
 }

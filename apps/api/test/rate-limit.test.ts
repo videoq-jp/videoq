@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { describe, it, expect, beforeEach } from "vitest";

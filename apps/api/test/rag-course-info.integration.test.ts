@@ -182,7 +182,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
       expect(query).toHaveBeenCalledTimes(2);
       for (const [index, limit] of [COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT].entries()) {
         // Inspect the actual PostgreSQL response, before application-side slicing.
-        const reply = await query.mock.results[index]!.value as pg.QueryResult;
+        const reply = await query.mock.results[index].value as pg.QueryResult;
         const descriptionIndex = reply.fields.findIndex(field => field.name === "description");
         expect(descriptionIndex).toBeGreaterThanOrEqual(0);
         const description = reply.rows[0][descriptionIndex] as string;

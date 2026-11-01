@@ -36,9 +36,20 @@ of tools that do not yet support the native API.
 `npm run lint` checks API, Web, Docs, demo-video, and trpc, including their scripts
 and tests. Use `npm run lint --workspace @videoq/api` to check one workspace.
 The shared rules are in `eslint.shared.mjs`; React workspaces also check Hooks,
-and Web keeps its Fast Refresh and layout import rules. `npm run test:lint` verifies
+and Web keeps its Fast Refresh and layout import rules. TypeScript files use
+`recommendedTypeChecked`, including `no-floating-promises`, `no-misused-promises`,
+and `await-thenable`. Each workspace has a `tsconfig.eslint.json` that also includes
+tests and configuration files; Web's Worker files use their own runtime tsconfig.
+Explicit `parserOptions.project` entries keep this coverage separate from production
+builds, whose tsconfigs intentionally exclude some test and tooling files.
+Test doubles, type fixtures, and stories retain their existing permissive handling
+of malformed data and asynchronous mocks; Promise handling rules remain enabled.
+`npm run test:lint` verifies
 that every workspace can run the native compiler and detect lint violations with
-the compatibility API. CI runs each workspace's lint with its existing checks.
+the compatibility API, rejects floating Promises and async callbacks passed to
+synchronous handlers, and accepts awaited or caught Promises. It uses real temporary
+source files and a separate process per workspace so TypeScript programs do not
+accumulate in memory. CI runs each workspace's lint with its existing checks.
 
 Dependabot groups the compiler and compatibility packages together and permits
 stable major updates. A new TypeScript syntax feature still requires parser support

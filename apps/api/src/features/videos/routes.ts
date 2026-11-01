@@ -21,7 +21,7 @@ videoRoutes.post(
     const result = await videoService.createVideoFromMultipart(
       c.env,
       c.var.userId!,
-      form as Record<string, string | File>,
+      form,
     );
     if (!result.ok) {
       return c.json(result.body, result.status as ContentfulStatusCode);

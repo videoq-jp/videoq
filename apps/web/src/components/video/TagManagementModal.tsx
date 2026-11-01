@@ -114,7 +114,7 @@ export function TagManagementModal({ isOpen, onClose }: TagManagementModalProps)
                           variant="solid"
                           size="sm"
                           className="whitespace-nowrap bg-error-1 hover:bg-red-1000 active:bg-red-1200"
-                          onClick={() => handleDelete(tag.id)}
+                          onClick={() => { void handleDelete(tag.id); }}
                           disabled={isDeleting}
                           aria-busy={deletingTagId === tag.id}
                           data-testid={`confirm-delete-${tag.id}`}

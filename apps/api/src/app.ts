@@ -1,5 +1,5 @@
 import { features } from "./lib/deployment";
-import type { Context } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { trpcServer } from "@hono/trpc-server";
@@ -110,8 +110,8 @@ export function createApp() {
 
   // All application JSON operations are exposed through tRPC.
   app.use("/api/trpc/*", limitChatTrpcRequestBody);
-  app.use("/api/trpc/*", async (c, next) =>
-    trpcServer({
+  app.use("/api/trpc/*", async (c: Context<AppEnv, string>, next) =>
+    (trpcServer({
       endpoint: "/api/trpc",
       router: appRouter,
       maxBatchSize: TRPC_MAX_BATCH_SIZE,
@@ -131,7 +131,7 @@ export function createApp() {
           stack: safeErrorStack(cause),
         }));
       },
-    })(c, next),
+    }) as MiddlewareHandler<AppEnv>)(c, next),
   );
 
   // Raw HTTP is reserved for protocol-specific transports and binary payloads.

@@ -5,18 +5,20 @@ import { useConfirm, useToast } from '../feedback'
 function ConfirmHarness({ onResult }: { onResult: (value: boolean) => void }) {
   const confirm = useConfirm()
 
+  const handleConfirm = async () => {
+    const confirmed = await confirm({
+      title: 'Delete video?',
+      description: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    })
+    onResult(confirmed)
+  };
+
   return (
     <button
-      onClick={async () => {
-        const confirmed = await confirm({
-          title: 'Delete video?',
-          description: 'This action cannot be undone.',
-          confirmLabel: 'Delete',
-          cancelLabel: 'Cancel',
-          variant: 'danger',
-        })
-        onResult(confirmed)
-      }}
+      onClick={() => { void handleConfirm(); }}
     >
       Open confirm
     </button>

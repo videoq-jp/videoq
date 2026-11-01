@@ -27,7 +27,7 @@ export function requestTrpc(
 }
 
 export async function trpcData<T>(response: Response): Promise<T> {
-  const payload = await response.json() as { result: { data: T } };
+  const payload = await response.json<{ result: { data: T } }>();
   return payload.result.data;
 }
 
@@ -36,12 +36,12 @@ export async function trpcError(response: Response): Promise<{
   message: string;
   details?: unknown;
 }> {
-  const payload = await response.json() as {
+  const payload = await response.json<{
     error: {
       message: string;
       data: { code: string; applicationCode?: string; details?: unknown };
     };
-  };
+  }>();
   return {
     code: payload.error.data.applicationCode ?? payload.error.data.code,
     message: payload.error.message,

@@ -49,7 +49,7 @@ describe('VideoUploadModal', () => {
 
   afterEach(() => { vi.useRealTimers() })
 
-  it('disables source switching and prevents Escape while uploading', () => {
+  it('disables source switching and prevents Escape while uploading', async () => {
     vi.mocked(useVideoUpload).mockReturnValue({ ...baseHook, progress: 46, isUploading: true })
     const onClose = vi.fn()
     render(<VideoUploadModal isOpen onClose={onClose} />)
@@ -60,43 +60,43 @@ describe('VideoUploadModal', () => {
     expect(baseHook.reset).not.toHaveBeenCalled()
   })
 
-  it('closes the native dialog and resets exactly once after the default two seconds', () => {
+  it('closes the native dialog and resets exactly once after the default two seconds', async () => {
     vi.useFakeTimers()
     vi.mocked(useVideoUpload).mockReturnValue({ ...baseHook, progress: 100, success: true })
     const onClose = vi.fn()
     render(<VideoUploadModal isOpen onClose={onClose} />)
-    const dialog = screen.getByRole('dialog') as HTMLDialogElement
-    act(() => vi.advanceTimersByTime(1999))
+    const dialog = screen.getByRole<HTMLDialogElement>('dialog')
+    await act(() => vi.advanceTimersByTime(1999))
     expect(onClose).not.toHaveBeenCalled()
-    act(() => vi.advanceTimersByTime(1))
+    await act(() => vi.advanceTimersByTime(1))
     expect(dialog.open).toBe(false)
     expect(baseHook.reset).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps success open when auto close is disabled and permits manual close', () => {
+  it('keeps success open when auto close is disabled and permits manual close', async () => {
     vi.useFakeTimers()
     vi.mocked(useVideoUpload).mockReturnValue({ ...baseHook, progress: 100, success: true })
     const onClose = vi.fn()
     render(<VideoUploadModal isOpen onClose={onClose} autoCloseDelayMs={null} />)
-    act(() => vi.advanceTimersByTime(10000))
+    await act(() => vi.advanceTimersByTime(10000))
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'common.actions.cancel' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('cancels the success timer when hidden or unmounted', () => {
+  it('cancels the success timer when hidden or unmounted', async () => {
     vi.useFakeTimers()
     vi.mocked(useVideoUpload).mockReturnValue({ ...baseHook, progress: 100, success: true })
     const onClose = vi.fn()
     const { rerender, unmount } = render(<VideoUploadModal isOpen onClose={onClose} />)
-    act(() => vi.advanceTimersByTime(1000))
+    await act(() => vi.advanceTimersByTime(1000))
     rerender(<VideoUploadModal isOpen={false} onClose={onClose} />)
-    act(() => vi.advanceTimersByTime(2000))
+    await act(() => vi.advanceTimersByTime(2000))
     expect(onClose).not.toHaveBeenCalled()
     rerender(<VideoUploadModal isOpen onClose={onClose} />)
     unmount()
-    act(() => vi.advanceTimersByTime(2000))
+    await act(() => vi.advanceTimersByTime(2000))
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -111,7 +111,7 @@ describe('VideoUploadModal', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('shows file upload fields by default', () => {
+  it('shows file upload fields by default', async () => {
     render(<VideoUploadModal isOpen={true} onClose={vi.fn()} />)
 
     expect(screen.getByTestId('file-fields')).toBeInTheDocument()
@@ -119,7 +119,7 @@ describe('VideoUploadModal', () => {
     expect(screen.getByText('videos.upload.modes.youtube')).toBeInTheDocument()
   })
 
-  it('switches to youtube mode when youtube tab is clicked', () => {
+  it('switches to youtube mode when youtube tab is clicked', async () => {
     render(<VideoUploadModal isOpen={true} onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('videos.upload.modes.youtube'))
@@ -127,7 +127,7 @@ describe('VideoUploadModal', () => {
     expect(baseHook.setSourceMode).toHaveBeenCalledWith('youtube')
   })
 
-  it('renders youtube url input in youtube mode', () => {
+  it('renders youtube url input in youtube mode', async () => {
     ;(useVideoUpload as any).mockReturnValue({
       ...baseHook,
       sourceMode: 'youtube',
@@ -140,7 +140,7 @@ describe('VideoUploadModal', () => {
     expect(screen.getByLabelText(/videos\.upload\.descriptionLabel/)).toBeInTheDocument()
   })
 
-  it('renders upload warning in youtube mode', () => {
+  it('renders upload warning in youtube mode', async () => {
     ;(useVideoUpload as any).mockReturnValue({
       ...baseHook,
       sourceMode: 'youtube',
@@ -152,7 +152,7 @@ describe('VideoUploadModal', () => {
     expect(screen.getByText('videos.upload.warning.tagsFailed')).toBeInTheDocument()
   })
 
-  it('passes the upload progress through to the file upload form fields', () => {
+  it('passes the upload progress through to the file upload form fields', async () => {
     ;(useVideoUpload as any).mockReturnValue({
       ...baseHook,
       isUploading: true,
@@ -164,7 +164,7 @@ describe('VideoUploadModal', () => {
     expect(screen.getByTestId('file-fields')).toHaveAttribute('data-progress', '77')
   })
 
-  it('shows the upload percentage on the submit button while uploading a file', () => {
+  it('shows the upload percentage on the submit button while uploading a file', async () => {
     ;(useVideoUpload as any).mockReturnValue({
       ...baseHook,
       isUploading: true,
@@ -177,7 +177,7 @@ describe('VideoUploadModal', () => {
     expect(submitButton.textContent).toContain('42')
   })
 
-  it('does not show a percentage on the submit button in youtube mode', () => {
+  it('does not show a percentage on the submit button in youtube mode', async () => {
     ;(useVideoUpload as any).mockReturnValue({
       ...baseHook,
       sourceMode: 'youtube',

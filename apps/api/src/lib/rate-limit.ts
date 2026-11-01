@@ -72,7 +72,7 @@ export function pruneExpiredHistory(
 ): number[] {
   const active = [...history];
   const cutoff = nowSec - windowSec;
-  while (active.length > 0 && active[active.length - 1]! <= cutoff) {
+  while (active.length > 0 && active[active.length - 1] <= cutoff) {
     active.pop();
   }
   return active;
@@ -85,6 +85,7 @@ export function createMemoryRateLimitBackend(): RateLimitBackend {
     pruneExpiredHistory(store.get(key)?.history ?? [], nowSec, windowSec);
 
   return {
+    // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
     async consume(key, limit, windowSec, cost = 1) {
       const now = Date.now() / 1000;
       const history = prune(key, now, windowSec);
@@ -102,18 +103,20 @@ export function createMemoryRateLimitBackend(): RateLimitBackend {
       store.set(key, { history, windowSec });
       return { allowed: true, retryAfterSec: 0 };
     },
+    // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
     async release(key, windowSec, cost) {
       const history = prune(key, Date.now() / 1000, windowSec);
       history.splice(0, Math.min(cost, history.length));
       if (history.length === 0) store.delete(key);
       else store.set(key, { history, windowSec });
     },
+    // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
     async snapshot(key) {
       const entry = store.get(key);
       if (!entry) return null;
       const history = prune(key, Date.now() / 1000, entry.windowSec);
       if (history.length === 0) return null;
-      return { count: history.length, lastRequestMs: history[0]! * 1000 };
+      return { count: history.length, lastRequestMs: history[0] * 1000 };
     },
     async record(key, windowSec) {
       await this.consume(key, Number.MAX_SAFE_INTEGER, windowSec);
@@ -131,11 +134,13 @@ export function setRateLimitBackendForTests(
 }
 
 const unavailableBackend: RateLimitBackend = {
+  // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
   async consume() {
     // Missing rate limiting must never turn into unlimited access.
     return { allowed: false, retryAfterSec: 60 };
   },
   async release() {},
+  // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
   async snapshot() {
     // 同じ理由でフォールバック経路も飽和したものとして扱う。
     return { count: Number.MAX_SAFE_INTEGER, lastRequestMs: Date.now() };

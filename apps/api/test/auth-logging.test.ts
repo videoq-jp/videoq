@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspect } from "node:util";
 
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };

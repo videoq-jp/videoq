@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { applyChatPart, chatAnswerText, type ChatAnswer } from "@videoq/trpc/chat";
 import { embedding as testEmbedding } from "./helpers/embedding";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -127,7 +128,7 @@ function stubOpenAi(turns: Turn[], duplicateFinish = false) {
         headers: { "content-type": "application/json" },
       });
     }
-    const body = JSON.parse(String(init.body));
+    const body = JSON.parse(requestBodyText(init.body));
     bodies.push(body);
     const turn = turns[Math.min(index++, turns.length - 1)];
     if ("status" in turn) {
@@ -516,7 +517,7 @@ describe("RAG エージェント（ストリーミング）", () => {
       `data: ${JSON.stringify({ id: "final-answer", choices: [{ index: 0, delta: { role: "assistant", content }, finish_reason }] })}\n\n`,
     ));
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       if (!body.messages.some((message: { role: string }) => message.role === "tool")) return initialFetch(url, init);
       expect(body.stream).toBe(true);
       finalCalls++;
@@ -531,8 +532,8 @@ describe("RAG エージェント（ストリーミング）", () => {
       for (;;) {
         const next = await stream.next();
         expect(next.done).toBe(false);
-        chunks.push(next.value!);
-        if (predicate(next.value!)) break;
+        chunks.push(next.value);
+        if (predicate(next.value)) break;
       }
     };
     try {
@@ -633,7 +634,7 @@ describe("RAG エージェント（ストリーミング）", () => {
     let upstream: AbortSignal | undefined;
     const reading = Promise.withResolvers<void>();
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       if (!body.messages.some((message: { role: string }) => message.role === "tool")) {
         return initialFetch(url, init);
       }

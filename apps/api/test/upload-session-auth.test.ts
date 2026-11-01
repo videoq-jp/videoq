@@ -4,7 +4,7 @@ import { hashPassword } from "better-auth/crypto";
 import type { Db } from "../src/db/pool";
 import type { AppEnv, Bindings } from "../src/types/bindings";
 
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 const query = vi.hoisted(() => vi.fn());
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");

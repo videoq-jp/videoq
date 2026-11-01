@@ -204,7 +204,7 @@ async function multipartS3Request(
 
 async function multipartXml(response: Response): Promise<string> {
   // Control responses are small; never buffer an unbounded storage response.
-  const reader = response.body?.getReader();
+  const reader = (response.body as ReadableStream<Uint8Array> | null)?.getReader();
   if (!reader) throw new Error("Empty S3 multipart response");
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -369,7 +369,7 @@ export async function readMediaBytes(
   if (useBucketBinding(env)) {
     const object = await videoBucket(env).get(r2ObjectKey(fileKey));
     if (!object) return null;
-    body = object.body;
+    body = object.body as ReadableStream<Uint8Array>;
     size = object.size;
   } else {
     const { aws, endpoint, bucket } = s3Client(env, { public: false });
@@ -380,7 +380,7 @@ export async function readMediaBytes(
       await response.body?.cancel();
       throw new Error(`S3 GetObject failed: ${response.status}`);
     }
-    body = response.body;
+    body = response.body as ReadableStream<Uint8Array>;
     size = Number(response.headers.get("content-length") ?? 0);
   }
   if (size > maxBytes) {
@@ -409,7 +409,7 @@ export async function readMediaRange(
     const onlyIf = new Headers(etag ? { "if-match": etag } : {});
     const object = await videoBucket(env).get(r2ObjectKey(fileKey), { range: { offset, length }, onlyIf });
     if (!object || !("body" in object)) return null;
-    body = object.body;
+    body = object.body as ReadableStream<Uint8Array>;
     size = object.size;
     currentEtag = object.httpEtag;
     validRange = !!object.range && "offset" in object.range
@@ -425,7 +425,7 @@ export async function readMediaRange(
       await response.body?.cancel();
       throw new Error(`S3 ranged GetObject failed: ${response.status}`);
     }
-    body = response.body;
+    body = response.body as ReadableStream<Uint8Array>;
     currentEtag = response.headers.get("etag") ?? "";
     const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get("content-range") ?? "");
     size = match ? Number(match[3]) : NaN;

@@ -63,7 +63,7 @@ export async function withDb<T>(
 /** /ready 用の軽量な疎通チェック。 */
 export async function pingDb(env: Bindings): Promise<boolean> {
   return withClient(env, async (client) => {
-    const { rows } = await client.query("SELECT 1 AS ok");
+    const { rows } = await client.query<{ ok: number }>("SELECT 1 AS ok");
     return rows[0]?.ok === 1;
   });
 }

@@ -130,7 +130,7 @@ export function VideoCourseCreateModal({ isOpen, onClose, onCreate }: VideoCours
             <Button type="button" variant="outline" onClick={handleClose} disabled={isCreating}>
               {t('common.actions.cancel')}
             </Button>
-            <Button onClick={handleCreate} disabled={!name.trim() || isCreating}>
+            <Button onClick={() => { void handleCreate(); }} disabled={!name.trim() || isCreating}>
               {isCreating ? (
                 <span className="flex items-center justify-center">
                   <InlineSpinner className="mr-2" />

@@ -163,7 +163,7 @@ export default function VideoDetailPage() {
       updateError={updateError}
       deleteError={deleteError}
       isDeleting={isDeleting}
-      onDeleteVideo={handleDeleteVideo}
+      onDeleteVideo={() => { void handleDeleteVideo(); }}
       transcriptSearch={transcriptSearch}
       onTranscriptSearchChange={setTranscriptSearch}
       isTranscriptEditing={isTranscriptEditing}

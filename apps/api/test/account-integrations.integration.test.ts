@@ -60,7 +60,7 @@ describe.skipIf(!databaseUrl)("account integration metadata on PostgreSQL", () =
     const query = vi.spyOn(pg.Client.prototype, "query");
     const response = await createApp().request("/api/trpc/account.integrationApiKeys", { headers: testAuthHeaders() }, env);
     expect(response.status).toBe(200);
-    const body = await response.json() as { result: { data: Awaited<ReturnType<typeof listIntegrationApiKeys>> } };
+    const body = await response.json<{ result: { data: Awaited<ReturnType<typeof listIntegrationApiKeys>> } }>();
     expect(body.result.data).toHaveLength(105);
     expect(body.result.data.map(row => row.id)).toEqual(["key-105", ...Array.from({ length: 104 }, (_, i) => `key-${String(i + 1).padStart(3, "0")}`)]);
     expect(body.result.data[0]).toEqual({ id: "key-105", config_id: "default", name: "Key 105", access_level: "read_only", prefix: "vq_preview", last_used_at: null, created_at: "2026-09-02T00:00:00.000Z" });
@@ -101,7 +101,7 @@ describe.skipIf(!databaseUrl)("account integration metadata on PostgreSQL", () =
     const query = vi.spyOn(pg.Client.prototype, "query");
     const response = await createApp().request("/api/trpc/account.connectedApps", { headers: testAuthHeaders() }, env);
     expect(response.status).toBe(200);
-    const body = await response.json() as { result: { data: Awaited<ReturnType<typeof listConnectedApps>> } };
+    const body = await response.json<{ result: { data: Awaited<ReturnType<typeof listConnectedApps>> } }>();
     expect(body.result.data).toHaveLength(105);
     expect(body.result.data.map(row => row.id)).toEqual(Array.from({ length: 105 }, (_, i) => `grant-${String(i + 1).padStart(3, "0")}`));
     expect(body.result.data[104]).toEqual({ id: "grant-105", client_id: "client", client_name: "Learning app", scope: "videoq.read", issued_at: "2026-09-01T00:00:00.000Z" });

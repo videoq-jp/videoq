@@ -201,8 +201,8 @@ export default function VideoCourseDetailPage() {
       onEditedNameChange={(name) => setDraft(current => ({ ...current, name }))}
       onEditedDescriptionChange={(description) => setDraft(current => ({ ...current, description }))}
       onUpdateCourse={() => updateCourseMutation.mutate(draft)}
-      onDeleteCourse={handleDelete}
-      onLeaveGroup={handleLeave}
+      onDeleteCourse={() => { void handleDelete(); }}
+      onLeaveGroup={() => { void handleLeave(); }}
       onVideoSelect={handleVideoSelect}
       onRemoveVideo={handleRemoveVideo}
       removingVideoId={removingVideoId}
@@ -211,8 +211,8 @@ export default function VideoCourseDetailPage() {
       onVideoCanPlay={handleVideoCanPlay}
       onVideoPlayFromTime={handleVideoPlayFromTime}
       onGenerateShareLink={generateShareLink}
-      onDeleteShareLink={deleteShareLink}
-      onCopyShareLink={copyShareLink}
+      onDeleteShareLink={() => { void deleteShareLink(); }}
+      onCopyShareLink={() => { void copyShareLink(); }}
     />
   );
 }

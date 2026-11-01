@@ -61,7 +61,7 @@ const ProgressIndicator = React.forwardRef<
     if (!active) return null
 
     const hasValue = value !== undefined && Number.isFinite(value)
-    const normalizedValue = hasValue ? clampValue(value as number) : undefined
+    const normalizedValue = hasValue ? clampValue(value) : undefined
     const isIndeterminate = normalizedValue === undefined
 
     const mergedStyle: React.CSSProperties = {

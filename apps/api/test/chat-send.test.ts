@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { chatCompletionResponse } from "./helpers/chat-completion-response";
 import { plainChatAnswer, applyChatPart, type ChatAnswer, type ModelAnswer } from "@videoq/trpc/chat";
 import { embedding as testEmbedding } from "./helpers/embedding";
@@ -163,7 +164,7 @@ async function post(
           shareSlug: query.get("share_slug") ?? query.get("share_token") ?? undefined,
         }),
       },
-      { ...ENV, ...(opts.env ?? {}) } as never,
+      { ...ENV, ...(opts.env ?? {}) },
     );
   }
   return chatRoutes.request(
@@ -174,7 +175,7 @@ async function post(
 }
 
 async function trpcData<T>(response: Response): Promise<T> {
-  const payload = await response.json() as { result: { data: T } };
+  const payload = await response.json<{ result: { data: T } }>();
   return payload.result.data;
 }
 
@@ -183,12 +184,12 @@ async function trpcError(response: Response): Promise<{
   message: string;
   details?: unknown;
 }> {
-  const payload = await response.json() as {
+  const payload = await response.json<{
     error: {
       message: string;
       data: { code: string; applicationCode?: string; details?: unknown };
     };
-  };
+  }>();
   return {
     code: payload.error.data.applicationCode ?? payload.error.data.code,
     message: payload.error.message,
@@ -238,10 +239,10 @@ function stubOpenAi(opts: {
   vi.stubGlobal("fetch", async (input: string | Request, init?: RequestInit) => {
     // aws4fetch は Request オブジェクトで呼ぶため両形に対応する。
     const isRequest = typeof input !== "string";
-    const url = isRequest ? (input as Request).url : input;
+    const url = isRequest ? (input).url : input;
     const raw = isRequest
-      ? await (input as Request).clone().text()
-      : String(init?.body ?? "");
+      ? await (input).clone().text()
+      : requestBodyText(init?.body ?? "");
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(raw);
@@ -464,7 +465,7 @@ describe("POST /messages（非ストリーミング）", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ 0: oversizedInput, 1: oversizedInput }),
       },
-      ENV as never,
+      ENV,
     );
 
     expect(res.status).toBe(413);
@@ -499,7 +500,7 @@ describe("POST /messages（非ストリーミング）", () => {
         },
         body: JSON.stringify(input),
       },
-      ENV as never,
+      ENV,
     );
 
     expect(res.status).toBe(400);
@@ -850,10 +851,10 @@ describe("HTTP 応答の切断", () => {
       return defaultRows(sql, args);
     };
     vi.stubGlobal("fetch", async (input: string | Request, init?: RequestInit) => {
-      const url = String(input);
+      const url = typeof input === "string" ? input : input.url;
       const isPending = stage === "embedding"
         ? url.endsWith("/embeddings")
-        : url.endsWith("/chat/completions") && JSON.parse(String(init?.body)).messages
+        : url.endsWith("/chat/completions") && JSON.parse(requestBodyText(init?.body)).messages
           .some((message: { role: string }) => message.role === "tool");
       if (isPending) {
         upstream = init!.signal!;
@@ -1033,7 +1034,7 @@ describe("POST /messages/stream（SSE）", () => {
     const params = new URLSearchParams();
     if (toolProgress) params.set("tool_progress", "1");
     if (access === "public") params.set("share_slug", "abc123");
-    const response = await post("/messages/stream?" + params, {
+    const response = await post("/messages/stream?" + params.toString(), {
       messages: [{ role: "user", content: "hi" }], course_id: 3,
     }, { userId: access === "public" ? undefined : TEST_USER_ID, env: OPENAI_ENV });
     expect(response.status).toBe(200);

@@ -63,7 +63,7 @@ export function ChatMessageBubble({
               variant="text"
               size="xs"
               disabled={isFeedbackUpdating}
-              onClick={() => onFeedback(message.chatLogId!, 'good')}
+              onClick={() => { void onFeedback(message.chatLogId!, 'good'); }}
               className={`min-w-0 p-1 ${
                 message.feedback === 'good' ? 'text-key-900' : 'text-solid-gray-420'
               }`}
@@ -77,7 +77,7 @@ export function ChatMessageBubble({
               variant="text"
               size="xs"
               disabled={isFeedbackUpdating}
-              onClick={() => onFeedback(message.chatLogId!, 'bad')}
+              onClick={() => { void onFeedback(message.chatLogId!, 'bad'); }}
               className={`min-w-0 p-1 ${
                 message.feedback === 'bad' ? 'text-error-1' : 'text-solid-gray-420'
               }`}

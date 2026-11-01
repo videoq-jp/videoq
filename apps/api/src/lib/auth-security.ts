@@ -71,13 +71,16 @@ async function findRefreshToken(
 
 /** Native code exchange supplies validated input through tokenResponseFields below. */
 async function checkRefreshConsent(ctx: GenericEndpointContext, options: OAuthOptions<string[]>) {
-  if (typeof ctx.body?.grant_type !== "string" || ctx.body.grant_type.trim() !== "refresh_token" ||
-    typeof ctx.body.refresh_token !== "string") return;
-  const token = await findRefreshToken(ctx, options, ctx.body.refresh_token);
+  const parsedBody = z.object({ grant_type: z.string(), refresh_token: z.string(), scope: z.unknown().optional() }).safeParse(ctx.body);
+  if (!parsedBody.success) return;
+  const body = parsedBody.data;
+  if (typeof body.grant_type !== "string" || body.grant_type.trim() !== "refresh_token" ||
+    typeof body.refresh_token !== "string") return;
+  const token = await findRefreshToken(ctx, options, body.refresh_token);
   // Missing/replayed credentials stay with the provider's rotation and family-revocation handling.
   if (!token || token.revoked) return;
   if (!token.userId || !token.clientId || !await hasOAuthConsent(ctx.context.adapter, token.userId, token.clientId,
-    typeof ctx.body.scope === "string" ? ctx.body.scope.split(" ") : token.scopes,
+    typeof body.scope === "string" ? body.scope.split(" ") : token.scopes,
   )) invalidGrant();
 }
 
@@ -90,6 +93,7 @@ const introspectionSchema = z.object({
 // policy; consent/client changes take effect when the short-lived JWT expires.
 export const videoqOAuthAccountPolicy: OAuthProviderExtension = {
   claims: {
+    // eslint-disable-next-line @typescript-eslint/require-await -- Keep policy failures as rejected Promises for callers.
     userInfo: async ({ user }) => {
       if (isBanned(user)) {
         throw new APIError("UNAUTHORIZED", { error: "invalid_token" }, {
@@ -157,15 +161,19 @@ export function videoqAuthSecurity(options: OAuthOptions<string[]>): BetterAuthP
           // Leave authentication/permission errors to the native Admin plugin.
           // A server-only createUser call is also allowed, with the same two roles.
           if (session ? !isAdmin : ctx.request || ctx.headers) return;
+          const body: unknown = ctx.body;
+          if (!body || typeof body !== "object") return;
+          const data = "data" in body ? body.data : undefined;
+          const nestedRole = data && typeof data === "object" && "role" in data ? data.role : undefined;
           const role = ctx.path === "/admin/update-user"
-            ? ctx.body?.data?.role
-            : ctx.body?.role ?? ctx.body?.data?.role;
+            ? nestedRole
+            : ("role" in body ? body.role : undefined) ?? nestedRole;
           if (role === undefined) return;
           if (role !== "user" && role !== "admin") {
             throw new APIError("BAD_REQUEST", { message: "Role must be user or admin." });
           }
           // Match the native endpoint's coercion (e.g. [id] also becomes id).
-          const targetId = z.coerce.string().safeParse(ctx.body?.userId);
+          const targetId = z.coerce.string().safeParse("userId" in body ? body.userId : undefined);
           if (ctx.path !== "/admin/create-user" && targetId.success &&
             session?.user.id === targetId.data && role !== "admin") {
             throw new APIError("BAD_REQUEST", { message: "Cannot remove your own administrator role." });

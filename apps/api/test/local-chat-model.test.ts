@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { createChatModel } from "../src/lib/chat-model";
@@ -21,7 +22,7 @@ describe("local tools and native final-answer schema", () => {
   it.each(["reasoning", "reasoning_content"])("replays gpt-oss %s for tool continuations without putting it in answer text", async key => {
     const requests: Record<string, unknown>[] = [];
     vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       requests.push(body);
       return Response.json(completion(requests.length === 1
         ? { content: null, [key]: "private model reasoning", tool_calls: [{ id: "oss-search", type: "function", function: { name: "search_scenes", arguments: '{"query":"backup"}' } }] }
@@ -37,7 +38,7 @@ describe("local tools and native final-answer schema", () => {
   });
   it.each([false, true])("preserves function calls without the final-answer grammar (stream=%s)", async streaming => {
     const fetch = vi.fn(async (_url: unknown, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       expect(body.stream).toBe(false);
       expect(body.tools).toHaveLength(1);
       expect(body.response_format).toBeUndefined();
@@ -64,7 +65,7 @@ describe("local tools and native final-answer schema", () => {
   it("discards draft prose and requests a native answer from the original evidence", async () => {
     const calls: Record<string, unknown>[] = [];
     vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
-      const body = JSON.parse(String(init.body)); calls.push(body);
+      const body = JSON.parse(requestBodyText(init.body)); calls.push(body);
       return Response.json(completion({ content: calls.length === 1 ? "UNTRUSTED DRAFT"
         : JSON.stringify({ segments: [{ text: "Seven days.", sourceIds: [1] }] }) }));
     });

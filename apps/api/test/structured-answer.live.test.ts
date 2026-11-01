@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
 import { parse } from "dotenv";
 import { describe, expect, it, vi } from "vitest";

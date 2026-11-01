@@ -34,7 +34,7 @@ export class RateLimiter extends DurableObject {
 
     for (let i = 0; i < cost; i++) history.unshift(now);
     await this.ctx.storage.put({ history, windowSec });
-    const oldest = history[history.length - 1]!;
+    const oldest = history[history.length - 1];
     await this.ctx.storage.setAlarm((oldest + windowSec) * 1000);
     return { allowed: true, retryAfterSec: 0 };
   }
@@ -69,7 +69,7 @@ export class RateLimiter extends DurableObject {
     if (!stored?.length || !windowSec) return null;
     const history = pruneExpiredHistory(stored, Date.now() / 1000, windowSec);
     if (history.length === 0) return null;
-    return { count: history.length, lastRequestMs: history[0]! * 1000 };
+    return { count: history.length, lastRequestMs: history[0] * 1000 };
   }
 
   /** 上限判定なしで 1 件記録する。`snapshot` と同じフォールバック経路専用。 */
@@ -96,7 +96,7 @@ export class RateLimiter extends DurableObject {
       return;
     }
     await this.ctx.storage.put("history", history);
-    const oldest = history[history.length - 1]!;
+    const oldest = history[history.length - 1];
     await this.ctx.storage.setAlarm((oldest + windowSec) * 1000);
   }
 }

@@ -63,7 +63,7 @@ async function settleAndReport(
         : { error: errorMessage(result.reason) },
     ]),
   );
-  const failures = settled.flatMap((result) =>
+  const failures = settled.flatMap((result): unknown[] =>
     result.status === "rejected" ? [result.reason] : [],
   );
 
@@ -145,7 +145,7 @@ export async function runScheduledMaintenance(
     sweep.status === "fulfilled" && sweep.value.progressed,
   );
 
-  const failures = [retention, sweep].flatMap((result) =>
+  const failures = [retention, sweep].flatMap((result): unknown[] =>
     result.status === "rejected" ? [result.reason] : [],
   );
   if (failures.length > 0) {

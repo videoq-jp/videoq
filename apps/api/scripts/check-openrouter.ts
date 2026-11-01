@@ -17,8 +17,8 @@ const exec = promisify(execFile);
 let stage = "configuration";
 
 async function main() {
-  const configured = Object.assign({}, ...[new URL(".env", root), new URL("../.dev.vars", import.meta.url)]
-    .filter(existsSync).map(path => parse(readFileSync(path))));
+  const configured = [new URL(".env", root), new URL("../.dev.vars", import.meta.url)]
+    .filter(existsSync).reduce<Record<string, string>>((values, path) => ({ ...values, ...parse(readFileSync(path)) }), {});
   const settings = { ...configured, ...process.env };
   const key = settings.OPENROUTER_API_KEY;
   const policy = settings.OPENROUTER_FEDERATION_POLICY_ID;
@@ -79,7 +79,8 @@ async function main() {
   const { stdout } = await exec(python, [fileURLToPath(new URL("apps/worker/scripts/check_openrouter.py", root)), audio], {
     cwd: worker, env: { ...settings, PYTHONPATH: worker }, timeout: 420_000, maxBuffer: 64 * 1024,
   });
-  const result = JSON.parse(stdout);
+  const result: unknown = JSON.parse(stdout);
+  if (!result || typeof result !== "object" || !("dimensions" in result) || !("segments" in result) || typeof result.segments !== "number") throw new Error("Invalid worker preflight response.");
   if (result.dimensions !== 1536 || result.segments < 1) throw new Error("Worker preflight did not meet the contract.");
   console.info(JSON.stringify({ status: "passed", scope: "model_preflight", answer: true, streaming: true,
     tools: true, images: true, queryDimensions: 1536, worker: result }));
@@ -89,6 +90,6 @@ main().catch(error => {
   // Do not print SDK exceptions, child stderr, prompts, media, or credentials.
   console.error(JSON.stringify({ status: "failed", stage,
     ...(stage === "configuration" ? { message: "Check federation settings or development key, speech path and Python dependencies. No model calls were made." }
-      : { errorType: error?.name || "Error" }) }));
+      : { errorType: error instanceof Error ? error.name : "Error" }) }));
   process.exitCode = 1;
 });

@@ -29,7 +29,7 @@ if (command === "maintenance" || command === "retention") {
   const client = await pool.connect();
   try {
     const lock = command === "retention" ? 2 : 1;
-    const { rows } = await client.query("SELECT pg_try_advisory_lock(997, $1) AS acquired", [lock]);
+    const { rows } = await client.query<{ acquired: boolean }>("SELECT pg_try_advisory_lock(997, $1) AS acquired", [lock]);
     if (rows[0].acquired) {
       try {
         if (command === "retention") await runScheduledMaintenance(env, RETENTION_CRON);

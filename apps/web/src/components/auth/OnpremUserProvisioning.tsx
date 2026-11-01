@@ -10,13 +10,14 @@ import { MessageAlert } from '@/components/common/MessageAlert';
 function ActivationLink({ url, clear }: { url: string; clear: () => void }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setCopied(false); }
+  };
   return <div className="my-4 space-y-3 rounded-8 bg-solid-gray-50 p-4">
     <p>{t('onprem.activationHelp')}</p>
     <Input aria-label={t('onprem.activationLink')} value={url} readOnly onFocus={event => event.currentTarget.select()} />
     <div className="flex gap-3">
-      <Button type="button" variant="outline" onClick={async () => {
-        try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setCopied(false); }
-      }}>{t(copied ? 'onprem.copied' : 'onprem.copyLink')}</Button>
+      <Button type="button" variant="outline" onClick={() => { void handleCopy(); }}>{t(copied ? 'onprem.copied' : 'onprem.copyLink')}</Button>
       <Button type="button" variant="text" onClick={clear}>{t('common.actions.close')}</Button>
     </div>
   </div>;

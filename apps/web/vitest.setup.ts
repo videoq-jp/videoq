@@ -12,7 +12,7 @@ import jaTranslation from './src/i18n/locales/ja/translation.json'
 expect.extend(matchers)
 
 type MockAuthUser = { id: string; name?: string; email?: string };
-type TrpcTestHandler = (input: unknown) => unknown | Promise<unknown>;
+type TrpcTestHandler = (input: unknown) => unknown;
 
 const trpcTestHandlers = new Map<string, TrpcTestHandler>();
 // Share defaults and cache between tRPC options and React, with a fresh client per test.
@@ -24,7 +24,7 @@ function decodeTrpcInput(value: unknown): unknown {
     && typeof value === 'object'
     && 'json' in value
   ) {
-    return (value as { json: unknown }).json;
+    return (value).json;
   }
   return value;
 }
@@ -33,7 +33,7 @@ async function trpcTestFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
-  const url = new URL(String(input), 'http://localhost');
+  const url = new URL(input instanceof Request ? input.url : input.toString(), 'http://localhost');
   const procedures = decodeURIComponent(url.pathname.split('/trpc/')[1] ?? '')
     .split(',')
     .filter(Boolean);
@@ -92,9 +92,7 @@ vi.mock('@/lib/trpc', async () => {
 
 /** Mutable BA session for tests — gate auth UI without hitting /api/auth/get-session. */
 const authSessionState = vi.hoisted(() => ({
-  data: { user: { id: '1', name: 'testuser', email: 'test@example.com' } } as {
-    user: MockAuthUser;
-  } | null,
+  data: { user: { id: '1', name: 'testuser', email: 'test@example.com' } },
   isPending: false,
   refetch: vi.fn(async () => {}),
 }));
@@ -310,7 +308,7 @@ vi.mock('react-i18next', () => ({
           return [`${key}.0`, `${key}.1`]
         }
         const rest = Object.fromEntries(
-          Object.entries(optionsOrDefault as Record<string, unknown>).filter(([k]) => k !== 'defaultValue')
+          Object.entries(optionsOrDefault).filter(([k]) => k !== 'defaultValue')
         )
         if (Object.keys(rest).length > 0) {
           return `${key} ${JSON.stringify(rest)}`

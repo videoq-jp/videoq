@@ -1,3 +1,4 @@
+import { requestBodyText } from "../helpers/request-body";
 import { chatCompletionResponse } from "../helpers/chat-completion-response";
 import { stalledChatResponse } from "../helpers/stalled-chat-response";
 import { chatAnswerText } from "@videoq/trpc/chat";
@@ -82,7 +83,7 @@ describe("RAG agent in the Workers runtime", () => {
     let call = 0;
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       expect(url).toBe("https://openai.test/v1/chat/completions");
-      expect(JSON.parse(String(init.body)).stream).toBe(streaming);
+      expect(JSON.parse(requestBodyText(init.body)).stream).toBe(streaming);
       call += 1;
       const metadataTurn = mode !== "search" && call === 1;
       const searchTurn = mode === "search" ? call === 1 : mode === "metadata-search" && call === 2;

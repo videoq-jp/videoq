@@ -18,12 +18,12 @@ describe("Better Auth rate limit storage", () => {
   it("窓を超えた時点で拒否し Retry-After を返す", async () => {
     const storage = durableRateLimitStorage(ENV);
     for (let i = 0; i < RULE.max; i++) {
-      expect(await storage.consume!("1.2.3.4|/sign-in/email", RULE)).toEqual({
+      expect(await storage.consume("1.2.3.4|/sign-in/email", RULE)).toEqual({
         allowed: true,
         retryAfter: null,
       });
     }
-    const denied = await storage.consume!("1.2.3.4|/sign-in/email", RULE);
+    const denied = await storage.consume("1.2.3.4|/sign-in/email", RULE);
     expect(denied.allowed).toBe(false);
     expect(denied.retryAfter).toBeGreaterThanOrEqual(1);
   });
@@ -32,24 +32,24 @@ describe("Better Auth rate limit storage", () => {
     // 別リクエストで作り直したインスタンスでも同じキーを共有する。
     const first = durableRateLimitStorage(ENV);
     for (let i = 0; i < RULE.max; i++) {
-      await first.consume!("1.2.3.4|/sign-up/email", RULE);
+      await first.consume("1.2.3.4|/sign-up/email", RULE);
     }
     const second = durableRateLimitStorage(ENV);
     expect(
-      (await second.consume!("1.2.3.4|/sign-up/email", RULE)).allowed,
+      (await second.consume("1.2.3.4|/sign-up/email", RULE)).allowed,
     ).toBe(false);
   });
 
   it("IP とパスが違えば独立して数える", async () => {
     const storage = durableRateLimitStorage(ENV);
     for (let i = 0; i < RULE.max; i++) {
-      await storage.consume!("1.2.3.4|/sign-in/email", RULE);
+      await storage.consume("1.2.3.4|/sign-in/email", RULE);
     }
     expect(
-      (await storage.consume!("5.6.7.8|/sign-in/email", RULE)).allowed,
+      (await storage.consume("5.6.7.8|/sign-in/email", RULE)).allowed,
     ).toBe(true);
     expect(
-      (await storage.consume!("1.2.3.4|/forget-password", RULE)).allowed,
+      (await storage.consume("1.2.3.4|/forget-password", RULE)).allowed,
     ).toBe(true);
   });
 
@@ -61,11 +61,11 @@ describe("Better Auth rate limit storage", () => {
   it("バックエンドが無い環境では fail closed する", async () => {
     setRateLimitBackendForTests(undefined);
     const storage = durableRateLimitStorage(ENV);
-    expect((await storage.consume!("1.2.3.4|/sign-in/email", RULE)).allowed).toBe(
+    expect((await storage.consume("1.2.3.4|/sign-in/email", RULE)).allowed).toBe(
       false,
     );
     expect(
-      (await storage.consume!("1.2.3.4|/sign-in/email", RULE)).retryAfter,
+      (await storage.consume("1.2.3.4|/sign-in/email", RULE)).retryAfter,
     ).toBeGreaterThanOrEqual(1);
   });
 });

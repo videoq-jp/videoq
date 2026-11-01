@@ -15,7 +15,7 @@ import {
   type VideoSourceType,
   type VideoStatus,
 } from "@videoq/trpc";
-import { visualProcessingSchema } from "@videoq/trpc/schema";
+import { visualProcessingSchema, videoTagSchema } from "@videoq/trpc/schema";
 import { type Db, withDb } from "../db/pool";
 import { sqlNumberArray } from "../db/sql-array";
 import { literalContainsPattern } from "../db/sql-like";
@@ -161,7 +161,7 @@ export async function mapVideoListRow(
         : await resolveFileUrl(env, (r.file as string) || null),
     title: r.title as string,
     description: r.description as string,
-    uploaded_at: toUtcIso(r.uploaded_at as string)!,
+    uploaded_at: toUtcIso(r.uploaded_at as string),
     status: videoStatus(r.status),
     ...(r.visual_processing !== undefined ? { visual_processing: r.visual_processing ? visualProcessingSchema.parse(r.visual_processing) : null } : {}),
     source_type: videoSourceType(r.source_type),
@@ -170,7 +170,7 @@ export async function mapVideoListRow(
     youtube_embed_url: youtubeId
       ? `https://www.youtube.com/embed/${youtubeId}`
       : null,
-    tags: JSON.parse(r.tags as string),
+    tags: videoTagSchema.array().parse(JSON.parse(r.tags as string)),
   };
 }
 

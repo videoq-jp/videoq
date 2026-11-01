@@ -61,7 +61,7 @@ type Context = Parameters<NonNullable<Story['play']>>[0];
 async function fillFile(context: Context) {
   await meta.play(context);
   const dialog = within(context.canvas.getByRole('dialog'));
-  const input = dialog.getByLabelText(i18n.t('videos.upload.fileLabel'), { exact: false, selector: 'input[type="file"]' }) as HTMLInputElement;
+  const input = dialog.getByLabelText<HTMLInputElement>(i18n.t('videos.upload.fileLabel'), { exact: false, selector: 'input[type="file"]' });
   // userEvent.upload only shadows files; Chromium's native `required` validation
   // still sees an empty FileList. Assign the browser's FileList before change.
   const transfer = new DataTransfer();

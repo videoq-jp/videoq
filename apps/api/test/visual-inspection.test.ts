@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { inspectVideoClip, selectClipFrames } from "../src/lib/visual-inspection";
 import { readMediaBytes } from "../src/integrations/media";
@@ -50,7 +51,7 @@ it("uses the shared OpenRouter key and Luna model for images", async () => {
   vi.stubGlobal("fetch", async (url: unknown, init: RequestInit) => {
     expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(new Headers(init.headers).get("authorization")).toBe("Bearer shared-router-key");
-    expect(JSON.parse(String(init.body))).toMatchObject({ model: "openai/gpt-6-luna", reasoning_effort: "none", max_tokens: 2048 });
+    expect(JSON.parse(requestBodyText(init.body))).toMatchObject({ model: "openai/gpt-6-luna", reasoning_effort: "none", max_tokens: 2048 });
     return Response.json({ choices: [{ finish_reason: "stop", message: { content: '{"observations":[]}' } }] });
   });
   await inspectVideoClip({ OPENROUTER_API_KEY: "shared-router-key" } as Bindings,
@@ -58,7 +59,7 @@ it("uses the shared OpenRouter key and Luna model for images", async () => {
 });
 it.each([{}, { LLM_MODEL: "" }, { LLM_MODEL: "gpt-6-luna" }])("uses Luna without reasoning and keeps images in one request: %j", async models => {
   const fetch = vi.fn(async (_url: unknown, init: RequestInit) => {
-    const body = JSON.parse(String(init.body));
+    const body = JSON.parse(requestBodyText(init.body));
     expect(body).toMatchObject({ model: "gpt-6-luna", reasoning_effort: "none", max_completion_tokens: 2048 });
     expect(body).not.toHaveProperty("max_tokens");
     expect(body.response_format.json_schema.schema.properties.observations.items.properties.frame_index.enum).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -75,7 +76,7 @@ it.each([{}, { LLM_MODEL: "" }, { LLM_MODEL: "gpt-6-luna" }])("uses Luna without
 it.each(["overview", "skim", "inspect"] as const)("uses bounded frames and image detail appropriate to %s", async mode => {
   let request: { messages: { content: unknown }[] } | undefined;
   vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
-    request = JSON.parse(String(init.body));
+    request = JSON.parse(requestBodyText(init.body));
     return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
       observations: [{ frame_index: mode === "overview" ? 16 : 8, observation: "Late diagram" }],
     }) } }] });
@@ -111,7 +112,7 @@ it("cancels an in-flight model request", async () => {
   const controller = new AbortController();
   const started = Promise.withResolvers<void>();
   vi.stubGlobal("fetch", (_url: unknown, init: RequestInit) => new Promise((_resolve, reject) => {
-    init.signal!.addEventListener("abort", () => reject(init.signal!.reason), { once: true });
+    init.signal!.addEventListener("abort", () => reject(init.signal!.reason instanceof Error ? init.signal!.reason : new Error("Aborted")), { once: true });
     started.resolve();
   }));
   const pending = inspect(controller.signal);

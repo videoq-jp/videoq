@@ -5,7 +5,7 @@ import enTranslation from '@/i18n/locales/en/translation.json'
 import jaTranslation from '@/i18n/locales/ja/translation.json'
 
 const i18nMock = vi.hoisted(() => ({
-    language: 'en' as 'en' | 'ja',
+    language: 'en',
     t: vi.fn(),
     changeLanguage: vi.fn(),
 }))
@@ -225,7 +225,7 @@ describe('TagManagementModal', () => {
         const onClose = vi.fn()
         const { rerender } = render(<TagManagementModal isOpen onClose={onClose} />)
         fireEvent.click(screen.getByTestId('delete-tag-1'))
-        const dialog = screen.getByRole('dialog') as HTMLDialogElement
+        const dialog = screen.getByRole<HTMLDialogElement>('dialog')
         fireEvent.click(screen.getByRole('button', { name: 'Close' }))
         expect(dialog.open).toBe(false)
         expect(onClose).toHaveBeenCalledTimes(1)

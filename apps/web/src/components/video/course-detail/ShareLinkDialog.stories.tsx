@@ -15,7 +15,7 @@ function ClipboardExample(args: ComponentProps<typeof ShareLinkDialog>) {
   const sharing = useShareLink({ ...course, share_slug: args.shareSlug });
   return <><Button onClick={() => setOpen(true)}>{label('shareOpen')}</Button>
     <ShareLinkDialog {...args} isOpen={open} onOpenChange={setOpen}
-      shareLink={sharing.shareLink} isCopied={sharing.isCopied} onCopy={sharing.copyShareLink} />
+      shareLink={sharing.shareLink} isCopied={sharing.isCopied} onCopy={() => { void sharing.copyShareLink(); }} />
   </>;
 }
 function Example(args: ComponentProps<typeof ShareLinkDialog> & { pending?: boolean }) {

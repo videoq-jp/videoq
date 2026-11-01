@@ -72,7 +72,7 @@ describe("SQS delivery with the real AWS signer", () => {
     const started = new Promise<void>((resolve) => { requestStarted = resolve; });
     fetchMock.mockImplementation((input) => new Promise((_, reject) => {
       const request = input as Request;
-      request.signal.addEventListener("abort", () => reject(request.signal.reason), { once: true });
+      request.signal.addEventListener("abort", () => reject(request.signal.reason instanceof Error ? request.signal.reason : new Error("Aborted")), { once: true });
       requestStarted();
     }));
 

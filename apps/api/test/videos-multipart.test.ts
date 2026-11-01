@@ -173,7 +173,7 @@ describe("POST / — USE_S3_STORAGE=false（multipart）", () => {
     expect(key).toMatch(
       /^media\/videos\/00000000-0000-4000-8000-000000000005\/video_\d+_[0-9a-f]{12}_\d+\.mp4$/,
     );
-    const body = (await res.json()) as { id: number; status: string };
+    const body = (await res.json<{ id: number; status: string }>());
     expect(body.id).toBe(42);
     expect(body.status).toBe("pending");
   });
