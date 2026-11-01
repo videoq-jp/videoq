@@ -40,7 +40,7 @@ data "aws_iam_policy_document" "worker_permissions" {
       "ssm:GetParameters",
     ]
     resources = [
-      aws_ssm_parameter.db.arn,
+      "${trimsuffix(aws_ssm_parameter.db.arn, "/db")}/worker-db",
       aws_ssm_parameter.app.arn,
     ]
   }
@@ -93,7 +93,7 @@ resource "aws_lambda_function" "worker" {
   # Terraform bootstraps the image; CD owns subsequent immutable image releases.
   # An infrastructure plan/apply must not revert the deployed SHA to :latest.
   lifecycle {
-    ignore_changes = [image_uri]
+    ignore_changes = [image_uri, environment[0].variables["DB_CREDENTIAL_GENERATION"]]
   }
 
   ephemeral_storage {

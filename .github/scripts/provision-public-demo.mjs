@@ -31,15 +31,15 @@ try {
   stage = 'inspect-dedicated-owner';
   await db.connect(); connected = true;
   // Locks only this operator, including retries; a transaction protects identity checks.
-  await db.query('BEGIN');
+  await db.query(operation === 'audit' ? 'BEGIN READ ONLY' : 'BEGIN');
   await db.query("SELECT pg_advisory_xact_lock(hashtext('videoq-public-demo-v1'))");
-  const matches = await db.query('SELECT id,username,email,name,role,quota_source,is_over_quota,ai_answers_limit,used_ai_answers FROM users WHERE username=$1 OR email=$2 FOR UPDATE',[OWNER.username,OWNER.email]);
+  const matches = await db.query('SELECT id,username,email,name,role,quota_source,is_over_quota,ai_answers_limit,used_ai_answers FROM videoq_security.demo_users WHERE username=$1 OR email=$2',[OWNER.username,OWNER.email]);
   if (matches.rows.length > 1) throw new Error('DEMO_OWNER_COLLISION');
   owner = matches.rows[0]; verifyOwner(owner);
-  const target = await db.query('SELECT id,user_id,description FROM video_courses WHERE lower(share_slug)=lower($1)',[SLUG]);
+  const target = await db.query('SELECT id,user_id,description FROM videoq_security.demo_courses WHERE lower(share_slug)=lower($1)',[SLUG]);
   verifyCourse(target.rows[0],owner,description);
   if (owner) {
-    const foreign = await db.query('SELECT (SELECT count(*) FROM videos WHERE user_id=$1 AND (description IS NULL OR NOT (description = ANY($2::text[])))) + (SELECT count(*) FROM video_courses WHERE user_id=$1 AND description IS DISTINCT FROM $3) AS count',[owner.id,descriptions,description]);
+    const foreign = await db.query('SELECT (SELECT count(*) FROM videoq_security.demo_videos WHERE user_id=$1 AND (description IS NULL OR NOT (description = ANY($2::text[])))) + (SELECT count(*) FROM videoq_security.demo_courses WHERE user_id=$1 AND description IS DISTINCT FROM $3) AS count',[owner.id,descriptions,description]);
     if (Number(foreign.rows[0].count)) throw new Error('DEMO_OWNER_HAS_UNRELATED_CONTENT');
   }
   if (operation === 'audit') {
@@ -48,17 +48,10 @@ try {
   } else {
     stage = 'prepare-dedicated-owner';
     const password = randomBytes(32).toString('base64url'), hash = await hashPassword(password);
-    if (!owner) {
-      owner = {id:randomUUID(),...OWNER,is_over_quota:false};
-      await db.query(`INSERT INTO users (id,username,email,name,role,email_verified,password_reset_required,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,quota_source,processing_limit_minutes,ai_answers_limit,storage_limit_gb,monthly_upload_limit_gb)
-        VALUES ($1,$2,$3,$4,'user',true,false,false,0,0,0,'admin',20,$5,0.1,0.1)`,[owner.id,OWNER.username,OWNER.email,OWNER.name,ANSWERS]);
-      await db.query("INSERT INTO account (id,account_id,provider_id,user_id,password) VALUES ($1,$2,'credential',$2,$3)",[randomUUID(),owner.id,hash]);
-    } else {
-      // Usage counters are deliberately preserved across retries.
-      await db.query('UPDATE users SET ai_answers_limit=$2,processing_limit_minutes=20,storage_limit_gb=0.1,monthly_upload_limit_gb=0.1 WHERE id=$1',[owner.id,ANSWERS]);
-      const updated = await db.query("UPDATE account SET password=$2 WHERE user_id=$1 AND provider_id='credential' RETURNING id",[owner.id,hash]);
-      if (updated.rows.length !== 1) throw new Error('DEMO_CREDENTIAL_ACCOUNT_MISMATCH');
-    }
+    // Usage counters are deliberately preserved by the scoped database function.
+    const ownerId = owner?.id ?? randomUUID();
+    await db.query('SELECT videoq_security.demo_prepare($1::uuid,$2)', [ownerId, hash]);
+    owner = { id: ownerId, ...OWNER, is_over_quota: false };
     await db.query('COMMIT');
     stage = 'login-dedicated-owner';
     const login = await request('/api/auth/sign-in/email',{method:'POST',headers:{Origin:ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({email:OWNER.email,password})});
@@ -78,7 +71,7 @@ try {
     const response = await request('/api/trpc/courses.shared?input='+encodeURIComponent(JSON.stringify({slug:SLUG})));
     const course = (await response.json()).result?.data;
     if (!response.ok || course?.videos?.length !== 5 || course.description !== description || course.videos.some(v=>v.status!=='completed')) throw new Error('DEMO_PUBLICATION_NOT_CONFIRMED');
-    const indexed = await db.query('SELECT count(DISTINCT video_id) AS count FROM scene_embeddings WHERE user_id=$1 AND video_id = ANY($2::bigint[])',[owner.id,course.videos.map(v=>v.id)]);
+    const indexed = await db.query('SELECT count(DISTINCT video_id) AS count FROM videoq_security.demo_scene_embeddings WHERE user_id=$1 AND video_id = ANY($2::bigint[])',[owner.id,course.videos.map(v=>v.id)]);
     if (Number(indexed.rows[0].count) !== 5) throw new Error('DEMO_INDEXING_NOT_CONFIRMED');
     report = {status:'public_demo_ready',courseId:course.id,videos:5,indexedVideos:5,monthlyAnswerLimit:ANSWERS,sharePath:'/share/'+SLUG};
   }

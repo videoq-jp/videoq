@@ -379,7 +379,10 @@ jobs:
   db-migrate:
     name: Drizzle DB Migrate
     runs-on: ubuntu-latest
-    environment: production-app
+    environment: production-db-migration
+    concurrency:
+      group: production-db-maintenance
+      cancel-in-progress: false
     timeout-minutes: 15
     needs: [changes]
     if: needs.changes.outputs.migrate == 'true'
@@ -411,7 +414,7 @@ jobs:
         env:
           STRUCTURED_ANSWER_WRITERS_STOPPED: ${{ vars.STRUCTURED_ANSWER_WRITERS_STOPPED }}
         run: |
-          python3 .github/scripts/with-neon-credentials.py sh apps/api/scripts/db-migrate.sh
+          python3 .github/scripts/with-neon-credentials.py migration sh apps/api/scripts/db-migrate.sh
 
   worker-build:
     name: Build Lambda image without AWS credentials

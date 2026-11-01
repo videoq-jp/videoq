@@ -22,14 +22,15 @@ class CredentialsTest(unittest.TestCase):
             self.assertNotIn("secrets.DATABASE_URL", text)
             for name in jobs:
                 job = re.search(rf"^  {name}:\n([\s\S]*?)(?=^  [\w-]+:|\Z)", text, re.M).group(1)
-                self.assertIn("    environment: production-app\n", job)
+                if name == "setup":
+                    self.assertIn("production-db-demo", job)
+                    self.assertIn("production-db-audit", job)
+                else:
+                    self.assertIn("    environment: production-db-" + ("migration" if name == "db-migrate" else name) + "\n", job)
                 self.assertRegex(job, r"    permissions:\n(?:      .+\n)*      id-token: write\n")
                 auth = job.index("uses: ./.github/actions/neon-credentials")
                 command = job.index("with-neon-credentials.py")
                 self.assertLess(auth, command)
-        policy = json.loads((root / "infra/iam/videoq-neon-parameter-read.json").read_text())
-        self.assertEqual(policy["Statement"], [{"Effect": "Allow", "Action": "ssm:GetParameter",
-            "Resource": "arn:aws:ssm:ap-northeast-1:<ACCOUNT_ID>:parameter/videoq/security/prod/db-migration"}])
 
     def response(self, value=None, kind="SecureString", code=0):
         return subprocess.CompletedProcess([], code, json.dumps({"Parameter": {
@@ -37,9 +38,9 @@ class CredentialsTest(unittest.TestCase):
         }}), "private error")
 
     def test_scoped_fetch_and_child_environment(self):
-        url = "postgresql://migration:secret%21@db.example/db?sslmode=require"
-        with patch.object(neon.sys, "argv", ["wrapper", "command", "argument"]), patch.dict(
-            os.environ, {"AWS_ACCESS_KEY_ID": "private", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "private"}
+        url = "postgresql://videoq_migration_test:secret%21@db.example/db?sslmode=verify-full&options=-c%20role%3Dvideoq_migrate_20260918"
+        with patch.object(neon.sys, "argv", ["wrapper", "migration", "command", "argument"]), patch.dict(
+            os.environ, {"AWS_ACCESS_KEY_ID": "private", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "private", "GITHUB_ACTIONS": "true"}
         ), patch.object(neon.subprocess, "run", side_effect=[self.response(url),
                 subprocess.CompletedProcess([], 7)]) as run, patch("sys.stdout", new_callable=io.StringIO) as out:
             self.assertEqual(neon.main(), 7)
@@ -55,8 +56,10 @@ class CredentialsTest(unittest.TestCase):
 
     def test_invalid_or_failed_fetch_never_runs_command(self):
         for response in [self.response(code=1), self.response("postgres://u:p@host/db", "String"),
-                         self.response(None), self.response("postgres://u:p@host/db\nINJECT=x")]:
-            with self.subTest(response=response), patch.object(neon.sys, "argv", ["wrapper", "command"]), patch.object(
+                         self.response(None), self.response("postgres://u:p@host/db\nINJECT=x"),
+                         self.response("postgres://neondb_owner:p@host/db?sslmode=verify-full"),
+                         self.response("postgres://videoq_migration_test:p@host/db?sslmode=verify-full")]:
+            with self.subTest(response=response), patch.object(neon.sys, "argv", ["wrapper", "migration", "command"]), patch.object(
                 neon.subprocess, "run", return_value=response
             ) as run, self.assertRaises(SystemExit):
                 try:

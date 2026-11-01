@@ -25,6 +25,7 @@ const dumpEnvironment = { ...process.env,
   PGUSER: decodeURIComponent(sourceUrl.username), PGPASSWORD: decodeURIComponent(sourceUrl.password),
   PGSSLMODE: sourceUrl.searchParams.get('sslmode') || 'prefer',
   PGCHANNELBINDING: sourceUrl.searchParams.get('channel_binding') || 'prefer',
+  PGSSLROOTCERT: '/videoq-ca.crt',
   PGOPTIONS: '-c default_transaction_read_only=on',
 };
 let temporary, restored, started = false, stage = 'database-connect';
@@ -32,7 +33,7 @@ const docker = (args, options = {}) => exec('docker', args, { maxBuffer: 4_000_0
 const identifier = value => '"' + value.replaceAll('"', '""') + '"';
 async function inventory(client) {
   const { rows } = await client.query(`SELECT schemaname, tablename FROM pg_tables
-    WHERE schemaname IN ('public', 'drizzle') ORDER BY schemaname, tablename`);
+    WHERE schemaname IN ('public', 'drizzle', 'videoq_security') ORDER BY schemaname, tablename`);
   const result = {};
   for (const row of rows) {
     const table = identifier(row.schemaname) + '.' + identifier(row.tablename);
@@ -58,9 +59,9 @@ try {
   stage = 'logical-backup';
   await docker(['run', '--rm', '--network', 'host', '--user', process.getuid() + ':' + process.getgid(),
     '-e', 'PGDATABASE', '-e', 'PGOPTIONS',
-    '-e', 'PGHOST', '-e', 'PGPORT', '-e', 'PGUSER', '-e', 'PGPASSWORD', '-e', 'PGSSLMODE', '-e', 'PGCHANNELBINDING',
-    '-v', temporary + ':/backup', IMAGE, 'pg_dump', '--format=custom', '--no-owner', '--no-acl', '--no-comments',
-    '--schema=public', '--schema=drizzle', '--snapshot=' + snapshot, '--file=/backup/database.dump'], {
+    '-e', 'PGHOST', '-e', 'PGPORT', '-e', 'PGUSER', '-e', 'PGPASSWORD', '-e', 'PGSSLMODE', '-e', 'PGCHANNELBINDING', '-e', 'PGSSLROOTCERT',
+    '-v', temporary + ':/backup', '-v', '/etc/ssl/certs/ca-certificates.crt:/videoq-ca.crt:ro', IMAGE, 'pg_dump', '--format=custom', '--no-owner', '--no-acl', '--no-comments',
+    '--schema=public', '--schema=drizzle', '--schema=videoq_security', '--snapshot=' + snapshot, '--file=/backup/database.dump'], {
     env: dumpEnvironment,
   });
   await source.query('COMMIT');
@@ -91,7 +92,7 @@ try {
   const actual = await inventory(restored);
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Restored counts differ from the exported snapshot');
   const invalid = await restored.query(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
-    WHERE n.nspname IN ('public','drizzle') AND NOT c.convalidated`);
+    WHERE n.nspname IN ('public','drizzle','videoq_security') AND NOT c.convalidated`);
   if (Number(invalid.rows[0].count)) throw new Error('Unvalidated restored constraints');
   report = { status: 'ok', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
     details: ['- 本番DBへの書き込み、バックアップファイルやレコード内容の公開は行っていません。',

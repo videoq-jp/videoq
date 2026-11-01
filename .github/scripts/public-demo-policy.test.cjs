@@ -34,7 +34,8 @@ test('only reviewed main can execute the gated operator after installing isolate
  const source=readFileSync('.github/scripts/provision-public-demo.mjs','utf8');
  assert.match(workflow,/default: audit/);
  assert.match(workflow,/github.ref == 'refs\/heads\/main'/);
- assert.match(workflow,/environment: production-app/);
+ assert.match(workflow,/production-db-demo/);
+ assert.match(workflow,/production-db-audit/);
  assert.ok(workflow.indexOf('setup-operations-tools')<workflow.indexOf('uses: ./.github/actions/neon-credentials'));
  assert.ok(workflow.indexOf('uses: ./.github/actions/neon-credentials')<workflow.indexOf('with-neon-credentials.py'));
  assert.doesNotMatch(workflow,/secrets\.DATABASE_URL/);

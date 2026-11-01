@@ -1,0 +1,32 @@
+{
+  "api": {
+    "parameter": "/videoq/prod/db",
+    "access": "videoq_api_access",
+    "pooled": true
+  },
+  "worker": {
+    "parameter": "/videoq/prod/worker-db",
+    "access": "videoq_worker_access",
+    "pooled": true
+  },
+  "migration": {
+    "parameter": "/videoq/security/prod/db-migration",
+    "access": "videoq_migrate_20260918"
+  },
+  "backup": {
+    "parameter": "/videoq/security/prod/db-backup",
+    "access": "videoq_backup_access"
+  },
+  "audit": {
+    "parameter": "/videoq/security/prod/db-audit",
+    "access": "videoq_audit_access"
+  },
+  "smoke": {
+    "parameter": "/videoq/security/prod/db-smoke",
+    "access": "videoq_smoke_access"
+  },
+  "demo": {
+    "parameter": "/videoq/security/prod/db-demo",
+    "access": "videoq_demo_access"
+  }
+}

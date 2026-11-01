@@ -155,7 +155,8 @@ trusted workflow revision. Lambda deployment and database jobs receive separate,
 | Secret | Location | Purpose |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Environment secrets in `production-app` and `production-infra` | Workers deployment / checking secret names during resource sync |
-| `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Environment secrets in `production-app` | OIDC role with read access to the Neon migration parameter; see [setup](iam/README.md#neon-database-access) |
+| `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Separate `production-db-*` Environment secrets | Purpose-specific OIDC role with read access to exactly one Neon parameter; see [setup](iam/README.md#neon-database-access) |
+| `AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN` | `production-infra` Environment secret | Dedicated database credential maintenance role |
 | `CLOUDFLARE_INFRA_TOKEN` | Environment secrets in `production-infra` | Hyperdrive and R2 CORS updates in the target account |
 | `CLOUDFLARE_ACCOUNT_ID` | Repository secrets (non-sensitive ID) | Cloudflare account ID |
 
@@ -192,7 +193,7 @@ secrets. Leaving identically named Repository secrets makes them available to
 workflows without an environment, so isolation is incomplete.
 
 Database jobs read the existing JSON SecureString
-`/videoq/security/prod/db-migration` through their dedicated OIDC role. Follow
+`/videoq/security/prod/db-migration` through their dedicated migration OIDC role. Other operations use separate scoped parameters; see [DB security](DB_SECURITY.md). Follow
 [Neon database access setup](iam/README.md#neon-database-access) before merging
 the workflow changes. After verifying database jobs, delete `DATABASE_URL` from
 GitHub Environment and Repository secrets if present. `/videoq/prod/db`, referenced
