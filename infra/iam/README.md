@@ -4,7 +4,7 @@ GitHub Actions obtains temporary AWS credentials through GitHub OIDC without sto
 static access keys. Planning and deployment use separate IAM roles so pull requests
 cannot change production.
 
-- `videoq-github-actions-plan`: Can be assumed by pull requests and main. Grants AWS-managed
+- `videoq-github-actions-plan`: Can be assumed only from main. Grants AWS-managed
   `ReadOnlyAccess` plus state read access and lock operations only.
 - `videoq-github-actions-deploy`: Can be assumed only from main or the `production-infra`
   environment. Used for production applies and Lambda deployments.
@@ -120,3 +120,9 @@ After all scoped jobs succeed, retire the legacy `videoq-github-actions-neon` ro
 and its `production-app.AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` secret. Migration credentials
 must not be used for audits, backups or smoke checks. See [DB security](../DB_SECURITY.md)
 for the complete privilege boundaries, rollout, rotation and recovery procedure.
+
+The plan role also has `deny-protected-neon-credentials`, sourced from
+`videoq-neon-plan-deny.json`. This overrides the managed ReadOnlyAccess policy for
+protected database parameters and blocks recursive GetParametersByPath reads,
+including ancestor paths. PRs run Terraform format/validate/mock tests without AWS
+credentials or production state; the existing main apply workflow owns live plans.

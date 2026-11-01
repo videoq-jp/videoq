@@ -48,6 +48,15 @@ def main():
     account=aws("sts","get-caller-identity")["Account"]
     if account!="257240362763":
         raise SystemExit("Unexpected AWS account")
+    for filename, command, option in [
+        ("videoq-neon-plan-deny.json", "put-role-policy", "--policy-document"),
+        ("videoq-github-actions-plan-trust.json", "update-assume-role-policy", "--policy-document"),
+    ]:
+        document=(ROOT/"infra/iam"/filename).read_text().replace("<ACCOUNT_ID>",account)
+        args=[AWS,"iam",command,"--role-name","videoq-github-actions-plan",option,document]
+        if command=="put-role-policy":args.extend(["--policy-name","deny-protected-neon-credentials"])
+        subprocess.run(args,check=True,capture_output=True)
+    print("Production planning role restricted to main and denied protected DB secrets")
     profiles=json.loads((ROOT/".github/scripts/neon-profiles.json").read_text())
     parameter=lambda name:f"arn:aws:ssm:{REGION}:{account}:parameter{name}"
     for purpose in ["migration","backup","audit","smoke","demo"]:

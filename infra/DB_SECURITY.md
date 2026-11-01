@@ -25,7 +25,10 @@ Each GitHub Environment permits only the canonical `main` branch, has its own
 OIDC role, and stores only that role ARN in `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN`.
 Each IAM role can read exactly one parameter. A different purpose argument to the
 wrapper therefore cannot obtain another consumer's credential. The application
-Environment has no database credential. Lambda can read its own DB parameter and
+Environment has no database credential. PR workflows never receive AWS planning
+credentials or production state. The main-only planning role explicitly denies
+protected SSM values/history and all recursive parameter reads; ReadOnlyAccess
+alone is not a database-secret boundary. Lambda can read its own DB parameter and
 application settings, and cannot read API, migration, audit or backup credentials.
 
 The API has DML on current application tables, without access to retired Django
@@ -71,7 +74,7 @@ role, not the Terraform deployment role. The workflow and CD migration job share
    new execution environments rather than relying on a warm container to reload SSM.
 5. Run smoke, logical backup/restore and read-only demo audit on canonical main.
    Verify successful runs with the exact rotation identifier and source SHA.
-6. Wait at least the Lambda timeout plus one minute after configuration refresh.
+6. Wait at least the maximum Lambda invocation lifetime (15 minutes) plus one minute after configuration refresh.
    Existing invocations can reconnect with cached old credentials until then.
 7. Verify privileges/readiness again. Refuse to retire a role with an active query.
    Disable old logins, clear their passwords and terminate only idle sessions.

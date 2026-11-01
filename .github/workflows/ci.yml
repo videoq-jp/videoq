@@ -654,9 +654,6 @@ jobs:
     uses: ./.github/workflows/terraform-plan.yml
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
-    secrets: inherit
 
   terraform-result:
     name: Terraform Plan

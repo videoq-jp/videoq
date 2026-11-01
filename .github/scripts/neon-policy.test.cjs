@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {readFileSync}=require('node:fs');
 const {OWNER,PROFILES,loginName,connectionUrl,encodeJournal,decodeJournal,retirementRole}=require('./neon-policy.cjs');
-const {denied,retire}=require('./neon-admin.cjs');
+const {denied,retire,rollback,finishRollback,completeRollback}=require('./neon-admin.cjs');
 
 test('each consumer uses its own parameter and access role',()=>{
  assert.equal(new Set(Object.values(PROFILES).map(p=>p.parameter)).size,7);
@@ -74,4 +74,23 @@ test('retirement accepts only the expected purpose lineage, including stable leg
  assert.equal(retirementRole('api','videoq_app_20260918'),'videoq_app_20260918');
  assert.throws(()=>retirementRole('api','videoq_worker_20261014'));
  assert.throws(()=>retirementRole('migration','neondb_owner'));
+});
+test('PR Terraform checks cannot read production state or inherit secret-reading identities',()=>{
+ const workflow=readFileSync('.github/workflows/terraform-plan.yml','utf8');
+ assert.doesNotMatch(workflow,/id-token: write|secrets\.[A-Z_]+|configure-aws-credentials|terraform init -input/);
+ const ci=readFileSync('.github/workflows/ci.yml','utf8').split('\n  terraform-checks:\n')[1].split('\n  terraform-result:\n')[0];
+ assert.doesNotMatch(ci,/id-token: write|secrets: inherit|pull-requests: write/);
+ const trust=JSON.parse(readFileSync('infra/iam/videoq-github-actions-plan-trust.json','utf8'));
+ assert.deepEqual(trust.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'],['repo:videoq-jp@349188820/videoq@1083911938:ref:refs/heads/main']);
+ const policy=JSON.parse(readFileSync('infra/iam/videoq-neon-plan-deny.json','utf8'));
+ assert.ok(policy.Statement.some(s=>s.Effect==='Deny'&&s.Action==='ssm:GetParametersByPath'&&s.Resource==='*'));
+ assert.ok(policy.Statement.some(s=>s.Effect==='Deny'&&s.Action.includes('ssm:GetParameterHistory')));
+});
+
+test('recovery guards retain credentials until the rollback grace period and verification',async()=>{
+ await assert.rejects(rollback(null),/NO_RECOVERABLE_ROTATION/);
+ await assert.rejects(rollback({phase:'complete'}),/NO_RECOVERABLE_ROTATION/);
+ await assert.rejects(finishRollback({phase:'rollback_pending',rollback_after:'invalid'}),/INVALID_ROLLBACK_PHASE/);
+ await assert.rejects(finishRollback({phase:'rollback_pending',rollback_after:new Date(Date.now()+60000).toISOString()}),/ROLLBACK_INVOCATIONS/);
+ assert.throws(()=>completeRollback({phase:'rollback_pending'}),/ROLLBACK_NOT_RETIRED/);
 });

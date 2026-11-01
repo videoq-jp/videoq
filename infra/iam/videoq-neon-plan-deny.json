@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyProtectedDatabaseCredentials",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParameterHistory"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-1:<ACCOUNT_ID>:parameter/videoq/security/prod/*"
+      ]
+    },
+    {
+      "Sid": "DenyRecursiveParameterReads",
+      "Effect": "Deny",
+      "Action": "ssm:GetParametersByPath",
+      "Resource": "*"
+    }
+  ]
+}

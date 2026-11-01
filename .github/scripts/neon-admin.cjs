@@ -64,9 +64,14 @@ async function verifyRole(purpose, url) {
   return using(url, async client => {
     // Prove ACL denial even if a read-only login changes its session default.
     if(['backup','audit'].includes(purpose)) await client.query('SET default_transaction_read_only=off');
-    const {rows:[role]}=await client.query(`SELECT current_user,session_user,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls
+    const {rows:[role]}=await client.query(`SELECT current_user,session_user,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls
       FROM pg_roles WHERE rolname=session_user`);
-    if (role.rolsuper||role.rolcreatedb||role.rolcreaterole||role.rolbypassrls) throw new Error('EXCESSIVE_DATABASE_PRIVILEGES');
+    if (role.rolsuper||role.rolcreatedb||role.rolcreaterole||role.rolreplication||role.rolbypassrls) throw new Error('EXCESSIVE_DATABASE_PRIVILEGES');
+    await denied(client,'SET ROLE neondb_owner');
+    const {rows:[parents]}=await client.query(`SELECT EXISTS(SELECT 1 FROM pg_roles r
+      WHERE (r.rolsuper OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication OR r.rolbypassrls)
+      AND pg_has_role(session_user,r.rolname,'MEMBER')) AS privileged_parent`);
+    if(parents.privileged_parent) throw new Error('PRIVILEGED_DATABASE_ROLE_MEMBERSHIP');
     if (purpose==='migration') {
       if(role.current_user!==OWNER) throw new Error('UNSTABLE_SCHEMA_OWNER');
       await client.query('BEGIN');
@@ -239,7 +244,7 @@ async function promote(journal) {
   const timeout=await refreshLambda(journal.generation);
   journal.phase='promoted';journal.promoted_at=new Date().toISOString();
   // Old Lambda invocations may reconnect using their cached URL until their timeout.
-  journal.retire_after=new Date(Date.now()+(timeout+60)*1000).toISOString();
+  journal.retire_after=new Date(Date.now()+(Math.max(timeout,900)+60)*1000).toISOString();
   writeParameter(JOURNAL,journal);
   return journal;
 }
@@ -296,6 +301,7 @@ function complete(journal) {
 }
 
 async function rollback(journal) {
+  if(!journal) throw new Error('NO_RECOVERABLE_ROTATION');
   if(['rollback_pending','rollback_retired'].includes(journal.phase)) return journal;
   if(!journal.entries||journal.phase==='complete') throw new Error('NO_RECOVERABLE_ROTATION');
   const admin=readParameter(ADMIN).DATABASE_URL;
@@ -310,7 +316,7 @@ async function rollback(journal) {
   await pointHyperdrive(journal.entries.api.old.DATABASE_URL,[journal.entries.api.old,journal.entries.api.next].map(e=>decodeURIComponent(new URL(e.DATABASE_URL).username)));
   for(const [purpose,entry] of Object.entries(journal.entries)) writeParameter(PROFILES[purpose].parameter,entry.old);
   const timeout=await refreshLambda('rollback-'+journal.generation);
-  journal.phase='rollback_pending';journal.rollback_after=new Date(Date.now()+(timeout+60)*1000).toISOString();
+  journal.phase='rollback_pending';journal.rollback_after=new Date(Date.now()+(Math.max(timeout,900)+60)*1000).toISOString();
   writeParameter(JOURNAL,journal);
   return journal;
 }
