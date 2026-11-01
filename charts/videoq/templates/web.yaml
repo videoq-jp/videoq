@@ -24,6 +24,11 @@ spec:
         - name: web
           image: {{ include "videoq.image" (dict "root" . "image" .Values.web.image "component" "web") | quote }}
           imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          env:
+            # Only the browser-reachable origin belongs in the frontend CSP.
+            - name: VIDEOQ_CSP_STORAGE_ORIGINS
+              {{- $storage := urlParse (required "storage.endpoint is required" .Values.storage.endpoint) }}
+              value: {{ printf "%s://%s" $storage.scheme $storage.host | quote }}
           ports:
             - { name: http, containerPort: 80 }
           readinessProbe:

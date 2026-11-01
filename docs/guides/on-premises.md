@@ -121,3 +121,55 @@ New users have administrator-managed operational quotas instead of SaaS free
 plan caps. Existing user quotas are preserved until an administrator changes them.
 See the [edition and bootstrap instructions](https://github.com/videoq-jp/videoq/blob/main/charts/videoq/README.md#on-prem-application-edition).
 Core video/course/search/chat, API keys/MCP and intranet sharing remain available.
+
+## Web security headers and storage access
+
+The nginx image generates security headers from the same `public/_headers` policy
+as the Cloudflare Web Worker. CSP, frame protection, `nosniff`, Referrer-Policy,
+Permissions-Policy and COOP apply to HTML, assets, HEAD/304 replies and errors.
+nginx hides its version. HTML is revalidated (`no-cache`); immutable assets keep
+their one-year cache policy.
+
+Helm adds the **origin** of `storage.endpoint` to CSP's `connect-src`, `media-src`
+and `img-src`, without exposing `storage.internalEndpoint`. This permits signed
+uploads, media redirects and thumbnails without allowing arbitrary HTTP(S)
+destinations. Bucket CORS must still allow `publicUrl`. Docker Compose supplies
+both local Garage origins automatically, including `GARAGE_S3_PORT`. Standalone
+web containers accept a space-separated `VIDEOQ_CSP_STORAGE_ORIGINS` list, for
+example `https://s3.example.edu:9443`. Paths, credentials, wildcards and non-HTTP(S)
+sources are rejected at startup. An absolute `VITE_API_URL` adds its origin at
+build time; rebuild the image if it changes.
+
+COEP and CORP are deliberately not enabled globally: VideoQ does not require
+cross-origin isolation, and imposing it can block third-party frames, images or
+media. The shared policy retains YouTube and Google Fonts compatibility for SaaS
+builds; on-prem builds exclude those integrations. COOP is `same-origin`, and
+camera, microphone and geolocation are disabled. Configure TLS/HSTS at the site's
+HTTPS ingress rather than the plain-HTTP local nginx listener.
+
+After building the image, check its headers and cache/error behavior:
+
+```bash
+node --test apps/web/scripts/test-nginx-headers.mjs
+node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
+```
+
+Run a passive ZAP baseline against your local test installation on Linux:
+
+```bash
+mkdir -p /tmp/videoq-zap-reports
+docker run --rm --network host --user "$(id -u):$(id -g)" \
+  -v /tmp/videoq-zap-reports:/zap/wrk:rw \
+  ghcr.io/zaproxy/zaproxy@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238 \
+  zap-baseline.py -t http://localhost/ -m 1 -T 5 \
+  -r baseline.html -J baseline.json
+```
+
+Exit 0 is success, 1 is a configured FAIL, 2 means WARNs, and 3 is a scan error.
+Inspect the JSON/HTML and the URLs reached: a public-page baseline does not cover
+authenticated APIs. Classify residual alerts rather than hiding them. Cached
+public assets and library comments are not proof of disclosure. CSP's
+`style-src 'unsafe-inline'` supports runtime UI styles without allowing inline
+JavaScript; missing COEP/CORP reflects the compatibility decision above. Check
+authenticated access separately in a disposable deployment, keeping cookies and
+signed URLs out of shared reports.

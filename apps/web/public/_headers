@@ -1,5 +1,5 @@
-# Workers Static Assets と worker/index.ts がレスポンスに付与するヘッダー。
-# Worker も読み込むため、このファイルは単一の /* ルールに保つ。
+# Workers Static Assets・worker/index.ts と nginx が付与する共通ヘッダー。
+# nginx-headers.mjs も読み込むため、単一の /* ルールに保つ。
 # `public/` は dist/ にそのままコピーされるので、ビルド成果物に含まれる。
 #
 # CSP の各 origin は実際の読み込み元を確認して決めている。増やすときは

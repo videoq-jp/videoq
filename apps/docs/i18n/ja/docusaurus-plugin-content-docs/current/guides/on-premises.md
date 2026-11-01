@@ -94,3 +94,48 @@ API Pod 内で `node dist/provision-user.mjs --reset USER_ID` を実行します
 [エディションと初期設定の手順](https://github.com/videoq-jp/videoq/blob/main/charts/videoq/README.md#on-prem-application-edition)を参照してください。
 
 インターネットに接続できる環境では、成果物の検証、検証環境での自動リハーサル、本番への昇格について[署名付きリリースと更新](on-premises-releases.md)を参照してください。
+
+## Webのセキュリティヘッダーとストレージへの接続
+
+nginxイメージはCloudflareのWeb Workerと同じ `public/_headers` からヘッダーを生成します。
+CSP、埋め込み防止、`nosniff`、Referrer-Policy、Permissions-Policy、COOPを、HTML、アセット、
+HEAD・304応答、エラーにも付与し、nginxのバージョンを隠します。HTMLは `no-cache` で再検証し、
+ビルドアセットは1年間のキャッシュを維持します。
+
+Helmは `storage.endpoint` の**オリジン**をCSPの `connect-src`・`media-src`・`img-src` に追加し、
+`storage.internalEndpoint` は含めません。任意のHTTP(S)接続先を許可せず、署名付きアップロード、
+メディアのリダイレクト、サムネイルを利用できます。バケットのCORSでは `publicUrl` を許可してください。
+Docker Composeは `GARAGE_S3_PORT` に合わせたローカルGarageの2つのオリジンを自動設定します。
+単体のWebコンテナでは `VIDEOQ_CSP_STORAGE_ORIGINS` に `https://s3.example.edu:9443` のような
+オリジンを空白区切りで指定します。パス、認証情報、ワイルドカード、HTTP(S)以外は起動時に拒否します。
+絶対URLの `VITE_API_URL` はビルド時にオリジンを追加するため、変更後は再ビルドしてください。
+
+COEP・CORPは全体には設定しません。VideoQはクロスオリジン分離を必要とせず、強制すると外部フレーム、
+画像、メディアを読み込めなくなる場合があります。共通ポリシーはSaaS版のYouTube・Google Fontsとの互換性を
+維持しますが、オンプレ版はこれらの連携自体を除外します。COOPは `same-origin`、カメラ・マイク・位置情報は
+無効です。TLS・HSTSは導入先のHTTPS入口で設定し、ローカルのHTTPリスナーには強制しません。
+
+ビルド後、実イメージでヘッダー、キャッシュ、エラー応答を確認できます。
+
+```bash
+node --test apps/web/scripts/test-nginx-headers.mjs
+node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
+```
+
+Linuxのローカル検証環境では、ZAPの受動検査を次のコマンドで実行できます。
+
+```bash
+mkdir -p /tmp/videoq-zap-reports
+docker run --rm --network host --user "$(id -u):$(id -g)" \
+  -v /tmp/videoq-zap-reports:/zap/wrk:rw \
+  ghcr.io/zaproxy/zaproxy@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238 \
+  zap-baseline.py -t http://localhost/ -m 1 -T 5 \
+  -r baseline.html -J baseline.json
+```
+
+終了コード0は成功、1は設定したFAIL、2はWARNの検出、3は検査エラーです。JSON・HTMLと実際の巡回範囲を
+確認してください。公開画面だけのBaselineでは認証後APIを検査できません。残る指摘は一括で隠さず、用途に
+応じて判断します。公開アセットのキャッシュやライブラリーのコメントだけでは情報漏洩の証明になりません。
+CSPの `style-src 'unsafe-inline'` はUIの実行時スタイル用で、インラインJavaScriptは許可しません。
+COEP・CORP不足は上記の互換性判断によるものです。認証後の確認は使い捨て環境で別途行い、Cookieや署名付きURLを
+共有レポートに含めないでください。

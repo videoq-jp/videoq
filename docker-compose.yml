@@ -216,6 +216,8 @@ services:
 
   # Production build of frontend (nginx static). Not Vite HMR.
   web:
+    environment:
+      VIDEOQ_CSP_STORAGE_ORIGINS: http://127.0.0.1:${GARAGE_S3_PORT:-9000} http://localhost:${GARAGE_S3_PORT:-9000}
     build:
       context: .
       dockerfile: apps/web/Dockerfile

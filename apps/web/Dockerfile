@@ -47,6 +47,7 @@ COPY apps/api apps/api
 COPY packages/trpc packages/trpc
 RUN npm run build --workspace @videoq/web
 RUN if [ "$VITE_DEPLOYMENT_EDITION" = onprem ]; then node apps/web/scripts/check-onprem-build.mjs apps/web/dist; fi
+RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template
 
 
 FROM nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606 AS runtime
@@ -55,6 +56,9 @@ FROM nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698
 RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0'
 
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
+COPY --chmod=755 apps/web/scripts/15-videoq-csp.envsh /docker-entrypoint.d/15-videoq-csp.envsh
+ENV VIDEOQ_CSP_STORAGE_ORIGINS=""
 
 COPY --from=build /workspace/apps/web/dist /usr/share/nginx/html
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
