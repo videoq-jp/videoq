@@ -6,15 +6,14 @@ description: Verify signed VideoQ images and charts, rehearse updates, and promo
 # Verified on-prem releases and updates
 
 For sites with internet access, use an external OCI registry and immutable image
-digests. The `On-prem Release` workflow prepares application and CPU Whisper GHCR
-images for Linux amd64 and arm64, an amd64 NVIDIA vLLM image, application and
-inference chart archives, and `release.json`. It runs only for the current source
+digests. The `On-prem Release` workflow prepares application and transcription-gateway GHCR
+images for Linux amd64 and arm64, application and inference chart archives, and `release.json`. It runs only for the current source
 repository main commit after successful push CI. It can also be dispatched for
 that commit, for example to rebuild after distribution package fixes.
 
 Distribution uses the public packages
-`ghcr.io/videoq-jp/videoq-api`, `videoq-worker` and
-`videoq-web`, `videoq-transcription-gateway` and `videoq-vllm`.
+`ghcr.io/videoq-jp/videoq-api`, `videoq-worker`,
+`videoq-web` and `videoq-transcription-gateway`.
 Docker and Kubernetes can pull them without a GHCR login
 or `imagePullSecrets`. Site-owned private registries can still use
 `imagePullSecrets` when required. The images include the repository's existing
@@ -37,16 +36,27 @@ and a CycloneDX inventory. Separate fresh runners publish the exact build
 artifacts without running application containers or installing app dependencies
 with publication credentials. GitHub OIDC signs provenance and per-architecture
 SBOM attestations. A signed multi-architecture index binds the two architectures;
-the signed schema-v3 release manifest binds all five image index digests, their
-supported architectures and both charts' bytes. The NVIDIA image is amd64-only;
-its index must not advertise arm64. The inference values use that same patched,
-audio-capable vLLM image for NVIDIA chat, embeddings and speech.
+the signed schema-v5 release manifest binds all four VideoQ image index digests, their
+supported architectures and both charts' bytes. The signed inference chart
+pins upstream llama.cpp, whisper.cpp and vLLM image digests. These upstream
+artifacts are used directly and are not rebuilt or signed as VideoQ images.
+Each GPU profile uses the same vendor-specific upstream vLLM image for chat,
+embeddings and speech: `vllm.image` for CUDA, `vllm.rocmImage` for ROCm.
+The upstream pins are carried by the signed chart, not overridden by the
+VideoQ image verifier. VideoQ's transcription gateway no longer builds or bundles whisper.cpp.
+See the [inference image policy](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#upstream-image-policy-and-package-names).
+
+These package names replace `videoq-onprem-*` for new releases. Existing signed
+bundles remain unchanged for rollback. Use the chart and image values from the
+same release, and migrate site overrides from `whisper.vllmImage` to
+`vllm.image` (CUDA) or `vllm.rocmImage` (ROCm).
 
 NVIDIA scanning retains the existing narrowly scoped
-[kernel-header assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/whisper/security/README.md).
+[kernel-header assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md).
 Only explicitly assessed header findings are suppressed; other HIGH/CRITICAL
-findings still block publication. The `security-*` workflow artifacts retain JSON
-reports, including suppressed findings and the assessment, for 90 days.
+findings still block publication. The `vllm-security-nvidia` validation artifact retains JSON reports, including
+suppressed findings and the assessment, for 14 days. AMD validation records
+`vllm-security-amd` separately without applying the NVIDIA header assessment.
 
 The production API and worker use digest-pinned Alpine images. In addition to the
 interpreter, the canonical runtime updater refreshes these pins and the verified
@@ -94,7 +104,7 @@ The authenticated GitHub CLI above is used for workflow artifacts and attestatio
 verification. The verifier checks GitHub's signature and artifact
 subject, the exact repository and release workflow, `refs/heads/main`, the source
 commit and hosted-runner identity. It verifies the manifest, both chart checksums
-and signatures, and all five image index signatures before writing either values file.
+and signatures, and all four VideoQ image index signatures before writing either values file.
 A missing signature, altered chart, different source or unexpected repository
 aborts verification and preserves existing values. Per-architecture SBOM
 attestations can also be inspected using `gh attestation verify` with predicate
@@ -219,16 +229,54 @@ downloads need internet access. Allow at least 16 GiB RAM for this disposable
 test with backing services; production sizing still needs representative videos.
 
 
+## Release manifest migration
+
+New upstream-engine releases use schemaVersion 5 and contain four signed VideoQ
+packages: api, web, worker and transcription-gateway. The chart pins upstream
+CUDA/ROCm engines by digest; they are not represented as VideoQ attestations.
+The verifier preserves the exact mappings for schemaVersion 2 (original names),
+3 (the old custom GPU namespace) and 4 (five packages including `videoq-vllm`).
+All eight historical subjects are verified; schema 5 verifies seven subjects and
+binds upstream engine digests through the signed inference chart. Mixed layouts
+are rejected.
+Historical installs and rollback require their original packages. The retired schema 2 packages and `videoq-onprem-whisper-vllm` have been explicitly removed; schema 2/3 manifests cannot be fully verified or installed from GHCR. Schema 4 remains the current five-package release until a schema 5 release passes all checks. New package visibility
+and repository Actions access must be prepared before publication; all existing
+visibility, vulnerability and signature gates remain mandatory.
+
+This GPU change is not ready for release: upstream image vulnerability gates
+remain unresolved and physical GPU/model acceptance has not been performed.
+
 ## Package names and historical releases
 
-The namespace migration is complete. Current releases publish the five public
-`videoq-jp/videoq-{api,web,worker,transcription-gateway,vllm}` packages through
-**On-prem Release**. Their package settings must retain repository Actions Write
-access and public visibility. Bootstrap tags are not deployment releases.
+The namespace migration to `videoq-jp` is complete. The migration-only Package
+Namespace Bootstrap and Retired Package Cleanup workflows have been retired.
+Keep `videoq-vllm` and historical signed packages available for verification and
+rollback. New builds use the normal signed release workflow; upstream adoption
+still requires all security, anonymous-pull and CPU/Kubernetes acceptance gates.
 
-The migration-only Package Namespace Bootstrap and Retired Package Cleanup
-workflows have been retired. Keep historical packages available for rollback and
-verification; removing a workflow does not delete images, releases or attestations.
-The verifier still validates historical schemas against their original repository,
-workflow and exact source SHA, including all eight signed subjects. Mixed image
-namespaces remain invalid. Use the normal signed release workflow for new builds.
+## Evaluate upstream GPU image candidates
+
+Before merge, manual **CI** on the PR branch supports the same candidate inputs with
+`gpu_candidates_only=true`; its other selected CI suites still run. The main-only
+manual **Operations** workflow (`check=onprem`, `validate_whisper_gpu=true`) accepts `nvidia_candidate` and
+`amd_candidate` as official `repository@sha256:<digest>` references. Empty inputs
+use the reviewed chart pins. Candidate runs never change deployment pins or
+publish images. They check offline gateway WAV decoding, retain the actual vLLM
+version, bind Trivy results to the requested digest, and keep the existing
+HIGH/CRITICAL including unfixed gate. AMD does not inherit NVIDIA's assessment.
+Nightly candidates are development builds; passing these checks does not establish
+GPU inference or target hardware/model acceptance.
+
+Manual runs may set `gpu_accelerator=nvidia` or `gpu_accelerator=amd` to evaluate
+only a newly published vendor candidate. The default is `both`; PR, push and
+scheduled validation always keep both vendors. This selection never changes pins
+or weakens the protocol, digest-identity or vulnerability gates.
+
+For isolated candidate evaluation, set `gpu_candidates_only=true` to skip the
+application and CPU suites without changing normal CI defaults. NVIDIA evaluation
+also accepts the vendor-maintained `nvcr.io/nvidia/vllm@sha256:<digest>` repository.
+NGC candidates receive the full scan without VideoQ's official-image kernel-header
+assessment. This is evaluation only: NGC and official vLLM releases may have
+different vLLM, CUDA and driver requirements, so a passing scan alone does not
+permit promotion into chart defaults. AMD candidates remain restricted to the
+official `vllm/vllm-openai-rocm` repository.

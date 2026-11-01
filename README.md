@@ -276,25 +276,21 @@ Transcription, chat, and embeddings can use local services. Configure each compo
 Run whisper.cpp natively on macOS to use Apple Silicon's Metal backend.
 The on-prem Kubernetes recipes use whisper.cpp on CPU or vLLM on NVIDIA GPUs,
 behind a private transcription gateway.
-Both connect through `WHISPER_BACKEND=local`. Build the pinned submodule with
-CMake and a C++ toolchain; install FFmpeg on the Mac for MP3 conversion.
+Both connect through `WHISPER_BACKEND=local`. Use the maintained
+[Homebrew package](https://formulae.brew.sh/formula/whisper.cpp), which includes
+`whisper-server`; install FFmpeg for MP3 conversion. No local build is required
+on supported bottle platforms.
 
 **Quick setup:**
 
 ```bash
-# 1. Fetch whisper.cpp from the VideoQ root directory
-git submodule update --init --recursive
-cd whisper.cpp
-
-# 2. Build
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --config Release
-
-# 3. Download a model
-bash ./models/download-ggml-model.sh large-v3-turbo
-
-# 4. Start the server
-./build/bin/whisper-server -m models/ggml-large-v3-turbo.bin \
+brew update
+brew install whisper.cpp ffmpeg
+mkdir -p .local-models/whisper
+curl --fail --location --output .local-models/whisper/ggml-large-v3-turbo-q5_0.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin
+echo "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2  .local-models/whisper/ggml-large-v3-turbo-q5_0.bin" | shasum -a 256 -c -
+whisper-server -m .local-models/whisper/ggml-large-v3-turbo-q5_0.bin \
   --host 127.0.0.1 --port 8080 --inference-path /audio/transcriptions \
   --convert -l auto
 ```
@@ -329,7 +325,10 @@ for endpoint differences and the real-audio acceptance check.
 <details>
 <summary><strong>Local chat, embeddings and Whisper</strong></summary>
 
-Use llama.cpp for the default CPU recipe or vLLM for NVIDIA GPU inference.
+Use llama.cpp for the default CPU recipe or vLLM for NVIDIA CUDA / AMD ROCm GPU inference.
+The [AMD profile](charts/videoq-inference/examples/vllm-amd.yaml) uses the upstream ROCm image; target-hardware acceptance is required.
+Use the [role/environment matrix](charts/videoq-inference/README.md#select-roles-and-environments) for arm64 CPU, mixed GPU engines, speech-only deployment or existing compatible services.
+On Apple Silicon, use the native [Homebrew llama.cpp setup](docs/guides/local-inference.md#mac-development-with-llamacpp) for Metal-backed chat and embeddings.
 Chat and embeddings use separate private OpenAI-compatible APIs; transcription
 uses the private whisper.cpp/vLLM gateway. See the [local inference guide](docs/guides/local-inference.md)
 and the [inference chart](charts/videoq-inference/README.md) for matching

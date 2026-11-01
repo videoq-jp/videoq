@@ -197,6 +197,43 @@ def test_missing_param_refs_still_mark_loaded(monkeypatch):
     assert bootstrap._LOADED is True
 
 
+@pytest.mark.parametrize('environment_model', [None, 'environment-embedding'])
+def test_independent_inference_services_load_from_ssm_without_overriding_env(monkeypatch, environment_model):
+    import json
+    import sys
+
+    for key in ('DB_PARAM_NAME', 'DB_SECRET_ARN', 'APP_SECRET_ARN'):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv('APP_PARAM_NAME', '/videoq/test/app')
+    payload = {
+        'OPENAI_BASE_URL': 'https://chat.example.invalid/v1',
+        'LLM_MODEL': 'chat-model',
+        'EMBEDDING_BASE_URL': 'https://embedding.example.invalid/v1',
+        'EMBEDDING_MODEL': 'embedding-model',
+        'EMBEDDING_API_KEY': 'embedding-key',
+        'WHISPER_LOCAL_URL': 'https://speech.example.invalid/v1',
+        'WHISPER_LOCAL_MODEL': 'speech-model',
+        'WHISPER_LOCAL_API_KEY': 'speech-key',
+    }
+    for key in payload:
+        monkeypatch.delenv(key, raising=False)
+    if environment_model:
+        monkeypatch.setenv('EMBEDDING_MODEL', environment_model)
+
+    class Client:
+        def close(self):
+            pass
+
+        def get_parameter(self, **kwargs):
+            assert kwargs == {'Name': '/videoq/test/app', 'WithDecryption': True}
+            return {'Parameter': {'Value': json.dumps(payload)}}
+
+    from types import SimpleNamespace
+    monkeypatch.setitem(sys.modules, 'boto3', SimpleNamespace(client=lambda _: Client()))
+    bootstrap.ensure_secrets_loaded()
+    for key, value in payload.items():
+        assert os.environ[key] == (environment_model if key == 'EMBEDDING_MODEL' and environment_model else value)
+
 def test_openrouter_key_is_loaded_from_shared_app_secret(monkeypatch):
     import json
     from types import SimpleNamespace

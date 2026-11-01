@@ -1,0 +1,20 @@
+vllm:
+  accelerator: amd
+
+# One additional dedicated AMD GPU for speech. No GPU sharing.
+# The CPU gateway performs VAD/normalization; vLLM dynamically batches speech.
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ""
+  modelSha256: ""
+  maxConcurrentRequests: 2
+  upstreamParallelism: 4
+  requestTimeoutSeconds: 110
+  maxSequences: 8
+  persistence: { size: 10Gi }
+  resources:
+    requests: { cpu: "2", memory: 8Gi, amd.com/gpu: 1 }
+    limits: { cpu: "4", memory: 16Gi, amd.com/gpu: 1 }
+  nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux }

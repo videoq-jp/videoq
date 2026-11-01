@@ -1,0 +1,197 @@
+{
+  "checkedAtUtc": "2026-10-29T13:46:36.247437+00:00",
+  "scope": "Unmodified official stable and 2026-10-29 CUDA 13.4/ROCm 10 nightly image scans, offline WAV decoding and digest identity. Not GPU hardware/model or signed-release acceptance.",
+  "assessment": "Existing version-specific NVIDIA official-image kernel-header assessment only. No AMD assessment or new exemption. Raw findings are not individual exploitability determinations.",
+  "conclusion": "None of these four evaluated images passes the unfixed HIGH/CRITICAL gate. Keep Draft and deployment pins unchanged; retain videoq-vllm and signed historical packages. GPU target/OS/environment is not selected.",
+  "runLimitations": [
+    "The candidate run failed the two GPU vulnerability scans and aggregate CI; its manual supply-chain check also failed because the baseline was absent. The baseline fix is in f58bbaa73613640ceaabba812fef6c149033adbb; its extracted workflow step subsequently passed locally with the online vulnerability gate."
+  ],
+  "images": [
+    {
+      "kind": "stable",
+      "accelerator": "nvidia",
+      "runId": 40878693977,
+      "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/40878693977",
+      "runConclusion": "failure",
+      "workflowHeadSha": "f58bbaa73613640ceaabba812fef6c149033adbb",
+      "jobId": 123464965428,
+      "jobConclusion": "failure",
+      "artifactId": 12898514581,
+      "artifactSha256": "sha256:c8cd5150a330b8daa650021c9ed88e43861da7d91d77534642deb1c5daec21a9",
+      "requestedImage": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+      "platform": "linux/amd64",
+      "runtime": {
+        "vllm": "0.32.0",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "high": 19,
+      "critical": 3,
+      "packageFindingCounts": {
+        "certifi": 2,
+        "dirmngr": 1,
+        "gnupg": 1,
+        "gnupg-utils": 1,
+        "gnupg2": 1,
+        "gpg": 1,
+        "gpg-agent": 1,
+        "gpgconf": 1,
+        "gpgsm": 1,
+        "gpgv": 1,
+        "keyboxd": 1,
+        "libssl3t64": 2,
+        "msgpack": 2,
+        "openssl": 2,
+        "setuptools": 1,
+        "urllib3": 2,
+        "uv": 1
+      },
+      "artifactHashAndImageDigestVerified": true,
+      "gate": "failed"
+    },
+    {
+      "kind": "stable",
+      "accelerator": "amd",
+      "runId": 40878693977,
+      "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/40878693977",
+      "runConclusion": "failure",
+      "workflowHeadSha": "f58bbaa73613640ceaabba812fef6c149033adbb",
+      "jobId": 123464965402,
+      "jobConclusion": "failure",
+      "artifactId": 12899289760,
+      "artifactSha256": "sha256:6fb60f982cd488670cc5b314052429368d913946e814c239ce6fe3975bda847d",
+      "requestedImage": "vllm/vllm-openai-rocm@sha256:14f6a575e1fb0a580b0f633c09e06f648709d60405b85f6a7ff3f80d49f39905",
+      "platform": "linux/amd64",
+      "runtime": {
+        "vllm": "0.32.0+rocm723",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "high": 757,
+      "critical": 48,
+      "packageFindingCounts": {
+        "certifi": 2,
+        "flash_attn": 1,
+        "jaraco.context": 1,
+        "libssl3": 2,
+        "linux-libc-dev": 762,
+        "lmcache": 1,
+        "msgpack": 2,
+        "openssl": 2,
+        "pillow": 28,
+        "setuptools": 1,
+        "urllib3": 2,
+        "wheel": 1
+      },
+      "artifactHashAndImageDigestVerified": true,
+      "gate": "failed"
+    },
+    {
+      "kind": "candidate",
+      "accelerator": "nvidia",
+      "runId": 40878034814,
+      "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/40878034814",
+      "runConclusion": "failure",
+      "workflowHeadSha": "4c18f27974c9f8a065bc664982235effefdab31f",
+      "jobId": 123461913147,
+      "jobConclusion": "failure",
+      "artifactId": 12899263807,
+      "artifactSha256": "sha256:ec4f5f4bdaa1fb6ffb7b7b4f588dc658fbcfe5f2c7e8118440506cb14374c0d1",
+      "requestedImage": "vllm/vllm-openai@sha256:7b1bd133306563c7f2156d34c8b92c75659c5404ba0c5913c7441b981d13a871",
+      "platform": "linux/amd64",
+      "runtime": {
+        "vllm": "0.33.0rc1.dev229+g3966924d5.d20261029.cu134",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "high": 7,
+      "critical": 0,
+      "packageFindingCounts": {
+        "libssl3t64": 1,
+        "msgpack": 2,
+        "openssl": 1,
+        "setuptools": 1,
+        "urllib3": 2
+      },
+      "artifactHashAndImageDigestVerified": true,
+      "gate": "failed"
+    },
+    {
+      "kind": "candidate",
+      "accelerator": "amd",
+      "runId": 40878034814,
+      "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/40878034814",
+      "runConclusion": "failure",
+      "workflowHeadSha": "4c18f27974c9f8a065bc664982235effefdab31f",
+      "jobId": 123461913004,
+      "jobConclusion": "failure",
+      "artifactId": 12900725017,
+      "artifactSha256": "sha256:5805c2b12cf884305a59dd560914cea934ed46f0bdcdf9e61ad7e5cbf9fae8a2",
+      "requestedImage": "vllm/vllm-openai-rocm@sha256:8649354473843f477a96d3aa659d0ae56bcc7df743d2d02d52aaa318178ac881",
+      "platform": "linux/amd64",
+      "runtime": {
+        "vllm": "0.33.0rc1.dev229+g3966924d5.rocm100",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "high": 524,
+      "critical": 19,
+      "packageFindingCounts": {
+        "flash_attn": 1,
+        "jaraco.context": 1,
+        "linux-libc-dev": 534,
+        "lmcache": 1,
+        "msgpack": 2,
+        "setuptools": 1,
+        "urllib3": 2,
+        "wheel": 1
+      },
+      "artifactHashAndImageDigestVerified": true,
+      "gate": "failed"
+    }
+  ],
+  "cpuAcceptance": {
+    "runId": 40878693977,
+    "artifactId": 12902830171,
+    "artifactSha256": "sha256:965aff4472adbdab58d3dedc5600f7e3055b10b7aaff1b07ecb6d2345810e0a5",
+    "sourceSha": "097b89637dc80b23c4e6b1b4bf84d4baec938411",
+    "reviewedPrHead": "f58bbaa73613640ceaabba812fef6c149033adbb",
+    "identicalTestedAndPrTree": "069fb1b23700351165e59a1227d46ad6b9e3c014",
+    "architecture": "amd64",
+    "modelsAndUpstreamCpuDigestsMatchedChart": true,
+    "checks": {
+      "uploadTranscriptionIndexingAndQa": "passed",
+      "objectRestore": "passed; SHA256 identical",
+      "databaseRestore": "passed; restored to a separate database and app switched",
+      "upgrade": "passed; two API replicas and migration hook",
+      "rollback": "passed; one API replica, restored DB and data retained",
+      "helmTest": "passed",
+      "retention": "passed",
+      "publicEgress": "blocked by dedicated node IPv4/IPv6 firewall; public DNS forwarding disabled; worker Pod probe passed",
+      "playback": {
+        "status": "passed",
+        "requestedTime": 1.552,
+        "currentTime": 1.698669,
+        "duration": 10.52,
+        "readyState": 4,
+        "error": null,
+        "mediaRange": "206, 16 bytes"
+      },
+      "transcriptionAssessment": {
+        "errors": [],
+        "reference_characters": 45,
+        "character_edits": 0,
+        "cer": 0.0,
+        "segment_count": 1,
+        "speech_regions": [],
+        "silence_hallucinated_characters": null
+      }
+    },
+    "verification": "PR source build test; not signed-release verification",
+    "limitations": "One short public Japanese fixture; not general accuracy/performance, signed-release, GPU hardware or CNI enforcement acceptance."
+  }
+}

@@ -143,7 +143,7 @@ def main():
     references = {c: v["image"]["repository"]+"@"+v["image"]["digest"] for c,v in application.items() if c != "requireImageDigests"}
     references["whisper"] = inference["whisper"]["image"]["repository"]+"@"+inference["whisper"]["image"]["digest"]
     result = rehearse(source, app_chart, inference_chart, args.output, references)
-    result["verification"] = "Signed release manifest, both charts and all five VideoQ image indexes verified before rehearsal"
+    result["verification"] = "Signed release manifest, both charts and all VideoQ image indexes verified before rehearsal"
     release.write_atomic(args.output / "result.json", result)
 
 

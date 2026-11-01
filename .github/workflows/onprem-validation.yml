@@ -2,6 +2,18 @@ name: On-prem Validation
 on:
   workflow_call:
     inputs:
+      gpu_accelerator:
+        type: string
+        default: both
+      gpu_candidates_only:
+        type: boolean
+        default: false
+      nvidia_candidate:
+        type: string
+        default: ''
+      amd_candidate:
+        type: string
+        default: ''
       validate_whisper_gpu:
         type: boolean
         default: false
@@ -18,6 +30,7 @@ permissions:
   contents: read
 jobs:
   onprem:
+    if: ${{ !inputs.gpu_candidates_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -237,8 +250,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  whisper-nvidia-image:
-    name: NVIDIA Whisper image
+  vllm-image:
+    name: vLLM ${{ matrix.accelerator }} upstream image
+    strategy:
+      fail-fast: false
+      matrix:
+        accelerator: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu_accelerator == 'nvidia' && fromJSON('["nvidia"]') || github.event_name == 'workflow_dispatch' && inputs.gpu_accelerator == 'amd' && fromJSON('["amd"]') || fromJSON('["nvidia","amd"]') }}
     if: inputs.validate_whisper_gpu
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -246,42 +263,106 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Reserve disk for the CUDA image on the disposable runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: ./.github/actions/setup-package-manager
+        with:
+          manager: npm
+      - run: npm ci --ignore-scripts --workspace @videoq/api
+      - name: Reserve disk for the upstream GPU image on the disposable runner
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - name: Build the pinned audio-capable vLLM engine without credentials
+      - name: Resolve the pinned upstream vLLM image
         id: gpu_image
-        run: docker build -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
-      - name: Verify audio extras without a GPU
-        run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
-      - name: Scan NVIDIA Whisper including unfixed vulnerabilities
+        env:
+          ACCELERATOR: ${{ matrix.accelerator }}
+          NVIDIA_CANDIDATE: ${{ inputs.nvidia_candidate }}
+          AMD_CANDIDATE: ${{ inputs.amd_candidate }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import { parse } from 'yaml';
+          const vllm = parse(readFileSync('charts/videoq-inference/values.yaml', 'utf8')).vllm;
+          const image = process.env.ACCELERATOR === 'amd' ? vllm.rocmImage : vllm.image;
+          const repository = process.env.ACCELERATOR === 'amd' ? 'vllm/vllm-openai-rocm' : 'vllm/vllm-openai';
+          const candidate = process.env.ACCELERATOR === 'amd' ? process.env.AMD_CANDIDATE : process.env.NVIDIA_CANDIDATE;
+          const reference = candidate || `${image.repository}@${image.digest}`;
+          const repositories = process.env.ACCELERATOR === 'amd' ? [repository] : [repository, 'nvcr.io/nvidia/vllm'];
+          if (!repositories.some(repo => reference.startsWith(repo + '@')) || !/^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/.test(reference)) throw new Error('An exact official upstream vLLM image digest is required');
+          appendFileSync(process.env.GITHUB_ENV, `ASSESS_NVIDIA_HEADERS=${reference.startsWith('vllm/vllm-openai@')}\n`);
+          appendFileSync(process.env.GITHUB_ENV, `VLLM_IMAGE=${reference}\n`);
+          JS
+      - name: Pull the upstream image without rebuilding
+        run: docker pull "$VLLM_IMAGE"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: matrix.accelerator == 'amd'
+        with:
+          python-version-file: apps/inference/whisper/.python-version
+      - name: Install checksum-pinned uv for the offline ROCm codec payload
+        if: matrix.accelerator == 'amd'
+        run: bash .github/scripts/install-uv.sh
+      - name: Export locked codec packages without CPU inference libraries
+        if: matrix.accelerator == 'amd'
+        working-directory: apps/inference/whisper
+        run: |
+          uv sync --locked --no-dev --no-install-package torch --no-install-package onnxruntime
+          .venv/bin/python provision_audio.py "$RUNNER_TEMP/rocm-audio"
+      - name: Check the gateway WAV decoding path without a GPU or network
+        env:
+          ACCELERATOR: ${{ matrix.accelerator }}
+        run: |
+          set -o pipefail
+          audio=()
+          if [ "$ACCELERATOR" = amd ]; then
+            audio=(--env PYTHONPATH=/audio-deps --volume "$RUNNER_TEMP/rocm-audio:/audio-deps:ro")
+          fi
+          docker run --rm --network none --user 10001:10001 --env HOME=/tmp --env HF_HUB_OFFLINE=1 "${audio[@]}" --volume "$PWD/apps/inference/vllm:/checks:ro" --entrypoint python3 "$VLLM_IMAGE" /checks/check_runtime.py | tee vllm-runtime.json
+      - name: Verify the upstream kernel-header inventory for the NVIDIA-only assessment
+        if: matrix.accelerator == 'nvidia' && env.ASSESS_NVIDIA_HEADERS == 'true'
+        run: docker run --rm --network none --volume "$PWD/apps/inference/vllm/security:/checks:ro" --entrypoint python3 "$VLLM_IMAGE" /checks/verify_kernel_headers.py
+      - name: Scan upstream vLLM including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
         uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
-          image-ref: videoq-whisper-vllm:onprem-ci
-          trivy-config: apps/inference/whisper/security/trivy.yaml
+          image-ref: ${{ env.VLLM_IMAGE }}
+          trivy-config: ${{ matrix.accelerator == 'nvidia' && env.ASSESS_NVIDIA_HEADERS == 'true' && 'apps/inference/vllm/security/trivy.yaml' || '' }}
           format: json
-          output: whisper-vllm-security.json
+          output: vllm-security.json
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
           exit-code: '1'
           timeout: 15m
-      - name: Retain NVIDIA scan findings and the scoped header assessment
+      - name: Bind scan evidence to the exact requested image
+        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          reference = os.environ['VLLM_IMAGE']
+          report = json.loads(Path('vllm-security.json').read_text())
+          if reference not in report.get('Metadata', {}).get('RepoDigests', []):
+              raise RuntimeError('The scan report does not identify the requested vLLM digest')
+          Path('vllm-image.json').write_text(json.dumps({'reference': reference, 'platform': 'linux/amd64'}) + '\n')
+          PY
+      - name: Retain scan findings and the NVIDIA-only header assessment
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1
         with:
-          name: whisper-vllm-security
+          name: vllm-security-${{ matrix.accelerator }}
           path: |
-            whisper-vllm-security.json
-            apps/inference/whisper/security/
+            vllm-security.json
+            vllm-runtime.json
+            vllm-image.json
+            apps/inference/vllm/security/
           retention-days: 14
           if-no-files-found: error
 
   upstream-cpu-images:
     name: ${{ matrix.engine }} Linux ${{ matrix.architecture }} upstream image
-    if: inputs.scan_upstream_images
+    if: ${{ !inputs.gpu_candidates_only && inputs.scan_upstream_images }}
     strategy:
       fail-fast: false
       matrix:

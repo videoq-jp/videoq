@@ -1,10 +1,11 @@
-# CPU engine packages are verified on native ARM64 runners; model acceptance is site-specific.
+# Linux arm64 CPU nodes; native macOS/Metal uses the Homebrew recipes instead.
+backend: llamacpp
 whispercpp:
   architecture: arm64
 whisper:
-  nodeSelector: { kubernetes.io/arch: arm64 }
+  nodeSelector: { kubernetes.io/arch: arm64, kubernetes.io/os: linux }
 servers:
   chat:
-    nodeSelector: { kubernetes.io/arch: arm64 }
+    nodeSelector: { kubernetes.io/arch: arm64, kubernetes.io/os: linux }
   embedding:
-    nodeSelector: { kubernetes.io/arch: arm64 }
+    nodeSelector: { kubernetes.io/arch: arm64, kubernetes.io/os: linux }

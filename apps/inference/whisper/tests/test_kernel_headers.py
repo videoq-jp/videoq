@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).parents[1] / 'security'
+ROOT = Path(__file__).parents[2] / 'vllm' / 'security'
 spec = importlib.util.spec_from_file_location('kernel_headers', ROOT / 'verify_kernel_headers.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

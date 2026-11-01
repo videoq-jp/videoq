@@ -25,6 +25,24 @@ on:
         type: choice
         default: all
         options: [all, dependencies, containers, terraform, tokens, smoke, backup, onprem, inference]
+      gpu_candidates_only:
+        description: Evaluate only upstream GPU candidates (onprem check)
+        type: boolean
+        default: false
+      gpu_accelerator:
+        description: Accelerator to evaluate manually; scheduled checks cover both
+        type: choice
+        options: [both, nvidia, amd]
+        default: both
+      nvidia_candidate:
+        description: Optional official or NVIDIA vendor image at an exact digest
+        type: string
+        default: ''
+      amd_candidate:
+        description: Optional official ROCm image at an exact digest
+        type: string
+        default: ''
+
       verify_ai_answers:
         description: Include paid cited Q&A and course/unscoped streaming in the production smoke check
         type: boolean
@@ -308,6 +326,10 @@ jobs:
     if: needs.source.outputs.onprem == 'true'
     uses: ./.github/workflows/onprem-validation.yml
     with:
+      gpu_candidates_only: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu_candidates_only == true }}
+      gpu_accelerator: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu_accelerator || 'both' }}
+      nvidia_candidate: ${{ github.event_name == 'workflow_dispatch' && inputs.nvidia_candidate || '' }}
+      amd_candidate: ${{ github.event_name == 'workflow_dispatch' && inputs.amd_candidate || '' }}
       validate_whisper_gpu: ${{ github.event_name == 'schedule' || inputs.validate_whisper_gpu == true }}
       validate_real_cpu: ${{ inputs.validate_real_cpu == true }}
     permissions:

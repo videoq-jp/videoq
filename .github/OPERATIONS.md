@@ -15,7 +15,7 @@ keep them for seven days. Manual CI selects these builds regardless of the chang
 and does not start an automatic deployment. Passing coverage to jobs that read it remains.
 
 Large on-prem image archives are deleted only after every publish job has published and
-signed successfully, and only the nine archives from the same run, commit, and attempt.
+signed successfully, and only the eight archives from the same run, commit, and attempt.
 Later steps use the published digests. Separation of build and publish permissions,
 vulnerability scanning, and retention of signatures and evidence are unchanged. Archives
 from failed or cancelled runs use the existing one-day expiry.

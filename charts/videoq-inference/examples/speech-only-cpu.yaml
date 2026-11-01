@@ -1,0 +1,9 @@
+# Operate only the transcription gateway/engine here. Chat and embedding
+# endpoints are configured independently in the application chart/environment.
+whisper:
+  enabled: true
+servers:
+  chat:
+    enabled: false
+  embedding:
+    enabled: false

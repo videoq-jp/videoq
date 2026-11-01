@@ -1,0 +1,56 @@
+# Independent role selection: CUDA chat, CPU embeddings, ROCm speech.
+# Two distinct GPU allocations; host compatibility must be accepted on site.
+# Pair with the local-ai-llamacpp application overlay for its embedding alias,
+# then set ai.whisperChunkSeconds=300 for GPU speech.
+servers:
+  chat:
+    modelRepo: Qwen/Qwen3-4B
+    modelRevision: 1cfa9a7208912126459214e8b04321603b3df60c
+    modelFile: ''
+    modelSha256: ''
+    persistence:
+      size: 20Gi
+    nodeSelector:
+      kubernetes.io/arch: amd64
+      kubernetes.io/os: linux
+    extraArgs:
+    - --gpu-memory-utilization
+    - '0.85'
+    resources:
+      requests:
+        cpu: '2'
+        memory: 8Gi
+        nvidia.com/gpu: 1
+      limits:
+        cpu: '8'
+        memory: 16Gi
+        nvidia.com/gpu: 1
+    backend: vllm
+    accelerator: nvidia
+  embedding:
+    backend: llamacpp
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ''
+  modelSha256: ''
+  maxConcurrentRequests: 2
+  upstreamParallelism: 4
+  requestTimeoutSeconds: 110
+  maxSequences: 8
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: '2'
+      memory: 8Gi
+      amd.com/gpu: 1
+    limits:
+      cpu: '4'
+      memory: 16Gi
+      amd.com/gpu: 1
+  nodeSelector:
+    kubernetes.io/arch: amd64
+    kubernetes.io/os: linux
+  accelerator: amd

@@ -1,0 +1,212 @@
+{
+  "checkedAtUtc": "2026-10-27T09:16:19.326828+00:00",
+  "scope": "Unmodified upstream/vendor image candidates; offline WAV decode and full unfixed HIGH/CRITICAL vulnerability gates. Not physical GPU/model acceptance.",
+  "assessment": "Existing version-specific NVIDIA official-image kernel-header assessment only; no AMD or NGC assessment. Raw findings are not individual exploitability determinations.",
+  "conclusion": "No evaluated candidate meets the current vulnerability gate. Keep Draft; do not promote chart pins, publish a replacement release or delete the currently referenced custom GPU package.",
+  "candidates": [
+    {
+      "candidate": "official-cuda-stable",
+      "runId": 40475453360,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40475453360",
+      "workflowHeadSha": "1cbc9bbdf57ef29f737e418d64d2dfe51a7bbd95",
+      "artifactId": 12721211399,
+      "artifactSha256": "sha256:891ca3e7536103462ed15823348e0c1031355e2f4767ba4eb046738f5e468bd4",
+      "requestedRepoDigests": [
+        "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34"
+      ],
+      "high": 18,
+      "critical": 3,
+      "packages": {
+        "dirmngr": 1,
+        "gnupg": 1,
+        "gnupg-utils": 1,
+        "gnupg2": 1,
+        "gpg": 1,
+        "gpg-agent": 1,
+        "gpgconf": 1,
+        "gpgsm": 1,
+        "gpgv": 1,
+        "keyboxd": 1,
+        "libssl3t64": 2,
+        "openssl": 2,
+        "certifi": 2,
+        "msgpack": 1,
+        "setuptools": 1,
+        "urllib3": 2,
+        "uv": 1
+      },
+      "runtime": null,
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    },
+    {
+      "candidate": "official-rocm-stable",
+      "runId": 40475453360,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40475453360",
+      "workflowHeadSha": "1cbc9bbdf57ef29f737e418d64d2dfe51a7bbd95",
+      "artifactId": 12720893512,
+      "artifactSha256": "sha256:508b2692e90f34058bdcf08291397c36d4c48cab7e405182927a1ab55b8abaac",
+      "requestedRepoDigests": [
+        "vllm/vllm-openai-rocm@sha256:14f6a575e1fb0a580b0f633c09e06f648709d60405b85f6a7ff3f80d49f39905"
+      ],
+      "high": 756,
+      "critical": 48,
+      "packages": {
+        "libssl3": 2,
+        "linux-libc-dev": 762,
+        "openssl": 2,
+        "certifi": 2,
+        "flash_attn": 1,
+        "jaraco.context": 1,
+        "lmcache": 1,
+        "msgpack": 1,
+        "pillow": 28,
+        "setuptools": 1,
+        "urllib3": 2,
+        "wheel": 1
+      },
+      "runtime": null,
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    },
+    {
+      "candidate": "official-cuda-nightly",
+      "runId": 40475459943,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40475459943",
+      "workflowHeadSha": "1cbc9bbdf57ef29f737e418d64d2dfe51a7bbd95",
+      "artifactId": 12721272236,
+      "artifactSha256": "sha256:5320b1ddf029f692be7d48d74cec8f956db824ccc360eac8fe43258274755f38",
+      "requestedRepoDigests": [
+        "vllm/vllm-openai@sha256:3431ebee919296f7a5f3604db353f639e1474a4c7ef37595e31de6699fd831a7"
+      ],
+      "high": 18,
+      "critical": 0,
+      "packages": {
+        "dirmngr": 1,
+        "gnupg": 1,
+        "gnupg-utils": 1,
+        "gnupg2": 1,
+        "gpg": 1,
+        "gpg-agent": 1,
+        "gpgconf": 1,
+        "gpgsm": 1,
+        "gpgv": 1,
+        "keyboxd": 1,
+        "libssl3t64": 2,
+        "openssl": 2,
+        "msgpack": 1,
+        "setuptools": 1,
+        "urllib3": 2
+      },
+      "runtime": {
+        "vllm": "0.32.1rc1.dev602+g5d35ce393",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    },
+    {
+      "candidate": "official-rocm100-nightly",
+      "runId": 40475459943,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40475459943",
+      "workflowHeadSha": "1cbc9bbdf57ef29f737e418d64d2dfe51a7bbd95",
+      "artifactId": 12720588132,
+      "artifactSha256": "sha256:72009da5dafab6c4130a142eb63f4ef34c947fe5f2238b9cf97d818e48cca619",
+      "requestedRepoDigests": [
+        "vllm/vllm-openai-rocm@sha256:0c030ba9e2e5fd2f45f2a048a1c8bb239d9674b63297166b79e258b4ce65c6cc"
+      ],
+      "high": 523,
+      "critical": 19,
+      "packages": {
+        "linux-libc-dev": 534,
+        "flash_attn": 1,
+        "jaraco.context": 1,
+        "lmcache": 1,
+        "msgpack": 1,
+        "setuptools": 1,
+        "urllib3": 2,
+        "wheel": 1
+      },
+      "runtime": {
+        "vllm": "0.32.1rc1.dev602+g5d35ce393.rocm100",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    },
+    {
+      "candidate": "nvidia-ngc-26.09",
+      "runId": 40477415246,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40477415246",
+      "workflowHeadSha": "c0b8f605427afd7861f99aa8bfc218886225199a",
+      "artifactId": 12722405125,
+      "artifactSha256": "sha256:30c7d1059e65fde56eb1cc92d76b03ef2af9217d148b662bd67481a2eb36f967",
+      "requestedRepoDigests": [
+        "nvcr.io/nvidia/vllm@sha256:557747337846eecf34486866f3d992383c6f8af869fdb0e365b5093fcaee02c2"
+      ],
+      "high": 554,
+      "critical": 29,
+      "packages": {
+        "libssl3t64": 1,
+        "linux-libc-dev": 539,
+        "openssl": 1,
+        "aiohttp": 3,
+        "certifi": 2,
+        "filelock": 1,
+        "msgpack": 1,
+        "pillow": 28,
+        "setuptools": 1,
+        "urllib3": 2,
+        "uv": 1,
+        "vllm": 1,
+        "pyo3": 1,
+        "rustls-webpki": 1
+      },
+      "runtime": {
+        "vllm": "0.29.0+5013de39.nv26.9.69442229",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    },
+    {
+      "candidate": "official-rocm72-nightly",
+      "runId": 40477415246,
+      "runUrl": "https://github.com/yukiharada1228/videoq/actions/runs/40477415246",
+      "workflowHeadSha": "c0b8f605427afd7861f99aa8bfc218886225199a",
+      "artifactId": 12721493796,
+      "artifactSha256": "sha256:bb4d131f20e264b5127702a5194462aaf0ddca108ef071b6204160fbd36affb4",
+      "requestedRepoDigests": [
+        "vllm/vllm-openai-rocm@sha256:a1799026344dce3d3a41f38a85ee861fee46b07fe81b3df3c3a0e54b91868390"
+      ],
+      "high": 733,
+      "critical": 41,
+      "packages": {
+        "libssl3": 2,
+        "linux-libc-dev": 762,
+        "openssl": 2,
+        "flash_attn": 1,
+        "jaraco.context": 1,
+        "lmcache": 1,
+        "msgpack": 1,
+        "setuptools": 1,
+        "urllib3": 2,
+        "wheel": 1
+      },
+      "runtime": {
+        "vllm": "0.32.1rc1.dev602+g5d35ce393.rocm72",
+        "sample_rate": 16000,
+        "samples": 1600,
+        "gateway_wav_decoding": "passed"
+      },
+      "gate": "failed",
+      "artifactHashAndImageDigestVerified": true
+    }
+  ]
+}

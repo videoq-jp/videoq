@@ -53,6 +53,14 @@ withHelm("on-prem Helm distribution", () => {
     expect(resources.find(resource => resource.metadata.name === "test-videoq-api" && resource.kind === "Deployment").spec.replicas).toBe(3);
     expect(resources.find(resource => resource.metadata.name === "test-videoq-worker").spec.replicas).toBe(4);
   });
+  it("configures an existing speech service independently of chat and embeddings", () => {
+    const resources = render("--set", "ai.whisperBackend=local", "--set", "ai.whisperLocalUrl=https://speech.example.invalid/v1", "--set", "ai.whisperLocalModel=custom/speech-model");
+    const config = resources.find(r => r.kind === "ConfigMap").data;
+    expect(config.WHISPER_LOCAL_URL).toBe("https://speech.example.invalid/v1");
+    expect(config.WHISPER_LOCAL_MODEL).toBe("custom/speech-model");
+    expect(config.WHISPER_LOCAL_API_KEY).toBeUndefined();
+    expect(config.OPENAI_BASE_URL).toBe("https://openrouter.ai/api/v1");
+  });
   it("routes LLM overrides independently of shared OpenRouter services", () => {
     const resources = render("--set", "ai.llmBaseUrl=https://openrouter.ai/api/v1", "--set", "ai.llmModel=vendor/model");
     const config = resources.find(resource => resource.kind === "ConfigMap").data;
@@ -67,7 +75,7 @@ withHelm("on-prem Helm distribution", () => {
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {
     const missing = spawnSync(helm!, ["template", "test", chart], { encoding: "utf8" });
     expect(missing.status).not.toBe(0);
-    for (const setting of ["ai.unknownSetting=true", "api.trustedProxyHops=-1", "api.databasePoolMax=1", "existingSecret=", "publicUrl=https://example.edu/prefix"]) {
+    for (const setting of ["ai.unknownSetting=true", "ai.whisperLocalModel=", "api.trustedProxyHops=-1", "api.databasePoolMax=1", "existingSecret=", "publicUrl=https://example.edu/prefix"]) {
       expect(spawnSync(helm!, ["template", "test", chart, ...settings, "--set", setting], { encoding: "utf8" }).status).not.toBe(0);
     }
   });

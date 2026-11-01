@@ -1,0 +1,58 @@
+{
+  "checkedAtUtc": "2026-10-27T16:03:33.082253+00:00",
+  "baselineAudit": "vllm-upstream-candidates-2026-10-27.json",
+  "tags": [
+    {
+      "repository": "vllm/vllm-openai",
+      "tag": "v0.32.0",
+      "digest": "sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+      "lastUpdated": "2026-10-18T10:54:00.331512Z",
+      "previouslyEvaluatedExactDigest": true,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.32.0"
+    },
+    {
+      "repository": "vllm/vllm-openai-rocm",
+      "tag": "v0.32.0",
+      "digest": "sha256:14f6a575e1fb0a580b0f633c09e06f648709d60405b85f6a7ff3f80d49f39905",
+      "lastUpdated": "2026-10-18T10:33:20.210424Z",
+      "previouslyEvaluatedExactDigest": true,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai-rocm/tags/v0.32.0"
+    },
+    {
+      "repository": "vllm/vllm-openai",
+      "tag": "nightly",
+      "digest": "sha256:3431ebee919296f7a5f3604db353f639e1474a4c7ef37595e31de6699fd831a7",
+      "lastUpdated": "2026-10-27T06:15:55.414154Z",
+      "previouslyEvaluatedExactDigest": true,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/nightly"
+    },
+    {
+      "repository": "vllm/vllm-openai-rocm",
+      "tag": "nightly",
+      "digest": "sha256:0c030ba9e2e5fd2f45f2a048a1c8bb239d9674b63297166b79e258b4ce65c6cc",
+      "lastUpdated": "2026-10-27T05:28:59.81316Z",
+      "previouslyEvaluatedExactDigest": true,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai-rocm/tags/nightly"
+    },
+    {
+      "repository": "vllm/vllm-openai-rocm",
+      "tag": "nightly-rocm72",
+      "digest": "sha256:a1799026344dce3d3a41f38a85ee861fee46b07fe81b3df3c3a0e54b91868390",
+      "lastUpdated": "2026-10-27T05:30:25.750528Z",
+      "previouslyEvaluatedExactDigest": true,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai-rocm/tags/nightly-rocm72"
+    },
+    {
+      "repository": "vllm/vllm-openai",
+      "tag": "cu134-nightly",
+      "digest": "sha256:d255176939553fe33c1ce37b8403e96369e37c2e4baceac4f5707a3b765361b1",
+      "lastUpdated": "2026-10-27T06:28:29.206811Z",
+      "previouslyEvaluatedExactDigest": false,
+      "registryMetadataUrl": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/cu134-nightly"
+    }
+  ],
+  "conclusion": "Pinned CUDA/ROCm stable and evaluated nightly digests are unchanged. cu134-nightly is a distinct unassessed CUDA variant, not a validated deployment candidate. No pin or security exemption changed.",
+  "protectedCurrentPackage": "videoq-vllm",
+  "currentReleaseSchema": 4,
+  "upstreamReleaseSchema": 5
+}

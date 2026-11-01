@@ -8,6 +8,23 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+    inputs:
+      gpu_candidates_only:
+        description: Evaluate GPU candidates instead of the onprem application/CPU rehearsal
+        type: boolean
+        default: false
+      gpu_accelerator:
+        type: choice
+        options: [both, nvidia, amd]
+        default: both
+      nvidia_candidate:
+        description: Optional official or NVIDIA vendor image at an exact digest
+        type: string
+        default: ''
+      amd_candidate:
+        description: Optional official ROCm image at an exact digest
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -53,7 +70,14 @@ jobs:
       - name: Check lockfile sources, integrity and vulnerability delta
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
-        run: python .github/scripts/supply-chain.py --base "$BASE_SHA"
+          EVENT_NAME: ${{ github.event_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          base="$BASE_SHA"
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            base=$(git rev-parse --verify "refs/remotes/origin/$DEFAULT_BRANCH^{commit}")
+          fi
+          python .github/scripts/supply-chain.py --base "$base"
       # Verify registry signatures before any package code executes in this job.
       - run: npm ci --ignore-scripts
       - run: npm audit signatures
@@ -119,7 +143,7 @@ jobs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       docs: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.docs == 'true' }}
       worker_matrix: ${{ steps.runtimes.outputs.matrix }}
-      onprem: ${{ steps.filter.outputs.onprem }}
+      onprem: ${{ (github.event_name == 'workflow_dispatch' && inputs.gpu_candidates_only == true) || steps.filter.outputs.onprem == 'true' }}
       whisper_gpu: ${{ steps.filter.outputs.whisper_gpu }}
       upstream_images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.upstream_images == 'true' }}
       real_cpu: ${{ steps.filter.outputs.real_cpu }}
@@ -167,7 +191,13 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
-              - 'apps/inference/whisper/Dockerfile.vllm'
+              - 'apps/inference/vllm/**'
+              - 'apps/inference/whisper/provision_audio.py'
+              - 'apps/inference/whisper/pyproject.toml'
+              - 'apps/inference/whisper/uv.lock'
+              - 'apps/inference/whisper/Dockerfile'
+              - 'apps/inference/whisper/.python-version'
+              - 'charts/videoq-inference/**'
               - '.github/workflows/onprem-validation.yml'
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
@@ -181,6 +211,7 @@ jobs:
               - '.github/onprem-lab/**'
               - 'charts/videoq-inference/**'
             onprem:
+              - '.github/scripts/check-upstream-header-image.py'
               - '.github/inference-basic-packages.json'
               - '.dockerignore'
               - 'charts/**'
@@ -280,7 +311,11 @@ jobs:
     if: needs.changes.outputs.onprem == 'true'
     uses: ./.github/workflows/onprem-validation.yml
     with:
-      validate_whisper_gpu: ${{ needs.changes.outputs.whisper_gpu == 'true' }}
+      gpu_candidates_only: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu_candidates_only == true }}
+      gpu_accelerator: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu_accelerator || 'both' }}
+      nvidia_candidate: ${{ github.event_name == 'workflow_dispatch' && inputs.nvidia_candidate || '' }}
+      amd_candidate: ${{ github.event_name == 'workflow_dispatch' && inputs.amd_candidate || '' }}
+      validate_whisper_gpu: ${{ needs.changes.outputs.whisper_gpu == 'true' || (github.event_name == 'workflow_dispatch' && inputs.gpu_candidates_only == true) }}
       validate_real_cpu: ${{ github.event_name == 'pull_request' && needs.changes.outputs.real_cpu == 'true' }}
       scan_upstream_images: ${{ needs.changes.outputs.upstream_images == 'true' }}
     permissions:

@@ -42,6 +42,7 @@ data:
   WHISPER_CHUNK_SECONDS: {{ .Values.ai.whisperChunkSeconds | quote }}
   WHISPER_BACKEND: {{ .Values.ai.whisperBackend | quote }}
   WHISPER_LOCAL_URL: {{ .Values.ai.whisperLocalUrl | quote }}
+  WHISPER_LOCAL_MODEL: {{ .Values.ai.whisperLocalModel | quote }}
   MAX_VIDEO_UPLOAD_SIZE_MB: {{ .Values.config.maxVideoUploadSizeMb | quote }}
   VIDEO_VISUAL_ENABLED: {{ .Values.config.videoVisualEnabled | quote }}
   DEFAULT_FROM_EMAIL: {{ .Values.config.defaultFromEmail | quote }}

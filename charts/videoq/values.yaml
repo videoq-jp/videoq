@@ -74,6 +74,8 @@ ai:
   # CPU overlay reduces this to 30; hosted/NVIDIA profiles use 300.
   whisperChunkSeconds: 300
   whisperLocalUrl: ""
+  # Match the served alias when using an existing compatible speech service.
+  whisperLocalModel: whisper-local
 
 # Enable with local AI. The site's CNI must enforce Kubernetes NetworkPolicy.
 networkPolicy:

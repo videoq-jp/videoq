@@ -3,7 +3,7 @@
 {{- if has $name (list "chat" "embedding") }}
 {{- $component = index $.Values.servers $name }}
 {{- end }}
-{{- if not $component.persistence.existingClaim }}
+{{- if and $component.enabled (not $component.persistence.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

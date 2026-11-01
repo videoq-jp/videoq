@@ -1,4 +1,4 @@
-# Use with inference/examples/vllm-nvidia.yaml.
+# Use with inference/examples/vllm-nvidia.yaml (CUDA) or vllm-amd.yaml (ROCm).
 # "openai" below means the wire protocol; both endpoints are private services.
 ai:
   openaiBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1

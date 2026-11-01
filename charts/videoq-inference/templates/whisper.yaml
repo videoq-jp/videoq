@@ -1,17 +1,17 @@
+{{- if .Values.whisper.enabled }}
 {{- $whisper := .Values.whisper }}
 {{- $gpu := eq $whisper.backend "vllm" }}
 {{- $cpuArch := .Values.whispercpp.architecture }}
-{{- $cpuImage := index .Values.whispercpp.images $cpuArch }}
-{{- if and (not $gpu) (hasKey $whisper.nodeSelector "kubernetes.io/arch") (ne (index $whisper.nodeSelector "kubernetes.io/arch") $cpuArch) }}
+{{- $accelerator := default .Values.vllm.accelerator $whisper.accelerator }}
+{{- $rocmAudio := and $gpu (or (eq $whisper.audioCodecs "bundled") (and (eq $whisper.audioCodecs "auto") (eq $accelerator "amd"))) }}
+{{- $engineImage := ternary .Values.vllm.rocmImage .Values.vllm.image (eq $accelerator "amd") }}
+{{- if not $gpu }}
+{{- $engineImage = index .Values.whispercpp.images $cpuArch }}
+{{- if and (hasKey $whisper.nodeSelector "kubernetes.io/arch") (ne (index $whisper.nodeSelector "kubernetes.io/arch") $cpuArch) }}
 {{- fail "whisper.nodeSelector architecture must match whispercpp.architecture" }}
 {{- end }}
-{{- $gpuCount := int (default 0 (index $whisper.resources.limits "nvidia.com/gpu")) }}
-{{- if and $gpu (ne $gpuCount 1) }}
-{{- fail "NVIDIA Whisper requires exactly one GPU in whisper.resources.limits" }}
 {{- end }}
-{{- if and (not $gpu) (ne $gpuCount 0) }}
-{{- fail "CPU Whisper must not reserve an NVIDIA GPU; select whisper.backend=vllm" }}
-{{- end }}
+{{- include "inference.validateGpu" (dict "root" . "resources" $whisper.resources "component" "whisper" "gpu" $gpu "exactlyOne" true "accelerator" $accelerator) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,7 +35,15 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
-      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+        {{- if and $gpu .Values.vllm.supplementalGroups }}
+        supplementalGroups: {{ toJson .Values.vllm.supplementalGroups }}
+        {{- end }}
       {{- $selector := deepCopy $whisper.nodeSelector }}
       {{- if not $gpu }}
       {{- $_ := set $selector "kubernetes.io/arch" $cpuArch }}
@@ -46,8 +54,9 @@ spec:
       {{- with $whisper.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.downloadModels }}
+      {{- if or .Values.downloadModels $rocmAudio }}
       initContainers:
+        {{- if .Values.downloadModels }}
         - name: provision-model
           image: {{ include "inference.image" (dict "root" . "image" $whisper.image "component" "whisper") | quote }}
           imagePullPolicy: {{ $whisper.image.pullPolicy }}
@@ -61,6 +70,16 @@ spec:
           securityContext: {{ include "inference.security" . | nindent 12 }}
           resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 1Gi } }
           volumeMounts: [{ name: models, mountPath: /models }]
+        {{- end }}
+        {{- if $rocmAudio }}
+        - name: provision-audio
+          image: {{ include "inference.image" (dict "root" . "image" $whisper.image "component" "whisper") | quote }}
+          imagePullPolicy: {{ $whisper.image.pullPolicy }}
+          command: [python, provision_audio.py]
+          securityContext: {{ include "inference.security" . | nindent 12 }}
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 256Mi } }
+          volumeMounts: [{ name: audio-deps, mountPath: /audio-deps }]
+        {{- end }}
       {{- end }}
       containers:
         - name: whisper
@@ -81,9 +100,9 @@ spec:
           resources: {{ toYaml $whisper.gatewayResources | nindent 12 }}
           volumeMounts: [{ name: models, mountPath: /models, readOnly: true }]
         - name: engine
+          image: {{ include "inference.image" (dict "root" . "image" $engineImage "component" $whisper.backend) | quote }}
+          imagePullPolicy: {{ $engineImage.pullPolicy }}
           {{- if $gpu }}
-          image: {{ include "inference.image" (dict "root" . "image" $whisper.vllmImage "component" "whisper.vllmImage") | quote }}
-          imagePullPolicy: {{ $whisper.vllmImage.pullPolicy }}
           command: [vllm, serve]
           args:
             - /models/{{ $whisper.modelRevision }}
@@ -100,8 +119,7 @@ spec:
             - --max-num-seqs
             - {{ $whisper.maxSequences | quote }}
           {{- else }}
-          image: {{ include "inference.image" (dict "root" . "image" $cpuImage "component" "whispercpp") | quote }}
-          imagePullPolicy: {{ $cpuImage.pullPolicy }}
+          # Override the upstream bash entrypoint; invoke the server directly.
           command: [/app/build/bin/whisper-server]
           args:
             - --model
@@ -120,20 +138,33 @@ spec:
             - "5"
             - --no-gpu
           {{- end }}
+            {{- with $whisper.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           env:
             - { name: HF_HUB_OFFLINE, value: "1" }
             - { name: HF_HUB_DISABLE_TELEMETRY, value: "1" }
             - { name: VLLM_NO_USAGE_STATS, value: "1" }
             - { name: DO_NOT_TRACK, value: "1" }
             - { name: HOME, value: /tmp }
+            {{- if $rocmAudio }}
+            - { name: PYTHONPATH, value: /audio-deps }
+            {{- end }}
           securityContext: {{ include "inference.security" . | nindent 12 }}
           resources: {{ toYaml $whisper.resources | nindent 12 }}
           volumeMounts:
             - { name: models, mountPath: /models, readOnly: true }
+            {{- if $rocmAudio }}
+            - { name: audio-deps, mountPath: /audio-deps, readOnly: true }
+            {{- end }}
             {{- if $gpu }}
             - { name: shm, mountPath: /dev/shm }
             {{- end }}
       volumes:
+        {{- if $rocmAudio }}
+        - name: audio-deps
+          emptyDir: {}
+        {{- end }}
         - name: models
           persistentVolumeClaim:
             claimName: {{ default (printf "%s-whisper" (include "inference.fullname" .)) $whisper.persistence.existingClaim }}
@@ -141,3 +172,4 @@ spec:
         - name: shm
           emptyDir: { medium: Memory, sizeLimit: 2Gi }
         {{- end }}
+{{- end }}

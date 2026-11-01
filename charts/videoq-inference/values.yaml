@@ -1,4 +1,4 @@
-# Select llamacpp or vllm; application endpoints use a matching overlay.
+# Default chat/embedding runtime. Each role may override it or be disabled.
 backend: llamacpp
 fullnameOverride: videoq-inference
 imagePullSecrets: []
@@ -8,13 +8,20 @@ requireImageDigests: false
 downloadModels: true
 
 whisper:
+  enabled: true
+  # Empty inherits vllm.accelerator; only used with backend=vllm.
+  accelerator: ""
+  # auto: codec payload for ROCm speech; upstream: use the image alone.
+  # bundled: use the reviewed CPython 3.12 codec payload explicitly.
+  audioCodecs: auto
+  extraArgs: []
   # Signed release verification supplies the immutable digest.
   image:
     repository: ghcr.io/videoq-jp/videoq-transcription-gateway
     tag: "0.2.0-cpu"
     digest: ""
     pullPolicy: IfNotPresent
-  # CPU transcription engine. NVIDIA overlay selects vllm, without aliases.
+  # CPU transcription engine. GPU overlays select vllm, without aliases.
   backend: whispercpp
   modelRepo: ggerganov/whisper.cpp
   modelRevision: 5359861c739e955e79d9a303bcbc70fb988958b1
@@ -25,12 +32,6 @@ whisper:
   upstreamParallelism: 1
   requestTimeoutSeconds: 600
   maxSequences: 8
-  vllmImage:
-    # Signed amd64 NVIDIA engine, with locked audio extras and OS patches.
-    repository: ghcr.io/videoq-jp/videoq-vllm
-    tag: "0.2.0"
-    digest: ""
-    pullPolicy: IfNotPresent
   gatewayResources:
     requests: { cpu: 250m, memory: 512Mi }
     limits: { cpu: "1", memory: 2Gi }
@@ -61,6 +62,7 @@ llamacpp:
     tag: server-b11977
     digest: sha256:01c2bc28d51291536df2ccebe5c6af1cdec9ea9b2bd98ac59556408caf96d3f8
     pullPolicy: IfNotPresent
+# Upstream CPU images are published separately for each architecture.
 whispercpp:
   architecture: amd64
   images:
@@ -75,13 +77,28 @@ whispercpp:
       digest: sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0
       pullPolicy: IfNotPresent
 vllm:
+  # Default nvidia (CUDA) or amd (ROCm); each vLLM role may override it.
+  accelerator: nvidia
+  # Host render/video group IDs if required by the device plugin/runtime.
+  supplementalGroups: []
+  # Official upstream CUDA image, shared by chat, embeddings and speech.
   image:
     repository: vllm/vllm-openai
     tag: v0.32.0
     digest: sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
     pullPolicy: IfNotPresent
+  # Official upstream ROCm image; selected when accelerator=amd.
+  rocmImage:
+    repository: vllm/vllm-openai-rocm
+    tag: v0.32.0
+    digest: sha256:14f6a575e1fb0a580b0f633c09e06f648709d60405b85f6a7ff3f80d49f39905
+    pullPolicy: IfNotPresent
 servers:
   chat:
+    enabled: true
+    # Empty inherits the chart defaults; each role can use another engine/GPU.
+    backend: ""
+    accelerator: ""
     servedModel: videoq-chat
     modelRepo: Qwen/Qwen3-4B-GGUF
     modelRevision: bc640142c66e1fdd12af0bd68f40445458f3869b
@@ -97,6 +114,10 @@ servers:
     nodeSelector: {}
     tolerations: []
   embedding:
+    enabled: true
+    # Empty inherits the chart defaults; each role can use another engine/GPU.
+    backend: ""
+    accelerator: ""
     # Native 1536 dimensions. llama.cpp does not implement dimensions reduction.
     servedModel: gte-qwen2-1.5b-q4km-124fbdad
     modelRepo: second-state/gte-Qwen2-1.5B-instruct-GGUF

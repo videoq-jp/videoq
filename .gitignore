@@ -34,3 +34,6 @@ test-results
 *.a
 .cutover-secrets/
 runtime-plan.json
+
+# Local model weights downloaded by the inference setup guide
+.local-models/

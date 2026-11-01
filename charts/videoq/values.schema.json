@@ -126,6 +126,10 @@
           "minimum": 30,
           "maximum": 300
         },
+        "whisperLocalModel": {
+          "type": "string",
+          "minLength": 1
+        },
         "embeddingProfile": {
           "enum": [
             "openai",

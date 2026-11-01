@@ -1,3 +1,6 @@
+vllm:
+  accelerator: nvidia
+
 # One additional dedicated NVIDIA GPU for speech. No GPU sharing.
 # The CPU gateway performs VAD/normalization; vLLM dynamically batches speech.
 whisper:

@@ -5,15 +5,15 @@ description: 署名とダイジェストを検証し、Kubernetes で更新と�
 
 # オンプレの署名付き配布と更新
 
-インターネットに接続できる導入先では、外部レジストリとイメージのダイジェストを使って配布します。`On-prem Release` は最新 main の push CI 成功を確認し、Linux amd64・arm64 の API、Web、ワーカー、CPU Whisper、アプリ・推論用の両 Helm Chart、`release.json` を作成します。NVIDIA vLLM のイメージは amd64 用として同梱します。同じ main コミットで手動実行すると、OS パッケージ修正後の再ビルドにも使えます。
+インターネットに接続できる導入先では、外部レジストリとイメージのダイジェストを使って配布します。`On-prem Release` は最新 main の push CI 成功を確認し、Linux amd64・arm64 の API、Web、ワーカー、文字起こしゲートウェイ、アプリ・推論用の両 Helm Chart、`release.json` を作成します。推論用 Chart には上流 llama.cpp・whisper.cpp・vLLM の digest を固定し、これらのイメージは直接使用します。同じ main コミットで手動実行すると、OS パッケージ修正後の再ビルドにも使えます。
 
-配布用の `ghcr.io/videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・`videoq-transcription-gateway`・`videoq-vllm` は Public とします。Docker や Kubernetes からは GHCR のログインや `imagePullSecrets` なしで取得できます。導入先独自の非公開レジストリを使う場合は、引き続き `imagePullSecrets` を設定できます。各イメージにはリポジトリの現行 LICENSE を同梱し、公開範囲の変更でライセンス条件は変更しません。
+配布用の `ghcr.io/videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・`videoq-transcription-gateway` は Public とします。Docker や Kubernetes からは GHCR のログインや `imagePullSecrets` なしで取得できます。導入先独自の非公開レジストリを使う場合は、引き続き `imagePullSecrets` を設定できます。各イメージにはリポジトリの現行 LICENSE を同梱し、公開範囲の変更でライセンス条件は変更しません。
 
 パッケージ管理者が初期設定で Public にし、**Package settings → Manage Actions access** で `videoq-jp/videoq` に **Write** を付与します。CI は push の前後とインデックス作成前に公開状態を確認し、非公開・internal・未作成の場合は配布を止めます。署名を検証した配布物は、空の Docker 認証設定で取得して匿名アクセスを確認します。公開済みパッケージを Private に戻すことは GitHub の仕様上できません。push 用の書き込み認証は引き続き必要です。
 
 ## 配布時に確認すること
 
-アプリのビルドはリポジトリの読み取り権限だけで実行します。各イメージの未修正分を含む HIGH・CRITICAL 脆弱性を検査し、イメージと CycloneDX SBOM を保存します。別の新しいランナーで、そのイメージを実行せずに配布し、GitHub OIDC による来歴とアーキテクチャ別 SBOM の署名を付けます。両アーキテクチャを束ねるイメージインデックス、Chart のバイト列、全5イメージのダイジェストと対応アーキテクチャも署名対象です。NVIDIA 版のスキャンは既存の限定的な kernel-header 評価を維持し、評価済みを含む JSON レポートと評価ファイルを `security-*` 成果物に90日間保存します。その他の HIGH・CRITICAL は引き続き配布を止めます。
+アプリのビルドはリポジトリの読み取り権限だけで実行します。各イメージの未修正分を含む HIGH・CRITICAL 脆弱性を検査し、イメージと CycloneDX SBOM を保存します。別の新しいランナーで、そのイメージを実行せずに配布し、GitHub OIDC による来歴とアーキテクチャ別 SBOM の署名を付けます。両アーキテクチャを束ねるイメージインデックス、Chart のバイト列、VideoQ の全4イメージのダイジェストと対応アーキテクチャも署名対象です。NVIDIA 版のスキャンは既存の限定的な kernel-header 評価を維持し、評価済みを含む JSON レポートと評価ファイルを `vllm-security-nvidia` 成果物に14日間保存します。その他の HIGH・CRITICAL は引き続き配布を止めます。
 
 API とワーカーはダイジェスト固定の Alpine イメージを使い、既存の Runtime Updates がインタープリターと npm・pip・uv の検証済み配布物を更新します。ベース変更には、Python wheel、PostgreSQL、FFmpeg、認証、Kubernetes の検証を必要とします。リリースの各実行・再試行には別のレジストリタグを使い、導入時はダイジェストを指定します。
 
@@ -35,7 +35,7 @@ python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
   /secure/videoq-release/verified-inference.json
 ```
 
-イメージの取得に GHCR のログインや `read:packages` 資格情報は不要です。上記の GitHub CLI の認証は、ワークフロー成果物のダウンロードと署名検証に使います。検証スクリプトは署名、対象ファイル、リポジトリ、配布ワークフロー、`refs/heads/main`、ソースコミット、GitHub ホストのランナーであることを確認します。manifest、両 Chart のチェックサムと署名、全5イメージの署名がすべて正しい場合だけ、アプリ用・推論用の Helm 設定ファイルを生成します。失敗時は既存の値を保持します。
+イメージの取得に GHCR のログインや `read:packages` 資格情報は不要です。上記の GitHub CLI の認証は、ワークフロー成果物のダウンロードと署名検証に使います。検証スクリプトは署名、対象ファイル、リポジトリ、配布ワークフロー、`refs/heads/main`、ソースコミット、GitHub ホストのランナーであることを確認します。manifest、両 Chart のチェックサムと署名、VideoQ の全4イメージの署名がすべて正しい場合だけ、アプリ用・推論用の Helm 設定ファイルを生成します。失敗時は既存の値を保持します。
 
 アーキテクチャ別 SBOM は、`gh attestation verify` の predicate に `https://cyclonedx.org/bom` を指定して確認できます。Chart、manifest、確認済みの値、SBOM、署名バンドルを保管してください。ワークフローの成果物は 90 日で期限切れになります。採用したイメージのダイジェストと署名をレジストリの削除ポリシーから保護します。
 
@@ -99,17 +99,62 @@ HELM_BIN=helm python3 .github/scripts/onprem-cpu-acceptance.py \
 
 既存の `videoq-onprem-lab` クラスタがあれば置き換えずに停止します。モデル取得時にはインターネット接続が必要です。検証用の DB 等も含め、少なくとも16 GiB の RAM を用意します。短い公開サンプル1件での確認なので、導入先の日本語録画・同時利用数による精度や性能、CNI による NetworkPolicy の適用確認は別途必要です。
 
+## 推論イメージの方針
+
+推論エンジンは、要件を満たす上流イメージを優先します。llama.cpp と CPU の
+whisper.cpp は上流イメージを digest 固定で直接使用し、VideoQ 独自の
+`videoq-transcription-gateway` には音声前処理・VAD・字幕 API・モデル取得処理を残します。
+CPU 文字起こしを arm64 ノードで動かす場合は `whispercpp.architecture: arm64` を設定します。
+
+vLLM も上流 `vllm/vllm-openai` を digest 固定で直接使用し、LLM・埋め込み・
+文字起こしで共用します。VideoQ 独自の vLLM イメージはビルド・再配布しません。
+CI では VideoQ が送信する WAV のデコードと上流イメージの脆弱性を検証します。
+
+新リリースでは従来の `videoq-onprem-*` を上記の名前へ変更します。旧リリースの
+署名済み成果物はロールバック用に保持し、新リリースの Chart と検証済みイメージ設定を
+組み合わせて更新してください。導入先の `whisper.vllmImage` 設定は `vllm.image` に移行します。
+
+
+## リリースマニフェストの移行
+
+上流エンジンを使う新規リリースは schemaVersion 5 を使用し、VideoQ が署名するパッケージは
+api・web・worker・transcription-gateway の4つになります。CUDA／ROCm の上流エンジンは
+チャート内で digest 固定し、VideoQ がビルド・署名したイメージとして扱いません。
+schemaVersion 2（旧名称）・3（旧 GPU 名前空間）・4（`videoq-vllm` を含む5パッケージ）の
+厳密な対応関係を維持し、従来の8対象すべての署名を検証します。schemaVersion 5 は7対象を検証し、
+上流エンジンの digest は署名付き推論チャートで固定します。世代を混ぜたマニフェストは拒否します。
+旧名称パッケージと `videoq-onprem-whisper-vllm` は配布終了・削除済みのため、schemaVersion 2／3 の
+GHCR からの完全な署名検証・導入・復旧はできません。schemaVersion 5 の全検証が完了するまでは、
+schemaVersion 4 の5パッケージ構成が現行です。
+新しいパッケージの公開設定と Actions アクセスを準備する必要があり、公開状態・脆弱性・署名の
+検査は維持します。
+
+GPU 対応はまだリリースできません。上流イメージの脆弱性ゲートは未解決であり、
+GPU 実機と選択モデルによる受け入れ検証も未実施です。
 
 ## パッケージ名と過去のリリース
 
-名前空間の移行は完了しています。通常の **On-prem Release** が
-`videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・
-`videoq-transcription-gateway`・`videoq-vllm` の公開5パッケージを配布します。
-Public設定と、このリポジトリに対するActions Write権限を維持してください。
-bootstrapタグは導入用のリリースではありません。
+`videoq-jp` への名前空間移行は完了し、移行専用の Package Namespace Bootstrap と
+Retired Package Cleanup ワークフローは廃止済みです。署名検証とロールバックのため、
+`videoq-vllm` と過去の署名付きパッケージを保持します。新しいビルドには通常の署名付き
+リリースを使い、上流版の採用には脆弱性・匿名取得・CPU・Kubernetes の全検証が必要です。
 
-移管時だけ使ったPackage Namespace BootstrapとRetired Package Cleanupの
-ワークフローは廃止しました。過去のパッケージ・リリース・署名は削除せず、
-ロールバックと検証のために保持します。過去のスキーマでも元のリポジトリ・
-ワークフロー・コミットを固定し、8件の署名を検証します。
-名前空間を混在させた配布物は拒否します。新しい配布には通常の署名付きリリースを使ってください。
+## 上流 GPU イメージ候補の検査
+
+マージ前は PR ブランチの手動 **CI** で同じ候補と `gpu_candidates_only=true` を指定できます。
+それ以外の選択済み CI 検査は継続します。main 限定の手動 **Operations**（`check=onprem`・`validate_whisper_gpu=true`）は `nvidia_candidate`・`amd_candidate` に公式リポジトリの
+`repository@sha256:<digest>` を指定できます。空ならチャートの検証対象の固定値を使います。
+候補の検査は配布設定を変更せず、イメージも公開しません。オフラインの WAV デコード、
+vLLM バージョン、指定 digest とスキャン結果の一致、未修正を含む HIGH／CRITICAL のゲートを確認します。
+AMD に NVIDIA の評価を適用しません。nightly は開発版であり、これらの検査が通っても
+GPU 推論や対象ハードウェア・モデルの受け入れ検証が済んだことにはなりません。
+
+候補だけを検査する場合は `gpu_candidates_only=true` を指定します。通常の CI の既定値は変えず、
+候補評価時のアプリ・CPU 検査を省きます。NVIDIA 候補にはベンダー保守の
+`nvcr.io/nvidia/vllm@sha256:<digest>` も指定できます。NGC 候補には公式 vLLM イメージ向けの
+ヘッダー評価を適用せず、全件を検査します。vLLM・CUDA・ドライバー要件が異なる場合があるため、
+検査通過だけでチャートの既定値へ採用しません。AMD は公式 `vllm/vllm-openai-rocm` に限定します。
+
+手動実行では `gpu_accelerator=nvidia` または `gpu_accelerator=amd` で、新しい候補のあるベンダーだけを
+検査できます。既定は `both` で、PR・push・定期検査は必ず両方を対象にします。
+配布設定、プロトコル検証、digest の一致確認、脆弱性ゲートは変更しません。

@@ -1,3 +1,4 @@
+{{- if .Values.whisper.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,3 +9,4 @@ spec:
   type: ClusterIP
   selector: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: whisper }
   ports: [{ name: http, port: 8080, targetPort: http }]
+{{- end }}

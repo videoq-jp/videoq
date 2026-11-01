@@ -257,13 +257,21 @@ Image scan results are specific to each build. Inspect the current CI and signed
 release evidence described in the [release guide](../../docs/guides/on-premises-releases.md).
 A passing functional test does not replace vulnerability or signature verification.
 
-The local inference chart also provides llama.cpp CPU and vLLM NVIDIA recipes.
+The local inference chart provides Linux amd64/arm64 llama.cpp CPU and
+vLLM NVIDIA CUDA/AMD ROCm recipes, with independent role selection.
 Use the matching `examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml`.
 `ai.embeddingBaseUrl` maps to `EMBEDDING_BASE_URL` independently of the chat
 endpoint. These services use the OpenAI-compatible protocol. Optional
 `EMBEDDING_API_KEY` belongs in the runtime Secret;
 when absent it reuses `OPENAI_API_KEY`. Keep the API and worker embedding settings
 identical and reindex scenes when changing the embedding model or processing.
+
+Existing compatible speech services can use `ai.whisperLocalUrl` and
+`ai.whisperLocalModel` with `ai.whisperBackend: local`. An optional
+`WHISPER_LOCAL_API_KEY` belongs in the runtime Secret and overrides the shared
+`OPENAI_API_KEY` for speech only. The built-in VideoQ gateway's model alias
+remains `whisper-local`. The service must return real segment timestamps in
+`verbose_json`; text-only transcription is insufficient.
 
 ## On-prem application edition
 

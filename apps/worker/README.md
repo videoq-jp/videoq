@@ -96,6 +96,8 @@ results. Checkpoints are deleted by foreign-key cascade when the video is delete
 | `OPENAI_API_KEY` | Legacy direct OpenAI / local SDK placeholder |
 | `WHISPER_BACKEND` | `openrouter` (hosted profile), `openai` (legacy direct) or `local` (on-premises) |
 | `WHISPER_LOCAL_URL` | Private API base for `local`: native Mac whisper.cpp has no `/v1` suffix with the documented launch command; the Kubernetes gateway includes `/v1` |
+| `WHISPER_LOCAL_MODEL` | Served transcription model alias, default `whisper-local`; independent of chat and embedding models |
+| `WHISPER_LOCAL_API_KEY` | Optional transcription credential; falls back to `OPENAI_API_KEY` for existing deployments |
 | `EMBEDDING_MODEL` | Defaults to `text-embedding-3-small`; set the actual served alias for a private model |
 | `USE_S3_STORAGE` | Enable S3-compatible object storage |
 | `R2_BUCKET_NAME` / `R2_S3_ENDPOINT` / `R2_S3_REGION` | R2 bucket / endpoint / region |
@@ -108,7 +110,8 @@ results. Checkpoints are deleted by foreign-key cascade when the video is delete
 | `MEDIA_PROCESS_MEMORY_LIMIT_MB` | Address space limit for media subprocesses on Linux (default: 2,048 MiB) |
 | `MEDIA_PROCESS_OUTPUT_FILE_SIZE_LIMIT_MB` | File size limit for files written by media subprocesses (default: 1,024 MiB) |
 
-On-premises Kubernetes uses whisper.cpp on CPU and vLLM on NVIDIA, behind a
+On-premises Kubernetes uses upstream whisper.cpp on CPU and upstream vLLM on
+NVIDIA CUDA or AMD ROCm, behind a
 private VAD/normalization gateway. Mac development can use native whisper.cpp
 with Metal. All use `WHISPER_BACKEND=local` and real segment timestamps; the
 operator selects weights before serving. Kubernetes gateway URLs include `/v1`.

@@ -1,0 +1,48 @@
+# Three allocatable AMD GPUs: independent chat, embedding and Whisper.
+# Requires ROCm-compatible Linux drivers, device plugin, and site hardware acceptance.
+backend: vllm
+vllm:
+  accelerator: amd
+servers:
+  chat:
+    modelRepo: Qwen/Qwen3-4B
+    modelRevision: 1cfa9a7208912126459214e8b04321603b3df60c
+    modelFile: ""
+    modelSha256: ""
+    persistence: { size: 20Gi }
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux }
+    extraArgs: [--gpu-memory-utilization, "0.85"]
+    resources:
+      requests: { cpu: "2", memory: 8Gi, amd.com/gpu: 1 }
+      limits: { cpu: "8", memory: 16Gi, amd.com/gpu: 1 }
+  embedding:
+    servedModel: qwen3-embedding-4b-5cf2132a
+    modelRepo: Qwen/Qwen3-Embedding-4B
+    modelRevision: 5cf2132abc99cad020ac570b19d031efec650f2b
+    modelFile: ""
+    modelSha256: ""
+    persistence: { size: 20Gi }
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux }
+    # Qwen3 Embedding supports Matryoshka; explicitly permit VideoQ's 1536 dimensions.
+    extraArgs: [--gpu-memory-utilization, "0.85", --convert, embed, --hf-overrides, '{"matryoshka_dimensions":[1536]}']
+    resources:
+      requests: { cpu: "2", memory: 8Gi, amd.com/gpu: 1 }
+      limits: { cpu: "4", memory: 16Gi, amd.com/gpu: 1 }
+
+# One additional dedicated AMD GPU for speech. No GPU sharing.
+# The CPU gateway performs VAD/normalization; vLLM dynamically batches speech.
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ""
+  modelSha256: ""
+  maxConcurrentRequests: 2
+  upstreamParallelism: 4
+  requestTimeoutSeconds: 110
+  maxSequences: 8
+  persistence: { size: 10Gi }
+  resources:
+    requests: { cpu: "2", memory: 8Gi, amd.com/gpu: 1 }
+    limits: { cpu: "4", memory: 16Gi, amd.com/gpu: 1 }
+  nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux }

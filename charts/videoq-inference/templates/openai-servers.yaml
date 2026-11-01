@@ -1,10 +1,20 @@
 {{- $root := . }}
 {{- range $name := list "chat" "embedding" }}
 {{- $server := index $root.Values.servers $name }}
-{{- $engine := default $root.Values.backend $server.engine }}
+{{- if $server.enabled }}
+{{- if and $server.engine $server.backend (ne $server.engine $server.backend) }}
+{{- fail "server engine and backend must agree when both are set" }}
+{{- end }}
+{{- $engine := default (default $root.Values.backend $server.backend) $server.engine }}
+{{- $accelerator := default $root.Values.vllm.accelerator $server.accelerator }}
+{{- $gpu := eq $engine "vllm" }}
+{{- include "inference.validateGpu" (dict "root" $root "resources" $server.resources "component" $name "gpu" $gpu "exactlyOne" false "accelerator" $accelerator) }}
 {{- $image := $root.Values.whisper.image }}
 {{- if ne $engine "embeddinggemma2" }}
 {{- $image = (index $root.Values $engine).image }}
+{{- end }}
+{{- if and $gpu (eq $accelerator "amd") }}
+{{- $image = $root.Values.vllm.rocmImage }}
 {{- end }}
 {{- if and (eq $engine "llamacpp") (or (empty $server.modelFile) (empty $server.modelSha256)) }}
 {{- fail "llamacpp servers require modelFile and modelSha256" }}
@@ -36,7 +46,15 @@ spec:
       {{- with $root.Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
-      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+        {{- if and $gpu $root.Values.vllm.supplementalGroups }}
+        supplementalGroups: {{ toJson $root.Values.vllm.supplementalGroups }}
+        {{- end }}
       {{- with $server.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -172,4 +190,5 @@ spec:
   type: ClusterIP
   selector: { app.kubernetes.io/instance: {{ $root.Release.Name }}, app.kubernetes.io/component: {{ $name }} }
   ports: [{ name: http, port: 8000, targetPort: http }]
+{{- end }}
 {{- end }}

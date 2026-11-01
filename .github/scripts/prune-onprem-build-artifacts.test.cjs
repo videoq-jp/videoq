@@ -7,9 +7,9 @@ function fixture() {
   const context = { repo: { owner: 'videoq-jp', repo: 'videoq' }, ref: 'refs/heads/main', eventName: 'workflow_dispatch', sha, runId: 123, runAttempt: 2 };
   const run = { id: 123, path: '.github/workflows/onprem-release.yml', head_sha: sha, head_branch: 'main', head_repository: { full_name: 'videoq-jp/videoq' }, run_attempt: 2 };
   const artifact = (id, name) => ({ id, name, size_in_bytes: 100, expired: false, workflow_run: { id: 123, head_sha: sha } });
-  const artifacts = [artifact(1, `build-vllm-engine-amd64-${sha}-attempt-2`), artifact(2, `build-api-arm64-${sha}-attempt-2`),
+  const artifacts = [artifact(1, `build-web-amd64-${sha}-attempt-2`), artifact(2, `build-api-arm64-${sha}-attempt-2`),
     artifact(3, `security-api-amd64-${sha}-attempt-2`), artifact(4, `onprem-release-${sha}-attempt-2`),
-    artifact(5, `build-api-amd64-${sha}-attempt-1`), artifact(6, `build-api-amd64-${'b'.repeat(40)}-attempt-2`)];
+    artifact(5, `build-api-amd64-${sha}-attempt-1`), artifact(6, `build-api-amd64-${'b'.repeat(40)}-attempt-2`), artifact(7, `build-vllm-engine-amd64-${sha}-attempt-2`)];
   const github = { rest: { actions: {
     getWorkflowRun: async () => ({ data: run }), listWorkflowRunArtifacts() {},
     deleteArtifact: async ({ artifact_id }) => deleted.push(artifact_id),
@@ -49,4 +49,22 @@ test('the real workflow waits for publication and passes GitHub Context prototyp
     () => prune, f.github, context, { info() {} }, { env: { SOURCE_SHA: sha, GITHUB_RUN_ATTEMPT: '2' } },
   );
   assert.deepEqual(f.deleted, [1, 2]);
+});
+
+
+test('pruning covers the actual eight-image matrix without deleting a legacy GPU archive', async () => {
+  const { readFileSync } = require('node:fs');
+  const { join } = require('node:path');
+  const workflow = readFileSync(join(__dirname, '../workflows/onprem-release.yml'), 'utf8');
+  const build = workflow.match(/^  build:\n([\s\S]*?)(?=^  chart:)/m)[1];
+  const components = build.match(/component: \[([^\]]+)\]/)[1].split(',').map(x => x.trim());
+  const architectures = build.match(/arch: \[([^\]]+)\]/)[1].split(',').map(x => x.trim());
+  const f = fixture();
+  const model = f.artifacts[0];
+  const names = components.flatMap(component => architectures.map(arch => `build-${component}-${arch}-${sha}-attempt-2`));
+  f.artifacts.splice(0, f.artifacts.length, ...names.map((name, i) => ({ ...model, id: i+1, name })));
+  f.artifacts.push({ ...model, id: 99, name: `build-vllm-engine-amd64-${sha}-attempt-2` });
+  const result = await prune(f);
+  assert.equal(result.deleted, 8);
+  assert.deepEqual(f.deleted, [1, 2, 3, 4, 5, 6, 7, 8]);
 });

@@ -51,7 +51,7 @@ COPY --from=native /ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-COPY server.py provision.py embedding_server.py ./
+COPY server.py provision.py provision_audio.py embedding_server.py ./
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib

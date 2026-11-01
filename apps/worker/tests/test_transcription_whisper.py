@@ -161,6 +161,101 @@ def test_silent_audio_can_return_no_segments(tmp_path):
     assert _whisper_file(client, audio, "whisper-1", offset=600) == []
 
 
+def test_existing_speech_service_uses_its_own_model_and_credential(monkeypatch):
+    monkeypatch.setenv("WHISPER_BACKEND", "local")
+    monkeypatch.setenv("WHISPER_LOCAL_URL", "https://speech.example.invalid/v1")
+    monkeypatch.setenv("WHISPER_LOCAL_MODEL", "custom/speech-model")
+    monkeypatch.setenv("WHISPER_LOCAL_API_KEY", "speech-only-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "chat-only-key")
+    client, model = transcription._whisper_client()
+    with client:
+        assert model == "custom/speech-model"
+        assert str(client.base_url) == "https://speech.example.invalid/v1/"
+        assert client.api_key == "speech-only-key"
+
+
+def test_local_speech_keeps_existing_shared_key_default(monkeypatch):
+    monkeypatch.setenv("WHISPER_BACKEND", "local")
+    monkeypatch.delenv("WHISPER_LOCAL_MODEL", raising=False)
+    monkeypatch.delenv("WHISPER_LOCAL_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "shared-key")
+    client, model = transcription._whisper_client()
+    with client:
+        assert model == "whisper-local"
+        assert client.api_key == "shared-key"
+
+
+def test_local_model_setting_does_not_change_hosted_transcription(monkeypatch):
+    monkeypatch.setenv("WHISPER_BACKEND", "openai")
+    monkeypatch.setenv("WHISPER_LOCAL_MODEL", "private-model")
+    monkeypatch.setenv("WHISPER_LOCAL_API_KEY", "private-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "hosted-key")
+    client, model = transcription._whisper_client()
+    with client:
+        assert model == "whisper-1"
+        assert str(client.base_url) == "https://api.openai.com/v1/"
+        assert client.api_key == "hosted-key"
+
+
+def test_existing_speech_service_receives_configured_model_key_and_timestamp_request(monkeypatch, tmp_path):
+    """Exercise the installed upstream SDK over HTTP, not a mocked SDK client."""
+    from email.parser import BytesParser
+    from email.policy import default
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import json
+    from threading import Thread
+
+    observed = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers['Content-Length']))
+            message = BytesParser(policy=default).parsebytes(
+                f"Content-Type: {self.headers['Content-Type']}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body
+            )
+            fields = {part.get_param('name', header='content-disposition'): part.get_payload(decode=True)
+                      for part in message.iter_parts()}
+            observed.append((self.path, self.headers['Authorization'], fields))
+            result = json.dumps({'task': 'transcribe', 'language': 'ja', 'duration': 1,
+                                 'text': 'Caption', 'segments': [{'start': .1, 'end': .8, 'text': 'Caption'}]}).encode()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(result)))
+            self.end_headers()
+            self.wfile.write(result)
+
+        def log_message(self, *_args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv('NO_PROXY', '127.0.0.1')
+    monkeypatch.setenv('WHISPER_BACKEND', 'local')
+    monkeypatch.setenv('WHISPER_LOCAL_URL', f'http://127.0.0.1:{server.server_port}/v1')
+    monkeypatch.setenv('WHISPER_LOCAL_MODEL', 'custom/speech-model')
+    monkeypatch.setenv('WHISPER_LOCAL_API_KEY', 'speech-only-key')
+    monkeypatch.setenv('OPENAI_API_KEY', 'chat-only-key')
+    audio = tmp_path / 'clip.wav'
+    audio.write_bytes(b'fixture-audio')
+    try:
+        client, model = transcription._whisper_client()
+        with client:
+            result = transcription._whisper_file(client, audio, model, offset=3)
+        assert result == [{'start': pytest.approx(3.1), 'end': pytest.approx(3.8), 'text': 'Caption'}]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+    assert len(observed) == 1
+    path, authorization, fields = observed[0]
+    assert path == '/v1/audio/transcriptions'
+    assert authorization == 'Bearer speech-only-key'
+    assert fields['model'] == b'custom/speech-model'
+    assert fields['response_format'] == b'verbose_json'
+    assert fields['timestamp_granularities[]'] == b'segment'
+    assert fields['file'] == b'fixture-audio'
+
 def test_openrouter_key_unifies_whisper_and_preserves_model_and_timeouts(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENROUTER_API_KEY", "router-key")
     monkeypatch.delenv("WHISPER_BACKEND", raising=False)

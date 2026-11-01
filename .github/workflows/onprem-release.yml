@@ -37,10 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
-        exclude:
-          - component: vllm-engine
-            arch: arm64
+        component: [api, worker, web, transcription-gateway]
         include:
           - component: api
             dockerfile: apps/api/Dockerfile
@@ -54,9 +51,6 @@ jobs:
           - component: transcription-gateway
             dockerfile: apps/inference/whisper/Dockerfile
             context: apps/inference/whisper
-          - component: vllm-engine
-            dockerfile: apps/inference/whisper/Dockerfile.vllm
-            context: apps/inference/whisper
         arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     timeout-minutes: 60
@@ -67,9 +61,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Reserve disk for the CUDA image on the disposable runner
-        if: matrix.component == 'vllm-engine'
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - name: Build without publishing credentials
         env:
           COMPONENT: ${{ matrix.component }}
@@ -81,23 +72,15 @@ jobs:
           container=$(docker create "videoq-$COMPONENT:release")
           trap 'docker rm -f "$container" >/dev/null' EXIT
           docker cp "$container:/usr/share/licenses/videoq/LICENSE" - | tar -xO | cmp LICENSE -
-      - name: Check the CPU gateway and NVIDIA audio extras
-        if: matrix.component == 'transcription-gateway' || matrix.component == 'vllm-engine'
-        env:
-          COMPONENT: ${{ matrix.component }}
-        run: |
-          if [ "$COMPONENT" = transcription-gateway ]; then
-            docker run --rm --entrypoint python videoq-transcription-gateway:release -c 'import server, provision, silero_vad, torch'
-          else
-            docker run --rm --entrypoint python3 videoq-vllm-engine:release -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
-          fi
+      - name: Check the transcription gateway
+        if: matrix.component == 'transcription-gateway'
+        run: docker run --rm --entrypoint python videoq-transcription-gateway:release -c 'import server, provision, silero_vad, torch'
       - run: mkdir -p artifact
       - name: Block vulnerable images, including unfixed HIGH and CRITICAL findings
         uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
         with:
           version: v0.76.1
           image-ref: videoq-${{ matrix.component }}:release
-          trivy-config: ${{ matrix.component == 'vllm-engine' && 'apps/inference/whisper/security/trivy.yaml' || '' }}
           format: json
           output: artifact/security.json
           scanners: vuln
@@ -105,14 +88,13 @@ jobs:
           ignore-unfixed: 'false'
           exit-code: '1'
           timeout: 10m
-      - name: Retain scan findings, including assessed NVIDIA header findings
+      - name: Retain scan findings
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: security-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             artifact/security.json
-            apps/inference/whisper/security/
           if-no-files-found: error
           retention-days: 90
       - name: Prepare immutable image archive and SBOM
@@ -154,14 +136,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
+        component: [api, worker, web, transcription-gateway]
         arch: [amd64, arm64]
-        exclude:
-          - component: vllm-engine
-            arch: arm64
     runs-on: ubuntu-latest
-    # The scanned CUDA archive is ~8 GB; transfer, load and push can exceed 25 minutes.
-    timeout-minutes: ${{ matrix.component == 'vllm-engine' && 45 || 25 }}
+    timeout-minutes: 25
     permissions:
       contents: read
       packages: write
@@ -169,9 +147,6 @@ jobs:
       attestations: write
     steps:
       # Fresh runner: never build or execute the application's code here.
-      - name: Reserve disk for the scanned CUDA archive and its loaded image
-        if: matrix.component == 'vllm-engine'
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
@@ -190,9 +165,6 @@ jobs:
           zstd -d image.tar.zst --stdout | docker load
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
-          if [ "$COMPONENT" = vllm-engine ]; then
-            repository="ghcr.io/videoq-jp/videoq-vllm"
-          fi
           tag="$repository:$GITHUB_SHA-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker tag "videoq-$COMPONENT:release" "$tag"
@@ -254,7 +226,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
+        component: [api, worker, web, transcription-gateway]
     permissions:
       contents: read
       packages: write
@@ -277,15 +249,10 @@ jobs:
         run: |
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
-          if [ "$COMPONENT" = vllm-engine ]; then
-            repository="ghcr.io/videoq-jp/videoq-vllm"
-          fi
           tag="$repository:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           manifests=("$repository@$(cat "$COMPONENT-amd64.digest")")
-          if [ "$COMPONENT" != vllm-engine ]; then
-            manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")
-          fi
+          manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")
           docker buildx imagetools create --tag "$tag" "${manifests[@]}"
           digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
           mkdir -p release
@@ -350,7 +317,7 @@ jobs:
       contents: read
       attestations: read
     steps:
-      - name: Reserve disk for anonymous NVIDIA image pulls and Kubernetes rehearsal
+      - name: Reserve disk for anonymous image pulls and Kubernetes rehearsal
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -376,7 +343,7 @@ jobs:
         run: |
           mkdir -m 700 "$DOCKER_CONFIG"
           printf '{"auths":{}}\n' > "$DOCKER_CONFIG/config.json"
-          for component in api worker web transcription-gateway vllm-engine; do
+          for component in api worker web transcription-gateway; do
             python3 .github/scripts/onprem_registry.py "$component"
           done
           python3 .github/scripts/onprem-release.py verify "$GITHUB_SHA" release/release.json release/verified-images.json release/verified-inference.json

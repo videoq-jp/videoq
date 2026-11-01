@@ -48,3 +48,13 @@ test('manual CI completion cannot trigger production or on-prem deployment', () 
     assert.equal(evaluate(condition, 'workflow_dispatch', false, { ref: 'refs/heads/feature' }), false);
   }
 });
+
+
+test('manual supply-chain checks resolve the default branch to a full SHA and retain the online gate', () => {
+  const job=ci.slice(ci.indexOf('  supply-chain:'),ci.indexOf('  workflow-security:'));
+  assert.match(job,/EVENT_NAME: \$\{\{ github.event_name \}\}/);
+  assert.match(job,/if \[ "\$EVENT_NAME" = workflow_dispatch \]; then/);
+  assert.match(job,/git rev-parse --verify "refs\/remotes\/origin\/\$DEFAULT_BRANCH\^\{commit\}"/);
+  assert.match(job,/python .github\/scripts\/supply-chain.py --base "\$base"/);
+  assert.doesNotMatch(job,/--offline/);
+});

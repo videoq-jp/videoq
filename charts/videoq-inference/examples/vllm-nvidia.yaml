@@ -1,3 +1,6 @@
+vllm:
+  accelerator: nvidia
+
 # Three allocatable NVIDIA GPUs: independent chat, embedding and Whisper.
 # Requires NVIDIA drivers, device plugin, and site hardware acceptance.
 backend: vllm

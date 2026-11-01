@@ -27,7 +27,6 @@
         "maxConcurrentRequests",
         "upstreamParallelism",
         "gatewayResources",
-        "vllmImage",
         "maxSequences",
         "requestTimeoutSeconds"
       ],
@@ -114,36 +113,6 @@
           "type": "string",
           "pattern": "^([a-f0-9]{64})?$"
         },
-        "vllmImage": {
-          "type": "object",
-          "required": [
-            "repository",
-            "tag",
-            "pullPolicy"
-          ],
-          "properties": {
-            "repository": {
-              "type": "string",
-              "minLength": 1
-            },
-            "tag": {
-              "type": "string",
-              "minLength": 1
-            },
-            "digest": {
-              "type": "string",
-              "pattern": "^(sha256:[a-f0-9]{64})?$"
-            },
-            "pullPolicy": {
-              "enum": [
-                "IfNotPresent",
-                "Always",
-                "Never"
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
         "maxConcurrentRequests": {
           "type": "integer",
           "minimum": 1,
@@ -166,6 +135,29 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 600
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "accelerator": {
+          "enum": [
+            "",
+            "nvidia",
+            "amd"
+          ]
+        },
+        "audioCodecs": {
+          "enum": [
+            "auto",
+            "upstream",
+            "bundled"
+          ]
+        },
+        "extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false,
@@ -175,6 +167,9 @@
             "properties": {
               "backend": {
                 "const": "whispercpp"
+              },
+              "enabled": {
+                "const": true
               }
             }
           },
@@ -194,6 +189,9 @@
             "properties": {
               "backend": {
                 "const": "vllm"
+              },
+              "enabled": {
+                "const": true
               }
             }
           },
@@ -325,6 +323,49 @@
             }
           },
           "additionalProperties": false
+        },
+        "accelerator": {
+          "enum": [
+            "nvidia",
+            "amd"
+          ]
+        },
+        "rocmImage": {
+          "type": "object",
+          "required": [
+            "repository",
+            "tag",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^(sha256:[a-f0-9]{64})?$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "supplementalGroups": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "additionalProperties": false
@@ -403,6 +444,23 @@
             },
             "tolerations": {
               "type": "array"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "backend": {
+              "enum": [
+                "",
+                "llamacpp",
+                "vllm"
+              ]
+            },
+            "accelerator": {
+              "enum": [
+                "",
+                "nvidia",
+                "amd"
+              ]
             },
             "engine": {
               "enum": [
@@ -495,6 +553,23 @@
             },
             "tolerations": {
               "type": "array"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "backend": {
+              "enum": [
+                "",
+                "llamacpp",
+                "vllm"
+              ]
+            },
+            "accelerator": {
+              "enum": [
+                "",
+                "nvidia",
+                "amd"
+              ]
             },
             "engine": {
               "enum": [
