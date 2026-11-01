@@ -16,6 +16,7 @@ function definition({table, projects}) {
       {Variable: '$.kind', StringEquals: 'migration', Next: 'Migrate'},
       {Variable: '$.kind', StringEquals: 'backup', Next: 'BackupStandalone'},
       {Variable: '$.kind', StringEquals: 'smoke', Next: 'SmokeStandalone'},
+      {Variable: '$.kind', StringEquals: 'deploy', Next: 'Deploy'},
     ], Default: 'Prepare'},
     Migrate: job('migration', 'migration', 'Release', [
       variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),
@@ -23,6 +24,7 @@ function definition({table, projects}) {
     ]),
     BackupStandalone: job('backup', 'backup', 'Release'),
     SmokeStandalone: job('smoke', 'smoke', 'Release', [variable('VERIFY_AI_ANSWERS', "States.Format('{}', $.verify_ai_answers)")]),
+    Deploy: job('deploy', 'deploy', 'SmokeStandalone', [variable('MAINTENANCE_SOURCE_SHA', '$.source_sha')]),
     Prepare: job('rotation', 'prepare', 'ReadMetadata'),
     ReadMetadata: {Type: 'Task', Resource: 'arn:aws:states:::dynamodb:getItem', Parameters: {
       TableName: table, Key: {pk: {'S.$': "States.Format('run#{}', $.run_id)"}}, ConsistentRead: true,
@@ -59,4 +61,8 @@ function definition({table, projects}) {
   return {Comment: 'AWS-only Neon maintenance; no credential material in execution data', StartAt: 'Operation', TimeoutSeconds: 7200, States: states};
 }
 module.exports = {definition};
-if (require.main === module) console.log(JSON.stringify(definition({table: '${table}', projects: Object.fromEntries(['rotation','migration','backup','smoke','audit'].map(k => [k, '${project_' + k + '}']))}), null, 2));
+if (require.main === module) {
+  const production = process.argv.includes('--production');
+  console.log(JSON.stringify(definition({table: production ? 'videoq-db-maintenance-prod' : '${table}',
+    projects: Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k => [k, production ? `videoq-db-${k}-prod` : '${project_' + k + '}']))}), null, 2));
+}

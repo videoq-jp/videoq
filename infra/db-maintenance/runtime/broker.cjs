@@ -57,12 +57,13 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'].includes(previous.status)) return {status: 'BUSY'};
       const failedRotation = ['rotate', 'rollback'].includes(lock.kind.S) && previous.status !== 'SUCCEEDED';
       if (failedRotation && !['rotate', 'rollback'].includes(request.kind)) throw new Error('ROTATION_RECOVERY_REQUIRED');
+      if (lock.kind.S === 'deploy' && previous.status !== 'SUCCEEDED' && request.kind !== 'deploy') throw new Error('DEPLOYMENT_RECOVERY_REQUIRED');
       await noActiveBuilds();
       await aws('ddb', 'DeleteItem', {TableName: table, Key: {pk: {S: 'maintenance'}},
         ConditionExpression: 'execution_arn = :old', ExpressionAttributeValues: {':old': lock.execution_arn}});
     }
     // Waiting requests must not spend GitHub's anonymous API quota.
-    if (request.kind === 'migration' && await fetchMain() !== request.source_sha) throw new Error('MIGRATION_MUST_MATCH_CURRENT_MAIN');
+    if (['migration','deploy'].includes(request.kind) && await fetchMain() !== request.source_sha) throw new Error('SOURCE_MUST_MATCH_CURRENT_MAIN');
     const name = 'db-' + run_id;
     const arn = executionArn(machine, name);
     const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, ...request, run_id});

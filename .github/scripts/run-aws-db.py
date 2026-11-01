@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 FUNCTIONS = {kind: "maintenance" for kind in ["rotate", "rollback", "audit"]}
-FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke"]})
+FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke", "deploy"]})
 
 
 def invocation(function, payload):
@@ -80,10 +80,12 @@ def main():
     if os.environ.get("GITHUB_REPOSITORY") != "videoq-jp/videoq" or os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise RuntimeError("PRODUCTION_MAIN_ONLY")
     request = {}
-    if args.kind == "migration":
+    if args.kind in {"migration", "deploy"}:
         sha = os.environ.get("GITHUB_SHA", "")
         if not re.fullmatch(r"[a-f0-9]{40}", sha):
             raise RuntimeError("INVALID_MIGRATION_SOURCE")
+        request = {"source_sha": sha}
+    if args.kind == "migration":
         writers = os.environ.get("STRUCTURED_ANSWER_WRITERS_STOPPED", "")
         if writers not in {"", "0", "1"}:
             raise RuntimeError("INVALID_WRITER_STATE")

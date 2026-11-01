@@ -23,7 +23,7 @@ function fixture({lock, status = 'RUNNING', active = false, missingBuild = false
     return {};
   };
   const broker = createBroker(aws, {table: 'metadata', machine: MACHINE, projects: ['rotation', 'migration'],
-    allowedKinds: ['rotate','rollback','audit','migration','backup','smoke']}, async () => SHA);
+    allowedKinds: ['rotate','rollback','audit','migration','backup','smoke','deploy']}, async () => SHA);
   return {broker, calls};
 }
 test('the starter rejects buildspec, environment, role, project and source overrides before AWS access', async () => {
@@ -95,7 +95,7 @@ test('recovery may replace only a terminal lock after child builds are confirmed
   assert.equal(calls.filter(c => c.command === 'BatchGetBuilds').length, 2);
 });
 test('state-machine metadata contains no secret fetches, preserves grace periods, and tests after retirement', () => {
-  const spec = definition({table:'metadata',projects:{rotation:'admin',migration:'migrate',backup:'backup',smoke:'smoke',audit:'audit'}});
+  const spec = definition({table:'metadata',projects:{rotation:'admin',migration:'migrate',backup:'backup',smoke:'smoke',audit:'audit',deploy:'deploy'}});
   const text = JSON.stringify(spec);
   assert.doesNotMatch(text, /ssm:|GetParameter|DATABASE_URL|password|api_token/);
   assert.equal(spec.States.WaitForInvocations.TimestampPath, '$.decision.payload.retire_after');
@@ -105,6 +105,7 @@ test('state-machine metadata contains no secret fetches, preserves grace periods
   assert.equal(spec.States.RetireRollback.Next, 'SmokeAfterRollbackRetirement');
   assert.equal(spec.States.SmokeAfterRollbackRetirement.Next, 'CompleteRollback');
   assert.equal(spec.States.Release.Parameters.ExpressionAttributeValues[':execution']['S.$'], '$$.Execution.Id');
+  assert.equal(spec.States.Deploy.Next, 'SmokeStandalone');
   for (const state of Object.values(spec.States)) {
     if (state.Next) assert.ok(spec.States[state.Next]);
     if (state.Default) assert.ok(spec.States[state.Default]);
@@ -175,4 +176,14 @@ test('GitHub HTTP failures expose only a status and never authorize a migration'
   await assert.rejects(currentMain(async () => ({ok:false,status:403,json(){throw new Error('PRIVATE_BODY');}})), /GITHUB_API_HTTP_403/);
   const invalid = {id:1083911938,owner:{id:1},full_name:'videoq-jp/videoq',default_branch:'main',private:false};
   await assert.rejects(currentMain(async () => ({ok:true,json:async()=>invalid})), /CANONICAL_REPOSITORY_VERIFICATION_FAILED/);
+});
+
+test('deployment requires canonical main and failed deployments block database jobs', async () => {
+  assert.throws(() => input({action:'start',kind:'deploy',source_sha:'untrusted'}, ['deploy']), /INVALID_DEPLOYMENT_SOURCE/);
+  assert.throws(() => input({action:'start',kind:'rotate'}, ['deploy']), /OPERATION_NOT_ALLOWED/);
+  const {broker,calls} = fixture();
+  await assert.rejects(broker({action:'start',kind:'deploy',source_sha:'c'.repeat(40)}), /CURRENT_MAIN/);
+  assert.ok(!calls.some(c => c.command === 'StartExecution'));
+  const lock = {...terminal(),kind:{S:'deploy'}};
+  await assert.rejects(fixture({lock,status:'FAILED'}).broker({action:'start',kind:'migration',source_sha:SHA,writers_stopped:false}), /DEPLOYMENT_RECOVERY_REQUIRED/);
 });

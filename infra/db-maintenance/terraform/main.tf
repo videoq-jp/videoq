@@ -26,6 +26,7 @@ locals {
     migration   = "migration"
     backup      = "backup"
     smoke       = "smoke"
+    deploy      = "deploy"
   }
   profiles  = jsondecode(file("${path.module}/../../../.github/scripts/neon-profiles.json"))
   parameter = { for name, profile in local.profiles : name => "arn:aws:ssm:${local.region}:${local.account}:parameter${profile.parameter}" }
@@ -34,7 +35,8 @@ locals {
     "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/db-rotation",
     "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/hyperdrive-credentials",
   ]
-  project_arns  = [for name in values(local.projects) : "arn:aws:codebuild:${local.region}:${local.account}:project/${name}"]
+  all_projects  = merge(local.projects, { deploy = "videoq-db-deploy-prod" })
+  project_arns  = [for name in values(local.all_projects) : "arn:aws:codebuild:${local.region}:${local.account}:project/${name}"]
   execution_arn = "arn:aws:states:${local.region}:${local.account}:execution:${local.name}:*"
 }
 
@@ -143,6 +145,9 @@ resource "aws_iam_role_policy" "build" {
   ] : permission if each.key == "rotation"]) })
 }
 resource "aws_codebuild_project" "job" {
+  lifecycle {
+    ignore_changes = [source_version, tags["ReviewedSource"]]
+  }
   for_each               = local.projects
   name                   = each.value
   service_role           = aws_iam_role.build[each.key].arn
@@ -202,12 +207,16 @@ resource "aws_iam_role_policy" "state_machine" {
   ] })
 }
 resource "aws_sfn_state_machine" "maintenance" {
+  lifecycle {
+    ignore_changes = [definition]
+  }
   name     = local.name
   type     = "STANDARD"
   role_arn = aws_iam_role.state_machine.arn
   definition = templatefile("${path.module}/../state-machine.asl.json.tftpl", merge(
     { table = aws_dynamodb_table.maintenance.name },
-    { for purpose, project in aws_codebuild_project.job : "project_${purpose}" => project.name }
+    { for purpose, project in aws_codebuild_project.job : "project_${purpose}" => project.name },
+    { project_deploy = aws_codebuild_project.deploy.name }
   ))
   depends_on = [aws_iam_role_policy.state_machine]
 }
@@ -238,6 +247,9 @@ resource "aws_iam_role_policy" "broker" {
   ] })
 }
 resource "aws_lambda_function" "broker" {
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+  }
   for_each         = local.brokers
   function_name    = "videoq-db-start-${each.key}-prod"
   role             = aws_iam_role.broker[each.key].arn
@@ -252,13 +264,16 @@ resource "aws_lambda_function" "broker" {
     variables = {
       MAINTENANCE_TABLE = aws_dynamodb_table.maintenance.name
       STATE_MACHINE_ARN = aws_sfn_state_machine.maintenance.arn
-      BUILD_PROJECTS    = jsonencode(values(local.projects))
+      BUILD_PROJECTS    = jsonencode(values(local.all_projects))
       ALLOWED_KINDS     = each.value
     }
   }
   depends_on = [aws_iam_role_policy.broker]
 }
 resource "aws_lambda_alias" "broker" {
+  lifecycle {
+    ignore_changes = [function_version]
+  }
   for_each         = local.brokers
   name             = "live"
   function_name    = aws_lambda_function.broker[each.key].function_name

@@ -21,7 +21,27 @@ run "credential_and_control_boundaries" {
   command = apply
 
   assert {
-    condition = alltrue([for purpose in ["maintenance", "migration", "backup", "smoke"] : alltrue([
+    condition = alltrue([for statement in jsondecode(aws_iam_role_policy.deploy.policy).Statement :
+      statement.Effect != "Allow" || alltrue([for action in statement.Action :
+        !startswith(action, "ssm:") && !startswith(action, "iam:") && action != "kms:Decrypt"
+      ])
+    ])
+    error_message = "The deployment builder must not read credentials or change IAM."
+  }
+  assert {
+    condition = alltrue([for statement in jsondecode(aws_iam_role_policy.deploy.policy).Statement :
+      !contains(statement.Action, "codebuild:UpdateProject") ||
+      !contains(statement.Resource, "arn:aws:codebuild:${local.region}:${local.account}:project/videoq-db-deploy-prod")
+    ])
+    error_message = "The deployment builder must not modify its own project."
+  }
+  assert {
+    condition     = aws_codebuild_project.deploy.source[0].type == "NO_SOURCE" && !aws_codebuild_project.deploy.environment[0].privileged_mode
+    error_message = "Deployment must fetch the verified canonical commit with a fixed buildspec, without Docker privilege."
+  }
+
+  assert {
+    condition = alltrue([for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"] : alltrue([
       for statement in jsondecode(aws_iam_role_policy.broker[purpose].policy).Statement :
       !contains(statement.Action, "ssm:GetParameter") && !contains(statement.Action, "codebuild:StartBuild")
     ])])
