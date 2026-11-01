@@ -1,4 +1,4 @@
-import { applyChatPart, chatAnswerText, type ChatAnswer, type ChatContentPart } from "@videoq/trpc/chat";
+import { applyChatPart, chatAnswerText, type ChatAnswer } from "@videoq/trpc/chat";
 import { embedding as testEmbedding } from "./helpers/embedding";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { CourseDetail } from "../src/repositories/course-repository";
@@ -840,8 +840,7 @@ describe.each([false, true])("講座メタ情報（stream=%s）", (streaming) =>
     expect(closed).toBe(1);
   });
 
-  it.each([[999], [60, 999], [], [-1]].map((video_ids) => ({ video_ids })))
-    ("不正な動画指定 $video_ids を検索せずモデルへ返す", async ({ video_ids }) => {
+  it.each([[999], [60, 999], [], [-1]].map((video_ids) => ({ video_ids })))("不正な動画指定 $video_ids を検索せずモデルへ返す", async ({ video_ids }) => {
     stubOpenAi([
       { toolCall: { name: "search_scenes", args: { query: "private", video_ids } } },
       { content: "指定された動画を検索できません。" },

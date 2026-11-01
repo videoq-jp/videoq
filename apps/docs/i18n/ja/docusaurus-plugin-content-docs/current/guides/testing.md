@@ -13,6 +13,7 @@ description: 変更箇所ごとに必要な確認を選び、DB・ブラウザ�
 
 | 変更箇所 | 確認コマンド | 前提 |
 |---|---|---|
+| 全TypeScriptワークスペース | `npm run lint` / `npm run typecheck` / `npm run test:lint` | `npm ci` 済み |
 | TypeScriptの共有契約 | `npm run typecheck` | `npm ci` 済み |
 | 画面 | `npm run lint` / `npm run test:web` / `npm run build` | Node.js |
 | 公開ページのWorkerとLPの動画配信 | `npm run test:worker --workspace @videoq/web` | 先に `npm run build` |
@@ -22,6 +23,22 @@ description: 変更箇所ごとに必要な確認を選び、DB・ブラウザ�
 | 文書 | `npm run build:docs` | Node.js |
 
 `npm test` はAPIとフロントエンドのテストを実行します。PythonとStorybookのテストは別コマンドです。
+
+## TypeScriptとESLint
+
+全5ワークスペースの `tsc`・ビルド・型チェックには最新安定版のネイティブTypeScript（現在7.0.2）を使います。
+ESLintなど従来のコンパイラAPIを使うツールには、公式の `@typescript/typescript6` 互換パッケージを使います。
+`@typescript/native` のnpmエイリアスが `tsc` を、`typescript` のエイリアスが互換APIと `tsc6` を提供します。
+
+`npm run lint` はAPI・Web・Docs・demo-video・trpcのソース、スクリプト、テストを確認します。
+個別実行は `npm run lint --workspace @videoq/api` などです。
+共通ルールは `eslint.shared.mjs` にあり、ReactではHooks、WebではFast Refreshとレイアウトのimport制約も確認します。
+`npm run test:lint` は全ワークスペースでネイティブコンパイラとESLintが併用でき、違反を検出できることを確認します。
+CIでも各ワークスペースの既存チェックと一緒にLintを実行します。
+
+Dependabotはコンパイラと互換パッケージをまとめて更新し、安定版のメジャー更新も対象にします。
+ただし新しい構文を採用する場合はtypescript-eslintの解析対応も必要です。
+TS 7で削除された `baseUrl` は、Docusaurusから継承する値を `null` で解除し、`@site/*` をDocs基準の相対パスに設定しています。
 
 ## APIの単体テストを絞る
 

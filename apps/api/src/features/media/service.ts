@@ -64,7 +64,7 @@ export async function buildR2MediaResponse(
   const total = obj.size;
   const ranged = obj.range;
   if (ranged) {
-    let start = 0;
+    let start: number;
     let end = total - 1;
     if ("suffix" in ranged) {
       start = Math.max(0, total - ranged.suffix);

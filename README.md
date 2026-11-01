@@ -363,6 +363,8 @@ npm test
 npm run build
 ```
 
+`npm run lint` checks all five TypeScript workspaces. Type checks and builds use native TypeScript 7; ESLint uses the official TypeScript 6 compatibility API. Run `npm run test:lint` to verify the compiler and lint setup.
+
 `npm test` runs API unit / Workers runtime tests and frontend tests. API database integration tests additionally require `QUOTA_TEST_DATABASE_URL` pointing to a test PostgreSQL instance with pgvector and permission to create test databases.
 
 ### Documentation site

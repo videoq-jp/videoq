@@ -78,8 +78,7 @@ describe("RAG agent in the Workers runtime", () => {
     }
   });
 
-  it.each([false, true].flatMap((streaming) => ["search", "metadata", "metadata-search"].map((mode) => ({ streaming, mode }))))
-    ("runs the $mode tool loop (stream=$streaming)", async ({ streaming, mode }) => {
+  it.each([false, true].flatMap((streaming) => ["search", "metadata", "metadata-search"].map((mode) => ({ streaming, mode })))) ("runs the $mode tool loop (stream=$streaming)", async ({ streaming, mode }) => {
     let call = 0;
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       expect(url).toBe("https://openai.test/v1/chat/completions");

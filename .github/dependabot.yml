@@ -26,10 +26,6 @@ updates:
     # @cloudflare/vitest-plugin 1.4.6 accepts Vitest 5 and the repo uses it, so the
     # vitest entries below only hold back 5.x updates and can be reviewed for removal.
     ignore:
-      # Compiler-API consumers (ESLint, tests, docs) do not support native TS 7.
-      # API-only native compiler patch/minor updates remain eligible.
-      - dependency-name: typescript
-        update-types: [version-update:semver-major]
       # Docusaurus 3.10.2 resolves ELK through an optional ^0.1.9 peer.
       # Installing 0.2+ nests the package and silently disables ELK layouts.
       - dependency-name: "@mermaid-js/layout-elk"
@@ -41,6 +37,9 @@ updates:
     groups:
       # Keep packages with shared versions / peer requirements together,
       # including major upgrades. Other major upgrades get individual PRs.
+      # Update the native compiler and compatibility API aliases together.
+      typescript:
+        patterns: ["typescript", "@typescript/*"]
       better-auth:
         patterns: ["better-auth", "@better-auth/*"]
       trpc:

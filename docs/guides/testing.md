@@ -13,6 +13,7 @@ Run these commands from the repository root.
 
 | Changed area | Commands | Prerequisites |
 |---|---|---|
+| All TypeScript workspaces | `npm run lint` / `npm run typecheck` / `npm run test:lint` | Dependencies installed with `npm ci` |
 | Shared TypeScript contracts | `npm run typecheck` | Dependencies installed with `npm ci` |
 | Frontend | `npm run lint` / `npm run test:web` / `npm run build` | Node.js |
 | Public-page Worker and landing media | `npm run test:worker --workspace @videoq/web` | `npm run build` first |
@@ -22,6 +23,28 @@ Run these commands from the repository root.
 | Documentation | `npm run build:docs` | Node.js; builds English and Japanese |
 
 `npm test` runs API and frontend tests. Python and Storybook tests use separate commands.
+
+## TypeScript compiler and ESLint
+
+All five npm workspaces use the latest stable native TypeScript compiler (currently 7.0.2)
+for `tsc`, builds, and type checks. ESLint and tools that import the compiler API use
+TypeScript 6 through the official `@typescript/typescript6` compatibility package.
+The `@typescript/native` npm alias supplies `tsc`; the `typescript` alias supplies
+the compatibility API and `tsc6`. This keeps native compiler upgrades independent
+of tools that do not yet support the native API.
+
+`npm run lint` checks API, Web, Docs, demo-video, and trpc, including their scripts
+and tests. Use `npm run lint --workspace @videoq/api` to check one workspace.
+The shared rules are in `eslint.shared.mjs`; React workspaces also check Hooks,
+and Web keeps its Fast Refresh and layout import rules. `npm run test:lint` verifies
+that every workspace can run the native compiler and detect lint violations with
+the compatibility API. CI runs each workspace's lint with its existing checks.
+
+Dependabot groups the compiler and compatibility packages together and permits
+stable major updates. A new TypeScript syntax feature still requires parser support
+in typescript-eslint; passing the compiler alone does not prove lint compatibility.
+Docusaurus's inherited `baseUrl` is cleared with `null`, and `@site/*` is explicitly
+relative to the Docs workspace, because TypeScript 7 removed `baseUrl`.
 
 ## Run selected API unit tests
 

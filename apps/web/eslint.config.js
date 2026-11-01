@@ -1,24 +1,15 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
+import { workspaceConfig } from '../../eslint.shared.mjs'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
+  ...workspaceConfig({ react: true, tsconfigRootDir: import.meta.dirname }),
   globalIgnores(['dist', 'coverage', 'storybook-static', 'test-results', '.wrangler', 'worker/env.d.ts', '.storybook/public/mockServiceWorker.js']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-    },
   },
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -52,7 +43,6 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: {
-        ...globals.browser,
         // Vitest globals (we run with `globals: true` in vitest config)
         vi: 'readonly',
         describe: 'readonly',
