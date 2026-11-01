@@ -77,26 +77,26 @@ async function verifyRole(purpose, url) {
     }
     if(purpose==='api') {
       await client.query('SELECT id FROM public.users LIMIT 0');
-      await client.query('UPDATE public.users SET used_ai_answers=used_ai_answers WHERE false');
+      await client.query('UPDATE public.users SET used_ai_answers=0 WHERE false');
       await denied(client,'SELECT * FROM drizzle.__drizzle_migrations LIMIT 0');
       await denied(client,'SELECT * FROM public.app_user LIMIT 0');
     }
     if(purpose==='worker') {
       await client.query('SELECT id,user_id,title,transcript,status,source_type,file,youtube_video_id,transcription_language FROM public.videos LIMIT 0');
       await client.query('SELECT langchain_id FROM public.scene_embeddings_768 LIMIT 0');
-      await client.query('UPDATE public.videos SET status=status,transcript=transcript,processing_seconds=processing_seconds,error_message=error_message WHERE false');
-      await client.query('UPDATE public.video_transcription_chunks SET segments=segments,fallback_segments=fallback_segments,failures=failures,last_error=last_error,updated_at=updated_at WHERE false');
-      await client.query('UPDATE public.video_visual_chunks SET frame_count=frame_count,failures=failures,last_error=last_error,updated_at=updated_at WHERE false');
-      await client.query('UPDATE public.video_transcription_runs SET completed_at=completed_at WHERE false');
-      await client.query('UPDATE public.video_visual_runs SET status=status,last_error=last_error,completed_at=completed_at WHERE false');
-      await denied(client,'UPDATE public.videos SET user_id=user_id WHERE false');
-      await denied(client,'UPDATE public.users SET role=role WHERE false');
+      await client.query("UPDATE public.videos SET status='processing',transcript='',processing_seconds=0,error_message='' WHERE false");
+      await client.query("UPDATE public.video_transcription_chunks SET segments='[]'::jsonb,fallback_segments='{}'::jsonb,failures=0,last_error='',updated_at=now() WHERE false");
+      await client.query("UPDATE public.video_visual_chunks SET frame_count=0,failures=0,last_error='',updated_at=now() WHERE false");
+      await client.query('UPDATE public.video_transcription_runs SET completed_at=NULL WHERE false');
+      await client.query("UPDATE public.video_visual_runs SET status='ready',last_error='',completed_at=NULL WHERE false");
+      await denied(client,"UPDATE public.videos SET user_id='permission_probe' WHERE false");
+      await denied(client,"UPDATE public.users SET role='admin' WHERE false");
       await denied(client,'SELECT password FROM public.account LIMIT 0');
     }
     if(purpose==='backup') {
       await client.query('SELECT * FROM drizzle.__drizzle_migrations LIMIT 0');
       await client.query('SELECT * FROM public.account LIMIT 0');
-      await denied(client,'UPDATE public.users SET used_ai_answers=used_ai_answers WHERE false');
+      await denied(client,'UPDATE public.users SET used_ai_answers=0 WHERE false');
     }
     if(['audit','demo'].includes(purpose)) {
       await client.query('SELECT id FROM videoq_security.demo_users');
@@ -116,7 +116,7 @@ async function verifyRole(purpose, url) {
     }
     if(purpose==='smoke') {
       await client.query('SELECT id FROM videoq_security.smoke_users');
-      await denied(client,'UPDATE public.users SET role=role WHERE false');
+      await denied(client,"UPDATE public.users SET role='admin' WHERE false");
       await denied(client,'SELECT password FROM public.account LIMIT 0');
       await client.query('BEGIN');
       try {
