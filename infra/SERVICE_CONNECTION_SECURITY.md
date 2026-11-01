@@ -15,8 +15,35 @@ included in this report.
 | API and worker → Neon | Separate current login roles are stored in separate SSM parameters. Both URLs use `sslmode=verify-full`; connections from the operator environment succeeded with the system CA bundle and the driver reported TLS active. Both roles lack superuser, database/role creation, replication, RLS bypass and database/public-schema creation privileges. | These operator connections alone do not prove the deployed clients' behavior. Neon's proxy can make `pg_stat_ssl` describe a different hop; the client TLS flag was checked separately. |
 | Hyperdrive → Neon | The live configuration uses the current API login and the expected Neon pooler. Query caching is disabled. The `mtls` object is empty, so the documented default TLS mode applies. | Hyperdrive's TLS mode is separate from SSM's PostgreSQL URL. The default is TLS `require` with WebPKI certificate validation; do not infer `verify-full` from the SSM URL. |
 | R2 public access | The production bucket's `r2.dev` domain is disabled and there are no custom domains. CORS allows only `https://videoq.jp`, with GET/HEAD/PUT. | CORS is a browser control, not an authorization boundary. Presigned URLs remain bearer credentials until expiration. |
-| Worker → R2 | The worker uses an HTTPS R2 endpoint. A random nonexistent-key read in the production bucket returned `NoSuchKey`; the same probe in the account's other existing bucket returned `AccessDenied`. Bucket enumeration was denied. | This demonstrates the tested access behavior, not the token's complete policy or its behavior for future buckets. The API's secret value cannot be read back from Workers to compare credentials. |
+| Worker → R2 | The worker uses an HTTPS R2 endpoint. A random nonexistent-key read in the production bucket returned `NoSuchKey`; the same probe in the account's other existing bucket returned `AccessDenied`. Bucket enumeration, bucket CORS reads and encryption-configuration reads were denied. | This demonstrates the tested access behavior, not the token's complete policy or its behavior for future buckets. The API's secret value cannot be read back from Workers to compare credentials. |
 | API/worker → OpenRouter | The read-only production credential workflow passed its checks for the expected, separate federation policy IDs, the HTTPS OpenRouter endpoint and no purpose-endpoint overrides. It also confirmed that the former direct OpenAI key is absent from the API and worker app parameter. AWS IAM restricts token audience, signature algorithm and duration to the intended OpenRouter audience, RS256 and at most 900 seconds. | OpenRouter-side subject/issuer/key binding and workspace key scope still require management access. Successful inference alone cannot prove those restrictions. |
+
+## Live OpenRouter authorization probes
+
+The review also tested authorization directly, without changing the production
+policies. A temporary second access key on the existing API IAM user and a
+temporary Lambda using the existing worker execution role exercised the actual
+workload subjects. The temporary key was deleted immediately after the API
+checks, and the temporary function was deleted after invocation. No production
+key, worker code, role trust or role permissions were changed. JWTs and exchanged
+tokens remained in memory and were not printed or saved.
+Final AWS inventory confirmed only the original October 31 API access key remains
+and no temporary audit function remains.
+
+| Probe | API identity | Worker identity |
+| --- | --- | --- |
+| Exchange against its own federation policy | HTTP 200, `inference`, 299-second lifetime | HTTP 200, `inference`, 299-second lifetime |
+| Exchange against the other workload's policy | HTTP 400, `invalid_grant`, no token | HTTP 400, `invalid_grant`, no token |
+| Request `management` exchange scope | HTTP 400, `invalid_scope`, no token | HTTP 400, `invalid_scope`, no token |
+| Use the inference token to list management keys | HTTP 403 | HTTP 403 |
+| Ask AWS to issue a JWT for an unrelated audience | HTTP 403 | HTTP 403 |
+
+A separately signed JWT for the operator's unrelated AWS identity, with the
+correct audience, was rejected by both OpenRouter policies (`invalid_grant`).
+These checks prove the tested workloads cannot substitute for one another and
+cannot use the issued inference tokens for the tested management operation.
+They do not reveal each policy's full subject/condition expression, workspace
+key mapping or model/data-retention guardrails.
 
 Hyperdrive's documented TLS behavior:
 [SSL/TLS certificates](https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/).
@@ -53,12 +80,20 @@ SQS transport policy guidance:
 
 1. Inspect both OpenRouter federation policies. Confirm exact AWS issuer,
    workload subject, audience, inference-only scope and the intended workspace
-   key. Reject unrelated workloads; do not use inference success as proof of
-   exact policy scope.
+   key. The live negative probes above demonstrate tested rejections; they do
+   not enumerate every subject a potentially broader condition might accept.
 2. Inspect the API and worker R2 tokens' complete policies. Confirm that object
    permissions cover only the production media bucket, without account-wide
    administration or other bucket access. The available Cloudflare maintenance
    token cannot list user/account token policies (HTTP 403).
+
+The existing Cloudflare maintenance account token was verified active, but its
+own token-details endpoint also returned HTTP 403. Local Cloudflare CLI login
+was absent. Repository/Environment credential metadata and the existing SSM
+parameter inventory did not identify an OpenRouter management credential.
+Plugin discovery returned no Cloudflare/OpenRouter integration. These checks do
+not confer missing management privileges; no runtime role or token was widened
+to obtain them.
 
 The local Docker Compose stack is development infrastructure. Several host port
 mappings listen on all interfaces; do not expose that stack directly to an
