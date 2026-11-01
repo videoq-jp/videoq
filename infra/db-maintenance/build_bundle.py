@@ -26,6 +26,18 @@ def archive(destination, files):
     return hashlib.sha256(destination.read_bytes()).hexdigest()
 
 
+def operator_files():
+    operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
+    for name in ["package.json", "package-lock.json", "Dockerfile", "fixtures/smoke.mp4", "fixtures/README.md"]:
+        operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
+    for name in ["runtime/job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
+        operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
+    operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
+    for name in ["content/course.json", *["public/lessons/" + key + ".mp4" for key in ["japanese", "math", "science", "social", "english"]]]:
+        operator.append((ROOT / "apps/demo-video" / name, "apps/demo-video/" + name))
+    return operator
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "infra/db-maintenance/dist")
@@ -42,15 +54,7 @@ def main():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
     broker = [(runtime / name, name) for name in ["broker.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
-    operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
-    for name in ["package.json", "package-lock.json", "fixtures/smoke.mp4", "fixtures/README.md"]:
-        operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
-    for name in ["runtime/job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
-        operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
-    operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
-    for name in ["content/course.json", *["public/lessons/" + key + ".mp4" for key in ["japanese", "math", "science", "social", "english"]]]:
-        operator.append((ROOT / "apps/demo-video" / name, "apps/demo-video/" + name))
-    operator_hash = archive(directory / "operator.zip", operator)
+    operator_hash = archive(directory / "operator.zip", operator_files())
     broker_hash = archive(directory / "broker.zip", broker)
     manifest = {"source_commit": source, "dirty": bool(dirty), "operator_sha256": operator_hash, "broker_sha256": broker_hash}
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
