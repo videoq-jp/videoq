@@ -31,3 +31,27 @@ resource "aws_sqs_queue" "main" {
     prevent_destroy = true
   }
 }
+
+# Signatures authenticate requests; this separate deny also requires encryption
+# in transit for every principal, including identities in this AWS account.
+resource "aws_sqs_queue_policy" "require_tls" {
+  for_each = {
+    main = aws_sqs_queue.main
+    dlq  = aws_sqs_queue.dlq
+  }
+
+  queue_url = each.value.url
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "sqs:*"
+      Resource  = each.value.arn
+      Condition = {
+        Bool = { "aws:SecureTransport" = "false" }
+      }
+    }]
+  })
+}
