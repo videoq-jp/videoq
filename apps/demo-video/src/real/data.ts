@@ -59,7 +59,7 @@ function streamEvents(locale: Locale): ChatStreamEvent[] {
   const rest = events.slice(first).filter(event => event.type !== 'text_delta');
   return [
     ...events.slice(0, first).map(event => event.type === 'searching' || event.type === 'search_completed'
-      ? { ...event, query: 'what a derivative represents' } as ChatStreamEvent
+      ? { ...event, query: 'what a derivative represents' }
       : event.type === 'source' ? { ...event, source: { ...event.source, title: titles.get(event.source.video_id) ?? event.source.title } } : event),
     ...text,
     ...rest,

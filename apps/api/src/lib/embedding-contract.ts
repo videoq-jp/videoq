@@ -68,5 +68,5 @@ export function validateEmbedding(
   ) {
     throw new EmbeddingValidationError(reason, config, Array.isArray(value) ? value.length : null);
   }
-  return value;
+  return value as number[];
 }

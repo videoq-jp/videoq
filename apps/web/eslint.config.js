@@ -3,7 +3,7 @@ import { workspaceConfig } from '../../eslint.shared.mjs'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  ...workspaceConfig({ react: true, tsconfigRootDir: import.meta.dirname }),
+  ...workspaceConfig({ react: true, tsconfigRootDir: import.meta.dirname, project: ['./worker/tsconfig.json', './tsconfig.eslint.json'] }),
   globalIgnores(['dist', 'coverage', 'storybook-static', 'test-results', '.wrangler', 'worker/env.d.ts', '.storybook/public/mockServiceWorker.js']),
   {
     files: ['**/*.{ts,tsx}'],

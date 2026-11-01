@@ -48,8 +48,8 @@ async function exchange(env: FederationSettings): Promise<Token> {
     const xml = await result.text();
     const jwt = /<WebIdentityToken>([A-Za-z0-9_.-]+)<\/WebIdentityToken>/.exec(xml)?.[1];
     if (!jwt || jwt.length > 16384) throw new Error("Invalid STS workload identity.");
-    const payload = JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (!Number.isFinite(payload.exp) || payload.exp * 1000 <= startedAt + 60_000) throw new Error("Expired workload identity.");
+    const payload: unknown = JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (!payload || typeof payload !== "object" || !("exp" in payload) || typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp * 1000 <= startedAt + 60_000) throw new Error("Expired workload identity.");
     const response = await fetch("https://openrouter.ai/api/v1/oauth/token", {
       method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -57,7 +57,7 @@ async function exchange(env: FederationSettings): Promise<Token> {
         subject_token: jwt, scope: "inference" }), signal: deadlineSignal(10_000),
     });
     if (!response.ok) { await response.body?.cancel(); throw new Error("OpenRouter rejected workload identity."); }
-    const token = await response.json() as Record<string, unknown>;
+    const token = await response.json<Record<string, unknown>>();
     if (typeof token.access_token !== "string" || !token.access_token || token.token_type !== "Bearer"
       || token.scope !== "inference" || typeof token.expires_in !== "number"
       || !Number.isFinite(token.expires_in) || token.expires_in <= 60 || token.expires_in > 900) {

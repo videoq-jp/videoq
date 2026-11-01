@@ -1,3 +1,5 @@
+import { requestBodyText } from "./helpers/request-body";
+import { URL } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -61,7 +63,7 @@ with build_visual_chunk(video, 42, 8, 0) as (pack, sparse, count):
     expect(rgb[0]).toBeGreaterThan(200);
     expect(rgb[2]).toBeLessThan(30);
     vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
-      const request = JSON.parse(String(init.body));
+      const request = JSON.parse(requestBodyText(init.body));
       expect(JSON.stringify(request).match(/data:image\/jpeg/g)).toHaveLength(3);
       expect(request.response_format.json_schema.schema.properties.observations.items.properties.frame_index.enum).toEqual([1, 2, 3]);
       return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({

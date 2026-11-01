@@ -8,8 +8,8 @@ import type { AuthFixture } from '../fixtures/auth';
 type Inputs = inferRouterInputs<AppRouter>;
 type Outputs = inferRouterOutputs<AppRouter>;
 type ProcedurePath = {
-  [R in keyof Inputs & string]: `${R}.${keyof Inputs[R] & string}`
-}[keyof Inputs & string];
+  [R in keyof Inputs]: `${R}.${keyof Inputs[R] & string}`
+}[keyof Inputs];
 type AtPath<T, P extends string> = P extends `${infer R}.${infer K}`
   ? R extends keyof T ? K extends keyof T[R] ? T[R][K] : never : never : never;
 

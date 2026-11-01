@@ -11,7 +11,6 @@ import {
   isKnownPath,
   isNoindexPath,
   pageMetaKey,
-  type SiteLocale,
 } from '@/lib/seo';
 
 const LOCALE_STORAGE_KEY = 'videoq.locale';
@@ -179,7 +178,7 @@ function applyDocumentMeta(
     : pathname === '/guides' || pathname.startsWith('/guides/') ? resolveFirstByteCopy(locale, pathname)
       : resolvePageCopy(pathname, t);
   const ogLocale = OG_LOCALE_MAP[locale];
-  const canonical = absoluteUrl(pathname, locale as SiteLocale);
+  const canonical = absoluteUrl(pathname, locale);
   const robots = !known || isNoindexPath(pathname) ? 'noindex, nofollow' : 'index, follow';
 
   document.title = title;
@@ -205,7 +204,7 @@ export function useLocaleSync() {
     if (urlLocale && locales.includes(urlLocale as Locale)) {
       const normalized = urlLocale as Locale;
       if (normalized !== i18n.language) {
-        i18n.changeLanguage(normalized);
+        i18n.changeLanguage(normalized).catch((error: unknown) => { console.error('Failed to change language', error); });
       }
       setPreferredLocale(normalized);
       applyDocumentMeta(normalized, pathname, i18n);
@@ -215,7 +214,7 @@ export function useLocaleSync() {
     // Unprefixed URL is the default locale. Do not follow browser language —
     // Googlebot is typically English and would otherwise rewrite `/` to en.
     if (defaultLocale !== i18n.language) {
-      i18n.changeLanguage(defaultLocale);
+      i18n.changeLanguage(defaultLocale).catch((error: unknown) => { console.error('Failed to change language', error); });
     }
     applyDocumentMeta(defaultLocale, pathname, i18n);
   }, [params.locale, location.pathname, i18n]);

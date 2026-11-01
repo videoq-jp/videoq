@@ -8,6 +8,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { convertHistoricalAnswer } from "./migrations/structured-answer/convert";
 
+type MigrationJournal = { entries: { idx: number; tag: string; when: number }[] };
+
 const migrationsFolder = resolve(dirname(fileURLToPath(import.meta.url)), "../drizzle");
 export async function migrateDatabase(client: pg.Client | pg.PoolClient, options: {
   writersStopped?: boolean;
@@ -23,7 +25,7 @@ export async function migrateDatabase(client: pg.Client | pg.PoolClient, options
     if (await legacyAnswerExists() && !options.writersStopped) {
       throw new Error("Stop and drain chat writers and evaluation workers, then set STRUCTURED_ANSWER_WRITERS_STOPPED=1 for the one-time cutover.");
     }
-    const journal = JSON.parse(readFileSync(join(migrationsFolder, "meta/_journal.json"), "utf8"));
+    const journal = JSON.parse(readFileSync(join(migrationsFolder, "meta/_journal.json"), "utf8")) as MigrationJournal;
     const entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= 24);
     mkdirSync(join(stage, "meta"));
     writeFileSync(join(stage, "meta/_journal.json"), JSON.stringify({ ...journal, entries }));
@@ -36,7 +38,7 @@ export async function migrateDatabase(client: pg.Client | pg.PoolClient, options
         let after = "0";
         let converted = 0;
         while (true) {
-          const { rows } = await client.query(`SELECT id, answer, citations FROM chat_logs
+          const { rows } = await client.query<{ id: string; answer: string; citations: unknown }>(`SELECT id, answer, citations FROM chat_logs
             WHERE id > $1 AND response IS NULL ORDER BY id LIMIT 250`, [after]);
           if (!rows.length) break;
           for (const row of rows) {
@@ -49,7 +51,7 @@ export async function migrateDatabase(client: pg.Client | pg.PoolClient, options
             }
           }
           converted += rows.length;
-          after = rows.at(-1).id;
+          after = rows[rows.length - 1].id;
         }
         await client.query("COMMIT");
         console.log(`structured-answer migration: converted ${converted} chat logs`);

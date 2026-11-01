@@ -10,7 +10,8 @@ const meta = {
   args: { title: '動画ライブラリ', description: '講義動画を追加して、タグや講座ごとに整理できます。' },
   decorators: [(Story) => <div className="mx-auto max-w-screen-xl p-4"><Story /></div>],
   async play({ canvasElement, args }) {
-    await expect(within(canvasElement).getByRole('heading', { level: 1 })).toHaveTextContent(String(args.title));
+    if (typeof args.title !== 'string') throw new Error('This story expects a text title');
+    await expect(within(canvasElement).getByRole('heading', { level: 1 })).toHaveTextContent(args.title);
   },
 } satisfies Meta<typeof AppPageHeader>;
 export default meta;

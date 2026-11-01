@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { createHash } from "node:crypto";
@@ -54,7 +55,7 @@ describe.skipIf(!databaseUrl)("native verification storage with PostgreSQL", () 
     const stores = contexts.map((context) => createDpopReplayStore(context.internalAdapter));
     const now = new Date();
     const proof = { key: "same-proof", now, expiresAt: new Date(now.getTime() + 300_000) };
-    const accepted = await Promise.all(stores.map((store) => store.reserve(proof)));
+    const accepted = await Promise.all(stores.map((store) => Promise.resolve(store.reserve(proof))));
     expect(accepted.filter(Boolean)).toHaveLength(1);
     expect(await stores[1].reserve(proof)).toBe(false);
     expect(await stores[1].reserve({ ...proof, key: "new-proof" })).toBe(true);

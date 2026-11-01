@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { embedding as testEmbedding } from "./helpers/embedding";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { generateReply, streamReply, LLM_STREAM_TIMEOUT_MS, llmTimeoutMs } from "../src/lib/llm";
@@ -58,7 +59,7 @@ describe("native structured LLM output", () => {
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       seen.push(String(url));
       expect(new Headers(init.headers).get("authorization")).toBe("Bearer router-key");
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       if (String(url).endsWith("/embeddings")) {
         expect(body).toMatchObject({ model: "openai/text-embedding-3-small", dimensions: 1536 });
         return jsonResponse({ data: [{ index: 0, embedding: testEmbedding(1) }] });
@@ -95,7 +96,7 @@ describe("native structured LLM output", () => {
       }
       expect(endpoint).toBe("https://openrouter.ai/api/v1/chat/completions");
       expect(headers.get("authorization")).toBe("Bearer router-key");
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       expect(body.model).toBe("vendor/model");
       expect(body.response_format.json_schema.strict).toBe(true);
       return body.stream ? sseResponse(frames()) : jsonResponse(completion());
@@ -119,7 +120,7 @@ describe("native structured LLM output", () => {
   });
   it("can disable reasoning on a local thinking model without changing the response schema", async () => {
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
-      expect(JSON.parse(String(init.body))).toMatchObject({ model: "qwen3:4b", reasoning_effort: "none",
+      expect(JSON.parse(requestBodyText(init.body))).toMatchObject({ model: "qwen3:4b", reasoning_effort: "none",
         response_format: { type: "json_schema", json_schema: { strict: true } } });
       return jsonResponse(completion());
     });
@@ -129,7 +130,7 @@ describe("native structured LLM output", () => {
     const calls: Record<string, unknown>[] = [];
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       expect(String(url)).toBe("https://openai.test/v1/chat/completions");
-      const body = JSON.parse(String(init.body));
+      const body = JSON.parse(requestBodyText(init.body));
       calls.push(body);
       expect(body).toMatchObject({ model,
         response_format: { type: "json_schema", json_schema: { strict: true } },
@@ -234,7 +235,7 @@ describe("native structured LLM output", () => {
   });
   it("requires an API key", async () => {
     await expect(generateReply({} as Bindings, "S", "Q")).rejects.toThrow(LlmConfigurationError);
-    await expect(embedQuery({} as Bindings, "q")).rejects.toThrow(LlmConfigurationError);
+    await expect(embedQuery({}, "q")).rejects.toThrow(LlmConfigurationError);
   });
 });
 
@@ -242,7 +243,7 @@ describe("埋め込み生成", () => {
   it("プライベート埋め込み API は専用エンドポイント・モデル・認証を使う", async () => {
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       expect(url).toBe("http://embedding.test:8000/v1/embeddings");
-      expect(JSON.parse(String(init.body))).toEqual({
+      expect(JSON.parse(requestBodyText(init.body))).toEqual({
         model: "gte-qwen2-1.5b-q4km-124fbdad", input: "hello", dimensions: 1536, encoding_format: "float",
       });
       expect(new Headers(init.headers).get("authorization")).toBe("Bearer local-inference");

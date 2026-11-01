@@ -120,7 +120,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
     expect(query).toHaveBeenCalledTimes(1);
     expect(connect).toHaveBeenCalledTimes(1);
     expect(end).toHaveBeenCalledTimes(1);
-    const reply = await query.mock.results[0]!.value as pg.QueryResult;
+    const reply = await query.mock.results[0].value as pg.QueryResult;
     expect(reply.fields.map(field => field.name)).not.toContain("transcript");
   });
 
@@ -133,7 +133,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
       { env, userId: "owner", canWrite: false });
 
     expect(video).toMatchObject({ transcript_available: true, transcript_total_chars: transcript.length });
-    const reply = await query.mock.results[0]!.value as pg.QueryResult;
+    const reply = await query.mock.results[0].value as pg.QueryResult;
     expect(JSON.stringify(reply.rows).length).toBeLessThan(1024);
   });
 

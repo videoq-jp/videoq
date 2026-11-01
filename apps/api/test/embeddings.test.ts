@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { embedQuery } from "../src/lib/embeddings";
 import { EMBEDDING_DIMENSIONS, resolveEmbeddingConfig, validateEmbedding } from "../src/lib/embedding-contract";
@@ -32,7 +33,7 @@ describe("embedQuery", () => {
     const fetch = vi.fn(async (_url: unknown, _init: RequestInit) => Response.json({ data: [{ index: 0, embedding: vector }] }));
     vi.stubGlobal("fetch", fetch);
     expect(await embedQuery(env, "バックアップの保存期間は？")).toEqual(vector);
-    expect(JSON.parse(String(fetch.mock.calls[0][1].body))).toMatchObject({ dimensions: 768, input_type: "query" });
+    expect(JSON.parse(requestBodyText(fetch.mock.calls[0][1].body))).toMatchObject({ dimensions: 768, input_type: "query" });
     const query = vi.fn(async (_sql: string, _values: string[]) => ({ rows: [{ type_name: "vector", dimensions: 768 }] }));
     await assertEmbeddingSchema({ query }, resolveEmbeddingConfig(env));
     expect(query.mock.calls[0][1]).toEqual(["public.scene_embeddings_768"]);
@@ -65,7 +66,7 @@ describe("embedQuery", () => {
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
       upstream = init.signal!;
       if (stage === "headers") return new Promise<Response>((_resolve, reject) => {
-        upstream!.addEventListener("abort", () => reject(upstream!.reason), { once: true });
+        upstream!.addEventListener("abort", () => reject(upstream!.reason instanceof Error ? upstream!.reason : new Error("Aborted")), { once: true });
         started.resolve();
       });
       return new Response(new ReadableStream({
@@ -90,7 +91,7 @@ describe("embedQuery", () => {
     expect(await embedQuery(env, "hello")).toEqual(embedding(1));
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.openai.com/v1/embeddings");
-    expect(JSON.parse(String(init.body))).toEqual({ model: env.EMBEDDING_MODEL, input: "hello", dimensions: 1536, encoding_format: "float" });
+    expect(JSON.parse(requestBodyText(init.body))).toEqual({ model: env.EMBEDDING_MODEL, input: "hello", dimensions: 1536, encoding_format: "float" });
   });
   it.each([
     { data: [{ index: 1, embedding: embedding(1) }] },
@@ -111,7 +112,7 @@ describe("embedQuery", () => {
   it("does not expose provider response bodies or retry on errors", async () => {
     const fetch = vi.fn(async () => new Response("private input / token", { status: 400 }));
     vi.stubGlobal("fetch", fetch);
-    await expect(embedQuery({ ...baseEnv, EMBEDDING_MODEL: "model" } as Bindings, "input"))
+    await expect(embedQuery({ ...baseEnv, EMBEDDING_MODEL: "model" }, "input"))
       .rejects.toThrow(`OpenAI embeddings failed (HTTP 400).`);
     expect(fetch).toHaveBeenCalledOnce();
   });

@@ -54,7 +54,7 @@ export const WatchDemo: Story = {
     await expect(canvas.queryByRole('button', {name:i18n.t('landing.film.play')})).not.toBeInTheDocument();
     const seekTime = 20;
     video.currentTime=seekTime;
-    await waitFor(()=>{expect(video.currentTime).toBeGreaterThanOrEqual(seekTime);expect(video.seeking).toBe(false);expect(video.readyState).toBeGreaterThanOrEqual(2);},{timeout:10000});
+    await waitFor(async ()=>{await expect(video.currentTime).toBeGreaterThanOrEqual(seekTime);await expect(video.seeking).toBe(false);await expect(video.readyState).toBeGreaterThanOrEqual(2);},{timeout:10000});
     video.pause();
   },
 };

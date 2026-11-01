@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { readFileSync } from "node:fs";
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";

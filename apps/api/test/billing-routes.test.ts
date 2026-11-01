@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { billingRoutes } from "../src/features/billing/routes";
 import { createApp } from "../src/app";
@@ -83,14 +84,14 @@ beforeEach(() => {
 
 const req = (path: string, init: RequestInit = {}) => {
   if (path === "/plans") {
-    return createApp().request("/api/trpc/billing.plans", init, ENV as never);
+    return createApp().request("/api/trpc/billing.plans", init, ENV);
   }
   if (path === "/checkout") {
-    const body = JSON.parse(String(init.body ?? "{}")) as { lookup_key?: string };
+    const body = JSON.parse(requestBodyText(init.body ?? "{}")) as { lookup_key?: string };
     return createApp().request(
       "/api/trpc/billing.checkout",
       { ...init, body: JSON.stringify({ lookupKey: body.lookup_key }) },
-      ENV as never,
+      ENV,
     );
   }
   return billingRoutes.request(path, init, ENV);
@@ -100,9 +101,9 @@ describe("billing API", () => {
   it("GET /plans はカタログを返す", async () => {
     const res = await req("/plans");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
+    const body = (await res.json<{
       result: { data: { code: string; amount_yen: number }[] };
-    };
+    }>());
     expect(body.result.data.some((p) => p.code === "free" && p.amount_yen === 0)).toBe(true);
     expect(body.result.data.some((p) => p.code === "basic" && p.amount_yen === 1480)).toBe(true);
     expect(body.result.data.some((p) => p.code === "pro" && p.amount_yen === 3980)).toBe(true);
@@ -119,9 +120,9 @@ describe("billing API", () => {
 
   it("English catalog returns USD cents from Stripe for monthly and annual prices", async () => {
     const input = encodeURIComponent(JSON.stringify({ locale: "en" }));
-    const res = await createApp().request(`/api/trpc/billing.plans?input=${input}`, {}, ENV as never);
+    const res = await createApp().request(`/api/trpc/billing.plans?input=${input}`, {}, ENV);
     expect(res.status).toBe(200);
-    const body = await res.json() as { result: { data: { code: string; interval: string; currency: string; unit_amount: number; amount_yen?: number }[] } };
+    const body = await res.json<{ result: { data: { code: string; interval: string; currency: string; unit_amount: number; amount_yen?: number }[] } }>();
     expect(body.result.data.map(p => [p.code, p.interval, p.currency, p.unit_amount])).toEqual([
       ["free", null, "usd", 0], ["basic", "month", "usd", 999],
       ["basic", "year", "usd", 9990], ["pro", "month", "usd", 2699], ["pro", "year", "usd", 26990],
@@ -140,7 +141,7 @@ describe("billing API", () => {
     configured.data[0] = { ...configured.data[0], ...badPrice };
     pricesList.mockResolvedValue(configured);
     const input = encodeURIComponent(JSON.stringify({ locale: "en" }));
-    const res = await createApp().request(`/api/trpc/billing.plans?input=${input}`, {}, ENV as never);
+    const res = await createApp().request(`/api/trpc/billing.plans?input=${input}`, {}, ENV);
     expect(res.status).toBe(500); // The tRPC transport maps service-unavailable errors to 500.
     expect(await res.json()).toHaveProperty("error");
   });
@@ -166,7 +167,7 @@ describe("billing API", () => {
     if (withLength) headers["content-length"] = String(bytes.byteLength);
     const res = await createApp().request("/api/billing/webhook", {
       method: "POST", headers, body: bytes,
-    }, ENV as never);
+    }, ENV);
     expect(res.status).toBe(200);
     expect(constructEventAsync).toHaveBeenCalledWith(rawBody, "t=1,v1=abc", ENV.STRIPE_WEBHOOK_SECRET);
   });

@@ -55,7 +55,7 @@ describe('useAuthForm', () => {
     })
 
     await act(async () => {
-      await result.current.handleSubmit({
+      result.current.handleSubmit({
         preventDefault: vi.fn(),
       } as unknown as React.FormEvent)
     })
@@ -77,7 +77,7 @@ describe('useAuthForm', () => {
     )
 
     await act(async () => {
-      await result.current.handleSubmit({
+      result.current.handleSubmit({
         preventDefault: vi.fn(),
       } as unknown as React.FormEvent)
     })

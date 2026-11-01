@@ -20,7 +20,7 @@ describe('Textarea', () => {
   it('should display value', () => {
     render(<Textarea value="Test value" onChange={() => {}} />)
     
-    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    const textarea = screen.getByRole<HTMLTextAreaElement>('textbox')
     expect(textarea.value).toBe('Test value')
   })
 

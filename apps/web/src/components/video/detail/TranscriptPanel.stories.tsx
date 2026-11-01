@@ -50,7 +50,7 @@ export const EditingFullHeight: Story = {
   args: { video: { ...detailVideo, transcript: longEditableTranscript } },
   async play(context) {
     await Editing.play!(context);
-    const textbox = context.canvas.getByRole('textbox') as HTMLTextAreaElement;
+    const textbox = context.canvas.getByRole<HTMLTextAreaElement>('textbox');
     const panel = context.canvas.getByRole('heading').closest('div.flex.min-h-\\[31\\.25rem\\]')!;
     await expect(textbox.clientHeight).toBeGreaterThan(250);
     await expect(Math.abs(textbox.getBoundingClientRect().bottom - panel.getBoundingClientRect().bottom)).toBeLessThan(3);

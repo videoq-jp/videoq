@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { chatAnswerText } from "@videoq/trpc/chat";
 import { existsSync, readFileSync } from "node:fs";
 import { parse } from "dotenv";

@@ -13,7 +13,7 @@ interface UseVideoCoursesReturn {
   error: string | null;
   isFetchingNextPage: boolean;
   isFetching: boolean;
-  retry: () => void;
+  retry: () => Promise<unknown>;
   sentinelRef: RefCallback<HTMLElement>;
 }
 

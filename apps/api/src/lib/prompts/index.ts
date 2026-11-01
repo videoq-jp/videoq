@@ -16,7 +16,7 @@ function resolveLocaleConfig(locale?: string | null): PromptConfig {
 /** RAG の名前付きプレースホルダを置換する。 */
 function formatTemplate(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (whole, key: string) =>
-    key in values ? values[key]! : whole,
+    key in values ? values[key] : whole,
   );
 }
 

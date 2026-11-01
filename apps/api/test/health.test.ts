@@ -13,9 +13,9 @@ describe("health", () => {
     const app = createApp();
     const res = await app.request("/health", {}, ENV);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
+    const body = (await res.json<{
       data: { status: string; env: string };
-    };
+    }>());
     expect(body.data.status).toBe("ok");
     expect(body.data.env).toBe("test");
     expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);

@@ -14,7 +14,7 @@ export async function answerBrowser() {
     configFile: false,
     root: `${root}/apps/web`,
     cacheDir: `${root}/apps/api/node_modules/.vite-answer-benchmark`,
-    optimizeDeps: { entries: [`${root}/apps/api/test/support/answer-browser.tsx`] },
+    optimizeDeps: { entries: [`${root}/apps/api/test/support/answer-browser-page.tsx`] },
     plugins: [react(), { name: "answer-benchmark", configureServer(server) {
         server.middlewares.use((req, res, next) => {
           if (req.url?.startsWith("/api/chat/messages/stream")) {
@@ -24,7 +24,7 @@ export async function answerBrowser() {
               .finally(() => res.end());
           } else if (req.url?.startsWith("/benchmark")) {
             res.setHeader("content-type", "text/html");
-            void server.transformIndexHtml("/benchmark", `<!doctype html><html><body><div id="root"></div><script type="module" src="/@fs/${root}/apps/api/test/support/answer-browser.tsx"></script></body></html>`).then(html => res.end(html));
+            void server.transformIndexHtml("/benchmark", `<!doctype html><html><body><div id="root"></div><script type="module" src="/@fs/${root}/apps/api/test/support/answer-browser-page.tsx"></script></body></html>`).then(html => res.end(html));
           } else next();
         });
     } }],

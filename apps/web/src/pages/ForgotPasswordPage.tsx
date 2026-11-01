@@ -24,7 +24,8 @@ export default function ForgotPasswordPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submitInFlightRef.current) return;
-    const email = String(new FormData(event.currentTarget).get('email') ?? '');
+    const emailEntry = new FormData(event.currentTarget).get('email');
+    const email = typeof emailEntry === 'string' ? emailEntry : '';
     submitInFlightRef.current = true;
     requestResetMutation.mutate(email);
   };

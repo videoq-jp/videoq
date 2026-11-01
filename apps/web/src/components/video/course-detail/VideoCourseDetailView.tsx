@@ -277,7 +277,7 @@ function GroupVideoList({
               // list stable across resize for dnd-kit's effect dependencies.
               sensors={sensors}
               collisionDetection={closestCenter}
-              onDragEnd={onDragEnd}
+              onDragEnd={(event) => { void onDragEnd(event); }}
             >
               <SortableContext items={course.videos.map((video) => video.id)} strategy={verticalListSortingStrategy}>
                 {course.videos.map((video) => (
@@ -291,7 +291,7 @@ function GroupVideoList({
                       onVideoSelect(videoId);
                       if (isMobile) onMobileTabChange('player');
                     }}
-                    onRemove={onRemoveVideo}
+                    onRemove={(id) => { void onRemoveVideo(id); }}
                     isRemoving={removingVideoId === video.id}
                     isMutationPending={isMutationPending}
                   />
@@ -643,7 +643,7 @@ export function VideoCourseDetailView({
                 onRemoveVideo={onRemoveVideo}
                 removingVideoId={removingVideoId}
                 isMutationPending={isMutationPending}
-                onDragEnd={onDragEnd}
+                onDragEnd={(event) => { void onDragEnd(event); }}
                 canManage={canManage}
               />
 

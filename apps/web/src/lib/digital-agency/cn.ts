@@ -35,7 +35,7 @@ const twMerge = extendTailwindMerge((config) => {
   // Append a validator to an existing class group keyed by its utility prefix.
   const register = (group: ClassGroup, key: string, match: Validator) => {
     const entry = group[0] as Record<string, ClassDef[]>
-    entry[key]?.push(match as ClassDef)
+    entry[key]?.push(match)
   }
 
   // (1) Stop the text-color group from swallowing DA font-size tokens…
@@ -47,10 +47,10 @@ const twMerge = extendTailwindMerge((config) => {
           ? (((value: string) =>
               isDaFontSize(value)
                 ? false
-                : (v as Validator)(value)) as ClassDef)
+                : (v as Validator)(value)))
           : v
       ),
-    } as ClassDef,
+    },
   ]
   // …and register them as font sizes instead.
   register(config.classGroups["font-size"], "text", isDaFontSize)

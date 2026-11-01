@@ -10,7 +10,7 @@ export function uploadPart(
   onProgress: (bytes: number) => void,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (signal.aborted) { reject(signal.reason); return; }
+    if (signal.aborted) { reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')); return; }
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
     xhr.setRequestHeader('Content-Type', contentType);
@@ -34,7 +34,7 @@ export function uploadPart(
     });
     xhr.addEventListener('error', () => { cleanup(); reject(new PartUploadError('Upload failed', true)); });
     xhr.addEventListener('timeout', () => { cleanup(); reject(new PartUploadError('Upload timed out', true)); });
-    xhr.addEventListener('abort', () => { cleanup(); reject(signal.reason ?? new Error('Upload aborted')); });
+    xhr.addEventListener('abort', () => { cleanup(); reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')); });
     xhr.send(body);
   });
 }
@@ -53,7 +53,7 @@ async function retry<T>(operation: () => Promise<T>, signal: AbortSignal): Promi
     catch (error) {
       if (signal.aborted || attempt >= 6 || !canRetry(error)) throw error;
       await new Promise<void>((resolve, reject) => {
-        const abort = () => { clearTimeout(timer); reject(signal.reason); };
+        const abort = () => { clearTimeout(timer); reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')); };
         const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, Math.min(30000, 1000 * 2 ** attempt));
         signal.addEventListener('abort', abort, { once: true });
       });
@@ -74,7 +74,7 @@ export async function uploadMultipartFile<T>(
   const { signal } = controller;
   const { part_size: partSize, part_count: partCount } = session;
   const uploaded = new Float64Array(partCount);
-  const parts: UploadedPart[] = new Array(partCount);
+  const parts: UploadedPart[] = new Array<UploadedPart>(partCount);
   let next = 0;
   let percent = 0;
   const progress = (index: number, bytes: number) => {

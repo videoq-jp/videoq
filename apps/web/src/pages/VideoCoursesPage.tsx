@@ -271,7 +271,7 @@ export default function VideoCoursesPage() {
           <div className="mb-6">
             <ErrorMessage message={loadError || reorderError} />
             {loadError && (
-              <Button type="button" variant="outline" size="sm" onClick={retry} disabled={isFetching} aria-busy={isFetching} className="mt-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => { void retry(); }} disabled={isFetching} aria-busy={isFetching} className="mt-3">
                 {t('videos.courses.retryLoad')}
               </Button>
             )}

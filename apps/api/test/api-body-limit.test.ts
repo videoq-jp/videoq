@@ -17,7 +17,7 @@ it.each([
     method: "POST",
     headers: { "Content-Type": "application/json", "Content-Length": String(MAX_BYTES + 1) },
     body: " ".repeat(MAX_BYTES + 1),
-  }, { ENVIRONMENT: "production" } as never);
+  }, { ENVIRONMENT: "production" });
   expect(response.status).toBe(413);
   expect(withDb).not.toHaveBeenCalled();
 });
@@ -31,7 +31,7 @@ it("limits chunked input without Content-Length before parsing", async () => {
   const request = new Request("https://videoq.test/api/trpc/videos.update", {
     method: "POST", headers: { "Content-Type": "application/json" }, body, duplex: "half",
   } as RequestInit);
-  const response = await createApp().fetch(request, { ENVIRONMENT: "production" } as never);
+  const response = await createApp().fetch(request, { ENVIRONMENT: "production" });
   expect(response.status).toBe(413);
   expect(withDb).not.toHaveBeenCalled();
 });

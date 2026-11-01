@@ -76,7 +76,7 @@ async function runTask(env: Bindings, task: ClaimedExternalTask): Promise<void> 
     await completeStorageCleanupTask(env, {
       lease: task,
       userId,
-      bytes: bytes as number | null,
+      bytes: bytes,
     });
     return;
   }

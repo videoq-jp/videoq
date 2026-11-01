@@ -464,7 +464,7 @@ export async function getCourseChatHistory(
       answer: chatAnswerSchema.parse(r.answer),
       is_shared_origin: r.is_shared_origin,
       feedback: chatFeedback(r.feedback),
-      created_at: toUtcIso(r.created_at)!,
+      created_at: toUtcIso(r.created_at),
     }));
 
     return { count: total.count, results };

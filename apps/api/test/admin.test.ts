@@ -1,3 +1,4 @@
+import { requestBodyText } from "./helpers/request-body";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { APIError } from "better-auth/api";
 import { requestTrpc, trpcData } from "./helpers/trpc";
@@ -91,7 +92,7 @@ beforeEach(() => {
 
 const req = (path: string, init: RequestInit = {}) => {
   const url = new URL(path, "http://localhost");
-  const body = init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+  const body = init.body ? JSON.parse(requestBodyText(init.body)) as Record<string, unknown> : {};
   const headers = { headers: init.headers };
   if (url.pathname === "/users" && (init.method ?? "GET") === "GET") {
     return requestTrpc("admin.listUsers", "query", {

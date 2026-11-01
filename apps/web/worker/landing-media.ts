@@ -18,7 +18,7 @@ export async function serveLandingVideo(request: Request, assets: Fetcher): Prom
   }
 
   // Bound the read even if an asset is replaced with a larger file later.
-  const reader = original.body?.getReader();
+  const reader = (original.body as ReadableStream<Uint8Array> | null)?.getReader();
   if (!reader) return new Response(null, { status: 500 });
   const chunks: Uint8Array[] = [];
   let size = 0;

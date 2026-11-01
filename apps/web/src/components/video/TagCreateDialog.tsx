@@ -149,7 +149,7 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
             <Button type="button" variant="outline" onClick={handleClose} disabled={isCreating}>
               {t('common.actions.cancel')}
             </Button>
-            <Button type="button" onClick={handleCreate} disabled={!name.trim() || isCreating}>
+            <Button type="button" onClick={() => { void handleCreate(); }} disabled={!name.trim() || isCreating}>
               {isCreating ? (
                 <span className="flex items-center justify-center">
                   <InlineSpinner className="mr-2" />

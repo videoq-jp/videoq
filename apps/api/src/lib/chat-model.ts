@@ -53,7 +53,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
       // answer is discarded, never streamed or used as conversion input.
       const { response_format: _format, stream_options: _streamOptions, ...decisionRequest } = request;
       const decision = await this.completionWithRetry({ ...decisionRequest, stream: false }, options);
-      const completed = decision as OpenAI.Chat.Completions.ChatCompletion;
+      const completed = decision;
       const choice = completed.choices[0];
       if (!choice || choice.message.refusal || !["stop", "tool_calls"].includes(choice.finish_reason)) {
         throw new LlmProviderError("Local tool decision refused or incomplete.");
@@ -66,6 +66,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
           if (call.type !== "function") throw new LlmConfigurationError("Local inference requires function tool calls.");
           return { index, id: call.id, type: "function" as const, function: call.function };
         });
+        // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
         return (async function* (): AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk> {
           const base = { id: completed.id, object: "chat.completion.chunk" as const,
             created: completed.created, model: completed.model };

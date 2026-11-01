@@ -14,7 +14,7 @@ const { values } = parseArgs({ options: {
   origin: { type: 'string', default: 'http://127.0.0.1:8787' },
   'local-user': { type: 'string' }, 'upload-only': { type: 'boolean' }, check: { type: 'boolean' },
 } });
-const origin = new URL(values.origin!);
+const origin = new URL(values.origin);
 const local = ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
 if (origin.pathname !== '/' || origin.username || origin.password || origin.search || origin.hash
   || (!local && origin.protocol !== 'https:') || (!local && values['local-user'])) throw new Error('Invalid origin/auth combination.');
@@ -33,7 +33,7 @@ async function rpc<K extends ProcedureName>(name: K, input: RpcInputMap[K], muta
   const response = await fetch(url, { method: mutate ? 'POST' : 'GET', headers: anonymous ? {} : headers,
     ...(mutate ? { body: JSON.stringify(input) } : {}), signal: AbortSignal.timeout(30_000),
   });
-  const body = await response.json() as { result?: { data: RpcOutputMap[K] }; error?: { message?: string } };
+  const body = await response.json<{ result?: { data: RpcOutputMap[K] }; error?: { message?: string } }>();
   if (!response.ok || !body.result || body.error) throw new Error(`${name}: ${response.status} ${body.error?.message ?? 'Invalid response'}`);
   return body.result.data;
 }
@@ -60,13 +60,13 @@ if (!values.check) {
       video = upload.video;
       const response = await fetch(upload.upload_url, { method: 'PUT', headers: { 'Content-Type': 'video/mp4' }, body: bytes, signal: AbortSignal.timeout(60_000) });
       if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-      await rpc('videos.confirmUpload', { id: video!.id }, true);
+      await rpc('videos.confirmUpload', { id: video.id }, true);
     } else if ((await rpc('videos.get', { id: video.id })).status === 'uploading') {
       // A storage timeout can leave a completed PUT awaiting confirmation.
       await rpc('videos.confirmUpload', { id: video.id }, true);
     }
-    ids.push(video!.id);
-    console.log(`${lesson.subject}: video ${video!.id}`);
+    ids.push(video.id);
+    console.log(`${lesson.subject}: video ${video.id}`);
   }
   if (values['upload-only']) {
     console.log(`Uploaded. Process through the normal worker: ${ids.join(' ')}`);

@@ -29,7 +29,7 @@ export function normalizePgQuery(
 export function matchableSql(sql: string): MatchableSql {
   const stripped = sql.replace(/"/g, "");
   const upper = stripped.toUpperCase();
-  return Object.assign(new String(stripped) as unknown as string, {
+  return Object.assign<MatchableSql>(new String(stripped) as unknown as string, {
     includes(search: string) {
       return upper.includes(String(search).replace(/"/g, "").toUpperCase());
     },
@@ -39,7 +39,7 @@ export function matchableSql(sql: string): MatchableSql {
     valueOf() {
       return stripped;
     },
-  }) as MatchableSql;
+  });
 }
 
 export type QueryCall = { sql: MatchableSql; args: unknown[] };
@@ -49,7 +49,7 @@ function toPgRows(
   rowMode?: string,
 ): unknown[] {
   if (rowMode !== "array") return rawRows;
-  return rawRows.map((r) => (Array.isArray(r) ? r : Object.values(r as Record<string, unknown>)));
+  return rawRows.map((r) => (Array.isArray(r) ? r : Object.values(r)));
 }
 
 /**
@@ -75,7 +75,7 @@ export function executeFakePgQuery(opts: {
   const rawRows = opts.rowsFor(matchSql, a);
   const objectRows = rawRows.every(Array.isArray)
     ? []
-    : (rawRows as Record<string, unknown>[]);
+    : (rawRows);
   const rows = toPgRows(rawRows, rowMode);
   const rowCount = opts.rowCountFor
     ? opts.rowCountFor(matchSql, a, objectRows)

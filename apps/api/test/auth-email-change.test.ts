@@ -3,7 +3,7 @@ import { hashPassword } from "better-auth/crypto";
 
 // Keep the production auth endpoints and token verification. Replace only
 // persistence and outbound email, so no real account or mailbox is touched.
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };

@@ -702,7 +702,7 @@ export default function SettingsPage() {
                       className="h-10 w-full"
                       disabled={copyStatus === 'pending'}
                       aria-busy={copyStatus === 'pending'}
-                      onClick={handleCopyApiKey}
+                      onClick={() => { void handleCopyApiKey(); }}
                     >
                       {copyStatus === 'success' ? t('settings.integrationApiKeys.copyDone') : t('settings.integrationApiKeys.copy')}
                     </Button>

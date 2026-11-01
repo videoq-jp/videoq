@@ -9,6 +9,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const stub = name => path.join(root, 'src/real/hooks', `${name}.ts`);
 const hooks = ['useAuth', 'useChatHistory', 'useChatMessages', 'useSharePageData', 'useTags', 'useVideoPlayback', 'useVideoStats', 'useVideoUpload', 'useVideos'];
 
+/** @type {import('@remotion/bundler').WebpackOverrideFn} */
 export const webpackOverride = config => ({
   ...config,
   resolve: {

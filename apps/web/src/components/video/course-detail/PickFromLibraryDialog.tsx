@@ -242,7 +242,7 @@ export function PickFromLibraryDialog({
                         variant="outline"
                         disabled={isFetching}
                         aria-busy={isFetching}
-                        onClick={() => videosError && !isFetchNextPageError ? refetchVideos() : fetchNextPage()}
+                        onClick={() => { void (videosError && !isFetchNextPageError ? refetchVideos() : fetchNextPage()); }}
                       >
                         {isFetchingNextPage ? <><InlineSpinner />{t('videos.list.loadingMore')}</> :
                           t(videosError ? 'videos.courseDetail.retryLoadVideos' : 'videos.courseDetail.loadMoreVideos')}
@@ -260,7 +260,7 @@ export function PickFromLibraryDialog({
               </Button>
               <Button
                 type="button"
-                onClick={handleAddVideos}
+                onClick={() => { void handleAddVideos(); }}
                 disabled={addVideosMutation.isPending || selectedVideos.length === 0}
               >
                 {addVideosMutation.isPending && <InlineSpinner className="w-3.5 h-3.5" />}

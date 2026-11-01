@@ -93,8 +93,9 @@ const originalTranscript = "Original transcript";
   it(
     "update keeps the committed response when deletion follows the update", async () => {
       const before = await getVideoDetail(env, 10, "owner");
-      const end = pg.Client.prototype.end;
-      vi.spyOn(pg.Client.prototype, "end").mockImplementation(async function (this: pg.Client) {
+      const promiseClient = pg.Client.prototype as { end(this: pg.Client): Promise<void> };
+      const end = promiseClient.end;
+      vi.spyOn(promiseClient, "end").mockImplementation(async function (this: pg.Client) {
         try { await admin.query("DELETE FROM videos WHERE id = 10"); }
         finally { await end.call(this); }
       });

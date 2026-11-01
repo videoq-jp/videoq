@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { migrateDatabase } from "../scripts/migrate-database";
 import { convertHistoricalAnswer } from "../scripts/migrations/structured-answer/convert";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

@@ -10,7 +10,7 @@ import type { OAuthClientInformationMixed, OAuthTokens } from "@modelcontextprot
 // Exercise the production Better Auth configuration and real HTTP endpoints.
 // Persistence and mail delivery are replaced; credential verifiers are real.
 vi.mock("../src/lib/mail", () => ({ sendMail: vi.fn() }));
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };
@@ -91,7 +91,7 @@ async function register(auth: Auth, confidential = false, scope?: string) {
     ...(scope ? { scope } : {}),
   });
   expect(response.status, await response.clone().text()).toBe(201);
-  return await response.json() as { client_id: string; client_secret?: string };
+  return await response.json<{ client_id: string; client_secret?: string }>();
 }
 async function authorize(auth: Auth, cookie: string, clientId: string, options: OAuthTestOptions = {}) {
   const query = new URLSearchParams({
@@ -101,7 +101,7 @@ async function authorize(auth: Auth, cookie: string, clientId: string, options: 
     code_challenge: createHash("sha256").update(VERIFIER).digest("base64url"),
     code_challenge_method: "S256", state: "test-state",
   });
-  const response = await auth.handler(new Request(`${BASE}/api/auth/oauth2/authorize?${query}`, {
+  const response = await auth.handler(new Request(`${BASE}/api/auth/oauth2/authorize?${query.toString()}`, {
     headers: { cookie, "cf-connecting-ip": "192.0.2.1" },
   }));
   expect(response.status, await response.clone().text()).toBe(302);
@@ -111,7 +111,7 @@ async function authorize(auth: Auth, cookie: string, clientId: string, options: 
       accept: true, oauth_query: redirect.search.slice(1),
     }, cookie);
     expect(accepted.status, await accepted.clone().text()).toBe(200);
-    const result = await accepted.json() as { url: string };
+    const result = await accepted.json<{ url: string }>();
     redirect = new URL(result.url);
   }
   const code = redirect.searchParams.get("code");
@@ -127,7 +127,7 @@ async function tokenRequest(auth: Auth, clientId: string, params: Record<string,
 }
 async function tokensFrom(response: Response) {
   expect(response.status, await response.clone().text()).toBe(200);
-  return await response.json() as { access_token: string; refresh_token: string; id_token?: string; expires_in: number };
+  return await response.json<{ access_token: string; refresh_token: string; id_token?: string; expires_in: number }>();
 }
 async function connect(auth: Auth, cookie: string, options: OAuthTestOptions = {}) {
   const client = await register(auth, options.confidential, options.registrationScope);
@@ -211,7 +211,7 @@ describe("MCP OAuth permission negotiation", () => {
       accept: true, oauth_query: consentUrl.search.slice(1),
     }, cookie);
     expect(consent.status).toBe(200);
-    const authorizationCode = new URL((await consent.json() as { url: string }).url).searchParams.get("code")!;
+    const authorizationCode = new URL((await consent.json<{ url: string }>()).url).searchParams.get("code")!;
     expect(await authorizeMcpClient(provider, { ...options, authorizationCode })).toBe("AUTHORIZED");
     const accessToken = saveTokens.mock.lastCall![0].access_token;
     expect(await auth.api.verifyVideoqOAuth({ body: {
@@ -433,7 +433,7 @@ describe("API key credential boundaries", () => {
       name: "test-key", configId: accessLevel === "all" ? "read-write" : "default",
     }, cookie);
     expect(response.status, await response.clone().text()).toBe(200);
-    return await response.json() as { id: string; key: string };
+    return await response.json<{ id: string; key: string }>();
   }
 
   it.each(["active", "banned", "missing"])("applies %s account policy through the server-only extension", async (status) => {

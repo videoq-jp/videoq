@@ -52,7 +52,7 @@ const DYNAMIC_KEYS: { path: string; values: readonly string[] }[] = [
 describe('動的に組み立てる翻訳キー', () => {
   describe.each(Object.entries(LOCALES))('%s', (_name, locale) => {
     it.each(DYNAMIC_KEYS)('$path が全ての値を網羅する', ({ path, values }) => {
-      const node = resolve(locale as unknown as KeyMap, path);
+      const node = resolve(locale, path);
 
       // 値が増えたのに翻訳を足し忘れると、画面に生キーが出る。
       expect(Object.keys(node).sort()).toEqual([...values].sort());

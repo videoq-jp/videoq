@@ -43,7 +43,7 @@ export const Uploaded: Story = {
 export const YouTube: Story = {
   args: { video: youtubeVideo },
   play: async ({ canvas, args }) => {
-    const image = canvas.getByRole('img', { name: args.video.title }) as HTMLImageElement;
+    const image = canvas.getByRole<HTMLImageElement>('img', { name: args.video.title });
     await expect(image).toHaveAttribute('src', youtubeThumbnailUrl);
     await waitFor(async () => {
       await expect(image.complete).toBe(true);

@@ -85,7 +85,7 @@ withPostgres("on-prem account lifecycle without SaaS services", () => {
     // Only one of two competing passwords may consume this activation token.
     const passwords = [password, "Competing-onprem-password-2026!"];
     const activations = await Promise.all(passwords.map(newPassword =>
-      post("/api/auth/reset-password", { token: token(user.activation_url), newPassword })));
+      Promise.resolve(post("/api/auth/reset-password", { token: token(user.activation_url), newPassword }))));
     expect(activations.map(response => response.status).sort()).toEqual([200, 400]);
     const winner = activations.findIndex(response => response.status === 200);
     const userLogin = await post("/api/auth/sign-in/username", { username: createInput.username, password: passwords[winner] });

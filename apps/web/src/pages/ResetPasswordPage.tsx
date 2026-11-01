@@ -33,8 +33,10 @@ function ResetPasswordContent({ token }: { token: string }) {
     if (submitInFlightRef.current) return;
     setClientError(null);
     const data = new FormData(event.currentTarget);
-    const password = String(data.get('password') ?? '');
-    const confirmPassword = String(data.get('confirmPassword') ?? '');
+    const passwordEntry = data.get('password');
+    const confirmationEntry = data.get('confirmPassword');
+    const password = typeof passwordEntry === 'string' ? passwordEntry : '';
+    const confirmPassword = typeof confirmationEntry === 'string' ? confirmationEntry : '';
 
     if (password !== confirmPassword) {
       setClientError(t('auth.resetPassword.passwordMismatch'));

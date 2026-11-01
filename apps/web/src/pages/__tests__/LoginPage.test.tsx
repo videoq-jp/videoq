@@ -199,7 +199,7 @@ describe('LoginPage', () => {
       hrefSetter = vi.fn()
       Object.defineProperty(window, 'location', {
         configurable: true,
-        value: new Proxy({ href: '' } as { href: string }, {
+        value: new Proxy({ href: '' }, {
           set(target, prop, value) {
             if (prop === 'href') {
               hrefSetter(value)

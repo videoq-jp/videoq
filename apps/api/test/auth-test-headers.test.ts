@@ -58,7 +58,7 @@ describe("テスト用認証ヘッダの受付条件", () => {
     const res = await appWith().request(
       "http://localhost/who",
       { headers: { "X-VideoQ-Test-User-Id": TEST_USER_ID } },
-      { ENVIRONMENT: "production" } as unknown as AppEnv["Bindings"],
+      { ENVIRONMENT: "production" },
     );
 
     expect(res.status).not.toBe(200);

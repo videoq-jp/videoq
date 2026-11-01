@@ -1,9 +1,10 @@
+import { requestBodyText } from "./helpers/request-body";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, SignJWT, type JWTPayload } from "jose";
 
 // Keep Google's actual ID-token verifier and the production auth routes. Supply
 // a local signing key through a mocked JWKS response; never contact Google/mail.
-const store = vi.hoisted(() => ({ data: {} as Record<string, Record<string, unknown>[]> }));
+const store = vi.hoisted(() => ({ data: {} }));
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };
@@ -57,7 +58,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async (input: string | Request | URL, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input);
     if (url === "https://oauth2.googleapis.com/token" && tokenResponse) {
-      tokenRequests.push(new URLSearchParams(String(init?.body)));
+      tokenRequests.push(new URLSearchParams(requestBodyText(init?.body)));
       return Response.json(tokenResponse);
     }
     if (url !== "https://www.googleapis.com/oauth2/v3/certs") throw new Error(`Unexpected outbound request: ${url}`);

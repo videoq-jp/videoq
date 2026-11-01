@@ -94,10 +94,11 @@ const now = new Date("2026-09-23T12:00:00.000Z");
   });
 
   it("does not expire a renewed invitation after previewing an older token", async () => {
-    const end = pg.Client.prototype.end;
+    const promiseClient = pg.Client.prototype as { end(this: pg.Client): Promise<void> };
+    const end = promiseClient.end;
     let renewed = false;
     const newHash = await hashInvitationToken("new-token");
-    vi.spyOn(pg.Client.prototype, "end").mockImplementation(async function (this: pg.Client) {
+    vi.spyOn(promiseClient, "end").mockImplementation(async function (this: pg.Client) {
       await end.call(this);
       if (!renewed) {
         renewed = true;

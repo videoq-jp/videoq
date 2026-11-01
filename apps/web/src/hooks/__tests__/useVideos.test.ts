@@ -99,8 +99,8 @@ describe('useVideos', () => {
     await waitFor(() => expect(result.current.videos).toHaveLength(24))
 
     act(() => {
-      result.current.fetchNextPage()
-      result.current.fetchNextPage()
+      void result.current.fetchNextPage()
+      void result.current.fetchNextPage()
     })
     await waitFor(() => expect(finishPage).toBeDefined())
     try {
@@ -250,7 +250,7 @@ describe('useVideos', () => {
     await waitFor(() => expect(result.current.videos).toHaveLength(24))
 
     await act(async () => {
-      result.current.fetchNextPage()
+      void result.current.fetchNextPage()
     })
 
     await waitFor(() => {
@@ -294,7 +294,7 @@ describe('useVideos', () => {
     await waitFor(() => expect(result.current.videos).toHaveLength(24))
 
     await act(async () => {
-      result.current.fetchNextPage()
+      void result.current.fetchNextPage()
     })
 
     await waitFor(() => {
