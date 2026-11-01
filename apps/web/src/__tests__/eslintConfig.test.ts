@@ -6,44 +6,45 @@ import { afterAll, beforeAll, describe, it, expect } from 'vitest'
 import { ESLint } from 'eslint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const cases = [
+  ['src/pages/ExamplePage.tsx', '@/components/layout/AppPageShell', 'AppPageShell'],
+  ['src/pages/ExamplePage.tsx', '../components/layout/AuthLayout', 'AuthLayout'],
+  ['src/pages/ExamplePage.tsx', '@/components/layout/AppFooter.tsx', 'AppFooter'],
+  ['src/components/video/ExampleView.tsx', '@/components/layout/AppNav', 'AppNav'],
+]
 
 describe('eslint.config.js', () => {
-  const configContent = readFileSync(
-    resolve(__dirname, '../../eslint.config.js'),
-    'utf-8',
-  )
-  let eslint: ESLint
-  let fixtures: string[] = []
+  const configContent = readFileSync(resolve(__dirname, '../../eslint.config.js'), 'utf-8')
+  const fixtures: string[] = []
+  let results: Map<string, ESLint.LintResult>
 
   beforeAll(async () => {
-    eslint = new ESLint({ cwd: resolve(__dirname, '../..') })
-    fixtures = ['src/pages', 'src/components/video'].map(directory => {
-      const fixture = mkdtempSync(resolve(__dirname, '..', directory.replace('src/', ''), 'eslint-config-'))
-      const file = join(fixture, 'Example.tsx')
-      writeFileSync(file, 'export {};')
-      return file
-    })
-    await eslint.lintText('export {};', { filePath: fixtures[0] })
+    const cwd = resolve(__dirname, '../..')
+    // CI uses a cached TypeScript program. Write every case before creating it;
+    // lintText over placeholder files can otherwise receive a stale source AST.
+    for (const [filePath, source, name] of cases) {
+      const directory = mkdtempSync(resolve(cwd, dirname(filePath), 'eslint-config-'))
+      const fixture = join(directory, 'Example.tsx')
+      fixtures.push(fixture)
+      writeFileSync(fixture, `import { ${name} } from '${source}'; export default function Example() { return <${name} />; }`)
+    }
+    const eslint = new ESLint({ cwd })
+    results = new Map((await eslint.lintFiles(fixtures)).map(result => [result.filePath, result]))
   }, 60_000)
 
-  afterAll(() => { for (const fixture of fixtures) rmSync(dirname(fixture), { recursive: true, force: true }) })
+  afterAll(() => {
+    for (const fixture of fixtures) rmSync(dirname(fixture), { recursive: true, force: true })
+  })
 
   it('ignores coverage directory', () => {
     expect(configContent).toMatch(/globalIgnores\(\[.*'coverage'.*\]\)/s)
   })
 
-  it.each([
-    ['src/pages/ExamplePage.tsx', '@/components/layout/AppPageShell', 'AppPageShell'],
-    ['src/pages/ExamplePage.tsx', '../components/layout/AuthLayout', 'AuthLayout'],
-    ['src/pages/ExamplePage.tsx', '@/components/layout/AppFooter.tsx', 'AppFooter'],
-    ['src/components/video/ExampleView.tsx', '@/components/layout/AppNav', 'AppNav'],
-  ])('rejects page-owned layout imports in %s from %s', async (filePath, source, name) => {
-    const [result] = await eslint.lintText(
-      `import { ${name} } from '${source}'; export default function Example() { return <${name} />; }`,
-      { filePath: filePath.includes('/pages/') ? fixtures[0] : fixtures[1] },
-    )
-    expect(result.messages).toEqual(expect.arrayContaining([
-      expect.objectContaining({ ruleId: 'no-restricted-imports', severity: 2 }),
-    ]))
-  })
+  it.each(cases.map((entry, index) => [index, ...entry] as const))(
+    'rejects page-owned layout imports in case %i (%s from %s)', (index) => {
+      expect(results.get(fixtures[index])?.messages).toEqual(expect.arrayContaining([
+        expect.objectContaining({ ruleId: 'no-restricted-imports', severity: 2 }),
+      ]))
+    },
+  )
 })

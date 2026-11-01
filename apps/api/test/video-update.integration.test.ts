@@ -94,7 +94,7 @@ const originalTranscript = "Original transcript";
     "update keeps the committed response when deletion follows the update", async () => {
       const before = await getVideoDetail(env, 10, "owner");
       const promiseClient = pg.Client.prototype as { end(this: pg.Client): Promise<void> };
-    const end = promiseClient.end;
+      const end = promiseClient.end;
       vi.spyOn(promiseClient, "end").mockImplementation(async function (this: pg.Client) {
         try { await admin.query("DELETE FROM videos WHERE id = 10"); }
         finally { await end.call(this); }
@@ -105,7 +105,7 @@ const originalTranscript = "Original transcript";
   );
 
   it("releases the database connection before resolving the updated media URL", async () => {
-    const end = vi.spyOn(promiseClient, "end");
+    const end = vi.spyOn(pg.Client.prototype, "end");
     const resolve = vi.spyOn(media, "resolveFileUrl").mockImplementation(async () => {
       expect(end).toHaveBeenCalledTimes(1);
       return "https://media.example.test/video";

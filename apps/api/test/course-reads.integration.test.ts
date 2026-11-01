@@ -140,7 +140,7 @@ describeWithPostgres("course reads on PostgreSQL", () => {
       "keeps a complete response when deletion follows the database work (%j)", async fields => {
         const before = await courses.getCourse(env, 40, "owner");
         const promiseClient = pg.Client.prototype as { end(this: pg.Client): Promise<void> };
-    const end = promiseClient.end;
+        const end = promiseClient.end;
         vi.spyOn(promiseClient, "end").mockImplementation(async function (this: pg.Client) {
           try {
             await admin.query("DELETE FROM video_courses WHERE id = 40");
@@ -154,7 +154,7 @@ describeWithPostgres("course reads on PostgreSQL", () => {
     );
 
     it("finishes the database work before resolving media URLs", async () => {
-      const end = vi.spyOn(promiseClient, "end");
+      const end = vi.spyOn(pg.Client.prototype, "end");
       const resolveFileUrl = vi.spyOn(media, "resolveFileUrl").mockImplementation(async () => {
         expect(end).toHaveBeenCalledTimes(1);
         return "https://media.example.test/video";
