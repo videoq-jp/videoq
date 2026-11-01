@@ -84,6 +84,13 @@ async function verifyRole(purpose, url) {
     if(purpose==='worker') {
       await client.query('SELECT id,user_id,title,transcript,status,source_type,file,youtube_video_id,transcription_language FROM public.videos LIMIT 0');
       await client.query('SELECT langchain_id FROM public.scene_embeddings_768 LIMIT 0');
+      await client.query('UPDATE public.videos SET status=status,transcript=transcript,processing_seconds=processing_seconds,error_message=error_message WHERE false');
+      await client.query('UPDATE public.video_transcription_chunks SET segments=segments,fallback_segments=fallback_segments,failures=failures,last_error=last_error,updated_at=updated_at WHERE false');
+      await client.query('UPDATE public.video_visual_chunks SET frame_count=frame_count,failures=failures,last_error=last_error,updated_at=updated_at WHERE false');
+      await client.query('UPDATE public.video_transcription_runs SET completed_at=completed_at WHERE false');
+      await client.query('UPDATE public.video_visual_runs SET status=status,last_error=last_error,completed_at=completed_at WHERE false');
+      await denied(client,'UPDATE public.videos SET user_id=user_id WHERE false');
+      await denied(client,'UPDATE public.users SET role=role WHERE false');
       await denied(client,'SELECT password FROM public.account LIMIT 0');
     }
     if(purpose==='backup') {
@@ -202,6 +209,7 @@ async function refreshLambda(generation) {
 async function prepare(force=false) {
   const pending=readParameter(JOURNAL,true);
   if(pending&&!['complete','rolled_back'].includes(pending.phase)) return pending;
+  if(pending?.phase==='rolled_back'&&!force) throw new Error('ROLLED_BACK_ROTATION_REQUIRES_REVIEW');
   const profiles={};
   for(const [purpose,profile] of Object.entries(PROFILES)) profiles[purpose]=readParameter(profile.parameter);
   const due=Object.values(profiles).some(p=>!Number.isFinite(Date.parse(p.created_at))||Date.now()-Date.parse(p.created_at)>=ROTATE_AFTER_DAYS*86400000);
@@ -288,6 +296,7 @@ function complete(journal) {
 }
 
 async function rollback(journal) {
+  if(['rollback_pending','rollback_retired'].includes(journal.phase)) return journal;
   if(!journal.entries||journal.phase==='complete') throw new Error('NO_RECOVERABLE_ROTATION');
   const admin=readParameter(ADMIN).DATABASE_URL;
   // Restore old passwords first, including partially retired roles, before switching consumers back.
@@ -300,9 +309,38 @@ async function rollback(journal) {
   });
   await pointHyperdrive(journal.entries.api.old.DATABASE_URL,[journal.entries.api.old,journal.entries.api.next].map(e=>decodeURIComponent(new URL(e.DATABASE_URL).username)));
   for(const [purpose,entry] of Object.entries(journal.entries)) writeParameter(PROFILES[purpose].parameter,entry.old);
-  await refreshLambda('rollback-'+journal.generation);
-  journal.phase='rolled_back';journal.rolled_back_at=new Date().toISOString();writeParameter(JOURNAL,journal);
+  const timeout=await refreshLambda('rollback-'+journal.generation);
+  journal.phase='rollback_pending';journal.rollback_after=new Date(Date.now()+(timeout+60)*1000).toISOString();
+  writeParameter(JOURNAL,journal);
+  return journal;
 }
+async function finishRollback(journal) {
+  if(journal.phase!=='rollback_pending'||!Number.isFinite(Date.parse(journal.rollback_after))) throw new Error('INVALID_ROLLBACK_PHASE');
+  if(Date.now()<Date.parse(journal.rollback_after)) throw new Error('ROLLBACK_INVOCATIONS_MAY_STILL_BE_RUNNING');
+  for(const {old} of Object.values(journal.entries)) await using(old.DATABASE_URL,async()=>{});
+  const admin=readParameter(ADMIN).DATABASE_URL;
+  await using(admin,async client=>{
+    for(const [purpose,{next}] of Object.entries(journal.entries)) {
+      const user=decodeURIComponent(new URL(next.DATABASE_URL).username);
+      if(user!==loginName(purpose,journal.generation)) throw new Error('UNEXPECTED_CANDIDATE_LOGIN');
+      const {rows:[active]}=await client.query("SELECT count(*)::int AS count FROM pg_stat_activity WHERE usename=$1 AND state='active'",[user]);
+      if(active.count) throw new Error('CANDIDATE_ROLE_STILL_ACTIVE');
+      await client.query(`ALTER ROLE ${quote(user)} NOLOGIN PASSWORD NULL`);
+      await client.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename=$1 AND state='idle'",[user]);
+    }
+  });
+  for(const {next} of Object.values(journal.entries)) {
+    let rejected=false;
+    try{await using(next.DATABASE_URL,async()=>{});}catch(e){if(['28P01','28000'].includes(e.code))rejected=true;else throw e;}
+    if(!rejected) throw new Error('ROLLED_BACK_CREDENTIAL_STILL_ACCEPTED');
+  }
+  journal.phase='rollback_retired';writeParameter(JOURNAL,journal);
+}
+function completeRollback(journal) {
+  if(journal.phase!=='rollback_retired') throw new Error('ROLLBACK_NOT_RETIRED');
+  writeParameter(JOURNAL,{phase:'rolled_back',generation:journal.generation,completed_at:new Date().toISOString()});
+}
+
 async function main() {
   const op=process.argv[2];
   if(op==='bootstrap') return bootstrap();
@@ -320,5 +358,5 @@ async function main() {
   }
   throw new Error('UNKNOWN_DATABASE_MAINTENANCE_OPERATION');
 }
-module.exports={aws,readParameter,writeParameter,verifyRole,denied,prepare,promote,retire,complete,rollback,bootstrap,verifyCurrent,refreshLambda,PROFILES,JOURNAL};
+module.exports={aws,readParameter,writeParameter,verifyRole,denied,prepare,promote,retire,complete,rollback,finishRollback,completeRollback,bootstrap,verifyCurrent,refreshLambda,PROFILES,JOURNAL};
 if(require.main===module) main().catch(e=>{console.error('Database maintenance failed: '+(e.code||(/^[A-Z_]+$/.test(e.message)?e.message:e.name)));process.exitCode=1;});

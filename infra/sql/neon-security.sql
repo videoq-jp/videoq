@@ -43,6 +43,12 @@ BEGIN
   END LOOP;
 END $grants$;
 GRANT SELECT (transcription_language) ON public.videos TO videoq_worker_access;
+GRANT UPDATE (status,error_message,transcript,processing_seconds) ON public.videos TO videoq_worker_access;
+GRANT UPDATE (status,attempts,lease_token,lease_until,last_error,updated_at,completed_at) ON public.job_executions TO videoq_worker_access;
+GRANT UPDATE (completed_at) ON public.video_transcription_runs TO videoq_worker_access;
+GRANT UPDATE (segments,fallback_segments,failures,last_error,updated_at) ON public.video_transcription_chunks TO videoq_worker_access;
+GRANT UPDATE (status,last_error,completed_at) ON public.video_visual_runs TO videoq_worker_access;
+GRANT UPDATE (frame_count,failures,last_error,updated_at) ON public.video_visual_chunks TO videoq_worker_access;
 -- New embedding tables were added after the pre-existing worker role was created.
 GRANT SELECT, INSERT, DELETE ON public.scene_embeddings, public.scene_embeddings_768 TO videoq_worker_access;
 REVOKE ALL ON SCHEMA videoq_security FROM PUBLIC;

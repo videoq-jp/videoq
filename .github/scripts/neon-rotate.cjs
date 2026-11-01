@@ -1,7 +1,7 @@
 // Runs only in the protected production-infra Environment, serialized with migrations.
 const { execFileSync } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
-const { prepare, promote, retire, complete, rollback, readParameter, JOURNAL } = require('./neon-admin.cjs');
+const { prepare, promote, retire, complete, rollback, finishRollback, completeRollback, readParameter, JOURNAL } = require('./neon-admin.cjs');
 function gh(method, path, input) {
   try {
     const args=['api','--method',method,path];
@@ -33,7 +33,19 @@ async function main() {
   if(process.env.GITHUB_REPOSITORY!=='videoq-jp/videoq'||process.env.GITHUB_REF!=='refs/heads/main') throw new Error('PRODUCTION_MAIN_ONLY');
   const operation=process.env.OPERATION||'rotate';
   if(!['rotate','rollback'].includes(operation)) throw new Error('UNKNOWN_ROTATION_OPERATION');
-  if(operation==='rollback') return rollback(readParameter(JOURNAL));
+  const pending=readParameter(JOURNAL,true);
+  if(operation==='rollback'||['rollback_pending','rollback_retired'].includes(pending?.phase)) {
+    const recovery=await rollback(pending);
+    if(recovery.phase==='rollback_pending') {
+      await smoke(recovery.generation+'-rollback');
+      while(Date.now()<Date.parse(recovery.rollback_after)) await delay(Math.min(30000,Date.parse(recovery.rollback_after)-Date.now()));
+      await finishRollback(recovery);
+    }
+    await smoke(recovery.generation+'-rollback-retired');
+    completeRollback(recovery);
+    console.log('Previous credentials restored and abandoned candidate logins disabled');
+    return;
+  }
   let journal=await prepare(process.env.FORCE_ROTATION==='true');
   if(!journal) return;
   if(journal.phase==='prepared') journal=await promote(journal);

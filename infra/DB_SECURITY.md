@@ -88,8 +88,11 @@ removes AWS/OIDC credentials. Mask directives are emitted only on GitHub Actions
 
 For a recovery requiring the previous configuration, run the workflow with
 `operation=rollback` while the journal still contains its recovery entries. This
-restores the prior logins, Hyperdrive and SSM values and refreshes Lambda; investigate
-and resume rotation afterward. A completed rotation has cleared that recovery
+restores the prior logins, Hyperdrive and SSM values and refreshes Lambda. After a
+processing smoke and the invocation grace period it disables the abandoned new
+logins, verifies they cannot authenticate, and runs smoke again. A rolled-back
+rotation requires review and a manually forced rotation before automatic changes
+resume. A completed rotation has cleared that recovery
 material and must be recovered through the administrator connection. Old SSM
 parameter versions remain subject to the same exact-parameter IAM permissions;
 retired database passwords no longer authenticate.
