@@ -58,7 +58,7 @@ use an explicit search_path and qualified object names. These controls are in
 [Maintain Neon Credentials](../.github/workflows/neon-credentials.yml) checks daily
 and rotates service/operations credentials when they reach 90 days. Manual runs
 default to an age audit; choose `rotate` to resume an unfinished rotation or set
-`force` to rotate sooner. It runs in `production-infra` using a dedicated rotation
+`force` to rotate sooner. It runs in main-only `production-db-maintenance` using a dedicated rotation
 role, not the Terraform deployment role. The workflow and CD migration job share
 `production-db-maintenance` concurrency and never cancel an active rotation.
 
@@ -143,3 +143,15 @@ backup/rotation and emergency administration, and price the Neon plan/networking
 before requesting approval for paid changes. Test allowed and denied connections
 before restricting the production branch. IP allowlisting supplements database
 identity checks; shared Cloudflare ranges do not identify a particular tenant.
+
+### Initialize Hyperdrive maintenance access
+
+Run `infra/scripts/setup_neon_access.py` with the setup administrator identity to
+provision the main-only maintenance environment and the separate bootstrap role.
+After merging, dispatch `Initialize Neon Maintenance` on main and approve its
+existing `production-infra` environment review. This validates the configured
+Hyperdrive/Neon target and stores the Cloudflare credential in the protected SSM
+parameter `/videoq/security/prod/hyperdrive-credentials`. The bootstrap role can
+only write that parameter; scheduled maintenance can read it. Repeat this handoff
+when `CLOUDFLARE_INFRA_TOKEN` is renewed. Existing infrastructure review rules are
+preserved; scheduled rotation needs no human approval.

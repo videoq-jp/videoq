@@ -106,11 +106,13 @@ with `python3 infra/scripts/setup_neon_access.py`; it does not retrieve DB value
 The script fails outside the expected AWS account and rejects extra branch policies.
 
 `videoq-github-actions-neon-rotation` is a separate maintenance role trusted only
-from `production-infra`. It can read the administrator credential, read/write the
+from main-only `production-db-maintenance`. It can read the administrator credential, read/write the
 seven fixed consumer parameters and encrypted rotation journal, and refresh only
 `videoq-worker-prod`. It cannot modify IAM policies or retrieve arbitrary secrets.
 Its two-hour session covers the Lambda invocation grace period and verification.
-The existing `CLOUDFLARE_INFRA_TOKEN` supplies Hyperdrive update permissions.
+The reviewer-protected `Initialize Neon Maintenance` workflow hands off the existing
+`CLOUDFLARE_INFRA_TOKEN` to a protected SSM parameter using a separate write-only
+bootstrap role. The maintenance role reads that parameter for Hyperdrive updates.
 
 The parameters use the default AWS-managed `aws/ssm` key. Customer-managed keys
 require an explicit, exact-key decrypt grant restricted by `kms:ViaService` and the

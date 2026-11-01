@@ -29,7 +29,7 @@ def trust(account, environment):
             "token.actions.githubusercontent.com:sub": f"{PREFIX}:environment:{environment}"}}}]}
 
 
-def install(account, role, environment, policy, duration=3600):
+def install(account, role, environment, policy, duration=3600, secret_name=None):
     existing = subprocess.run([AWS, "iam", "get-role", "--role-name", role], capture_output=True)
     if existing.returncode:
         aws("iam", "create-role", "--role-name", role, "--max-session-duration", str(duration),
@@ -39,9 +39,21 @@ def install(account, role, environment, policy, duration=3600):
             "--policy-document", json.dumps(trust(account, environment)))
     subprocess.run([AWS,"iam","put-role-policy","--role-name",role,"--policy-name","neon-parameter-access",
                     "--policy-document",json.dumps(policy)], check=True, capture_output=True)
-    subprocess.run(["gh","secret","set","AWS_GITHUB_ACTIONS_NEON_ROLE_ARN" if duration==3600 else
-                    "AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN","--repo",REPO,"--env",environment],
+    subprocess.run(["gh","secret","set",secret_name or ("AWS_GITHUB_ACTIONS_NEON_ROLE_ARN" if duration==3600 else
+                    "AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN"),"--repo",REPO,"--env",environment],
                    input=f"arn:aws:iam::{account}:role/{role}",text=True,check=True,capture_output=True)
+
+
+def ensure_environment(environment):
+    result=subprocess.run(["gh","api",f"repos/{REPO}/environments/{environment}"],capture_output=True,text=True)
+    if result.returncode:
+        gh("PUT",f"repos/{REPO}/environments/{environment}",{
+            "deployment_branch_policy":{"protected_branches":False,"custom_branch_policies":True}})
+    policies=json.loads(subprocess.check_output(["gh","api",f"repos/{REPO}/environments/{environment}/deployment-branch-policies"],text=True))["branch_policies"]
+    if not any(p["name"]=="main" for p in policies):
+        gh("POST",f"repos/{REPO}/environments/{environment}/deployment-branch-policies",{"name":"main","type":"branch"})
+    if any(p["name"]!="main" for p in policies):
+        raise SystemExit("Unexpected deployment branch policy")
 
 
 def main():
@@ -61,26 +73,25 @@ def main():
     parameter=lambda name:f"arn:aws:ssm:{REGION}:{account}:parameter{name}"
     for purpose in ["migration","backup","audit","smoke","demo"]:
         environment="production-db-"+purpose
-        gh("PUT",f"repos/{REPO}/environments/{environment}",{
-            "deployment_branch_policy":{"protected_branches":False,"custom_branch_policies":True}})
-        policies=json.loads(subprocess.check_output(["gh","api",f"repos/{REPO}/environments/{environment}/deployment-branch-policies"],text=True))["branch_policies"]
-        if not any(p["name"]=="main" for p in policies):
-            gh("POST",f"repos/{REPO}/environments/{environment}/deployment-branch-policies",{"name":"main","type":"branch"})
-        if any(p["name"]!="main" for p in policies):
-            raise SystemExit("Unexpected deployment branch policy")
+        ensure_environment(environment)
         policy={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ssm:GetParameter",
             "Resource":parameter(profiles[purpose]["parameter"])}]}
         install(account,"videoq-github-actions-neon-"+purpose,environment,policy)
         print("Scoped OIDC access configured: "+purpose)
     rotation={"Version":"2012-10-17","Statement":[
-        {"Effect":"Allow","Action":"ssm:GetParameter","Resource":[parameter("/videoq/security/prod/db-admin"),
+        {"Effect":"Allow","Action":"ssm:GetParameter","Resource":[parameter("/videoq/security/prod/db-admin"),parameter("/videoq/security/prod/hyperdrive-credentials"),
             *[parameter(p["parameter"]) for p in profiles.values()],parameter("/videoq/security/prod/db-rotation")]},
         {"Effect":"Allow","Action":"ssm:PutParameter","Resource":[*[parameter(p["parameter"]) for p in profiles.values()],
             parameter("/videoq/security/prod/db-rotation")]},
         {"Effect":"Allow","Action":"ssm:DescribeParameters","Resource":"*"},
         {"Effect":"Allow","Action":["lambda:GetFunctionConfiguration","lambda:UpdateFunctionConfiguration"],
             "Resource":f"arn:aws:lambda:{REGION}:{account}:function:videoq-worker-prod"}]}
-    install(account,"videoq-github-actions-neon-rotation","production-infra",rotation,7200)
+    ensure_environment("production-db-maintenance")
+    install(account,"videoq-github-actions-neon-rotation","production-db-maintenance",rotation,7200)
+    bootstrap={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ssm:PutParameter",
+        "Resource":parameter("/videoq/security/prod/hyperdrive-credentials")}]}
+    install(account,"videoq-github-actions-neon-bootstrap","production-infra",bootstrap,
+        secret_name="AWS_GITHUB_ACTIONS_NEON_BOOTSTRAP_ROLE_ARN")
     print("Dedicated rotation role configured")
 
 

@@ -1,5 +1,8 @@
 // Login roles rotate; these NOLOGIN roles keep grants and schema ownership stable.
 const {gzipSync,gunzipSync}=require('node:zlib');
+const HYPERDRIVE_ID='d69ecb01a493415197e52552db2990f8';
+const NEON_HOST='ep-old-truth-a1co51ud.ap-southeast-1.aws.neon.tech';
+const CF_PARAMETER='/videoq/security/prod/hyperdrive-credentials';
 const OWNER = 'videoq_migrate_20260918';
 const PROFILES = Object.freeze(require('./neon-profiles.json'));
 const JOURNAL = '/videoq/security/prod/db-rotation';
@@ -12,7 +15,7 @@ function connectionUrl(template, purpose, user, password) {
   const profile = PROFILES[purpose];
   if (!profile) throw new Error('UNKNOWN_DATABASE_PURPOSE');
   const url = new URL(template);
-  if (!url.hostname.endsWith('.aws.neon.tech') || !['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('UNEXPECTED_DATABASE_HOST');
+  if (url.hostname.replace('-pooler.','.')!==NEON_HOST || !['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('UNEXPECTED_DATABASE_HOST');
   url.hostname = url.hostname.replace('-pooler.', '.');
   if (profile.pooled) { const [endpoint, ...domain] = url.hostname.split('.'); url.hostname = endpoint + '-pooler.' + domain.join('.'); }
   url.username = user; url.password = password;
@@ -35,4 +38,4 @@ function decodeJournal(value) {
   if(value.format!=='gzip-base64-v1') throw new Error('INVALID_ROTATION_JOURNAL_FORMAT');
   return JSON.parse(gunzipSync(Buffer.from(value.payload,'base64'),{maxOutputLength:65536}).toString());
 }
-module.exports = { OWNER, PROFILES, JOURNAL, ROTATE_AFTER_DAYS, loginName, connectionUrl, encodeJournal, decodeJournal, retirementRole };
+module.exports = { HYPERDRIVE_ID, NEON_HOST, CF_PARAMETER, OWNER, PROFILES, JOURNAL, ROTATE_AFTER_DAYS, loginName, connectionUrl, encodeJournal, decodeJournal, retirementRole };

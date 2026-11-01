@@ -5,11 +5,11 @@ const { readFileSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
-const { OWNER, PROFILES, JOURNAL, ROTATE_AFTER_DAYS, loginName, connectionUrl, encodeJournal, decodeJournal, retirementRole } = require('./neon-policy.cjs');
+const { HYPERDRIVE_ID, CF_PARAMETER, OWNER, PROFILES, JOURNAL, ROTATE_AFTER_DAYS, loginName, connectionUrl, encodeJournal, decodeJournal, retirementRole } = require('./neon-policy.cjs');
 const postgres = () => createRequire(join(__dirname, '../operations-tools/package.json'))('pg');
 const REGION = 'ap-northeast-1';
 const ADMIN = '/videoq/security/prod/db-admin';
-const HYPERDRIVE = 'd69ecb01a493415197e52552db2990f8';
+const HYPERDRIVE = HYPERDRIVE_ID;
 const FUNCTION = 'videoq-worker-prod';
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
 const literal = value => "'" + value.replaceAll("'", "''") + "'";
@@ -177,7 +177,8 @@ async function bootstrap() {
   }
 }
 async function cloudflare(method, body) {
-  const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+  const credential=readParameter(CF_PARAMETER);
+  const account=credential.account_id,token=credential.api_token;
   if(!/^[a-f0-9]{32}$/.test(account||'')||!token) throw new Error('CLOUDFLARE_CONFIGURATION_REQUIRED');
   const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/hyperdrive/configs/${HYPERDRIVE}`,
     {method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},

@@ -51,7 +51,7 @@ test('rotation never revokes a credential before the Lambda grace period and ver
  const workflow=readFileSync('.github/workflows/neon-credentials.yml','utf8');
  assert.match(workflow,/group: production-db-maintenance/);
  assert.match(workflow,/cancel-in-progress: false/);
- assert.match(workflow,/environment: production-infra/);
+ assert.match(workflow,/environment: production-db-maintenance/);
  assert.match(workflow,/AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN/);
 });
 
