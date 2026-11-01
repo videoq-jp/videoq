@@ -1,4 +1,4 @@
-// Runs only in the protected production-infra Environment, serialized with migrations.
+// Runs only in the main-only production-db-maintenance Environment, serialized with migrations.
 const { execFileSync } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 const { prepare, promote, retire, complete, rollback, finishRollback, completeRollback, readParameter, JOURNAL } = require('./neon-admin.cjs');
