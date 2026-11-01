@@ -23,13 +23,35 @@ lost start response idempotent.
 
 ## Source and deployment authority
 
-Privileged operator code comes from a versioned S3 ZIP deployed with an operator
-AWS session. Routine GitHub roles cannot upload that ZIP, update its projects,
-change the starters/state machine, or write the independent Terraform state.
-Migrations fetch the requested commit from the public canonical repository; the
-starter independently verifies that it is current main. Changes to reviewed main
-migration code therefore remain trusted database changes. Moving execution to AWS
-does not make malicious SQL or compromised runtime dependencies harmless.
+`DB Maintenance CD` runs after successful push CI for current canonical main.
+It compares from the last successful CD, including changes missed by a failed or
+superseded run. A dedicated main-only `production-db-deploy` OIDC role invokes
+only `videoq-db-start-deploy-prod:live`; it has no code-upload, SSM or IAM grants.
+The starter independently checks repository identity and current main, and uses
+the same global lock as migrations and credential rotation.
+
+Inside AWS, `videoq-db-deploy-prod` fetches that exact public commit, installs
+locked runtime dependencies without install scripts, verifies registry signatures,
+and builds the allowlisted bundles. It uploads versioned S3 artifacts, publishes
+and tests five immutable Lambda candidates, then updates the five job source
+versions, state-machine definition and live aliases. A promotion failure restores
+previous references where possible. Deployment failure blocks DB jobs until a
+successful deployment recovery; the subsequent production smoke must also pass.
+Never remove that lock solely because time has passed.
+
+The deployment builder cannot read SSM/Secrets Manager, decrypt KMS secrets or edit
+IAM. It may update only these maintenance functions, five existing DB jobs and this
+state machine; it cannot change its own CodeBuild project or role. **Approved code
+still carries administrative authority:** modifying code later executed with DB
+privileges can use those privileges. Main review and repository protection remain
+part of the trust boundary. This is automated code deployment, not protection from
+malicious approved code or compromised dependencies.
+
+IAM, runtime configuration, new AWS resources, schedule settings and the independent
+Terraform state remain operator-managed. Terraform ignores CD-owned Lambda code,
+alias versions, job source versions/source tags and the state-machine definition
+so a routine infrastructure apply cannot roll back a later code release. Existing
+application GitHub roles still cannot write this independent state.
 
 `build_bundle.py` packages an explicit public-code allowlist, the locked SDK
 dependencies, and fixed operations fixtures. It refuses an uncommitted tree for
@@ -98,3 +120,19 @@ The break-glass administrator password remains manually managed in SSM. The
 Cloudflare maintenance token must still be renewed through its reviewed handoff.
 AWS service compromise, operator compromise and malicious approved code remain
 risks; this design removes direct credential access from routine GitHub jobs.
+
+## Enable maintenance CD on an existing installation
+
+With an operator session, confirm there is no running maintenance execution/build,
+apply the new deployment resources with `schedule_enabled` preserving its current
+value, and build a clean committed bundle. For the one-time ownership handoff,
+use `deploy.promote()` from the reviewed `deploy.py` with the operator session to
+install the extended state-machine definition and all five starter versions.
+Existing aliases are unchanged until candidates pass their non-mutating tests.
+Do not provision the GitHub deploy invoker before this handoff succeeds.
+
+Provision `production-db-deploy` as main-only and install the invocation-only role
+using `infra/scripts/setup_neon_access.py`. Merge the workflow and verify its first
+successful automatic run, including the AWS smoke stage. Subsequent relevant main
+merges deploy automatically; `workflow_dispatch` retries the current verified main.
+Infrastructure/IAM changes still require the independent Terraform procedure.

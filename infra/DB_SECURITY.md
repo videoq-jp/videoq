@@ -92,11 +92,15 @@ used in CloudWatch. Old SSM versions remain protected; retired passwords no long
 authenticate. The break-glass `neondb_owner` credential remains manually managed
 in `/videoq/security/prod/db-admin` outside automatic service-login rotation.
 
-The privileged operator bundle uses an immutable S3 object version. Its deployment
-and independent Terraform state require an operator AWS session; routine GitHub
-roles cannot update either. Migrations independently validate the requested
-canonical-main SHA before AWS downloads it. Approved migration code and runtime
-dependencies remain trusted inputs; AWS execution does not eliminate their risks.
+The privileged operator bundle uses an immutable S3 object version. After successful
+current-main CI, an invocation-only GitHub role requests the AWS deployment builder
+to promote code, source versions and aliases. That builder cannot read SSM secrets
+or edit IAM, but approved code can exercise the DB jobs' existing privileges.
+Main review remains an administrative trust boundary. IAM/infrastructure and the
+independent Terraform state remain operator-managed and inaccessible to GitHub
+request roles. Terraform preserves CD-owned versions and definitions.
+Migrations and deployments independently validate the requested canonical-main SHA.
+AWS execution does not eliminate the risks of malicious approved code or dependencies.
 
 See [AWS database maintenance](db-maintenance/README.md) for packaging, infrastructure,
 verification, staged cutover, retirement of old GitHub reader roles and recovery.

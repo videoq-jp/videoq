@@ -61,7 +61,7 @@ def main():
     account=aws("sts","get-caller-identity")["Account"]
     if account!="257240362763":
         raise SystemExit("Unexpected AWS account")
-    for purpose in ["maintenance", "migration", "backup", "smoke"]:
+    for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"]:
         alias=aws("lambda","get-alias","--region",REGION,"--function-name",
             "videoq-db-start-"+purpose+"-prod","--name","live")
         if not alias.get("FunctionVersion", "").isdigit():
@@ -84,7 +84,7 @@ def main():
             "Resource":parameter(profiles[purpose]["parameter"])}]}
         install(account,"videoq-github-actions-neon-"+purpose,environment,policy)
         print("Scoped OIDC access configured: "+purpose)
-    for purpose in ["maintenance", "migration", "backup", "smoke"]:
+    for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"]:
         environment="production-db-"+purpose
         ensure_environment(environment)
         policy={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"lambda:InvokeFunction",

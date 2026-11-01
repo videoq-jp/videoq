@@ -20,6 +20,11 @@
           "Variable": "$.kind",
           "StringEquals": "smoke",
           "Next": "SmokeStandalone"
+        },
+        {
+          "Variable": "$.kind",
+          "StringEquals": "deploy",
+          "Next": "Deploy"
         }
       ],
       "Default": "Prepare"
@@ -134,6 +139,43 @@
       "ResultPath": null,
       "TimeoutSeconds": 2700,
       "Next": "Release"
+    },
+    "Deploy": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_deploy}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "deploy",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "SmokeStandalone"
     },
     "Prepare": {
       "Type": "Task",

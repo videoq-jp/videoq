@@ -110,7 +110,10 @@ an AWS global lock, and start the fixed state machine. They hold no DB credentia
 AWS CodeBuild service roles hold purpose-specific parameter grants. Only the
 rotation role can read the administrator and Hyperdrive credentials or write
 consumer parameters. Its operator source is an immutable S3 object version,
-deployed with a separate operator session. The independent maintenance state is
+promoted by the AWS-only CD builder after successful current-main CI. The
+`production-db-deploy` GitHub role can invoke only its deploy starter; the builder
+can promote maintenance code but cannot read SSM or edit IAM. Approved code remains
+a trusted administrative capability. The independent maintenance state is
 outside GitHub's state-write grant. `videoq-tfstate-access` is limited to the main
 state object and its lock, rather than every object in the bucket.
 

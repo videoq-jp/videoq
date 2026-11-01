@@ -57,6 +57,9 @@ def main():
     operator_hash = archive(directory / "operator.zip", operator_files())
     broker_hash = archive(directory / "broker.zip", broker)
     manifest = {"source_commit": source, "dirty": bool(dirty), "operator_sha256": operator_hash, "broker_sha256": broker_hash}
+    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
+    (directory / "state-machine.json").write_text(definition)
+    manifest["state_machine_sha256"] = hashlib.sha256(definition.encode()).hexdigest()
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     variables = {"source_commit": source, "operator_zip": str(directory / "operator.zip"), "broker_zip": str(directory / "broker.zip")}
     (directory / "terraform.tfvars.json").write_text(json.dumps(variables, indent=2) + "\n")

@@ -1,0 +1,58 @@
+name: DB Maintenance CD
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: db-maintenance-code-deployment
+  cancel-in-progress: false
+jobs:
+  source:
+    if: >-
+      github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      deploy: ${{ steps.source.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        id: source
+        with:
+          script: |
+            const validate = require('./.github/scripts/validate-deployment.cjs');
+            await validate({github, context});
+            const {selected} = require('./.github/scripts/db-maintenance-cd.cjs');
+            core.setOutput('deploy', context.eventName === 'workflow_dispatch' || await selected({github, context}));
+  deploy:
+    needs: source
+    if: needs.source.outputs.deploy == 'true'
+    environment: production-db-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 125
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/aws-db-invocation
+      - name: Request the verified main deployment inside AWS
+        run: python3 .github/scripts/run-aws-db.py deploy
