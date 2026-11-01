@@ -1,0 +1,6 @@
+dist/
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfplan
+terraform/*.tfvars.json
+__pycache__/

@@ -131,7 +131,7 @@ try {
     }
   }
   progress('browser');
-  browser = await chromium.launch({ channel: 'chrome' });
+  browser = await chromium.launch(process.env.VIDEOQ_BUNDLED_CHROMIUM === 'true' ? {} : { channel: 'chrome' });
   const context = await browser.newContext();
   const page = await context.newPage();
   const errors = [];
