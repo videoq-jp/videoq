@@ -19,17 +19,24 @@ STARTERS = ["maintenance", "migration", "backup", "smoke", "deploy"]
 
 def aws(service, command, **payload):
     with tempfile.TemporaryDirectory(prefix="videoq-maintenance-deploy-") as directory:
-        body = payload.pop("Body", None) if service == "s3api" else None
-        request = Path(directory) / "request.json"
-        request.write_text(json.dumps(payload))
-        request.chmod(0o600)
-        args = ["aws", service, command, "--region", REGION, "--cli-input-json", "file://" + str(request),
+        args = ["aws", service, command, "--region", REGION,
                 "--cli-connect-timeout", "10", "--cli-read-timeout", "70", "--cli-binary-format", "base64", "--output", "json"]
-        if body is not None:
-            args.extend(["--body", body])
         if service == "lambda" and command == "invoke":
-            response = Path(directory) / "response.json"
-            args.append(str(response))
+            # Streaming CLI commands do not accept --cli-input-json. Pass the
+            # exact event bytes through fileb:// and provide the positional outfile.
+            request, response = Path(directory) / "event.json", Path(directory) / "response.json"
+            request.write_bytes(base64.b64decode(payload["Payload"], validate=True))
+            request.chmod(0o600)
+            args.extend(["--function-name", payload["FunctionName"], "--qualifier", payload["Qualifier"],
+                         "--invocation-type", "RequestResponse", "--payload", "fileb://" + str(request), str(response)])
+        else:
+            body = payload.pop("Body", None) if service == "s3api" else None
+            request = Path(directory) / "request.json"
+            request.write_text(json.dumps(payload))
+            request.chmod(0o600)
+            args.extend(["--cli-input-json", "file://" + str(request)])
+            if body is not None:
+                args.extend(["--body", body])
         result = subprocess.run(args, capture_output=True, text=True)
         if result.returncode:
             raise RuntimeError("DEPLOYMENT_AWS_REQUEST_FAILED")

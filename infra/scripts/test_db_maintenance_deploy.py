@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -63,6 +64,21 @@ class DeploymentTest(unittest.TestCase):
                     **{name + "_sha256": hashlib.sha256(name.encode()).hexdigest() for name in ["operator", "broker"]}}
         (self.path / "manifest.json").write_text(json.dumps(manifest))
         (self.path / "state-machine.json").write_text('{"new":true}')
+
+    def test_streaming_invoke_sends_exact_bytes_without_cli_input_json(self):
+        event = {"action": "start", "kind": "invalid"}
+        def execute(args, **options):
+            self.assertNotIn("--cli-input-json", args)
+            self.assertEqual(args[args.index("--function-name") + 1], "fixed-function")
+            path = args[args.index("--payload") + 1]
+            self.assertTrue(path.startswith("fileb://"))
+            self.assertEqual(json.loads(Path(path[8:]).read_bytes()), event)
+            Path(args[-1]).write_text('{"status":"REJECTED","reason":"OPERATION_NOT_ALLOWED"}')
+            return subprocess.CompletedProcess(args, 0, '{"StatusCode":200}', '')
+        with patch.object(deploy.subprocess, "run", side_effect=execute):
+            result = deploy.aws("lambda", "invoke", FunctionName="fixed-function", Qualifier="2",
+                                Payload=base64.b64encode(json.dumps(event).encode()).decode())
+        self.assertEqual(result["reason"], "OPERATION_NOT_ALLOWED")
 
     def test_unreviewed_or_tampered_bundles_never_reach_aws(self):
         api = FakeAWS()
