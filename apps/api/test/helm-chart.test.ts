@@ -105,6 +105,14 @@ withHelm("on-prem Helm distribution", () => {
     expect(config.LLM_SEPARATE_TOOL_SCHEMA).toBe("true");
     expect(config.WHISPER_BACKEND).toBe("local");
   });
+  it("allows the public storage origin in the web CSP without exposing the internal endpoint", () => {
+    const resources = render("--set", "storage.endpoint=https://s3.example.edu:9443/bucket",
+      "--set", "storage.internalEndpoint=http://garage:3900");
+    const web = resources.find(resource => resource.kind === "Deployment" && resource.metadata.name.endsWith("-web"));
+    expect(web.spec.template.spec.containers[0].env).toContainEqual({
+      name: "VIDEOQ_CSP_STORAGE_ORIGINS", value: "https://s3.example.edu:9443",
+    });
+  });
   it("pins every workload and hook to the reviewed image digests", () => {
     const digest = "sha256:" + "a".repeat(64);
     const resources = render("--set", "requireImageDigests=true",

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Sourced by nginx's entrypoint before 20-envsubst-on-templates.sh.
+# Validate and normalize operator-supplied origins before inserting a header.
+VIDEOQ_CSP_STORAGE_ORIGINS="$(
+  set -ef
+  for origin in ${VIDEOQ_CSP_STORAGE_ORIGINS:-}; do
+    if ! printf '%s\n' "$origin" | grep -Eq '^https?://([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?|\[[a-fA-F0-9:]+\])(:[0-9]{1,5})?$'; then
+      echo "VIDEOQ_CSP_STORAGE_ORIGINS must contain only space-separated HTTP(S) origins (no paths or wildcards)" >&2
+      exit 1
+    fi
+    printf '%s ' "$origin"
+  done
+)" || exit 1
+export VIDEOQ_CSP_STORAGE_ORIGINS
