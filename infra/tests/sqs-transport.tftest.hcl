@@ -8,7 +8,7 @@ mock_provider "aws" {
 mock_provider "openai" {}
 
 override_resource {
-  target = aws_sqs_queue.main
+  target          = aws_sqs_queue.main
   override_during = plan
   values = {
     arn = "arn:aws:sqs:ap-northeast-1:123456789012:test-main"
@@ -17,7 +17,7 @@ override_resource {
 }
 
 override_resource {
-  target = aws_sqs_queue.dlq
+  target          = aws_sqs_queue.dlq
   override_during = plan
   values = {
     arn = "arn:aws:sqs:ap-northeast-1:123456789012:test-dlq"
@@ -26,7 +26,7 @@ override_resource {
 }
 
 override_resource {
-  target = aws_cloudwatch_log_group.worker
+  target          = aws_cloudwatch_log_group.worker
   override_during = plan
   values = {
     arn = "arn:aws:logs:ap-northeast-1:123456789012:log-group:/aws/lambda/test"
