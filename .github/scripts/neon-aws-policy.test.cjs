@@ -2,7 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
 const {input, executionArn, safeError} = require('../../infra/db-maintenance/runtime/policy.cjs');
-const {createBroker} = require('../../infra/db-maintenance/runtime/broker.cjs');
+const {createBroker, currentMain} = require('../../infra/db-maintenance/runtime/broker.cjs');
 const {definition} = require('../../infra/db-maintenance/state-machine.cjs');
 const {assertBuildArn, metadataValue} = require('../../infra/db-maintenance/runtime/job.cjs');
 const MACHINE = 'arn:aws:states:ap-northeast-1:257240362763:stateMachine:videoq-db-maintenance-prod';
@@ -43,7 +43,7 @@ test('each invocation endpoint accepts only its configured operations', () => {
 test('migration source must independently match canonical main', async () => {
   const {broker, calls} = fixture();
   await assert.rejects(broker({action:'start',kind:'migration',source_sha:'c'.repeat(40),writers_stopped:false}), /CURRENT_MAIN/);
-  assert.equal(calls.length, 0);
+  assert.deepEqual(calls.map(c => c.command), ['GetItem']);
 });
 test('accepted starts persist a named execution and a global lock before starting it', async () => {
   const {broker, calls} = fixture();
@@ -161,4 +161,18 @@ test('job context accepts AWS build/project ARNs and rejects other principals an
     'arn:aws:codebuild:ap-northeast-1:000000000000:build/videoq-db-rotation-prod:' + id,
     'arn:aws:codebuild:ap-northeast-1:257240362763:build/unreviewed-project:' + id,
   ]) assert.throws(() => assertBuildArn(arn), /AWS_CODEBUILD_REQUIRED/);
+});
+
+test('busy migrations do not call the GitHub API', async () => {
+  let fetched = false;
+  const lock = terminal();
+  const aws = async (_, command) => command === 'GetItem' ? {Item: lock} : {status: 'RUNNING'};
+  const broker = createBroker(aws, {table:'metadata',machine:MACHINE,projects:[],allowedKinds:['migration']}, async () => {fetched=true;throw new Error('API_UNAVAILABLE');});
+  assert.deepEqual(await broker({action:'start',kind:'migration',source_sha:SHA,writers_stopped:false}), {status:'BUSY'});
+  assert.equal(fetched,false);
+});
+test('GitHub HTTP failures expose only a status and never authorize a migration', async () => {
+  await assert.rejects(currentMain(async () => ({ok:false,status:403,json(){throw new Error('PRIVATE_BODY');}})), /GITHUB_API_HTTP_403/);
+  const invalid = {id:1083911938,owner:{id:1},full_name:'videoq-jp/videoq',default_branch:'main',private:false};
+  await assert.rejects(currentMain(async () => ({ok:true,json:async()=>invalid})), /CANONICAL_REPOSITORY_VERIFICATION_FAILED/);
 });
