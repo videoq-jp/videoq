@@ -4,7 +4,7 @@ const {readFileSync} = require('node:fs');
 const {input, executionArn, safeError} = require('../../infra/db-maintenance/runtime/policy.cjs');
 const {createBroker} = require('../../infra/db-maintenance/runtime/broker.cjs');
 const {definition} = require('../../infra/db-maintenance/state-machine.cjs');
-const {metadataValue} = require('../../infra/db-maintenance/runtime/job.cjs');
+const {assertBuildArn, metadataValue} = require('../../infra/db-maintenance/runtime/job.cjs');
 const MACHINE = 'arn:aws:states:ap-northeast-1:257240362763:stateMachine:videoq-db-maintenance-prod';
 const SHA = 'a'.repeat(40), RUN = 'b'.repeat(32);
 const terminal = status => ({kind: {S: 'rotate'}, name: {S: 'db-' + RUN},
@@ -152,4 +152,13 @@ test('execution metadata rejects credentials and rounds grace timestamps up', ()
   assert.throws(() => metadataValue({phase:'promoted',generation:'20261101010347_0e38726b'}), /MISSING_EXECUTION_GRACE/);
   const result = metadataValue({phase:'promoted',generation:'20261101010347_0e38726b',retire_after:'2026-11-01T02:42:55.075Z'});
   assert.equal(result.retire_after, '2026-11-01T02:42:56.000Z');
+});
+test('job context accepts AWS build/project ARNs and rejects other principals and projects', () => {
+  const id = '01234567-89ab-cdef-0123-456789abcdef';
+  assert.doesNotThrow(() => assertBuildArn('arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:' + id));
+  for (const arn of [
+    'arn:aws:codebuild:ap-northeast-1:257240362763:build:videoq-db-rotation-prod:' + id,
+    'arn:aws:codebuild:ap-northeast-1:000000000000:build/videoq-db-rotation-prod:' + id,
+    'arn:aws:codebuild:ap-northeast-1:257240362763:build/unreviewed-project:' + id,
+  ]) assert.throws(() => assertBuildArn(arn), /AWS_CODEBUILD_REQUIRED/);
 });

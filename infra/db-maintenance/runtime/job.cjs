@@ -5,6 +5,9 @@ const m = require('../../../.github/scripts/neon-admin.cjs');
 const {safeError} = require('./policy.cjs');
 const runId = process.env.MAINTENANCE_RUN_ID;
 const table = process.env.MAINTENANCE_TABLE;
+function assertBuildArn(arn) {
+  if (!/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-(rotation|migration|backup|smoke|audit)-prod:[a-f0-9-]{36}$/.test(arn || '')) throw new Error('AWS_CODEBUILD_REQUIRED');
+}
 function key() {
   if (!/^[a-f0-9]{32}$/.test(runId || '') || table !== 'videoq-db-maintenance-prod') throw new Error('INVALID_AWS_JOB_CONTEXT');
   return {pk: {S: 'run#' + runId}};
@@ -58,7 +61,7 @@ async function prepare() {
 }
 async function main() {
   key();
-  if (!/^arn:aws:codebuild:ap-northeast-1:257240362763:build:videoq-db-(rotation|migration|backup|smoke|audit)-prod:/.test(process.env.CODEBUILD_BUILD_ARN || '')) throw new Error('AWS_CODEBUILD_REQUIRED');
+  assertBuildArn(process.env.CODEBUILD_BUILD_ARN);
   if (process.env.GITHUB_ACTIONS) throw new Error('GITHUB_MASK_COMMANDS_NOT_SUPPORTED_IN_AWS_LOGS');
   const stage = process.env.MAINTENANCE_STAGE;
   if (stage === 'prepare') return prepare();
@@ -93,4 +96,4 @@ async function main() {
   throw new Error('UNKNOWN_AWS_JOB_STAGE');
 }
 if (require.main === module) main().catch(error => {console.error('AWS database job stopped: ' + safeError(error)); process.exitCode = 1;});
-module.exports = {metadataValue, metadata, prepare, main};
+module.exports = {assertBuildArn, metadataValue, metadata, prepare, main};
