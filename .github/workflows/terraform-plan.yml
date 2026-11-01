@@ -47,3 +47,10 @@ jobs:
         run: |
           terraform init -backend=false -input=false
           terraform validate -no-color
+
+      - name: Validate independent AWS database maintenance infrastructure
+        working-directory: infra/db-maintenance/terraform
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform validate -no-color
+          terraform test -no-color

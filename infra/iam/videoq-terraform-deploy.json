@@ -76,8 +76,6 @@
       "Sid": "IamManageVideoqRoles",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
         "iam:GetRole",
         "iam:TagRole",
         "iam:UntagRole",
@@ -90,6 +88,17 @@
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
         "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/videoq-worker-prod"
+    },
+    {
+      "Sid": "PreserveOperatorManagedWorkerBoundary",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:PutRolePermissionsBoundary",
+        "iam:DeleteRolePermissionsBoundary"
       ],
       "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/videoq-worker-prod"
     },

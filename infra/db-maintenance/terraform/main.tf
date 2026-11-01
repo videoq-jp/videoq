@@ -35,7 +35,6 @@ locals {
     "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/hyperdrive-credentials",
   ]
   project_arns  = [for name in values(local.projects) : "arn:aws:codebuild:${local.region}:${local.account}:project/${name}"]
-  build_arns    = [for name in values(local.projects) : "arn:aws:codebuild:${local.region}:${local.account}:build/${name}:*"]
   execution_arn = "arn:aws:states:${local.region}:${local.account}:execution:${local.name}:*"
 }
 
@@ -89,6 +88,27 @@ resource "aws_dynamodb_table" "maintenance" {
     attribute_name = "expires_at"
     enabled        = true # Run metadata only. The global lock NEVER expires by time.
   }
+}
+
+# Install this ceiling on the existing worker role using the operator session.
+# GitHub may edit its normal policy but cannot remove or bypass this boundary.
+resource "aws_iam_policy" "worker_boundary" {
+  name = "videoq-worker-runtime-boundary"
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters"], Resource = [
+      local.parameter["worker"], "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
+    ] },
+    { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"],
+    Resource = "arn:aws:sqs:${local.region}:${local.account}:videoq-worker-prod" },
+    { Effect = "Allow", Action = ["kms:Decrypt"], Resource = "arn:aws:kms:${local.region}:${local.account}:key/*",
+    Condition = { StringEquals = { "kms:ViaService" = "ssm.${local.region}.amazonaws.com" } } },
+    { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+    Resource = "arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/videoq-worker-prod*" },
+    { Effect = "Allow", Action = ["sts:GetWebIdentityToken"], Resource = "*", Condition = {
+      "ForAllValues:StringEquals" = { "sts:IdentityTokenAudience" = ["https://openrouter.ai"] },
+      StringEquals                = { "sts:SigningAlgorithm" = "RS256" }, NumericLessThanEquals = { "sts:DurationSeconds" = "900" }
+    } }
+  ] })
 }
 resource "aws_cloudwatch_log_group" "build" {
   for_each          = local.projects
@@ -176,7 +196,7 @@ resource "aws_iam_role_policy" "state_machine" {
   role = aws_iam_role.state_machine.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["codebuild:StartBuild"], Resource = local.project_arns },
-    { Effect = "Allow", Action = ["codebuild:BatchGetBuilds", "codebuild:StopBuild"], Resource = local.build_arns },
+    { Effect = "Allow", Action = ["codebuild:BatchGetBuilds", "codebuild:StopBuild"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["events:PutTargets", "events:PutRule", "events:DescribeRule"], Resource = "arn:aws:events:${local.region}:${local.account}:rule/StepFunctionsGetEventForCodeBuildStartBuildRule" },
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn }
   ] })
@@ -214,7 +234,7 @@ resource "aws_iam_role_policy" "broker" {
     { Effect = "Allow", Action = ["states:DescribeExecution"], Resource = local.execution_arn },
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn },
     { Effect = "Allow", Action = ["codebuild:ListBuildsForProject"], Resource = local.project_arns },
-    { Effect = "Allow", Action = ["codebuild:BatchGetBuilds"], Resource = local.build_arns }
+    { Effect = "Allow", Action = ["codebuild:BatchGetBuilds"], Resource = local.project_arns }
   ] })
 }
 resource "aws_lambda_function" "broker" {
@@ -283,4 +303,7 @@ output "invocation_functions" {
 }
 output "state_machine" {
   value = aws_sfn_state_machine.maintenance.arn
+}
+output "worker_boundary" {
+  value = aws_iam_policy.worker_boundary.arn
 }

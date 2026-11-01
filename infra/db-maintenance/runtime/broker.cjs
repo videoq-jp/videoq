@@ -8,6 +8,8 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     try { return await aws('sfn', 'DescribeExecution', {executionArn: lock.execution_arn.S}); }
     catch (error) {
       if (error.name !== 'ExecutionDoesNotExist') throw error;
+      const created = Date.parse(lock.created_at?.S);
+      if (!Number.isFinite(created) || Date.now() - created < 0 || Date.now() - created > 300000) throw new Error('START_RECOVERY_REQUIRES_REVIEW');
       // The lock names the execution before StartExecution. Recover a crashed start
       // using the SAME name/input only after AWS proves that execution is absent.
       await aws('sfn', 'StartExecution', {stateMachineArn: machine, name: lock.name.S, input: lock.input.S});
@@ -66,7 +68,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     const item = {kind: {S: request.kind}, execution_arn: {S: arn}};
     try {
       await aws('ddb', 'TransactWriteItems', {TransactItems: [
-        {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}}, ConditionExpression: 'attribute_not_exists(pk)'}},
+        {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}, created_at: {S: new Date().toISOString()}}, ConditionExpression: 'attribute_not_exists(pk)'}},
         {Put: {TableName: table, Item: {pk: {S: 'run#' + run_id}, ...item, expires_at: {N: String(Math.floor(Date.now()/1000)+90*86400)}}, ConditionExpression: 'attribute_not_exists(pk)'}},
       ]});
     } catch (error) {
@@ -79,8 +81,11 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
   };
 }
 async function currentMain() {
-  const response = await fetch(`https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main`,
-    {headers: {'User-Agent': 'videoq-aws-db-maintenance', Accept: 'application/vnd.github+json'}, redirect: 'error', signal: AbortSignal.timeout(15000)});
+  const options = () => ({headers: {'User-Agent': 'videoq-aws-db-maintenance', Accept: 'application/vnd.github+json'}, redirect: 'error', signal: AbortSignal.timeout(15000)});
+  const identity = await fetch('https://api.github.com/repositories/1083911938', options());
+  const repository = await identity.json();
+  if (!identity.ok || repository.id !== 1083911938 || repository.owner?.id !== 349188820 || repository.full_name !== REPOSITORY || repository.default_branch !== 'main' || repository.private !== false) throw new Error('CANONICAL_REPOSITORY_VERIFICATION_FAILED');
+  const response = await fetch(`https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main`, options());
   const data = await response.json();
   if (!response.ok || !/^[a-f0-9]{40}$/.test(data.object?.sha || '')) throw new Error('MAIN_SOURCE_VERIFICATION_FAILED');
   return data.object.sha;

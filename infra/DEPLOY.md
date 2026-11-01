@@ -137,7 +137,7 @@ Environment and uses OIDC authentication for validated main commits.
   number of approvals from other reviewers is currently zero because there is one
   maintainer. With multiple maintainers, require at least one approval and add
   CODEOWNERS for workflow changes.
-- `production-app`: Frontend, API, and docs deployment and database migrations.
+- `production-app`: Frontend, API, and docs deployment. Database operation requests use their separate `production-db-*` Environments.
   Only the main branch can deploy; a tag with the same name is not allowed. Manual
   approval is not required; deployment follows the CI validation above.
 - `production-infra`: Infrastructure and Cloudflare resource sync. Preserve manual
@@ -155,8 +155,9 @@ trusted workflow revision. Lambda deployment and database jobs receive separate,
 | Secret | Location | Purpose |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Environment secrets in `production-app` and `production-infra` | Workers deployment / checking secret names during resource sync |
-| `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Separate `production-db-*` Environment secrets | Purpose-specific OIDC role with read access to exactly one Neon parameter; see [setup](iam/README.md#neon-database-access) |
-| `AWS_GITHUB_ACTIONS_NEON_ROTATION_ROLE_ARN` | `production-infra` Environment secret | Dedicated database credential maintenance role |
+| `AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN` | Migration, backup, smoke and maintenance `production-db-*` Environments | Invoke only the fixed AWS starter alias; no DB credential access |
+| `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Demo/audit `production-db-*` Environments | Read only the dedicated scoped operations parameter |
+
 | `CLOUDFLARE_INFRA_TOKEN` | Environment secrets in `production-infra` | Hyperdrive and R2 CORS updates in the target account |
 | `CLOUDFLARE_ACCOUNT_ID` | Repository secrets (non-sensitive ID) | Cloudflare account ID |
 
@@ -187,17 +188,18 @@ for permission details.
 
 When migrating from Repository secrets, re-enter the original values in Environment
 secrets because GitHub does not return stored secret values. Keep values out of logs
-and PRs. Confirm that all four entries in the table are registered before deleting
+and PRs. Confirm that the required entries in the table are registered before deleting
 `CLOUDFLARE_API_TOKEN`, `DATABASE_URL`, and `CLOUDFLARE_INFRA_TOKEN` from Repository
 secrets. Leaving identically named Repository secrets makes them available to
 workflows without an environment, so isolation is incomplete.
 
-Database jobs read the existing JSON SecureString
-`/videoq/security/prod/db-migration` through their dedicated migration OIDC role. Other operations use separate scoped parameters; see [DB security](DB_SECURITY.md). Follow
+Database jobs invoke the fixed AWS migration starter through their dedicated OIDC request role. AWS reads
+`/videoq/security/prod/db-migration` internally. Other migrated operations also use AWS
+starter requests; see [DB security](DB_SECURITY.md). Follow
 [Neon database access setup](iam/README.md#neon-database-access) before merging
 the workflow changes. After verifying database jobs, delete `DATABASE_URL` from
-GitHub Environment and Repository secrets if present. `/videoq/prod/db`, referenced
-by Lambda's `DB_PARAM_NAME`, is for the application only and cannot be used for
+GitHub Environment and Repository secrets if present. `/videoq/prod/db` is the API
+parameter; Lambda's `DB_PARAM_NAME` is `/videoq/prod/worker-db`. Neither is used for
 migrations. No database password reset is needed for this change.
 
 The manual resource-sync workflow also checks that the names of all required Worker

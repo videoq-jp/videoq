@@ -9,11 +9,25 @@ function key() {
   if (!/^[a-f0-9]{32}$/.test(runId || '') || table !== 'videoq-db-maintenance-prod') throw new Error('INVALID_AWS_JOB_CONTEXT');
   return {pk: {S: 'run#' + runId}};
 }
-function metadata(value) {
+function metadataValue(value) {
   const allowed = ['phase', 'generation', 'retire_after', 'rollback_after'];
   if (Object.keys(value).some(k => !allowed.includes(k))) throw new Error('UNSAFE_EXECUTION_METADATA');
+  if (!['complete','promoted','retired','rollback_pending','rollback_retired'].includes(value.phase)) throw new Error('INVALID_EXECUTION_PHASE');
+  if ((value.phase !== 'complete' || value.generation) && !/^\d{14}_[a-f0-9]{8}$/.test(value.generation || '')) throw new Error('INVALID_EXECUTION_GENERATION');
+  const output = {...value};
+  for (const field of ['retire_after','rollback_after']) {
+    if (value[field] !== undefined) {
+      if (typeof value[field] !== 'string' || !Number.isFinite(Date.parse(value[field]))) throw new Error('INVALID_EXECUTION_TIME');
+      // Step Functions truncates timestamp milliseconds. Round UP to preserve grace.
+      output[field] = new Date(Math.ceil(Date.parse(value[field])/1000)*1000).toISOString();
+    }
+  }
+  if (value.phase === 'promoted' && !output.retire_after || value.phase === 'rollback_pending' && !output.rollback_after) throw new Error('MISSING_EXECUTION_GRACE');
+  return output;
+}
+function metadata(value) {
   m.aws('dynamodb', 'update-item', {TableName: table, Key: key(), UpdateExpression: 'SET payload = :payload',
-    ConditionExpression: 'attribute_exists(pk)', ExpressionAttributeValues: {':payload': {S: JSON.stringify(value)}}});
+    ConditionExpression: 'attribute_exists(pk)', ReturnValues: 'UPDATED_NEW', ExpressionAttributeValues: {':payload': {S: JSON.stringify(metadataValue(value))}}});
 }
 function journal() {
   const value = m.readParameter(m.JOURNAL);
@@ -79,4 +93,4 @@ async function main() {
   throw new Error('UNKNOWN_AWS_JOB_STAGE');
 }
 if (require.main === module) main().catch(error => {console.error('AWS database job stopped: ' + safeError(error)); process.exitCode = 1;});
-module.exports = {metadata, prepare, main};
+module.exports = {metadataValue, metadata, prepare, main};

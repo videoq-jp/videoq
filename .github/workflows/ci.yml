@@ -59,6 +59,8 @@ jobs:
       - run: npm audit signatures
       - run: npm ci --ignore-scripts --prefix .github/deploy-tools
       - run: npm audit signatures --prefix .github/deploy-tools
+      - run: npm ci --ignore-scripts --prefix infra/db-maintenance/runtime
+      - run: npm audit signatures --prefix infra/db-maintenance/runtime
 
   workflow-security:
     name: Deployment Security Tests
