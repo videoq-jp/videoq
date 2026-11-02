@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
-import { setupConversationCheckpoints } from "../src/repositories/conversation-repository";
+import { setupConversationCheckpoints } from "./migrations/conversation/setup";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { convertHistoricalAnswer } from "./migrations/structured-answer/convert";
