@@ -21,7 +21,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'))
     permissions:
       actions: read
       contents: read
@@ -69,9 +69,19 @@ jobs:
               status: 'completed',
               per_page: 100,
             });
-            const previous = data.workflow_runs.find(
-              (run) => run.conclusion === 'success',
-            );
+            // A workflow whose jobs were all skipped also reports success.
+            // Only advance the baseline after its deployment gate actually ran.
+            let previous;
+            for (const run of data.workflow_runs) {
+              if (run.conclusion !== 'success') continue;
+              const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                ...context.repo, run_id: run.id, filter: 'latest', per_page: 100,
+              });
+              if (jobs.jobs.some(job => job.name === 'Detect Changes' && job.conclusion === 'success')) {
+                previous = run;
+                break;
+              }
+            }
             if (previous) {
               core.info(`Comparing ${previous.head_sha}..${headSha}`);
               core.setOutput('sha', previous.head_sha);
