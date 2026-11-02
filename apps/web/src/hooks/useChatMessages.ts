@@ -31,6 +31,12 @@ export type Message = (
 };
 
 interface UseChatMessagesOptions {
+  conversationId?: string;
+  initialMessages?: Message[];
+  existingConversation?: boolean;
+  visible?: boolean;
+  onSend?: () => void;
+  onAnswer?: () => void;
   courseId?: number;
   shareToken?: string;
 }
@@ -50,16 +56,21 @@ interface UseChatMessagesReturn {
 }
 
 const CHAT_ERROR_KEYS: Record<string, string> = {
+  CONVERSATION_NOT_FOUND: 'chat.errorConversationMissing',
+  CONVERSATION_BUSY: 'chat.answerInProgress',
   OVER_QUOTA: 'chat.errorOverQuota',
   AI_ANSWERS_LIMIT_EXCEEDED: 'chat.errorAnswersLimit',
   LIMIT_EXCEEDED: 'chat.errorRateLimited',
 };
 
-export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions): UseChatMessagesReturn {
+export function useChatMessages({ courseId, shareToken, conversationId: providedId, initialMessages, existingConversation, visible = true, onSend, onAnswer }: UseChatMessagesOptions): UseChatMessagesReturn {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const tRef = useRef(t);
-  const [messages, setMessages] = useState<Message[]>(() => [
+  const [generatedId] = useState(() => crypto.randomUUID());
+  const conversationId = providedId ?? generatedId;
+  const resumeConversation = useRef(!!existingConversation);
+  const [messages, setMessages] = useState<Message[]>(() => initialMessages?.length ? initialMessages : [
     { role: 'assistant', answer: plainChatAnswer(t('chat.assistantGreeting')) },
   ]);
   const [input, setInput] = useState('');
@@ -170,7 +181,7 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
     if (container && followLatestRef.current) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [messages.length, lastMessageText, lastMessageCitationCount, lastMessage?.chatLogId, isLoading]);
+  }, [messages.length, lastMessageText, lastMessageCitationCount, lastMessage?.chatLogId, isLoading, visible]);
 
   const feedbackMutation = useMutation(trpc.chat.feedback.mutationOptions());
 
@@ -180,8 +191,6 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
     if (!content.trim() || sendInFlightRef.current || !streamController) return;
 
     const userMessage: Message = { role: 'user', content };
-    // Each question is answered independently.
-    const historyForApi = [userMessage];
 
     sendInFlightRef.current = true;
     if (shareToken === PUBLIC_DEMO_SHARE_SLUG) trackLandingEvent('demo_question');
@@ -196,8 +205,11 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
     setIsLoading(true);
 
     try {
+      onSend?.();
       for await (const event of apiClient.chatStream({
-        messages: historyForApi,
+        messages: [{ role: 'user', content }],
+        conversation_id: conversationId,
+        resume_conversation: resumeConversation.current,
         ...(courseId ? { course_id: courseId } : {}),
         ...(shareToken ? { share_slug: shareToken } : {}),
       }, request.signal)) {
@@ -216,6 +228,8 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
           return;
         }
         if (event.type === 'done') {
+          resumeConversation.current = true;
+          onAnswer?.();
           // Persistence is complete now, even while text awaits the next paint.
           // Shared answers use the owner's quota, not the visitor's account.
           if (!shareToken) {
@@ -244,6 +258,9 @@ export function useChatMessages({ courseId, shareToken }: UseChatMessagesOptions
   }, [
     courseId,
     input,
+    conversationId,
+    onSend,
+    onAnswer,
     queryClient,
     replaceLastAssistantMessage,
     shareToken,

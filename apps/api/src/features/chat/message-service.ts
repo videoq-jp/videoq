@@ -1,6 +1,7 @@
 import {
   getCourseWithMembers,
   createChatLog,
+  createChatLogWithDb,
   type GroupChatContext,
 } from "../../repositories/chat-repository";
 import {
@@ -15,7 +16,10 @@ import {
   finishAnswerCostLedger,
   type AnswerAttemptStatus,
 } from "../../lib/answer-cost-ledger";
-import { runRag, streamRag, type RagResult } from "../../lib/rag";
+import type { RagResult } from "../../lib/rag";
+import type { Db } from "../../db/pool";
+import { runChatRag, streamChatRag, ConversationCommitError } from "../../lib/conversation-execution";
+import { ConversationBusyError, ConversationNotFoundError } from "../../repositories/conversation-repository";
 import { createChatFeedbackToken } from "../../lib/chat-feedback-token";
 import { type ChatAnswer, type ChatStreamEvent } from "@videoq/trpc/chat";
 import type { Bindings } from "../../types/bindings";
@@ -33,6 +37,8 @@ type ChatSendResult =
 type ChatRequestInput = {
   messages: { role: string; content: string }[];
   courseId: number | null;
+  conversationId?: string;
+  resumeConversation?: boolean;
 };
 
 /** ドメイン例外に対応するエラー記述。ストリーム/非ストリームで表現を変える。 */
@@ -102,6 +108,8 @@ function toChatRequestInput(body: ChatMessageBody): ChatRequestInput {
   return {
     messages: body.messages,
     courseId: body.course_id ?? null,
+    conversationId: body.conversation_id,
+    resumeConversation: body.resume_conversation,
   };
 }
 
@@ -168,6 +176,12 @@ async function setupChat(
 }
 
 const toFailure = (e: unknown): ChatFailure => {
+  if (e instanceof ConversationNotFoundError) {
+    return { streamCode: 'CONVERSATION_NOT_FOUND', status: 404, code: 'CONVERSATION_NOT_FOUND', message: e.message };
+  }
+  if (e instanceof ConversationBusyError) {
+    return { streamCode: "CONVERSATION_BUSY", status: 400, code: "CONVERSATION_BUSY", message: e.message };
+  }
   if (e instanceof LlmConfigurationError) {
     return failures.llmConfiguration(e.message);
   }
@@ -182,9 +196,10 @@ async function persistTurn(
     answer: ChatAnswer;
     retrievedContexts: string[];
   },
+  db?: Db,
 ): Promise<{ chatLogId: number | null; feedback: string | null }> {
   if (!setup.course) return { chatLogId: null, feedback: null };
-  const log = await createChatLog(env, {
+  const log = await (db ? createChatLogWithDb.bind(null, db) : createChatLog.bind(null, env))({
     userId: setup.actorUserId,
     courseId: setup.course.id,
     question: turn.question,
@@ -282,17 +297,24 @@ export async function sendChatMessage(
 
   let result: RagResult;
   try {
-    result = await runRag(env, {
+    result = await runChatRag(env, {
       messages: req.messages,
       ownerUserId: setup.ownerUserId,
       videoIds,
       locale: setup.locale,
       courseId: setup.course?.id ?? null,
       costLedger,
+    }, {
+      id: req.conversationId,
+      resume: req.resumeConversation,
+      persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
+      scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
+        courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug },
     });
   } catch (e) {
-    await releaseReservedUsage(env, setup);
-    await finishCostLedger(env, costLedger, "failed", false);
+    const consumed = e instanceof ConversationCommitError;
+    if (!consumed) await releaseReservedUsage(env, setup);
+    await finishCostLedger(env, costLedger, "failed", consumed);
     const f = toFailure(e);
     return {
       status: f.status,
@@ -301,7 +323,7 @@ export async function sendChatMessage(
   }
 
   try {
-    const { chatLogId, feedback } = await persistTurn(env, setup, {
+    const { chatLogId, feedback } = result.persistedTurn ?? await persistTurn(env, setup, {
       question: result.queryText,
       answer: result.answer,
       retrievedContexts: result.retrievedContexts,
@@ -376,7 +398,7 @@ export async function streamChatMessage(
       let final: RagResult | undefined;
 
       try {
-        for await (const chunk of streamRag(
+        for await (const chunk of streamChatRag(
           env,
           {
             messages,
@@ -385,6 +407,13 @@ export async function streamChatMessage(
             locale: setup.locale,
             courseId: setup.course?.id ?? null,
             costLedger,
+          },
+          {
+            id: req.conversationId,
+      resume: req.resumeConversation,
+      persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
+            scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
+              courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug },
           },
           clientSignal,
         )) {
@@ -431,7 +460,7 @@ export async function streamChatMessage(
       let chatLogId: number | null;
       let feedback: string | null;
       try {
-        ({ chatLogId, feedback } = await persistTurn(env, setup, {
+        ({ chatLogId, feedback } = final.persistedTurn ?? await persistTurn(env, setup, {
           question: final.queryText,
           answer: final.answer,
           retrievedContexts: final.retrievedContexts,

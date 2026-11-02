@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import * as conversations from "../../features/chat/conversation-service";
 import * as chatService from "../../features/chat/service";
 import * as messageService from "../../features/chat/message-service";
 import { chatThrottleChecks, enforceThrottles } from "../../lib/rate-limit";
@@ -26,7 +27,13 @@ export function chatHandlers(
 ): HandlersFor<"chat"> {
   const userId = () => requireUserId(authenticatedUserId);
   return {
-    "chat.send": async ({ messages, courseId, shareSlug }) => {
+    "chat.conversations": async input => conversations.listConversations(c.env,
+      await conversations.conversationScope(c.env, authenticatedUserId, input), input),
+    "chat.conversation": async input => conversations.getConversation(c.env,
+      await conversations.conversationScope(c.env, authenticatedUserId, input), input),
+    "chat.deleteConversation": async input => conversations.deleteConversation(c.env,
+      await conversations.conversationScope(c.env, authenticatedUserId, input), input.conversationId),
+    "chat.send": async ({ messages, courseId, shareSlug, conversationId, resumeConversation }) => {
       if (authenticatedUserId === null && !shareSlug) {
         return rpcError("UNAUTHORIZED", "Authentication credentials were not provided.", {
           appCode: "UNAUTHORIZED",
@@ -38,6 +45,8 @@ export function chatHandlers(
         body: {
           messages,
           course_id: courseId,
+          conversation_id: conversationId,
+          resume_conversation: resumeConversation,
         },
         shareSlug: shareSlug ?? null,
         locale: messageService.requestLocaleFromHeader(c.req.header("Accept-Language")),

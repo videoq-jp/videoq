@@ -341,8 +341,10 @@ describe("chat.resetHistory", () => {
     const sqls = txnCalls.map((c) => c.sql.replace(/\s+/g, " ").trim());
     expect(sqls[0]).toBe("begin");
     expect(sqls[1]).toContain("video_courses");
-    expect(sqls[2]).toContain("chat_logs");
-    expect(sqls[3]).toBe("commit");
+    expect(sqls[2]).toContain("chat_conversations");
+    expect(txnCalls[2].args).toEqual([3]);
+    expect(sqls[3]).toContain("chat_logs");
+    expect(sqls[4]).toBe("commit");
     expect(txnCalls[1].args.slice(0, 2)).toEqual([3, "00000000-0000-4000-8000-000000000005"]);
   });
 

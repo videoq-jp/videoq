@@ -1,5 +1,6 @@
 import { ChatOpenAICompletions } from "@langchain/openai";
 import type OpenAI from "openai";
+import type { Callbacks } from "@langchain/core/callbacks/manager";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 import {
   DEFAULT_LLM_MODEL,
@@ -30,6 +31,7 @@ const MAX_RETRIES = 0;
  */
 class AnswerChatModel extends ChatOpenAICompletions {
   costLedger?: AnswerCostLedger;
+  purpose: "answer_model" | "conversation_summary" = "answer_model";
   separateToolSchema = false;
   preserveToolReasoning = false;
   // Scoped to this answer's model instance. LangChain's Chat Completions
@@ -80,7 +82,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
     // Keep native schema enforcement on the request, and let providerStrategy
     // validate terminal responses after the agent has processed tool calls.
     const clientOptions = this._getClientOptions(options);
-    const call = this.costLedger?.begin("answer_model", request.model);
+    const call = this.costLedger?.begin(this.purpose, request.model);
     const trackedRequest = request.stream
       ? { ...request, stream_options: { ...(request.stream_options ?? {}), include_usage: true } }
       : request;
@@ -147,7 +149,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
 
 export function createChatModel(
   env: Bindings,
-  opts: { maxTokens: number; timeoutMs: number; costLedger?: AnswerCostLedger },
+  opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "conversation_summary"; callbacks?: Callbacks },
 ): ChatOpenAICompletions {
   const { apiKey, baseURL } = resolveLlmConnection(env);
   const model = providerModel(env.LLM_MODEL || DEFAULT_LLM_MODEL, baseURL);
@@ -165,8 +167,10 @@ export function createChatModel(
     maxTokens: opts.maxTokens,
     timeout: opts.timeoutMs,
     maxRetries: MAX_RETRIES,
+    callbacks: opts.callbacks,
   });
   chatModel.costLedger = opts.costLedger;
+  chatModel.purpose = opts.purpose ?? "answer_model";
   chatModel.separateToolSchema = env.LLM_SEPARATE_TOOL_SCHEMA === "true";
   chatModel.preserveToolReasoning = env.LLM_PRESERVE_TOOL_REASONING === "true";
   return chatModel;

@@ -817,10 +817,27 @@
         }
       }
     },
+    "currentConversation": "Chat",
+    "myConversations": "My conversations",
+    "conversationRetention": "You can resume your conversations for 30 days after your last question. Course question logs are managed separately.",
+    "loadingConversations": "Loading conversations…",
+    "loadConversationsError": "Could not load your conversations.",
+    "deleteConversationError": "Could not delete the conversation. If an answer is in progress, try again when it finishes.",
+    "deleteConversation": "Delete conversation",
+    "deleteNamedConversation": "Delete “{{title}}”",
+    "deleteConversationConfirm": "Delete this conversation and its questions and answers? This cannot be undone.",
+    "loadMoreConversations": "Load more conversations",
+    "restoringConversation": "Restoring your conversation…",
+    "restoreConversationError": "Could not restore the conversation. It may have expired or been deleted.",
+    "retry": "Retry",
+    "loadEarlierError": "Could not load earlier messages. Please try again.",
+    "loadEarlierMessages": "Load earlier messages",
+    "errorConversationMissing": "This conversation has expired or was deleted. Start a new chat to continue.",
+    "answerInProgress": "An answer is in progress. It will appear when it is ready.",
     "title": "Chat",
     "answerLabel": "Automatic answer",
     "newConsultation": "New chat",
-    "history": "Conversation history",
+    "history": "Course question history",
     "historyEmpty": "No history available",
     "sharedLinkUser": "Shared-link visitor",
     "exportCsvShort": "CSV",
@@ -956,7 +973,7 @@
         },
         "share": {
           "title": "5. External services and sharing",
-          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues and video processing.\n• OpenRouter and the providers that perform inference (such as OpenAI, DeepInfra and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Our answer generation does not send the entire chat history.\n• SearchAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation."
+          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues and video processing.\n• OpenRouter and the providers that perform inference (such as OpenAI, DeepInfra and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Answer generation sends the current question and conversation context, including recent messages and summaries of older exchanges.\n• SearchAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation."
         },
         "retention": {
           "title": "6. Retention",

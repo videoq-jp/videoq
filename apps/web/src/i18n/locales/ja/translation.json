@@ -815,10 +815,27 @@
         }
       }
     },
+    "currentConversation": "チャット",
+    "myConversations": "自分の会話",
+    "conversationRetention": "自分の会話は最後の質問から30日間再開できます。講座の質問履歴は別に管理されます。",
+    "loadingConversations": "会話を読み込んでいます…",
+    "loadConversationsError": "会話の一覧を読み込めませんでした。",
+    "deleteConversationError": "会話を削除できませんでした。回答中の場合は完了後に再度お試しください。",
+    "deleteConversation": "会話を削除",
+    "deleteNamedConversation": "「{{title}}」を削除",
+    "deleteConversationConfirm": "この会話と対応する質問・回答を削除します。この操作は取り消せません。",
+    "loadMoreConversations": "さらに会話を表示",
+    "restoringConversation": "前の会話を読み込んでいます…",
+    "restoreConversationError": "会話を復元できませんでした。保存期間が過ぎたか、削除された可能性があります。",
+    "retry": "再試行",
+    "loadEarlierError": "以前のメッセージを読み込めませんでした。もう一度お試しください。",
+    "loadEarlierMessages": "以前のメッセージを表示",
+    "errorConversationMissing": "この会話は保存期間が過ぎたか、削除されました。「新規相談」から始めてください。",
+    "answerInProgress": "回答を作成中です。完了すると表示されます。",
     "title": "チャット",
     "answerLabel": "自動回答",
     "newConsultation": "新規相談",
-    "history": "会話履歴",
+    "history": "講座の質問履歴",
     "historyEmpty": "履歴はありません",
     "sharedLinkUser": "共有リンク利用者",
     "exportCsvShort": "CSV",
@@ -954,7 +971,7 @@
         },
         "share": {
           "title": "5. 外部サービスへの提供・委託",
-          "body": "個人情報を販売しません。本サービスの提供に必要な範囲で、次の外部サービスを利用します。\n・Cloudflare：アプリの配信、API の実行、動画・画像などの保存。Neon：アカウント、文字起こし、チャット履歴などのデータベース保存。AWS：処理用キューと動画処理。\n・OpenRouter と実際に推論を処理する事業者（OpenAI、DeepInfra、Groq など）：アップロード動画から抽出・分割した音声を OpenRouter 経由で文字起こしモデル（Whisper Large V3 Turbo）へ送信し、文字起こし結果を受信。動画ファイル全体、アカウントのメールアドレス、チャット履歴をこの文字起こし処理のために送信しません。加えて、検索用の字幕や質問文の埋め込み、質問文・関連する字幕や講座情報を使った回答生成、必要な場合の動画から抽出した静止画の解析。会話履歴全体を回答生成のために送信する構成ではありません。\n・SearchAPI：YouTube から字幕を取得する際、動画 ID などを送信。Google：Google ログインを選んだ場合の認証。Mailgun：確認・招待などのメールの宛先、件名、本文を送信。Stripe：決済情報の取扱いは第3項に記載します。\nこれらの事業者による処理や経由は日本国外（米国を含む）になる場合があります。法令に基づく提供を除き、提供する情報は各処理に必要な範囲に限ります。"
+          "body": "個人情報を販売しません。本サービスの提供に必要な範囲で、次の外部サービスを利用します。\n・Cloudflare：アプリの配信、API の実行、動画・画像などの保存。Neon：アカウント、文字起こし、チャット履歴などのデータベース保存。AWS：処理用キューと動画処理。\n・OpenRouter と実際に推論を処理する事業者（OpenAI、DeepInfra、Groq など）：アップロード動画から抽出・分割した音声を OpenRouter 経由で文字起こしモデル（Whisper Large V3 Turbo）へ送信し、文字起こし結果を受信。動画ファイル全体、アカウントのメールアドレス、チャット履歴をこの文字起こし処理のために送信しません。加えて、検索用の字幕や質問文の埋め込み、質問文・関連する字幕や講座情報を使った回答生成、必要な場合の動画から抽出した静止画の解析。回答生成では、現在の質問と、直近のメッセージや以前のやり取りの要約を含む会話の文脈を送信します。\n・SearchAPI：YouTube から字幕を取得する際、動画 ID などを送信。Google：Google ログインを選んだ場合の認証。Mailgun：確認・招待などのメールの宛先、件名、本文を送信。Stripe：決済情報の取扱いは第3項に記載します。\nこれらの事業者による処理や経由は日本国外（米国を含む）になる場合があります。法令に基づく提供を除き、提供する情報は各処理に必要な範囲に限ります。"
         },
         "retention": {
           "title": "6. 保管期間",

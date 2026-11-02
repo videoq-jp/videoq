@@ -1,7 +1,7 @@
 import { withClient } from "../db/pool";
 import type { Bindings } from "../types/bindings";
 
-export type ProviderCallKind = "answer_model" | "visual_inspection" | "query_embedding";
+export type ProviderCallKind = "answer_model" | "conversation_summary" | "visual_inspection" | "query_embedding";
 export type ProviderCallStatus = "completed" | "failed" | "interrupted";
 export type AnswerAttemptStatus = "completed" | "failed" | "interrupted";
 

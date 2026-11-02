@@ -1,3 +1,4 @@
+import { applyChatPart, type ChatAnswer } from '@videoq/trpc/chat';
 import { http, HttpResponse } from 'msw';
 import { fn } from 'storybook/test';
 import type { ChatHistoryItem, ChatRequest, ChatStreamEvent } from '../../src/lib/api';
@@ -23,6 +24,9 @@ export const historyError = '会話履歴を読み込めませんでした / Cou
 export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
   const lifetime = new AbortController();
   const streams = new Set<{ send: (events: ChatStreamEvent[]) => void; close: () => void }>();
+  const conversations = new Map<string, { id: string; title: string; createdAt: string; updatedAt: string; isGenerating: boolean;
+    turns: Array<{ id: string; question: string; answer: ChatAnswer; chatLogId: number | null; feedback: 'good' | 'bad' | null; feedbackToken?: string }>;
+    hasMore: boolean }>();
   const history = structuredClone(scenario.history ?? courseHistory);
   let feedbackAttempts = 0;
   for (const request of [chatRequest, historyRequest, feedbackRequest, csvRequest]) request.mockClear();
@@ -31,6 +35,13 @@ export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
       const body = await request.json() as ChatRequest;
       chatRequest({ ...body, share_slug: new URL(request.url).searchParams.get('share_slug') ?? undefined });
       if (scenario.httpError) return HttpResponse.json({ error: { code: 'STREAM_FAILED', message: 'Connection failed (fixture)' } }, { status: 503 });
+      const id = body.conversation_id ?? crypto.randomUUID();
+      const question = body.messages.at(-1)?.content ?? '';
+      const conversation = conversations.get(id) ?? { id, title: question, createdAt: '2026-11-02T00:00:00Z',
+        updatedAt: '2026-11-02T00:00:00Z', isGenerating: true, turns: [], hasMore: false };
+      conversation.isGenerating = true;
+      conversations.set(id, conversation);
+      const draft: ChatAnswer = { segments: [], sources: [] };
       const encoder = new TextEncoder();
       let cleanup = () => {};
       const bodyStream = new ReadableStream<Uint8Array>({
@@ -38,7 +49,17 @@ export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
           let closed = false;
           const connection = {
             send(events: ChatStreamEvent[]) {
-              if (!closed) for (const event of events) controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+              if (!closed) for (const event of events) {
+                if (event.type === 'source') draft.sources.push(event.source);
+                if (event.type === 'text_delta') applyChatPart(draft, { ...event, type: 'text' });
+                if (event.type === 'citation') applyChatPart(draft, event);
+                if (event.type === 'done') {
+                  conversation.turns.push({ id: String(conversation.turns.length + 1), question, answer: structuredClone(draft),
+                    chatLogId: event.chat_log_id, feedback: event.feedback ?? null, feedbackToken: event.feedback_token });
+                  conversation.isGenerating = false;
+                }
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+              }
             },
             close() {
               if (closed) return;
@@ -48,6 +69,7 @@ export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
           };
           cleanup = () => {
             closed = true;
+            conversation.isGenerating = false;
             streams.delete(connection);
             lifetime.signal.removeEventListener('abort', connection.close);
             request.signal.removeEventListener('abort', connection.close);
@@ -64,6 +86,15 @@ export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
       return new HttpResponse(bodyStream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
     }),
     trpcHandler([
+      trpcQuery('chat.conversations', input => success({ items: [...conversations.values()]
+        .filter(item => item.turns.length && (!input.shareSlug || input.conversationIds?.includes(item.id))), hasMore: false })),
+      trpcQuery('chat.conversation', input => {
+        const conversation = conversations.get(input.conversationId);
+        return conversation ? success(conversation) : failure('Conversation not found', 404);
+      }),
+      trpcMutation('chat.deleteConversation', input => {
+        conversations.delete(input.conversationId); return success({ success: true });
+      }),
       trpcQuery('chat.history', input => {
         historyRequest(input);
         const state = historyRequest.mock.calls.length > 1 ? scenario.historyRefetch ?? scenario.historyState : scenario.historyState;
