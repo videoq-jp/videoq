@@ -111,3 +111,23 @@ test('AWS upload job does not execute the built image or project code', () => {
   assert.doesNotMatch(body, /actions\/checkout|docker (?:build|run)|npm |pip install/);
   assert.equal(workerCanDeploy({}, { 'worker-build': 'skipped' }), false);
 });
+
+// GitHub emits workflow_run for failed/cancelled CI as well as successful CI.
+// Skip them before starting CD; keep validate-deployment.cjs as defence in depth.
+test('CD starts only for successful main push CI or an explicit manual dispatch', () => {
+  const expression = job('changes').body.match(/^    if: (.+)$/m)?.[1];
+  assert.ok(expression);
+  const allowed = (eventName, event, conclusion, repository = 'videoq-jp/videoq', ref = 'refs/heads/main') =>
+    runInNewContext(expression, { github: { repository, ref, event_name: eventName,
+      event: { workflow_run: { event, conclusion } } } }, { timeout: 100 });
+  assert.equal(allowed('workflow_run', 'push', 'success'), true);
+  assert.equal(allowed('workflow_dispatch'), true);
+  for (const conclusion of ['failure', 'cancelled', 'timed_out', 'skipped', 'neutral', 'action_required', undefined]) {
+    assert.equal(allowed('workflow_run', 'push', conclusion), false, String(conclusion));
+  }
+  for (const event of ['pull_request', 'merge_group', 'workflow_dispatch']) {
+    assert.equal(allowed('workflow_run', event, 'success'), false, event);
+  }
+  assert.equal(allowed('workflow_run', 'push', 'success', 'fork/videoq'), false);
+  assert.equal(allowed('workflow_dispatch', undefined, undefined, 'videoq-jp/videoq', 'refs/heads/feature'), false);
+});

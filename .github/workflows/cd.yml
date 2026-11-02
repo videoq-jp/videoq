@@ -21,7 +21,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'))
     permissions:
       actions: read
       contents: read

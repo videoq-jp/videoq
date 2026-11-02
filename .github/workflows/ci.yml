@@ -571,6 +571,7 @@ jobs:
   frontend-storybook:
     name: Frontend Storybook
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     steps:
