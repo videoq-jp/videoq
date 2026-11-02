@@ -28,8 +28,7 @@ export const chatMessageSchema = z.object({
 });
 
 /**
- * Q&A uses only the latest user message; send one self-contained question.
- * Accepting a message array does not imply Q&A conversation memory.
+ * Q&A accepts recent conversation turns followed by the latest user question.
  */
 export const chatMessagesSchema = z
   .array(chatMessageSchema)

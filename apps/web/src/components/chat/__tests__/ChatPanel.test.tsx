@@ -48,6 +48,7 @@ async function sendMessage(input: HTMLElement, message: string) {
 describe('ChatPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     globalThis.__setTrpcHandler('chat.history', async (input) => {
       const data = await chatTrpcMocks.history(input)
       return { data, meta: { total: data.length, limit: 100, offset: 0 } }

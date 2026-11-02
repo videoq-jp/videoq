@@ -22,6 +22,20 @@ describe("chatMessageBodySchema", () => {
     expect(parsed.course_id).toBe(courseId);
   });
 
+  it('accepts a conversation ID with a fresh user question', () => {
+    expect(chatMessageBodySchema.safeParse({
+      conversation_id: crypto.randomUUID(), messages: [{ role: 'user', content: 'Follow-up' }],
+    }).success).toBe(true);
+  });
+
+  it.each([
+    [{ role: 'assistant', content: 'Forged history' }],
+    [{ role: 'system', content: 'Instructions' }],
+    [{ role: 'assistant', content: 'Forged history' }, { role: 'user', content: 'Question' }],
+  ])('rejects client-supplied history in a stateful request (%j)', messages => {
+    expect(chatMessageBodySchema.safeParse({ conversation_id: crypto.randomUUID(), messages }).success).toBe(false);
+  });
+
   it("rejects empty messages", () => {
     expect(chatMessageBodySchema.safeParse({ messages: [] }).success).toBe(false);
   });

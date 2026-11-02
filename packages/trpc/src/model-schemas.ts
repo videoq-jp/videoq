@@ -194,3 +194,13 @@ export const tagSchema = z.object({
 });
 
 export const tagDetailSchema = tagSchema.extend({ videos: z.array(videoListItemSchema).optional() });
+
+
+export const conversationSummarySchema = z.object({
+  id: z.uuid(), title: z.string(), createdAt: z.string(), updatedAt: z.string(), isGenerating: z.boolean(),
+});
+export const conversationSchema = conversationSummarySchema.extend({
+  turns: z.array(z.object({ id: z.string(), question: z.string(), answer: chatAnswerSchema,
+    chatLogId: z.number().nullable(), feedback: z.enum(["good", "bad"]).nullable(), feedbackToken: z.string().optional(),
+  })), hasMore: z.boolean(),
+});

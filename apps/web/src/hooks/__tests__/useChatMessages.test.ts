@@ -460,7 +460,7 @@ describe('useChatMessages streaming', () => {
     { courseId: 5 },
     { courseId: 5, shareToken: 'shared' },
     {},
-  ])('sends only the latest Q&A question while retaining visible messages (%j)', async (scope) => {
+  ])('sends the latest question with a conversation ID while retaining visible messages (%j)', async (scope) => {
     vi.mocked(apiClient.chatStream).mockImplementation(makeStreamMock([]))
     const { result } = renderHook(() => useChatMessages(scope))
     const prior = [
@@ -475,10 +475,25 @@ describe('useChatMessages streaming', () => {
     expect(apiClient.chatStream).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: [{ role: 'user', content: '具体例を教えて' }],
+        conversation_id: expect.any(String),
       }),
       expect.any(AbortSignal),
     )
     expect(result.current.messages.slice(0, 2)).toEqual(prior)
+  })
+
+  it('keeps the conversation ID across sends and creates a new one after remount', async () => {
+    vi.mocked(apiClient.chatStream).mockImplementation(makeStreamMock([]))
+    const { result, unmount } = renderHook(() => useChatMessages({ courseId: 5 }))
+    await act(async () => { await result.current.handleSend('First') })
+    await act(async () => { await result.current.handleSend('Follow-up') })
+    const calls = vi.mocked(apiClient.chatStream).mock.calls
+    expect(calls[1][0].conversation_id).toBe(calls[0][0].conversation_id)
+    expect(calls[1][0].messages).toEqual([{ role: 'user', content: 'Follow-up' }])
+    unmount()
+    const next = renderHook(() => useChatMessages({ courseId: 5 }))
+    await act(async () => { await next.result.current.handleSend('New chat') })
+    expect(calls[2][0].conversation_id).not.toBe(calls[0][0].conversation_id)
   })
 
   it('guards against rapid consecutive sends before loading state rerenders', async () => {

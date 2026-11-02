@@ -47,7 +47,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 type Context = Parameters<NonNullable<Story['play']>>[0];
 const input = ({ canvas }: Context) => canvas.getByRole('textbox', { name: label('placeholder') });
-const chatButton = ({ canvas }: Context) => canvas.getByRole('button', { name: label('newConsultation') });
+const chatButton = ({ canvas }: Context) => canvas.getByRole('button', { name: label('currentConversation') });
 const historyButton = ({ canvas }: Context) => canvas.getByRole('button', { name: label('history') });
 async function send(context: Context, text = english() ? englishQuestion : question) {
   await context.userEvent.type(input(context), text);
@@ -86,7 +86,7 @@ export const HistoryHidden: Story = { args: { showHistory: false }, async play({
 } };
 export const Conversation: Story = { async play(context) {
   await complete(context);
-  await expect(chatRequest).toHaveBeenCalledWith({ course_id: courseId, messages: [{ role: 'user', content: english() ? englishQuestion : question }], share_slug: undefined });
+  await expect(chatRequest).toHaveBeenCalledWith({ course_id: courseId, messages: [{ role: 'user', content: english() ? englishQuestion : question }], share_slug: undefined, conversation_id: expect.any(String), resume_conversation: false });
 } };
 export const IndependentQuestions: Story = { async play(context) {
   await send(context, '内積とは？');
@@ -346,7 +346,29 @@ export const UnmountDuringResponse: Story = { parameters: { lifecycleControl: tr
   await waitFor(() => expect(network.activeStreams).toBe(0));
   await context.userEvent.click(context.canvas.getByRole('button', { name: 'Mount panel' }));
   network.emit(answerEvents());
-  await expect(context.canvas.getByText(label('assistantGreeting'))).toBeVisible();
+  await expect(await context.canvas.findByText(label('assistantGreeting'))).toBeVisible();
   await expect(context.canvas.queryByRole('button', { name: label('feedbackGood') })).not.toBeInTheDocument();
   await expect(input(context)).toBeEnabled();
 } };
+
+
+export const ResumeAfterRemount: Story = { parameters: { lifecycleControl: true }, async play(context) {
+  await complete(context);
+  const id = chatRequest.mock.calls[0][0].conversation_id;
+  await context.userEvent.click(context.canvas.getByRole('button', { name: 'Unmount panel' }));
+  await context.userEvent.click(context.canvas.getByRole('button', { name: 'Mount panel' }));
+  await context.canvas.findByRole('button', { name: label('feedbackGood') });
+  await expect(context.canvas.getByText(english() ? englishQuestion : question)).toBeVisible();
+  await send(context, english() ? 'Explain that with another example.' : '別の具体例でも説明してください。');
+  await waitFor(() => expect(chatRequest).toHaveBeenCalledTimes(2));
+  await expect(chatRequest.mock.calls[1][0].conversation_id).toBe(id);
+  await expect(chatRequest.mock.calls[1][0].resume_conversation).toBe(true);
+} };
+export const PersonalConversationList: Story = { async play(context) {
+  await complete(context);
+  await context.userEvent.click(context.canvas.getByRole('button', { name: label('myConversations') }));
+  await context.canvas.findByText(english() ? englishQuestion : question);
+  await expect(context.canvas.getByText(label('conversationRetention'))).toBeVisible();
+} };
+export const PersonalConversationListEnglishMobile: Story = { ...PersonalConversationList,
+  globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };

@@ -302,6 +302,20 @@
       "when": 1793457198518,
       "tag": "0042_embeddinggemma2_index",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793535624650,
+      "tag": "0043_chat_conversation_memory",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793587780969,
+      "tag": "0044_resumable_conversations",
+      "breakpoints": true
     }
   ]
 }

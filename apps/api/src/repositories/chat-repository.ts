@@ -1,6 +1,6 @@
 import { chatAnswerSchema, chatAnswerText, type ChatAnswer, type ChatSource } from "@videoq/trpc/chat";
 import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
-import { withDb } from "../db/pool";
+import { withDb, type Db } from "../db/pool";
 import {
   chatLogs,
   users,
@@ -110,8 +110,8 @@ export async function getCourseWithMembers(
 }
 
 /** Persist the validated answer; AI quality evaluation has been retired. */
-export async function createChatLog(
-  env: Bindings,
+export async function createChatLogWithDb(
+  db: Db,
   params: {
     userId: string;
     courseId: number;
@@ -121,29 +121,32 @@ export async function createChatLog(
     retrievedContexts: readonly string[];
   },
 ): Promise<{ id: number; feedback: string | null }> {
-  return withDb(env, async (db) =>
-    db.transaction(async (tx) => {
-      const rows = await tx
-        .insert(chatLogs)
-        .values({
-          userId: params.userId,
-          courseId: params.courseId,
-          question: params.question,
-          response: chatAnswerSchema.parse(params.answer),
-          retrievedContexts: params.retrievedContexts,
-          isSharedOrigin: params.isShared,
-          feedback: null,
-          createdAt: sql`now()`,
-        })
-        .returning({ id: chatLogs.id, feedback: chatLogs.feedback });
-      const r = rows[0];
-      const chatLogId = Number(r.id);
-      return {
-        id: chatLogId,
-        feedback: chatFeedback(r.feedback),
-      };
-    }),
-  );
+  const rows = await db
+    .insert(chatLogs)
+    .values({
+      userId: params.userId,
+      courseId: params.courseId,
+      question: params.question,
+      response: chatAnswerSchema.parse(params.answer),
+      retrievedContexts: params.retrievedContexts,
+      isSharedOrigin: params.isShared,
+      feedback: null,
+      createdAt: sql`now()`,
+    })
+    .returning({ id: chatLogs.id, feedback: chatLogs.feedback });
+  const r = rows[0];
+  const chatLogId = Number(r.id);
+  return {
+    id: chatLogId,
+    feedback: chatFeedback(r.feedback),
+  };
+}
+
+export async function createChatLog(
+  env: Bindings,
+  params: Parameters<typeof createChatLogWithDb>[1],
+): Promise<{ id: number; feedback: string | null }> {
+  return withDb(env, db => createChatLogWithDb(db, params));
 }
 
 /**
@@ -164,6 +167,7 @@ export async function deleteCourseChatLogs(
         .limit(1);
       if (owner.length === 0) return { notFound: true } as const;
 
+      await tx.execute(sql`DELETE FROM chat_conversations WHERE course_id = ${courseId}`);
       await tx.delete(chatLogs).where(eq(chatLogs.courseId, courseId));
       return { ok: true } as const;
     }),

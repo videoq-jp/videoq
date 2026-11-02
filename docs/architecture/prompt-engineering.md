@@ -13,24 +13,24 @@ Start with [How AI builds an answer](../concepts/how-ai-works.md) for a complete
 
 | Stage | Material passed to the model |
 |---|---|
-| Start of ordinary Q&A | System instructions and the latest user question; earlier conversation turns are not included |
+| Start of ordinary Q&A | System instructions, the stored conversation summary/recent turns and the latest user question |
 | Tool definitions | What each tool can do, its argument schema, and instructions about when to use it |
-| After a tool call | The current answer's tool-call history and returned course metadata or numbered subtitle scenes |
-| Final response | The model writes using the evidence acquired during that answer |
+| After a tool call | The retained conversation's tool-call history and returned course metadata or numbered subtitle scenes |
+| Final response | The model writes using retained or newly retrieved tool evidence |
 
 The prompt selects language-specific instructions from `prompts.json`. Each locale supplies a complete configuration whose structure is checked by TypeScript. Selection tries the full locale, its primary language, and then the default; configurations are not merged at request time.
 
 Course metadata includes names, descriptions, video counts, and a page of video IDs/titles/statuses. The tool explicitly omits share tokens, owner IDs, and file URLs. Descriptions can be truncated: course descriptions at 2,000 characters and video descriptions at 500, with flags indicating truncation. A missing page or truncated field must not be treated as proof that information does not exist.
 
-Showing older chat messages in the UI does not change this Q&A input contract. Follow-up questions need enough context in their latest message.
+The model receives the saved conversation summary/recent turns to interpret follow-ups. Displayed original messages are stored separately so compaction does not erase the visible transcript.
 
 ### Client and API contract
 
 The web client sends its selected UI language in `Accept-Language` for both SSE and tRPC requests. It reads the language for each request, so switching between Japanese and English also changes the answer instructions without reloading the page or relying on the browser's language preferences.
 
-Q&A deliberately remains a single-question feature so each request specifies its own subject and retrieves evidence without inheriting earlier answers. This applies to authenticated chats, shared-link chats, and Q&A without a course. The browser sends one `user` message. The streaming endpoint (`/api/chat/messages/stream`) and `chat.send` still accept a `messages` array for compatibility, but Q&A selects only its latest `user` entry; older entries do not provide context.
+For authenticated chats, shared links and chats without a course, the browser sends one fresh user question and a conversation UUID. The server checks current access and loads that conversation from the committed LangGraph checkpoint. Earlier answers provide context. Retained tool results can supply evidence with stable citation IDs; the agent retrieves more when evidence is insufficient or needs updating. Legacy clients without a conversation UUID can still submit a message array; they do not receive server-side thread persistence.
 
-For “What is the dot product?” → “Give me an example”, the second request is independent. It must not inherit “dot product” from the first request. A particular clarification response is not guaranteed by code; include the subject in the question, as in “Give me an example of the dot product.” Tests assert the actual model input for both streaming and non-streaming Q&A.
+For “What is the dot product?” → “Give me an example”, earlier turns establish the subject. Prior answers are context rather than evidence; retained tool results or new course retrieval supply the supporting evidence. Tests assert the model input for streaming and non-streaming Q&A.
 
 ## Selecting information for Q&A
 
@@ -79,15 +79,15 @@ Model attribution: [GPT-6 Luna's official model documentation](../reference/ai-r
 
 The provider capability is documented in [OpenAI's Structured Outputs release](../reference/ai-references.md#structured-outputs). The source registry and citation validation described below are VideoQ's implementation.
 
-The model returns native structured output: `{"segments":[{"text":"A claim.","sourceIds":[1]}]}`. It never supplies video destinations. The server adds `sources: [{id, video_id, title, start_time, end_time}]` from the current answer's scoped search. This `ChatAnswer` is the only answer representation in non-streaming responses, browser state, history and the `chat_logs.response` JSONB column. CSV exports derive plain text by concatenating segment texts without adding separators. Text includes its own spaces/newlines; the renderer adds timestamp links after each segment, in `sourceIds` order.
+The model returns native structured output: `{"segments":[{"text":"A claim.","sourceIds":[1]}]}`. It never supplies video destinations. The server adds `sources: [{id, video_id, title, start_time, end_time}]` from the conversation citation registry, filtered to the currently authorized videos. This `ChatAnswer` is the only answer representation in non-streaming responses, browser state, history and the `chat_logs.response` JSONB column. CSV exports derive plain text by concatenating segment texts without adding separators. Text includes its own spaces/newlines; the renderer adds timestamp links after each segment, in `sourceIds` order.
 
 The configured Chat Completions endpoint/model must support **strict native `json_schema` output and strict function tools**, including their use together. Course Q&A uses LangChain `providerStrategy`; no-course Q&A passes the same JSON schema directly. Tool arguments explicitly include nullable `video_ids` and required pagination fields. Unsupported schema capability is a configuration error. There is no free-text fallback, conversion-only model call, or automatic repair/retry. Refusal, missing/blank output, truncation and schema violations fail the request. Tool-call preambles are never displayed as answers.
 
-A request owns its source registry: positive safe integer IDs remain stable across repeated searches, even when the same scene is found again. Metadata-only answers use empty `sourceIds`. Retrieved candidates can include uncited sources; registration alone does not create a link. The model sees structured scene records with `sourceId`, text and server-provided metadata.
+The agent state owns its source registry: positive safe integer IDs remain stable across repeated searches and follow-up answers, even when the same scene is found again. Source metadata is retained across summarization until thread deletion or expiry, so continued retrieval grows the registry. Metadata-only answers use empty `sourceIds`. Retrieved candidates can include uncited sources; registration alone does not create a link. The model sees structured scene records with `sourceId`, text and server-provided metadata.
 
 Unknown IDs and numeric IDs that are not positive safe integers are removed without changing text. Duplicate IDs in one segment are removed in first-occurrence order; the same ID in different segments stays at each position. IDs at a boundary inside code or TeX are removed, including expressions split across segments or left unclosed. Validation uses the concatenated text and shares delimiter rules with the renderer. Logs contain only `chat_citations_rejected` counts (`invalid_id`, `unknown_id`, `duplicate_id`, `unsafe_position`), never answer text or source metadata. Text such as `a[1]`, `[99]`, and Markdown brackets is ordinary text and is never interpreted as a citation.
 
-Search enforces authorized course scope. ID validation proves that a source was retrieved for this answer; it does not prove that the source supports a claim. Prompt instructions also treat subtitles as reference data, but do not guarantee immunity from prompt injection or unsupported claims.
+Search enforces authorized course scope. ID validation checks that a source was registered in this conversation and its video is currently accessible; it does not prove that the source supports a claim. Prompt instructions also treat subtitles as reference data, but do not guarantee immunity from prompt injection or unsupported claims.
 
 ### Streaming contract {#streaming-contract}
 
@@ -150,3 +150,30 @@ Test metadata-only questions, lesson-content questions, and questions requiring 
 `LLM_MODEL` is used for answers and generation; `EMBEDDING_MODEL` is used for search. Embeddings are fixed at 1536 dimensions, and the API and worker must also use the same model. Changing models requires regenerating existing vectors. See [embedding configuration and limitations](../guides/embeddings.md).
 
 See [tests and verification commands](../guides/testing.md) for live-model tests and when they incur charges.
+
+
+## Comparison with the LangChain/LangGraph APIs
+
+Checked on 2026-11-02 against the installed JavaScript packages: `langchain` 1.5.19, `@langchain/langgraph` 1.6.0 and `@langchain/langgraph-checkpoint-postgres` 1.1.2.
+
+| Concern | Public framework mechanism used by VideoQ |
+|---|---|
+| Conversation state | Native `createAgent` message state; `RemoveMessage(REMOVE_ALL_MESSAGES)` resets an uncommitted first run |
+| Persistence | Official `PostgresSaver` passed directly to `createAgent`, keyed by `configurable.thread_id` |
+| Resume after application persistence fails | Pass the last committed `configurable.checkpoint_id`; do not rewrite or delete library snapshots |
+| Checkpoint frequency | Unset; LangGraph default `async` writes each step while the next step runs |
+| Summarization | Built-in `summarizationMiddleware`; a separate `createMiddleware` guard checks a public model callback for failed/empty summaries |
+| Streaming | Answering agent `streamMode: "custom"` and the runtime `writer`; public model callbacks adapt native model events into the structured SSE protocol |
+| Per-answer retrieval | Native agent history retains tool calls and results; a middleware state extension persists stable citation metadata |
+
+Sources: [checkpointers and durability](https://docs.langchain.com/oss/javascript/langgraph/checkpointers), [short-term memory](https://docs.langchain.com/oss/javascript/langchain/short-term-memory), [custom streaming](https://docs.langchain.com/oss/javascript/langgraph/streaming).
+
+Application policy remains explicit: the committed checkpoint ID is stored with the UI transcript/course log transaction; account/course/share access is checked outside the graph; conversation leases serialize writes. The 6,000-token summarization trigger and 30-day conversation expiry are VideoQ settings, not framework defaults. Omitting the trigger disables summarization. Retained history uses the default of 20 messages. Absolute token budgets support custom compatible model endpoints without assuming a model profile.
+
+The installed JavaScript Postgres saver exposes `deleteThread` for whole-thread deletion, but no shallow saver or generation-pruning API. VideoQ therefore leaves checkpoint history intact. Database ownership FKs remove an entire thread when its application-owned conversation is deleted or expires, including course/account cascades; these ownership relationships are an application integration, not part of `PostgresSaver`. No per-generation cleanup, blob-version rewriting, or private async-context manipulation is used. Active conversations can accumulate historical checkpoints; the default `async` behavior does not cap their count. The conversation UI does not expose checkpoint time travel.
+
+Conversation summarization uses the built-in prompt, summary prefix and input trimming defaults of `summarizationMiddleware`. Only the model and trigger are configured by the application; retention uses the default 20 messages and the summary model has no application output-token cap. A callback-based failure guard remains because the installed middleware converts summarizer errors into summary text; a failed or empty summary must not replace the committed conversation.
+
+There is no parent conversation graph, conversation-extraction pass or custom stream queue. Citation validation, nonempty/completed-answer validation and source metadata are application contracts; validation runs in the public `afterAgent` hook. Existing message history remains readable; new checkpoints retain the native structured assistant responses and tool history.
+
+The graph recursion limit remains derived from the application tool budget: the default of 25 steps cannot complete the existing retrieval/viewing workflow plus summarization and validation hooks. Answer-model output limits, connection/deadline settings, authorization, citation validation and the 30-day retention period remain application requirements, not framework defaults.

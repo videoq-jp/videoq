@@ -16,6 +16,7 @@ import {
   type ReconcileResult,
 } from "./upload-reconcile";
 import { pruneMcpIdempotencyRecords } from "../repositories/mcp-idempotency-repository";
+import { pruneConversations } from "../repositories/conversation-repository";
 import { refreshMaintenanceSchedule } from "./task-scheduler";
 
 export const RETENTION_CRON = "17 3 * * *";
@@ -134,6 +135,7 @@ export async function runScheduledMaintenance(
     settleAndReport("scheduled_delivery_retention", {
       retention: pruneDeliveryHistory(env),
       mcpIdempotency: pruneMcpIdempotencyRecords(env),
+      conversations: pruneConversations(env),
     }),
     runMaintenanceSweep(env, now),
   ]);

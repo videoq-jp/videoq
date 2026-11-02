@@ -10,6 +10,10 @@ export async function prepareStoryEnvironment({ parameters, msw }: StoryContext)
   await appQueryClient.cancelQueries();
   appQueryClient.clear();
   resetMockRequests();
+  // Conversation IDs persist across remounts within a story, never across stories.
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('videoq:conversations:v1:')) localStorage.removeItem(key);
+  }
   const auth = structuredClone(parameters.api?.auth ?? authFixtures.loggedOut);
   mocked(useAuthSession).mockReturnValue({
     data: auth.session,
