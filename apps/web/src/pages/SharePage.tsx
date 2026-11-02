@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { List, Play } from 'lucide-react';
-import { CourseSharingNotice } from '@/components/video/course-detail/CourseSharingNotice';
 import { Link } from '@/lib/i18n';
 import { apiClient, type VideoInCourse } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -163,8 +162,6 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
         <h1 className="sr-only">{course.name}</h1>
 
         {intro}
-
-        <CourseSharingNotice method="link" />
 
         {/* 3-column grid */}
         <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 lg:flex-1 lg:min-h-0 lg:items-stretch">
