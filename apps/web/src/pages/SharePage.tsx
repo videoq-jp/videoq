@@ -2,7 +2,6 @@ import { useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } 
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlignLeft, List, Sparkles } from 'lucide-react';
-import { CourseSharingNotice } from '@/components/video/course-detail/CourseSharingNotice';
 import { Link } from '@/lib/i18n';
 import { apiClient, type VideoInCourse } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -296,9 +295,6 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
               </div>
             </div>
             <div {...panelProps('assistant')}>
-              <div className="shrink-0 border-b border-solid-gray-200 px-4 py-3">
-                <CourseSharingNotice method="link" />
-              </div>
               <ChatPanel
                 courseId={course.id}
                 onVideoPlay={(videoId, startTime) => {

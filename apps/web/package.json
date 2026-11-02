@@ -24,8 +24,8 @@
     "ui:check": "node scripts/sync-digital-agency-ui.mjs --dry-run"
   },
   "dependencies": {
-    "@better-auth/api-key": "^1.7.12",
-    "@better-auth/oauth-provider": "^1.7.12",
+    "@better-auth/api-key": "^1.7.13",
+    "@better-auth/oauth-provider": "^1.7.13",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -40,14 +40,14 @@
     "better-auth": "^1.7.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "eventsource-parser": "4.1.2",
-    "i18next": "^26.5.10",
+    "eventsource-parser": "4.1.3",
+    "i18next": "^26.5.11",
     "katex": "^0.19.1",
     "lucide-react": "^1.61.0",
     "mediabunny": "^1.62.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-i18next": "^17.1.8",
+    "react-i18next": "^17.1.9",
     "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.7.0"
