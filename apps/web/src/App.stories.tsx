@@ -8,6 +8,7 @@ import { useAuthSession } from './lib/authSession';
 import { authFixtures } from '../.storybook/fixtures/auth';
 import { emptyTagPage } from '../.storybook/fixtures/api';
 import { course, courseVideos, detailVideo } from '../.storybook/fixtures/detail';
+import { uploadedVideo } from '../.storybook/fixtures/videos';
 import { installUploadFixture } from '../.storybook/mocks/videoUpload';
 import { failure, pending, success, trpcMutation, trpcQuery } from '../.storybook/mocks/network';
 import { chatRequest, createChatPanelMock } from '../.storybook/mocks/chatPanel';
@@ -151,6 +152,35 @@ export const CourseChatContinuity: Story = {
     await expect(canvas.getByText(followup)).toBeVisible();
   },
 };
+// Interactive previews leave the UI untouched instead of running the regression scenario.
+const previewCourse = { ...course, videos: courseVideos.map(video => ({ ...video, file: uploadedVideo.file })), video_count: courseVideos.length };
+export const CourseViewerPreview: Story = {
+  parameters: {
+    pathname: `/videos/courses/${course.id}`,
+    api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', success(previewCourse))] },
+  },
+  beforeEach({ msw }) {
+    const mock = createChatPanelMock();
+    msw.use(...mock.handlers.filter(({ info }) => info.path === '/api/chat/messages/stream'));
+    return () => mock.dispose();
+  },
+};
+export const CourseViewerPreviewMobile: Story = {
+  ...CourseViewerPreview, globals: { viewport: { value: 'mobile', isRotated: false } },
+};
+export const SharedViewerPreview: Story = {
+  ...CourseViewerPreview,
+  parameters: {
+    pathname: '/share/linear-algebra',
+    api: {
+      auth: authFixtures.loggedOut,
+      trpc: [trpcQuery('courses.shared', success({
+        ...previewCourse, updated_at: course.created_at, share_slug: 'linear-algebra', access_role: 'public',
+      }))],
+    },
+  },
+};
+
 export const CourseViewerLayout: Story = {
   ...CourseChatContinuity,
   async play({ canvasElement, userEvent }) {
