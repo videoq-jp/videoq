@@ -1,4 +1,9 @@
 FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
+FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS sqlite
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY security/build-sqlite.sh /tmp/build-sqlite.sh
+RUN sh /tmp/build-sqlite.sh
+
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS native
 # Only VideoQ audio preprocessing lives here; whisper.cpp runs in its upstream image.
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates xz-utils && rm -rf /var/lib/apt/lists/*
@@ -17,6 +22,8 @@ RUN set -eu; \
 
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
+COPY --from=sqlite /tmp/libsqlite3.deb /tmp/libsqlite3.deb
+RUN dpkg -i /tmp/libsqlite3.deb && rm /tmp/libsqlite3.deb
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
@@ -52,9 +59,11 @@ COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 COPY server.py provision.py embedding_server.py ./
+COPY security/verify_sqlite.py /app/verify_sqlite.py
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib
+RUN ["/usr/local/bin/python", "/app/verify_sqlite.py"]
 ENTRYPOINT []
 EXPOSE 8080
 CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

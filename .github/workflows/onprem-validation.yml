@@ -136,6 +136,9 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-local-whisper:onprem-ci
+          trivy-config: apps/inference/whisper/security/sqlite-trivy.yaml
+          format: json
+          output: local-whisper-security.json
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -177,7 +180,10 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-sbom-${{ github.sha }}
-          path: sbom/*.cdx.json
+          path: |
+            sbom/*.cdx.json
+            local-whisper-security.json
+            apps/inference/whisper/security/sqlite.openvex.json
           if-no-files-found: error
           retention-days: 30
       - name: Install checksum-pinned kind
