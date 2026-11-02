@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import katex from 'katex'
 import { applyChatPart, answerParts, plainChatAnswer, type ChatAnswer } from '@videoq/trpc/chat'
 import { MessageBody } from '../MessageBody'
+import { ChatMessageBubble } from '../ChatMessageBubble'
 const source = { id: 1, video_id: 7, title: 'Video', start_time: '00:00:10', end_time: null }
 
 describe('MessageBody', () => {
@@ -98,5 +99,59 @@ describe('MessageBody', () => {
     const { container } = render(<MessageBody answer={{ segments: [{ text: 'Hello  \\(a', sourceIds: [] }, { text: '+b\\)\n', sourceIds: [1] }], sources: [source] }} onVideoNavigate={vi.fn()} />)
     expect(container.querySelector('annotation')).toHaveTextContent('a+b')
     expect(container.textContent).toContain('Hello  ')
+  })
+})
+
+
+// Assert the DOM as well as text: jsdom does not execute injected scripts by default.
+const xssPayloads = [
+  '<script>window.__xss = true</script>',
+  '<img src=x onerror="window.__xss = true">',
+  '<svg onload="window.__xss = true"></svg>',
+  '</span><iframe srcdoc="<script>parent.__xss = true</script>"></iframe>',
+  '[open](javascript:window.__xss=true)',
+  '<a href="data:text/html,<script>alert(1)</script>">open</a>',
+]
+function expectInert(container: HTMLElement) {
+  expect(container.querySelector('script,img,iframe,object,embed,a[href],form')).toBeNull()
+  for (const element of container.querySelectorAll('*')) {
+    expect(element.getAttributeNames().filter(name => /^on/i.test(name))).toEqual([])
+  }
+}
+
+describe('untrusted chat content', () => {
+  it.each(xssPayloads)('keeps a user question inert: %s', content => {
+    const { container } = render(<ChatMessageBubble message={{ role: 'user', content }}
+      isFeedbackUpdating={false} onVideoNavigate={vi.fn()} onFeedback={vi.fn()} />)
+    expect(container.textContent).toBe(content)
+    expectInert(container)
+  })
+
+  it.each(['history', 'stream'])('keeps AI text and citation titles inert in %s', mode => {
+    const text = xssPayloads.join('\n')
+    const answer: ChatAnswer = { segments: [{ text, sourceIds: [1] }],
+      sources: [{ ...source, title: xssPayloads[1] }] }
+    const streamed: ChatAnswer = { segments: [], sources: answer.sources }
+    for (const part of answerParts(answer)) applyChatPart(streamed, part)
+    const { container } = render(<MessageBody answer={mode === 'history' ? answer : streamed} onVideoNavigate={vi.fn()} />)
+    expect(container.textContent).toContain(text)
+    expect(screen.getByRole('button')).toHaveAttribute('title', `${xssPayloads[1]} 00:00:10`)
+    expectInert(container)
+  })
+
+  it.each([
+    String.raw`\href{javascript:alert(1)}{open}`,
+    String.raw`\href{JaVaScRiPt:alert(1)}{open}`,
+    String.raw`\url{javascript:alert(1)}`,
+    String.raw`\includegraphics{https://attacker.invalid/tracker.png}`,
+    String.raw`\htmlData{onmouseover=alert(1)}{hover}`,
+    String.raw`\htmlClass{attacker}{text}`,
+    String.raw`\text{</span><img src=x onerror=alert(1)>}`,
+    String.raw`\invalid{</span><img src=x onerror=alert(1)>}`,
+  ])('rejects active HTML and URLs from untrusted TeX: %s', tex => {
+    const { container } = render(<MessageBody answer={plainChatAnswer(`\\(${tex}\\)`)} onVideoNavigate={vi.fn()} />)
+    expect(container.querySelector('.katex')).toBeInTheDocument()
+    expectInert(container)
+    expect(container.querySelector('.attacker')).toBeNull()
   })
 })

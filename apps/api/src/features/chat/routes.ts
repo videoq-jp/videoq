@@ -1,3 +1,4 @@
+import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -105,6 +106,7 @@ chatRoutes.post(
       userId: c.var.userId ?? null,
       body: parsed.data,
       shareSlug,
+      visitorSessionId: shareSlug ? await visitorSession(c) : undefined,
       locale: messageService.requestLocaleFromHeader(c.req.header("Accept-Language")),
       clientSignal: AbortSignal.any([c.req.raw.signal, connection.signal]),
       includeToolProgress: c.req.query("tool_progress") === "1",

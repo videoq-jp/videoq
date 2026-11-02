@@ -1,3 +1,4 @@
+import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
 import * as conversations from "../../features/chat/conversation-service";
 import * as chatService from "../../features/chat/service";
@@ -28,11 +29,11 @@ export function chatHandlers(
   const userId = () => requireUserId(authenticatedUserId);
   return {
     "chat.conversations": async input => conversations.listConversations(c.env,
-      await conversations.conversationScope(c.env, authenticatedUserId, input), input),
+      await conversations.conversationScope(c.env, authenticatedUserId, input, input.shareSlug ? await visitorSession(c) : undefined), input),
     "chat.conversation": async input => conversations.getConversation(c.env,
-      await conversations.conversationScope(c.env, authenticatedUserId, input), input),
+      await conversations.conversationScope(c.env, authenticatedUserId, input, input.shareSlug ? await visitorSession(c) : undefined), input),
     "chat.deleteConversation": async input => conversations.deleteConversation(c.env,
-      await conversations.conversationScope(c.env, authenticatedUserId, input), input.conversationId),
+      await conversations.conversationScope(c.env, authenticatedUserId, input, input.shareSlug ? await visitorSession(c) : undefined), input.conversationId),
     "chat.send": async ({ messages, courseId, shareSlug, conversationId, resumeConversation }) => {
       if (authenticatedUserId === null && !shareSlug) {
         return rpcError("UNAUTHORIZED", "Authentication credentials were not provided.", {
@@ -49,6 +50,7 @@ export function chatHandlers(
           resume_conversation: resumeConversation,
         },
         shareSlug: shareSlug ?? null,
+        visitorSessionId: shareSlug ? await visitorSession(c) : undefined,
         locale: messageService.requestLocaleFromHeader(c.req.header("Accept-Language")),
       });
       if (result.status !== 200) {

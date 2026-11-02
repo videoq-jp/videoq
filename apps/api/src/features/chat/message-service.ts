@@ -270,6 +270,7 @@ export async function sendChatMessage(
   opts: {
     userId: string | null;
     body: ChatMessageBody;
+    visitorSessionId?: string;
     shareSlug: string | null;
     locale: string | null;
   },
@@ -309,7 +310,7 @@ export async function sendChatMessage(
       resume: req.resumeConversation,
       persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
       scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
-        courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug },
+        courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId },
     });
   } catch (e) {
     const consumed = e instanceof ConversationCommitError;
@@ -360,6 +361,7 @@ export async function streamChatMessage(
   opts: {
     userId: string | null;
     body: ChatMessageBody;
+    visitorSessionId?: string;
     shareSlug: string | null;
     locale: string | null;
     clientSignal?: AbortSignal;
@@ -413,7 +415,7 @@ export async function streamChatMessage(
       resume: req.resumeConversation,
       persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
             scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
-              courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug },
+              courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId },
           },
           clientSignal,
         )) {

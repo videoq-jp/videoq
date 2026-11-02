@@ -48,6 +48,19 @@ describe('SharePage', () => {
     })
   })
 
+  it('renders malicious course and video metadata as text', async () => {
+    const payload = '<img src=x onerror="alert(1)"><script>alert(1)</script>'
+    getSharedCourse.mockResolvedValue({ ...mockCourse, name: payload, description: payload,
+      videos: [{ ...mockCourse.videos[0], title: payload, description: payload }] })
+    const { container } = render(<SharePage />)
+    await screen.findByRole('heading', { name: payload, level: 1 })
+    expect(screen.getAllByText(payload).length).toBeGreaterThan(1)
+    expect(container.querySelector('script,img[src=x],iframe,object,embed')).toBeNull()
+    for (const element of container.querySelectorAll('*')) {
+      expect(element.getAttributeNames().filter(name => /^on/i.test(name))).toEqual([])
+    }
+  })
+
   it('should render video list', async () => {
     render(<SharePage />)
 

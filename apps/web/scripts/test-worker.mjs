@@ -3,6 +3,7 @@ import { after, before, test } from 'node:test';
 import { readFile, stat } from 'node:fs/promises';
 import { unstable_dev } from 'wrangler';
 import { htmlText } from './html-text.mjs';
+import { assertScriptPolicy, auditCsp } from './csp-audit.mjs';
 
 let worker;
 before(async () => {
@@ -19,6 +20,7 @@ before(async () => {
 after(async () => { await worker?.stop(); });
 
 function securityHeaders(response) {
+  assertScriptPolicy(response.headers.get('content-security-policy'));
   assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
   assert.match(response.headers.get('content-security-policy'), /https:\/\/\*\.r2\.cloudflarestorage\.com/);
   assert.equal(response.headers.get('x-frame-options'), 'DENY');
@@ -293,5 +295,16 @@ test('saved language redirects hydrate one complete pricing page', {
     await page.waitForFunction(() => document.querySelectorAll('h1').length === 1 && document.querySelector('h1').textContent === 'Pricing');
     assert.equal(await page.locator('h1').count(), 1);
     assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});
+
+// Check the served Worker HTML, not just the policy file or a mocked header.
+test('Worker CSP blocks injected JavaScript in Chromium', {
+  skip: process.env.VERIFY_PRERENDER_HYDRATION !== 'true',
+}, async () => {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ channel: process.env.CI ? 'chrome' : undefined });
+  try {
+    await auditCsp(browser, `http://${worker.address}:${worker.port}/share/security-check`);
   } finally { await browser.close(); }
 });

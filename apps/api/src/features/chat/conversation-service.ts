@@ -7,7 +7,7 @@ import { createChatFeedbackToken } from '../../lib/chat-feedback-token';
 import type { Bindings } from '../../types/bindings';
 
 type AccessInput = { courseId?: number | null; shareSlug?: string };
-export async function conversationScope(env: Bindings, userId: string | null, input: AccessInput): Promise<ConversationScope> {
+export async function conversationScope(env: Bindings, userId: string | null, input: AccessInput, visitorSessionId?: string): Promise<ConversationScope> {
   if (!userId && !input.shareSlug) throw new ApiError(401, 'UNAUTHORIZED', 'Authentication is required.');
   if (input.shareSlug && !input.courseId) throw new ApiError(400, 'VALIDATION_ERROR', 'Course ID is required.');
   const course = input.courseId ? await getCourseWithMembers(env, {
@@ -15,7 +15,7 @@ export async function conversationScope(env: Bindings, userId: string | null, in
   }) : null;
   if (input.courseId && !course) throw apiNotFound('Course not found.');
   return { ownerUserId: course?.userId ?? userId!, actorUserId: input.shareSlug ? null : userId,
-    courseId: course?.id ?? null, shareSlug: input.shareSlug ?? null };
+    courseId: course?.id ?? null, shareSlug: input.shareSlug ?? null, ...(input.shareSlug ? { visitorSessionId } : {}) };
 }
 
 type ConversationRow = { id: string; title: string; createdAt: Date; updatedAt: Date; isGenerating: boolean };
@@ -27,7 +27,7 @@ export async function listConversations(env: Bindings, scope: ConversationScope,
   input: { conversationIds?: string[]; limit: number; offset: number }) {
   const scopeKey = await conversationThreadId(scope, 'scope');
   // Shared-link visitors have no account identity. UUIDs saved by this browser
-  // are capabilities, never permission to enumerate other visitors' conversations.
+  // select candidates only; the browser session independently authorizes access.
   const ids = scope.shareSlug ? input.conversationIds ?? [] : null;
   return withClient(env, async client => {
     const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations
