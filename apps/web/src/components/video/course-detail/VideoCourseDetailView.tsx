@@ -300,21 +300,17 @@ function GroupVideoList({
 }
 
 function GroupPlayerPanel({
-  courseId,
   selectedVideo,
   videoRef,
   youtubeStartSeconds,
   youtubeSeekId,
   onVideoCanPlay,
-  canManage,
 }: {
-  courseId: number | null;
   selectedVideo: VideoInCourse | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   youtubeStartSeconds: number | null;
   youtubeSeekId: number;
   onVideoCanPlay: () => void;
-  canManage: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -356,9 +352,6 @@ function GroupPlayerPanel({
               {selectedVideo ? selectedVideo.title : t('videos.courseDetail.playerPlaceholder')}
             </HeadingTitle>
           </Heading>
-          <div className="flex shrink-0 items-center gap-3">
-            {courseId && canManage ? <DashboardButton courseId={courseId} size="sm" /> : null}
-          </div>
         </div>
       </div>
     </section>
@@ -500,6 +493,7 @@ export function VideoCourseDetailView({
                     <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                   </summary>
                   <div className="absolute right-0 top-full z-40 mt-2 flex w-64 flex-col gap-2 border border-solid-gray-300 bg-white p-3 text-solid-gray-800 shadow-lg">
+                  {courseId ? <DashboardButton courseId={courseId} size="sm" className="w-full justify-start [&_span]:inline" /> : null}
                   <Button
                     type="button"
                     variant="outline"
@@ -574,13 +568,11 @@ export function VideoCourseDetailView({
             <main className="flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
               <div ref={playerRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
                 <GroupPlayerPanel
-                  courseId={courseId}
                   selectedVideo={selectedVideo}
                   videoRef={videoRef}
                   youtubeStartSeconds={youtubeStartSeconds}
                   youtubeSeekId={youtubeSeekId}
                   onVideoCanPlay={onVideoCanPlay}
-                  canManage={canManage}
                 />
 
                 {!isMobile ? (

@@ -18,9 +18,10 @@ import { AnalyticsDashboard } from './AnalyticsDashboard';
 interface DashboardButtonProps {
   courseId: number;
   size?: 'sm' | 'md';
+  className?: string;
 }
 
-export function DashboardButton({ courseId, size = 'md' }: DashboardButtonProps) {
+export function DashboardButton({ courseId, size = 'md', className }: DashboardButtonProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const { data, isLoading } = useChatAnalytics(courseId, isOpen);
@@ -37,7 +38,7 @@ export function DashboardButton({ courseId, size = 'md' }: DashboardButtonProps)
         size={size}
         onClick={() => setIsOpen(true)}
         aria-label={t('dashboard.button')}
-        className="min-w-9 gap-2 px-2.5 sm:min-w-20 sm:px-3"
+        className={`min-w-9 gap-2 px-2.5 sm:min-w-20 sm:px-3 ${className ?? ''}`}
       >
         <BarChart3 className="h-4 w-4" />
         <span className="hidden sm:inline">{t('dashboard.button')}</span>
