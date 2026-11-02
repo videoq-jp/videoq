@@ -88,8 +88,8 @@ function CourseScreen({locale, shareOpen, copied, historyTab}:{locale:Locale; sh
     <VideoCourseDetailView course={course} courseId={course.id} isLoading={false} error={null} selectedVideo={selected}
       deleteError={null} isDeleting={false} removingVideoId={null} isReordering={false} isEditing={false} editedName={course.name}
       editedDescription="" updateError={null} isUpdating={false} isAddModalOpen={false} isMembersModalOpen={false} isLeaving={false}
-      mobileTab="player" isMobile={false} videoRef={videoRef} youtubeStartSeconds={null} youtubeSeekId={0} shareSlug={demoSlug}
-      shareLink={link} isGeneratingLink={false} isDeletingLink={false} isCopied={copied} onMobileTabChange={noop}
+      isMobile={false} videoRef={videoRef} youtubeStartSeconds={null} youtubeSeekId={0} shareSlug={demoSlug}
+      shareLink={link} isGeneratingLink={false} isDeletingLink={false} isCopied={copied}
       onOpenAddModalChange={noop} onOpenMembersModalChange={noop} onStartEditing={noop} onCancelEdit={noop}
       onEditedNameChange={noop} onEditedDescriptionChange={noop} onUpdateCourse={noop} onDeleteCourse={noop} onLeaveGroup={noop}
       onVideoSelect={noop} onRemoveVideo={noop} onDragEnd={noop} onVideoCanPlay={noop} onVideoPlayFromTime={noop}

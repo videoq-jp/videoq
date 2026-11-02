@@ -26,7 +26,7 @@ interface ChatPanelProps {
   showTitle?: boolean;
 }
 
-type PanelTab = 'chat' | 'history' | 'conversations';
+type PanelTab = 'chat' | 'history';
 
 export function ChatPanel(props: ChatPanelProps) {
   // Cached route transitions can reuse this component. Keep all chat state and
@@ -50,10 +50,10 @@ function ChatPanelSession({
   showTitle = true,
   storageKey,
 }: ChatPanelProps & { storageKey: string }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<PanelTab>('chat');
 
-  const conversations = useChatConversations({ courseId, shareToken, storageKey, showList: tab === 'conversations' });
+  const conversations = useChatConversations({ courseId, shareToken, storageKey, showList: false });
 
   const {
     history,
@@ -86,28 +86,21 @@ function ChatPanelSession({
 
   return (
     <div className={containerClass}>
-      <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
+      {(showTitle || showTabs) && <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
         {showTitle && <Heading size="18" className="shrink-0">
           <HeadingTitle level={shareToken ? 'h3' : 'h2'}>{t('chat.title')}</HeadingTitle>
         </Heading>}
-        <Button type="button" variant="outline" size="sm" onClick={() => { conversations.startNew(); setTab('chat'); }}>
-          {t('chat.newConsultation')}
-        </Button>
-        <div className="flex w-full flex-wrap gap-4 text-sm">
+        {showTabs && <div className="flex w-full flex-wrap gap-4 text-sm">
           <button type="button" onClick={() => setTab('chat')} aria-pressed={tab === 'chat'}
             className={tab === 'chat' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
             {t('chat.currentConversation')}
           </button>
-          <button type="button" aria-pressed={tab === 'conversations'} onClick={() => setTab('conversations')}
-            className={tab === 'conversations' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
-            {t('chat.myConversations')}
-          </button>
-          {showTabs && <button type="button" onClick={() => setTab('history')} aria-pressed={tab === 'history'}
+          <button type="button" onClick={() => setTab('history')} aria-pressed={tab === 'history'}
             className={tab === 'history' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
             {t('chat.history')}
-          </button>}
-        </div>
-      </div>
+          </button>
+        </div>}
+      </div>}
 
       {tab === 'history' && (
         <ChatHistoryView
@@ -119,34 +112,12 @@ function ChatPanelSession({
           onVideoNavigate={navigateToVideo}
         />
       )}
-      {tab === 'conversations' && (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-3">
-          <p className="text-sm text-solid-gray-600">{t('chat.conversationRetention')}</p>
-          {conversations.list.isPending && <p role="status">{t('chat.loadingConversations')}</p>}
-          {conversations.list.error && <div role="alert">{t('chat.loadConversationsError')} <Button onClick={() => void conversations.list.refetch()}>{t('chat.retry')}</Button></div>}
-          {conversations.deleteError && <p role="alert">{t('chat.deleteConversationError')}</p>}
-          {conversations.list.data?.pages.flatMap(page => page.items).map(item => (
-            <div key={item.id} className="flex items-center gap-3 border-b border-solid-gray-200 pb-3">
-              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { conversations.select(item.id); setTab('chat'); }}>
-                <span className="block break-words">{item.title}</span>
-                <time className="text-sm text-solid-gray-600" dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString(i18n.language)}</time>
-              </button>
-              <Button type="button" variant="outline" size="sm" disabled={conversations.deleting || item.isGenerating}
-                aria-label={t('chat.deleteNamedConversation', { title: item.title })} onClick={() => void conversations.remove(item.id).catch(() => {})}>
-                {t('chat.deleteConversation')}
-              </Button>
-            </div>
-          ))}
-          {conversations.list.data?.pages[0]?.items.length === 0 && <p>{t('chat.historyEmpty')}</p>}
-          {conversations.list.hasNextPage && <Button disabled={conversations.list.isFetchingNextPage} onClick={() => void conversations.list.fetchNextPage()}>{t('chat.loadMoreConversations')}</Button>}
-        </div>
-      )}
       <div className={tab === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         {conversations.restoring ? <p role="status" className="p-4">{t('chat.restoringConversation')}</p>
           : conversations.restoreError ? <div role="alert" className="p-4 space-y-3">
             <p>{t('chat.restoreConversationError')}</p>
             <Button onClick={() => void conversations.detail.refetch()}>{t('chat.retry')}</Button>
-            <Button onClick={conversations.startNew}>{t('chat.newConsultation')}</Button>
+            <Button onClick={conversations.startNew}>{t('chat.continueChat')}</Button>
           </div> : <ActiveChat key={conversations.selected.id} visible={tab === 'chat'}
             courseId={courseId} shareToken={shareToken} conversationId={conversations.selected.id}
             initialMessages={conversations.messages} existingConversation={conversations.selected.restore} remoteBusy={conversations.remoteBusy}

@@ -527,7 +527,7 @@ describe('ChatPanel', () => {
     })
 
     // Switch back to chat tab
-    const chatButton = screen.getByText(/chat.newConsultation/)
+    const chatButton = screen.getByText(/chat.currentConversation/)
     await act(async () => {
       fireEvent.click(chatButton)
     })
