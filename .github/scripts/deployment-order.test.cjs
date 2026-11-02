@@ -131,3 +131,48 @@ test('CD starts only for successful main push CI or an explicit manual dispatch'
   assert.equal(allowed('workflow_run', 'push', 'success', 'fork/videoq'), false);
   assert.equal(allowed('workflow_dispatch', undefined, undefined, 'videoq-jp/videoq', 'refs/heads/feature'), false);
 });
+
+function baselineScript() {
+  const step = workflow.match(/      - name: Resolve paths-filter base\n([\s\S]*?)(?=      - uses: dorny\/paths-filter)/)?.[1];
+  assert.ok(step);
+  return step.split('          script: |\n')[1].split('\n').map(line => line.slice(12)).join('\n');
+}
+
+test('a skipped successful CD cannot hide undeployed changes from the next deployment', async () => {
+  const outputs = {};
+  const calls = [];
+  const previous = 'a'.repeat(40);
+  const github = { rest: { actions: {
+    listWorkflowRuns: async () => ({ data: { workflow_runs: [
+      { id: 12, conclusion: 'success', head_sha: 'c'.repeat(40) },
+      { id: 11, conclusion: 'failure', head_sha: 'b'.repeat(40) },
+      { id: 10, conclusion: 'success', head_sha: previous },
+    ] } }),
+    listJobsForWorkflowRun: async input => {
+      calls.push(input);
+      return { data: { jobs: [{ name: 'Detect Changes', conclusion: input.run_id === 12 ? 'skipped' : 'success' }] } };
+    },
+  } } };
+  await runInNewContext(`(async () => {${baselineScript()}})()`, {
+    github, context: { repo: {}, sha: 'd'.repeat(40) },
+    core: { info() {}, setOutput: (key, value) => { outputs[key] = value; } },
+    exec: { getExecOutput: async () => { throw new Error('Must not fall back to root'); } },
+  }, { timeout: 100 });
+  assert.equal(outputs.sha, previous);
+  assert.deepEqual(calls.map(input => input.run_id), [12, 10]);
+  assert.ok(calls.every(input => input.filter === 'latest'));
+});
+
+test('CD falls back to the repository root when all successful runs were skipped', async () => {
+  const outputs = {};
+  await runInNewContext(`(async () => {${baselineScript()}})()`, {
+    github: { rest: { actions: {
+      listWorkflowRuns: async () => ({ data: { workflow_runs: [{ id: 1, conclusion: 'success' }] } }),
+      listJobsForWorkflowRun: async () => ({ data: { jobs: [{ name: 'Detect Changes', conclusion: 'skipped' }] } }),
+    } } },
+    context: { repo: {}, sha: 'd'.repeat(40) },
+    core: { info() {}, setOutput: (key, value) => { outputs[key] = value; } },
+    exec: { getExecOutput: async () => ({ stdout: 'a'.repeat(40) + '\n' }) },
+  }, { timeout: 100 });
+  assert.equal(outputs.sha, 'a'.repeat(40));
+});
