@@ -68,13 +68,12 @@ export default function VideoCourseDetailPage() {
     return videos[0];
   }, [course?.videos, selectedVideoId, autoVideoId]);
 
-  const { mobileTab, setMobileTab, isMobile } = useMobileTab<'videos' | 'player'>('player');
+  const { isMobile } = useMobileTab('assistant');
   const { shareLink, isGeneratingLink, isDeletingLink, isCopied, generateShareLink, deleteShareLink, copyShareLink } = useShareLink(course);
 
   const { videoRef, handleVideoSelect, handleVideoCanPlay, handleVideoPlayFromTime, youtubeStartSeconds, youtubeSeekId } = useVideoPlayback({
     selectedVideo,
     onVideoSelect: setSelectedVideoId,
-    onMobileSwitch: () => setMobileTab('player'),
   });
 
   const { removeVideoMutation, reorderVideosMutation, deleteCourseMutation, updateCourseMutation } =
@@ -183,7 +182,6 @@ export default function VideoCourseDetailPage() {
       isAddModalOpen={isAddModalOpen}
       isMembersModalOpen={isMembersModalOpen}
       isLeaving={isLeaving}
-      mobileTab={mobileTab}
       isMobile={isMobile}
       videoRef={videoRef}
       youtubeStartSeconds={youtubeStartSeconds}
@@ -193,7 +191,6 @@ export default function VideoCourseDetailPage() {
       isGeneratingLink={isGeneratingLink}
       isDeletingLink={isDeletingLink}
       isCopied={isCopied}
-      onMobileTabChange={setMobileTab}
       onOpenAddModalChange={setIsAddModalOpen}
       onOpenMembersModalChange={setIsMembersModalOpen}
       onStartEditing={handleStartEdit}

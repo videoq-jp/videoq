@@ -72,7 +72,8 @@ const waiting = { events: [], keepOpen: true } satisfies ChatPanelScenario;
 
 export const Initial: Story = { async play(context) {
   await expect(context.canvas.getByText(label('assistantGreeting'))).toBeVisible();
-  await expect(chatButton(context)).toHaveAttribute('aria-pressed', 'true');
+  await expect(context.canvas.queryByRole('button', { name: label('newConsultation') })).not.toBeInTheDocument();
+  await expect(context.canvas.queryByRole('button', { name: label('myConversations') })).not.toBeInTheDocument();
   await expect(context.canvas.getByRole('button', { name: i18n.t('common.actions.send') })).toBeDisabled();
   await expect(historyRequest).not.toHaveBeenCalled();
 } };
@@ -364,11 +365,13 @@ export const ResumeAfterRemount: Story = { parameters: { lifecycleControl: true 
   await expect(chatRequest.mock.calls[1][0].conversation_id).toBe(id);
   await expect(chatRequest.mock.calls[1][0].resume_conversation).toBe(true);
 } };
-export const PersonalConversationList: Story = { async play(context) {
+export const AutomaticConversationContinuity: Story = { async play(context) {
   await complete(context);
-  await context.userEvent.click(context.canvas.getByRole('button', { name: label('myConversations') }));
-  await context.canvas.findByText(english() ? englishQuestion : question);
-  await expect(context.canvas.getByText(label('conversationRetention'))).toBeVisible();
+  await expect(context.canvas.queryByRole('button', { name: label('myConversations') })).not.toBeInTheDocument();
+  await expect(context.canvas.queryByRole('button', { name: label('newConsultation') })).not.toBeInTheDocument();
+  await send(context, english() ? 'Explain with an example.' : '具体例を教えてください。');
+  await waitFor(() => expect(chatRequest).toHaveBeenCalledTimes(2));
+  await expect(chatRequest.mock.calls[1][0].conversation_id).toBe(chatRequest.mock.calls[0][0].conversation_id);
 } };
-export const PersonalConversationListEnglishMobile: Story = { ...PersonalConversationList,
+export const AutomaticConversationContinuityEnglishMobile: Story = { ...AutomaticConversationContinuity,
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };

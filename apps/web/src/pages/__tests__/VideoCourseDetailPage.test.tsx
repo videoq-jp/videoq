@@ -471,8 +471,8 @@ describe('VideoCourseDetailPage', () => {
         fireEvent(window, new Event('resize'))
         expect(screen.getByTestId('chat-panel')).toBe(panel)
       }
-      for (const tab of ['videos', 'player']) {
-        fireEvent.click(screen.getByRole('button', { name: `videos.courseDetail.mobileTabs.${tab}` }))
+      for (const tab of ['videos', 'overview', 'assistant']) {
+        fireEvent.click(screen.getByRole('tab', { name: `videos.shared.tabs.${tab}` }))
         expect(screen.getByTestId('chat-panel')).toBe(panel)
       }
     } finally {

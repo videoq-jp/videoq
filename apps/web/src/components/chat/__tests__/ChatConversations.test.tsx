@@ -8,7 +8,6 @@ vi.mock('@/lib/api', async importOriginal => ({ ...await importOriginal<typeof i
 }));
 const storageKey = (actor = '1', shareToken?: string) => `videoq:conversations:v1:${JSON.stringify([actor, 5, shareToken])}`;
 const id = '82ea775b-4b54-4a41-b16e-21fa3670ac11';
-const oldId = '82ea775b-4b54-4a41-b16e-21fa3670ac12';
 const saved = (conversationId = id, title = 'Inner product') => ({
   id: conversationId, title, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z', isGenerating: false,
   turns: [{ id: '1', question: 'What is the inner product?', answer: plainChatAnswer('The inner product compares two vectors.'), chatLogId: null, feedback: null }],
@@ -53,23 +52,18 @@ it('restores the original transcript after remount and continues the same conver
   });
 });
 
-it('selects an older conversation and starts a genuinely new chat on request', async () => {
-  mockList.mockResolvedValue({ items: [saved(id), saved(oldId, 'Earlier conversation')], hasMore: false });
-  mockDetail.mockImplementation(input => saved(input.conversationId));
+it('continues automatically without exposing conversation management', async () => {
   render(<ChatPanel courseId={5} />);
-  fireEvent.click(screen.getByRole('button', { name: 'chat.myConversations' }));
-  fireEvent.click(await screen.findByText('Earlier conversation'));
-  await screen.findByText('The inner product compares two vectors.');
-  expect(mockDetail).toHaveBeenCalledWith(expect.objectContaining({ conversationId: oldId }));
-  fireEvent.click(screen.getByRole('button', { name: 'chat.newConsultation' }));
-  expect(screen.queryByText('The inner product compares two vectors.')).not.toBeInTheDocument();
-  expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('chat.placeholder'), { target: { value: 'Different topic' } });
+  expect(screen.queryByRole('button', { name: 'chat.newConsultation' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'chat.myConversations' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('chat.placeholder'), { target: { value: 'What is the inner product?' } });
   fireEvent.click(screen.getByRole('button', { name: 'common.actions.send' }));
-  await waitFor(() => expect(apiClient.chatStream).toHaveBeenCalled());
-  const request = vi.mocked(apiClient.chatStream).mock.calls[0][0];
-  expect(request.conversation_id).not.toBe(oldId);
-  expect(request.resume_conversation).toBe(false);
+  await screen.findByText('A perpendicular-vector example.');
+  fireEvent.change(screen.getByLabelText('chat.placeholder'), { target: { value: 'Give me an example' } });
+  fireEvent.click(screen.getByRole('button', { name: 'common.actions.send' }));
+  await waitFor(() => expect(apiClient.chatStream).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(apiClient.chatStream).mock.calls[1][0].conversation_id).toBe(vi.mocked(apiClient.chatStream).mock.calls[0][0].conversation_id);
+  expect(mockList).not.toHaveBeenCalled();
 });
 
 it('blocks sending when restore fails instead of silently forgetting context', async () => {
@@ -79,44 +73,40 @@ it('blocks sending when restore fails instead of silently forgetting context', a
   await screen.findByText('chat.restoreConversationError');
   expect(screen.queryByLabelText('chat.placeholder')).not.toBeInTheDocument();
   expect(apiClient.chatStream).not.toHaveBeenCalled();
-  fireEvent.click(screen.getAllByRole('button', { name: 'chat.newConsultation' })[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'chat.continueChat' }));
   expect(screen.getByLabelText('chat.placeholder')).toBeInTheDocument();
 });
 
 it('isolates persisted selections across accounts and shared routes', async () => {
   localStorage.setItem(storageKey('different-account'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
-  localStorage.setItem(storageKey('1', 'different-link'), JSON.stringify({ selected: { oldId, restore: true }, knownIds: [oldId] }));
+  localStorage.setItem(storageKey('1', 'different-link'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
   render(<ChatPanel courseId={5} />);
   expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
   expect(mockDetail).not.toHaveBeenCalled();
 });
 
-it('limits shared conversation enumeration to the capabilities saved by this browser', async () => {
+it('restores shared chat without showing a title or conversation controls', async () => {
   localStorage.setItem(storageKey('1', 'shared'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
   render(<ChatPanel courseId={5} shareToken="shared" showTitle={false} />);
   await screen.findByText('The inner product compares two vectors.');
   expect(screen.queryByRole('heading', { name: 'chat.title' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'chat.myConversations' }));
-  await waitFor(() => expect(mockList).toHaveBeenCalledWith(expect.objectContaining({ shareSlug: 'shared', conversationIds: [id] })));
-  fireEvent.click(screen.getByRole('button', { name: 'chat.newConsultation' }));
-  expect(screen.getByLabelText('chat.placeholder')).toBeVisible();
-  expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
+  for (const name of ['chat.myConversations', 'chat.newConsultation', 'chat.currentConversation', 'chat.history']) {
+    expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  }
+  expect(mockList).not.toHaveBeenCalled();
 });
 
-it('deletes a selected conversation with confirmation and clears its saved selection', async () => {
-  localStorage.setItem(storageKey(), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
-  mockList.mockResolvedValue({ items: [saved()], hasMore: false });
-  render(<ChatPanel courseId={5} />);
-  await screen.findByText('The inner product compares two vectors.');
-  fireEvent.click(screen.getByRole('button', { name: 'chat.myConversations' }));
-  fireEvent.click(await screen.findByRole('button', { name: /^chat.deleteNamedConversation/ }));
-  expect(mockDelete).not.toHaveBeenCalled();
-  const dialog = await screen.findByRole('dialog');
-  expect(dialog).toHaveTextContent('chat.deleteConversationConfirm');
-  mockList.mockResolvedValue({ items: [], hasMore: false });
-  fireEvent.click(screen.getByRole('button', { name: 'chat.deleteConversation' }));
-  await waitFor(() => expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ conversationId: id })));
-  await waitFor(() => expect(localStorage.getItem(storageKey())).not.toContain(id));
+it.each([
+  { courseId: 5, showHistory: false },
+  { courseId: 5, shareToken: 'shared' },
+  {},
+])('shows only chat content to learners without conversation controls (%j)', props => {
+  render(<ChatPanel {...props} showTitle={false} />);
+  expect(screen.getByLabelText('chat.placeholder')).toBeVisible();
+  for (const name of ['chat.myConversations', 'chat.newConsultation', 'chat.currentConversation', 'chat.history']) {
+    expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  }
+  expect(mockList).not.toHaveBeenCalled();
 });
 
 it('disables follow-ups until a remotely running answer has finished', async () => {

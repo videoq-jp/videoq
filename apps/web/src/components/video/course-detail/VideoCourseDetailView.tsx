@@ -1,5 +1,5 @@
 import { features } from "@/lib/deployment";
-import { useState, type RefObject } from 'react';
+import { useId, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DndContext,
@@ -17,9 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import {
   ArrowLeft,
-  List,
   Pencil,
-  Play,
   Plus,
   Save,
   Share2,
@@ -31,18 +29,12 @@ import {
 import { apiClient, type VideoCourse, type VideoInCourse } from '@/lib/api';
 import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 import { Link } from '@/lib/i18n';
+import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { DashboardButton } from '@/components/dashboard/DashboardButton';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
-import {
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  Breadcrumbs,
-  BreadcrumbsLabel,
-} from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,8 +56,6 @@ import { SortableVideoItem } from './SortableVideoItem';
 import { PickFromLibraryDialog } from './PickFromLibraryDialog';
 import { ShareLinkDialog } from './ShareLinkDialog';
 
-type MobileTab = 'videos' | 'player';
-
 interface VideoCourseDetailViewProps {
   course: VideoCourse | null;
   courseId: number | null;
@@ -85,7 +75,6 @@ interface VideoCourseDetailViewProps {
   isAddModalOpen: boolean;
   isMembersModalOpen: boolean;
   isLeaving: boolean;
-  mobileTab: MobileTab;
   isMobile: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   youtubeStartSeconds: number | null;
@@ -95,7 +84,6 @@ interface VideoCourseDetailViewProps {
   isGeneratingLink: boolean;
   isDeletingLink: boolean;
   isCopied: boolean;
-  onMobileTabChange: (tab: MobileTab) => void;
   onOpenAddModalChange: (open: boolean) => void;
   onOpenMembersModalChange: (open: boolean) => void;
   onStartEditing: () => void;
@@ -211,13 +199,10 @@ function GroupEditDialog({
 function GroupVideoList({
   course,
   selectedVideo,
-  deleteError,
   isMobile,
-  mobileTab,
   sensors,
   onOpenAdd,
   onVideoSelect,
-  onMobileTabChange,
   onRemoveVideo,
   removingVideoId,
   isMutationPending,
@@ -226,13 +211,10 @@ function GroupVideoList({
 }: {
   course: VideoCourse;
   selectedVideo: VideoInCourse | null;
-  deleteError: string | null;
   isMobile: boolean;
-  mobileTab: MobileTab;
   sensors: ReturnType<typeof useSensors>;
   onOpenAdd: () => void;
   onVideoSelect: (videoId: number) => void;
-  onMobileTabChange: (tab: MobileTab) => void;
   onRemoveVideo: (videoId: number) => Promise<void> | void;
   removingVideoId: number | null;
   isMutationPending: boolean;
@@ -242,13 +224,8 @@ function GroupVideoList({
   const { t } = useTranslation();
 
   return (
-    <aside className={`lg:col-span-1 flex min-h-0 flex-col ${mobileTab === 'videos' ? 'flex' : 'hidden lg:flex'}`}>
+    <aside className="flex h-full min-h-0 flex-col">
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border border-solid-gray-420 bg-white">
-        {deleteError ? (
-          <div className="shrink-0 px-5 pt-4">
-            <ErrorMessage message={deleteError} />
-          </div>
-        ) : null}
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-solid-gray-200 px-5 py-4">
           <Heading size="18" className="shrink-0">
             <HeadingTitle level="h2">{t('videos.courseDetail.videoListTitle')}</HeadingTitle>
@@ -289,7 +266,6 @@ function GroupVideoList({
                     canManage={canManage}
                     onSelect={(videoId) => {
                       onVideoSelect(videoId);
-                      if (isMobile) onMobileTabChange('player');
                     }}
                     onRemove={(id) => { void onRemoveVideo(id); }}
                     isRemoving={removingVideoId === video.id}
@@ -324,7 +300,6 @@ function GroupVideoList({
 function GroupPlayerPanel({
   courseId,
   selectedVideo,
-  mobileTab,
   videoRef,
   youtubeStartSeconds,
   youtubeSeekId,
@@ -333,7 +308,6 @@ function GroupPlayerPanel({
 }: {
   courseId: number | null;
   selectedVideo: VideoInCourse | null;
-  mobileTab: MobileTab;
   videoRef: RefObject<HTMLVideoElement | null>;
   youtubeStartSeconds: number | null;
   youtubeSeekId: number;
@@ -343,19 +317,9 @@ function GroupPlayerPanel({
   const { t } = useTranslation();
 
   return (
-    <section className={`lg:col-span-2 flex min-h-0 flex-col gap-4 ${mobileTab === 'player' ? 'flex' : 'hidden lg:flex'}`}>
+    <section className="flex min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-solid-gray-420 bg-white">
-        <div className="flex min-w-0 shrink-0 items-center justify-between gap-4 border-b border-solid-gray-200 px-5 py-4">
-          <Heading size="18" className="min-w-0 flex-1 truncate">
-            <HeadingTitle level="h2">
-              {selectedVideo ? selectedVideo.title : t('videos.courseDetail.playerPlaceholder')}
-            </HeadingTitle>
-          </Heading>
-          <div className="flex shrink-0 items-center gap-3">
-            {courseId && canManage ? <DashboardButton courseId={courseId} size="sm" /> : null}
-          </div>
-        </div>
-        <div className="aspect-video lg:aspect-auto lg:flex-1 bg-solid-gray-800 flex items-center justify-center lg:min-h-0">
+        <div className="aspect-video max-h-[45dvh] bg-black flex items-center justify-center lg:max-h-[72dvh]">
           {selectedVideo ? (
             features.youtube && selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
               <iframe
@@ -384,47 +348,18 @@ function GroupPlayerPanel({
             <p className="text-solid-gray-200 text-std-16N-170 text-center px-4">{t('videos.courseDetail.playerPlaceholder')}</p>
           )}
         </div>
+        <div className="flex min-w-0 shrink-0 items-center justify-between gap-4 px-5 py-4">
+          <Heading size="18" className="min-w-0 flex-1 truncate">
+            <HeadingTitle level="h2">
+              {selectedVideo ? selectedVideo.title : t('videos.courseDetail.playerPlaceholder')}
+            </HeadingTitle>
+          </Heading>
+          <div className="flex shrink-0 items-center gap-3">
+            {courseId && canManage ? <DashboardButton courseId={courseId} size="sm" /> : null}
+          </div>
+        </div>
       </div>
     </section>
-  );
-}
-
-function GroupMobileNav({
-  mobileTab,
-  onChange,
-}: {
-  mobileTab: MobileTab;
-  onChange: (tab: MobileTab) => void;
-}) {
-  const { t } = useTranslation();
-  const mobileTabIcon: Record<MobileTab, typeof List> = { videos: List, player: Play };
-  const mobileTabLabel: Record<MobileTab, string> = {
-    videos: t('videos.courseDetail.mobileTabs.videos'),
-    player: t('videos.courseDetail.mobileTabs.player'),
-  };
-
-  return (
-    <nav className="fixed bottom-0 left-0 z-50 flex min-h-16 w-full items-center justify-around border-t border-solid-gray-420 bg-white px-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {(['videos', 'player'] as MobileTab[]).map((tab) => {
-        const Icon = mobileTabIcon[tab];
-        const isActive = mobileTab === tab;
-        return (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => onChange(tab)}
-            className={`flex flex-col items-center justify-center gap-1 px-4 py-1 transition-colors ${
-              isActive
-                ? 'border-b-2 border-key-900 text-key-900'
-                : 'text-solid-gray-600 hover:text-key-900'
-            }`}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-dns-14N-120 font-medium">{mobileTabLabel[tab]}</span>
-          </button>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -444,7 +379,6 @@ export function VideoCourseDetailView({
   isAddModalOpen,
   isMembersModalOpen,
   isLeaving,
-  mobileTab,
   isMobile,
   videoRef,
   youtubeStartSeconds,
@@ -454,7 +388,6 @@ export function VideoCourseDetailView({
   isGeneratingLink,
   isDeletingLink,
   isCopied,
-  onMobileTabChange,
   onOpenAddModalChange,
   onOpenMembersModalChange,
   onStartEditing,
@@ -477,6 +410,23 @@ export function VideoCourseDetailView({
 }: VideoCourseDetailViewProps) {
   const { t } = useTranslation();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
+  const panelId = useId();
+  const playerRef = useRef<HTMLDivElement>(null);
+  const hasOverview = !!(selectedVideo?.description || course?.description);
+  const panelTabs: PanelTab[] = isMobile && hasOverview ? ['videos', 'assistant', 'overview'] : ['videos', 'assistant'];
+  const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
+  const panelProps = (tab: PanelTab) => ({
+    id: `${panelId}-panel-${tab}`,
+    role: 'tabpanel',
+    'aria-labelledby': `${panelId}-tab-${tab}`,
+    className: `absolute inset-0 flex min-h-0 flex-col ${activeTab === tab ? '' : 'invisible'}`,
+  });
+  const revealPlayer = () => {
+    if (playerRef.current) playerRef.current.scrollTop = 0;
+    playerRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  };
+
   const canManage = course?.access_role !== 'member';
   const isMutationPending = isDeleting || isReordering || removingVideoId !== null;
   const sensors = useSensors(
@@ -540,25 +490,14 @@ export function VideoCourseDetailView({
             />
           )}
 
-          <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 overflow-y-auto px-4 py-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:h-[calc(100dvh-var(--app-header-offset,5rem))] lg:gap-5 lg:overflow-hidden lg:px-8 lg:pb-4">
+          <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100dvh-var(--app-header-offset,5rem))] lg:gap-5 lg:overflow-hidden lg:px-8 lg:pb-4">
             <div className="shrink-0 space-y-4">
-              <Breadcrumbs aria-label={t('common.actions.backToList')}>
-                <BreadcrumbsLabel className="sr-only">
-                  {t('common.actions.backToList')}
-                </BreadcrumbsLabel>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink asChild>
-                      <Link href="/videos/courses">{t('navigation.coursesNav')}</Link>
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbItem isCurrent>{course.name}</BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumbs>
+              <div className="bg-solid-gray-900 px-4 py-3 text-white">
+                <Link href="/videos/courses" className="text-dns-14N-130 underline">{t('navigation.coursesNav')}</Link>
+                <h1 className="text-std-20B-150">{course.name}</h1>
+              </div>
 
               <header className="flex min-w-0 items-center justify-end">
-                {/* 見出しは非表示にしたが、ページの h1 として構造には残す。 */}
-                <h1 className="sr-only">{course.name}</h1>
                 {canManage ? <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                   <Button
                     type="button"
@@ -629,48 +568,65 @@ export function VideoCourseDetailView({
               </header>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-6 lg:grid lg:grid-cols-4 lg:items-stretch">
-              <GroupVideoList
-                course={course}
-                selectedVideo={selectedVideo}
-                deleteError={deleteError}
-                isMobile={isMobile}
-                mobileTab={mobileTab}
-                sensors={sensors}
-                onOpenAdd={() => onOpenAddModalChange(true)}
-                onVideoSelect={onVideoSelect}
-                onMobileTabChange={onMobileTabChange}
-                onRemoveVideo={onRemoveVideo}
-                removingVideoId={removingVideoId}
-                isMutationPending={isMutationPending}
-                onDragEnd={(event) => { void onDragEnd(event); }}
-                canManage={canManage}
-              />
+            {deleteError ? <div className="shrink-0"><ErrorMessage message={deleteError} /></div> : null}
 
-              <GroupPlayerPanel
-                courseId={courseId}
-                selectedVideo={selectedVideo}
-                mobileTab={mobileTab}
-                videoRef={videoRef}
-                youtubeStartSeconds={youtubeStartSeconds}
-                youtubeSeekId={youtubeSeekId}
-                onVideoCanPlay={onVideoCanPlay}
-                canManage={canManage}
-              />
-
-              {/* Keep one mounted chat when the viewport or mobile tab changes. */}
-              <aside className={`min-h-0 shrink-0 flex-col lg:col-span-1 ${mobileTab === 'player' ? 'flex' : 'hidden lg:flex'}`}>
-                <ChatPanel
-                  courseId={courseId ?? undefined}
-                  showHistory={canManage}
-                  onVideoPlay={onVideoPlayFromTime}
-                  className="h-[480px] lg:h-full lg:min-h-0 lg:flex-1"
+            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+              <div ref={playerRef} className="scroll-mt-[var(--app-header-offset,5rem)] shrink-0 lg:min-h-0 lg:overflow-y-auto">
+                <GroupPlayerPanel
+                  courseId={courseId}
+                  selectedVideo={selectedVideo}
+                  videoRef={videoRef}
+                  youtubeStartSeconds={youtubeStartSeconds}
+                  youtubeSeekId={youtubeSeekId}
+                  onVideoCanPlay={onVideoCanPlay}
+                  canManage={canManage}
                 />
+
+                {!isMobile ? (
+                  <div className="p-4">
+                    <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
+                  </div>
+                ) : null}
+              </div>
+              <aside className="flex min-h-[28rem] flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
+                <PanelTabs tabs={panelTabs} activeTab={activeTab} idPrefix={panelId} onChange={setPanelTab} />
+                <div className="relative min-h-0 flex-1">
+                  <div {...panelProps('videos')}>
+                    <GroupVideoList
+                      course={course}
+                      selectedVideo={selectedVideo}
+                      isMobile={isMobile}
+                      sensors={sensors}
+                      onOpenAdd={() => onOpenAddModalChange(true)}
+                      onVideoSelect={(id) => { onVideoSelect(id); revealPlayer(); }}
+                      onRemoveVideo={onRemoveVideo}
+                      removingVideoId={removingVideoId}
+                      isMutationPending={isMutationPending}
+                      onDragEnd={(event) => { void onDragEnd(event); }}
+                      canManage={canManage}
+                    />
+
+                  </div>
+                  <div {...panelProps('assistant')}>
+                    <ChatPanel
+                      courseId={courseId ?? undefined}
+                      showHistory={canManage}
+                      showTitle={false}
+                      onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }}
+                      className="min-h-0 flex-1 border-0"
+                    />
+                  </div>
+                  {panelTabs.includes('overview') ? (
+                    <div {...panelProps('overview')}>
+                      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                        <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </aside>
             </div>
           </div>
-
-          <GroupMobileNav mobileTab={mobileTab} onChange={onMobileTabChange} />
 
           {canManage ? <PickFromLibraryDialog
             isOpen={isAddModalOpen}
