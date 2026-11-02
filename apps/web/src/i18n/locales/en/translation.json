@@ -1,7 +1,7 @@
 {
   "site": {
     "title": "Answer online course questions from your lecture videos | VideoQ",
-    "description": "For course creators and instructors. Upload your lecture videos and student questions get answered automatically, right from your lectures. Every answer links to the source moment, and students just open a link to ask. Try it free with one lecture."
+    "description": "For course creators and instructors. Upload your lecture videos and an AI assistant answers student questions from them. Every answer links to the source moment, and students just open a link to ask. Try it free with one lecture."
   },
   "common": {
     "notProvided": "Not provided",
@@ -176,7 +176,7 @@
     "badge": "For course creators and instructors",
     "title": "Student questions?",
     "titleAccent": "Let your lectures answer.",
-    "lead": "Upload your lecture videos and student questions get answered automatically, right from your lectures.\nEvery answer links to the moment in your lecture, so it stays true to how you teach.",
+    "lead": "Upload your lecture videos and an AI assistant answers student questions from them.\nEvery answer links to the moment in your lecture, so it stays true to how you teach.",
     "start": "Create a course for free",
     "tryOwn": "Try it with one lecture",
     "login": "Already have an account? Log in",
@@ -184,7 +184,7 @@
     "startNote": "Start free with a single lecture video",
     "capabilities": {
       "title": "What you can do with VideoQ",
-      "create": "Automatic answers from your lectures",
+      "create": "An AI assistant that answers from your lectures",
       "source": "Answers link to the source moment",
       "share": "Students just open a link",
       "insights": "See question trends on a dashboard"
@@ -195,7 +195,7 @@
       "intro": "Instead of answering the same question again and again, let your lectures respond.",
       "answer": {
         "title": "Answers come from your lectures.",
-        "body": "Questions are answered automatically using the videos in your course. Not generic web knowledge, but the explanations you gave in class.",
+        "body": "The AI assistant answers questions using the videos in your course. Not generic web knowledge, but the explanations you gave in class.",
         "example": "What does a derivative actually mean?",
         "result": "Answered from Lecture 3"
       },
@@ -294,19 +294,19 @@
       "title": "A few good questions.",
       "free": {
         "question": "Can I really start for free?",
-        "answer": "Yes. Try video transcription and automatic answers within the free plan’s allowance, with no credit card required. See the pricing page for usage limits and paid plans."
+        "answer": "Yes. Try video transcription and AI assistant answers within the free plan’s allowance, with no credit card required. See the pricing page for usage limits and paid plans."
       },
       "accounts": {
         "question": "Do students need an account?",
         "answer": "Not with a course link. Anyone with the link can view and ask questions without signing in. To limit access, use member invitations."
       },
       "cost": {
-        "question": "Who pays for automatic answers?",
-        "answer": "Automatic answers count against the course owner’s allowance. Students pay nothing."
+        "question": "Who pays for the AI assistant?",
+        "answer": "AI assistant answers count against the course owner’s allowance. Students pay nothing."
       },
       "accuracy": {
         "question": "Can it give wrong answers?",
-        "answer": "Answers are based on your lectures and show the source moment. AI-generated answers and transcripts can still contain mistakes, so students can always check the original explanation in context."
+        "answer": "Answers are based on your lectures and show the source moment. AI assistant answers and transcripts can still contain mistakes, so students can always check the original explanation in context."
       },
       "history": {
         "question": "Can I see what students asked?",
@@ -326,10 +326,10 @@
     "free": {
       "eyebrow": "Build your course, free",
       "title": "One lecture is all it takes.",
-      "intro": "Transcription and automatic answers included.\nTry the student experience with your own lecture video.",
+      "intro": "Transcription and AI assistant answers included.\nTry the student experience with your own lecture video.",
       "processing": "Video transcription",
       "minutes": "{{minutes}} min / month",
-      "answers": "Automatic answers",
+      "answers": "AI assistant answers",
       "answerCount": "{{count}} / month",
       "answerCount_one": "{{count}} / month",
       "answerCount_other": "{{count}} / month",
@@ -353,7 +353,7 @@
         "answer": "Students ask",
         "review": "Review history"
       },
-      "note": "A walkthrough recreated on the app’s real screens with real course data and an automatic answer; the English edit uses a translated answer. Waiting times have been shortened. The opening messages are an illustration.",
+      "note": "A walkthrough recreated on the app’s real screens with real course data and an AI assistant answer; the English edit uses a translated answer. Waiting times have been shortened. The opening messages are an illustration.",
       "error": "The video could not load.",
       "blocked": "Use the video’s play button to start.",
       "retry": "Reload video"
@@ -616,18 +616,22 @@
     "shared": {
       "tabs": {
         "videos": "Videos",
-        "player": "Player"
+        "assistant": "AI Assistant",
+        "overview": "Overview",
+        "label": "Course panel"
       },
       "playerPlaceholder": "Select a video from the list",
       "videoNoFile": "Video file is unavailable",
       "noVideos": "No videos yet",
+      "overview": "Overview",
+      "aboutCourse": "About this course",
       "publicBadge": "Public share link"
     }
   },
   "courseSharing": {
     "link": "Anyone with the link can view and chat without signing in.",
     "invitation": "Invited members can view and chat, but cannot edit. The owner can see each questioner’s username and email.",
-    "quotaAndHistory": "Answers use the owner’s allowance. The owner can read and export questions and answers."
+    "quotaAndHistory": "AI Assistant answers use the owner’s allowance. The owner can read and export questions and answers."
   },
   "courseInvitation": {
     "badge": "Course invitation",
@@ -835,7 +839,7 @@
     "errorConversationMissing": "This conversation has expired or was deleted. Start a new chat to continue.",
     "answerInProgress": "An answer is in progress. It will appear when it is ready.",
     "title": "Chat",
-    "answerLabel": "Automatic answer",
+    "answerLabel": "AI Assistant",
     "newConsultation": "New chat",
     "history": "Course question history",
     "historyEmpty": "No history available",

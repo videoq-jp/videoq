@@ -93,10 +93,14 @@ it('isolates persisted selections across accounts and shared routes', async () =
 
 it('limits shared conversation enumeration to the capabilities saved by this browser', async () => {
   localStorage.setItem(storageKey('1', 'shared'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
-  render(<ChatPanel courseId={5} shareToken="shared" />);
+  render(<ChatPanel courseId={5} shareToken="shared" showTitle={false} />);
   await screen.findByText('The inner product compares two vectors.');
+  expect(screen.queryByRole('heading', { name: 'chat.title' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'chat.myConversations' }));
   await waitFor(() => expect(mockList).toHaveBeenCalledWith(expect.objectContaining({ shareSlug: 'shared', conversationIds: [id] })));
+  fireEvent.click(screen.getByRole('button', { name: 'chat.newConsultation' }));
+  expect(screen.getByLabelText('chat.placeholder')).toBeVisible();
+  expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
 });
 
 it('deletes a selected conversation with confirmation and clears its saved selection', async () => {

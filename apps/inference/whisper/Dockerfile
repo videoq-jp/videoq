@@ -1,4 +1,9 @@
 FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
+FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS sqlite
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY security/build-sqlite.sh /tmp/build-sqlite.sh
+RUN sh /tmp/build-sqlite.sh
+
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS native
 # Only VideoQ audio preprocessing lives here; whisper.cpp runs in its upstream image.
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates xz-utils && rm -rf /var/lib/apt/lists/*
@@ -15,18 +20,10 @@ RUN set -eu; \
     echo "$archive_sha  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
     mkdir /ffmpeg; tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /ffmpeg
 
-# Debian trixie has no fixed SQLite package for CVE-2026-119373.
-# Build the fixed upstream library; keep Python's sqlite3 functionality intact.
-FROM native AS sqlite
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://www.sqlite.org/2026/sqlite-autoconf-3540000.tar.gz -o /tmp/sqlite.tar.gz \
-    && echo "134ec0802dda5795816e25d25872d20b312cb3973438c49b30bc40b7705ea9ed  /tmp/sqlite.tar.gz" | sha256sum -c - \
-    && mkdir /tmp/sqlite && tar -xzf /tmp/sqlite.tar.gz --strip-components=1 -C /tmp/sqlite \
-    && cd /tmp/sqlite && ./configure --prefix=/opt/sqlite --disable-static --disable-readline \
-    && make -j2 && make install
-
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
+COPY --from=sqlite /tmp/libsqlite3.deb /tmp/libsqlite3.deb
+RUN dpkg -i /tmp/libsqlite3.deb && rm /tmp/libsqlite3.deb
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
@@ -38,7 +35,7 @@ root = pathlib.Path('/extra')
 libraries, status, licenses = (root / name for name in ('lib', 'status.d', 'licenses'))
 for directory in (libraries, status, licenses): directory.mkdir(parents=True)
 packages = {'libbz2-1.0': 'libbz2.so.1.0', 'liblzma5': 'liblzma.so.5',
-            'libffi8': 'libffi.so.8',
+            'libffi8': 'libffi.so.8', 'libsqlite3-0': 'libsqlite3.so.0',
             'zlib1g': 'libz.so.1', 'libgomp1': 'libgomp.so.1'}
 records = pathlib.Path('/var/lib/dpkg/status').read_text().split('\n\n')
 libdir = pathlib.Path('/usr/lib') / sysconfig.get_config_var('MULTIARCH')
@@ -53,8 +50,6 @@ PY
 
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:08476c244888bfb425bae1ae4dd7c17f093e972aab8426883d97f3c6f280f7c1
 COPY --from=dependencies /usr/local /usr/local
-COPY --from=sqlite /opt/sqlite/lib/libsqlite3.so.0 /usr/local/lib/libsqlite3.so.0
-COPY --from=sqlite /tmp/sqlite/sqlite3.h /usr/share/doc/sqlite/sqlite3.h
 COPY --from=dependencies /extra/lib/ /usr/local/lib/
 COPY --from=dependencies /extra/status.d/ /var/lib/dpkg/status.d/
 COPY --from=dependencies /extra/licenses/ /usr/share/doc/videoq-native/
@@ -64,10 +59,11 @@ COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 COPY server.py provision.py embedding_server.py ./
+COPY security/verify_sqlite.py /app/verify_sqlite.py
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib
-RUN ["/app/.venv/bin/python", "-c", "import sqlite3; assert sqlite3.sqlite_version == '3.54.0'; c = sqlite3.connect(':memory:'); assert c.execute('select 1').fetchone() == (1,)"]
+RUN ["/usr/local/bin/python", "/app/verify_sqlite.py"]
 ENTRYPOINT []
 EXPOSE 8080
 CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

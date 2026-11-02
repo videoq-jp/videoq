@@ -1,0 +1,28 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/cpu-sqlite-2026-11-02",
+  "author": "VideoQ",
+  "timestamp": "2026-11-02T04:31:58Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2026-119373" },
+      "products": [
+        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7" },
+        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7" }
+      ],
+      "status": "fixed",
+      "impact_statement": "The image replaces Debian's SQLite 3.46.1 with the official SQLite 3.54.1 amalgamation, verified against the published SHA3-256. Upstream fixed the FTS5 doclist merge overflow in 3.54.0. verify_sqlite.py checks the loaded version and exercises negative-rowid detail=none prefix queries in the final image. This version is packaged locally; Debian has not recorded a fixed distribution version yet."
+    },
+    {
+      "vulnerability": { "name": "CVE-2026-119586" },
+      "products": [
+        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7" },
+        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7" }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This vulnerability is in the SQLite CLI .recover dot-command. build-sqlite.sh compiles only sqlite3.c into a shared library; shell.c is not compiled or installed. The final distroless image contains no SQLite CLI, and verify_sqlite.py checks the executable locations. The Python sqlite3 module and FTS5 remain available."
+    }
+  ]
+}

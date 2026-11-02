@@ -1,3 +1,31 @@
+# CPU inference image: SQLite
+
+Debian trixie's SQLite 3.46.1 has no distribution fix for CVE-2026-119373.
+The CPU image therefore builds the official SQLite 3.54.1 shared library,
+checking the source archive against SQLite's published SHA3-256. It installs a
+local `libsqlite3-0` Debian package, version `3.54.1-0videoq1`, and preserves that
+package record and source/license information in the final image and SBOM.
+Python's SQLite support and FTS5 remain available to inference dependencies.
+
+`verify_sqlite.py` runs in the final distroless image. It checks the loaded
+SQLite version, retained package record, FTS5 negative-rowid prefix queries,
+and absence of the SQLite CLI. The build compiles only `sqlite3.c`, never
+`shell.c`. The shell's `.recover` implementation affected by CVE-2026-119586
+is therefore absent.
+
+`sqlite.openvex.json` records the upstream fix for CVE-2026-119373 (released in
+3.54.0) and the absent CLI code for CVE-2026-119586. It matches only the locally
+built package version on Debian 13.7 amd64/arm64. Other package versions and
+unknown vulnerabilities continue to fail. CI applies `sqlite-trivy.yaml` only
+to the CPU image and retains its JSON report, including assessed findings,
+alongside the SBOM and assessment. A passing assessed scan is not a claim of
+zero raw findings. The NVIDIA image uses its separate assessment below.
+
+References:
+- [Official SQLite source and checksums](https://sqlite.org/download.html)
+- [Debian CVE-2026-119373 assessment and upstream fix](https://security-tracker.debian.org/tracker/CVE-2026-119373)
+- [Debian CVE-2026-119586 CLI assessment](https://security-tracker.debian.org/tracker/CVE-2026-119586)
+
 # NVIDIA speech image assessment
 
 The image keeps the C/UAPI headers needed by Triton's runtime JIT. These headers

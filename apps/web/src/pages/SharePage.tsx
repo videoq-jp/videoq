@@ -1,18 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { List, Play } from 'lucide-react';
+import { AlignLeft, List, Sparkles } from 'lucide-react';
 import { Link } from '@/lib/i18n';
 import { apiClient, type VideoInCourse } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import {
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  Breadcrumbs,
-  BreadcrumbsLabel,
-} from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { ChipLabel } from '@/components/ui/chip-label';
 import { ChatPanel } from '@/components/chat/ChatPanel';
@@ -22,7 +15,7 @@ import { useSharedCourseQuery } from '@/hooks/useSharePageData';
 import { useI18nNavigate } from '@/lib/i18n';
 import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 
-type MobileTab = 'videos' | 'player';
+type PanelTab = 'videos' | 'assistant' | 'overview';
 
 // ── Video list item ───────────────────────────────────────────────────────────
 
@@ -52,6 +45,82 @@ function VideoItem({ video, isSelected, onSelect }: VideoItemProps) {
   );
 }
 
+// ── Side panel tabs ───────────────────────────────────────────────────────────
+
+const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft };
+
+function PanelTabs({ tabs, activeTab, idPrefix, onChange }: {
+  tabs: PanelTab[];
+  activeTab: PanelTab;
+  idPrefix: string;
+  onChange: (tab: PanelTab) => void;
+}) {
+  const { t } = useTranslation();
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const index = tabs.indexOf(activeTab);
+    const next = {
+      ArrowRight: tabs[(index + 1) % tabs.length],
+      ArrowLeft: tabs[(index - 1 + tabs.length) % tabs.length],
+      Home: tabs[0],
+      End: tabs[tabs.length - 1],
+    }[event.key];
+    if (!next) return;
+    event.preventDefault();
+    onChange(next);
+    document.getElementById(`${idPrefix}-tab-${next}`)?.focus();
+  };
+
+  return (
+    <div role="tablist" aria-label={t('videos.shared.tabs.label')} className="flex shrink-0 gap-1 overflow-x-auto border-b border-solid-gray-420 px-2">
+      {tabs.map((tab) => {
+        const Icon = PANEL_TAB_ICONS[tab];
+        const isActive = tab === activeTab;
+        return (
+          <button
+            key={tab}
+            id={`${idPrefix}-tab-${tab}`}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`${idPrefix}-panel-${tab}`}
+            tabIndex={isActive ? 0 : -1}
+            onClick={() => onChange(tab)}
+            onKeyDown={handleKeyDown}
+            className={`flex min-h-12 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-oln-16N-100 transition-colors focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black ${
+              isActive ? 'border-key-900 font-bold text-solid-gray-800' : 'border-transparent text-solid-gray-600 hover:text-solid-gray-800'
+            }`}
+          >
+            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-key-900' : ''}`} aria-hidden="true" />
+            {t(`videos.shared.tabs.${tab}`)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CourseOverview({ videoDescription, courseDescription }: { videoDescription?: string; courseDescription?: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-6">
+      {videoDescription ? (
+        <section className="space-y-2">
+          <h3 className="text-std-16B-170 text-solid-gray-800">{t('videos.shared.overview')}</h3>
+          <p className="whitespace-pre-wrap break-words text-std-16N-170 text-solid-gray-700">{videoDescription}</p>
+        </section>
+      ) : null}
+      {courseDescription ? (
+        <section className="space-y-2">
+          <h3 className="text-std-16B-170 text-solid-gray-800">{t('videos.shared.aboutCourse')}</h3>
+          <p className="whitespace-pre-wrap break-words text-std-16N-170 text-solid-gray-700">{courseDescription}</p>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 interface SharedCourseViewProps {
@@ -66,10 +135,13 @@ interface SharedCourseViewProps {
 export function SharedCourseView({ shareToken, headerAction, intro, suggestedQuestions, onCitationPlay, loadingContent }: SharedCourseViewProps) {
   const { t } = useTranslation();
   const navigate = useI18nNavigate();
+  const panelIdPrefix = useId();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
-  const { mobileTab, setMobileTab, isMobile } = useMobileTab<MobileTab>('player');
+  const { mobileTab: requestedTab, setMobileTab: setPanelTab, isMobile } = useMobileTab<PanelTab>('assistant');
   const courseQuery = useSharedCourseQuery(shareToken);
   const course = courseQuery.data ?? null;
   const error = courseQuery.error ? t('common.messages.shareLoadFailed') : null;
@@ -83,18 +155,29 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     return selected ?? course.videos[0];
   }, [course, selectedVideoId]);
 
-
   const { videoRef, handleVideoSelect, handleVideoCanPlay, handleVideoPlayFromTime, youtubeStartSeconds, youtubeSeekId } = useVideoPlayback({
     selectedVideo,
     onVideoSelect: setSelectedVideoId,
-    onMobileSwitch: () => setMobileTab('player'),
   });
 
-  const mobileTabIcon: Record<MobileTab, typeof List> = { videos: List, player: Play };
-  const mobileTabLabel: Record<MobileTab, string> = {
-    videos: t('videos.shared.tabs.videos'),
-    player: t('videos.shared.tabs.player'),
+  // The overview has room under the player on desktop, so it is a tab only on mobile.
+  const hasOverview = !!(selectedVideo?.description || course?.description);
+  const panelTabs: PanelTab[] = isMobile && hasOverview ? ['videos', 'assistant', 'overview'] : ['videos', 'assistant'];
+  const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
+
+  const revealPlayer = () => {
+    if (pageRef.current) pageRef.current.scrollTop = 0;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
   };
+
+  const panelProps = (tab: PanelTab) => ({
+    id: `${panelIdPrefix}-panel-${tab}`,
+    role: 'tabpanel',
+    'aria-labelledby': `${panelIdPrefix}-tab-${tab}`,
+    // Hide without unmounting or display:none: a streaming answer and its scroll
+    // position must survive switching tabs.
+    className: `absolute inset-0 flex flex-col ${activeTab === tab ? '' : 'invisible'}`,
+  });
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
@@ -122,60 +205,76 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
   // ── Main ───────────────────────────────────────────────────────────────────
 
   return (
-    <>
-      <div className="bg-solid-gray-50 flex flex-col">
-      {/* ── Fixed Header ────────────────────────────────────────────────── */}
-      <header className="fixed top-0 z-50 w-full border-b border-solid-gray-420 bg-white">
-        <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between gap-4 px-6 py-4 lg:px-8">
-          <Link href="/" className="shrink-0 text-std-20B-150 text-solid-gray-800">
-            VideoQ
-          </Link>
-
-          <div className="flex shrink-0 items-center gap-2">
-            {headerAction ?? (
-              <ChipLabel variant="filled-1" color="blue" className="min-h-0 text-oln-14N-100">
-                {t('videos.shared.publicBadge')}
-              </ChipLabel>
-            )}
-          </div>
+    <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 bg-solid-gray-900 px-4 py-2 text-white lg:flex-nowrap lg:px-6">
+        <Link href="/" className="shrink-0 text-std-20B-150 text-white focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-white">
+          VideoQ
+        </Link>
+        <span className="hidden h-6 w-px shrink-0 bg-solid-gray-536 lg:block" aria-hidden="true" />
+        {/* On mobile the name takes its own row so the header action never squeezes it. */}
+        <h1 className="order-last min-w-0 basis-full truncate text-std-16N-170 lg:order-none lg:flex-1 lg:basis-0" title={course.name}>{course.name}</h1>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {headerAction ?? (
+            <ChipLabel variant="filled-1" color="blue" className="min-h-0 text-oln-14N-100">
+              {t('videos.shared.publicBadge')}
+            </ChipLabel>
+          )}
         </div>
       </header>
 
-      {/* ── Main ────────────────────────────────────────────────────────── */}
-      <main className="mt-16 flex flex-col px-6 pt-4 gap-4 max-w-[1600px] mx-auto w-full overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-4 lg:h-[calc(100dvh-4rem)] lg:overflow-hidden">
-        {/* 講座名はバーではなくパンくずで示す（講座詳細と同じ並び）。 */}
-        <Breadcrumbs aria-label={t('common.actions.backToHome')} className="shrink-0">
-          <BreadcrumbsLabel className="sr-only">
-            {t('common.actions.backToHome')}
-          </BreadcrumbsLabel>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/">{t('navigation.home')}</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem isCurrent>{course.name}</BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumbs>
+      {intro ? <div className="shrink-0 border-b border-solid-gray-420 px-4 py-2 lg:px-6">{intro}</div> : null}
 
-        {/* 見出しは非表示にしたが、ページの h1 として構造には残す。 */}
-        <h1 className="sr-only">{course.name}</h1>
+      <main className="flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+        {/* LEFT: player, then details that scroll under it */}
+        <section ref={contentRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
+          <div className="flex aspect-video max-h-[45dvh] w-full items-center justify-center bg-black lg:max-h-[72dvh]">
+            {selectedVideo ? (
+              selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
+                <iframe
+                  key={`${selectedVideo.id}-${youtubeSeekId}`}
+                  className="w-full h-full"
+                  src={buildYoutubeEmbedSrc(selectedVideo.youtube_embed_url, youtubeStartSeconds)}
+                  title={selectedVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : selectedVideo.file ? (
+                <video
+                  ref={videoRef}
+                  key={selectedVideo.id}
+                  controls
+                  className="w-full h-full object-contain"
+                  src={apiClient.getSharedVideoUrl(selectedVideo.file, shareToken)}
+                  onCanPlay={handleVideoCanPlay}
+                >
+                  {t('common.messages.browserNoVideoSupport')}
+                </video>
+              ) : (
+                <p className="text-solid-gray-200 text-std-16N-170">{t('videos.shared.videoNoFile')}</p>
+              )
+            ) : (
+              <p className="text-solid-gray-200 text-std-16N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
+            )}
+          </div>
+          <div className="space-y-4 px-4 py-3 lg:mx-auto lg:max-w-4xl lg:px-8 lg:py-6">
+            <h2 className="truncate text-std-16B-170 text-solid-gray-800 lg:whitespace-normal lg:text-std-20B-150">
+              {selectedVideo ? selectedVideo.title : t('videos.shared.playerPlaceholder')}
+            </h2>
+            {isMobile ? null : (
+              <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
+            )}
+          </div>
+        </section>
 
-        {intro}
-
-        {/* 3-column grid */}
-        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 lg:flex-1 lg:min-h-0 lg:items-stretch">
-
-          {/* LEFT: Video list */}
-          <aside className={`lg:col-span-1 flex flex-col min-h-0 ${mobileTab === 'videos' ? 'flex' : 'hidden lg:flex'}`}>
-            <div className="flex h-full flex-col overflow-hidden rounded-8 border border-solid-gray-300 bg-white">
-              <div className="p-4 border-b border-solid-gray-200 flex items-center justify-between shrink-0">
-                <h2 className="font-bold text-std-16B-170 text-solid-gray-800">{t('videos.courseDetail.videoListTitle')}</h2>
-                <ChipLabel variant="filled-1" color="gray" className="min-h-0 text-oln-14N-100">
-                  {t('videos.courseDetail.videoCount', { count: course.videos?.length ?? 0 })}
-                </ChipLabel>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {/* RIGHT: one mounted chat beside the player on desktop, below it on mobile. */}
+        <aside className="flex min-h-[28rem] flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
+          <PanelTabs tabs={panelTabs} activeTab={activeTab} idPrefix={panelIdPrefix} onChange={setPanelTab} />
+          <div className="relative min-h-0 flex-1">
+            <div {...panelProps('videos')}>
+              <p className="shrink-0 px-4 pt-3 text-dns-14N-130 text-solid-gray-600">
+                {t('videos.courseDetail.videoCount', { count: course.videos?.length ?? 0 })}
+              </p>
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
                 {course.videos && course.videos.length > 0 ? (
                   course.videos.map((video) => (
                     <VideoItem
@@ -184,7 +283,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                       isSelected={selectedVideo?.id === video.id}
                       onSelect={(videoId) => {
                         handleVideoSelect(videoId);
-                        if (isMobile) setMobileTab('player');
+                        revealPlayer();
                       }}
                     />
                   ))
@@ -195,87 +294,32 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                 )}
               </div>
             </div>
-          </aside>
-
-          {/* CENTER: Video player */}
-          <section className={`lg:col-span-2 flex flex-col gap-3 lg:min-h-0 ${mobileTab === 'player' ? 'flex' : 'hidden lg:flex'}`}>
-            <div className="flex flex-col overflow-hidden border border-solid-gray-420 bg-white lg:flex-1">
-              <div className="p-4 border-b border-solid-gray-200 shrink-0 flex items-center justify-between gap-3 min-w-0">
-                <h2 className="font-bold text-solid-gray-800 text-std-18B-160 truncate flex-1 min-w-0">
-                  {selectedVideo ? selectedVideo.title : t('videos.shared.playerPlaceholder')}
-                </h2>
-              </div>
-              <div className="aspect-video lg:aspect-auto lg:flex-1 bg-solid-gray-800 flex items-center justify-center lg:min-h-0">
-                {selectedVideo ? (
-                  selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
-                    <iframe
-                      key={`${selectedVideo.id}-${youtubeSeekId}`}
-                      className="w-full h-full"
-                      src={buildYoutubeEmbedSrc(selectedVideo.youtube_embed_url, youtubeStartSeconds)}
-                      title={selectedVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : selectedVideo.file ? (
-                    <video
-                      ref={videoRef}
-                      key={selectedVideo.id}
-                      controls
-                      className="w-full h-full object-contain"
-                      src={apiClient.getSharedVideoUrl(selectedVideo.file, shareToken)}
-                      onCanPlay={handleVideoCanPlay}
-                    >
-                      {t('common.messages.browserNoVideoSupport')}
-                    </video>
-                  ) : (
-                    <p className="text-solid-gray-200 text-std-16N-170">{t('videos.shared.videoNoFile')}</p>
-                  )
-                ) : (
-                  <p className="text-solid-gray-200 text-std-16N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
-                )}
-              </div>
+            <div {...panelProps('assistant')}>
+              <ChatPanel
+                courseId={course.id}
+                onVideoPlay={(videoId, startTime) => {
+                  onCitationPlay?.();
+                  handleVideoPlayFromTime(videoId, startTime);
+                  revealPlayer();
+                }}
+                shareToken={shareToken}
+                suggestedQuestions={suggestedQuestions}
+                sendSuggestedQuestions={!!suggestedQuestions}
+                showTitle={false}
+                className="min-h-0 flex-1 border-0"
+              />
             </div>
-          </section>
-
-          {/* One mounted chat: below the player on mobile, beside it on desktop. */}
-          <aside className={`min-h-0 shrink-0 flex-col lg:col-span-1 ${mobileTab === 'player' ? 'flex' : 'hidden lg:flex'}`}>
-            <ChatPanel
-              courseId={course.id}
-              onVideoPlay={(videoId, startTime) => {
-                onCitationPlay?.();
-                handleVideoPlayFromTime(videoId, startTime);
-              }}
-              shareToken={shareToken}
-              suggestedQuestions={suggestedQuestions}
-              sendSuggestedQuestions={!!suggestedQuestions}
-              className="h-[480px] lg:h-full lg:min-h-0 lg:flex-1"
-            />
-          </aside>
-
-        </div>
+            {panelTabs.includes('overview') ? (
+              <div {...panelProps('overview')}>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </aside>
       </main>
-
-      {/* ── Mobile bottom nav ───────────────────────────────────────────── */}
-      <nav className="fixed bottom-0 left-0 z-50 flex min-h-16 w-full items-center justify-around border-t border-solid-gray-420 bg-white px-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {(['videos', 'player'] as MobileTab[]).map((tab) => {
-          const Icon = mobileTabIcon[tab];
-          const isActive = mobileTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => setMobileTab(tab)}
-              className={`flex flex-col items-center justify-center gap-1 px-4 py-1 transition-colors ${
-                isActive ? 'border-b-2 border-key-900 text-key-900' : 'text-solid-gray-600 hover:text-key-900'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-dns-14N-120 font-medium">{mobileTabLabel[tab]}</span>
-            </button>
-          );
-        })}
-      </nav>
-      </div>
-    </>
+    </div>
   );
 }
 
