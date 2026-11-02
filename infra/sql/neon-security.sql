@@ -28,7 +28,7 @@ BEGIN
   FOREACH name IN ARRAY ARRAY['runtime_rate_limits','users','account_deletion_requests','external_tasks',
     'job_executions','mcp_idempotency_records','videos','video_transcription_runs','video_transcription_chunks',
     'video_visual_runs','video_visual_chunks','video_courses','video_course_members','video_course_invitations',
-    'video_course_memberships','tags','video_tags','chat_logs','ai_answer_attempts','chat_log_evaluations',
+    'video_course_memberships','tags','video_tags','chat_logs','chat_conversations','chat_conversation_turns','ai_answer_attempts','chat_log_evaluations',
     'course_evaluation_snapshots','scene_embeddings','scene_embeddings_768','stripe_events',
     'session','account','verification','apikey','jwks','device_code','oauth_client','oauth_resource',
     'oauth_client_resource','oauth_refresh_token','oauth_access_token','oauth_consent','oauth_client_assertion'] LOOP
@@ -42,6 +42,16 @@ BEGIN
     END IF;
   END LOOP;
 END $grants$;
+-- PostgresSaver owns its schema. Reapply access without granting runtime DDL.
+DO $checkpoint_grants$
+BEGIN
+  IF to_regnamespace('chat_memory') IS NOT NULL THEN
+    GRANT USAGE ON SCHEMA chat_memory TO videoq_api_access, videoq_backup_access;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON chat_memory.checkpoints,
+      chat_memory.checkpoint_blobs, chat_memory.checkpoint_writes TO videoq_api_access;
+    GRANT SELECT ON ALL TABLES IN SCHEMA chat_memory TO videoq_backup_access;
+  END IF;
+END $checkpoint_grants$;
 GRANT SELECT (transcription_language) ON public.videos TO videoq_worker_access;
 GRANT UPDATE (status,error_message,transcript,processing_seconds) ON public.videos TO videoq_worker_access;
 GRANT UPDATE (status,attempts,lease_token,lease_until,last_error,updated_at,completed_at) ON public.job_executions TO videoq_worker_access;

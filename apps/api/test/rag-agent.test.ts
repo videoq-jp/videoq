@@ -130,6 +130,11 @@ function stubOpenAi(turns: Turn[], duplicateFinish = false) {
     }
     const body = JSON.parse(requestBodyText(init.body));
     bodies.push(body);
+    if (!body.response_format) {
+      return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: {
+        role: "assistant", content: "Earlier course-info calls had invalid arguments; answer with the available information.",
+      } }] }, false);
+    }
     const turn = turns[Math.min(index++, turns.length - 1)];
     if ("status" in turn) {
       return new Response("upstream failed", { status: turn.status });
@@ -155,8 +160,8 @@ afterEach(() => {
   videoSelections.length = 0;
 });
 
-describe.each([false, true])("Q&A single-question contract (stream=%s)", (stream) => {
-  it.each([true, false])("ignores earlier turns even when supplied (course=%s)", async (course) => {
+describe.each([false, true])("Q&A conversation contract (stream=%s)", (stream) => {
+  it.each([true, false])("preserves earlier turns for follow-up questions (course=%s)", async (course) => {
     const bodies = stubOpenAi([{ content: "Which subject would you like an example of?" }]);
     const params = {
       ...PARAMS,
@@ -175,6 +180,8 @@ describe.each([false, true])("Q&A single-question contract (stream=%s)", (stream
     expect(bodies).toHaveLength(1);
     expect(bodies[0].messages).toEqual([
       expect.objectContaining({ role: "developer" }),
+      expect.objectContaining({ role: "user", content: "内積とは？" }),
+      expect.objectContaining({ role: "assistant", content: "The dot product is…" }),
       expect.objectContaining({ role: "user", content: "具体例を教えて" }),
     ]);
   });

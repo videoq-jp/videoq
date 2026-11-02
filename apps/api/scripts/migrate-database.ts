@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
+import { setupConversationCheckpoints } from "./migrations/conversation/setup";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { convertHistoricalAnswer } from "./migrations/structured-answer/convert";
@@ -93,6 +94,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (phase !== "before-deploy" && phase !== "all") throw new Error("MIGRATION_PHASE must be before-deploy or all.");
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@127.0.0.1:55432/postgres" });
   await client.connect();
-  try { await migrateDatabase(client, { writersStopped: process.env.STRUCTURED_ANSWER_WRITERS_STOPPED === "1", phase }); }
+  try {
+    await migrateDatabase(client, { writersStopped: process.env.STRUCTURED_ANSWER_WRITERS_STOPPED === "1", phase });
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@127.0.0.1:55432/postgres", max: 2 });
+    try { await setupConversationCheckpoints(pool); }
+    finally { await pool.end(); }
+  }
   finally { await client.end(); }
 }

@@ -130,3 +130,5 @@ parameter `/videoq/security/prod/hyperdrive-credentials`. The bootstrap role can
 only write that parameter; scheduled maintenance can read it. Repeat this handoff
 when `CLOUDFLARE_INFRA_TOKEN` is renewed. Existing infrastructure review rules are
 preserved; scheduled rotation needs no human approval.
+
+Conversation checkpoints use the library-owned `chat_memory` schema. The deployment migration initializes `PostgresSaver` and grants the stable API role schema usage and DML on its checkpoint tables and the public conversation registry/transcript. The backup role receives schema usage and read-only access, including the checkpoint migration table. Runtime roles receive no schema/table creation rights. Reapplying `infra/sql/neon-security.sql` preserves these grants. Local/on-prem installations without the optional stable roles use their configured owner connection.

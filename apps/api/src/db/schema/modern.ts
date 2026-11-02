@@ -805,3 +805,32 @@ export const stripeEvents = pgTable("stripe_events", {
 		.notNull()
 		.defaultNow(),
 });
+
+/** Application ownership/retention; checkpoint payloads are owned by LangGraph. */
+export const chatConversations = pgTable("chat_conversations", {
+  threadId: text("thread_id").primaryKey(),
+  conversationId: uuid("conversation_id").notNull().defaultRandom(),
+  scopeKey: text("scope_key"),
+  title: text("title").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  committedCheckpointId: text("committed_checkpoint_id"),
+  ownerUserId: text("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "cascade" }),
+  courseId: bigint("course_id", { mode: "number" }).references(() => videoCourses.id, { onDelete: "cascade" }),
+  leaseId: uuid("lease_id"),
+  leasedUntil: timestamp("leased_until", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, table => [index("chat_conversations_expiry_idx").on(table.expiresAt), index("chat_conversations_course_idx").on(table.courseId), index("chat_conversations_scope_updated_idx").on(table.scopeKey, table.updatedAt)]);
+
+
+/** Original transcript for the UI; model context is compacted independently. */
+export const chatConversationTurns = pgTable("chat_conversation_turns", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  threadId: text("thread_id").notNull(),
+  checkpointId: text("checkpoint_id").notNull(),
+  question: text("question").notNull(),
+  response: jsonb("response").$type<import("@videoq/trpc/chat").ChatAnswer>().notNull(),
+  chatLogId: bigint("chat_log_id", { mode: "number" }).references(() => chatLogs.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: "chat_conversation_turns_thread_fk" }).onDelete("cascade"), uniqueIndex("chat_conversation_turns_checkpoint_idx").on(table.threadId, table.checkpointId), index("chat_conversation_turns_thread_idx").on(table.threadId, table.id)]);

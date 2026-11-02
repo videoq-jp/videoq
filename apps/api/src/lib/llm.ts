@@ -1,4 +1,4 @@
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
 import { createChatModel, toLlmError } from "./chat-model";
 import { answerResponseFormat, AnswerTextStream, assertCompletedAnswer, parseModelAnswer } from "./structured-answer";
 import type { ModelAnswer } from "@videoq/trpc/chat";
@@ -7,11 +7,7 @@ import type { Bindings } from "../types/bindings";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 import { LlmConfigurationError } from "./openai";
 
-/**
- * QA RAG の LLM 呼び出し。temperature=0.0、max_tokens=1024 を使う。
- * プロンプトは system + human の 2 通のみで、
- * 会話履歴は渡さない（`ChatPromptTemplate.from_messages([system, human])`）。
- */
+/** QA RAG の LLM 呼び出し。 */
 export const MAX_TOKENS = 1024;
 export const LLM_REQUEST_TIMEOUT_MS = 2 * 60_000;
 export const LLM_STREAM_TIMEOUT_MS = 5 * 60_000;
@@ -26,9 +22,13 @@ export function llmTimeoutMs(env: Bindings, streaming = false): number {
   return value;
 }
 
-const promptMessages = (systemPrompt: string, queryText: string) => [
+export const conversationMessages = (messages: readonly { role: string; content: string }[]) =>
+  messages.flatMap<BaseMessage>(message => message.role === "user" ? [new HumanMessage(message.content)]
+    : message.role === "assistant" ? [new AIMessage(message.content)] : []);
+
+const promptMessages = (systemPrompt: string, queryText: string, history?: readonly { role: string; content: string }[]) => [
   new SystemMessage(systemPrompt),
-  new HumanMessage(queryText),
+  ...conversationMessages(history ?? [{ role: "user", content: queryText }]),
 ];
 
 /** 非ストリーミング（`llm.invoke`）。検証済みの構造化回答を返す。 */
@@ -37,6 +37,7 @@ export async function generateReply(
   systemPrompt: string,
   queryText: string,
   costLedger?: AnswerCostLedger,
+  history?: readonly { role: string; content: string }[],
 ): Promise<ModelAnswer> {
   const model = createChatModel(env, {
     maxTokens: MAX_TOKENS,
@@ -44,7 +45,7 @@ export async function generateReply(
     costLedger,
   });
   try {
-    const message = await model.invoke(promptMessages(systemPrompt, queryText), { response_format: answerResponseFormat });
+    const message = await model.invoke(promptMessages(systemPrompt, queryText, history), { response_format: answerResponseFormat });
     assertCompletedAnswer(message);
     return parseModelAnswer(message.text);
   } catch (error) {
@@ -64,6 +65,7 @@ export async function* streamReply(
   queryText: string,
   signal?: AbortSignal,
   costLedger?: AnswerCostLedger,
+  history?: readonly { role: string; content: string }[],
 ): AsyncGenerator<{ segmentIndex: number; text: string } | { answer: ModelAnswer }> {
   const model = createChatModel(env, {
     maxTokens: MAX_TOKENS,
@@ -77,7 +79,7 @@ export async function* streamReply(
     lifecycle.signal,
   ]);
   try {
-    const stream = model.streamEvents(promptMessages(systemPrompt, queryText), {
+    const stream = model.streamEvents(promptMessages(systemPrompt, queryText, history), {
       signal: requestSignal,
       response_format: answerResponseFormat,
     });

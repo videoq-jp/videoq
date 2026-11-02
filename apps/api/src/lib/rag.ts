@@ -1,15 +1,18 @@
 import { createAgent, createMiddleware, providerStrategy, tool, type ToolRuntime } from "langchain";
-import { HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
+import { SystemMessage, HumanMessage, RemoveMessage } from "@langchain/core/messages";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { ChatModelStreamEvent } from "@langchain/core/language_models/event";
 import { z } from "zod";
 import { createChatModel, toLlmError } from "./chat-model";
 import { deadlineSignal } from "./request-timeout";
 import { assertCompletedAnswer } from "./structured-answer";
+import { conversationCompaction } from "./conversation-compaction";
+import { REMOVE_ALL_MESSAGES, StateSchema } from "@langchain/langgraph";
+import { conversationConfig, requireConversationCheckpoint, ConversationCommitError, type ConversationMemory } from "./conversation";
 import { AnswerContentStream } from "./answer-content-stream";
 import { LlmProviderError } from "./openai";
 import { validateChatAnswer } from "./chat-citations";
-import { modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatAnswer, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
+import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatAnswer, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
 import { courseInfoTool, MAX_COURSE_INFO_CALLS } from "./rag-course-info";
 import { videoEvidenceTools } from "./rag-video-evidence";
 import { transcriptQuality } from "./transcript-quality";
@@ -17,8 +20,7 @@ import { MAX_WINDOW_READS, MAX_CLIP_INSPECTIONS, MAX_OVERVIEWS, MAX_SKIMS, MAX_F
 import {
   llmTimeoutMs,
   MAX_TOKENS,
-  generateReply,
-  streamReply,
+  conversationMessages,
 } from "./llm";
 import { buildAgentSystemPrompt, buildNoCourseSystemPrompt } from "./prompts";
 import { openSceneSearch, type SceneHit, type SceneSearch } from "../repositories/vector-repository";
@@ -29,7 +31,7 @@ import type { AnswerCostLedger } from "./answer-cost-ledger";
  * QA モードの RAG 本体（ReAct）。
  * 最新 user 質問を抽出 → 講座メタ情報取得 / シーン検索 → 取得した根拠から回答する。
  * 検索は最大 MAX_SCENE_SEARCHES 回。メタ情報だけの回答では検索接続を開かない。
- * 会話履歴は渡さない（system + human の 2 通のみ）。
+ * 会話・ツール結果はエージェントが保持し、根拠が足りない場合は追加取得する。
  */
 type ChatMessageInput = { role: string; content: string };
 
@@ -37,6 +39,9 @@ export type RagResult = {
   queryText: string;
   answer: ChatAnswer;
   retrievedContexts: string[];
+  /** Internal LangGraph state, never part of the public response. */
+  checkpointId?: string;
+  persistedTurn?: { chatLogId: number | null; feedback: string | null };
 };
 
 /** 1 回答あたりのベクトル検索回数の上限。検索ごとに埋め込みを生成する。 */
@@ -56,7 +61,8 @@ const SEARCH_LIMIT_REACHED =
  * 上限まで検索しても足りる余白を持たせた値にする。
  */
 export const MAX_TOOL_ROUNDS = MAX_SCENE_SEARCHES + MAX_COURSE_INFO_CALLS + MAX_WINDOW_READS + MAX_CLIP_INSPECTIONS + MAX_OVERVIEWS + MAX_SKIMS + MAX_FOCUS_CALLS;
-const RECURSION_LIMIT = 2 * MAX_TOOL_ROUNDS + 4;
+// Each round includes summarization/validation hooks, the model and tools.
+const RECURSION_LIMIT = 4 * MAX_TOOL_ROUNDS + 8;
 
 /** 最新の user メッセージ本文を抽出する。 */
 function extractLatestUserQuery(messages: readonly ChatMessageInput[]): string {
@@ -70,6 +76,7 @@ function extractLatestUserQuery(messages: readonly ChatMessageInput[]): string {
 
 export type RagParams = {
   messages: readonly ChatMessageInput[];
+  memory?: ConversationMemory;
   ownerUserId: string;
   videoIds: readonly number[] | null;
   locale: string | null;
@@ -80,8 +87,17 @@ export type RagParams = {
 
 const sceneKey = (hit: SceneHit) => `${hit.evidenceType ?? "transcript"}|${hit.videoId}|${hit.startTime}|${hit.endTime}`;
 
-/** Assign stable source IDs across all searches in one answer. */
+/** Assign stable source IDs across searches and persisted agent turns. */
 class SceneCollector {
+  constructor(private readonly allowed: readonly number[]) {}
+
+  restore(sources: readonly ChatSource[]) {
+    for (const source of sources) this.add({
+      videoId: source.video_id, videoTitle: source.title, startTime: source.start_time ?? "",
+      endTime: source.end_time ?? "", content: "", evidenceType: source.evidence_type,
+    });
+  }
+
   private readonly order: SceneHit[] = [];
   private readonly seen = new Map<string, number>();
   readonly courseContexts = new Set<string>();
@@ -94,6 +110,7 @@ class SceneCollector {
       // A new frame observation or a freshly edited subtitle window can carry
       // additional evidence at an existing timestamp. Preserve it in history.
       const prior = this.order[known - 1];
+      prior.videoTitle = hit.videoTitle;
       if (!prior.content.includes(hit.content)) {
         prior.content += `\n${hit.content}`;
       }
@@ -106,10 +123,14 @@ class SceneCollector {
   }
 
   get hits(): readonly SceneHit[] {
-    return this.order;
+    return this.order.filter(hit => hit.content);
   }
 
   get sources(): ChatSource[] {
+    return this.savedSources.filter(source => this.allowed.includes(source.video_id));
+  }
+
+  get savedSources(): ChatSource[] {
     return this.order.map((hit, index) => ({
       id: index + 1, video_id: hit.videoId, title: hit.videoTitle,
       start_time: hit.startTime, end_time: hit.endTime,
@@ -199,21 +220,23 @@ function prepareAgent(
     streaming?: boolean;
   },
 ) {
-  const collector = new SceneCollector();
-  const systemPrompt = buildAgentSystemPrompt(
-    params.scope.locale,
-    MAX_SCENE_SEARCHES,
-    MAX_COURSE_INFO_CALLS,
-  );
+  const collector = new SceneCollector(params.scope.videoIds ?? []);
+  const systemPrompt = hasAgentContext(params.scope)
+    ? buildAgentSystemPrompt(params.scope.locale, MAX_SCENE_SEARCHES, MAX_COURSE_INFO_CALLS)
+    : buildNoCourseSystemPrompt(params.scope.locale);
+  const inputMessages = params.scope.memory
+    ? [new HumanMessage(params.queryText)] : conversationMessages(params.scope.messages);
+  let completedResult: RagResult | undefined;
   let modelCalls = 0;
   let toolCalls = 0;
   // system は createAgent の systemPrompt ではなく messages で渡す。
   // systemPrompt はコンテンツブロック配列（[{type:"text"}]）で送信されるため、
   // 素の文字列しか受け付けない OpenAI 互換ゲートウェイでも動くようにする。
   const agent = createAgent({
+    checkpointer: params.scope.memory?.saver ?? false,
     model: createChatModel(env, { maxTokens: MAX_TOKENS, timeoutMs: params.timeoutMs, costLedger: params.scope.costLedger }),
     responseFormat: providerStrategy(modelAnswerSchema),
-    tools: [
+    tools: hasAgentContext(params.scope) ? [
       sceneSearchTool(params.search, collector, params.scope.videoIds ?? []),
       ...videoEvidenceTools(env, {
         ownerUserId: params.scope.ownerUserId, videoIds: params.scope.videoIds ?? [],
@@ -222,8 +245,21 @@ function prepareAgent(
         courseId: params.scope.courseId,
         ownerUserId: params.scope.ownerUserId,
       }, (context) => collector.courseContexts.add(context))] : []),
-    ],
+    ] : [],
     middleware: [
+      createMiddleware({
+        name: "citationRegistry",
+        stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]) }),
+        beforeAgent(state) { collector.restore(state.evidenceSources); },
+        afterAgent(state) {
+          assertCompletedAnswer(state.messages.at(-1));
+          completedResult = toResult(params.queryText, collector, state.structuredResponse);
+          // Keep citation identities alongside native agent history, including
+          // across summarization. Never reuse an old ID for a different scene.
+          return { evidenceSources: collector.savedSources };
+        },
+      }),
+      ...conversationCompaction(env, params.timeoutMs, params.scope.costLedger),
       createMiddleware({
         name: "propagateSearchErrors",
         // wrapToolCall 経由の実行例外は、そのまま呼び出し元へ伝播する。
@@ -251,6 +287,8 @@ function prepareAgent(
         // 引数不備の繰り返しも含め、最終ターンはツールなしで回答させる。
         wrapModelCall: (request, handler) => handler({
           ...request,
+          // Summarization replaces graph messages; always restore trusted instructions.
+          messages: [new SystemMessage(systemPrompt), ...request.messages.filter(message => message.type !== "system")],
           modelSettings: {
             ...request.modelSettings,
             ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
@@ -262,8 +300,15 @@ function prepareAgent(
   });
   return {
     agent,
-    input: { messages: [new SystemMessage(systemPrompt), new HumanMessage(params.queryText)] },
-    result: (answer: unknown) => toResult(params.queryText, collector, answer),
+    input: {
+      messages: params.scope.memory?.checkpointId === null ? [new RemoveMessage({ id: REMOVE_ALL_MESSAGES }), ...inputMessages] : inputMessages,
+      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined } : {}),
+    },
+    result: () => {
+      if (!completedResult) throw new Error("Missing completed agent answer");
+      return completedResult;
+    },
+    generated: () => completedResult !== undefined,
     sources: () => collector.sources,
   };
 }
@@ -321,31 +366,30 @@ export async function runRag(
   env: Bindings,
   params: RagParams,
 ): Promise<RagResult> {
+  await requireConversationCheckpoint(params.memory);
   const queryText = extractLatestUserQuery(params.messages);
-
-  if (!hasAgentContext(params)) {
-    const systemPrompt = buildNoCourseSystemPrompt(params.locale);
-    return { queryText, retrievedContexts: [], answer: validateChatAnswer(await generateReply(env, systemPrompt, queryText, params.costLedger), []) };
-  }
 
   const lifecycle = new AbortController();
   const requestSignal = deadlineSignal(llmTimeoutMs(env), lifecycle.signal);
   const search = lazySceneSearch(env, params, requestSignal);
+  let prepared: ReturnType<typeof prepareAgent> | undefined;
   try {
-    const prepared = prepareAgent(env, {
+    prepared = prepareAgent(env, {
       search,
       queryText,
       timeoutMs: llmTimeoutMs(env),
       scope: params,
       signal: requestSignal,
     });
-    const result = await prepared.agent.invoke(prepared.input, {
-      recursionLimit: RECURSION_LIMIT,
+    await prepared.agent.invoke(prepared.input, {
+      ...conversationConfig(params.memory), recursionLimit: RECURSION_LIMIT,
       signal: requestSignal,
     });
-    assertCompletedAnswer(result.messages.at(-1));
-    return prepared.result(result.structuredResponse);
+    const final = prepared.result();
+    const checkpoint = params.memory ? await params.memory.saver.getTuple({ configurable: { thread_id: params.memory.threadId } }) : undefined;
+    return { ...final, checkpointId: checkpoint?.config.configurable?.checkpoint_id as string | undefined };
   } catch (error) {
+    if (params.memory && prepared?.generated()) throw new ConversationCommitError(error);
     throw toLlmError(error);
   } finally {
     // 並列ツールの一方が失敗しても、残りの検索をバックグラウンドに残さない。
@@ -377,17 +421,8 @@ export async function* streamRag(
   params: RagParams,
   signal?: AbortSignal,
 ): AsyncGenerator<RagStreamChunk> {
+  await requireConversationCheckpoint(params.memory);
   const queryText = extractLatestUserQuery(params.messages);
-
-  if (!hasAgentContext(params)) {
-    const systemPrompt = buildNoCourseSystemPrompt(params.locale);
-    for await (const chunk of streamReply(env, systemPrompt, queryText, signal, params.costLedger)) {
-      if ("answer" in chunk) {
-        yield { final: { queryText, retrievedContexts: [], answer: validateChatAnswer(chunk.answer, []) } };
-      } else yield { part: { type: "text", ...chunk } };
-    }
-    return;
-  }
 
   const lifecycle = new AbortController();
   const requestSignal = AbortSignal.any([
@@ -395,38 +430,27 @@ export async function* streamRag(
     lifecycle.signal,
   ]);
   const search = lazySceneSearch(env, params, requestSignal);
+  let stopStream: (() => Promise<unknown>) | undefined;
   try {
     const prepared = prepareAgent(env, {
-      search,
-      queryText,
-      timeoutMs: llmTimeoutMs(env, true),
-      scope: params,
-      signal: requestSignal,
-      streaming: true,
+      search, queryText, timeoutMs: llmTimeoutMs(env, true), scope: params,
+      signal: requestSignal, streaming: true,
     });
-
-    const stream = await prepared.agent.stream(prepared.input, {
-      streamMode: ["values", "custom"],
-      signal: requestSignal,
-      recursionLimit: RECURSION_LIMIT,
+    const events = await prepared.agent.stream(prepared.input, {
+      ...conversationConfig(params.memory), signal: requestSignal,
+      recursionLimit: RECURSION_LIMIT, streamMode: "custom",
     });
+    stopStream = () => events.return();
 
     // Core assembles each model turn from native events, including scalar
     // finish metadata. Forward those events through the graph writer so tool
     // progress, error delivery and cancellation keep the same graph lifecycle.
     // Only segments[].text is displayed; tool preambles are not answer text.
-    let messages: readonly BaseMessage[] = [];
-    let structuredResponse: unknown;
     let parser = new AnswerContentStream();
     let toolTurn = false;
     let emittedAnswer = false;
     let sentSources = 0;
-    for await (const [mode, chunk] of stream) {
-      if (mode === "values") {
-        messages = chunk.messages;
-        structuredResponse = chunk.structuredResponse;
-        continue;
-      }
+    for await (const chunk of events) {
       if (!chunk || typeof chunk !== "object" || !("modelEvent" in chunk)) {
         const progress = searchProgressSchema.safeParse(chunk);
         if (progress.success) yield progress.data;
@@ -457,17 +481,18 @@ export async function* streamRag(
     }
     requestSignal.throwIfAborted();
 
-    assertCompletedAnswer(messages.at(-1));
-    const final = prepared.result(structuredResponse);
+    const final = prepared.result();
     const { answer } = final;
     for (const source of answer.sources.slice(sentSources)) yield { source };
     for (const part of parser.finish(answer)) yield { part };
-    yield { final };
+    const checkpoint = params.memory ? await params.memory.saver.getTuple({ configurable: { thread_id: params.memory.threadId } }) : undefined;
+    yield { final: { ...final, checkpointId: checkpoint?.config.configurable?.checkpoint_id as string | undefined } };
   } catch (error) {
     throw toLlmError(error);
   } finally {
     // 送信失敗などで consumer が途中終了した場合も、検索の通信を止める。
     lifecycle.abort();
+    await stopStream?.();
     await search.close();
   }
 }

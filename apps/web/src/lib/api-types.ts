@@ -72,6 +72,8 @@ export interface LoginRequest {
 
 export interface ChatRequest {
   messages: RouterInputs['chat']['send']['messages'];
+  conversation_id?: string;
+  resume_conversation?: boolean;
   course_id?: number;
   share_slug?: string;
 }

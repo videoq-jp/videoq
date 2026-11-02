@@ -39,6 +39,9 @@ export const outputSchemas = {
   "billing.checkout": urlSchema,
   "billing.portal": urlSchema,
 
+  "chat.conversations": z.object({ items: z.array(models.conversationSummarySchema), hasMore: z.boolean() }),
+  "chat.conversation": models.conversationSchema,
+  "chat.deleteConversation": successSchema,
   "chat.send": models.chatMessageSchema,
   "chat.feedback": z.object({ chat_log_id: z.number(), feedback: models.chatFeedbackSchema }),
   "chat.history": models.pageSchema(models.chatHistoryItemSchema),
