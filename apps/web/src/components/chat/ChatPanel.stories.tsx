@@ -32,9 +32,6 @@ const meta = {
   render: (args, { parameters }) => <PanelExample {...args} lifecycleControl={parameters.lifecycleControl === true} />,
   parameters: { api: { auth: authFixtures.user }, docs: { story: { inline: false, height: '800px' } } },
   beforeEach({ parameters, msw, args }) {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('videoq:conversations:v1:')) localStorage.removeItem(key);
-    }
     const mock = createChatPanelMock({
       events: answerEvents(english(), args.shareToken ? sharedFeedbackToken : undefined), history: english() ? englishHistory : courseHistory,
       ...parameters.chat as ChatPanelScenario | undefined,

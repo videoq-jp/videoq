@@ -7,12 +7,12 @@ import { deleteTag } from "../src/repositories/tag-repository";
 import type { Bindings } from "../src/types/bindings";
 
 const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
-const tables = ["video_courses", "tags", "videos", "video_tags", "video_course_members", "video_course_memberships", "video_course_invitations", "chat_logs", "chat_log_evaluations", "mcp_idempotency_records"];
+const tables = ["video_courses", "tags", "videos", "video_tags", "video_course_members", "video_course_memberships", "video_course_invitations", "chat_logs", "chat_log_evaluations", "mcp_idempotency_records", "chat_conversations"];
 const operations = [
   { name: "course", run: deleteCourse, table: "video_courses", queries: 5,
-    deleted: ["video_courses", "video_course_members", "video_course_memberships", "video_course_invitations", "chat_logs", "chat_log_evaluations", "mcp_idempotency_records"] },
+    deleted: ["video_courses", "video_course_members", "video_course_memberships", "video_course_invitations", "chat_logs", "chat_log_evaluations", "mcp_idempotency_records", "chat_conversations"] },
   { name: "tag", run: deleteTag, table: "tags", queries: 1, deleted: ["tags", "video_tags"] },
-  { name: "chat history", run: deleteCourseChatLogs, table: "chat_logs", queries: 4, deleted: ["chat_logs", "chat_log_evaluations"] },
+  { name: "chat history", run: deleteCourseChatLogs, table: "chat_logs", queries: 5, deleted: ["chat_logs", "chat_log_evaluations", "chat_conversations"] },
 ];
 
 (databaseUrl ? describe : describe.skip)("course, tag and history deletion on PostgreSQL", () => {
@@ -55,6 +55,7 @@ const operations = [
       CREATE TABLE video_course_memberships (id integer PRIMARY KEY, course_id integer NOT NULL REFERENCES video_courses ON DELETE CASCADE);
       CREATE TABLE video_course_invitations (id integer PRIMARY KEY, course_id integer NOT NULL REFERENCES video_courses ON DELETE CASCADE);
       CREATE TABLE chat_logs (id integer PRIMARY KEY, course_id integer NOT NULL REFERENCES video_courses ON DELETE CASCADE);
+      CREATE TABLE chat_conversations (id integer PRIMARY KEY, course_id integer NOT NULL REFERENCES video_courses ON DELETE CASCADE);
       CREATE TABLE chat_log_evaluations (id integer PRIMARY KEY, chat_log_id integer NOT NULL UNIQUE REFERENCES chat_logs ON DELETE CASCADE);
       CREATE TABLE mcp_idempotency_records (id integer PRIMARY KEY, user_id text NOT NULL, action text NOT NULL, resource_id bigint NOT NULL);
       INSERT INTO video_courses (id, user_id) VALUES (1, 'owner'), (2, 'outsider');
@@ -65,6 +66,7 @@ const operations = [
       INSERT INTO video_course_memberships VALUES (1, 1), (2, 2);
       INSERT INTO video_course_invitations VALUES (1, 1), (2, 2);
       INSERT INTO chat_logs VALUES (1, 1), (2, 2);
+      INSERT INTO chat_conversations VALUES (1, 1), (2, 2);
       INSERT INTO chat_log_evaluations VALUES (1, 1), (2, 2);
       INSERT INTO mcp_idempotency_records VALUES (1, 'owner', 'create_course', 1), (2, 'outsider', 'create_course', 2), (3, 'owner', 'request_video_upload', 1);
     `);
