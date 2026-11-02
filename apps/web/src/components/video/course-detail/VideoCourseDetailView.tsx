@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import {
   ArrowLeft,
+  BarChart3,
   Pencil,
   Plus,
   Save,
@@ -29,13 +30,16 @@ import {
 import { apiClient, type VideoCourse, type VideoInCourse } from '@/lib/api';
 import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 import { Link } from '@/lib/i18n';
+import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
+import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
-import { DashboardButton } from '@/components/dashboard/DashboardButton';
+import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { Button } from '@/components/ui/button';
+import { MenuList, MenuListItem, MenuListItemButton } from '@/components/ui/menu-list';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -298,27 +302,23 @@ function GroupVideoList({
 }
 
 function GroupPlayerPanel({
-  courseId,
   selectedVideo,
   videoRef,
   youtubeStartSeconds,
   youtubeSeekId,
   onVideoCanPlay,
-  canManage,
 }: {
-  courseId: number | null;
   selectedVideo: VideoInCourse | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   youtubeStartSeconds: number | null;
   youtubeSeekId: number;
   onVideoCanPlay: () => void;
-  canManage: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
     <section className="flex min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-solid-gray-420 bg-white">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         <div className="aspect-video max-h-[45dvh] bg-black flex items-center justify-center lg:max-h-[72dvh]">
           {selectedVideo ? (
             features.youtube && selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
@@ -354,9 +354,6 @@ function GroupPlayerPanel({
               {selectedVideo ? selectedVideo.title : t('videos.courseDetail.playerPlaceholder')}
             </HeadingTitle>
           </Heading>
-          <div className="flex shrink-0 items-center gap-3">
-            {courseId && canManage ? <DashboardButton courseId={courseId} size="sm" /> : null}
-          </div>
         </div>
       </div>
     </section>
@@ -410,8 +407,10 @@ export function VideoCourseDetailView({
 }: VideoCourseDetailViewProps) {
   const { t } = useTranslation();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
   const panelId = useId();
+  const pageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const hasOverview = !!(selectedVideo?.description || course?.description);
   const panelTabs: PanelTab[] = isMobile && hasOverview ? ['videos', 'assistant', 'overview'] : ['videos', 'assistant'];
@@ -423,8 +422,8 @@ export function VideoCourseDetailView({
     className: `absolute inset-0 flex min-h-0 flex-col ${activeTab === tab ? '' : 'invisible'}`,
   });
   const revealPlayer = () => {
+    if (pageRef.current) pageRef.current.scrollTop = 0;
     if (playerRef.current) playerRef.current.scrollTop = 0;
-    playerRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
   };
 
   const canManage = course?.access_role !== 'member';
@@ -439,7 +438,7 @@ export function VideoCourseDetailView({
       {isLoading ? (
         <LoadingSpinner fullScreen />
       ) : error && !course ? (
-        <div className="flex min-h-[calc(100dvh-var(--app-header-offset,5rem))] flex-col items-center justify-center gap-4">
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />
           <UtilityLink asChild>
             <Link href="/videos/courses" className="inline-flex items-center gap-1">
@@ -449,7 +448,7 @@ export function VideoCourseDetailView({
           </UtilityLink>
         </div>
       ) : !course ? (
-        <div className="flex min-h-[calc(100dvh-var(--app-header-offset,5rem))] items-center justify-center">
+        <div className="flex min-h-dvh items-center justify-center">
           <p className="text-solid-gray-700">{t('common.messages.courseNotFound')}</p>
         </div>
       ) : (
@@ -490,68 +489,48 @@ export function VideoCourseDetailView({
             />
           )}
 
-          <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100dvh-var(--app-header-offset,5rem))] lg:gap-5 lg:overflow-hidden lg:px-8 lg:pb-4">
-            <div className="shrink-0 space-y-4">
-              <div className="bg-solid-gray-900 px-4 py-3 text-white">
-                <Link href="/videos/courses" className="text-dns-14N-130 underline">{t('navigation.coursesNav')}</Link>
-                <h1 className="text-std-20B-150">{course.name}</h1>
-              </div>
+          {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
 
-              <header className="flex min-w-0 items-center justify-end">
-                {canManage ? <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenMembersModalChange(true)}
-                    aria-label={t('videos.courseMembers.open')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{t('videos.courseMembers.open')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsShareDialogOpen(true)}
-                    aria-label={t('videos.courseDetail.shareOpen')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3"
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{t('videos.courseDetail.shareOpen')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onStartEditing}
-                    disabled={isMutationPending}
-                    title={t('videos.courseDetail.editTitle')}
-                    aria-label={t('videos.courseDetail.editTitle')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{t('videos.courseDetail.editTitle')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="text"
-                    size="sm"
-                    onClick={onDeleteCourse}
-                    disabled={isMutationPending}
-                    title={t('videos.courseDetail.delete')}
-                    aria-label={t('videos.courseDetail.delete')}
-                    className="min-w-9 px-2.5 text-error-1 hover:bg-red-50 sm:min-w-20 sm:px-3"
-                  >
-                    {isDeleting ? (
-                      <InlineSpinner className="h-3.5 w-3.5" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden sm:inline">{t('videos.courseDetail.delete')}</span>
-                  </Button>
-                </div> : (
+          <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
+            <ViewerHeader title={course.name} backHref="/videos/courses">
+                {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
+                  <MenuList>
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => setIsShareDialogOpen(true)}>
+                        <Share2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseDetail.shareOpen')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => onOpenMembersModalChange(true)}>
+                        <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseMembers.open')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    {courseId ? <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => setIsDashboardOpen(true)}>
+                        <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('dashboard.button')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem> : null}
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={onStartEditing}
+                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}
+                        className="disabled:cursor-not-allowed disabled:opacity-50">
+                        <Pencil className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseDetail.editTitle')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    <MenuListItem className="mt-1 border-t border-solid-gray-200 pt-1">
+                      <MenuListItemButton type="box" size="regular" onClick={onDeleteCourse}
+                        disabled={isMutationPending} title={t('videos.courseDetail.delete')}
+                        className="text-error-1 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        {isDeleting ? <InlineSpinner className="h-4 w-4 shrink-0" /> : <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                        <span>{t('videos.courseDetail.delete')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                  </MenuList>
+                </ViewerActionsMenu> : (
                   <Button
                     type="button"
                     variant="outline"
@@ -559,27 +538,24 @@ export function VideoCourseDetailView({
                     onClick={onLeaveGroup}
                     disabled={isLeaving}
                     aria-label={t('videos.courseDetail.leave')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3"
+                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3 bg-white text-key-900"
                   >
                     {isLeaving ? <InlineSpinner className="h-3.5 w-3.5" /> : <LogOut className="h-3.5 w-3.5" />}
-                    <span className="hidden sm:inline">{t('videos.courseDetail.leave')}</span>
+                    <span className="inline">{t('videos.courseDetail.leave')}</span>
                   </Button>
                 )}
-              </header>
-            </div>
+            </ViewerHeader>
 
             {deleteError ? <div className="shrink-0"><ErrorMessage message={deleteError} /></div> : null}
 
-            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
-              <div ref={playerRef} className="scroll-mt-[var(--app-header-offset,5rem)] shrink-0 lg:min-h-0 lg:overflow-y-auto">
+            <main className="flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+              <div ref={playerRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
                 <GroupPlayerPanel
-                  courseId={courseId}
                   selectedVideo={selectedVideo}
                   videoRef={videoRef}
                   youtubeStartSeconds={youtubeStartSeconds}
                   youtubeSeekId={youtubeSeekId}
                   onVideoCanPlay={onVideoCanPlay}
-                  canManage={canManage}
                 />
 
                 {!isMobile ? (
@@ -625,7 +601,7 @@ export function VideoCourseDetailView({
                   ) : null}
                 </div>
               </aside>
-            </div>
+            </main>
           </div>
 
           {canManage ? <PickFromLibraryDialog

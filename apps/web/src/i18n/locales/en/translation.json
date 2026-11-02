@@ -564,6 +564,7 @@
       "videoListEmpty": "This course has no videos yet",
       "videoListEmptyHint": "Choose videos from the library, or upload them to the library first.",
       "videoCount": "{{count}} videos",
+      "manage": "Manage course",
       "editTitle": "Edit course",
       "editDescription": "Update the course name and description.",
       "shareLinkLabel": "Share link:",

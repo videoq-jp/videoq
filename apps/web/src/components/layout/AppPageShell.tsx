@@ -7,7 +7,7 @@ interface AppPageShellProps {
   activePage?: ActivePage;
   children: ReactNode;
   contentClassName?: string;
-  variant?: 'standard' | 'workspace';
+  variant?: 'standard' | 'workspace' | 'viewer';
 }
 
 export function AppPageShell({
@@ -16,6 +16,8 @@ export function AppPageShell({
   contentClassName = APP_CONTAINER_CLASS,
   variant = 'standard',
 }: AppPageShellProps) {
+  if (variant === 'viewer') return <>{children}</>;
+
   const mainClassName = variant === 'workspace'
     ? 'flex w-full flex-1 flex-col'
     : `mx-auto w-full flex-1 pb-16 pt-8 ${contentClassName}`;

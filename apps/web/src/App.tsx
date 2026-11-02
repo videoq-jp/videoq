@@ -83,7 +83,7 @@ const appPageRoutes: AppPageRoute[] = [
   { path: 'videos', element: <VideoLibraryPage />, handle: { activePage: 'videoLibrary' } },
   { path: 'videos/:id', element: <VideoDetailPage />, handle: { activePage: 'videoLibrary', variant: 'workspace' } },
   { path: 'videos/courses', element: <VideoCoursesPage />, handle: { activePage: 'courses' } },
-  { path: 'videos/courses/:id', element: <VideoCourseDetailPage />, handle: { activePage: 'courses', variant: 'workspace' } },
+  { path: 'videos/courses/:id', element: <VideoCourseDetailPage />, handle: { activePage: 'courses', variant: 'viewer' } },
   { path: 'settings', element: <SettingsPage />, handle: { activePage: 'settings' } },
   ...(!isOnprem && PricingPage && LegalPage && GuideIndexPage && GuidePage ? [
   { path: 'guides', element: <GuideIndexPage />, handle: {} },

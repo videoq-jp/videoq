@@ -220,9 +220,7 @@ it('keeps the search input mounted and focused when query parameters change', as
 
 it.each([
   ['/VIDEOS/7/', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
-  ['/en/%76ideos/courses/7', 'courses.get', 'navigation.coursesNav', 'common.messages.courseNotFound'],
   ['/%65n/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
-  ['/e%6e/videos/courses/7', 'courses.get', 'navigation.coursesNav', 'common.messages.courseNotFound'],
   ['/ja/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
   ['/%6Aa/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
 ])('uses the matched page’s workspace layout at %s', async (path, procedure, activeLabel, message) => {
@@ -231,6 +229,26 @@ it.each([
   await screen.findByText(i18n.t(message));
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   expect(within(primaryNav()).getByRole('link', { name: i18n.t(activeLabel) })).toHaveAttribute('aria-current', 'page');
+});
+
+it.each(['/en/%76ideos/courses/7', '/e%6e/videos/courses/7'])(
+  'uses the full-screen course viewer without the app navigation at %s', async path => {
+    globalThis.__setTrpcHandler('courses.get', () => null);
+    renderApp(path);
+    await screen.findByText(i18n.t('common.messages.courseNotFound'));
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+  },
+);
+
+it('keeps the app navigation out of a pending course viewer', async () => {
+  const load = vi.fn(() => new Promise(() => {}));
+  globalThis.__setTrpcHandler('courses.get', load);
+  renderApp('/videos/courses/7');
+  await waitFor(() => expect(load).toHaveBeenCalled());
+  expect(screen.getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+  expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 });
 
 it('normalizes the matched locale without decoding the remaining path or losing query and hash', async () => {
@@ -262,7 +280,6 @@ it('normalizes the locale before rendering an authentication page', async () => 
 
 it.each([
   ['/videos/7', 'videos.get', 'navigation.videoLibrary'],
-  ['/videos/courses/7', 'courses.get', 'navigation.coursesNav'],
 ])('keeps the header when leaving a pending workspace at %s', async (path, procedure, activeLabel) => {
   // Finish authentication before stalling the detail request; requests in the
   // same tRPC batch share a response, which would also hold Home's account query.

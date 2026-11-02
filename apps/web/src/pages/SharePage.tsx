@@ -1,13 +1,12 @@
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Link } from '@/lib/i18n';
 import { apiClient, type VideoInCourse } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { ChipLabel } from '@/components/ui/chip-label';
-import { BrandLogo } from '@/components/layout/BrandLogo';
+import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useVideoPlayback } from '@/hooks/useVideoPlayback';
@@ -131,21 +130,13 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
 
   return (
     <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
-      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 bg-solid-gray-900 px-4 py-2 text-white lg:flex-nowrap lg:px-6">
-        <Link href="/" className="shrink-0 text-std-20B-150 text-white focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-white">
-          <BrandLogo />
-        </Link>
-        <span className="hidden h-6 w-px shrink-0 bg-solid-gray-536 lg:block" aria-hidden="true" />
-        {/* On mobile the name takes its own row so the header action never squeezes it. */}
-        <h1 className="order-last min-w-0 basis-full truncate text-std-16N-170 lg:order-none lg:flex-1 lg:basis-0" title={course.name}>{course.name}</h1>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+      <ViewerHeader title={course.name}>
           {headerAction ?? (
             <ChipLabel variant="filled-1" color="blue" className="min-h-0 text-oln-14N-100">
               {t('videos.shared.publicBadge')}
             </ChipLabel>
           )}
-        </div>
-      </header>
+      </ViewerHeader>
 
       {intro ? <div className="shrink-0 border-b border-solid-gray-420 px-4 py-2 lg:px-6">{intro}</div> : null}
 
