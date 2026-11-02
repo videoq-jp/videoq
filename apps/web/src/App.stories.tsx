@@ -67,8 +67,9 @@ export const SharedCourseNotice: Story = {
   },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(i18n.t('courseSharing.quotaAndHistory'))).toBeVisible();
-    await expect(canvas.getByText(i18n.t('courseSharing.link'))).toBeVisible();
+    await expect(await canvas.findByRole('heading', { level: 1, name: course.name })).toBeInTheDocument();
+    await expect(canvas.queryByText(i18n.t('courseSharing.quotaAndHistory'))).not.toBeInTheDocument();
+    await expect(canvas.queryByText(i18n.t('courseSharing.link'))).not.toBeInTheDocument();
     const mobile = window.innerWidth < 1024;
     if (mobile) await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.shared.tabs.videos') }));
     const second = canvas.getByRole('button', { name: new RegExp(courseVideos[1].title) });

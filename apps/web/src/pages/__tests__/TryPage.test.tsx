@@ -51,7 +51,7 @@ describe('TryPage', () => {
     expect(chat).toHaveAttribute('data-send', 'true')
     expect(chat).toHaveTextContent('tryDemo.questions.derivative')
     expect(screen.getByText('tryDemo.intro')).toBeInTheDocument()
-    expect(screen.getByText('courseSharing.quotaAndHistory')).toBeInTheDocument()
+    expect(screen.queryByText('courseSharing.quotaAndHistory')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'tryDemo.signup' })).toHaveAttribute('href', '/signup')
     expect(startLandingVisit).toHaveBeenCalled()
   })
