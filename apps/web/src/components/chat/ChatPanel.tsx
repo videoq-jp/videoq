@@ -19,6 +19,8 @@ interface ChatPanelProps {
   suggestedQuestions?: string[];
   /** Send a suggested question on click instead of only filling the composer. */
   sendSuggestedQuestions?: boolean;
+  /** Omit the panel's own heading when a surrounding tab already names it. */
+  showTitle?: boolean;
 }
 
 type PanelTab = 'chat' | 'history';
@@ -37,6 +39,7 @@ function ChatPanelSession({
   showHistory = true,
   suggestedQuestions,
   sendSuggestedQuestions = false,
+  showTitle = true,
 }: ChatPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PanelTab>('chat');
@@ -85,10 +88,10 @@ function ChatPanelSession({
 
   return (
     <div className={containerClass}>
-      <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
-        <Heading size="18" className="shrink-0">
+      {(showTitle || showTabs) && <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
+        {showTitle && <Heading size="18" className="shrink-0">
           <HeadingTitle level={shareToken ? 'h3' : 'h2'}>{t('chat.title')}</HeadingTitle>
-        </Heading>
+        </Heading>}
         {showTabs && (
           <div className="flex gap-4">
             <button
@@ -117,7 +120,7 @@ function ChatPanelSession({
             </button>
           </div>
         )}
-      </div>
+      </div>}
 
       {tab === 'history' ? (
         <ChatHistoryView

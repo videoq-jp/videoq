@@ -70,13 +70,82 @@ describe('SharePage', () => {
         fireEvent(window, new Event('resize'))
         expect(screen.getByTestId('chat-panel')).toBe(panel)
       }
-      for (const tab of ['videos', 'player']) {
-        fireEvent.click(screen.getByRole('button', { name: `videos.shared.tabs.${tab}` }))
+      vi.stubGlobal('innerWidth', 390)
+      fireEvent(window, new Event('resize'))
+      for (const tab of ['videos', 'overview', 'assistant']) {
+        fireEvent.click(screen.getByRole('tab', { name: `videos.shared.tabs.${tab}` }))
+        expect(screen.getByRole('tab', { name: `videos.shared.tabs.${tab}` })).toHaveAttribute('aria-selected', 'true')
         expect(screen.getByTestId('chat-panel')).toBe(panel)
       }
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it('opens on the assistant tab and switches panels by keyboard', async () => {
+    render(<SharePage />)
+
+    const assistant = await screen.findByRole('tab', { name: 'videos.shared.tabs.assistant' })
+    const videos = screen.getByRole('tab', { name: 'videos.shared.tabs.videos' })
+    expect(assistant).toHaveAttribute('aria-selected', 'true')
+    expect(assistant).toHaveAttribute('tabindex', '0')
+    expect(videos).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.assistant' })).toContainElement(screen.getByTestId('chat-panel'))
+    expect(screen.queryByRole('tab', { name: 'videos.shared.tabs.overview' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(assistant, { key: 'ArrowLeft' })
+    expect(videos).toHaveAttribute('aria-selected', 'true')
+    expect(videos).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.videos' })).not.toHaveClass('invisible')
+    expect(screen.getByTestId('chat-panel').parentElement).toHaveClass('invisible')
+    fireEvent.keyDown(videos, { key: 'End' })
+    expect(assistant).toHaveFocus()
+  })
+
+  it('shows the overview under the player on desktop and in a tab on mobile', async () => {
+    try {
+      render(<SharePage />)
+      expect(await screen.findByText('Desc 1')).toBeInTheDocument()
+      expect(screen.getByText('Shared Description')).toBeInTheDocument()
+
+      vi.stubGlobal('innerWidth', 390)
+      fireEvent(window, new Event('resize'))
+      const overview = screen.getByRole('tab', { name: 'videos.shared.tabs.overview' })
+      expect(screen.getAllByText('Desc 1')).toHaveLength(1)
+      fireEvent.click(overview)
+      expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.overview' })).toHaveTextContent('Desc 1')
+
+      // Returning to desktop removes the tab, so the panel must fall back.
+      vi.stubGlobal('innerWidth', 1280)
+      fireEvent(window, new Event('resize'))
+      expect(screen.getByRole('tab', { name: 'videos.shared.tabs.assistant' })).toHaveAttribute('aria-selected', 'true')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('omits the overview tab when nothing describes the course or video', async () => {
+    getSharedCourse.mockResolvedValue({ ...mockCourse, description: '', videos: [{ ...mockCourse.videos[1] }] })
+    try {
+      vi.stubGlobal('innerWidth', 390)
+      render(<SharePage />)
+      await screen.findByRole('tab', { name: 'videos.shared.tabs.assistant' })
+      expect(screen.queryByRole('tab', { name: 'videos.shared.tabs.overview' })).not.toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('scrolls the player back into view when a citation is played', async () => {
+    getSharedCourse.mockResolvedValue({ ...mockCourse, videos: mockCourse.videos.map(video => ({
+      ...video, file: null, source_type: 'youtube', youtube_embed_url: `https://www.youtube.com/embed/video${video.id}`,
+    })) })
+    const { container } = render(<SharePage />)
+    const citation = await screen.findByRole('button', { name: 'Play citation' })
+    const details = container.querySelector('main > section')!
+    details.scrollTop = 300
+    fireEvent.click(citation)
+    expect(details.scrollTop).toBe(0)
   })
 
   it('should select first video by default', async () => {

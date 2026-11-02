@@ -69,14 +69,12 @@ export const SharedCourseNotice: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(i18n.t('courseSharing.quotaAndHistory'))).toBeVisible();
     await expect(canvas.getByText(i18n.t('courseSharing.link'))).toBeVisible();
-    const mobile = window.innerWidth < 1024;
-    if (mobile) await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.shared.tabs.videos') }));
+    await userEvent.click(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.videos') }));
     const second = canvas.getByRole('button', { name: new RegExp(courseVideos[1].title) });
     second.focus();
     await expect(second).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     await expect(canvas.getByRole('heading', { name: courseVideos[1].title })).toBeVisible();
-    if (mobile) await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.shared.tabs.videos') }));
     const first = canvas.getByRole('button', { name: new RegExp(courseVideos[0].title) });
     first.focus();
     await userEvent.keyboard(' ');
@@ -130,9 +128,9 @@ export const CourseChatContinuity: Story = {
       await waitFor(() => expect(chatRequest).toHaveBeenCalledTimes(count));
     };
     const changeMobileTab = async (tab: 'videos' | 'player') => {
-      await userEvent.click(canvas.getByRole('button', {
-        name: i18n.t(shared ? `videos.shared.tabs.${tab}` : `videos.courseDetail.mobileTabs.${tab}`),
-      }));
+      await userEvent.click(shared
+        ? canvas.getByRole('tab', { name: i18n.t(`videos.shared.tabs.${tab === 'player' ? 'assistant' : 'videos'}`) })
+        : canvas.getByRole('button', { name: i18n.t(`videos.courseDetail.mobileTabs.${tab}`) }));
       await expect(canvas.getByRole('textbox', { hidden: true })).toBe(input);
       if (tab === 'videos') await expect(input).not.toBeVisible();
       else await expect(input).toBeVisible();

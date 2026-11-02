@@ -177,7 +177,7 @@ function StudentView({locale}:{locale:Locale}) {
     <ProviderHeader locale={locale}/>
     <ProductWindow locale={locale} path={`/share/${demoSlug}`} state={state} f={f}
       opacity={fade(f, 0, timeline.history - timeline.student)} camera={cameraFor(locale).student} cursor={cursorFor(locale).student}
-      clicks={[t.select, t.focus, t.send, t.sourceClick]} pointerHidden={f > t.typingStart && f < t.typingEnd}>
+      clicks={[t.focus, t.send, t.sourceClick]} pointerHidden={f > t.typingStart && f < t.typingEnd}>
       <Routes><Route path={`${english ? '/en' : ''}/share/:token`} element={<SharePage/>}/></Routes>
       <AfterCommit run={doc => {
         const input = doc.querySelector<HTMLInputElement>('input[aria-label]');

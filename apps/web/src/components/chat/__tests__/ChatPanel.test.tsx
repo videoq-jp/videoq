@@ -179,6 +179,11 @@ describe('ChatPanel', () => {
     expect(screen.queryByText(/chat.history/)).not.toBeInTheDocument()
   })
 
+  it('omits its heading when a surrounding tab names the panel', () => {
+    render(<ChatPanel shareToken="token" showTitle={false} />)
+    expect(screen.queryByRole('heading', { name: 'chat.title' })).not.toBeInTheDocument()
+  })
+
   it('fills the composer when a suggested question is clicked', () => {
     render(<ChatPanel courseId={1} shareToken="token123" suggestedQuestions={['CNNとは？']} />)
 
