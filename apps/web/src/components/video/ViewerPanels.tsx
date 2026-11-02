@@ -1,12 +1,13 @@
 import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlignLeft, List, Sparkles } from 'lucide-react';
+import { AlignLeft, List, Sparkles, MessageCircle } from 'lucide-react';
 
-export type PanelTab = 'videos' | 'assistant' | 'overview';
+export type PanelTab = 'videos' | 'assistant' | 'overview' | 'qa';
 
-const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft };
+const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft, qa: MessageCircle };
 
-export function PanelTabs({ tabs, activeTab, idPrefix, onChange }: {
+export function PanelTabs({ tabs, activeTab, idPrefix, onChange, label }: {
+  label?: string;
   tabs: PanelTab[];
   activeTab: PanelTab;
   idPrefix: string;
@@ -29,7 +30,7 @@ export function PanelTabs({ tabs, activeTab, idPrefix, onChange }: {
   };
 
   return (
-    <div role="tablist" aria-label={t('videos.shared.tabs.label')} className="flex shrink-0 gap-1 overflow-x-auto border-b border-solid-gray-420 px-2">
+    <div role="tablist" aria-label={label ?? t('videos.shared.tabs.label')} className="flex shrink-0 gap-1 overflow-x-auto border-b border-solid-gray-420 px-2">
       {tabs.map((tab) => {
         const Icon = PANEL_TAB_ICONS[tab];
         const isActive = tab === activeTab;

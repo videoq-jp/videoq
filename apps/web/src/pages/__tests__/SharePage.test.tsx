@@ -91,7 +91,7 @@ describe('SharePage', () => {
     expect(assistant).toHaveAttribute('tabindex', '0')
     expect(videos).toHaveAttribute('tabindex', '-1')
     expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.assistant' })).toContainElement(screen.getByTestId('chat-panel'))
-    expect(screen.queryByRole('tab', { name: 'videos.shared.tabs.overview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'videos.shared.tabs.overview' })).toBeInTheDocument()
 
     fireEvent.keyDown(assistant, { key: 'ArrowLeft' })
     expect(videos).toHaveAttribute('aria-selected', 'true')
@@ -102,7 +102,7 @@ describe('SharePage', () => {
     expect(assistant).toHaveFocus()
   })
 
-  it('shows the overview under the player on desktop and in a tab on mobile', async () => {
+  it('keeps the learning tabs under the player across desktop and mobile', async () => {
     try {
       render(<SharePage />)
       expect(await screen.findByText('Desc 1')).toBeInTheDocument()
@@ -115,7 +115,7 @@ describe('SharePage', () => {
       fireEvent.click(overview)
       expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.overview' })).toHaveTextContent('Desc 1')
 
-      // Returning to desktop removes the tab, so the panel must fall back.
+      // Learning tabs remain available at every viewport width.
       vi.stubGlobal('innerWidth', 1280)
       fireEvent(window, new Event('resize'))
       expect(screen.getByRole('tab', { name: 'videos.shared.tabs.assistant' })).toHaveAttribute('aria-selected', 'true')
@@ -124,13 +124,15 @@ describe('SharePage', () => {
     }
   })
 
-  it('omits the overview tab when nothing describes the course or video', async () => {
+  it('keeps the overview and Q&A tabs when descriptions are empty', async () => {
     getSharedCourse.mockResolvedValue({ ...mockCourse, description: '', videos: [{ ...mockCourse.videos[1] }] })
     try {
       vi.stubGlobal('innerWidth', 390)
       render(<SharePage />)
       await screen.findByRole('tab', { name: 'videos.shared.tabs.assistant' })
-      expect(screen.queryByRole('tab', { name: 'videos.shared.tabs.overview' })).not.toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'videos.shared.tabs.overview' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'videos.shared.tabs.qa' })).toBeInTheDocument()
+      expect(screen.getByText('qa.noOverview')).toBeInTheDocument()
     } finally {
       vi.unstubAllGlobals()
     }

@@ -14,6 +14,7 @@ import { installUploadFixture } from '../.storybook/mocks/videoUpload';
 import { failure, pending, success, trpcMutation, trpcQuery } from '../.storybook/mocks/network';
 import { chatRequest, createChatPanelMock } from '../.storybook/mocks/chatPanel';
 
+const resetQaScenarios: (() => void)[] = [];
 const emptyPage = { data: [], meta: { total: 0, limit: 24, offset: 0 } };
 const api = {
   auth: authFixtures.user,
@@ -34,6 +35,10 @@ const meta = {
   globals: { viewport: { value: 'desktop', isRotated: false } },
   parameters: { layout: 'fullscreen', pathname: '/pricing', api, docs: { story: { inline: false, height: '900px' } } },
   async beforeEach() {
+    resetQaScenarios.forEach(reset => reset());
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('videoq:conversations:')) localStorage.removeItem(key);
+    }
     // Browser stories verify layout and interactions. The navigation unit test
     // controls lazy-module delays explicitly; await cold Vite imports here.
     await Promise.all([
@@ -179,6 +184,123 @@ export const SharedViewerPreview: Story = {
         ...previewCourse, updated_at: course.created_at, share_slug: 'linear-algebra', access_role: 'public',
       }))],
     },
+  },
+};
+
+const qaQuestion = {
+  id: '11111111-1111-4111-8111-111111111111', title: '行列の積の順序について',
+  body: 'ABとBAで結果が異なるのはなぜですか？具体例で教えてください。',
+  videoId: courseVideos[0].id, videoTitle: courseVideos[0].title,
+  author: { name: '山田 花子', instructor: false }, createdAt: '2026-11-01T09:00:00.000Z', updatedAt: '2026-11-01T09:00:00.000Z',
+  featured: true, replyCount: 1, votes: 3, voted: false, canEdit: false, canDelete: true,
+};
+const qaReply = {
+  id: '22222222-2222-4222-8222-222222222222', body: '行列は変換を表します。回転してから平行移動する場合と、平行移動してから回転する場合を比べてみましょう。',
+  author: { name: '田中 講師', instructor: true }, createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z', canEdit: true, canDelete: true,
+};
+function qaPreviewMocks(publicView = false) {
+  let removed = false;
+  let question = { ...qaQuestion, canDelete: !publicView };
+  let replies = [{ ...qaReply, canEdit: !publicView, canDelete: !publicView }];
+  resetQaScenarios.push(() => {
+    removed = false;
+    question = { ...qaQuestion, canDelete: !publicView };
+    replies = [{ ...qaReply, canEdit: !publicView, canDelete: !publicView }];
+  });
+  return [
+    trpcQuery('qa.list', input => {
+      const matches = !removed && (!input.search || (question.title + question.body).includes(input.search)) && !input.unanswered && (!input.videoId || input.videoId === question.videoId);
+      return success({ items: matches ? [question] : [], total: matches ? 1 : 0, canPost: !publicView, canModerate: !publicView });
+    }),
+    trpcQuery('qa.get', successPlaceholder => success({ question, replies: replies.slice(successPlaceholder.offset ?? 0, (successPlaceholder.offset ?? 0) + (successPlaceholder.limit ?? 20)), replyTotal: replies.length, canPost: !publicView, canModerate: !publicView })),
+    trpcMutation('qa.ask', input => { removed = false; question = { ...question, title: input.title, body: input.body, featured: false, replyCount: 0, canEdit: true }; replies = []; return success({ id: question.id }); }),
+    trpcMutation('qa.reply', input => { replies.push({ ...qaReply, id: crypto.randomUUID(), body: input.body }); question = { ...question, replyCount: replies.length }; return success({ id: replies.at(-1)!.id }); }),
+    trpcMutation('qa.vote', input => { question = { ...question, voted: input.voted, votes: input.voted ? 4 : 3 }; return success({ success: true }); }),
+    trpcMutation('qa.feature', input => { question = { ...question, featured: input.featured }; return success({ success: true }); }),
+    trpcMutation('qa.updateQuestion', input => { question = { ...question, title: input.title, body: input.body }; return success({ success: true }); }),
+    trpcMutation('qa.updateReply', input => { replies = replies.map(item => item.id === input.replyId ? { ...item, body: input.body } : item); return success({ success: true }); }),
+    trpcMutation('qa.deleteReply', input => { replies = replies.filter(item => item.id !== input.replyId); question = { ...question, replyCount: replies.length }; return success({ success: true }); }),
+    trpcMutation('qa.deleteQuestion', () => { removed = true; return success({ success: true }); }),
+  ];
+}
+export const CourseQaPreview: Story = {
+  ...CourseViewerPreview,
+  parameters: { pathname: `/videos/courses/${course.id}`, api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', success(previewCourse)), ...qaPreviewMocks()] } },
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    await expect(await canvas.findByRole('button', { name: qaQuestion.title })).toBeVisible();
+  },
+};
+export const CourseQaPreviewMobile: Story = { ...CourseQaPreview, globals: { viewport: { value: 'mobile', isRotated: false } } };
+export const SharedQaPreview: Story = {
+  ...CourseQaPreview,
+  parameters: { pathname: '/share/linear-algebra', api: { auth: authFixtures.loggedOut, trpc: [
+    trpcQuery('courses.shared', success({ ...previewCourse, updated_at: course.created_at, share_slug: 'linear-algebra', access_role: 'public' })), ...qaPreviewMocks(true),
+  ] } },
+};
+export const CourseQaPostAndAnswer: Story = {
+  ...CourseQaPreview,
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    await userEvent.click(await canvas.findByRole('button', { name: i18n.t('qa.ask') }));
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), 'ベクトルの向きについて');
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionBody')), '負の数を掛けるとどうなりますか？');
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('qa.publish') }));
+    await expect(await canvas.findByRole('heading', { name: 'ベクトルの向きについて' })).toBeVisible();
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.yourAnswer')), '向きが反対になります。');
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('qa.postAnswer') }));
+    await expect(await canvas.findByText('向きが反対になります。')).toBeVisible();
+  },
+};
+
+export const SharedQaReadOnly: Story = {
+  ...SharedQaPreview,
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    await expect(await canvas.findByRole('link', { name: i18n.t('qa.loginToPost') })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: i18n.t('qa.ask') })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: qaQuestion.title }));
+    await expect(await canvas.findByText(qaReply.body)).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: i18n.t('qa.deleteQuestion') })).not.toBeInTheDocument();
+  },
+};
+export const CourseQaFiltersAndDraft: Story = {
+  ...CourseQaPreview,
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    await expect(await canvas.findByRole('button', { name: qaQuestion.title })).toBeVisible();
+    await userEvent.click(canvas.getByRole('checkbox', { name: i18n.t('qa.unanswered') }));
+    await expect(await canvas.findByText(i18n.t('qa.noMatches'))).toBeVisible();
+    await userEvent.click(canvas.getByRole('checkbox', { name: i18n.t('qa.unanswered') }));
+    await expect(await canvas.findByRole('button', { name: qaQuestion.title })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('qa.ask') }));
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), '下書きの質問');
+    await userEvent.click(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.overview') }));
+    await userEvent.click(canvas.getByRole('tab', { name: 'Q&A' }));
+    await expect(canvas.getByLabelText(i18n.t('qa.questionTitle'))).toHaveValue('下書きの質問');
+  },
+};
+
+export const CourseQaPostError: Story = {
+  ...CourseQaPreview,
+  parameters: { pathname: `/videos/courses/${course.id}`, api: { ...api, trpc: [
+    ...api.trpc, trpcQuery('courses.get', success(previewCourse)),
+    ...qaPreviewMocks().map(mock => mock.path === 'qa.ask' ? trpcMutation('qa.ask', failure('Posting unavailable')) : mock),
+  ] } },
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    await userEvent.click(await canvas.findByRole('button', { name: i18n.t('qa.ask') }));
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), '送信前の質問');
+    await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionBody')), '入力した内容を保持する');
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('qa.publish') }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(i18n.t('qa.operationError'));
+    await expect(canvas.getByLabelText(i18n.t('qa.questionTitle'))).toHaveValue('送信前の質問');
+    await expect(canvas.getByLabelText(i18n.t('qa.questionBody'))).toHaveValue('入力した内容を保持する');
   },
 };
 

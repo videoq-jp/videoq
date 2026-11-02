@@ -1,3 +1,4 @@
+import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +8,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { ChipLabel } from '@/components/ui/chip-label';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
-import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
+import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useVideoPlayback } from '@/hooks/useVideoPlayback';
 import { useMobileTab } from '@/hooks/useMobileTab';
@@ -65,7 +66,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
 
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
-  const { mobileTab: requestedTab, setMobileTab: setPanelTab, isMobile } = useMobileTab<PanelTab>('assistant');
+  const { mobileTab: requestedTab, setMobileTab: setPanelTab } = useMobileTab<PanelTab>('assistant');
   const courseQuery = useSharedCourseQuery(shareToken);
   const course = courseQuery.data ?? null;
   const error = courseQuery.error ? t('common.messages.shareLoadFailed') : null;
@@ -84,9 +85,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     onVideoSelect: setSelectedVideoId,
   });
 
-  // The overview has room under the player on desktop, so it is a tab only on mobile.
-  const hasOverview = !!(selectedVideo?.description || course?.description);
-  const panelTabs: PanelTab[] = isMobile && hasOverview ? ['videos', 'assistant', 'overview'] : ['videos', 'assistant'];
+  const panelTabs: PanelTab[] = ['videos', 'assistant'];
   const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
 
   const revealPlayer = () => {
@@ -176,10 +175,10 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
             <h2 className="truncate text-std-16B-170 text-solid-gray-800 lg:whitespace-normal lg:text-std-20B-150">
               {selectedVideo ? selectedVideo.title : t('videos.shared.playerPlaceholder')}
             </h2>
-            {isMobile ? null : (
-              <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
-            )}
           </div>
+          <CourseLearningDetails key={JSON.stringify([course.id, shareToken])} courseId={course.id} shareSlug={shareToken}
+            videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course.description}
+            onVideoPlay={(id, time) => { onCitationPlay?.(); handleVideoPlayFromTime(id, time); revealPlayer(); }} />
         </section>
 
         {/* RIGHT: one mounted chat beside the player on desktop, below it on mobile. */}
@@ -225,13 +224,6 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                 className="min-h-0 flex-1 border-0"
               />
             </div>
-            {panelTabs.includes('overview') ? (
-              <div {...panelProps('overview')}>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                  <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
-                </div>
-              </div>
-            ) : null}
           </div>
         </aside>
       </main>

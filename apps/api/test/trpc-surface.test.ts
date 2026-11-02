@@ -53,6 +53,7 @@ const EXPECTED_PROCEDURES = [
   "memberships.removeTag",
   "memberships.removeVideo",
   "memberships.reorderVideos",
+  'qa.ask', 'qa.deleteQuestion', 'qa.deleteReply', 'qa.feature', 'qa.get', 'qa.list', 'qa.reply', 'qa.updateQuestion', 'qa.updateReply', 'qa.vote',
   "tags.create",
   "tags.delete",
   "tags.get",

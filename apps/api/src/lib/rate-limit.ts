@@ -6,6 +6,8 @@ import type { AppEnv, Bindings } from "../types/bindings";
  * VideoQ API のスコープ別レート制限。
  */
 export const THROTTLE_RATES = {
+  course_qa_read: { limit: 600, periodSec: 3600 },
+  course_qa_write: { limit: 120, periodSec: 3600 },
   chat_share_token_ip: { limit: 100, periodSec: 3600 },
   // 公開デモは誰でも開けるので、1 人が所有者の回答枠を使い切れないよう狭くする。
   chat_public_demo_ip: { limit: 10, periodSec: 3600 },

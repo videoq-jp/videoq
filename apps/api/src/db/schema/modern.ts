@@ -834,3 +834,33 @@ export const chatConversationTurns = pgTable("chat_conversation_turns", {
   chatLogId: bigint("chat_log_id", { mode: "number" }).references(() => chatLogs.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: "chat_conversation_turns_thread_fk" }).onDelete("cascade"), uniqueIndex("chat_conversation_turns_checkpoint_idx").on(table.threadId, table.checkpointId), index("chat_conversation_turns_thread_idx").on(table.threadId, table.id)]);
+
+// Explicitly published course Q&A; private AI chat logs are never included.
+export const courseQuestions = pgTable('course_questions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  videoId: bigint('video_id', { mode: 'number' }).references(() => videos.id, { onDelete: 'set null' }),
+  authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  title: varchar('title', { length: 200 }).notNull(),
+  body: text('body').notNull(),
+  featured: boolean('featured').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  index('course_questions_course_created_idx').on(table.courseId, table.createdAt),
+  index('course_questions_video_idx').on(table.courseId, table.videoId),
+  check('course_questions_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 10000`),
+]);
+export const courseQuestionReplies = pgTable('course_question_replies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  questionId: uuid('question_id').notNull().references(() => courseQuestions.id, { onDelete: 'cascade' }),
+  authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('course_question_replies_question_idx').on(table.questionId, table.createdAt),
+  check('course_question_replies_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 10000`)]);
+export const courseQuestionVotes = pgTable('course_question_votes', {
+  questionId: uuid('question_id').notNull().references(() => courseQuestions.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+}, table => [primaryKey({ columns: [table.questionId, table.userId] })]);
