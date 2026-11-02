@@ -38,6 +38,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { Button } from '@/components/ui/button';
+import { MenuList, MenuListItem, MenuListItemButton } from '@/components/ui/menu-list';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -492,61 +493,39 @@ export function VideoCourseDetailView({
                   <summary aria-label={t('videos.courseDetail.manage')} className="flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-4 border border-solid-gray-536 px-3 focus-visible:outline-4 focus-visible:outline-white">
                     <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                   </summary>
-                  <div className="absolute right-0 top-full z-40 mt-2 flex w-64 flex-col gap-2 border border-solid-gray-300 bg-white p-3 text-solid-gray-800 shadow-lg">
-                  {courseId ? <DashboardButton courseId={courseId} size="sm" className="w-full justify-start [&_span]:inline" /> : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenMembersModalChange(true)}
-                    aria-label={t('videos.courseMembers.open')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3 bg-white text-key-900"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span className="inline">{t('videos.courseMembers.open')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsShareDialogOpen(true)}
-                    aria-label={t('videos.courseDetail.shareOpen')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3 bg-white text-key-900"
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                    <span className="inline">{t('videos.courseDetail.shareOpen')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onStartEditing}
-                    disabled={isMutationPending}
-                    title={t('videos.courseDetail.editTitle')}
-                    aria-label={t('videos.courseDetail.editTitle')}
-                    className="min-w-9 px-2.5 sm:min-w-20 sm:px-3 bg-white text-key-900"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span className="inline">{t('videos.courseDetail.editTitle')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="text"
-                    size="sm"
-                    onClick={onDeleteCourse}
-                    disabled={isMutationPending}
-                    title={t('videos.courseDetail.delete')}
-                    aria-label={t('videos.courseDetail.delete')}
-                    className="min-w-9 px-2.5 text-error-1 hover:bg-red-50 sm:min-w-20 sm:px-3"
-                  >
-                    {isDeleting ? (
-                      <InlineSpinner className="h-3.5 w-3.5" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
-                    <span className="inline">{t('videos.courseDetail.delete')}</span>
-                  </Button>
-                  </div>
+                  <MenuList className="absolute right-0 top-full z-40 mt-2 w-64 border border-solid-gray-300 bg-white py-1 text-solid-gray-800 shadow-lg">
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => setIsShareDialogOpen(true)}>
+                        <Share2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseDetail.shareOpen')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => onOpenMembersModalChange(true)}>
+                        <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseMembers.open')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    {courseId ? <MenuListItem>
+                      <DashboardButton courseId={courseId} presentation="menu-item" />
+                    </MenuListItem> : null}
+                    <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={onStartEditing}
+                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}
+                        className="disabled:cursor-not-allowed disabled:opacity-50">
+                        <Pencil className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('videos.courseDetail.editTitle')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                    <MenuListItem className="mt-1 border-t border-solid-gray-200 pt-1">
+                      <MenuListItemButton type="box" size="regular" onClick={onDeleteCourse}
+                        disabled={isMutationPending} title={t('videos.courseDetail.delete')}
+                        className="text-error-1 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        {isDeleting ? <InlineSpinner className="h-4 w-4 shrink-0" /> : <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                        <span>{t('videos.courseDetail.delete')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem>
+                  </MenuList>
                 </details> : (
                   <Button
                     type="button"
