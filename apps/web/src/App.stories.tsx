@@ -151,6 +151,30 @@ export const CourseChatContinuity: Story = {
     await expect(canvas.getByText(followup)).toBeVisible();
   },
 };
+export const CourseViewerLayout: Story = {
+  ...CourseChatContinuity,
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { level: 1, name: course.name })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+    const brand = canvas.getByRole('link', { name: 'VideoQ' });
+    await expect(brand.querySelector('img')).toHaveAttribute('src', '/logo192.png');
+    await expect(brand).toHaveAttribute('href', i18n.language.startsWith('en') ? '/en/videos/courses' : '/videos/courses');
+    await expect(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.assistant') })).toHaveAttribute('aria-selected', 'true');
+    await expect(canvas.getByLabelText(i18n.t('videos.courseDetail.manage')).closest('details')).not.toHaveAttribute('open');
+    await userEvent.click(canvas.getByLabelText(i18n.t('videos.courseDetail.manage')));
+    await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') }));
+    await expect(await canvas.findByRole('dialog')).toBeVisible();
+  },
+};
+export const CourseViewerLayoutMobile: Story = {
+  ...CourseViewerLayout, globals: { viewport: { value: 'mobile', isRotated: false } },
+};
+export const CourseViewerLayoutEnglishMobile: Story = {
+  ...CourseViewerLayout, globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } },
+};
+
 export const CourseChatContinuityMobile: Story = {
   ...CourseChatContinuity, globals: { viewport: { value: 'mobile', isRotated: false } },
 };
@@ -405,6 +429,7 @@ function courseMetadataStory(field: 'name' | 'description'): Story {
     },
     beforeEach() { Object.values(courseEditRequests).forEach(request => request.mockClear()); },
     async play({ canvas, canvasElement, userEvent }) {
+      await userEvent.click(await canvas.findByLabelText(i18n.t('videos.courseDetail.manage')));
       const edit = await canvas.findByRole('button', { name: i18n.t('videos.courseDetail.editTitle') });
       await userEvent.click(edit);
       const dialog = within(canvas.getByRole('dialog'));
@@ -446,6 +471,7 @@ export const CourseDialogsClose: Story = {
     ] },
   },
   async play({ canvas, userEvent }) {
+    await userEvent.click(await canvas.findByLabelText(i18n.t('videos.courseDetail.manage')));
     const edit = await canvas.findByRole('button', { name: i18n.t('videos.courseDetail.editTitle') });
     await userEvent.click(edit);
     await userEvent.click(within(canvas.getByRole('dialog')).getByRole('button', { name: i18n.t('common.actions.cancel') }));
@@ -646,10 +672,16 @@ export const PendingVideo: Story = {
   },
 };
 export const PendingCourse: Story = {
-  ...PendingVideo,
+  beforeEach: PendingVideo.beforeEach,
   parameters: {
     pathname: '/videos/courses/7',
     api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', pending())] },
+  },
+  async play({ canvasElement }) {
+    const canvas = within(canvasElement);
+    await canvas.findByText(i18n.t('common.messages.loading'));
+    await expect(canvas.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('contentinfo')).not.toBeInTheDocument();
   },
 };
 

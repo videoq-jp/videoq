@@ -562,6 +562,7 @@
       "videoListEmpty": "この講座にはまだ動画がありません",
       "videoListEmptyHint": "ライブラリから選ぶか、先にライブラリでアップロードしてください。",
       "videoCount": "全{{count}}本",
+      "manage": "講座管理",
       "editTitle": "講座を編集",
       "editDescription": "講座名と説明を更新します。",
       "shareLinkLabel": "共有リンク:",

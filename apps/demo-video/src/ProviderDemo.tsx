@@ -84,7 +84,7 @@ function CourseScreen({locale, shareOpen, copied, historyTab}:{locale:Locale; sh
   useLayoutEffect(() => seekVideo(videoRef.current, 0), []);
   const selected = course.videos.find(video => video.id === cited.id) ?? null;
   const link = shareLink(locale);
-  return <AppPageShell variant="workspace" activePage="courses">
+  return <AppPageShell variant="viewer" activePage="courses">
     <VideoCourseDetailView course={course} courseId={course.id} isLoading={false} error={null} selectedVideo={selected}
       deleteError={null} isDeleting={false} removingVideoId={null} isReordering={false} isEditing={false} editedName={course.name}
       editedDescription="" updateError={null} isUpdating={false} isAddModalOpen={false} isMembersModalOpen={false} isLeaving={false}
@@ -97,7 +97,7 @@ function CourseScreen({locale, shareOpen, copied, historyTab}:{locale:Locale; sh
     {shareOpen && <ShareLinkDialog isOpen shareSlug={demoSlug} shareLink={link} isGeneratingLink={false} isDeletingLink={false}
       isCopied={copied} onOpenChange={noop} onGenerate={noop} onDelete={noop} onCopy={noop}/>}
     <AfterCommit run={doc => {
-      const label = i18n.getFixedT(locale)(historyTab ? 'chat.history' : 'chat.newConsultation');
+      const label = i18n.getFixedT(locale)(historyTab ? 'chat.history' : 'chat.currentConversation');
       const tab = Array.from(doc.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')).find(button => button.textContent === label);
       if (tab?.getAttribute('aria-pressed') === 'false') tab.click();
     }}/>
