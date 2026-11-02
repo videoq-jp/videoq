@@ -105,7 +105,6 @@ export const CourseChatContinuity: Story = {
   async play({ canvasElement, userEvent, parameters }) {
     const canvas = within(canvasElement);
     const shared = parameters.pathname.startsWith('/share/');
-    const mobile = window.innerWidth < 1024;
     const english = i18n.language.startsWith('en');
     const original = english ? 'Explain rotation matrices' : '回転行列を学ぶ';
     const followup = english ? 'Explain with an example' : '具体例を教えてください';
@@ -128,10 +127,8 @@ export const CourseChatContinuity: Story = {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => expect(chatRequest).toHaveBeenCalledTimes(count));
     };
-    const changeMobileTab = async (tab: 'videos' | 'player') => {
-      await userEvent.click(shared
-        ? canvas.getByRole('tab', { name: i18n.t(`videos.shared.tabs.${tab === 'player' ? 'assistant' : 'videos'}`) })
-        : canvas.getByRole('button', { name: i18n.t(`videos.courseDetail.mobileTabs.${tab}`) }));
+    const changePanelTab = async (tab: 'videos' | 'assistant') => {
+      await userEvent.click(canvas.getByRole('tab', { name: i18n.t(`videos.shared.tabs.${tab}`) }));
       await expect(canvas.getByRole('textbox', { hidden: true })).toBe(input);
       if (tab === 'videos') await expect(input).not.toBeVisible();
       else await expect(input).toBeVisible();
@@ -143,17 +140,13 @@ export const CourseChatContinuity: Story = {
     const request = chatRequest.mock.calls[1][0];
     await expect(request.share_slug).toBe(shared ? 'linear-algebra' : undefined);
     await expect(request.messages).toEqual([{ role: 'user', content: followup }]);
-    if (mobile) {
-      await changeMobileTab('videos');
-      await changeMobileTab('player');
-      await expect(input).toBeDisabled();
-    }
+    await changePanelTab('videos');
+    await changePanelTab('assistant');
+    await expect(input).toBeDisabled();
     await finish();
     await userEvent.type(input, draft);
-    if (mobile) {
-      await changeMobileTab('videos');
-      await changeMobileTab('player');
-    }
+    await changePanelTab('videos');
+    await changePanelTab('assistant');
     await expect(input).toHaveValue(draft);
     await expect(canvas.getByText(followup)).toBeVisible();
   },
