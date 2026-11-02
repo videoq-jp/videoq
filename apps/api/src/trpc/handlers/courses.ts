@@ -1,3 +1,4 @@
+import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
 import * as courseService from "../../features/courses/service";
 import * as courseMembershipService from "../../features/course-memberships/service";
@@ -92,6 +93,7 @@ export function courseHandlers(
       if (denied) return throttleError(denied.retryAfterSec);
       const course = await courseService.getSharedCourse(c.env, slug);
       if (!course) return rpcError("NOT_FOUND", "Share link not found");
+      await visitorSession(c);
       return course;
     },
     "courses.create": async ({ name, description }) => {

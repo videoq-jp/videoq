@@ -31,6 +31,7 @@ import { createApp } from "../src/app";
 
 const ENV = {
   ENVIRONMENT: "development",
+  BETTER_AUTH_SECRET: "trpc-visitor-session-test-secret",
   CORS_ALLOW_ORIGIN: "http://localhost:5173",
 } as never;
 
@@ -98,7 +99,8 @@ describe("tRPC Hono adapter", () => {
       body: JSON.stringify({ messages: [{ role: "user", content: "Question" }], courseId: 7, shareSlug: "shared" }),
     }, ENV);
     expect(response.status).toBe(200);
-    expect(send).toHaveBeenCalledWith(ENV, expect.objectContaining({ userId: null, shareSlug: "shared" }));
+    expect(send).toHaveBeenCalledWith(ENV, expect.objectContaining({ userId: null, shareSlug: "shared", visitorSessionId: expect.any(String) }));
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
   });
 
   it.each([

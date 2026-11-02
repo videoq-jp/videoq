@@ -554,6 +554,8 @@ jobs:
         env:
           VERIFY_PRERENDER_HYDRATION: "true"
         run: npm run test:worker --workspace @videoq/web
+      - name: Test browser CSP enforcement
+        run: npm run test:csp --workspace @videoq/web
       - name: Verify upload-only web deployment
         run: bash .github/scripts/verify-prebuilt-deployment.sh web
       - name: Upload build artifacts

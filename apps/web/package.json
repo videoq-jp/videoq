@@ -13,6 +13,8 @@
     "cf-typegen": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler types worker/env.d.ts --env-interface WebEnv --include-runtime=false",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.storybook.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "test:worker": "node --test scripts/test-worker.mjs",
+    "test:csp": "node --test scripts/test-csp-audit.mjs",
+    "security:csp": "node scripts/csp-audit.mjs",
     "seo:audit": "node scripts/seo-audit.mjs",
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",

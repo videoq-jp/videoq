@@ -53,7 +53,7 @@ it('isolates threads by actor, course, share route and conversation ID', async (
   const hashes = await Promise.all([
     conversationThreadId(scope, id), conversationThreadId({ ...scope, actorUserId: 'bob' }, id),
     conversationThreadId({ ...scope, courseId: 2 }, id),
-    conversationThreadId({ ...scope, actorUserId: null, shareSlug: 'share' }, id),
+    conversationThreadId({ ...scope, actorUserId: null, shareSlug: 'share', visitorSessionId: 'visitor-a' }, id),
     conversationThreadId(scope, crypto.randomUUID()),
   ]);
   expect(new Set(hashes).size).toBe(5);

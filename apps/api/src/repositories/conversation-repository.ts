@@ -13,11 +13,14 @@ export type ConversationScope = {
   actorUserId: string | null;
   courseId: number | null;
   shareSlug: string | null;
+  visitorSessionId?: string;
 };
 
 export async function conversationThreadId(scope: ConversationScope, conversationId: string): Promise<string> {
+  if (scope.shareSlug && !scope.visitorSessionId) throw new Error('Shared conversations require a visitor session');
   const bytes = new TextEncoder().encode(JSON.stringify([
     scope.ownerUserId, scope.actorUserId, scope.courseId, scope.shareSlug, conversationId,
+    ...(scope.shareSlug ? [scope.visitorSessionId] : []),
   ]));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
