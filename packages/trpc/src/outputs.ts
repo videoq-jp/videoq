@@ -1,3 +1,4 @@
+import { qaOutputSchemas } from './qa';
 import { z } from "zod";
 import type { inputSchemas } from "./inputs";
 import * as models from "./model-schemas";
@@ -11,6 +12,7 @@ const addedItemsSchema = messageSchema.extend({ added_count: z.number(), skipped
 
 /** Runtime output validation and handler output types share this definition. */
 export const outputSchemas = {
+  ...qaOutputSchemas,
   "account.me": models.userSchema,
   "account.integrationApiKeys": z.array(z.object({
     id: z.string(), config_id: z.string(), name: z.string(),

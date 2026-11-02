@@ -1,3 +1,4 @@
+import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
 import { features } from "@/lib/deployment";
 import { useId, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,7 @@ import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 import { Link } from '@/lib/i18n';
 import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
-import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
+import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -412,8 +413,7 @@ export function VideoCourseDetailView({
   const panelId = useId();
   const pageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  const hasOverview = !!(selectedVideo?.description || course?.description);
-  const panelTabs: PanelTab[] = isMobile && hasOverview ? ['videos', 'assistant', 'overview'] : ['videos', 'assistant'];
+  const panelTabs: PanelTab[] = ['videos', 'assistant'];
   const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
   const panelProps = (tab: PanelTab) => ({
     id: `${panelId}-panel-${tab}`,
@@ -558,11 +558,9 @@ export function VideoCourseDetailView({
                   onVideoCanPlay={onVideoCanPlay}
                 />
 
-                {!isMobile ? (
-                  <div className="p-4">
-                    <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
-                  </div>
-                ) : null}
+                {courseId ? <CourseLearningDetails key={courseId} courseId={courseId}
+                  videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course.description}
+                  onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }} /> : null}
               </div>
               <aside className="flex min-h-[28rem] flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
                 <PanelTabs tabs={panelTabs} activeTab={activeTab} idPrefix={panelId} onChange={setPanelTab} />
@@ -592,13 +590,6 @@ export function VideoCourseDetailView({
                       className="min-h-0 flex-1 border-0"
                     />
                   </div>
-                  {panelTabs.includes('overview') ? (
-                    <div {...panelProps('overview')}>
-                      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                        <CourseOverview videoDescription={selectedVideo?.description} courseDescription={course.description} />
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               </aside>
             </main>

@@ -28,3 +28,5 @@ export type {
 export type { TrpcContext } from "./context";
 export { appRouter } from "./router";
 export type { AppRouter } from "./router";
+
+export type { QaQuestion, QaReply } from './qa';
