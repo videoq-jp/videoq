@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MenuListItemButton } from '@/components/ui/menu-list';
 import {
   Dialog,
   DialogBody,
@@ -20,56 +19,43 @@ interface DashboardButtonProps {
   courseId: number;
   size?: 'sm' | 'md';
   className?: string;
-  presentation?: 'button' | 'menu-item';
 }
 
-export function DashboardButton({ courseId, size = 'md', className, presentation = 'button' }: DashboardButtonProps) {
+export function DashboardButton({ courseId, size = 'md', className }: DashboardButtonProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const { data, isLoading } = useChatAnalytics(courseId, isOpen);
-
-  const dialog = useDialog({
-    open: isOpen,
-    onOpenChange: setIsOpen,
-  });
-
   return (
     <>
-      {presentation === 'menu-item' ? (
-        <MenuListItemButton type="box" size="regular" onClick={() => setIsOpen(true)}
-          aria-label={t('dashboard.button')} className={className}>
-          <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{t('dashboard.button')}</span>
-        </MenuListItemButton>
-      ) : (
-        <Button variant="outline" size={size} onClick={() => setIsOpen(true)}
-          aria-label={t('dashboard.button')}
-          className={`min-w-9 gap-2 px-2.5 sm:min-w-20 sm:px-3 ${className ?? ''}`}>
-          <BarChart3 className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('dashboard.button')}</span>
-        </Button>
-      )}
+      <Button variant="outline" size={size} onClick={() => setIsOpen(true)}
+        aria-label={t('dashboard.button')}
+        className={`min-w-9 gap-2 px-2.5 sm:min-w-20 sm:px-3 ${className ?? ''}`}>
+        <BarChart3 className="h-4 w-4" />
+        <span className="hidden sm:inline">{t('dashboard.button')}</span>
+      </Button>
 
-      {isOpen && (
-        <Dialog {...dialog.dialogProps} scroll="inner" width="min(64rem, 95vw)">
-          <DialogContent>
-            <DialogHeader>
-              <DialogHeading {...dialog.headingProps}>
-                {t('dashboard.title')}
-              </DialogHeading>
-              <DialogClose {...dialog.closeButtonProps}>{t('common.actions.close')}</DialogClose>
-            </DialogHeader>
-            <DialogScrollArea>
-              <DialogBody>
-                <AnalyticsDashboard
-                  data={data}
-                  isLoading={isLoading}
-                />
-              </DialogBody>
-            </DialogScrollArea>
-          </DialogContent>
-        </Dialog>
-      )}
+      <DashboardDialog courseId={courseId} open={isOpen} onOpenChange={setIsOpen} />
     </>
+  );
+}
+
+/** Kept outside collapsed menus so the dialog and its focus target stay visible. */
+export function DashboardDialog({ courseId, open, onOpenChange }: {
+  courseId: number; open: boolean; onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const { data, isLoading } = useChatAnalytics(courseId, open);
+  const dialog = useDialog({ open, onOpenChange });
+  return (
+    <Dialog {...dialog.dialogProps} scroll="inner" width="min(64rem, 95vw)">
+      {open && <DialogContent>
+        <DialogHeader>
+          <DialogHeading {...dialog.headingProps}>{t('dashboard.title')}</DialogHeading>
+          <DialogClose {...dialog.closeButtonProps}>{t('common.actions.close')}</DialogClose>
+        </DialogHeader>
+        <DialogScrollArea>
+          <DialogBody><AnalyticsDashboard data={data} isLoading={isLoading} /></DialogBody>
+        </DialogScrollArea>
+      </DialogContent>}
+    </Dialog>
   );
 }

@@ -79,6 +79,12 @@ beforeEach(() => {
   globalThis.__setTrpcHandler('courseMemberships.leave', courseTrpcMocks.leave)
 })
 
+async function openCourseManagement() {
+  const trigger = await screen.findByRole('button', { name: 'videos.courseDetail.manage' })
+  if (trigger.getAttribute('aria-expanded') !== 'true') fireEvent.click(trigger)
+  return trigger
+}
+
 describe('VideoCourseDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -107,6 +113,7 @@ describe('VideoCourseDetailPage', () => {
     const { result } = renderHook(() => useQueryClient())
     const key = trpc.courses.get.queryKey({ id: 1 })
     const { unmount } = render(<VideoCourseDetailPage />)
+    if (operation === 'delete') await openCourseManagement()
     fireEvent.click(await screen.findByRole('button', { name: `videos.courseDetail.${operation}` }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', {
@@ -340,6 +347,7 @@ describe('VideoCourseDetailPage', () => {
         expect(handle).toHaveAttribute('aria-disabled', 'true')
       }
     })
+    await openCourseManagement()
     const controls = [
       screen.getByRole('button', { name: 'videos.courseDetail.pickFromLibrary' }),
       screen.getByRole('button', { name: 'videos.courseDetail.editTitle' }),
@@ -401,6 +409,7 @@ describe('VideoCourseDetailPage', () => {
     const { container } = render(<VideoCourseDetailPage />)
     await screen.findByRole('button', { name: 'videos.courses.dragHandle: Video 1' })
     const handles = () => Array.from(container.querySelectorAll('[aria-roledescription="sortable"]'))
+    await openCourseManagement()
     const editButtons = () => [
       ...handles(),
       ...screen.getAllByRole('button', { name: 'videos.courseDetail.removeFromCourse' }),
@@ -510,6 +519,7 @@ describe('VideoCourseDetailPage', () => {
   it('opens member management for the owner', async () => {
     render(<VideoCourseDetailPage />)
 
+    await openCourseManagement()
     fireEvent.click(await screen.findByRole('button', { name: 'videos.courseMembers.open' }))
 
     expect(await screen.findByText('videos.courseMembers.title')).toBeInTheDocument()
@@ -762,6 +772,7 @@ describe('VideoCourseDetailPage - Delete', () => {
     await waitFor(() => {
       expect(courseTrpcMocks.delete).toHaveBeenCalledWith({ id: 1 })
     })
+    await openCourseManagement()
     const controls = [
       screen.getByRole('button', { name: 'videos.courseDetail.pickFromLibrary' }),
       screen.getByRole('button', { name: 'videos.courseDetail.editTitle' }),

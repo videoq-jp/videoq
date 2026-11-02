@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import {
   ArrowLeft,
-  MoreHorizontal,
+  BarChart3,
   Pencil,
   Plus,
   Save,
@@ -30,10 +30,11 @@ import {
 import { apiClient, type VideoCourse, type VideoInCourse } from '@/lib/api';
 import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 import { Link } from '@/lib/i18n';
+import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
-import { DashboardButton } from '@/components/dashboard/DashboardButton';
+import { DashboardDialog } from '@/components/dashboard/DashboardButton';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
@@ -406,6 +407,7 @@ export function VideoCourseDetailView({
 }: VideoCourseDetailViewProps) {
   const { t } = useTranslation();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
   const panelId = useId();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -487,13 +489,12 @@ export function VideoCourseDetailView({
             />
           )}
 
+          {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
+
           <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
             <ViewerHeader title={course.name} backHref="/videos/courses">
-                {canManage ? <details className="relative">
-                  <summary aria-label={t('videos.courseDetail.manage')} className="flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-4 border border-solid-gray-536 px-3 focus-visible:outline-4 focus-visible:outline-white">
-                    <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-                  </summary>
-                  <MenuList className="absolute right-0 top-full z-40 mt-2 w-64 border border-solid-gray-300 bg-white py-1 text-solid-gray-800 shadow-lg">
+                {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
+                  <MenuList>
                     <MenuListItem>
                       <MenuListItemButton type="box" size="regular" onClick={() => setIsShareDialogOpen(true)}>
                         <Share2 className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -507,7 +508,10 @@ export function VideoCourseDetailView({
                       </MenuListItemButton>
                     </MenuListItem>
                     {courseId ? <MenuListItem>
-                      <DashboardButton courseId={courseId} presentation="menu-item" />
+                      <MenuListItemButton type="box" size="regular" onClick={() => setIsDashboardOpen(true)}>
+                        <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('dashboard.button')}</span>
+                      </MenuListItemButton>
                     </MenuListItem> : null}
                     <MenuListItem>
                       <MenuListItemButton type="box" size="regular" onClick={onStartEditing}
@@ -526,7 +530,7 @@ export function VideoCourseDetailView({
                       </MenuListItemButton>
                     </MenuListItem>
                   </MenuList>
-                </details> : (
+                </ViewerActionsMenu> : (
                   <Button
                     type="button"
                     variant="outline"

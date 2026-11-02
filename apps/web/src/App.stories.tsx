@@ -9,6 +9,7 @@ import { authFixtures } from '../.storybook/fixtures/auth';
 import { emptyTagPage } from '../.storybook/fixtures/api';
 import { course, courseVideos, detailVideo } from '../.storybook/fixtures/detail';
 import { uploadedVideo } from '../.storybook/fixtures/videos';
+import { analytics } from '../.storybook/fixtures/dashboard';
 import { installUploadFixture } from '../.storybook/mocks/videoUpload';
 import { failure, pending, success, trpcMutation, trpcQuery } from '../.storybook/mocks/network';
 import { chatRequest, createChatPanelMock } from '../.storybook/mocks/chatPanel';
@@ -157,7 +158,7 @@ const previewCourse = { ...course, videos: courseVideos.map(video => ({ ...video
 export const CourseViewerPreview: Story = {
   parameters: {
     pathname: `/videos/courses/${course.id}`,
-    api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', success(previewCourse))] },
+    api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', success(previewCourse)), trpcQuery('chat.analytics', success(analytics))] },
   },
   beforeEach({ msw }) {
     const mock = createChatPanelMock();
@@ -191,13 +192,45 @@ export const CourseViewerLayout: Story = {
     await expect(brand.querySelector('img')).toHaveAttribute('src', '/logo192.png');
     await expect(brand).toHaveAttribute('href', i18n.language.startsWith('en') ? '/en/videos/courses' : '/videos/courses');
     await expect(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.assistant') })).toHaveAttribute('aria-selected', 'true');
-    await expect(canvas.getByLabelText(i18n.t('videos.courseDetail.manage')).closest('details')).not.toHaveAttribute('open');
+    await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') })).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(canvas.getByLabelText(i18n.t('videos.courseDetail.manage')));
     await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') }));
     await expect(await canvas.findByRole('dialog')).toBeVisible();
   },
 };
+export const CourseMenuKeyboard: Story = {
+  ...CourseViewerPreview,
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    const trigger = await canvas.findByRole('button', { name: i18n.t('videos.courseDetail.manage') });
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.tab();
+    await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') })).toHaveFocus());
+    await userEvent.click(canvas.getByRole('heading', { level: 1 }));
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    trigger.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') })).toHaveFocus());
+    await userEvent.click(canvas.getByRole('button', { name: i18n.t('dashboard.button') }));
+    const dialog = await canvas.findByRole('dialog');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(within(dialog).getByRole('button', { name: i18n.t('common.actions.close') }));
+    await waitFor(() => expect(canvas.queryByRole('dialog')).not.toBeInTheDocument());
+    await expect(trigger).toHaveFocus();
+  },
+};
+export const CourseMenuKeyboardMobile: Story = {
+  ...CourseMenuKeyboard, globals: { viewport: { value: 'mobile', isRotated: false } },
+};
+
 export const CourseViewerLayoutMobile: Story = {
   ...CourseViewerLayout, globals: { viewport: { value: 'mobile', isRotated: false } },
 };
@@ -475,7 +508,8 @@ function courseMetadataStory(field: 'name' | 'description'): Story {
       await expect(courseEditRequests.update).toHaveBeenCalledWith({ id: course.id, [field]: editedValue });
       await expect(courseEditRequests.update).toHaveBeenCalledTimes(1);
       await expect(courseEditRequests.get).toHaveBeenCalledTimes(1);
-      await expect(edit).toHaveFocus();
+      await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') })).toHaveFocus();
+      await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') }));
       await userEvent.click(edit);
       const reopened = within(canvas.getByRole('dialog'));
       await expect(reopened.getByRole('textbox', { name: i18n.t(`videos.courses.${field}Label`) })).toHaveValue(editedValue);
@@ -506,10 +540,11 @@ export const CourseDialogsClose: Story = {
     await userEvent.click(edit);
     await userEvent.click(within(canvas.getByRole('dialog')).getByRole('button', { name: i18n.t('common.actions.cancel') }));
     await waitFor(() => expect(canvas.queryByRole('dialog')).not.toBeInTheDocument());
-    await expect(edit).toHaveFocus();
+    await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') })).toHaveFocus();
 
-    const share = canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') });
     for (const closeWith of ['button', 'escape']) {
+      await userEvent.click(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') }));
+      const share = canvas.getByRole('button', { name: i18n.t('videos.courseDetail.shareOpen') });
       await userEvent.click(share);
       if (closeWith === 'button') {
         await userEvent.click(within(canvas.getByRole('dialog')).getByRole('button', { name: i18n.t('common.actions.close') }));
@@ -518,7 +553,7 @@ export const CourseDialogsClose: Story = {
         canvas.getByRole('dialog').dispatchEvent(new Event('cancel', { cancelable: true }));
       }
       await waitFor(() => expect(canvas.queryByRole('dialog')).not.toBeInTheDocument());
-      await expect(share).toHaveFocus();
+      await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') })).toHaveFocus();
     }
   },
 };
