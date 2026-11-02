@@ -57,7 +57,9 @@ vi.mock('@/hooks/useTags', () => ({
 }))
 
 vi.mock('@/components/chat/ChatPanel', () => ({
-  ChatPanel: () => <div data-testid="chat-panel">Chat Panel</div>,
+  ChatPanel: ({ onVideoPlay }: { onVideoPlay?: (id: number, time: string) => void }) => (
+    <div data-testid="chat-panel">Chat Panel<button onClick={() => onVideoPlay?.(2, '00:02:00')}>Play citation</button></div>
+  ),
 }))
 
 vi.mock('@/components/video/TagFilterPanel', () => ({
@@ -95,6 +97,48 @@ describe('VideoCourseDetailPage', () => {
 
   afterEach(() => {
     globalThis.__setMockLanguage('en')
+  })
+
+  it('opens analytics from the management menu and only fetches it on demand', async () => {
+    const analytics = vi.fn().mockResolvedValue({
+      summary: { total_questions: 0, date_range: { first: null, last: null } },
+      time_series: [], feedback: { good: 0, bad: 0, none: 0 },
+    })
+    globalThis.__setTrpcHandler('chat.analytics', analytics)
+    render(<VideoCourseDetailPage />)
+    const trigger = await openCourseManagement()
+    expect(analytics).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'dashboard.button' }))
+    const dialog = await screen.findByRole('dialog', { name: 'dashboard.title' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(analytics).toHaveBeenCalledExactlyOnceWith({ courseId: 1 }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.actions.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('brings a cited video into view and seeks to its timestamp without remounting chat', async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    try {
+      const { container } = render(<VideoCourseDetailPage />)
+      const citation = await screen.findByRole('button', { name: 'Play citation' })
+      const chat = screen.getByTestId('chat-panel')
+      const page = container.querySelector('main')!.parentElement!
+      const playerRegion = container.querySelector('main > div')!
+      page.scrollTop = 250
+      playerRegion.scrollTop = 150
+      fireEvent.click(citation)
+      const video = container.querySelector('video')!
+      expect(new URL(video.src).pathname).toBe('/api/video2.mp4')
+      fireEvent.canPlay(video)
+      expect(video.currentTime).toBe(120)
+      expect(play).toHaveBeenCalledOnce()
+      expect(page.scrollTop).toBe(0)
+      expect(playerRegion.scrollTop).toBe(0)
+      expect(screen.getByTestId('chat-panel')).toBe(chat)
+    } finally {
+      play.mockRestore()
+    }
   })
 
   it('should render course name', async () => {

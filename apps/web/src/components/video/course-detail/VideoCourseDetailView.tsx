@@ -34,7 +34,7 @@ import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, CourseOverview, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
-import { DashboardDialog } from '@/components/dashboard/DashboardButton';
+import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
