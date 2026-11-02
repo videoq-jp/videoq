@@ -7,7 +7,7 @@ const workflow = name => readFileSync(join(__dirname, '../workflows', name + '.y
 const ci = workflow('ci');
 function evaluate(expression, eventName, changed = false, overrides = {}) {
   return runInNewContext(expression, {
-    github: { event_name: eventName, repository: 'videoq-jp/videoq', ref: 'refs/heads/main', event: { workflow_run: { event: 'push' } }, ...overrides },
+    github: { event_name: eventName, repository: 'videoq-jp/videoq', ref: 'refs/heads/main', event: { workflow_run: { event: 'push', conclusion: 'success' } }, ...overrides },
     steps: { filter: { outputs: { frontend: String(changed), docs: String(changed) } } },
   }, { timeout: 100 });
 }
