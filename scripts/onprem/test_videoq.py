@@ -18,6 +18,22 @@ spec.loader.exec_module(videoq)
 
 
 class InstallerTests(unittest.TestCase):
+    def test_resume_waits_for_health_without_compose_start_or_migrations(self):
+        def state(health):
+            return subprocess.CompletedProcess([], 0, stdout=json.dumps({"Running": True, "Health": {"Status": health}}) + "\n")
+        with patch.object(videoq.subprocess, "run", side_effect=[subprocess.CompletedProcess([], 0), state("starting"), state("healthy")]) as run:
+            with patch.object(videoq.time, "sleep") as sleep:
+                videoq.resume_containers(["existing-container-id"])
+        self.assertEqual(run.call_args_list[0].args[0], [*videoq.docker_command(), "start", "existing-container-id"])
+        self.assertEqual(run.call_count, 3)
+        sleep.assert_called_once_with(1)
+
+    def test_resume_reports_a_health_timeout(self):
+        unhealthy = subprocess.CompletedProcess([], 0, stdout=json.dumps({"Running": True, "Health": {"Status": "unhealthy"}}) + "\n")
+        with patch.object(videoq.subprocess, "run", side_effect=[subprocess.CompletedProcess([], 0), unhealthy]):
+            with self.assertRaisesRegex(ValueError, "準備状態"):
+                videoq.resume_containers(["existing-container-id"], timeout=0)
+
     def values(self):
         return {name: {"image": {"repository": f"ghcr.io/videoq-jp/videoq-{name}", "digest": "sha256:" + "a" * 64}}
                 for name in ("api", "web", "worker")}

@@ -17,6 +17,7 @@ import ssl
 import subprocess
 import sys
 import tarfile
+import time
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -355,12 +356,33 @@ def checksum(path):
     return digest.hexdigest()
 
 
+def resume_containers(identifiers, timeout=180):
+    """Start existing containers without rerunning one-shot dependencies.
+
+    Compose 2 supports up --wait but not start --wait. Use the Docker engine's
+    start and health state so backup recovery works on both Compose 2 and 5.
+    """
+    subprocess.run([*docker_command(), "start", *identifiers], check=True)
+    deadline = time.monotonic() + timeout
+    while True:
+        result = subprocess.run([*docker_command(), "inspect", "--format", "{{json .State}}", *identifiers],
+                                check=True, capture_output=True, text=True)
+        states = [json.loads(line) for line in result.stdout.splitlines() if line]
+        if len(states) == len(identifiers) and all(
+                state.get("Running") and state.get("Health", {}).get("Status", "healthy") == "healthy"
+                for state in states):
+            return
+        if time.monotonic() >= deadline:
+            raise ValueError("バックアップ後の再開が準備状態になりません。statusとlogsを確認してください")
+        time.sleep(1)
+
+
 def backup_directory(directory, destination, resume=True):
     """Cold backup: stop all writers before copying all persistent volumes."""
     if destination == directory or directory in destination.parents:
         raise ValueError("バックアップ先は導入ディレクトリの外に指定してください")
     destination.mkdir(mode=0o700, parents=True, exist_ok=False)
-    running = docker(directory, "ps", "--status", "running", "--services", capture_output=True, text=True).stdout.split()
+    running = docker(directory, "ps", "--status", "running", "--quiet", capture_output=True, text=True).stdout.split()
     complete = False
     try:
         docker(directory, "stop", "gateway", "api", "worker", "scheduler", "web")
@@ -381,8 +403,7 @@ def backup_directory(directory, destination, resume=True):
         complete = True
     finally:
         if running and (resume or not complete):
-            # Resume the services that were running and wait for their dependencies.
-            docker(directory, "start", "--wait", "--wait-timeout", "180", *running)
+            resume_containers(running)
     return destination
 
 
