@@ -1,9 +1,25 @@
 ---
-sidebar_label: On-prem Kubernetes
-description: Deploy the VideoQ application to an existing Kubernetes or K3s cluster using Helm.
+sidebar_label: On-prem deployment
+description: Install VideoQ on a single Linux server or an existing Kubernetes cluster.
 ---
 
 # Run VideoQ on-premises
+
+Use Kubernetes and Helm for on-prem installations, including a single VPS.
+Start with one node to evaluate video processing, Q&A, backups and updates.
+Use the results to decide whether services need separate hosts.
+
+| Environment | Guide |
+|---|---|
+| One VPS with single-node Kubernetes, database, storage and queue | [K3s on one VPS](on-premises-single-server.md) |
+| Existing Kubernetes cluster and site-managed backing services | The Helm instructions below |
+| Existing or separately provisioned local AI | [Local inference](local-inference.md) |
+| Download and verify application images | [Signed releases](on-premises-releases.md) |
+
+All on-prem installation paths use production Node.js images and administrator-issued
+accounts. The root development Compose stack has its own [local setup guide](../getting-started/local-setup.md).
+
+The following sections describe the **Kubernetes deployment**.
 
 VideoQ can run its Web UI, Node.js API and Python workers on an existing
 Kubernetes cluster. For an initial small installation, a single-node K3s cluster
@@ -34,8 +50,10 @@ flowchart TB
 
 The chart manages application workloads. PostgreSQL, S3 storage, queue durability,
 inference services, cluster administration, DNS and TLS are managed by the site.
-Configure their addresses instead of installing duplicate infrastructure in the
-application release. A GPU inference server can run in the same cluster or on a
+For a single node, use the separately managed infrastructure examples in the
+[single-server guide](on-premises-single-server.md); these are outside the application
+Helm release. For existing services, configure their addresses instead of installing
+duplicate infrastructure. A GPU inference server can run in the same cluster or on a
 separate machine; API and video workers call its endpoint.
 
 For a concrete CPU or NVIDIA GPU deployment of local chat, embeddings and
@@ -65,12 +83,14 @@ HTTP smoke test.
 1. Prepare PostgreSQL 17 with pgvector, a private S3 bucket and a persistent
    SQS-compatible queue with dead-letter delivery. Configure bucket CORS and
    ensure browsers can reach the S3 public endpoint.
-2. Build the API, web and on-prem worker images from the chart README and load
-   them into a registry reachable by the cluster.
+2. Follow [signed releases](on-premises-releases.md) to obtain verified public
+   application images and charts. Building and publishing your own images is an
+   alternative described in the chart README.
 3. Create the namespace and operator-owned Secret described in the chart README.
    API and worker must share the same user-secret encryption key.
 4. Copy `charts/videoq/examples/site.yaml` outside the repository, replace all
-   example values, and run Helm lint/template before installation.
+   site-specific values, and merge the generated `verified-images.json` last as
+   shown in the release guide. Run Helm lint/template before installation.
 5. Install the chart. Its pre-install migration Job must complete before the
    application workloads are created.
 6. Confirm `/ready`, create the first administrator with `node dist/provision-user.mjs --admin --username site_admin --email admin@example.com` inside the API Pod, and privately open the returned single-use setup link. Then upload a short video and test Q&A and timestamp playback.

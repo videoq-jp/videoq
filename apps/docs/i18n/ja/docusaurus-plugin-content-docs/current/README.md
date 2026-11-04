@@ -1,14 +1,24 @@
 ---
 slug: /
 sidebar_label: はじめに
-description: VideoQ に初めて参加する人のための、セットアップ・基本概念・開発ガイド。
+description: VideoQ の導入担当者と開発者のための、セットアップ・基本概念・開発ガイド。
 ---
 
-# VideoQ 開発ドキュメント
+# VideoQ ドキュメント
 
 VideoQ は、**受講生の質問に講義動画の内容から自動で回答し、根拠となる場面へ案内するサービス**です。講座の運営者や講師が動画を講座にまとめて共有し、受講生が質問して引用された場面へ移動します。
 
-このサイトは、初めて開発に参加する人が、アプリを動かし、小さな変更を進められるようにするための案内です。すべての設計図を先に読む必要はありません。
+VideoQ を導入する、または最初の変更を進めるときの入口です。まず下の表から使う環境を選びます。すべての設計図を先に読む必要はありません。
+
+## 導入・開発の入口
+
+| やりたいこと | 最初に読むページ |
+|---|---|
+| VPS 1台で Kubernetes を使う | [単一サーバーの Kubernetes](guides/on-premises-single-server.md) |
+| 既存の Kubernetes に配置する | [オンプレ導入と Helm 手順](guides/on-premises.md) |
+| アプリを変更するためにローカルで動かす | [開発環境を動かす](getting-started/local-setup.md) |
+
+単一サーバーでも Kubernetes と Helm を使って導入・動画処理・Q&A・更新・復旧を試し、処理速度や同時利用の不足が見えた段階で、別サーバーへの分離を検討します。バックアップは評価中も別ホストに保管してください。
 
 ## AIの仕組みを知る
 
@@ -49,7 +59,7 @@ VideoQ は、**受講生の質問に講義動画の内容から自動で回答�
 | 文字起こし・索引を変える | [動画の非同期処理を変更する](guides/worker.md) |
 | 変更が正しいか確かめる | [テストと確認コマンド](guides/testing.md) |
 | 起動や動画処理で困っている | [困ったとき](guides/troubleshooting.md) |
-| オンプレの Kubernetes に導入する | [オンプレで動かす](guides/on-premises.md) |
+| 既存の Kubernetes に導入する | [オンプレで動かす](guides/on-premises.md) |
 | LLM・埋め込み・Whisperも社内に置く | [ローカルAI推論](guides/local-inference.md) |
 
 ## 詳しく調べる

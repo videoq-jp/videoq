@@ -5,6 +5,10 @@ description: Verify signed VideoQ images and charts, rehearse updates, and promo
 
 # Verified on-prem releases and updates
 
+This guide prepares verified artifacts for [single-node Kubernetes](on-premises-single-server.md)
+and [existing Kubernetes clusters](on-premises.md). Both use `verified-images.json`
+and the verified chart archive. After verification, return to the guide for your deployment.
+
 For sites with internet access, use an external OCI registry and immutable image
 digests. The `On-prem Release` workflow prepares application and CPU Whisper GHCR
 images for Linux amd64 and arm64, an amd64 NVIDIA vLLM image, application and
@@ -71,23 +75,38 @@ changes. No blanket `ignore-unfixed` or CVE ignore file is used.
 
 ## Download and verify a specific release
 
-Use a recent authenticated GitHub CLI with `gh attestation verify`, Python 3.9+
-and Helm 4.3.1. Run the verifier from your reviewed checkout, rather than from an
+Use a recent authenticated GitHub CLI with `gh attestation verify` and Python
+3.9+. Kubernetes installation additionally needs Helm 4.3.1. If `gh auth status`
+fails, run `gh auth login` before continuing. Run the verifier from your reviewed checkout, rather than from an
 unverified downloaded bundle. Select a successful `On-prem Release` run and
 independently review its full source SHA. Do not derive the trusted SHA from the
 manifest being checked.
 
-```sh
-SOURCE_SHA=REPLACE_WITH_REVIEWED_40_CHARACTER_COMMIT
-RUN_ID=REPLACE_WITH_SUCCESSFUL_RELEASE_RUN
-RUN_ATTEMPT=$(gh run view "$RUN_ID" --repo videoq-jp/videoq --json attempt --jq .attempt)
-mkdir -p /secure/videoq-release
+Run these commands in Bash from the repository root. List successful runs, review the selected commit, then enter its numeric `databaseId` and full 40-character `headSha`. The download directory is under your writable home directory; use a new directory when downloading another release.
+
+```bash
+gh auth status
+gh attestation verify --help
+gh run list --repo videoq-jp/videoq \
+  --workflow onprem-release.yml --status success --limit 10 \
+  --json databaseId,headSha,createdAt,url
+
+read -r -p "Successful run databaseId: " RUN_ID
+gh run view "$RUN_ID" --repo videoq-jp/videoq --json headSha,conclusion,url
+read -r -p "Reviewed 40-character headSha: " SOURCE_SHA
+RUN_ATTEMPT=$(gh api "repos/videoq-jp/videoq/actions/runs/$RUN_ID" --jq .run_attempt)
+RELEASE_DIR="$HOME/videoq-release"
+mkdir -p "$RELEASE_DIR"
 gh run download "$RUN_ID" --repo videoq-jp/videoq \
-  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir /secure/videoq-release
+  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir "$RELEASE_DIR"
 python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
-  /secure/videoq-release/release.json /secure/videoq-release/verified-images.json \
-  /secure/videoq-release/verified-inference.json
+  "$RELEASE_DIR/release.json" "$RELEASE_DIR/verified-images.json" \
+  "$RELEASE_DIR/verified-inference.json"
 ```
+
+Success ends with `Verified release; application and inference Helm image values written`. For a single VPS, return to the [Kubernetes guide](on-premises-single-server.md) with the verified chart and `$RELEASE_DIR/verified-images.json`.
+
+Update GitHub CLI if `gh attestation` is unavailable. The API field `run_attempt` above also works with CLI versions that do not support `gh run view --json attempt`. A 404 URL containing `REPLACE_WITH_SUCCESSFUL_RELEASE_RUN` means the example value was left unchanged; use a numeric run ID. If no successful run is listed, complete a release first. For a missing artifact, also check the attempt, SHA and retention period.
 
 Image pulls do not require GHCR authentication or a `read:packages` credential.
 The authenticated GitHub CLI above is used for workflow artifacts and attestation
@@ -106,10 +125,10 @@ Merge the generated image values **last** so site settings cannot accidentally
 replace the reviewed digests:
 
 ```sh
-helm template videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
-  -n videoq -f /secure/site.yaml -f /secure/videoq-release/verified-images.json
-helm upgrade --install videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
-  -n videoq -f /secure/site.yaml -f /secure/videoq-release/verified-images.json \
+helm template videoq "$RELEASE_DIR"/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
+  -n videoq -f /secure/site.yaml -f "$RELEASE_DIR"/verified-images.json
+helm upgrade --install videoq "$RELEASE_DIR"/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
+  -n videoq -f /secure/site.yaml -f "$RELEASE_DIR"/verified-images.json \
   --wait --timeout 15m
 helm test videoq -n videoq --timeout 2m
 ```
@@ -211,7 +230,7 @@ checkout, the tools listed in the script, and Chromium installed, reproduce it:
 npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
 node node_modules/playwright/cli.js install --with-deps chromium
 HELM_BIN=helm python3 .github/scripts/onprem-cpu-acceptance.py \
-  "$SOURCE_SHA" /secure/videoq-release /tmp/videoq-real-cpu-results
+  "$SOURCE_SHA" "$RELEASE_DIR" /tmp/videoq-real-cpu-results
 ```
 
 The script refuses to replace an existing `videoq-onprem-lab` cluster. Initial

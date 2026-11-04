@@ -1,0 +1,304 @@
+# Operator-managed infrastructure for one k3d-managed K3s node. Preserve PVCs and keep off-host backups.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+        ports:
+        - containerPort: 5432
+          name: tcp
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        envFrom:
+        - secretRef:
+            name: videoq-postgres
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - videoq
+            - -d
+            - videoq
+          periodSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: garage-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: garage
+  template:
+    metadata:
+      labels:
+        app: garage
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: garage
+        image: dxflrs/garage:v2.5.0@sha256:677e5b758e4425a325b811c425c026bf35a4bf42f7ddbaa773de3f4fd779a5a5
+        ports:
+        - containerPort: 3900
+          name: tcp
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/garage
+        - name: config
+          mountPath: /etc/garage.toml
+          subPath: garage.toml
+          readOnly: true
+        envFrom:
+        - secretRef:
+            name: videoq-garage
+        readinessProbe:
+          tcpSocket:
+            port: 3900
+          periodSeconds: 5
+        command:
+        - /garage
+        - server
+        - --single-node
+        - --default-bucket
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: garage-data
+      - name: config
+        configMap:
+          name: videoq-infra-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage
+spec:
+  selector:
+    app: garage
+  ports:
+  - port: 3900
+    targetPort: 3900
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: queue-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: queue
+  template:
+    metadata:
+      labels:
+        app: queue
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: queue
+        image: softwaremill/elasticmq:latest@sha256:f1de391a9b8c18fd3f2ce37b4f7d1b8989857e8a8e18bb01284fff899e69da82
+        ports:
+        - containerPort: 9324
+          name: tcp
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 384Mi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /opt/elasticmq.conf
+          subPath: elasticmq.conf
+          readOnly: true
+        readinessProbe:
+          tcpSocket:
+            port: 9324
+          periodSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: queue-data
+      - name: config
+        configMap:
+          name: videoq-infra-config
+      initContainers:
+      - name: permissions
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+        command:
+        - chown
+        - 999:999
+        - /data
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: data
+          mountPath: /data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: queue
+spec:
+  selector:
+    app: queue
+  ports:
+  - port: 9324
+    targetPort: 9324
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: videoq-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: videoq-gateway
+  template:
+    metadata:
+      labels:
+        app: videoq-gateway
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: gateway
+        image: caddy:2-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+        ports:
+        - containerPort: 443
+        - containerPort: 8081
+        volumeMounts:
+        - name: config
+          mountPath: /etc/caddy/Caddyfile
+          subPath: Caddyfile
+          readOnly: true
+        - name: certificates
+          mountPath: /data
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            memory: 128Mi
+      volumes:
+      - name: config
+        configMap:
+          name: videoq-infra-config
+      - name: certificates
+        persistentVolumeClaim:
+          claimName: caddy-data
+  strategy:
+    type: Recreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: videoq-gateway
+spec:
+  type: NodePort
+  selector:
+    app: videoq-gateway
+  ports:
+  - name: https
+    port: 443
+    targetPort: 443
+    nodePort: 30443
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: caddy-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

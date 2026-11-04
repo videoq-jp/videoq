@@ -1,9 +1,24 @@
 ---
-sidebar_label: オンプレ Kubernetes
-description: 既存の Kubernetes または K3s に Helm で VideoQ を導入する。
+sidebar_label: オンプレ導入
+description: 単一の Linux サーバー、または既存の Kubernetes に VideoQ を導入する。
 ---
 
 # VideoQ をオンプレで動かす
+
+VPS 1台でも Kubernetes と Helm を使います。最初は単一ノードで、動画処理・Q&A・バックアップ・更新を確認します。
+その結果から、必要な機能を別サーバーへ分けるか判断します。
+
+| 導入先 | 手順 |
+|---|---|
+| VPS 1台の Kubernetes に DB・動画保存・永続キューも配置 | [単一サーバーの Kubernetes](on-premises-single-server.md) |
+| 既存の Kubernetes と社内の基盤サービスを利用 | このページの以下の Helm 手順 |
+| 既存または別途用意するローカル AI | [ローカル推論](local-inference.md) |
+| 配布イメージの取得・署名検証 | [署名付きリリース](on-premises-releases.md) |
+
+いずれの導入方法も本番用 Node.js イメージと管理者発行のアカウントを使います。
+開発用 Compose を使う場合は、[開発環境の手順](../getting-started/local-setup.md)に進んでください。
+
+**以下は Kubernetes への配置を説明します。**
 
 LLM・埋め込み生成・Whisper も社内で動かす場合は、[ローカル推論](local-inference.md)
 の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenRouter です。
@@ -36,6 +51,8 @@ flowchart TB
 
 Chart はアプリの配置と更新を担当します。DB・動画保存・キュー・推論サーバー・クラスタ・DNS・証明書は導入先で用意し、接続先を設定します。既存の社内基盤も利用できます。GPU 推論は別のワークロードまたは別マシンに置き、API と動画ワーカーから呼び出します。
 
+単一ノードで基盤も配置する場合は、[単一サーバーの手順](on-premises-single-server.md)にある、アプリの Helm リリースと別管理の設定例を使います。既存の基盤を使う場合は重複して配置しません。
+
 ## クラウド構成との違い
 
 | 機能 | クラウド | オンプレ |
@@ -53,9 +70,9 @@ Node.js の起動処理は Durable Objects を読み込まず、本番用の認�
 ## 初回導入の手順
 
 1. PostgreSQL 17 と pgvector、非公開の S3 バケット、永続化した SQS 互換キューとデッドレターキューを用意します。バケットの CORS と、ブラウザーから公開 S3 エンドポイントへの到達も設定します。
-2. Chart の README に沿って API・Web・オンプレワーカーのイメージを作成し、クラスタから取得できるレジストリへ置きます。
+2. [署名付きリリース](on-premises-releases.md)の手順で、公開イメージと Chart を検証・取得します。独自ビルドが必要な場合は Chart の README の手順を使います。
 3. Namespace と、導入先が管理する Secret を事前に作成します。API とワーカーの暗号鍵は共通にします。
-4. `charts/videoq/examples/site.yaml` をリポジトリ外にコピーし、例示のホスト名・接続先・イメージ名・証明書を置き換えます。Helm の lint と template で確認します。
+4. `charts/videoq/examples/site.yaml` をリポジトリ外にコピーし、ホスト名・接続先・証明書を置き換えます。リリースガイドに従い、検証で生成した `verified-images.json` を最後に重ね、Helm の lint と template で確認します。
 5. Chart をインストールします。先にマイグレーション Job が成功してから、アプリが配置されます。
 6. `/ready` の成功を確認し、API Pod 内で `node dist/provision-user.mjs --admin --username site_admin --email admin@example.com` を実行します。返された一度限りの設定リンクを管理者本人に渡してパスワードを設定し、短い動画の文字起こし・Q&A・引用時刻の再生まで試します。
 

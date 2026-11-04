@@ -6,7 +6,7 @@ VideoQ is for course creators, instructors, and training owners. Upload recordin
 
 Answers use the course owner's allowance. Owners can review question history and feedback to see where students need help.
 
-**[Try VideoQ](https://videoq.jp/en/) · [No-signup demo](https://videoq.jp/en/try) · [Developer docs](https://docs.videoq.jp/) · [Quick start](#quick-start)**
+**[Try VideoQ](https://videoq.jp/en/) · [No-signup demo](https://videoq.jp/en/try) · [Documentation](https://docs.videoq.jp/) · [Quick start](#quick-start)**
 
 ## Watch the demo
 
@@ -31,9 +31,44 @@ An instructor uploads a lecture and shares the course, a student asks a question
 
 > **New to the team?** Start with the [developer documentation](docs/README.md): [local setup](docs/getting-started/local-setup.md), [first walkthrough](docs/getting-started/first-walkthrough.md), and [codebase tour](docs/getting-started/codebase.md). Architecture and design references are also available there.
 
+## Quick Start
+
+Choose the environment you want to run:
+
+| Goal | Start here |
+|---|---|
+| Try VideoQ without installing it | [Hosted demo](https://videoq.jp/en/try) |
+| Run on one VPS with Kubernetes | [K3s on one VPS](docs/guides/on-premises-single-server.md) |
+| Use an existing Kubernetes cluster and site-managed services | [Kubernetes installation](docs/guides/on-premises.md) |
+| Edit the application on your computer | [Local development setup](docs/getting-started/local-setup.md) |
+
+On-prem installations use Kubernetes and Helm, including the one-VPS setup.
+Start with a single K3s node and one replica per workload, then measure real video
+processing and Q&A before adding capacity. The [single-server guide](docs/guides/on-premises-single-server.md)
+provides one installation command for persistent PostgreSQL, storage and queues,
+verified images, Helm and direct HTTPS on port 443, including public IPv4 access
+without a domain or SSH forwarding.
+
+For development, follow the [local setup guide](docs/getting-started/local-setup.md)
+from environment configuration through account activation. The root
+`docker-compose.yml` builds a Wrangler development stack; its signup and account
+promotion flow differs from the production on-prem installer.
+
+### Optional: reduce costs with local AI
+
+[Local inference](docs/guides/local-inference.md) explains private chat,
+embeddings and transcription, including [Mac development with whisper.cpp](docs/guides/local-inference.md#mac-development-with-whispercpp).
+The application connects to existing inference services; the
+[inference chart](charts/videoq-inference/README.md) provisions Kubernetes services.
+For hosted AI identity and operational checks, see the
+[provider runbook](docs/operations/openai-transcription.md).
+
 ## Architecture
 
 For the research behind the AI pipeline, see [AI methods and references](docs/reference/ai-references.md) ([Japanese translation](apps/docs/i18n/ja/docusaurus-plugin-content-docs/current/reference/ai-references.md)) and the reusable [BibTeX bibliography](docs/reference/ai-references.bib). It maps RAG, ReAct, Whisper, Otsu-inspired subtitle splitting, VideoSeek-inspired navigation, and the configured models to their original papers or official sources.
+
+The hosted service uses the following stack. On-prem deployments use the Node.js
+runtime and private backing services described below.
 
 | Layer | Stack |
 |---|---|
@@ -48,6 +83,7 @@ For the research behind the AI pipeline, see [AI methods and references](docs/re
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 
+For a single Linux server, use [single-node Kubernetes](docs/guides/on-premises-single-server.md).
 For on-prem Kubernetes, the [Helm chart](charts/videoq/README.md) deploys a production
 Node.js API, static web and Python workers against operator-provided PostgreSQL,
 S3 storage, a persistent SQS-compatible queue and configured inference endpoints.
@@ -62,292 +98,9 @@ Browser → Garage (signed uploads)          ↓
 
 The SPA shares the typed `/api/trpc` contract in `packages/trpc`. Hono also serves Better Auth, MCP, chat streaming, media, CSV exports, and the Stripe webhook. Browser authentication uses cookies; MCP uses API keys or OAuth access tokens.
 
-Async processing runs transcription (saved interval by interval for uploaded files) → scene indexing, plus optional visual caches for uploads. Jobs are recorded in a database outbox and delivered to SQS, and the worker tracks job IDs to handle retries. The `TASK_SCHEDULER` Durable Object schedules recovery for pending deliveries and abandoned uploads. A daily `17 3 * * *` UTC cron performs retention cleanup and recovery; there is no five-minute polling cron.
+Async processing runs transcription (saved interval by interval for uploaded files) → scene indexing, plus optional visual caches for uploads. Jobs are recorded in a database outbox and delivered to SQS, and the worker tracks job IDs to handle retries. In cloud and Wrangler development deployments, the `TASK_SCHEDULER` Durable Object schedules recovery for pending deliveries and abandoned uploads. A daily `17 3 * * *` UTC cron performs retention cleanup and recovery; there is no five-minute polling cron.
 
 Package READMEs: [`apps/`](apps/README.md) · [`apps/api/`](apps/api/README.md) · [`apps/web/`](apps/web/README.md) · [`apps/worker/`](apps/worker/README.md) · [`apps/docs/`](apps/docs/README.md) · [`apps/demo-video/`](apps/demo-video/README.md) · [`packages/trpc/`](packages/trpc/README.md)
-
-## Quick Start
-
-### Requirements
-
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed
-- An [OpenRouter API key](https://openrouter.ai/settings/keys) for the default AI configuration
-- A [SearchAPI API key](https://www.searchapi.io/) if you want to import YouTube videos (configured per user in Settings)
-- Node.js and npm for the account promotion command below and development outside Docker. CI and the images use the version in `.node-version`
-- Python 3.12+ only if you run or test the Python worker outside Docker. CI and the images use the version in `.python-version`
-
-### Step 1: Get an OpenRouter API key for the default setup
-
-1. Go to [OpenRouter API keys](https://openrouter.ai/settings/keys)
-2. Sign up or log in
-3. Create a key
-4. Copy the key, which starts with `sk-or-...`
-
-The setup below uses OpenRouter for transcription, embeddings, and chat. Optional local AI configuration is described [below](#optional-reduce-costs-with-local-ai).
-
-### Step 2: Set up VideoQ
-
-```bash
-# Clone the project and enter the directory
-git clone https://github.com/videoq-jp/videoq.git
-cd videoq
-
-# Copy the environment file
-cp .env.example .env
-```
-
-Open `.env` and set at least:
-
-```bash
-OPENROUTER_API_KEY=your-openrouter-api-key
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=openai/gpt-6-luna
-EMBEDDING_MODEL=openai/text-embedding-3-small
-WHISPER_BACKEND=openrouter
-
-# Docker API startup currently forwards AUTH_JWT_SECRET as the auth fallback.
-# AUTH_JWT_SECRET: openssl rand -base64 48
-# USER_SECRET_ENCRYPTION_KEY: openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
-AUTH_JWT_SECRET=
-USER_SECRET_ENCRYPTION_KEY=
-```
-
-A fixed `OPENROUTER_API_KEY` is the simplest option for local development. Shared
-and production deployments should prefer workload identity federation: configure
-separate `OPENROUTER_FEDERATION_POLICY_ID` values for the API and worker, using AWS
-STS identities and OpenRouter Business/Enterprise policies.
-The hosted models are GPT-6 Luna, 1536-dimensional `text-embedding-3-small`, and
-`openai/whisper-large-v3-turbo`.
-OpenRouter uses qualified `openai/...` model IDs. The adapters also qualify the
-unprefixed default model names when the selected endpoint is OpenRouter.
-This alias alone does not require rebuilding existing embedding vectors.
-
-For Cloudflare, configure the API policy ID and `AWS_REGION` in production
-Wrangler vars and grant STS token permission to its existing AWS principal. For
-Lambda, set Terraform `openrouter_federation_policy_id`; it uses its execution
-role. See the [WIF setup and release runbook](docs/operations/openai-transcription.md).
-For Helm, configure `ai.federationPolicyId` / `ai.federationAudience` and supply
-an AWS identity to the runtime. Local inference remains available through the
-local overlays. Without a policy, `OPENROUTER_API_KEY` remains a development
-option. Remove stale endpoint overrides when selecting the shared provider.
-A configured federation policy takes precedence over fixed keys on OpenRouter
-and never falls back to them after an exchange failure.
-
-Before production use, verify Whisper returns real segment timestamps using
-`verbose_json`, and run the opt-in structured-answer live test. No fabricated
-subtitle timing is accepted. See the [release runbook](docs/operations/openai-transcription.md),
-[OpenRouter transcription](https://openrouter.ai/docs/guides/overview/multimodal/stt),
-and [embeddings](https://openrouter.ai/docs/api_reference/embeddings).
-
-Answer generation and image inspection share `LLM_MODEL`. The template selects GPT-6 Luna through OpenRouter (`openai/gpt-6-luna`). With visual Q&A enabled, the model must support image input as well as tool calling and strict JSON output. See [model settings](docs/architecture/prompt-engineering.md#model-settings-and-limits) and [model references](docs/reference/ai-references.md#gpt-6-luna).
-
-Embedding dimensions are fixed at 1536 in the API, worker, and DB. The templates use `openai/text-embedding-3-small` through OpenRouter; no dimension setting is needed. Configure the same provider and model for both runtimes. See [embedding configuration and diagnostics](docs/guides/embeddings.md).
-
-Docker Compose supplies development-only fallback secrets when these fields are blank. The API container generates `apps/api/.dev.vars` using [`docker-dev.sh`](apps/api/scripts/docker-dev.sh), which currently forwards `AUTH_JWT_SECRET`, not `BETTER_AUTH_SECRET`. Host-run API development and production use `BETTER_AUTH_SECRET` directly. Configure independent secrets for shared deployments.
-
-### Step 3: Start VideoQ
-
-```bash
-# Start all services. The first run may take a few minutes.
-# Drizzle migrations run automatically via the `migrate` service.
-docker compose up --build -d
-```
-
-Check service state and logs if startup or video processing fails:
-
-```bash
-docker compose ps -a
-docker compose logs --tail=100 migrate api worker
-```
-
-`migrate` and `garage-init` are one-shot services; exiting with code 0 is expected. The API provides `/health` for liveness and `/ready` for database readiness, both accessible through `http://localhost`.
-
-Optional Vite HMR for frontend work:
-
-```bash
-docker compose --profile dev up -d web-dev
-# → http://localhost:3000
-```
-
-### Step 4: Create an admin user
-
-1. Open [http://localhost/signup](http://localhost/signup) and create an account.
-2. Complete email verification if Mailgun is configured.
-   For a bare local stack without Mailgun, promote the account
-   (this also activates it):
-
-```bash
-npm ci
-npm run user:admin --workspace @videoq/api -- your-username-or-email
-```
-
-If a migrated local account reports `Password not found`, set a new local-only
-password. The command reads it from `VIDEOQ_LOCAL_PASSWORD` (12–128 characters) and
-refuses non-local databases:
-
-```bash
-read -rsp 'New local password (12–128 characters): ' VIDEOQ_LOCAL_PASSWORD
-echo
-export VIDEOQ_LOCAL_PASSWORD
-npm run user:password:local --workspace @videoq/api -- your-username-or-email
-unset VIDEOQ_LOCAL_PASSWORD
-```
-
-3. Log in at [http://localhost/login](http://localhost/login).
-
-### Step 5: Start using VideoQ
-
-Open [http://localhost](http://localhost) in your browser.
-
-**Useful links:**
-
-- **Admin UI:** [http://localhost/admin](http://localhost/admin) for users, quotas, and reindex jobs
-- **Garage S3 API:** `http://127.0.0.1:9000` (bucket status: `docker compose exec garage /garage bucket info videoq-media`)
-- **API:** [http://localhost:8787/health](http://localhost:8787/health)
-- **PostgreSQL:** `127.0.0.1:55432`
-- **ElasticMQ:** `http://127.0.0.1:9324` (SQS endpoint), [statistics UI](http://localhost:9325)
-
-**First steps:**
-
-1. Log in with the account you promoted
-2. Upload a video, or save a SearchAPI key in Settings and import a YouTube lecture
-3. Create a course, add videos, wait for processing, and ask a question
-4. Open cited scenes to verify the answer
-
-### Free tier on signup
-
-New accounts receive a monthly free tier automatically (override per user later in Admin):
-
-| Setting | Default |
-|----------|-------------|
-| Max video upload size (MB) | 200 (`MAX_VIDEO_UPLOAD_SIZE_MB`) |
-| Storage limit (GB) | 1 (`DEFAULT_STORAGE_LIMIT_GB`) |
-| Processing limit (minutes / month) | 45 (`DEFAULT_PROCESSING_LIMIT_MINUTES`) |
-| AI answers limit (per month) | 30 (`DEFAULT_AI_ANSWERS_LIMIT`) |
-
-The `DEFAULT_*` quota variables accept `null` or `unlimited` for no cap; `0` is a hard zero quota. `MAX_VIDEO_UPLOAD_SIZE_MB` is a numeric upload limit. In Admin, leave nullable quota fields blank to set unlimited. AI answers and processing usage reset each UTC month.
-
-For Docker development, use Admin to change user quotas. API runtime variables come from `wrangler.jsonc` and the subset written by `docker-dev.sh`; adding an arbitrary API variable to the root `.env` does not automatically expose it to Hono. In particular, signup quota overrides are not currently forwarded by that script.
-
-<details>
-<summary><strong>Optional: object storage notes (Garage / R2 / S3)</strong></summary>
-
-**Local default:** Docker Compose starts a single-node Garage instance and configures the API + worker to use it. Browser uploads go to `http://127.0.0.1:9000`; containers use `http://garage:3900`, with region `garage`. `garage-init` applies bucket CORS before the API and worker start. Data and metadata persist in the `garage_data` volume. See the [local storage guide](infra/garage/README.md) for credentials, inspection, verification, and migration from an existing MinIO stack.
-
-**Production:** Use Cloudflare R2 (or another S3-compatible store). Set the API secrets / vars described in [`infra/DEPLOY.md`](infra/DEPLOY.md), including `R2_*` credentials and `USE_S3_STORAGE=true` for the worker / frontend as needed. Browser uploads also require the versioned R2 CORS policy in `apps/api/r2-cors.production.json`.
-
-Example API runtime variables / secrets for R2:
-
-```bash
-USE_S3_STORAGE=true
-R2_ACCESS_KEY_ID=your-r2-access-key
-R2_SECRET_ACCESS_KEY=your-r2-secret-key
-R2_BUCKET_NAME=your-bucket
-R2_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_S3_REGION=auto
-```
-
-The deployed API uses the `VIDEO_BUCKET` binding for object metadata and deletion. The R2 S3 credentials are used to sign browser URLs and by the Python worker. In Lambda, store R2 credentials under `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`; AWS credential variables belong to the execution role.
-
-The checked-in Compose stack explicitly configures Garage endpoints and credentials. Switching it to external storage requires updating those service settings as well as browser CORS and the publicly reachable storage URL.
-
-After editing runtime values in the root `.env`, recreate affected containers to load them:
-
-```bash
-docker compose up -d --force-recreate api worker
-```
-
-Frontend `VITE_*` values are build-time settings; changes require rebuilding `web`.
-
-</details>
-
-<a id="optional-reduce-costs-with-local-ai"></a>
-
-<details>
-<summary><strong>Optional: reduce costs with local AI</strong></summary>
-
-**This step is optional.** Skip it if the default hosted setup works for you.
-
-Transcription, chat, and embeddings can use local services. Configure each component together with the API and worker that consume it.
-
-<details>
-<summary><strong>Mac transcription with whisper.cpp</strong></summary>
-
-Run whisper.cpp natively on macOS to use Apple Silicon's Metal backend.
-The on-prem Kubernetes recipes use whisper.cpp on CPU or vLLM on NVIDIA GPUs,
-behind a private transcription gateway.
-Both connect through `WHISPER_BACKEND=local`. Build the pinned submodule with
-CMake and a C++ toolchain; install FFmpeg on the Mac for MP3 conversion.
-
-**Quick setup:**
-
-```bash
-# 1. Fetch whisper.cpp from the VideoQ root directory
-git submodule update --init --recursive
-cd whisper.cpp
-
-# 2. Build
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --config Release
-
-# 3. Download a model
-bash ./models/download-ggml-model.sh large-v3-turbo
-
-# 4. Start the server
-./build/bin/whisper-server -m models/ggml-large-v3-turbo.bin \
-  --host 127.0.0.1 --port 8080 --inference-path /audio/transcriptions \
-  --convert -l auto
-```
-
-`--convert` is required for the worker's MP3 uploads. Keep timestamps enabled.
-Use `-l ja` instead of `-l auto` to fix recognition to Japanese. The server loads
-the selected local model at startup; it does not download a model per request.
-
-**Configure VideoQ:**
-
-In another terminal at the VideoQ root, edit `.env`:
-
-```bash
-WHISPER_BACKEND=local
-WHISPER_LOCAL_URL=http://host.docker.internal:8080
-```
-
-Recreate the worker to load the changed environment:
-
-```bash
-docker compose up -d --force-recreate worker
-```
-
-For a worker running directly on the Mac, use `http://127.0.0.1:8080` instead.
-The base URL has no `/v1` suffix for this whisper.cpp command. Keep this
-unauthenticated development server bound to loopback. See the
-[local inference guide](docs/guides/local-inference.md#mac-development-with-whispercpp)
-for endpoint differences and the real-audio acceptance check.
-
-</details>
-
-<details>
-<summary><strong>Local chat, embeddings and Whisper</strong></summary>
-
-Use llama.cpp for the default CPU recipe or vLLM for NVIDIA GPU inference.
-Chat and embeddings use separate private OpenAI-compatible APIs; transcription
-uses the private whisper.cpp/vLLM gateway. See the [local inference guide](docs/guides/local-inference.md)
-and the [inference chart](charts/videoq-inference/README.md) for matching
-application overlays, model provisioning and acceptance commands.
-
-Set `EMBEDDING_BASE_URL` and the matching served model alias in both API and worker.
-`OPENAI_BASE_URL` selects chat independently. Private servers without
-API authentication use `local-inference` as a placeholder key. Text-only models
-require `VIDEO_VISUAL_ENABLED=false`; hosted credentials are unnecessary when
-chat, embeddings and Whisper all use validated private services.
-
-Changing embedding models requires maintenance, backups and complete vector
-regeneration before resuming search, even when dimensions remain 1536.
-See [diagnostics and migration constraints](docs/guides/embeddings.md).
-
-</details>
-
-</details>
 
 ## Development
 
@@ -470,7 +223,13 @@ binary dependencies from `uv.lock`.
 
 ## Deployment
 
-The production topology is Cloudflare Workers (separate frontend, API, and docs) + Hyperdrive, Neon PostgreSQL, Cloudflare R2, and an ARM64 Python Lambda consuming SQS. Follow [`infra/DEPLOY.md`](infra/DEPLOY.md) for provisioning, secrets, migrations, CORS, and deployment checks.
+For on-prem deployments, use [single-node Kubernetes](docs/guides/on-premises-single-server.md)
+or the [existing-cluster Helm guide](docs/guides/on-premises.md). These use production
+Node.js images and administrator-issued accounts.
+
+### Hosted service
+
+The hosted topology is Cloudflare Workers (separate frontend, API, and docs) + Hyperdrive, Neon PostgreSQL, Cloudflare R2, and an ARM64 Python Lambda consuming SQS. Follow [`infra/DEPLOY.md`](infra/DEPLOY.md) for provisioning, secrets, migrations, CORS, and deployment checks.
 
 - Frontend: `videoq-web` Worker + Static Assets, configured in `apps/web/wrangler.jsonc`; GitHub Actions CD deploys after successful main CI.
 - API and worker: [GitHub Actions CD](.github/workflows/cd.yml) applies database migrations before deployment. Terraform in `infra/` manages AWS resources.
@@ -479,7 +238,7 @@ The production topology is Cloudflare Workers (separate frontend, API, and docs)
 
 ### HTTPS with Docker Compose
 
-Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack runs `wrangler dev` with development settings and signs uploads for `http://127.0.0.1:9000`. Setting a domain in `.env` alone does not configure a public deployment: authentication origins, CORS, API variable forwarding, secrets, and a browser-accessible HTTPS storage endpoint also need configuration. Use the production deployment guide above for the maintained cloud setup.
+Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack runs `wrangler dev` with development settings and signs uploads for `http://127.0.0.1:9000`. Setting a domain in `.env` alone does not configure a public deployment: authentication origins, CORS, API variable forwarding, secrets, and a browser-accessible HTTPS storage endpoint also need configuration. Use the [K3s on one VPS guide](docs/guides/on-premises-single-server.md) for on-prem hosting, or the production deployment guide above for the cloud setup.
 
 ## MCP (Model Context Protocol) Integration
 
@@ -597,6 +356,7 @@ apps/demo-video/ Remotion demo films
 apps/inference/  Private speech gateway and engine images for on-prem
 packages/trpc/   Shared Hono ↔ React tRPC router and contract
 package.json     npm workspace root
+scripts/onprem/  Single-server installer and acceptance checks
 charts/          Helm charts for on-prem application and inference
 infra/           Terraform (SQS, Lambda, ECR, IAM) + deploy notes
 docs/            Architecture, design, and operations docs

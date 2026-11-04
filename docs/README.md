@@ -1,14 +1,27 @@
 ---
 slug: /
 sidebar_label: Introduction
-description: Setup, core concepts, and development guides for new VideoQ contributors.
+description: Installation, core concepts, and development guides for VideoQ operators and contributors.
 ---
 
-# VideoQ developer documentation
+# VideoQ documentation
 
 VideoQ **automatically answers student questions from lecture videos and links each answer to the scene that supports it**. Course creators and instructors organize videos into courses and share them; students ask questions and jump to the cited scenes.
 
-This site helps new contributors run the app and make their first small change. You do not need to read every design diagram before getting started.
+Start here to install VideoQ or make your first change. Choose an environment below;
+you do not need to read every design diagram before getting started.
+
+## Choose how to run VideoQ
+
+| Goal | Start here |
+|---|---|
+| Run on one VPS with Kubernetes | [K3s on one VPS](guides/on-premises-single-server.md) |
+| Deploy to an existing Kubernetes cluster | [On-prem and Helm guide](guides/on-premises.md) |
+| Run locally to change the application | [Development environment](getting-started/local-setup.md) |
+
+Start an on-prem evaluation on one Kubernetes node. Test installation, video processing,
+Q&A, updates and recovery, then use capacity measurements to decide whether to
+separate services. Keep backups on another host during the evaluation too.
 
 ## Understand the AI
 
@@ -49,7 +62,7 @@ For documentation-only changes, start with [Update the documentation](guides/doc
 | Change transcription or indexing | [Change asynchronous video processing](guides/worker.md) |
 | Verify a change | [Tests and verification commands](guides/testing.md) |
 | Troubleshoot startup or video processing | [Troubleshooting](guides/troubleshooting.md) |
-| Deploy to on-prem Kubernetes | [On-prem installation](guides/on-premises.md) |
+| Deploy to an existing Kubernetes cluster | [On-prem installation](guides/on-premises.md) |
 | Keep LLM, embeddings and Whisper on site | [Local AI inference](guides/local-inference.md) |
 
 ## Explore the details

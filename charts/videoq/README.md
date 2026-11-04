@@ -1,5 +1,11 @@
 # VideoQ on-prem Helm chart
 
+Use this chart for Kubernetes deployments, including a single VPS. Start with
+the [K3s on one VPS guide](../../docs/guides/on-premises-single-server.md)
+for a new VPS, or follow this page for an existing cluster and site-managed infrastructure.
+The [single-node examples](examples/single-node/README.md) supply separately managed
+PostgreSQL, Garage, a persistent queue and an HTTPS gateway.
+
 This chart installs the static web application, production Node.js API, Python
 SQS pollers, a migration Job, and recovery/retention CronJobs. It creates no
 database, object store, queue, inference server, ingress controller, certificate
@@ -59,6 +65,12 @@ For signed internet-connected distribution and verified updates, see
 requires a first successful run on main before its published artifacts exist.
 
 ## Build and load images
+
+The standard distribution path uses the public signed images and charts in the
+[release guide](../../docs/guides/on-premises-releases.md). It does not require a
+local build or a site-owned registry. Merge its generated `verified-images.json`
+last when installing. The following build steps are for sites that need custom
+images or their own build pipeline.
 
 From the repository root, build for the architecture of the target nodes:
 
