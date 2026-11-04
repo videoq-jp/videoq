@@ -1,5 +1,7 @@
 # Environment
 .env
+# Default on-prem installation contains generated credentials and TLS keys.
+/videoq-server/
 
 # macOS
 .DS_Store
