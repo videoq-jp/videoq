@@ -5,6 +5,13 @@ description: Verify signed VideoQ images and charts, rehearse updates, and promo
 
 # Verified on-prem releases and updates
 
+This guide prepares verified artifacts for both the
+[single-server installer](on-premises-single-server.md) and the
+[Kubernetes deployment](on-premises.md). The installer consumes
+`verified-images.json`; Helm additionally uses the verified chart archive.
+The Helm commands below apply to Kubernetes. Return to the single-server guide
+after verification if you are using the installer.
+
 For sites with internet access, use an external OCI registry and immutable image
 digests. The `On-prem Release` workflow prepares application and CPU Whisper GHCR
 images for Linux amd64 and arm64, an amd64 NVIDIA vLLM image, application and

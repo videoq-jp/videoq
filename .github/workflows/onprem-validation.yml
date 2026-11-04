@@ -68,6 +68,10 @@ jobs:
           python-version-file: apps/inference/whisper/.python-version
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
+      - name: Validate single-server installer safety
+        run: |
+          python3 -m unittest discover -s scripts/onprem -p test_videoq.py -v
+          node --check scripts/onprem/scheduler.mjs
       - name: Validate the private Whisper API with locked dependencies
         working-directory: apps/inference/whisper
         run: |
@@ -82,6 +86,18 @@ jobs:
           docker build -t videoq-api:onprem-ci -f apps/api/Dockerfile .
           docker build -t videoq-worker:onprem-ci -f apps/worker/Dockerfile.onprem apps/worker
           docker build -t videoq-web:onprem-ci -f apps/web/Dockerfile .
+      - name: Validate single-server restart and backup restore
+        timeout-minutes: 10
+        env:
+          VIDEOQ_ONPREM_LIFECYCLE: '1'
+        run: python3 -m unittest discover -s scripts/onprem -p test_lifecycle.py -v
+      - name: Install Chromium for single-server citation playback
+        run: node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Validate single-server video, registry updates and failed migration recovery
+        timeout-minutes: 15
+        env:
+          VIDEOQ_ONPREM_ACCEPTANCE: '1'
+        run: python3 -m unittest discover -s scripts/onprem -p test_acceptance.py -v
       - name: Exercise production API image over HTTP
         working-directory: apps/api
         run: node scripts/smoke-node.mjs videoq-api:onprem-ci

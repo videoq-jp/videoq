@@ -2,6 +2,10 @@
 
 Runnable packages for VideoQ.
 
+For installation, start with the [single-server guide](../docs/guides/on-premises-single-server.md)
+or [Kubernetes guide](../docs/guides/on-premises.md). For source changes, follow the
+[local development setup](../docs/getting-started/local-setup.md).
+
 | Directory | Role | Runtime |
 |---|---|---|
 | [`api/`](api/) | tRPC API and protocol transports | Hono / Cloudflare Workers (Node.js on-prem) |
@@ -20,7 +24,7 @@ npm run dev:web
 npm run dev:docs
 ```
 
-Start the full local stack:
+Start the full local development stack:
 
 ```bash
 docker compose up --build -d

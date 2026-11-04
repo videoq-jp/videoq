@@ -52,8 +52,8 @@ RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template
 
 FROM nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606 AS runtime
 
-# The pinned base predates the Brotli decoder and curl HTTP/2 upload fixes.
-RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0'
+# Refresh the pinned base's Brotli, curl and Expat security fixes.
+RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0' 'libexpat>=2.10.0-r0'
 
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
