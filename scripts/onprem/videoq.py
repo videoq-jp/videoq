@@ -137,8 +137,10 @@ def compose(refs, public_url, storage_url, bind_address=None):
 
 
 def write_private(path, content):
-    with path.open("x", encoding="utf-8") as stream:
-        os.chmod(path, 0o600)
+    # Restrict access at creation, before writing any credential bytes. O_EXCL
+    # refuses existing paths, including symlinks; do not widen a caller's umask.
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
         stream.write(content)
 
 
