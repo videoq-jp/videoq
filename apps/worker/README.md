@@ -1,14 +1,16 @@
 # apps/worker
 
 The Python worker processes VideoQ's asynchronous jobs. It uses SQS long polling
-locally and runs through an AWS Lambda SQS trigger in production.
+locally and on-prem, and runs through an AWS Lambda SQS trigger in the hosted service.
 
-On-prem Kubernetes uses `Dockerfile.onprem` and the long-polling
+On-prem deployments use `Dockerfile.onprem` and the long-polling
 `scripts/run_worker.py` entrypoint. It stops polling on SIGTERM and drains active
 work. `SQS_JOB_TIMEOUT_SECONDS` defaults to 840 and must stay below both queue
 visibility and the 900-second DB execution lease. Interrupted work remains
-unacknowledged for retry. See the [Helm chart](../../charts/videoq/README.md)
-for deployment, external queue durability and inference configuration.
+unacknowledged for retry. Start with the
+[single-server guide](../../docs/guides/on-premises-single-server.md) for bundled
+infrastructure, or the [Helm chart](../../charts/videoq/README.md) for a cluster
+with site-managed queues, storage and inference.
 
 ## Job contract
 

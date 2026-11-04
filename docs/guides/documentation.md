@@ -7,6 +7,11 @@ description: Write actionable documentation and preview the English and Japanese
 
 English is the default language. English pages live in the repository's `docs/` directory; Japanese translations live in `apps/docs/i18n/ja/docusaurus-plugin-content-docs/current/`. Docusaurus publishes only the pages explicitly listed in `apps/docs/public-content.json`.
 
+Treat the English page as the source of truth. Update it first, then update the
+Japanese translation in the same change. Check that prerequisites, commands,
+option names, defaults, limitations and next-page links agree; translation-file
+existence and a successful build alone do not establish content parity.
+
 Use English for the repository's default Markdown documentation, including READMEs, contributor guides, operational runbooks, and the pull request template. Keep Japanese site translations in `apps/docs/i18n/ja/`. Preserve original copyright and license notices, and retain non-English text when it is required by a quoted identifier or a localization example. Write the surrounding explanation in English.
 
 ## Start and preview

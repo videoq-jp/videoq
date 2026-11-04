@@ -3,7 +3,9 @@
 VideoQ's Web API, built with Hono / TypeScript and running on Cloudflare Workers.
 
 The production on-prem entrypoint runs the same Hono app on Node.js, without
-Wrangler or Durable Objects. Build with `npm run build:node`, then run
+Wrangler or Durable Objects. For installation, use the
+[single-server guide](../../docs/guides/on-premises-single-server.md) or
+[Helm chart](../../charts/videoq/README.md). For runtime development, build with `npm run build:node`, then run
 `npm run start:node` with the required settings from the
 [Helm chart README](../../charts/videoq/README.md). The same image provides
 `node dist/node.mjs maintenance` and `node dist/node.mjs retention` for CronJobs.

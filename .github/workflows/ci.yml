@@ -183,6 +183,9 @@ jobs:
               - '.github/onprem-lab/**'
               - 'charts/videoq-inference/**'
             onprem:
+              - 'scripts/onprem/**'
+              - 'infra/garage/**'
+              - 'infra/elasticmq.conf'
               - '.github/inference-basic-packages.json'
               - '.dockerignore'
               - 'charts/**'

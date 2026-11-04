@@ -33,6 +33,7 @@
     "guides/frontend.md",
     "guides/local-inference.md",
     "guides/on-premises.md",
+    "guides/on-premises-single-server.md",
     "guides/on-premises-releases.md",
     "guides/testing.md",
     "guides/troubleshooting.md",

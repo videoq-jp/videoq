@@ -5,6 +5,11 @@ description: 署名とダイジェストを検証し、Kubernetes で更新と�
 
 # オンプレの署名付き配布と更新
 
+このページで検証した配布物は、[単一サーバーへの導入](on-premises-single-server.md)と
+[Kubernetes への配置](on-premises.md)の両方で使えます。
+インストーラーには `verified-images.json` を渡し、Helm では検証済みの Chart も使います。
+以下の Helm コマンドは Kubernetes 向けです。単一サーバーの場合は、署名検証後に導入ガイドへ戻ってください。
+
 インターネットに接続できる導入先では、外部レジストリとイメージのダイジェストを使って配布します。`On-prem Release` は最新 main の push CI 成功を確認し、Linux amd64・arm64 の API、Web、ワーカー、CPU Whisper、アプリ・推論用の両 Helm Chart、`release.json` を作成します。NVIDIA vLLM のイメージは amd64 用として同梱します。同じ main コミットで手動実行すると、OS パッケージ修正後の再ビルドにも使えます。
 
 配布用の `ghcr.io/videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・`videoq-transcription-gateway`・`videoq-vllm` は Public とします。Docker や Kubernetes からは GHCR のログインや `imagePullSecrets` なしで取得できます。導入先独自の非公開レジストリを使う場合は、引き続き `imagePullSecrets` を設定できます。各イメージにはリポジトリの現行 LICENSE を同梱し、公開範囲の変更でライセンス条件は変更しません。
