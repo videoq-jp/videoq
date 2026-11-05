@@ -1,0 +1,15 @@
+{
+  "owner": "VideoQ maintainers",
+  "reviewedAt": "2026-11-05T00:00:00Z",
+  "expiresAt": "2026-12-05T00:00:00Z",
+  "image": "ghcr.io/ggml-org/llama.cpp@sha256:01c2bc28d51291536df2ccebe5c6af1cdec9ea9b2bd98ac59556408caf96d3f8",
+  "sourceRevision": "7ac5727d6037ec99c31a28c6520f45de154199d9",
+  "architectures": ["amd64", "arm64"],
+  "os": {"Family": "ubuntu", "Name": "24.04"},
+  "vulnerability": "CVE-2026-109518",
+  "packages": {"apt": "2.8.3", "libapt-pkg6.0t64": "2.8.3"},
+  "status": "not_affected",
+  "justification": "vulnerable_code_not_in_execute_path",
+  "impactStatement": "Applies only to the VideoQ chart's non-root, read-only llama-server runtime with local model files. Startup and model provisioning do not invoke APT in this image. This CVE requires an APT package acquisition operation; it is not triggered by inference requests. APT remains vulnerable in the upstream image. This assessment excludes upstream builds, host package management, interactive package installation, other images and site overrides. It is not a claim that the package is fixed.",
+  "references": ["https://ubuntu.com/security/CVE-2026-109518", "https://github.com/ggml-org/llama.cpp/tree/7ac5727d6037ec99c31a28c6520f45de154199d9/tools/server"]
+}

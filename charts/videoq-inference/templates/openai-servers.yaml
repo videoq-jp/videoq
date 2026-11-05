@@ -147,13 +147,23 @@ spec:
           readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10 }
           livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 30, timeoutSeconds: 5 }
           securityContext: {{ include "inference.security" $root | nindent 12 }}
+            {{- if eq $engine "llamacpp" }}
+            readOnlyRootFilesystem: true
+            {{- end }}
           resources: {{ toYaml $server.resources | nindent 12 }}
           volumeMounts:
             - { name: models, mountPath: /models, readOnly: true }
+            {{- if eq $engine "llamacpp" }}
+            - { name: tmp, mountPath: /tmp }
+            {{- end }}
             {{- if eq $engine "vllm" }}
             - { name: shm, mountPath: /dev/shm }
             {{- end }}
       volumes:
+        {{- if eq $engine "llamacpp" }}
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+        {{- end }}
         - name: models
           persistentVolumeClaim:
             claimName: {{ default (printf "%s-%s" (include "inference.fullname" $root) $name) $server.persistence.existingClaim }}
