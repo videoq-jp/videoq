@@ -8,6 +8,7 @@ import secrets
 import shutil
 import socket
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -38,7 +39,7 @@ class FixtureInstaller(installer.Installer):
 class KubernetesLifecycleTests(unittest.TestCase):
     def test_failed_update_retry_backup_and_both_uninstall_modes(self):
         cluster = 'videoq-lifecycle-' + secrets.token_hex(4)
-        with tempfile.TemporaryDirectory(prefix='videoq-k8s-lifecycle-') as temporary:
+        with tempfile.TemporaryDirectory(prefix='videoq-k8s-lifecycle-', ignore_cleanup_errors=True) as temporary:
             directory = Path(temporary) / 'installation'
             args = argparse.Namespace(command='install', directory=str(directory), url='https://videoq.example.com',
                                       cluster=cluster, run_id=None, source_sha=None, backup=None, purge=False, yes=False,
@@ -124,11 +125,31 @@ class KubernetesLifecycleTests(unittest.TestCase):
                 instance.uninstall()
                 created = False
                 self.assertFalse(directory.exists())
+            except Exception:
+                # Capture readiness/image-pull/OOM evidence before deleting the cluster.
+                for command in [
+                    ['kubectl', '--kubeconfig', str(instance.kubeconfig), '-n', 'videoq', 'get', 'pods', '-o', 'wide'],
+                    ['kubectl', '--kubeconfig', str(instance.kubeconfig), '-n', 'videoq', 'describe', 'pods'],
+                    ['kubectl', '--kubeconfig', str(instance.kubeconfig), '-n', 'videoq', 'get', 'events', '--sort-by=.lastTimestamp'],
+                    ['kubectl', '--kubeconfig', str(instance.kubeconfig), '-n', 'videoq', 'logs', 'deployment/postgres', '--tail=100'],
+                    [*instance.docker_prefix, 'docker', 'logs', '--tail', '100', 'k3d-' + cluster + '-server-0'],
+                ]:
+                    try:
+                        subprocess.run(command, check=False, timeout=20)
+                    except (OSError, subprocess.TimeoutExpired) as error:
+                        print('Diagnostic unavailable:', error, flush=True)
+                raise
             finally:
+                removed = not created
                 if created:
-                    instance.k3d('cluster', 'delete', cluster)
-                if (directory / 'storage').exists():
-                    subprocess.run(['sudo', '-n', 'rm', '-r', '--', str(directory / 'storage')], check=True)
+                    try:
+                        cleanup = subprocess.run([*instance.docker_prefix, shutil.which('k3d'), 'cluster', 'delete', cluster],
+                                                 check=False, timeout=90)
+                        removed = cleanup.returncode == 0
+                    except subprocess.TimeoutExpired:
+                        print('Disposable cluster cleanup timed out; retaining its storage:', directory, flush=True)
+                if removed and (directory / 'storage').exists():
+                    subprocess.run(['sudo', '-n', 'rm', '-r', '--', str(directory / 'storage')], check=True, timeout=30)
 
     @staticmethod
     def restore_backup_database(instance, backup):

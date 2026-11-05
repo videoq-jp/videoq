@@ -1,4 +1,4 @@
-# Upstream llama.cpp runtime assessment
+# Upstream inference runtime assessments
 
 VideoQ uses the upstream image unchanged, pinned by digest. Finding a CVE in an
 external image triggers evaluation; it does not automatically require maintaining
@@ -39,15 +39,33 @@ with a reachable acquisition path must not be labeled `not_affected`.
 
 ## Enforcement and evidence
 
-The Trivy scan retains all HIGH/CRITICAL/UNKNOWN findings, including unfixed ones,
+The llama.cpp Trivy scan retains all HIGH/CRITICAL/UNKNOWN findings, including unfixed ones,
 without an ignore list or VEX suppression. Scanner errors still fail the job.
 The following assessment command is the promotion gate; a raw scan returning
 zero is **not** a successful security evaluation:
 
 ```sh
-HELM_BIN=/path/to/helm node .github/scripts/onprem-llamacpp-security.cjs \
+HELM_BIN=/path/to/helm node .github/scripts/onprem-upstream-security.cjs \
   upstream-cpu-security.json amd64 upstream-cpu-assessed.json
 ```
+
+The same APT evaluation applies to the separately pinned Ubuntu 22.04
+whisper.cpp images, which contain APT `2.4.14` (fixed in `2.4.15ubuntu0.1`). Their
+own `apps/inference/whispercpp/security/apt-runtime-assessment.json` fixes the
+digest for each architecture and package versions. The chart overrides their
+`bash -c` image entrypoint with `/app/build/bin/whisper-server`, passing only local
+model files. That engine also runs non-root with a read-only root and model mount
+and writable `/tmp`; the separate gateway/provisioner does not receive this
+assessment. Pass `whispercpp` as the fourth command argument to assess it.
+
+The existing whisper.cpp kernel-header VEX evaluation remains separate. Its
+complete scan output retains those findings in `ExperimentalModifiedFindings`.
+The gate checks each such record against the explicit reviewed CVE/PURL/version
+and the exact image/header inventory verified by `check-upstream-header-image.py`.
+An unexpected suppression, missing inventory, changed header hash or new kernel
+CVE fails; the APT assessment cannot suppress these findings or inherit arbitrary
+VEX decisions. Both the complete scanner report and the resulting evaluations
+are retained.
 
 The gate validates the raw report's digest, platform, OS and entrypoint/source
 identity. It renders and checks the default, model-download and pre-provisioned

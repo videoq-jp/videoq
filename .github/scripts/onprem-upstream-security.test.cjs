@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
-const { assess } = require('./onprem-llamacpp-security.cjs');
+const { assess } = require('./onprem-upstream-security.cjs');
 const policy = JSON.parse(readFileSync(join(__dirname, '../../apps/inference/llamacpp/security/apt-runtime-assessment.json')));
 const now = new Date('2026-11-05T12:00:00Z');
 
@@ -88,9 +88,66 @@ test('different images, startup programs and incomplete or pre-filtered reports 
     r => { r.Metadata.ImageConfig.config.Labels['org.opencontainers.image.revision'] = 'other'; },
     r => { r.Results = []; },
     r => { r.Results[0].ModifiedFindings = [{ Type: 'vex' }]; },
+    r => { r.Results[0].ExperimentalModifiedFindings = [{ Type: 'vulnerability' }]; },
   ]) {
     const s = sample(); change(s.report);
     assert.throws(() => run(s));
+  }
+});
+
+function whisperSample(architecture = 'amd64') {
+  const s = sample(architecture);
+  const whisper = JSON.parse(readFileSync(join(__dirname, '../../apps/inference/whispercpp/security/apt-runtime-assessment.json')));
+  const image = whisper.images[architecture];
+  s.report.Metadata.RepoDigests = [image];
+  s.report.Metadata.OS = whisper.os;
+  s.report.Metadata.ImageConfig.config.Entrypoint = whisper.imageEntrypoint;
+  s.report.Results[0].Vulnerabilities = Object.entries(whisper.packages).map(([name, version]) => ({
+    VulnerabilityID: whisper.vulnerability, PkgName: name, InstalledVersion: version, Severity: 'HIGH',
+    PkgIdentifier: { PURL: `pkg:deb/ubuntu/${name}@${version}?arch=${architecture}&distro=ubuntu-22.04` },
+  }));
+  s.profiles = s.profiles.map(documents => {
+    const deployment = documents[0], container = deployment.spec.template.spec.containers[0];
+    container.name = 'engine'; container.image = image;
+    container.command = ['/app/build/bin/whisper-server'];
+    container.args = ['--model', '/models/' + 'a'.repeat(40) + '/model.bin', '--no-gpu'];
+    return [deployment];
+  });
+  const approved = JSON.parse(readFileSync(join(__dirname, '../../apps/inference/whispercpp/security/header-image-inventory.json'))).images[architecture];
+  const evidence = { approved, actual: structuredClone(approved),
+    vex: JSON.parse(readFileSync(join(__dirname, '../../apps/inference/whispercpp/security/kernel-headers.openvex.json'))) };
+  const statement = evidence.vex.statements[0];
+  s.report.Results[0].ExperimentalModifiedFindings = [{
+    Type: 'vulnerability', Status: 'not_affected', Statement: 'vulnerable_code_not_present',
+    Source: 'apps/inference/whispercpp/security/kernel-headers.openvex.json',
+    Finding: { VulnerabilityID: statement.vulnerability.name, PkgName: 'linux-libc-dev', InstalledVersion: approved.version,
+      PkgIdentifier: { PURL: `pkg:deb/ubuntu/linux-libc-dev@${approved.version}?arch=${architecture}&distro=ubuntu-22.04` } },
+  }];
+  return { ...s, policy: whisper, evidence };
+}
+
+test('whisper.cpp APT evaluation requires native command override and verified existing header assessment', () => {
+  for (const arch of ['amd64', 'arm64']) {
+    const s = whisperSample(arch);
+    const result = assess(s.report, s.policy, arch, s.profiles, now, s.evidence);
+    assert.equal(result.accepted.length, 2);
+    assert.equal(result.preAssessed.length, 1);
+    assert.equal(result.blocking.length, 0);
+    assert.throws(() => assess(s.report, s.policy, arch, s.profiles, now));
+    s.profiles[0][0].spec.template.spec.containers[0].command = ['bash', '-c'];
+    assert.throws(() => assess(s.report, s.policy, arch, s.profiles, now, s.evidence));
+  }
+});
+
+test('changed inventory, unreviewed header CVEs and suppression of an APT finding are rejected', () => {
+  for (const change of [
+    s => { s.evidence.actual.inventorySha256 = 'unreviewed'; },
+    s => { s.report.Results[0].ExperimentalModifiedFindings[0].Finding.VulnerabilityID = 'CVE-2099-0001'; },
+    s => { s.report.Results[0].ExperimentalModifiedFindings[0].Finding = s.report.Results[0].Vulnerabilities[0]; },
+    s => { s.report.Results[0].ExperimentalModifiedFindings[0].Source = 'unreviewed.json'; },
+  ]) {
+    const s = whisperSample(); change(s);
+    assert.throws(() => assess(s.report, s.policy, s.architecture, s.profiles, now, s.evidence));
   }
 });
 

@@ -234,7 +234,7 @@ retain the same license, scan/SBOM and provenance controls, and use an explicitl
 reviewed site-owned image values file instead of the public image values.
 
 External-image findings are evaluated against the actual deployment before
-blocking promotion. See the [upstream llama.cpp runtime assessment and maintenance
+blocking promotion. See the [upstream inference runtime assessments and maintenance
 policy](../../apps/inference/llamacpp/security/README.md). The scoped APT assessment
 does not patch the upstream image or apply to operator overrides, host package
 management or upstream image builds. CI retains raw findings, verifies the chart's

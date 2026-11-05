@@ -198,7 +198,7 @@ jobs:
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
-        run: node .github/scripts/onprem-llamacpp-security.cjs llamacpp-security-raw.json amd64 llamacpp-security-assessed.json
+        run: node .github/scripts/onprem-upstream-security.cjs llamacpp-security-raw.json amd64 llamacpp-security-assessed.json
       - name: Record package inventories for incident response
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         run: |
@@ -395,16 +395,16 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL,UNKNOWN
           ignore-unfixed: 'false'
-          exit-code: ${{ matrix.engine == 'llamacpp' && '0' || '1' }}
+          exit-code: '0'
           timeout: 15m
       - name: Install pinned Helm for the runtime assessment
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && matrix.engine == 'llamacpp' }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
         run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
-      - name: Assess the upstream llama.cpp runtime findings
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && matrix.engine == 'llamacpp' }}
+      - name: Assess the upstream inference runtime findings
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
-        run: node .github/scripts/onprem-llamacpp-security.cjs upstream-cpu-security.json ${{ matrix.architecture }} upstream-cpu-assessed.json
+        run: node .github/scripts/onprem-upstream-security.cjs upstream-cpu-security.json ${{ matrix.architecture }} upstream-cpu-assessed.json ${{ matrix.engine }}
       - name: Verify the report covers the requested platform and digest
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' }}
         env:

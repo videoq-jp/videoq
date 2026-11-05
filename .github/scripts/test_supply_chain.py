@@ -1,9 +1,12 @@
 import copy
+import contextlib
 import importlib.util
 import io
 import json
 from pathlib import Path
 import unittest
+import subprocess
+import tempfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("supply_chain", Path(__file__).with_name("supply-chain.py"))
@@ -12,6 +15,29 @@ spec.loader.exec_module(policy)
 
 
 class LockPolicyTests(unittest.TestCase):
+    def test_manual_run_uses_real_merge_base_and_rejects_missing_or_unsafe_refs(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            def git(*args):
+                return subprocess.check_output(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                                                *args], text=True, stderr=subprocess.DEVNULL).strip()
+            git('init', '-q', '--initial-branch=main')
+            Path('lock.json').write_text('base')
+            git('add', 'lock.json')
+            git('commit', '-qm', 'base')
+            base = git('rev-parse', 'HEAD')
+            git('update-ref', 'refs/remotes/origin/main', base)
+            git('switch', '-qc', 'feature')
+            Path('lock.json').write_text('feature')
+            git('commit', '-qam', 'feature')
+            self.assertNotEqual(git('rev-parse', 'HEAD'), base)
+            self.assertEqual(policy.resolve_base_ref('refs/remotes/origin/main'), base)
+            self.assertEqual(policy.read_base(base, 'lock.json'), 'base')
+            for invalid in ('', '--all', 'HEAD', 'refs/remotes/origin/../main'):
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    policy.resolve_base_ref(invalid)
+            with self.assertRaises(subprocess.CalledProcessError):
+                policy.resolve_base_ref('refs/remotes/origin/missing')
+
     def setUp(self):
         self.entry = {"version": "1.0.0", "resolved": "https://registry.npmjs.org/example/-/example-1.0.0.tgz",
                       "integrity": "sha512-" + "A" * 86 + "=="}

@@ -48,7 +48,7 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
     assert.match(scan, /severity: HIGH,CRITICAL/);
     assert.match(scan, /ignore-unfixed: 'false'/);
     assert.match(scan, component === 'llamacpp' ? /exit-code: '0'/ : /exit-code: '1'/);
-    if (component === 'llamacpp') assert.match(onprem, /node \.github\/scripts\/onprem-llamacpp-security\.cjs llamacpp-security-raw\.json amd64/);
+    if (component === 'llamacpp') assert.match(onprem, /node \.github\/scripts\/onprem-upstream-security\.cjs llamacpp-security-raw\.json amd64/);
     assert.doesNotMatch(scan, /continue-on-error: true/);
   }
 });
@@ -96,8 +96,8 @@ test('upstream CPU images retain separate architecture scans and a verified asse
   assert.match(cpu, /steps.header_inventory.outcome == 'success'/);
   assert.match(cpu, /apps\/inference\/whispercpp\/security\/header-image-inventory.json/);
   assert.match(cpu, /ignore-unfixed: 'false'/);
-  assert.match(cpu, /exit-code: \$\{\{ matrix\.engine == 'llamacpp' && '0' \|\| '1' \}\}/);
-  assert.match(cpu, /onprem-llamacpp-security\.cjs upstream-cpu-security\.json/);
+  assert.match(cpu, /exit-code: '0'/);
+  assert.match(cpu, /onprem-upstream-security\.cjs upstream-cpu-security\.json/);
   assert.doesNotMatch(cpu, /continue-on-error: true/);
 });
 
