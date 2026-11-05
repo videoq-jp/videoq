@@ -288,6 +288,14 @@ jobs:
         run: docker build -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
       - name: Verify audio extras without a GPU
         run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
+      - name: Reclaim disk for the CUDA image scan
+        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
+        run: |
+          # Trivy asks Docker to export the image, temporarily duplicating CUDA layers.
+          # This isolated job has finished building and needs no compiler toolchains.
+          docker builder prune --all --force
+          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
+          df -h /
       - name: Scan NVIDIA Whisper including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
         uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
