@@ -53,7 +53,13 @@ jobs:
       - name: Check lockfile sources, integrity and vulnerability delta
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
-        run: python .github/scripts/supply-chain.py --base "$BASE_SHA"
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            python .github/scripts/supply-chain.py --base-ref "refs/remotes/origin/$DEFAULT_BRANCH"
+          else
+            python .github/scripts/supply-chain.py --base "$BASE_SHA"
+          fi
       # Verify registry signatures before any package code executes in this job.
       - run: npm ci --ignore-scripts
       - run: npm audit signatures
@@ -174,6 +180,8 @@ jobs:
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
+              - 'apps/inference/llamacpp/security/**'
+              - '.github/scripts/onprem-upstream-security*'
               - '.github/scripts/check-upstream-header-image.py'
               - '.github/workflows/onprem-validation.yml'
             real_cpu:

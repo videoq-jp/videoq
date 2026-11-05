@@ -68,3 +68,5 @@ For documentation-only changes, start with [Update the documentation](guides/doc
 ## Explore the details
 
 Use **Design reference** in the sidebar when you need a diagram or specification. Look up database names in the [data dictionary](database/data-dictionary.md) and abbreviations in the [glossary](reference/glossary.md).
+
+- [Single-VPS K3s deployment](guides/on-premises-k3s.md)

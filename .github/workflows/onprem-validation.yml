@@ -68,6 +68,8 @@ jobs:
           python-version-file: apps/inference/whisper/.python-version
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
+      - name: Validate single-VPS K3s installer safety
+        run: python3 -m unittest discover -s scripts/onprem -p test_k3s.py -v
       - name: Validate single-server installer safety
         run: |
           python3 -m unittest discover -s scripts/onprem -p test_videoq.py -v
@@ -86,6 +88,13 @@ jobs:
           docker build -t videoq-api:onprem-ci -f apps/api/Dockerfile .
           docker build -t videoq-worker:onprem-ci -f apps/worker/Dockerfile.onprem apps/worker
           docker build -t videoq-web:onprem-ci -f apps/web/Dockerfile .
+      - name: Install pinned K3s operator tools
+        run: bash scripts/onprem/install-tools.sh
+      - name: Validate K3s backups, failed update recovery and uninstall
+        timeout-minutes: 20
+        env:
+          VIDEOQ_K3S_LIFECYCLE: '1'
+        run: python3 -m unittest discover -s scripts/onprem -p test_k3s_lifecycle.py -v
       - name: Validate single-server restart and backup restore
         timeout-minutes: 10
         env:
@@ -178,11 +187,18 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: ${{ env.LLAMACPP_IMAGE }}
+          format: json
+          output: llamacpp-security-raw.json
           scanners: vuln
-          severity: HIGH,CRITICAL
+          severity: HIGH,CRITICAL,UNKNOWN
           ignore-unfixed: 'false'
-          exit-code: '1'
+          exit-code: '0'
           timeout: 10m
+      - name: Assess the llama.cpp runtime findings
+        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
+        run: node .github/scripts/onprem-upstream-security.cjs llamacpp-security-raw.json amd64 llamacpp-security-assessed.json
       - name: Record package inventories for incident response
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         run: |
@@ -199,6 +215,8 @@ jobs:
           path: |
             sbom/*.cdx.json
             local-whisper-security.json
+            llamacpp-security-*.json
+            apps/inference/llamacpp/security/
             apps/inference/whisper/security/sqlite.openvex.json
           if-no-files-found: error
           retention-days: 30
@@ -279,6 +297,14 @@ jobs:
         run: docker build -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
       - name: Verify audio extras without a GPU
         run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
+      - name: Reclaim disk for the CUDA image scan
+        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
+        run: |
+          # Trivy asks Docker to export the image, temporarily duplicating CUDA layers.
+          # This isolated job has finished building and needs no compiler toolchains.
+          docker builder prune --all --force
+          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
+          df -h /
       - name: Scan NVIDIA Whisper including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
         uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
@@ -367,10 +393,18 @@ jobs:
           format: json
           output: upstream-cpu-security.json
           scanners: vuln
-          severity: HIGH,CRITICAL
+          severity: HIGH,CRITICAL,UNKNOWN
           ignore-unfixed: 'false'
-          exit-code: '1'
+          exit-code: '0'
           timeout: 15m
+      - name: Install pinned Helm for the runtime assessment
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
+      - name: Assess the upstream inference runtime findings
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
+        run: node .github/scripts/onprem-upstream-security.cjs upstream-cpu-security.json ${{ matrix.architecture }} upstream-cpu-assessed.json ${{ matrix.engine }}
       - name: Verify the report covers the requested platform and digest
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' }}
         env:
@@ -393,6 +427,8 @@ jobs:
           name: upstream-cpu-security-${{ matrix.engine }}-${{ matrix.architecture }}
           path: |
             upstream-cpu-security.json
+            upstream-cpu-assessed.json
+            apps/inference/llamacpp/security/
             header-inventory.json
             apps/inference/whispercpp/security/
           retention-days: 30

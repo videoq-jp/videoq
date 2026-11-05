@@ -75,3 +75,7 @@ image scans and provenance verification.
 
 Model/GPU provisioning and a complete offline distribution bundle remain separate
 from this installer. Use the local inference guide to provision private services.
+
+## K3s deployment
+
+For the k3d-managed K3s installer, see [K3S.md](K3S.md).

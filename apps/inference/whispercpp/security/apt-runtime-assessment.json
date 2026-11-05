@@ -1,0 +1,33 @@
+{
+  "owner": "VideoQ maintainers",
+  "reviewedAt": "2026-11-05T00:00:00Z",
+  "expiresAt": "2026-12-05T00:00:00Z",
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "os": {
+    "Family": "ubuntu",
+    "Name": "22.04"
+  },
+  "vulnerability": "CVE-2026-109518",
+  "packages": {
+    "apt": "2.4.14",
+    "libapt-pkg6.0": "2.4.14"
+  },
+  "status": "not_affected",
+  "justification": "vulnerable_code_not_in_execute_path",
+  "impactStatement": "Applies only to the VideoQ chart's non-root, read-only whisper-server runtime with local model files. Startup and model provisioning do not invoke APT in this image. This CVE requires an APT package acquisition operation; it is not triggered by inference requests. APT remains vulnerable in the upstream image. This assessment excludes upstream builds, host package management, interactive package installation, other images and site overrides. It is not a claim that the package is fixed.",
+  "references": [
+    "https://ubuntu.com/security/CVE-2026-109518"
+  ],
+  "engine": "whispercpp",
+  "imageEntrypoint": [
+    "bash",
+    "-c"
+  ],
+  "images": {
+    "amd64": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73",
+    "arm64": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0"
+  }
+}

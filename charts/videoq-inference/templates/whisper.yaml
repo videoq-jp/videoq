@@ -106,6 +106,8 @@ spec:
           args:
             - --model
             - /models/{{ $whisper.modelRevision }}/{{ $whisper.modelFile }}
+            - --tmp-dir
+            - /tmp
             - --host
             - "127.0.0.1"
             - --port
@@ -127,13 +129,23 @@ spec:
             - { name: DO_NOT_TRACK, value: "1" }
             - { name: HOME, value: /tmp }
           securityContext: {{ include "inference.security" . | nindent 12 }}
+            {{- if not $gpu }}
+            readOnlyRootFilesystem: true
+            {{- end }}
           resources: {{ toYaml $whisper.resources | nindent 12 }}
           volumeMounts:
             - { name: models, mountPath: /models, readOnly: true }
+            {{- if not $gpu }}
+            - { name: tmp, mountPath: /tmp }
+            {{- end }}
             {{- if $gpu }}
             - { name: shm, mountPath: /dev/shm }
             {{- end }}
       volumes:
+        {{- if not $gpu }}
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+        {{- end }}
         - name: models
           persistentVolumeClaim:
             claimName: {{ default (printf "%s-whisper" (include "inference.fullname" .)) $whisper.persistence.existingClaim }}
