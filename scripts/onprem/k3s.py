@@ -330,6 +330,8 @@ class Installer(Lifecycle, LocalAI):
     def check_port():
         with socket.socket() as listener:
             try:
+                # Reserve the exact wildcard address Docker will publish. This socket
+                # never listens or accepts traffic and closes before Docker starts.
                 listener.bind(('0.0.0.0', 443))
             except OSError as error:
                 if error.errno == errno.EACCES:

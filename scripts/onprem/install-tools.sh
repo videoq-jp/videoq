@@ -32,7 +32,7 @@ curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/k3d-
 curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/checksums.txt" -o "$workspace/k3d-checksums.txt"
 verify "$workspace/k3d" "$workspace/k3d-checksums.txt" "k3d-linux-${arch}"
 # kubectl matches the minor version of the documented K3s node.
-kubectl_version=1.37.1
+kubectl_version=1.35.5
 curl -fsSL "https://dl.k8s.io/release/v${kubectl_version}/bin/linux/${arch}/kubectl" -o "$workspace/kubectl"
 curl -fsSL "https://dl.k8s.io/release/v${kubectl_version}/bin/linux/${arch}/kubectl.sha256" -o "$workspace/kubectl.sha256"
 python3 - "$workspace" <<'PY'

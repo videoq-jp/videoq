@@ -76,7 +76,7 @@ class KubernetesLifecycleTests(unittest.TestCase):
                     if name == 'postgres':
                         container['volumeMounts'][0]['mountPath'] = '/var/lib/postgresql/data'
                         container['envFrom'] = [{'secretRef': {'name': 'videoq-postgres'}}]
-                        container['readinessProbe'] = {'exec': {'command': ['pg_isready', '-U', 'videoq']}, 'periodSeconds': 2}
+                        container['readinessProbe'] = {'exec': {'command': ['pg_isready', '-h', '127.0.0.1', '-U', 'videoq']}, 'periodSeconds': 2}
                     else:
                         container['command'] = ['sh', '-c', 'echo retained > /data/probe; exec sleep 86400']
                     instance.apply({'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': name}, 'spec': {
@@ -150,7 +150,7 @@ class KubernetesLifecycleTests(unittest.TestCase):
             'restartPolicy': 'Never', 'terminationGracePeriodSeconds': 5,
             'containers': [{'name': 'postgres', 'image': INFRA['postgres'],
                 'envFrom': [{'secretRef': {'name': 'videoq-postgres'}}],
-                'readinessProbe': {'exec': {'command': ['pg_isready', '-U', 'videoq']}, 'periodSeconds': 2},
+                'readinessProbe': {'exec': {'command': ['pg_isready', '-h', '127.0.0.1', '-U', 'videoq']}, 'periodSeconds': 2},
                 'volumeMounts': [{'name': 'data', 'mountPath': '/var/lib/postgresql/data'}]}],
             'volumes': [{'name': 'data', 'persistentVolumeClaim': {'claimName': 'restore-check'}}]}})
         instance.kube('wait', '--for=condition=Ready', 'pod/restore-database', '--timeout=180s')
