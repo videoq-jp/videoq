@@ -53,6 +53,7 @@ VideoQ を導入する、または最初の変更を進めるときの入口で�
 
 | やりたいこと | ガイド |
 |---|---|
+| Moodle などの LMS と接続する | [LTI 連携](guides/lms-integration.md) |
 | 画面・文言・フォームを変える | [画面を変更する](guides/frontend.md) |
 | 取得・更新するデータや操作を増やす | [APIを変更する](guides/api.md) |
 | テーブルや列を変更する | [DBを変更する](guides/database.md) |

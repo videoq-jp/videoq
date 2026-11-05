@@ -1,4 +1,5 @@
 import { withClient } from "../db/pool";
+import { ltiMaterialsEnabled } from "../features/lti/config";
 import type { Bindings } from "../types/bindings";
 
 /**
@@ -34,6 +35,14 @@ export async function getNextMaintenanceWakeup(
   env: Bindings,
   windows: MaintenanceWindows,
 ): Promise<MaintenanceWakeup> {
+  const materialsDeadline = ltiMaterialsEnabled(env) ? `
+          UNION ALL
+          SELECT installation.next_materials_sync_at
+            FROM lms_installations AS installation
+            JOIN users AS owner ON owner.id = installation.owner_user_id
+           WHERE installation.active = true AND installation.materials_service IS NOT NULL
+             AND owner.is_active = true AND owner.deactivated_at IS NULL
+             AND (owner.banned IS NOT TRUE OR owner.ban_expires <= now())` : "";
   return withClient(env, async (client) => {
     const result = await client.query<{
       next_at: Date | null;
@@ -48,7 +57,7 @@ export async function getNextMaintenanceWakeup(
                  END AS due_at
             FROM external_tasks AS task
            WHERE task.completed_at IS NULL
-             AND task.dead_at IS NULL
+             AND task.dead_at IS NULL${materialsDeadline}
           UNION ALL
           SELECT COALESCE(video.upload_heartbeat_at, video.uploaded_at) + make_interval(secs => $2::double precision)
             FROM videos AS video

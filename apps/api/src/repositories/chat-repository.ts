@@ -64,12 +64,19 @@ function mapQuestionAuthor(
  */
 export async function getCourseWithMembers(
   env: Bindings,
-  params: { courseId: number; userId?: string | null; shareToken?: string | null },
+  params: { courseId: number; userId?: string | null; shareToken?: string | null; ltiCourseGrant?: number; ltiVideoGrant?: number[] },
 ): Promise<GroupChatContext | null> {
-  if (!params.shareToken && !params.userId) return null;
+  // Only verified LMS transports (LTI) may supply this server-side grant.
+  const ltiGranted = params.ltiCourseGrant === params.courseId;
+  if (!params.shareToken && !params.userId && !ltiGranted) return null;
   return withDb(env, async (db) => {
     const conditions = [eq(videoCourses.id, params.courseId)];
-    if (params.shareToken) {
+    if (ltiGranted) {
+      conditions.push(sql`EXISTS (SELECT 1 FROM ${users}
+        WHERE ${users.id} = ${videoCourses.userId}
+          AND ${users.isActive} = true AND ${users.deactivatedAt} IS NULL
+          AND (${users.banned} IS NOT TRUE OR ${users.banExpires} <= now()))`);
+    } else if (params.shareToken) {
       conditions.push(eq(videoCourses.shareSlug, params.shareToken));
     } else if (params.userId) {
       conditions.push(
@@ -104,7 +111,7 @@ export async function getCourseWithMembers(
     return {
       id: Number(row.id),
       userId: String(row.userId),
-      memberVideoIds: members.map((m) => Number(m.videoId)),
+      memberVideoIds: members.map((m) => Number(m.videoId)).filter(id => !ltiGranted || params.ltiVideoGrant === undefined || params.ltiVideoGrant.includes(id)),
     };
   });
 }
@@ -298,9 +305,11 @@ export async function updateChatLogFeedback(
   env: Bindings,
   logId: number,
   feedback: "good" | "bad" | null,
-  opts: { userId?: string; shareSlug?: string | null },
+  opts: { userId?: string; shareSlug?: string | null; ltiCourseGrant?: number },
 ) {
-  const permission = opts.shareSlug
+  const permission = opts.ltiCourseGrant !== undefined
+    ? sql`log.course_id = ${opts.ltiCourseGrant} AND log.is_shared_origin = true`
+    : opts.shareSlug
     ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true`
     : sql`course.user_id = ${opts.userId ?? null} OR log.user_id = ${opts.userId ?? null}`;
   return withDb(env, async (db) => {

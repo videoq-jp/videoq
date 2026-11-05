@@ -78,8 +78,10 @@ test('public pages carry their body and metadata in the first HTML', async () =>
 });
 
 test('application routes start from the empty shell', async () => {
-  for (const path of ['/videos', '/en/settings', '/share/token']) {
-    const html = await (await worker.fetch(path)).text();
+  for (const path of ['/videos', '/en/settings', '/share/token', '/moodle/connect?state=example', '/en/moodle/connect?state=example']) {
+    const response = await worker.fetch(path);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
     assert.match(html, /<div id="root"><\/div>/, path);
   }
 });

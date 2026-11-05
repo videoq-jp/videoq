@@ -59,6 +59,10 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     R2_S3_INTERNAL_ENDPOINT?: string;
 
     STRIPE_AUTOMATIC_TAX?: string;
+    /** Optional LTI override (JSON), or false to disable automatic HTTPS configuration. */
+    LTI_CONFIG?: string;
+    /** Optional operator key-ring override; normally generated and encrypted in the DB. */
+    LTI_TOOL_KEYS?: string;
   };
 
 // ミドルウェアが c.set/c.get で受け渡す値

@@ -126,3 +126,12 @@ test('CI scans pinned upstream images only when their pins change, while Operati
   const operations = readFileSync(join(__dirname, '../workflows/operations.yml'), 'utf8');
   assert.doesNotMatch(operations, /scan_upstream_images/);
 });
+
+test('normal on-prem validation reserves disk before building images or starting Kubernetes', () => {
+  const steps = onprem.split(/(?=      - name:|      - uses:|      - run:)/);
+  const reserve = steps.find(step => step.includes('name: Reserve disk for on-prem images and Kubernetes caches'));
+  assert.ok(reserve);
+  assert.doesNotMatch(reserve, /\bif:/);
+  assert.match(reserve, /\/usr\/local\/lib\/android \/usr\/share\/dotnet \/opt\/ghc/);
+  assert.ok(onprem.indexOf(reserve) < onprem.indexOf('      - uses: actions/setup-node@'));
+});

@@ -56,6 +56,7 @@ For documentation-only changes, start with [Update the documentation](guides/doc
 
 | What you want to do | Guide |
 |---|---|
+| Connect Moodle or another LMS | [LTI integration](guides/lms-integration.md) |
 | Change screens, copy, or forms | [Change the frontend](guides/frontend.md) |
 | Add data or operations to the API | [Change the API](guides/api.md) |
 | Change tables or columns | [Change the database](guides/database.md) |

@@ -775,6 +775,19 @@
       "passwordConfirmation": {
         "label": "Confirm password"
       }
+    },
+    "moodleConnect": {
+      "title": "Connect Moodle to VideoQ",
+      "invalid": "Invalid connection request. Start again from Moodle.",
+      "loading": "Checking your session…",
+      "error": "Could not connect. Start again from Moodle.",
+      "loginHelp": "Sign in to the VideoQ account you want to connect.",
+      "login": "Sign in to VideoQ",
+      "account": "Connecting account: {{account}}",
+      "permissions": "Allow this Moodle to transfer and synchronize its video materials and use this account’s quotas for transcription and AI answers. You can disconnect in VideoQ settings.",
+      "allow": "Allow and return to Moodle",
+      "cancel": "Cancel and return to Moodle",
+      "connecting": "Connecting…"
     }
   },
   "chat": {
@@ -1219,6 +1232,30 @@
     },
     "integrations": {
       "title": "Integrations"
+    },
+    "moodle": {
+      "title": "Connect Moodle",
+      "description": "Install the VideoQ plugins in Moodle, then paste a connection code to finish setup.",
+      "url": "Moodle URL",
+      "urlHelp": "Enter the Moodle base URL, for example https://moodle.example.edu",
+      "connected": "Connected",
+      "disabled": "Disconnected",
+      "issuing": "Generating…",
+      "issue": "Generate connection code",
+      "error": "Could not generate a code. Check the HTTPS Moodle URL and your login, then retry.",
+      "expired": "The code has expired. Generate a new code.",
+      "code": "Connection code",
+      "copy": "Copy code",
+      "copied": "Copied",
+      "instructions": "Paste this into Moodle’s “Connect to VideoQ” page within 10 minutes. It only works for the Moodle URL you entered. A new code invalidates your previous unused code.",
+      "openMoodle": "Open Moodle connection settings",
+      "disconnect": "Disconnect",
+      "disconnectDescription": "Disconnecting stops video synchronization and AI questions from Moodle. Moodle materials and synchronized VideoQ videos, transcripts and question history are retained.",
+      "confirmDisconnect": "Confirm disconnect",
+      "cancelDisconnect": "Cancel",
+      "disconnecting": "Disconnecting…",
+      "disconnectError": "Could not disconnect. Check your login and connection, then retry.",
+      "disconnected": "Disconnected. Learning materials and synchronized data have been retained."
     }
   },
   "dashboard": {

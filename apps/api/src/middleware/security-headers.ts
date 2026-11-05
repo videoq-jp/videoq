@@ -10,7 +10,14 @@ import type { AppEnv } from "../types/bindings";
 export const securityHeaders = createMiddleware<AppEnv>(async (c, next) => {
   await next();
   c.res.headers.set("X-Content-Type-Options", "nosniff");
-  c.res.headers.set("X-Frame-Options", "DENY");
-  c.res.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
-  c.res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Integration HTML sets a nonce CSP and explicit LMS frame origins.
+  // Keep every other response, including integration errors, unframeable.
+  const integrationHtml = c.req.path.startsWith("/api/lti/")
+    && c.res.headers.get("Content-Type")?.startsWith("text/html")
+    && c.res.headers.has("Content-Security-Policy");
+  if (!integrationHtml) {
+    c.res.headers.set("X-Frame-Options", "DENY");
+    c.res.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  }
+  if (!c.res.headers.has("Referrer-Policy")) c.res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 });

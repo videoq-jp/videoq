@@ -34,6 +34,7 @@ const sidebars: SidebarsConfig = {
         'architecture/system-configuration-diagram',
         'concepts/auth',
         'concepts/course-sharing',
+        'guides/lms-integration',
       ],
     },
     {

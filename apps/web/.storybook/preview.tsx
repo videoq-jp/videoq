@@ -13,6 +13,7 @@ import i18n from '../src/i18n/config';
 import '../src/index.css';
 
 sb.mock(import('../src/lib/authSession.ts'));
+sb.mock(import('../src/lib/moodleConnect.ts'), { spy: true });
 sb.mock(import('../src/hooks/useVideoUpload.ts'));
 
 const preview: Preview = {
