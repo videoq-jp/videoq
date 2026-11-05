@@ -106,6 +106,8 @@ spec:
           args:
             - --model
             - /models/{{ $whisper.modelRevision }}/{{ $whisper.modelFile }}
+            - --tmp-dir
+            - /tmp
             - --host
             - "127.0.0.1"
             - --port

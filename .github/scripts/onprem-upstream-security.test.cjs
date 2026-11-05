@@ -110,7 +110,7 @@ function whisperSample(architecture = 'amd64') {
     const deployment = documents[0], container = deployment.spec.template.spec.containers[0];
     container.name = 'engine'; container.image = image;
     container.command = ['/app/build/bin/whisper-server'];
-    container.args = ['--model', '/models/' + 'a'.repeat(40) + '/model.bin', '--no-gpu'];
+    container.args = ['--model', '/models/' + 'a'.repeat(40) + '/model.bin', '--tmp-dir', '/tmp', '--no-gpu'];
     return [deployment];
   });
   const approved = JSON.parse(readFileSync(join(__dirname, '../../apps/inference/whispercpp/security/header-image-inventory.json'))).images[architecture];
@@ -145,6 +145,7 @@ test('changed inventory, unreviewed header CVEs and suppression of an APT findin
     s => { s.report.Results[0].ExperimentalModifiedFindings[0].Finding.VulnerabilityID = 'CVE-2099-0001'; },
     s => { s.report.Results[0].ExperimentalModifiedFindings[0].Finding = s.report.Results[0].Vulnerabilities[0]; },
     s => { s.report.Results[0].ExperimentalModifiedFindings[0].Source = 'unreviewed.json'; },
+    s => { s.profiles[0][0].spec.template.spec.containers[0].args[3] = '/app'; },
   ]) {
     const s = whisperSample(); change(s);
     assert.throws(() => assess(s.report, s.policy, s.architecture, s.profiles, now, s.evidence));

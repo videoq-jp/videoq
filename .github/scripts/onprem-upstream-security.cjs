@@ -30,6 +30,11 @@ function verifyRuntime(documents, policy) {
       assert.equal(container.securityContext.readOnlyRootFilesystem, true);
       assert.deepEqual(container.securityContext.capabilities, { drop: ['ALL'] });
       if (policy.engine === 'llamacpp') assert.ok(container.args.includes('--offline'));
+      else {
+        const tmp = container.args.indexOf('--tmp-dir');
+        assert.ok(tmp >= 0);
+        assert.equal(container.args[tmp + 1], '/tmp');
+      }
       assert.equal(container.args[0], '--model');
       assert.match(container.args[1], /^\/models\/[a-f0-9]{40}\/[^/]+\.(gguf|bin)$/);
       assert.ok(!container.args.some(a => /^(--hf-|--model-url|--rpc)/.test(a)));
