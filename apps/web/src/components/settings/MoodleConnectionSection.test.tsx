@@ -12,26 +12,15 @@ it('does not display a setup form when Moodle integration is disabled', async ()
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   expect(container).toBeEmptyDOMElement();
 });
-it('issues a code for the typed Moodle URL and points to its administrator setup page', async () => {
-  fetchMock.mockResolvedValueOnce(response({ connections: [] })).mockResolvedValueOnce(response({ code: 'VIDEOQ1.secret',
-    moodleUrl: 'https://moodle.example/campus', expiresAt: new Date(Date.now() + 600000).toISOString() }));
+it('directs new connections to Moodle without a VideoQ setup form or code request', async () => {
+  fetchMock.mockResolvedValue(response({ connections: [] }));
   render(<MoodleConnectionSection />);
-  fireEvent.change(await screen.findByLabelText('settings.moodle.url'), { target: { value: 'https://moodle.example/campus' } });
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.issue' }));
-  expect(await screen.findByLabelText('settings.moodle.code')).toHaveValue('VIDEOQ1.secret');
-  expect(screen.getByRole('link', { name: 'settings.moodle.openMoodle' })).toHaveAttribute('href', 'https://moodle.example/campus/local/videoq/connect.php');
-  expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'POST', credentials: 'include', body: JSON.stringify({ moodleUrl: 'https://moodle.example/campus' }) });
-});
-it('removes the previous code when generating a new code fails', async () => {
-  fetchMock.mockResolvedValueOnce(response({ connections: [] })).mockResolvedValueOnce(response({ code: 'VIDEOQ1.previous',
-    moodleUrl: 'https://moodle.example', expiresAt: new Date(Date.now() + 600000).toISOString() })).mockResolvedValueOnce(response({}, 500));
-  render(<MoodleConnectionSection />);
-  fireEvent.change(await screen.findByLabelText('settings.moodle.url'), { target: { value: 'https://moodle.example' } });
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.issue' }));
-  await screen.findByLabelText('settings.moodle.code');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.issue' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('settings.moodle.error');
-  expect(screen.queryByLabelText('settings.moodle.code')).not.toBeInTheDocument();
+  expect(await screen.findByText('settings.moodle.empty')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'settings.moodle.setupGuide' })).toHaveAttribute('href', 'https://github.com/videoq-jp/videoq-moodle#installation');
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('method');
 });
 
 it('confirms disconnection, retains the list entry and shows its revoked state', async () => {
