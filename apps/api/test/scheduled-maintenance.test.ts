@@ -13,6 +13,7 @@ const repository = vi.hoisted(() => ({
 const invitations = vi.hoisted(() => ({ failInvitationsWithoutLiveDelivery: vi.fn() }));
 const mcpIdempotency = vi.hoisted(() => ({ pruneMcpIdempotencyRecords: vi.fn() }));
 const conversations = vi.hoisted(() => ({ pruneConversations: vi.fn() }));
+const lti = vi.hoisted(() => ({ pruneLtiCredentials: vi.fn() }));
 const scheduler = vi.hoisted(() => ({ refreshMaintenanceSchedule: vi.fn() }));
 
 vi.mock("../src/lib/external-tasks", () => tasks);
@@ -21,6 +22,7 @@ vi.mock("../src/repositories/external-task-repository", () => repository);
 vi.mock("../src/repositories/course-invitation-repository", () => invitations);
 vi.mock("../src/repositories/mcp-idempotency-repository", () => mcpIdempotency);
 vi.mock("../src/lib/task-scheduler", () => scheduler);
+vi.mock("../src/features/lti/store", () => lti);
 vi.mock("../src/repositories/conversation-repository", () => conversations);
 
 import {
@@ -60,6 +62,7 @@ beforeEach(() => {
   mcpIdempotency.pruneMcpIdempotencyRecords.mockResolvedValue({ deleted: 0 });
   scheduler.refreshMaintenanceSchedule.mockResolvedValue(undefined);
   conversations.pruneConversations.mockResolvedValue(0);
+  lti.pruneLtiCredentials.mockResolvedValue(undefined);
 });
 
 describe("maintenance sweep", () => {

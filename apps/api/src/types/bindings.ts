@@ -59,6 +59,10 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     R2_S3_INTERNAL_ENDPOINT?: string;
 
     STRIPE_AUTOMATIC_TAX?: string;
+    /** Administrator-managed LTI registrations and resource bindings (JSON). */
+    LTI_CONFIG?: string;
+    /** Secret RSA JWK key ring; only public keys are exposed by /api/lti/jwks. */
+    LTI_TOOL_KEYS?: string;
   };
 
 // ミドルウェアが c.set/c.get で受け渡す値

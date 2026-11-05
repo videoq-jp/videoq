@@ -121,9 +121,11 @@ async function setupChat(
     req: ChatRequestInput;
     shareSlug: string | null;
     locale: string | null;
+    ltiCourseGrant?: number;
+    ltiVideoGrant?: number[];
   },
 ): Promise<{ ok: true; setup: ChatSetup } | { ok: false; failure: ChatFailure }> {
-  const isShared = opts.shareSlug !== null;
+  const isShared = opts.shareSlug !== null || opts.ltiCourseGrant !== undefined;
   const userId = opts.userId;
 
   if (opts.req.messages.length === 0) {
@@ -142,6 +144,8 @@ async function setupChat(
       courseId: opts.req.courseId,
       userId: isShared ? null : userId,
       shareToken: opts.shareSlug,
+      ltiCourseGrant: opts.ltiCourseGrant,
+      ltiVideoGrant: opts.ltiVideoGrant,
     });
     if (!course) return { ok: false, failure: failures.notFound("Course") };
   }
@@ -273,6 +277,9 @@ export async function sendChatMessage(
     visitorSessionId?: string;
     shareSlug: string | null;
     locale: string | null;
+    /** Internal course-scoped grant; never accepted from ordinary chat input. */
+    ltiCourseGrant?: number;
+    ltiVideoGrant?: number[];
   },
 ): Promise<ChatSendResult> {
   const req = toChatRequestInput(opts.body);
@@ -282,6 +289,8 @@ export async function sendChatMessage(
     req,
     shareSlug: opts.shareSlug,
     locale: opts.locale,
+    ltiCourseGrant: opts.ltiCourseGrant,
+    ltiVideoGrant: opts.ltiVideoGrant,
   });
   if (!prepared.ok) {
     const f = prepared.failure;
@@ -364,6 +373,8 @@ export async function streamChatMessage(
     visitorSessionId?: string;
     shareSlug: string | null;
     locale: string | null;
+    ltiCourseGrant?: number;
+    ltiVideoGrant?: number[];
     clientSignal?: AbortSignal;
     includeToolProgress?: boolean;
   },
@@ -375,6 +386,8 @@ export async function streamChatMessage(
     req,
     shareSlug: opts.shareSlug,
     locale: opts.locale,
+    ltiCourseGrant: opts.ltiCourseGrant,
+    ltiVideoGrant: opts.ltiVideoGrant,
   });
 
   const messages = req.messages;

@@ -1,3 +1,4 @@
+import { MoodleConnectionSection } from "@/components/settings/MoodleConnectionSection";
 import { features } from "@/lib/deployment";
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -295,6 +296,7 @@ export default function SettingsPage() {
 
       <div className="flex flex-col gap-6">
           <AccountSettingsSection />
+          <MoodleConnectionSection />
           {features.billing && <>
           <section id="billing" aria-labelledby="billing-heading" className={SETTINGS_SECTION_CLASS}>
             <div className="mb-4">

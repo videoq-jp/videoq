@@ -6,6 +6,12 @@ import type { AppEnv, Bindings } from "../types/bindings";
  * VideoQ API のスコープ別レート制限。
  */
 export const THROTTLE_RATES = {
+  moodle_pairing_ip: { limit: 30, periodSec: 600 },
+  moodle_pairing_user: { limit: 20, periodSec: 3600 },
+  // Hundreds of learners can share one school/NAT address. The sustained
+  // question allowance is enforced separately on each verified LTI subject.
+  lti_request_ip: { limit: 1200, periodSec: 60 },
+  lti_launch_ip: { limit: 1200, periodSec: 3600 },
   course_qa_read: { limit: 600, periodSec: 3600 },
   course_qa_write: { limit: 120, periodSec: 3600 },
   chat_share_token_ip: { limit: 100, periodSec: 3600 },

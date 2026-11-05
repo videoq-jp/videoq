@@ -32,6 +32,7 @@
     "guides/visual-evidence.md",
     "guides/frontend.md",
     "guides/local-inference.md",
+    "guides/lms-integration.md",
     "guides/on-premises.md",
     "guides/on-premises-single-server.md",
     "guides/on-premises-releases.md",

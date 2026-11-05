@@ -52,7 +52,7 @@ describe('useVideoStatusCounts', () => {
           await vi.waitFor(() => expect(getCounts).toHaveBeenCalledTimes(2))
         })
 
-        // counts are now all settled — polling should stop
+        // settled counts return to the slower external-change refresh cadence
         await act(async () => {
           await vi.advanceTimersByTimeAsync(10000)
         })
@@ -63,23 +63,24 @@ describe('useVideoStatusCounts', () => {
     },
   )
 
-  it('does not poll once no status is in progress', async () => {
+  it('refreshes completed totals to reflect external deletion', async () => {
     vi.useFakeTimers()
     try {
       const settledStats: VideoStatusCounts = { ...EMPTY_VIDEO_STATUS_COUNTS, total: 1, completed: 1 }
-      const getCounts = vi.fn().mockResolvedValue(settledStats)
+      const getCounts = vi.fn().mockResolvedValueOnce(settledStats).mockResolvedValue(EMPTY_VIDEO_STATUS_COUNTS)
       globalThis.__setTrpcHandler('videos.statusCounts', getCounts)
 
-      renderHook(() => useVideoStatusCounts(true))
+      const { result } = renderHook(() => useVideoStatusCounts(true))
 
       await act(async () => {
         await vi.waitFor(() => expect(getCounts).toHaveBeenCalledTimes(1))
       })
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(10000)
+        await vi.advanceTimersByTimeAsync(30_000)
       })
-      expect(getCounts).toHaveBeenCalledTimes(1)
+      expect(getCounts).toHaveBeenCalledTimes(2)
+      expect(result.current.stats.total).toBe(0)
     } finally {
       vi.useRealTimers()
     }

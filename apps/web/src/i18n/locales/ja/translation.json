@@ -1217,6 +1217,30 @@
     },
     "integrations": {
       "title": "外部連携"
+    },
+    "moodle": {
+      "title": "Moodleと連携",
+      "description": "MoodleにVideoQプラグインをインストールしたら、接続コードを貼り付けて設定できます。",
+      "url": "MoodleのURL",
+      "urlHelp": "ログイン画面の手前までのURLを入力してください。例：https://moodle.example.jp",
+      "connected": "接続済み",
+      "disabled": "接続解除済み",
+      "issuing": "発行しています…",
+      "issue": "接続コードを発行",
+      "error": "接続コードを発行できませんでした。MoodleのHTTPS URLとログイン状態を確認して再試行してください。",
+      "expired": "接続コードの有効期限が切れました。もう一度発行してください。",
+      "code": "接続コード",
+      "copy": "コードをコピー",
+      "copied": "コピーしました",
+      "instructions": "10分以内にMoodleの「VideoQと接続」画面へ貼り付けてください。接続できるMoodleは入力したURLに限定されます。再発行すると以前の未使用コードは無効になります。",
+      "openMoodle": "Moodleの接続画面を開く",
+      "disconnect": "接続を解除",
+      "disconnectDescription": "接続を解除すると、動画の同期とMoodleからのAI質問が停止します。Moodleの教材と、VideoQに同期済みの動画・文字起こし・質問履歴は残ります。",
+      "confirmDisconnect": "解除する",
+      "cancelDisconnect": "キャンセル",
+      "disconnecting": "解除しています…",
+      "disconnectError": "接続を解除できませんでした。ログイン状態と通信を確認して再試行してください。",
+      "disconnected": "接続を解除しました。教材と同期済みデータは残っています。"
     }
   },
   "dashboard": {

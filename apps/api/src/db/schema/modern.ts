@@ -25,6 +25,14 @@ import { sql } from "drizzle-orm";
 // Users & auth
 // ---------------------------------------------------------------------------
 
+/** Short-lived LTI login proofs and course-scoped sessions; secrets are hashed. */
+export const ltiCredentials = pgTable("lti_credentials", {
+	id: text("id").primaryKey(),
+	kind: text("kind").notNull(),
+	payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [index("lti_credentials_expiry_idx").on(table.expiresAt)]);
+
 /** Shared sliding windows for the on-prem Node runtime. Workers keep using DOs. */
 export const runtimeRateLimits = pgTable("runtime_rate_limits", {
 	key: text("key").primaryKey(),

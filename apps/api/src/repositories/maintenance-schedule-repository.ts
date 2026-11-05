@@ -50,6 +50,13 @@ export async function getNextMaintenanceWakeup(
            WHERE task.completed_at IS NULL
              AND task.dead_at IS NULL
           UNION ALL
+          SELECT installation.next_materials_sync_at
+            FROM lms_installations AS installation
+            JOIN users AS owner ON owner.id = installation.owner_user_id
+           WHERE installation.active = true AND installation.materials_service IS NOT NULL
+             AND owner.is_active = true AND owner.deactivated_at IS NULL
+             AND (owner.banned IS NOT TRUE OR owner.ban_expires <= now())
+          UNION ALL
           SELECT COALESCE(video.upload_heartbeat_at, video.uploaded_at) + make_interval(secs => $2::double precision)
             FROM videos AS video
            WHERE video.status = 'uploading'

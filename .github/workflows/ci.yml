@@ -311,6 +311,8 @@ jobs:
     env:
       QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       EMBEDDING_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      LMS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      LTI_BROWSER_TESTS: "1"
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -351,6 +353,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run cf-typegen:check --workspace @videoq/api
+          npx playwright install --with-deps chromium
           npm run lint --workspace @videoq/trpc
           npm run lint --workspace @videoq/api
           npm run typecheck --workspace @videoq/trpc

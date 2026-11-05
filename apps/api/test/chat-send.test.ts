@@ -507,6 +507,51 @@ describe("POST /messages（非ストリーミング）", () => {
     expect(await res.text()).toContain("Batch call exceeds maximum size");
   });
 
+  it("LTI grants use only the bound course and retain guest logging and owner quotas", async () => {
+    stubOpenAi({});
+    const result = await messageService.sendChatMessage(
+      { ...ENV, ...OPENAI_ENV, ...SQS_ENV } as never,
+      { userId: null, shareSlug: null, locale: "ja", ltiCourseGrant: 3,
+        body: { course_id: 3, messages: [{ role: "user", content: "教材について教えて" }] } },
+    );
+    expect(result.status).toBe(200);
+    const courseLookup = calls.find(call => call.sql.includes("video_courses") && call.sql.includes("is_active"));
+    expect(String(courseLookup?.sql)).toContain("ban_expires");
+    expect(String(courseLookup?.sql)).not.toContain("share_slug");
+    expect(calls.some(call => call.sql.includes("UPDATE users"))).toBe(true);
+    const log = calls.find(call => call.sql.includes("INSERT INTO chat_logs"));
+    expect(log).toBeDefined();
+    expect(log?.args).toContain(true);
+  });
+
+  it("LTI streaming keeps the video scope, owner quota and shared-origin logging", async () => {
+    stubOpenAi({});
+    const result = await messageService.streamChatMessage(
+      { ...ENV, ...OPENAI_ENV, ...SQS_ENV } as never,
+      { userId: null, shareSlug: null, locale: "ja", ltiCourseGrant: 3, ltiVideoGrant: [60],
+        body: { course_id: 3, messages: [{ role: "user", content: "教材について教えて" }] } },
+    );
+    const events: { type: string }[] = [];
+    await result.write(async event => { events.push(event); });
+    expect(events.some(event => event.type === "text_delta")).toBe(true);
+    expect(events.at(-1)?.type).toBe("done");
+    const log = calls.find(call => call.sql.includes("INSERT INTO chat_logs"));
+    expect(log?.args).toContain(true);
+    expect(calls.some(call => call.sql.includes("UPDATE users"))).toBe(true);
+    const searches = calls.filter(call => call.sql.includes("scene_embeddings") && call.args.some(Array.isArray));
+    expect(searches.some(call => call.args.some(value => Array.isArray(value) && value.includes(60) && !value.includes(61)))).toBe(true);
+  });
+
+  it("an LTI grant cannot be reused for a different course", async () => {
+    const result = await messageService.sendChatMessage(
+      ENV as never,
+      { userId: null, shareSlug: null, locale: "ja", ltiCourseGrant: 3,
+        body: { course_id: 999, messages: [{ role: "user", content: "他の教材" }] } },
+    );
+    expect(result.status).toBe(404);
+    expect(calls).toHaveLength(0);
+  });
+
   it("course_id ありで RAG → citations / chat_log_id を返し、利用量を記録する", async () => {
     const requests = stubOpenAi({});
     const res = await post(

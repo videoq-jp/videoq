@@ -13,6 +13,12 @@ export const runtimeEnvironment = {
 };
 
 describe("Node runtime configuration and proxy boundary", () => {
+  it("passes optional LTI configuration and signing keys without enabling unconfigured deployments", () => {
+    const lti = { LTI_CONFIG: '{"toolOrigin":"https://api.example","databaseRegistrations":true,"registrations":[]}', LTI_TOOL_KEYS: "fixture-key-ring" };
+    expect(nodeBindings({ ...runtimeEnvironment, ...lti })).toMatchObject(lti);
+    expect(nodeBindings(runtimeEnvironment).LTI_CONFIG).toBeUndefined();
+    expect(nodeBindings(runtimeEnvironment).LTI_TOOL_KEYS).toBeUndefined();
+  });
   it("uses production auth protections and configurable local inference without CF resources", () => {
     const env = nodeBindings({ ...runtimeEnvironment,
       OPENROUTER_API_KEY: "shared-router-key", LLM_BASE_URL: "https://openrouter.ai/api/v1", LLM_API_KEY: "router-key",

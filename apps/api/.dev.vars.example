@@ -6,6 +6,10 @@
 BETTER_AUTH_SECRET=""
 # Public origin of this API (no trailing slash), e.g. http://localhost:8787
 BETTER_AUTH_URL="http://localhost:8787"
+# Optional LTI integration. Use the public HTTPS API origin and a separate private
+# signing-key file; see docs/guides/lms-integration.md. Disabled when unset.
+# LTI_CONFIG='{"toolOrigin":"https://api.example.edu","databaseRegistrations":true,"registrations":[]}'
+# LTI_TOOL_KEYS=
 # Google sign-in (optional). Redirect URI: {BETTER_AUTH_URL}/api/auth/callback/google
 # GOOGLE_CLIENT_ID=""
 # GOOGLE_CLIENT_SECRET=""
