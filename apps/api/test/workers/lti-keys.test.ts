@@ -1,8 +1,12 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { toolClientAssertion, toolJwks } from "../../src/features/lti/tool-keys";
 import { decryptServerSecret, encryptServerSecret } from "../../src/lib/secret-encryption";
 import type { Bindings } from "../../src/types/bindings";
+
+// Exercise native crypto here; real PostgreSQL initialization/reuse is covered
+// by lms-sync.integration.test.ts. An explicit ring must never open a DB client.
+vi.mock("../../src/db/pool", () => ({ withDb: () => { throw new Error("Unexpected signing-key database access"); } }));
 
 it("encrypts and recovers a generated signing identity with native Workers crypto", async () => {
   const env = { USER_SECRET_ENCRYPTION_KEY: btoa(String.fromCharCode(...new Uint8Array(32).fill(13))).replace(/=+$/, "") } as Bindings;
