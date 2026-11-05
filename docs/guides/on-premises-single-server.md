@@ -1,217 +1,184 @@
 ---
-sidebar_label: K3s on one VPS
-description: Install VideoQ with one command and serve HTTPS on port 443 from one VPS.
+sidebar_label: Single-server installation
+description: Install and evaluate VideoQ on one Linux server, then back up, update and restore it.
 ---
 
-# Run VideoQ on one VPS with K3s
+# Install VideoQ on one server
 
-This installer targets **one Linux VPS running K3s inside Docker through k3d**.
-It is not a general Kubernetes cluster provisioner and does not install native
-K3s directly on the host. Use the [Helm guide](on-premises.md) for an existing
-Kubernetes cluster.
+Use this installer for a small deployment on one Linux server without an existing
+Kubernetes cluster. It supplies the database, object storage and persistent job
+queue alongside the production application. For an existing managed cluster or
+site-managed infrastructure, use the [Kubernetes guide](on-premises.md) instead. Single-server storage
+has one replica; backups on another host are required for host-loss recovery.
 
-Run one command to deploy VideoQ on this single-node K3s cluster with Helm.
-Web, API, workers, PostgreSQL/pgvector, Garage and a persistent queue all run in Kubernetes. Open the resulting HTTPS URL directly in your browser;
-SSH port forwarding is not required.
+## Prerequisites
 
-## Prepare
+| Requirement | Purpose |
+|---|---|
+| Linux, Docker Engine, Docker Compose and Python 3.9+ | Run the installer and services |
+| Repository checkout | Installer and configuration templates |
+| Verified `verified-images.json` | Pin the reviewed application images |
+| Public application and storage URLs | Browser login, upload and playback |
+| OpenRouter key or existing local inference services | Chat, embeddings and transcription |
 
-Use a Linux amd64/arm64 VPS with Docker Engine, Python 3.9+, curl, tar and
-coreutils. Run from this repository's root. Reserve resources for K3s as well
-as the application; inference defaults to hosted OpenRouter. Single-node storage
-has no host-failure redundancy, so keep data and key backups on another host.
+Use Python 3.9+, Docker Engine and Docker Compose on the Linux server. The installer generates a separate private
+directory, uses production application images pinned by digest, generates unique
+credentials, persists PostgreSQL/Garage/ElasticMQ data, and exposes only Caddy's
+HTTP/HTTPS ports. ElasticMQ message persistence is enabled, including the DLQ.
+The scheduler runs the existing recovery command every minute after completion
+and retention on startup and once per UTC day. Failures cause a container restart.
 
-Allow inbound **TCP 443** in the VPS provider's firewall and any host firewall.
-Keep SSH access available. The installer does not change firewall rules.
-Only the HTTPS gateway is published; the Kubernetes API is bound to loopback,
-and the database, queue and storage API stay internal to the cluster.
-
-When needed, the installer raises `fs.inotify.max_user_instances` to 1024 so K3s
-can coexist with other file watchers. It persists this prerequisite in
-`/etc/sysctl.d/90-videoq-k3s.conf`; uninstall does not revert it. An existing file
-with different contents is never overwritten.
-
-Choose a public URL:
-
-- With a domain: point its A record at the VPS and use `https://videoq.example.com`.
-- Without a domain: use `https://YOUR_PUBLIC_IPV4`. The address must belong to this VPS.
-
-The gateway uses Let's Encrypt's short-lived certificates and TLS-ALPN validation
-on port 443, and renews them automatically. Public IPv4 certificates are supported;
-there is no need for a self-signed certificate or a browser exception. See the
-[Let's Encrypt announcement](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)
-and [Caddy issuer options](https://caddyserver.com/docs/caddyfile/directives/tls).
-The certificate data is retained on a Kubernetes PVC. Port 80 and UDP 443 are not
-required by this configuration.
+Follow [release download and signature verification](on-premises-releases.md#download-and-verify-a-specific-release) before installation. That guide lists the tools needed for verification. The installer
+consumes the resulting `verified-images.json`; it does not replace signature
+verification. Application and storage need distinct origins: use two DNS names
+resolving to the server, or one name with separate ports (for example,
+`https://videoq.example.edu` and `https://videoq.example.edu:9443`). HTTPS uses Caddy automatic certificates, which
+requires working DNS and certificate issuance connectivity. For a private CA,
+pass `--tls-cert /secure/site.crt --tls-key /secure/site.key` to `install` or `init`. The PEM
+certificate must cover both hostnames, and browsers must trust its issuer.
+The server running CLI diagnostics must also trust that issuer; install its CA
+in the system trust store or set `SSL_CERT_FILE=/secure/ca-chain.pem` for the CLI.
+The gateway publishes the ports specified in the two URLs (normally 80/443).
+HTTPS also publishes port 80 for certificate challenges and redirects. Use
+`--bind-address 127.0.0.1` for loopback-only access behind a host-side proxy;
+the default publishes on all interfaces.
 
 ## Install
 
-Replace the URL with your domain or public IPv4:
+Get a repository checkout if needed:
 
 ```sh
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com
+git clone https://github.com/videoq-jp/videoq.git
+cd videoq
 ```
 
-The command installs missing operator tools in `$HOME/.local/bin`, then performs:
-
-1. Selection of a successful release and signature verification of its images and charts.
-2. Creation of a dedicated K3s cluster, or resumption of this installation's cluster.
-3. Private credential generation, retaining existing database credentials and encryption keys.
-4. Persistent infrastructure, HTTPS gateway and bucket configuration.
-5. Helm installation, migrations and the built-in smoke test.
-6. Public HTTPS readiness verification and initial administrator provisioning.
-
-The release commit SHA is obtained automatically from the successful GitHub run
-and used to verify the signed artifacts; no SHA input is required. It prompts for
-an OpenRouter key (without echo) only for hosted AI, and administrator details when needed. GitHub
-authentication and Docker permissions must be available; follow any authentication
-prompt in the terminal.
-
-Both the application and S3 uploads use the same HTTPS origin on port 443.
-The gateway routes `/videoq-media/*` to Garage without rewriting signed paths,
-and routes application/API paths to VideoQ. Media responses carry a sandbox CSP
-so uploaded documents cannot run scripts on the application origin.
-
-Open the printed single-use administrator setup link, set a password, then
-upload a short video. Check transcription, indexing, Q&A and cited playback.
-The smoke test alone does not evaluate AI quality or video-processing capacity.
-
-## Choose local AI
-
-Select Whisper, embeddings and LLM together with `--ai` on the initial `install`.
-The default is `openrouter`.
+Run all following commands from the repository root. Keep the verified release
+and generated configuration outside the checkout. For the default hosted AI
+configuration, the installer prompts for an OpenRouter key without echoing it.
+Local AI connection options are described below.
 
 ```sh
-# Local CPU inference
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai local-cpu
-
-# Local NVIDIA inference (prepare a GPU-capable cluster first)
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai local-gpu
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server install \
+  --images /secure/videoq-release/verified-images.json \
+  --url https://videoq.example.edu --storage-url https://s3.example.edu \
+  --username site_admin --email admin@example.com
 ```
 
-| Option | LLM and embeddings | Whisper |
-|---|---|---|
-| `--ai openrouter` (default) | OpenRouter | OpenRouter |
-| `--ai local-cpu` | llama.cpp CPU images | Signed gateway + whisper.cpp CPU image |
-| `--ai local-gpu` | Signed NVIDIA vLLM image | Signed gateway + the same NVIDIA vLLM image |
+`install` generates configuration, starts services, runs infrastructure/public
+endpoint checks, and prints the initial administrator's single-use setup link.
+After a failure it preserves generated keys; do not rerun `init` over the same
+directory. Diagnose and resume with the commands below. On-prem accounts are
+issued by administrators; there is no public signup page.
 
-Local profiles do not ask for an OpenRouter key. Inference APIs remain internal;
-the command configures application endpoints and model names and disables visual
-Q&A for these text models. Profiles come from the verified release charts and
-verified image values are applied last. CPU supports amd64/arm64; GPU supports amd64.
+## Diagnose and resume
 
-Reserve resources for resident models. In the verified recipe, **inference alone**
-requests 5.25 CPUs and 7.5 GiB RAM for CPU, or 6.25 CPUs, 24.5 GiB RAM and three
-allocatable NVIDIA GPUs for GPU. Application, database and cluster resources are
-additional. The installer compares the rendered chart's requests with available
-node resources and stops before model downloads if they do not fit. A roughly
-4 GB VPS cannot run this CPU profile.
-
-The GPU path requires an existing cluster with NVIDIA drivers, GPU runtime, device
-plugin and k3d GPU passthrough configured. It will not create the standard CPU-only
-k3d node for this profile. Prepare that cluster with the same name and storage
-directory first, with a default runtime / CDI configuration that supports GPU Pods
-without adding a per-Pod RuntimeClass to this chart. See [K3s NVIDIA configuration](https://docs.k3s.io/advanced) and
-[k3d CUDA setup](https://k3d.io/stable/usage/advanced/cuda/). The installer does not
-install GPU drivers or runtimes.
-
-Initial setup downloads images and pinned model weights into persistent caches.
-Subsequent `install` / `update` uses the recorded profile. Changing `--ai` for an
-existing dataset, or updating embedding weights, quantization or settings, requires
-a planned reindex and is rejected by this installer. See [local inference](local-inference.md)
-for model and reindex details.
-
-Inference is a separate Helm release named `inference`. Ordinary uninstall removes
-its workloads and retains model caches; purge deletes caches too. Update backups
-include application data, keys and inference settings, but omit redownloadable model caches.
-
-## Resume and inspect
-
-If installation stops, fix the reported cause and rerun **the same command**.
-The installer records the selected release, rechecks its signatures and retains
-keys and persistent data. It does not delete the cluster, PVCs or existing accounts.
-Do not delete those resources to retry a failed step.
-
-Configuration, private credentials, release artifacts and resume state are stored
-under `$HOME/videoq-kubernetes`. `admin-setup.txt` is private and contains the
-initial setup result. Keep these files out of Git and shared logs.
+For separate review of the generated configuration:
 
 ```sh
-export PATH="$HOME/.local/bin:$PATH"
-export KUBECONFIG="$HOME/videoq-kubernetes/kubeconfig"
-kubectl -n videoq get deployments,pods,jobs,cronjobs,pvc
-kubectl -n videoq logs deployment/videoq-gateway --tail=100
-kubectl -n videoq logs deployment/videoq-api --tail=100
-helm status videoq -n videoq
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server init \
+  --images /secure/videoq-release/verified-images.json \
+  --url https://videoq.example.edu --storage-url https://s3.example.edu
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server doctor
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server start
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server status
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server doctor --live
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server admin \
+  --username site_admin --email admin@example.com
 ```
 
-Older versions could stop with `no matching resources found` before the K3s
-node registered. The installer now waits up to 180 seconds for registration and
-`Ready`. Rerun the updated installation command after that earlier failure. If
-registration continues to fail, inspect the K3s server containerd log for `fsnotify`
-or `too many open files`.
+`doctor --live` checks authenticated S3/queue access, API readiness, public API
+routing and the public storage upload preflight, including DNS/TLS.
+`doctor --live --ai` additionally checks that chat and embedding APIs advertise
+the selected models. It does not invoke inference or verify model quality.
+Use `logs --service api` for startup failures, `logs --service migrate` for
+migrations, and `logs --service worker` for video processing. Put `--directory`
+before the subcommand in each invocation.
+If access to Docker requires root, opt in using `VIDEOQ_DOCKER_SUDO=1`; the CLI
+uses non-interactive `sudo -n docker` and does not request a password itself.
 
-If certificate issuance cannot complete, check that TCP 443 is reachable from
-the internet and that the public IP or DNS record is correct. Do not disable TLS
-verification to finish installation. Keep the gateway running for automatic renewal.
+## Backup and restore
 
-For a particular reviewed release, automation can specify `--run-id` and
-`--source-sha`. `--directory`, `--cluster`, `--username` and `--email` are optional;
-run `python3 scripts/onprem/k3s.py --help` for all options.
+A backup temporarily stops the services. Schedule a maintenance window.
+
+```sh
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server backup \
+  --output /secure/backups/videoq-2026-11-04
+python3 scripts/onprem/videoq.py --directory /secure/videoq-restored restore \
+  --backup /secure/backups/videoq-2026-11-04
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server stop
+python3 scripts/onprem/videoq.py --directory /secure/videoq-restored start
+```
+
+Backup requires downtime: it stops application writers, then infrastructure,
+streams all five persistent volumes to an archive, saves configuration and keys,
+and resumes the previously running services. The manifest is written only after
+the archive completes. The restored copy uses separate volumes but the same public URLs, so stop the
+original project before starting it.
+
+Backups contain secrets and are not encrypted by this tool. Store them with
+restricted access and copy them to a separate host. Restore only trusted local
+backups. SHA-256 checks detect corruption; they do not authenticate the author.
+Physical database backups require the matching PostgreSQL major version and
+architecture. `start --offline` skips explicit image pulls; all application and
+infrastructure images must already be loaded. The installer currently consumes
+an operator-verified release; it does not produce an offline distribution bundle.
 
 ## Update
 
-```sh
-python3 scripts/onprem/k3s.py update
-```
-
-The command selects a new successful release and obtains its SHA automatically.
-Use `--run-id` and `--source-sha` to pin a particular release. Signature verification
-completes before the running environment is changed.
-
-The command stops writers and maintenance CronJobs, then takes a cold backup of
-all four PVCs (database, objects, queue and certificates), credentials and settings.
-The default location is `$HOME/videoq-kubernetes/backups/<timestamp>`; specify a
-new location with `--backup /private/new-backup`. After checking the backup's
-checksums, it resumes infrastructure, upgrades Helm, applies migrations and checks
-public HTTPS/S3. Updating requires downtime.
-
-If migration or readiness fails, application traffic stays stopped and the previous
-release record and original backup are retained. Fix the cause and repeat `update`
-to resume the same target with the same backup. `install` cannot bypass an unfinished
-update. There is no automatic SQL downgrade or restore over changed data.
-
-## Uninstall
-
-To remove the application and stop the cluster while retaining data, keys,
-certificates and configuration:
+Verify the new release using the [release guide](on-premises-releases.md), then
+choose a new backup destination and run:
 
 ```sh
-python3 scripts/onprem/k3s.py uninstall
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server update \
+  --images /secure/new-release/verified-images.json \
+  --backup /secure/backups/videoq-before-update
 ```
 
-Run `install` later to reinstall the recorded release on the retained cluster and
-data. Existing accounts remain available.
+The installer pulls images before downtime, makes a cold backup, applies the
+new images and runs migrations/readiness checks. On failure, application
+services remain stopped. Inspect `logs --service migrate` and `logs --service api`.
+Retry `start` after resolving the cause, or restore the pre-update backup into a
+new directory. The installer does not automatically revert images over a changed
+SQL schema. Verify a restored copy before returning it to users.
 
-To **permanently delete the cluster, data, keys, certificates, configuration and
-backups inside the installation directory**:
+## Local AI connection presets
 
-```sh
-python3 scripts/onprem/k3s.py uninstall --purge
-```
+`--ai local-cpu` and `--ai local-gpu` configure the same model contracts
+as the application Helm overlays. Use them with `install` or `init`. Provide `--chat-url`, `--embedding-url` and
+`--transcription-url` with their `/v1` paths. These presets connect to existing
+private inference services; they do not provision models or GPU drivers. See
+[local inference](local-inference.md) for the model-serving requirements. The default
+models match `charts/videoq/examples/local-ai-{llamacpp,vllm}.yaml`; explicit
+`--chat-model` and `--embedding-model` override them. `VIDEOQ_LOCAL_AI_KEY` supplies
+a shared provider key; absent a key, the preset uses `local-inference`.
 
-Type the cluster name to confirm. Automation can pass `--yes` to skip that prompt.
-The operation is limited to the installation selected by `--directory`. Other
-clusters, operator tools and source code are retained. A backup explicitly stored
-outside that directory is retained too. Copy needed backups off-host before purge.
+Local presets remove hosted credentials and endpoints and disable visual Q&A.
+For an existing dataset, changing the embedding model requires reindexing, even
+when the dimensions match. This CLI does not install a host firewall or enforce
+private-only egress.
 
-## Operations and other deployment paths
+The OpenRouter key is prompted without terminal echo. Automation can provide it
+through `VIDEOQ_OPENROUTER_API_KEY`. Keep the generated directory and backups
+private: `runtime.env` includes the encryption key needed to recover user secrets.
+Initialization refuses an existing destination and never silently replaces keys.
+Do not use `docker compose config` without `--quiet` in shared logs because its
+resolved output includes credentials.
 
-Back up PostgreSQL, object data, queue data, credentials and cluster state to
-another host, and rehearse restoration. A Helm rollback does not undo SQL
-migrations or restore data. Use `update` for a different release. Changing the public URL requires a planned
-migration; `install` resumes the recorded installation.
+## Finish the single-server evaluation
 
-Use the [existing-cluster Helm guide](on-premises.md) for site-managed clusters,
-[local inference](local-inference.md) for private AI, and
-[signed releases](on-premises-releases.md) for the distribution policy.
+Use a short representative video and the AI services you intend to deploy:
+
+1. Log in using the administrator setup link, then upload the video.
+2. Wait for transcription and indexing, ask a question, and play the cited moment.
+3. Record processing time, simultaneous usage, storage growth and answer quality.
+4. Make a backup, copy it off the server, and rehearse restore and an update.
+
+The automated acceptance suite checks real video processing, cited answers,
+playback and update recovery against a deterministic AI fixture. It does not
+approve the quality or capacity of your selected models. Real CPU model checks
+are separate in the [signed release pipeline](on-premises-releases.md#real-cpu-model-acceptance).
+
+Use this evaluation to decide whether another server is needed for inference,
+processing or storage. Keep off-host backups even while everything runs on one
+server. This installer does not provision GPU drivers or an offline distribution
+bundle; follow [local inference](local-inference.md) when preparing private models.

@@ -2,7 +2,7 @@
 
 Runnable packages for VideoQ.
 
-For installation, start with the [K3s on one VPS guide](../docs/guides/on-premises-single-server.md)
+For installation, start with the [single-server guide](../docs/guides/on-premises-single-server.md)
 or [Kubernetes guide](../docs/guides/on-premises.md). For source changes, follow the
 [local development setup](../docs/getting-started/local-setup.md).
 

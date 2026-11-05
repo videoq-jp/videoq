@@ -36,7 +36,7 @@ export function ChatPanel(props: ChatPanelProps) {
   if (session.isPending) return <p role="status">{t("chat.restoringConversation")}</p>;
   const identity = session.data?.user.id ?? 'visitor';
   const scope = JSON.stringify([identity, props.courseId, props.shareToken]);
-  return <ChatPanelSession key={scope} {...props} storageKey={`videoq:conversations:v1:${scope}`} />;
+  return <ChatPanelSession key={scope} {...props} storageKey={`videoq:conversations:${props.shareToken ? 'v2' : 'v1'}:${scope}`} />;
 }
 
 function ChatPanelSession({

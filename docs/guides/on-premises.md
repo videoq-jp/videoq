@@ -5,18 +5,17 @@ description: Install VideoQ on a single Linux server or an existing Kubernetes c
 
 # Run VideoQ on-premises
 
-Use Kubernetes and Helm for on-prem installations, including a single VPS.
-Start with one node to evaluate video processing, Q&A, backups and updates.
-Use the results to decide whether services need separate hosts.
+Start with a single server to evaluate video processing, Q&A, backups and
+updates. Use the results to decide whether services need separate hosts.
 
 | Environment | Guide |
 |---|---|
-| One VPS with single-node Kubernetes, database, storage and queue | [K3s on one VPS](on-premises-single-server.md) |
+| One Linux server, with database, storage and queue included | [Single-server installation](on-premises-single-server.md) |
 | Existing Kubernetes cluster and site-managed backing services | The Helm instructions below |
 | Existing or separately provisioned local AI | [Local inference](local-inference.md) |
 | Download and verify application images | [Signed releases](on-premises-releases.md) |
 
-All on-prem installation paths use production Node.js images and administrator-issued
+Both installation paths use production Node.js images and administrator-issued
 accounts. The root development Compose stack has its own [local setup guide](../getting-started/local-setup.md).
 
 The following sections describe the **Kubernetes deployment**.
@@ -50,10 +49,8 @@ flowchart TB
 
 The chart manages application workloads. PostgreSQL, S3 storage, queue durability,
 inference services, cluster administration, DNS and TLS are managed by the site.
-For a single node, use the separately managed infrastructure examples in the
-[single-server guide](on-premises-single-server.md); these are outside the application
-Helm release. For existing services, configure their addresses instead of installing
-duplicate infrastructure. A GPU inference server can run in the same cluster or on a
+Configure their addresses instead of installing duplicate infrastructure in the
+application release. A GPU inference server can run in the same cluster or on a
 separate machine; API and video workers call its endpoint.
 
 For a concrete CPU or NVIDIA GPU deployment of local chat, embeddings and

@@ -1,134 +1,122 @@
 ---
-sidebar_label: VPS 1台の K3s
-description: 1つのコマンドで VideoQ を導入し、VPS の443番ポートで HTTPS 公開する。
+sidebar_label: 単一サーバーへの導入
+description: 1台の Linux サーバーで VideoQ を導入・評価し、バックアップ・更新・復元する。
 ---
 
-# VPS 1台で K3s を使って VideoQ を公開する
+# VideoQ を1台のサーバーに導入する
 
-このインストーラーは **Linux の VPS 1台で、Docker 内に k3d 経由の K3s を動かす構成専用**です。汎用の Kubernetes 構築ツールではなく、ホストへ K3s を直接インストールする処理もありません。既存の Kubernetes クラスタには [Helm 手順](on-premises.md)を使います。
+まず1台の Linux サーバーで、導入・動画処理・Q&A・更新・復旧を確認します。インストーラーが Web・Node.js API・Python ワーカーに加え、PostgreSQL・動画ストレージ・永続キューを配置します。既存の Kubernetes や社内の DB・ストレージを利用する場合は、[Kubernetes 向けの導入手順](on-premises.md)へ進んでください。
 
-1つの導入コマンドで、この単一ノードの K3s に Helm で配置します。Web・API・ワーカー・PostgreSQL/pgvector・Garage・永続キューはすべて Kubernetes で動きます。完了後は HTTPS の URL をブラウザーで直接開きます。SSH のポート転送は不要です。
+保存先は単一サーバー上の1レプリカです。サーバー障害に備え、評価中もバックアップを別ホストに保管します。
 
-## 準備する
+## 導入前の準備
 
-Linux amd64 / arm64 の VPS に Docker Engine・Python 3.9 以降・curl・tar・coreutils を用意し、リポジトリのルートで実行します。アプリに加えて K3s のリソースも確保します。AI は標準で OpenRouter を使います。単一ノードにはホスト障害に対する冗長性がないため、データと鍵は別ホストにもバックアップします。
+| 用意するもの | 用途 |
+|---|---|
+| Linux・Docker Engine・Docker Compose・Python 3.9 以降 | インストーラーと各サービスの実行 |
+| ソースコードのチェックアウト | `scripts/onprem/videoq.py` と設定テンプレート |
+| 検証済みの `verified-images.json` | 使用する配布イメージの固定 |
+| アプリとストレージの公開 URL | ブラウザーからログイン・アップロード・再生する経路 |
+| OpenRouter のキー、または既存のローカル推論サービス | チャット・埋め込み・文字起こし |
 
-VPS 事業者のファイアウォールとホスト側のファイアウォールで、外部からの **TCP 443** を許可します。SSH の接続経路は維持してください。インストーラーはファイアウォールの規則を変更しません。公開するのは HTTPS ゲートウェイです。Kubernetes API はループバック限定で、DB・キュー・ストレージ API はクラスタ内部に置きます。
+[リリースの取得と署名検証](on-premises-releases.md)を先に行い、生成された `verified-images.json` を使います。イメージの自前ビルドは不要です。リリースの検証に必要なツールは、リリースガイドで確認してください。
 
-K3s とホスト上の他の監視プロセスが共存できるよう、必要な場合は `fs.inotify.max_user_instances` を1024へ引き上げ、`/etc/sysctl.d/90-videoq-k3s.conf` に保存します。ホストの前提設定なのでアンインストールでは戻しません。既存の異なる設定ファイルは上書きしません。
+アプリとストレージの URL は別のオリジンにします。DNS 名を分けるか、同じ名前の別ポート（例: `https://videoq.example.edu` と `https://videoq.example.edu:9443`）を使えます。DNS は導入先サーバーへ向けます。
 
-公開 URL を決めます。
+HTTPS は Caddy が証明書を自動取得します。そのための DNS・証明書発行先への接続を用意してください。独自 CA を使う場合は `install` または `init` に `--tls-cert /secure/site.crt --tls-key /secure/site.key` を指定します。PEM 証明書は両方のホスト名を含み、ブラウザーと診断を実行するサーバーで発行元 CA を信頼する必要があります。CLI には `SSL_CERT_FILE=/secure/ca-chain.pem` でも指定できます。
 
-- ドメインがある場合：A レコードを VPS に向け、`https://videoq.example.com` を使います。
-- ドメインがない場合：`https://YOUR_PUBLIC_IPV4` を使います。この VPS の公開 IPv4 を指定してください。
+入口には URL で指定したポートを公開します。通常は 80/443 です。HTTPS では証明書の検証とリダイレクト用に 80 も公開します。ホスト側のプロキシ経由で使う場合は `--bind-address 127.0.0.1` でループバックに限定できます。省略時は全インターフェースで公開します。
 
-証明書は Let's Encrypt の短期証明書を使い、443番の TLS-ALPN 検証で発行・自動更新します。公開 IPv4 も対応しているため、自己署名証明書やブラウザーの例外登録は不要です。[Let's Encrypt の案内](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)と [Caddy の issuer 設定](https://caddyserver.com/docs/caddyfile/directives/tls)を参照できます。証明書データは Kubernetes の PVC に保存します。この構成では80番と UDP 443 の開放は不要です。
+## インストール
 
-## 導入する
-
-URL を自身のドメインまたは公開 IPv4 に置き換えて実行します。
-
-```sh
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com
-```
-
-不足する操作用ツールを `$HOME/.local/bin` にインストールした後、以下を順に実行します。
-
-1. 成功したリリースの選択と、イメージ・Chart の署名検証。
-2. 専用の K3s クラスタ作成、またはこの導入先のクラスタでの再開。
-3. 秘密情報の生成。既存の DB 認証情報と暗号鍵は保持。
-4. 永続化した基盤・HTTPS ゲートウェイ・バケットの設定。
-5. Helm 導入・マイグレーション・組み込みの疎通テスト。
-6. 公開 HTTPS の準備確認と、初期管理者の作成。
-
-ソース SHA は GitHub の成功した実行から自動取得し、その SHA に対して配布物の署名を検証します。SHA の入力は不要です。OpenRouter を使う場合だけキー（非表示）を入力し、必要に応じて管理者情報を入力します。GitHub 認証と Docker の権限も必要です。認証を求められた場合はターミナルの案内に従います。
-
-アプリと S3 のアップロードは、同じ HTTPS オリジンの443番を使います。`/videoq-media/*` は署名付きパスを書き換えずに Garage へ、それ以外のアプリ・API のパスは VideoQ へ振り分けます。動画側の応答には sandbox CSP を付け、アップロードされた文書がアプリのオリジンでスクリプトを実行できないようにします。
-
-表示された一度限りの管理者設定リンクを開き、パスワードを設定してください。その後、短い動画で文字起こし・索引・Q&A・引用時刻からの再生を確認します。疎通テストだけでは AI の品質や動画処理能力までは評価しません。
-
-## ローカル AI を選ぶ
-
-初回の `install` に `--ai` を指定すると、Whisper・埋め込み・LLM をまとめて選べます。標準は `openrouter` です。
+未取得の場合は、リポジトリをチェックアウトします。
 
 ```sh
-# CPU でローカル推論する
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai local-cpu
-
-# NVIDIA GPU でローカル推論する（GPU 対応クラスタを事前に構成）
-python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai local-gpu
+git clone https://github.com/videoq-jp/videoq.git
+cd videoq
 ```
 
-| オプション | LLM・埋め込み | Whisper |
-|---|---|---|
-| `--ai openrouter`（省略可） | OpenRouter | OpenRouter |
-| `--ai local-cpu` | llama.cpp の CPU イメージ | 署名済みゲートウェイ + whisper.cpp の CPU イメージ |
-| `--ai local-gpu` | 署名済み NVIDIA vLLM イメージ | 署名済みゲートウェイ + 同じ NVIDIA vLLM イメージ |
-
-ローカル構成は OpenRouter キーを要求せず、推論 API はクラスタ内部にだけ配置します。アプリの接続先とモデル名も自動設定し、テキスト用モデルに合わせて画像を使う Q&A を無効にします。プロファイルは検証済みリリースの Chart から読み込み、検証済みイメージ指定を最後に重ねます。CPU は amd64/arm64、GPU は amd64 に対応します。
-
-ローカルモデルの常駐には追加のリソースが必要です。確認した配布設定では、**推論だけで** CPU 版は 5.25 CPU・7.5 GiB RAM、GPU 版は 6.25 CPU・24.5 GiB RAM・割り当て可能な NVIDIA GPU 3基を要求します。別途アプリ・DB・クラスタの分を確保してください。インストーラーは実際の Chart の要求量とノードの空きを比較し、不足時はモデルを取得せず停止します。約4 GBの VPS にはこの CPU プロファイルを配置できません。
-
-GPU 版は NVIDIA ドライバー、K3s の GPU runtime、device plugin、k3d への GPU パススルーが構成済みのクラスタを使います。CPU 用の標準 k3d ノードを GPU 対応として作成することはありません。事前に同じクラスタ名と保存先で GPU 対応環境を準備し、この推論 Chart が RuntimeClass を個別指定しなくても GPU を使える既定 runtime / CDI 構成であることを確認してください。構成の前提は [K3s の NVIDIA 設定](https://docs.k3s.io/advanced)と [k3d の CUDA 設定](https://k3d.io/stable/usage/advanced/cuda/)を参照してください。このインストーラーは GPU ドライバーや runtime を自動インストールしません。
-
-初回はイメージとモデルをインターネットから取得し、モデルの版・チェックサムを固定した永続キャッシュを作ります。以降の `install` / `update` では記録した構成を使います。既存データの `--ai` 変更や、埋め込みの重み・量子化・設定が変わる更新は、再索引を計画せずに適用できません。[ローカル推論](local-inference.md)にモデルと再索引の詳細があります。
-
-ローカル推論は別の Helm リリース `inference` で管理します。通常の `uninstall` は推論ワークロードも削除してモデルキャッシュを保持し、`--purge` はキャッシュも完全削除します。更新前バックアップにはアプリのデータ・鍵と推論設定を含めますが、再取得可能なモデルキャッシュは含めません。
-
-## 再開と状態確認
-
-途中で止まった場合は、表示された原因を解消して**同じコマンド**を再実行します。選択したリリースを記録し、署名を再確認して、鍵と永続データを保持します。クラスタ・PVC・既存アカウントは削除しません。失敗した段階を再試行するために、これらを削除する必要はありません。
-
-設定・秘密情報・リリース成果物・再開状態は `$HOME/videoq-kubernetes` に保存します。`admin-setup.txt` は非公開の初期設定結果です。Git や共有ログに載せないでください。
+以降のコマンドはリポジトリのルートで実行します。検証済みリリースと生成する設定はチェックアウトの外に保存します。公開 URL と管理者情報を置き換えて実行してください。
 
 ```sh
-export PATH="$HOME/.local/bin:$PATH"
-export KUBECONFIG="$HOME/videoq-kubernetes/kubeconfig"
-kubectl -n videoq get deployments,pods,jobs,cronjobs,pvc
-kubectl -n videoq logs deployment/videoq-gateway --tail=100
-kubectl -n videoq logs deployment/videoq-api --tail=100
-helm status videoq -n videoq
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server install \
+  --images /secure/videoq-release/verified-images.json \
+  --url https://videoq.example.edu --storage-url https://s3.example.edu \
+  --username site_admin --email admin@example.com
 ```
 
-`no matching resources found` がノード待機時に出ていた旧版では、ノード登録前に待機を開始していました。現在は登録から `Ready` まで最大180秒待ちます。古い出力で停止した場合は、修正済みの同じ導入コマンドを再実行してください。登録されない状態が続く場合は、K3s サーバーの containerd ログで `fsnotify`・`too many open files` を確認します。
+標準構成では OpenRouter のキーを非表示で入力します。`install` は設定・秘密鍵の生成、基盤とアプリの起動、接続診断、初期管理者の設定リンク発行まで進めます。リンクを管理者本人が開き、パスワードを設定してください。オンプレ版には公開サインアップがありません。
 
-証明書が発行できない場合は、外部から TCP 443 に到達できるか、公開 IP と DNS レコードが正しいかを確認します。導入を終わらせるために TLS の検証を無効にしないでください。自動更新のためゲートウェイは稼働させておきます。
+設定生成後に失敗した場合は、同じ保存先で `init` をやり直さず、以下の診断・再開手順を使います。既存の保存先への初期化は拒否され、暗号鍵は上書きされません。
 
-特定のレビュー済みリリースを使う自動化では `--run-id` と `--source-sha` を指定できます。`--directory`・`--cluster`・`--username`・`--email` も任意指定です。全オプションは `python3 scripts/onprem/k3s.py --help` で確認できます。
+## 診断と再開
 
-
-## 更新する
+設定を先に確認したい場合は、次の `init` で生成してから起動します。管理者情報は最後の `admin` で指定します。
 
 ```sh
-python3 scripts/onprem/k3s.py update
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server init \
+  --images /secure/videoq-release/verified-images.json \
+  --url https://videoq.example.edu --storage-url https://s3.example.edu
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server doctor
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server start
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server status
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server doctor --live
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server admin \
+  --username site_admin --email admin@example.com
 ```
 
-成功した新しいリリースを選び、SHA を自動取得します。特定のリリースを固定する場合だけ `--run-id` と `--source-sha` を指定します。署名検証が終わるまでは稼働環境を変更しません。
+`doctor` は Docker・構成・空きディスクを確認します。`--live` を付けると、S3 の認証と CORS、キューの実行リースとデッドレター設定、API の準備状態、公開 URL の DNS・TLS・アップロード用 CORS も確認します。`--live --ai` はチャット・埋め込み API のモデル一覧を確認しますが、推論や品質評価は行いません。
 
-書き込みと保守 CronJob を止め、DB・動画・キュー・証明書の4つの PVC と鍵・設定をコールドバックアップします。保存先は標準で `$HOME/videoq-kubernetes/backups/<日時>` です。新しい保存先を `--backup /private/new-backup` で指定できます。バックアップのチェックサムを確認してから基盤を再開し、Helm 更新・マイグレーション・公開 HTTPS/S3 の確認を行います。更新中はサービスを停止します。
+起動エラーには `logs --service api`、マイグレーションには `logs --service migrate`、動画処理には `logs --service worker` を使います。いずれも `--directory` はサブコマンドの前に指定します。Docker に管理者権限が必要な環境では `VIDEOQ_DOCKER_SUDO=1` を設定します。CLI は `sudo -n docker` を使用し、パスワード入力は要求しません。
 
-マイグレーション以降に失敗した場合はアプリを再開せず、更新前バックアップと元のリリース記録を保持します。原因を直して同じ `update` コマンドを実行すると、同じ更新先とバックアップで再開します。未完了の更新を `install` で迂回することはできません。SQL やデータを自動で巻き戻す処理はありません。
+自動化では `VIDEOQ_OPENROUTER_API_KEY` で標準構成のキーを渡せます。設定とバックアップには秘密情報が含まれます。`runtime.env` の暗号鍵は既存のユーザー設定の復号に必要です。共有ログには、認証情報を展開する `docker compose config` の出力を載せないでください。構成チェックには `--quiet` を使います。
 
-## アンインストールする
+## バックアップと復元
 
-アプリを削除してクラスタを停止し、データ・鍵・証明書・設定を保持する場合：
+バックアップはアプリの書き込みと基盤を停止して行います。作業時間を確保し、新しい保存先を指定してください。
 
 ```sh
-python3 scripts/onprem/k3s.py uninstall
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server backup \
+  --output /secure/backups/videoq-2026-11-04
+python3 scripts/onprem/videoq.py --directory /secure/videoq-restored restore \
+  --backup /secure/backups/videoq-2026-11-04
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server stop
+python3 scripts/onprem/videoq.py --directory /secure/videoq-restored start
 ```
 
-後から `install` を実行すれば、保持したクラスタとデータを使って同じリリースを再導入できます。既存のアカウントも残ります。
+バックアップは5つの永続ボリュームと設定・暗号鍵を保存し、完了後に元のサービスを再開します。マニフェストはアーカイブが完成してから書き込まれます。復元先は新規ディレクトリ・別ボリュームですが、公開 URL は元と同じなので、起動前に元の構成を停止します。
 
-**クラスタ・データ・鍵・証明書・設定・導入先の内部バックアップまで完全に削除する場合**：
+バックアップは暗号化されていません。アクセスを制限し、別ホストにも保管してください。復元には信頼できるバックアップを使います。SHA-256 は破損検出用で、作成者を認証するものではありません。物理 DB バックアップの復元には、同じ PostgreSQL メジャーバージョンとアーキテクチャが必要です。
+
+## 更新
+
+[リリースガイド](on-premises-releases.md)で新しいリリースを検証し、更新前バックアップの新しい保存先を指定します。
 
 ```sh
-python3 scripts/onprem/k3s.py uninstall --purge
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server update \
+  --images /secure/new-release/verified-images.json \
+  --backup /secure/backups/videoq-before-update
 ```
 
-確認のためクラスタ名を入力します。自動化では `--yes` で確認を省略できます。操作対象は `--directory` で選んだ導入先に限定し、別のクラスタや操作用ツール、ソースコードは削除しません。明示的に導入先の外へ保存したバックアップも残します。必要なバックアップは完全削除前に別ホストへコピーしてください。
+停止前にイメージを取得し、停止中にバックアップ・イメージの切り替え・マイグレーション・起動確認を行います。失敗時はアプリを停止したままにします。`logs --service migrate` と `logs --service api` で原因を確認し、解消後に `start` で再試行するか、更新前バックアップを新しいディレクトリへ復元します。SQL スキーマ変更後にイメージだけを自動で戻す処理はありません。
 
-## 運用と別の導入方法
+## ローカル AI への接続
 
-PostgreSQL・オブジェクト・キュー・秘密情報・クラスタ状態を別ホストにもバックアップし、復元を試します。Helm の rollback は SQL マイグレーションやデータを戻しません。別のリリースには `update` を使います。公開 URL の変更には移行計画が必要です。`install` は記録した導入の再開です。
+`install` または `init` に `--ai local-cpu` / `--ai local-gpu` と、`--chat-url`・`--embedding-url`・`--transcription-url` を `/v1` まで含めて指定します。既存のプライベート推論サービスへの接続設定です。モデルや GPU ドライバーを自動構築するものではありません。[ローカル推論](local-inference.md)で対応するサービスを用意してください。
 
-既存クラスタには [Helm 手順](on-premises.md)、社内 AI には[ローカル推論](local-inference.md)、配布物の方針には[署名付きリリース](on-premises-releases.md)を参照してください。
+モデルの標準値は Helm の `local-ai-llamacpp.yaml` / `local-ai-vllm.yaml` と一致します。必要に応じて `--chat-model` / `--embedding-model` を指定します。共通の API キーは `VIDEOQ_LOCAL_AI_KEY` で渡し、認証不要の場合は `local-inference` を使います。ローカル設定では外部 AI のキーと接続先を除き、画像を使う Q&A を無効にします。
+
+既存データの埋め込みモデルを変更する場合は、次元数が同じでも再索引が必要です。CLI は外部通信を遮断するファイアウォールを構成しません。また、`start --offline` は明示的な pull を省略するだけです。アプリ・基盤の全イメージを事前に搬入する必要があり、完全な閉域網向け配布セットは生成しません。
+
+## 単一サーバーでの評価を終える前に
+
+導入先で使う AI と、実際の用途に近い短い動画で確認します。
+
+1. 管理者の設定リンクからログインし、動画をアップロードする。
+2. 文字起こし・索引の完成後に質問し、引用された時刻から再生する。
+3. 処理時間・同時利用・保存容量の増加・回答品質を記録する。
+4. バックアップを別ホストにも保存し、復元と更新を試す。
+
+自動テストは実際の動画処理・引用回答・再生・更新失敗後の復旧を、固定応答の AI サービスで確認します。導入先のモデルの品質や処理能力の承認ではありません。実 CPU モデルの確認は[署名付きリリースの検証](on-premises-releases.md)で別途行います。
+
+この評価で不足が見えた段階で、推論・ワーカー・ストレージなどを別サーバーへ分ける必要があるか判断してください。すべてを1台で動かしている間も、バックアップは別の保存先に残します。

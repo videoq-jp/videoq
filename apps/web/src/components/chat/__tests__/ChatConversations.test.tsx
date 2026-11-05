@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api';
 vi.mock('@/lib/api', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/api')>(),
   apiClient: { chatStream: vi.fn(), exportChatHistoryCsv: vi.fn() },
 }));
-const storageKey = (actor = '1', shareToken?: string) => `videoq:conversations:v1:${JSON.stringify([actor, 5, shareToken])}`;
+const storageKey = (actor = '1', shareToken?: string) => `videoq:conversations:${shareToken ? 'v2' : 'v1'}:${JSON.stringify([actor, 5, shareToken])}`;
 const id = '82ea775b-4b54-4a41-b16e-21fa3670ac11';
 const saved = (conversationId = id, title = 'Inner product') => ({
   id: conversationId, title, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z', isGenerating: false,
@@ -81,6 +81,14 @@ it('isolates persisted selections across accounts and shared routes', async () =
   localStorage.setItem(storageKey('different-account'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
   localStorage.setItem(storageKey('1', 'different-link'), JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
   render(<ChatPanel courseId={5} />);
+  expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
+  expect(mockDetail).not.toHaveBeenCalled();
+});
+
+it('starts a fresh shared conversation instead of claiming legacy browser history', () => {
+  const legacyKey = `videoq:conversations:v1:${JSON.stringify(['1', 5, 'shared'])}`;
+  localStorage.setItem(legacyKey, JSON.stringify({ selected: { id, restore: true }, knownIds: [id] }));
+  render(<ChatPanel courseId={5} shareToken="shared" showTitle={false} />);
   expect(screen.getByText('chat.assistantGreeting')).toBeInTheDocument();
   expect(mockDetail).not.toHaveBeenCalled();
 });

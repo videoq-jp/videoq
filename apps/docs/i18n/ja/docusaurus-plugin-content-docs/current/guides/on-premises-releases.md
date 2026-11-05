@@ -5,9 +5,10 @@ description: 署名とダイジェストを検証し、Kubernetes で更新と�
 
 # オンプレの署名付き配布と更新
 
-このページで検証した配布物は、[単一ノードの Kubernetes](on-premises-single-server.md)と
-[既存の Kubernetes](on-premises.md)で使います。いずれも `verified-images.json` と検証済み Chart を使います。
-署名検証後は、それぞれの導入ガイドに戻ってください。
+このページで検証した配布物は、[単一サーバーへの導入](on-premises-single-server.md)と
+[Kubernetes への配置](on-premises.md)の両方で使えます。
+インストーラーには `verified-images.json` を渡し、Helm では検証済みの Chart も使います。
+以下の Helm コマンドは Kubernetes 向けです。単一サーバーの場合は、署名検証後に導入ガイドへ戻ってください。
 
 インターネットに接続できる導入先では、外部レジストリとイメージのダイジェストを使って配布します。`On-prem Release` は最新 main の push CI 成功を確認し、Linux amd64・arm64 の API、Web、ワーカー、CPU Whisper、アプリ・推論用の両 Helm Chart、`release.json` を作成します。NVIDIA vLLM のイメージは amd64 用として同梱します。同じ main コミットで手動実行すると、OS パッケージ修正後の再ビルドにも使えます。
 
@@ -25,33 +26,19 @@ API とワーカーはダイジェスト固定の Alpine イメージを使い�
 
 ## 配布物を取得して検証する
 
-`gh attestation verify` に対応した GitHub CLI と Python 3.9 以上を用意します。Kubernetes への導入には Helm 4.3.1 も必要です。`gh auth status` が失敗する場合は、先に `gh auth login` で認証します。検証スクリプトはレビュー済みのチェックアウトから実行します。成功した `On-prem Release` の実行 ID と、別途確認した完全なソースコミット SHA を使ってください。ダウンロードした manifest 自体から信頼する SHA を決めないでください。
+`gh attestation verify` に対応した GitHub CLI、Python 3.9 以上、Helm 4.3.1 を用意します。検証スクリプトはレビュー済みのチェックアウトから実行します。成功した `On-prem Release` の実行 ID と、別途確認した完全なソースコミット SHA を使ってください。ダウンロードした manifest 自体から信頼する SHA を決めないでください。
 
-リポジトリのルートの Bash で実行します。まず成功した実行を一覧表示し、対象コミットの変更内容を確認してから、数値の `databaseId` と40文字の `headSha` を入力します。保存先は書き込み可能なホームディレクトリにしています。別のリリースを取得するときは、新しい保存先を指定してください。
-
-```bash
-gh auth status
-gh attestation verify --help
-gh run list --repo videoq-jp/videoq \
-  --workflow onprem-release.yml --status success --limit 10 \
-  --json databaseId,headSha,createdAt,url
-
-read -r -p "成功した実行の databaseId: " RUN_ID
-gh run view "$RUN_ID" --repo videoq-jp/videoq --json headSha,conclusion,url
-read -r -p "レビュー済みの40文字の headSha: " SOURCE_SHA
-RUN_ATTEMPT=$(gh api "repos/videoq-jp/videoq/actions/runs/$RUN_ID" --jq .run_attempt)
-RELEASE_DIR="$HOME/videoq-release"
-mkdir -p "$RELEASE_DIR"
+```sh
+SOURCE_SHA=REPLACE_WITH_REVIEWED_40_CHARACTER_COMMIT
+RUN_ID=REPLACE_WITH_SUCCESSFUL_RELEASE_RUN
+RUN_ATTEMPT=$(gh run view "$RUN_ID" --repo videoq-jp/videoq --json attempt --jq .attempt)
+mkdir -p /secure/videoq-release
 gh run download "$RUN_ID" --repo videoq-jp/videoq \
-  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir "$RELEASE_DIR"
+  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir /secure/videoq-release
 python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
-  "$RELEASE_DIR/release.json" "$RELEASE_DIR/verified-images.json" \
-  "$RELEASE_DIR/verified-inference.json"
+  /secure/videoq-release/release.json /secure/videoq-release/verified-images.json \
+  /secure/videoq-release/verified-inference.json
 ```
-
-`Verified release; application and inference Helm image values written` が成功の目印です。VPS 1台の場合は、[Kubernetes の導入ガイド](on-premises-single-server.md)に戻り、検証済み Chart と `$RELEASE_DIR/verified-images.json` を使います。
-
-`gh attestation` が未対応なら GitHub CLI を更新します。`gh run view --json attempt` は CLI の版によって未対応のため、上記では API の `run_attempt` を使います。URL に `REPLACE_WITH_SUCCESSFUL_RELEASE_RUN` が含まれる 404 は、例示値が残っている状態です。数値の実行 ID を設定してください。成功した実行が一覧にない場合は、リリースを成功させてから進めます。成果物が見つからない場合は、実行回・SHA・保持期限も確認してください。
 
 イメージの取得に GHCR のログインや `read:packages` 資格情報は不要です。上記の GitHub CLI の認証は、ワークフロー成果物のダウンロードと署名検証に使います。検証スクリプトは署名、対象ファイル、リポジトリ、配布ワークフロー、`refs/heads/main`、ソースコミット、GitHub ホストのランナーであることを確認します。manifest、両 Chart のチェックサムと署名、全5イメージの署名がすべて正しい場合だけ、アプリ用・推論用の Helm 設定ファイルを生成します。失敗時は既存の値を保持します。
 
@@ -60,10 +47,10 @@ python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
 検証済みのイメージ指定は **最後** に読み込みます。
 
 ```sh
-helm template videoq "$RELEASE_DIR"/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
-  -n videoq -f /secure/site.yaml -f "$RELEASE_DIR"/verified-images.json
-helm upgrade --install videoq "$RELEASE_DIR"/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
-  -n videoq -f /secure/site.yaml -f "$RELEASE_DIR"/verified-images.json \
+helm template videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
+  -n videoq -f /secure/site.yaml -f /secure/videoq-release/verified-images.json
+helm upgrade --install videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SHA.tgz \
+  -n videoq -f /secure/site.yaml -f /secure/videoq-release/verified-images.json \
   --wait --timeout 15m
 helm test videoq -n videoq --timeout 2m
 ```
@@ -112,7 +99,7 @@ containerd を使う Docker では、実行 CPU 向けだけを書き出して�
 npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
 node node_modules/playwright/cli.js install --with-deps chromium
 HELM_BIN=helm python3 .github/scripts/onprem-cpu-acceptance.py \
-  "$SOURCE_SHA" "$RELEASE_DIR" /tmp/videoq-real-cpu-results
+  "$SOURCE_SHA" /secure/videoq-release /tmp/videoq-real-cpu-results
 ```
 
 既存の `videoq-onprem-lab` クラスタがあれば置き換えずに停止します。モデル取得時にはインターネット接続が必要です。検証用の DB 等も含め、少なくとも16 GiB の RAM を用意します。短い公開サンプル1件での確認なので、導入先の日本語録画・同時利用数による精度や性能、CNI による NetworkPolicy の適用確認は別途必要です。

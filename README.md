@@ -38,16 +38,27 @@ Choose the environment you want to run:
 | Goal | Start here |
 |---|---|
 | Try VideoQ without installing it | [Hosted demo](https://videoq.jp/en/try) |
-| Run on one VPS with Kubernetes | [K3s on one VPS](docs/guides/on-premises-single-server.md) |
+| Evaluate on-prem on one Linux server | [Single-server installation](docs/guides/on-premises-single-server.md) |
 | Use an existing Kubernetes cluster and site-managed services | [Kubernetes installation](docs/guides/on-premises.md) |
 | Edit the application on your computer | [Local development setup](docs/getting-started/local-setup.md) |
 
-On-prem installations use Kubernetes and Helm, including the one-VPS setup.
-Start with a single K3s node and one replica per workload, then measure real video
-processing and Q&A before adding capacity. The [single-server guide](docs/guides/on-premises-single-server.md)
-provides one installation command for persistent PostgreSQL, storage and queues,
-verified images, Helm and direct HTTPS on port 443, including public IPv4 access
-without a domain or SSH forwarding.
+For an initial on-prem evaluation, start with one server. The installer supplies
+PostgreSQL, object storage and a persistent queue, generates credentials, and
+creates the initial administrator. Use Docker Engine, Compose and Python 3.9+;
+application images come from a [verified release](docs/guides/on-premises-releases.md).
+
+After obtaining `verified-images.json`, run from the repository root:
+
+```sh
+python3 scripts/onprem/videoq.py --directory /secure/videoq-server install \
+  --images /secure/videoq-release/verified-images.json \
+  --url https://videoq.example.edu --storage-url https://s3.example.edu \
+  --username site_admin --email admin@example.com
+```
+
+The [single-server guide](docs/guides/on-premises-single-server.md) covers URL/TLS
+setup, diagnosis, backup, updates and recovery. Validate your own videos and AI
+services on this server before deciding whether to split services across hosts.
 
 For development, follow the [local setup guide](docs/getting-started/local-setup.md)
 from environment configuration through account activation. The root
@@ -58,7 +69,7 @@ promotion flow differs from the production on-prem installer.
 
 [Local inference](docs/guides/local-inference.md) explains private chat,
 embeddings and transcription, including [Mac development with whisper.cpp](docs/guides/local-inference.md#mac-development-with-whispercpp).
-The application connects to existing inference services; the
+The single-server installer connects to existing inference services; the
 [inference chart](charts/videoq-inference/README.md) provisions Kubernetes services.
 For hosted AI identity and operational checks, see the
 [provider runbook](docs/operations/openai-transcription.md).
@@ -83,7 +94,7 @@ runtime and private backing services described below.
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 
-For a single Linux server, use [single-node Kubernetes](docs/guides/on-premises-single-server.md).
+For a single Linux server, use the [installer guide](docs/guides/on-premises-single-server.md).
 For on-prem Kubernetes, the [Helm chart](charts/videoq/README.md) deploys a production
 Node.js API, static web and Python workers against operator-provided PostgreSQL,
 S3 storage, a persistent SQS-compatible queue and configured inference endpoints.
@@ -223,9 +234,9 @@ binary dependencies from `uv.lock`.
 
 ## Deployment
 
-For on-prem deployments, use [single-node Kubernetes](docs/guides/on-premises-single-server.md)
-or the [existing-cluster Helm guide](docs/guides/on-premises.md). These use production
-Node.js images and administrator-issued accounts.
+For on-prem deployments, use the [single-server guide](docs/guides/on-premises-single-server.md)
+or [Kubernetes guide](docs/guides/on-premises.md). Both use production Node.js images
+and administrator-issued accounts.
 
 ### Hosted service
 
@@ -238,7 +249,7 @@ The hosted topology is Cloudflare Workers (separate frontend, API, and docs) + H
 
 ### HTTPS with Docker Compose
 
-Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack runs `wrangler dev` with development settings and signs uploads for `http://127.0.0.1:9000`. Setting a domain in `.env` alone does not configure a public deployment: authentication origins, CORS, API variable forwarding, secrets, and a browser-accessible HTTPS storage endpoint also need configuration. Use the [K3s on one VPS guide](docs/guides/on-premises-single-server.md) for on-prem hosting, or the production deployment guide above for the cloud setup.
+Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack runs `wrangler dev` with development settings and signs uploads for `http://127.0.0.1:9000`. Setting a domain in `.env` alone does not configure a public deployment: authentication origins, CORS, API variable forwarding, secrets, and a browser-accessible HTTPS storage endpoint also need configuration. Use the [single-server installer](docs/guides/on-premises-single-server.md) for on-prem hosting, or the production deployment guide above for the cloud setup.
 
 ## MCP (Model Context Protocol) Integration
 

@@ -14,11 +14,11 @@ VideoQ を導入する、または最初の変更を進めるときの入口で�
 
 | やりたいこと | 最初に読むページ |
 |---|---|
-| VPS 1台で Kubernetes を使う | [単一サーバーの Kubernetes](guides/on-premises-single-server.md) |
+| まず1台のサーバーでオンプレ版を評価する | [単一サーバーへの導入](guides/on-premises-single-server.md) |
 | 既存の Kubernetes に配置する | [オンプレ導入と Helm 手順](guides/on-premises.md) |
 | アプリを変更するためにローカルで動かす | [開発環境を動かす](getting-started/local-setup.md) |
 
-単一サーバーでも Kubernetes と Helm を使って導入・動画処理・Q&A・更新・復旧を試し、処理速度や同時利用の不足が見えた段階で、別サーバーへの分離を検討します。バックアップは評価中も別ホストに保管してください。
+単一サーバーで導入・動画処理・Q&A・更新・復旧を試し、処理速度や同時利用の不足が見えた段階で、別サーバーへの分離を検討します。バックアップは評価中も別ホストに保管してください。
 
 ## AIの仕組みを知る
 
@@ -65,3 +65,5 @@ VideoQ を導入する、または最初の変更を進めるときの入口で�
 ## 詳しく調べる
 
 必要になったときに、左の「設計リファレンス」から各図や仕様を参照してください。DBの名前は[データ辞書](database/data-dictionary.md)、略語は[用語集](reference/glossary.md)で確認できます。
+
+- [Single-VPS K3s deployment](guides/on-premises-k3s.md)

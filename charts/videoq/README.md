@@ -1,10 +1,9 @@
 # VideoQ on-prem Helm chart
 
-Use this chart for Kubernetes deployments, including a single VPS. Start with
-the [K3s on one VPS guide](../../docs/guides/on-premises-single-server.md)
-for a new VPS, or follow this page for an existing cluster and site-managed infrastructure.
-The [single-node examples](examples/single-node/README.md) supply separately managed
-PostgreSQL, Garage, a persistent queue and an HTTPS gateway.
+This guide is for an existing Kubernetes cluster and site-managed infrastructure.
+For an initial evaluation on one Linux server, start with the
+[single-server installer](../../docs/guides/on-premises-single-server.md), which
+includes the database, object storage and queue.
 
 This chart installs the static web application, production Node.js API, Python
 SQS pollers, a migration Job, and recovery/retention CronJobs. It creates no

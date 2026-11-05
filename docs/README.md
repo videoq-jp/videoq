@@ -15,11 +15,11 @@ you do not need to read every design diagram before getting started.
 
 | Goal | Start here |
 |---|---|
-| Run on one VPS with Kubernetes | [K3s on one VPS](guides/on-premises-single-server.md) |
+| Evaluate on-prem on one server first | [Single-server installation](guides/on-premises-single-server.md) |
 | Deploy to an existing Kubernetes cluster | [On-prem and Helm guide](guides/on-premises.md) |
 | Run locally to change the application | [Development environment](getting-started/local-setup.md) |
 
-Start an on-prem evaluation on one Kubernetes node. Test installation, video processing,
+Start an on-prem evaluation on one server. Test installation, video processing,
 Q&A, updates and recovery, then use capacity measurements to decide whether to
 separate services. Keep backups on another host during the evaluation too.
 
@@ -68,3 +68,5 @@ For documentation-only changes, start with [Update the documentation](guides/doc
 ## Explore the details
 
 Use **Design reference** in the sidebar when you need a diagram or specification. Look up database names in the [data dictionary](database/data-dictionary.md) and abbreviations in the [glossary](reference/glossary.md).
+
+- [Single-VPS K3s deployment](guides/on-premises-k3s.md)
