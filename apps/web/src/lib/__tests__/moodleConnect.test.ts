@@ -3,7 +3,7 @@ import { moodleConnectCallback, moodleConnectRequest } from '../moodleConnect';
 
 const state = 'a'.repeat(64);
 const challenge = 'b'.repeat(43);
-const query = (url: string) => '?' + new URLSearchParams({ moodle_url: url, state, code_challenge: challenge });
+const query = (url: string) => '?' + new URLSearchParams({ moodle_url: url, state, code_challenge: challenge }).toString();
 
 describe('Moodle connection return destination', () => {
   it.each(['https://moodle.example', 'https://private.example:9443/academy'])('returns only to the requesting Moodle callback: %s', url => {

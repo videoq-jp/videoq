@@ -6,7 +6,7 @@ import { authFixture, regularUser } from '../../.storybook/fixtures/auth';
 import { returnToMoodle } from '@/lib/moodleConnect';
 import MoodleConnectPage from './MoodleConnectPage';
 
-const query = new URLSearchParams({ moodle_url: 'https://moodle.example:9443/academy', state: 'a'.repeat(64), code_challenge: 'b'.repeat(43) });
+const query = new URLSearchParams({ moodle_url: 'https://moodle.example:9443/academy', state: 'a'.repeat(64), code_challenge: 'b'.repeat(43) }).toString();
 const approved = fn();
 const meta = {
   title: 'Pages/Moodle connection',

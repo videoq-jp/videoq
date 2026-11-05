@@ -6,7 +6,7 @@ import MoodleConnectPage from '../MoodleConnectPage';
 
 vi.mock('@/lib/authSession', () => ({ useAuthSession: vi.fn() }));
 vi.mock('@/lib/moodleConnect', async original => ({ ...await original<typeof import('@/lib/moodleConnect')>(), returnToMoodle: vi.fn() }));
-const query = new URLSearchParams({ moodle_url: 'https://private.example:9443/academy', state: 'a'.repeat(64), code_challenge: 'b'.repeat(43) });
+const query = new URLSearchParams({ moodle_url: 'https://private.example:9443/academy', state: 'a'.repeat(64), code_challenge: 'b'.repeat(43) }).toString();
 
 describe('Moodle connection approval', () => {
   beforeEach(() => {
