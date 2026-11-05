@@ -1,6 +1,6 @@
 # SQS worker Lambda container image (linux/arm64).
 FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
-FROM public.ecr.aws/lambda/python:3.14@sha256:51985f11b2fb1949619bda27d121f38ef7d4db64423ca6189ab1d7e632527d27 AS lambda-local
+FROM public.ecr.aws/lambda/python:3.14@sha256:f0aa5b2ba60a0eae51d0b0f5e7c71f928759f1cdbfb1b9bf034f70757da0fbe2 AS lambda-local
 
 # BEGIN managed pip
 ARG PIP_VERSION=26.2.2
