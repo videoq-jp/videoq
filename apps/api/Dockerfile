@@ -2,9 +2,9 @@
 FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS base
 
 # BEGIN managed npm
-ARG NPM_VERSION=12.2.1
-ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.1.tgz
-ARG NPM_INTEGRITY=sha512-bKCmFRVT/BB+YPEYbZwQ1XUI3N5t4xKSpU1MxOjo7z3iWzKBJ0ZXRC1xFdEN+TC7N5TdywaBzf2dMXGJq/e2PQ==
+ARG NPM_VERSION=12.2.2
+ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.2.tgz
+ARG NPM_INTEGRITY=sha512-KglgbZyacf7jH+FHuNRqVuCzQi8VhI2a7J87Ix43FsPTuZoGWmIXXGdZtBUOA79vwL+IJREqURVzupA7PsQTcA==
 RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import {writeFileSync} from "node:fs"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error("npm download failed"); const b=Buffer.from(await r.arrayBuffer()); if("sha512-"+createHash("sha512").update(b).digest("base64")!==process.env.NPM_INTEGRITY) throw new Error("npm integrity mismatch"); writeFileSync("/tmp/npm.tgz",b)' \
     && mkdir -p /opt/verified-npm \
     && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1 \
