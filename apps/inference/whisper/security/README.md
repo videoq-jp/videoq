@@ -28,6 +28,23 @@ References:
 
 # NVIDIA speech image assessment
 
+The NVIDIA build upgrades APT to Ubuntu 24.04's fix for CVE-2026-109518,
+`2.8.4ubuntu0.1`, or a later package version. Both package acquisition commands
+disable `Acquire::Retries` before the old client is upgraded: the vendor advisory
+requires non-zero retries for exploitation. `verify_apt.py` checks that both
+installed amd64 APT packages meet the fixed version using Debian version ordering.
+
+The scan database can temporarily report this fixed package as affected without
+a `FixedVersion`. `apt-fixed.openvex.json` records Ubuntu's vendor-confirmed
+**fixed** status for only the exact `apt` and `libapt-pkg6.0t64` package PURLs at
+`2.8.4ubuntu0.1`. It is separate from the runtime applicability evaluation for
+the unmodified CPU images. No older versions, other architectures, other packages
+or unknown CVEs match. Complete findings, including the fixed assessment, remain
+visible via `show-suppressed`. Review this record on image/package changes and
+remove it when the scanner's vendor metadata recognizes the fix.
+
+Reference: [Ubuntu CVE-2026-109518 status and prerequisites](https://ubuntu.com/security/CVE-2026-109518).
+
 The image keeps the C/UAPI headers needed by Triton's runtime JIT. These headers
 are not a Linux kernel. The build runs `verify_kernel_headers.py`: every regular
 file owned by `linux-libc-dev` must be a header or its documentation, none may be
