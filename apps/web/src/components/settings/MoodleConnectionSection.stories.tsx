@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
-import { failure, pending, restPost, success } from '../../../.storybook/mocks/network';
+import { failure, restPost, success } from '../../../.storybook/mocks/network';
 import { authFixture, regularUser } from '../../../.storybook/fixtures/auth';
 import { MoodleConnectionSection } from './MoodleConnectionSection';
 
@@ -21,44 +21,14 @@ type Story = StoryObj<typeof meta>;
 export const Empty: Story = {
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('textbox')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /接続コードを発行|Generate connection code/ })).toBeDisabled();
+    await expect(await canvas.findByRole('link')).toBeVisible();
+    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
   },
 };
 export const Mobile: Story = { ...Empty, globals: { viewport: { value: 'mobile', isRotated: false } } };
 export const EnglishMobile: Story = { ...Mobile, globals: { ...Mobile.globals, locale: 'en' } };
 
-export const IssueCode: Story = {
-  parameters: { api: { rest: [empty, http.post(endpoint, () => HttpResponse.json({ code: 'VIDEOQ2.story-fixture', moodleUrl: connection.moodleUrl, expiresAt: new Date(Date.now() + 600000).toISOString() }))] } },
-  async play({ canvasElement, userEvent }) {
-    const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByRole('textbox'), connection.moodleUrl);
-    await userEvent.click(canvas.getByRole('button', { name: /接続コードを発行|Generate connection code/ }));
-    await expect(await canvas.findByDisplayValue('VIDEOQ2.story-fixture')).toBeVisible();
-    await expect(canvas.getByRole('link')).toHaveAttribute('href', connection.moodleUrl + '/local/videoq/connect.php');
-  },
-};
-export const Issuing: Story = {
-  parameters: { api: { rest: [empty, restPost(endpoint, pending())] } },
-  async play({ canvasElement, userEvent }) {
-    const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByRole('textbox'), connection.moodleUrl);
-    await userEvent.click(canvas.getByRole('button', { name: /接続コードを発行|Generate connection code/ }));
-    await expect(await canvas.findByRole('button', { name: /発行して|Generating/ })).toBeDisabled();
-    await expect(canvas.getByRole('textbox')).toHaveValue(connection.moodleUrl);
-  },
-};
-export const IssueFailed: Story = {
-  parameters: { api: { rest: [empty, restPost(endpoint, failure())] } },
-  async play({ canvasElement, userEvent }) {
-    const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByRole('textbox'), connection.moodleUrl);
-    await userEvent.click(canvas.getByRole('button', { name: /接続コードを発行|Generate connection code/ }));
-    await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('textbox')).toHaveValue(connection.moodleUrl);
-    await expect(canvas.getByRole('button', { name: /接続コードを発行|Generate connection code/ })).toBeEnabled();
-  },
-};
 export const Disconnect: Story = {
   parameters: { api: { rest: [connected, restPost('/api/lms/pairing/connections/school/disconnect', success({ disconnected: true }))] } },
   async play({ canvasElement, userEvent }) {

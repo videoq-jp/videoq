@@ -8,24 +8,25 @@ description: Connect the separate Moodle plugins without registering LTI server 
 VideoQ authenticates learner launches with LTI 1.3 and generates course-scoped
 answers. Moodle owns enrollment, source files and playback. Its two plugins,
 installers and lab are maintained in
-[videoq-moodle](https://github.com/yukiharada1228/videoq-moodle).
+[videoq-moodle](https://github.com/videoq-jp/videoq-moodle).
 Normal VideoQ builds do not require that repository.
 
 ## Connect Moodle
 
-1. Update VideoQ through its ordinary deployment and DB migration gates. The
+1. Choose the current cloud service at `https://videoq.jp` or an up-to-date
+   on-premises VideoQ deployment. Cloud users need no server-side setup.
+   On-premises operators update through ordinary deployment and DB migration gates. The
    existing canonical HTTPS `BETTER_AUTH_URL`, `USER_SECRET_ENCRYPTION_KEY` and
    working S3-compatible storage configuration are used automatically. No
    `LTI_CONFIG` or `LTI_TOOL_KEYS` registration is required.
-2. Install both Moodle plugins using the
-   [Moodle setup guide](https://github.com/yukiharada1228/videoq-moodle/blob/main/docs/setup.md).
+2. Install both Moodle plugins from Git (ZIP is optional) using the
+   [Moodle setup guide](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md).
 3. As a Moodle administrator, open **Connect to VideoQ** and enter the cloud or
    on-premises VideoQ HTTPS URL. Continue to VideoQ, sign in to the owning account,
    check the displayed Moodle URL and quota permissions, and allow the connection.
    You return to Moodle automatically; no connection-code copying is required.
    Complete this flow within ten minutes. It needs no per-connection API key or
-   per-video JSON. The older code-based method remains available under the
-   collapsed compatibility section.
+   per-video JSON. VideoQ settings only list existing connections and allow disconnection.
 4. Enable **VideoQ questions** on Moodle File activities. Keep Moodle cron,
    VideoQ's processing worker/queue and maintenance scheduler running. Wait for
    ordinary export, transcription and indexing.
@@ -46,7 +47,7 @@ intercepting the code alone does not authorize an exchange or its retry.
 
 ## Automatic signing identity
 
-The first authenticated connection-code request generates an RSA signing key.
+The first authenticated connection approval generates an RSA signing key.
 The private key is encrypted with the existing application encryption key and
 stored in `lti_tool_keys`. Replicas serialize initialization in the same owner
 transaction and reuse the stored identity. Anonymous requests and simply opening
@@ -90,7 +91,7 @@ grade return and roster synchronization are outside this feature. This is not
 LTI certification or compatibility with every LMS.
 
 Before production activation, verify the intended Moodle, theme and browsers.
-The [trial review](https://github.com/yukiharada1228/videoq-moodle/blob/v0.10.1/docs/integration-review.md)
+The [trial review](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)
 records unresolved independent-site chat startup, 100-viewer full-file delivery
 and an observed model stream failure. Removing manual configuration does not
 resolve those findings or provide a capacity/response-time guarantee.

@@ -1234,28 +1234,19 @@
       "title": "Integrations"
     },
     "moodle": {
-      "title": "Connect Moodle",
-      "description": "Install the VideoQ plugins in Moodle, then paste a connection code to finish setup.",
-      "url": "Moodle URL",
-      "urlHelp": "Enter the Moodle base URL, for example https://moodle.example.edu",
+      "title": "Moodle connections",
+      "description": "Start a new connection from “Connect to VideoQ” in Moodle and enter your VideoQ URL. In VideoQ, sign in and approve the connection.",
       "connected": "Connected",
       "disabled": "Disconnected",
-      "issuing": "Generating…",
-      "issue": "Generate connection code",
-      "error": "Could not generate a code. Check the HTTPS Moodle URL and your login, then retry.",
-      "expired": "The code has expired. Generate a new code.",
-      "code": "Connection code",
-      "copy": "Copy code",
-      "copied": "Copied",
-      "instructions": "Paste this into Moodle’s “Connect to VideoQ” page within 10 minutes. It only works for the Moodle URL you entered. A new code invalidates your previous unused code.",
-      "openMoodle": "Open Moodle connection settings",
       "disconnect": "Disconnect",
       "disconnectDescription": "Disconnecting stops video synchronization and AI questions from Moodle. Moodle materials and synchronized VideoQ videos, transcripts and question history are retained.",
       "confirmDisconnect": "Confirm disconnect",
       "cancelDisconnect": "Cancel",
       "disconnecting": "Disconnecting…",
       "disconnectError": "Could not disconnect. Check your login and connection, then retry.",
-      "disconnected": "Disconnected. Learning materials and synchronized data have been retained."
+      "disconnected": "Disconnected. Learning materials and synchronized data have been retained.",
+      "empty": "No Moodle sites are connected.",
+      "setupGuide": "Plugin installation and connection guide (Git installation supported)"
     }
   },
   "dashboard": {

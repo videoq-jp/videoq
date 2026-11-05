@@ -7,20 +7,21 @@ description: LTI 専用のサーバー設定や署名鍵登録をせず、別リ
 
 VideoQ は LTI 1.3 による受講者の認証と、講座の教材を対象にした AI 回答を担当します。
 Moodle は履修登録、元の動画ファイル、動画再生を担当します。2つの Moodle プラグイン、
-配布 ZIP、導入手順、検証環境は別の
-[videoq-moodle](https://github.com/yukiharada1228/videoq-moodle) で管理します。
+Git からの導入手順、任意の配布 ZIP、検証環境は別の
+[videoq-moodle](https://github.com/videoq-jp/videoq-moodle) で管理します。
 通常の VideoQ ビルドにこのリポジトリは不要です。
 
 ## Moodle を接続する
 
-1. 通常のデプロイ・DB 移行の手順で VideoQ を更新します。既存の公開 HTTPS URL
+1. 現在のクラウド版 `https://videoq.jp` または更新済みのオンプレミス版を選びます。
+   クラウド版では利用者によるサーバー設定は不要です。オンプレミス版の管理者は通常のデプロイ・DB 移行の手順で更新します。既存の公開 HTTPS URL
    `BETTER_AUTH_URL`、アプリ共通の `USER_SECRET_ENCRYPTION_KEY`、S3 互換ストレージの設定を自動利用します。
    `LTI_CONFIG` や `LTI_TOOL_KEYS` を別途登録する作業は不要です。
-2. [Moodle の導入手順](https://github.com/yukiharada1228/videoq-moodle/blob/main/docs/setup.md)に従い、両方のプラグインを入れます。
+2. [Moodle の導入手順](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md)に従い、Git から両方のプラグインを配置します。ZIP は必須ではありません。
 3. Moodle の管理者として **VideoQ に接続**画面を開き、クラウド版またはオンプレミス版の VideoQ HTTPS URL を入力します。
    VideoQ に移動して所有者のアカウントでログインし、表示された Moodle の URL と利用枠の説明を確認して接続を許可します。
    自動で Moodle に戻り、接続が完了します。10分以内に操作してください。コードのコピー、接続専用の API キー、動画ごとの JSON は不要です。
-   従来のコード方式は、折りたたんだ互換用の項目から利用できます。
+   VideoQ の設定画面では、接続済み一覧の確認と解除だけを行います。
 4. Moodle のファイル活動で **VideoQ の質問機能**を有効にします。Moodle cron と VideoQ の worker・queue・保守スケジューラを動かし、転送・文字起こし・検索準備の完了を待ちます。
 5. 受講者として回答の逐次表示、引用、動画切り替え、Good/Bad の切り替え・解除を確認します。
    履修していない利用者から教材を利用できないこと、自分の試験教材の差し替え・削除が反映され、無関係な動画や個人の質問履歴が保たれることも確認します。
@@ -34,7 +35,7 @@ API を別のホスト名で公開している構成では、Moodle に API 側�
 
 ## 署名鍵の自動管理
 
-ログイン済みの所有者が初めて接続コードを発行するとき、VideoQ が RSA 署名鍵を自動生成します。
+ログイン済みの所有者が初めて接続を承認するとき、VideoQ が RSA 署名鍵を自動生成します。
 秘密鍵は既存のアプリ用暗号化キーで暗号化し、`lti_tool_keys` に保存します。
 複数サーバーから同時に操作されても、所有者のトランザクション内のロックで初期化を直列化し、同じ鍵を共有します。
 匿名アクセスや設定画面を開くだけの操作では生成しません。
@@ -67,6 +68,6 @@ HTTP のみの開発環境では自動 LTI を有効にしません。Deep Linki
 LTI 認証取得や全 LMS との互換性を意味するものではありません。
 
 本番で利用する Moodle・テーマ・ブラウザで確認してください。
-[試用環境の検証記録](https://github.com/yukiharada1228/videoq-moodle/blob/v0.10.1/docs/integration-review.md)では、
+[試用環境の検証記録](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)では、
 別サイトでのチャット起動、100人分の動画全編配信、AI 回答の途中終了が未解決です。
 手動設定の省略だけで、これらの解消や本番の処理能力・回答速度を保証するものではありません。
