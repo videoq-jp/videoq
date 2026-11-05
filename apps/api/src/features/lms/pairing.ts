@@ -16,20 +16,32 @@ export const moodleUrlSchema = z.url().max(2048).refine(value => {
   const url = new URL(value);
   return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash;
 }, "An HTTPS Moodle URL is required").transform(value => value.replace(/\/+$/, ""));
-export const pairingRequestSchema = z.object({ moodleUrl: moodleUrlSchema }).strict();
+const codeChallengeSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const pairingRequestSchema = z.object({ moodleUrl: moodleUrlSchema, codeChallenge: codeChallengeSchema.optional() }).strict();
+export async function pairingCodeChallenge(verifier: string): Promise<string> {
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  return btoa(String.fromCharCode(...hash)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function requireProof(challenge: unknown, verifier?: string): Promise<void> {
+  if (challenge === undefined ? verifier !== undefined : typeof challenge !== "string" || !verifier || await pairingCodeChallenge(verifier) !== challenge) {
+    throw new LmsSyncError(401, "INVALID_PAIRING_CODE");
+  }
+}
 export const pairingExchangeSchema = z.object({
   secret: z.string().regex(/^[a-f0-9]{64}$/), issuer: moodleUrlSchema,
   clientId: z.string().trim().min(1).max(255), deploymentId: z.string().regex(/^[1-9][0-9]{0,17}$/),
   syncToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   mode: z.enum(["legacy", "materials"]).default("legacy"),
+  codeVerifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/).optional(),
   materialsService: materialsServiceSchema.optional(),
 }).strict().refine(value => value.mode === "materials" ? value.syncToken === undefined && Boolean(value.materialsService) && Object.values(value.materialsService!).every(endpoint => endpoint.startsWith(value.issuer + "/") && new URL(endpoint).origin === new URL(value.issuer).origin) : Boolean(value.syncToken) && value.materialsService === undefined, "Invalid connection authentication mode");
-const pairingPayloadSchema = z.object({ ownerUserId: z.string().min(1), moodleUrl: moodleUrlSchema, mode: z.enum(["legacy", "materials"]).default("legacy") });
+const pairingPayloadSchema = z.object({ ownerUserId: z.string().min(1), moodleUrl: moodleUrlSchema, mode: z.enum(["legacy", "materials"]).default("legacy"), codeChallenge: codeChallengeSchema.optional() });
 export const PAIRING_SECONDS = 600;
 
 /** No raw code is retained. Its account and exact Moodle base URL are fixed here. */
-export async function issueMoodlePairing(env: Bindings, ownerUserId: string, moodleUrl: string, toolOrigin: string) {
+export async function issueMoodlePairing(env: Bindings, ownerUserId: string, moodleUrl: string, toolOrigin: string, codeChallenge?: string) {
   const mode = ltiMaterialsEnabled(env) ? "materials" : "legacy";
+  if (codeChallenge !== undefined && (mode !== "materials" || !codeChallengeSchema.safeParse(codeChallenge).success)) throw new LmsSyncError(403, "LTI_MATERIALS_DISABLED");
   const secret = randomSecret();
   const expiresAt = new Date(Date.now() + PAIRING_SECONDS * 1000);
   await withDb(env, db => db.transaction(async tx => {
@@ -41,7 +53,7 @@ export async function issueMoodlePairing(env: Bindings, ownerUserId: string, moo
     await tx.delete(ltiCredentials).where(and(eq(ltiCredentials.kind, "moodle-pairing"),
       eq(ltiCredentials.id, await digest("moodle-pairing-owner:" + ownerUserId))));
     await tx.insert(ltiCredentials).values({ id: await digest("moodle-pairing:" + secret), kind: "moodle-pairing-code",
-      payload: { ownerUserId, moodleUrl, mode }, expiresAt });
+      payload: { ownerUserId, moodleUrl, mode, ...(codeChallenge ? { codeChallenge } : {}) }, expiresAt });
     await tx.insert(ltiCredentials).values({ id: await digest("moodle-pairing-owner:" + ownerUserId), kind: "moodle-pairing",
       payload: { codeHash: await digest("moodle-pairing:" + secret) }, expiresAt });
   }));
@@ -66,6 +78,7 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
       const [receipt] = await tx.select().from(ltiCredentials).where(and(eq(ltiCredentials.id, receiptId),
         eq(ltiCredentials.kind, "materials-pairing"), gt(ltiCredentials.expiresAt, new Date())));
       if (receipt && receipt.payload.issuer === input.issuer && receipt.payload.clientId === input.clientId && receipt.payload.deploymentId === input.deploymentId) {
+        await requireProof(receipt.payload.codeChallenge, input.codeVerifier);
         const [connection] = await tx.select({ id: lmsInstallations.id, ownerUserId: lmsInstallations.ownerUserId }).from(lmsInstallations)
           .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
           .where(and(eq(lmsInstallations.id, String(receipt.payload.installationId)), eq(lmsInstallations.active, true), activeLmsOwner()));
@@ -77,6 +90,7 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
       eq(ltiCredentials.kind, "moodle-pairing-code"), gt(ltiCredentials.expiresAt, new Date()))).for("update");
     const payload = pairingPayloadSchema.safeParse(row?.payload);
     if (!payload.success || payload.data.moodleUrl !== input.issuer || payload.data.mode !== input.mode) throw new LmsSyncError(401, "INVALID_PAIRING_CODE");
+    await requireProof(payload.data.codeChallenge, input.codeVerifier);
     const ownerKey = await digest("moodle-pairing-owner:" + payload.data.ownerUserId);
     const [owner] = await tx.select({ id: users.id }).from(users)
       .where(and(eq(users.id, payload.data.ownerUserId), activeLmsOwner())).for("update");
@@ -97,7 +111,8 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
     if (existing) await tx.update(lmsInstallations).set({ ...values, active: true }).where(eq(lmsInstallations.id, existing.id));
     else await tx.insert(lmsInstallations).values(values);
     if (input.mode === "materials") await tx.insert(ltiCredentials).values({ id: receiptId, kind: "materials-pairing", expiresAt: new Date(Date.now() + PAIRING_SECONDS * 1000),
-      payload: { installationId, issuer: input.issuer, clientId: input.clientId, deploymentId: input.deploymentId } });
+      payload: { installationId, issuer: input.issuer, clientId: input.clientId, deploymentId: input.deploymentId,
+        ...(payload.data.codeChallenge ? { codeChallenge: payload.data.codeChallenge } : {}) } });
     await tx.delete(ltiCredentials).where(eq(ltiCredentials.id, codeHash));
     await tx.delete(ltiCredentials).where(eq(ltiCredentials.id, ownerKey));
     return { installationId, ownerUserId: owner.id };

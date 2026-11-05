@@ -19,10 +19,13 @@ Normal VideoQ builds do not require that repository.
    `LTI_CONFIG` or `LTI_TOOL_KEYS` registration is required.
 2. Install both Moodle plugins using the
    [Moodle setup guide](https://github.com/yukiharada1228/videoq-moodle/blob/main/docs/setup.md).
-3. In the owning VideoQ account, open **Settings → Connect Moodle**, enter the
-   exact Moodle HTTPS base URL and issue a code. Paste the `VIDEOQ2.` code into
-   Moodle's **Connect to VideoQ** page before its ten-minute expiry. This needs
-   no per-connection synchronization API key or per-video JSON.
+3. As a Moodle administrator, open **Connect to VideoQ** and enter the cloud or
+   on-premises VideoQ HTTPS URL. Continue to VideoQ, sign in to the owning account,
+   check the displayed Moodle URL and quota permissions, and allow the connection.
+   You return to Moodle automatically; no connection-code copying is required.
+   Complete this flow within ten minutes. It needs no per-connection API key or
+   per-video JSON. The older code-based method remains available under the
+   collapsed compatibility section.
 4. Enable **VideoQ questions** on Moodle File activities. Keep Moodle cron,
    VideoQ's processing worker/queue and maintenance scheduler running. Wait for
    ordinary export, transcription and indexing.
@@ -33,6 +36,11 @@ Normal VideoQ builds do not require that repository.
 
 Hosted VideoQ must be able to reach the Moodle HTTPS endpoints. An SSH-forwarded
 localhost trial URL does not make Moodle reachable from the hosted service.
+Moodle must also reach the selected VideoQ server. Discovery uses the selected
+server's existing API and frontend URL settings, including custom HTTPS ports.
+The return destination is fixed to that Moodle's plugin callback. Session state
+and S256 proof bind the temporary code to the initiating Moodle administrator;
+intercepting the code alone does not authorize an exchange or its retry.
 
 ## Automatic signing identity
 

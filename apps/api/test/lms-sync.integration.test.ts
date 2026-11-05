@@ -1,4 +1,5 @@
-import { issueMoodlePairing, exchangeMoodlePairing } from "../src/features/lms/pairing";
+import { issueMoodlePairing, exchangeMoodlePairing, pairingCodeChallenge } from "../src/features/lms/pairing";
+import { createHash } from "node:crypto";
 import { exportJWK, generateKeyPair, createLocalJWKSet, jwtVerify } from "jose";
 import { toolJwks, toolClientAssertion } from "../src/features/lti/tool-keys";
 import { ltiRoutes } from "../src/features/lti/routes";
@@ -99,6 +100,37 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     BETTER_AUTH_URL: "https://api.example", USER_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 19).toString("base64url"),
     USE_S3_STORAGE: "true", R2_ACCESS_KEY_ID: "fixture", R2_SECRET_ACCESS_KEY: "fixture",
     R2_S3_ENDPOINT: "https://storage.example", R2_BUCKET_NAME: "fixture", R2_S3_REGION: "auto" });
+
+  it("discovers an administrator-selected on-prem server without creating signing keys", async () => {
+    const automatic = { ...automaticEnv(), BETTER_AUTH_URL: "https://private.example:8443", FRONTEND_URL: "https://learning.example:9443" };
+    const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect" });
+    expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
+    expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, LTI_CONFIG: "false" })).status).toBe(404);
+    expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
+  });
+
+  it("requires the initiating Moodle's S256 proof for initial exchange and response recovery", async () => {
+    const automatic = automaticEnv();
+    const verifier = "browser-session-private-verifier-" + "a".repeat(32);
+    const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
+    expect(await pairingCodeChallenge(verifier)).toBe(codeChallenge);
+    const approved = await app.request("http://localhost/api/lms/pairing", { method: "POST",
+      headers: { "X-VideoQ-Test-User-Id": "account-a", Origin: "https://api.example", "Content-Type": "application/json" },
+      body: JSON.stringify({ moodleUrl: registration.issuer, codeChallenge }) }, automatic);
+    expect(approved.status).toBe(200);
+    const { code } = await approved.json<{ code: string }>();
+    const input = { secret: JSON.parse(atob(code.slice(8))).secret, issuer: registration.issuer, clientId: "browser-client", deploymentId: "7",
+      mode: "materials" as const, materialsService: { tokenEndpoint: registration.issuer + "/local/videoq/token.php", endpoint: registration.issuer + "/local/videoq/materials.php" } };
+    await expect(exchangeMoodlePairing(automatic, input)).rejects.toThrow("INVALID_PAIRING_CODE");
+    await expect(exchangeMoodlePairing(automatic, { ...input, codeVerifier: "x".repeat(43) })).rejects.toThrow("INVALID_PAIRING_CODE");
+    expect((await pool.query("SELECT count(*)::int AS n FROM lms_installations WHERE client_id='browser-client'")).rows[0].n).toBe(0);
+    const connected = await exchangeMoodlePairing(automatic, { ...input, codeVerifier: verifier });
+    expect(await exchangeMoodlePairing(automatic, { ...input, codeVerifier: verifier })).toEqual(connected);
+    await expect(exchangeMoodlePairing(automatic, input)).rejects.toThrow("INVALID_PAIRING_CODE");
+    await expect(exchangeMoodlePairing(automatic, { ...input, codeVerifier: "x".repeat(43) })).rejects.toThrow("INVALID_PAIRING_CODE");
+  });
 
   it("needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance", async () => {
     const automatic = automaticEnv();

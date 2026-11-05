@@ -775,6 +775,19 @@
       "passwordConfirmation": {
         "label": "Confirm password"
       }
+    },
+    "moodleConnect": {
+      "title": "Connect Moodle to VideoQ",
+      "invalid": "Invalid connection request. Start again from Moodle.",
+      "loading": "Checking your session…",
+      "error": "Could not connect. Start again from Moodle.",
+      "loginHelp": "Sign in to the VideoQ account you want to connect.",
+      "login": "Sign in to VideoQ",
+      "account": "Connecting account: {{account}}",
+      "permissions": "Allow this Moodle to transfer and synchronize its video materials and use this account’s quotas for transcription and AI answers. You can disconnect in VideoQ settings.",
+      "allow": "Allow and return to Moodle",
+      "cancel": "Cancel and return to Moodle",
+      "connecting": "Connecting…"
     }
   },
   "chat": {

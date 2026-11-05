@@ -773,6 +773,19 @@
       "passwordConfirmation": {
         "label": "パスワード（確認）"
       }
+    },
+    "moodleConnect": {
+      "title": "Moodleとの接続を許可",
+      "invalid": "接続リクエストが無効です。Moodleからやり直してください。",
+      "loading": "ログイン状態を確認しています…",
+      "error": "接続できませんでした。Moodleからやり直してください。",
+      "loginHelp": "接続先のVideoQアカウントでログインしてください。",
+      "login": "VideoQにログイン",
+      "account": "接続するアカウント：{{account}}",
+      "permissions": "このMoodleの動画教材を転送・同期し、このアカウントの利用枠で文字起こしとAI回答を行うことを許可します。接続はVideoQの設定から解除できます。",
+      "allow": "許可してMoodleへ戻る",
+      "cancel": "キャンセルしてMoodleへ戻る",
+      "connecting": "接続しています…"
     }
   },
   "chat": {

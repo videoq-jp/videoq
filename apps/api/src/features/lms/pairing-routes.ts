@@ -7,7 +7,7 @@ import { lmsInstallations, users } from "../../db/schema";
 import { requireAuth, sessionMethod } from "../../middleware/auth";
 import { activeLmsOwner, disconnectLmsInstallation } from "../../repositories/lms-installation-repository";
 import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
-import { ltiConfig } from "../lti/config";
+import { ltiConfig, ltiMaterialsEnabled } from "../lti/config";
 import { LmsSyncError } from "./resource";
 import { exchangeMoodlePairing, issueMoodlePairing, pairingExchangeSchema, pairingRequestSchema } from "./pairing";
 
@@ -23,6 +23,19 @@ moodlePairingRoutes.onError((error, c) => {
   // Database errors can include credential parameters: never return or log them.
   console.error(JSON.stringify({ event: "moodle_pairing_failed", type: error.name }));
   return c.json({ error: "PAIRING_FAILED" }, 500);
+});
+
+// Metadata is public; it never creates credentials or signing keys. The Moodle
+// administrator selects the server, supporting cloud and private deployments.
+moodlePairingRoutes.get("/discovery", async c => {
+  if (!ltiMaterialsEnabled(c.env)) return c.json({ error: "LMS_SYNC_DISABLED" }, 404);
+  const denied = await enforceThrottles(c.env, [{ scope: "moodle_pairing_ip", ident: clientIp(c) }]);
+  if (denied) return throttledResponse(c, denied);
+  const frontend = new URL(c.env.FRONTEND_URL || ltiConfig(c.env)!.toolOrigin);
+  if (frontend.protocol !== "https:" || frontend.username || frontend.password || frontend.pathname !== "/" || frontend.search || frontend.hash) {
+    return c.json({ error: "PAIRING_FAILED" }, 503);
+  }
+  return c.json({ toolOrigin: ltiConfig(c.env)!.toolOrigin, authorizationUrl: frontend.origin + "/moodle/connect" });
 });
 
 // Server-to-server exchange. Account/issuer are bound by the owner's expiring code.
@@ -49,7 +62,7 @@ moodlePairingRoutes.post("/", async c => {
   if (denied) return throttledResponse(c, denied);
   const input = pairingRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return c.json({ error: "INVALID_MOODLE_URL" }, 400);
-  return c.json(await issueMoodlePairing(c.env, c.var.userId!, input.data.moodleUrl, ltiConfig(c.env)!.toolOrigin));
+  return c.json(await issueMoodlePairing(c.env, c.var.userId!, input.data.moodleUrl, ltiConfig(c.env)!.toolOrigin, input.data.codeChallenge));
 });
 
 // Disconnection is a protocol credential revocation; it never deletes learning data.
