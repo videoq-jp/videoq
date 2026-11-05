@@ -111,18 +111,18 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
   });
 
-  it("requires the initiating Moodle's S256 proof for initial exchange and response recovery", async () => {
+  it.each([registration.issuer, "https://Moodle.Example:443/academy"])("requires S256 proof and preserves the Moodle issuer during exchange and recovery: %s", async issuer => {
     const automatic = automaticEnv();
     const verifier = "browser-session-private-verifier-" + "a".repeat(32);
     const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
     expect(await pairingCodeChallenge(verifier)).toBe(codeChallenge);
     const approved = await app.request("http://localhost/api/lms/pairing", { method: "POST",
       headers: { "X-VideoQ-Test-User-Id": "account-a", Origin: "https://api.example", "Content-Type": "application/json" },
-      body: JSON.stringify({ moodleUrl: registration.issuer, codeChallenge }) }, automatic);
+      body: JSON.stringify({ moodleUrl: issuer, codeChallenge }) }, automatic);
     expect(approved.status).toBe(200);
     const { code } = await approved.json<{ code: string }>();
-    const input = { secret: JSON.parse(atob(code.slice(8))).secret, issuer: registration.issuer, clientId: "browser-client", deploymentId: "7",
-      mode: "materials" as const, materialsService: { tokenEndpoint: registration.issuer + "/local/videoq/token.php", endpoint: registration.issuer + "/local/videoq/materials.php" } };
+    const input = { secret: JSON.parse(atob(code.slice(8))).secret, issuer, clientId: "browser-client", deploymentId: "7",
+      mode: "materials" as const, materialsService: { tokenEndpoint: issuer + "/local/videoq/token.php", endpoint: issuer + "/local/videoq/materials.php" } };
     await expect(exchangeMoodlePairing(automatic, input)).rejects.toThrow("INVALID_PAIRING_CODE");
     await expect(exchangeMoodlePairing(automatic, { ...input, codeVerifier: "x".repeat(43) })).rejects.toThrow("INVALID_PAIRING_CODE");
     expect((await pool.query("SELECT count(*)::int AS n FROM lms_installations WHERE client_id='browser-client'")).rows[0].n).toBe(0);

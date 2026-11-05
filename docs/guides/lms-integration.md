@@ -38,6 +38,8 @@ Hosted VideoQ must be able to reach the Moodle HTTPS endpoints. An SSH-forwarded
 localhost trial URL does not make Moodle reachable from the hosted service.
 Moodle must also reach the selected VideoQ server. Discovery uses the selected
 server's existing API and frontend URL settings, including custom HTTPS ports.
+If the API has a separate hostname, enter that public API origin in Moodle;
+discovery opens the configured frontend automatically.
 The return destination is fixed to that Moodle's plugin callback. Session state
 and S256 proof bind the temporary code to the initiating Moodle administrator;
 intercepting the code alone does not authorize an exchange or its retry.

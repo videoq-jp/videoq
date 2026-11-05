@@ -9,7 +9,8 @@ export function moodleConnectRequest(search: string) {
   try {
     const url = new URL(moodleUrl);
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || /[\s\\]/.test(moodleUrl) || moodleUrl.length > 2048) return null;
-    return { moodleUrl: url.href.replace(/\/+$/, ''), state, codeChallenge };
+    // The LTI issuer is an exact identifier: retain wwwroot's case/default port.
+    return { moodleUrl: moodleUrl.replace(/\/+$/, ''), state, codeChallenge };
   } catch { return null; }
 }
 

@@ -6,8 +6,9 @@ const challenge = 'b'.repeat(43);
 const query = (url: string) => '?' + new URLSearchParams({ moodle_url: url, state, code_challenge: challenge }).toString();
 
 describe('Moodle connection return destination', () => {
-  it.each(['https://moodle.example', 'https://private.example:9443/academy'])('returns only to the requesting Moodle callback: %s', url => {
+  it.each(['https://moodle.example', 'https://private.example:9443/academy', 'https://Moodle.Example:443/academy'])('returns only to the requesting Moodle callback: %s', url => {
     const request = moodleConnectRequest(query(url))!;
+    expect(request.moodleUrl).toBe(url);
     const target = new URL(moodleConnectCallback(request, { code: 'c'.repeat(64) }));
     expect(target.origin).toBe(new URL(url).origin);
     expect(target.pathname).toBe(new URL(url).pathname.replace(/\/$/, '') + '/local/videoq/connect.php');
