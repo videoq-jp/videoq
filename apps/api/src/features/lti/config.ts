@@ -1,4 +1,5 @@
 import { materialsServiceSchema } from "./materials-client";
+import { isS3Storage } from "../../integrations/media";
 import { z } from "zod";
 import type { Bindings } from "../../types/bindings";
 
@@ -54,4 +55,9 @@ export function ltiConfig(env: Pick<Bindings, "LTI_CONFIG">): LtiConfig | null {
   if (!env.LTI_CONFIG?.trim()) return null;
   try { return schema.parse(JSON.parse(env.LTI_CONFIG)); }
   catch { throw new Error("Invalid LTI_CONFIG; check the administrator-managed registration configuration"); }
+}
+
+/** Discovery and its wakeups share the same opt-in requirements. */
+export function ltiMaterialsEnabled(env: Bindings): boolean {
+  return Boolean(env.LTI_TOOL_KEYS && isS3Storage(env) && ltiConfig(env)?.databaseRegistrations);
 }

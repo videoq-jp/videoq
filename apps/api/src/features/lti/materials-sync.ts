@@ -1,4 +1,4 @@
-import { ltiConfig } from "./config";
+import { ltiMaterialsEnabled } from "./config";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
@@ -79,7 +79,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
 
 /** Poll enrolled platforms without requiring a learner to open a video first. */
 export async function sweepMaterials(env: Bindings) {
-  if (!env.LTI_TOOL_KEYS || !ltiConfig(env)?.databaseRegistrations) return { synchronized: 0 };
+  if (!ltiMaterialsEnabled(env)) return { synchronized: 0 };
   const connection = await withDb(env, db => db.transaction(async tx => {
     const [item] = await tx.select({ row: lmsInstallations }).from(lmsInstallations)
       .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))

@@ -90,3 +90,12 @@ it("does not synchronize when the global LTI database integration is disabled", 
   const { sweepMaterials } = await import("../src/features/lti/materials-sync");
   expect(await sweepMaterials({ LTI_TOOL_KEYS: "configured" } as import("../src/types/bindings").Bindings)).toEqual({ synchronized: 0 });
 });
+
+it.each([
+  { LTI_TOOL_KEYS: "configured", USE_S3_STORAGE: "true" },
+  { LTI_CONFIG: '{"toolOrigin":"https://api.example","databaseRegistrations":true,"registrations":[]}', USE_S3_STORAGE: "true" },
+  { LTI_CONFIG: '{"toolOrigin":"https://api.example","databaseRegistrations":true,"registrations":[]}', LTI_TOOL_KEYS: "configured", USE_S3_STORAGE: "false" },
+])("does not poll a partially configured materials deployment", async settings => {
+  const { sweepMaterials } = await import("../src/features/lti/materials-sync");
+  expect(await sweepMaterials(settings as import("../src/types/bindings").Bindings)).toEqual({ synchronized: 0 });
+});

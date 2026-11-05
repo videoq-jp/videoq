@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { failure, pending, restPost, success } from '../../../.storybook/mocks/network';
+import { authFixture, regularUser } from '../../../.storybook/fixtures/auth';
 import { MoodleConnectionSection } from './MoodleConnectionSection';
 
 const endpoint = '/api/lms/pairing';
@@ -11,7 +12,7 @@ const connected = http.get(endpoint, () => HttpResponse.json({ connections: [con
 const meta = {
   title: 'Settings/Moodle connection',
   component: MoodleConnectionSection,
-  parameters: { layout: 'padded', api: { rest: [empty] }, docs: { story: { inline: false } } },
+  parameters: { layout: 'padded', pathname: '/settings', api: { auth: authFixture(regularUser), rest: [empty] }, docs: { story: { inline: false } } },
   decorators: [(Story) => <div className="max-w-3xl"><Story /></div>],
 } satisfies Meta<typeof MoodleConnectionSection>;
 export default meta;
