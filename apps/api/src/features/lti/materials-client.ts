@@ -1,7 +1,6 @@
 import { z } from "zod";
-import type { Bindings } from "../../types/bindings";
 import { resourceManifestSchema } from "../lms/resource";
-import { toolClientAssertion } from "./tool-keys";
+import { toolClientAssertion, type ToolKeyEnvironment } from "./tool-keys";
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
 const httpsEndpoint = z.url().max(2048).refine(value => {
@@ -32,7 +31,7 @@ export const exportStatusSchema = z.object({ jobId: z.string().regex(/^[a-f0-9-]
 /** Small control-plane requests only. URLs come from an approved registration. */
 export class MaterialsClient {
   private credential?: { value: string; until: number };
-  constructor(private env: Pick<Bindings, "LTI_TOOL_KEYS">,
+  constructor(private env: ToolKeyEnvironment,
     private registration: { clientId: string; deploymentId: string; materialsService: MaterialsService },
     private request: typeof fetch = fetch) {
     materialsServiceSchema.parse(registration.materialsService);

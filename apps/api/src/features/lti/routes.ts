@@ -68,7 +68,6 @@ ltiRoutes.use("*", async (c: Context<AppEnv>, next) => {
 });
 
 ltiRoutes.get("/jwks", async c => {
-  if (!c.env.LTI_TOOL_KEYS) return c.json({ keys: [] });
   return c.json(await toolJwks(c.env));
 });
 

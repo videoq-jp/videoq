@@ -68,6 +68,15 @@ describe("LTI launch verification", () => {
 });
 describe("LTI administrator configuration", () => {
   it("is disabled by default", () => expect(ltiConfig({})).toBeNull());
+  it("uses the existing canonical HTTPS URL and encryption settings without LTI-specific configuration", () => {
+    const automatic = { BETTER_AUTH_URL: "https://videoq.example/", USER_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64url"), USE_S3_STORAGE: "true" };
+    expect(ltiConfig(automatic)).toEqual({ toolOrigin: "https://videoq.example", databaseRegistrations: true, registrations: [] });
+    expect(ltiConfig({ ...automatic, LTI_CONFIG: "false" })).toBeNull();
+    expect(ltiConfig({ ...automatic, USER_SECRET_ENCRYPTION_KEY: undefined })).toBeNull();
+    expect(ltiConfig({ ...automatic, USE_S3_STORAGE: "false" })).toBeNull();
+    for (const BETTER_AUTH_URL of ["http://videoq.example", "https://user:password@videoq.example", "https://videoq.example/path", "https://videoq.example/?host=attacker", ""])
+      expect(ltiConfig({ ...automatic, BETTER_AUTH_URL })).toBeNull();
+  });
   it("accepts a registration", () => expect(ltiConfig({ LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", registrations: [reg] }) })).not.toBeNull());
   it.each([
     { ...reg, frameOrigins: ["*"] }, { ...reg, jwksUrl: "http://localhost/keys" },

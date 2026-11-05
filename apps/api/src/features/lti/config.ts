@@ -1,5 +1,6 @@
 import { materialsServiceSchema } from "./materials-client";
 import { isS3Storage } from "../../integrations/media";
+import { hasSecretEncryptionKey } from "../../lib/secret-encryption";
 import { z } from "zod";
 import type { Bindings } from "../../types/bindings";
 
@@ -51,13 +52,25 @@ const schema = z.object({
 export type LtiRegistration = z.infer<typeof registration>;
 export type LtiConfig = z.infer<typeof schema>;
 
-export function ltiConfig(env: Pick<Bindings, "LTI_CONFIG">): LtiConfig | null {
-  if (!env.LTI_CONFIG?.trim()) return null;
-  try { return schema.parse(JSON.parse(env.LTI_CONFIG)); }
+type ConfigurationEnv = Pick<Bindings, "LTI_CONFIG"> & Partial<Pick<Bindings, "BETTER_AUTH_URL" | "USER_SECRET_ENCRYPTION_KEY" | "USE_S3_STORAGE">>;
+export function ltiConfig(env: ConfigurationEnv): LtiConfig | null {
+  if (!env.LTI_CONFIG?.trim()) {
+    // Trust the existing canonical server URL, never request Host/forwarded headers.
+    if (!hasSecretEncryptionKey(env) || !isS3Storage(env as Bindings)) return null;
+    try {
+      const url = new URL(env.BETTER_AUTH_URL?.trim() ?? "");
+      if (url.pathname !== "/" || url.search || url.hash || url.username || url.password || url.protocol !== "https:") return null;
+      return schema.parse({ toolOrigin: url.origin, databaseRegistrations: true, registrations: [] });
+    } catch { return null; }
+  }
+  try {
+    const configured: unknown = JSON.parse(env.LTI_CONFIG);
+    return configured === false ? null : schema.parse(configured);
+  }
   catch { throw new Error("Invalid LTI_CONFIG; check the administrator-managed registration configuration"); }
 }
 
 /** Discovery and its wakeups share the same opt-in requirements. */
 export function ltiMaterialsEnabled(env: Bindings): boolean {
-  return Boolean(env.LTI_TOOL_KEYS && isS3Storage(env) && ltiConfig(env)?.databaseRegistrations);
+  return Boolean((env.LTI_TOOL_KEYS?.trim() || hasSecretEncryptionKey(env)) && isS3Storage(env) && ltiConfig(env)?.databaseRegistrations);
 }

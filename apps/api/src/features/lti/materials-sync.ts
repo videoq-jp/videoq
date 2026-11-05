@@ -5,7 +5,7 @@ import { withDb } from "../../db/pool";
 import { lmsInstallations, ltiCredentials, users } from "../../db/schema";
 import { activeLmsOwner } from "../../repositories/lms-installation-repository";
 import { getLmsResource, syncLmsResource } from "../../repositories/lms-resource-repository";
-import { isS3Storage, presignR2Put } from "../../integrations/media";
+import { presignR2Put } from "../../integrations/media";
 import { confirmVideoUpload } from "../videos/service";
 import type { Bindings } from "../../types/bindings";
 import { MaterialsClient } from "./materials-client";
@@ -16,7 +16,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
   const installation = await withDb(env, async db => (await db.select({ row: lmsInstallations }).from(lmsInstallations)
     .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
     .where(and(eq(lmsInstallations.id, installationId), eq(lmsInstallations.active, true), activeLmsOwner())))[0]?.row);
-  if (!installation?.materialsService || !env.LTI_TOOL_KEYS || !isS3Storage(env)) throw new Error("LTI materials connection unavailable");
+  if (!installation?.materialsService || !ltiMaterialsEnabled(env)) throw new Error("LTI materials connection unavailable");
   const leaseId = await digest("lti-materials-lease:" + installationId + ":" + contextId);
   const lease = crypto.randomUUID();
   const claimed = await withDb(env, db => db.insert(ltiCredentials).values({ id: leaseId, kind: "materials-lease",

@@ -1,4 +1,8 @@
 import { issueMoodlePairing, exchangeMoodlePairing } from "../src/features/lms/pairing";
+import { exportJWK, generateKeyPair, createLocalJWKSet, jwtVerify } from "jose";
+import { toolJwks, toolClientAssertion } from "../src/features/lti/tool-keys";
+import { ltiRoutes } from "../src/features/lti/routes";
+import { spawn } from "node:child_process";
 import { createMemoryRateLimitBackend } from "../src/lib/rate-limit";
 import { appendCourseHistory, readCourseHistory, courseHistoryId } from "../src/features/lti/history";
 import { readFile } from "node:fs/promises";
@@ -40,11 +44,13 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   let created = false;
   let env: Bindings;
   let credential: { installationId: string; token: string };
+  let manualKeyRing: string;
   const grant = { id: "moodle-a", ownerUserId: "account-a" };
   const objects = new Map<string, Uint8Array>();
-  const app = new Hono<AppEnv>().route("/api/lms", lmsRoutes);
+  const app = new Hono<AppEnv>().route("/api/lms", lmsRoutes).route("/api/lti", ltiRoutes);
 
   beforeAll(async () => {
+    manualKeyRing = JSON.stringify({ current: await exportJWK((await generateKeyPair("RS256", { extractable: true })).privateKey), previous: [] });
     admin = new pg.Client({ connectionString: databaseUrl }); await admin.connect();
     await admin.query(`CREATE SCHEMA "${schema}"`); created = true;
     pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 10 });
@@ -54,6 +60,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     // Apply the actual generated sync migration, including foreign keys.
     const migration = await readFile(new URL("../drizzle/0046_lti_materials.sql", import.meta.url), "utf8");
     await pool.query(migration.replaceAll('"public".', `"${schema}".`));
+    const managed = await readFile(new URL("../drizzle/0047_lti_managed_keys.sql", import.meta.url), "utf8");
+    await pool.query(managed.replaceAll('"public".', `"${schema}".`));
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
     env = { RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),
@@ -67,7 +75,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   beforeEach(async () => {
     objects.clear();
     env.RATE_LIMIT_BACKEND = createMemoryRateLimitBackend();
-    await pool.query("TRUNCATE lti_credentials");
+    await pool.query("TRUNCATE lti_credentials, lti_tool_keys");
     await pool.query("TRUNCATE lms_courses, lms_resources, lms_installations, video_course_members, video_courses, videos, users, external_tasks CASCADE");
     await drizzle(pool).insert(users).values(["account-a", "account-b"].map(id => ({
       id, username: id, email: id + "@example.invalid", name: id, isOverQuota: false,
@@ -85,6 +93,122 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     method, headers: { Authorization: "Bearer " + (token ?? credential.token), ...(body ? { "Content-Type": "application/json" } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
   }, env);
+
+  const automaticEnv = (): Bindings => ({ ...env, LTI_CONFIG: undefined, LTI_TOOL_KEYS: undefined,
+    BETTER_AUTH_SECRET: "lti-test-session-secret-".repeat(3),
+    BETTER_AUTH_URL: "https://api.example", USER_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 19).toString("base64url"),
+    USE_S3_STORAGE: "true", R2_ACCESS_KEY_ID: "fixture", R2_SECRET_ACCESS_KEY: "fixture",
+    R2_S3_ENDPOINT: "https://storage.example", R2_BUCKET_NAME: "fixture", R2_S3_REGION: "auto" });
+
+  it("needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance", async () => {
+    const automatic = automaticEnv();
+    expect(await toolJwks(automatic)).toEqual({ keys: [] });
+    const listing = await app.request("http://localhost/api/lms/pairing", {
+      headers: { "X-VideoQ-Test-User-Id": "account-a" },
+    }, automatic);
+    expect(listing.status).toBe(200);
+    expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
+    const anonymous = await app.request("https://api.example/api/lms/pairing", { method: "POST",
+      headers: { Origin: "https://api.example", "Content-Type": "application/json" }, body: JSON.stringify({ moodleUrl: registration.issuer }) }, automatic);
+    expect(anonymous.status).toBe(401);
+    expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
+    const issued = await app.request("http://localhost/api/lms/pairing", { method: "POST",
+      headers: { "X-VideoQ-Test-User-Id": "account-a", Origin: "https://api.example", "Content-Type": "application/json" },
+      body: JSON.stringify({ moodleUrl: registration.issuer }) }, automatic);
+    expect(issued.status).toBe(200);
+    const pairing = await issued.json<{ code: string }>();
+    expect(pairing.code).toMatch(/^VIDEOQ2\./);
+    expect(JSON.parse(atob(pairing.code.slice(8))).origin).toBe("https://api.example");
+    const published = await app.request("https://api.example/api/lti/jwks", {}, automatic);
+    expect(published.status).toBe(200);
+    const jwks = await published.json<Awaited<ReturnType<typeof toolJwks>>>();
+    expect(jwks.keys).toHaveLength(1);
+    expect(Object.keys(jwks.keys[0]).sort()).toEqual(["alg", "e", "kid", "kty", "n", "use"]);
+    const stored = (await pool.query("SELECT encrypted_key_ring FROM lti_tool_keys")).rows;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].encrypted_key_ring).toMatch(/^v2\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+    expect(stored[0].encrypted_key_ring).not.toContain(jwks.keys[0].n);
+    const assertion = await toolClientAssertion(automatic, "client", "7", registration.issuer + "/token");
+    const verified = await jwtVerify(assertion, createLocalJWKSet(jwks), { issuer: "client", audience: registration.issuer + "/token", algorithms: ["RS256"] });
+    expect(verified.payload.sub).toBe("client");
+    const connected = await exchangeMoodlePairing(automatic, { secret: JSON.parse(atob(pairing.code.slice(8))).secret,
+      issuer: registration.issuer, clientId: "automatic-client", deploymentId: "7", mode: "materials",
+      materialsService: { tokenEndpoint: registration.issuer + "/local/videoq/token.php", endpoint: registration.issuer + "/local/videoq/materials.php" } });
+    expect(connected.toolOrigin).toBe("https://api.example");
+    expect((await pool.query("SELECT sync_token_hash FROM lms_installations WHERE id=$1", [connected.installationId])).rows[0].sync_token_hash).toBeNull();
+    expect((await resolvedLtiConfig(automatic))?.registrations.some(item => item.clientId === "automatic-client" && item.materialsService)).toBe(true);
+  });
+
+  it("allows the administrator to disable automatic setup explicitly", async () => {
+    const disabled = { ...automaticEnv(), LTI_CONFIG: "false" };
+    expect((await app.request("http://localhost/api/lms/pairing", { headers: { "X-VideoQ-Test-User-Id": "account-a" } }, disabled)).status).toBe(404);
+    expect((await app.request("https://api.example/api/lti/jwks", {}, disabled)).status).toBe(404);
+    expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
+  });
+
+  it("shares one signing identity across concurrent replicas with one-connection pools", async () => {
+    const replicas = Array.from({ length: 2 }, () => new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 1, connectionTimeoutMillis: 3000 }));
+    try {
+      const automatic = { ...automaticEnv(), DATABASE_POOL: replicas[0] };
+      const codes = await Promise.all(Array.from({ length: 6 }, (_, index) => issueMoodlePairing({ ...automatic, DATABASE_POOL: replicas[index % 2] },
+        index % 2 ? "account-a" : "account-b", registration.issuer, "https://api.example")));
+      expect(codes.every(code => code.code.startsWith("VIDEOQ2."))).toBe(true);
+      expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(1);
+      const first = await toolJwks(automatic);
+      await issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example");
+      expect(await toolJwks(automatic)).toEqual(first);
+      for (const replica of replicas) expect(replica.totalCount).toBe(1);
+    } finally { await Promise.all(replicas.map(replica => replica.end())); }
+  });
+
+  it("reuses persisted keys in a fresh process", async () => {
+    const automatic = automaticEnv(); await issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example");
+    const expected = await toolJwks(automatic);
+    const url = new URL(databaseUrl!); url.searchParams.set("options", `-c search_path=${schema}`);
+    const published = await new Promise<string>((resolve, reject) => {
+      const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+        "import {toolJwks} from './src/features/lti/tool-keys.ts';let data='';for await(const part of process.stdin)data+=part;console.log(JSON.stringify(await toolJwks(JSON.parse(data))));"],
+        { cwd: new URL("../", import.meta.url), stdio: ["pipe", "pipe", "pipe"] });
+      let output = ""; child.stdout.on("data", chunk => { output += String(chunk); }); child.stderr.resume();
+      child.on("error", () => reject(new Error("Fresh signing-key process failed")));
+      child.on("close", status => status === 0 ? resolve(output) : reject(new Error("Fresh signing-key process failed")));
+      child.stdin.end(JSON.stringify({ DATABASE_URL: url.toString(), USER_SECRET_ENCRYPTION_KEY: automatic.USER_SECRET_ENCRYPTION_KEY }));
+    });
+    expect(JSON.parse(published)).toEqual(expected);
+  });
+
+  it("preserves its identity when encrypted database state is restored", async () => {
+    const automatic = automaticEnv(); await issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example");
+    const expected = await toolJwks(automatic);
+    const backup = (await pool.query("SELECT id,encrypted_key_ring,created_at FROM lti_tool_keys")).rows[0];
+    await pool.query("DELETE FROM lti_tool_keys");
+    await pool.query("INSERT INTO lti_tool_keys(id,encrypted_key_ring,created_at) VALUES($1,$2,$3)", [backup.id, backup.encrypted_key_ring, backup.created_at]);
+    expect(await toolJwks(automatic)).toEqual(expected);
+  });
+
+  it("does not replace an existing identity when decryption fails", async () => {
+    const automatic = automaticEnv(); await issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example");
+    const before = (await pool.query("SELECT * FROM lti_tool_keys")).rows;
+    const wrong = { ...automatic, USER_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 20).toString("base64url") };
+    await expect(toolJwks(wrong)).rejects.toThrow("could not be loaded");
+    await expect(issueMoodlePairing(wrong, "account-a", registration.issuer, "https://api.example")).rejects.toThrow("initialization failed");
+    expect((await pool.query("SELECT * FROM lti_tool_keys")).rows).toEqual(before);
+    expect((await toolJwks(automatic)).keys).toHaveLength(1);
+  });
+
+  it("does not initialize keys for an inactive owner", async () => {
+    const automatic = automaticEnv(); await pool.query("UPDATE users SET is_active=false WHERE id='account-a'");
+    await expect(issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example")).rejects.toThrow();
+    expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
+  });
+
+  it("retains the application identity when one owning account is deleted", async () => {
+    const automatic = automaticEnv(); await issueMoodlePairing(automatic, "account-a", registration.issuer, "https://api.example");
+    const expected = await toolJwks(automatic);
+    await pool.query("DELETE FROM users WHERE id='account-a'");
+    await issueMoodlePairing(automatic, "account-b", registration.issuer, "https://api.example");
+    expect(await toolJwks(automatic)).toEqual(expected);
+  });
 
   it("disconnects only the owner's installation, revokes sync/LTI and retains all learning data", async () => {
     const resource = await syncLmsResource(env, grant, "disconnect-source", manifest());
@@ -224,7 +348,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
 
   it("migrates an approved identity without moving videos and recovers a lost pairing response", async () => {
     const original = await syncLmsResource(env, grant, "10", manifest());
-    const serviceEnv = { ...env, USE_S3_STORAGE: "true", LTI_TOOL_KEYS: "configured",
+    const serviceEnv = { ...env, USE_S3_STORAGE: "true", LTI_TOOL_KEYS: manualKeyRing,
       R2_ACCESS_KEY_ID: "fixture", R2_SECRET_ACCESS_KEY: "fixture", R2_S3_ENDPOINT: "https://storage.example",
       R2_BUCKET_NAME: "fixture", R2_S3_REGION: "auto" } as Bindings;
     const pairing = await issueMoodlePairing(serviceEnv, "account-a", registration.issuer, "https://api.example");

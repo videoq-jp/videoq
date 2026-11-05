@@ -2,6 +2,13 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, check, index, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users, videoCourses, videos } from "./modern";
 
+/** Persistent application signing identity; never expires with learner sessions. */
+export const ltiToolKeys = pgTable("lti_tool_keys", {
+  id: text("id").primaryKey(),
+  encryptedKeyRing: text("encrypted_key_ring").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** A revocable LTI identity, using either a materials service or legacy push. */
 export const lmsInstallations = pgTable("lms_installations", {
   id: text("id").primaryKey(),

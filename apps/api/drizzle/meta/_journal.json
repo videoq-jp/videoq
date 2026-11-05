@@ -330,6 +330,13 @@
       "when": 1793854682537,
       "tag": "0046_lti_materials",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793858738456,
+      "tag": "0047_lti_managed_keys",
+      "breakpoints": true
     }
   ]
 }

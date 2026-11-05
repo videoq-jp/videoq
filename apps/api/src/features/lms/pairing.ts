@@ -1,6 +1,7 @@
 import { materialsServiceSchema } from "../lti/materials-client";
-import { ltiConfig } from "../lti/config";
-import { presignR2Put, isS3Storage } from "../../integrations/media";
+import { ltiConfig, ltiMaterialsEnabled } from "../lti/config";
+import { ensureToolKeys } from "../lti/tool-keys";
+import { presignR2Put } from "../../integrations/media";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
@@ -28,13 +29,14 @@ export const PAIRING_SECONDS = 600;
 
 /** No raw code is retained. Its account and exact Moodle base URL are fixed here. */
 export async function issueMoodlePairing(env: Bindings, ownerUserId: string, moodleUrl: string, toolOrigin: string) {
-  const mode = env.LTI_TOOL_KEYS && isS3Storage(env) ? "materials" : "legacy";
+  const mode = ltiMaterialsEnabled(env) ? "materials" : "legacy";
   const secret = randomSecret();
   const expiresAt = new Date(Date.now() + PAIRING_SECONDS * 1000);
   await withDb(env, db => db.transaction(async tx => {
     const [owner] = await tx.select({ id: users.id }).from(users)
       .where(and(eq(users.id, ownerUserId), activeLmsOwner())).for("update");
     if (!owner) throw new LmsSyncError(403, "INACTIVE_ACCOUNT");
+    if (mode === "materials") await ensureToolKeys(env, tx);
     // Only the most recently issued unused code for this account remains valid.
     await tx.delete(ltiCredentials).where(and(eq(ltiCredentials.kind, "moodle-pairing"),
       eq(ltiCredentials.id, await digest("moodle-pairing-owner:" + ownerUserId))));
@@ -60,7 +62,7 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
   };
   const result = await withDb(env, db => db.transaction(async tx => {
     if (input.mode === "materials") {
-      if (!env.LTI_TOOL_KEYS || !isS3Storage(env)) throw new LmsSyncError(403, "LTI_MATERIALS_DISABLED");
+      if (!ltiMaterialsEnabled(env)) throw new LmsSyncError(403, "LTI_MATERIALS_DISABLED");
       const [receipt] = await tx.select().from(ltiCredentials).where(and(eq(ltiCredentials.id, receiptId),
         eq(ltiCredentials.kind, "materials-pairing"), gt(ltiCredentials.expiresAt, new Date())));
       if (receipt && receipt.payload.issuer === input.issuer && receipt.payload.clientId === input.clientId && receipt.payload.deploymentId === input.deploymentId) {
