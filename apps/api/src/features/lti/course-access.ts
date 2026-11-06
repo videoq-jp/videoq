@@ -14,7 +14,8 @@ const accessResponse = z.object({
     generation: z.number().int().positive().safe().optional(),
     learning: z.boolean().optional(), management: materialManagementSchema.optional() })).max(1000),
 });
-export type CourseVideo = { videoId: number; lesson: string; title: string; management?: z.infer<typeof materialManagementSchema> };
+export type CourseVideo = { videoId: number; lesson: string; title: string; sourceGeneration?: number;
+  management?: z.infer<typeof materialManagementSchema> };
 export type CourseAccess = { videos: CourseVideo[]; managementVideos?: CourseVideo[]; materialOrder?: number[]; permissions: CoursePermissions };
 type CourseGrant = Pick<z.infer<typeof sessionRecord>, "deploymentId" | "contextId" | "resourceLinkId" | "courseId" | "accessProof" | "serviceSubject" | 'resourceGeneration'>;
 
@@ -33,7 +34,11 @@ function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: z.infer<t
       && resource.courseId === grant.courseId && resource.resourceLinkId === item.resourceLinkId);
     if (!binding?.videoId) continue;
     if (item.generation!==undefined && binding.generation!==undefined && item.generation!==binding.generation) continue;
+    if (binding.sourceGeneration !== undefined && item.generation !== binding.sourceGeneration) continue;
     const video: CourseVideo = { videoId: binding.videoId, lesson: item.lesson, title: item.title };
+    if (binding.sourceGeneration !== undefined && binding.sourceGeneration === binding.generation) {
+      video.sourceGeneration = binding.sourceGeneration;
+    }
     const management = permissions.manageContent && reg.id.startsWith('db:') && item.management
       && item.management.generation===binding.generation;
     const learning = item.learning !== false && binding.learningAvailable !== false;
@@ -64,7 +69,8 @@ export async function courseAccessContext(reg: LtiRegistration, grant: CourseGra
     method: "POST", redirect: "error", signal: AbortSignal.timeout(5000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...grant.accessProof, contextId: grant.contextId, resourceLinkId: grant.resourceLinkId,
-      includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeReports: true }),
+      includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeReports: true,
+      includeYoutubeSources: true }),
   });
   if (!response.ok) throw new Error("Moodle access denied");
   const access = accessResponse.parse(await readServiceJson(response, 512_000));

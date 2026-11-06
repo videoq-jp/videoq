@@ -16,6 +16,7 @@ const resource = z.object({
   courseId: z.number().int().positive().safe(),
   videoId: z.number().int().positive().safe().optional(),
   generation: z.number().int().positive().safe().optional(),
+  sourceGeneration: z.number().int().positive().safe().optional(),
   learningAvailable: z.boolean().optional(),
   kind: z.literal('course').optional(),
 }).strict();

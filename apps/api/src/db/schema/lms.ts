@@ -77,6 +77,7 @@ export const lmsResources = pgTable("lms_resources", {
   contentHash: text("content_hash"),
   contentType: text("content_type"),
   fileSize: bigint("file_size", { mode: "number" }),
+  youtubeVideoId: varchar('youtube_video_id', { length: 11 }),
   courseId: bigint("course_id", { mode: "number" }).references(() => videoCourses.id, { onDelete: "set null" }),
   videoId: bigint("video_id", { mode: "number" }).references(() => videos.id, { onDelete: "set null" }),
   syncError: text("sync_error"),
@@ -85,8 +86,9 @@ export const lmsResources = pgTable("lms_resources", {
   unique("lms_resources_external_key").on(table.installationId, table.externalId),
   unique("lms_resources_launch_key").on(table.installationId, table.contextId, table.resourceLinkId),
   check("lms_resources_generation_check", sql`${table.generation} > 0`),
-  check('lms_resources_kind_check', sql`${table.kind} IN ('video','course')`),
+  check('lms_resources_kind_check', sql`${table.kind} IN ('video','course','youtube')`),
   check('lms_resources_course_media_check', sql`${table.kind} <> 'course' OR (${table.videoId} IS NULL AND ${table.contentHash} IS NULL AND ${table.contentType} IS NULL AND ${table.fileSize} IS NULL)`),
+  check('lms_resources_youtube_check', sql`(${table.kind} = 'youtube' AND ${table.contentHash} IS NULL AND ${table.contentType} IS NULL AND ${table.fileSize} IS NULL AND (${table.youtubeVideoId} IS NULL OR (${table.youtubeVideoId} ~ '^[A-Za-z0-9_-]{11}$' AND ${table.youtubeVideoId} ~ '[A-Za-z0-9]')) AND (NOT ${table.enabled} OR ${table.youtubeVideoId} IS NOT NULL)) OR (${table.kind} <> 'youtube' AND ${table.youtubeVideoId} IS NULL)`),
   uniqueIndex('lms_resources_course_entry_key').on(table.installationId, table.contextId).where(sql`${table.kind} = 'course'`),
 ]);
 
