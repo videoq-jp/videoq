@@ -1,0 +1,39 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/cpu-zlib-2026-11-06",
+  "author": "VideoQ",
+  "timestamp": "2026-11-06T08:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-76844"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=amd64&distro=debian-13.7&epoch=1"
+        },
+        {
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=arm64&distro=debian-13.7&epoch=1"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "The image replaces Debian zlib with official zlib 1.4, verified against the upstream SHA-256. This release includes upstream fix df84af25dc1942490e1d1c899a07619152a46148 for the gzwrite buffer overflow. build-zlib.sh runs upstream tests; verify_zlib.py checks the library loaded by Python, package record and compression round trips in the final image. Debian trixie has no fixed package yet; this assessment matches only the locally built version."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-85091"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=amd64&distro=debian-13.7&epoch=1"
+        },
+        {
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=arm64&distro=debian-13.7&epoch=1"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "The image replaces Debian zlib with official zlib 1.4, verified against the upstream SHA-256. This release includes upstream fix df84af25dc1942490e1d1c899a07619152a46148 for the gzwrite buffer overflow. build-zlib.sh runs upstream tests; verify_zlib.py checks the library loaded by Python, package record and compression round trips in the final image. Debian trixie has no fixed package yet; this assessment matches only the locally built version."
+    }
+  ]
+}

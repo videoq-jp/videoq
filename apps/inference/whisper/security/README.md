@@ -1,3 +1,21 @@
+# CPU inference image: zlib
+
+Debian trixie has no fixed package for CVE-2026-76844 yet. The image builds
+official zlib 1.4 with its published SHA-256, runs upstream tests, and installs
+`zlib1g` version `1:1.4-0videoq1`. Package and license records remain in the
+final image and SBOM. `verify_zlib.py` verifies the version loaded by Python
+and ctypes, the retained package record, and zlib/gzip compression round trips.
+
+`zlib.openvex.json` records the upstream fix for CVE-2026-76844 and
+CVE-2026-85091, restricted to this exact local package on Debian 13.7
+amd64/arm64. Other versions and unknown findings still fail. The existing
+CPU scan config retains assessed findings and CI uploads both assessments.
+
+References:
+- [Official zlib release and checksum](https://zlib.net/)
+- [Debian CVE-2026-76844 status](https://security-tracker.debian.org/tracker/CVE-2026-76844)
+- [Upstream fix](https://github.com/madler/zlib/commit/df84af25dc1942490e1d1c899a07619152a46148)
+
 # CPU inference image: SQLite
 
 Debian trixie's SQLite 3.46.1 has no distribution fix for CVE-2026-119373.
@@ -13,8 +31,9 @@ and absence of the SQLite CLI. The build compiles only `sqlite3.c`, never
 `shell.c`. The shell's `.recover` implementation affected by CVE-2026-119586
 is therefore absent.
 
-`sqlite.openvex.json` records the upstream fix for CVE-2026-119373 (released in
-3.54.0) and the absent CLI code for CVE-2026-119586. It matches only the locally
+`sqlite.openvex.json` records upstream fixes for CVE-2026-119373,
+CVE-2026-119374 and CVE-2026-119379 (released in 3.54.0), and the absent CLI
+code for CVE-2026-119586. It matches only the locally
 built package version on Debian 13.7 amd64/arm64. Other package versions and
 unknown vulnerabilities continue to fail. CI applies `sqlite-trivy.yaml` only
 to the CPU image and retains its JSON report, including assessed findings,
@@ -51,9 +70,9 @@ file owned by `linux-libc-dev` must be a header or its documentation, none may b
 ELF or a kernel module, and the image may contain no kernel binaries/modules.
 Do not remove package metadata or retain untracked headers to change scan results.
 
-`kernel-headers.openvex.json` lists the 386 kernel implementation CVEs reported on
-this package by CI run 39954013361 on 2026-10-23. The assessment is restricted to
-Ubuntu 24.04 amd64 `linux-libc-dev` version `6.8.0-147.147`, with explicit vulnerability IDs and the
+`kernel-headers.openvex.json` lists the 385 kernel implementation CVEs reported on
+this package by CI run 42242256367 on 2026-11-06. The assessment is restricted to
+Ubuntu 24.04 amd64 `linux-libc-dev` version `6.8.0-149.149`, with explicit vulnerability IDs and the
 `vulnerable_code_not_present` justification. It does not apply to host kernels,
 other packages, unknown CVEs, or another distribution/architecture. A new package version does not match this assessment and requires a fresh
 review. A changed package inventory also fails the image build instead of
