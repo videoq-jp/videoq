@@ -1,5 +1,5 @@
 import type { Bindings } from "../../types/bindings";
-import { MaterialsClient, readServiceJson, materialManagementSchema } from "./materials-client";
+import { MaterialsClient, readServiceJson, materialManagementSchema, courseEntryAccessSchema } from "./materials-client";
 import { coursePermissionsSchema, deniedCoursePermissions, type CoursePermissions } from "./course-permissions";
 import { z } from "zod";
 import type { LtiRegistration } from "./config";
@@ -9,16 +9,24 @@ const accessResponse = z.object({
   contextId: z.string(),
   resourceLinkId: z.string(),
   permissions: coursePermissionsSchema.optional(),
+  courseEntry: courseEntryAccessSchema.optional(),
   resources: z.array(z.object({ resourceLinkId: z.string(), lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500),
     generation: z.number().int().positive().safe().optional(),
     learning: z.boolean().optional(), management: materialManagementSchema.optional() })).max(1000),
 });
 export type CourseVideo = { videoId: number; lesson: string; title: string; management?: z.infer<typeof materialManagementSchema> };
 export type CourseAccess = { videos: CourseVideo[]; managementVideos?: CourseVideo[]; permissions: CoursePermissions };
-type CourseGrant = Pick<z.infer<typeof sessionRecord>, "deploymentId" | "contextId" | "resourceLinkId" | "courseId" | "accessProof" | "serviceSubject">;
+type CourseGrant = Pick<z.infer<typeof sessionRecord>, "deploymentId" | "contextId" | "resourceLinkId" | "courseId" | "accessProof" | "serviceSubject" | 'resourceGeneration'>;
 
 function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: z.infer<typeof accessResponse>): CourseAccess {
   const permissions = access.permissions ?? deniedCoursePermissions;
+  const entry = reg.resources.find(resource => resource.deploymentId === grant.deploymentId && resource.contextId === grant.contextId
+    && resource.courseId === grant.courseId && resource.resourceLinkId === grant.resourceLinkId);
+  const courseEntry = reg.id.startsWith('db:') && entry?.kind === 'course' && entry.videoId === undefined
+    && entry.generation !== undefined && entry.generation === grant.resourceGeneration
+    && access.courseEntry?.generation === entry.generation;
+  // An anchor must always be freshly confirmed, including when videos exist.
+  if (entry?.kind === 'course' && !courseEntry) throw new Error('Moodle access denied');
   const allowed: CourseVideo[] = [], managementVideos: CourseVideo[] = [];
   for (const item of access.resources) {
     const binding = reg.resources.find(resource => resource.deploymentId === grant.deploymentId && resource.contextId === grant.contextId
@@ -34,7 +42,7 @@ function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: z.infer<t
     if (item.learning !== false && binding.learningAvailable !== false) allowed.push(video);
   }
   const unique = (videos: CourseVideo[]) => videos.filter((item, index) => videos.findIndex(video => video.videoId === item.videoId) === index);
-  if (!allowed.length && !managementVideos.length) throw new Error('Moodle access denied');
+  if (!allowed.length && !managementVideos.length && !courseEntry) throw new Error('Moodle access denied');
   return { videos: unique(allowed), ...(managementVideos.length ? { managementVideos: unique(managementVideos) } : {}), permissions };
 }
 
@@ -52,7 +60,7 @@ export async function courseAccessContext(reg: LtiRegistration, grant: CourseGra
     method: "POST", redirect: "error", signal: AbortSignal.timeout(5000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...grant.accessProof, contextId: grant.contextId, resourceLinkId: grant.resourceLinkId,
-      includePermissions: true, includeContentManagement: true }),
+      includePermissions: true, includeContentManagement: true, includeCourseEntries: true }),
   });
   if (!response.ok) throw new Error("Moodle access denied");
   const access = accessResponse.parse(await readServiceJson(response, 512_000));

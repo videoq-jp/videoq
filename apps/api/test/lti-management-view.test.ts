@@ -165,7 +165,8 @@ browserTests('teacher material editing in the private LTI view', () => {
     await page.locator('#videoq-material-management summary').click();
     await panel.getByText('Updating search index', { exact: false }).waitFor();
     expect(await page.locator('#videoq-native-question').isDisabled()).toBe(true);
-    expect(service.requests.some(r => r.path.endsWith('/history') || r.path.endsWith('/conversations'))).toBe(false);
+    expect(service.requests.some(r => r.path.endsWith('/history') || r.path.includes('/messages'))).toBe(false);
+    expect(service.requests.some(r => r.path.endsWith('/conversations') && r.body.action === 'list')).toBe(true);
     const description = panel.locator('#management-description');
     expect(await description.getAttribute('readonly')).not.toBeNull();
     service.model.status = 'completed'; service.model.version++;service.model.learningHold=true;

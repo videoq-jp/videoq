@@ -16,7 +16,7 @@ let materialCursor=null,materialLoading=false,materialListLoaded=false;
 async function materialRequest(action,payload={}){
  const response=await fetch('/api/lti/'+(action==='list'?'materials':'transcript'),{method:'POST',credentials:'omit',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
  if(!response.ok){if(action==='list'&&[401,403].includes(response.status)){learningRefresh([]);qaAvailability(false);personalAvailability(false);managementAvailability(false);}throw new Error(uiCopy.materialError);}
- const result=await response.json();if(action==='list'&&result?.permissions){const videos=Array.isArray(result.videos)?result.videos:[];learningRefresh(videos);qaAvailability(result.permissions.viewQa===true&&videos.length>0);personalAvailability(result.permissions.manageOwnHistory===true&&videos.length>0);managementCatalog(result);}return result;
+ const result=await response.json();if(action==='list'&&result?.permissions){const videos=Array.isArray(result.videos)?result.videos:[];learningRefresh(videos);qaAvailability(result.permissions.viewQa===true);personalAvailability(result.permissions.manageOwnHistory===true);managementCatalog(result);}return result;
 }
 let materialCommandBusy=false;
 async function materialCommand(data,origin){

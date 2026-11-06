@@ -17,6 +17,7 @@ const resource = z.object({
   videoId: z.number().int().positive().safe().optional(),
   generation: z.number().int().positive().safe().optional(),
   learningAvailable: z.boolean().optional(),
+  kind: z.literal('course').optional(),
 }).strict();
 const registration = z.object({
   id: z.string().min(1),

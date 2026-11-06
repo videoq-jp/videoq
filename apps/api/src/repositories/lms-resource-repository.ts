@@ -49,14 +49,53 @@ async function removeVideo(db: Db, ownerUserId: string, videoId: number) {
 }
 
 export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId: string, manifest: ResourceManifest) {
+  if (manifest.kind === 'course' && (!/^[1-9][0-9]{0,17}$/.test(manifest.contextId)
+    || externalId !== 'course_' + manifest.contextId)) throw new LmsSyncError(400, 'INVALID_MANIFEST');
   const manifestHash = await digest(JSON.stringify(manifest));
   return withDb(env, db => db.transaction(async tx => {
     const ownerUserId = await lockLmsGrant(tx, grant);
     const [previous] = await tx.select().from(lmsResources)
       .where(and(eq(lmsResources.installationId, grant.id), eq(lmsResources.externalId, externalId))).for("update");
+    if (previous && (previous.kind !== (manifest.kind ?? 'video')
+      || previous.kind === 'course' && previous.contextId !== manifest.contextId)) {
+      throw new LmsSyncError(409, 'RESOURCE_KIND_OR_CONTEXT_CHANGED');
+    }
     if (previous && (manifest.generation < previous.generation ||
         (manifest.generation === previous.generation && manifestHash !== previous.manifestHash))) {
       throw new LmsSyncError(409, "STALE_GENERATION");
+    }
+    if (manifest.kind === 'course') {
+      const [mapping] = await tx.select().from(lmsCourses).where(and(
+        eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
+      let courseId = mapping?.courseId ?? null;
+      if (courseId !== null) {
+        const [course] = await tx.select().from(videoCourses).where(eq(videoCourses.id, courseId)).for('update');
+        if (!course || course.userId !== ownerUserId || !course.managedByLms || !course.nativeAccessDisabled
+          || previous?.courseId != null && previous.courseId !== courseId) throw new LmsSyncError(409, 'COURSE_BINDING_CHANGED');
+      }
+      if (previous?.generation === manifest.generation && (!manifest.enabled || courseId !== null)) return previous;
+      // No media, upload reservation, processing task, or AI usage for an entry.
+      if (manifest.enabled && courseId === null) {
+        const [course] = await tx.insert(videoCourses).values({ userId: ownerUserId,
+          managedByLms: true, nativeAccessDisabled: true,
+          name: manifest.courseTitle ?? 'Moodle ' + manifest.contextId, description: '', displayOrder: 0,
+          createdAt: sql`now()`, updatedAt: sql`now()` }).returning({ id: videoCourses.id });
+        courseId = course.id;
+        await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id,
+          contextId: manifest.contextId, courseId });
+      } else if (courseId !== null && manifest.courseTitle) {
+        await tx.update(videoCourses).set({ name: manifest.courseTitle, updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
+      }
+      // Entry tombstones revoke this launch; the shared course and its history
+      // remain available to privacy processing and other enabled activities.
+      const values = { installationId: grant.id, externalId, kind: 'course', contextId: manifest.contextId,
+        resourceLinkId: manifest.resourceLinkId, generation: manifest.generation, manifestHash,
+        enabled: manifest.enabled, courseId, videoId: null, contentHash: null, contentType: null,
+        fileSize: null, syncError: null, updatedAt: sql`now()` };
+      const [resource] = previous
+        ? await tx.update(lmsResources).set(values).where(eq(lmsResources.id, previous.id)).returning()
+        : await tx.insert(lmsResources).values({ id: crypto.randomUUID(), ...values }).returning();
+      return resource;
     }
     // Idempotent reconciliation also repairs provenance left by older writers.
     if (previous?.videoId) await tx.update(videos).set({ managedByLms: true }).where(and(
@@ -73,6 +112,8 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
     let videoId = keepVideo ? previous.videoId : null;
     let syncError: string | null = null;
     const [mapping] = await tx.select().from(lmsCourses).where(and(eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
+    const [courseEntry] = await tx.select({ id: lmsResources.id }).from(lmsResources).where(and(
+      eq(lmsResources.installationId, grant.id), eq(lmsResources.contextId, manifest.contextId), eq(lmsResources.kind, 'course'))).limit(1);
     let courseId: number | null = mapping?.courseId ?? null;
     // Removing membership revokes questions immediately, before any processing.
     if (previous?.courseId && previous.videoId && previous.contextId !== manifest.contextId) {
@@ -114,7 +155,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
           await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id, contextId: manifest.contextId, courseId });
         } else {
           await tx.update(videoCourses).set({ managedByLms: true, nativeAccessDisabled: true,
-            ...(manifest.courseTitle ? { name: manifest.courseTitle } : {}), updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
+            ...(!courseEntry && manifest.courseTitle ? { name: manifest.courseTitle } : {}), updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
         }
         await tx.insert(videoCourseMembers).values({ courseId, videoId, order: 0, addedAt: sql`now()` });
       }

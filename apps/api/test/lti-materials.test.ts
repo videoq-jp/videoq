@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { toolClientAssertion, toolJwks } from "../src/features/lti/tool-keys";
-import { MaterialsClient, MATERIALS_SCOPE } from "../src/features/lti/materials-client";
+import { MaterialsClient, MATERIALS_SCOPE, materialsManifestSchema } from "../src/features/lti/materials-client";
+import { resourceManifestSchema } from '../src/features/lms/resource';
 import { courseAccessContext } from "../src/features/lti/course-access";
 import type { Bindings } from "../src/types/bindings";
 let env: { LTI_TOOL_KEYS: string };
@@ -66,13 +67,47 @@ describe("LTI materials service boundary", () => {
         deleteOwnQa: false, moderateQa: false, instructorQa: false,
       } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
-        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true });
+        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
     } finally { spy.mockRestore(); }
   });
   it("accepts an explicit empty snapshot without inventing deletions", async () => {
     const snapshot = { contextId: "course", complete: true, resources: [] };
     expect(await new MaterialsClient(env, registration, mockService(snapshot)).manifest("course")).toEqual(snapshot);
+  });
+  it('preserves the canonical video manifest shape while rejecting files or enabled tombstones on course entries', () => {
+    const old = { generation: 1, contextId: '42', resourceLinkId: 'lesson', enabled: true, title: 'Lesson',
+      file: { filename: 'lesson.mp4',contentType: 'video/mp4',size: 3,contentHash: 'a'.repeat(40) } };
+    expect(JSON.stringify(resourceManifestSchema.parse(old))).toBe(JSON.stringify(old));
+    const entry = { ...old,kind: 'course',file: undefined };
+    expect(resourceManifestSchema.safeParse(entry).success).toBe(true);
+    expect(resourceManifestSchema.safeParse({ ...entry,file: old.file }).success).toBe(false);
+    expect(resourceManifestSchema.safeParse({ ...entry,deleted: true }).success).toBe(false);
+    const resources = Array.from({length:1000}, (_, i) => ({ externalId: String(i+1),manifest: old }));
+    const snapshot = { contextId: '42',complete: true,resources: [...resources,{ externalId: 'course_42',manifest: entry }] };
+    expect(materialsManifestSchema.safeParse(snapshot).success).toBe(true);
+    expect(materialsManifestSchema.safeParse({ ...snapshot,resources: [...resources,{ externalId: 'more',manifest: old }] }).success).toBe(false);
+    expect(materialsManifestSchema.safeParse({ ...snapshot,resources: [{externalId:'a',manifest:entry},{externalId:'b',manifest:entry}] }).success).toBe(false);
+  });
+  it.each([
+    { database: true, kind: true, generation: 2, launchGeneration: 2, proofGeneration: 2, allowed: true },
+    { database: false, kind: true, generation: 2, launchGeneration: 2, proofGeneration: 2, allowed: false },
+    { database: true, kind: false, generation: 2, launchGeneration: 2, proofGeneration: 2, allowed: false },
+    { database: true, kind: true, generation: 2, launchGeneration: 1, proofGeneration: 2, allowed: false },
+    { database: true, kind: true, generation: 2, launchGeneration: 2, proofGeneration: 1, allowed: false },
+    { database: true, kind: true, generation: 2, launchGeneration: 2, proofGeneration: undefined, allowed: false },
+  ])('requires a current database course binding and matching fresh Moodle entry proof (%j)', async test => {
+    const binding = { deploymentId: registration.deploymentId,contextId: '42',resourceLinkId: 'entry',courseId: 1,
+      generation: test.generation,...(test.kind ? {kind:'course' as const} : {}) };
+    const reg = { ...registration,id: test.database ? 'db:school' : 'static',issuer: 'https://moodle.example',
+      authorizationUrl: 'https://moodle.example/auth',jwksUrl: 'https://moodle.example/keys',frameOrigins: ['https://moodle.example'],resources: [binding] };
+    const spy = vi.spyOn(globalThis,'fetch').mockImplementation(mockService({ contextId: '42',resourceLinkId: 'entry',
+      permissions: {viewQa:true},resources: [],...(test.proofGeneration ? {courseEntry:{generation:test.proofGeneration}} : {}) }));
+    try {
+      const result = courseAccessContext(reg,{...binding,resourceGeneration:test.launchGeneration,serviceSubject:'student'},env as Bindings);
+      if(test.allowed) expect(await result).toMatchObject({videos:[],permissions:{viewQa:true,manageContent:false}});
+      else await expect(result).rejects.toThrow('Moodle access denied');
+    } finally {spy.mockRestore();}
   });
   it.each([
     { manageContent: true, moduleGrant: true, database: true, generation: 1, bindingGeneration: 1, allowed: true },

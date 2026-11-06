@@ -42,11 +42,12 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
       if (typeof principal === "object" && principal !== null) {
         if (principal.kind !== "lti" || principal.courseId !== access.courseId || principal.ownerUserId !== course.user_id
           || !principal.permissions.view || access.shareSlug !== undefined || !/^[a-f0-9]{64}$/.test(principal.authorId)
-          || !principal.videoIds.length || principal.videoIds.length > 1000) throw apiNotFound("Course not found");
+          || principal.videoIds.length > 1000) throw apiNotFound("Course not found");
         const members = await client.query<{ id: number }>(`SELECT m.video_id::float8 AS id FROM video_course_members m
           JOIN videos v ON v.id=m.video_id WHERE m.course_id=$1 AND v.user_id=$2 AND m.video_id=ANY($3::bigint[])
           FOR SHARE OF m,v`, [access.courseId, course.user_id, principal.videoIds]);
-        if (!members.rowCount) throw apiNotFound("Course not found");
+        if (principal.videoIds.length && !members.rowCount) throw apiNotFound("Course not found");
+        // [] remains a scoped actor: visibleQuestion hides every source-bound post.
         actor = { ownerId: course.user_id, userId: null, ltiId: principal.authorId, videoIds: members.rows.map(row => row.id),
           canPost: principal.permissions.post, canVote: principal.permissions.vote, canDeleteOwn: principal.permissions.deleteOwn,
           canModerate: principal.permissions.moderate, instructor: principal.permissions.instructor };

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { externalTasks, users, videoCourses, videos } from "./modern";
 
 /** Persistent application signing identity; never expires with learner sessions. */
@@ -48,6 +48,7 @@ export const lmsResources = pgTable("lms_resources", {
   id: uuid("id").primaryKey(),
   installationId: text("installation_id").notNull().references(() => lmsInstallations.id, { onDelete: "cascade" }),
   externalId: text("external_id").notNull(),
+  kind: text('kind').notNull().default('video'),
   contextId: text("context_id").notNull(),
   resourceLinkId: text("resource_link_id").notNull(),
   generation: bigint("generation", { mode: "number" }).notNull(),
@@ -64,6 +65,9 @@ export const lmsResources = pgTable("lms_resources", {
   unique("lms_resources_external_key").on(table.installationId, table.externalId),
   unique("lms_resources_launch_key").on(table.installationId, table.contextId, table.resourceLinkId),
   check("lms_resources_generation_check", sql`${table.generation} > 0`),
+  check('lms_resources_kind_check', sql`${table.kind} IN ('video','course')`),
+  check('lms_resources_course_media_check', sql`${table.kind} <> 'course' OR (${table.videoId} IS NULL AND ${table.contentHash} IS NULL AND ${table.contentType} IS NULL AND ${table.fileSize} IS NULL)`),
+  uniqueIndex('lms_resources_course_entry_key').on(table.installationId, table.contextId).where(sql`${table.kind} = 'course'`),
 ]);
 
 /** Idempotent teacher mutations and identifier-only audit; no draft content or credentials. */
