@@ -285,6 +285,8 @@ export const mcpIdempotencyRecords = pgTable(
 export const videos = pgTable(
 	"videos",
 	{
+		/** Keep source authority after a connection or mapping is removed. */
+		managedByLms: boolean("managed_by_lms").notNull().default(false),
 		id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity({
 			name: "videos_id_seq",
 			startWith: 1,
@@ -414,6 +416,8 @@ export const videoCourses = pgTable(
 		userId: text("user_id").notNull(),
 		shareSlug: varchar("share_slug", { length: 64 }),
 		managedByLms: boolean("managed_by_lms").notNull().default(false),
+		/** Also persists for legacy native courses that contained LMS materials. */
+		nativeAccessDisabled: boolean("native_access_disabled").notNull().default(false),
 		displayOrder: integer("display_order").notNull(),
 	},
 	(table) => [
