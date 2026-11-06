@@ -413,6 +413,7 @@ export const videoCourses = pgTable(
 		updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
 		userId: text("user_id").notNull(),
 		shareSlug: varchar("share_slug", { length: 64 }),
+		managedByLms: boolean("managed_by_lms").notNull().default(false),
 		displayOrder: integer("display_order").notNull(),
 	},
 	(table) => [
@@ -848,7 +849,11 @@ export const courseQuestions = pgTable('course_questions', {
   id: uuid('id').primaryKey().defaultRandom(),
   courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
   videoId: bigint('video_id', { mode: 'number' }).references(() => videos.id, { onDelete: 'set null' }),
+  // Retained after source deletion so a restricted thread cannot become course-wide.
+  sourceVideoId: bigint('source_video_id', { mode: 'number' }),
   authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  ltiAuthorId: varchar('lti_author_id', { length: 64 }),
+  ltiInstructor: boolean('lti_instructor').notNull().default(false),
   title: varchar('title', { length: 200 }).notNull(),
   body: text('body').notNull(),
   featured: boolean('featured').notNull().default(false),
@@ -857,18 +862,51 @@ export const courseQuestions = pgTable('course_questions', {
 }, table => [
   index('course_questions_course_created_idx').on(table.courseId, table.createdAt),
   index('course_questions_video_idx').on(table.courseId, table.videoId),
+  index('course_questions_lti_author_idx').on(table.ltiAuthorId, table.courseId),
   check('course_questions_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 10000`),
+  check('course_questions_author_kind', sql`${table.authorId} IS NULL OR ${table.ltiAuthorId} IS NULL`),
+  check('course_questions_lti_author_format', sql`${table.ltiAuthorId} IS NULL OR ${table.ltiAuthorId} ~ '^[a-f0-9]{64}$'`),
+  check('course_questions_source_positive', sql`${table.sourceVideoId} IS NULL OR ${table.sourceVideoId} > 0`),
 ]);
 export const courseQuestionReplies = pgTable('course_question_replies', {
   id: uuid('id').primaryKey().defaultRandom(),
   questionId: uuid('question_id').notNull().references(() => courseQuestions.id, { onDelete: 'cascade' }),
   authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  ltiAuthorId: varchar('lti_author_id', { length: 64 }),
+  ltiInstructor: boolean('lti_instructor').notNull().default(false),
   body: text('body').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [index('course_question_replies_question_idx').on(table.questionId, table.createdAt),
-  check('course_question_replies_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 10000`)]);
+  check('course_question_replies_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 10000`),
+  index('course_question_replies_lti_author_idx').on(table.ltiAuthorId),
+  check('course_question_replies_author_kind', sql`${table.authorId} IS NULL OR ${table.ltiAuthorId} IS NULL`),
+  check('course_question_replies_lti_author_format', sql`${table.ltiAuthorId} IS NULL OR ${table.ltiAuthorId} ~ '^[a-f0-9]{64}$'`)]);
 export const courseQuestionVotes = pgTable('course_question_votes', {
   questionId: uuid('question_id').notNull().references(() => courseQuestions.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
 }, table => [primaryKey({ columns: [table.questionId, table.userId] })]);
+
+export const courseQuestionLtiVotes = pgTable('course_question_lti_votes', {
+  questionId: uuid('question_id').notNull().references(() => courseQuestions.id, { onDelete: 'cascade' }),
+  ltiAuthorId: varchar('lti_author_id', { length: 64 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.questionId, table.ltiAuthorId] }),
+  index('course_question_lti_votes_author_idx').on(table.ltiAuthorId),
+  check('course_question_lti_votes_author_format', sql`${table.ltiAuthorId} ~ '^[a-f0-9]{64}$'`)]);
+
+// Moderation records contain identifiers/actions, never a second copy of post text.
+export const courseQaModeration = pgTable('course_qa_moderation', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull(),
+  replyId: uuid('reply_id'),
+  actorUserId: text('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+  ltiActorId: varchar('lti_actor_id', { length: 64 }),
+  action: varchar('action', { length: 32 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('course_qa_moderation_course_idx').on(table.courseId, table.createdAt),
+  index('course_qa_moderation_lti_actor_idx').on(table.ltiActorId),
+  check('course_qa_moderation_actor_kind', sql`${table.actorUserId} IS NULL OR ${table.ltiActorId} IS NULL`),
+  check('course_qa_moderation_lti_actor_format', sql`${table.ltiActorId} IS NULL OR ${table.ltiActorId} ~ '^[a-f0-9]{64}$'`),
+  check('course_qa_moderation_action', sql`${table.action} IN ('feature', 'unfeature', 'delete_question', 'delete_reply')`)]);

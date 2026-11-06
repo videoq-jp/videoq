@@ -108,6 +108,11 @@ migrationDescribe("Drizzle migration chain", () => {
               row.upload_usage_period_start = null;
             }
           }
+          if (table === "video_courses") {
+            for (const { row } of preservedRows[table] as { row: Record<string, unknown> }[]) {
+              row.managed_by_lms = false;
+            }
+          }
         }
         preservedRows.external_tasks = (await targetClient.query("SELECT to_jsonb(t) AS row FROM external_tasks t WHERE dedupe_key LIKE 'keep-%' ORDER BY dedupe_key")).rows;
         preservedRows.job_executions = (await targetClient.query("SELECT to_jsonb(t) AS row FROM job_executions t WHERE job_id LIKE 'keep-%' ORDER BY job_id")).rows;

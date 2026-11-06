@@ -1,0 +1,27 @@
+# Moodle course Q&A implementation
+
+This unreleased work extends the scoped LTI foundation in PR #1324. It implements course Q&A browsing/search/filtering, question and reply creation, own edits/deletion, voting, and teacher moderation/featured questions in both the embedded tool and native Moodle panel. It is separate from private AI conversation history. The entry point currently requires an existing video-associated Moodle assistant; entry from empty courses remains future work.
+
+## Identity and authority
+
+- Derive a course-specific opaque author ID from the verified registration, subject hash and course. Store it in dedicated LTI author columns; never create a fake VideoQ account or post as the connected owner. Names and emails from launch/browser input are not used. Public attribution is a course pseudonym with an instructor-at-posting badge from a fresh Moodle capability, not a source of authorization.
+- Every request validates the LTI session, current registration/binding, active Moodle user/enrolment, visible File/LTI activities and course capabilities. The browser cannot select the owner, course, role or author. Missing/unknown capabilities default to deny.
+- `viewQa`, `postQa`, `voteQa`, `deleteOwnQa`, `moderateQa` and `instructorQa` are independent current Moodle permissions. Standard learners may view/post/vote/delete their own posts; teachers/managers may moderate. Only the original author edits text. Moderators may delete or feature posts, with an audit record containing identifiers/actions rather than copied body text.
+- Independent VideoQ courses retain their existing native user, membership and share authorization. Automatically synchronized courses carry a persistent `managed_by_lms` marker; existing LMS course mappings are backfilled. Their Q&A cannot be accessed through native invitations or public share links. The independently authenticated VideoQ owner retains data-operator access. The marker survives removal of the LMS mapping. This guard currently applies to Q&A; equivalent governance of other native features is still required.
+- The Q&A service gains an internal LTI actor whose owner and allowed resource set come from the authorization layer. Public RPC input cannot supply this object.
+
+## Resource scope
+
+Store the original source video independently of its deletable foreign key. Backfill existing associations, and capture the original source atomically when either a native or LTI author creates a question. Editing a question does not change its source. Removing a video or its course membership must not turn its restricted discussion into a course-wide discussion for Moodle learners. Existing historical posts without any surviving association retain their current course-wide publication policy; deleted provenance cannot be reconstructed. Older native producers retain their previous publication semantics until updated; enable/release the new Q&A workflow with the coordinated backend deployment. Moodle posts can only be created by the new producer, which always records source scope.
+
+Both list items and totals, direct-thread reads, replies and every mutation apply the same current resource filter. Validate scope again while locking course/membership records in the transaction. Never return another course's question, invisible-video title, full author hash, account email or AI chat log.
+
+## UI and transport
+
+The UI labels human Q&A as shared with the course and keeps it visually separate from the private AI assistant. A Moodle panel opens the same authenticated forum UI inside the existing LTI frame, without moving/reloading that frame or creating another login. It follows Moodle's supplied font/colors; the existing native Moodle chat remains available when the forum closes. Text is literal. Parent commands and availability announcements validate origin/source/channel; tokens and forum contents stay inside the registered tool frame. Advertised feature support is not a permission grant. Each operation refreshes permissions and removes stale controls/content when access changes. A late-loading Moodle component may send an origin/source-checked hello to recover the channel; discovery returns the existing ready announcement and never credentials.
+
+## Required verification
+
+Run real PostgreSQL migration and transaction tests for native users and distinct LTI learners/teachers, own/other edits, moderation/audit, voting, search/pagination totals, hidden/cross-course/deleted/removed sources, role revocation and no credential/identity leakage. Keep native VideoQ Q&A regression tests. Test the actual companion JavaScript and tool UI in a disposable browser, then verify the complete Moodle + VideoQ workflow and privacy handling in the isolated integration environment. Schema changes alone do not complete this feature.
+
+Local evidence on 2026-11-06: 51 PostgreSQL tests passed across course Q&A, LMS synchronization and the complete empty/populated migration chain; migration provenance verified all 52 journal entries. The normal API unit suite passed 1267 tests (environment-dependent integration cases skipped), and the Workers suite passed 55. Focused LTI tests passed 58, including eight disposable-browser tests using the companion JavaScript and mocked HTTP responses. API/web type checks, changed-file ESLint and the companion's official Moodle coding check passed. These results do not establish a complete live Moodle + VideoQ + AI workflow or external privacy export/deletion.

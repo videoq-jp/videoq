@@ -1411,6 +1411,7 @@
     "noOverview": "No overview has been added yet.",
     "loading": "Loading…",
     "deletedUser": "Deleted user",
+    "moodleParticipant": "Moodle participant {{id}}",
     "instructor": "Instructor",
     "questionTitle": "Question title",
     "questionBody": "Question details",

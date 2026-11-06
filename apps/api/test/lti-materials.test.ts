@@ -61,7 +61,10 @@ describe("LTI materials service boundary", () => {
         jwksUrl: "https://moodle.example/keys", frameOrigins: ["https://moodle.example"], resources: [binding,
           { ...binding, contextId: "other-course", resourceLinkId: "other-course", courseId: 2, videoId: 20 }] };
       const access = await courseAccessContext(reg, { ...binding, serviceSubject: "student" }, env as Bindings);
-      expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], permissions: { viewTranscript: viewTranscript ?? false } });
+      expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], permissions: {
+        viewTranscript: viewTranscript ?? false, viewQa: false, postQa: false, voteQa: false,
+        deleteOwnQa: false, moderateQa: false, instructorQa: false,
+      } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
         resourceLinkId: "launch", subject: "student", includePermissions: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");

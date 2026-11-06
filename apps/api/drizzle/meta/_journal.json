@@ -337,6 +337,34 @@
       "when": 1793858738456,
       "tag": "0047_lti_managed_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793938761086,
+      "tag": "0048_lti_course_qa",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793938968948,
+      "tag": "0049_lti_course_qa_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793942767969,
+      "tag": "0050_lms_course_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793942880652,
+      "tag": "0051_lms_course_authority_backfill",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-li
 import { getVideoEvidence } from "../../repositories/video-evidence-repository";
 import { courseAccess, courseAccessContext } from "./course-access";
 import { transcriptPage } from "./transcript";
+import { mountLtiQa } from "./qa-routes";
 import { playbackCueHint } from "./playback-context";
 import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
@@ -145,7 +146,7 @@ ltiRoutes.post("/session", async c => {
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
   return c.json({ token, expiresIn: 3600,
-    features: { transcripts: Boolean(reg.courseAccess || reg.materialsService) },
+    features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService) },
     ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -186,9 +187,11 @@ async function authorizeMaterials(c: Context<AppEnv>) {
     const course = await getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId,
       ltiVideoGrant: current.videos.map(video => video.videoId) });
     if (!course) return { error: refused(c, 403) } as const;
-    return { current, course };
+    return { current, course, grant: access.grant };
   } catch { return { error: refused(c, 403) } as const; }
 }
+
+mountLtiQa(ltiRoutes, authorizeMaterials, refused);
 
 ltiRoutes.post("/materials", async c => {
   const access = await authorizeMaterials(c);

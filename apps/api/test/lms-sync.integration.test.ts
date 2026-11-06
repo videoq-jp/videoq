@@ -412,6 +412,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   it("creates no user accounts and binds media/quota to the school's existing account", async () => {
     const resource = await syncLmsResource(env, grant, "10", manifest());
     expect(resource.videoId).not.toBeNull();
+    expect((await pool.query("SELECT managed_by_lms FROM video_courses WHERE id=$1", [resource.courseId])).rows[0].managed_by_lms).toBe(true);
     expect((await pool.query("SELECT count(*)::int AS count FROM users")).rows[0].count).toBe(2);
     expect((await pool.query("SELECT user_id FROM videos")).rows[0].user_id).toBe("account-a");
     expect((await pool.query("SELECT used_storage_bytes::int, used_upload_bytes::int FROM users WHERE id='account-a'")).rows[0])

@@ -93,6 +93,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       if (videoId !== null) {
         if (!courseId) {
           const [course] = await tx.insert(videoCourses).values({
+            managedByLms: true,
             userId: ownerUserId, name: manifest.courseTitle ?? "Moodle " + manifest.contextId, description: "", displayOrder: 0,
             createdAt: sql`now()`, updatedAt: sql`now()`,
           }).returning({ id: videoCourses.id });

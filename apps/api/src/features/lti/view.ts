@@ -1,5 +1,6 @@
 import { ltiCopy, type LtiLocale } from "./locale";
 import { materialsMarkup, materialsClientScript } from "./materials-view";
+import { qaMarkup, qaClientScript, qaStyles } from "./qa-view";
 import { streamClientScript } from "./stream-client";
 import { questionStyles } from "./view-styles";
 
@@ -17,11 +18,12 @@ catch { document.getElementById('status').textContent=${scriptJson(copy.storageE
 export function questionView(nonce: string, state: string, idToken: string, locale: LtiLocale = "ja", parentOrigins: string[] = []): string {
   const copy = ltiCopy[locale];
   return `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy.title}</title>
-<style nonce="${nonce}">${questionStyles}</style>
+<style nonce="${nonce}">${questionStyles}${qaStyles}</style>
 <main aria-label="${copy.chat}">
 <header class="chat-header"><div class="chat-heading"><h1>${copy.heading}</h1><span class="brand">VideoQ</span></div>
 </header>
 ${materialsMarkup(locale)}
+${qaMarkup(locale)}
 <section id="messages" aria-label="${copy.conversation}" aria-live="polite" aria-relevant="additions">
 <div id="empty" class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg></div><h2>${copy.emptyTitle}</h2><p>${copy.emptyBody}</p></div></section>
 <div class="composer"><p id="status" role="status">${copy.checking}</p><form id="form"><label class="sr-only" for="question">${copy.label}</label><div class="input-shell"><textarea id="question" rows="1" maxlength="4000" placeholder="${copy.placeholder}" required disabled></textarea><button id="send" type="submit" aria-label="${copy.send}" title="${copy.send}" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg></button></div><p class="composer-hint">${copy.hint}</p></form></div></main>
@@ -29,7 +31,7 @@ ${materialsMarkup(locale)}
 (async()=>{
 const state=${scriptJson(state)}, idToken=${scriptJson(idToken)},uiCopy=${scriptJson(copy)};
 const status=document.getElementById('status'), question=document.getElementById('question'), send=document.getElementById('send');
-let token, messages=[], history=[], bridge=null, playback=null, parentOrigin=null, nativeUi=null, nativeRequestId=null,features={};
+let token, messages=[], history=[], bridge=null, playback=null, parentOrigin=null, nativeUi=null, nativeRequestId=null,features={},readyDeadline=0;
 const seenQuestions=new Set();
 function notifyChat(event,payload={}){if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:chat',version:1,channel,videoId:bridge.videoId,event,requestId:nativeRequestId,...payload},nativeUi.origin);}
 function nativeStatus(){notifyChat('status',{busy:send.disabled,text:status.textContent,kind:status.dataset.kind||''});}
@@ -45,13 +47,18 @@ function validPlayback(value){return value&&[bridge.videoId,...(bridge.videos||[
 function announceReady(){if(bridge&&window.parent!==window)for(const origin of bridge.parentOrigins)window.parent.postMessage({type:'videoq:ready',version:1,channel,videoId:bridge.videoId,features,...(bridge.videos?{videos:bridge.videos}:{})},origin);}
 window.addEventListener('message',event=>{
  const data=event.data;
+ // A late Moodle component can discover the channel after the player connects.
+ // Only the approved parent may request this same public ready announcement.
+ if(bridge&&event.source===window.parent&&bridge.parentOrigins.includes(event.origin)&&data?.version===1&&data.type==='videoq:hello'){announceReady();return;}
  if(!bridge||event.source!==window.parent||!bridge.parentOrigins.includes(event.origin)||!data||data.version!==1||data.channel!==channel||!([bridge.videoId,...(bridge.videos||[]).map(video=>video.videoId)].includes(data.videoId)))return;
  if(data.type==='videoq:ui'&&data.renderer==='moodle'){
   nativeUi={origin:event.origin};parentOrigin=event.origin;
   materialsPanel.hidden=true;
+  qaEnterNative();
   notifyChat('history',{turns:history.map(({feedbackId,...turn})=>({...turn,feedbackAvailable:!!feedbackId}))});nativeStatus();return;
  }
  if(data.type==='videoq:materials'){void materialCommand(data,event.origin);return;}
+ if(data.type==='videoq:qa-ui'&&features.qa&&nativeUi?.origin===event.origin&&typeof data.open==='boolean'){qaSetNativeOpen(data.open);return;}
  if(data.type==='videoq:question'){
   if(!nativeUi||nativeUi.origin!==event.origin||send.disabled||typeof data.text!=='string'||!data.text.trim()||data.text.length>4000||typeof data.requestId!=='string'||!/^[a-f0-9]{32}$/.test(data.requestId)||seenQuestions.has(data.requestId))return;
   if(Object.hasOwn(data,'playback')){if(data.playback===null)playback=null;else if(validPlayback(data.playback))playback={...data.playback,receivedAt:performance.now()};else return;}
@@ -71,7 +78,7 @@ window.addEventListener('message',event=>{
  if(typeof data.seconds!=='number'||!Number.isFinite(data.seconds)||typeof data.duration!=='number'||!Number.isFinite(data.duration)||data.duration<=0||data.duration>604800||data.seconds<0||data.seconds>data.duration)return;
  parentOrigin=event.origin;playback={videoId:data.videoId,seconds:data.seconds,duration:data.duration,receivedAt:performance.now()};
 });
-const timer=setInterval(()=>{if(bridge&&!freshPlayback())announceReady();},1000);
+const timer=setInterval(()=>{if(bridge&&(!freshPlayback()||(!nativeUi&&performance.now()<readyDeadline)))announceReady();},1000);
 window.addEventListener('pagehide',()=>clearInterval(timer),{once:true});
 const messagesView=document.getElementById('messages');
 function scrollLatest(){requestAnimationFrame(()=>{messagesView.scrollTop=messagesView.scrollHeight;});}
@@ -132,6 +139,7 @@ function showAnswer(answer,existing=null){
 
 ${streamClientScript}
 ${materialsClientScript}
+${qaClientScript}
 try {
  const key='videoq-lti:'+state, browserSecret=sessionStorage.getItem(key);
  if(!browserSecret) throw new Error(${scriptJson(copy.missing)});
@@ -139,6 +147,7 @@ try {
  if(!res.ok) throw new Error(${scriptJson(copy.connectionError)});
  const session=await res.json();token=session.token;features=session.features||{};sessionStorage.removeItem(key);
  materialsPanel.hidden=!features.transcripts;
+ qaPanel.hidden=!features.qa;
  const historyResponse=await fetch('/api/lti/history',{method:'POST',credentials:'omit',headers:{'Authorization':'Bearer '+token}});
  if(!historyResponse.ok)throw new Error(${scriptJson(copy.connectionError)});
  const saved=await historyResponse.json();history=Array.isArray(saved.turns)?saved.turns:[];
@@ -149,7 +158,7 @@ try {
  }
  messages=history.flatMap(turn=>[{role:'user',content:turn.question},{role:'assistant',content:turn.answer.segments.map(segment=>segment.text).join('')}]).slice(-8);
  nativeRequestId=null;
- if(session.playback&&window.parent!==window){bridge=session.playback;announceReady();}
+ if(session.playback&&window.parent!==window){bridge=session.playback;readyDeadline=performance.now()+30000;announceReady();}
  status.textContent=''; question.disabled=false;send.disabled=false;
 }catch(error){status.dataset.kind='error';status.textContent=error.message;for(const origin of ${scriptJson(parentOrigins)})if(window.parent!==window)window.parent.postMessage({type:'videoq:unavailable',version:1,text:error.message},origin);return;}
 document.getElementById('form').addEventListener('submit',async event=>{
