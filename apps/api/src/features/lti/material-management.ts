@@ -10,6 +10,7 @@ import { ApiError, apiNotFound } from '../../shared/errors';
 import { digest } from './store';
 import type { Bindings } from '../../types/bindings';
 import type pg from 'pg';
+import { lockLtiDataSessionWithDb, type LtiSessionProof } from './data-lock';
 
 const identity = { videoId: z.number().int().positive().safe() };
 const mutation = { ...identity, operationId: z.uuid(), revision: z.string().regex(/^[a-f0-9]{64}$/) };
@@ -25,6 +26,7 @@ export const materialManagementInput = z.discriminatedUnion('action', [
 export type ManagedMaterialScope = {
   installationId: string; ownerUserId: string; courseId: number; contextId: string;
   resourceLinkId: string; videoId: number; generation: number; actorKey: string;
+  sessionProof?: LtiSessionProof;
 };
 type Video = { title: string; description: string | null; transcript: string | null; status: string; file: string };
 type Job = { id: string; message: unknown; dead: boolean; status: string | null };
@@ -79,6 +81,7 @@ export async function manageLtiMaterial(env: Bindings, scope: ManagedMaterialSco
     await client.query('BEGIN');
     try {
       await lockLmsGrant(db, { id: scope.installationId, ownerUserId: scope.ownerUserId });
+      await lockLtiDataSessionWithDb(db,scope.ownerUserId,scope.sessionProof);
       const resource = (await client.query<{ id: string; generation: string }>(`SELECT id,generation FROM lms_resources
         WHERE installation_id=$1 AND context_id=$2 AND resource_link_id=$3 AND course_id=$4 AND video_id=$5 AND enabled=true FOR UPDATE`,
       [scope.installationId,scope.contextId,scope.resourceLinkId,scope.courseId,scope.videoId])).rows[0];

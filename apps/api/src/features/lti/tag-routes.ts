@@ -8,8 +8,10 @@ import type { LtiRegistration } from './config';
 import type { sessionRecord } from './protocol';
 import { ltiSubjectKey } from './identity';
 import { courseTagInput, courseTags } from './course-tags';
+import { ltiSessionProof } from './data-lock';
 
 type Authorization = { current: CourseAccess; reg: LtiRegistration; grant: z.infer<typeof sessionRecord>;
+  sessionHash: string;
   course: { userId: string; memberVideoIds: number[] } };
 export function mountLtiTags(routes: Hono<AppEnv>, authorize: (c: Context<AppEnv>) => Promise<Authorization | { error: Response }>) {
   routes.post('/tags', async c => {
@@ -23,6 +25,7 @@ export function mountLtiTags(routes: Hono<AppEnv>, authorize: (c: Context<AppEnv
       return c.json(toErrorBody('FORBIDDEN', 'Course tags are unavailable.'), 403);
     try {
       const result = await courseTags(c.env, { installationId: reg.id.slice(3), contextId: grant.contextId,
+        sessionProof:ltiSessionProof(grant,access.sessionHash),
         courseId: grant.courseId, ownerUserId: course.userId, actorKey: await ltiSubjectKey(grant), manage: current.permissions.manageContent,
         readableVideoIds: current.videos.map(v => v.videoId).filter(id => course.memberVideoIds.includes(id)),
         management: (current.managementVideos ?? []).flatMap(video => {

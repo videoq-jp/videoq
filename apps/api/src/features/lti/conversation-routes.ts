@@ -8,6 +8,7 @@ import { ConversationNotFoundError, type ConversationScope } from '../../reposit
 import type { CourseAccess } from './course-access';
 import type { sessionRecord } from './protocol';
 import { ltiSubjectKey } from './identity';
+import { ltiSessionProof } from './data-lock';
 
 const conversation = { conversationId: z.uuid() };
 const page = { ...conversation, beforeTurnId: z.string().regex(/^[1-9][0-9]{0,17}$/).optional(),
@@ -35,6 +36,7 @@ export function mountLtiConversations(routes: Hono<AppEnv>, authorize: Authorize
     const { grant, course, current } = access;
     const scope: ConversationScope = { ownerUserId: course.userId, actorUserId: null, courseId: grant.courseId, shareSlug: null,
       ltiSubject: { subjectKey: await ltiSubjectKey(grant),
+        sessionProof:ltiSessionProof(grant,access.sessionHash),
         resourceVideoIds: current.videos.map(video => video.videoId).filter(id => course.memberVideoIds.includes(id)) } };
     const data = parsed.data;
     try {

@@ -1,3 +1,4 @@
+import { ltiSessionRows } from '../features/lti/data-lock';
 import { chatAnswerSchema, chatAnswerText, type ChatAnswer, type ChatSource } from "@videoq/trpc/chat";
 import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import { withDb, type Db } from "../db/pool";
@@ -125,10 +126,11 @@ export async function createChatLogWithDb(
     const subject = checkedLtiSubject(params.ltiSubject);
     if (!params.isShared) throw new Error('LTI attribution requires an external course grant');
     // One statement keeps attribution atomic even outside a conversation transaction.
+    const source = subject.sessionProof ? sql`FROM (${ltiSessionRows(params.userId,subject.sessionProof)}) permitted` : sql``;
     const result = await db.execute<{ id: number }>(sql`WITH saved AS (
       INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,feedback,created_at)
-      VALUES(${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
-        ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now()) RETURNING id
+      SELECT ${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
+        ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now() ${source} RETURNING id
     ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids)
       SELECT id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb FROM saved
       RETURNING chat_log_id::float8 AS id`);

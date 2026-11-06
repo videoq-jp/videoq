@@ -16,6 +16,7 @@ import { transcriptPage } from "./transcript";
 import { mountLtiQa } from "./qa-routes";
 import { mountLtiConversations } from './conversation-routes';
 import { ltiSubjectKey } from './identity';
+import { ltiSessionProof } from './data-lock';
 import { mountLtiManagement } from './management-routes';
 import { mountLtiTags } from './tag-routes';
 import { playbackCueHint } from "./playback-context";
@@ -24,7 +25,7 @@ import { sendChatMessage, streamChatMessage } from "../chat/message-service";
 import { ltiConfig, type LtiRegistration } from "./config";
 import { resolvedLtiConfig } from "./registrations";
 import { loginRecord, sessionRecord, verifyLaunch } from "./protocol";
-import { consumeLogin, digest, putCredential, randomSecret, readCredential, recordScopeVideos } from "./store";
+import { consumeLogin, digest, putCredential, randomSecret, readCredential, recordScopeVideos, putLtiFeedback } from "./store";
 import { loginView, questionView } from "./view";
 
 export const ltiRoutes = new Hono<AppEnv>();
@@ -184,7 +185,7 @@ async function authorize(c: Context<AppEnv>) {
 async function feedbackReference(c: Context<AppEnv>, sessionHash: string, courseId: number, logId: number | null) {
   if (logId === null) return undefined;
   const id = randomSecret();
-  await putCredential(c.env, await digest(id), "lti-feedback", { sessionHash, courseId, logId }, 3600);
+  await putLtiFeedback(c.env, await digest(id), sessionHash, courseId, logId);
   return id;
 }
 
@@ -299,7 +300,7 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
     const connection = new AbortController();
     const result = await streamChatMessage(c.env, {
       userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-      ltiSubjectKey: subjectKey, displayQuestion: input.data.messages.at(-1)!.content,
+      ltiSubjectKey: subjectKey, ltiSessionProof:ltiSessionProof(grant,sessionHash), displayQuestion: input.data.messages.at(-1)!.content,
       body: { messages, course_id: grant.courseId, ...conversation }, locale: grant.locale,
       clientSignal: AbortSignal.any([c.req.raw.signal, connection.signal]),
     });
@@ -311,7 +312,7 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
         if (allowed) await stream.writeSSE({ data: JSON.stringify({ type: "scope", videos: allowed }) });
         await result.write(async event => {
           if (event.type === "done") {
-            await appendCourseHistory(c.env, grant, input.data.messages.at(-1)!.content, event.chat_log_id, ltiVideoGrant);
+            await appendCourseHistory(c.env, {...grant,sessionProof:ltiSessionProof(grant,sessionHash)}, input.data.messages.at(-1)!.content, event.chat_log_id, ltiVideoGrant);
             const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, event.chat_log_id);
             await stream.writeSSE({ data: JSON.stringify({ type: "done", feedbackId, feedback: event.feedback }) });
           } else await stream.writeSSE({ data: JSON.stringify(event) });
@@ -325,12 +326,12 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
   }
   const result = await sendChatMessage(c.env, {
     userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-    ltiSubjectKey: subjectKey, displayQuestion: input.data.messages.at(-1)!.content,
+    ltiSubjectKey: subjectKey, ltiSessionProof:ltiSessionProof(grant,sessionHash), displayQuestion: input.data.messages.at(-1)!.content,
     body: { messages, course_id: grant.courseId, ...conversation }, locale: grant.locale,
   });
   // Expose a session-bound feedback reference, never owner log IDs.
   if (result.status !== 200 || !("answer" in result.body)) return c.json(result.body, result.status);
-  await appendCourseHistory(c.env, grant, input.data.messages.at(-1)!.content, result.body.chat_log_id ?? null, ltiVideoGrant);
+  await appendCourseHistory(c.env, {...grant,sessionProof:ltiSessionProof(grant,sessionHash)}, input.data.messages.at(-1)!.content, result.body.chat_log_id ?? null, ltiVideoGrant);
   const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, result.body.chat_log_id ?? null);
   return c.json({ answer: result.body.answer, ...(feedbackId ? { feedbackId, feedback: result.body.feedback ?? null } : {}), ...(allowed ? { videos: allowed } : {}) });
 });
