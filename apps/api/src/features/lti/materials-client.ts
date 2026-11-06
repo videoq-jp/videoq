@@ -4,6 +4,7 @@ import { toolClientAssertion, type ToolKeyEnvironment } from "./tool-keys";
 import { coursePermissionsSchema } from "./course-permissions";
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
+export const materialManagementSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 const httpsEndpoint = z.url().max(2048).refine(value => {
   const url = new URL(value);
   return url.protocol === "https:" && !url.username && !url.password && !url.hash;
@@ -96,8 +97,10 @@ export class MaterialsClient {
     const access = z.object({ contextId: identity, resourceLinkId: identity,
       permissions: coursePermissionsSchema.optional(),
       resources: z.array(z.object({ externalId: identity, resourceLinkId: identity,
-        lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500) }).strict()).max(1000),
-    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject, includePermissions: true }));
+        lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500),
+        generation: z.number().int().positive().safe().optional(),
+        learning: z.boolean().optional(), management: materialManagementSchema.optional() }).strict()).max(1000),
+    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject, includePermissions: true, includeContentManagement: true }));
     if (access.contextId !== contextId || access.resourceLinkId !== resourceLinkId) throw new Error("Wrong LTI access context");
     return access;
   }

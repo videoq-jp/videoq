@@ -13,17 +13,18 @@ export async function resolvedLtiConfig(env: Bindings) {
     const installations = await db.select({ installation: lmsInstallations })
       .from(lmsInstallations).innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
       .where(and(eq(lmsInstallations.active, true), activeLmsOwner()));
-    const resources = await db.select({ resource: lmsResources }).from(lmsResources)
+    const resources = await db.select({ resource: lmsResources, status: videos.status }).from(lmsResources)
       .innerJoin(videos, eq(videos.id, lmsResources.videoId))
-      .where(and(eq(lmsResources.enabled, true), eq(videos.status, "completed")));
+      .where(eq(lmsResources.enabled, true));
     return installations.map(({ installation: row }): LtiRegistration => ({
       id: "db:" + row.id, issuer: row.issuer, clientId: row.clientId,
       authorizationUrl: row.authorizationUrl, jwksUrl: row.jwksUrl,
       ...(row.materialsService ? { materialsService: row.materialsService, deploymentId: row.deploymentId } : { courseAccess: "moodle" as const }),
       frameOrigins: [new URL(row.issuer).origin],
       resources: resources.filter(({ resource }) => resource.installationId === row.id && resource.courseId !== null)
-        .map(({ resource }) => ({ deploymentId: row.deploymentId, contextId: resource.contextId,
-          resourceLinkId: resource.resourceLinkId, courseId: resource.courseId!, videoId: resource.videoId!, generation: resource.generation })),
+        .map(({ resource, status }) => ({ deploymentId: row.deploymentId, contextId: resource.contextId,
+          resourceLinkId: resource.resourceLinkId, courseId: resource.courseId!, videoId: resource.videoId!, generation: resource.generation,
+          learningAvailable: status === 'completed' })),
     }));
   });
   // A platform/client must have one authority: never merge operator-controlled

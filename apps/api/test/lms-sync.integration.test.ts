@@ -436,7 +436,10 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const response = await request("resources/10", "PUT", manifest());
     expect(response.status).toBe(200);
     const result = await response.json<{ upload: { url: string }; generation: number }>();
-    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toHaveLength(0);
+    // Processing bindings remain available to freshly authorized content managers;
+    // learner access is independently limited to completed material.
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources.map(item => ({ generation: item.generation, learningAvailable: item.learningAvailable })))
+      .toEqual([{ generation: 1, learningAvailable: false }]);
     const uploaded = await app.request(result.upload.url, { method: "PUT", headers: {
       Authorization: "Bearer " + credential.token, "Content-Type": "video/mp4", "Content-Length": "3",
     }, body: new Uint8Array([1, 2, 3]) }, env);
@@ -445,7 +448,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await request("resources/10/confirm", "POST", { generation: 1 })).status).toBe(200);
     expect((await pool.query("SELECT count(*)::int AS count FROM external_tasks WHERE kind='sqs_job'")).rows[0].count).toBe(1);
     await pool.query("UPDATE videos SET status='completed'");
-    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toMatchObject([{ contextId: "course-1", resourceLinkId: "lti-1", generation: 1 }]);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toMatchObject([{ contextId: "course-1", resourceLinkId: "lti-1", generation: 1, learningAvailable: true }]);
     // A confirmed object cannot be overwritten by a late API PUT.
     const late = await app.request(result.upload.url, { method: "PUT", headers: {
       Authorization: "Bearer " + credential.token, "Content-Type": "video/mp4", "Content-Length": "3",
@@ -459,7 +462,9 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const next = manifest(2, { file: { ...manifest().file, contentHash: "b".repeat(40) } });
     const replacement = await syncLmsResource(env, grant, "10", next);
     expect(replacement.videoId).not.toBe(initial.videoId);
-    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toHaveLength(0);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources.map(item => ({ videoId: item.videoId,
+      generation: item.generation, learningAvailable: item.learningAvailable })))
+      .toEqual([{ videoId: replacement.videoId, generation: 2, learningAvailable: false }]);
     expect((await pool.query("SELECT count(*)::int AS count FROM videos")).rows[0].count).toBe(1);
     expect((await pool.query("SELECT count(*)::int AS count FROM external_tasks WHERE kind='storage_cleanup'")).rows[0].count).toBe(1);
     await expect(syncLmsResource(env, grant, "10", manifest())).rejects.toMatchObject({ status: 409 });

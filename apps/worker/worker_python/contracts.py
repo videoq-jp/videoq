@@ -39,10 +39,14 @@ def validate_job_payload(job_type: str, payload: dict) -> None:
         expected.add("chunk_index")
     if job_type == JOB_BUILD_VIDEO_VISUALS:
         expected.add("cache_kind")
+    if job_type == JOB_INDEX_VIDEO_TRANSCRIPT and isinstance(payload, dict) and "allow_empty" in payload:
+        expected.add("allow_empty")
     if not isinstance(payload, dict) or set(payload) != expected:
         raise TypeError(f"{job_type} payload must contain exactly {sorted(expected)}")
     if field is None:
         return
+    if "allow_empty" in expected and type(payload["allow_empty"]) is not bool:
+        raise ValueError("allow_empty must be a boolean")
     value = payload[field]
     if field == "user_id":
         if not isinstance(value, str) or not value.strip():
