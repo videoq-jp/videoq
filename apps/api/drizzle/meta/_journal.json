@@ -365,6 +365,13 @@
       "when": 1793942880652,
       "tag": "0051_lms_course_authority_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793946506291,
+      "tag": "0052_lti_personal_conversations",
+      "breakpoints": true
     }
   ]
 }

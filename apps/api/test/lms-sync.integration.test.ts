@@ -12,7 +12,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
 import { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks } from "../src/db/schema";
+import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects } from "../src/db/schema";
 import { provisionLmsInstallation, authenticateLmsInstallation, rotateLmsSyncToken, disconnectLmsInstallation } from "../src/repositories/lms-installation-repository";
 import { getLmsResource, syncLmsResource } from "../src/repositories/lms-resource-repository";
 import { resolvedLtiConfig } from "../src/features/lti/registrations";
@@ -55,7 +55,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     admin = new pg.Client({ connectionString: databaseUrl }); await admin.connect();
     await admin.query(`CREATE SCHEMA "${schema}"`); created = true;
     pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 10 });
-    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks });
+    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects });
     const statements = await generateMigration(generateDrizzleJson({}), snapshot);
     for (const statement of statements) await pool.query(statement.replaceAll('"public".', `"${schema}".`));
     // Apply the actual generated sync migration, including foreign keys.
