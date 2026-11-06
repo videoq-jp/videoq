@@ -5,7 +5,7 @@ import { coursePermissionsSchema } from "../src/features/lti/course-permissions"
 
 describe("LTI transcript pagination", () => {
   it("does not infer transcript permission from future capability fields or truthy strings", () => {
-    expect(coursePermissionsSchema.parse({ futureCapability: true })).toEqual({ viewTranscript: false });
+    expect(Object.values(coursePermissionsSchema.parse({ futureCapability: true })).every(value => value === false)).toBe(true);
     expect(coursePermissionsSchema.safeParse({ viewTranscript: "true" }).success).toBe(false);
   });
   it("keeps overlapping cues, skips malformed blocks, and terminates pagination", () => {

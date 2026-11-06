@@ -10,6 +10,8 @@ import { verifyLaunch } from "../src/features/lti/protocol";
 import { getVideoEvidence } from "../src/repositories/video-evidence-repository";
 import { getCourseWithMembers, updateChatLogFeedback } from "../src/repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../src/features/chat/message-service";
+import { getQuestion, listQuestions, mutate } from "../src/features/qa/service";
+import type { QaQuestion } from "@videoq/trpc";
 
 vi.mock("../src/features/lti/history", () => ({ appendCourseHistory: vi.fn(async () => {}), readCourseHistory: vi.fn(async () => []) }));
 
@@ -33,6 +35,11 @@ vi.mock("../src/features/lti/protocol", async importOriginal => ({
 vi.mock("../src/repositories/video-evidence-repository", () => ({ getVideoEvidence: vi.fn() }));
 vi.mock("../src/repositories/chat-repository", () => ({ getCourseWithMembers: vi.fn(), updateChatLogFeedback: vi.fn() }));
 vi.mock("../src/features/chat/message-service", () => ({ sendChatMessage: vi.fn(), streamChatMessage: vi.fn() }));
+vi.mock("../src/features/qa/service", () => ({ getQuestion: vi.fn(), listQuestions: vi.fn(), mutate: vi.fn() }));
+const qaId = "11111111-1111-4111-8111-111111111111";
+const qaQuestion: QaQuestion = { id: qaId, title: "Question", body: "Published to course", videoId: 1, videoTitle: "Lesson",
+  author: { name: "12345678", instructor: false, source: "moodle" }, createdAt: "2026-11-06T00:00:00Z", updatedAt: "2026-11-06T00:00:00Z",
+  featured: false, replyCount: 0, votes: 0, voted: false, canEdit: true, canDelete: true };
 const resource = { deploymentId: "dep", contextId: "ctx", resourceLinkId: "res", courseId: 12, videoId: 1 };
 const registration = {
   id: "moodle", issuer: "https://lms.example", clientId: "client",
@@ -64,6 +71,9 @@ async function session() {
 beforeEach(async () => {
   vi.clearAllMocks(); records.clear(); await login();
   vi.mocked(readCourseHistory).mockResolvedValue([]);
+  vi.mocked(listQuestions).mockResolvedValue({ items: [qaQuestion], total: 1, canPost: true, canVote: true, canModerate: false });
+  vi.mocked(getQuestion).mockResolvedValue({ question: qaQuestion, replies: [], replyTotal: 0, canPost: true, canVote: true, canModerate: false });
+  vi.mocked(mutate).mockImplementation(async (_env, _principal, command) => command.name === "qa.ask" || command.name === "qa.reply" ? { id: qaId } : { success: true });
   vi.mocked(verifyLaunch).mockResolvedValue({ ...resource, locale: "en", subject: "learner", roles: ["Learner"] });
   vi.mocked(getVideoEvidence).mockResolvedValue(null);
   vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1] });
@@ -245,7 +255,8 @@ describe("Moodle course permission checks", () => {
         transcriptTooLarge: false, transcript: '1\n00:00:01,000 --> 00:00:02,000\n<img onerror="alert(1)">\n\n2\n00:00:03,000 --> 00:00:04,000\nNext cue' });
       const list = await request("materials", {}, token, "https://api.example", bindings);
       expect(list.status).toBe(200);
-      expect(await list.json()).toEqual({ permissions: { viewTranscript: true }, videos: [
+      expect(await list.json()).toEqual({ permissions: { viewTranscript: true, viewQa: false, postQa: false, voteQa: false,
+        deleteOwnQa: false, moderateQa: false, instructorQa: false }, videos: [
         { videoId: 1, lesson: "res", title: "Moodle res" }, { videoId: 2, lesson: "second", title: "Moodle second" },
       ] });
       const transcript = await request("transcript", { videoId: 2, limit: 1 }, token, "https://api.example", bindings);
@@ -261,6 +272,54 @@ describe("Moodle course permission checks", () => {
       expect((await request("materials", {}, token, "https://attacker.example", bindings)).status).toBe(403);
       vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1] });
       expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("uses a course-scoped pseudonym for Q&A and does not accept browser-selected course, author or role", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions: { viewQa: true, postQa: true, voteQa: true, deleteOwnQa: true },
+      resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      const ask = { action: "ask", title: "Human question", body: "Shared question", videoId: 1 };
+      const response = await request("qa", ask, token, "https://api.example", bindings);
+      expect(response.status).toBe(200);
+      const grant = records.get(await digest(token))!.payload;
+      const authorId = await digest(JSON.stringify(["lti-course-qa-v1", "moodle", grant.subjectHash, 12]));
+      expect(mutate).toHaveBeenCalledWith(bindings, {
+        kind: "lti", ownerUserId: "owner", courseId: 12, authorId, videoIds: [1],
+        permissions: { view: true, post: true, vote: true, deleteOwn: true, moderate: false, instructor: false },
+      }, { name: "qa.ask", input: expect.objectContaining({ courseId: 12, title: ask.title, body: ask.body }) });
+      expect(await response.text()).not.toContain(authorId);
+      for (const extra of [{ courseId: 99 }, { authorId: "owner" }, { instructor: true }, { shareSlug: "public" }]) {
+        expect((await request("qa", { ...ask, ...extra }, token, "https://api.example", bindings)).status).toBe(400);
+      }
+      expect((await request("qa", { action: "list" }, token, "https://api.example", bindings)).status).toBe(200);
+      const detail = await request("qa", { action: "get", questionId: qaId }, token, "https://api.example", bindings);
+      expect(await detail.json()).toMatchObject({ data: { question: qaQuestion } });
+      expect((await request("qa", ask, token, "https://attacker.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("rechecks independent Q&A capabilities and ignores cached Instructor/Administrator roles", async () => {
+    let permissions = { viewQa: true, postQa: true, voteQa: true, deleteOwnQa: true, moderateQa: false };
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions, resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      const send = (body: unknown) => request("qa", body, token, "https://api.example", bindings);
+      expect((await send({ action: "reply", questionId: qaId, body: "Reply" })).status).toBe(200);
+      permissions = { ...permissions, postQa: false, voteQa: false };
+      const calls = vi.mocked(mutate).mock.calls.length;
+      expect((await send({ action: "reply", questionId: qaId, body: "No posting permission" })).status).toBe(403);
+      expect((await send({ action: "vote", questionId: qaId, voted: true })).status).toBe(403);
+      records.get(await digest(token))!.payload.roles = ["Instructor", "Administrator"];
+      expect((await send({ action: "feature", questionId: qaId, featured: true })).status).toBe(403);
+      expect(mutate).toHaveBeenCalledTimes(calls);
+      permissions = { ...permissions, moderateQa: true };
+      expect((await send({ action: "feature", questionId: qaId, featured: true })).status).toBe(200);
+      permissions = { ...permissions, viewQa: false };
+      expect((await send({ action: "list" })).status).toBe(403);
+      fetch.mockRejectedValue(new Error("Permission service unavailable"));
+      expect((await send({ action: "get", questionId: qaId })).status).toBe(403);
     } finally { fetch.mockRestore(); }
   });
   it("revokes transcript capabilities and resource visibility during an existing session", async () => {
