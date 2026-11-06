@@ -17,6 +17,7 @@ import { mountLtiQa } from "./qa-routes";
 import { mountLtiConversations } from './conversation-routes';
 import { ltiSubjectKey } from './identity';
 import { mountLtiManagement } from './management-routes';
+import { mountLtiTags } from './tag-routes';
 import { playbackCueHint } from "./playback-context";
 import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
@@ -159,7 +160,7 @@ ltiRoutes.post("/session", async c => {
   }, 3600);
   return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
     features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService),
-      conversations: Boolean(reg.courseAccess || reg.materialsService), management: reg.id.startsWith('db:') },
+      conversations: Boolean(reg.courseAccess || reg.materialsService), management: reg.id.startsWith('db:'), tags: reg.id.startsWith('db:') },
     ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -213,6 +214,7 @@ async function authorizeMaterials(c: Context<AppEnv>) {
 mountLtiQa(ltiRoutes, authorizeMaterials, refused);
 mountLtiConversations(ltiRoutes, authorizeMaterials, feedbackReference);
 mountLtiManagement(ltiRoutes, authorizeCourse);
+mountLtiTags(ltiRoutes, authorizeCourse);
 
 ltiRoutes.post("/materials", async c => {
   const access = await authorizeCourse(c);

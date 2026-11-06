@@ -63,6 +63,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     await pool.query(migration.replaceAll('"public".', `"${schema}".`));
     const managed = await readFile(new URL("../drizzle/0047_lti_managed_keys.sql", import.meta.url), "utf8");
     await pool.query(managed.replaceAll('"public".', `"${schema}".`));
+    const courseTags = await readFile(new URL('../drizzle/0056_lti_course_tags.sql', import.meta.url), 'utf8');
+    await pool.query(courseTags.replaceAll('"public".', `"${schema}".`));
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
     env = { RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),

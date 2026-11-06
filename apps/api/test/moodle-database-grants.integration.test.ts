@@ -6,6 +6,7 @@ import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { provisionLmsInstallation } from '../src/repositories/lms-installation-repository';
 import { syncLmsResource } from '../src/repositories/lms-resource-repository';
 import { manageLtiMaterial, type ManagedMaterialScope } from '../src/features/lti/material-management';
+import { courseTags, type CourseTagScope } from '../src/features/lti/course-tags';
 import { resolvedLtiConfig } from '../src/features/lti/registrations';
 import { putCredential, readCredential } from '../src/features/lti/store';
 import { toolJwks } from '../src/features/lti/tool-keys';
@@ -17,7 +18,7 @@ const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;
 const roles=['videoq_migrate_20260918','videoq_worker_20261014','videoq_api_access','videoq_worker_access',
   'videoq_backup_access','videoq_audit_access','videoq_smoke_access','videoq_demo_access'];
 const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_courses','lms_resources',
-  'lti_material_operations','course_questions','course_question_replies','course_question_votes',
+  'lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
   'course_question_lti_votes','course_qa_moderation'];
 
 (databaseUrl?describe:describe.skip)('Moodle services using the deployed database security profile',()=>{
@@ -110,5 +111,14 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect(after.material.status).toBe('indexing');expect(after.externalTaskId).toBeTypeOf('number');
     expect((await api.query('SELECT action FROM lti_material_operations')).rows).toEqual([{action:'update'}]);
     expect((await api.query('SELECT kind FROM external_tasks WHERE id=$1',[after.externalTaskId])).rows).toEqual([{kind:'sqs_job'}]);
+    const tagScope:CourseTagScope={...scope,manage:true,readableVideoIds:[],
+      management:[{videoId:scope.videoId,resourceLinkId:scope.resourceLinkId,generation:scope.generation}]};
+    const tags=await courseTags(env,tagScope,{action:'create',name:'Role-scoped vocabulary',color:'blue',operationId:crypto.randomUUID()});
+    const assigned=await courseTags(env,tagScope,{action:'assign',videoId:scope.videoId,tagIds:[tags.tags[0].id],
+      revision:tags.videos[0].revision,operationId:crypto.randomUUID()});
+    expect(assigned.tags[0]).toMatchObject({name:'Role-scoped vocabulary',videoIds:[scope.videoId]});
+    const deleted=await courseTags(env,tagScope,{action:'delete',id:assigned.tags[0].id,revision:assigned.tags[0].revision,operationId:crypto.randomUUID()});
+    expect(deleted.tags).toEqual([]);
+    expect((await api.query('SELECT count(*)::int AS n FROM lti_course_tag_operations')).rows).toEqual([{n:3}]);
   },20000);
 });
