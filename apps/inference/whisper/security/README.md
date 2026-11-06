@@ -70,9 +70,9 @@ file owned by `linux-libc-dev` must be a header or its documentation, none may b
 ELF or a kernel module, and the image may contain no kernel binaries/modules.
 Do not remove package metadata or retain untracked headers to change scan results.
 
-`kernel-headers.openvex.json` lists the 386 kernel implementation CVEs reported on
-this package by CI run 39954013361 on 2026-10-23. The assessment is restricted to
-Ubuntu 24.04 amd64 `linux-libc-dev` version `6.8.0-147.147`, with explicit vulnerability IDs and the
+`kernel-headers.openvex.json` lists the 385 kernel implementation CVEs reported on
+this package by CI run 42242256367 on 2026-11-06. The assessment is restricted to
+Ubuntu 24.04 amd64 `linux-libc-dev` version `6.8.0-149.149`, with explicit vulnerability IDs and the
 `vulnerable_code_not_present` justification. It does not apply to host kernels,
 other packages, unknown CVEs, or another distribution/architecture. A new package version does not match this assessment and requires a fresh
 review. A changed package inventory also fails the image build instead of
