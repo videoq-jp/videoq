@@ -38,7 +38,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
   }, 60_000);
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await pool.query(`TRUNCATE users CASCADE; TRUNCATE external_tasks;
+    await pool.query(`TRUNCATE users,external_tasks CASCADE;
       INSERT INTO users(id,username,email,email_verified,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes)
         VALUES('owner','owner','owner@example.test',true,false,0,0,0),
         ('member','member','member@example.test',true,false,0,0,0),

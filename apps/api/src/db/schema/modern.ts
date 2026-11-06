@@ -189,6 +189,8 @@ export const externalTasks = pgTable(
 	},
 	(table) => [
 		unique("external_tasks_dedupe_key_key").on(table.dedupeKey),
+		index('external_tasks_video_job_idx').on(sql`(${table.payload}->'message'->'payload'->>'video_id')`, table.createdAt)
+			.where(sql`${table.kind} = 'sqs_job'`),
 		index("external_tasks_ready_idx")
 			.on(table.availableAt, table.id)
 			.where(sql`completed_at IS NULL AND dead_at IS NULL`),

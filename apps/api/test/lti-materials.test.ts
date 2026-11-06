@@ -62,17 +62,57 @@ describe("LTI materials service boundary", () => {
           { ...binding, contextId: "other-course", resourceLinkId: "other-course", courseId: 2, videoId: 20 }] };
       const access = await courseAccessContext(reg, { ...binding, serviceSubject: "student" }, env as Bindings);
       expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], permissions: {
-        manageOwnHistory: false, viewTranscript: viewTranscript ?? false, viewQa: false, postQa: false, voteQa: false,
+        manageContent: false, manageOwnHistory: false, viewTranscript: viewTranscript ?? false, viewQa: false, postQa: false, voteQa: false,
         deleteOwnQa: false, moderateQa: false, instructorQa: false,
       } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
-        resourceLinkId: "launch", subject: "student", includePermissions: true });
+        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
     } finally { spy.mockRestore(); }
   });
   it("accepts an explicit empty snapshot without inventing deletions", async () => {
     const snapshot = { contextId: "course", complete: true, resources: [] };
     expect(await new MaterialsClient(env, registration, mockService(snapshot)).manifest("course")).toEqual(snapshot);
+  });
+  it.each([
+    { manageContent: true, moduleGrant: true, database: true, generation: 1, bindingGeneration: 1, allowed: true },
+    { manageContent: false, moduleGrant: true, database: true, generation: 1, bindingGeneration: 1, allowed: false },
+    { manageContent: true, moduleGrant: false, database: true, generation: 1, bindingGeneration: 1, allowed: false },
+    { manageContent: true, moduleGrant: true, database: false, generation: 1, bindingGeneration: 1, allowed: false },
+    { manageContent: true, moduleGrant: true, database: true, generation: 2, bindingGeneration: 1, allowed: false },
+  ])("isolates processing-only management grants from learner access (%j)", async test => {
+    const binding = { deploymentId: registration.deploymentId, contextId: "course", resourceLinkId: "launch", courseId: 1,
+      videoId: 10, generation: test.bindingGeneration, learningAvailable: false };
+    const reg = { ...registration, id: test.database ? "db:school" : "configured", issuer: "https://moodle.example",
+      authorizationUrl: "https://moodle.example/auth", jwksUrl: "https://moodle.example/keys", frameOrigins: ["https://moodle.example"], resources: [binding] };
+    const result = { contextId: "course", resourceLinkId: "launch", permissions: { manageContent: test.manageContent },
+      resources: [{ externalId: "source", resourceLinkId: "launch", lesson: "lesson", title: "Processing", learning: false,
+        generation: test.generation, ...(test.moduleGrant ? { management: { generation: test.generation } } : {}) }] };
+    const spy = vi.spyOn(globalThis,"fetch").mockImplementation(mockService(result));
+    try {
+      const access = courseAccessContext(reg,{...binding, serviceSubject:"teacher"},env as Bindings);
+      if (test.allowed) expect(await access).toMatchObject({videos:[],managementVideos:[{videoId:10,management:{generation:1}}]});
+      else await expect(access).rejects.toThrow("Moodle access denied");
+    } finally { spy.mockRestore(); }
+  });
+  it("rejects a stale completed source and rechecks a revoked management capability", async () => {
+    const binding = { deploymentId: registration.deploymentId, contextId:"course", resourceLinkId:"launch", courseId:1,
+      videoId:10, generation:1, learningAvailable:true };
+    const reg = {...registration,id:"db:school",issuer:"https://moodle.example",authorizationUrl:"https://moodle.example/auth",
+      jwksUrl:"https://moodle.example/keys",frameOrigins:["https://moodle.example"],resources:[binding]};
+    let generation=1, permitted=true;
+    const spy=vi.spyOn(globalThis,"fetch").mockImplementation((input,init)=>mockService({contextId:"course",resourceLinkId:"launch",
+      permissions:{manageContent:permitted},resources:[{externalId:"source",resourceLinkId:"launch",lesson:"lesson",title:"Ready",
+        generation, management:{generation}}]})(input,init));
+    const get=()=>courseAccessContext(reg,{...binding,serviceSubject:"teacher"},env as Bindings);
+    try {
+      expect((await get())?.managementVideos).toHaveLength(1);
+      permitted=false;
+      expect(await get()).toMatchObject({videos:[{videoId:10}],permissions:{manageContent:false}});
+      expect((await get())?.managementVideos).toBeUndefined();
+      generation=2;
+      await expect(get()).rejects.toThrow("Moodle access denied");
+    } finally {spy.mockRestore();}
   });
   it.each([
     { contextId: "other", complete: true, resources: [] },

@@ -3,7 +3,7 @@ import { decodeJwt } from "jose";
 import { launchLocale, resolveLtiLocale } from "./locale";
 import { appendCourseHistory, readCourseHistory } from "./history";
 import { streamSSE } from "hono/streaming";
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { chatMessagesSchema } from "@videoq/trpc/schema";
@@ -16,6 +16,7 @@ import { transcriptPage } from "./transcript";
 import { mountLtiQa } from "./qa-routes";
 import { mountLtiConversations } from './conversation-routes';
 import { ltiSubjectKey } from './identity';
+import { mountLtiManagement } from './management-routes';
 import { playbackCueHint } from "./playback-context";
 import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
@@ -60,7 +61,12 @@ async function parameters(c: Context<AppEnv>): Promise<URLSearchParams> {
   return params;
 }
 
-ltiRoutes.use("*", bodyLimit({ maxSize: 128 * 1024 }));
+const controlBodyLimit: MiddlewareHandler<AppEnv> = bodyLimit({ maxSize: 128 * 1024 });
+ltiRoutes.use("*", (c: Context<AppEnv, string>, next) => {
+  // The management route applies its own bounded SRT request budget.
+  if (c.req.path.endsWith('/management')) return next();
+  return controlBodyLimit(c, next);
+});
 ltiRoutes.use("*", async (c: Context<AppEnv>, next) => {
   c.header("Cache-Control", "no-store");
   if (!ltiConfig(c.env)) return c.json(toErrorBody("NOT_FOUND", "LTI is not configured."), 404);
@@ -140,9 +146,10 @@ ltiRoutes.post("/session", async c => {
   catch { return refused(c, 401); }
   const course = await getCourseWithMembers(c.env, { courseId: launch.courseId, ltiCourseGrant: launch.courseId });
   if (!course || (launch.videoId !== undefined && !course.memberVideoIds.includes(launch.videoId))) return refused(c, 403);
-  let allowed;
-  try { allowed = await courseAccess(reg, launch, c.env); } catch { return refused(c, 403); }
-  if (launch.videoId && allowed && !allowed.some(video => video.videoId === launch.videoId)) return refused(c, 403);
+  let current;
+  try { current = await courseAccessContext(reg, launch, c.env); } catch { return refused(c, 403); }
+  const allowed = current?.videos ?? null;
+  if (launch.videoId && current && ![...current.videos, ...(current.managementVideos ?? [])].some(video => video.videoId === launch.videoId)) return refused(c, 403);
   if (!await consumeLogin(c.env, input.data.state)) return refused(c, 401);
   const token = randomSecret();
   const { subject, ...grant } = launch;
@@ -150,9 +157,9 @@ ltiRoutes.post("/session", async c => {
     ...grant, ...(allowed ? { scopeVideoIds: allowed.map(video => video.videoId).sort((a,b)=>a-b) } : {}), registrationId: reg.id, registrationHash: await registrationFingerprint(reg),
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
-  return c.json({ token, expiresIn: 3600,
+  return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
     features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService),
-      conversations: Boolean(reg.courseAccess || reg.materialsService) },
+      conversations: Boolean(reg.courseAccess || reg.materialsService), management: reg.id.startsWith('db:') },
     ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -182,7 +189,7 @@ async function feedbackReference(c: Context<AppEnv>, sessionHash: string, course
 
 // Material capabilities come from Moodle on every request, never from LTI roles
 // or browser-supplied course/owner IDs. The VideoQ membership is checked as well.
-async function authorizeMaterials(c: Context<AppEnv>) {
+async function authorizeCourse(c: Context<AppEnv>) {
   const access = await authorize(c);
   if (access.error) return { error: access.error } as const;
   const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + access.grant.subjectHash }]);
@@ -191,20 +198,28 @@ async function authorizeMaterials(c: Context<AppEnv>) {
     const current = await courseAccessContext(access.reg, access.grant, c.env);
     if (!current) return { error: refused(c, 403) } as const;
     const course = await getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId,
-      ltiVideoGrant: current.videos.map(video => video.videoId) });
+      ltiVideoGrant: [...current.videos, ...(current.managementVideos ?? [])].map(video => video.videoId) });
     if (!course) return { error: refused(c, 403) } as const;
-    return { current, course, grant: access.grant, sessionHash: access.sessionHash };
+    return { current, course, grant: access.grant, reg: access.reg, sessionHash: access.sessionHash };
   } catch { return { error: refused(c, 403) } as const; }
+}
+
+async function authorizeMaterials(c: Context<AppEnv>) {
+  const access = await authorizeCourse(c);
+  if ('error' in access) return access;
+  return access.current.videos.length ? access : { error: refused(c, 403) } as const;
 }
 
 mountLtiQa(ltiRoutes, authorizeMaterials, refused);
 mountLtiConversations(ltiRoutes, authorizeMaterials, feedbackReference);
+mountLtiManagement(ltiRoutes, authorizeCourse);
 
 ltiRoutes.post("/materials", async c => {
-  const access = await authorizeMaterials(c);
+  const access = await authorizeCourse(c);
   if ("error" in access) return access.error;
-  return c.json({ permissions: access.current.permissions,
-    videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)) });
+  return c.json({ permissions: access.current.permissions, learningAvailable: access.current.videos.length > 0,
+    videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)),
+    managementVideos: (access.current.managementVideos ?? []).filter(video => access.course.memberVideoIds.includes(video.videoId)) });
 });
 
 ltiRoutes.post("/transcript", async c => {
@@ -248,6 +263,7 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
   if (!input.success) return refused(c);
   let current;
   try { current = await courseAccessContext(reg, grant, c.env); } catch { return refused(c, 403); }
+  if (current && !current.videos.length) return refused(c, 403);
   if (input.data.conversationId && !current?.permissions.manageOwnHistory) return refused(c, 403);
   const allowed = current?.videos ?? null;
   const subjectKey = await ltiSubjectKey(grant);

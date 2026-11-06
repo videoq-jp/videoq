@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, index, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { users, videoCourses, videos } from "./modern";
+import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { externalTasks, users, videoCourses, videos } from "./modern";
 
 /** Persistent application signing identity; never expires with learner sessions. */
 export const ltiToolKeys = pgTable("lti_tool_keys", {
@@ -64,4 +64,29 @@ export const lmsResources = pgTable("lms_resources", {
   unique("lms_resources_external_key").on(table.installationId, table.externalId),
   unique("lms_resources_launch_key").on(table.installationId, table.contextId, table.resourceLinkId),
   check("lms_resources_generation_check", sql`${table.generation} > 0`),
+]);
+
+/** Idempotent teacher mutations and identifier-only audit; no draft content or credentials. */
+export const ltiMaterialOperations = pgTable('lti_material_operations', {
+  id: uuid('id').primaryKey(),
+  resourceId: uuid('resource_id').notNull(),
+  videoId: bigint('video_id', { mode: 'number' }),
+  courseId: bigint('course_id', { mode: 'number' }).notNull(),
+  sourceGeneration: bigint('source_generation', { mode: 'number' }).notNull(),
+  actorKey: varchar('actor_key', { length: 64 }).notNull(),
+  action: text('action').notNull(),
+  requestHash: varchar('request_hash', { length: 64 }).notNull(),
+  beforeRevision: varchar('before_revision', { length: 64 }).notNull(),
+  afterRevision: varchar('after_revision', { length: 64 }).notNull(),
+  externalTaskId: bigint('external_task_id', { mode: 'number' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  foreignKey({ columns: [table.resourceId], foreignColumns: [lmsResources.id], name: 'lti_material_ops_resource_fk' }).onDelete('cascade'),
+  foreignKey({ columns: [table.videoId], foreignColumns: [videos.id], name: 'lti_material_ops_video_fk' }).onDelete('set null'),
+  foreignKey({ columns: [table.courseId], foreignColumns: [videoCourses.id], name: 'lti_material_ops_course_fk' }).onDelete('cascade'),
+  foreignKey({ columns: [table.externalTaskId], foreignColumns: [externalTasks.id], name: 'lti_material_ops_task_fk' }).onDelete('set null'),
+  index('lti_material_ops_resource_created_idx').on(table.resourceId, table.createdAt),
+  index('lti_material_ops_actor_idx').on(table.actorKey, table.createdAt),
+  check('lti_material_ops_action_check', sql`${table.action} IN ('update','reindex','retry')`),
+  check('lti_material_ops_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`),
 ]);

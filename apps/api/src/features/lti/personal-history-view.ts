@@ -32,7 +32,7 @@ export function personalHistoryClientScript(locale: LtiLocale) {
   return `
 const personalCopy=${copy},personalPanel=document.getElementById('personal-history'),personalContent=document.getElementById('personal-history-content'),personalStatus=document.getElementById('personal-history-status');
 let personalAllowed=null,personalNativeOpen=false,personalBusy=false,personalError='',personalItems=[],personalHasMore=false,personalPage=0,personalDetail=null,personalOlder=false,personalLegacy=false;
-let activeConversationId=null,resumePersonalConversation=false;
+let activeConversationId=null,resumePersonalConversation=false,personalInitialized=false;
 function personalAvailability(value){
  personalAllowed=value===true;
  if(!personalAllowed){personalDetail=null;personalItems=[];personalContent.replaceChildren();if(activeConversationId){activeConversationId=null;resumePersonalConversation=false;replaceChatHistory([]);}if(personalNativeOpen){personalNativeOpen=false;document.body.classList.remove('moodle-personal-history');}}
@@ -48,8 +48,8 @@ async function personalRequest(payload){
  const data=await response.json();personalAvailability(true);return data;
 }
 async function personalRun(operation,initial=false){
- if(personalBusy||(!initial&&send.disabled))return;personalBusy=true;personalError='';const wasDisabled=send.disabled;send.disabled=true;question.disabled=true;nativeStatus();personalDraw();
- try{await operation();}catch(error){personalError=error.message||personalCopy.error;}finally{personalBusy=false;send.disabled=wasDisabled;question.disabled=wasDisabled;nativeStatus();personalDraw();}
+ if(personalBusy||(!initial&&send.disabled))return;personalBusy=true;personalError='';syncComposer();personalDraw();
+ try{await operation();}catch(error){personalError=error.message||personalCopy.error;}finally{personalBusy=false;syncComposer();personalDraw();}
 }
 async function personalList(){const data=await personalRequest({action:'list',limit:20,offset:personalPage*20});personalItems=data.items;personalHasMore=data.hasMore;personalDetail=null;}
 async function personalLoad(id,beforeTurnId){personalDetail=await personalRequest({action:'get',conversationId:id,limit:50,...(beforeTurnId?{beforeTurnId}:{})});personalOlder=!!beforeTurnId;}
@@ -58,7 +58,7 @@ function personalNew(){if(personalBusy||send.disabled||personalAllowed!==true)re
 function personalMessageInput(){return activeConversationId?{conversationId:activeConversationId,resumeConversation:resumePersonalConversation}:{};}
 function personalCommitted(){if(activeConversationId)resumePersonalConversation=true;personalDraw();}
 async function personalInit(){
- if(!features.conversations)return;personalLegacy=history.length>0;
+ if(!features.conversations||personalInitialized)return;personalInitialized=true;personalLegacy=history.length>0;
  await personalRun(async()=>{await personalList();if(personalItems.length)await personalContinue(personalItems[0].id);else{activeConversationId=crypto.randomUUID();resumePersonalConversation=false;replaceChatHistory([]);}},true);
 }
 async function personalRecent(){const response=await fetch('/api/lti/history',{method:'POST',credentials:'omit',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+token}});if(!response.ok)throw new Error(personalCopy.error);const data=await response.json();activeConversationId=null;resumePersonalConversation=false;replaceChatHistory(data.turns||[]);personalReturnToChat();}

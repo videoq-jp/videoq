@@ -89,12 +89,12 @@ def test_indexing_handoff_runs_real_task_when_queue_is_unavailable(monkeypatch):
     write = MagicMock(return_value=1)
     transition = MagicMock(return_value=True)
     monkeypatch.setattr(indexing.vector_index, "index_video_transcript", write)
-    monkeypatch.setattr(indexing, "transition_video_status", transition)
+    monkeypatch.setattr(indexing, "finish_video_indexing", transition)
 
     transcription.transcribe_video(42, job_id="transcribe-job")
 
     write.assert_called_once_with(video)
-    transition.assert_called_once_with(conn, 42, "indexing", "completed")
+    transition.assert_called_once_with(conn, video)
 
 
 @pytest.mark.parametrize("status", ["pending", "processing", "error"])
