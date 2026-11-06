@@ -11,10 +11,10 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/debian/zlib1g@1%3A1.4-0videoq1?arch=amd64&distro=debian-13.7"
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=amd64&distro=debian-13.7&epoch=1"
         },
         {
-          "@id": "pkg:deb/debian/zlib1g@1%3A1.4-0videoq1?arch=arm64&distro=debian-13.7"
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=arm64&distro=debian-13.7&epoch=1"
         }
       ],
       "status": "fixed",
@@ -26,10 +26,10 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/debian/zlib1g@1%3A1.4-0videoq1?arch=amd64&distro=debian-13.7"
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=amd64&distro=debian-13.7&epoch=1"
         },
         {
-          "@id": "pkg:deb/debian/zlib1g@1%3A1.4-0videoq1?arch=arm64&distro=debian-13.7"
+          "@id": "pkg:deb/debian/zlib1g@1.4-0videoq1?arch=arm64&distro=debian-13.7&epoch=1"
         }
       ],
       "status": "fixed",
