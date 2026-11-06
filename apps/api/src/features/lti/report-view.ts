@@ -25,8 +25,9 @@ export const reportStyles = `
 #reports-form{display:flex;gap:8px;flex-wrap:wrap;align-items:end}#reports-form label{display:flex;flex-direction:column;gap:4px;min-width:0}
 #reports-form input{font:inherit;max-width:100%;padding:6px}#reports-content table{border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed}
 #reports-content th,#reports-content td{border-bottom:1px solid #e1e5ea;text-align:left;padding:8px 3px;overflow-wrap:anywhere}
-.moodle-reports #messages,.moodle-reports .composer,.moodle-reports #course-materials,.moodle-reports #course-qa,.moodle-reports #personal-history,.moodle-reports #material-management,.moodle-reports #course-tags{display:none!important}
-.moodle-reports #course-reports{display:block;flex:1;max-height:none;border:0}.moodle-reports #course-reports>summary{display:none}
+#reports-content dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px}#reports-content dt{font-weight:600}#reports-content dd{margin:0;text-align:right}
+.reports-open #messages,.reports-open .composer,.reports-open #course-materials,.reports-open #course-qa,.reports-open #personal-history,.reports-open #material-management,.reports-open #course-tags{display:none!important}
+.reports-open #course-reports{display:block;flex:1;max-height:none;border:0}.moodle-reports #course-reports>summary{display:none}
 .moodle-qa #course-reports,.moodle-personal-history #course-reports,.moodle-management #course-reports,.moodle-tags #course-reports{display:none!important}
 `;
 
@@ -39,8 +40,8 @@ const reportsToday=new Date();reportsTo.value=reportsToday.toISOString().slice(0
 function reportsLock(){for(const el of reportsForm.elements)el.disabled=reportsBusy||reportsAllowed!==true;document.getElementById('reports-export').disabled=reportsBusy||!reportsData||reportsAllowed!==true;document.getElementById('reports-close').disabled=false;reportsPanel.setAttribute('aria-busy',String(reportsBusy));}
 function reportsAvailability(value){reportsAllowed=features.reports===true&&value===true;if(!reportsAllowed){reportsEpoch++;reportsData=null;reportsContent.replaceChildren();reportsStatus.textContent='';if(reportsOpen)reportsSetNativeOpen(false);}
  reportsPanel.hidden=nativeUi?!reportsOpen:!reportsAllowed;reportsLock();if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:reports-availability',version:1,channel,videoId:bridge.videoId,available:reportsAllowed},nativeUi.origin);}
-function reportsEnterNative(){reportsPanel.hidden=!reportsOpen;if(reportsAllowed!==null)reportsAvailability(reportsAllowed);}
-function reportsSetNativeOpen(open){reportsOpen=open===true&&reportsAllowed===true;document.body.classList.toggle('moodle-reports',reportsOpen);reportsPanel.hidden=!reportsOpen;reportsPanel.open=reportsOpen;document.getElementById('reports-close').hidden=!reportsOpen;if(reportsOpen)void reportsLoad();}
+function reportsEnterNative(){reportsPanel.hidden=!reportsOpen;document.body.classList.toggle('moodle-reports',reportsOpen);if(reportsAllowed!==null)reportsAvailability(reportsAllowed);}
+function reportsSetNativeOpen(open){reportsOpen=open===true&&reportsAllowed===true;document.body.classList.toggle('reports-open',reportsOpen);document.body.classList.toggle('moodle-reports',Boolean(nativeUi)&&reportsOpen);reportsPanel.hidden=nativeUi?!reportsOpen:reportsAllowed!==true;reportsPanel.open=reportsOpen;document.getElementById('reports-close').hidden=!reportsOpen;if(reportsOpen){reportsPanel.scrollTop=0;void reportsLoad();}}
 function reportsRender(){reportsContent.replaceChildren();if(!reportsData||reportsAllowed!==true)return;const totals=reportsData.totals;const summary=qaNode('dl');for(const key of ['questions','good','bad','none'])summary.append(qaNode('dt',reportsCopy[key]),qaNode('dd',String(totals[key])));reportsContent.append(summary);if(!reportsData.days.length){reportsContent.append(qaNode('p',reportsCopy.empty));return;}
  const table=qaNode('table'),head=qaNode('thead'),row=qaNode('tr');for(const key of ['date','questions','good','bad','none']){const th=qaNode('th',reportsCopy[key]);th.scope='col';row.append(th);}head.append(row);table.append(head);const body=qaNode('tbody');for(const day of reportsData.days){const tr=qaNode('tr');for(const key of ['date','questions','good','bad','none'])tr.append(qaNode('td',String(day[key])));body.append(tr);}table.append(body);reportsContent.append(table);}
 async function reportsLoad(){if(reportsBusy||!sessionReady||chatInFlight||reportsAllowed!==true)return false;reportsBusy=true;reportsData=null;reportsRender();reportsStatus.textContent=reportsCopy.loading;reportsLock();
@@ -54,7 +55,7 @@ async function reportsLoad(){if(reportsBusy||!sessionReady||chatInFlight||report
 reportsForm.addEventListener('submit',event=>{event.preventDefault();void reportsLoad();});
 document.getElementById('reports-export').addEventListener('click',async()=>{if(!await reportsLoad()||!reportsData)return;const lines=['date,questions,good,bad,unrated',...reportsData.days.map(row=>[row.date,row.questions,row.good,row.bad,row.none].join(','))];const url=URL.createObjectURL(new Blob([lines.join('\\n')+'\\n'],{type:'text/csv;charset=utf-8'})),link=qaNode('a');link.href=url;link.download='videoq-usage-'+reportsData.period.from+'_'+reportsData.period.to+'.csv';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);});
 document.getElementById('reports-close').addEventListener('click',()=>{reportsSetNativeOpen(false);if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:reports-close',version:1,channel,videoId:bridge.videoId},nativeUi.origin);});
-reportsPanel.addEventListener('toggle',()=>{if(reportsPanel.open&&!nativeUi&&!reportsData&&!reportsBusy)void reportsLoad();});
+reportsPanel.addEventListener('toggle',()=>{if(!nativeUi)reportsSetNativeOpen(reportsPanel.open);});
 async function reportsInit(){if(features.reports&&reportsAllowed===null)await materialRequest('list');}
 `;
 }

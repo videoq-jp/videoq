@@ -37,6 +37,8 @@ tests('Moodle aggregate report UI and native transport', () => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } }), service = await fixture(page);
     await page.goto('https://api.example/api/lti/launch');
     await page.locator('#course-reports summary').click(); await page.locator('#reports-content dd').first().waitFor();
+    expect(await page.locator('body').getAttribute('class')).toContain('reports-open');
+    expect(await page.locator('.composer').isHidden()).toBe(true);
     await page.locator('#reports-from').fill('2026-11-01'); await page.locator('#reports-to').fill('2026-11-02');
     await page.locator('#reports-form button[type=submit]').click();
     await page.locator('#reports-content tbody td').first().filter({ hasText: '2026-11-01' }).waitFor();
@@ -49,6 +51,11 @@ tests('Moodle aggregate report UI and native transport', () => {
     expect(file.suggestedFilename()).toBe('videoq-usage-2026-11-01_2026-11-02.csv');
     expect(await page.locator('body').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     if (process.env.LTI_BROWSER_ARTIFACT_DIR) await page.screenshot({ path: join(process.env.LTI_BROWSER_ARTIFACT_DIR, 'reports-teacher-mobile.png'), fullPage: true });
+    await page.locator('#reports-close').click();
+    expect((await page.locator('body').getAttribute('class')) ?? '').not.toContain('reports-open');
+    expect(await page.locator('.composer').isVisible()).toBe(true);
+    expect(await page.locator('#course-reports').isVisible()).toBe(true);
+    expect(await page.locator('#course-reports').getAttribute('open')).toBeNull();
     expect(service.errors).toEqual([]); await page.close();
   });
   it('clears previous counts on revocation and on malformed responses without rendering provider content', async () => {

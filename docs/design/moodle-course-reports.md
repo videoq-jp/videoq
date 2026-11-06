@@ -50,6 +50,10 @@ Read receipts need no mutation replay barrier. Existing retention monitoring and
 backup/provider/operator privacy requirements still apply; a hashed identifier
 is not a legal anonymity guarantee.
 
+Both standalone course entries and native report panels use the frame's available
+space while open, with a return-to-questions control. Other assistant panels are
+retained and become visible again when the report closes. Summary counts use a
+compact label/value grid so mobile viewers do not need to scroll past other tools.
 The UI uses text nodes and clears previous results when loading or access is
 revoked. Epoch invalidation discards late revoked responses. CSV reloads with
 fresh authorization, exporting fixed date/count columns only. Native Moodle uses
