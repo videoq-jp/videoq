@@ -31,8 +31,9 @@ and absence of the SQLite CLI. The build compiles only `sqlite3.c`, never
 `shell.c`. The shell's `.recover` implementation affected by CVE-2026-119586
 is therefore absent.
 
-`sqlite.openvex.json` records the upstream fix for CVE-2026-119373 (released in
-3.54.0) and the absent CLI code for CVE-2026-119586. It matches only the locally
+`sqlite.openvex.json` records upstream fixes for CVE-2026-119373,
+CVE-2026-119374 and CVE-2026-119379 (released in 3.54.0), and the absent CLI
+code for CVE-2026-119586. It matches only the locally
 built package version on Debian 13.7 amd64/arm64. Other package versions and
 unknown vulnerabilities continue to fail. CI applies `sqlite-trivy.yaml` only
 to the CPU image and retains its JSON report, including assessed findings,
