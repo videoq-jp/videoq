@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -80,7 +81,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     beforeAll(async () => {
       await pool.query("INSERT INTO videos VALUES(10,'owner'),(11,'owner'),(20,'owner'); INSERT INTO video_course_members VALUES(10,1,10,0),(11,1,11,1),(20,2,20,0)");
     });
-    afterAll(async () => { await pool.query('DELETE FROM video_course_members WHERE video_id IN (10,11,20); DELETE FROM videos'); });
+    nativeCourseAuthorityFixture(() => env);
+  afterAll(async () => { await pool.query('DELETE FROM video_course_members WHERE video_id IN (10,11,20); DELETE FROM videos'); });
     const persist = (key = 'a') => async (answer: RagResult, db: Parameters<typeof createChatLogWithDb>[0]) => {
       const result = await createChatLogWithDb(db, { userId: 'owner', courseId: 1, question: answer.queryText,
         answer: answer.answer, retrievedContexts: [], isShared: true, ltiSubject: personal(key).ltiSubject });

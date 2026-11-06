@@ -474,6 +474,20 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await pool.query("SELECT used_upload_bytes::int FROM users WHERE id='account-a'")).rows[0].used_upload_bytes).toBe(3);
   });
 
+  it('marks source authority on creation and repairs legacy flags on an unchanged generation', async () => {
+    const initial = await syncLmsResource(env, grant, '10', manifest());
+    expect((await pool.query('SELECT managed_by_lms FROM videos WHERE id=$1', [initial.videoId])).rows[0].managed_by_lms).toBe(true);
+    expect((await pool.query('SELECT managed_by_lms,native_access_disabled FROM video_courses WHERE id=$1', [initial.courseId])).rows[0])
+      .toEqual({ managed_by_lms: true, native_access_disabled: true });
+    await pool.query('UPDATE videos SET managed_by_lms=false WHERE id=$1', [initial.videoId]);
+    await pool.query('UPDATE video_courses SET managed_by_lms=false,native_access_disabled=false WHERE id=$1', [initial.courseId]);
+    const repaired = await syncLmsResource(env, grant, '10', manifest());
+    expect(repaired.videoId).toBe(initial.videoId);
+    expect((await pool.query('SELECT managed_by_lms FROM videos WHERE id=$1', [initial.videoId])).rows[0].managed_by_lms).toBe(true);
+    expect((await pool.query('SELECT managed_by_lms,native_access_disabled FROM video_courses WHERE id=$1', [initial.courseId])).rows[0])
+      .toEqual({ managed_by_lms: true, native_access_disabled: true });
+  });
+
   it("revokes an obsolete lesson even when the replacement exceeds storage quota", async () => {
     await syncLmsResource(env, grant, "10", manifest());
     await pool.query("UPDATE videos SET status='completed'");

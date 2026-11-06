@@ -6,11 +6,11 @@ import {
   users,
   videoCourses,
   videoCourseMembers,
-  videoCourseMemberships,
 } from "../db/schema";
 import { toUtcIso } from "../shared/datetime";
 import type { Bindings } from "../types/bindings";
 import { checkedLtiSubject, type LtiDataSubject } from '../features/lti/identity';
+import { nativeCourseExternalAccess, nativeCourseReadableBy } from './course-authority';
 
 type ChatQuestionAuthor = {
   user_id: string;
@@ -78,18 +78,9 @@ export async function getCourseWithMembers(
           AND ${users.isActive} = true AND ${users.deactivatedAt} IS NULL
           AND (${users.banned} IS NOT TRUE OR ${users.banExpires} <= now()))`);
     } else if (params.shareToken) {
-      conditions.push(eq(videoCourses.shareSlug, params.shareToken));
+      conditions.push(eq(videoCourses.shareSlug, params.shareToken), nativeCourseExternalAccess());
     } else if (params.userId) {
-      conditions.push(
-        or(
-          eq(videoCourses.userId, params.userId),
-          sql`EXISTS (
-            SELECT 1 FROM ${videoCourseMemberships}
-             WHERE ${videoCourseMemberships.courseId} = ${videoCourses.id}
-               AND ${videoCourseMemberships.userId} = ${params.userId}
-          )`,
-        )!,
-      );
+      conditions.push(nativeCourseReadableBy(params.userId));
     }
 
     const courses = await db
@@ -326,8 +317,10 @@ export async function updateChatLogFeedback(
   const permission = opts.ltiCourseGrant !== undefined
     ? sql`log.course_id = ${opts.ltiCourseGrant} AND log.is_shared_origin = true`
     : opts.shareSlug
-    ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true`
-    : sql`course.user_id = ${opts.userId ?? null} OR log.user_id = ${opts.userId ?? null}`;
+    ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true
+        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)}`
+    : sql`course.user_id = ${opts.userId ?? null} OR (log.user_id = ${opts.userId ?? null}
+        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)})`;
   return withDb(env, async (db) => {
     const result = await db.execute<{ allowed: boolean; id: string | null; feedback: string | null }>(sql`
       WITH target AS (
@@ -362,7 +355,7 @@ export async function shareSlugExists(
     const rows = await db
       .select({ id: videoCourses.id })
       .from(videoCourses)
-      .where(eq(videoCourses.shareSlug, shareSlug))
+      .where(and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess()))
       .limit(1);
     return rows.length > 0;
   });

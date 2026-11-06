@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import { visualSchema } from "./helpers/visual-schema";
 import pg from "pg";
 import { readFileSync } from "node:fs";
@@ -78,6 +79,7 @@ describeWithPostgres("course reads on PostgreSQL", () => {
     env = { HYPERDRIVE: { connectionString: url.toString() } } as Bindings;
   });
   afterEach(() => vi.restoreAllMocks());
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try { await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`); }
     finally { await admin.end(); }

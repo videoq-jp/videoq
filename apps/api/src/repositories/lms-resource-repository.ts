@@ -58,6 +58,12 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         (manifest.generation === previous.generation && manifestHash !== previous.manifestHash))) {
       throw new LmsSyncError(409, "STALE_GENERATION");
     }
+    // Idempotent reconciliation also repairs provenance left by older writers.
+    if (previous?.videoId) await tx.update(videos).set({ managedByLms: true }).where(and(
+      eq(videos.id, previous.videoId), eq(videos.userId, ownerUserId), eq(videos.managedByLms, false)));
+    if (previous?.courseId) await tx.update(videoCourses).set({ managedByLms: true, nativeAccessDisabled: true }).where(and(
+      eq(videoCourses.id, previous.courseId), eq(videoCourses.userId, ownerUserId),
+      sql`(${videoCourses.managedByLms}=false OR ${videoCourses.nativeAccessDisabled}=false)`));
     if (previous?.generation === manifest.generation && (!manifest.enabled || previous.videoId !== null)) return previous;
     const [previousVideo] = previous?.videoId ? await tx.select({ status: videos.status }).from(videos).where(eq(videos.id, previous.videoId)) : [];
     const keepVideo = !manifest.deleted && previous?.videoId != null && previousVideo?.status !== "error"
@@ -80,6 +86,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
           syncError = "monthlyUploadExceeded" in reservation ? "MONTHLY_UPLOAD_LIMIT_EXCEEDED" : "STORAGE_LIMIT_EXCEEDED";
         } else {
           const [video] = await tx.insert(videos).values({
+            managedByLms: true,
             userId: ownerUserId, title: manifest.title, description: "", transcript: "", errorMessage: "",
             file: buildPendingUploadFileKey(ownerUserId, file.size, fileExtension(file.filename)),
             status: "uploading", sourceType: "uploaded", sourceUrl: "", youtubeVideoId: "",
@@ -88,19 +95,20 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
           videoId = video.id;
         }
       } else {
-        await tx.update(videos).set({ title: manifest.title }).where(eq(videos.id, videoId!));
+        await tx.update(videos).set({ title: manifest.title, managedByLms: true }).where(eq(videos.id, videoId!));
       }
       if (videoId !== null) {
         if (!courseId) {
           const [course] = await tx.insert(videoCourses).values({
-            managedByLms: true,
+            managedByLms: true, nativeAccessDisabled: true,
             userId: ownerUserId, name: manifest.courseTitle ?? "Moodle " + manifest.contextId, description: "", displayOrder: 0,
             createdAt: sql`now()`, updatedAt: sql`now()`,
           }).returning({ id: videoCourses.id });
           courseId = course.id;
           await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id, contextId: manifest.contextId, courseId });
-        } else if (manifest.courseTitle) {
-          await tx.update(videoCourses).set({ name: manifest.courseTitle, updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
+        } else {
+          await tx.update(videoCourses).set({ managedByLms: true, nativeAccessDisabled: true,
+            ...(manifest.courseTitle ? { name: manifest.courseTitle } : {}), updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
         }
         await tx.insert(videoCourseMembers).values({ courseId, videoId, order: 0, addedAt: sql`now()` });
       }

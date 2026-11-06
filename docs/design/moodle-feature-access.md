@@ -28,8 +28,8 @@ Inventory source: `packages/trpc/src/routers/{videos,courses,qa,chat,tags,accoun
 | Video title, description and transcript edit; reindex; delete | Dedicated course content capability; independently verified owner where changes affect content outside that course | Not exposed to LTI. Resolve Moodle metadata/synchronization conflicts and deletion propagation; preserve backend validation/reindex jobs |
 | Course create/update/delete/order and video/tag membership/order | Moodle course-edit authority for Moodle-managed objects; verified owner for native VideoQ objects | Moodle course synchronization exists; management parity and conflict handling remain open |
 | Tags and video filtering | Read within current resources; edit only with course content capability | Not exposed to LTI; prevent access to owner-wide tag counts or other courses' videos |
-| Course participants, invitations, accept/decline/revoke/remove/leave | Moodle enrolment management for managed courses; verified owner for independent VideoQ courses | Keep Moodle enrolment authoritative; implement appropriate navigation/equivalents and test access revocation |
-| Public shares and share deletion | Explicit sharing capability and owner consent; never a substitute for Moodle activity checks | Not exposed to LTI; choose Moodle-safe sharing behavior before enabling |
+| Course participants, invitations, accept/decline/revoke/remove/leave | Moodle enrolment management for managed courses; verified owner for independent VideoQ courses | Native membership/invitation bypass closed in the authority branch, including old token replays and queued delivery; Moodle-native enrolment navigation/equivalents and live revocation checks remain |
+| Public shares and share deletion | Explicit sharing capability and owner consent; never a substitute for Moodle activity checks | Native shares cannot open managed materials/history; old links are denied and owner revocation remains available. Moodle-safe sharing/navigation still needs implementation |
 | Chat history management and analytics | Own-history controls for learners; dedicated reporting capability for scoped aggregate reports; explicit privacy authority for others' raw messages | Not exposed to LTI; define reporting minimization, audit and retention |
 | Account profile, connected apps, integration/search API keys | Independently authenticated VideoQ account owner | Existing VideoQ account UI only; add owner handoff/navigation from Moodle without exposing credentials through postMessage |
 | Plans, checkout and Stripe customer portal | Independently authenticated VideoQ billing authority | Existing VideoQ billing only; add owner navigation, preserve existing Stripe billing, await Marketplace classification for listing changes |
@@ -62,3 +62,7 @@ Teacher management, remaining Q&A entry/lifecycle work, owner handoff and privac
 
 See `moodle-personal-conversations.md` for the personal-conversation increment,
 including resource restrictions, deletion, retention and external privacy limits.
+
+See `moodle-course-authority.md` for persistent source provenance, native
+membership/share/media safeguards, recoverable historical backfill and the
+coordinated release requirement before teacher management is enabled.

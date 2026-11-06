@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { visualSchema } from "./helpers/visual-schema";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,6 +74,7 @@ const operations = [
     await admin.query(visualSchema);
   });
   afterEach(() => vi.restoreAllMocks());
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try { await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`); }
     finally { await admin.end(); }

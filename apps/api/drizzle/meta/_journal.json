@@ -372,6 +372,20 @@
       "when": 1793946506291,
       "tag": "0052_lti_personal_conversations",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793950841770,
+      "tag": "0053_lms_video_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793950842220,
+      "tag": "0054_backfill_lms_video_authority",
+      "breakpoints": true
     }
   ]
 }

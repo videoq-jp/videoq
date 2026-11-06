@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { updateUserTag } from "../src/features/tags/service";
@@ -59,6 +60,7 @@ describeWithPostgres("database access and authorization on PostgreSQL", () => {
     await admin.query("UPDATE tags SET name = 'Original', color = '#legacy' WHERE id = 1");
     await admin.query("INSERT INTO video_tags VALUES (1, 10, 1) ON CONFLICT (id) DO NOTHING");
   });
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try { await admin.query(`DROP SCHEMA IF EXISTS ${quotedSchema} CASCADE`); }
     finally { await admin.end(); }

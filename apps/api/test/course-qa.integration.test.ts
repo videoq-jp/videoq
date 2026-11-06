@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -34,6 +35,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       await pool.query(sql);
     }
   });
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => { await pool?.end(); if (admin) { await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`); await admin.end(); } });
   beforeEach(async () => {
     await pool.query(`TRUNCATE course_questions,video_course_members,video_course_memberships,video_courses,videos,users CASCADE;

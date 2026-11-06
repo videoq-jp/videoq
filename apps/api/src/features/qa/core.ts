@@ -31,8 +31,8 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
   return withClient(env, async client => {
     await client.query("BEGIN");
     try {
-      const course = (await client.query<{ user_id: string; share_slug: string | null; managed_by_lms: boolean }>(
-        "SELECT user_id,share_slug,managed_by_lms FROM video_courses WHERE id=$1 FOR SHARE", [access.courseId])).rows[0];
+      const course = (await client.query<{ user_id: string; share_slug: string | null; managed_by_lms: boolean; native_access_disabled: boolean }>(
+        "SELECT user_id,share_slug,managed_by_lms,native_access_disabled FROM video_courses WHERE id=$1 FOR SHARE", [access.courseId])).rows[0];
       if (!course) throw apiNotFound("Course not found");
       let actor: Actor;
       if (typeof principal === "object" && principal !== null) {
@@ -51,7 +51,11 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
         // LMS-managed forums use LMS enrolment/visibility. A native invitation
         // or public share does not grant another learner access to this forum.
         // The independently authenticated data owner retains operator access.
-        if (course.managed_by_lms && !owner) throw apiNotFound("Course not found");
+        if (!owner || access.shareSlug !== undefined) {
+          const protectedVideo = await client.query(`SELECT 1 FROM video_course_members m
+            JOIN videos v ON v.id=m.video_id WHERE m.course_id=$1 AND v.managed_by_lms=true LIMIT 1`, [access.courseId]);
+          if (course.managed_by_lms || course.native_access_disabled || protectedVideo.rowCount) throw apiNotFound("Course not found");
+        }
         if (access.shareSlug !== undefined) {
           if (!course.share_slug || course.share_slug.toLowerCase() !== access.shareSlug.toLowerCase()) throw apiNotFound("Course not found");
         } else if (!owner && (!principal || !(await client.query(
