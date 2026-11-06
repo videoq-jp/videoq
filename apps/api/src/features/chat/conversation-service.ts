@@ -73,7 +73,7 @@ export async function deleteConversation(env: Bindings, scope: ConversationScope
   return withClient(env, async client => {
     await client.query('BEGIN');
     try {
-      await lockLtiConversationCourse(client, scope);
+      await lockLtiConversationCourse(client, scope, true);
       const row = await client.query<{ busy: boolean }>(`SELECT (lease_id IS NOT NULL AND leased_until > now()) AS busy
         FROM chat_conversations WHERE thread_id = $1 FOR UPDATE`, [threadId]);
       if (row.rows[0]?.busy) throw apiConflict('Wait for the current answer to finish before deleting this conversation.', 'CONVERSATION_BUSY');

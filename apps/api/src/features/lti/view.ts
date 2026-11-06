@@ -193,7 +193,7 @@ try {
  nativeRequestId=null;
  if(session.playback&&window.parent!==window){bridge=session.playback;readyDeadline=performance.now()+30000;announceReady();}
  sessionReady=true;
- if(learningEnabled)await personalInit();
+ await personalInit();
  await managementInit();
  await tagsInit();
  status.textContent='';syncComposer();

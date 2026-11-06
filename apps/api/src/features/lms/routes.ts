@@ -55,7 +55,7 @@ async function resourceResponse(c: Context<AppEnv>, grant: { id: string; ownerUs
   }
   return {
     generation: resource.generation,
-    status: !resource.enabled ? "disabled" : resource.syncError ? "blocked" : video?.status ?? "awaiting_upload",
+    status: !resource.enabled ? "disabled" : resource.syncError ? "blocked" : resource.kind === 'course' ? 'completed' : video?.status ?? "awaiting_upload",
     error: resource.syncError,
     upload: uploadUrl ? { url: uploadUrl, method: "PUT", direct: isS3Storage(c.env), contentType: resource.contentType, size: resource.fileSize } : null,
     confirmUrl: base + "/confirm",
@@ -76,10 +76,14 @@ lmsRoutes.get("/resources/:externalId", async c => {
 lmsRoutes.put("/resources/:externalId", bodyLimit({ maxSize: 32 * 1024 }), async c => {
   const grant = await installation(c);
   const input = resourceManifestSchema.safeParse(await c.req.json().catch(() => null));
-  if (!input.success || !/^[1-9][0-9]{0,17}$/.test(c.req.param("externalId"))) throw new LmsSyncError(400, "INVALID_MANIFEST");
+  if (!input.success || !(input.data.kind === 'course'
+    ? /^[1-9][0-9]{0,17}$/.test(input.data.contextId) && c.req.param('externalId') === 'course_' + input.data.contextId
+    : /^[1-9][0-9]{0,17}$/.test(c.req.param('externalId')))) throw new LmsSyncError(400, "INVALID_MANIFEST");
   await syncLmsResource(c.env, grant, c.req.param("externalId"), input.data);
-  await armMaintenance(c.env, Date.now());
-  await armMaintenance(c.env, Date.now() + ABANDONED_UPLOAD_MS);
+  if (input.data.kind !== 'course') {
+    await armMaintenance(c.env, Date.now());
+    await armMaintenance(c.env, Date.now() + ABANDONED_UPLOAD_MS);
+  }
   return c.json(await resourceResponse(c, grant));
 });
 

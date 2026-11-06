@@ -48,18 +48,18 @@ async function personalRequest(payload){
  const data=await response.json();personalAvailability(true);return data;
 }
 async function personalRun(operation,initial=false){
- if(personalBusy||(!initial&&send.disabled))return;personalBusy=true;personalError='';syncComposer();personalDraw();
+ if(personalBusy||(!initial&&(!sessionReady||chatInFlight)))return;personalBusy=true;personalError='';syncComposer();personalDraw();
  try{await operation();}catch(error){personalError=error.message||personalCopy.error;}finally{personalBusy=false;syncComposer();personalDraw();}
 }
 async function personalList(){const data=await personalRequest({action:'list',limit:20,offset:personalPage*20});personalItems=data.items;personalHasMore=data.hasMore;personalDetail=null;}
 async function personalLoad(id,beforeTurnId){personalDetail=await personalRequest({action:'get',conversationId:id,limit:50,...(beforeTurnId?{beforeTurnId}:{})});personalOlder=!!beforeTurnId;}
-async function personalContinue(id){const detail=await personalRequest({action:'get',conversationId:id,limit:50});activeConversationId=id;resumePersonalConversation=true;replaceChatHistory(detail.turns);personalReturnToChat();}
+async function personalContinue(id){if(!learningEnabled)return;const detail=await personalRequest({action:'get',conversationId:id,limit:50});activeConversationId=id;resumePersonalConversation=true;replaceChatHistory(detail.turns);personalReturnToChat();}
 function personalNew(){if(personalBusy||send.disabled||personalAllowed!==true)return;activeConversationId=crypto.randomUUID();resumePersonalConversation=false;replaceChatHistory([]);personalDetail=null;personalReturnToChat();personalDraw();}
 function personalMessageInput(){return activeConversationId?{conversationId:activeConversationId,resumeConversation:resumePersonalConversation}:{};}
 function personalCommitted(){if(activeConversationId)resumePersonalConversation=true;personalDraw();}
 async function personalInit(){
  if(!features.conversations||personalInitialized)return;personalInitialized=true;personalLegacy=history.length>0;
- await personalRun(async()=>{await personalList();if(personalItems.length)await personalContinue(personalItems[0].id);else{activeConversationId=crypto.randomUUID();resumePersonalConversation=false;replaceChatHistory([]);}},true);
+ await personalRun(async()=>{await personalList();if(personalItems.length&&learningEnabled)await personalContinue(personalItems[0].id);else{activeConversationId=crypto.randomUUID();resumePersonalConversation=false;replaceChatHistory([]);}},true);
 }
 async function personalRecent(){const response=await fetch('/api/lti/history',{method:'POST',credentials:'omit',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+token}});if(!response.ok)throw new Error(personalCopy.error);const data=await response.json();activeConversationId=null;resumePersonalConversation=false;replaceChatHistory(data.turns||[]);personalReturnToChat();}
 async function personalDelete(id){
@@ -74,18 +74,18 @@ async function personalExport(id){
  const parts=[JSON.stringify({type:'conversation',...metadata})+'\\n'];for(const page of pages)for(const turn of page)parts.push(JSON.stringify({type:'turn',...turn})+'\\n');
  const blob=new Blob(parts,{type:'application/x-ndjson'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='videoq-conversation-'+id+'.ndjson';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-function personalButton(label,operation){return qaButton(label,()=>personalRun(operation),{disabled:personalBusy||send.disabled});}
+function personalButton(label,operation,requiresLearning=false){return qaButton(label,()=>personalRun(operation),{disabled:personalBusy||!sessionReady||chatInFlight||(requiresLearning&&!learningEnabled)});}
 function personalDraw(){
  personalStatus.dataset.error=String(!!personalError);personalStatus.textContent=personalBusy?personalCopy.loading:personalError;personalPanel.setAttribute('aria-busy',String(personalBusy));personalContent.replaceChildren();
  if(personalAllowed!==true){if(!personalBusy&&personalAllowed!==false)personalContent.append(personalButton(personalCopy.refresh,personalList));return;}
  const actions=qaNode('div','','qa-row');actions.append(qaButton(personalCopy.new,personalNew,{disabled:personalBusy||send.disabled}),personalButton(personalCopy.refresh,personalList));if(personalLegacy)actions.append(personalButton(personalCopy.recent,personalRecent));personalContent.append(actions);
  if(personalDetail){
-  const detail=personalDetail,row=qaNode('div','','qa-row');personalContent.append(qaNode('h2',detail.title));row.append(personalButton(personalCopy.back,personalList),personalButton(personalCopy.continue,()=>personalContinue(detail.id)),personalButton(personalCopy.export,()=>personalExport(detail.id)),personalButton(personalCopy.delete,()=>personalDelete(detail.id)));personalContent.append(row);
+  const detail=personalDetail,row=qaNode('div','','qa-row');personalContent.append(qaNode('h2',detail.title));row.append(personalButton(personalCopy.back,personalList),personalButton(personalCopy.continue,()=>personalContinue(detail.id),true),personalButton(personalCopy.export,()=>personalExport(detail.id)),personalButton(personalCopy.delete,()=>personalDelete(detail.id)));personalContent.append(row);
   for(const turn of detail.turns){const card=qaNode('article','','qa-card');card.append(qaNode('h3',personalCopy.question),qaNode('p',turn.question,'personal-turn'),qaNode('h3',personalCopy.answer),qaNode('p',turn.answer.segments.map(segment=>segment.text).join(''),'personal-turn'));for(const source of turn.answer.sources)card.append(citation(source));personalContent.append(card);}
   const paging=qaNode('div','','qa-row');if(detail.hasMore&&detail.turns.length)paging.append(personalButton(personalCopy.older,()=>personalLoad(detail.id,detail.turns[0].id)));if(personalOlder)paging.append(personalButton(personalCopy.latest,()=>personalLoad(detail.id)));personalContent.append(paging);return;
  }
- for(const item of personalItems){const card=qaNode('article','','qa-card'),row=qaNode('div','','qa-row');card.append(qaNode('h2',item.title));const time=qaNode('time',new Date(item.updatedAt).toLocaleString(document.documentElement.lang),'qa-meta');time.dateTime=item.updatedAt;card.append(time);row.append(personalButton(personalCopy.open,()=>personalLoad(item.id)),personalButton(personalCopy.continue,()=>personalContinue(item.id)),personalButton(personalCopy.export,()=>personalExport(item.id)),personalButton(personalCopy.delete,()=>personalDelete(item.id)));card.append(row);personalContent.append(card);}
- if(!personalItems.length)personalContent.append(qaNode('p',personalCopy.empty));const paging=qaNode('div','','qa-row');paging.append(qaButton(personalCopy.previous,()=>personalRun(async()=>{personalPage--;await personalList();}),{disabled:personalBusy||send.disabled||personalPage===0}),qaNode('span',String(personalPage+1)),qaButton(personalCopy.next,()=>personalRun(async()=>{personalPage++;await personalList();}),{disabled:personalBusy||send.disabled||!personalHasMore}));personalContent.append(paging);
+ for(const item of personalItems){const card=qaNode('article','','qa-card'),row=qaNode('div','','qa-row');card.append(qaNode('h2',item.title));const time=qaNode('time',new Date(item.updatedAt).toLocaleString(document.documentElement.lang),'qa-meta');time.dateTime=item.updatedAt;card.append(time);row.append(personalButton(personalCopy.open,()=>personalLoad(item.id)),personalButton(personalCopy.continue,()=>personalContinue(item.id),true),personalButton(personalCopy.export,()=>personalExport(item.id)),personalButton(personalCopy.delete,()=>personalDelete(item.id)));card.append(row);personalContent.append(card);}
+ if(!personalItems.length)personalContent.append(qaNode('p',personalCopy.empty));const paging=qaNode('div','','qa-row');paging.append(qaButton(personalCopy.previous,()=>personalRun(async()=>{personalPage--;await personalList();}),{disabled:personalBusy||!sessionReady||chatInFlight||personalPage===0}),qaNode('span',String(personalPage+1)),qaButton(personalCopy.next,()=>personalRun(async()=>{personalPage++;await personalList();}),{disabled:personalBusy||!sessionReady||chatInFlight||!personalHasMore}));personalContent.append(paging);
 }
 personalPanel.addEventListener('toggle',()=>{if(personalPanel.open&&!nativeUi)void personalRun(personalList);});
 `;

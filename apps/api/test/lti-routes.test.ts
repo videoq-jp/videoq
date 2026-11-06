@@ -316,6 +316,51 @@ describe("LTI transport boundaries", () => {
   });
 });
 
+describe('empty Moodle course entry authorization', () => {
+  async function entrySession(ready = false) {
+    const entry = {deploymentId:'dep',contextId:'ctx',resourceLinkId:'entry',courseId:12,generation:1,kind:'course' as const,learningAvailable:false};
+    const dbReg = {...registration,id:'db:school',courseAccess:'moodle',resources:[entry,...(ready ? [resource] : [])]};
+    const bindings = {LTI_CONFIG:JSON.stringify({...config,registrations:[dbReg]})} as Bindings;
+    records.get(state)!.payload.registrationId=dbReg.id;
+    vi.mocked(verifyLaunch).mockResolvedValue({deploymentId:'dep',contextId:'ctx',resourceLinkId:'entry',courseId:12,
+      resourceGeneration:1,subject:'learner',roles:['Learner'],locale:'en',accessProof:{token:'proof',subject:'learner'}});
+    vi.mocked(getCourseWithMembers).mockResolvedValue({id:12,userId:'owner',memberVideoIds:ready?[1]:[]});
+    let generation=1,qa=true,history=true;
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>Response.json({contextId:'ctx',resourceLinkId:'entry',
+      courseEntry:{generation},permissions:{viewQa:qa,postQa:qa,manageOwnHistory:history},
+      resources:ready?[{resourceLinkId:'res',lesson:'lesson',title:'Lesson'}]:[]}));
+    const response=await request('session',{state,browserSecret:secret,id_token:'signed-token'},undefined,'https://api.example',bindings);
+    expect(response.status).toBe(200);
+    const session=await response.json<{token:string;learningAvailable:boolean;playback?:{videoId:number}}>();
+    return {session,fetch,run:(path:string,data:unknown)=>request(path,data,session.token,'https://api.example',bindings),
+      revokeQa:()=>{qa=false;},revokeHistory:()=>{history=false;},stale:()=>{generation=2;}};
+  }
+  it('has no fake playback, permits coursewide Q&A and own history, and keeps chat/transcripts unavailable',async()=>{
+    const fixture=await entrySession();
+    try{
+      expect(fixture.session.learningAvailable).toBe(false);expect(fixture.session.playback).toBeUndefined();
+      expect((await fixture.run('qa',{action:'list'})).status).toBe(200);
+      expect(vi.mocked(listQuestions).mock.lastCall?.[1]).toMatchObject({kind:'lti',videoIds:[],courseId:12});
+      expect((await fixture.run('conversations',{action:'list'})).status).toBe(200);
+      expect(vi.mocked(listConversations).mock.lastCall?.[1]).toMatchObject({actorUserId:null,ltiSubject:{resourceVideoIds:[]}});
+      expect((await fixture.run('messages',{messages:[{role:'user',content:'No lesson'}]})).status).toBe(403);
+      expect((await fixture.run('transcript',{videoId:1})).status).toBe(403);
+      expect(sendChatMessage).not.toHaveBeenCalled();expect(getVideoEvidence).not.toHaveBeenCalled();
+      fixture.revokeQa();expect((await fixture.run('qa',{action:'list'})).status).toBe(403);
+      fixture.revokeHistory();expect((await fixture.run('conversations',{action:'list'})).status).toBe(403);
+      fixture.stale();expect((await fixture.run('materials',{})).status).toBe(403);
+    }finally{fixture.fetch.mockRestore();}
+  });
+  it('uses only a real currently readable video for playback and still requires the current entry proof',async()=>{
+    const fixture=await entrySession(true);
+    try{
+      expect(fixture.session.learningAvailable).toBe(true);expect(fixture.session.playback?.videoId).toBe(1);
+      fixture.stale();expect((await fixture.run('qa',{action:'list'})).status).toBe(403);
+      expect(listQuestions).not.toHaveBeenCalled();
+    }finally{fixture.fetch.mockRestore();}
+  });
+});
+
 describe("Moodle course permission checks", () => {
   const proof = { token: "aa." + "b".repeat(64), subject: "learner" };
   const bindings = { ...env, LTI_CONFIG: JSON.stringify({ ...config, registrations: [{ ...registration, courseAccess: "moodle", resources: [resource,

@@ -18,6 +18,7 @@ import { getLmsResource, syncLmsResource } from "../src/repositories/lms-resourc
 import { resolvedLtiConfig } from "../src/features/lti/registrations";
 import { resourceManifestSchema } from "../src/features/lms/resource";
 import { lmsRoutes } from "../src/features/lms/routes";
+import { sweepMaterials } from '../src/features/lti/materials-sync';
 import { putCredential, recordScopeVideos, readCredential } from "../src/features/lti/store";
 import { getCourseWithMembers, updateChatLogFeedback } from "../src/repositories/chat-repository";
 import { reserveAiAnswerUsage } from "../src/repositories/quota-repository";
@@ -65,6 +66,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     await pool.query(managed.replaceAll('"public".', `"${schema}".`));
     const courseTags = await readFile(new URL('../drizzle/0056_lti_course_tags.sql', import.meta.url), 'utf8');
     await pool.query(courseTags.replaceAll('"public".', `"${schema}".`));
+    const courseEntries = await readFile(new URL('../drizzle/0059_lms_course_entries.sql', import.meta.url), 'utf8');
+    await pool.query(courseEntries.replaceAll('"public".', `"${schema}".`));
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
     env = { RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),
@@ -108,7 +111,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect",
-      managementUrl: 'https://learning.example:9443/moodle/manage' });
+      managementUrl: 'https://learning.example:9443/moodle/manage', courseEntries: true });
     expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, LTI_CONFIG: "false" })).status).toBe(404);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
@@ -493,6 +496,97 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await pool.query("SELECT used_storage_bytes::int, used_upload_bytes::int FROM users WHERE id='account-a'")).rows[0])
       .toEqual({ used_storage_bytes: 3, used_upload_bytes: 3 });
     expect(await getLmsResource(env, { ...grant, ownerUserId: "account-b" }, "10")).toBeNull();
+  });
+
+  const courseManifest = (generation = 1, overrides = {}) => resourceManifestSchema.parse({
+    kind: 'course', generation, contextId: '42', resourceLinkId: 'course-lti', enabled: true,
+    title: 'VideoQ', courseTitle: 'Empty Moodle course', ...overrides,
+  });
+  it('creates one protected empty course without media, usage or jobs under concurrent retries', async () => {
+    const resources = await Promise.all(Array.from({ length: 10 }, () => syncLmsResource(env, grant, 'course_42', courseManifest())));
+    expect(new Set(resources.map(row => row.courseId)).size).toBe(1);
+    expect(resources[0]).toMatchObject({ kind: 'course', videoId: null, contentHash: null, contentType: null, fileSize: null });
+    expect((await pool.query('SELECT name,managed_by_lms,native_access_disabled FROM video_courses')).rows)
+      .toEqual([{ name: 'Empty Moodle course', managed_by_lms: true, native_access_disabled: true }]);
+    for (const table of ['videos', 'video_course_members', 'external_tasks'])
+      expect((await pool.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0].n).toBe(0);
+    expect((await pool.query("SELECT used_storage_bytes::int,used_upload_bytes::int,used_ai_answers FROM users WHERE id='account-a'")).rows[0])
+      .toEqual({ used_storage_bytes: 0, used_upload_bytes: 0, used_ai_answers: 0 });
+    const binding = (await resolvedLtiConfig(env))!.registrations[0].resources[0];
+    expect(binding).toEqual({ deploymentId: registration.deploymentId, contextId: '42', resourceLinkId: 'course-lti',
+      courseId: resources[0].courseId, kind: 'course', generation: 1, learningAvailable: false });
+    expect((await getCourseWithMembers(env, { courseId: resources[0].courseId!, ltiCourseGrant: resources[0].courseId!, ltiVideoGrant: [] }))?.memberVideoIds).toEqual([]);
+  });
+  it('accepts the canonical course endpoint, denies file upload/confirm and rejects identity or file confusion', async () => {
+    const result = await request('resources/course_42', 'PUT', courseManifest());
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ generation: 1, status: 'completed', upload: null, error: null });
+    expect((await request('resources/course_42/confirm', 'POST', { generation: 1 })).status).toBe(409);
+    expect((await request('resources/course_42/content?generation=1', 'PUT')).status).toBe(409);
+    for (const id of ['42', 'course_43', 'course_042']) expect((await request('resources/' + id, 'PUT', courseManifest())).status).toBe(400);
+    expect((await request('resources/course_42', 'PUT', { ...courseManifest(2), file: manifest().file })).status).toBe(400);
+    expect((await request('resources/course_42', 'PUT', manifest(2))).status).toBe(400);
+    await expect(syncLmsResource(env, grant, 'course_43', courseManifest())).rejects.toMatchObject({ status: 400 });
+  });
+  it('keeps canonical course titles when delayed video metadata arrives and shares the same course', async () => {
+    const video = await syncLmsResource(env, grant, '10', manifest(1, { contextId: '42', courseTitle: 'Old title' }));
+    const entry = await syncLmsResource(env, grant, 'course_42', courseManifest());
+    expect(entry.courseId).toBe(video.courseId);
+    await syncLmsResource(env, grant, 'course_42', courseManifest(2, { courseTitle: 'Renamed by Moodle' }));
+    await syncLmsResource(env, grant, '10', manifest(2, { contextId: '42', courseTitle: 'Old title' }));
+    expect((await pool.query('SELECT name FROM video_courses WHERE id=$1', [entry.courseId])).rows[0].name).toBe('Renamed by Moodle');
+    expect((await pool.query('SELECT video_id::int FROM video_course_members WHERE course_id=$1', [entry.courseId])).rows).toEqual([{ video_id: video.videoId }]);
+    await expect(syncLmsResource(env, grant, 'course_42', courseManifest())).rejects.toMatchObject({ status: 409 });
+    await expect(syncLmsResource(env, grant, 'course_42', courseManifest(2, { courseTitle: 'Conflicting title' }))).rejects.toMatchObject({ status: 409 });
+    await expect(syncLmsResource(env, grant, 'course_42', manifest(3, { contextId: '42', file: undefined, enabled: false })))
+      .rejects.toMatchObject({ status: 409, code: 'RESOURCE_KIND_OR_CONTEXT_CHANGED' });
+  });
+  it('revokes disabled/deleted entries while preserving the course and permitting a new launch binding', async () => {
+    const entry = await syncLmsResource(env, grant, 'course_42', courseManifest());
+    const tombstone = await syncLmsResource(env, grant, 'course_42', courseManifest(2, { enabled: false, deleted: true, courseTitle: undefined }));
+    expect(tombstone).toMatchObject({ courseId: entry.courseId, videoId: null, enabled: false });
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toEqual([]);
+    expect((await pool.query('SELECT name FROM video_courses')).rows).toEqual([{ name: 'Empty Moodle course' }]);
+    const restored = await syncLmsResource(env, grant, 'course_42', courseManifest(3, { resourceLinkId: 'new-course-lti' }));
+    expect(restored.courseId).toBe(entry.courseId);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources[0].resourceLinkId).toBe('new-course-lti');
+    expect((await pool.query('SELECT count(*)::int AS n FROM external_tasks')).rows[0].n).toBe(0);
+  });
+  it('refuses adopting a foreign or native course through a corrupted mapping and enforces DB media constraints', async () => {
+    const entry = await syncLmsResource(env, grant, 'course_42', courseManifest());
+    await pool.query("UPDATE video_courses SET user_id='account-b' WHERE id=$1", [entry.courseId]);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toEqual([]);
+    await expect(syncLmsResource(env, grant, 'course_42', courseManifest(2))).rejects.toMatchObject({ status: 409, code: 'COURSE_BINDING_CHANGED' });
+    await pool.query("UPDATE video_courses SET user_id='account-a',managed_by_lms=false WHERE id=$1", [entry.courseId]);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources).toEqual([]);
+    await expect(syncLmsResource(env, grant, 'course_42', courseManifest(2))).rejects.toMatchObject({ status: 409 });
+    await expect(pool.query("UPDATE lms_resources SET file_size=1 WHERE id=$1", [entry.id])).rejects.toMatchObject({ code: '23514' });
+    await expect(pool.query("UPDATE lms_resources SET kind='unknown' WHERE id=$1", [entry.id])).rejects.toMatchObject({ code: '23514' });
+    await expect(pool.query(`INSERT INTO lms_resources(id,installation_id,external_id,context_id,resource_link_id,generation,manifest_hash,enabled,kind)
+      SELECT $1,installation_id,'alias',context_id,'alias',1,manifest_hash,true,'course' FROM lms_resources WHERE id=$2`, [crypto.randomUUID(), entry.id]))
+      .rejects.toMatchObject({ code: '23505' });
+  });
+  it('polls and acknowledges an opted-in course entry without requesting any file export', async () => {
+    const service = {tokenEndpoint:registration.issuer+'/local/videoq/token.php',endpoint:registration.issuer+'/local/videoq/materials.php'};
+    await pool.query('UPDATE lms_installations SET materials_service=$1,sync_token_hash=NULL WHERE id=$2',[service,grant.id]);
+    const serviceEnv={...env,USE_S3_STORAGE:'true',LTI_TOOL_KEYS:manualKeyRing} as Bindings;
+    const actions:Record<string,unknown>[]=[];
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async(input,init)=>{
+      if(input===service.tokenEndpoint) return Response.json({access_token:'fixture',token_type:'Bearer',expires_in:60,scope:'https://videoq.org/spec/lti-materials/v1'});
+      expect(input).toBe(service.endpoint);
+      const body=JSON.parse(init!.body as string) as Record<string,unknown>;actions.push(body);
+      expect(body.includeCourseEntries).toBe(true);
+      if(body.action==='courses')return Response.json({contextIds:['42']});
+      if(body.action==='manifest')return Response.json({contextId:'42',complete:true,resources:[{externalId:'course_42',manifest:courseManifest()}]});
+      if(body.action==='ack')return Response.json({acknowledged:true});
+      throw new Error('Unexpected file export');
+    });
+    try{
+      expect(await sweepMaterials(serviceEnv)).toEqual({synchronized:1});
+      expect(actions.map(a=>a.action)).toEqual(['courses','manifest','ack']);
+      expect(actions[2]).toMatchObject({externalId:'course_42',contextId:'42',generation:1,status:'completed',error:null});
+      expect((await pool.query('SELECT count(*)::int AS n FROM videos')).rows[0].n).toBe(0);
+    }finally{fetch.mockRestore();}
   });
 
   it("does not duplicate media or upload usage under twenty concurrent retries", async () => {

@@ -130,4 +130,26 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect((await api.query('SELECT count(*)::int AS n FROM videos')).rows).toEqual([{n:1}]);
 
   },20000);
+  it('creates an empty course and coursewide Q&A/tag vocabulary with the actual restricted API login',async()=>{
+    await provisionLmsInstallation(env,{id:'empty-school',ownerUserId:'owner',name:'Empty Moodle',
+      issuer:'https://moodle.example',clientId:'empty-client',deploymentId:'empty-deployment',authorizationUrl:'https://moodle.example/auth',jwksUrl:'https://moodle.example/keys'});
+    const before=(await api.query("SELECT used_storage_bytes,used_upload_bytes,used_ai_answers FROM users WHERE id='owner'")).rows[0];
+    const counts=await api.query('SELECT (SELECT count(*) FROM videos) AS videos,(SELECT count(*) FROM external_tasks) AS jobs');
+    const entry=await syncLmsResource(env,{id:'empty-school',ownerUserId:'owner'},'course_42',{kind:'course',contextId:'42',
+      resourceLinkId:'empty-launch',generation:1,enabled:true,title:'VideoQ',courseTitle:'Empty course'});
+    expect(entry).toMatchObject({kind:'course',videoId:null});
+    expect((await resolvedLtiConfig(env))!.registrations.find(reg=>reg.id==='db:empty-school')!.resources)
+      .toMatchObject([{kind:'course',courseId:entry.courseId,learningAvailable:false}]);
+    expect((await api.query("SELECT used_storage_bytes,used_upload_bytes,used_ai_answers FROM users WHERE id='owner'")).rows[0]).toEqual(before);
+    expect((await api.query('SELECT (SELECT count(*) FROM videos) AS videos,(SELECT count(*) FROM external_tasks) AS jobs')).rows).toEqual(counts.rows);
+    const principal={kind:'lti' as const,ownerUserId:'owner',courseId:entry.courseId!,authorId:'e'.repeat(64),videoIds:[],
+      permissions:{view:true,post:true,vote:true,deleteOwn:true,moderate:false,instructor:false}};
+    expect(await mutate(env,principal,{name:'qa.ask',input:{courseId:entry.courseId!,videoId:null,title:'Coursewide',body:'No media required'}})).toHaveProperty('id');
+    expect((await listQuestions(env,principal,{courseId:entry.courseId!,limit:20,offset:0,search:'',unanswered:false,sort:'recent'})).items).toHaveLength(1);
+    const scope:CourseTagScope={installationId:'empty-school',contextId:'42',courseId:entry.courseId!,ownerUserId:'owner',actorKey:'e'.repeat(64),
+      readableVideoIds:[],management:[],manage:true};
+    expect((await courseTags(env,scope,{action:'create',name:'Unused vocabulary',color:'blue',operationId:crypto.randomUUID()})).tags).toHaveLength(1);
+    expect((await courseTags(env,{...scope,manage:false},{action:'list'})).tags).toEqual([]);
+    expect((await api.query("SELECT has_schema_privilege(current_user,'public','CREATE') AS ddl")).rows[0].ddl).toBe(false);
+  });
 });

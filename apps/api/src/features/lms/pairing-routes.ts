@@ -38,7 +38,7 @@ moodlePairingRoutes.get("/discovery", async c => {
     return c.json({ error: "PAIRING_FAILED" }, 503);
   }
   return c.json({ toolOrigin: ltiConfig(c.env)!.toolOrigin, authorizationUrl: frontend.origin + "/moodle/connect",
-    managementUrl: frontend.origin + '/moodle/manage' });
+    managementUrl: frontend.origin + '/moodle/manage', courseEntries: true });
 });
 
 // Server-to-server exchange. Account/issuer are bound by the owner's expiring code.

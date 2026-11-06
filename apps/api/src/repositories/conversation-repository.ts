@@ -43,13 +43,14 @@ export class ConversationBusyError extends Error {
   constructor() { super('This conversation is already generating an answer.'); }
 }
 
-/** Recheck current backend membership while holding the owning course stable. */
-export async function lockLtiConversationCourse(client: pg.Client, scope: ConversationScope) {
+/** Recheck current backend membership while holding the owning course stable.
+ * Read/delete may use an empty scope; opening/committing model memory may not. */
+export async function lockLtiConversationCourse(client: pg.Client, scope: ConversationScope, allowEmpty = false) {
   if (!scope.ltiSubject) return;
   const subject = checkedLtiSubject(scope.ltiSubject);
   await lockLtiDataSession(client,scope.ownerUserId,subject.sessionProof);
   const course = await client.query<{ user_id: string }>('SELECT user_id FROM video_courses WHERE id=$1 FOR SHARE', [scope.courseId]);
-  if (course.rows[0]?.user_id !== scope.ownerUserId || !subject.resourceVideoIds.length) throw new ConversationNotFoundError();
+  if (course.rows[0]?.user_id !== scope.ownerUserId || !allowEmpty && !subject.resourceVideoIds.length) throw new ConversationNotFoundError();
   const members = await client.query(`SELECT m.video_id FROM video_course_members m JOIN videos v ON v.id=m.video_id
     WHERE m.course_id=$1 AND v.user_id=$2 AND m.video_id=ANY($3::bigint[]) FOR SHARE OF m,v`,
   [scope.courseId, scope.ownerUserId, subject.resourceVideoIds]);
@@ -61,7 +62,7 @@ export async function withConversationRead<T>(env: Bindings, scope: Conversation
     if (!scope.ltiSubject) return operation(client);
     await client.query('BEGIN');
     try {
-      await lockLtiConversationCourse(client, scope);
+      await lockLtiConversationCourse(client, scope, true);
       const result = await operation(client);
       await client.query('COMMIT');
       return result;

@@ -151,6 +151,21 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     const audit = await pool.query('SELECT action,lti_actor_id,actor_user_id FROM course_qa_moderation ORDER BY created_at');
     expect(audit.rows).toEqual([{ action: 'feature', lti_actor_id: 'c'.repeat(64), actor_user_id: null }, { action: 'delete_question', lti_actor_id: 'c'.repeat(64), actor_user_id: null }]);
   });
+  it('supports coursewide Q&A with no readable videos while hiding all source-bound and deleted-source posts', async () => {
+    const hidden = await ltiAsk(lti(),11), coursewide = await ltiAsk(lti(),null);
+    const empty = lti('b',{},[]);
+    expect((await ltiList(empty)).items.map(q=>q.id)).toEqual([coursewide]);
+    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({status:404});
+    await expect(ltiAsk(empty,10)).rejects.toMatchObject({status:404});
+    await pool.query('DELETE FROM video_course_members WHERE course_id=1; DELETE FROM videos WHERE id IN (10,11)');
+    expect((await ltiList(empty)).total).toBe(1);
+    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({status:404});
+    const created = await ltiAsk(empty,null);
+    expect((await ltiGet(empty,created)).question.canEdit).toBe(true);
+    await expect(ltiList(lti('b',{view:false},[]))).rejects.toMatchObject({status:404});
+    await expect(ltiAsk(lti('b',{post:false},[]),null)).rejects.toMatchObject({status:403});
+    await expect(ltiList({...empty,ownerUserId:'outsider'})).rejects.toMatchObject({status:404});
+  });
   it('combines native and LTI votes idempotently without letting one actor remove another vote', async () => {
     const id = await ltiAsk();
     for (let i = 0; i < 2; i++) await mutate(env, lti('b'), { name: 'qa.vote', input: { courseId: 1, questionId: id, voted: true } });

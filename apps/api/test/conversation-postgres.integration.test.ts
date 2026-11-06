@@ -132,6 +132,20 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
         expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
       } finally { await pool.query('DROP TRIGGER reject_lti_subject ON lti_chat_log_subjects; DROP FUNCTION reject_lti_subject()'); }
     });
+    it('keeps hidden conversation titles and memory inaccessible with no readable videos but permits only own deletion', async () => {
+      const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
+      await chat.commit(await invoke(chat, 'Private lesson becomes hidden'), persist()); await chat.close();
+      const empty = personal('a',[]);
+      expect((await listConversations(env,empty,{limit:20,offset:0})).items).toEqual([]);
+      await expect(getConversation(env,empty,{conversationId:id,limit:50})).rejects.toMatchObject({status:404});
+      await expect(openConversation(env,empty,id,true)).rejects.toBeInstanceOf(ConversationNotFoundError);
+      await expect(openConversation(env,empty,crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);
+      await deleteConversation(env,personal('b',[]),id);
+      expect((await pool.query('SELECT thread_id FROM chat_conversations')).rows).toHaveLength(1);
+      await deleteConversation(env,empty,id);
+      expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM chat_memory.checkpoints WHERE thread_id=$1',[chat.threadId])).rows).toEqual([]);
+    });
 
     it('rejects a stale backend video membership before opening a model checkpoint', async () => {
       await expect(openConversation(env, personal('a', [20]), crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);

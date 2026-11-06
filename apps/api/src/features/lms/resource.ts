@@ -18,7 +18,12 @@ export const resourceManifestSchema = z.object({
     // Moodle's stored_file contenthash is SHA-1, used as a source revision ID.
     contentHash: z.string().regex(/^[a-f0-9]{40}$/),
   }).strict().optional(),
-}).strict().refine(value => !value.enabled || (value.file !== undefined && !value.deleted), "Enabled resources require a video file and cannot be deleted");
+  // Omitted for video manifests: preserve the existing canonical JSON/hash.
+  kind: z.literal('course').optional(),
+}).strict().refine(value => value.kind === 'course'
+  ? value.file === undefined && !(value.enabled && value.deleted)
+  : !value.enabled || (value.file !== undefined && !value.deleted),
+"Course entries cannot contain files; enabled video resources require a file and cannot be deleted");
 export type ResourceManifest = z.infer<typeof resourceManifestSchema>;
 
 export class LmsSyncError extends Error {

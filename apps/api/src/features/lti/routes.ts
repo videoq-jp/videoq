@@ -151,6 +151,7 @@ ltiRoutes.post("/session", async c => {
   let current;
   try { current = await courseAccessContext(reg, launch, c.env); } catch { return refused(c, 403); }
   const allowed = current?.videos ?? null;
+  const playbackVideoId = launch.videoId ?? allowed?.[0]?.videoId;
   if (launch.videoId && current && ![...current.videos, ...(current.managementVideos ?? [])].some(video => video.videoId === launch.videoId)) return refused(c, 403);
   if (!await consumeLogin(c.env, input.data.state)) return refused(c, 401);
   const token = randomSecret();
@@ -162,7 +163,7 @@ ltiRoutes.post("/session", async c => {
   return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
     features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService),
       conversations: Boolean(reg.courseAccess || reg.materialsService), management: reg.id.startsWith('db:'), tags: reg.id.startsWith('db:') },
-    ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
+    ...(playbackVideoId ? { playback: { videoId: playbackVideoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
 
@@ -212,8 +213,8 @@ async function authorizeMaterials(c: Context<AppEnv>) {
   return access.current.videos.length ? access : { error: refused(c, 403) } as const;
 }
 
-mountLtiQa(ltiRoutes, authorizeMaterials, refused);
-mountLtiConversations(ltiRoutes, authorizeMaterials, feedbackReference);
+mountLtiQa(ltiRoutes, authorizeCourse, refused);
+mountLtiConversations(ltiRoutes, authorizeCourse, feedbackReference);
 mountLtiManagement(ltiRoutes, authorizeCourse);
 mountLtiTags(ltiRoutes, authorizeCourse);
 

@@ -34,7 +34,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
       const data = await getLmsResource(env, installation, source.externalId);
       if (!source.manifest.enabled || data?.video?.status !== "uploading") {
         await client.acknowledge(contextId, source.externalId, source.manifest.generation,
-          !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
+          !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.resource.kind === 'course' ? 'completed' : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
         continue;
       }
       pending = true;
