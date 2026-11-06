@@ -788,6 +788,27 @@
       "allow": "Allow and return to Moodle",
       "cancel": "Cancel and return to Moodle",
       "connecting": "Connecting…"
+    },
+    "moodleManagement": {
+      "title": "Manage the connected VideoQ account",
+      "invalid": "Invalid management request. Open this page from Moodle.",
+      "loading": "Checking account access…",
+      "error": "Could not verify account access. Try again.",
+      "loginHelp": "Sign in to VideoQ to manage the account connected to this Moodle site.",
+      "signedIn": "Signed in as {{account}}",
+      "authority": "Moodle roles do not grant VideoQ account, billing or system administration access. These actions use your independently signed-in VideoQ account.",
+      "notOwner": "This VideoQ account does not own this Moodle connection. Sign in with the connected account to manage it.",
+      "inactive": "This connection is inactive. Account settings remain available; opening them does not reconnect Moodle.",
+      "navigation": "VideoQ management",
+      "library": "Videos, uploads and tags",
+      "courses": "Independent VideoQ courses",
+      "account": "Account profile and password",
+      "integrations": "Connected apps and integration API keys",
+      "searchKey": "Video search API key",
+      "billing": "Plans, billing and payment portal",
+      "admin": "VideoQ system administration",
+      "switchAccount": "Sign in with a different account",
+      "retry": "Check again"
     }
   },
   "chat": {
