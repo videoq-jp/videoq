@@ -56,6 +56,6 @@ reportsForm.addEventListener('submit',event=>{event.preventDefault();void report
 document.getElementById('reports-export').addEventListener('click',async()=>{if(!await reportsLoad()||!reportsData)return;const lines=['date,questions,good,bad,unrated',...reportsData.days.map(row=>[row.date,row.questions,row.good,row.bad,row.none].join(','))];const url=URL.createObjectURL(new Blob([lines.join('\\n')+'\\n'],{type:'text/csv;charset=utf-8'})),link=qaNode('a');link.href=url;link.download='videoq-usage-'+reportsData.period.from+'_'+reportsData.period.to+'.csv';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);});
 document.getElementById('reports-close').addEventListener('click',()=>{reportsSetNativeOpen(false);if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:reports-close',version:1,channel,videoId:bridge.videoId},nativeUi.origin);});
 reportsPanel.addEventListener('toggle',()=>{if(!nativeUi)reportsSetNativeOpen(reportsPanel.open);});
-async function reportsInit(){if(features.reports&&reportsAllowed===null)await materialRequest('list');}
+async function reportsInit(){if(features.reports&&reportsAllowed===null){try{await materialRequest('list');}catch{reportsAvailability(false);}}}
 `;
 }

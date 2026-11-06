@@ -198,10 +198,10 @@ try {
  nativeRequestId=null;
  if(session.playback&&window.parent!==window){bridge=session.playback;readyDeadline=performance.now()+30000;announceReady();}
  sessionReady=true;
- await personalInit();
- await managementInit();
- await tagsInit();
- await reportsInit();
+ // Independent tools must not delay one another or installation of the chat
+ // handlers. Personal restoration keeps its own busy guard until it finishes.
+ void Promise.all([personalInit(),managementInit(),tagsInit(),reportsInit()])
+  .catch(()=>console.error(JSON.stringify({event:'lti_tool_initialization_failed'})));
  status.textContent='';syncComposer();
  personalDraw();
  nativeStatus();

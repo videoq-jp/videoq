@@ -12,17 +12,25 @@ tests('Moodle aggregate report UI and native transport', () => {
   afterAll(async () => { await browser?.close(); });
   async function fixture(page: Page, permitted = true, supported = true) {
     const state = 'a'.repeat(64), requests: { path: string; body: unknown }[] = [], errors: string[] = [];
-    const model = { permitted, supported, denied: false, malformed: false };
+    const model = { permitted, supported, denied: false, malformed: false, delayHistory: false, historyPending: false, metadataDenied: false, learning: false };
+    let releaseHistory = () => {};
+    const historyGate = new Promise<void>(resolve => { releaseHistory = resolve; });
     page.setDefaultTimeout(10000); page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => { if (location.origin === 'https://api.example') sessionStorage.setItem('videoq-lti:' + 'a'.repeat(64), 'fixture-browser-secret'); });
     await page.route('https://api.example/**', async route => {
       const request = route.request(), path = new URL(request.url()).pathname;
       if (path === '/api/lti/launch') { await route.fulfill({ contentType: 'text/html', body: questionView('nonce', state, 'fixture-signed-token', 'en', ['https://lms.example']) }); return; }
       requests.push({ path, body: request.postData() ? request.postDataJSON() : {} });
-      if (path === '/api/lti/session') { await route.fulfill({ json: { token: 'fixture-private-report-token', learningAvailable: false,
-        features: { reports: model.supported }, playback: { videoId: 1, videos: [], parentOrigins: ['https://lms.example'] } } }); return; }
+      if (path === '/api/lti/session') { await route.fulfill({ json: { token: 'fixture-private-report-token', learningAvailable: model.learning,
+        features: { reports: model.supported, conversations: model.delayHistory, management: model.delayHistory },
+        playback: { videoId: 1, videos: model.learning ? [{ videoId: 1, title: 'Lesson' }] : [], parentOrigins: ['https://lms.example'] } } }); return; }
       expect(request.headers().authorization).toBe('Bearer fixture-private-report-token');
-      if (path === '/api/lti/materials') { await route.fulfill({ json: { permissions: { viewReports: model.permitted }, videos: [] } }); return; }
+      if (path === '/api/lti/history') { await route.fulfill({ json: { turns: [] } }); return; }
+      if (path === '/api/lti/conversations') { model.historyPending = true; await historyGate; model.historyPending = false; await route.fulfill({ json: { items: [], hasMore: false } }); return; }
+      if (path === '/api/lti/materials') {
+        if (model.metadataDenied) { await route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE' } } }); return; }
+        await route.fulfill({ json: { permissions: { viewReports: model.permitted, manageOwnHistory: model.delayHistory, manageContent: false }, videos: [] } }); return;
+      }
       expect(path).toBe('/api/lti/reports');
       if (model.denied) { await route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }); return; }
       const input = courseReportInput.parse(request.postDataJSON());
@@ -31,7 +39,7 @@ tests('Moodle aggregate report UI and native transport', () => {
         days: [{ date: model.malformed ? '<img src=x onerror=alert(1)>' : input.from, questions: 3, good: 1, bad: 1, none: 1 }],
         ignoredPrivateText: 'PRIVATE question body must never render' } });
     });
-    return { model, requests, errors };
+    return { model, requests, errors, releaseHistory };
   }
   it('loads bounded date counts and exports only aggregate CSV after a fresh permission check', async () => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } }), service = await fixture(page);
@@ -68,6 +76,29 @@ tests('Moodle aggregate report UI and native transport', () => {
     service.model.malformed = false; await page.locator('#reports-form button[type=submit]').click(); await page.locator('#reports-content dd').first().waitFor();
     service.model.denied = true; await page.locator('#reports-form button[type=submit]').click(); await page.locator('#course-reports').waitFor({ state: 'hidden' });
     expect(await page.locator('#reports-content').innerText()).toBe(''); expect(service.errors).toEqual([]); await page.close();
+  });
+  it('offers reports during slow history restoration, shares only concurrent metadata and reauthorizes the later report read', async () => {
+    const page = await browser.newPage(), service = await fixture(page); service.model.delayHistory = true;
+    await page.goto('https://api.example/api/lti/launch');
+    await page.locator('#course-reports').waitFor({ state: 'visible' });
+    expect(service.model.historyPending).toBe(true);
+    expect(service.requests.filter(request => request.path === '/api/lti/materials')).toHaveLength(1);
+    await page.locator('#course-reports summary').click(); await page.locator('#reports-content dd').first().waitFor();
+    expect(service.model.historyPending).toBe(true);
+    expect(service.requests.filter(request => request.path === '/api/lti/materials')).toHaveLength(2);
+    service.releaseHistory(); await expect.poll(() => service.model.historyPending).toBe(false);
+    expect(service.errors).toEqual([]); await page.close();
+  });
+  it('keeps the authorized chat composer available when optional report metadata fails closed', async () => {
+    const page = await browser.newPage(), service = await fixture(page); service.model.metadataDenied = true; service.model.learning = true;
+    const unavailable = page.waitForResponse(response => response.url().endsWith('/api/lti/materials') && response.status() === 503);
+    await page.goto('https://api.example/api/lti/launch');
+    await unavailable;
+    await expect.poll(() => page.locator('#send').isEnabled()).toBe(true);
+    expect(await page.locator('#status').getAttribute('data-kind')).not.toBe('error');
+    expect(await page.locator('#course-reports').isHidden()).toBe(true);
+    expect(service.requests.some(request => request.path === '/api/lti/reports')).toBe(false);
+    expect(service.errors).toEqual([]); await page.close();
   });
   it.each([{ permitted: false, supported: true }, { permitted: true, supported: false }])('hides unavailable reports without querying the aggregate endpoint: %j', async options => {
     const page = await browser.newPage(), service = await fixture(page, options.permitted, options.supported);

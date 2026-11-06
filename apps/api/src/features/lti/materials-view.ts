@@ -12,11 +12,19 @@ export function materialsMarkup(locale: LtiLocale) {
 // Runs inside the authenticated LTI frame. Credentials never cross the bridge.
 export const materialsClientScript = `
 const materialsPanel=document.getElementById('course-materials'),materialSelect=document.getElementById('material-video'),materialStatus=document.getElementById('material-status'),materialCues=document.getElementById('material-cues'),materialMore=document.getElementById('material-more'),materialRefresh=document.getElementById('material-refresh');
-let materialCursor=null,materialLoading=false,materialListLoaded=false;
-async function materialRequest(action,payload={}){
+let materialCursor=null,materialLoading=false,materialListLoaded=false,materialListing=null;
+async function materialFetch(action,payload){
  const response=await fetch('/api/lti/'+(action==='list'?'materials':'transcript'),{method:'POST',credentials:'omit',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
  if(!response.ok){if(action==='list'&&[401,403].includes(response.status)){learningRefresh([]);qaAvailability(false);personalAvailability(false);managementAvailability(false);reportsAvailability(false);}throw new Error(uiCopy.materialError);}
  const result=await response.json();if(action==='list'&&result?.permissions){const videos=Array.isArray(result.videos)?result.videos:[];learningRefresh(videos);qaAvailability(result.permissions.viewQa===true);personalAvailability(result.permissions.manageOwnHistory===true);managementCatalog(result);reportsAvailability(result.permissions.viewReports===true);}return result;
+}
+// Coalesce only concurrent, identical metadata reads. Later operations always
+// request fresh authority; transcripts and writes are never cached here.
+async function materialRequest(action,payload={}){
+ if(action!=='list'||Object.keys(payload).length)return materialFetch(action,payload);
+ if(materialListing)return materialListing;
+ const request=materialFetch(action,payload);materialListing=request;
+ try{return await request;}finally{if(materialListing===request)materialListing=null;}
 }
 let materialCommandBusy=false;
 async function materialCommand(data,origin){
