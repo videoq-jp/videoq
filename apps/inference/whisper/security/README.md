@@ -79,8 +79,9 @@ Reference: [Ubuntu CVE-2026-109518 status and prerequisites](https://ubuntu.com/
 
 The image keeps the C/UAPI headers needed by Triton's runtime JIT. These headers
 are not a Linux kernel. The build runs `verify_kernel_headers.py`: every regular
-file owned by `linux-libc-dev` must be a header or its documentation, none may be
-ELF or a kernel module, and the image may contain no kernel binaries/modules.
+file owned by `linux-libc-dev` must be a `.h` header or its documentation, none may
+be executable, a symlink, ELF or a kernel module, and the image may contain no
+kernel binaries/modules.
 Do not remove package metadata or retain untracked headers to change scan results.
 
 `kernel-headers.openvex.json` lists the 386 kernel implementation CVEs reported on
@@ -90,6 +91,20 @@ Ubuntu 24.04 amd64 `linux-libc-dev` version `6.8.0-147.147`, with explicit vulne
 other packages, unknown CVEs, or another distribution/architecture. A new package version does not match this assessment and requires a fresh
 review. A changed package inventory also fails the image build instead of
 silently accepting executable code under the assessment.
+
+CI run [42172398270](https://github.com/videoq-jp/videoq/actions/runs/42172398270)
+on 2026-11-06 installed Ubuntu's `6.8.0-149.149` and reported 385 of those same
+explicit CVEs, with no new vulnerability IDs or findings on other packages. The
+build inventory check passed for 990 files. A separate review downloaded the
+official amd64 package and matched its size and SHA-256 against Ubuntu's
+`noble-updates/main/binary-amd64/Packages.xz` metadata:
+`e4b7b9c5023ba727908868661e1113d28ed9b68e47aed00e314723dad4b2b31d`.
+The extracted package has 988 `.h` headers and two documentation files, no
+executable files, symlinks, ELF, kernel modules or other include files. VEX
+version 2 adds the exact `6.8.0-149.149` amd64 Ubuntu 24.04 PURL only to the 385
+already-reviewed IDs actually observed in that run. The remaining statement
+still applies only to `6.8.0-147.147`. Other versions and unknown CVEs continue
+to fail; this is not a host-kernel assessment.
 
 The image separately updates its Ubuntu packages, certifi, msgpack, pyasn1 and urllib3,
 and removes pip/uv after installing audio support. Removing pip also removes
