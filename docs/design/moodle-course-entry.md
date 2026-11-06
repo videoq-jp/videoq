@@ -22,7 +22,9 @@ continue receiving video-only snapshots. Existing companions ignore the new
 request field and retain their old behavior. Snapshots allow at most 1,000 videos
 and one entry. Entries acknowledge `completed` immediately without file export.
 Backend pairing discovery advertises `courseEntries: true` so a new companion can
-refuse setup against an older backend. Legacy push accepts the same canonical ID
+refuse setup against an older backend. The authenticated legacy connection also
+advertises the flag, allowing push connections without S3/materials discovery.
+Legacy push accepts the same canonical ID
 and rejects upload and confirmation for an entry.
 
 An entry creates or reuses only its owner's protected LMS-managed course. Its

@@ -518,6 +518,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await getCourseWithMembers(env, { courseId: resources[0].courseId!, ltiCourseGrant: resources[0].courseId!, ltiVideoGrant: [] }))?.memberVideoIds).toEqual([]);
   });
   it('accepts the canonical course endpoint, denies file upload/confirm and rejects identity or file confusion', async () => {
+    expect(env.USE_S3_STORAGE).toBe('false');
+    expect(await (await request('connection')).json()).toMatchObject({courseEntries:true,toolOrigin:'https://api.example'});
     const result = await request('resources/course_42', 'PUT', courseManifest());
     expect(result.status).toBe(200);
     expect(await result.json()).toMatchObject({ generation: 1, status: 'completed', upload: null, error: null });
