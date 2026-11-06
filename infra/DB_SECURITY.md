@@ -36,6 +36,13 @@ API, migration, audit or backup credentials.
 
 The API has DML on current application tables, without access to retired Django
 and OAuth tables. It cannot create/drop objects or access the migration ledger.
+When initializing this profile after application migrations, reapply the current
+`sql/neon-security.sql` through the administration connection. Default privileges
+cover only future tables; its explicit whitelist also grants access to existing
+LTI credentials/keys, LMS bindings, Q&A and teacher-operation receipts. Reapplying
+the profile is idempotent. The isolated Moodle database-grants integration test
+uses the actual profile with a non-superuser API login and checks both runtime
+operations and permission denials.
 The worker inherits the existing column-scoped processing/deletion permissions
 through `videoq_worker_20261014`, plus the current embedding-table grants. That
 legacy role becomes NOLOGIN; it is retained for its grants. New worker tables and

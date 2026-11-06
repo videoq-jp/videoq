@@ -78,6 +78,23 @@ Deploy the compatible worker before enabling API writes that produce
 the authority branch's coordinated cutover requirements before the companion
 editor is released. The current Marketplace sources and ZIPs are unaffected.
 
+For deployments using `infra/sql/neon-security.sql`, apply the current profile
+through the administration connection after the migrations. Its API whitelist
+now includes the existing LTI credential/key, LMS binding and Q&A tables as well
+as the new audit table. Applying an older profile only after those tables already
+existed left them inaccessible: default privileges cover future tables, not
+existing ones. Reapplying the updated profile is idempotent and grants no runtime
+DDL or access to excluded retired tables.
+
+The real-PostgreSQL regression fixture migrates an isolated database as the schema
+owner, applies that deployment profile twice, and connects through a separate
+non-superuser API login. It checks all four DML privileges on the eleven Moodle
+runtime tables and runs binding, credential storage, pairing/key creation, Q&A and
+audited teacher editing with the resulting role. Runtime DDL, access to an
+excluded table and switching to the schema-owner role are denied. The fixture
+requires an isolated cluster without existing deployment roles; it never changes
+pre-existing roles.
+
 The editor reuses the existing private iframe, switches with Q&A and personal
 history, and preserves drafts across panel switches, conflicts and permission
 revocation. Revoked drafts remain available for copying in read-only controls;
@@ -94,7 +111,7 @@ Polling continues through that acknowledgement delay even when the index is
 already complete. Pending video playheads are never added
 to AI questions. The poll updates processing state without replacing draft text.
 
-Remaining work includes restricted production-role/Workers runtime verification,
+Remaining work includes restricted worker-role and Workers runtime verification,
 full isolated Moodle + VideoQ + AI checks, source lifecycle/retry acceptance and
 the full external privacy workflow. The wider inventory, including imports,
 tags, reporting and independently authenticated owner operations, remains in
