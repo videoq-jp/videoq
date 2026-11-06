@@ -2,27 +2,69 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/videoq-jp/videoq/security/vex/cpu-sqlite-2026-11-02",
   "author": "VideoQ",
-  "timestamp": "2026-11-02T04:31:58Z",
-  "version": 1,
+  "timestamp": "2026-11-06T15:30:00Z",
+  "version": 2,
   "statements": [
     {
-      "vulnerability": { "name": "CVE-2026-119373" },
+      "vulnerability": {
+        "name": "CVE-2026-119373"
+      },
       "products": [
-        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7" },
-        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7" }
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7"
+        },
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7"
+        }
       ],
       "status": "fixed",
       "impact_statement": "The image replaces Debian's SQLite 3.46.1 with the official SQLite 3.54.1 amalgamation, verified against the published SHA3-256. Upstream fixed the FTS5 doclist merge overflow in 3.54.0. verify_sqlite.py checks the loaded version and exercises negative-rowid detail=none prefix queries in the final image. This version is packaged locally; Debian has not recorded a fixed distribution version yet."
     },
     {
-      "vulnerability": { "name": "CVE-2026-119586" },
+      "vulnerability": {
+        "name": "CVE-2026-119586"
+      },
       "products": [
-        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7" },
-        { "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7" }
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7"
+        },
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7"
+        }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "This vulnerability is in the SQLite CLI .recover dot-command. build-sqlite.sh compiles only sqlite3.c into a shared library; shell.c is not compiled or installed. The final distroless image contains no SQLite CLI, and verify_sqlite.py checks the executable locations. The Python sqlite3 module and FTS5 remain available."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-119374"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7"
+        },
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "The locally built SQLite 3.54.1 includes upstream fix d9de6eedbe918c074c7556400fa21df5960704d9 for the FTS5 secure-delete heap overflow, released in 3.54.0. Debian confirms the upstream fix at https://security-tracker.debian.org/tracker/CVE-2026-119374. build-sqlite.sh checks the official source SHA3-256; verify_sqlite.py verifies the loaded version and FTS5 in the final image. This statement matches only the locally built package version; Debian trixie has no fixed distribution package yet."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-119379"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=amd64&distro=debian-13.7"
+        },
+        {
+          "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "The locally built SQLite 3.54.1 includes upstream fix 64459c87cc702d600704fb77ee40ca1782398a52 for the session changeset heap overflow, released in 3.54.0. Debian confirms the upstream fix at https://security-tracker.debian.org/tracker/CVE-2026-119379. build-sqlite.sh checks the official source SHA3-256; verify_sqlite.py verifies the loaded version and FTS5 in the final image. This statement matches only the locally built package version; Debian trixie has no fixed distribution package yet."
     }
   ]
 }
