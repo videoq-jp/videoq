@@ -84,7 +84,7 @@ export class MaterialsClient {
       signal: AbortSignal.timeout(10000), headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
       // Older Moodle versions ignore unknown request fields and keep their
       // video-only response. New Moodle sends entries only to opted-in callers.
-      body: JSON.stringify({ action, ...body, includeCourseEntries: true, includeUserVisibility: true }) });
+      body: JSON.stringify({ action, ...body, includeCourseEntries: true, includeUserVisibility: true, includeReports: true }) });
     return this.json(response);
   }
   async courses() {

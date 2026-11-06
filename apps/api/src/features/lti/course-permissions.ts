@@ -8,6 +8,7 @@ export const coursePermissionsSchema = z.object({
   manageContent: z.boolean().default(false),
   manageOwnHistory: z.boolean().default(false),
   viewTranscript: z.boolean().default(false),
+  viewReports: z.boolean().optional(),
   viewQa: z.boolean().default(false),
   postQa: z.boolean().default(false),
   voteQa: z.boolean().default(false),

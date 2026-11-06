@@ -1,13 +1,13 @@
 # Moodle personal audit retention
 
 Unreleased, stacked on the approved external privacy implementation. This covers
-teacher material/tag operation receipts and LTI moderation actor identifiers.
+teacher material/tag operation receipts, report access receipts and LTI moderation actor identifiers.
 The full Moodle feature inventory and other data-retention requirements remain.
 
 ## Operator configuration
 
 After the full migration chain (including generated schema migration 0057 and
-custom data migration 0058), API grants and **all writers** are deployed, add an
+custom data migration 0058 and report schema migration 0060), API grants and **all writers** are deployed, add an
 integer `auditRetentionDays` from 1 through 3650 to the existing `LTI_CONFIG` JSON.
 Omit it to disable automatic audit cleanup. There is no implicit default or new
 secret/binding. Existing tool origin, registrations and privacy settings remain
@@ -23,7 +23,8 @@ privacy requests do not require this automatic-retention opt-in.
 The existing daily retention scheduler removes material/tag receipt rows whose
 creation time is strictly earlier than the maintenance clock minus the configured
 number of 24-hour days. It also sets expired **LTI** moderation actor identifiers
-to null. Native VideoQ moderation actors and shared event actions/structure are
+to null, and removes expired report access receipts. Read receipts need no
+mutation replay reservation. Native VideoQ moderation actors and shared event actions/structure are
 unchanged. Q&A posts, replies, peer votes, shared videos/descriptions/transcripts,
 tag vocabulary/assignments and queued processing work are preserved.
 

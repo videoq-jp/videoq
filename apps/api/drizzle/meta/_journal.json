@@ -421,6 +421,13 @@
       "when": 1793981138957,
       "tag": "0059_lms_course_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793995766396,
+      "tag": "0060_moodle_course_reports",
+      "breakpoints": true
     }
   ]
 }

@@ -127,12 +127,19 @@ export async function createChatLogWithDb(
     if (!params.isShared) throw new Error('LTI attribution requires an external course grant');
     // One statement keeps attribution atomic even outside a conversation transaction.
     const source = subject.sessionProof ? sql`FROM (${ltiSessionRows(params.userId,subject.sessionProof)}) permitted` : sql``;
+    const provenance = subject.sessionProof ? sql`
+      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
+        THEN c.payload->>'registrationId' END,
+      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
+        THEN c.payload->>'contextId' END` : sql`NULL,NULL`;
+    const session = subject.sessionProof ? sql`LEFT JOIN lti_credentials c ON c.id=${subject.sessionProof.sessionHash}` : sql``;
     const result = await db.execute<{ id: number }>(sql`WITH saved AS (
       INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,feedback,created_at)
       SELECT ${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
         ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now() ${source} RETURNING id
-    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids)
-      SELECT id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb FROM saved
+    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id)
+      SELECT saved.id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb,${provenance}
+      FROM saved ${session}
       RETURNING chat_log_id::float8 AS id`);
     if (!result.rows[0]) throw new Error('Missing attributed chat log');
     return { id: result.rows[0].id, feedback: null };

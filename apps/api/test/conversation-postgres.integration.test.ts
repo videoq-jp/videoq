@@ -64,6 +64,13 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await pool.query(readFileSync(new URL('../drizzle/0044_resumable_conversations.sql', import.meta.url), 'utf8').replaceAll('--> statement-breakpoint', ''));
     const personalMigration: string = readFileSync(new URL('../drizzle/0052_lti_personal_conversations.sql', import.meta.url), 'utf8');
     await pool.query(personalMigration);
+    // This intentionally sparse conversation fixture predates report provenance.
+    // Apply the real generated statements for its subject table; complete report
+    // schema/migrations are exercised by the dedicated migration/report suites.
+    const reportingProvenance = readFileSync(new URL('../drizzle/0060_moodle_course_reports.sql', import.meta.url), 'utf8')
+      .split('--> statement-breakpoint').filter(statement => statement.includes('"lti_chat_log_subjects"'));
+    expect(reportingProvenance).toHaveLength(3);
+    for (const statement of reportingProvenance) await pool.query(statement);
     for (const role of ['videoq_api_access', 'videoq_backup_access']) {
       if (!(await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [role])).rowCount) {
         await admin.query(`CREATE ROLE ${role} NOLOGIN`); createdRoles.push(role);
@@ -97,8 +104,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       for (const other of [personal('b'), { ...scope, actorUserId: 'owner' }, { ...scope, actorUserId: null }]) {
         await expect(getConversation(env, other, { conversationId: id, limit: 50 })).rejects.toMatchObject({ status: 404 });
       }
-      const subjects = await pool.query('SELECT subject_key,resource_video_ids FROM lti_chat_log_subjects');
-      expect(subjects.rows).toEqual([{ subject_key: 'a'.repeat(64), resource_video_ids: [10,11] }]);
+      const subjects = await pool.query('SELECT subject_key,resource_video_ids,registration_id,context_id FROM lti_chat_log_subjects');
+      expect(subjects.rows).toEqual([{ subject_key: 'a'.repeat(64), resource_video_ids: [10,11], registration_id: null, context_id: null }]);
       expect((await pool.query('SELECT count(*)::int AS n FROM users')).rows[0].n).toBe(3);
       await deleteConversation(env, personal('b'), id);
       expect((await getConversation(env, personal(), { conversationId: id, limit: 50 })).turns).toHaveLength(1);

@@ -13,6 +13,10 @@ import { courseTags, type CourseTagScope } from '../src/features/lti/course-tags
 import { resolvedLtiConfig } from '../src/features/lti/registrations';
 import { putCredential, readCredential } from '../src/features/lti/store';
 import { toolJwks } from '../src/features/lti/tool-keys';
+import { withDb } from '../src/db/pool';
+import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import { privacySubject } from '../src/features/lms/privacy-data';
+import { courseReport } from '../src/features/lti/course-reports';
 import { issueMoodlePairing } from '../src/features/lms/pairing';
 import { listQuestions, mutate } from '../src/features/qa/service';
 import type { Bindings } from '../src/types/bindings';
@@ -21,7 +25,7 @@ const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;
 const roles=['videoq_migrate_20260918','videoq_worker_20261014','videoq_api_access','videoq_worker_access',
   'videoq_backup_access','videoq_audit_access','videoq_smoke_access','videoq_demo_access'];
 const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_courses','lms_resources',
-  'lti_operation_reservations','lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
+  'lti_operation_reservations','lti_report_accesses','lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
   'course_question_lti_votes','course_qa_moderation'];
 
 (databaseUrl?describe:describe.skip)('Moodle services using the deployed database security profile',()=>{
@@ -106,7 +110,7 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect((await api.query('SELECT session_user AS login')).rows).toEqual([{login:apiLogin}]);
   });
 
-  it('runs binding, session storage, signing, Q&A and audited teacher edits through that API role',async()=>{
+  it('runs binding, session storage, signing, Q&A, reports and audited teacher edits through that API role',async()=>{
     const connection=await provisionLmsInstallation(env,{id:'school',ownerUserId:'owner',name:'Synthetic Moodle',
       issuer:'https://moodle.example',clientId:'client',deploymentId:'deployment',authorizationUrl:'https://moodle.example/auth',jwksUrl:'https://moodle.example/keys'});
     expect(connection.installationId).toBe('school');
@@ -118,6 +122,20 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect(await readCredential(env,'c'.repeat(64),'test-role-proof')).toEqual({checked:true});
     await issueMoodlePairing(env,'owner','https://moodle.example','https://videoq.example');
     expect((await toolJwks(env)).keys).toHaveLength(1);
+    const identity=await privacySubject({id:'school',ownerUserId:'owner',issuer:'https://moodle.example',clientId:'client',deploymentId:'deployment'},'11');
+    const sessionProof={sessionHash:'9'.repeat(64),registrationId:identity.registrationId,subjectHash:identity.subjectHash};
+    await putCredential(env,sessionProof.sessionHash,'session',{...sessionProof,contextId:'course',courseId:resource.courseId},60);
+    // Synthetic answer data verifies the actual producer, report SQL and audit
+    // permissions; this is separate from real AI acceptance.
+    await withDb(env,db=>createChatLogWithDb(db,{userId:'owner',courseId:resource.courseId!,question:'Synthetic private question',
+      answer:{segments:[{text:'Synthetic private answer',sourceIds:[]}],sources:[]},retrievedContexts:[],isShared:true,
+      ltiSubject:{subjectKey:identity.subjectKey,resourceVideoIds:[resource.videoId!],sessionProof}}));
+    const date=new Date().toISOString().slice(0,10);
+    const report=await courseReport(env,{installationId:'school',contextId:'course',courseId:resource.courseId!,ownerUserId:'owner',sessionProof,
+      readable:[{videoId:resource.videoId!,generation:1,resourceLinkId:'launch'}]},{action:'summary',from:date,to:date});
+    expect(report.totals).toEqual({questions:1,good:0,bad:0,none:1});
+    expect(JSON.stringify(report)).not.toMatch(/Synthetic|subject|owner/);
+    expect((await api.query('SELECT actor_key FROM lti_report_accesses')).rows).toEqual([{actor_key:identity.subjectKey}]);
     const principal={kind:'lti' as const,ownerUserId:'owner',courseId:resource.courseId!,authorId:'d'.repeat(64),videoIds:[resource.videoId!],
       permissions:{view:true,post:true,vote:true,deleteOwn:true,moderate:true,instructor:true}};
     const question=await mutate(env,principal,{name:'qa.ask',input:{courseId:resource.courseId!,videoId:resource.videoId!,title:'Question',body:'Role-restricted question'}});
@@ -141,9 +159,9 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect(deleted.tags).toEqual([]);
     expect((await api.query('SELECT count(*)::int AS n FROM lti_course_tag_operations')).rows).toEqual([{n:3}]);
     const jobsBefore=(await api.query('SELECT count(*)::int AS n FROM external_tasks')).rows[0].n;
-    await owner.query("UPDATE lti_course_tag_operations SET created_at=now()-interval '31 days'; UPDATE lti_material_operations SET created_at=now()-interval '31 days'");
+    await owner.query("UPDATE lti_course_tag_operations SET created_at=now()-interval '31 days'; UPDATE lti_material_operations SET created_at=now()-interval '31 days'; UPDATE lti_report_accesses SET created_at=now()-interval '31 days'");
     const retentionEnv={...env,LTI_CONFIG:JSON.stringify({toolOrigin:'https://videoq.example',databaseRegistrations:true,registrations:[],auditRetentionDays:30})};
-    expect(await pruneLtiAudit(retentionEnv)).toMatchObject({materialOperations:1,tagOperations:3,backlog:false});
+    expect(await pruneLtiAudit(retentionEnv)).toMatchObject({materialOperations:1,tagOperations:3,reportAccesses:1,backlog:false});
     expect((await api.query('SELECT count(*)::int AS n FROM lti_operation_reservations')).rows).toEqual([{n:4}]);
     expect((await api.query('SELECT count(*)::int AS n FROM external_tasks')).rows[0].n).toBe(jobsBefore);
     expect((await api.query('SELECT count(*)::int AS n FROM videos')).rows).toEqual([{n:1}]);

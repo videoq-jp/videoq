@@ -855,7 +855,12 @@ export const ltiChatLogSubjects = pgTable('lti_chat_log_subjects', {
   chatLogId: bigint('chat_log_id', { mode: 'number' }).primaryKey().references(() => chatLogs.id, { onDelete: 'cascade' }),
   subjectKey: varchar('subject_key', { length: 64 }).notNull(),
   resourceVideoIds: jsonb('resource_video_ids').$type<number[]>().notNull(),
+  // Only verified stored sessions populate reporting provenance. Older records
+  // remain unattributed; an owner/course match cannot identify an installation.
+  registrationId: text('registration_id'),
+  contextId: text('context_id'),
 }, table => [index('lti_chat_log_subjects_subject_idx').on(table.subjectKey, table.chatLogId),
+  index('lti_chat_log_subjects_report_idx').on(table.registrationId, table.contextId, table.chatLogId),
   check('lti_chat_log_subjects_key_format', sql`${table.subjectKey} ~ '^[a-f0-9]{64}$'`),
   check('lti_chat_log_subjects_resources_array', sql`jsonb_typeof(${table.resourceVideoIds}) = 'array'`)]);
 

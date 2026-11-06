@@ -7,7 +7,7 @@ import { ltiSubjectKey } from '../lti/identity';
 
 export const ORPHAN_CONTEXT = '@orphan';
 export const privacyCollections = ['logs','evaluations','conversations','turns','questions','replies','votes','moderation',
-  'material_operations','tag_operations','recent_history','checkpoints','checkpoint_blobs','checkpoint_writes'] as const;
+  'material_operations','tag_operations','report_accesses','recent_history','checkpoints','checkpoint_blobs','checkpoint_writes'] as const;
 const subject = z.string().regex(/^[1-9][0-9]{0,17}$/);
 const contexts = z.array(z.string().min(1).max(255)).min(1).max(100).refine(ids => new Set(ids).size === ids.length);
 const cursor = z.object({ after:z.string().min(1).max(2048).optional(),
@@ -32,6 +32,8 @@ const parameters=`WITH params AS(SELECT $1::text owner,$2::text subject,$3::text
   $5::text registration,$6::text subject_hash,$7::text installation,$8::text[] contexts)`;
 const contextFor=(course:string)=>`coalesce((SELECT m.context_id FROM lms_courses m
   WHERE m.installation_id=p.installation AND m.course_id=${course} ORDER BY m.id LIMIT 1),'${ORPHAN_CONTEXT}')`;
+const reportContext=(alias:string)=>`CASE WHEN EXISTS(SELECT 1 FROM lms_courses rc WHERE rc.installation_id=p.installation
+  AND rc.course_id=${alias}.course_id AND rc.context_id=${alias}.context_id) THEN ${alias}.context_id ELSE '${ORPHAN_CONTEXT}' END`;
 const author=(course:string)=>`encode(sha256(convert_to(p.qa_prefix||${course}::text||']','UTF8')),'hex')`;
 type Collection = {from:string;where:string;key:string;cast:'bigint'|'uuid'|'text';context:string;data:string};
 const conversationFrom=`params p JOIN chat_conversations c ON c.owner_user_id=p.owner
@@ -39,7 +41,7 @@ const conversationFrom=`params p JOIN chat_conversations c ON c.owner_user_id=p.
 const logFrom=`params p JOIN chat_logs l ON l.user_id=p.owner JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id AND s.subject_key=p.subject`;
 const defs:Record<typeof privacyCollections[number],Collection>={
   logs:{from:logFrom,where:'true',key:'l.id',cast:'bigint',context:contextFor('l.course_id'),
-    data:`jsonb_build_object('question',l.question,'answer',l.response,'feedback',l.feedback,'retrievedContexts',l.retrieved_contexts,'createdAt',l.created_at,'resourceVideoIds',s.resource_video_ids)`},
+    data:`jsonb_build_object('question',l.question,'answer',l.response,'feedback',l.feedback,'retrievedContexts',l.retrieved_contexts,'createdAt',l.created_at,'resourceVideoIds',s.resource_video_ids,'registrationId',s.registration_id,'contextId',s.context_id)`},
   evaluations:{from:logFrom+' JOIN chat_log_evaluations e ON e.chat_log_id=l.id',where:'true',key:'e.id',cast:'bigint',context:contextFor('l.course_id'),
     data:`jsonb_build_object('status',e.status,'faithfulness',e.faithfulness,'answerRelevancy',e.answer_relevancy,'contextPrecision',e.context_precision,'createdAt',e.created_at,'evaluatedAt',e.evaluated_at)`},
   conversations:{from:conversationFrom,where:'true',key:'c.conversation_id',cast:'uuid',context:contextFor('c.course_id'),
@@ -58,6 +60,9 @@ const defs:Record<typeof privacyCollections[number],Collection>={
     data:`jsonb_build_object('operationId',m.id,'action',m.action,'sourceGeneration',m.source_generation,'requestHash',m.request_hash,'beforeRevision',m.before_revision,'afterRevision',m.after_revision,'createdAt',m.created_at)`},
   tag_operations:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN lti_course_tag_operations m ON m.course_id=c.id',where:'m.actor_key=p.subject',key:'m.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('operationId',m.id,'action',m.action,'requestHash',m.request_hash,'createdAt',m.created_at)`},
+  report_accesses:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN lti_report_accesses m ON m.course_id=c.id',
+    where:'m.actor_key=p.subject AND m.installation_id=p.installation',key:'m.id',cast:'uuid',context:reportContext('m'),
+    data:`jsonb_build_object('accessId',m.id,'from',m.from_date,'to',m.to_date,'resourceCount',m.resource_count,'scopeHash',m.scope_hash,'createdAt',m.created_at)`},
   recent_history:{from:'params p JOIN lti_credentials h ON h.kind=\'lti-history\'',where:`h.kind='lti-history' AND h.payload->>'registrationId'=p.registration AND h.payload->>'subjectHash'=p.subject_hash`,key:'h.id',cast:'text',
     context:`coalesce(h.payload->>'contextId',${contextFor("CASE WHEN h.payload->>'courseId' ~ '^[1-9][0-9]{0,17}$' THEN (h.payload->>'courseId')::bigint END")})`,
     data:`jsonb_build_object('turns',h.payload->'turns','expiresAt',h.expires_at)`},
@@ -142,5 +147,8 @@ export async function erasePrivacyData(client:pg.Client,installation:PrivacyInst
     await execute(name,`DELETE FROM ${table} a USING params p,video_courses c WHERE a.course_id=c.id AND c.user_id=p.owner
       AND a.actor_key=p.subject AND ${contextFor('c.id')}=ANY(p.contexts)`);
   }
+  await execute('reportAccesses',`DELETE FROM lti_report_accesses a USING params p,video_courses c
+    WHERE a.course_id=c.id AND c.user_id=p.owner AND a.installation_id=p.installation AND a.actor_key=p.subject
+      AND ${reportContext('a')}=ANY(p.contexts)`);
   return result;
 }
