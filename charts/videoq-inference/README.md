@@ -233,6 +233,14 @@ image values with a tag. If a site needs a private rebuild, build
 retain the same license, scan/SBOM and provenance controls, and use an explicitly
 reviewed site-owned image values file instead of the public image values.
 
+External-image findings are evaluated against the actual deployment before
+blocking promotion. See the [upstream inference runtime assessments and maintenance
+policy](../../apps/inference/llamacpp/security/README.md). The scoped APT assessment
+does not patch the upstream image or apply to operator overrides, host package
+management or upstream image builds. CI retains raw findings, verifies the chart's
+non-root/read-only runtime, rejects unassessed findings and requires review before
+the assessment expires. Daily Operations scans continue independently of PRs.
+
 Use that file with the selected inference/application pair above. The overlay
 assumes namespace `videoq`; update the service URLs if changing namespace,
 service names or cluster DNS suffix. Match `networkPolicy.clientRelease` to the

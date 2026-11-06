@@ -129,6 +129,18 @@ def scan_osv(packages):
             raise ValueError(f"Known vulnerabilities in introduced versions: {vulnerable}")
 
 
+def resolve_base_ref(ref):
+    # Manual branch checks compare with the common ancestor of canonical main,
+    # rather than treating a missing event.before as an empty dependency graph.
+    if not re.fullmatch(r"refs/remotes/origin/[A-Za-z0-9._/-]+", ref):
+        raise ValueError("Base ref must name an origin remote branch")
+    subprocess.run(["git", "check-ref-format", ref], check=True, capture_output=True)
+    result = subprocess.check_output(["git", "merge-base", "HEAD", ref], text=True).strip()
+    if not re.fullmatch(r"[a-f0-9]{40}", result):
+        raise ValueError("Merge base must be a full commit SHA")
+    return result
+
+
 def read_base(ref, filename):
     if not re.fullmatch(r"[a-f0-9]{40}", ref):
         raise ValueError("Base must be a full commit SHA")
@@ -142,9 +154,13 @@ def read_base(ref, filename):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base", required=True)
+    base = parser.add_mutually_exclusive_group(required=True)
+    base.add_argument("--base")
+    base.add_argument("--base-ref", help="Compare a manual branch run to its merge base with an origin branch")
     parser.add_argument("--offline", action="store_true", help="Structural tests only; never used in CI")
     args = parser.parse_args()
+    if args.base_ref:
+        args.base = resolve_base_ref(args.base_ref)
     policy = json.loads(pathlib.Path(".github/supply-chain-policy.json").read_text())
     introduced = []
     for filename in policy["npm_lockfiles"]:

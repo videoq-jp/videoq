@@ -1,3 +1,4 @@
+import { focusManager } from '@tanstack/react-query'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useVideos, useVideo } from '../useVideos'
 import { useVideoCourseDetailQuery } from '../useVideoCourseDetailData'
@@ -38,7 +39,7 @@ describe.each(['list', 'detail', 'course'] as const)('visual preparation polling
     listVideos.mockReset()
     getVideo.mockReset()
   })
-  it.each(['processing', 'error'] as const)('keeps checking %s visuals after transcription completes, then stops at ready', async status => {
+  it.each(['processing', 'error'] as const)('keeps checking %s visuals, then returns to the normal refresh cadence', async status => {
     vi.useFakeTimers()
     const pending = { id: 1, title: 'Video', status: 'completed', visual_processing: { status, completed_chunks: 24, total_chunks: 155 } }
     const ready = { ...pending, visual_processing: { status: 'ready', completed_chunks: 155, total_chunks: 155 } }
@@ -57,13 +58,39 @@ describe.each(['list', 'detail', 'course'] as const)('visual preparation polling
     await act(async () => { await vi.advanceTimersByTimeAsync(status === 'error' ? 30_000 : 3000) })
     await act(async () => { await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2)) })
     await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
-    expect(request).toHaveBeenCalledTimes(2)
+    expect(request).toHaveBeenCalledTimes(surface === 'list' ? 4 : 2)
   })
 })
 
 describe('useVideos', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('refreshes the library when returning from an external editor', async () => {
+    let serverVideos = [{ id: 1, title: 'Moodle video', status: 'completed' }]
+    listVideos.mockImplementation(async () => mockPaginatedResponse(serverVideos))
+    const { result, unmount } = renderHook(() => useVideos())
+    await waitFor(() => expect(result.current.videos).toHaveLength(1))
+    try {
+      serverVideos = []
+      await act(async () => { focusManager.setFocused(false); focusManager.setFocused(true) })
+      await waitFor(() => expect(result.current.videos).toHaveLength(0))
+    } finally { unmount(); focusManager.setFocused(undefined) }
+  })
+
+  it('removes a completed video deleted externally without a manual reload', async () => {
+    vi.useFakeTimers()
+    try {
+      let serverVideos = [{ id: 1, title: 'Moodle video', status: 'completed' }]
+      listVideos.mockImplementation(async () => mockPaginatedResponse(serverVideos))
+      const { result } = renderHook(() => useVideos())
+      await act(async () => { await vi.waitFor(() => expect(result.current.videos).toHaveLength(1)) })
+      serverVideos = []
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(result.current.videos).toEqual([])
+      expect(result.current.totalCount).toBe(0)
+    } finally { vi.useRealTimers() }
   })
 
   it('should initialize with empty videos and loading state', () => {

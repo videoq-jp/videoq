@@ -1,5 +1,5 @@
 import pg from "pg";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   getNextMaintenanceWakeup,
   type MaintenanceWakeup,
@@ -293,4 +293,51 @@ describeWithPostgres("next maintenance wakeup on PostgreSQL", () => {
       ).toBe(schedule.nextFutureAt!.getTime());
     },
   );
+
+  describe("optional LTI materials wakeups", () => {
+    const enabledEnv = (): ScheduleEnv => ({ ...env, USE_S3_STORAGE: "true", LTI_TOOL_KEYS: "test-key-ring",
+      LTI_CONFIG: '{"toolOrigin":"https://api.example","databaseRegistrations":true,"registrations":[]}' });
+    beforeAll(async () => {
+      await admin.query(`
+        CREATE TABLE ${quotedSchema}.users (
+          id text PRIMARY KEY, is_active boolean NOT NULL DEFAULT true,
+          deactivated_at timestamptz, banned boolean DEFAULT false, ban_expires timestamptz
+        );
+        CREATE TABLE ${quotedSchema}.lms_installations (
+          id text PRIMARY KEY, owner_user_id text NOT NULL, active boolean NOT NULL DEFAULT true,
+          materials_service jsonb, next_materials_sync_at timestamptz NOT NULL
+        );
+      `);
+    });
+    beforeEach(async () => {
+      await admin.query(`
+        INSERT INTO ${quotedSchema}.users(id) VALUES('owner');
+        INSERT INTO ${quotedSchema}.lms_installations(id,owner_user_id,materials_service,next_materials_sync_at)
+        VALUES('school','owner','{"endpoint":"https://moodle.example/materials","tokenEndpoint":"https://moodle.example/token"}',now()+interval '4 minutes');
+      `);
+    });
+    afterEach(async () => { await admin.query(`TRUNCATE ${quotedSchema}.lms_installations, ${quotedSchema}.users`); });
+
+    it("wakes a configured deployment for its next active materials synchronization", async () => {
+      expectFutureWakeup(await getNextMaintenanceWakeup(enabledEnv(), WINDOWS), Date.now() + 4 * 60_000);
+    });
+    it("keeps an unconfigured deployment silent even if old connections remain", async () => {
+      await expect(getNextMaintenanceWakeup(env, WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
+    });
+    it.each(["LTI_TOOL_KEYS", "LTI_CONFIG", "USE_S3_STORAGE"] as const)("stops wakeups when %s is removed", async key => {
+      await expect(getNextMaintenanceWakeup({ ...enabledEnv(), [key]: undefined }, WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
+    });
+    it.each(["is_active=false", "deactivated_at=now()", "banned=true", "banned=true,ban_expires=now()+interval '1 day'"])("ignores an owner with %s", async change => {
+      await admin.query(`UPDATE ${quotedSchema}.users SET ${change}`);
+      await expect(getNextMaintenanceWakeup(enabledEnv(), WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
+    });
+    it.each(["active=false", "materials_service=NULL"])("ignores a connection with %s", async change => {
+      await admin.query(`UPDATE ${quotedSchema}.lms_installations SET ${change}`);
+      await expect(getNextMaintenanceWakeup(enabledEnv(), WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
+    });
+    it("allows an owner again once a timed ban expires", async () => {
+      await admin.query(`UPDATE ${quotedSchema}.users SET banned=true,ban_expires=now()-interval '1 minute'`);
+      expectFutureWakeup(await getNextMaintenanceWakeup(enabledEnv(), WINDOWS), Date.now() + 4 * 60_000);
+    });
+  });
 });

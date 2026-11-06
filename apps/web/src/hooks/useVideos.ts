@@ -54,6 +54,7 @@ export function useVideos(params?: UseVideosParams): UseVideosReturn {
     limit: PAGE_SIZE,
   }, {
     enabled: params?.enabled,
+    refetchOnWindowFocus: 'always',
     initialCursor: 0,
     getNextPageParam: (lastPage) => {
       if (lastPage.data.length === 0) return undefined;
@@ -66,7 +67,8 @@ export function useVideos(params?: UseVideosParams): UseVideosReturn {
         page.data.some((video) => isInProgressStatus(video.status) || video.visual_processing?.status === 'processing'),
       );
       if (hasInProgress) return 3000;
-      return pages.some(page => page.data.some(video => video.visual_processing?.status === 'error')) ? 30_000 : false;
+      // Moodle and other clients can add/remove settled videos externally.
+      return 30_000;
     },
   }));
 
@@ -108,6 +110,7 @@ export function useVideo(videoId: number | null): UseVideoReturn {
 
   const videoQuery = useQuery(trpc.videos.get.queryOptions({ id: videoId! }, {
     enabled: !!videoId && !!user,
+    refetchOnWindowFocus: 'always',
     refetchInterval: (query) => {
       const video = query.state.data;
       if (isInProgressStatus(video?.status) || video?.visual_processing?.status === 'processing') return 3000;

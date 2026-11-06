@@ -3,5 +3,6 @@
 vulnerability:
   vex:
     - apps/inference/whisper/security/kernel-headers.openvex.json
+    - apps/inference/whisper/security/apt-fixed.openvex.json
 scan:
   show-suppressed: true

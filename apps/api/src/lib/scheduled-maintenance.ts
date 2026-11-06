@@ -1,3 +1,5 @@
+import { sweepMaterials } from "../features/lti/materials-sync";
+import { pruneLtiCredentials } from "../features/lti/store";
 import {
   EXTERNAL_TASK_LEASE_MS,
   getExternalTaskHealth,
@@ -83,10 +85,12 @@ export type MaintenanceSweepResult = {
 };
 
 function sweepProgressed(results: Record<string, unknown>): boolean {
+  const materials = results.ltiMaterials as { synchronized?: number } | undefined;
   const tasks = results.externalTasks as ExternalTaskRunResult | undefined;
   const uploads = results.abandonedUploads as ReconcileResult | undefined;
   const invitations = results.staleInvitations as { failed?: number } | undefined;
   return (
+    (materials?.synchronized ?? 0) > 0 ||
     (tasks?.claimed ?? 0) > 0 ||
     (uploads?.released ?? 0) > 0 ||
     (invitations?.failed ?? 0) > 0
@@ -106,6 +110,7 @@ export async function runMaintenanceSweep(
 ): Promise<MaintenanceSweepResult> {
   const results = await settleAndReport("scheduled_delivery_recovery", {
     externalTasks: processExternalTasks(env, { limit: 50, arm: false }),
+    ltiMaterials: sweepMaterials(env),
     abandonedUploads: reconcileAbandonedUploads(env),
     staleInvitations: failInvitationsWithoutLiveDelivery(
       env,
@@ -136,6 +141,7 @@ export async function runScheduledMaintenance(
       retention: pruneDeliveryHistory(env),
       mcpIdempotency: pruneMcpIdempotencyRecords(env),
       conversations: pruneConversations(env),
+      ltiCredentials: pruneLtiCredentials(env),
     }),
     runMaintenanceSweep(env, now),
   ]);

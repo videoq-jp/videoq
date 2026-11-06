@@ -773,6 +773,19 @@
       "passwordConfirmation": {
         "label": "パスワード（確認）"
       }
+    },
+    "moodleConnect": {
+      "title": "Moodleとの接続を許可",
+      "invalid": "接続リクエストが無効です。Moodleからやり直してください。",
+      "loading": "ログイン状態を確認しています…",
+      "error": "接続できませんでした。Moodleからやり直してください。",
+      "loginHelp": "接続先のVideoQアカウントでログインしてください。",
+      "login": "VideoQにログイン",
+      "account": "接続するアカウント：{{account}}",
+      "permissions": "このMoodleの動画教材を転送・同期し、このアカウントの利用枠で文字起こしとAI回答を行うことを許可します。接続はVideoQの設定から解除できます。",
+      "allow": "許可してMoodleへ戻る",
+      "cancel": "キャンセルしてMoodleへ戻る",
+      "connecting": "接続しています…"
     }
   },
   "chat": {
@@ -1217,6 +1230,21 @@
     },
     "integrations": {
       "title": "外部連携"
+    },
+    "moodle": {
+      "title": "Moodleの接続",
+      "description": "新しい接続はMoodleの「VideoQと接続」から開始し、VideoQのURLを入力してください。VideoQではログインと接続の承認だけを行います。",
+      "connected": "接続済み",
+      "disabled": "接続解除済み",
+      "disconnect": "接続を解除",
+      "disconnectDescription": "接続を解除すると、動画の同期とMoodleからのAI質問が停止します。Moodleの教材と、VideoQに同期済みの動画・文字起こし・質問履歴は残ります。",
+      "confirmDisconnect": "解除する",
+      "cancelDisconnect": "キャンセル",
+      "disconnecting": "解除しています…",
+      "disconnectError": "接続を解除できませんでした。ログイン状態と通信を確認して再試行してください。",
+      "disconnected": "接続を解除しました。教材と同期済みデータは残っています。",
+      "empty": "接続済みのMoodleはありません。",
+      "setupGuide": "プラグインの導入・接続手順（Gitから配置できます）"
     }
   },
   "dashboard": {

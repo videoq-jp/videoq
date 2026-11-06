@@ -14,6 +14,10 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import ssl
+import http.client
+import urllib.error
 import urllib.request
 
 TARGETS = {
@@ -97,8 +101,21 @@ def discover(data, name, upgrade, request):
 
 
 def verified(download):
-    with urllib.request.urlopen(download["url"], timeout=60) as response:
-        body = response.read(64 * 1024 * 1024 + 1)
+    # Public release assets can return transient gateway errors. Retry only
+    # transport failures; integrity/size checks below still fail immediately.
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(download["url"], timeout=60) as response:
+                body = response.read(64 * 1024 * 1024 + 1)
+            break
+        except urllib.error.HTTPError as error:
+            error.close()
+            if error.code not in {408, 429, 500, 502, 503, 504} or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
+            if (isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError)) or attempt == 3:
+                raise
+        time.sleep(2 ** attempt)
     if len(body) > 64 * 1024 * 1024:
         raise ValueError("Package manager distribution exceeds the size limit")
     if "integrity" in download:

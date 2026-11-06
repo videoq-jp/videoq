@@ -15,6 +15,8 @@ import { healthRoutes } from "./features/health/routes";
 import { videoRoutes } from "./features/videos/routes";
 import { chatRoutes } from "./features/chat/routes";
 import { mcpRoutes } from "./features/mcp/routes";
+import { ltiRoutes } from "./features/lti/routes";
+import { lmsRoutes } from "./features/lms/routes";
 import { mediaRoutes } from "./features/media/routes";
 import { billingRoutes } from "./features/billing/routes";
 import { withDb } from "./db/pool";
@@ -139,6 +141,8 @@ export function createApp() {
   app.route("/api/videos", videoRoutes);
   app.route("/api/chat", chatRoutes);
   app.route("/api/mcp", mcpRoutes);
+  app.route("/api/lti", ltiRoutes);
+  app.route("/api/lms", lmsRoutes);
   app.route("/api/media", mediaRoutes);
 
   app.notFound((c) => c.json(toErrorBody("NOT_FOUND", "Not found"), 404));

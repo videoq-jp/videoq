@@ -47,7 +47,8 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
     assert.ok(scan, component);
     assert.match(scan, /severity: HIGH,CRITICAL/);
     assert.match(scan, /ignore-unfixed: 'false'/);
-    assert.match(scan, /exit-code: '1'/);
+    assert.match(scan, component === 'llamacpp' ? /exit-code: '0'/ : /exit-code: '1'/);
+    if (component === 'llamacpp') assert.match(onprem, /node \.github\/scripts\/onprem-upstream-security\.cjs llamacpp-security-raw\.json amd64/);
     assert.doesNotMatch(scan, /continue-on-error: true/);
   }
 });
@@ -95,7 +96,8 @@ test('upstream CPU images retain separate architecture scans and a verified asse
   assert.match(cpu, /steps.header_inventory.outcome == 'success'/);
   assert.match(cpu, /apps\/inference\/whispercpp\/security\/header-image-inventory.json/);
   assert.match(cpu, /ignore-unfixed: 'false'/);
-  assert.match(cpu, /exit-code: '1'/);
+  assert.match(cpu, /exit-code: '0'/);
+  assert.match(cpu, /onprem-upstream-security\.cjs upstream-cpu-security\.json/);
   assert.doesNotMatch(cpu, /continue-on-error: true/);
 });
 
@@ -123,4 +125,13 @@ test('CI scans pinned upstream images only when their pins change, while Operati
   assert.match(ci, /scan_upstream_images: \$\{\{ needs\.changes\.outputs\.upstream_images == 'true' \}\}/);
   const operations = readFileSync(join(__dirname, '../workflows/operations.yml'), 'utf8');
   assert.doesNotMatch(operations, /scan_upstream_images/);
+});
+
+test('normal on-prem validation reserves disk before building images or starting Kubernetes', () => {
+  const steps = onprem.split(/(?=      - name:|      - uses:|      - run:)/);
+  const reserve = steps.find(step => step.includes('name: Reserve disk for on-prem images and Kubernetes caches'));
+  assert.ok(reserve);
+  assert.doesNotMatch(reserve, /\bif:/);
+  assert.match(reserve, /\/usr\/local\/lib\/android \/usr\/share\/dotnet \/opt\/ghc/);
+  assert.ok(onprem.indexOf(reserve) < onprem.indexOf('      - uses: actions/setup-node@'));
 });

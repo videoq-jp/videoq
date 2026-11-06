@@ -72,5 +72,5 @@
     "globals": "^17.13.0",
     "eslint-plugin-react-hooks": "^7.1.1"
   },
-  "packageManager": "npm@12.2.1"
+  "packageManager": "npm@12.2.2"
 }

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { http, HttpResponse } from 'msw';
 import { expect, fn, waitFor, within } from 'storybook/test';
 import i18n from '@/i18n/config';
 import SettingsPage from './SettingsPage';
@@ -17,6 +18,7 @@ const api = {
     trpcQuery('account.connectedApps', success(consents)),
   ],
   rest: [
+    http.get('/api/lms/pairing', () => HttpResponse.json({ error: 'LMS_SYNC_DISABLED' }, { status: 404 })),
     restPost('/api/auth/change-email', success({ status: true })),
   ],
 };

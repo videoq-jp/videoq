@@ -17,10 +17,11 @@ export function useVideoStatusCounts(enabled = true) {
   const query = useQuery(trpc.videos.statusCounts.queryOptions(undefined, {
     enabled,
     staleTime: 30_000,
+    refetchOnWindowFocus: 'always',
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasInProgress = !!data && IN_PROGRESS_STATUSES.some((status) => data[status] > 0);
-      return hasInProgress ? 3000 : false;
+      return hasInProgress ? 3000 : 30_000;
     },
   }));
 

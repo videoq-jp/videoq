@@ -1,0 +1,18 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/nvidia-apt-fixed-2026-11-05",
+  "author": "VideoQ",
+  "timestamp": "2026-11-05T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {"name": "CVE-2026-109518"},
+      "products": [
+        {"@id": "pkg:deb/ubuntu/apt@2.8.4ubuntu0.1?arch=amd64&distro=ubuntu-24.04"},
+        {"@id": "pkg:deb/ubuntu/libapt-pkg6.0t64@2.8.4ubuntu0.1?arch=amd64&distro=ubuntu-24.04"}
+      ],
+      "status": "fixed",
+      "impact_statement": "Ubuntu's official CVE-2026-109518 advisory identifies 2.8.4ubuntu0.1 as the Ubuntu 24.04 fix: https://ubuntu.com/security/CVE-2026-109518 . The NVIDIA build upgrades OS packages and verify_apt.py checks both installed package versions using Debian version comparison. Package acquisition disables retries before the old client is upgraded, excluding the advisory's required non-zero Acquire::Retries condition. This statement matches only these exact fixed package PURLs; it does not cover the vulnerable upstream CPU images, other versions, architectures or CVEs. Raw and assessed findings remain in the Trivy JSON report while scanner metadata catches up."
+    }
+  ]
+}

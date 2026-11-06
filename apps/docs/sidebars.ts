@@ -34,6 +34,7 @@ const sidebars: SidebarsConfig = {
         'architecture/system-configuration-diagram',
         'concepts/auth',
         'concepts/course-sharing',
+        'guides/lms-integration',
       ],
     },
     {
@@ -93,7 +94,8 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Operations',
-      items: ['guides/on-premises', 'guides/on-premises-single-server', 'guides/local-inference', 'guides/on-premises-releases', 'design/deployment-diagram', 'billing/stripe-dashboard'],
+      items: ['guides/on-premises', 'guides/on-premises-single-server',
+          'guides/on-premises-k3s', 'guides/local-inference', 'guides/on-premises-releases', 'design/deployment-diagram', 'billing/stripe-dashboard'],
     },
     'reference/glossary',
   ],
