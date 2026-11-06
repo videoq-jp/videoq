@@ -14,6 +14,8 @@ import { getVideoEvidence } from "../../repositories/video-evidence-repository";
 import { courseAccess, courseAccessContext } from "./course-access";
 import { transcriptPage } from "./transcript";
 import { mountLtiQa } from "./qa-routes";
+import { mountLtiConversations } from './conversation-routes';
+import { ltiSubjectKey } from './identity';
 import { playbackCueHint } from "./playback-context";
 import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
@@ -34,13 +36,16 @@ const tokenString = z.string().min(1).max(100_000);
 const exchangeSchema = z.object({ state: opaque, browserSecret: opaque, id_token: tokenString }).strict();
 const messageSchema = z.object({
   messages: chatMessagesSchema,
+  conversationId: z.uuid().optional(),
+  resumeConversation: z.boolean().optional(),
   playback: z.object({
     video_id: z.number().int().positive().safe(),
     position_seconds: z.number().min(0).max(604800),
   }).strict().optional(),
 }).strict().refine(
   input => input.messages.at(-1)?.role === "user", "The last message must be a question",
-);
+).refine(input => !input.conversationId || input.messages.length === 1, 'A saved conversation takes one question')
+  .refine(input => !input.resumeConversation || !!input.conversationId, 'A conversation is required');
 function refused(c: Context<AppEnv>, status: 400 | 401 | 403 = 400) {
   return c.json(toErrorBody(status === 401 ? "UNAUTHORIZED" : "VALIDATION_ERROR", "LTI request could not be accepted. Relaunch from your LMS or contact the administrator."), status);
 }
@@ -146,7 +151,8 @@ ltiRoutes.post("/session", async c => {
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
   return c.json({ token, expiresIn: 3600,
-    features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService) },
+    features: { transcripts: Boolean(reg.courseAccess || reg.materialsService), qa: Boolean(reg.courseAccess || reg.materialsService),
+      conversations: Boolean(reg.courseAccess || reg.materialsService) },
     ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -187,11 +193,12 @@ async function authorizeMaterials(c: Context<AppEnv>) {
     const course = await getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId,
       ltiVideoGrant: current.videos.map(video => video.videoId) });
     if (!course) return { error: refused(c, 403) } as const;
-    return { current, course, grant: access.grant };
+    return { current, course, grant: access.grant, sessionHash: access.sessionHash };
   } catch { return { error: refused(c, 403) } as const; }
 }
 
 mountLtiQa(ltiRoutes, authorizeMaterials, refused);
+mountLtiConversations(ltiRoutes, authorizeMaterials, feedbackReference);
 
 ltiRoutes.post("/materials", async c => {
   const access = await authorizeMaterials(c);
@@ -239,8 +246,13 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
   if (denied) return throttledResponse(c, denied);
   const input = messageSchema.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return refused(c);
-  let allowed;
-  try { allowed = await courseAccess(reg, grant, c.env); } catch { return refused(c, 403); }
+  let current;
+  try { current = await courseAccessContext(reg, grant, c.env); } catch { return refused(c, 403); }
+  if (input.data.conversationId && !current?.permissions.manageOwnHistory) return refused(c, 403);
+  const allowed = current?.videos ?? null;
+  const subjectKey = await ltiSubjectKey(grant);
+  const conversation = input.data.conversationId ? { conversation_id: input.data.conversationId,
+    resume_conversation: input.data.resumeConversation ?? false } : {};
   const ltiVideoGrant = allowed?.map(video => video.videoId);
   // Do not feed prior answers from a newly restricted scope back into the model.
   const usedScope = allowed ? await recordScopeVideos(c.env, sessionHash, ltiVideoGrant!) : null;
@@ -269,7 +281,8 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
     const connection = new AbortController();
     const result = await streamChatMessage(c.env, {
       userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-      body: { messages, course_id: grant.courseId }, locale: grant.locale,
+      ltiSubjectKey: subjectKey, displayQuestion: input.data.messages.at(-1)!.content,
+      body: { messages, course_id: grant.courseId, ...conversation }, locale: grant.locale,
       clientSignal: AbortSignal.any([c.req.raw.signal, connection.signal]),
     });
     c.header("Content-Encoding", "Identity");
@@ -294,7 +307,8 @@ ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
   }
   const result = await sendChatMessage(c.env, {
     userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-    body: { messages, course_id: grant.courseId }, locale: grant.locale,
+    ltiSubjectKey: subjectKey, displayQuestion: input.data.messages.at(-1)!.content,
+    body: { messages, course_id: grant.courseId, ...conversation }, locale: grant.locale,
   });
   // Expose a session-bound feedback reference, never owner log IDs.
   if (result.status !== 200 || !("answer" in result.body)) return c.json(result.body, result.status);

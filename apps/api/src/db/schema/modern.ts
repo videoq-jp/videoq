@@ -844,6 +844,25 @@ export const chatConversationTurns = pgTable("chat_conversation_turns", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: "chat_conversation_turns_thread_fk" }).onDelete("cascade"), uniqueIndex("chat_conversation_turns_checkpoint_idx").on(table.threadId, table.checkpointId), index("chat_conversation_turns_thread_idx").on(table.threadId, table.id)]);
 
+/** Server-verified Moodle attribution, written atomically with the answer log. */
+export const ltiChatLogSubjects = pgTable('lti_chat_log_subjects', {
+  chatLogId: bigint('chat_log_id', { mode: 'number' }).primaryKey().references(() => chatLogs.id, { onDelete: 'cascade' }),
+  subjectKey: varchar('subject_key', { length: 64 }).notNull(),
+  resourceVideoIds: jsonb('resource_video_ids').$type<number[]>().notNull(),
+}, table => [index('lti_chat_log_subjects_subject_idx').on(table.subjectKey, table.chatLogId),
+  check('lti_chat_log_subjects_key_format', sql`${table.subjectKey} ~ '^[a-f0-9]{64}$'`),
+  check('lti_chat_log_subjects_resources_array', sql`jsonb_typeof(${table.resourceVideoIds}) = 'array'`)]);
+
+/** Original resource scope survives later visibility changes and source deletion. */
+export const ltiConversationScopes = pgTable('lti_conversation_scopes', {
+  threadId: text('thread_id').primaryKey(),
+  subjectKey: varchar('subject_key', { length: 64 }).notNull(),
+  resourceVideoIds: jsonb('resource_video_ids').$type<number[]>().notNull(),
+}, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: 'lti_conversation_scopes_thread_fk' }).onDelete('cascade'),
+  index('lti_conversation_scopes_subject_idx').on(table.subjectKey, table.threadId),
+  check('lti_conversation_scopes_key_format', sql`${table.subjectKey} ~ '^[a-f0-9]{64}$'`),
+  check('lti_conversation_scopes_resources_array', sql`jsonb_typeof(${table.resourceVideoIds}) = 'array'`)]);
+
 // Explicitly published course Q&A; private AI chat logs are never included.
 export const courseQuestions = pgTable('course_questions', {
   id: uuid('id').primaryKey().defaultRandom(),

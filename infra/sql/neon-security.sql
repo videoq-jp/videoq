@@ -29,6 +29,7 @@ BEGIN
     'job_executions','mcp_idempotency_records','videos','video_transcription_runs','video_transcription_chunks',
     'video_visual_runs','video_visual_chunks','video_courses','video_course_members','video_course_invitations',
     'video_course_memberships','tags','video_tags','chat_logs','chat_conversations','chat_conversation_turns','ai_answer_attempts','chat_log_evaluations',
+    'lti_chat_log_subjects','lti_conversation_scopes',
     'course_evaluation_snapshots','scene_embeddings','scene_embeddings_768','stripe_events',
     'session','account','verification','apikey','jwks','device_code','oauth_client','oauth_resource',
     'oauth_client_resource','oauth_refresh_token','oauth_access_token','oauth_consent','oauth_client_assertion'] LOOP

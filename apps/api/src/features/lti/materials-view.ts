@@ -16,7 +16,7 @@ let materialCursor=null,materialLoading=false,materialListLoaded=false;
 async function materialRequest(action,payload={}){
  const response=await fetch('/api/lti/'+(action==='list'?'materials':'transcript'),{method:'POST',credentials:'omit',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
  if(!response.ok)throw new Error(uiCopy.materialError);
- const result=await response.json();if(action==='list'&&result?.permissions)qaAvailability(result.permissions.viewQa===true);return result;
+ const result=await response.json();if(action==='list'&&result?.permissions){qaAvailability(result.permissions.viewQa===true);personalAvailability(result.permissions.manageOwnHistory===true);}return result;
 }
 let materialCommandBusy=false;
 async function materialCommand(data,origin){

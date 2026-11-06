@@ -20,7 +20,7 @@ Inventory source: `packages/trpc/src/routers/{videos,courses,qa,chat,tags,accoun
 | Course video playback and evidence navigation | Current course/activity access; check both File and LTI activities | Existing Moodle player and scoped citation bridge; full live regression still required |
 | Lesson catalog and transcript reading | Current resource scope plus `local/videoq:viewtranscript` | Implemented in this branch: paged cue reader in native Moodle UI and embedded LTI UI; old plugins deny this capability |
 | Course AI chat, playback questions, feedback | Current course/resource access; feedback bound to the answer's session | Existing transport and scoped retrieval; real AI/native startup regression remains open |
-| Personal chat history, conversations, delete/reset/export | Own pseudonymous identity, deployment and course; recheck resource scope | Existing course-history restore only; personal conversation management, deletion/export and retention enforcement remain open |
+| Personal chat history, conversations, delete/reset/export | Own pseudonymous identity, deployment and course; recheck resource scope | Personal saved conversations, resume/new, per-conversation deletion/export and expiry cleanup implemented in the personal-conversations branch; all-data reset/export, legacy attribution and complete live verification remain open |
 | Human Q&A list, search, question, reply, vote | Current course/resources; own identity for posting and edits; hidden-video threads excluded | Implemented in the Q&A feature branch with course pseudonyms and fresh capabilities; entry from empty courses, external privacy lifecycle and full live verification remain open |
 | Q&A moderation and featured questions | Explicit current course moderation capability; scoped resources | Implemented in the Q&A feature branch with own-edit rules and metadata audit; full live verification remains open |
 | Video uploads, processing status and retry | Moodle activity-edit authority for Moodle-owned uploads; server limits still apply | Existing File opt-in and synchronization/status UI; verify upload language, quota, retry and failed-job workflows end to end |
@@ -59,3 +59,6 @@ that Moodle has not positively checked.
 5. Review, CI and coordinated backend/companion release. The current published source branches and prepared Marketplace ZIPs remain separate from this unreleased work.
 
 Teacher management, remaining Q&A entry/lifecycle work, owner handoff and privacy work above are still required before claiming full functional parity. See `moodle-course-qa.md` for the scope and verification of the Q&A increment.
+
+See `moodle-personal-conversations.md` for the personal-conversation increment,
+including resource restrictions, deletion, retention and external privacy limits.

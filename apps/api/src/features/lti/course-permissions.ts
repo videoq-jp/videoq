@@ -5,6 +5,7 @@ import { z } from "zod";
 // Unknown future capabilities are ignored; only explicitly recognized booleans
 // can grant access. This lets companion and backend releases be upgraded apart.
 export const coursePermissionsSchema = z.object({
+  manageOwnHistory: z.boolean().default(false),
   viewTranscript: z.boolean().default(false),
   viewQa: z.boolean().default(false),
   postQa: z.boolean().default(false),
