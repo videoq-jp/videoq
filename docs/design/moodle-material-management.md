@@ -89,7 +89,9 @@ Explicit clear, reindex and retry also require an in-frame confirmation.
 The composer tracks learning availability separately from answer-generation
 activity. Processing-only teachers can open management without history access;
 bounded five-second polling (at most 60 attempts before manual refresh) restores
-learning after a material becomes ready. Pending video playheads are never added
+learning after a material becomes ready and Moodle acknowledges synchronization.
+Polling continues through that acknowledgement delay even when the index is
+already complete. Pending video playheads are never added
 to AI questions. The poll updates processing state without replacing draft text.
 
 Remaining work includes restricted production-role/Workers runtime verification,

@@ -15,6 +15,7 @@ const copies = {
     reindexConfirm: 'Rebuild the search index? This material is unavailable to AI search until processing finishes.',
     retryConfirm: 'Retry processing? Processing limits still apply.', confirm: 'Continue',
     pending: 'Processing is in progress. Editing becomes available when it finishes.',
+    syncWaiting: 'Waiting for Moodle synchronization before questions can use this material.',
     olderJob: 'For this processing failure, use Retry synchronization in Moodle.',
     unsaved: 'Unsaved changes', changed: 'The saved material has changed. Your draft is preserved.',
     status: 'Status', job: 'Processing', completed: 'Ready', indexing: 'Updating search index', errorState: 'Processing failed',
@@ -34,6 +35,7 @@ const copies = {
     reindexConfirm: '検索索引を再作成しますか？処理が終わるまで、この教材はAI検索の対象から外れます。',
     retryConfirm: '処理を再試行しますか？処理量の上限は引き続き適用されます。', confirm: '続ける',
     pending: '処理中です。処理が終わると編集できます。', olderJob: 'この処理エラーは、Moodleの「同期を再試行」からやり直してください。',
+    syncWaiting: 'この教材を質問で使えるよう、Moodleへの同期反映を待っています。',
     unsaved: '未保存の変更があります', changed: '保存済みの教材が変更されました。下書きは保持しています。',
     status: '状態', job: '処理状況', completed: '準備完了', indexing: '検索索引を更新中', errorState: '処理エラー',
     pendingState: '処理待ち', processing: '処理中', uploading: '転送中', failed: '失敗', queuedState: '待機中', running: '実行中',
@@ -73,6 +75,7 @@ export function managementClientScript(locale: LtiLocale) {
 const managementCopy=${copy},managementPanel=document.getElementById('material-management'),managementSelect=document.getElementById('management-video'),managementStatus=document.getElementById('management-status'),managementProgress=document.getElementById('management-progress'),managementDescription=document.getElementById('management-description'),managementTranscript=document.getElementById('management-transcript'),managementSave=document.getElementById('management-save'),managementRefresh=document.getElementById('management-refresh'),managementReindex=document.getElementById('management-reindex'),managementRetry=document.getElementById('management-retry'),managementClose=document.getElementById('management-close');
 let managementAllowed=null,managementNativeOpen=false,managementBusy=false,managementDetail=null,managementObserved=null,managementVideos=[],managementError='',managementNotice='',managementDraftChanged=false,managementUncertain=null,managementPolls=0,managementTimer=null;
 function managementDirty(){return !!managementDetail&&(managementDescription.value!==managementDetail.description||managementTranscript.value!==managementDetail.transcript);}
+function managementAwaitingLearning(detail){return detail?.status==='completed'&&learningVideoIds&&!learningVideoIds.has(detail.videoId);}
 function managementAvailability(value){
  managementAllowed=value===true;
  if(!managementAllowed&&managementNativeOpen&&!managementDirty()){managementNativeOpen=false;document.body.classList.remove('moodle-management');}
@@ -97,7 +100,7 @@ function managementDraw(){
  managementPanel.setAttribute('aria-busy',String(managementBusy));managementStatus.dataset.error=String(!!managementError);
  managementStatus.textContent=managementBusy?managementCopy.loading:managementError||managementNotice||(managementDraftChanged?managementCopy.changed:dirty?managementCopy.unsaved:'');
  const labels={completed:managementCopy.completed,indexing:managementCopy.indexing,error:managementCopy.errorState,pending:managementCopy.pendingState,processing:managementCopy.processing,uploading:managementCopy.uploading,failed:managementCopy.failed,queued:managementCopy.queuedState,running:managementCopy.running};
- managementProgress.textContent=detail?managementCopy.status+': '+(labels[detail.status]||managementCopy.processing)+' · '+managementCopy.job+': '+(labels[detail.jobState]||managementCopy.processing)+(!detail.canEdit?' · '+managementCopy.pending:detail.status==='error'&&!detail.canRetry?' · '+managementCopy.olderJob:''):'';
+ managementProgress.textContent=detail?managementCopy.status+': '+(labels[detail.status]||managementCopy.processing)+' · '+managementCopy.job+': '+(labels[detail.jobState]||managementCopy.processing)+(!detail.canEdit?' · '+managementCopy.pending:detail.status==='error'&&!detail.canRetry?' · '+managementCopy.olderJob:managementAwaitingLearning(detail)?' · '+managementCopy.syncWaiting:''):'';
  managementDescription.readOnly=managementTranscript.readOnly=locked||!detail?.canEdit;
  managementSave.disabled=locked||!detail?.canEdit||!dirty;
  managementReindex.disabled=locked||!detail?.canReindex||dirty;
@@ -143,7 +146,7 @@ async function managementMutation(action){
  await managementRun(async()=>{const result=await managementRequest({...payload,operationId});managementDetail=null;managementApply(result.material);managementPolls=0;managementNotice=result.material.status==='completed'?managementCopy.saved:managementCopy.queued;await materialRequest('list');});
 }
 function managementSchedule(){
- clearTimeout(managementTimer);const observed=managementObserved||managementDetail;if(!token||managementAllowed!==true||(!managementPanel.open&&learningEnabled)||!observed||observed.status==='completed'||observed.status==='error'||managementPolls>=60)return;
+ clearTimeout(managementTimer);const observed=managementObserved||managementDetail,waiting=managementAwaitingLearning(observed);if(!token||managementAllowed!==true||(!managementPanel.open&&learningEnabled&&!waiting)||!observed||(observed.status==='completed'&&!waiting)||observed.status==='error'||managementPolls>=60)return;
  managementTimer=setTimeout(()=>{if(document.hidden||managementBusy||chatInFlight){managementSchedule();return;}managementPolls++;void managementRun(()=>managementLoad(true));},5000);
 }
 async function managementInit(){if(features.management){managementPanel.hidden=!!nativeUi;await managementRun(()=>materialRequest('list'));}}

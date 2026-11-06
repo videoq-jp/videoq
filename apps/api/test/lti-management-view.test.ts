@@ -21,7 +21,7 @@ browserTests('teacher material editing in the private LTI view', () => {
     page.setDefaultTimeout(7000);
     const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = [];
     const model = { status: initialStatus, description: '<img src=x onerror=alert(1)>', transcript: srt, version: 1,
-      permitted: true, loseResponse: false, conflicts: false, mutations: 0 };
+      permitted: true, loseResponse: false, conflicts: false, learningHold: false, mutations: 0 };
     const operations = new Set<string>();
     const revision = () => model.version.toString(16).padStart(64, '0');
     const material = () => ({ videoId: 1, title: '<script>untrusted title</script>', description: model.description,
@@ -42,7 +42,7 @@ browserTests('teacher material editing in the private LTI view', () => {
       if (path === '/api/lti/history') { await route.fulfill({ json: { turns: [] } }); return; }
       if (path === '/api/lti/materials') { await route.fulfill({ json: {
         permissions: { manageContent: model.permitted, viewQa: true, manageOwnHistory: true },
-        videos: model.status === 'completed' ? [{ videoId: 1, lesson: 'first', title: 'Lesson' }] : [],
+        videos: model.status === 'completed'&&!model.learningHold ? [{ videoId: 1, lesson: 'first', title: 'Lesson' }] : [],
         managementVideos: model.permitted ? [{ videoId: 1, lesson: 'first', title: material().title, management: { generation: 1 } }] : [],
       } }); return; }
       if (path === '/api/lti/conversations') { await route.fulfill({ json: { items: [], hasMore: false } }); return; }
@@ -168,7 +168,10 @@ browserTests('teacher material editing in the private LTI view', () => {
     expect(service.requests.some(r => r.path.endsWith('/history') || r.path.endsWith('/conversations'))).toBe(false);
     const description = panel.locator('#management-description');
     expect(await description.getAttribute('readonly')).not.toBeNull();
-    service.model.status = 'completed'; service.model.version++;
+    service.model.status = 'completed'; service.model.version++;service.model.learningHold=true;
+    await panel.getByText('Waiting for Moodle synchronization',{exact:false}).waitFor();
+    expect(await page.locator('#videoq-native-question').isDisabled()).toBe(true);
+    service.model.learningHold=false;
     await page.waitForFunction(() => !document.querySelector<HTMLFieldSetElement>('#videoq-native-chat fieldset')!.disabled);
     await description.fill('Private unsaved teaching draft');
     service.model.permitted = false;
