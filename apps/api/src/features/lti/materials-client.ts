@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { resourceManifestSchema } from "../lms/resource";
 import { toolClientAssertion, type ToolKeyEnvironment } from "./tool-keys";
+import { coursePermissionsSchema } from "./course-permissions";
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
 const httpsEndpoint = z.url().max(2048).refine(value => {
@@ -28,6 +29,25 @@ export const exportStatusSchema = z.object({ jobId: z.string().regex(/^[a-f0-9-]
   bytes: z.number().int().nonnegative().safe().optional(),
 }).strict();
 
+/** Bound the bytes while reading, before decoding or parsing an external response. */
+export async function readServiceJson(response: Response, maxBytes = 1024 * 1024) {
+  if (!response.ok || !response.body) throw new Error("LTI materials service unavailable");
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+  const parts: Uint8Array[] = []; let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new Error("LTI materials response too large");
+      parts.push(value);
+    }
+    const bytes = new Uint8Array(total); let offset = 0;
+    for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+}
+
 /** Small control-plane requests only. URLs come from an approved registration. */
 export class MaterialsClient {
   private credential?: { value: string; until: number };
@@ -37,21 +57,7 @@ export class MaterialsClient {
     materialsServiceSchema.parse(registration.materialsService);
   }
   private async json(response: Response, maxBytes = 1024 * 1024) {
-    if (!response.ok || !response.body) throw new Error("LTI materials service unavailable");
-    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
-    const parts: Uint8Array[] = []; let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        if (total > maxBytes) throw new Error("LTI materials response too large");
-        parts.push(value);
-      }
-      const bytes = new Uint8Array(total); let offset = 0;
-      for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
-      return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    return readServiceJson(response, maxBytes);
   }
   private async token() {
     if (this.credential && this.credential.until > Date.now()) return this.credential.value;
@@ -88,9 +94,10 @@ export class MaterialsClient {
   }
   async access(contextId: string, resourceLinkId: string, subject: string) {
     const access = z.object({ contextId: identity, resourceLinkId: identity,
+      permissions: coursePermissionsSchema.optional(),
       resources: z.array(z.object({ externalId: identity, resourceLinkId: identity,
         lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500) }).strict()).max(1000),
-    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject }));
+    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject, includePermissions: true }));
     if (access.contextId !== contextId || access.resourceLinkId !== resourceLinkId) throw new Error("Wrong LTI access context");
     return access;
   }

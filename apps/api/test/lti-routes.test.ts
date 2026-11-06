@@ -235,6 +235,69 @@ describe("Moodle course permission checks", () => {
     expect(response.status).toBe(200);
     return response.json<{ token: string; playback: { videos: { videoId: number }[] } }>();
   }
+  it("lists only current course materials and pages transcripts without exposing owner or storage fields", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res", permissions: { viewTranscript: true },
+      resources: ["res", "second", "other"].map(id => ({ resourceLinkId: id, lesson: id, title: "Moodle " + id })) }));
+    try {
+      const { token } = await scopedSession();
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1, 2] });
+      vi.mocked(getVideoEvidence).mockResolvedValue({ id: 2, title: "Private VideoQ title", sourceType: "file", fileKey: "private/key",
+        transcriptTooLarge: false, transcript: '1\n00:00:01,000 --> 00:00:02,000\n<img onerror="alert(1)">\n\n2\n00:00:03,000 --> 00:00:04,000\nNext cue' });
+      const list = await request("materials", {}, token, "https://api.example", bindings);
+      expect(list.status).toBe(200);
+      expect(await list.json()).toEqual({ permissions: { viewTranscript: true }, videos: [
+        { videoId: 1, lesson: "res", title: "Moodle res" }, { videoId: 2, lesson: "second", title: "Moodle second" },
+      ] });
+      const transcript = await request("transcript", { videoId: 2, limit: 1 }, token, "https://api.example", bindings);
+      expect(transcript.status).toBe(200);
+      expect(await transcript.json()).toEqual({ videoId: 2, title: "Moodle second", nextCursor: 1,
+        cues: [{ startTime: "00:00:01,000", startSeconds: 1, endSeconds: 2, text: '<img onerror="alert(1)">' }] });
+      expect(getVideoEvidence).toHaveBeenLastCalledWith(bindings, { ownerUserId: "owner", videoIds: [2] }, 2);
+      const next = await request("transcript", { videoId: 2, cursor: 1, limit: 1 }, token, "https://api.example", bindings);
+      expect(await next.json()).toMatchObject({ cues: [{ text: "Next cue" }], nextCursor: null });
+      expect((await request("transcript", { videoId: 3 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect((await request("transcript", { videoId: 4 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect((await request("transcript", { videoId: 2, courseId: 99 }, token, "https://api.example", bindings)).status).toBe(400);
+      expect((await request("materials", {}, token, "https://attacker.example", bindings)).status).toBe(403);
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1] });
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("revokes transcript capabilities and resource visibility during an existing session", async () => {
+    let permitted = true, visible = true;
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions: { viewTranscript: permitted }, resources: (visible ? ["res", "second"] : ["res"]).map(id => ({ resourceLinkId: id, lesson: id, title: id })) }));
+    try {
+      const { token } = await scopedSession();
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1, 2] });
+      vi.mocked(getVideoEvidence).mockResolvedValue({ id: 2, title: "", sourceType: "file", fileKey: null, transcript: "", transcriptTooLarge: false });
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(200);
+      vi.mocked(getVideoEvidence).mockClear();
+      permitted = false;
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect(getVideoEvidence).not.toHaveBeenCalled();
+      permitted = true; visible = false;
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+      fetch.mockRejectedValue(new Error("Moodle offline"));
+      expect((await request("materials", {}, token, "https://api.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("never grants transcript access from Instructor roles, missing capabilities, or an unchecked registration", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      // A browser or launch role cannot supply the server's missing capability.
+      records.get(await digest(token))!.payload.roles = ["Instructor", "Administrator"];
+      expect((await request("transcript", { videoId: 1 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect(getVideoEvidence).not.toHaveBeenCalled();
+      await login();
+      vi.mocked(verifyLaunch).mockResolvedValue({ ...resource, locale: "en", subject: "teacher", roles: ["Instructor"] });
+      const unchecked = await session();
+      expect((await request("materials", {}, unchecked)).status).toBe(403);
+      expect((await request("transcript", { videoId: 1 }, unchecked)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
   it("rechecks visibility before each question and scopes retrieval/playback to allowed videos", async () => {
     let allowed = ["res", "second", "other"];
     const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options) => {

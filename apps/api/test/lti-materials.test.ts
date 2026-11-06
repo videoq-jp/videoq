@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { toolClientAssertion, toolJwks } from "../src/features/lti/tool-keys";
 import { MaterialsClient, MATERIALS_SCOPE } from "../src/features/lti/materials-client";
+import { courseAccessContext } from "../src/features/lti/course-access";
+import type { Bindings } from "../src/types/bindings";
 let env: { LTI_TOOL_KEYS: string };
 const registration = { clientId: "tool-client", deploymentId: "deployment-7",
   materialsService: { tokenEndpoint: "https://moodle.example/local/videoq/token.php", endpoint: "https://moodle.example/local/videoq/materials.php" } };
@@ -47,6 +49,24 @@ function mockService(result: unknown, tokenOverride = {}) {
   });
 }
 describe("LTI materials service boundary", () => {
+  it.each([true, false, undefined])("uses current materials-service permissions (%j) and opts in to the extended response", async viewTranscript => {
+    const result = { contextId: "course", resourceLinkId: "launch", ...(viewTranscript === undefined ? {} : { permissions: { viewTranscript, futureCapability: true } }),
+      resources: [{ externalId: "cm-1", resourceLinkId: "launch", lesson: "lesson-1", title: "First" },
+        { externalId: "cm-2", resourceLinkId: "other-course", lesson: "other", title: "Other course" }] };
+    const request = mockService(result);
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(request);
+    try {
+      const binding = { deploymentId: registration.deploymentId, contextId: "course", resourceLinkId: "launch", courseId: 1, videoId: 10 };
+      const reg = { ...registration, id: "moodle", issuer: "https://moodle.example", authorizationUrl: "https://moodle.example/auth",
+        jwksUrl: "https://moodle.example/keys", frameOrigins: ["https://moodle.example"], resources: [binding,
+          { ...binding, contextId: "other-course", resourceLinkId: "other-course", courseId: 2, videoId: 20 }] };
+      const access = await courseAccessContext(reg, { ...binding, serviceSubject: "student" }, env as Bindings);
+      expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], permissions: { viewTranscript: viewTranscript ?? false } });
+      expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
+        resourceLinkId: "launch", subject: "student", includePermissions: true });
+      await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
+    } finally { spy.mockRestore(); }
+  });
   it("accepts an explicit empty snapshot without inventing deletions", async () => {
     const snapshot = { contextId: "course", complete: true, resources: [] };
     expect(await new MaterialsClient(env, registration, mockService(snapshot)).manifest("course")).toEqual(snapshot);
