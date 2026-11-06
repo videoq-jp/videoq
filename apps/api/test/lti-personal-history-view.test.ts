@@ -28,12 +28,13 @@ browserTests('Moodle personal conversation UI', () => {
     await page.route('https://api.example/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/lti/launch') { await route.fulfill({ contentType: 'text/html', body: questionView('nonce','a'.repeat(64),'signed-token','en',['https://lms.example']) }); return; }
-      if (path === '/api/lti/session') { await route.fulfill({ json: { token: 'private-history-token', features: { conversations: true, transcripts: true, qa: true },
+      if (path === '/api/lti/session') { await route.fulfill({ json: { token: 'private-history-token', features: { conversations: true, transcripts: true, qa: true, ...(empty ? { management: true, tags: true } : {}) },
         learningAvailable: !empty,...(empty ? {} : {playback: { videoId: 1, parentOrigins: ['https://lms.example'], videos: [{ videoId: 1, lesson: 'first', title: 'Lesson' }] }}) } }); return; }
       expect(route.request().headers().authorization).toBe('Bearer private-history-token');
       if (path === '/api/lti/history') { await route.fulfill({ json: { turns: [] } }); return; }
       const input = inputSchema.parse(route.request().postDataJSON()); requests.push({ path, input });
       if (path === '/api/lti/materials') { await route.fulfill({ json: { permissions: { manageOwnHistory: permitted, viewQa: true, viewTranscript: true }, videos: empty ? [] : [{ videoId: 1, title: 'Lesson', lesson: 'first' }] } }); return; }
+      if (path === '/api/lti/tags') { await route.fulfill({ json: { tags: [], videos: [], canManage: false } }); return; }
       if (path === '/api/lti/qa') { await route.fulfill({ json: { data: { items: [], total: 0, canPost: true, canVote: true, canModerate: false }, permissions: { viewQa: true, postQa: true }, videos: [] } }); return; }
       if (!permitted) { await route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }); return; }
       if (path === '/api/lti/messages/stream') {
@@ -57,6 +58,7 @@ browserTests('Moodle personal conversation UI', () => {
     const page=await browser.newPage(),service=await fixture(page,true);
     try{
       await page.goto('https://api.example/api/lti/launch');
+      await page.locator('#course-tags summary').waitFor();
       await page.locator('#personal-history summary').waitFor();
       await expect.poll(()=>service.requests.filter(r=>r.path==='/api/lti/conversations').length).toBeGreaterThan(0);
       expect(await page.locator('#send').isDisabled()).toBe(true);
@@ -67,6 +69,13 @@ browserTests('Moodle personal conversation UI', () => {
       await refresh.click();
       await expect.poll(()=>service.requests.filter(r=>r.path==='/api/lti/conversations').length).toBeGreaterThan(before);
       expect(await page.locator('#personal-history').getByRole('button',{name:'New conversation',exact:true}).isDisabled()).toBe(true);
+      await page.locator('#course-tags summary').click();
+      const refreshTags = page.locator('#tags-refresh');
+      await expect.poll(() => refreshTags.isEnabled()).toBe(true);
+      const beforeTags = service.requests.filter(r => r.path === '/api/lti/tags').length;
+      await refreshTags.click();
+      await expect.poll(() => service.requests.filter(r => r.path === '/api/lti/tags').length).toBeGreaterThan(beforeTags);
+      await page.locator('#personal-history summary').waitFor();
       await page.locator('#course-qa summary').click();
       await expect.poll(()=>service.requests.some(r=>r.path==='/api/lti/qa')).toBe(true);
       expect(service.requests.some(r=>r.path.includes('/messages'))).toBe(false);

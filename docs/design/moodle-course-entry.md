@@ -1,10 +1,10 @@
 # Moodle course entry backend
 
 An empty Moodle course needs an LTI launch independent of a File activity. This
-branch supplies the backend contract. The companion's persistent entry, teacher
-setup controller, signed proof, navigation and empty-course view are still
-required before users can enable it. This is not full course CRUD or feature
-parity and is not deployed.
+branch supplies the backend contract, paired with the persistent entry, teacher
+setup controller, signed proof, navigation and empty-course view in
+[companion PR 13](https://github.com/videoq-jp/videoq-moodle/pull/13).
+This is not full course CRUD or feature parity and is not deployed to production.
 
 ## Desired state and compatibility
 
@@ -53,12 +53,27 @@ a known UUID permits deleting only that subject's conversation. Empty scope neve
 opens/commits model memory or enables chat/transcript access. There is no fake
 playback ID; when actual readable videos exist, playback uses a real granted ID.
 
+Material-list refresh uses fresh course permissions to keep Q&A and own-history
+controls available even when the readable-video list is empty. Management/tag
+initialization also refreshes this list; neither may hide those course controls
+merely because chat is unavailable. Learning availability still controls chat,
+new/continued AI conversations and transcript access.
+
 ## Release gates
 
 Apply generated migration 0059 before the new backend. Upgrade/drain old backend
 writers before the companion enables entries: an old writer cannot interpret a
-course manifest. Preserve the capability opt-in in both upgrade orders. Complete
-the companion and actual Moodle HTTP/browser acceptance for teacher setup, learner
-Q&A, role changes, hidden activity, suspension, repair and deletion before release.
-API/PostgreSQL and mocked browser checks validate backend behavior, not that full
-acceptance. Marketplace classification and existing Stripe billing are separate.
+course manifest. Preserve the capability opt-in in both upgrade orders.
+
+An owned real Moodle 5.1/PostgreSQL lab exercises normal teacher POST setup,
+student/sesskey rejection, signed teacher and learner LTI sessions, coursewide
+Q&A posting/reply/vote/moderation, tag vocabulary CRUD and empty own-history
+refresh. Real HTTPS protocol checks verify the lab CA; the fresh Chromium context
+allows only the ephemeral localhost certificate. No HTTP/AI mock or fake ready
+video is used in this lab. Same-session course capability revocation, enrolment
+suspension and hidden-module checks deny learner access; a teacher retains core
+hidden-view rights. Temporary overrides and visibility/enrolment changes are
+restored. These checks supplement the separate API/PostgreSQL and fixture-browser
+suites; worker/real-AI and complete source/course lifecycle acceptance remain
+separate release gates. Marketplace classification and existing Stripe billing
+are separate.
