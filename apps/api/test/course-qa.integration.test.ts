@@ -240,6 +240,21 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect((await pool.query('SELECT * FROM course_question_replies')).rowCount).toBe(0);
     await expect(get('owner',id)).rejects.toMatchObject({ status:404 });
   });
+  it('projects erased Moodle posts as anonymous tombstones while preserving peer replies', async () => {
+    const id = await ltiAsk();
+    const ownReply = await mutate(env, lti(), { name: 'qa.reply', input: { courseId: 1, questionId: id, body: 'Own reply' } });
+    if (!('id' in ownReply)) throw new Error('Missing own reply');
+    await mutate(env, lti('b'), { name: 'qa.reply', input: { courseId: 1, questionId: id, body: 'Peer reply survives' } });
+    await pool.query("UPDATE course_questions SET title='[deleted]',body='[deleted]',lti_author_id=repeat('0',64),lti_instructor=false WHERE id=$1", [id]);
+    await pool.query("UPDATE course_question_replies SET body='[deleted]',lti_author_id=repeat('0',64),lti_instructor=false WHERE id=$1", [ownReply.id]);
+    const result = await ltiGet(lti(), id);
+    expect(result.question).toMatchObject({ title: '[deleted]', body: '[deleted]', canEdit: false,
+      author: { name: 'Deleted participant', source: 'moodle', instructor: false } });
+    expect(result.replies.find(row => row.id === ownReply.id)).toMatchObject({ body: '[deleted]', canEdit: false,
+      author: { name: 'Deleted participant', source: 'moodle', instructor: false } });
+    expect(result.replies.some(row => row.body === 'Peer reply survives')).toBe(true);
+  });
+
   it('retains posts without personal identifiers when their author is deleted', async () => {
     const id = await ask();
     await pool.query("DELETE FROM users WHERE id='alice'");

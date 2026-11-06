@@ -89,7 +89,7 @@ function ownExpression(alias: "q" | "r", actor: Actor, p: Parameters) {
   return `COALESCE(${alias}.author_id=${p.add(actor.userId)}::text OR ${alias}.lti_author_id=${p.add(actor.ltiId)}::varchar,false)`;
 }
 function authorFields(alias: "q" | "r", actor: Actor, p: Parameters) {
-  return `json_build_object('name',CASE WHEN ${alias}.lti_author_id=repeat('0',64) THEN 'Deleted participant' WHEN ${alias}.lti_author_id IS NOT NULL THEN left(${alias}.lti_author_id,12) ELSE coalesce(u.username,'Deleted participant') END,
+  return `json_build_object('name',CASE WHEN ${alias}.lti_author_id=repeat('0',64) THEN 'Deleted participant' WHEN ${alias}.lti_author_id IS NOT NULL THEN left(${alias}.lti_author_id,12) ELSE u.username END,
     'source',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN 'moodle' ELSE 'videoq' END,
     'instructor',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN ${alias}.lti_instructor ELSE COALESCE(${alias}.author_id=${p.add(actor.ownerId)}::text,false) END) AS author`;
 }

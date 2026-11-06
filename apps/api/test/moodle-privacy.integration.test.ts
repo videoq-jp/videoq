@@ -2,6 +2,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { plainChatAnswer } from '@videoq/trpc/chat';
+import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
 import { syncLmsResource } from '../src/repositories/lms-resource-repository';
@@ -20,12 +21,14 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
   const database = 'videoq_privacy_' + crypto.randomUUID().replaceAll('-', '');
   const installation: PrivacyInstallation = { id: 'school', ownerUserId: 'owner', issuer: 'https://lms.example', clientId: 'client', deploymentId: '2' };
   let admin: pg.Pool, pool: pg.Pool, env: Bindings;
+  let releaseRoleLock: (() => Promise<void>) | undefined;
   let resource: Awaited<ReturnType<typeof syncLmsResource>>, second: typeof resource;
   let own: Awaited<ReturnType<typeof privacySubject>>, peer: typeof own, question: string, ownLog: number;
   const sessionHash = 'a'.repeat(64), peerSession = 'b'.repeat(64), otherSession = 'd'.repeat(64);
   const proof = () => ({ sessionHash, registrationId: own.registrationId, subjectHash: own.subjectHash });
   const run = (request: unknown) => executePrivacyRequest(env, installation, privacyRequest.parse(request)) as Promise<{ contexts: string[]; subjects: string[]; part: { id: string; chunk: string; revision: string } | null; next: { record?: { id: string; offset: number; revision: string }; after?: string } | null }>;
   beforeAll(async () => {
+    releaseRoleLock = await lockConversationTestRoles(databaseUrl!);
     admin = new pg.Pool({ connectionString: databaseUrl }); admin.on('error', () => {});
     await admin.query(`CREATE DATABASE "${database}"`);
     const url = new URL(databaseUrl!); url.pathname = '/' + database;
@@ -79,7 +82,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await appendCourseHistory(env, { ...own, courseId: resource.courseId!, contextId: '2', sessionProof: proof() }, 'recent private question', ownLog, []);
     await pool.query("UPDATE videos SET status='completed'");
   });
-  afterAll(async () => { await pool?.end(); try { await admin?.query(`DROP DATABASE IF EXISTS "${database}" WITH(FORCE)`); } finally { await admin?.end(); } });
+  afterAll(async () => { await pool?.end(); try { await admin?.query(`DROP DATABASE IF EXISTS "${database}" WITH(FORCE)`); } finally { try { await admin?.end(); } finally { await releaseRoleLock?.(); } } });
 
   it('finds former-user contexts and exports all collections without peer content or authentication keys', async () => {
     expect((await run({ action: 'contexts', subject: '11' })).contexts).toEqual(['2', '3']);
