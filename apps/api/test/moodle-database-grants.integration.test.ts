@@ -110,6 +110,36 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect((await api.query('SELECT session_user AS login')).rows).toEqual([{login:apiLogin}]);
   });
 
+  it('creates and retires isolated YouTube source jobs through the restricted API role',async()=>{
+    const cloud:Bindings={...env,DEPLOYMENT_EDITION:'cloud'};
+    await provisionLmsInstallation(cloud,{id:'youtube-school',ownerUserId:'owner',name:'Synthetic YouTube Moodle',
+      issuer:'https://youtube-moodle.example',clientId:'youtube-client',deploymentId:'youtube-deployment',
+      authorizationUrl:'https://youtube-moodle.example/auth',jwksUrl:'https://youtube-moodle.example/keys'});
+    const grant={id:'youtube-school',ownerUserId:'owner'};
+    const manifest={kind:'youtube' as const,contextId:'youtube-course',resourceLinkId:'youtube-launch',
+      generation:1,enabled:true,title:'Synthetic provider source',youtubeVideoId:'abcDEF123_-'};
+    let created:Awaited<ReturnType<typeof syncLmsResource>>|undefined;
+    try{
+    const resource=created=await syncLmsResource(cloud,grant,'youtube-source',manifest);
+    expect(resource).toMatchObject({kind:'youtube',youtubeVideoId:'abcDEF123_-',fileSize:null,contentType:null});
+    const jobs=await api.query("SELECT payload FROM external_tasks WHERE kind='sqs_job' AND payload->'message'->'payload'->>'video_id'=$1",[String(resource.videoId)]);
+    expect(jobs.rows).toHaveLength(1);
+    expect(jobs.rows[0].payload.message).toMatchObject({type:'transcribe_video',payload:{video_id:resource.videoId}});
+    expect((await resolvedLtiConfig(cloud))?.registrations.find(row=>row.id==='db:youtube-school')?.resources)
+      .toEqual([expect.objectContaining({videoId:resource.videoId,sourceGeneration:1,learningAvailable:false})]);
+    const deleted=await syncLmsResource(cloud,grant,'youtube-source',{...manifest,generation:2,enabled:false,deleted:true});
+    expect(deleted).toMatchObject({kind:'youtube',videoId:null,enabled:false});
+    expect((await api.query('SELECT 1 FROM videos WHERE id=$1',[resource.videoId])).rowCount).toBe(0);
+    expect((await api.query("SELECT current_user AS role,has_schema_privilege(current_user,'public','CREATE') AS ddl")).rows)
+      .toEqual([{role:'videoq_api_access',ddl:false}]);
+    }finally{
+      await api.query("DELETE FROM lms_installations WHERE id='youtube-school'");
+      if(created?.courseId)await api.query('DELETE FROM video_courses WHERE id=$1',[created.courseId]);
+      if(created?.videoId)await api.query("DELETE FROM external_tasks WHERE payload->'message'->'payload'->>'video_id'=$1 OR dedupe_key=$2",
+        [String(created.videoId),'storage:video:'+created.videoId]);
+    }
+  });
+
   it('runs binding, session storage, signing, Q&A, reports and audited teacher edits through that API role',async()=>{
     const connection=await provisionLmsInstallation(env,{id:'school',ownerUserId:'owner',name:'Synthetic Moodle',
       issuer:'https://moodle.example',clientId:'client',deploymentId:'deployment',authorizationUrl:'https://moodle.example/auth',jwksUrl:'https://moodle.example/keys'});

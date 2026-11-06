@@ -10,6 +10,7 @@ import { confirmVideoUpload } from "../videos/service";
 import type { Bindings } from "../../types/bindings";
 import { MaterialsClient } from "./materials-client";
 import { digest } from "./store";
+import { LmsSyncError } from '../lms/resource';
 
 /** Bounded JSON orchestration. Media is uploaded by the platform's background task. */
 export async function synchronizeMaterials(env: Bindings, installationId: string, contextId: string) {
@@ -30,9 +31,18 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
     let exports = 0, pending = false;
     for (const source of snapshot.resources) {
       // Every explicit tombstone is reconciled, even when the export batch is full.
-      const reconciled = await syncLmsResource(env, installation, source.externalId, source.manifest);
+      let reconciled: Awaited<ReturnType<typeof syncLmsResource>>;
+      try {
+        reconciled = await syncLmsResource(env, installation, source.externalId, source.manifest);
+      } catch (error) {
+        if (!(error instanceof LmsSyncError) || error.code !== 'YOUTUBE_DISABLED') throw error;
+        // A deployment without native YouTube imports must still reconcile
+        // other sources and explicit tombstones in this course.
+        await client.acknowledge(contextId, source.externalId, source.manifest.generation, 'blocked', 'YOUTUBE_DISABLED');
+        continue;
+      }
       const data = await getLmsResource(env, installation, source.externalId);
-      if (!source.manifest.enabled || data?.video?.status !== "uploading") {
+      if (source.manifest.kind || !source.manifest.enabled || data?.video?.status !== "uploading") {
         await client.acknowledge(contextId, source.externalId, source.manifest.generation,
           !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.resource.kind === 'course' ? 'completed' : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
         continue;

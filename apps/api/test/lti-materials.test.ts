@@ -50,6 +50,21 @@ function mockService(result: unknown, tokenOverride = {}) {
   });
 }
 describe("LTI materials service boundary", () => {
+  it.each([undefined, 1, 2])('requires fresh source generation for a URL player (%j)', async generation => {
+    const binding = { deploymentId: registration.deploymentId, contextId: 'course', resourceLinkId: 'launch',
+      courseId: 1, videoId: 10, generation: 2, sourceGeneration: 2 };
+    const reg = { ...registration, id: 'db:school', issuer: 'https://moodle.example', authorizationUrl: 'https://moodle.example/auth',
+      jwksUrl: 'https://moodle.example/keys', frameOrigins: ['https://moodle.example'], resources: [binding] };
+    const result = { contextId: 'course', resourceLinkId: 'launch', resources: [{
+      externalId: '20', resourceLinkId: 'launch', lesson: 'sync_20', title: 'URL source', generation,
+    }] };
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(mockService(result));
+    try {
+      const operation = courseAccessContext(reg, { ...binding, serviceSubject: 'student' }, env as Bindings);
+      if (generation !== 2) await expect(operation).rejects.toThrow('Moodle access denied');
+      else expect((await operation)?.videos).toEqual([{ videoId: 10, lesson: 'sync_20', title: 'URL source', sourceGeneration: 2 }]);
+    } finally { spy.mockRestore(); }
+  });
   it.each([true, false, undefined])("uses current materials-service permissions (%j) and opts in to the extended response", async viewTranscript => {
     const result = { contextId: "course", resourceLinkId: "launch", ...(viewTranscript === undefined ? {} : { permissions: { viewTranscript, futureCapability: true } }),
       resources: [{ externalId: "cm-1", resourceLinkId: "launch", lesson: "lesson-1", title: "First" },
@@ -67,7 +82,7 @@ describe("LTI materials service boundary", () => {
         deleteOwnQa: false, moderateQa: false, instructorQa: false,
       } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
-        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeUserVisibility: true, includeReports: true });
+        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeUserVisibility: true, includeReports: true, includeYoutubeSources: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
     } finally { spy.mockRestore(); }
   });

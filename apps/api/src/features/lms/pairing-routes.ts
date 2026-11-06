@@ -12,6 +12,7 @@ import { LmsSyncError } from "./resource";
 import { exchangeMoodlePairing, issueMoodlePairing, pairingExchangeSchema, pairingRequestSchema } from "./pairing";
 import { moodleManagementRequest } from '@videoq/trpc/moodle-management';
 import { managementContext } from './management-context';
+import { features } from '../../lib/deployment';
 
 export const moodlePairingRoutes = new Hono<AppEnv>();
 moodlePairingRoutes.use("*", bodyLimit({ maxSize: 8192 }));
@@ -38,7 +39,8 @@ moodlePairingRoutes.get("/discovery", async c => {
     return c.json({ error: "PAIRING_FAILED" }, 503);
   }
   return c.json({ toolOrigin: ltiConfig(c.env)!.toolOrigin, authorizationUrl: frontend.origin + "/moodle/connect",
-    managementUrl: frontend.origin + '/moodle/manage', courseEntries: true, userVisibility: true });
+    managementUrl: frontend.origin + '/moodle/manage', courseEntries: true, userVisibility: true,
+    youtubeSourceProtocol: true, youtubeSources: features(c.env).youtube });
 });
 
 // Server-to-server exchange. Account/issuer are bound by the owner's expiring code.

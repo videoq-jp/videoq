@@ -1,8 +1,11 @@
 # Moodle YouTube sources: implementation plan
 
-Status: design only. Neither the backend nor the companion currently accepts
-YouTube source manifests. Existing File synchronization remains available. This
-document defines the next increment of the full Moodle feature-access objective;
+Status: implementation in progress, not released or applied to the owned live
+environment. Typed manifests, persistence/outbox, negotiation, canonical URL
+access checks and native playback are implemented on the paired work branches.
+Installed Moodle upgrade/reinstall, actual enable/discovery, full restore and
+provider/AI acceptance are not yet proven. This document tracks this increment
+of the full Moodle feature-access objective;
 direct-to-VideoQ uploads and broader owner/admin acceptance remain separate work.
 
 ## Canonical source and authority
@@ -35,7 +38,7 @@ fetch the submitted URL or follow redirects. Construct the worker's provider URL
 from the validated ID; browser queries, fragments and Moodle URL parameters must
 not become provider commands or arbitrary server destinations.
 
-Proposed manifest: optional `kind: "youtube"` plus `youtubeVideoId`, without a
+The manifest adds optional `kind: "youtube"` plus `youtubeVideoId`, without a
 `file` field. Preserve existing File canonical JSON and manifest hashes exactly.
 Keep a durable source kind and validated ID in both bindings, including disabled
 and deleted bindings. Missing or newly invalid URL content must produce a
@@ -45,8 +48,11 @@ the remote identity. Add generated migrations with empty/populated database test
 Create a separate Moodle-managed VideoQ video for each canonical source, even if
 another course or native owner video uses the same YouTube ID. Reuse the existing
 native YouTube feature policy and durable transcription outbox conventions.
-Provider/queue calls occur after commit. Apply owner and worker quota checks at
-the same stages as the native import; do not invent a zero-byte quota exemption.
+Provider/queue calls occur after commit. The existing worker fetches provider
+transcripts through the owner's SearchAPI configuration and reserves processing
+duration; it does not download a source video file or reserve a File upload.
+Keep those native processing quota and job lease checks. On-prem deployments
+retain their existing YouTube feature denial.
 
 ## Synchronization and revocation
 
@@ -94,7 +100,12 @@ source change; a late ready/error event must not act on the newly selected video
 The official [IFrame API](https://developers.google.com/youtube/iframe_api_reference)
 documents playback/time/seek controls. Its [player parameter reference](https://developers.google.com/youtube/player_parameters)
 describes JavaScript API enablement and origin binding. Use those interfaces and
-meet the documented 200 by 200 pixel minimum on narrow screens. Test an
+meet the documented 200 by 200 pixel minimum on narrow screens.
+The existing iframe sets `strict-origin-when-cross-origin` and the configured
+site origin, following YouTube's [client identification requirements](https://developers.google.com/youtube/terms/required-minimum-functionality#api-client-identity-and-credentials).
+No Moodle path or VideoQ credential becomes its referrer. A blocked scripted
+playback prompts the user to select Play, and cached-page restoration recreates
+the player without automatic playback. Test an
 unavailable, private or embedding-disabled video without treating it as a File
 download. Browser playback requires access to YouTube, separate from local AI.
 

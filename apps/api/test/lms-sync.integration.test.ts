@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { createMemoryRateLimitBackend } from "../src/lib/rate-limit";
 import { appendCourseHistory, readCourseHistory, courseHistoryId } from "../src/features/lti/history";
 import { readFile } from "node:fs/promises";
+import { URL } from 'node:url';
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
@@ -68,6 +69,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     await pool.query(courseTags.replaceAll('"public".', `"${schema}".`));
     const courseEntries = await readFile(new URL('../drizzle/0059_lms_course_entries.sql', import.meta.url), 'utf8');
     await pool.query(courseEntries.replaceAll('"public".', `"${schema}".`));
+    const youtubeSources = await readFile(new URL('../drizzle/0061_lms_youtube_sources.sql', import.meta.url), 'utf8');
+    await pool.query({ text: youtubeSources });
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
     env = { RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),
@@ -95,10 +98,10 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     try { if (created) await admin.query(`DROP SCHEMA "${schema}" CASCADE`); } finally { await admin?.end(); }
   });
 
-  const request = (path: string, method = "GET", body?: unknown, token?: string) => app.request("https://api.example/api/lms/" + path, {
+  const request = (path: string, method = "GET", body?: unknown, token?: string, runtime = env) => app.request("https://api.example/api/lms/" + path, {
     method, headers: { Authorization: "Bearer " + (token ?? credential.token), ...(body ? { "Content-Type": "application/json" } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
-  }, env);
+  }, runtime);
 
   const automaticEnv = (): Bindings => ({ ...env, LTI_CONFIG: undefined, LTI_TOOL_KEYS: undefined,
     BETTER_AUTH_SECRET: "lti-test-session-secret-".repeat(3),
@@ -111,7 +114,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect",
-      managementUrl: 'https://learning.example:9443/moodle/manage', courseEntries: true, userVisibility: true });
+      managementUrl: 'https://learning.example:9443/moodle/manage', courseEntries: true, userVisibility: true,
+      youtubeSourceProtocol: true, youtubeSources: false });
     expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, LTI_CONFIG: "false" })).status).toBe(404);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
@@ -502,6 +506,122 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     kind: 'course', generation, contextId: '42', resourceLinkId: 'course-lti', enabled: true,
     title: 'VideoQ', courseTitle: 'Empty Moodle course', ...overrides,
   });
+  const youtubeManifest = (generation = 1, overrides = {}) => resourceManifestSchema.parse({
+    kind: 'youtube', generation, contextId: 'course-1', resourceLinkId: 'youtube-lti',
+    enabled: true, title: 'Owned YouTube source', youtubeVideoId: 'abcDEF123_-', ...overrides,
+  });
+  const youtubeEnv = (): Bindings => ({ ...env, DEPLOYMENT_EDITION: 'cloud' });
+
+  it('creates one isolated managed YouTube video and durable job under concurrent source retries', async () => {
+    const cloud = youtubeEnv();
+    const resources = await Promise.all(Array.from({ length: 10 }, () => syncLmsResource(cloud, grant, '20', youtubeManifest())));
+    expect(new Set(resources.map(row => row.videoId)).size).toBe(1);
+    expect(resources[0]).toMatchObject({ kind: 'youtube', youtubeVideoId: 'abcDEF123_-', fileSize: null, contentHash: null, contentType: null });
+    const data = await getLmsResource(cloud, grant, '20');
+    expect(data?.video).toMatchObject({ userId: 'account-a', managedByLms: true, sourceType: 'youtube',
+      sourceUrl: 'https://www.youtube.com/watch?v=abcDEF123_-', youtubeVideoId: 'abcDEF123_-', status: 'pending', file: '' });
+    const tasks = (await pool.query("SELECT payload FROM external_tasks WHERE kind='sqs_job'")).rows;
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].payload.message.payload).toEqual({ video_id: resources[0].videoId });
+    expect((await pool.query("SELECT used_upload_bytes::int,used_storage_bytes::int FROM users WHERE id='account-a'")).rows[0])
+      .toEqual({ used_upload_bytes: 0, used_storage_bytes: 0 });
+    // Native YouTube charges processing duration in its worker, not a File reservation.
+    expect((await request('resources/20', 'GET', undefined, undefined, cloud)).status).toBe(200);
+    expect(await (await request('resources/20', 'GET', undefined, undefined, cloud)).json())
+      .toMatchObject({ status: 'pending', upload: null });
+    expect((await request('resources/20/confirm', 'POST', { generation: 1 }, undefined, cloud)).status).toBe(409);
+    expect((await request('resources/20/content?generation=1', 'PUT', {}, undefined, cloud)).status).toBe(409);
+    expect(objects.size).toBe(0);
+  });
+
+  it('never reuses an owner video or another course source with the same YouTube ID', async () => {
+    const cloud = youtubeEnv();
+    const first = await syncLmsResource(cloud, grant, '20', youtubeManifest());
+    const second = await syncLmsResource(cloud, grant, '21', youtubeManifest(1, { contextId: 'other-course', resourceLinkId: 'other-lti' }));
+    expect(second.videoId).not.toBe(first.videoId);
+    expect(second.courseId).not.toBe(first.courseId);
+    await expect(syncLmsResource(cloud, { ...grant, ownerUserId: 'account-b' }, '22', youtubeManifest()))
+      .rejects.toMatchObject({ code: 'INSTALLATION_UNAVAILABLE' });
+    expect(await getLmsResource(cloud, { ...grant, ownerUserId: 'account-b' }, '20')).toBeNull();
+    expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='sqs_job'")).rows[0].n).toBe(2);
+  });
+
+  it('preserves YouTube jobs on title edits, replaces changed IDs and retains a typed deletion tombstone', async () => {
+    const cloud = youtubeEnv();
+    const first = await syncLmsResource(cloud, grant, '20', youtubeManifest());
+    const renamed = await syncLmsResource(cloud, grant, '20', youtubeManifest(2, { title: 'Renamed URL' }));
+    expect(renamed.videoId).toBe(first.videoId);
+    expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='sqs_job'")).rows[0].n).toBe(1);
+    const changed = await syncLmsResource(cloud, grant, '20', youtubeManifest(3, { youtubeVideoId: 'xyzUVW987_-'}));
+    expect(changed.videoId).not.toBe(first.videoId);
+    expect((await pool.query('SELECT 1 FROM videos WHERE id=$1', [first.videoId])).rowCount).toBe(0);
+    expect((await pool.query('SELECT video_id FROM video_course_members WHERE course_id=$1', [changed.courseId])).rows.map(row => Number(row.video_id)))
+      .toEqual([changed.videoId]);
+    await expect(syncLmsResource(cloud, grant, '20', youtubeManifest(2))).rejects.toMatchObject({ code: 'STALE_GENERATION' });
+    await expect(syncLmsResource(cloud, grant, '20', manifest(4))).rejects.toMatchObject({ code: 'RESOURCE_KIND_OR_CONTEXT_CHANGED' });
+    const tombstone = youtubeManifest(4, { enabled: false, deleted: true, youtubeVideoId: undefined });
+    const deleted = await syncLmsResource(env, grant, '20', tombstone);
+    expect(deleted).toMatchObject({ kind: 'youtube', enabled: false, videoId: null, youtubeVideoId: 'xyzUVW987_-' });
+    expect((await pool.query('SELECT 1 FROM video_course_members WHERE course_id=$1', [changed.courseId])).rowCount).toBe(0);
+    expect((await pool.query('SELECT 1 FROM video_courses WHERE id=$1', [changed.courseId])).rowCount).toBe(1);
+    expect((await syncLmsResource(env, grant, '20', tombstone)).generation).toBe(4);
+    await expect(syncLmsResource(cloud, grant, '20', youtubeManifest(3))).rejects.toMatchObject({ code: 'STALE_GENERATION' });
+  });
+
+  it('uses the native deployment policy and removes YouTube grants when that feature is unavailable', async () => {
+    expect((await request('resources/20', 'PUT', youtubeManifest())).status).toBe(403);
+    expect((await pool.query('SELECT 1 FROM lms_resources')).rowCount).toBe(0);
+    expect((await pool.query('SELECT 1 FROM external_tasks')).rowCount).toBe(0);
+    const cloud = youtubeEnv();
+    await syncLmsResource(cloud, grant, '20', youtubeManifest());
+    expect((await resolvedLtiConfig(cloud))?.registrations.find(item => item.id === 'db:' + grant.id)?.resources).toHaveLength(1);
+    expect((await resolvedLtiConfig(env))?.registrations.find(item => item.id === 'db:' + grant.id)?.resources).toHaveLength(0);
+    expect(await (await request('connection', 'GET', undefined, undefined, cloud)).json()).toMatchObject({ youtubeSources: true });
+    expect(await (await request('connection')).json()).toMatchObject({ youtubeSources: false });
+  });
+
+  it('refuses a corrupted provider pointer before idempotency or native provenance repair', async () => {
+    const cloud = youtubeEnv();
+    const resource = await syncLmsResource(cloud, grant, '20', youtubeManifest());
+    await pool.query("UPDATE videos SET source_type='uploaded',managed_by_lms=false WHERE id=$1", [resource.videoId]);
+    expect((await resolvedLtiConfig(cloud))?.registrations.find(item => item.id === 'db:' + grant.id)?.resources).toHaveLength(0);
+    await expect(syncLmsResource(cloud, grant, '20', youtubeManifest())).rejects.toMatchObject({ code: 'RESOURCE_BINDING_CHANGED' });
+    expect((await pool.query('SELECT managed_by_lms FROM videos WHERE id=$1', [resource.videoId])).rows[0].managed_by_lms).toBe(false);
+  });
+
+  it('upgrades populated File/course rows without inventing a provider identity', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("CREATE TEMP TABLE lms_resources(kind text NOT NULL,enabled boolean NOT NULL,content_hash text,content_type text,file_size bigint, CONSTRAINT lms_resources_kind_check CHECK(kind IN ('video','course')))");
+      await client.query("INSERT INTO lms_resources VALUES('video',true,'old-hash','video/mp4',3),('course',true,NULL,NULL,NULL)");
+      const youtubeSources = await readFile(new URL('../drizzle/0061_lms_youtube_sources.sql', import.meta.url), 'utf8');
+      await client.query({ text: youtubeSources });
+      expect((await client.query('SELECT kind,youtube_video_id FROM lms_resources ORDER BY kind')).rows)
+        .toEqual([{ kind: 'course', youtube_video_id: null }, { kind: 'video', youtube_video_id: null }]);
+      await expect(client.query("INSERT INTO lms_resources(kind,enabled) VALUES('youtube',true)")).rejects.toMatchObject({ code: '23514' });
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+
+  it('refuses replacing shared managed videos and enforces typed media constraints in PostgreSQL', async () => {
+    const cloud = youtubeEnv();
+    const first = await syncLmsResource(cloud, grant, '20', youtubeManifest());
+    const second = await syncLmsResource(cloud, grant, '21', youtubeManifest(1, { contextId: 'other-course', resourceLinkId: 'other-lti' }));
+    await pool.query('UPDATE lms_resources SET video_id=$1 WHERE id=$2', [first.videoId, second.id]);
+    await expect(syncLmsResource(cloud, grant, '20', youtubeManifest(2, { youtubeVideoId: 'xyzUVW987_-' })))
+      .rejects.toMatchObject({ code: 'SHARED_MATERIAL' });
+    expect((await getLmsResource(cloud, grant, '20'))?.resource.generation).toBe(1);
+    expect((await pool.query('SELECT 1 FROM videos WHERE id=$1', [first.videoId])).rowCount).toBe(1);
+    for (const statement of [
+      "UPDATE lms_resources SET file_size=1 WHERE kind='youtube'",
+      "UPDATE lms_resources SET youtube_video_id='-----------' WHERE kind='youtube'",
+      "UPDATE lms_resources SET kind='video' WHERE kind='youtube'",
+    ]) await expect(pool.query(statement)).rejects.toMatchObject({ code: '23514' });
+  });
+
   it('creates one protected empty course without media, usage or jobs under concurrent retries', async () => {
     const resources = await Promise.all(Array.from({ length: 10 }, () => syncLmsResource(env, grant, 'course_42', courseManifest())));
     expect(new Set(resources.map(row => row.courseId)).size).toBe(1);
@@ -568,6 +688,34 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       SELECT $1,installation_id,'alias',context_id,'alias',1,manifest_hash,true,'course' FROM lms_resources WHERE id=$2`, [crypto.randomUUID(), entry.id]))
       .rejects.toMatchObject({ code: '23505' });
   });
+  it.each(['cloud', 'onprem'] as const)('polls typed YouTube sources without File exports and keeps the course usable (%s)', async edition => {
+    const service = {tokenEndpoint:registration.issuer+'/local/videoq/token.php',endpoint:registration.issuer+'/local/videoq/materials.php'};
+    await pool.query('UPDATE lms_installations SET materials_service=$1,sync_token_hash=NULL WHERE id=$2',[service,grant.id]);
+    const serviceEnv={...env,DEPLOYMENT_EDITION:edition,USE_S3_STORAGE:'true',LTI_TOOL_KEYS:manualKeyRing} as Bindings;
+    const actions:Record<string,unknown>[]=[];
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async(input,init)=>{
+      if(input===service.tokenEndpoint)return Response.json({access_token:'fixture',token_type:'Bearer',expires_in:60,scope:'https://videoq.org/spec/lti-materials/v1'});
+      expect(input).toBe(service.endpoint);
+      const body=JSON.parse(init!.body as string) as Record<string,unknown>;actions.push(body);
+      expect(body.includeYoutubeSources).toBe(true);
+      if(body.action==='courses')return Response.json({contextIds:['42']});
+      if(body.action==='manifest')return Response.json({contextId:'42',complete:true,resources:[
+        {externalId:'20',manifest:youtubeManifest(1,{contextId:'42'})},{externalId:'course_42',manifest:courseManifest()},
+      ]});
+      if(body.action==='ack')return Response.json({acknowledged:true});
+      throw new Error('A YouTube source must never request File export');
+    });
+    try{
+      expect(await sweepMaterials(serviceEnv)).toEqual({synchronized:1});
+      expect(actions.map(action=>action.action)).toEqual(['courses','manifest','ack','ack']);
+      expect(actions[2]).toMatchObject({externalId:'20',status:edition==='cloud'?'pending':'blocked',
+        error:edition==='cloud'?null:'YOUTUBE_DISABLED'});
+      expect(actions[3]).toMatchObject({externalId:'course_42',status:'completed'});
+      expect((await pool.query('SELECT count(*)::int AS n FROM videos')).rows[0].n).toBe(edition==='cloud'?1:0);
+      expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='sqs_job'")).rows[0].n).toBe(edition==='cloud'?1:0);
+    }finally{fetch.mockRestore();}
+  });
+
   it('polls and acknowledges an opted-in course entry without requesting any file export', async () => {
     const service = {tokenEndpoint:registration.issuer+'/local/videoq/token.php',endpoint:registration.issuer+'/local/videoq/materials.php'};
     await pool.query('UPDATE lms_installations SET materials_service=$1,sync_token_hash=NULL WHERE id=$2',[service,grant.id]);

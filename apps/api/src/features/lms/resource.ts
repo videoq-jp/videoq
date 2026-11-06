@@ -19,11 +19,14 @@ export const resourceManifestSchema = z.object({
     contentHash: z.string().regex(/^[a-f0-9]{40}$/),
   }).strict().optional(),
   // Omitted for video manifests: preserve the existing canonical JSON/hash.
-  kind: z.literal('course').optional(),
-}).strict().refine(value => value.kind === 'course'
-  ? value.file === undefined && !(value.enabled && value.deleted)
-  : !value.enabled || (value.file !== undefined && !value.deleted),
-"Course entries cannot contain files; enabled video resources require a file and cannot be deleted");
+  kind: z.enum(['course', 'youtube']).optional(),
+  youtubeVideoId: z.string().length(11).regex(/^(?=.*[A-Za-z0-9])[A-Za-z0-9_-]{11}$/).optional(),
+}).strict().refine(value => !(value.enabled && value.deleted) && (value.kind === 'course'
+  ? value.file === undefined && value.youtubeVideoId === undefined
+  : value.kind === 'youtube'
+    ? value.file === undefined && (!value.enabled || value.youtubeVideoId !== undefined)
+    : value.youtubeVideoId === undefined && (!value.enabled || value.file !== undefined)),
+"Enabled materials require their source identity; source kinds cannot mix media or be deleted while enabled");
 export type ResourceManifest = z.infer<typeof resourceManifestSchema>;
 
 export class LmsSyncError extends Error {

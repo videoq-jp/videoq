@@ -4,6 +4,7 @@ import { lmsInstallations, lmsResources, users, videos, videoCourses } from "../
 import type { Bindings } from "../../types/bindings";
 import { activeLmsOwner } from "../../repositories/lms-installation-repository";
 import { ltiConfig, type LtiRegistration } from "./config";
+import { features } from '../../lib/deployment';
 
 /** Resolve current bindings on each request so Moodle revocation is immediate. */
 export async function resolvedLtiConfig(env: Bindings) {
@@ -14,6 +15,7 @@ export async function resolvedLtiConfig(env: Bindings) {
       .from(lmsInstallations).innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
       .where(and(eq(lmsInstallations.active, true), activeLmsOwner()));
     const resources = await db.select({ resource: lmsResources, status: videos.status, videoOwner: videos.userId,
+      sourceType: videos.sourceType, youtubeVideoId: videos.youtubeVideoId,
       courseOwner: videoCourses.userId }).from(lmsResources)
       .innerJoin(videoCourses, and(eq(videoCourses.id, lmsResources.courseId),
         eq(videoCourses.managedByLms, true), eq(videoCourses.nativeAccessDisabled, true)))
@@ -24,11 +26,14 @@ export async function resolvedLtiConfig(env: Bindings) {
       authorizationUrl: row.authorizationUrl, jwksUrl: row.jwksUrl,
       ...(row.materialsService ? { materialsService: row.materialsService, deploymentId: row.deploymentId } : { courseAccess: "moodle" as const }),
       frameOrigins: [new URL(row.issuer).origin],
-      resources: resources.filter(({ resource, status, courseOwner, videoOwner }) => resource.installationId === row.id && resource.courseId !== null
+      resources: resources.filter(({ resource, status, courseOwner, videoOwner, sourceType, youtubeVideoId }) => resource.installationId === row.id && resource.courseId !== null
+        && (resource.kind !== 'youtube' || features(env).youtube)
+        && (resource.kind !== 'youtube' || sourceType === 'youtube' && youtubeVideoId === resource.youtubeVideoId)
         && courseOwner === row.ownerUserId && (resource.kind === 'course' || status !== null && videoOwner === row.ownerUserId))
         .map(({ resource, status }) => ({ deploymentId: row.deploymentId, contextId: resource.contextId,
           resourceLinkId: resource.resourceLinkId, courseId: resource.courseId!,
           ...(resource.kind === 'course' ? { kind: 'course' as const } : { videoId: resource.videoId! }), generation: resource.generation,
+          ...(resource.kind === 'youtube' ? { sourceGeneration: resource.generation } : {}),
           learningAvailable: status === 'completed' })),
     }));
   });
