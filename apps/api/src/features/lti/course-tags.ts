@@ -6,6 +6,7 @@ import { lockLmsGrant } from '../../repositories/lms-resource-repository';
 import { ApiError } from '../../shared/errors';
 import type { Bindings } from '../../types/bindings';
 import { digest } from './store';
+import { lockLtiDataSessionWithDb, type LtiSessionProof } from './data-lock';
 
 const name = z.string().trim().min(1).max(50).refine(value => [...value].every(char => char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127));
 const operation = { operationId: z.uuid() };
@@ -23,6 +24,7 @@ export type CourseTagScope = {
   installationId: string; contextId: string; courseId: number; ownerUserId: string; actorKey: string;
   readableVideoIds: number[]; manage: boolean;
   management: { videoId: number; resourceLinkId: string; generation: number }[];
+  sessionProof?: LtiSessionProof;
 };
 type Tag = { id: string; name: string; color: string; revision: string; video_ids: string[] };
 const denied = () => new ApiError(403, 'FORBIDDEN', 'Course tags are unavailable.');
@@ -83,6 +85,7 @@ export async function courseTags(env: Bindings, scope: CourseTagScope, input: z.
     await client.query('BEGIN');
     try {
       await lockLmsGrant(db, { id: scope.installationId, ownerUserId: scope.ownerUserId });
+      await lockLtiDataSessionWithDb(db,scope.ownerUserId,scope.sessionProof);
       const binding = await client.query(`SELECT c.id FROM lms_courses c JOIN video_courses v ON v.id=c.course_id
         WHERE c.installation_id=$1 AND c.context_id=$2 AND c.course_id=$3 AND v.user_id=$4 AND v.managed_by_lms=true FOR SHARE OF c,v`,
       [scope.installationId,scope.contextId,scope.courseId,scope.ownerUserId]);

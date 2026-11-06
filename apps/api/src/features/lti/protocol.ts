@@ -22,7 +22,7 @@ export const sessionRecord = z.object({
 
 // Bound cache size and reuse keys across launches; keys never come from JWT headers.
 const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-function platformKeys(url: string) {
+export function platformKeys(url: string) {
   let keys = keySets.get(url);
   if (!keys) {
     if (keySets.size >= 100) keySets.delete(keySets.keys().next().value!);

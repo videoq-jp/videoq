@@ -32,6 +32,7 @@ vi.mock("../src/features/lti/store", async importOriginal => ({
     record.payload.scopeVideoIds = used;
     return used;
   }),
+  putLtiFeedback: vi.fn((_env, id, sessionHash, courseId, logId) => { records.set(id, { kind: 'lti-feedback', payload: { sessionHash, courseId, logId } }); }),
   consumeLogin: vi.fn((_env, id) => records.get(id)?.kind === "login" && records.delete(id)),
 }));
 vi.mock("../src/features/lti/protocol", async importOriginal => ({
@@ -133,7 +134,8 @@ describe("LTI transport boundaries", () => {
       const response=await run();expect(response.status).toBe(202);
       expect(await response.json()).toEqual({material,reused:false});
       expect(manageLtiMaterial).toHaveBeenCalledWith(bindings,{installationId:'school',ownerUserId:'owner',courseId:12,
-        contextId:'ctx',resourceLinkId:'res',videoId:1,generation:1,actorKey:await ltiSubjectKey({registrationId:'db:school',
+        contextId:'ctx',resourceLinkId:'res',videoId:1,generation:1,sessionProof:{sessionHash:await digest(session.token),registrationId:'db:school',
+          subjectHash:await digest(JSON.stringify([dbReg.issuer,dbReg.clientId,'dep','teacher']))},actorKey:await ltiSubjectKey({registrationId:'db:school',
           subjectHash:await digest(JSON.stringify([dbReg.issuer,dbReg.clientId,'dep','teacher']))})},input);
       expect(processExternalTaskById).toHaveBeenCalledWith(bindings,17);
       vi.mocked(courseTags).mockResolvedValue({tags:[],videos:[],canManage:true,reused:false});
@@ -336,7 +338,8 @@ describe("Moodle course permission checks", () => {
       expect((await request('conversations', { action: 'list' }, token, 'https://api.example', bindings)).status).toBe(200);
       const key = await ltiSubjectKey({ registrationId: 'moodle', subjectHash: await digest(JSON.stringify([registration.issuer, registration.clientId, 'dep', 'learner'])) });
       expect(listConversations).toHaveBeenCalledWith(bindings, { ownerUserId: 'owner', actorUserId: null, courseId: 12, shareSlug: null,
-        ltiSubject: { subjectKey: key, resourceVideoIds: [1] } }, { action: 'list', limit: 20, offset: 0 });
+        ltiSubject: { subjectKey: key, resourceVideoIds: [1], sessionProof: { sessionHash: await digest(token), registrationId: 'moodle',
+          subjectHash: await digest(JSON.stringify([registration.issuer, registration.clientId, 'dep', 'learner'])) } } }, { action: 'list', limit: 20, offset: 0 });
       const detail = await request('conversations', { action: 'get', conversationId: qaId }, token, 'https://api.example', bindings);
       expect(detail.status).toBe(200);
       const saved = await detail.json<{ turns: { feedbackId: string }[] }>();
@@ -424,6 +427,7 @@ describe("Moodle course permission checks", () => {
       const authorId = await digest(JSON.stringify(["lti-course-qa-v1", "moodle", grant.subjectHash, 12]));
       expect(mutate).toHaveBeenCalledWith(bindings, {
         kind: "lti", ownerUserId: "owner", courseId: 12, authorId, videoIds: [1],
+        sessionProof: { sessionHash: await digest(token), registrationId: 'moodle', subjectHash: grant.subjectHash },
         permissions: { view: true, post: true, vote: true, deleteOwn: true, moderate: false, instructor: false },
       }, { name: "qa.ask", input: expect.objectContaining({ courseId: 12, title: ask.title, body: ask.body }) });
       expect(await response.text()).not.toContain(authorId);

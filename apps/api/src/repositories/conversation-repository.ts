@@ -4,6 +4,7 @@ import type { RagResult } from '../lib/rag';
 import { databaseConnectionString, withClient, withDb, type Db } from '../db/pool';
 import type { Bindings } from '../types/bindings';
 import { checkedLtiSubject, type LtiDataSubject } from '../features/lti/identity';
+import { lockLtiDataSession } from '../features/lti/data-lock';
 
 export type PersistedConversationAnswer = { chatLogId: number | null; feedback: string | null };
 export type PersistConversationLog = (result: RagResult, db: Db) => Promise<PersistedConversationAnswer>;
@@ -46,6 +47,7 @@ export class ConversationBusyError extends Error {
 export async function lockLtiConversationCourse(client: pg.Client, scope: ConversationScope) {
   if (!scope.ltiSubject) return;
   const subject = checkedLtiSubject(scope.ltiSubject);
+  await lockLtiDataSession(client,scope.ownerUserId,subject.sessionProof);
   const course = await client.query<{ user_id: string }>('SELECT user_id FROM video_courses WHERE id=$1 FOR SHARE', [scope.courseId]);
   if (course.rows[0]?.user_id !== scope.ownerUserId || !subject.resourceVideoIds.length) throw new ConversationNotFoundError();
   const members = await client.query(`SELECT m.video_id FROM video_course_members m JOIN videos v ON v.id=m.video_id

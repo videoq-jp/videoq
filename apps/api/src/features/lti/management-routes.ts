@@ -7,11 +7,13 @@ import type { LtiRegistration } from './config';
 import type { sessionRecord } from './protocol';
 import { materialManagementInput, manageLtiMaterial } from './material-management';
 import { ltiSubjectKey } from './identity';
+import { ltiSessionProof } from './data-lock';
 import { ApiError, toErrorBody } from '../../shared/errors';
 import { LmsSyncError } from '../lms/resource';
 import { processExternalTaskById } from '../../lib/external-tasks';
 
 type Authorization = { current: CourseAccess; reg: LtiRegistration; grant: z.infer<typeof sessionRecord>;
+  sessionHash: string;
   course: { userId: string; memberVideoIds: number[] } };
 export function mountLtiManagement(routes: Hono<AppEnv>, authorize: (c:Context<AppEnv>) => Promise<Authorization|{error:Response}>) {
   routes.use('/management',bodyLimit({maxSize:5*1024*1024,onError:c=>c.json(toErrorBody('VALIDATION_ERROR','Material request is too large.'),413)}));
@@ -31,6 +33,7 @@ export function mountLtiManagement(routes: Hono<AppEnv>, authorize: (c:Context<A
       return c.json(toErrorBody('FORBIDDEN','Material management is unavailable.'),403);
     try {
       const result=await manageLtiMaterial(c.env,{installationId:reg.id.slice(3),ownerUserId:course.userId,
+        sessionProof:ltiSessionProof(grant,access.sessionHash),
         courseId:grant.courseId,contextId:grant.contextId,resourceLinkId:binding.resourceLinkId,videoId:input.videoId,
         generation:material.management.generation,actorKey:await ltiSubjectKey(grant)},input);
       if (result.externalTaskId!==null) {

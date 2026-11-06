@@ -4,10 +4,12 @@ import { withClient } from "../../db/pool";
 import { ApiError, apiNotFound } from "../../shared/errors";
 import { toUtcIso } from "../../shared/datetime";
 import type { Bindings } from "../../types/bindings";
+import { lockLtiDataSession, type LtiSessionProof } from '../lti/data-lock';
 
 /** Internal grant, constructed only after a fresh LMS authorization check. */
 export type LtiQaPrincipal = {
   kind: "lti"; courseId: number; ownerUserId: string; authorId: string; videoIds: readonly number[];
+  sessionProof?: LtiSessionProof;
   permissions: { view: boolean; post: boolean; vote: boolean; deleteOwn: boolean; moderate: boolean; instructor: boolean };
 };
 type Principal = string | null | LtiQaPrincipal;
@@ -31,6 +33,8 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
   return withClient(env, async client => {
     await client.query("BEGIN");
     try {
+      if (typeof principal === 'object' && principal !== null)
+        await lockLtiDataSession(client,principal.ownerUserId,principal.sessionProof);
       const course = (await client.query<{ user_id: string; share_slug: string | null; managed_by_lms: boolean; native_access_disabled: boolean }>(
         "SELECT user_id,share_slug,managed_by_lms,native_access_disabled FROM video_courses WHERE id=$1 FOR SHARE", [access.courseId])).rows[0];
       if (!course) throw apiNotFound("Course not found");
@@ -85,7 +89,7 @@ function ownExpression(alias: "q" | "r", actor: Actor, p: Parameters) {
   return `COALESCE(${alias}.author_id=${p.add(actor.userId)}::text OR ${alias}.lti_author_id=${p.add(actor.ltiId)}::varchar,false)`;
 }
 function authorFields(alias: "q" | "r", actor: Actor, p: Parameters) {
-  return `json_build_object('name',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN left(${alias}.lti_author_id,12) ELSE u.username END,
+  return `json_build_object('name',CASE WHEN ${alias}.lti_author_id=repeat('0',64) THEN 'Deleted participant' WHEN ${alias}.lti_author_id IS NOT NULL THEN left(${alias}.lti_author_id,12) ELSE coalesce(u.username,'Deleted participant') END,
     'source',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN 'moodle' ELSE 'videoq' END,
     'instructor',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN ${alias}.lti_instructor ELSE COALESCE(${alias}.author_id=${p.add(actor.ownerId)}::text,false) END) AS author`;
 }

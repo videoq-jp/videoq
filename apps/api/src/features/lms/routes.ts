@@ -16,9 +16,11 @@ import { LmsSyncError, resourceManifestSchema } from "./resource";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { ABANDONED_UPLOAD_MS } from "../../lib/upload-reconcile";
 import { lmsUploadStream } from "./upload";
+import { moodlePrivacyRoutes } from './privacy-routes';
 
 export const lmsRoutes = new Hono<AppEnv>();
 lmsRoutes.route("/pairing", moodlePairingRoutes);
+lmsRoutes.route('/privacy',moodlePrivacyRoutes);
 const generationSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 
 lmsRoutes.use("*", async (c, next) => {

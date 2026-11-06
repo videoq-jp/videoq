@@ -7,6 +7,7 @@ import { getQuestion, listQuestions, mutate, type LtiQaPrincipal } from "../qa/s
 import type { CourseAccess } from "./course-access";
 import type { sessionRecord } from "./protocol";
 import { digest } from "./store";
+import { ltiSessionProof } from './data-lock';
 
 export const ltiQaInput = z.discriminatedUnion("action", [
   qaInputSchemas["qa.list"].omit({ courseId: true, shareSlug: true }).extend({ action: z.literal("list") }).strict(),
@@ -21,6 +22,7 @@ export const ltiQaInput = z.discriminatedUnion("action", [
   qaInputSchemas["qa.feature"].omit({ courseId: true, shareSlug: true }).extend({ action: z.literal("feature") }).strict(),
 ]);
 type AuthorizedCourse = { current: CourseAccess; grant: z.infer<typeof sessionRecord>;
+  sessionHash: string;
   course: { userId: string; memberVideoIds: number[] } };
 type AuthorizeCourse = (c: Context<AppEnv>) => Promise<AuthorizedCourse | { error: Response }>;
 type Refuse = (c: Context<AppEnv>, status?: 400 | 401 | 403) => Response;
@@ -40,6 +42,7 @@ export function mountLtiQa(routes: Hono<AppEnv>, authorize: AuthorizeCourse, ref
     if (["deleteQuestion", "deleteReply"].includes(data.action) && !permissions.deleteOwnQa && !permissions.moderateQa) return refuse(c, 403);
     const { grant, course } = access, courseId = grant.courseId;
     const principal: LtiQaPrincipal = { kind: "lti", courseId, ownerUserId: course.userId,
+      sessionProof:ltiSessionProof(grant,access.sessionHash),
       authorId: await digest(JSON.stringify(["lti-course-qa-v1", grant.registrationId, grant.subjectHash, courseId])),
       videoIds: access.current.videos.map(video => video.videoId).filter(id => course.memberVideoIds.includes(id)),
       permissions: { view: permissions.viewQa, post: permissions.postQa, vote: permissions.voteQa,

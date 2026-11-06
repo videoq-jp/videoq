@@ -1,3 +1,4 @@
+import type { LtiSessionProof } from '../lti/data-lock';
 import {
   getCourseWithMembers,
   createChatLog,
@@ -127,6 +128,7 @@ async function setupChat(
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
     ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
     displayQuestion?: string;
   },
 ): Promise<{ ok: true; setup: ChatSetup } | { ok: false; failure: ChatFailure }> {
@@ -159,7 +161,7 @@ async function setupChat(
   if (opts.ltiSubjectKey && (opts.ltiCourseGrant !== course?.id || userId !== null || opts.shareSlug !== null)) {
     return { ok: false, failure: failures.permissionDenied('Invalid external identity scope.') };
   }
-  const ltiSubject = opts.ltiSubjectKey ? checkedLtiSubject({ subjectKey: opts.ltiSubjectKey, resourceVideoIds: course!.memberVideoIds }) : undefined;
+  const ltiSubject = opts.ltiSubjectKey ? checkedLtiSubject({ subjectKey: opts.ltiSubjectKey, resourceVideoIds: course!.memberVideoIds, ...(opts.ltiSessionProof ? {sessionProof:opts.ltiSessionProof} : {}) }) : undefined;
   if (ownerUserId === null) {
     return {
       ok: false,
@@ -293,6 +295,7 @@ export async function sendChatMessage(
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
     ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
     displayQuestion?: string;
   },
 ): Promise<ChatSendResult> {
@@ -305,7 +308,7 @@ export async function sendChatMessage(
     locale: opts.locale,
     ltiCourseGrant: opts.ltiCourseGrant,
     ltiVideoGrant: opts.ltiVideoGrant,
-    ltiSubjectKey: opts.ltiSubjectKey,
+    ltiSubjectKey: opts.ltiSubjectKey, ltiSessionProof: opts.ltiSessionProof,
     displayQuestion: opts.displayQuestion,
   });
   if (!prepared.ok) {
@@ -393,6 +396,7 @@ export async function streamChatMessage(
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
     ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
     displayQuestion?: string;
     clientSignal?: AbortSignal;
     includeToolProgress?: boolean;
@@ -407,7 +411,7 @@ export async function streamChatMessage(
     locale: opts.locale,
     ltiCourseGrant: opts.ltiCourseGrant,
     ltiVideoGrant: opts.ltiVideoGrant,
-    ltiSubjectKey: opts.ltiSubjectKey,
+    ltiSubjectKey: opts.ltiSubjectKey, ltiSessionProof: opts.ltiSessionProof,
     displayQuestion: opts.displayQuestion,
   });
 
