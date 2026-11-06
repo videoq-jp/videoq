@@ -12,7 +12,7 @@ tests('Moodle aggregate report UI and native transport', () => {
   afterAll(async () => { await browser?.close(); });
   async function fixture(page: Page, permitted = true, supported = true) {
     const state = 'a'.repeat(64), requests: { path: string; body: unknown }[] = [], errors: string[] = [];
-    const model = { permitted, supported, denied: false, malformed: false, delayHistory: false, historyPending: false, metadataDenied: false, learning: false };
+    const model = { permitted, supported, denied: false, malformed: false, delayHistory: false, historyPending: false, metadataDenied: false, learning: false, metadataDelay: 0 };
     let releaseHistory = () => {};
     const historyGate = new Promise<void>(resolve => { releaseHistory = resolve; });
     page.setDefaultTimeout(10000); page.on('pageerror', error => errors.push(error.message));
@@ -22,17 +22,18 @@ tests('Moodle aggregate report UI and native transport', () => {
       if (path === '/api/lti/launch') { await route.fulfill({ contentType: 'text/html', body: questionView('nonce', state, 'fixture-signed-token', 'en', ['https://lms.example']) }); return; }
       requests.push({ path, body: request.postData() ? request.postDataJSON() : {} });
       if (path === '/api/lti/session') { await route.fulfill({ json: { token: 'fixture-private-report-token', learningAvailable: model.learning,
-        features: { reports: model.supported, conversations: model.delayHistory, management: model.delayHistory },
+        features: { reports: model.supported, conversations: model.delayHistory, management: model.delayHistory, transcripts: model.delayHistory },
         playback: { videoId: 1, videos: model.learning ? [{ videoId: 1, title: 'Lesson' }] : [], parentOrigins: ['https://lms.example'] } } }); return; }
       expect(request.headers().authorization).toBe('Bearer fixture-private-report-token');
       if (path === '/api/lti/history') { await route.fulfill({ json: { turns: [] } }); return; }
       if (path === '/api/lti/conversations') { model.historyPending = true; await historyGate; model.historyPending = false; await route.fulfill({ json: { items: [], hasMore: false } }); return; }
       if (path === '/api/lti/materials') {
         if (model.metadataDenied) { await route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE' } } }); return; }
-        await route.fulfill({ json: { permissions: { viewReports: model.permitted, manageOwnHistory: model.delayHistory, manageContent: false }, videos: [] } }); return;
+        if (model.metadataDelay) await new Promise(resolve => setTimeout(resolve, model.metadataDelay));
+        await route.fulfill({ json: { permissions: { viewReports: model.permitted, manageOwnHistory: model.delayHistory, manageContent: false, viewTranscript: model.delayHistory }, videos: [] } }); return;
       }
       expect(path).toBe('/api/lti/reports');
-      if (model.denied) { await route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }); return; }
+      if (model.denied || !model.permitted) { await route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }); return; }
       const input = courseReportInput.parse(request.postDataJSON());
       await route.fulfill({ json: { period: { from: input.from, to: input.to, timezone: 'UTC' },
         totals: { questions: 3, good: 1, bad: 1, none: 1 }, coverage: 'verified-moodle-resource-scope',
@@ -77,18 +78,27 @@ tests('Moodle aggregate report UI and native transport', () => {
     service.model.denied = true; await page.locator('#reports-form button[type=submit]').click(); await page.locator('#course-reports').waitFor({ state: 'hidden' });
     expect(await page.locator('#reports-content').innerText()).toBe(''); expect(service.errors).toEqual([]); await page.close();
   });
-  it('offers reports during slow history restoration, shares only concurrent metadata and reauthorizes the later report read', async () => {
+  it('offers reports during slow history restoration, shares only concurrent metadata and keeps later metadata refreshes fresh', async () => {
     const page = await browser.newPage(), service = await fixture(page); service.model.delayHistory = true;
     await page.goto('https://api.example/api/lti/launch');
     await page.locator('#course-reports').waitFor({ state: 'visible' });
     expect(service.model.historyPending).toBe(true);
     expect(service.requests.filter(request => request.path === '/api/lti/materials')).toHaveLength(1);
+    const refreshed = page.waitForResponse(response => response.url().endsWith('/api/lti/materials') && response.status() === 200);
+    await page.locator('#course-materials summary').click(); await refreshed;
     await page.locator('#course-reports summary').click(); await page.locator('#reports-content dd').first().waitFor();
     expect(service.model.historyPending).toBe(true);
     expect(service.requests.filter(request => request.path === '/api/lti/materials')).toHaveLength(2);
     service.releaseHistory(); await expect.poll(() => service.model.historyPending).toBe(false);
     expect(service.errors).toEqual([]); await page.close();
   });
+  it('accepts a bounded metadata response beyond one backend RPC budget without aborting valid authority', async () => {
+    const page = await browser.newPage(), service = await fixture(page); service.model.metadataDelay = 11000;
+    await page.goto('https://api.example/api/lti/launch');
+    await page.locator('#course-reports').waitFor({ state: 'visible', timeout: 15000 });
+    expect(service.requests.filter(request => request.path === '/api/lti/materials')).toHaveLength(1);
+    expect(service.errors).toEqual([]); await page.close();
+  }, 20000);
   it('keeps the authorized chat composer available when optional report metadata fails closed', async () => {
     const page = await browser.newPage(), service = await fixture(page); service.model.metadataDenied = true; service.model.learning = true;
     const unavailable = page.waitForResponse(response => response.url().endsWith('/api/lti/materials') && response.status() === 503);

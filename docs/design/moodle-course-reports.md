@@ -59,6 +59,11 @@ request cannot prevent reports or other tools from becoming available. Identical
 in-flight material metadata requests share a single permission check, with no
 cache once it finishes. Later reads and all protected operations reauthorize.
 Unavailable report metadata hides reports without aborting the chat initializer.
+Control-plane UI requests allow 30 seconds for the complete operation: the
+server can spend up to ten seconds on each of two consecutive Moodle calls,
+then perform bounded database work. Server-side RPC/SQL limits are unchanged.
+Reports and CSV request the authoritative report endpoint directly, avoiding a
+duplicate metadata round trip before its mandatory fresh authorization.
 The UI uses text nodes and clears previous results when loading or access is
 revoked. Epoch invalidation discards late revoked responses. CSV reloads with
 fresh authorization, exporting fixed date/count columns only. Native Moodle uses
