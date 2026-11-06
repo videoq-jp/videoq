@@ -1,8 +1,10 @@
 FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS sqlite
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev make curl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY security/build-sqlite.sh /tmp/build-sqlite.sh
+COPY security/build-zlib.sh security/zlib-write-error.c /tmp/
 RUN sh /tmp/build-sqlite.sh
+RUN sh /tmp/build-zlib.sh
 
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS native
 # Only VideoQ audio preprocessing lives here; whisper.cpp runs in its upstream image.
@@ -23,7 +25,9 @@ RUN set -eu; \
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
 COPY --from=sqlite /tmp/libsqlite3.deb /tmp/libsqlite3.deb
-RUN dpkg -i /tmp/libsqlite3.deb && rm /tmp/libsqlite3.deb
+COPY --from=sqlite /tmp/zlib1g.deb /tmp/zlib1g.deb
+# The Python base excludes most /usr/share/doc files during package installation.
+RUN dpkg --path-include=/usr/share/doc/zlib1g/source -i /tmp/libsqlite3.deb /tmp/zlib1g.deb && rm /tmp/libsqlite3.deb /tmp/zlib1g.deb
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
@@ -44,6 +48,7 @@ for package, soname in packages.items():
     record = next(record for record in records if f'Package: {package}\n' in record)
     (status / package).write_text(record + '\n')
     shutil.copyfile(f'/usr/share/doc/{package}/copyright', licenses / f'{package}.copyright')
+shutil.copyfile('/usr/share/doc/zlib1g/source', licenses / 'zlib1g.source')
 for pattern in ('readline*.so', '_uuid*.so', '_tkinter*.so'):
     for module in pathlib.Path('/usr/local/lib/python3.12/lib-dynload').glob(pattern): module.unlink()
 PY
@@ -60,10 +65,12 @@ WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 COPY server.py provision.py embedding_server.py ./
 COPY security/verify_sqlite.py /app/verify_sqlite.py
+COPY security/verify_zlib.py /app/verify_zlib.py
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib
 RUN ["/usr/local/bin/python", "/app/verify_sqlite.py"]
+RUN ["/usr/local/bin/python", "/app/verify_zlib.py"]
 ENTRYPOINT []
 EXPOSE 8080
 CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]
