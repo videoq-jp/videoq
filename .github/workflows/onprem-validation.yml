@@ -217,6 +217,7 @@ jobs:
             llamacpp-security-*.json
             apps/inference/llamacpp/security/
             apps/inference/whisper/security/sqlite.openvex.json
+            apps/inference/whisper/security/zlib.openvex.json
           if-no-files-found: error
           retention-days: 30
       - name: Install checksum-pinned kind

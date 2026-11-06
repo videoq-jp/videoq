@@ -1,6 +1,7 @@
-# Scoped to the locally built CPU image library and these two vulnerabilities.
+# Scoped to the locally built CPU image libraries and explicitly fixed CVEs.
 vulnerability:
   vex:
     - apps/inference/whisper/security/sqlite.openvex.json
+    - apps/inference/whisper/security/zlib.openvex.json
 scan:
   show-suppressed: true
