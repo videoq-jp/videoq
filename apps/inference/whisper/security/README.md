@@ -1,3 +1,21 @@
+# CPU inference image: zlib
+
+Debian trixie has no fixed package for CVE-2026-76844 yet. The image builds
+official zlib 1.4 with its published SHA-256, runs upstream tests, and installs
+`zlib1g` version `1:1.4-0videoq1`. Package and license records remain in the
+final image and SBOM. `verify_zlib.py` verifies the version loaded by Python
+and ctypes, the retained package record, and zlib/gzip compression round trips.
+
+`zlib.openvex.json` records the upstream fix for CVE-2026-76844 and
+CVE-2026-85091, restricted to this exact local package on Debian 13.7
+amd64/arm64. Other versions and unknown findings still fail. The existing
+CPU scan config retains assessed findings and CI uploads both assessments.
+
+References:
+- [Official zlib release and checksum](https://zlib.net/)
+- [Debian CVE-2026-76844 status](https://security-tracker.debian.org/tracker/CVE-2026-76844)
+- [Upstream fix](https://github.com/madler/zlib/commit/df84af25dc1942490e1d1c899a07619152a46148)
+
 # CPU inference image: SQLite
 
 Debian trixie's SQLite 3.46.1 has no distribution fix for CVE-2026-119373.
