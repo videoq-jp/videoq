@@ -95,6 +95,23 @@ excluded table and switching to the schema-owner role are denied. The fixture
 requires an isolated cluster without existing deployment roles; it never changes
 pre-existing roles.
 
+An isolated Moodle 5.1 installation with local plugin version 2026110607 and LTI
+source version 2026110601 also exercised the real PHP form handlers and the
+separately deployed Node API over verified HTTPS. The administrator paired the
+services, a teacher enabled a Moodle File, and the normal export task uploaded it
+to S3 storage before the API admitted its processing job. Learner configuration
+and enable attempts, and an invalid teacher sesskey, left the settings unchanged.
+
+The same run followed Moodle's signed OIDC/LTI protocol into a processing-only
+teacher session. Its material list and management read succeeded, while pending
+chat/transcript requests and pending edits were denied. Removing the teacher's
+content capability or suspending enrolment denied the next management request
+using the existing credential; restoring each authority restored access. The
+temporary override was removed. These are server HTTP checks: JavaScript,
+sessionStorage, browser embedding and rendered editor behavior were not executed
+by that protocol client. No AI provider was used and processing did not complete;
+successful edits, real indexing and the full live browser/AI gate remain open.
+
 The editor reuses the existing private iframe, switches with Q&A and personal
 history, and preserves drafts across panel switches, conflicts and permission
 revocation. Revoked drafts remain available for copying in read-only controls;
