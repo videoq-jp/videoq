@@ -52,6 +52,6 @@ def test_assessment_is_limited_to_explicit_cves_and_one_header_package():
         assert name.startswith('CVE-') and '*' not in name
         assert name not in ids
         ids.add(name)
-        assert statement['products'] == [{'@id': 'pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04'}]
+        assert statement['products'] == [{'@id': 'pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04'}]
         assert statement['status'] == 'not_affected'
         assert statement['justification'] == 'vulnerable_code_not_present'
