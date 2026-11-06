@@ -15,6 +15,7 @@ import { getConversation, listConversations, deleteConversation } from '../src/f
 import { ltiSubjectKey } from '../src/features/lti/identity';
 import { manageLtiMaterial } from '../src/features/lti/material-management';
 import { processExternalTaskById } from '../src/lib/external-tasks';
+import { courseTags } from '../src/features/lti/course-tags';
 import type { QaQuestion } from "@videoq/trpc";
 
 vi.mock("../src/features/lti/history", () => ({ appendCourseHistory: vi.fn(async () => {}), readCourseHistory: vi.fn(async () => []) }));
@@ -45,6 +46,9 @@ vi.mock('../src/features/lti/material-management', async importOriginal => ({
   ...await importOriginal<typeof import('../src/features/lti/material-management')>(), manageLtiMaterial: vi.fn(),
 }));
 vi.mock('../src/lib/external-tasks', () => ({ processExternalTaskById: vi.fn(async () => {}) }));
+vi.mock('../src/features/lti/course-tags', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/features/lti/course-tags')>(), courseTags: vi.fn(),
+}));
 const qaId = "11111111-1111-4111-8111-111111111111";
 const qaQuestion: QaQuestion = { id: qaId, title: "Question", body: "Published to course", videoId: 1, videoTitle: "Lesson",
   author: { name: "12345678", instructor: false, source: "moodle" }, createdAt: "2026-11-06T00:00:00Z", updatedAt: "2026-11-06T00:00:00Z",
@@ -132,6 +136,21 @@ describe("LTI transport boundaries", () => {
         contextId:'ctx',resourceLinkId:'res',videoId:1,generation:1,actorKey:await ltiSubjectKey({registrationId:'db:school',
           subjectHash:await digest(JSON.stringify([dbReg.issuer,dbReg.clientId,'dep','teacher']))})},input);
       expect(processExternalTaskById).toHaveBeenCalledWith(bindings,17);
+      vi.mocked(courseTags).mockResolvedValue({tags:[],videos:[],canManage:true,reused:false});
+      const tags=(data:unknown={action:'list'},origin='https://api.example')=>request('tags',data,session.token,origin,bindings);
+      expect((await tags()).status).toBe(200);
+      expect(vi.mocked(courseTags).mock.lastCall?.[1]).toMatchObject({installationId:'school',courseId:12,ownerUserId:'owner',
+        readableVideoIds:[],management:[{videoId:1,resourceLinkId:'res',generation:1}],manage:true});
+      for(const field of ['courseId','ownerUserId','actorKey','roles']) expect((await tags({action:'list',[field]:'forged'})).status).toBe(400);
+      expect((await tags({action:'list'},'https://attacker.example')).status).toBe(403);
+      vi.mocked(courseTags).mockClear();
+      permitted=false;
+      expect((await tags({action:'create',name:'Denied',color:'blue',operationId:qaId})).status).toBe(403);
+      expect((await tags()).status).toBe(403);
+      expect(courseTags).not.toHaveBeenCalled();
+      permitted=true;moduleGrant=false;expect((await tags()).status).toBe(403);
+      expect(courseTags).not.toHaveBeenCalled();
+      moduleGrant=true;
       // The transcript budget must survive the LTI router's smaller control-plane limit.
       const largeTranscript='1\n00:00:00,000 --> 00:00:01,000\n'+'a'.repeat(140000);
       expect((await run({...input,action:'update',fields:{transcript:largeTranscript}})).status).toBe(202);

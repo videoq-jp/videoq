@@ -393,6 +393,13 @@
       "when": 1793954805581,
       "tag": "0055_lti_material_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793968298480,
+      "tag": "0056_lti_course_tags",
+      "breakpoints": true
     }
   ]
 }

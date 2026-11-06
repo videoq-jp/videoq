@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
 import { externalTasks, users, videoCourses, videos } from "./modern";
 
 /** Persistent application signing identity; never expires with learner sessions. */
@@ -90,3 +90,29 @@ export const ltiMaterialOperations = pgTable('lti_material_operations', {
   check('lti_material_ops_action_check', sql`${table.action} IN ('update','reindex','retry')`),
   check('lti_material_ops_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`),
 ]);
+
+/** Moodle course vocabulary is separate from the connected owner's global tags. */
+export const ltiCourseTags = pgTable('lti_course_tags', {
+  id: uuid('id').primaryKey(),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 50 }).notNull(),
+  color: varchar('color', { length: 20 }).notNull(),
+  revision: uuid('revision').notNull().defaultRandom(),
+}, table => [unique('lti_course_tags_name_key').on(table.courseId, table.name)]);
+
+export const ltiCourseVideoTags = pgTable('lti_course_video_tags', {
+  tagId: uuid('tag_id').notNull().references(() => ltiCourseTags.id, { onDelete: 'cascade' }),
+  videoId: bigint('video_id', { mode: 'number' }).notNull().references(() => videos.id, { onDelete: 'cascade' }),
+}, table => [primaryKey({ columns: [table.tagId, table.videoId] }), index('lti_course_video_tags_video_idx').on(table.videoId)]);
+
+/** Identifier-only idempotency/audit receipts; never store tag text or credentials. */
+export const ltiCourseTagOperations = pgTable('lti_course_tag_operations', {
+  id: uuid('id').primaryKey(),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  actorKey: varchar('actor_key', { length: 64 }).notNull(),
+  action: text('action').notNull(),
+  requestHash: varchar('request_hash', { length: 64 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('lti_course_tag_ops_course_idx').on(table.courseId, table.createdAt),
+  check('lti_course_tag_ops_action_check', sql`${table.action} IN ('create','update','delete','assign')`),
+  check('lti_course_tag_ops_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`)]);

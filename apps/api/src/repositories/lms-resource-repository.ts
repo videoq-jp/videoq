@@ -75,6 +75,12 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
     const [mapping] = await tx.select().from(lmsCourses).where(and(eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
     let courseId: number | null = mapping?.courseId ?? null;
     // Removing membership revokes questions immediately, before any processing.
+    if (previous?.courseId && previous.videoId && previous.contextId !== manifest.contextId) {
+      // Course vocabulary must not travel with a source moved to another course.
+      // Ordinary resync and temporary disable keep the same course's assignments.
+      await tx.execute(sql`DELETE FROM lti_course_video_tags a USING lti_course_tags t
+        WHERE a.tag_id=t.id AND t.course_id=${previous.courseId} AND a.video_id=${previous.videoId}`);
+    }
     if (previous?.courseId && previous.videoId) await tx.delete(videoCourseMembers).where(and(
       eq(videoCourseMembers.courseId, previous.courseId), eq(videoCourseMembers.videoId, previous.videoId)));
     if (!keepVideo && previous?.videoId) await removeVideo(tx, ownerUserId, previous.videoId);
