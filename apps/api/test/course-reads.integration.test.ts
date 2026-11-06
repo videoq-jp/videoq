@@ -1,5 +1,6 @@
 import { visualSchema } from "./helpers/visual-schema";
 import pg from "pg";
+import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as courses from "../src/features/courses/service";
 import { getCourseDetail, getCourseDetailByShareSlug, getCourseInfo, listCoursesPage } from "../src/repositories/course-repository";
@@ -68,6 +69,8 @@ describeWithPostgres("course reads on PostgreSQL", () => {
         (3, 'outsider', 'Private tag', 'green'), (4, 'creator', 'Created tag', 'blue');
       INSERT INTO video_tags VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1), (4, 3, 3), (5, 4, 4);
     `);
+    const authorityMigration: string = readFileSync(new URL('../drizzle/0050_lms_course_authority.sql', import.meta.url), 'utf8');
+    await admin.query(authorityMigration);
     await admin.query(visualSchema);
     const url = new URL(databaseUrl!);
     url.searchParams.set("options", `-c search_path=${schema}`);
@@ -207,6 +210,7 @@ describeWithPostgres("course reads on PostgreSQL", () => {
     const args = { name: "Created", idempotency_key: "create-once" };
     const first = await callMcpTool("create_course", args, context);
     const courseId = (first.course as { id: number }).id;
+    expect((await admin.query('SELECT managed_by_lms FROM video_courses WHERE id=$1', [courseId])).rows[0].managed_by_lms).toBe(false);
     await admin.query("INSERT INTO video_course_members (course_id, video_id) VALUES ($1, 4)", [courseId]);
     const second = await callMcpTool("create_course", args, context);
     expect(second).toMatchObject({ reused: true, course: { id: courseId, videos: [{ id: 4, tags: [{ id: 4 }] }] } });
