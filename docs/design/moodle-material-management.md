@@ -128,7 +128,17 @@ Polling continues through that acknowledgement delay even when the index is
 already complete. Pending video playheads are never added
 to AI questions. The poll updates processing state without replacing draft text.
 
-Remaining work includes restricted worker-role and Workers runtime verification,
+The deployed-profile integration suite now delivers an API-produced explicit
+transcript-clear message to the real Python handler with a restricted worker
+login. Revoking DELETE on one embedding profile leaves both profiles intact and
+records a failed lease. Restoring it lets the same job complete, preserves the
+other material's vectors and makes duplicate delivery a no-op. The test also
+rejects password reads, source-owner/user-role rewrites and DDL. Its completed
+rows/vectors and minimal inherited indexing grants are synthetic fixtures; no
+embedding provider is called and this is not real-AI acceptance or a full audit
+of legacy production worker privileges.
+
+Remaining work includes full transcription/deletion worker-role and Workers runtime verification,
 full isolated Moodle + VideoQ + AI checks, source lifecycle/retry acceptance and
 the full external privacy workflow. The wider inventory, including imports,
 tags, reporting and independently authenticated owner operations, remains in
