@@ -786,6 +786,27 @@
       "allow": "許可してMoodleへ戻る",
       "cancel": "キャンセルしてMoodleへ戻る",
       "connecting": "接続しています…"
+    },
+    "moodleManagement": {
+      "title": "接続先のVideoQアカウントを管理",
+      "invalid": "管理画面のリンクが無効です。Moodleから開き直してください。",
+      "loading": "アカウントの権限を確認しています…",
+      "error": "アカウントの権限を確認できませんでした。もう一度お試しください。",
+      "loginHelp": "Moodleに接続したアカウントを管理するには、VideoQにログインしてください。",
+      "signedIn": "ログイン中：{{account}}",
+      "authority": "アカウント設定・課金・システム管理は、ログインしたVideoQアカウントの権限で操作します。Moodleでの役職だけでは権限は付与されません。",
+      "notOwner": "このVideoQアカウントは、このMoodle接続の所有者ではありません。接続したアカウントでログインしてください。",
+      "inactive": "この接続は無効になっています。アカウント設定を開いても、Moodleの接続は再開されません。",
+      "navigation": "VideoQの管理",
+      "library": "動画・アップロード・タグ",
+      "courses": "独立したVideoQコース",
+      "account": "アカウント情報・パスワード",
+      "integrations": "連携アプリ・連携用APIキー",
+      "searchKey": "動画検索用APIキー",
+      "billing": "プラン・課金・決済ポータル",
+      "admin": "VideoQのシステム管理",
+      "switchAccount": "別のアカウントでログイン",
+      "retry": "もう一度確認"
     }
   },
   "chat": {

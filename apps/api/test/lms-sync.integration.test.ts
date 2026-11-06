@@ -105,10 +105,83 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const automatic = { ...automaticEnv(), BETTER_AUTH_URL: "https://private.example:8443", FRONTEND_URL: "https://learning.example:9443" };
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect" });
+    expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect",
+      managementUrl: 'https://learning.example:9443/moodle/manage' });
     expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, LTI_CONFIG: "false" })).status).toBe(404);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
+  });
+
+  const managementInput = { issuer: registration.issuer, clientId: 'operator-client', deploymentId: '2' };
+  const ownerContext = (userId?: string, body: unknown = managementInput, origin = 'https://api.example',
+    overrides: Partial<Bindings> = {}, extraHeaders: Record<string, string> = {}) =>
+    app.request('http://localhost/api/lms/pairing/management', { method: 'POST', headers: {
+      'Content-Type': 'application/json', Origin: origin, ...(userId ? { 'X-VideoQ-Test-User-Id': userId } : {}), ...extraHeaders,
+    }, body: JSON.stringify(body) }, { ...env, BETTER_AUTH_SECRET: 'owner-navigation-fixture-secret-'.repeat(3),
+      BETTER_AUTH_URL: 'https://api.example', ...overrides });
+  const operatorConnection = () => provisionLmsInstallation(env, { ...registration, id: 'operator',
+    clientId: managementInput.clientId, deploymentId: managementInput.deploymentId });
+
+  it('requires an independent VideoQ browser session for account navigation', async () => {
+    await operatorConnection();
+    for (const authorization of ['', 'Bearer ' + 'a'.repeat(64), 'Bearer vq_fixture_not_a_browser_session']) {
+      expect((await ownerContext(undefined, managementInput, 'https://api.example', {},
+        authorization ? { Authorization: authorization } : {})).status).toBe(401);
+    }
+    expect((await ownerContext('account-a', managementInput, registration.issuer)).status).toBe(403);
+    expect((await ownerContext('account-a', managementInput, '')).status).toBe(403);
+  });
+
+  it('matches the exact connected owner, issuer, client and deployment without exposing owner metadata', async () => {
+    await operatorConnection();
+    const owned = await ownerContext('account-a');
+    expect(owned.status).toBe(200);
+    expect(await owned.json()).toEqual({ connection: { owned: true, active: true },
+      permissions: { account: true, billing: false, systemAdmin: false } });
+    for (const [user, input] of [
+      ['account-b', managementInput],
+      ['account-a', { ...managementInput, issuer: 'https://another.example' }],
+      ['account-a', { ...managementInput, clientId: 'another-client' }],
+      ['account-a', { ...managementInput, deploymentId: '3' }],
+    ] as const) {
+      const response = await ownerContext(user, input);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ connection: { owned: false, active: null },
+        permissions: { account: false, billing: false, systemAdmin: false } });
+    }
+  });
+
+  it('rejects forged account/role/redirect inputs and malformed registration identifiers', async () => {
+    await operatorConnection();
+    for (const body of [
+      { ...managementInput, ownerUserId: 'account-a' }, { ...managementInput, role: 'admin' },
+      { ...managementInput, returnTo: 'https://evil.example' }, { ...managementInput, deploymentId: '0' },
+      { ...managementInput, clientId: 'x'.repeat(256) },
+      ...['not-a-url', '//evil.example', 'http://moodle.example', 'https://user:secret@moodle.example', 'https://moodle.example/?secret=1',
+        'https://moodle.example/#fragment', ' https://moodle.example'].map(issuer => ({ ...managementInput, issuer })),
+    ]) expect((await ownerContext('account-a', body)).status).toBe(400);
+  });
+
+  it('uses the current VideoQ system role without treating a Moodle connection as an admin grant', async () => {
+    await operatorConnection();
+    await pool.query("UPDATE users SET role='admin' WHERE id='account-b'");
+    expect(await (await ownerContext('account-b')).json()).toEqual({ connection: { owned: false, active: null },
+      permissions: { account: false, billing: false, systemAdmin: true } });
+    await pool.query("UPDATE users SET role='user' WHERE id='account-b'");
+    expect(await (await ownerContext('account-b')).json()).toEqual({ connection: { owned: false, active: null },
+      permissions: { account: false, billing: false, systemAdmin: false } });
+  });
+
+  it('keeps billing recovery available to a cloud owner and does not reactivate disconnected Moodle access', async () => {
+    await operatorConnection();
+    await pool.query("UPDATE lms_installations SET active=false WHERE id='operator'; UPDATE users SET is_over_quota=true WHERE id='account-a'");
+    const cloud = await ownerContext('account-a', managementInput, 'https://api.example', { DEPLOYMENT_EDITION: 'cloud' });
+    expect(cloud.status).toBe(200);
+    expect(await cloud.json()).toEqual({ connection: { owned: true, active: false },
+      permissions: { account: true, billing: true, systemAdmin: false } });
+    expect((await pool.query("SELECT active FROM lms_installations WHERE id='operator'")).rows).toEqual([{ active: false }]);
+    expect(await (await ownerContext('account-a', managementInput, 'https://api.example', { DEPLOYMENT_EDITION: 'onprem' })).json())
+      .toEqual({ connection: { owned: true, active: false }, permissions: { account: true, billing: false, systemAdmin: false } });
   });
 
   it.each([registration.issuer, "https://Moodle.Example:443/academy"])("requires S256 proof and preserves the Moodle issuer during exchange and recovery: %s", async issuer => {

@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./moodle-management": {
+      "types": "./src/moodle-management.ts",
+      "default": "./src/moodle-management.ts"
+    },
     "./admin": {
       "types": "./src/inputs/admin.ts",
       "default": "./src/inputs/admin.ts"
