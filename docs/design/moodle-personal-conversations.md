@@ -96,6 +96,10 @@ On 2026-11-06, 25 real PostgreSQL tests passed across native/LTI conversations
 and the complete empty/populated migration chain. These cover two-subject
 isolation, resource narrowing, attribution rollback, stale backend membership,
 restricted production API-role access, expiry cleanup and native regressions.
+The conversation and full-migration fixtures serialize their shared optional
+role lifecycle on the common administrative database, while retaining separate
+fixture databases. Both suites also pass with normal file parallelism in a
+fresh PostgreSQL cluster; their temporary roles and databases are removed.
 Migration provenance verifies 53 journal entries. The LMS synchronization suite
 also passed 34 PostgreSQL tests.
 

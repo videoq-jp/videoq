@@ -11,6 +11,7 @@ import { withDb } from '../src/db/pool';
 import { runRag, type RagResult } from '../src/lib/rag';
 import { chatCompletionResponse } from './helpers/chat-completion-response';
 import { requestBodyText } from './helpers/request-body';
+import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import * as vectors from '../src/repositories/vector-repository';
 import { runChatRag, streamChatRag } from '../src/lib/conversation-execution';
 import type { Bindings } from '../src/types/bindings';
@@ -21,6 +22,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
   let admin: pg.Pool;
   let pool: pg.Pool;
   let env: Bindings;
+  let releaseRoleLock: (() => Promise<void>) | undefined;
   const createdRoles: string[] = [];
   const scope = { ownerUserId: 'owner', actorUserId: 'alice', courseId: 1, shareSlug: null };
   const respond = (_messages: BaseMessage[], question: string) => Promise.resolve({
@@ -42,6 +44,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     });
   };
   beforeAll(async () => {
+    releaseRoleLock = await lockConversationTestRoles(databaseUrl!);
     admin = new pg.Pool({ connectionString: databaseUrl });
     admin.on('error', () => {});
     await admin.query(`CREATE DATABASE "${database}"`);
@@ -68,7 +71,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await setupConversationCheckpoints(pool);
     await setupConversationCheckpoints(pool);
     await pool.query("INSERT INTO users VALUES ('owner'), ('alice'), ('bob'); INSERT INTO video_courses VALUES (1, 'owner', 'shared'), (2, 'owner', null); INSERT INTO video_course_memberships VALUES (1, 'alice')");
-  });
+  }, 60_000);
   afterEach(async () => { vi.unstubAllGlobals(); vi.restoreAllMocks(); await pool?.query('DELETE FROM chat_conversations; DELETE FROM chat_logs'); });
 
   describe('verified Moodle personal conversations', () => {
@@ -177,11 +180,15 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     });
   });
   afterAll(async () => {
-    await pool?.end();
-    if (admin) {
-      await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
-      for (const role of createdRoles) await admin.query(`DROP ROLE ${role}`);
-      await admin.end();
+    try {
+      await pool?.end();
+      if (admin) {
+        await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
+        for (const role of createdRoles) await admin.query(`DROP ROLE ${role}`);
+      }
+    } finally {
+      try { await admin?.end(); }
+      finally { await releaseRoleLock?.(); }
     }
   });
 
