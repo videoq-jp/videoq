@@ -65,7 +65,7 @@ async function resourceResponse(c: Context<AppEnv>, grant: { id: string; ownerUs
 lmsRoutes.get("/connection", async c => {
   const grant = await installation(c);
   return c.json({ issuer: grant.issuer, clientId: grant.clientId, deploymentId: grant.deploymentId,
-    toolOrigin: ltiConfig(c.env)!.toolOrigin, maxVideoBytes: MAX_SINGLE_UPLOAD_BYTES, courseEntries: true });
+    toolOrigin: ltiConfig(c.env)!.toolOrigin, maxVideoBytes: MAX_SINGLE_UPLOAD_BYTES, courseEntries: true, userVisibility: true });
 });
 
 lmsRoutes.get("/resources/:externalId", async c => {

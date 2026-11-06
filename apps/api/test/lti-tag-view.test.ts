@@ -29,7 +29,7 @@ browserTests('course tags in the existing private LTI frame', () => {
       expect(request.headers().cookie).toBeUndefined();
       if (path === '/api/lti/history') { await route.fulfill({ json: { turns: [] } }); return; }
       if (!model.permitted) { await route.fulfill({ status: 403,json: { error: {} } }); return; }
-      if (path === '/api/lti/materials') { await route.fulfill({ json: { permissions: { manageContent: manage,viewTranscript: true },videos,
+      if (path === '/api/lti/materials') { await route.fulfill({ json: { permissions: { manageContent: manage,viewTranscript: true },videos,order: manage ? [2,1] : [1],
         managementVideos: manage ? [...videos,{ videoId: 2,title: 'Pending lesson',management: { generation: 1 } }] : [] } }); return; }
       if (path === '/api/lti/transcript') { await route.fulfill({ json: { videoId: 1,title: videos[0].title,cues: [{ startTime: '00:00:00',text: '<b>literal transcript</b>' }],nextCursor: null } }); return; }
       expect(path).toBe('/api/lti/tags');
@@ -55,6 +55,7 @@ browserTests('course tags in the existing private LTI frame', () => {
     await page.goto('https://api.example/api/lti/launch');
     const panel = page.locator('#course-tags'); await panel.locator('summary').click();
     await expect.poll(() => page.locator('#tags-materials>li').count()).toBe(2);
+    expect(await page.locator('#tags-materials>li').first().textContent()).toContain('Pending lesson');
     expect(await panel.locator('img,script').count()).toBe(0);
     await page.locator('#tags-filter').selectOption(id); expect(await page.locator('#tags-materials>li').count()).toBe(1);
     await page.locator('#tags-filter').selectOption('untagged'); expect(await page.locator('#tags-materials').textContent()).toContain('Pending lesson');

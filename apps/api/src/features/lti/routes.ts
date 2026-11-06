@@ -222,6 +222,8 @@ ltiRoutes.post("/materials", async c => {
   const access = await authorizeCourse(c);
   if ("error" in access) return access.error;
   return c.json({ permissions: access.current.permissions, learningAvailable: access.current.videos.length > 0,
+    order: (access.current.materialOrder ?? [...access.current.videos, ...(access.current.managementVideos ?? [])].map(video => video.videoId))
+      .filter(videoId => access.course.memberVideoIds.includes(videoId)),
     videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)),
     managementVideos: (access.current.managementVideos ?? []).filter(video => access.course.memberVideoIds.includes(video.videoId)) });
 });
