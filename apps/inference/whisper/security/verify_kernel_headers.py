@@ -8,10 +8,12 @@ def verify(paths, root=Path('/')):
     files = 0
     for value in paths:
         path = root / value.lstrip('/')
+        if path.is_symlink():
+            raise RuntimeError(f'Unassessed kernel package artifact: {value}')
         if not path.is_file():
             continue
-        allowed = value.startswith('/usr/include/') or value.startswith('/usr/share/doc/linux-libc-dev/')
-        if not allowed or path.read_bytes()[:4] == b'\x7fELF' or '.ko' in path.suffixes:
+        allowed = (value.startswith('/usr/include/') and path.suffix == '.h') or value.startswith('/usr/share/doc/linux-libc-dev/')
+        if not allowed or path.stat().st_mode & 0o111 or path.read_bytes()[:4] == b'\x7fELF' or '.ko' in path.suffixes:
             raise RuntimeError(f'Unassessed kernel package artifact: {value}')
         files += 1
     if not files:

@@ -97,7 +97,7 @@ jobs:
         with:
           version: v0.76.1
           image-ref: videoq-${{ matrix.component }}:release
-          trivy-config: ${{ matrix.component == 'vllm-engine' && 'apps/inference/whisper/security/trivy.yaml' || '' }}
+          trivy-config: ${{ matrix.component == 'vllm-engine' && 'apps/inference/whisper/security/trivy.yaml' || matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
           format: json
           output: artifact/security.json
           scanners: vuln

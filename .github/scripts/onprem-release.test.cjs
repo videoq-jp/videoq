@@ -2,6 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
+const {runInNewContext} = require('node:vm');
 const workflow = readFileSync(join(__dirname,'../workflows/onprem-release.yml'),'utf8');
 const job = name => workflow.match(new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z-]+:|$(?![\\s\\S]))`,'m'))[1];
 
@@ -36,6 +37,14 @@ test('the signed bundle includes the inference chart and NVIDIA assessment repor
   assert.match(job('build'),/retention-days: 90/);
   assert.match(job('indexes'),/if \[ "\$COMPONENT" != vllm-engine \]/);
   assert.match(job('staging'),/verified-inference.json/);
+});
+
+test('release assessments apply only to their matching inference component',()=>{
+  const expression=job('build').match(/trivy-config: \$\{\{ (.*?) \}\}/)[1];
+  const policy=component=>runInNewContext(expression,{matrix:{component}},{timeout:100});
+  assert.equal(policy('transcription-gateway'),'apps/inference/whisper/security/cpu-trivy.yaml');
+  assert.equal(policy('vllm-engine'),'apps/inference/whisper/security/trivy.yaml');
+  for(const component of ['api','worker','web','unknown']) assert.equal(policy(component),'');
 });
 
 test('privileged jobs do not build images or execute application dependencies',()=>{
