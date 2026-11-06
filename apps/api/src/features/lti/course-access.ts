@@ -15,7 +15,7 @@ const accessResponse = z.object({
     learning: z.boolean().optional(), management: materialManagementSchema.optional() })).max(1000),
 });
 export type CourseVideo = { videoId: number; lesson: string; title: string; management?: z.infer<typeof materialManagementSchema> };
-export type CourseAccess = { videos: CourseVideo[]; managementVideos?: CourseVideo[]; permissions: CoursePermissions };
+export type CourseAccess = { videos: CourseVideo[]; managementVideos?: CourseVideo[]; materialOrder?: number[]; permissions: CoursePermissions };
 type CourseGrant = Pick<z.infer<typeof sessionRecord>, "deploymentId" | "contextId" | "resourceLinkId" | "courseId" | "accessProof" | "serviceSubject" | 'resourceGeneration'>;
 
 function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: z.infer<typeof accessResponse>): CourseAccess {
@@ -27,23 +27,27 @@ function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: z.infer<t
     && access.courseEntry?.generation === entry.generation;
   // An anchor must always be freshly confirmed, including when videos exist.
   if (entry?.kind === 'course' && !courseEntry) throw new Error('Moodle access denied');
-  const allowed: CourseVideo[] = [], managementVideos: CourseVideo[] = [];
+  const allowed: CourseVideo[] = [], managementVideos: CourseVideo[] = [], materialOrder: number[] = [];
   for (const item of access.resources) {
     const binding = reg.resources.find(resource => resource.deploymentId === grant.deploymentId && resource.contextId === grant.contextId
       && resource.courseId === grant.courseId && resource.resourceLinkId === item.resourceLinkId);
     if (!binding?.videoId) continue;
     if (item.generation!==undefined && binding.generation!==undefined && item.generation!==binding.generation) continue;
     const video: CourseVideo = { videoId: binding.videoId, lesson: item.lesson, title: item.title };
-    if (permissions.manageContent && reg.id.startsWith('db:') && item.management
-      && item.management.generation===binding.generation) {
+    const management = permissions.manageContent && reg.id.startsWith('db:') && item.management
+      && item.management.generation===binding.generation;
+    const learning = item.learning !== false && binding.learningAvailable !== false;
+    if (management) {
       video.management = item.management;
       managementVideos.push(video);
     }
-    if (item.learning !== false && binding.learningAvailable !== false) allowed.push(video);
+    if (learning) allowed.push(video);
+    if (learning || management) materialOrder.push(video.videoId);
   }
   const unique = (videos: CourseVideo[]) => videos.filter((item, index) => videos.findIndex(video => video.videoId === item.videoId) === index);
   if (!allowed.length && !managementVideos.length && !courseEntry) throw new Error('Moodle access denied');
-  return { videos: unique(allowed), ...(managementVideos.length ? { managementVideos: unique(managementVideos) } : {}), permissions };
+  return { videos: unique(allowed), ...(managementVideos.length ? { managementVideos: unique(managementVideos) } : {}),
+    materialOrder: [...new Set(materialOrder)], permissions };
 }
 
 /** Trusted administrator-configured origin only. Never follow redirects or cache permissions. */

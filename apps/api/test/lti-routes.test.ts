@@ -440,7 +440,7 @@ describe("Moodle course permission checks", () => {
         transcriptTooLarge: false, transcript: '1\n00:00:01,000 --> 00:00:02,000\n<img onerror="alert(1)">\n\n2\n00:00:03,000 --> 00:00:04,000\nNext cue' });
       const list = await request("materials", {}, token, "https://api.example", bindings);
       expect(list.status).toBe(200);
-      expect(await list.json()).toEqual({ learningAvailable: true, managementVideos: [], permissions: { manageContent: false, manageOwnHistory: false, viewTranscript: true, viewQa: false, postQa: false, voteQa: false,
+      expect(await list.json()).toEqual({ learningAvailable: true, managementVideos: [], order: [1, 2], permissions: { manageContent: false, manageOwnHistory: false, viewTranscript: true, viewQa: false, postQa: false, voteQa: false,
         deleteOwnQa: false, moderateQa: false, instructorQa: false }, videos: [
         { videoId: 1, lesson: "res", title: "Moodle res" }, { videoId: 2, lesson: "second", title: "Moodle second" },
       ] });

@@ -111,7 +111,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ toolOrigin: "https://private.example:8443", authorizationUrl: "https://learning.example:9443/moodle/connect",
-      managementUrl: 'https://learning.example:9443/moodle/manage', courseEntries: true });
+      managementUrl: 'https://learning.example:9443/moodle/manage', courseEntries: true, userVisibility: true });
     expect((await pool.query("SELECT count(*)::int AS n FROM lti_tool_keys")).rows[0].n).toBe(0);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, LTI_CONFIG: "false" })).status).toBe(404);
     expect((await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, { ...automatic, FRONTEND_URL: "http://learning.example" })).status).toBe(503);
@@ -519,7 +519,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   });
   it('accepts the canonical course endpoint, denies file upload/confirm and rejects identity or file confusion', async () => {
     expect(env.USE_S3_STORAGE).toBe('false');
-    expect(await (await request('connection')).json()).toMatchObject({courseEntries:true,toolOrigin:'https://api.example'});
+    expect(await (await request('connection')).json()).toMatchObject({courseEntries:true,userVisibility:true,toolOrigin:'https://api.example'});
     const result = await request('resources/course_42', 'PUT', courseManifest());
     expect(result.status).toBe(200);
     expect(await result.json()).toMatchObject({ generation: 1, status: 'completed', upload: null, error: null });
@@ -578,6 +578,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       expect(input).toBe(service.endpoint);
       const body=JSON.parse(init!.body as string) as Record<string,unknown>;actions.push(body);
       expect(body.includeCourseEntries).toBe(true);
+      expect(body.includeUserVisibility).toBe(true);
       if(body.action==='courses')return Response.json({contextIds:['42']});
       if(body.action==='manifest')return Response.json({contextId:'42',complete:true,resources:[{externalId:'course_42',manifest:courseManifest()}]});
       if(body.action==='ack')return Response.json({acknowledged:true});

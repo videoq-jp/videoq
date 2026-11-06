@@ -62,18 +62,48 @@ describe("LTI materials service boundary", () => {
         jwksUrl: "https://moodle.example/keys", frameOrigins: ["https://moodle.example"], resources: [binding,
           { ...binding, contextId: "other-course", resourceLinkId: "other-course", courseId: 2, videoId: 20 }] };
       const access = await courseAccessContext(reg, { ...binding, serviceSubject: "student" }, env as Bindings);
-      expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], permissions: {
+      expect(access).toEqual({ videos: [{ videoId: 10, lesson: "lesson-1", title: "First" }], materialOrder: [10], permissions: {
         manageContent: false, manageOwnHistory: false, viewTranscript: viewTranscript ?? false, viewQa: false, postQa: false, voteQa: false,
         deleteOwnQa: false, moderateQa: false, instructorQa: false,
       } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
-        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true });
+        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeUserVisibility: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
     } finally { spy.mockRestore(); }
   });
   it("accepts an explicit empty snapshot without inventing deletions", async () => {
     const snapshot = { contextId: "course", complete: true, resources: [] };
     expect(await new MaterialsClient(env, registration, mockService(snapshot)).manifest("course")).toEqual(snapshot);
+  });
+  it('preserves current Moodle order across readable and management-only resources without adding foreign or stale sources', async () => {
+    const base = { deploymentId: registration.deploymentId, contextId: '42', courseId: 1, generation: 2 };
+    const resources = [
+      { ...base, resourceLinkId: 'ready', videoId: 10, learningAvailable: true },
+      { ...base, resourceLinkId: 'pending', videoId: 20, learningAvailable: false },
+      { ...base, resourceLinkId: 'readonly', videoId: 30, learningAvailable: true },
+      { ...base, resourceLinkId: 'foreign', videoId: 40, contextId: 'other', courseId: 2 },
+    ];
+    const reg = { ...registration, id: 'db:school', issuer: 'https://moodle.example', authorizationUrl: 'https://moodle.example/auth',
+      jwksUrl: 'https://moodle.example/keys', frameOrigins: ['https://moodle.example'], resources };
+    const entries = [
+      { externalId: '2', resourceLinkId: 'pending', lesson: 'second', title: 'Pending', generation: 2, learning: false, management: { generation: 2 } },
+      { externalId: '3', resourceLinkId: 'readonly', lesson: 'third', title: 'Read only', generation: 2 },
+      { externalId: '1', resourceLinkId: 'ready', lesson: 'first', title: 'Ready', generation: 2, management: { generation: 2 } },
+      { externalId: '4', resourceLinkId: 'foreign', lesson: 'foreign', title: 'Foreign', generation: 2 },
+      { externalId: '5', resourceLinkId: 'ready', lesson: 'stale', title: 'Stale', generation: 1 },
+    ];
+    let ordered = entries;
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => mockService({ contextId: '42', resourceLinkId: 'ready',
+      permissions: { manageContent: true }, resources: ordered })(input, init));
+    const get = () => courseAccessContext(reg, { ...resources[0], resourceGeneration: 2, serviceSubject: 'teacher' }, env as Bindings);
+    try {
+      const first = await get();
+      expect(first?.videos.map(video => video.videoId)).toEqual([30, 10]);
+      expect(first?.managementVideos?.map(video => video.videoId)).toEqual([20, 10]);
+      expect(first?.materialOrder).toEqual([20, 30, 10]);
+      ordered = [entries[2], entries[0], entries[1], entries[3], entries[4]];
+      expect((await get())?.materialOrder).toEqual([10, 20, 30]);
+    } finally { spy.mockRestore(); }
   });
   it('preserves the canonical video manifest shape while rejecting files or enabled tombstones on course entries', () => {
     const old = { generation: 1, contextId: '42', resourceLinkId: 'lesson', enabled: true, title: 'Lesson',
