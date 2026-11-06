@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/yukiharada1228/videoq/security/vex/whisper-kernel-headers-2026-10-23",
   "author": "VideoQ",
-  "timestamp": "2026-10-23T12:56:05.046372+00:00",
-  "version": 1,
+  "timestamp": "2026-11-06T15:40:00Z",
+  "version": 2,
   "statements": [
     {
       "vulnerability": {
@@ -11,7 +11,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -24,7 +24,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -37,7 +37,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -50,7 +50,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -63,7 +63,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -76,20 +76,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
-        }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_present",
-      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
-    },
-    {
-      "vulnerability": {
-        "name": "CVE-2024-46833"
-      },
-      "products": [
-        {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -102,7 +89,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -115,7 +102,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -128,7 +115,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -141,7 +128,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -154,7 +141,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -167,7 +154,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -180,7 +167,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -193,7 +180,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -206,7 +193,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -219,7 +206,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -232,7 +219,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -245,7 +232,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -258,7 +245,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -271,7 +258,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -284,7 +271,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -297,7 +284,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -310,7 +297,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -323,7 +310,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -336,7 +323,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -349,7 +336,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -362,7 +349,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -375,7 +362,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -388,7 +375,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -401,7 +388,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -414,7 +401,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -427,7 +414,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -440,7 +427,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -453,7 +440,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -466,7 +453,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -479,7 +466,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -492,7 +479,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -505,7 +492,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -518,7 +505,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -531,7 +518,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -544,7 +531,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -557,7 +544,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -570,7 +557,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -583,7 +570,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -596,7 +583,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -609,7 +596,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -622,7 +609,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -635,7 +622,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -648,7 +635,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -661,7 +648,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -674,7 +661,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -687,7 +674,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -700,7 +687,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -713,7 +700,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -726,7 +713,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -739,7 +726,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -752,7 +739,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -765,7 +752,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -778,7 +765,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -791,7 +778,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -804,7 +791,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -817,7 +804,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -830,7 +817,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -843,7 +830,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -856,7 +843,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -869,7 +856,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -882,7 +869,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -895,7 +882,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -908,7 +895,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -921,7 +908,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -934,7 +921,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -947,7 +934,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -960,7 +947,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -973,7 +960,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -986,7 +973,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -999,7 +986,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1012,7 +999,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1025,7 +1012,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1038,7 +1025,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1051,7 +1038,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1064,7 +1051,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1077,7 +1064,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1090,7 +1077,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1103,7 +1090,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1116,7 +1103,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1129,7 +1116,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1142,7 +1129,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1155,7 +1142,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1168,7 +1155,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1181,7 +1168,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1194,7 +1181,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1207,7 +1194,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1220,7 +1207,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1233,7 +1220,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1246,7 +1233,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1259,7 +1246,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1272,7 +1259,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1285,7 +1272,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1298,7 +1285,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1311,7 +1298,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1324,7 +1311,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1337,7 +1324,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1350,7 +1337,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1363,7 +1350,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1376,7 +1363,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1389,7 +1376,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1402,7 +1389,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1415,7 +1402,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1428,7 +1415,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1441,7 +1428,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1454,7 +1441,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1467,7 +1454,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1480,7 +1467,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1493,7 +1480,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1506,7 +1493,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1519,7 +1506,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1532,7 +1519,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1545,7 +1532,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1558,7 +1545,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1571,7 +1558,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1584,7 +1571,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1597,7 +1584,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1610,7 +1597,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1623,7 +1610,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1636,7 +1623,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1649,7 +1636,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1662,7 +1649,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1675,7 +1662,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1688,7 +1675,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1701,7 +1688,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1714,7 +1701,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1727,7 +1714,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1740,7 +1727,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1753,7 +1740,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1766,7 +1753,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1779,7 +1766,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1792,7 +1779,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1805,7 +1792,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1818,7 +1805,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1831,7 +1818,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1844,7 +1831,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1857,7 +1844,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1870,7 +1857,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1883,7 +1870,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1896,7 +1883,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1909,7 +1896,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1922,7 +1909,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1935,7 +1922,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1948,7 +1935,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1961,7 +1948,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1974,7 +1961,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -1987,7 +1974,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2000,7 +1987,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2013,7 +2000,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2026,7 +2013,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2039,7 +2026,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2052,7 +2039,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2065,7 +2052,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2078,7 +2065,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2091,7 +2078,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2104,7 +2091,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2117,7 +2104,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2130,7 +2117,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2143,7 +2130,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2156,7 +2143,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2169,7 +2156,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2182,7 +2169,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2195,7 +2182,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2208,7 +2195,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2221,7 +2208,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2234,7 +2221,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2247,7 +2234,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2260,7 +2247,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2273,7 +2260,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2286,7 +2273,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2299,7 +2286,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2312,7 +2299,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2325,7 +2312,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2338,7 +2325,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2351,7 +2338,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2364,7 +2351,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2377,7 +2364,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2390,7 +2377,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2403,7 +2390,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2416,7 +2403,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2429,7 +2416,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2442,7 +2429,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2455,7 +2442,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2468,7 +2455,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2481,7 +2468,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2494,7 +2481,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2507,7 +2494,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2520,7 +2507,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2533,7 +2520,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2546,7 +2533,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2559,7 +2546,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2572,7 +2559,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2585,7 +2572,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2598,7 +2585,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2611,7 +2598,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2624,7 +2611,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2637,7 +2624,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2650,7 +2637,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2663,7 +2650,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2676,7 +2663,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2689,7 +2676,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2702,7 +2689,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2715,7 +2702,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2728,7 +2715,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2741,7 +2728,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2754,7 +2741,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2767,7 +2754,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2780,7 +2767,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2793,7 +2780,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2806,7 +2793,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2819,7 +2806,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2832,7 +2819,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2845,7 +2832,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2858,7 +2845,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2871,7 +2858,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2884,7 +2871,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2897,7 +2884,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2910,7 +2897,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2923,7 +2910,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2936,7 +2923,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2949,7 +2936,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2962,7 +2949,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2975,7 +2962,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -2988,7 +2975,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3001,7 +2988,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3014,7 +3001,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3027,7 +3014,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3040,7 +3027,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3053,7 +3040,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3066,7 +3053,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3079,7 +3066,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3092,7 +3079,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3105,7 +3092,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3118,7 +3105,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3131,7 +3118,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3144,7 +3131,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3157,7 +3144,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3170,7 +3157,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3183,7 +3170,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3196,7 +3183,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3209,7 +3196,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3222,7 +3209,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3235,7 +3222,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3248,7 +3235,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3261,7 +3248,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3274,7 +3261,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3287,7 +3274,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3300,7 +3287,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3313,7 +3300,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3326,7 +3313,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3339,7 +3326,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3352,7 +3339,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3365,7 +3352,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3378,7 +3365,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3391,7 +3378,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3404,7 +3391,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3417,7 +3404,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3430,7 +3417,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3443,7 +3430,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3456,7 +3443,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3469,7 +3456,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3482,7 +3469,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3495,7 +3482,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3508,7 +3495,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3521,7 +3508,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3534,7 +3521,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3547,7 +3534,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3560,7 +3547,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3573,7 +3560,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3586,7 +3573,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3599,7 +3586,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3612,7 +3599,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3625,7 +3612,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3638,7 +3625,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3651,7 +3638,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3664,7 +3651,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3677,7 +3664,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3690,7 +3677,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3703,7 +3690,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3716,7 +3703,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3729,7 +3716,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3742,7 +3729,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3755,7 +3742,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3768,7 +3755,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3781,7 +3768,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3794,7 +3781,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3807,7 +3794,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3820,7 +3807,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3833,7 +3820,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3846,7 +3833,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3859,7 +3846,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3872,7 +3859,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3885,7 +3872,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3898,7 +3885,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3911,7 +3898,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3924,7 +3911,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3937,7 +3924,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3950,7 +3937,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3963,7 +3950,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3976,7 +3963,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -3989,7 +3976,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4002,7 +3989,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4015,7 +4002,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4028,7 +4015,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4041,7 +4028,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4054,7 +4041,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4067,7 +4054,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4080,7 +4067,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4093,7 +4080,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4106,7 +4093,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4119,7 +4106,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4132,7 +4119,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4145,7 +4132,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4158,7 +4145,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4171,7 +4158,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4184,7 +4171,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4197,7 +4184,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4210,7 +4197,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4223,7 +4210,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4236,7 +4223,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4249,7 +4236,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4262,7 +4249,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4275,7 +4262,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4288,7 +4275,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4301,7 +4288,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4314,7 +4301,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4327,7 +4314,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4340,7 +4327,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4353,7 +4340,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4366,7 +4353,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4379,7 +4366,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4392,7 +4379,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4405,7 +4392,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4418,7 +4405,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4431,7 +4418,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4444,7 +4431,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4457,7 +4444,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4470,7 +4457,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4483,7 +4470,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4496,7 +4483,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4509,7 +4496,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4522,7 +4509,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4535,7 +4522,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4548,7 +4535,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4561,7 +4548,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4574,7 +4561,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4587,7 +4574,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4600,7 +4587,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4613,7 +4600,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4626,7 +4613,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4639,7 +4626,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4652,7 +4639,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4665,7 +4652,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4678,7 +4665,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4691,7 +4678,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4704,7 +4691,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4717,7 +4704,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4730,7 +4717,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4743,7 +4730,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4756,7 +4743,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4769,7 +4756,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4782,7 +4769,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4795,7 +4782,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4808,7 +4795,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4821,7 +4808,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4834,7 +4821,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4847,7 +4834,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4860,7 +4847,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4873,7 +4860,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4886,7 +4873,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4899,7 +4886,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4912,7 +4899,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4925,7 +4912,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4938,7 +4925,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4951,7 +4938,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4964,7 +4951,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4977,7 +4964,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -4990,7 +4977,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -5003,7 +4990,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -5016,7 +5003,7 @@
       },
       "products": [
         {
-          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
