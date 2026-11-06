@@ -1,6 +1,8 @@
 import { pruneLtiAudit } from '../src/features/lti/audit-retention';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { lockConversationTestRoles } from './helpers/conversation-role-lock';
@@ -25,8 +27,9 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
 (databaseUrl?describe:describe.skip)('Moodle services using the deployed database security profile',()=>{
   const database='videoq_moodle_grants_'+crypto.randomUUID().replaceAll('-','');
   const apiLogin='videoq_moodle_api_'+crypto.randomUUID().replaceAll('-','');
+  const workerLogin='videoq_moodle_worker_'+crypto.randomUUID().replaceAll('-','');
   const createdRoles:string[]=[];
-  let admin:pg.Pool,owner:pg.Pool,api:pg.Pool,env:Bindings,releaseRoles:(()=>Promise<void>)|undefined;
+  let admin:pg.Pool,owner:pg.Pool,api:pg.Pool,worker:pg.Pool,workerDatabaseUrl:string,env:Bindings,releaseRoles:(()=>Promise<void>)|undefined;
   beforeAll(async()=>{
     releaseRoles=await lockConversationTestRoles(databaseUrl!);
     admin=new pg.Pool({connectionString:databaseUrl});admin.on('error',()=>{});
@@ -49,6 +52,12 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     await owner.query("CREATE TABLE retired_permission_probe(secret text);INSERT INTO retired_permission_probe VALUES('fixture only')");
     const installer:pg.Pool=new pg.Pool({connectionString:url.toString()});
     try{
+      // The deployed profile inherits a pre-existing legacy worker role. Model
+      // only the read/lease baseline needed by this indexing fixture; this is
+      // not a complete reconstruction of production transcription/deletion grants.
+      await installer.query(`GRANT SELECT(id,user_id,title,transcript,status,source_type,file,youtube_video_id)
+        ON videos TO videoq_worker_20261014;
+        GRANT SELECT,INSERT ON job_executions TO videoq_worker_20261014`);
       const profile:string=readFileSync(new URL('../../../infra/sql/neon-security.sql',import.meta.url),'utf8');
       await installer.query(profile);await installer.query(profile);
     }
@@ -59,6 +68,16 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     await admin.query(`GRANT videoq_api_access TO "${apiLogin}"`);
     const apiUrl=new URL(url);apiUrl.username=apiLogin;apiUrl.password=apiPassword;
     api=new pg.Pool({connectionString:apiUrl.toString(),options:'-c role=videoq_api_access',max:3});api.on('error',()=>{});
+    const workerPassword=crypto.randomUUID();
+    await admin.query(`CREATE ROLE "${workerLogin}" LOGIN PASSWORD '${workerPassword}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`);
+    createdRoles.push(workerLogin);
+    await admin.query(`GRANT videoq_worker_access TO "${workerLogin}"`);
+    const workerUrl=new URL(url);workerUrl.username=workerLogin;workerUrl.password=workerPassword;
+    workerUrl.searchParams.set('options','-c role=videoq_worker_access');
+    // libpq uses URI percent encoding, not URLSearchParams' form-style '+'.
+    workerUrl.search=[...workerUrl.searchParams].map(([key,value])=>encodeURIComponent(key)+'='+encodeURIComponent(value)).join('&');
+    workerDatabaseUrl=workerUrl.toString();
+    worker=new pg.Pool({connectionString:workerDatabaseUrl,max:2});worker.on('error',()=>{});
     env={DATABASE_POOL:api,LTI_CONFIG:JSON.stringify({toolOrigin:'https://videoq.example',databaseRegistrations:true,registrations:[]}),
       USER_SECRET_ENCRYPTION_KEY:'A'.repeat(43),USE_S3_STORAGE:'true'} as Bindings;
     await owner.query(`INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,storage_limit_gb,monthly_upload_limit_gb)
@@ -66,7 +85,7 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
   },60000);
   afterAll(async()=>{
     try{
-      await api?.end();await owner?.end();
+      await worker?.end();await api?.end();await owner?.end();
       if(admin){
         await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH(FORCE)`);
         for(const role of createdRoles.reverse())await admin.query(`DROP ROLE "${role}"`);
@@ -152,4 +171,66 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect((await courseTags(env,{...scope,manage:false},{action:'list'})).tags).toEqual([]);
     expect((await api.query("SELECT has_schema_privilege(current_user,'public','CREATE') AS ddl")).rows[0].ddl).toBe(false);
   });
+
+  it('delivers an API transcript-clear job through the restricted Python worker, with atomic failure and idempotent retry',async()=>{
+    await provisionLmsInstallation(env,{id:'clear-school',ownerUserId:'owner',name:'Clear fixture',
+      issuer:'https://moodle.example',clientId:'clear-client',deploymentId:'clear-deployment',authorizationUrl:'https://moodle.example/auth',jwksUrl:'https://moodle.example/keys'});
+    const sources=[];
+    for(const id of ['clear-target','clear-sentinel'])sources.push(await syncLmsResource(env,{id:'clear-school',ownerUserId:'owner'},id,
+      {contextId:'clear-course',resourceLinkId:id,generation:1,enabled:true,title:id,
+        file:{filename:id+'.mp4',contentType:'video/mp4',size:10,contentHash:(id==='clear-target'?'c':'d').repeat(40)}}));
+    const target=sources[0],sentinel=sources[1];
+    // Synthetic completed rows/vectors exercise authorization and worker SQL;
+    // they are not evidence of AI transcription or embedding quality.
+    await owner.query("UPDATE videos SET status='completed',transcript=$1 WHERE id=ANY($2::bigint[])",
+      ['1\n00:00:00,000 --> 00:00:01,000\nSynthetic clear fixture\n',sources.map(source=>source.videoId)]);
+    for(const [table,dimensions] of [['scene_embeddings',1536],['scene_embeddings_768',768]] as const){
+      for(const source of sources)await owner.query(`INSERT INTO ${table}(langchain_id,content,embedding,user_id,video_id)
+        VALUES($1,'Synthetic authorization vector',array_fill(0.25::float8,ARRAY[$2::int])::vector,'owner',$3)`,
+      [crypto.randomUUID(),dimensions,source.videoId]);
+    }
+    expect((await worker.query('SELECT current_user,session_user')).rows[0]).toEqual({current_user:'videoq_worker_access',session_user:workerLogin});
+    for(const statement of ['CREATE TABLE forbidden_worker_ddl(id int)',
+      'SELECT password FROM account LIMIT 0',"UPDATE users SET role='admin' WHERE false",
+      "UPDATE videos SET user_id='another-owner' WHERE false",'SET ROLE videoq_migrate_20260918'])
+      await expect(worker.query(statement)).rejects.toMatchObject({code:'42501'});
+    const scope:ManagedMaterialScope={installationId:'clear-school',ownerUserId:'owner',courseId:target.courseId!,contextId:'clear-course',
+      resourceLinkId:'clear-target',videoId:target.videoId!,generation:1,actorKey:'f'.repeat(64)};
+    const before=await manageLtiMaterial(env,scope,{action:'get',videoId:scope.videoId});
+    const cleared=await manageLtiMaterial(env,scope,{action:'update',videoId:scope.videoId,operationId:crypto.randomUUID(),
+      revision:before.material.revision,fields:{transcript:''}});
+    const message=(await api.query('SELECT payload FROM external_tasks WHERE id=$1',[cleared.externalTaskId])).rows[0].payload.message;
+    expect(message).toMatchObject({type:'index_video_transcript',payload:{video_id:scope.videoId,allow_empty:true}});
+    const execute=()=>new Promise<{batchItemFailures:{itemIdentifier:string}[];embeddingCalls:number;errors?:{type:string;sqlstate:string|null}[]}>((resolve,reject)=>{
+      const child=execFile(process.env.LOCAL_AI_TEST_WORKER_PYTHON??'python3',
+        [fileURLToPath(new URL('./helpers/moodle-worker-clear.py',import.meta.url))],
+        {timeout:30000,maxBuffer:1024*1024,env:{PATH:process.env.PATH,PYTHONPATH:fileURLToPath(new URL('../../worker/',import.meta.url)),
+          DATABASE_URL:workerDatabaseUrl,AWS_EC2_METADATA_DISABLED:'true'}},(error,stdout)=>{
+          if(error){reject(new Error('Restricted worker fixture failed (exit '+error.code+'): '+stdout));return;}
+          try{resolve(JSON.parse(stdout));}catch{reject(new Error('Restricted worker returned invalid fixture output'));}
+        });
+      child.stdin!.end(JSON.stringify(message));
+    });
+    const counts=async()=> (await owner.query(`SELECT
+      (SELECT count(*)::int FROM scene_embeddings WHERE video_id=$1) AS hosted,
+      (SELECT count(*)::int FROM scene_embeddings_768 WHERE video_id=$1) AS local`,[scope.videoId])).rows[0];
+    try{
+      await owner.query('REVOKE DELETE ON scene_embeddings_768 FROM videoq_worker_access');
+      const failed=await execute();expect(failed.embeddingCalls).toBe(0);expect(failed.batchItemFailures).toHaveLength(1);
+      expect(failed.errors).toContainEqual({type:'InsufficientPrivilege',sqlstate:'42501'});
+      expect(await counts()).toEqual({hosted:1,local:1});
+      expect((await owner.query('SELECT status FROM videos WHERE id=$1',[scope.videoId])).rows[0].status).toBe('indexing');
+      expect((await owner.query('SELECT status,attempts FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
+        .toEqual({status:'failed',attempts:1});
+    }finally{await owner.query('GRANT DELETE ON scene_embeddings_768 TO videoq_worker_access');}
+    expect(await execute()).toEqual({batchItemFailures:[],embeddingCalls:0});
+    expect(await counts()).toEqual({hosted:0,local:0});
+    expect((await owner.query('SELECT transcript,status FROM videos WHERE id=$1',[scope.videoId])).rows[0])
+      .toEqual({transcript:'',status:'completed'});
+    expect(await execute()).toEqual({batchItemFailures:[],embeddingCalls:0});
+    expect((await owner.query('SELECT status,attempts FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
+      .toEqual({status:'completed',attempts:2});
+    for(const table of ['scene_embeddings','scene_embeddings_768'])
+      expect((await owner.query(`SELECT count(*)::int AS n FROM ${table} WHERE video_id=$1`,[sentinel.videoId])).rows[0].n).toBe(1);
+  },60000);
 });

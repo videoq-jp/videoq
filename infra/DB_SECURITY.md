@@ -48,6 +48,16 @@ through `videoq_worker_20261014`, plus the current embedding-table grants. That
 legacy role becomes NOLOGIN; it is retained for its grants. New worker tables and
 columns require an explicit privilege review in their schema change.
 
+The Moodle grants integration test also delivers an API-produced explicit
+transcript-clear job to the actual Python worker under a separate non-superuser
+login. It checks atomic failure when one embedding-table DELETE is denied,
+same-job retry and duplicate delivery, sentinel preservation, and denial of
+password reads, ownership/role changes and DDL. Its isolated legacy role includes
+only the video-read/job-lease baseline needed for indexing. This does not
+reconstruct all deployed legacy grants or prove transcription/AI processing;
+the completed rows and vectors are synthetic authorization fixtures, and an
+embedding-provider call fails the test.
+
 Backup has SELECT on application, migration and security tables, including the
 smoke identity registry. The logical dump/restore includes all three schemas.
 Audit can SELECT only views for the dedicated public demo. It cannot read password
