@@ -1,17 +1,18 @@
 # Moodle material management
 
-This branch adds the server and worker foundation for delegated teacher edits.
-The editor, Moodle source-action controller and installed-Moodle acceptance tests
-are not implemented yet. This is unreleased work and does not complete the full
-Moodle feature-access objective.
+This branch adds delegated teacher edits, processing controls and the native and
+embedded editor. This is unreleased work and does not complete the full Moodle
+feature-access objective. Full live Moodle + VideoQ + AI acceptance remains open.
 
 ## Authority and source of truth
 
-Moodle owns the activity title, file, visibility, opt-in and deletion. Its native
-activity-edit and module-deletion lifecycle must remain the authority for these
-fields. The future source-action controller must require login, a current course
-and activity, `local/videoq:managecontent`, module-scoped
-`moodle/course:manageactivities`, a POST sesskey and destructive-action confirmation.
+Moodle owns the activity title, file, visibility, opt-in and deletion. The native
+material list links each authorized source to core activity editing, its existing
+VideoQ synchronization page and the course's activity controls (including core
+deletion). These flows keep Moodle's login, module permissions, sesskeys and core
+deletion lifecycle. No new API lets a delegated teacher delete another account's
+video independently of its Moodle source. Full live source-edit/delete propagation
+and processing-retry acceptance remain release gates.
 
 `POST /api/lti/management` handles only derived description/SRT edits, reindexing
 and eligible processing retries. Every operation rechecks the current Moodle
@@ -68,15 +69,31 @@ generation, pseudonymous actor key, action, hashes, optional task ID and time;
 they contain no edited content. Resource/course deletion cascades receipt
 deletion; video/task deletion clears those references. No timed receipt retention
 or learner/privacy-officer export/delete flow is implemented in this increment.
-Those workflows must include this metadata in the remaining privacy work.
+Those workflows must include this metadata in the remaining privacy work. The
+companion Privacy API declares teacher content edits and pseudonymous audit
+receipts as data stored externally by VideoQ.
 
 Deploy the compatible worker before enabling API writes that produce
 `allow_empty`; older workers reject this new field. Apply migration/grants and
 the authority branch's coordinated cutover requirements before the companion
 editor is released. The current Marketplace sources and ZIPs are unaffected.
 
-Remaining work includes native and embedded management panels, processing-only
-startup/composer handling, Moodle source edit/delete/disable/sync-retry controls,
-capability language/version/package updates, fresh installed-role and module
-override tests, browser acceptance and full isolated Moodle + VideoQ + AI checks.
-The wider feature inventory remains in `moodle-feature-access.md`.
+The editor reuses the existing private iframe, switches with Q&A and personal
+history, and preserves drafts across panel switches, conflicts and permission
+revocation. Revoked drafts remain available for copying in read-only controls;
+the frame sends only availability/draft booleans across the bridge. Exact failed
+requests retain their operation identity for retry after a lost response.
+Refreshing/switching material requires confirmation before discarding a draft.
+Explicit clear, reindex and retry also require an in-frame confirmation.
+
+The composer tracks learning availability separately from answer-generation
+activity. Processing-only teachers can open management without history access;
+bounded five-second polling (at most 60 attempts before manual refresh) restores
+learning after a material becomes ready. Pending video playheads are never added
+to AI questions. The poll updates processing state without replacing draft text.
+
+Remaining work includes restricted production-role/Workers runtime verification,
+full isolated Moodle + VideoQ + AI checks, source lifecycle/retry acceptance and
+the full external privacy workflow. The wider inventory, including imports,
+tags, reporting and independently authenticated owner operations, remains in
+`moodle-feature-access.md`.
