@@ -34,6 +34,7 @@ const schema = z.object({
   toolOrigin: origin,
   databaseRegistrations: z.boolean().optional(),
   privacyEnabled: z.boolean().optional(),
+  auditRetentionDays: z.number().int().min(1).max(3650).optional(),
   registrations: z.array(registration).max(100),
 }).strict().superRefine((config, ctx) => {
   if (!config.databaseRegistrations && !config.registrations.length) ctx.addIssue({ code: "custom", message: "At least one registration is required" });

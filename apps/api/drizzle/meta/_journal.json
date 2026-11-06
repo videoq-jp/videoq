@@ -400,6 +400,20 @@
       "when": 1793968298480,
       "tag": "0056_lti_course_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793976593711,
+      "tag": "0057_lti_audit_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793976594415,
+      "tag": "0058_lti_operation_reservations_backfill",
+      "breakpoints": true
     }
   ]
 }

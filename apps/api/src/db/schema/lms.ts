@@ -87,6 +87,7 @@ export const ltiMaterialOperations = pgTable('lti_material_operations', {
   foreignKey({ columns: [table.externalTaskId], foreignColumns: [externalTasks.id], name: 'lti_material_ops_task_fk' }).onDelete('set null'),
   index('lti_material_ops_resource_created_idx').on(table.resourceId, table.createdAt),
   index('lti_material_ops_actor_idx').on(table.actorKey, table.createdAt),
+  index('lti_material_ops_retention_idx').on(table.createdAt, table.id),
   check('lti_material_ops_action_check', sql`${table.action} IN ('update','reindex','retry')`),
   check('lti_material_ops_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`),
 ]);
@@ -114,5 +115,11 @@ export const ltiCourseTagOperations = pgTable('lti_course_tag_operations', {
   requestHash: varchar('request_hash', { length: 64 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [index('lti_course_tag_ops_course_idx').on(table.courseId, table.createdAt),
+  index('lti_course_tag_ops_retention_idx').on(table.createdAt, table.id),
   check('lti_course_tag_ops_action_check', sql`${table.action} IN ('create','update','delete','assign')`),
   check('lti_course_tag_ops_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`)]);
+
+/** Permanent replay barriers contain only a namespaced hash of a random operation UUID. */
+export const ltiOperationReservations = pgTable('lti_operation_reservations', {
+  key: varchar('key', { length: 64 }).primaryKey(),
+}, table => [check('lti_operation_reservation_key_format', sql`${table.key} ~ '^[a-f0-9]{64}$'`)]);

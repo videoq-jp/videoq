@@ -1,3 +1,4 @@
+import { reserveLtiOperation } from './operation-reservations';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import { withDb, type Db } from '../../db/pool';
@@ -106,6 +107,7 @@ export async function manageLtiMaterial(env: Bindings, scope: ManagedMaterialSco
         return { material, externalTaskId: null, reused: false };
       }
       const requestHash = await digest(JSON.stringify(input));
+      const freshOperation = await reserveLtiOperation(client, 'material', input.operationId);
       const prior = (await client.query<{ actor_key: string; resource_id: string; request_hash: string; external_task_id: string | null }>(
         'SELECT actor_key,resource_id,request_hash,external_task_id FROM lti_material_operations WHERE id=$1', [input.operationId])).rows[0];
       if (prior) {
@@ -114,6 +116,7 @@ export async function manageLtiMaterial(env: Bindings, scope: ManagedMaterialSco
         const material = await publicMaterial(client,scope,video); await client.query('COMMIT');
         return { material, externalTaskId: prior.external_task_id === null ? null : Number(prior.external_task_id), reused: true };
       }
+      if (!freshOperation) throw conflict('This operation is no longer available. Refresh and start a new operation.');
       const beforeRevision = await revisionOf(scope,video);
       if (beforeRevision!==input.revision) throw conflict('This material was changed by another operation. Refresh before saving.');
       let message: JobMessage | undefined;

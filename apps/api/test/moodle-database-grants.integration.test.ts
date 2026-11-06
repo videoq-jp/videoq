@@ -1,3 +1,4 @@
+import { pruneLtiAudit } from '../src/features/lti/audit-retention';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -18,7 +19,7 @@ const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;
 const roles=['videoq_migrate_20260918','videoq_worker_20261014','videoq_api_access','videoq_worker_access',
   'videoq_backup_access','videoq_audit_access','videoq_smoke_access','videoq_demo_access'];
 const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_courses','lms_resources',
-  'lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
+  'lti_operation_reservations','lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
   'course_question_lti_votes','course_qa_moderation'];
 
 (databaseUrl?describe:describe.skip)('Moodle services using the deployed database security profile',()=>{
@@ -120,5 +121,13 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     const deleted=await courseTags(env,tagScope,{action:'delete',id:assigned.tags[0].id,revision:assigned.tags[0].revision,operationId:crypto.randomUUID()});
     expect(deleted.tags).toEqual([]);
     expect((await api.query('SELECT count(*)::int AS n FROM lti_course_tag_operations')).rows).toEqual([{n:3}]);
+    const jobsBefore=(await api.query('SELECT count(*)::int AS n FROM external_tasks')).rows[0].n;
+    await owner.query("UPDATE lti_course_tag_operations SET created_at=now()-interval '31 days'; UPDATE lti_material_operations SET created_at=now()-interval '31 days'");
+    const retentionEnv={...env,LTI_CONFIG:JSON.stringify({toolOrigin:'https://videoq.example',databaseRegistrations:true,registrations:[],auditRetentionDays:30})};
+    expect(await pruneLtiAudit(retentionEnv)).toMatchObject({materialOperations:1,tagOperations:3,backlog:false});
+    expect((await api.query('SELECT count(*)::int AS n FROM lti_operation_reservations')).rows).toEqual([{n:4}]);
+    expect((await api.query('SELECT count(*)::int AS n FROM external_tasks')).rows[0].n).toBe(jobsBefore);
+    expect((await api.query('SELECT count(*)::int AS n FROM videos')).rows).toEqual([{n:1}]);
+
   },20000);
 });

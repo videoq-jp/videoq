@@ -1,3 +1,4 @@
+import { reservationExpression } from '../lti/operation-reservations';
 import type pg from 'pg';
 import { z } from 'zod';
 import { ApiError } from '../../shared/errors';
@@ -134,8 +135,12 @@ export async function erasePrivacyData(client:pg.Client,installation:PrivacyInst
     AND c.user_id=p.owner AND a.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
   await execute('moderation',`UPDATE course_qa_moderation a SET lti_actor_id=NULL FROM params p,video_courses c WHERE a.course_id=c.id
     AND c.user_id=p.owner AND a.lti_actor_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
-  for(const [name,table] of [['materialOperations','lti_material_operations'],['tagOperations','lti_course_tag_operations']] as const)
+  for(const [name,table,kind] of [['materialOperations','lti_material_operations','material'],['tagOperations','lti_course_tag_operations','tag']] as const) {
+    await client.query(parameters+` INSERT INTO lti_operation_reservations(key)
+      SELECT ${reservationExpression(kind,'a.id')} FROM ${table} a,params p,video_courses c WHERE a.course_id=c.id AND c.user_id=p.owner
+        AND a.actor_key=p.subject AND ${contextFor('c.id')}=ANY(p.contexts) ORDER BY 1 ON CONFLICT DO NOTHING`,v);
     await execute(name,`DELETE FROM ${table} a USING params p,video_courses c WHERE a.course_id=c.id AND c.user_id=p.owner
       AND a.actor_key=p.subject AND ${contextFor('c.id')}=ANY(p.contexts)`);
+  }
   return result;
 }
