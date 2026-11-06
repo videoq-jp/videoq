@@ -67,7 +67,7 @@ describe("LTI materials service boundary", () => {
         deleteOwnQa: false, moderateQa: false, instructorQa: false,
       } });
       expect(JSON.parse(request.mock.calls[1][1]!.body as string)).toEqual({ action: "access", contextId: "course",
-        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeUserVisibility: true });
+        resourceLinkId: "launch", subject: "student", includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeUserVisibility: true, includeReports: true });
       await expect(courseAccessContext(reg, binding, env as Bindings)).rejects.toThrow("service access required");
     } finally { spy.mockRestore(); }
   });

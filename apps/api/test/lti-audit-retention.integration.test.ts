@@ -67,7 +67,7 @@ const now = new Date('2026-11-06T00:00:00Z'), cutoff = new Date(now.getTime() - 
       [scope.courseId, q, scope.actorKey, new Date(cutoff.getTime() - 1)]);
     await pool.query("INSERT INTO course_qa_moderation(course_id,question_id,actor_user_id,action,created_at) VALUES($1,$2,'owner','unfeature',$3)",
       [scope.courseId, q, new Date(cutoff.getTime() - 1)]);
-    expect(await pruneLtiAudit(env, now)).toEqual({ enabled: true, materialOperations: 1, tagOperations: 1, moderationActors: 1, backlog: false });
+    expect(await pruneLtiAudit(env, now)).toEqual({ enabled: true, materialOperations: 1, tagOperations: 1, moderationActors: 1, reportAccesses: 0, backlog: false });
     expect((await pool.query('SELECT id FROM lti_course_tag_operations ORDER BY id')).rows.map(r => r.id).sort()).toEqual([recent, boundary].sort());
     expect((await pool.query('SELECT lti_actor_id,actor_user_id FROM course_qa_moderation ORDER BY action')).rows).toEqual([
       { lti_actor_id: null, actor_user_id: null }, { lti_actor_id: null, actor_user_id: 'owner' }]);

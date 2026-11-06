@@ -64,7 +64,7 @@ export async function courseAccessContext(reg: LtiRegistration, grant: CourseGra
     method: "POST", redirect: "error", signal: AbortSignal.timeout(5000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...grant.accessProof, contextId: grant.contextId, resourceLinkId: grant.resourceLinkId,
-      includePermissions: true, includeContentManagement: true, includeCourseEntries: true }),
+      includePermissions: true, includeContentManagement: true, includeCourseEntries: true, includeReports: true }),
   });
   if (!response.ok) throw new Error("Moodle access denied");
   const access = accessResponse.parse(await readServiceJson(response, 512_000));

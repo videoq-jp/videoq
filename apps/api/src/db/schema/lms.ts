@@ -1,6 +1,26 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { externalTasks, users, videoCourses, videos } from "./modern";
+
+/** Identifier-only record of a successful, capability-authorized aggregate read. */
+export const ltiReportAccesses = pgTable('lti_report_accesses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  installationId: text('installation_id').notNull().references(() => lmsInstallations.id, { onDelete: 'cascade' }),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  contextId: text('context_id').notNull(),
+  actorKey: varchar('actor_key', { length: 64 }).notNull(),
+  fromDate: date('from_date', { mode: 'string' }).notNull(),
+  toDate: date('to_date', { mode: 'string' }).notNull(),
+  resourceCount: integer('resource_count').notNull(),
+  scopeHash: varchar('scope_hash', { length: 64 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('lti_report_accesses_actor_idx').on(table.actorKey, table.courseId, table.id),
+  index('lti_report_accesses_retention_idx').on(table.createdAt, table.id),
+  check('lti_report_accesses_actor_check', sql`${table.actorKey} ~ '^[a-f0-9]{64}$'`),
+  check('lti_report_accesses_scope_check', sql`${table.scopeHash} ~ '^[a-f0-9]{64}$'`),
+  check('lti_report_accesses_count_check', sql`${table.resourceCount} BETWEEN 0 AND 1000`),
+  check('lti_report_accesses_period_check', sql`${table.toDate} >= ${table.fromDate} AND ${table.toDate} - ${table.fromDate} < 366`),
+]);
 
 /** Persistent application signing identity; never expires with learner sessions. */
 export const ltiToolKeys = pgTable("lti_tool_keys", {

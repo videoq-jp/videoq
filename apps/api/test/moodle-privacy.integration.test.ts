@@ -71,6 +71,9 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       await pool.query('INSERT INTO course_question_lti_votes(question_id,lti_author_id) VALUES($1,$2)', [q.rows[0].id, qa]);
       await pool.query("INSERT INTO course_qa_moderation(course_id,question_id,lti_actor_id,action) VALUES($1,$2,$3,'feature')", [course, q.rows[0].id, qa]);
       await pool.query("INSERT INTO lti_course_tag_operations(id,course_id,actor_key,action,request_hash) VALUES(gen_random_uuid(),$1,$2,'create',$3)", [course, subject.subjectKey, 'e'.repeat(64)]);
+      await pool.query(`INSERT INTO lti_report_accesses(installation_id,course_id,context_id,actor_key,from_date,to_date,resource_count,scope_hash)
+        VALUES('school',$1,$2,$3,'2026-11-01','2026-11-02',1,$4)`,
+      [course, course === resource.courseId ? '2' : '3', subject.subjectKey, 'e'.repeat(64)]);
     }
     const peerQa = await digest(JSON.stringify(['lti-course-qa-v1', peer.registrationId, peer.subjectHash, resource.courseId!]));
     await pool.query("INSERT INTO course_question_replies(question_id,body,lti_author_id) VALUES($1,'peer reply must survive',$2)", [question, peerQa]);
@@ -110,6 +113,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect((await pool.query('SELECT count(*)::int n FROM videos')).rows[0].n).toBe(2);
     expect((await pool.query('SELECT count(*)::int n FROM lti_material_operations')).rows[0].n).toBe(0);
     expect((await pool.query('SELECT count(*)::int n FROM lti_course_tag_operations')).rows[0].n).toBe(2);
+    expect((await pool.query('SELECT count(*)::int n FROM lti_report_accesses')).rows[0].n).toBe(2);
     expect((await pool.query('SELECT lti_actor_id FROM course_qa_moderation WHERE question_id=$1', [question])).rows[0].lti_actor_id).toBeNull();
     expect(await run({ action: 'erase', subject: '11', contexts: ['2'] })).toHaveProperty('erased');
   });
