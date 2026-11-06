@@ -932,6 +932,7 @@ export const courseQaModeration = pgTable('course_qa_moderation', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [index('course_qa_moderation_course_idx').on(table.courseId, table.createdAt),
   index('course_qa_moderation_lti_actor_idx').on(table.ltiActorId),
+  index('course_qa_moderation_retention_idx').on(table.createdAt, table.id).where(sql`${table.ltiActorId} IS NOT NULL`),
   check('course_qa_moderation_actor_kind', sql`${table.actorUserId} IS NULL OR ${table.ltiActorId} IS NULL`),
   check('course_qa_moderation_lti_actor_format', sql`${table.ltiActorId} IS NULL OR ${table.ltiActorId} ~ '^[a-f0-9]{64}$'`),
   check('course_qa_moderation_action', sql`${table.action} IN ('feature', 'unfeature', 'delete_question', 'delete_reply')`)]);

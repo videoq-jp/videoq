@@ -81,8 +81,10 @@ that those other stores are erased. A lost/deleted remote installation or a
 physically removed Moodle user ID also needs operator review.
 
 Existing conversation/log expiry and temporary credential cleanup continue; they
-require scheduled maintenance. Automatic retention for personal material/tag
-receipts and moderation identifiers is still open. Do not describe this increment
+require scheduled maintenance. Operator-configured, bounded automatic cleanup of material/tag receipts and LTI
+moderation actor identifiers is implemented in the audit-retention branch; see
+`moodle-audit-retention.md`. Minimal permanent replay barriers remain after receipt
+removal. Do not describe this increment
 as complete retention coverage or complete Moodle feature parity.
 
 Verification includes real PostgreSQL full migrations/checkpoint setup, paired

@@ -1,3 +1,4 @@
+import { reserveLtiOperation } from './operation-reservations';
 import { z } from 'zod';
 import { tagColorSchema } from '@videoq/trpc';
 import type pg from 'pg';
@@ -28,7 +29,7 @@ export type CourseTagScope = {
 };
 type Tag = { id: string; name: string; color: string; revision: string; video_ids: string[] };
 const denied = () => new ApiError(403, 'FORBIDDEN', 'Course tags are unavailable.');
-const conflict = () => new ApiError(409, 'CONFLICT', 'Tags changed. Refresh before saving.');
+const conflict = (message = 'Tags changed. Refresh before saving.') => new ApiError(409, 'CONFLICT', message);
 const assignmentRevision = (scope: CourseTagScope, videoId: number, ids: string[]) =>
   digest(JSON.stringify(['lti-course-tags-v1', scope.courseId, videoId, ids.sort()]));
 
@@ -97,12 +98,14 @@ export async function courseTags(env: Bindings, scope: CourseTagScope, input: z.
         const result = await catalog(client, scope); await client.query('COMMIT'); return result;
       }
       const hash = await digest(JSON.stringify(input));
+      const freshOperation = await reserveLtiOperation(client, 'tag', input.operationId);
       const prior = (await client.query<{ course_id: string; actor_key: string; request_hash: string }>(
         'SELECT course_id,actor_key,request_hash FROM lti_course_tag_operations WHERE id=$1', [input.operationId])).rows[0];
       if (prior) {
         if (Number(prior.course_id) !== scope.courseId || prior.actor_key !== scope.actorKey || prior.request_hash !== hash) throw conflict();
         const result = await catalog(client, scope, true); await client.query('COMMIT'); return result;
       }
+      if (!freshOperation) throw conflict('This operation is no longer available. Refresh and start a new operation.');
       const all = await readTags(client, scope);
       if (input.action === 'create') {
         if (all.length >= 200) throw new ApiError(413, 'VALIDATION_ERROR', 'Too many course tags.');
