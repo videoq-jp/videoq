@@ -776,6 +776,49 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(late.status).toBe(409);
   });
 
+  it("recovers a failed File through a new generation and rejects stale upload and confirmation", async () => {
+    const synchronize = async (generation: number) => {
+      const response = await request("resources/10", "PUT", manifest(generation));
+      expect(response.status).toBe(200);
+      const body = await response.json<{ generation: number; status: string; upload: { url: string } | null }>();
+      const stored = await getLmsResource(env, grant, "10");
+      if (!stored?.resource.videoId) throw new Error("Expected the synchronized File video");
+      return { ...body, videoId: stored.resource.videoId };
+    };
+    const upload = (url: string) => app.request(url, { method: "PUT", headers: {
+      Authorization: "Bearer " + credential.token, "Content-Type": "video/mp4", "Content-Length": "3",
+    }, body: new Uint8Array([1, 2, 3]) }, env);
+    const initial = await synchronize(1);
+    expect((await upload(initial.upload!.url)).status).toBe(200);
+    expect((await request("resources/10/confirm", "POST", { generation: 1 })).status).toBe(200);
+    await pool.query("UPDATE videos SET status='error' WHERE id=$1", [initial.videoId]);
+
+    // The same generation is an idempotent replay, not a new processing attempt.
+    const unchanged = await synchronize(1);
+    expect(unchanged).toMatchObject({ videoId: initial.videoId, status: "error", upload: null });
+    const retried = await synchronize(2);
+    expect(retried).toMatchObject({ generation: 2, status: "uploading" });
+    expect(retried.videoId).not.toBe(initial.videoId);
+    expect((await synchronize(2)).videoId).toBe(retried.videoId);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources)
+      .toMatchObject([{ videoId: retried.videoId, generation: 2, learningAvailable: false }]);
+    expect((await upload(initial.upload!.url)).status).toBe(409);
+    expect((await request("resources/10/confirm", "POST", { generation: 1 })).status).toBe(409);
+    expect((await request("resources/10", "PUT", manifest(1))).status).toBe(409);
+
+    expect((await upload(retried.upload!.url)).status).toBe(200);
+    expect((await request("resources/10/confirm", "POST", { generation: 2 })).status).toBe(200);
+    expect((await request("resources/10/confirm", "POST", { generation: 2 })).status).toBe(200);
+    const tasks = await pool.query("SELECT payload FROM external_tasks WHERE kind='sqs_job'");
+    expect(tasks.rows.map(row => row.payload.message.payload.video_id).sort((a, b) => a - b))
+      .toEqual([initial.videoId, retried.videoId].sort((a, b) => a - b));
+    expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='storage_cleanup'")).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT id::int FROM videos")).rows).toEqual([{ id: retried.videoId }]);
+    await pool.query("UPDATE videos SET status='completed' WHERE id=$1", [retried.videoId]);
+    expect((await resolvedLtiConfig(env))!.registrations[0].resources)
+      .toMatchObject([{ videoId: retried.videoId, generation: 2, learningAvailable: true }]);
+  });
+
   it("replaces media, revokes its old binding and refuses delayed manifests", async () => {
     const initial = await syncLmsResource(env, grant, "10", manifest());
     await pool.query("UPDATE videos SET status='completed'");
