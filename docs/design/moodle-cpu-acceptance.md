@@ -12,9 +12,13 @@ runs Moodle in that same owned cluster before cleanup. Combined acceptance
 requires 12 GiB. The ordinary CPU runner retains its 10 GiB minimum, and the
 signed-release CLI does not accept the test-only Moodle image.
 
-The installed-only job passed 115 checks at `e9c94ecf`. The combined pipeline is
-implemented but remains unproven until its actual CI run passes. Neither unit
-tests nor the installed-only result establish complete Moodle + real-AI behavior.
+At `f336a533`, both required jobs and CI Success passed in run `42341909106`.
+The combined job completed all 14 Moodle phases; both standalone and Moodle ASR
+independently reassess to CER 0.0 over 45 reference characters. This establishes
+the File/local-CPU workflows below, not full feature parity or release acceptance.
+Visual review found PAGE context-switch and headers-already-sent warnings in the
+mobile screenshot. The new companion pin fixes that native page lifecycle; the
+added warning-free browser assertions still require an exact-head rerun.
 
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
@@ -33,9 +37,11 @@ At `02d5b549` the actual Node probe fails OS lookup, TLS connection and HTTP wit
 now sets `ndots:1` only on the Node probe and the combined API Pod, preferring the
 exact local hostnames before Kubernetes namespace search expansion. It retains
 ClusterFirst, generated nameservers/searches, peer verification and blocked
-public forwarding. Effective `ndots` is included as a bounded number. The same
-transport assertions and full AI acceptance must pass before this is considered
-a verified correction; the prior failed artifact is the negative control.
+public forwarding. Effective `ndots` is included as a bounded number. At
+`f336a533`, Node 26.13.0 records ndots 1, correct OS/direct DNS, verified TLS,
+login 200 and empty OAuth 401. The combined job also passes actual signed
+Moodle processing and real inference. The prior failed artifact remains the
+negative control for this fixture correction.
 
 ## Reproducible sources
 
@@ -141,8 +147,19 @@ editing the teacher's reply must fail. A real question stays present through
 hide/show and suspend/resume: the same learner credential must lose and regain
 that question before its author deletes it through the confirmed UI. These
 human posts must not increase the one real-AI question in the teacher's report.
-These course phases are implemented acceptance requirements; their runtime
-success remains pending with the full combined pipeline.
+These course phases completed in the actual `f336a533` combined run. Its
+artifact `13563460393` has SHA-256
+`daefab34e27ff811fb111a44c5addc4ff68088aefbadfb523ea97a7d56c01951`.
+The exact seven public entries and all 14 phase labels were checked separately
+from the CI status. The actual 390px screenshot still exposed the native-page
+warnings, so a functional pass alone does not satisfy presentation acceptance.
+
+The browser now rejects Moodle's developer-debugging elements and header-warning
+text on both learner and teacher native pages. Debug display remains enabled.
+Companion `20ea7741` retains the source activity's core page context and checks
+LTI visibility, deletion, capability and course identity without reattaching PAGE
+to another activity; the actual LTI launch keeps its own core login. This is a
+page lifecycle correction, not a relaxation of source or launch authority.
 
 The native Moodle transcript reader must display and refresh the actual ASR
 and seek the real player through a cue button. The teacher's material editor must
@@ -192,9 +209,10 @@ Its public artifact identifies only the shared command helper at
 maintenance and a rejected fetch to Moodle's OAuth endpoint before any HTTP
 response; the underlying network code was not captured. Its standalone ASR
 again has CER 0.0 over 45 reference characters. The focused Node probe and
-expanded timeout/standard network classifications address that remaining
-diagnostic gap. A DNS, TLS, routing or application fix still requires actual
-evidence. These failures do not prove the broader Moodle phases.
+expanded timeout/standard network classifications address that diagnostic gap.
+These were failed historical prefixes. The subsequent `02d5b549` negative
+control and complete `f336a533` result provide the actual transport correction
+and broader functional evidence; they do not prove a warning-free new revision.
 
 Full success requires the combined job, final result and transcript assessment;
 a partial browser artifact alone is insufficient. No ready rows, transcripts,

@@ -149,6 +149,10 @@ async function login(ctx, username) {
 }
 async function privateFrame(page) {
   await page.waitForFunction(() => Number.isSafeInteger(window.__cpuBridge?.videoId), null, {timeout: 60_000});
+  assert.equal(await page.locator('[data-rel="debugging"]').count(), 0,
+    'Native Moodle page renders without developer debugging output');
+  assert.equal((await page.locator('body').innerText()).includes('Cannot modify header information'), false,
+    'Native Moodle page sends its headers before rendering');
   const frame = page.frames().find(frame => {
     try {const url = new URL(frame.url()); return url.origin === VIDEOQ && url.pathname.startsWith('/api/lti/');}
     catch {return false;}

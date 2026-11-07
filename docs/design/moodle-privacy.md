@@ -91,3 +91,19 @@ Verification includes real PostgreSQL full migrations/checkpoint setup, paired
 PHP contracts and pinned Moodle Privacy API interfaces. Real Moodle acceptance
 uses only owned synthetic fixtures, verified local TLS and the restricted API
 database role. Production and actual model-provider erasure are not tested here.
+
+On 2026-11-07, the owned real site at backend `0526839a` and companion
+`2026110703` completed a populated export through Moodle's standard request form,
+independent administrator approval, the exact official queued export task and
+the subject's normal ZIP download. The same original request was resumed across
+fresh browser sessions, without duplicate submissions. All 19 original report
+access IDs were present, each scoped to Moodle course 4, and the original records
+remained unchanged. An ordinary teacher could not open the approval screen and
+another learner could not download the subject's archive. Actual platform-signed
+discovery used verified TLS; unsigned external requests were rejected with 403.
+The archive remains private. Temporary contact/mail settings were restored and
+checked from a separate PHP process; no model or general cron was started.
+
+This verifies populated report-receipt export through core approval, not complete
+subject erasure, peer retention, all model-memory/provider/legacy stores or a
+production rollout. Those remain separate requirements.
