@@ -12,6 +12,9 @@ SPEC.loader.exec_module(runtime)
 INSTALL_SPEC = importlib.util.spec_from_file_location('moodle_install', Path(__file__).with_name('moodle-install-acceptance.py'))
 install = importlib.util.module_from_spec(INSTALL_SPEC)
 INSTALL_SPEC.loader.exec_module(install)
+PROBE_SPEC = importlib.util.spec_from_file_location('moodle_probe', Path(__file__).with_name('moodle-cpu-probe.py'))
+probe = importlib.util.module_from_spec(PROBE_SPEC)
+PROBE_SPEC.loader.exec_module(probe)
 OWNER = 'a' * 32
 COREFILE = '.:53 {\n    errors\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n    }\n}\n'
 
@@ -182,6 +185,43 @@ class MoodleCpuSafetyTests(unittest.TestCase):
                         {'stage': 'private-token'}, {**expected, 'tlsVerifyResult': True}]:
             self.assertIsNone(runtime.network_failure('VIDEOQ_CPU_NETWORK ' + json.dumps(invalid)))
         self.assertIsNone(runtime.network_failure('raw private failure without approved metadata'))
+
+    def test_actual_cpu_configuration_preserves_model_endpoints_and_mounts_only_public_ca(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        directory = self.root / 'private'
+        directory.mkdir()
+        values = {'publicUrl': 'http://127.0.0.1:18787',
+                  'storage': {'endpoint': 'http://127.0.0.1:19000', 'internalEndpoint': 'http://garage:3900'},
+                  'ai': {'openaiBaseUrl': 'http://videoq-inference-chat:8000/v1', 'llmModel': 'videoq-chat',
+                         'embeddingBaseUrl': 'http://videoq-inference-embedding:8000/v1'},
+                  'api': {'extraEnv': [{'name': 'EXISTING_SETTING', 'value': 'preserved'}]}}
+        (self.root / 'values.json').write_text(json.dumps(values))
+        fixture = SimpleNamespace(output=directory, kubeconfig=self.kubeconfig, assert_owner=Mock(), k=Mock())
+        with patch.object(probe.subprocess, 'run') as run:
+            self.assertEqual(probe.configure_api(fixture, self.root, Path('charts/videoq')), 'scene_embeddings')
+        fixture.assert_owner.assert_called_once()
+        actual = json.loads((directory / 'values.json').read_text())
+        self.assertEqual(actual['ai'], values['ai'])
+        self.assertEqual(actual['storage']['internalEndpoint'], values['storage']['internalEndpoint'])
+        self.assertIn({'name': 'EXISTING_SETTING', 'value': 'preserved'}, actual['api']['extraEnv'])
+        self.assertNotIn('NODE_TLS_REJECT_UNAUTHORIZED', json.dumps(actual))
+        patch_data = probe.api_ca_patch()['spec']['template']['spec']
+        self.assertEqual(patch_data['volumes'], [{'name': 'moodle-cpu-ca', 'configMap': {'name': 'moodle-cpu-ca'}}])
+        self.assertTrue(patch_data['containers'][0]['volumeMounts'][0]['readOnly'])
+        self.assertEqual(run.call_args.args[0][:3], ['helm', 'upgrade', 'videoq'])
+
+    def test_moodle_refuses_a_mock_or_public_provider_before_helm_or_cluster_changes(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        (self.root / 'values.json').write_text(json.dumps({'publicUrl': 'http://127.0.0.1:18787',
+            'storage': {}, 'ai': {'openaiBaseUrl': 'https://external.invalid/v1'}, 'api': {}}))
+        fixture = SimpleNamespace(assert_owner=Mock(), k=Mock())
+        with patch.object(probe.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'actual parent CPU'):
+                probe.configure_api(fixture, self.root, Path('charts/videoq'))
+        run.assert_not_called()
+        fixture.k.assert_not_called()
 
 
 if __name__ == '__main__':

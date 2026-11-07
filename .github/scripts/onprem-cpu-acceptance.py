@@ -27,6 +27,7 @@ NODE = "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e362
 # Default AI memory requests total 7.5 GiB; reserve another 2.5 GiB for the
 # control plane, backing services, application and Chromium. Swap is not RAM.
 MINIMUM_DOCKER_MEMORY = 10 * 1024**3
+MOODLE_DOCKER_MEMORY = 12 * 1024**3
 SPEC = importlib.util.spec_from_file_location("release", Path(__file__).with_name("onprem-release.py"))
 release = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(release)
@@ -38,12 +39,13 @@ lab = importlib.util.module_from_spec(LAB_SPEC)
 LAB_SPEC.loader.exec_module(lab)
 
 
-def require_docker_memory(memory_bytes):
+def require_docker_memory(memory_bytes, *, moodle=False):
     if not isinstance(memory_bytes, int) or isinstance(memory_bytes, bool) or memory_bytes <= 0:
         raise ValueError("Docker memory capacity is unavailable")
-    if memory_bytes < MINIMUM_DOCKER_MEMORY:
+    minimum = MOODLE_DOCKER_MEMORY if moodle else MINIMUM_DOCKER_MEMORY
+    if memory_bytes < minimum:
         raise RuntimeError(
-            f"Complete real CPU acceptance requires at least 10 GiB of Docker memory; "
+            f"Complete {'Moodle + ' if moodle else ''}real CPU acceptance requires at least {minimum // 1024**3} GiB of Docker memory; "
             f"the daemon reports {memory_bytes / 1024**3:.2f} GiB. "
             "Run this fixture on a larger test host. No images/models or cluster have been provisioned."
         )
@@ -147,16 +149,24 @@ def main():
     release.write_atomic(args.output / "result.json", result)
 
 
-def rehearse(source, app_chart, inference_chart, output, references, *, local_builds=False):
+def rehearse(source, app_chart, inference_chart, output, references, *, local_builds=False, moodle_image=None):
     """Shared test runner. PR CI uses local builds; only main() verifies releases."""
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     helm = os.environ.get("HELM_BIN", "helm")
     def run(command, **kwargs):
         return subprocess.check_output(command, cwd=ROOT, text=True, **kwargs).strip()
+    if moodle_image is not None and not local_builds:
+        raise ValueError('The test-only Moodle image is supported only in source-build acceptance')
     if CLUSTER in run(["kind", "get", "clusters"]).splitlines():
         raise RuntimeError("The disposable acceptance cluster already exists; refusing to replace it")
-    docker_memory = require_docker_memory(int(run(["docker", "info", "--format", "{{.MemTotal}}"])))
+    docker_memory = require_docker_memory(int(run(["docker", "info", "--format", "{{.MemTotal}}"])), moodle=moodle_image is not None)
+    moodle_probe = None
+    if moodle_image is not None:
+        spec = importlib.util.spec_from_file_location('moodle_probe', Path(__file__).with_name('moodle-cpu-probe.py'))
+        moodle_probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(moodle_probe)
+        moodle_probe.install.check_image(moodle_image, moodle_probe.runtime.sources.read_pins())
     # Read model identities from the supplied chart, not duplicated defaults.
     values = json.loads(run(["node", "--input-type=module", "-e",
                              "import {parse} from 'yaml'; import {readFileSync} from 'node:fs'; console.log(JSON.stringify(parse(readFileSync(0,'utf8'))))"],
@@ -165,6 +175,9 @@ def rehearse(source, app_chart, inference_chart, output, references, *, local_bu
     models.mkdir(exist_ok=True)
     models.chmod(0o777)  # Public test weights; provisioner/pods run as UID 10001.
     references = dict(references)
+    if moodle_image is not None:
+        references['moodle'] = moodle_image
+        references['moodle-proxy'] = moodle_probe.runtime.sources.read_pins()['proxyImage']
     references["llamacpp"] = values["llamacpp"]["image"]["repository"]+"@"+release.digest(values["llamacpp"]["image"]["digest"])
     cpu = values["whispercpp"]
     engine = cpu["images"][cpu["architecture"]]
@@ -177,7 +190,7 @@ def rehearse(source, app_chart, inference_chart, output, references, *, local_bu
     try:
         image_ids = {}
         for component, reference in references.items():
-            if not local_builds or component in ("llamacpp", "whispercpp"):
+            if not local_builds or component in ("llamacpp", "whispercpp", "moodle-proxy"):
                 subprocess.run(["docker","pull",reference],env=public_env,check=True)
             run(["docker","tag",reference,"videoq-"+component+":onprem-ci"])
             image_ids[component] = run(["docker","image","inspect",reference,"--format","{{.Id}}"])
@@ -252,6 +265,13 @@ def rehearse(source, app_chart, inference_chart, output, references, *, local_bu
             raise
         result = json.loads((output / "lifecycle-result.json").read_text())
         result["transcriptionAssessment"] = assess_transcript(result["recognitionAndAnswer"]["transcript"], case)
+        if moodle_probe is not None:
+            try:
+                result['moodle'] = moodle_probe.rehearse(kubeconfig, output, app_chart)
+                result['moodle']['transcriptionAssessment'] = assess_transcript(result['moodle']['transcript'], case)
+            except Exception:
+                capture_diagnostics(kubeconfig, output)
+                raise
         node = json.loads(k("get","node",CLUSTER+"-control-plane","-o","json"))
         result["runtime"] = {"architecture":node["status"]["nodeInfo"]["architecture"],
                              "dockerMemoryBytes":docker_memory,

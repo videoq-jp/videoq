@@ -5,10 +5,16 @@ Moodle-owned video through local ASR, indexing, chat and native playback. The
 installed fixture is a separate required CI job so an unrelated installer or
 image scan cannot prevent its evidence from being collected.
 
-This increment installs that Moodle layer. It does **not** establish complete
-Moodle + VideoQ + real-AI acceptance. The existing real CPU runner and its 10 GiB
-Docker memory minimum are unchanged. The installed-only runner requires 4 GiB
-and makes no model downloads or AI calls.
+There are two required jobs. The installed-only runner requires 4 GiB and makes
+no model downloads or AI calls. The combined job calls the existing real CPU
+rehearsal with a pinned Moodle image, keeps its baseline lifecycle checks, then
+runs Moodle in that same owned cluster before cleanup. Combined acceptance
+requires 12 GiB. The ordinary CPU runner retains its 10 GiB minimum, and the
+signed-release CLI does not accept the test-only Moodle image.
+
+The installed-only job passed 115 checks at `e9c94ecf`. The combined pipeline is
+implemented but remains unproven until its actual CI run passes. Neither unit
+tests nor the installed-only result establish complete Moodle + real-AI behavior.
 
 ## Reproducible sources
 
@@ -72,16 +78,45 @@ private command logs, database dumps and signing keys are excluded. Cleanup
 checks node/network ownership before deleting them. The existing live report
 environment is independent of this runner.
 
-## Remaining full-pipeline gate
+## Combined real CPU pipeline
 
-Attach this installed site to the still-live real CPU rehearsal, with sufficient
-combined memory, before its parent removes the cluster. Then prove actual owner
-pairing, normal teacher enable/export, current service discovery, real worker
-transcription/indexing, fresh learner LTI/native startup and cited playback.
-Exercise nonempty personal conversations and positive report counts, then revoke
-permissions, hide the File and suspend enrolment against the same sessions.
-Standalone resources belonging to the owner must remain inaccessible to LTI
-users. Do not populate ready rows or substitute inference to satisfy that gate.
+The second job builds the actual API/worker/web/Whisper adapter images, verifies
+capacity before provisioning and invokes `rehearse(..., local_builds=True,
+moodle_image='videoq-moodle:cpu-acceptance')`. Public model/image downloads finish
+before the existing node firewall is installed. Real transcription timestamp/CER,
+cited chat, playback, backup/restore, upgrade/rollback and retention checks run
+before the new Moodle phase.
+
+The Moodle phase mounts its public CA in the readonly API container and updates
+only the owned app's public/storage origins, preserving its CPU model settings.
+It connects via the actual administrator/VideoQ-owner approval UI, closes that
+browser context, then enables the File as an ordinary teacher. Scoped Moodle
+export and the actual backend maintenance command drive processing; SQL only
+reads evidence from the parent's restored application database. Checkpoints and
+vectors must be nonempty in the configured embedding table, and the new managed
+video/course must differ from the owner's standalone sentinel.
+
+A fresh learner context has no owner login cookie. Its signed LTI frame must
+become ready, answer the public Japanese question with real local inference,
+cite only the managed video, seek and decode the actual Moodle File, save/resume
+a nonempty personal conversation and record feedback. A teacher must see
+positive UTC report counts and CSV, lose access on the same session after report
+capability prohibition, then regain it when restored. Learner reports and forged
+standalone transcript IDs are denied. Hiding the source and suspending enrolment
+deny the existing learner session and protected media; a teacher with hidden-view
+authority remains allowed.
+
+The browser has a self-signed exception only in its disposable context and routes
+requests solely to the three known loopback test origins. PHP/API peer checks
+remain enabled with the real CA. A test hook keeps the LTI credential inside its
+private frame while issuing real feature-denial requests; no HTTP/AI response is
+substituted and no credential is exported in artifacts. Stage labels, public
+speech/answer results and a synthetic learner screenshot can be retained;
+passwords, raw browser diagnostics, cookies and private runtime state cannot.
+
+Full success requires the combined job, final result and transcript assessment;
+a partial browser artifact alone is insufficient. No ready rows, transcripts,
+vectors or answer logs are fabricated to satisfy this gate.
 
 Cloud-only YouTube/provider acceptance, independent-site restoration, restricted
 worker profiles, privacy workflows and the wider feature inventory remain
