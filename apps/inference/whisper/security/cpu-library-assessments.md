@@ -10,7 +10,10 @@ The HIGH/CRITICAL scan, unfixed findings and suppressed-finding visibility stay 
   Debian identifies upstream secure-delete bounds fix
   `d9de6eedbe918c074c7556400fa21df5960704d9` in SQLite 3.54.0. The image uses
   3.54.1. Its final-image verifier also runs the vendor's malformed-index
-  regression and requires `SQLITE_CORRUPT`, preserving FTS5 support.
+  regression in autocommit mode and requires `SQLITE_CORRUPT`, preserving FTS5
+  support. Autocommit matches the upstream Tcl test and includes the FTS5
+  transaction flush in the checked statement; a deferred Python transaction
+  would return from `execute()` before that flush.
 - [CVE-2026-119379](https://security-tracker.debian.org/tracker/CVE-2026-119379):
   the vulnerable changeset path belongs to SQLite's optional session extension.
   This library does not compile it. The final-image verifier requires the

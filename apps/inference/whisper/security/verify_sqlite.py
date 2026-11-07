@@ -23,10 +23,14 @@ assert not hasattr(library, 'sqlite3session_create')
 fixture = Path('/app/fts5-secure-delete.db').read_bytes()
 assert len(fixture) == 5120
 assert hashlib.sha256(fixture).hexdigest() == '6403bc6c08deee687c69e6d05c680a443f7d994bda19071131db0bd196538fa3'
-with sqlite3.connect(':memory:') as db:
+with sqlite3.connect(':memory:', isolation_level=None) as db:
+    # Match the upstream Tcl test's autocommit. FTS5 flushes its pending secure
+    # delete at transaction commit; Python's implicit transaction defers the
+    # corruption result until after execute() unless autocommit is selected.
     db.deserialize(fixture)
     assert db.execute("SELECT count(*) FROM sqlite_schema WHERE name='t' AND sql LIKE '%fts5%'").fetchone() == (1,)
     assert db.execute("SELECT v FROM t_config WHERE k='secure-delete'").fetchone() == (1,)
+    assert db.execute('SELECT count(*) FROM t_content WHERE id=1').fetchone() == (1,)
     try:
         db.execute('DELETE FROM t WHERE rowid = 1')
     except sqlite3.DatabaseError as error:
