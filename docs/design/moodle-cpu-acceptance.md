@@ -117,6 +117,17 @@ human posts must not increase the one real-AI question in the teacher's report.
 These course phases are implemented acceptance requirements; their runtime
 success remains pending with the full combined pipeline.
 
+The native Moodle transcript reader must display and refresh the actual ASR
+and seek the real player through a cue button. The teacher's material editor must
+save a description, rebuild the real vector index, confirm a transcript clear,
+then restore the original ASR through normal UI operations. Actual worker output
+must replace the vector row identity on rebuild/restore and remove it on clear,
+while retaining ASR checkpoints. The owner's standalone transcript/index must
+remain unchanged, and the learner must still receive the original Moodle media
+range while the transcript is cleared. Learner material reads and writes are
+denied. The ASR quality assessment uses the original real transcript; no ready
+state, transcript or vector is inserted as fixture data to meet this requirement.
+
 The browser has a self-signed exception only in its disposable context and routes
 requests solely to the three known loopback test origins. PHP/API peer checks
 remain enabled with the real CA. A test hook keeps the LTI credential inside its

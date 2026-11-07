@@ -53,6 +53,7 @@ function material() {
   // read-only evidence; no status, transcript, vector or job row is fabricated.
   const sql = `SELECT row_to_json(t) FROM (SELECT v.id::int AS "videoId",r.course_id::int AS "courseId",v.status,
     v.transcript,(SELECT count(*)::int FROM ${embeddingTable} e WHERE e.video_id=v.id) AS "vectorCount",
+    (SELECT min(e.langchain_id::text) FROM ${embeddingTable} e WHERE e.video_id=v.id) AS "vectorHead",
     (SELECT count(*)::int FROM video_transcription_chunks c JOIN video_transcription_runs x ON x.run_id=c.run_id
       WHERE x.video_id=v.id AND c.segments IS NOT NULL) AS "asrChunks"
     FROM lms_resources r JOIN lms_installations i ON i.id=r.installation_id JOIN videos v ON v.id=r.video_id
@@ -63,6 +64,14 @@ function material() {
   const lines = raw.split('\n');
   assert.equal(lines.length, 1, 'Exactly the owned Moodle File must be managed');
   return JSON.parse(lines[0]);
+}
+function standaloneIndexState() {
+  requireOwner();
+  const sql = `SELECT row_to_json(t) FROM (SELECT v.status,md5(COALESCE(v.transcript,'')) AS transcript,
+    (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings e WHERE e.video_id=v.id) AS hosted,
+    (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings_768 e WHERE e.video_id=v.id) AS local
+    FROM videos v WHERE v.id=${sentinel.videoId}) t;`;
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql));
 }
 
 const browser = await chromium.launch({headless: true});
@@ -91,7 +100,7 @@ async function context() {
         return original(input, options);
       };
       window.__cpuRead = async (path, payload) => {
-        if (!['reports', 'transcript', 'tags', 'qa'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
+        if (!['reports', 'transcript', 'tags', 'qa', 'management'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
         const response = await original('/api/lti/' + path, {method: 'POST', credentials: 'omit',
           headers: {'Content-Type': 'application/json', Authorization: bearer}, body: JSON.stringify(payload)});
         return {status: response.status, body: await response.json()};
@@ -139,14 +148,106 @@ async function materials(page, action = 'list', targetVideoId) {
       videoId: bridge.videoId, requestId, action, targetVideoId}, origin);
   }), {origin: VIDEOQ, action, targetVideoId});
 }
-async function uiAction(page, feature, action, click) {
-  assert(['tags', 'qa'].includes(feature));
+async function uiAction(page, feature, action, click, status = 200) {
+  assert(['tags', 'qa', 'management'].includes(feature));
   const [response] = await Promise.all([page.waitForResponse(response => {
     if (new URL(response.url()).pathname !== '/api/lti/' + feature || response.request().method() !== 'POST') return false;
     try {return response.request().postDataJSON()?.action === action;} catch {return false;}
   }), click()]);
-  assert.equal(response.status(), 200, 'Actual course UI operation succeeds');
+  assert.equal(response.status(), status, 'Actual course UI operation succeeds');
   return response.json();
+}
+async function nativeTranscriptFlow(page, videoId) {
+  await page.locator('#videoq-transcript summary').click();
+  await page.locator('#videoq-transcript-cues li').first().waitFor();
+  assert.equal(await page.locator('#videoq-transcript-lesson').inputValue(), String(videoId));
+  assert.match(await page.locator('#videoq-transcript-cues').innerText(), /住所/);
+  const cue = page.locator('#videoq-transcript-cues button').first();
+  const seconds = (await cue.innerText()).replace(',', '.').split(':').reduce((sum, part) => sum * 60 + Number(part), 0);
+  assert(Number.isFinite(seconds) && seconds >= 0);
+  await page.locator('video#videoq-player, #videoq-player video').first().evaluate((video, seconds) => {
+    video.pause(); video.currentTime = Math.min(video.duration - 0.25, seconds + 3);
+  }, seconds);
+  await cue.click();
+  await page.waitForFunction(seconds => Math.abs(document.querySelector('video#videoq-player, #videoq-player video').currentTime - seconds) < 0.75, seconds);
+  await page.locator('#videoq-transcript-refresh').click();
+  await page.waitForFunction(() => document.querySelector('#videoq-transcript').getAttribute('aria-busy') === 'false'
+    && document.querySelectorAll('#videoq-transcript-cues li').length > 0);
+  assert.match(await page.locator('#videoq-transcript-cues').innerText(), /住所/);
+  await page.locator('#videoq-transcript summary').click();
+}
+async function waitForManagedIndex(frame, transcript, previousHead, empty = false) {
+  let current;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    maintenance(); fixture('tick'); maintenance();
+    current = material();
+    assert.notEqual(current?.status, 'error', 'Actual teacher indexing must not fail');
+    if (current?.status === 'completed' && current.transcript === transcript
+        && (empty ? current.vectorCount === 0 : current.vectorCount > 0 && current.vectorHead !== previousHead)
+        && fixture('status').status === 'completed') {
+      const receipt = await frame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), current.videoId);
+      assert.equal(receipt.status, 200);
+      if (receipt.body.material.jobState === 'completed' && receipt.body.material.transcript === transcript) return current;
+    }
+    await pause(5_000);
+  }
+  throw new Error('Actual teacher index did not reach its required transcript/vector state');
+}
+async function teacherManagementFlow(page, frame, learnerFrame, actual, verifySourceMedia) {
+  const standalone = standaloneIndexState();
+  assert.equal(standalone.status, 'completed');
+  assert.match(standalone[embeddingTable === 'scene_embeddings' ? 'hosted' : 'local'], /^[a-f0-9]{32}$/);
+  await page.locator('#videoq-material-management summary').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+  assert.equal(await frame.locator('#management-transcript').inputValue(), actual.transcript);
+  const denied = await learnerFrame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), actual.videoId);
+  assert.equal(denied.status, 403);
+  const description = 'Teacher AI description <safe>';
+  await frame.locator('#management-description').fill(description);
+  const edited = await uiAction(page, 'management', 'update', () => frame.locator('#management-save').click());
+  assert.equal(edited.material.description, description);
+  assert.equal(edited.material.transcript, actual.transcript);
+  assert.equal(edited.material.status, 'completed');
+  assert.equal((await learnerFrame.evaluate(({videoId, revision}) => window.__cpuRead('management', {
+    action: 'update', videoId, revision, operationId: crypto.randomUUID(), fields: {description: 'Denied learner edit'},
+  }), {videoId: actual.videoId, revision: edited.material.revision})).status, 403);
+  const saved = await frame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), actual.videoId);
+  assert.equal(saved.status, 200); assert.equal(saved.body.material.description, description);
+
+  await frame.locator('#management-reindex').click();
+  const reindex = await uiAction(page, 'management', 'reindex', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Continue|続ける)$/}).click(), 202);
+  assert.equal(reindex.material.status, 'indexing');
+  const rebuilt = await waitForManagedIndex(frame, actual.transcript, actual.vectorHead);
+  assert.equal(rebuilt.asrChunks, actual.asrChunks, 'Reindex reuses the real ASR checkpoint');
+  assert.deepEqual(standaloneIndexState(), standalone, 'Reindex preserves the standalone material');
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+
+  // This is an actual confirmed teacher edit, not fixture data insertion. The
+  // source file and original ASR are retained, and that same ASR is restored next.
+  await frame.locator('#management-transcript').fill('');
+  await frame.locator('#management-save').click();
+  const cleared = await uiAction(page, 'management', 'update', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Continue|続ける)$/}).click(), 202);
+  assert.equal(cleared.material.transcript, '');
+  const empty = await waitForManagedIndex(frame, '', rebuilt.vectorHead, true);
+  assert.equal(empty.asrChunks, actual.asrChunks);
+  assert.deepEqual(standaloneIndexState(), standalone, 'Clear only removes the managed material index');
+  await verifySourceMedia();
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false
+    && document.querySelector('#management-transcript').value === '');
+  await frame.locator('#management-transcript').fill(actual.transcript);
+  const restored = await uiAction(page, 'management', 'update', () => frame.locator('#management-save').click(), 202);
+  assert.equal(restored.material.transcript, actual.transcript);
+  const indexed = await waitForManagedIndex(frame, actual.transcript, rebuilt.vectorHead);
+  assert.equal(indexed.asrChunks, actual.asrChunks);
+  assert.deepEqual(standaloneIndexState(), standalone, 'Restore preserves the standalone material');
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+  assert.equal(await frame.locator('#management-description').inputValue(), description);
+  await frame.locator('#management-close').click();
 }
 async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
   const name = 'CPU course tag <safe>', renamed = 'CPU course tag <renamed>';
@@ -379,8 +480,18 @@ try {
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().waitFor();
   report.phases.push('nonempty-personal-history-resume');
 
+  stage('native-transcript');
+  await nativeTranscriptFlow(learnerPage, actual.videoId);
+  report.phases.push('actual-native-transcript-reading-refresh-and-seek');
   await teacherPage.goto(state.lessonUrl);
   const teacherFrame = await privateFrame(teacherPage);
+  stage('teacher-management');
+  await teacherManagementFlow(teacherPage, teacherFrame, learnerFrame, actual, async () => {
+    const retained = await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}});
+    assert.equal(retained.status(), 206);
+    assert.deepEqual(await retained.body(), await range.body(), 'Teacher clear retains the original Moodle media');
+  });
+  report.phases.push('actual-teacher-description-reindex-confirmed-clear-and-original-asr-restore');
   stage('course-tags');
   await courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, actual.videoId);
   report.phases.push('actual-course-tags-crud-assignment-learner-denial-and-transcript');
