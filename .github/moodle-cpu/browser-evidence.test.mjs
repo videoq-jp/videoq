@@ -17,6 +17,14 @@ test('native page diagnostics exclude HTML, credentials and unknown stack paths'
   assert.deepEqual(nativeMountEvidence(nativeMountEvidence(expected)), expected);
   assert.deepEqual(nativeMountEvidence({workspace: 'PRIVATE', locations: 'PRIVATE'}), {});
 });
+test('native context command diagnostics expose only fixed PHP cause metadata', () => {
+  assert.deepEqual(commandEvidence({status: 1, stderr: 'VIDEOQ_CPU_FAILURE ' + JSON.stringify({
+    kind: 'moodle_exception', source: 'native_context.php', line: 78, code: 'nativeaccessdenied',
+    proof: 'PRIVATE_PROOF', context: 'PRIVATE_CONTEXT', message: 'PRIVATE_ERROR'})}, 'moodle-native-context'), {
+    operation: 'moodle-native-context', exitCode: 1,
+    php: {kind: 'moodle_exception', code: 'nativeaccessdenied', source: 'native_context.php', line: 78},
+  });
+});
 test('mail-suppressed core requests follow only the expected Moodle Continue destination', () => {
   const current = 'https://moodle.localhost:18443/admin/tool/dataprivacy/createdatarequest.php?manage=0&type=1';
   const target = 'https://moodle.localhost:18443/admin/tool/dataprivacy/mydatarequests.php';

@@ -45,7 +45,7 @@ function requireOwner() {
 }
 function fixture(action, input) {
   assert(['status', 'tick', 'hide', 'show', 'suspend', 'resume', 'deny-reports', 'allow-reports',
-    'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-export-evidence', 'privacy-reset'].includes(action));
+    'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-export-evidence', 'privacy-reset', 'native-context'].includes(action));
   requireOwner();
   return JSON.parse(k(['exec', ...(input === undefined ? [] : ['-i']), 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action],
     input === undefined ? undefined : JSON.stringify(input), 'moodle-' + action));
@@ -614,6 +614,7 @@ try {
   report.phases.push('actual-file-export-asr-indexing');
 
   stage('fresh-learner-native');
+  assert.equal(fixture('native-context').nativeContext, true);
   const learner = await context();
   assert.equal((await learner.cookies(VIDEOQ)).length, 0);
   const learnerPage = await login(learner, state.users.learner.username);

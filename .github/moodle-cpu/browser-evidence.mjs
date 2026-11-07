@@ -2,16 +2,17 @@ import {AssertionError} from 'node:assert';
 import {fileURLToPath} from 'node:url';
 
 const operations = new Set(['cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick',
-  'moodle-hide', 'moodle-show', 'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
+  'moodle-hide', 'moodle-show', 'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports', 'moodle-native-context',
   'material-evidence', 'standalone-index-evidence', 'conversation-evidence',
   'privacy-memory-evidence', 'privacy-archive-evidence', 'moodle-privacy-setup', 'moodle-privacy-status',
   'moodle-privacy-task', 'moodle-privacy-export-evidence', 'moodle-privacy-reset']);
 const phpKinds = new Set(['Error', 'TypeError', 'JsonException', 'RuntimeException', 'coding_exception',
   'dml_read_exception', 'dml_write_exception', 'dml_missing_record_exception', 'dml_multiple_records_exception', 'moodle_exception']);
 const phpSources = new Set(['fixture.php', 'privacy-fixture.php', 'export_material.php', 'synchronizer.php', 'client.php',
-  'materials_service.php', 'service_auth.php', 'task-manager.php', 'task-adhoc.php', 'task-base.php']);
+  'materials_service.php', 'service_auth.php', 'native_context.php', 'course_access.php', 'source.php', 'lesson.php',
+  'task-manager.php', 'task-adhoc.php', 'task-base.php']);
 const phpCodes = new Set(['invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception',
-  'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname']);
+  'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname', 'nativeaccessdenied', 'nativeunavailable']);
 const httpServices = new Set(['moodle-oauth', 'moodle-materials']);
 const nativePageSources = new Set(['view.php', 'workspace.php', 'native_context.php', 'native_api.php',
   'ui_strings.php', 'renderer_base.php', 'moodlelib.php']);

@@ -28,7 +28,7 @@ if (posix_geteuid() !== $apache['uid']) {
 $action = $argv[1] ?? '';
 $allowed = ['install', 'seed', 'status', 'network', 'tick', 'hide', 'show', 'suspend', 'resume',
     'deny-reports', 'allow-reports', 'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-task-run',
-    'privacy-export-evidence', 'privacy-reset'];
+    'privacy-export-evidence', 'privacy-reset', 'native-context'];
 if (!in_array($action, $allowed, true)) {
     throw new RuntimeException('Unknown acceptance action');
 }
@@ -73,7 +73,8 @@ set_exception_handler(function (Throwable $error) use ($CFG): void {
         'dml_multiple_records_exception', 'moodle_exception'];
     $sources = [__FILE__ => 'fixture.php'];
     $sources[__DIR__ . '/privacy-fixture.php'] = 'privacy-fixture.php';
-    foreach (['export_material', 'synchronizer', 'client', 'materials_service', 'service_auth'] as $class) {
+    foreach (['export_material', 'synchronizer', 'client', 'materials_service', 'service_auth',
+            'native_context', 'course_access', 'source', 'lesson'] as $class) {
         $path = $class === 'export_material' ? 'task/export_material' : $class;
         $sources[$CFG->dirroot . '/local/videoq/classes/' . $path . '.php'] = $class . '.php';
     }
@@ -96,7 +97,7 @@ set_exception_handler(function (Throwable $error) use ($CFG): void {
     }
     $code = $error instanceof moodle_exception ? $error->errorcode : null;
     if (in_array($code, ['invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception',
-            'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname'], true)) {
+            'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname', 'nativeaccessdenied', 'nativeunavailable'], true)) {
         $metadata['code'] = $code;
     }
     fwrite(STDERR, 'VIDEOQ_CPU_FAILURE ' . json_encode((object)$metadata, JSON_THROW_ON_ERROR) . "\n");
@@ -185,6 +186,17 @@ if (str_starts_with($action, 'privacy-')) {
 $resource = $DB->get_record('resource', ['course' => $course->id, 'name' => 'Public Japanese spoken lesson'], '*', MUST_EXIST);
 $cm = get_coursemodule_from_instance('resource', $resource->id, $course->id, false, MUST_EXIST);
 $learner = $DB->get_record('user', ['username' => $prefix . '_learner', 'idnumber' => $owner], '*', MUST_EXIST);
+if ($action === 'native-context') {
+    \core\session\manager::set_user($learner);
+    $native = \local_videoq\native_context::resolve((int)$course->id, 'sync_' . $cm->id);
+    $resources = array_filter($native['scope']['resources'], static fn($item) =>
+        $item['lesson'] === 'sync_' . $cm->id && ($item['learning'] ?? true) === true);
+    if ($native['subject'] !== (string)$learner->id || count($resources) !== 1) {
+        throw new RuntimeException('Native learner context did not authorize the actual owned source');
+    }
+    echo json_encode(['nativeContext' => true], JSON_THROW_ON_ERROR) . "\n";
+    exit;
+}
 if ($action === 'hide' || $action === 'show') {
     set_coursemodule_visible($cm->id, $action === 'show' ? 1 : 0);
     rebuild_course_cache($course->id, true);
