@@ -53,9 +53,9 @@ Moodle File media and actual local inference; it is not a hosted-provider test.
 | Transcript paging, refresh and cited seek | Companion transcript panel; `/api/lti/transcript` | Actual reading/refresh/seek passes |
 | Own conversation list, download, resume and deletion | Companion history panel; `/api/lti/conversations` | Nonempty history, cross-user denial and own model-memory erasure pass |
 | Course Q&A, replies, votes and moderation | Companion Q&A panel; `/api/lti/qa` | Learner/teacher operations, cross-author denial and current-source/enrolment checks pass |
-| Moodle File upload, title/file editing, order and deletion | Companion catalog links to the existing Moodle core editors | Implemented; opt-in, actual File transfer/processing and source visibility are verified; complete replacement/deletion/retry sequence still needs its targeted check |
+| Moodle File upload, title/file editing, order and deletion | Companion catalog links to the existing Moodle core editors | Opt-in, actual File transfer/processing and source visibility pass; targeted PostgreSQL/HTTP tests cover replacement, deletion, stale bindings and sibling-course isolation |
 | Optional YouTube URL source | Existing Moodle URL activity, companion source negotiation and native VideoQ cloud provider policy | Implemented where the backend advertises support; on-prem denial retained; actual hosted-provider acceptance is separate |
-| Opt-in, disable, processing state and synchronization retry | Companion `manage.php` / `synchronizer` | Implemented with module/course capability and sesskey checks; installed/source contracts exist; failed-processing recovery still needs its targeted end-to-end check |
+| Opt-in, disable, processing state and synchronization retry | Companion `manage.php` / `synchronizer` | Module/course capability, sesskey and source-generation checks exist; targeted PostgreSQL/HTTP recovery passes with stale-upload rejection and one durable task per confirmed attempt |
 | Derived description/SRT editing, reindex and retry | Private tool-frame editor; `/api/lti/management` | Description edits, reindex, confirmed clear and original-ASR restoration pass; supported retry reuses job identity/usage receipts |
 | Course tags/filtering | Companion tag panel; `/api/lti/tags` | CRUD, assignment/filtering and learner mutation denial pass |
 | Usage reports and CSV | Companion report panel; `/api/lti/reports` | Positive counts/CSV, same-session capability revocation and post-history-delete zero counts pass |
@@ -71,6 +71,14 @@ cleanup independent of request discovery. Actual core export/deletion remains
 unproven until the corrected run passes. Do not count this as missing learner or
 teacher feature code, or claim the uncompleted privacy phases passed.
 
+The targeted synchronization and material-management PostgreSQL suites pass 68
+checks. The added failed-File recovery check injects an error status after actual
+HTTP upload/confirmation, then verifies a new generation, repeated requests,
+retired upload/confirmation denial, durable processing tasks and current learning
+availability. Queue delivery is omitted in these suites and model completion is
+represented by a database status update. This is focused API/database evidence;
+actual inference is established separately by the accepted File/local-CPU journey.
+
 ## Compatibility and remaining delivery checks
 
 New backend access requests opt into extended permissions and management/source
@@ -79,10 +87,9 @@ never grant a new capability. Transcript responses contain only current material
 identity, cues and bounded paging data; iframe credentials never cross the native
 message bridge.
 
-The remaining necessary work is to assess the corrected core-privacy run, finish
-targeted material replacement/deletion/failed-retry checks, and review the paired
-backend/companion changes for coordinated release. Confirm the supported cloud
-source path when delivering that edition. Existing per-feature design documents
+The remaining necessary work is to assess the corrected core-privacy run and
+review the paired backend/companion changes for coordinated release. Confirm the
+supported cloud source path when delivering that edition. Existing per-feature design documents
 contain historical, broader inventories; those are not a requirement to copy
 standalone billing, public sharing or global user administration into Moodle.
 The separate experimental worker-role/infrastructure work is preserved for its
