@@ -38,16 +38,7 @@ $state = json_decode(file_get_contents($path), true, 16, JSON_THROW_ON_ERROR);
 if ($state['owner'] !== $owner || $state['course'] !== (int)$course->id || empty($CFG->noemailever)) {
     throw new RuntimeException('Privacy ownership or mail boundary changed');
 }
-$subject = $DB->get_record('user', ['id' => $state['subject']], '*', MUST_EXIST);
-$requests = [];
-foreach ($types as $kind => $type) {
-    $rows = $DB->get_records('tool_dataprivacy_request', ['userid' => $subject->id,
-        'comments' => $comments[$kind], 'type' => $type]);
-    if (count($rows) > 1) {
-        throw new RuntimeException('Duplicate owned privacy request');
-    }
-    $requests[$kind] = $rows ? reset($rows) : null;
-}
+// Cleanup must not depend on request discovery or on an undeleted subject.
 if ($action === 'privacy-reset') {
     if ($state['contactBefore'] === false) {
         unset_config('contactdataprotectionofficer', 'tool_dataprivacy');
@@ -59,6 +50,27 @@ if ($action === 'privacy-reset') {
     }
     echo json_encode(['restored' => true, 'mailSuppressed' => !empty($CFG->noemailever)]), "\n";
     return;
+}
+$subject = $DB->get_record('user', ['id' => $state['subject']], '*', MUST_EXIST);
+$requests = [];
+foreach ($types as $kind => $type) {
+    // Moodle forbids TEXT columns in ordinary DML conditions under debugging.
+    // Scope by indexed numeric identity/type, then compare complete comments.
+    $rows = [];
+    $recordset = $DB->get_recordset('tool_dataprivacy_request', ['userid' => $subject->id, 'type' => $type]);
+    try {
+        foreach ($recordset as $request) {
+            if ($request->comments === $comments[$kind]) {
+                $rows[] = $request;
+            }
+        }
+    } finally {
+        $recordset->close();
+    }
+    if (count($rows) > 1) {
+        throw new RuntimeException('Duplicate owned privacy request');
+    }
+    $requests[$kind] = $rows ? reset($rows) : null;
 }
 if ($action === 'privacy-task') {
     $kind = $input['kind'] ?? null;
