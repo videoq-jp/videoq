@@ -5,7 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {browserFailure} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure} from './browser-evidence.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -28,8 +28,12 @@ function stage(name) {
   report.stage = name;
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({stage: name, completed: report.phases}) + '\n');
 }
-function k(args, input) {
-  return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2_000_000});
+function k(args, input, operation = 'cluster-read') {
+  try {
+    return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2_000_000});
+  } catch (error) {
+    throw new AcceptanceCommandError(error, operation);
+  }
 }
 function requireOwner() {
   const marker = JSON.parse(k(['get', 'configmap', 'videoq-moodle-cpu-owner', '-o', 'json']));
@@ -39,13 +43,15 @@ function requireOwner() {
 function fixture(action) {
   assert(['status', 'tick', 'hide', 'show', 'suspend', 'resume', 'deny-reports', 'allow-reports'].includes(action));
   requireOwner();
-  return JSON.parse(k(['exec', 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action]));
+  return JSON.parse(k(['exec', 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action], undefined, 'moodle-' + action));
 }
 function maintenance() {
   requireOwner();
   // This CLI operates only on the parent's isolated synthetic database. It runs
   // inside the CA-mounted actual API container, with the real runtime config.
-  k(['exec', 'deployment/videoq-api', '--', 'node', 'dist/node.mjs', 'maintenance']);
+  const preload = 'data:text/javascript;base64,' + readFileSync(new URL('./maintenance-observer.mjs', import.meta.url)).toString('base64');
+  k(['exec', 'deployment/videoq-api', '--', 'env', 'VIDEOQ_MOODLE_CPU_OBSERVER=1',
+    'node', '--import', preload, 'dist/node.mjs', 'maintenance'], undefined, 'backend-maintenance');
 }
 function material() {
   requireOwner();
@@ -59,7 +65,7 @@ function material() {
     FROM lms_resources r JOIN lms_installations i ON i.id=r.installation_id JOIN videos v ON v.id=r.video_id
     WHERE i.issuer='${MOODLE}' AND r.context_id='${state.courseId}' AND r.kind='video'
       AND r.enabled=true AND v.managed_by_lms=true) t;`;
-  const raw = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql).trim();
+  const raw = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'material-evidence').trim();
   if (!raw) return null;
   const lines = raw.split('\n');
   assert.equal(lines.length, 1, 'Exactly the owned Moodle File must be managed');
@@ -71,13 +77,13 @@ function standaloneIndexState() {
     (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings e WHERE e.video_id=v.id) AS hosted,
     (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings_768 e WHERE e.video_id=v.id) AS local
     FROM videos v WHERE v.id=${sentinel.videoId}) t;`;
-  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql));
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'standalone-index-evidence'));
 }
 function conversationDigest(conversationId) {
   assert.match(conversationId, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
   requireOwner();
   const sql = `SELECT md5(thread_id) FROM chat_conversations WHERE conversation_id='${conversationId}';`;
-  const digest = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql).trim();
+  const digest = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'conversation-evidence').trim();
   assert.match(digest, /^[a-f0-9]{32}$/);
   return digest;
 }
@@ -90,7 +96,7 @@ function conversationStorage(digest) {
   const fields = Object.entries(tables).map(([key, table]) =>
     `(SELECT count(*)::int FROM ${table} WHERE md5(thread_id)='${digest}') AS ${key}`);
   const sql = 'SELECT row_to_json(t) FROM (SELECT ' + fields.join(',') + ') t;';
-  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql));
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'conversation-evidence'));
 }
 
 const browser = await chromium.launch({headless: true});

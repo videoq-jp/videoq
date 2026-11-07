@@ -50,6 +50,38 @@ class MoodleCpuSafetyTests(unittest.TestCase):
             path.write_text(json.dumps(evidence))
             self.assertEqual(probe.browser_failure_summary(path), 'real-native-question (assertion)')
 
+    def test_command_failure_summary_uses_only_fixed_labels_and_bounded_values(self):
+        command = {'operation': 'moodle-tick', 'exitCode': 1, 'message': 'PRIVATE', 'php': {
+            'kind': 'Error', 'code': 'invalidconfiguration', 'source': 'fixture.php', 'line': 244, 'stack': 'PRIVATE'}}
+        self.assertEqual(probe.command_failure_summary(command),
+                         '; moodle-tick exit=1 php=Error invalidconfiguration at fixture.php:244')
+        command = {'operation': 'backend-maintenance', 'exitCode': 1, 'http': {
+            'service': 'moodle-oauth', 'httpStatus': 403, 'requestFailed': True, 'code': 'PRIVATE', 'body': 'PRIVATE'},
+            'maintenance': [{'task': 'ltiMaterials', 'reason': 'materials-service-unavailable', 'error': 'PRIVATE'},
+                            {'task': 'PRIVATE', 'reason': 'other'}]}
+        self.assertEqual(probe.command_failure_summary(command),
+                         '; backend-maintenance exit=1 moodle-oauth HTTP=403 request-error ltiMaterials=materials-service-unavailable')
+        path = self.root / 'stage.json'
+        path.write_text(json.dumps({'stage': 'real-moodle-processing', 'failure': {'kind': 'error', 'command': command}}))
+        self.assertNotIn('PRIVATE', probe.browser_failure_summary(path))
+
+    def test_command_failure_summary_rejects_private_strings_and_invalid_types(self):
+        for value in [None, [], {'operation': 'PRIVATE'}, {'operation': ['PRIVATE']}]:
+            self.assertEqual(probe.command_failure_summary(value), '')
+        command = {'operation': 'moodle-tick', 'exitCode': True, 'signal': ['PRIVATE'], 'timedOut': 'PRIVATE',
+                   'php': {'kind': ['PRIVATE'], 'code': ['PRIVATE'], 'source': ['PRIVATE'], 'line': True}}
+        self.assertEqual(probe.command_failure_summary(command), '; moodle-tick')
+        for value in [None, [], {'service': 'PRIVATE'}, {'service': ['PRIVATE']},
+                      {'service': 'moodle-oauth', 'httpStatus': True, 'requestFailed': 'PRIVATE', 'code': ['PRIVATE']}]:
+            command = {'operation': 'backend-maintenance', 'http': value,
+                       'maintenance': [None, [], {'task': 'PRIVATE', 'reason': 'PRIVATE'},
+                                       {'task': 'health', 'reason': ['PRIVATE']}]}
+            actual = probe.command_failure_summary(command)
+            self.assertNotIn('PRIVATE', actual)
+            self.assertNotIn('True', actual)
+            self.assertNotIn('request-error', actual)
+            self.assertNotIn('health=', actual)
+
     def test_all_public_sources_and_base_images_are_immutable(self):
         pins = runtime.sources.read_pins()
         for component in runtime.sources.REPOSITORIES:

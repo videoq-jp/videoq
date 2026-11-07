@@ -151,9 +151,26 @@ private frame while issuing real feature-denial requests; no HTTP/AI response is
 substituted and no credential is exported in artifacts. Stage labels, public
 speech/answer results and a synthetic learner screenshot can be retained;
 passwords, raw browser diagnostics, cookies and private runtime state cannot.
-Public browser failures include only the fixed stage/error category and numeric
-line/column in the reviewed acceptance script. Messages, selectors, URLs, HTTP
-bodies and raw stacks remain private.
+Public browser failures include the fixed stage/error category, numeric
+line/column in the reviewed acceptance script and a bounded command operation
+and exit/signal classification. Moodle CLI exceptions expose only reviewed PHP
+class/file labels, fixed error codes and numeric lines. The actual maintenance
+CLI uses a test-only Node preload to observe failed requests to the two fixed
+Moodle service endpoints. It forwards the original fetch unchanged and never
+reads headers or response bodies. Only a fixed service label, HTTP status or
+known network error code can enter evidence. Failed maintenance subtasks are
+identified by their fixed names; raw errors are reduced to a small enum. The
+Python report independently revalidates these values. Messages, selectors,
+URLs, SQL, HTTP bodies, credentials and raw stacks remain private.
+
+The `5cbb7505` combined run passed the ordinary CPU lifecycle, including actual
+ASR/cited answers, object/database restoration, upgrade/rollback and retention,
+then failed during Moodle processing after owner pairing and teacher enable.
+Its public artifact identifies only the shared command helper at
+`acceptance.mjs:32`, so it does not establish which inner command failed. The
+additional command diagnostics must identify that operation before a further
+product or fixture fix is justified. This failure does not prove the broader
+Moodle phases, even though the installed-only job passed.
 
 Full success requires the combined job, final result and transcript assessment;
 a partial browser artifact alone is insufficient. No ready rows, transcripts,

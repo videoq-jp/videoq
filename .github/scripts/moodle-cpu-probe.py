@@ -22,6 +22,62 @@ runtime = module('moodle_runtime', 'moodle-cpu-runtime.py')
 install = module('moodle_install', 'moodle-install-acceptance.py')
 
 
+def command_failure_summary(command):
+    if not isinstance(command, dict):
+        return ''
+    operations = {'cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick', 'moodle-hide', 'moodle-show',
+                  'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
+                  'material-evidence', 'standalone-index-evidence', 'conversation-evidence'}
+    operation = command.get('operation')
+    if not isinstance(operation, str) or operation not in operations:
+        return ''
+    parts = [operation]
+    code = command.get('exitCode')
+    if type(code) is int and 0 < code <= 255:
+        parts.append(f'exit={code}')
+    if command.get('signal') in ['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV']:
+        parts.append(command['signal'])
+    if command.get('timedOut') is True:
+        parts.append('timeout')
+    php = command.get('php')
+    if operation.startswith('moodle-') and isinstance(php, dict):
+        kinds = {'Error', 'TypeError', 'JsonException', 'RuntimeException', 'coding_exception', 'dml_read_exception',
+                 'dml_write_exception', 'dml_missing_record_exception', 'dml_multiple_records_exception', 'moodle_exception'}
+        if isinstance(php.get('kind'), str) and php['kind'] in kinds:
+            parts.append('php=' + php['kind'])
+        codes = {'invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception', 'dmlwriteexception',
+                 'invalidrecord', 'invalidtaskclassname'}
+        if isinstance(php.get('code'), str) and php['code'] in codes:
+            parts.append(php['code'])
+        sources = {'fixture.php', 'export_material.php', 'synchronizer.php', 'client.php', 'materials_service.php',
+                   'service_auth.php', 'task-manager.php', 'task-adhoc.php', 'task-base.php'}
+        if isinstance(php.get('source'), str) and php['source'] in sources and type(php.get('line')) is int and 0 < php['line'] <= 100_000:
+            parts.append(f"at {php['source']}:{php['line']}")
+    http = command.get('http')
+    if operation == 'backend-maintenance' and isinstance(http, dict) and http.get('service') in ['moodle-oauth', 'moodle-materials']:
+        parts.append(http['service'])
+        if type(http.get('httpStatus')) is int and 400 <= http['httpStatus'] <= 599:
+            parts.append(f"HTTP={http['httpStatus']}")
+        if http.get('requestFailed') is True:
+            parts.append('request-error')
+        codes = {'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+                 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR'}
+        if isinstance(http.get('code'), str) and http['code'] in codes:
+            parts.append(http['code'])
+    maintenance = command.get('maintenance')
+    if operation == 'backend-maintenance' and isinstance(maintenance, list):
+        tasks = {'externalTasks', 'ltiMaterials', 'abandonedUploads', 'staleInvitations', 'health'}
+        reasons = {'other', 'materials-service-unavailable', 'database-relation-missing',
+                   'database-column-missing', 'database-permission-denied'}
+        for task in sorted(tasks):
+            if any(isinstance(item, dict) and item.get('task') == task and isinstance(item.get('reason'), str)
+                   and item['reason'] in reasons for item in maintenance):
+                item = next(item for item in maintenance if isinstance(item, dict) and item.get('task') == task
+                            and isinstance(item.get('reason'), str) and item['reason'] in reasons)
+                parts.append(task + '=' + item['reason'])
+    return '; ' + ' '.join(parts)
+
+
 def browser_failure_summary(path):
     # Never reflect a browser message, selector, URL or stack in public logs.
     try:
@@ -42,6 +98,7 @@ def browser_failure_summary(path):
         row, column = failure.get('line'), failure.get('column')
         if type(row) is int and type(column) is int and 0 < row <= 100_000 and 0 < column <= 100_000:
             summary += f' at acceptance.mjs:{row}:{column}'
+        summary += command_failure_summary(failure.get('command'))
         summary += ')'
     return summary
 
