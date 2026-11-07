@@ -31,7 +31,7 @@ class MoodleCpuSafetyTests(unittest.TestCase):
         return runtime.MoodleRuntime(self.kubeconfig, self.root / 'private', OWNER)
 
     def node_report(self):
-        return {'nodeVersion': 'v26.13.0', 'status': 'passed',
+        return {'nodeVersion': 'v26.13.0', 'dnsNdots': 1, 'status': 'passed',
                 'lookup': {'ok': True, 'proxyMatched': True}, 'resolve4': {'ok': True, 'proxyMatched': True},
                 'tls': {'ok': True, 'lookup': True, 'connected': True, 'secure': True},
                 'login': {'ok': True, 'httpStatus': 200}, 'oauth': {'ok': True, 'httpStatus': 401}}
@@ -70,6 +70,8 @@ class MoodleCpuSafetyTests(unittest.TestCase):
         items = apply.call_args.args[0]
         pod = next(item for item in items if item['kind'] == 'Pod')
         self.assertFalse(pod['spec']['automountServiceAccountToken'])
+        self.assertEqual(pod['spec']['dnsConfig'], {'options': [{'name': 'ndots', 'value': '1'}]})
+        self.assertNotIn('dnsPolicy', pod['spec'])
         self.assertEqual(pod['spec']['securityContext']['runAsUser'], 1000)
         container = pod['spec']['containers'][0]
         self.assertEqual(container['image'], 'videoq-moodle-node:onprem-ci')
@@ -320,6 +322,8 @@ class MoodleCpuSafetyTests(unittest.TestCase):
         self.assertIn({'name': 'EXISTING_SETTING', 'value': 'preserved'}, actual['api']['extraEnv'])
         self.assertNotIn('NODE_TLS_REJECT_UNAUTHORIZED', json.dumps(actual))
         patch_data = probe.api_ca_patch()['spec']['template']['spec']
+        self.assertEqual(patch_data['dnsConfig'], {'options': [{'name': 'ndots', 'value': '1'}]})
+        self.assertNotIn('dnsPolicy', patch_data)
         self.assertEqual(patch_data['volumes'], [{'name': 'moodle-cpu-ca', 'configMap': {'name': 'moodle-cpu-ca'}}])
         self.assertTrue(patch_data['containers'][0]['volumeMounts'][0]['readOnly'])
         self.assertEqual(run.call_args.args[0][:3], ['helm', 'upgrade', 'videoq'])

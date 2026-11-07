@@ -109,6 +109,7 @@ def browser_failure_summary(path):
 
 def api_ca_patch():
     return {'spec': {'template': {'spec': {
+        'dnsConfig': runtime.node_dns_config(),
         'volumes': [{'name': 'moodle-cpu-ca', 'configMap': {'name': 'moodle-cpu-ca'}}],
         'containers': [{'name': 'api',
             'env': [{'name': 'NODE_EXTRA_CA_CERTS', 'value': '/moodle-cpu-ca/root.crt'}],

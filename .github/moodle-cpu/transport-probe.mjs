@@ -3,6 +3,7 @@
 import dns from 'node:dns/promises';
 import tls from 'node:tls';
 import {isIP} from 'node:net';
+import {readFileSync} from 'node:fs';
 
 export const networkCodes = new Set(['EAI_AGAIN', 'ENOTFOUND', 'ENODATA', 'ESERVFAIL', 'EREFUSED', 'ETIMEOUT',
   'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ETIMEDOUT', 'ABORT_ERR',
@@ -52,10 +53,10 @@ async function tlsProbe() {
     const socket = tls.connect({host: 'moodle.localhost', port: 18443,
       servername: 'moodle.localhost', rejectUnauthorized: true});
     function finish() {if (!finished) {finished = true; clearTimeout(timer); socket.destroy(); resolve(result);}}
-    socket.on('lookup', () => {result.lookup = true;});
-    socket.on('connect', () => {result.connected = true;});
-    socket.on('secureConnect', () => {result.secure = true; result.ok = socket.authorized === true; finish();});
-    socket.on('error', error => {Object.assign(result, transportError(error)); finish();});
+    socket.on('lookup', () => {if (!finished) result.lookup = true;});
+    socket.on('connect', () => {if (!finished) result.connected = true;});
+    socket.on('secureConnect', () => {if (!finished) {result.secure = true; result.ok = socket.authorized === true; finish();}});
+    socket.on('error', error => {if (!finished) {Object.assign(result, transportError(error)); finish();}});
     timer = setTimeout(() => {result.kind = 'timeout'; finish();}, 10000);
   });
 }
@@ -65,7 +66,8 @@ if (process.env.VIDEOQ_MOODLE_TRANSPORT_PROBE === '1') {
   const parts = (expected ?? '').split('.').map(Number);
   if (isIP(expected ?? '') !== 4 || parts[0] !== 10 || parts[1] < 96 || parts[1] > 111)
     throw new Error('Owned proxy address required');
-  const report = {nodeVersion: process.version,
+  const ndots = readFileSync('/etc/resolv.conf', 'utf8').match(/\bndots:(\d{1,2})\b/);
+  const report = {nodeVersion: process.version, dnsNdots: ndots ? Number(ndots[1]) : null,
     lookup: await lookup(expected, async () => (await dns.lookup('moodle.localhost', {all: true})).map(row => row.address)),
     resolve4: await lookup(expected, () => dns.resolve4('moodle.localhost')),
     tls: await tlsProbe(), login: await httpsProbe('/login/index.php', 'GET'),

@@ -28,6 +28,15 @@ phase/error labels, numeric statuses and the Node version. This distinguishes
 transport failures promptly without waiting for real inference and recovery.
 Successful transport does not establish a valid signed OAuth exchange.
 
+At `02d5b549` the actual Node probe fails OS lookup, TLS connection and HTTP with
+`EAI_AGAIN`, while a direct A query returns exactly the owned proxy. The fixture
+now sets `ndots:1` only on the Node probe and the combined API Pod, preferring the
+exact local hostnames before Kubernetes namespace search expansion. It retains
+ClusterFirst, generated nameservers/searches, peer verification and blocked
+public forwarding. Effective `ndots` is included as a bounded number. The same
+transport assertions and full AI acceptance must pass before this is considered
+a verified correction; the prior failed artifact is the negative control.
+
 ## Reproducible sources
 
 `.github/moodle-cpu/pins.json` fixes the public Moodle and companion repositories

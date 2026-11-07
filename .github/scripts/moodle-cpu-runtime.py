@@ -57,6 +57,12 @@ def dns_with_proxy(corefile, address):
     return corefile.replace('.:53 {', '.:53 {' + hosts, 1)
 
 
+def node_dns_config():
+    # Prefer exact fixture hostnames before namespace search expansion. Retain
+    # ClusterFirst nameservers/searches and the existing no-public-forwarding DNS.
+    return {'options': [{'name': 'ndots', 'value': '1'}]}
+
+
 def node_transport_evidence(value):
     """Reconstruct public transport evidence without reflecting external strings."""
     if not isinstance(value, dict) or not isinstance(value.get('nodeVersion'), str) or not re.fullmatch(r'v\d{1,3}\.\d{1,3}\.\d{1,3}', value['nodeVersion']):
@@ -67,6 +73,8 @@ def node_transport_evidence(value):
              'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
              'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT'}
     result = {'nodeVersion': value['nodeVersion']}
+    if type(value.get('dnsNdots')) is int and 0 <= value['dnsNdots'] <= 15:
+        result['dnsNdots'] = value['dnsNdots']
     for phase in ['lookup', 'resolve4', 'tls', 'login', 'oauth']:
         source = value.get(phase)
         if not isinstance(source, dict):
@@ -340,6 +348,7 @@ class MoodleRuntime:
             data={'transport-probe.mjs': (ROOT / '.github/moodle-cpu/transport-probe.mjs').read_text()}),
             resource('Pod', name, self.owner, {
                 'restartPolicy': 'Never', 'activeDeadlineSeconds': 120, 'automountServiceAccountToken': False,
+                'dnsConfig': node_dns_config(),
                 'securityContext': {'runAsNonRoot': True, 'runAsUser': 1000, 'runAsGroup': 1000},
                 'containers': [{'name': 'node', 'image': 'videoq-moodle-node:onprem-ci', 'imagePullPolicy': 'Never',
                     'command': ['node', '/probe/transport-probe.mjs'],
