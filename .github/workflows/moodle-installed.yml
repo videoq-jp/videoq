@@ -99,6 +99,8 @@ jobs:
         run: node --test .github/moodle-cpu/native-stream-browser.test.mjs
       - name: Prepare pinned Moodle source context
         run: python3 .github/scripts/moodle-cpu-sources.py "$RUNNER_TEMP/moodle-build"
+      - name: Check original-session refusal with the actual Moodle AJAX client
+        run: VIDEOQ_MOODLE_SOURCE="$RUNNER_TEMP/moodle-build/moodle" node --test .github/moodle-cpu/native-session-browser.test.mjs
       - name: Build actual application and inference adapter images
         run: |
           docker build -t videoq-api:onprem-ci -f apps/api/Dockerfile .

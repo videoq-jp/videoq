@@ -36,7 +36,8 @@ test('Moodle capability refusals retain 403 while private exception details are 
 });
 
 test('login and gateway failures are not mistaken for domain success', async () => {
-  assert.equal((await learningResponse(response([call('materials')], [{error: true, exception: {errorcode: 'requireloginerror'}}]), 'materials')).status, 401);
+  for (const code of ['servicerequireslogin', 'requireloginerror', 'invalidsesskey', 'notloggedin'])
+    assert.equal((await learningResponse(response([call('materials')], [{error: true, exception: {errorcode: code}}]), 'materials')).status, 401);
   assert.equal((await learningResponse(response([call('materials')], [{error: true, exception: {errorcode: 'unknown'}}]), 'materials')).status, 503);
   await assert.rejects(learningResponse(response([call('materials')], [], 500), 'materials'));
   await assert.rejects(learningResponse(response([call('materials')], [{data: {status: 200, contenttype: 'text/html', body: '<html>'}}]), 'materials'));

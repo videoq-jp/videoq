@@ -101,6 +101,25 @@ native editor. Both ordinary and privacy Q&A now select its real labelled
 Lesson control. Full Q&A, reports, native boundaries/mobile and core-approved
 privacy still require the next paired real-service result.
 
+[CI42422441264](https://github.com/videoq-jp/videoq/actions/runs/42422441264)
+completed 16 actual native phases, including human Q&A, reports and capability
+revocation, own-conversation memory erasure, a second real AI conversation and
+core-approved subject export matching all official model stores. The mobile
+Moodle screenshot was visually inspected. The remaining deletion-stage failure
+occurred in an in-page request observer; the old stage did not distinguish its
+pending-request read from its post-deletion reads, so subject deletion and final
+retention/refusal checks remain unproven.
+
+Pinned Moodle core/ajax redirects the page on `servicerequireslogin`, destroying
+an in-page observer. The denial checks now replay the exact pre-deletion Moodle
+cookie, CSRF key and course context to the same real login-required AJAX gateway.
+They require an actual refused response for both read and write; no replacement
+session is minted and no authorization/response is substituted. A real Chromium
+test with pinned core/ajax/jQuery reproduces login navigation and cookie rotation,
+verifies original-cookie replay, and rejects unknown errors, HTML and redirects
+as refusal evidence. Deletion-stage metadata now identifies each individual read,
+write and retention check. Full 17-phase native completion remains pending.
+
 ## Historical iframe baseline
 
 Backend `38393b49` with companion runtime `20ea7741` passed all 17 phases in

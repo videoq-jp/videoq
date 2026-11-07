@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {waitLearningResponse, selectQuestionLesson} from './native-browser.mjs';
+import {waitLearningResponse, selectQuestionLesson, captureOriginalNativeSession} from './native-browser.mjs';
 import {captureNativeStream} from './native-stream.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
@@ -125,12 +125,14 @@ export async function corePrivacy(h) {
       assert.equal(status.awaitingApproval, true);
       assert.equal(fixture('privacy-status').subjectDeleted, false);
       assert.deepEqual(memoryState(digest), before, 'Pending core requests retain original model memory');
+      stage('core-privacy-' + kind + '-pending-subject-readable');
       const pendingQuestion = await read(learnerUi, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
       assert.equal(pendingQuestion.status, 200);
       assert.equal(pendingQuestion.body.data.question.title, title);
       assert.equal(pendingQuestion.body.data.question.body, subjectText);
       const denied = await learner.request.get(MOODLE + '/admin/tool/dataprivacy/datarequests.php');
       assert([403, 404].includes(denied.status()), 'Learner cannot approve privacy requests');
+      stage('core-privacy-' + kind + '-approval');
       await adminPage.goto(MOODLE + '/admin/tool/dataprivacy/datarequests.php', {waitUntil: 'domcontentloaded'});
       await adminPage.waitForFunction(() => typeof window.requirejs?.defined === 'function'
         && window.requirejs.defined('theme_boost/loader') && window.requirejs.defined('tool_dataprivacy/requestactions'));
@@ -145,6 +147,7 @@ export async function corePrivacy(h) {
       }
       assert.equal(status.approved, true); assert.equal(status.approvedByAdmin, true);
       assert.equal(status.tasks.filter(t => t.kind === 'process').length, 1);
+      stage('core-privacy-' + kind + '-process');
       fixture('privacy-task', {kind, taskId: status.tasks.find(t => t.kind === 'process').id});
       return fixture('privacy-status').requests[kind];
     }
@@ -183,11 +186,15 @@ export async function corePrivacy(h) {
     assert.deepEqual(memoryState(digest), before, 'Export retains all original model memory');
     phase('actual-core-approved-ai-history-qa-and-model-memory-export');
 
-    stage('core-privacy-delete');
+    stage('core-privacy-delete-original-session-capture');
+    const originalSession = await captureOriginalNativeSession(learnerPage);
+    stage('core-privacy-delete-request');
     const erased = await request('delete', 'Delete all of my personal data');
+    stage('core-privacy-delete-verify-erasure');
     assert.equal(erased.deleted, true); assert.equal(erased.tasks.length, 0);
     assert.equal(fixture('privacy-status').subjectDeleted, true);
     assert.deepEqual(memoryState(digest), {conversations: 0, turns: 0, scopes: 0, checkpoints: 0, blobs: 0, writes: 0});
+    stage('core-privacy-delete-peer-read');
     const peer = await read(teacherUi, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
     assert.equal(peer.status, 200);
     assert.equal(peer.body.data.question.author.name, 'Deleted participant');
@@ -196,9 +203,14 @@ export async function corePrivacy(h) {
     const retainedReply = peer.body.data.replies.find(reply => reply.id === replyId);
     assert.equal(retainedReply?.body, peerText);
     assert.deepEqual(retainedReply.author, originalReply.author);
+    stage('core-privacy-delete-peer-write');
     assert.equal((await read(teacherUi, 'qa', {action: 'updateReply', questionId, replyId, body: peerText + ' verified'})).status, 200);
-    assert([401, 403].includes((await read(learnerUi, 'conversations', {action: 'get', conversationId: conversation.id, limit: 20})).status));
-    assert([401, 403].includes((await read(learnerUi, 'qa', {action: 'ask', title: 'Denied write', body: 'Must not persist', videoId})).status));
+    stage('core-privacy-delete-original-read-denial');
+    assert([401, 403].includes((await originalSession('conversations', {action: 'get', conversationId: conversation.id, limit: 20})).status));
+    stage('core-privacy-delete-original-write-denial');
+    assert([401, 403].includes((await originalSession('qa', {action: 'ask', title: 'Denied write', body: 'Must not persist', videoId})).status));
+    assert.deepEqual(memoryState(digest), {conversations: 0, turns: 0, scopes: 0, checkpoints: 0, blobs: 0, writes: 0});
+    stage('core-privacy-delete-retained-data');
     const finalReport = await read(teacherUi, 'reports', reportPeriod);
     assert.equal(finalReport.status, 200);
     assert.deepEqual(finalReport.body.totals, {questions: 0, good: 0, bad: 0, none: 0});
