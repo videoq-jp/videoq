@@ -3,6 +3,10 @@
 import assert from 'node:assert/strict';
 const MOODLE = 'https://moodle.localhost:18443';
 
+export async function selectQuestionLesson(ui, videoId) {
+  await ui.locator('#videoq-qa-content form').getByLabel(/^(Lesson|教材)$/).selectOption(String(videoId));
+}
+
 export function learningCalls(request) {
   try {
     const url = new URL(request.url());

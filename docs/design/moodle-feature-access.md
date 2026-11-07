@@ -91,6 +91,16 @@ It retains the answer/source/error assertions and requires text delivery before
 the done frame. A real loopback Chromium regression checks both successful
 done-triggered cancellation and rejection of cancellation before completion.
 
+[CI42418423909](https://github.com/videoq-jp/videoq/actions/runs/42418423909)
+then completed nine actual native phases: File import/ASR/indexing, learner
+authority, streamed answer/citation/playback/feedback, personal history/export,
+transcript, teacher description/transcript/reindex and course tags. The real
+answer had 81 received chunks, a done event, no error event and text before done.
+The journey stopped at Q&A because acceptance selected an ID absent from the
+native editor. Both ordinary and privacy Q&A now select its real labelled
+Lesson control. Full Q&A, reports, native boundaries/mobile and core-approved
+privacy still require the next paired real-service result.
+
 ## Historical iframe baseline
 
 Backend `38393b49` with companion runtime `20ea7741` passed all 17 phases in

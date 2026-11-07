@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {waitLearningResponse} from './native-browser.mjs';
+import {waitLearningResponse, selectQuestionLesson} from './native-browser.mjs';
 import {captureNativeStream} from './native-stream.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
@@ -65,7 +65,7 @@ export async function corePrivacy(h) {
   await learnerUi.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
   await learnerUi.locator('#videoq-qa-input-title').fill(title);
   await learnerUi.locator('#videoq-qa-input-body').fill(subjectText);
-  await learnerUi.locator('#videoq-qa-input-lesson').selectOption(String(videoId));
+  await selectQuestionLesson(learnerUi, videoId);
   const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerUi.locator('#videoq-qa-content form button[type=submit]').click());
   const questionId = asked.data.id;
   // The previous rehearsal leaves its selected (now deleted) question in the

@@ -8,7 +8,7 @@ import {chromium} from 'playwright';
 import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, mediaRangeEvidence, nativeMountEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {fileURLToPath} from 'node:url';
 import {corePrivacy} from './privacy.mjs';
-import {installNativeReader, waitLearningResponse} from './native-browser.mjs';
+import {installNativeReader, waitLearningResponse, selectQuestionLesson} from './native-browser.mjs';
 import {captureNativeStream} from './native-stream.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
@@ -447,7 +447,7 @@ async function courseQaFlow(teacherPage, teacherUi, learnerPage, learnerUi, vide
   await learnerUi.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
   await learnerUi.locator('#videoq-qa-input-title').fill(title);
   await learnerUi.locator('#videoq-qa-input-body').fill('A real learner asks about the public Japanese clip.');
-  await learnerUi.locator('#videoq-qa-input-lesson').selectOption(String(videoId));
+  await selectQuestionLesson(learnerUi, videoId);
   const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerUi.locator('#videoq-qa-content form button[type="submit"]').click());
   const questionId = asked.data.id;
   assert.match(questionId, /^[a-f0-9-]{36}$/);
