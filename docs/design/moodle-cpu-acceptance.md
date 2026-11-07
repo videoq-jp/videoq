@@ -128,6 +128,16 @@ range while the transcript is cleared. Learner material reads and writes are
 denied. The ASR quality assessment uses the original real transcript; no ready
 state, transcript or vector is inserted as fixture data to meet this requirement.
 
+Personal-history acceptance downloads the actual conversation as NDJSON, checks
+its real question/answer/sources and excludes internal/feedback credentials.
+A teacher cannot retrieve the learner's conversation UUID. The retained learner
+session must lose and regain that conversation with source visibility and
+enrolment. Confirmed own deletion must erase its saved turn and all three model
+checkpoint stores, refresh the teacher's aggregate counts to zero, and allow a
+new empty conversation. Export contents and checkpoint identifiers stay private;
+only completed phase labels/counts can be published. This verifies one saved
+conversation; approved full-subject privacy requests remain a separate gate.
+
 The browser has a self-signed exception only in its disposable context and routes
 requests solely to the three known loopback test origins. PHP/API peer checks
 remain enabled with the real CA. A test hook keeps the LTI credential inside its

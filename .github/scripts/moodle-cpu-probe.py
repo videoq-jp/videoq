@@ -33,7 +33,7 @@ def browser_failure_summary(path):
     allowed = {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
                'real-native-question', 'personal-history', 'native-transcript', 'teacher-management',
                'course-tags', 'human-qa', 'positive-reports',
-               'same-session-source-enrolment'}
+               'same-session-source-enrolment', 'personal-deletion'}
     stage = evidence.get('stage')
     summary = stage if isinstance(stage, str) and stage in allowed else 'unknown'
     failure = evidence.get('failure')

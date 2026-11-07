@@ -73,6 +73,25 @@ function standaloneIndexState() {
     FROM videos v WHERE v.id=${sentinel.videoId}) t;`;
   return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql));
 }
+function conversationDigest(conversationId) {
+  assert.match(conversationId, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+  requireOwner();
+  const sql = `SELECT md5(thread_id) FROM chat_conversations WHERE conversation_id='${conversationId}';`;
+  const digest = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql).trim();
+  assert.match(digest, /^[a-f0-9]{32}$/);
+  return digest;
+}
+function conversationStorage(digest) {
+  assert.match(digest, /^[a-f0-9]{32}$/);
+  requireOwner();
+  const tables = {conversations: 'public.chat_conversations', turns: 'public.chat_conversation_turns',
+    scopes: 'public.lti_conversation_scopes', checkpoints: 'chat_memory.checkpoints',
+    blobs: 'chat_memory.checkpoint_blobs', writes: 'chat_memory.checkpoint_writes'};
+  const fields = Object.entries(tables).map(([key, table]) =>
+    `(SELECT count(*)::int FROM ${table} WHERE md5(thread_id)='${digest}') AS ${key}`);
+  const sql = 'SELECT row_to_json(t) FROM (SELECT ' + fields.join(',') + ') t;';
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql));
+}
 
 const browser = await chromium.launch({headless: true});
 async function context() {
@@ -100,7 +119,7 @@ async function context() {
         return original(input, options);
       };
       window.__cpuRead = async (path, payload) => {
-        if (!['reports', 'transcript', 'tags', 'qa', 'management'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
+        if (!['reports', 'transcript', 'tags', 'qa', 'management', 'conversations'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
         const response = await original('/api/lti/' + path, {method: 'POST', credentials: 'omit',
           headers: {'Content-Type': 'application/json', Authorization: bearer}, body: JSON.stringify(payload)});
         return {status: response.status, body: await response.json()};
@@ -149,7 +168,7 @@ async function materials(page, action = 'list', targetVideoId) {
   }), {origin: VIDEOQ, action, targetVideoId});
 }
 async function uiAction(page, feature, action, click, status = 200) {
-  assert(['tags', 'qa', 'management'].includes(feature));
+  assert(['tags', 'qa', 'management', 'conversations'].includes(feature));
   const [response] = await Promise.all([page.waitForResponse(response => {
     if (new URL(response.url()).pathname !== '/api/lti/' + feature || response.request().method() !== 'POST') return false;
     try {return response.request().postDataJSON()?.action === action;} catch {return false;}
@@ -374,6 +393,54 @@ async function deleteOwnQuestion(page, frame) {
   assert.equal(empty.status, 200); assert.equal(empty.body.data.total, 0);
   await page.locator('#videoq-course-qa summary').click();
 }
+async function conversationAccess(frame, conversationId, expected) {
+  const result = await frame.evaluate(conversationId => window.__cpuRead('conversations', {
+    action: 'get', conversationId, limit: 50,
+  }), conversationId);
+  assert.equal(result.status, expected);
+  if (expected === 200) assert.equal(result.body.id, conversationId);
+}
+function assertExportFields(value) {
+  if (value === null || typeof value !== 'object') return;
+  const forbidden = /^(?:feedbackId|feedbackToken|chatLogId|threadId|checkpointId|ownerUserId|subjectKey|retrievedContexts|sessionHash)$/;
+  for (const [key, item] of Object.entries(value)) {
+    assert(!forbidden.test(key), 'Conversation download omits internal and authentication fields');
+    assertExportFields(item);
+  }
+}
+async function exportPersonalConversation(page, frame, conversationId, videoId, question) {
+  const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('button', {
+    name: /^(Download conversation|会話をダウンロード)$/,
+  }).click()]);
+  const records = readFileSync(await download.path(), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(records[0].type, 'conversation');
+  assert.equal(records[0].format, 'videoq-personal-conversation-v1');
+  assert.equal(records[0].id, conversationId);
+  assertExportFields(records);
+  const turns = records.filter(record => record.type === 'turn');
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].question, question);
+  assert.match(turns[0].answer.segments.map(segment => segment.text).join(''), /住所/);
+  assert(turns[0].answer.sources.length > 0 && turns[0].answer.sources.every(source => source.video_id === videoId));
+  // Download contents stay in the private browser temporary directory and are
+  // never part of the public artifact allowlist.
+}
+async function deletePersonalConversation(page, frame, conversationId, digest) {
+  const before = conversationStorage(digest);
+  assert.equal(before.conversations, 1); assert.equal(before.turns, 1); assert.equal(before.scopes, 1);
+  assert(before.checkpoints + before.blobs + before.writes > 0, 'Real model memory exists before deleting it');
+  await page.locator('#videoq-personal-history summary').click();
+  await frame.getByRole('button', {name: /^(Read|読む)$/}).click();
+  await frame.getByRole('button', {name: /^(Delete conversation|会話を削除)$/}).click();
+  await uiAction(page, 'conversations', 'delete', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete conversation|会話を削除)$/}).click());
+  await frame.getByText(/^(No saved conversations yet\.|保存済みの会話はありません。)$/).waitFor();
+  await conversationAccess(frame, conversationId, 404);
+  assert.deepEqual(conversationStorage(digest), {conversations: 0, turns: 0, scopes: 0, checkpoints: 0, blobs: 0, writes: 0});
+  await frame.getByRole('button', {name: /^(New conversation|新しい会話)$/}).click();
+  await page.waitForFunction(() => document.querySelectorAll('#videoq-native-messages .answer').length === 0
+    && !document.querySelector('#videoq-native-controls').disabled);
+}
 const today = new Date().toISOString().slice(0, 10);
 const period = {action: 'summary', from: today, to: today};
 try {
@@ -473,18 +540,22 @@ try {
   stage('personal-history');
   await learnerPage.locator('#videoq-personal-history summary').click();
   await learnerFrame.locator('#personal-history-content article').first().waitFor();
-  await learnerFrame.getByRole('button', {name: /^(Read|読む)$/}).first().click();
+  const personal = await uiAction(learnerPage, 'conversations', 'get', () => learnerFrame.getByRole('button', {name: /^(Read|読む)$/}).first().click());
+  const conversationId = personal.id;
+  const memoryDigest = conversationDigest(conversationId);
   await learnerFrame.locator('.personal-turn').first().waitFor();
   assert.match(await learnerFrame.locator('#personal-history-content').innerText(), /住所/);
+  await exportPersonalConversation(learnerPage, learnerFrame, conversationId, actual.videoId, question);
   await learnerFrame.getByRole('button', {name: /Continue this conversation|この会話を続ける/}).click();
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().waitFor();
-  report.phases.push('nonempty-personal-history-resume');
+  report.phases.push('nonempty-personal-history-export-and-resume');
 
   stage('native-transcript');
   await nativeTranscriptFlow(learnerPage, actual.videoId);
   report.phases.push('actual-native-transcript-reading-refresh-and-seek');
   await teacherPage.goto(state.lessonUrl);
   const teacherFrame = await privateFrame(teacherPage);
+  await conversationAccess(teacherFrame, conversationId, 404);
   stage('teacher-management');
   await teacherManagementFlow(teacherPage, teacherFrame, learnerFrame, actual, async () => {
     const retained = await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}});
@@ -526,20 +597,30 @@ try {
   stage('same-session-source-enrolment');
   fixture('hide'); assert.equal((await materials(learnerPage)).ok, false);
   await questionAccess(learnerFrame, questionId, 403);
+  await conversationAccess(learnerFrame, conversationId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   assert.equal((await materials(teacherPage)).ok, true);
   fixture('show'); assert.equal((await materials(learnerPage)).ok, true);
   await questionAccess(learnerFrame, questionId, 200);
+  await conversationAccess(learnerFrame, conversationId, 200);
   fixture('suspend'); assert.equal((await materials(learnerPage)).ok, false);
   await questionAccess(learnerFrame, questionId, 403);
+  await conversationAccess(learnerFrame, conversationId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   fixture('resume'); assert.equal((await materials(learnerPage)).ok, true);
   await questionAccess(learnerFrame, questionId, 200);
+  await conversationAccess(learnerFrame, conversationId, 200);
   await deleteOwnQuestion(learnerPage, learnerFrame);
   report.phases.push('actual-human-qa-current-source-enrolment-and-own-deletion');
   assert.equal(await learnerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   await learnerPage.screenshot({path: join(dirname(resultPath), 'moodle-native-mobile.png'), fullPage: true});
   report.phases.push('same-session-hidden-source-enrolment-current-authority');
+  stage('personal-deletion');
+  await deletePersonalConversation(learnerPage, learnerFrame, conversationId, memoryDigest);
+  const erasedReport = await teacherFrame.evaluate(period => window.__cpuRead('reports', period), period);
+  assert.equal(erasedReport.status, 200);
+  assert.deepEqual(erasedReport.body.totals, {questions: 0, good: 0, bad: 0, none: 0});
+  report.phases.push('actual-own-conversation-delete-model-memory-erasure-and-report-refresh');
   Object.assign(report, {status: 'passed', stage: 'complete', transcript: actual.transcript,
     managedVideoId: actual.videoId, standaloneSentinelDenied: true, asrChunks: actual.asrChunks,
     vectorCount: actual.vectorCount, embeddingTable, answer: text, sourceVideoIds: sources.map(source => source.video_id),
