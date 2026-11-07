@@ -36,6 +36,20 @@ class MoodleCpuSafetyTests(unittest.TestCase):
                 'tls': {'ok': True, 'lookup': True, 'connected': True, 'secure': True},
                 'login': {'ok': True, 'httpStatus': 200}, 'oauth': {'ok': True, 'httpStatus': 401}}
 
+    def test_native_browser_transport_requires_positive_gateway_and_zero_exposed_authentication(self):
+        valid = {'nativeBootstrap': {'status': 200, 'protocol': True}, 'nativeTransport': {
+            'pages': 3, 'gatewayRequests': 75, 'outsideRequests': 0, 'authorizationHeaders': 0, 'unreadableHeaders': 0,
+            'private': 'PRIVATE'}}
+        self.assertEqual(probe.native_transport_result(valid), {key: value for key, value in valid['nativeTransport'].items() if key != 'private'})
+        for key, bad in [('pages', 1), ('gatewayRequests', 0), ('outsideRequests', 1), ('authorizationHeaders', 1),
+                         ('unreadableHeaders', 1), ('pages', True), ('gatewayRequests', 'PRIVATE')]:
+            value = copy.deepcopy(valid); value['nativeTransport'][key] = bad
+            with self.assertRaises(ValueError):
+                probe.native_transport_result(value)
+        for value in [None, {}, {'nativeBootstrap': {'status': 200, 'protocol': 1}, 'nativeTransport': valid['nativeTransport']}]:
+            with self.assertRaises(ValueError):
+                probe.native_transport_result(value)
+
     def test_node_base_is_read_from_the_reviewed_immutable_api_dockerfile(self):
         self.assertRegex(install.node_image(), r'^node:\d+\.\d+\.\d+-alpine@sha256:[a-f0-9]{64}$')
         path = self.root / 'Dockerfile'

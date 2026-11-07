@@ -140,6 +140,24 @@ def privacy_result(value):
             **{key: True for key in flags}}
 
 
+def native_transport_result(report):
+    bootstrap = report.get('nativeBootstrap') if isinstance(report, dict) else None
+    value = report.get('nativeTransport') if isinstance(report, dict) else None
+    if (not isinstance(bootstrap, dict) or bootstrap.get('status') != 200 or bootstrap.get('protocol') is not True
+            or not isinstance(value, dict)):
+        raise ValueError('Native Moodle transport evidence missing')
+    result = {}
+    for key in ['pages', 'gatewayRequests', 'outsideRequests', 'authorizationHeaders', 'unreadableHeaders']:
+        number = value.get(key)
+        if type(number) is not int or number < 0 or number > 100000:
+            raise ValueError('Invalid native Moodle transport count')
+        result[key] = number
+    if (result['pages'] < 2 or result['gatewayRequests'] < 1
+            or any(result[key] for key in ['outsideRequests', 'authorizationHeaders', 'unreadableHeaders'])):
+        raise ValueError('Native Moodle browser boundary failed')
+    return result
+
+
 def api_ca_patch():
     return {'spec': {'template': {'spec': {
         'dnsConfig': runtime.node_dns_config(),
@@ -228,6 +246,7 @@ def rehearse(kubeconfig, output, chart):
         report = json.loads(result.read_text())
         if report.get('status') != 'passed' or not report.get('transcript'):
             raise RuntimeError('Actual Moodle CPU evidence is incomplete')
+        report['nativeTransport'] = native_transport_result(report)
         report['privacy'] = privacy_result(report.get('privacy'))
         report['installed'] = {'checks': installed_checks['checks'],
                                'moodleRevision': installed['moodleRevision'],

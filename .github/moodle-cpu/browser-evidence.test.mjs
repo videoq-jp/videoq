@@ -251,3 +251,10 @@ test('transport errors retain nested standard network codes and timeout class wi
   assert.deepEqual(transportError({name: 'PRIVATE', cause}), {kind: 'error', codes: ['EAI_AGAIN']});
   assert.deepEqual(transportError('PRIVATE'), {kind: 'error', codes: []});
 });
+
+test('native tag evidence records direct Moodle geometry without private transport data', () => {
+  const result = tagUiEvidence({teacher: {moodleNative: true, iframeCount: 0, buttonHit: true, buttonInViewport: true,
+    viewportWidth: 390, viewportHeight: 844, authorization: 'private-fixture-value', title: 'private-fixture-title'}});
+  assert.deepEqual(result, {teacher: {moodleNative: true, buttonHit: true, buttonInViewport: true,
+    iframeCount: 0, viewportWidth: 390, viewportHeight: 844}});
+});

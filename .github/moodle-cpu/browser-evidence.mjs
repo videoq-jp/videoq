@@ -113,13 +113,13 @@ export function tagUiEvidence(value) {
     const source = value?.[role];
     if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
     const row = {};
-    for (const key of ['parentPanelOpen', 'parentDetailsOpen', 'frameExposed', 'frameClipped',
+    for (const key of ['moodleNative', 'missingNativeControl', 'buttonHit', 'buttonInViewport', 'parentPanelOpen', 'parentDetailsOpen', 'frameExposed', 'frameClipped',
       'nativeMode', 'otherToolOpen', 'panelHidden', 'panelOpen', 'buttonHidden', 'buttonDisabled', 'buttonVisible', 'busy',
       'privateHitButton', 'targetInFrameViewport', 'targetInParentViewport', 'framePointerEventsNone',
       'buttonPointerEventsNone', 'frameActive']) {
       if (typeof source[key] === 'boolean') row[key] = source[key];
     }
-    for (const key of ['frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight', 'panelClientHeight',
+    for (const key of ['iframeCount', 'viewportWidth', 'viewportHeight', 'frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight', 'panelClientHeight',
       'panelScrollHeight', 'panelScrollTop', 'privateViewportHeight', 'privateViewportWidth', 'openDialogs',
       'parentDocumentsStarted', 'parentDocumentsFinished', 'parentDocumentsFailed', 'parentDocumentsPending']) {
       if (Number.isInteger(source[key]) && source[key] >= 0 && source[key] <= 100_000) row[key] = source[key];

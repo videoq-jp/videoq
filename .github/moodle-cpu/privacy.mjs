@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
+import {waitLearningResponse} from './native-browser.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const question = '動画では、インターネットで「敵対的環境コース」を検索すると何の住所が出てくると述べていますか？';
@@ -11,7 +12,7 @@ const requestsUrl = MOODLE + '/admin/tool/dataprivacy/mydatarequests.php';
 const mailDisabledWarning = 'Not sending email due to $CFG->noemailever config setting';
 const read = (frame, path, body) => frame.evaluate(({path, body}) => window.__cpuRead(path, body), {path, body});
 async function panel(page, id, open) {
-  const details = page.locator(id + ' details');
+  const details = page.locator(id);
   if ((await details.getAttribute('open') !== null) !== open) await details.locator('summary').click();
 }
 
@@ -28,12 +29,12 @@ export function suppressedMailContinuation(currentUrl, href, warnings) {
 }
 
 export async function corePrivacy(h) {
-  const {learner, learnerPage, learnerFrame, teacher, teacherFrame, videoId, lessonUrl, privateFrame,
+  const {learner, learnerPage, learnerUi, teacher, teacherUi, videoId, lessonUrl, nativePage,
     stage, phase, fixture, uiAction, login, context, memoryDigest, memoryState, memoryRecords,
     verifyArchive, materialState, sentinelState, reportPeriod} = h;
   stage('core-privacy-real-question');
   const mediaBefore = materialState(), sentinelBefore = sentinelState();
-  const stream = learnerPage.waitForResponse(r => new URL(r.url()).pathname === '/api/lti/messages/stream');
+  const stream = learnerPage.waitForResponse(r => new URL(r.url()).pathname === '/local/videoq/stream.php');
   await learnerPage.locator('#videoq-native-question').fill(question);
   await learnerPage.locator('#videoq-native-send').click();
   const response = await stream;
@@ -44,13 +45,13 @@ export async function corePrivacy(h) {
   const sources = events.filter(e => e.type === 'source').map(e => e.source);
   assert(sources.length > 0 && sources.every(s => s.video_id === videoId));
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().waitFor();
-  const feedback = learnerPage.waitForResponse(r => new URL(r.url()).pathname === '/api/lti/feedback');
+  const feedback = waitLearningResponse(learnerPage, 'feedback');
   await learnerPage.locator('#videoq-native-messages .answer [data-feedback="good"]').last().click();
-  assert.equal((await feedback).status(), 200);
+  assert.equal((await feedback).status, 200);
   await panel(learnerPage, '#videoq-personal-history', true);
-  await learnerFrame.locator('#personal-history').getByRole('button', {name: /^(Refresh|更新)$/}).click();
-  await learnerFrame.locator('#personal-history-content article').first().waitFor();
-  const conversation = await uiAction(learnerPage, 'conversations', 'get', () => learnerFrame.getByRole('button', {name: /^(Read|読む)$/}).first().click());
+  await learnerUi.locator('#videoq-personal-history').getByRole('button', {name: /^(Refresh|更新)$/}).click();
+  await learnerUi.locator('#videoq-personal-history-content article').first().waitFor();
+  const conversation = await uiAction(learnerPage, 'conversations', 'get', () => learnerUi.getByRole('button', {name: /^(Read|読む)$/}).first().click());
   const digest = memoryDigest(conversation.id);
   const before = memoryState(digest);
   assert.equal(before.conversations, 1); assert.equal(before.turns, 1); assert.equal(before.scopes, 1);
@@ -61,33 +62,33 @@ export async function corePrivacy(h) {
 
   stage('core-privacy-peer-data');
   await panel(learnerPage, '#videoq-course-qa', true);
-  await learnerFrame.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
-  await learnerFrame.locator('#qa-input-title').fill(title);
-  await learnerFrame.locator('#qa-input-body').fill(subjectText);
-  await learnerFrame.locator('#qa-input-lesson').selectOption(String(videoId));
-  const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerFrame.locator('#qa-content form button[type=submit]').click());
+  await learnerUi.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
+  await learnerUi.locator('#videoq-qa-input-title').fill(title);
+  await learnerUi.locator('#videoq-qa-input-body').fill(subjectText);
+  await learnerUi.locator('#videoq-qa-input-lesson').selectOption(String(videoId));
+  const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerUi.locator('#videoq-qa-content form button[type=submit]').click());
   const questionId = asked.data.id;
   // The previous rehearsal leaves its selected (now deleted) question in the
   // original teacher frame. Use a normal new Moodle tab for peer posting, while
   // retaining that original credential for the post-erasure peer-access checks.
   const peerPage = await teacher.newPage();
   await peerPage.goto(lessonUrl);
-  const peerFrame = await privateFrame(peerPage);
+  const peerUi = await nativePage(peerPage);
   await panel(peerPage, '#videoq-course-qa', true);
-  await peerFrame.locator('#course-qa').getByRole('button', {name: /^(Refresh|更新)$/}).click();
-  await peerFrame.getByRole('button', {name: title, exact: true}).click();
-  await peerFrame.getByRole('button', {name: /^(Reply|返信する)$/}).click();
-  await peerFrame.locator('#qa-input-body').fill(peerText);
-  const replied = await uiAction(peerPage, 'qa', 'reply', () => peerFrame.locator('#qa-content form button[type=submit]').click());
+  await peerUi.locator('#videoq-course-qa').getByRole('button', {name: /^(Refresh|更新)$/}).click();
+  await peerUi.getByRole('button', {name: title, exact: true}).click();
+  await peerUi.getByRole('button', {name: /^(Reply|返信する)$/}).click();
+  await peerUi.locator('#videoq-qa-input-body').fill(peerText);
+  const replied = await uiAction(peerPage, 'qa', 'reply', () => peerUi.locator('#videoq-qa-content form button[type=submit]').click());
   const replyId = replied.data.id;
-  const peerBefore = await read(teacherFrame, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
+  const peerBefore = await read(teacherUi, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
   assert.equal(peerBefore.status, 200);
   const originalReply = peerBefore.body.data.replies.find(reply => reply.id === replyId);
   assert.equal(originalReply?.body, peerText);
   assert.equal(originalReply.author.source, 'moodle');
   assert(originalReply.author.name && originalReply.author.name !== peerBefore.body.data.question.author.name);
   reportPeriod.to = new Date().toISOString().slice(0, 10);
-  const totals = await read(teacherFrame, 'reports', reportPeriod);
+  const totals = await read(teacherUi, 'reports', reportPeriod);
   assert.equal(totals.status, 200);
   assert.deepEqual(totals.body.totals, {questions: 1, good: 1, bad: 0, none: 0});
 
@@ -124,7 +125,7 @@ export async function corePrivacy(h) {
       assert.equal(status.awaitingApproval, true);
       assert.equal(fixture('privacy-status').subjectDeleted, false);
       assert.deepEqual(memoryState(digest), before, 'Pending core requests retain original model memory');
-      const pendingQuestion = await read(learnerFrame, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
+      const pendingQuestion = await read(learnerUi, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
       assert.equal(pendingQuestion.status, 200);
       assert.equal(pendingQuestion.body.data.question.title, title);
       assert.equal(pendingQuestion.body.data.question.body, subjectText);
@@ -187,7 +188,7 @@ export async function corePrivacy(h) {
     assert.equal(erased.deleted, true); assert.equal(erased.tasks.length, 0);
     assert.equal(fixture('privacy-status').subjectDeleted, true);
     assert.deepEqual(memoryState(digest), {conversations: 0, turns: 0, scopes: 0, checkpoints: 0, blobs: 0, writes: 0});
-    const peer = await read(teacherFrame, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
+    const peer = await read(teacherUi, 'qa', {action: 'get', questionId, limit: 20, offset: 0});
     assert.equal(peer.status, 200);
     assert.equal(peer.body.data.question.author.name, 'Deleted participant');
     assert.equal(peer.body.data.question.title, '[deleted]');
@@ -195,10 +196,10 @@ export async function corePrivacy(h) {
     const retainedReply = peer.body.data.replies.find(reply => reply.id === replyId);
     assert.equal(retainedReply?.body, peerText);
     assert.deepEqual(retainedReply.author, originalReply.author);
-    assert.equal((await read(teacherFrame, 'qa', {action: 'updateReply', questionId, replyId, body: peerText + ' verified'})).status, 200);
-    assert([401, 403].includes((await read(learnerFrame, 'conversations', {action: 'get', conversationId: conversation.id, limit: 20})).status));
-    assert([401, 403].includes((await read(learnerFrame, 'qa', {action: 'ask', title: 'Denied write', body: 'Must not persist', videoId})).status));
-    const finalReport = await read(teacherFrame, 'reports', reportPeriod);
+    assert.equal((await read(teacherUi, 'qa', {action: 'updateReply', questionId, replyId, body: peerText + ' verified'})).status, 200);
+    assert([401, 403].includes((await read(learnerUi, 'conversations', {action: 'get', conversationId: conversation.id, limit: 20})).status));
+    assert([401, 403].includes((await read(learnerUi, 'qa', {action: 'ask', title: 'Denied write', body: 'Must not persist', videoId})).status));
+    const finalReport = await read(teacherUi, 'reports', reportPeriod);
     assert.equal(finalReport.status, 200);
     assert.deepEqual(finalReport.body.totals, {questions: 0, good: 0, bad: 0, none: 0});
     assert.deepEqual(materialState(), mediaBefore, 'Subject erasure retains shared source/transcript/vectors');
