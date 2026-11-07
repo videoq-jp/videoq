@@ -27,7 +27,7 @@ if (posix_geteuid() !== $apache['uid']) {
 }
 $action = $argv[1] ?? '';
 $allowed = ['install', 'seed', 'status', 'network', 'tick', 'hide', 'show', 'suspend', 'resume',
-    'deny-reports', 'allow-reports', 'privacy-setup', 'privacy-status', 'privacy-task',
+    'deny-reports', 'allow-reports', 'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-task-run',
     'privacy-export-evidence', 'privacy-reset'];
 if (!in_array($action, $allowed, true)) {
     throw new RuntimeException('Unknown acceptance action');

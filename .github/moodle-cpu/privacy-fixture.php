@@ -72,7 +72,7 @@ foreach ($types as $kind => $type) {
     }
     $requests[$kind] = $rows ? reset($rows) : null;
 }
-if ($action === 'privacy-task') {
+if ($action === 'privacy-task' || $action === 'privacy-task-run') {
     $kind = $input['kind'] ?? null;
     $id = $input['taskId'] ?? null;
     if (!is_string($kind) || !isset($requests[$kind]) || !is_int($id) || $id < 1 || count($input) !== 2) {
@@ -85,17 +85,45 @@ if ($action === 'privacy-task') {
             (int)($data->requestid ?? 0) !== (int)$requests[$kind]->id || !empty($task->timestarted)) {
         throw new RuntimeException('Unowned or running task refused');
     }
-    // Official runner rehydrates actual task user/customdata and takes its lock.
-    // Its progress contains private subject data and never enters public output.
-    ob_start();
-    try {
+    if ($action === 'privacy-task-run') {
+        // Official runner rehydrates actual task user/customdata and takes its lock.
         \core\cron::setup_user();
         \core\cron::run_adhoc_task($id);
+        return;
+    }
+    // Core mtrace() writes directly to STDOUT, bypassing output buffering.
+    // Re-enter the full guarded fixture in a child with both output descriptors
+    // private; keep the parent response JSON-only without changing core logging.
+    $logpath = '/var/www/moodledata/.videoq-cpu-privacy-task-' . $id . '.log';
+    $mask = umask(0077);
+    try {
+        $log = fopen($logpath, 'xb');
     } finally {
-        $log = ob_get_clean();
-        $logpath = '/var/www/moodledata/.videoq-cpu-privacy-task-' . $id . '.log';
-        file_put_contents($logpath, $log);
-        chmod($logpath, 0600);
+        umask($mask);
+    }
+    if ($log === false) {
+        throw new RuntimeException('Cannot retain private task output');
+    }
+    try {
+        $process = proc_open([PHP_BINARY, __DIR__ . '/fixture.php', 'privacy-task-run'],
+            [0 => ['pipe', 'r'], 1 => $log, 2 => $log], $pipes);
+        if (!is_resource($process)) {
+            throw new RuntimeException('Cannot start guarded privacy task');
+        }
+        try {
+            $payload = json_encode($input, JSON_THROW_ON_ERROR);
+            if (fwrite($pipes[0], $payload) !== strlen($payload)) {
+                throw new RuntimeException('Cannot deliver exact owned task');
+            }
+        } finally {
+            fclose($pipes[0]);
+            $exit = proc_close($process);
+        }
+        if ($exit !== 0) {
+            throw new RuntimeException('Guarded privacy task failed');
+        }
+    } finally {
+        fclose($log);
     }
     echo json_encode(['exactTaskReturned' => true]), "\n";
     return;
