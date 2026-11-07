@@ -91,7 +91,7 @@ async function context() {
         return original(input, options);
       };
       window.__cpuRead = async (path, payload) => {
-        if (!['reports', 'transcript'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
+        if (!['reports', 'transcript', 'tags', 'qa'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
         const response = await original('/api/lti/' + path, {method: 'POST', credentials: 'omit',
           headers: {'Content-Type': 'application/json', Authorization: bearer}, body: JSON.stringify(payload)});
         return {status: response.status, body: await response.json()};
@@ -138,6 +138,140 @@ async function materials(page, action = 'list', targetVideoId) {
     frame.contentWindow.postMessage({type: 'videoq:materials', version: 1, channel: bridge.channel,
       videoId: bridge.videoId, requestId, action, targetVideoId}, origin);
   }), {origin: VIDEOQ, action, targetVideoId});
+}
+async function uiAction(page, feature, action, click) {
+  assert(['tags', 'qa'].includes(feature));
+  const [response] = await Promise.all([page.waitForResponse(response => {
+    if (new URL(response.url()).pathname !== '/api/lti/' + feature || response.request().method() !== 'POST') return false;
+    try {return response.request().postDataJSON()?.action === action;} catch {return false;}
+  }), click()]);
+  assert.equal(response.status(), 200, 'Actual course UI operation succeeds');
+  return response.json();
+}
+async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  const name = 'CPU course tag <safe>', renamed = 'CPU course tag <renamed>';
+  await teacherPage.locator('#videoq-course-tags summary').click();
+  await teacherFrame.locator('#tags-create').click();
+  await teacherFrame.locator('#tags-name').fill(name);
+  await teacherFrame.locator('#tags-color').selectOption('blue');
+  const created = await uiAction(teacherPage, 'tags', 'create', () => teacherFrame.locator('#tags-save').click());
+  const tag = created.tags.find(tag => tag.name === name);
+  assert(tag && tag.color === 'blue' && tag.editable === true);
+  await teacherFrame.locator('#tags-vocabulary').getByText(name, {exact: true}).waitFor();
+  assert.equal(await teacherFrame.locator('#tags-vocabulary safe').count(), 0, 'Tag text is never markup');
+  await teacherFrame.getByRole('button', {name: /^(Edit material tags|教材のタグを編集)$/}).click();
+  await teacherFrame.locator('#tags-fields input[type="checkbox"]').check();
+  const assigned = await uiAction(teacherPage, 'tags', 'assign', () => teacherFrame.locator('#tags-save').click());
+  assert.deepEqual(assigned.videos.find(video => video.videoId === videoId)?.tagIds, [tag.id]);
+  await teacherFrame.locator('#tags-close').click();
+
+  await learnerPage.locator('#videoq-course-tags summary').click();
+  await learnerFrame.locator('#tags-filter option').filter({hasText: name}).waitFor({state: 'attached'});
+  await learnerFrame.locator('#tags-filter').selectOption(tag.id);
+  await learnerFrame.locator('#tags-materials').getByText(name, {exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#tags-create').isVisible(), false);
+  const denied = await learnerFrame.evaluate(() => window.__cpuRead('tags', {
+    action: 'create', operationId: crypto.randomUUID(), name: 'Denied learner tag', color: 'blue',
+  }));
+  assert.equal(denied.status, 403);
+  await learnerFrame.getByRole('button', {name: /^(Read transcript|文字起こしを読む)$/}).click();
+  await learnerFrame.locator('#tags-transcript li').first().waitFor();
+  assert.match(await learnerFrame.locator('#tags-transcript').innerText(), /住所/);
+
+  await teacherPage.locator('#videoq-course-tags summary').click();
+  await teacherFrame.getByRole('button', {name: /^(Edit tag|タグを編集)$/}).click();
+  await teacherFrame.locator('#tags-name').fill(renamed);
+  await teacherFrame.locator('#tags-color').selectOption('green');
+  const changed = await uiAction(teacherPage, 'tags', 'update', () => teacherFrame.locator('#tags-save').click());
+  assert(changed.tags.some(item => item.id === tag.id && item.name === renamed && item.color === 'green'));
+  await learnerFrame.locator('#tags-refresh').click();
+  await learnerFrame.locator('#tags-materials').getByText(renamed, {exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#tags-materials renamed').count(), 0);
+  await teacherFrame.getByRole('button', {name: /^(Edit tag|タグを編集)$/}).click();
+  await teacherFrame.locator('#tags-delete').click();
+  const removed = await uiAction(teacherPage, 'tags', 'delete', () => teacherFrame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete tag|タグを削除)$/}).click());
+  assert.equal(removed.tags.length, 0);
+  await teacherFrame.locator('#tags-close').click();
+  await learnerFrame.locator('#tags-refresh').click();
+  await learnerFrame.waitForFunction(() => document.querySelector('#tags-vocabulary').children.length === 0
+    && document.querySelector('#tags-filter').value === '' && document.querySelector('#course-tags').getAttribute('aria-busy') === 'false');
+  await learnerFrame.locator('#tags-close').click();
+}
+async function courseQaFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  const title = 'CPU learner question <safe>', editedTitle = 'CPU learner question <edited>';
+  const reply = 'CPU teacher reply', editedReply = 'CPU teacher reply edited';
+  await learnerPage.locator('#videoq-course-qa summary').click();
+  await learnerFrame.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
+  await learnerFrame.locator('#qa-input-title').fill(title);
+  await learnerFrame.locator('#qa-input-body').fill('A real learner asks about the public Japanese clip.');
+  await learnerFrame.locator('#qa-input-lesson').selectOption(String(videoId));
+  const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerFrame.locator('#qa-content form button[type="submit"]').click());
+  const questionId = asked.data.id;
+  assert.match(questionId, /^[a-f0-9-]{36}$/);
+  await learnerFrame.getByRole('heading', {name: title, exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#qa-content safe').count(), 0);
+  assert.equal(await learnerFrame.getByRole('button', {name: /^(Feature question|注目に指定)$/}).count(), 0);
+  assert.equal((await learnerFrame.evaluate(questionId => window.__cpuRead('qa', {
+    action: 'feature', questionId, featured: true,
+  }), questionId)).status, 403);
+  const own = await learnerFrame.evaluate(questionId => window.__cpuRead('qa', {action: 'get', questionId, limit: 20, offset: 0}), questionId);
+  assert.equal(own.status, 200); assert.equal(own.body.data.question.videoId, videoId);
+
+  await teacherPage.locator('#videoq-course-qa summary').click();
+  await teacherFrame.getByRole('button', {name: title, exact: true}).click();
+  await teacherFrame.getByRole('button', {name: /^(Reply|返信する)$/}).click();
+  await teacherFrame.locator('#qa-input-body').fill(reply);
+  const replied = await uiAction(teacherPage, 'qa', 'reply', () => teacherFrame.locator('#qa-content form button[type="submit"]').click());
+  const replyId = replied.data.id;
+  await teacherFrame.locator('#qa-content article').filter({hasText: reply}).waitFor();
+  await uiAction(teacherPage, 'qa', 'vote', () => teacherFrame.getByRole('button', {name: /^(Vote|投票する) \(0\)$/}).click());
+  await teacherFrame.getByRole('button', {name: /^(Remove vote|投票を取り消す) \(1\)$/}).waitFor();
+  await uiAction(teacherPage, 'qa', 'vote', () => teacherFrame.getByRole('button', {name: /^(Remove vote|投票を取り消す) \(1\)$/}).click());
+  await uiAction(teacherPage, 'qa', 'feature', () => teacherFrame.getByRole('button', {name: /^(Feature question|注目に指定)$/}).click());
+  await teacherFrame.getByRole('button', {name: /^(Unfeature question|注目を解除)$/}).waitFor();
+  await uiAction(teacherPage, 'qa', 'feature', () => teacherFrame.getByRole('button', {name: /^(Unfeature question|注目を解除)$/}).click());
+  await teacherFrame.locator('#qa-content article').filter({hasText: reply}).getByRole('button', {name: /^(Edit|編集)$/}).click();
+  await teacherFrame.locator('#qa-input-body').fill(editedReply);
+  await uiAction(teacherPage, 'qa', 'updateReply', () => teacherFrame.locator('#qa-content form button[type="submit"]').click());
+  await teacherFrame.locator('#qa-content article').filter({hasText: editedReply}).waitFor();
+  assert.equal((await learnerFrame.evaluate(({questionId, replyId}) => window.__cpuRead('qa', {
+    action: 'updateReply', questionId, replyId, body: 'Unauthorized learner edit',
+  }), {questionId, replyId})).status, 403);
+  const unchanged = await teacherFrame.evaluate(questionId => window.__cpuRead('qa', {action: 'get', questionId, limit: 20, offset: 0}), questionId);
+  assert(unchanged.body.data.replies.some(item => item.id === replyId && item.body === editedReply));
+
+  await learnerFrame.getByRole('button', {name: /^(Edit|編集)$/}).click();
+  await learnerFrame.locator('#qa-input-title').fill(editedTitle);
+  await uiAction(learnerPage, 'qa', 'updateQuestion', () => learnerFrame.locator('#qa-content form button[type="submit"]').click());
+  await learnerFrame.getByRole('heading', {name: editedTitle, exact: true}).waitFor();
+  await learnerFrame.locator('#qa-content article').filter({hasText: editedReply}).waitFor();
+  const teacherReply = teacherFrame.locator('#qa-content article').filter({hasText: editedReply});
+  await teacherReply.getByRole('button', {name: /^(Delete|削除)$/}).click();
+  await uiAction(teacherPage, 'qa', 'deleteReply', () => teacherFrame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete|削除)$/}).click());
+  await teacherFrame.waitForFunction(() => document.querySelectorAll('#qa-content article').length === 0
+    && document.querySelector('#course-qa').getAttribute('aria-busy') === 'false');
+  await learnerPage.locator('#videoq-course-qa summary').click();
+  await teacherPage.locator('#videoq-course-qa summary').click();
+  return questionId;
+}
+async function questionAccess(frame, questionId, expected) {
+  const result = await frame.evaluate(questionId => window.__cpuRead('qa', {
+    action: 'get', questionId, limit: 20, offset: 0,
+  }), questionId);
+  assert.equal(result.status, expected);
+  if (expected === 200) assert.equal(result.body.data.question.id, questionId);
+}
+async function deleteOwnQuestion(page, frame) {
+  await page.locator('#videoq-course-qa summary').click();
+  await frame.getByRole('button', {name: /^(Delete|削除)$/}).click();
+  await uiAction(page, 'qa', 'deleteQuestion', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete|削除)$/}).click());
+  await frame.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).waitFor();
+  const empty = await frame.evaluate(() => window.__cpuRead('qa', {action: 'list', limit: 20, offset: 0}));
+  assert.equal(empty.status, 200); assert.equal(empty.body.data.total, 0);
+  await page.locator('#videoq-course-qa summary').click();
 }
 const today = new Date().toISOString().slice(0, 10);
 const period = {action: 'summary', from: today, to: today};
@@ -245,10 +379,17 @@ try {
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().waitFor();
   report.phases.push('nonempty-personal-history-resume');
 
-  stage('positive-reports');
-  period.to = new Date().toISOString().slice(0, 10);
   await teacherPage.goto(state.lessonUrl);
   const teacherFrame = await privateFrame(teacherPage);
+  stage('course-tags');
+  await courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, actual.videoId);
+  report.phases.push('actual-course-tags-crud-assignment-learner-denial-and-transcript');
+  stage('human-qa');
+  const questionId = await courseQaFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, actual.videoId);
+  report.phases.push('actual-human-qa-post-reply-edit-votes-moderation-and-cross-author-denial');
+
+  stage('positive-reports');
+  period.to = new Date().toISOString().slice(0, 10);
   await teacherPage.locator('#videoq-course-reports summary').click();
   await teacherFrame.locator('#reports-content tbody tr').first().waitFor();
   const summary = await teacherFrame.evaluate(period => window.__cpuRead('reports', period), period);
@@ -273,12 +414,18 @@ try {
 
   stage('same-session-source-enrolment');
   fixture('hide'); assert.equal((await materials(learnerPage)).ok, false);
+  await questionAccess(learnerFrame, questionId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   assert.equal((await materials(teacherPage)).ok, true);
   fixture('show'); assert.equal((await materials(learnerPage)).ok, true);
+  await questionAccess(learnerFrame, questionId, 200);
   fixture('suspend'); assert.equal((await materials(learnerPage)).ok, false);
+  await questionAccess(learnerFrame, questionId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   fixture('resume'); assert.equal((await materials(learnerPage)).ok, true);
+  await questionAccess(learnerFrame, questionId, 200);
+  await deleteOwnQuestion(learnerPage, learnerFrame);
+  report.phases.push('actual-human-qa-current-source-enrolment-and-own-deletion');
   assert.equal(await learnerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   await learnerPage.screenshot({path: join(dirname(resultPath), 'moodle-native-mobile.png'), fullPage: true});
   report.phases.push('same-session-hidden-source-enrolment-current-authority');

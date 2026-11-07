@@ -106,6 +106,17 @@ standalone transcript IDs are denied. Hiding the source and suspending enrolment
 deny the existing learner session and protected media; a teacher with hidden-view
 authority remains allowed.
 
+The broader course phase also drives actual tag create/assign/rename/delete,
+learner filtering and transcript reading, and denies a learner's tag mutation.
+Human Q&A uses normal learner posting and editing plus a teacher reply, reply
+editing/deletion, votes and featured-question controls. Learner moderation and
+editing the teacher's reply must fail. A real question stays present through
+hide/show and suspend/resume: the same learner credential must lose and regain
+that question before its author deletes it through the confirmed UI. These
+human posts must not increase the one real-AI question in the teacher's report.
+These course phases are implemented acceptance requirements; their runtime
+success remains pending with the full combined pipeline.
+
 The browser has a self-signed exception only in its disposable context and routes
 requests solely to the three known loopback test origins. PHP/API peer checks
 remain enabled with the real CA. A test hook keeps the LTI credential inside its

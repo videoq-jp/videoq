@@ -31,7 +31,8 @@ def browser_failure_summary(path):
     if not isinstance(evidence, dict):
         return 'unknown'
     allowed = {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
-               'real-native-question', 'personal-history', 'positive-reports', 'same-session-source-enrolment'}
+               'real-native-question', 'personal-history', 'course-tags', 'human-qa', 'positive-reports',
+               'same-session-source-enrolment'}
     stage = evidence.get('stage')
     summary = stage if isinstance(stage, str) and stage in allowed else 'unknown'
     failure = evidence.get('failure')
