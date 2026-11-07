@@ -88,13 +88,15 @@ jobs:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
       - name: Check public browser diagnostic boundaries
-        run: node --test .github/moodle-cpu/browser-evidence.test.mjs .github/moodle-cpu/native-browser.test.mjs
+        run: node --test .github/moodle-cpu/browser-evidence.test.mjs .github/moodle-cpu/native-browser.test.mjs .github/moodle-cpu/native-stream.test.mjs
       - name: Install checksum-pinned Helm and kind
         run: |
           HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
           KIND_INSTALL_DIR="$RUNNER_TEMP" bash .github/scripts/install-kind.sh
       - name: Install the actual browser
         run: node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Check actual streamed-response observation and cancellation
+        run: node --test .github/moodle-cpu/native-stream-browser.test.mjs
       - name: Prepare pinned Moodle source context
         run: python3 .github/scripts/moodle-cpu-sources.py "$RUNNER_TEMP/moodle-build"
       - name: Build actual application and inference adapter images

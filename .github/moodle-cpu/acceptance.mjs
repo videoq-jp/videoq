@@ -9,6 +9,7 @@ import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, medi
 import {fileURLToPath} from 'node:url';
 import {corePrivacy} from './privacy.mjs';
 import {installNativeReader, waitLearningResponse} from './native-browser.mjs';
+import {captureNativeStream} from './native-stream.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -632,14 +633,14 @@ try {
 
   stage('real-native-question');
   const question = '動画では、インターネットで「敵対的環境コース」を検索すると何の住所が出てくると述べていますか？';
-  const streamResponse = learnerPage.waitForResponse(response => new URL(response.url()).pathname === '/local/videoq/stream.php');
-  await learnerPage.locator('#videoq-native-question').fill(question);
-  await learnerPage.locator('#videoq-native-send').click();
-  const response = await streamResponse;
-  assert.equal(response.status(), 200);
-  const events = (await response.text()).split('\n').filter(line => line.startsWith('data:')).map(line => JSON.parse(line.slice(5)));
+  const {events, evidence: answerStream} = await captureNativeStream(learnerPage, {url: MOODLE + '/local/videoq/stream.php',
+    onEvidence: evidence => {report.nativeStream = evidence;}}, async () => {
+    await learnerPage.locator('#videoq-native-question').fill(question);
+    await learnerPage.locator('#videoq-native-send').click();
+  });
   assert(events.some(event => event.type === 'done'));
   assert(!events.some(event => event.type === 'error'));
+  assert.equal(answerStream.incrementalText, true, 'Actual text arrives before the terminal done frame');
   const text = events.filter(event => event.type === 'text_delta').map(event => event.text).join('');
   assert.match(text, /住所/); assert.match(text, /企業|会社/);
   const sources = events.filter(event => event.type === 'source').map(event => event.source);
@@ -767,7 +768,8 @@ try {
     videoId: actual.videoId, courseId: state.courseId, lessonUrl: state.lessonUrl, nativePage,
     stage, phase: name => report.phases.push(name), fixture, uiAction, login, context,
     memoryDigest: conversationDigest, memoryState: conversationStorage, memoryRecords: conversationMemoryRecords,
-    verifyArchive: verifyPrivacyArchive, materialState: material, sentinelState: standaloneIndexState, reportPeriod: period});
+    verifyArchive: verifyPrivacyArchive, materialState: material, sentinelState: standaloneIndexState, reportPeriod: period,
+    streamEvidence: evidence => {report.privacyStream = evidence;}});
   report.nativeTransport = await nativeBrowserEvidence();
   Object.assign(report, {status: 'passed', stage: 'complete', transcript: actual.transcript,
     managedVideoId: actual.videoId, standaloneSentinelDenied: true, asrChunks: actual.asrChunks,
@@ -783,6 +785,8 @@ try {
     ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
     ...(report.mediaRange ? {mediaRange: mediaRangeEvidence(report.mediaRange)} : {}),
     ...(report.nativeMount ? {nativeMount: nativeMountEvidence(report.nativeMount)} : {}),
+    ...(report.nativeStream ? {nativeStream: report.nativeStream} : {}),
+    ...(report.privacyStream ? {privacyStream: report.privacyStream} : {}),
   }) + '\n');
   throw error;
 } finally {

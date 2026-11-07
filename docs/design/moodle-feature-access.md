@@ -81,6 +81,16 @@ no File-page iframe, no direct browser learning request to VideoQ/storage and no
 browser Authorization header. Native completion remains unproven until this
 paired real-service run passes; old iframe acceptance is a baseline only.
 
+[CI42413204213](https://github.com/videoq-jp/videoq/actions/runs/42413204213)
+completed four native setup/import/learner-authority phases, including actual
+PHP-signed protocol-1 material access and owner-sentinel denial. It failed when
+Playwright tried to read a stream body after the native UI closed its reader;
+that result does not establish answer or privacy success. Acceptance now observes
+live Chromium network bytes without changing fetch, responses or UI cancellation.
+It retains the answer/source/error assertions and requires text delivery before
+the done frame. A real loopback Chromium regression checks both successful
+done-triggered cancellation and rejection of cancellation before completion.
+
 ## Historical iframe baseline
 
 Backend `38393b49` with companion runtime `20ea7741` passed all 17 phases in

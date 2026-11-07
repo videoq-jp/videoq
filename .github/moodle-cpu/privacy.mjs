@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {waitLearningResponse} from './native-browser.mjs';
+import {captureNativeStream} from './native-stream.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const question = '動画では、インターネットで「敵対的環境コース」を検索すると何の住所が出てくると述べていますか？';
@@ -34,12 +35,11 @@ export async function corePrivacy(h) {
     verifyArchive, materialState, sentinelState, reportPeriod} = h;
   stage('core-privacy-real-question');
   const mediaBefore = materialState(), sentinelBefore = sentinelState();
-  const stream = learnerPage.waitForResponse(r => new URL(r.url()).pathname === '/local/videoq/stream.php');
-  await learnerPage.locator('#videoq-native-question').fill(question);
-  await learnerPage.locator('#videoq-native-send').click();
-  const response = await stream;
-  assert.equal(response.status(), 200);
-  const events = (await response.text()).split('\n').filter(s => s.startsWith('data:')).map(s => JSON.parse(s.slice(5)));
+  const {events} = await captureNativeStream(learnerPage, {url: MOODLE + '/local/videoq/stream.php',
+    onEvidence: h.streamEvidence}, async () => {
+    await learnerPage.locator('#videoq-native-question').fill(question);
+    await learnerPage.locator('#videoq-native-send').click();
+  });
   assert(events.some(e => e.type === 'done') && !events.some(e => e.type === 'error'));
   assert.match(events.filter(e => e.type === 'text_delta').map(e => e.text).join(''), /住所/);
   const sources = events.filter(e => e.type === 'source').map(e => e.source);
