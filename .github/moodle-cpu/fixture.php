@@ -190,13 +190,29 @@ if ($action === 'network') {
     $network = ['privateHttps' => true, 'peerCertificateVerified' => true, 'publicIpAndDnsBlocked' => true];
 }
 if ($action === 'tick' && $row) {
-    // Recompute only this owned source; never run general cron or unrelated tasks.
-    \local_videoq\synchronizer::run((int)$row->id);
+    // LTI material snapshots/acknowledgements are driven by the actual backend
+    // materials service. The legacy push client requires a different credential
+    // and must never run for a freshly paired LTI-only installation.
+    if (get_config('local_videoq', 'servicemode') !== 'lti') {
+        \local_videoq\synchronizer::run((int)$row->id);
+    }
     $jobs = $DB->get_records('local_videoq_exports', ['cmid' => $cm->id, 'courseid' => $course->id]);
     foreach ($jobs as $job) {
         if ($job->status === 'queued' || $job->status === 'uploading') {
-            $task = new \local_videoq\task\export_material();
-            $task->set_custom_data((object)['jobid' => $job->jobid]);
+            // Rehydrate the actual queued task, including its negotiated
+            // userVisibility flag. Execute only this owned source's job.
+            $matching = [];
+            $queued = $DB->get_records('task_adhoc', ['classname' => '\\local_videoq\\task\\export_material']);
+            foreach ($queued as $record) {
+                $data = json_decode($record->customdata, false, 32, JSON_THROW_ON_ERROR);
+                if (is_object($data) && ($data->jobid ?? null) === $job->jobid) {
+                    $matching[] = $record;
+                }
+            }
+            if (count($matching) !== 1) {
+                throw new RuntimeException('Owned export must have exactly one queued task');
+            }
+            $task = \core\task\manager::adhoc_task_from_record($matching[0]);
             $task->execute();
         }
     }

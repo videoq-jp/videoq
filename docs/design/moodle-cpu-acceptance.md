@@ -96,6 +96,12 @@ reads evidence from the parent's restored application database. Checkpoints and
 vectors must be nonempty in the configured embedding table, and the new managed
 video/course must differ from the owner's standalone sentinel.
 
+The scoped Moodle tick follows the configured transport: LTI snapshots and
+acknowledgements come from the real backend material service, with no legacy
+push credential. For a transfer it rehydrates the actual queued core task,
+preserving negotiated per-user visibility, and executes only the owned source's
+job. It does not run general Moodle cron or reconstruct a task with missing data.
+
 A fresh learner context has no owner login cookie. Its signed LTI frame must
 become ready, answer the public Japanese question with real local inference,
 cite only the managed video, seek and decode the actual Moodle File, save/resume
