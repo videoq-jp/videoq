@@ -1,4 +1,5 @@
-/* Regression for caller-buffer lifetime after a failed gzwrite(), CVE-2026-76844.
+/* Regressions for caller-buffer lifetime after a failed gzwrite(),
+ * CVE-2026-76844 and CVE-2026-85091.
  * The input buffer belongs to the caller and may be released after the call.
  * Use mmap/munmap so retaining it causes a deterministic invalid access on retry.
  */
@@ -29,6 +30,7 @@ int main(void) {
     gzclearerr(file);
     /* A retry may buffer bytes or report the same I/O error; it must be safe. */
     const char retry[] = "retry after write failure";
+    (void)gzprintf(file, "%s", retry);
     (void)gzwrite(file, retry, sizeof(retry));
     (void)gzflush(file, Z_SYNC_FLUSH);
     (void)gzclose(file);
