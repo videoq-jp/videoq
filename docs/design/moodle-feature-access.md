@@ -46,11 +46,16 @@ resolves the current user, course and capabilities and signs private requests to
 erasure services. Neither visible VideoQ frames nor hidden authentication frames
 are part of this transport. See [the native protocol](./moodle-native-ui.md).
 
-Companion `b5af6b99` passes
-[CI42403530839](https://github.com/videoq-jp/videoq-moodle/actions/runs/42403530839):
+Companion `eb2cca35` (0.22.1 / 2026110802) passes
+[CI42412736121](https://github.com/videoq-jp/videoq-moodle/actions/runs/42412736121):
 PHP checks, native-browser contracts and actual PostgreSQL/MySQL installation,
 upgrade, capability, privacy and uninstall/reinstall checks. The native external
 function is registered as login-required/AJAX-capable and removed on uninstall.
+Installed checks resolve native authority for real Moodle actors and empty
+courses, render File/empty workspaces with Moodle's HTML renderer, and execute
+the actual File page under CLI with synthetic media and no browser/API/model
+execution. The page completes every login/course check before initializing
+the theme; Moodle refuses course resets after theme initialization.
 The browser contracts use actual Moodle templates with controlled API/model
 substitutes. They do not prove actual native AI inference or subject erasure.
 
