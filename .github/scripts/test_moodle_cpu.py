@@ -128,6 +128,45 @@ class MoodleCpuSafetyTests(unittest.TestCase):
         path.write_text(json.dumps({'stage': 'real-moodle-processing', 'failure': {'kind': 'error', 'command': command}}))
         self.assertNotIn('PRIVATE', probe.browser_failure_summary(path))
 
+    def test_privacy_diagnostics_keep_only_fixed_helper_and_task_labels(self):
+        path = self.root / 'stage.json'
+        path.write_text(json.dumps({'stage': 'core-privacy-delete', 'failure': {
+            'kind': 'error', 'line': 153, 'column': 7, 'message': 'PRIVATE', 'command': {
+                'operation': 'moodle-privacy-task', 'exitCode': 1, 'php': {
+                    'source': 'privacy-fixture.php', 'line': 81, 'stack': 'PRIVATE'}}}}))
+        self.assertEqual(probe.browser_failure_summary(path),
+                         'core-privacy-delete (error at privacy.mjs:153:7; moodle-privacy-task exit=1 at privacy-fixture.php:81)')
+        path.write_text(json.dumps({'stage': ['PRIVATE'], 'failure': {'kind': 'timeout', 'line': 1, 'column': 1}}))
+        self.assertEqual(probe.browser_failure_summary(path), 'unknown (timeout at acceptance.mjs:1:1)')
+
+    def privacy_report(self):
+        return {'archiveSha256': 'a' * 64,
+                'exported': {'logs': 1, 'evaluations': 0, 'conversations': 1, 'turns': 1, 'questions': 1,
+                             'replies': 0, 'checkpoints': 3, 'checkpoint_blobs': 7, 'checkpoint_writes': 5},
+                'modelMemoryBefore': {'checkpoints': 3, 'blobs': 7, 'writes': 5},
+                **{key: True for key in ['ownModelMemoryErased', 'peerDataRetained', 'originalSubjectSessionDenied',
+                                        'sharedMaterialsPreserved', 'teacherArchiveDownloadDenied',
+                                        'reportsRefreshedToZero', 'modelMemoryExportMatched']}}
+
+    def test_public_privacy_result_rejects_incomplete_proof_and_drops_private_properties(self):
+        report = self.privacy_report()
+        report['privateRecord'] = 'PRIVATE'
+        report['exported']['privateBody'] = 'PRIVATE'
+        actual = probe.privacy_result(report)
+        self.assertNotIn('PRIVATE', json.dumps(actual))
+        self.assertEqual(actual, self.privacy_report())
+        for key, value in [('archiveSha256', 'PRIVATE'), ('ownModelMemoryErased', False),
+                           ('modelMemoryExportMatched', 1), ('peerDataRetained', 'true')]:
+            report = self.privacy_report()
+            report[key] = value
+            with self.assertRaisesRegex(RuntimeError, 'evidence is incomplete'):
+                probe.privacy_result(report)
+        for key, value in [('turns', 0), ('replies', 1), ('logs', True), ('checkpoints', 100001), ('checkpoint_writes', 4)]:
+            report = self.privacy_report()
+            report['exported'][key] = value
+            with self.assertRaisesRegex(RuntimeError, 'evidence is incomplete'):
+                probe.privacy_result(report)
+
     def test_command_failure_summary_rejects_private_strings_and_invalid_types(self):
         for value in [None, [], {'operation': 'PRIVATE'}, {'operation': ['PRIVATE']}]:
             self.assertEqual(probe.command_failure_summary(value), '')

@@ -135,6 +135,15 @@ test('command evidence reconstructs only known PHP labels and bounded integers',
   assert.deepEqual(commandEvidence(cause, 'PRIVATE_OPERATION'), {operation: 'cluster-read'});
 });
 
+test('privacy commands expose fixed metadata without archive records or raw task logs', () => {
+  const cause = {status: 1, stderr: 'PRIVATE_TASK_LOG\nVIDEOQ_CPU_FAILURE ' + JSON.stringify({
+    kind: 'RuntimeException', source: 'privacy-fixture.php', line: 81, message: 'PRIVATE_ARCHIVE_RECORD'})};
+  assert.deepEqual(commandEvidence(cause, 'moodle-privacy-task'), {operation: 'moodle-privacy-task', exitCode: 1,
+    php: {kind: 'RuntimeException', source: 'privacy-fixture.php', line: 81}});
+  assert.deepEqual(commandEvidence({status: 1, stdout: 'PRIVATE_MODEL_RECORD'}, 'privacy-archive-evidence'),
+    {operation: 'privacy-archive-evidence', exitCode: 1});
+});
+
 test('maintenance evidence excludes error messages and includes only failed fixed task names', () => {
   const stderr = 'PRIVATE_LOG\n' + JSON.stringify({event: 'scheduled_delivery_recovery',
     ltiMaterials: {error: 'LTI materials service unavailable'},
