@@ -5,7 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, mediaRangeEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {fileURLToPath} from 'node:url';
 import {corePrivacy} from './privacy.mjs';
 
@@ -651,7 +651,21 @@ try {
   const mediaUrl = await media.evaluate(video => video.currentSrc);
   assert.equal(new URL(mediaUrl).origin, MOODLE);
   const range = await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}});
-  assert.equal(range.status(), 206); assert.equal((await range.body()).length, 16);
+  const rangeBody = await range.body(), rangeHeaders = range.headers();
+  const contentType = (rangeHeaders['content-type'] ?? '').split(';')[0].toLowerCase();
+  const prefix = rangeBody.subarray(0, 1024).toString('utf8');
+  const encoding = rangeHeaders['content-encoding'] ?? 'identity';
+  report.mediaRange = mediaRangeEvidence({httpStatus: range.status(), bodyBytes: rangeBody.length,
+    declaredBytes: Number(rangeHeaders['content-length'] ?? NaN),
+    offloaded: rangeHeaders['x-moodle-media-offload'] === '1',
+    rangeMatches: /^bytes 0-15\/[1-9][0-9]*$/.test(rangeHeaders['content-range'] ?? ''),
+    mp4Prefix: rangeBody.subarray(4, 8).toString('ascii') === 'ftyp',
+    htmlLike: /^\s*<(?:!doctype|html|br|b)[\s>]/i.test(prefix),
+    developerWarning: /Warning|Notice|Deprecated|Debugging/i.test(prefix),
+    contentKind: contentType.startsWith('video/') ? 'video' : contentType === 'text/html' ? 'html'
+      : contentType === 'multipart/byteranges' ? 'multipart' : 'other',
+    encoding: ['identity', 'gzip', 'br', 'zstd'].includes(encoding) ? encoding : 'other'});
+  assert.equal(range.status(), 206); assert.equal(rangeBody.length, 16);
   assert.equal(range.headers()['x-moodle-media-offload'], '1');
   await media.evaluate((video, seconds) => {video.muted = true; video.currentTime = Math.min(video.duration - 0.25, seconds + 3);}, seconds);
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().click();
@@ -765,6 +779,7 @@ try {
       report.stage.startsWith('core-privacy-') ? new URL('./privacy.mjs', import.meta.url).href : import.meta.url),
     ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
     ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
+    ...(report.mediaRange ? {mediaRange: mediaRangeEvidence(report.mediaRange)} : {}),
   }) + '\n');
   throw error;
 } finally {

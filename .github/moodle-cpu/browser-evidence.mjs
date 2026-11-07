@@ -148,6 +148,22 @@ export function tagUiEvidence(value) {
   return result;
 }
 
+// Media diagnostics contain only sizes, fixed transport classes and booleans.
+// Never retain the URL, response headers, body or application error text.
+export function mediaRangeEvidence(value) {
+  const result = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
+  if (Number.isInteger(value.httpStatus) && value.httpStatus >= 100 && value.httpStatus <= 599)
+    result.httpStatus = value.httpStatus;
+  for (const key of ['bodyBytes', 'declaredBytes'])
+    if (Number.isInteger(value[key]) && value[key] >= 0 && value[key] <= 100_000_000) result[key] = value[key];
+  for (const key of ['offloaded', 'rangeMatches', 'mp4Prefix', 'htmlLike', 'developerWarning'])
+    if (typeof value[key] === 'boolean') result[key] = value[key];
+  if (['video', 'html', 'multipart', 'other'].includes(value.contentKind)) result.contentKind = value.contentKind;
+  if (['identity', 'gzip', 'br', 'zstd', 'other'].includes(value.encoding)) result.encoding = value.encoding;
+  return result;
+}
+
 // Public CI evidence must never contain messages, selectors, URLs, HTTP bodies,
 // credentials or raw stacks from the private browser. Only fixed error classes
 // and a numeric location in the reviewed acceptance source are publishable.

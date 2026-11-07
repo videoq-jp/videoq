@@ -1,6 +1,6 @@
 import assert, {AssertionError} from 'node:assert/strict';
 import {test} from 'node:test';
-import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, commandEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, commandEvidence, mediaRangeEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -8,6 +8,24 @@ import {transportError} from './transport-probe.mjs';
 import {fileURLToPath} from 'node:url';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
+test('media range diagnostics retain bounded transport facts without headers or response bodies', () => {
+  const facts = {httpStatus: 206, bodyBytes: 16, declaredBytes: 16, offloaded: true,
+    rangeMatches: true, mp4Prefix: true, htmlLike: false, developerWarning: false,
+    contentKind: 'video', encoding: 'identity'};
+  assert.deepEqual(mediaRangeEvidence({...facts, url: 'PRIVATE_URL', headers: {cookie: 'PRIVATE_COOKIE'},
+    body: 'PRIVATE_BODY', error: 'PRIVATE_ERROR'}), facts);
+  assert.deepEqual(mediaRangeEvidence(mediaRangeEvidence(facts)), facts);
+});
+test('media range diagnostics reject invalid numeric values, types and unrecognized text', () => {
+  for (const value of [null, [], 'PRIVATE', {httpStatus: true, bodyBytes: 'PRIVATE', declaredBytes: Infinity,
+    offloaded: 'PRIVATE', contentKind: 'PRIVATE', encoding: 'PRIVATE'},
+  {httpStatus: 600, bodyBytes: -1, declaredBytes: 100_000_001, rangeMatches: 1}])
+    assert.deepEqual(mediaRangeEvidence(value), {});
+  assert.deepEqual(mediaRangeEvidence({httpStatus: 206, bodyBytes: 0, declaredBytes: 16,
+    offloaded: false, htmlLike: true, developerWarning: true, contentKind: 'html', encoding: 'gzip'}),
+  {httpStatus: 206, bodyBytes: 0, declaredBytes: 16, offloaded: false,
+    htmlLike: true, developerWarning: true, contentKind: 'html', encoding: 'gzip'});
+});
 test('click actionability excludes private Playwright selectors and intercepted markup', () => {
   const error = new Error('PRIVATE_SELECTOR\nPRIVATE_HTML intercepts pointer events\nretrying click action\n' +
     'element is not stable\ndone scrolling\nhttps://PRIVATE_URL/?token=PRIVATE_TOKEN');
