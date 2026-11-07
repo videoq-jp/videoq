@@ -30,6 +30,26 @@ class MoodleCpuSafetyTests(unittest.TestCase):
     def instance(self):
         return runtime.MoodleRuntime(self.kubeconfig, self.root / 'private', OWNER)
 
+    def test_browser_failure_summary_never_reflects_private_browser_values(self):
+        path = self.root / 'stage.json'
+        self.assertEqual(probe.browser_failure_summary(path), 'unknown')
+        for evidence in [None, [], {'stage': ['private']},
+                         {'stage': 'https://private.invalid/session', 'message': 'private'},
+                         {'stage': 'owner-pairing', 'failure': {'kind': ['private']}}]:
+            path.write_text(json.dumps(evidence))
+            expected = 'owner-pairing' if isinstance(evidence, dict) and evidence.get('stage') == 'owner-pairing' else 'unknown'
+            self.assertEqual(probe.browser_failure_summary(path), expected)
+        path.write_text('{')
+        self.assertEqual(probe.browser_failure_summary(path), 'unknown')
+        evidence = {'stage': 'real-native-question', 'failure': {
+            'kind': 'assertion', 'line': 214, 'column': 7, 'message': 'private', 'stack': 'private'}}
+        path.write_text(json.dumps(evidence))
+        self.assertEqual(probe.browser_failure_summary(path), 'real-native-question (assertion at acceptance.mjs:214:7)')
+        for row, column in [(True, 2), (2, False), (0, 2), (2, 100001), ('private', 2)]:
+            evidence['failure'].update(line=row, column=column)
+            path.write_text(json.dumps(evidence))
+            self.assertEqual(probe.browser_failure_summary(path), 'real-native-question (assertion)')
+
     def test_all_public_sources_and_base_images_are_immutable(self):
         pins = runtime.sources.read_pins()
         for component in runtime.sources.REPOSITORIES:

@@ -22,6 +22,28 @@ runtime = module('moodle_runtime', 'moodle-cpu-runtime.py')
 install = module('moodle_install', 'moodle-install-acceptance.py')
 
 
+def browser_failure_summary(path):
+    # Never reflect a browser message, selector, URL or stack in public logs.
+    try:
+        evidence = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return 'unknown'
+    if not isinstance(evidence, dict):
+        return 'unknown'
+    allowed = {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
+               'real-native-question', 'personal-history', 'positive-reports', 'same-session-source-enrolment'}
+    stage = evidence.get('stage')
+    summary = stage if isinstance(stage, str) and stage in allowed else 'unknown'
+    failure = evidence.get('failure')
+    if isinstance(failure, dict) and isinstance(failure.get('kind'), str) and failure['kind'] in {'assertion', 'timeout', 'error'}:
+        summary += ' (' + failure['kind']
+        row, column = failure.get('line'), failure.get('column')
+        if type(row) is int and type(column) is int and 0 < row <= 100_000 and 0 < column <= 100_000:
+            summary += f' at acceptance.mjs:{row}:{column}'
+        summary += ')'
+    return summary
+
+
 def api_ca_patch():
     return {'spec': {'template': {'spec': {
         'volumes': [{'name': 'moodle-cpu-ca', 'configMap': {'name': 'moodle-cpu-ca'}}],
@@ -104,10 +126,7 @@ def rehearse(kubeconfig, output, chart):
                                       str(state), str(output / 'e2e-state.json'), str(result)],
                                      env=env, stdout=stream, stderr=stream, timeout=2400)
         if process.returncode:
-            stage = json.loads((output / 'moodle-stage.json').read_text()).get('stage') if (output / 'moodle-stage.json').exists() else None
-            allowed = {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
-                       'real-native-question', 'personal-history', 'positive-reports', 'same-session-source-enrolment'}
-            suffix = stage if stage in allowed else 'unknown'
+            suffix = browser_failure_summary(output / 'moodle-stage.json')
             raise RuntimeError('Actual Moodle CPU browser acceptance failed at ' + suffix + '; raw browser diagnostic stays private')
         report = json.loads(result.read_text())
         if report.get('status') != 'passed' or not report.get('transcript'):

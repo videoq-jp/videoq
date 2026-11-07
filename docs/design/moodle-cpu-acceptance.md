@@ -113,6 +113,9 @@ private frame while issuing real feature-denial requests; no HTTP/AI response is
 substituted and no credential is exported in artifacts. Stage labels, public
 speech/answer results and a synthetic learner screenshot can be retained;
 passwords, raw browser diagnostics, cookies and private runtime state cannot.
+Public browser failures include only the fixed stage/error category and numeric
+line/column in the reviewed acceptance script. Messages, selectors, URLs, HTTP
+bodies and raw stacks remain private.
 
 Full success requires the combined job, final result and transcript assessment;
 a partial browser artifact alone is insufficient. No ready rows, transcripts,

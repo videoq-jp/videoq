@@ -5,6 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
+import {browserFailure} from './browser-evidence.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -287,6 +288,11 @@ try {
     requestedCitationSeconds: seconds, reports: summary.body.totals,
     limits: ['Public File + local CPU fixture only; cloud YouTube/provider, independent-site restore, restricted worker and wider feature inventory remain separate gates.']});
   writeFileSync(resultPath, JSON.stringify(report, null, 2) + '\n');
+} catch (error) {
+  writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({
+    stage: report.stage, completed: report.phases, failure: browserFailure(error, import.meta.url),
+  }) + '\n');
+  throw error;
 } finally {
   await browser.close();
 }
