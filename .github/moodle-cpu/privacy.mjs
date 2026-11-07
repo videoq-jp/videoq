@@ -7,10 +7,24 @@ const question = '動画では、インターネットで「敵対的環境コ�
 const title = 'CPU privacy learner question';
 const subjectText = 'CPU privacy subject text to erase';
 const peerText = 'CPU privacy teacher reply retained';
+const requestsUrl = MOODLE + '/admin/tool/dataprivacy/mydatarequests.php';
+const mailDisabledWarning = 'Not sending email due to $CFG->noemailever config setting';
 const read = (frame, path, body) => frame.evaluate(({path, body}) => window.__cpuRead(path, body), {path, body});
 async function panel(page, id, open) {
   const details = page.locator(id + ' details');
   if ((await details.getAttribute('open') !== null) !== open) await details.locator('summary').click();
+}
+
+export function suppressedMailContinuation(currentUrl, href, warnings) {
+  const current = new URL(currentUrl);
+  assert.equal(current.origin, MOODLE);
+  assert.equal(current.pathname, '/admin/tool/dataprivacy/createdatarequest.php');
+  assert(Array.isArray(warnings) && warnings.length > 0 && warnings.length <= 16);
+  assert(warnings.every(value => typeof value === 'string' && value.trim().startsWith(mailDisabledWarning)));
+  assert.equal(typeof href, 'string');
+  const target = new URL(href, current);
+  assert.equal(target.href, requestsUrl);
+  return target.href;
 }
 
 export async function corePrivacy(h) {
@@ -89,8 +103,20 @@ export async function corePrivacy(h) {
       await selfPage.goto(MOODLE + '/admin/tool/dataprivacy/createdatarequest.php', {waitUntil: 'domcontentloaded'});
       await selfPage.locator('select[name=type]').selectOption({label});
       await selfPage.locator('textarea[name=comments]').fill(configuration.comments[kind]);
-      await Promise.all([selfPage.waitForURL(u => u.pathname.endsWith('/mydatarequests.php'), {waitUntil: 'domcontentloaded'}),
+      await Promise.all([selfPage.waitForEvent('domcontentloaded'),
         selfPage.getByRole('button', {name: 'Save changes', exact: true}).click()]);
+      if (selfPage.url() !== requestsUrl) {
+        // Moodle deliberately disables automatic redirects after its known
+        // noemailever debugging message. Follow only its real, same-origin
+        // Continue link, after confirming that core created the owned request.
+        assert(fixture('privacy-status').requests[kind], 'Submitted core request exists before Continue');
+        const continuation = selfPage.getByRole('link', {name: 'Continue', exact: true});
+        const target = suppressedMailContinuation(selfPage.url(), await continuation.getAttribute('href'),
+          await selfPage.locator('.debuggingmessage').allTextContents());
+        await Promise.all([selfPage.waitForURL(u => u.href === target, {waitUntil: 'domcontentloaded'}),
+          continuation.click()]);
+      }
+      assert.equal(selfPage.url(), requestsUrl);
       let status = fixture('privacy-status').requests[kind];
       assert(status, 'Actual core request exists');
       for (const task of status.tasks.filter(t => t.kind === 'initiate')) fixture('privacy-task', {kind, taskId: task.id});

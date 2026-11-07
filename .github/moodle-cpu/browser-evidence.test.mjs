@@ -6,8 +6,29 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {transportError} from './transport-probe.mjs';
 import {fileURLToPath} from 'node:url';
+import {suppressedMailContinuation} from './privacy.mjs';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
+test('mail-suppressed core requests follow only the expected Moodle Continue destination', () => {
+  const current = 'https://moodle.localhost:18443/admin/tool/dataprivacy/createdatarequest.php?manage=0&type=1';
+  const target = 'https://moodle.localhost:18443/admin/tool/dataprivacy/mydatarequests.php';
+  const warning = 'Not sending email due to $CFG->noemailever config setting\nPRIVATE_BACKTRACE';
+  assert.equal(suppressedMailContinuation(current, target, [warning]), target);
+  assert.equal(suppressedMailContinuation(current, 'mydatarequests.php', [warning, warning]), target);
+});
+test('core request continuation rejects foreign destinations, missing warnings and unrelated errors', () => {
+  const current = 'https://moodle.localhost:18443/admin/tool/dataprivacy/createdatarequest.php';
+  const target = 'https://moodle.localhost:18443/admin/tool/dataprivacy/mydatarequests.php';
+  const warning = 'Not sending email due to $CFG->noemailever config setting';
+  for (const [url, href, warnings] of [
+    [current.replace('moodle.localhost', 'foreign.localhost'), target, [warning]],
+    [current.replace('createdatarequest', 'datarequests'), target, [warning]],
+    [current, target.replace('moodle.localhost', 'foreign.localhost'), [warning]],
+    [current, target + '?PRIVATE', [warning]], [current, null, [warning]],
+    [current, target, []], [current, target, [warning, 'PRIVATE_ERROR']],
+    [current, target, [true]], [current, target, Array(17).fill(warning)]])
+    assert.throws(() => suppressedMailContinuation(url, href, warnings));
+});
 test('media range diagnostics retain bounded transport facts without headers or response bodies', () => {
   const facts = {httpStatus: 206, bodyBytes: 16, declaredBytes: 16, offloaded: true,
     rangeMatches: true, mp4Prefix: true, htmlLike: false, developerWarning: false,
