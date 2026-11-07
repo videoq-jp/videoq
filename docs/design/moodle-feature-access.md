@@ -37,35 +37,55 @@ conversations. Native VideoQ shares or invitations cannot bypass a Moodle-manage
 material's current access checks. Changes take effect on the next request,
 including subsequent pages; already delivered content cannot be recalled.
 
-## Implementation and evidence
+## Native implementation and evidence
 
-“Implemented” describes the paired feature sources, not a deployed release.
-The backend runtime is `388e666b` with companion `20ea7741`; evaluation package
-`fa22bd29` has the same companion runtime and updated privacy documentation.
-The acceptance extension at `38393b49` passes all 17 learning, teacher and
-core-privacy phases in
-[Moodle/local-CPU CI42381005443](https://github.com/videoq-jp/videoq/actions/runs/42381005443),
-with 115 installed/network checks and retained mobile presentation without
-developer/header warnings. This evidence uses Moodle File media and actual local
-inference; hosted-provider acceptance is separate.
+The Moodle companion now owns all learning screens. The browser calls Moodle's
+session-authenticated `core/ajax` function and same-origin answer stream. PHP
+resolves the current user, course and capabilities and signs private requests to
+`/api/lms/native`. VideoQ retains common AI, search, indexing, persistence and
+erasure services. Neither visible VideoQ frames nor hidden authentication frames
+are part of this transport. See [the native protocol](./moodle-native-ui.md).
 
-| Function | Implementation entry point | Acceptance state |
+Companion `b5af6b99` passes
+[CI42403530839](https://github.com/videoq-jp/videoq-moodle/actions/runs/42403530839):
+PHP checks, native-browser contracts and actual PostgreSQL/MySQL installation,
+upgrade, capability, privacy and uninstall/reinstall checks. The native external
+function is registered as login-required/AJAX-capable and removed on uninstall.
+The browser contracts use actual Moodle templates with controlled API/model
+substitutes. They do not prove actual native AI inference or subject erasure.
+
+| Function | Native entry point | Evidence still required for this transport |
 | --- | --- | --- |
-| Empty-course entry and material selection | Companion course entry/catalog and backend LMS course bindings | Implemented; installed/owned-site empty-course, role and entry lifecycle checks exist |
-| Native video, AI questions, citations and feedback | Companion player/chat; `/api/lti/messages/stream`, protected media/feedback | Actual File/local-CPU journey passes |
-| Transcript paging, refresh and cited seek | Companion transcript panel; `/api/lti/transcript` | Actual reading/refresh/seek passes |
-| Own conversation list, download, resume and deletion | Companion history panel; `/api/lti/conversations` | Nonempty history, cross-user denial and own model-memory erasure pass |
-| Course Q&A, replies, votes and moderation | Companion Q&A panel; `/api/lti/qa` | Learner/teacher operations, cross-author denial and current-source/enrolment checks pass |
-| Moodle File upload, title/file editing, order and deletion | Companion catalog links to the existing Moodle core editors | Opt-in, actual File transfer/processing and source visibility pass; targeted PostgreSQL/HTTP tests cover replacement, deletion, stale bindings and sibling-course isolation |
-| Optional YouTube URL source | Existing Moodle URL activity, companion source negotiation and native VideoQ cloud provider policy | Implemented where the backend advertises support; on-prem denial retained; actual hosted-provider acceptance is separate |
-| Opt-in, disable, processing state and synchronization retry | Companion `manage.php` / `synchronizer` | Module/course capability, sesskey and source-generation checks exist; targeted PostgreSQL/HTTP recovery passes with stale-upload rejection and one durable task per confirmed attempt |
-| Derived description/SRT editing, reindex and retry | Private tool-frame editor; `/api/lti/management` | Description edits, reindex, confirmed clear and original-ASR restoration pass; supported retry reuses job identity/usage receipts |
-| Course tags/filtering | Companion tag panel; `/api/lti/tags` | CRUD, assignment/filtering and learner mutation denial pass |
-| Usage reports and CSV | Companion report panel; `/api/lti/reports` | Positive counts/CSV, same-session capability revocation and post-history-delete zero counts pass |
-| Connection and current permissions | Moodle connection page, pairing/material service and fresh course access | Actual pairing, normal roles, source/enrolment/capability changes and isolation pass |
-| Core-approved subject export/delete | Companion Privacy API; `/api/lms/privacy` | Actual standard requests, independent administrator approval, archive/model-store matching, erasure, peer retention and session revocation pass |
+| Empty-course entry and material selection | Moodle workspace/templates and course catalog | Real native course/role flow; controlled empty-course UI passes |
+| Video, AI answers, citations and feedback | Moodle player/chat, PHP stream and native messages/feedback API | Actual File/local-CPU answer and citation/feedback journey |
+| Transcript paging, refresh and seek | Moodle transcript panel and native transcript API | Actual reading/refresh/seek |
+| Own conversation list, download, resume/delete | Moodle history panel and native conversations API | Actual nonempty history, cross-user denial and model-memory erasure |
+| Course Q&A, replies, votes and moderation | Moodle Q&A panel and native Q&A API | Actual learner/teacher operations and current authority |
+| Canonical upload, title/file editing, order/deletion | Existing Moodle core editors through catalog links | Existing source/recovery database evidence retained; real native integration |
+| Optional YouTube URL source | Moodle URL activity and optional provider player | Current-grant/player contracts pass; actual hosted provider remains edition-specific |
+| Opt-in, processing state and synchronization retry | Moodle manage/synchronizer and existing material services | Installed capability/lifecycle checks pass; existing focused recovery evidence retained |
+| Derived description/SRT, reindex and retry | Moodle material form and native management API | Actual edits/indexing; controlled drafts/conflicts/uncertain retries pass |
+| Course tags/filtering | Moodle tag panel and native tags API | Actual CRUD, assignment/filtering and learner denial |
+| Usage reports/CSV | Moodle report panel and native reports API | Actual aggregates, CSV, capability revocation and post-erasure counts |
+| Connection and current permissions | Existing pairing, Moodle capabilities and private native assertions | Installed roles/registry pass; actual PHP-to-VideoQ native authentication |
+| Core-approved subject export/delete | Moodle Privacy API and existing LMS privacy services | Repeat standard approval, archive/model-store comparison, erasure and original-session denial |
 
-The core-privacy journey creates a second actual AI conversation with nonempty
+The actual CPU/privacy acceptance keeps the established 17 workflows and now
+uses Moodle endpoints and native controls. It additionally requires protocol 1,
+no File-page iframe, no direct browser learning request to VideoQ/storage and no
+browser Authorization header. Native completion remains unproven until this
+paired real-service run passes; old iframe acceptance is a baseline only.
+
+## Historical iframe baseline
+
+Backend `38393b49` with companion runtime `20ea7741` passed all 17 phases in
+[CI42381005443](https://github.com/videoq-jp/videoq/actions/runs/42381005443).
+Evaluation package `fa22bd29` has the same runtime with privacy documentation
+changes. That run used actual File/local-CPU inference, 115 installed/network
+checks and retained mobile presentation without developer/header warnings.
+It does not validate the replacement native transport.
+
+That historical core-privacy journey creates a second actual AI conversation with nonempty
 official model stores. The subject uses Moodle's standard export and deletion
 forms, and a separate administrator approves each request. Pending requests
 retain the original data; learners cannot approve requests and teachers cannot
@@ -85,19 +105,19 @@ actual inference is established separately by the accepted File/local-CPU journe
 
 ## Compatibility and remaining delivery checks
 
-New backend access requests opt into extended permissions and management/source
-metadata. Older callers retain their strict response shape. Missing permissions
-never grant a new capability. Transcript responses contain only current material
-identity, cues and bounded paging data; iframe credentials never cross the native
-message bridge.
+The new companion requires native learning protocol 1. Older browser-LTI clients
+retain their existing response shapes and separate authentication path; native
+credentials cannot authenticate through that path. Missing permissions deny
+access. No VideoQ token, assertion or server-session identifier is sent to the
+Moodle browser. Moodle capability refusals retain their authority status through
+the gateway instead of appearing as transport success.
 
-These results establish the Moodle File/local-CPU profile. Deploy the paired
-backend and companion changes together. Confirm the supported cloud source path
-when delivering that edition. Existing per-feature design documents
-contain historical, broader inventories; those are not a requirement to copy
-standalone billing, public sharing or global user administration into Moodle.
-The separate experimental worker-role/infrastructure work is preserved for its
-own review and is not automatically a prerequisite for this scope.
+Deliver the paired backend and companion together after actual native acceptance
+and source-pinned installer verification. Confirm the supported cloud source path
+when delivering that edition. Historical broader feature inventories do not
+require copying standalone billing, public sharing or global user administration
+into Moodle. Separate experimental worker/infrastructure work remains outside
+this delivery.
 
 Marketplace classification MMS-433 and listing publication remain separate from
 implementation readiness. No production deployment or publication is implied by
