@@ -1,0 +1,56 @@
+name: Moodle installed acceptance
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  installed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - name: Validate fixture isolation and immutable source pins
+        run: python3 -m unittest discover -s .github/scripts -p test_moodle_cpu.py -v
+      - name: Install host media encoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install checksum-pinned kind
+        run: KIND_INSTALL_DIR="$RUNNER_TEMP" bash .github/scripts/install-kind.sh
+      - name: Prepare public commit-pinned Moodle sources
+        run: python3 .github/scripts/moodle-cpu-sources.py "$RUNNER_TEMP/moodle-build"
+      - name: Build the test-only Moodle image
+        run: |
+          python3 - <<'PY'
+          import importlib.util, os, subprocess
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('pins', '.github/scripts/moodle-cpu-sources.py')
+          pins = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(pins)
+          value = pins.read_pins()
+          subprocess.run(['docker', 'build', '--build-arg', 'PHP_IMAGE=' + value['phpImage'],
+              '--build-arg', 'MOODLE_REVISION=' + value['moodle']['revision'],
+              '--build-arg', 'COMPANION_REVISION=' + value['companion']['revision'],
+              '-t', 'videoq-moodle:cpu-acceptance', str(Path(os.environ['RUNNER_TEMP']) / 'moodle-build')], check=True)
+          PY
+      - name: Exercise actual Moodle roles, enrolment, visibility and private HTTPS
+        run: |
+          export PATH="$RUNNER_TEMP:$PATH"
+          python3 .github/scripts/moodle-install-acceptance.py "$RUNNER_TEMP/moodle-installed"
+      - name: Retain only public fixture evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: moodle-installed-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/moodle-build/source-identities.json
+            ${{ runner.temp }}/moodle-installed/result.json
+            ${{ runner.temp }}/moodle-installed/cleanup.json
+            ${{ runner.temp }}/moodle-installed/diagnostics.json
+          if-no-files-found: warn
+          retention-days: 14
