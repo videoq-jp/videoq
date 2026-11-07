@@ -5,6 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, tagUiEvidence} from './browser-evidence.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -27,8 +28,12 @@ function stage(name) {
   report.stage = name;
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({stage: name, completed: report.phases}) + '\n');
 }
-function k(args, input) {
-  return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2_000_000});
+function k(args, input, operation = 'cluster-read') {
+  try {
+    return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2_000_000});
+  } catch (error) {
+    throw new AcceptanceCommandError(error, operation);
+  }
 }
 function requireOwner() {
   const marker = JSON.parse(k(['get', 'configmap', 'videoq-moodle-cpu-owner', '-o', 'json']));
@@ -38,13 +43,15 @@ function requireOwner() {
 function fixture(action) {
   assert(['status', 'tick', 'hide', 'show', 'suspend', 'resume', 'deny-reports', 'allow-reports'].includes(action));
   requireOwner();
-  return JSON.parse(k(['exec', 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action]));
+  return JSON.parse(k(['exec', 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action], undefined, 'moodle-' + action));
 }
 function maintenance() {
   requireOwner();
   // This CLI operates only on the parent's isolated synthetic database. It runs
   // inside the CA-mounted actual API container, with the real runtime config.
-  k(['exec', 'deployment/videoq-api', '--', 'node', 'dist/node.mjs', 'maintenance']);
+  const preload = 'data:text/javascript;base64,' + readFileSync(new URL('./maintenance-observer.mjs', import.meta.url)).toString('base64');
+  k(['exec', 'deployment/videoq-api', '--', 'env', 'VIDEOQ_MOODLE_CPU_OBSERVER=1',
+    'node', '--import', preload, 'dist/node.mjs', 'maintenance'], undefined, 'backend-maintenance');
 }
 function material() {
   requireOwner();
@@ -52,25 +59,69 @@ function material() {
   // read-only evidence; no status, transcript, vector or job row is fabricated.
   const sql = `SELECT row_to_json(t) FROM (SELECT v.id::int AS "videoId",r.course_id::int AS "courseId",v.status,
     v.transcript,(SELECT count(*)::int FROM ${embeddingTable} e WHERE e.video_id=v.id) AS "vectorCount",
+    (SELECT min(e.langchain_id::text) FROM ${embeddingTable} e WHERE e.video_id=v.id) AS "vectorHead",
     (SELECT count(*)::int FROM video_transcription_chunks c JOIN video_transcription_runs x ON x.run_id=c.run_id
       WHERE x.video_id=v.id AND c.segments IS NOT NULL) AS "asrChunks"
     FROM lms_resources r JOIN lms_installations i ON i.id=r.installation_id JOIN videos v ON v.id=r.video_id
     WHERE i.issuer='${MOODLE}' AND r.context_id='${state.courseId}' AND r.kind='video'
       AND r.enabled=true AND v.managed_by_lms=true) t;`;
-  const raw = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql).trim();
+  const raw = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'material-evidence').trim();
   if (!raw) return null;
   const lines = raw.split('\n');
   assert.equal(lines.length, 1, 'Exactly the owned Moodle File must be managed');
   return JSON.parse(lines[0]);
 }
+function standaloneIndexState() {
+  requireOwner();
+  const sql = `SELECT row_to_json(t) FROM (SELECT v.status,md5(COALESCE(v.transcript,'')) AS transcript,
+    (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings e WHERE e.video_id=v.id) AS hosted,
+    (SELECT md5(string_agg(e.langchain_id::text,',' ORDER BY e.langchain_id)) FROM scene_embeddings_768 e WHERE e.video_id=v.id) AS local
+    FROM videos v WHERE v.id=${sentinel.videoId}) t;`;
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'standalone-index-evidence'));
+}
+function conversationDigest(conversationId) {
+  assert.match(conversationId, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+  requireOwner();
+  const sql = `SELECT md5(thread_id) FROM chat_conversations WHERE conversation_id='${conversationId}';`;
+  const digest = k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'conversation-evidence').trim();
+  assert.match(digest, /^[a-f0-9]{32}$/);
+  return digest;
+}
+function conversationStorage(digest) {
+  assert.match(digest, /^[a-f0-9]{32}$/);
+  requireOwner();
+  const tables = {conversations: 'public.chat_conversations', turns: 'public.chat_conversation_turns',
+    scopes: 'public.lti_conversation_scopes', checkpoints: 'chat_memory.checkpoints',
+    blobs: 'chat_memory.checkpoint_blobs', writes: 'chat_memory.checkpoint_writes'};
+  const fields = Object.entries(tables).map(([key, table]) =>
+    `(SELECT count(*)::int FROM ${table} WHERE md5(thread_id)='${digest}') AS ${key}`);
+  const sql = 'SELECT row_to_json(t) FROM (SELECT ' + fields.join(',') + ') t;';
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'conversation-evidence'));
+}
 
 const browser = await chromium.launch({headless: true});
+const parentNavigation = new WeakMap();
 async function context() {
   // The browser context is restricted to three known loopback fixture origins.
   // PHP and API use the actual trusted CA for all server-to-server requests;
   // the browser's local self-signed exception is isolated to this test context.
   const ctx = await browser.newContext({ignoreHTTPSErrors: true, locale: 'en-US',
     viewport: {width: 390, height: 844}, serviceWorkers: 'block', acceptDownloads: true});
+  ctx.on('page', page => {
+    const navigation = {started: 0, finished: 0, failed: 0, pending: new Set(), kind: 'other'};
+    parentNavigation.set(page, navigation);
+    const isParent = request => {
+      try {return request.isNavigationRequest() && request.frame() === page.mainFrame();} catch {return false;}
+    };
+    page.on('request', request => {
+      if (!isParent(request)) return;
+      navigation.started++; navigation.pending.add(request);
+      const path = new URL(request.url()).pathname;
+      navigation.kind = path === '/login/index.php' ? 'login' : path === '/local/videoq/view.php' ? 'lesson' : 'other';
+    });
+    for (const [event, field] of [['requestfinished', 'finished'], ['requestfailed', 'failed']])
+      page.on(event, request => {if (navigation.pending.delete(request)) navigation[field]++;});
+  });
   await ctx.route('**/*', route => {
     const url = new URL(route.request().url());
     return allowedOrigins.has(url.origin) || ['data:', 'about:'].includes(url.protocol)
@@ -90,7 +141,7 @@ async function context() {
         return original(input, options);
       };
       window.__cpuRead = async (path, payload) => {
-        if (!['reports', 'transcript'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
+        if (!['reports', 'transcript', 'tags', 'qa', 'management', 'conversations'].includes(path) || !bearer) throw new Error('Private feature request unavailable');
         const response = await original('/api/lti/' + path, {method: 'POST', credentials: 'omit',
           headers: {'Content-Type': 'application/json', Authorization: bearer}, body: JSON.stringify(payload)});
         return {status: response.status, body: await response.json()};
@@ -114,6 +165,10 @@ async function login(ctx, username) {
 }
 async function privateFrame(page) {
   await page.waitForFunction(() => Number.isSafeInteger(window.__cpuBridge?.videoId), null, {timeout: 60_000});
+  assert.equal(await page.locator('[data-rel="debugging"]').count(), 0,
+    'Native Moodle page renders without developer debugging output');
+  assert.equal((await page.locator('body').innerText()).includes('Cannot modify header information'), false,
+    'Native Moodle page sends its headers before rendering');
   const frame = page.frames().find(frame => {
     try {const url = new URL(frame.url()); return url.origin === VIDEOQ && url.pathname.startsWith('/api/lti/');}
     catch {return false;}
@@ -137,6 +192,350 @@ async function materials(page, action = 'list', targetVideoId) {
     frame.contentWindow.postMessage({type: 'videoq:materials', version: 1, channel: bridge.channel,
       videoId: bridge.videoId, requestId, action, targetVideoId}, origin);
   }), {origin: VIDEOQ, action, targetVideoId});
+}
+async function uiAction(page, feature, action, click, status = 200) {
+  assert(['tags', 'qa', 'management', 'conversations'].includes(feature));
+  const [response] = await Promise.all([page.waitForResponse(response => {
+    if (new URL(response.url()).pathname !== '/api/lti/' + feature || response.request().method() !== 'POST') return false;
+    try {return response.request().postDataJSON()?.action === action;} catch {return false;}
+  }), click()]);
+  assert.equal(response.status(), status, 'Actual course UI operation succeeds');
+  return response.json();
+}
+async function nativeTranscriptFlow(page, videoId) {
+  await page.locator('#videoq-transcript summary').click();
+  await page.locator('#videoq-transcript-cues li').first().waitFor();
+  assert.equal(await page.locator('#videoq-transcript-lesson').inputValue(), String(videoId));
+  assert.match(await page.locator('#videoq-transcript-cues').innerText(), /住所/);
+  const cue = page.locator('#videoq-transcript-cues button').first();
+  const seconds = (await cue.innerText()).replace(',', '.').split(':').reduce((sum, part) => sum * 60 + Number(part), 0);
+  assert(Number.isFinite(seconds) && seconds >= 0);
+  await page.locator('video#videoq-player, #videoq-player video').first().evaluate((video, seconds) => {
+    video.pause(); video.currentTime = Math.min(video.duration - 0.25, seconds + 3);
+  }, seconds);
+  await cue.click();
+  await page.waitForFunction(seconds => Math.abs(document.querySelector('video#videoq-player, #videoq-player video').currentTime - seconds) < 0.75, seconds);
+  await page.locator('#videoq-transcript-refresh').click();
+  await page.waitForFunction(() => document.querySelector('#videoq-transcript').getAttribute('aria-busy') === 'false'
+    && document.querySelectorAll('#videoq-transcript-cues li').length > 0);
+  assert.match(await page.locator('#videoq-transcript-cues').innerText(), /住所/);
+  await page.locator('#videoq-transcript summary').click();
+}
+async function waitForManagedIndex(frame, transcript, previousHead, empty = false) {
+  let current;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    maintenance(); fixture('tick'); maintenance();
+    current = material();
+    assert.notEqual(current?.status, 'error', 'Actual teacher indexing must not fail');
+    if (current?.status === 'completed' && current.transcript === transcript
+        && (empty ? current.vectorCount === 0 : current.vectorCount > 0 && current.vectorHead !== previousHead)
+        && fixture('status').status === 'completed') {
+      const receipt = await frame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), current.videoId);
+      assert.equal(receipt.status, 200);
+      if (receipt.body.material.jobState === 'completed' && receipt.body.material.transcript === transcript) return current;
+    }
+    await pause(5_000);
+  }
+  throw new Error('Actual teacher index did not reach its required transcript/vector state');
+}
+async function teacherManagementFlow(page, frame, learnerFrame, actual, verifySourceMedia) {
+  const standalone = standaloneIndexState();
+  assert.equal(standalone.status, 'completed');
+  assert.match(standalone[embeddingTable === 'scene_embeddings' ? 'hosted' : 'local'], /^[a-f0-9]{32}$/);
+  await page.locator('#videoq-material-management summary').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+  assert.equal(await frame.locator('#management-transcript').inputValue(), actual.transcript);
+  const denied = await learnerFrame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), actual.videoId);
+  assert.equal(denied.status, 403);
+  const description = 'Teacher AI description <safe>';
+  await frame.locator('#management-description').fill(description);
+  const edited = await uiAction(page, 'management', 'update', () => frame.locator('#management-save').click());
+  assert.equal(edited.material.description, description);
+  assert.equal(edited.material.transcript, actual.transcript);
+  assert.equal(edited.material.status, 'completed');
+  assert.equal((await learnerFrame.evaluate(({videoId, revision}) => window.__cpuRead('management', {
+    action: 'update', videoId, revision, operationId: crypto.randomUUID(), fields: {description: 'Denied learner edit'},
+  }), {videoId: actual.videoId, revision: edited.material.revision})).status, 403);
+  const saved = await frame.evaluate(videoId => window.__cpuRead('management', {action: 'get', videoId}), actual.videoId);
+  assert.equal(saved.status, 200); assert.equal(saved.body.material.description, description);
+
+  await frame.locator('#management-reindex').click();
+  const reindex = await uiAction(page, 'management', 'reindex', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Continue|続ける)$/}).click(), 202);
+  assert.equal(reindex.material.status, 'indexing');
+  const rebuilt = await waitForManagedIndex(frame, actual.transcript, actual.vectorHead);
+  assert.equal(rebuilt.asrChunks, actual.asrChunks, 'Reindex reuses the real ASR checkpoint');
+  assert.deepEqual(standaloneIndexState(), standalone, 'Reindex preserves the standalone material');
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+
+  // This is an actual confirmed teacher edit, not fixture data insertion. The
+  // source file and original ASR are retained, and that same ASR is restored next.
+  await frame.locator('#management-transcript').fill('');
+  await frame.locator('#management-save').click();
+  const cleared = await uiAction(page, 'management', 'update', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Continue|続ける)$/}).click(), 202);
+  assert.equal(cleared.material.transcript, '');
+  const empty = await waitForManagedIndex(frame, '', rebuilt.vectorHead, true);
+  assert.equal(empty.asrChunks, actual.asrChunks);
+  assert.deepEqual(standaloneIndexState(), standalone, 'Clear only removes the managed material index');
+  await verifySourceMedia();
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false
+    && document.querySelector('#management-transcript').value === '');
+  await frame.locator('#management-transcript').fill(actual.transcript);
+  const restored = await uiAction(page, 'management', 'update', () => frame.locator('#management-save').click(), 202);
+  assert.equal(restored.material.transcript, actual.transcript);
+  const indexed = await waitForManagedIndex(frame, actual.transcript, rebuilt.vectorHead);
+  assert.equal(indexed.asrChunks, actual.asrChunks);
+  assert.deepEqual(standaloneIndexState(), standalone, 'Restore preserves the standalone material');
+  await frame.locator('#management-refresh').click();
+  await frame.waitForFunction(() => document.querySelector('#management-transcript').readOnly === false);
+  assert.equal(await frame.locator('#management-description').inputValue(), description);
+  await frame.locator('#management-close').click();
+}
+async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  try {
+    await courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId);
+  } catch (error) {
+    report.tagClick = clickActionabilityEvidence(error);
+    async function snapshot(page, frame) {
+      const privateUi = await frame.evaluate(() => {
+        const panel = document.querySelector('#course-tags'), button = document.querySelector('#tags-create');
+        const rect = button.getBoundingClientRect(), style = getComputedStyle(button),
+          centerX = rect.x + rect.width / 2, centerY = rect.y + rect.height / 2,
+          hit = document.elementFromPoint(centerX, centerY);
+        return {nativeMode: document.body.classList.contains('moodle-tags'),
+          otherToolOpen: ['moodle-management', 'moodle-qa', 'moodle-personal-history', 'moodle-reports']
+            .some(mode => document.body.classList.contains(mode)), panelHidden: panel.hidden, panelOpen: panel.open,
+          buttonHidden: button.hidden, buttonDisabled: button.disabled,
+          buttonVisible: rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden',
+          buttonWidth: Math.round(rect.width), buttonHeight: Math.round(rect.height), busy: panel.getAttribute('aria-busy') === 'true',
+          centerX, centerY, privateHitButton: hit === button || button.contains(hit),
+          targetInFrameViewport: rect.width > 0 && rect.height > 0 && centerX >= 0 && centerX < innerWidth && centerY >= 0 && centerY < innerHeight,
+          buttonPointerEventsNone: style.pointerEvents === 'none', buttonTop: Math.round(rect.top), buttonBottom: Math.round(rect.bottom),
+          panelClientHeight: panel.clientHeight, panelScrollHeight: panel.scrollHeight, panelScrollTop: Math.round(panel.scrollTop),
+          privateViewportHeight: innerHeight, privateViewportWidth: innerWidth, openDialogs: document.querySelectorAll('dialog[open]').length};
+      });
+      const parent = await page.evaluate(local => {
+        const panel = document.querySelector('.local-videoq-questions'), frame = document.querySelector('#videoq-questions');
+        const rect = frame.getBoundingClientRect(), style = getComputedStyle(frame),
+          scaleX = frame.offsetWidth ? rect.width / frame.offsetWidth : 1,
+          scaleY = frame.offsetHeight ? rect.height / frame.offsetHeight : 1,
+          x = rect.x + (frame.clientLeft + local.centerX) * scaleX,
+          y = rect.y + (frame.clientTop + local.centerY) * scaleY,
+          hit = document.elementFromPoint(x, y);
+        const parentHitTarget = !hit ? 'none' : hit === frame ? 'frame'
+          : hit.closest('dialog[open],[role="dialog"]') ? 'dialog'
+          : hit.closest('header,nav,[role="navigation"]') ? 'header'
+          : hit.closest('footer,#page-footer') ? 'footer'
+          : hit.closest('.modal-backdrop,.popover,.dropdown-menu,.tour-shade') ? 'overlay' : 'other';
+        return {parentPanelOpen: panel.classList.contains('local-videoq-tags-open'),
+          parentDetailsOpen: document.querySelector('#videoq-course-tags details').open,
+          frameExposed: frame.getAttribute('aria-hidden') !== 'true', frameClipped: style.clipPath !== 'none',
+          frameWidth: Math.round(rect.width), frameHeight: Math.round(rect.height), frameX: Math.round(rect.x), frameY: Math.round(rect.y),
+          targetInParentViewport: local.targetInFrameViewport && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+          framePointerEventsNone: style.pointerEvents === 'none', frameActive: document.activeElement === frame, parentHitTarget};
+      }, privateUi);
+      parent.parentDocumentState = await page.evaluate(() => document.readyState);
+      const navigation = parentNavigation.get(page);
+      if (navigation) Object.assign(parent, {parentDocumentsStarted: navigation.started, parentDocumentsFinished: navigation.finished,
+        parentDocumentsFailed: navigation.failed, parentDocumentsPending: navigation.pending.size, parentDocumentKind: navigation.kind});
+      // Read the current real catalog without changing the UI. The original
+      // credential/fetch and server authorization remain intact; no writes or
+      // response substitution. This catalog read has its own deadline.
+      const catalog = await frame.evaluate(() => new Promise(resolve => {
+        const timer = setTimeout(() => resolve({timedOut: true}), 15_000);
+        window.__cpuRead('tags', {action: 'list'}).then(value => {
+          clearTimeout(timer);
+          resolve({status: value.status, canManage: value.body?.canManage,
+            tags: Array.isArray(value.body?.tags) ? value.body.tags.length : undefined,
+            videos: Array.isArray(value.body?.videos) ? value.body.videos.length : undefined});
+        }).catch(() => {clearTimeout(timer); resolve({requestFailed: true});});
+      }));
+      return {...parent, ...privateUi, catalog};
+    }
+    const values = await Promise.allSettled([snapshot(teacherPage, teacherFrame), snapshot(learnerPage, learnerFrame)]);
+    report.tagsUi = tagUiEvidence(Object.fromEntries(['teacher', 'learner'].flatMap((role, index) =>
+      values[index].status === 'fulfilled' ? [[role, values[index].value]] : [])));
+    throw error;
+  }
+}
+async function courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  const name = 'CPU course tag <safe>', renamed = 'CPU course tag <renamed>';
+  await teacherPage.locator('#videoq-course-tags summary').click();
+  // A mobile user scrolls to the exposed private tool before operating it.
+  // Keep the normal child click/actionability checks and their deadline.
+  await teacherPage.locator('.local-videoq-tags-open #videoq-questions:not([aria-hidden="true"])').scrollIntoViewIfNeeded();
+  await teacherFrame.locator('#tags-create').click();
+  await teacherFrame.locator('#tags-name').fill(name);
+  await teacherFrame.locator('#tags-color').selectOption('blue');
+  const created = await uiAction(teacherPage, 'tags', 'create', () => teacherFrame.locator('#tags-save').click());
+  const tag = created.tags.find(tag => tag.name === name);
+  assert(tag && tag.color === 'blue' && tag.editable === true);
+  await teacherFrame.locator('#tags-vocabulary').getByText(name, {exact: true}).waitFor();
+  assert.equal(await teacherFrame.locator('#tags-vocabulary safe').count(), 0, 'Tag text is never markup');
+  await teacherFrame.getByRole('button', {name: /^(Edit material tags|教材のタグを編集)$/}).click();
+  await teacherFrame.locator('#tags-fields input[type="checkbox"]').check();
+  const assigned = await uiAction(teacherPage, 'tags', 'assign', () => teacherFrame.locator('#tags-save').click());
+  assert.deepEqual(assigned.videos.find(video => video.videoId === videoId)?.tagIds, [tag.id]);
+  await teacherFrame.locator('#tags-close').click();
+
+  await learnerPage.locator('#videoq-course-tags summary').click();
+  await learnerFrame.locator('#tags-filter option').filter({hasText: name}).waitFor({state: 'attached'});
+  await learnerFrame.locator('#tags-filter').selectOption(tag.id);
+  await learnerFrame.locator('#tags-materials').getByText(name, {exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#tags-create').isVisible(), false);
+  const denied = await learnerFrame.evaluate(() => window.__cpuRead('tags', {
+    action: 'create', operationId: crypto.randomUUID(), name: 'Denied learner tag', color: 'blue',
+  }));
+  assert.equal(denied.status, 403);
+  await learnerFrame.getByRole('button', {name: /^(Read transcript|文字起こしを読む)$/}).click();
+  await learnerFrame.locator('#tags-transcript li').first().waitFor();
+  assert.match(await learnerFrame.locator('#tags-transcript').innerText(), /住所/);
+
+  await teacherPage.locator('#videoq-course-tags summary').click();
+  await teacherFrame.getByRole('button', {name: /^(Edit tag|タグを編集)$/}).click();
+  await teacherFrame.locator('#tags-name').fill(renamed);
+  await teacherFrame.locator('#tags-color').selectOption('green');
+  const changed = await uiAction(teacherPage, 'tags', 'update', () => teacherFrame.locator('#tags-save').click());
+  assert(changed.tags.some(item => item.id === tag.id && item.name === renamed && item.color === 'green'));
+  await learnerFrame.locator('#tags-refresh').click();
+  await learnerFrame.locator('#tags-materials').getByText(renamed, {exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#tags-materials renamed').count(), 0);
+  await teacherFrame.getByRole('button', {name: /^(Edit tag|タグを編集)$/}).click();
+  await teacherFrame.locator('#tags-delete').click();
+  const removed = await uiAction(teacherPage, 'tags', 'delete', () => teacherFrame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete tag|タグを削除)$/}).click());
+  assert.equal(removed.tags.length, 0);
+  await teacherFrame.locator('#tags-close').click();
+  await learnerFrame.locator('#tags-refresh').click();
+  await learnerFrame.waitForFunction(() => document.querySelector('#tags-vocabulary').children.length === 0
+    && document.querySelector('#tags-filter').value === '' && document.querySelector('#course-tags').getAttribute('aria-busy') === 'false');
+  await learnerFrame.locator('#tags-close').click();
+}
+async function courseQaFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  const title = 'CPU learner question <safe>', editedTitle = 'CPU learner question <edited>';
+  const reply = 'CPU teacher reply', editedReply = 'CPU teacher reply edited';
+  await learnerPage.locator('#videoq-course-qa summary').click();
+  await learnerFrame.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).click();
+  await learnerFrame.locator('#qa-input-title').fill(title);
+  await learnerFrame.locator('#qa-input-body').fill('A real learner asks about the public Japanese clip.');
+  await learnerFrame.locator('#qa-input-lesson').selectOption(String(videoId));
+  const asked = await uiAction(learnerPage, 'qa', 'ask', () => learnerFrame.locator('#qa-content form button[type="submit"]').click());
+  const questionId = asked.data.id;
+  assert.match(questionId, /^[a-f0-9-]{36}$/);
+  await learnerFrame.getByRole('heading', {name: title, exact: true}).waitFor();
+  assert.equal(await learnerFrame.locator('#qa-content safe').count(), 0);
+  assert.equal(await learnerFrame.getByRole('button', {name: /^(Feature question|注目に指定)$/}).count(), 0);
+  assert.equal((await learnerFrame.evaluate(questionId => window.__cpuRead('qa', {
+    action: 'feature', questionId, featured: true,
+  }), questionId)).status, 403);
+  const own = await learnerFrame.evaluate(questionId => window.__cpuRead('qa', {action: 'get', questionId, limit: 20, offset: 0}), questionId);
+  assert.equal(own.status, 200); assert.equal(own.body.data.question.videoId, videoId);
+
+  await teacherPage.locator('#videoq-course-qa summary').click();
+  await teacherFrame.getByRole('button', {name: title, exact: true}).click();
+  await teacherFrame.getByRole('button', {name: /^(Reply|返信する)$/}).click();
+  await teacherFrame.locator('#qa-input-body').fill(reply);
+  const replied = await uiAction(teacherPage, 'qa', 'reply', () => teacherFrame.locator('#qa-content form button[type="submit"]').click());
+  const replyId = replied.data.id;
+  await teacherFrame.locator('#qa-content article').filter({hasText: reply}).waitFor();
+  await uiAction(teacherPage, 'qa', 'vote', () => teacherFrame.getByRole('button', {name: /^(Vote|投票する) \(0\)$/}).click());
+  await teacherFrame.getByRole('button', {name: /^(Remove vote|投票を取り消す) \(1\)$/}).waitFor();
+  await uiAction(teacherPage, 'qa', 'vote', () => teacherFrame.getByRole('button', {name: /^(Remove vote|投票を取り消す) \(1\)$/}).click());
+  await uiAction(teacherPage, 'qa', 'feature', () => teacherFrame.getByRole('button', {name: /^(Feature question|注目に指定)$/}).click());
+  await teacherFrame.getByRole('button', {name: /^(Unfeature question|注目を解除)$/}).waitFor();
+  await uiAction(teacherPage, 'qa', 'feature', () => teacherFrame.getByRole('button', {name: /^(Unfeature question|注目を解除)$/}).click());
+  await teacherFrame.locator('#qa-content article').filter({hasText: reply}).getByRole('button', {name: /^(Edit|編集)$/}).click();
+  await teacherFrame.locator('#qa-input-body').fill(editedReply);
+  await uiAction(teacherPage, 'qa', 'updateReply', () => teacherFrame.locator('#qa-content form button[type="submit"]').click());
+  await teacherFrame.locator('#qa-content article').filter({hasText: editedReply}).waitFor();
+  assert.equal((await learnerFrame.evaluate(({questionId, replyId}) => window.__cpuRead('qa', {
+    action: 'updateReply', questionId, replyId, body: 'Unauthorized learner edit',
+  }), {questionId, replyId})).status, 403);
+  const unchanged = await teacherFrame.evaluate(questionId => window.__cpuRead('qa', {action: 'get', questionId, limit: 20, offset: 0}), questionId);
+  assert(unchanged.body.data.replies.some(item => item.id === replyId && item.body === editedReply));
+
+  await learnerFrame.getByRole('button', {name: /^(Edit|編集)$/}).click();
+  await learnerFrame.locator('#qa-input-title').fill(editedTitle);
+  await uiAction(learnerPage, 'qa', 'updateQuestion', () => learnerFrame.locator('#qa-content form button[type="submit"]').click());
+  await learnerFrame.getByRole('heading', {name: editedTitle, exact: true}).waitFor();
+  await learnerFrame.locator('#qa-content article').filter({hasText: editedReply}).waitFor();
+  const teacherReply = teacherFrame.locator('#qa-content article').filter({hasText: editedReply});
+  await teacherReply.getByRole('button', {name: /^(Delete|削除)$/}).click();
+  await uiAction(teacherPage, 'qa', 'deleteReply', () => teacherFrame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete|削除)$/}).click());
+  await teacherFrame.waitForFunction(() => document.querySelectorAll('#qa-content article').length === 0
+    && document.querySelector('#course-qa').getAttribute('aria-busy') === 'false');
+  await learnerPage.locator('#videoq-course-qa summary').click();
+  await teacherPage.locator('#videoq-course-qa summary').click();
+  return questionId;
+}
+async function questionAccess(frame, questionId, expected) {
+  const result = await frame.evaluate(questionId => window.__cpuRead('qa', {
+    action: 'get', questionId, limit: 20, offset: 0,
+  }), questionId);
+  assert.equal(result.status, expected);
+  if (expected === 200) assert.equal(result.body.data.question.id, questionId);
+}
+async function deleteOwnQuestion(page, frame) {
+  await page.locator('#videoq-course-qa summary').click();
+  await frame.getByRole('button', {name: /^(Delete|削除)$/}).click();
+  await uiAction(page, 'qa', 'deleteQuestion', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete|削除)$/}).click());
+  await frame.getByRole('button', {name: /^(Ask the course|質問を投稿)$/}).waitFor();
+  const empty = await frame.evaluate(() => window.__cpuRead('qa', {action: 'list', limit: 20, offset: 0}));
+  assert.equal(empty.status, 200); assert.equal(empty.body.data.total, 0);
+  await page.locator('#videoq-course-qa summary').click();
+}
+async function conversationAccess(frame, conversationId, expected) {
+  const result = await frame.evaluate(conversationId => window.__cpuRead('conversations', {
+    action: 'get', conversationId, limit: 50,
+  }), conversationId);
+  assert.equal(result.status, expected);
+  if (expected === 200) assert.equal(result.body.id, conversationId);
+}
+function assertExportFields(value) {
+  if (value === null || typeof value !== 'object') return;
+  const forbidden = /^(?:feedbackId|feedbackToken|chatLogId|threadId|checkpointId|ownerUserId|subjectKey|retrievedContexts|sessionHash)$/;
+  for (const [key, item] of Object.entries(value)) {
+    assert(!forbidden.test(key), 'Conversation download omits internal and authentication fields');
+    assertExportFields(item);
+  }
+}
+async function exportPersonalConversation(page, frame, conversationId, videoId, question) {
+  const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('button', {
+    name: /^(Download conversation|会話をダウンロード)$/,
+  }).click()]);
+  const records = readFileSync(await download.path(), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(records[0].type, 'conversation');
+  assert.equal(records[0].format, 'videoq-personal-conversation-v1');
+  assert.equal(records[0].id, conversationId);
+  assertExportFields(records);
+  const turns = records.filter(record => record.type === 'turn');
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].question, question);
+  assert.match(turns[0].answer.segments.map(segment => segment.text).join(''), /住所/);
+  assert(turns[0].answer.sources.length > 0 && turns[0].answer.sources.every(source => source.video_id === videoId));
+  // Download contents stay in the private browser temporary directory and are
+  // never part of the public artifact allowlist.
+}
+async function deletePersonalConversation(page, frame, conversationId, digest) {
+  const before = conversationStorage(digest);
+  assert.equal(before.conversations, 1); assert.equal(before.turns, 1); assert.equal(before.scopes, 1);
+  assert(before.checkpoints + before.blobs + before.writes > 0, 'Real model memory exists before deleting it');
+  await page.locator('#videoq-personal-history summary').click();
+  await frame.getByRole('button', {name: /^(Read|読む)$/}).click();
+  await frame.getByRole('button', {name: /^(Delete conversation|会話を削除)$/}).click();
+  await uiAction(page, 'conversations', 'delete', () => frame.locator('dialog.qa-confirm')
+    .getByRole('button', {name: /^(Delete conversation|会話を削除)$/}).click());
+  await frame.getByText(/^(No saved conversations yet\.|保存済みの会話はありません。)$/).waitFor();
+  await conversationAccess(frame, conversationId, 404);
+  assert.deepEqual(conversationStorage(digest), {conversations: 0, turns: 0, scopes: 0, checkpoints: 0, blobs: 0, writes: 0});
+  await frame.getByRole('button', {name: /^(New conversation|新しい会話)$/}).click();
+  await page.waitForFunction(() => document.querySelectorAll('#videoq-native-messages .answer').length === 0
+    && !document.querySelector('#videoq-native-controls').disabled);
 }
 const today = new Date().toISOString().slice(0, 10);
 const period = {action: 'summary', from: today, to: today};
@@ -237,17 +636,38 @@ try {
   stage('personal-history');
   await learnerPage.locator('#videoq-personal-history summary').click();
   await learnerFrame.locator('#personal-history-content article').first().waitFor();
-  await learnerFrame.getByRole('button', {name: /^(Read|読む)$/}).first().click();
+  const personal = await uiAction(learnerPage, 'conversations', 'get', () => learnerFrame.getByRole('button', {name: /^(Read|読む)$/}).first().click());
+  const conversationId = personal.id;
+  const memoryDigest = conversationDigest(conversationId);
   await learnerFrame.locator('.personal-turn').first().waitFor();
   assert.match(await learnerFrame.locator('#personal-history-content').innerText(), /住所/);
+  await exportPersonalConversation(learnerPage, learnerFrame, conversationId, actual.videoId, question);
   await learnerFrame.getByRole('button', {name: /Continue this conversation|この会話を続ける/}).click();
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().waitFor();
-  report.phases.push('nonempty-personal-history-resume');
+  report.phases.push('nonempty-personal-history-export-and-resume');
+
+  stage('native-transcript');
+  await nativeTranscriptFlow(learnerPage, actual.videoId);
+  report.phases.push('actual-native-transcript-reading-refresh-and-seek');
+  await teacherPage.goto(state.lessonUrl);
+  const teacherFrame = await privateFrame(teacherPage);
+  await conversationAccess(teacherFrame, conversationId, 404);
+  stage('teacher-management');
+  await teacherManagementFlow(teacherPage, teacherFrame, learnerFrame, actual, async () => {
+    const retained = await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}});
+    assert.equal(retained.status(), 206);
+    assert.deepEqual(await retained.body(), await range.body(), 'Teacher clear retains the original Moodle media');
+  });
+  report.phases.push('actual-teacher-description-reindex-confirmed-clear-and-original-asr-restore');
+  stage('course-tags');
+  await courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, actual.videoId);
+  report.phases.push('actual-course-tags-crud-assignment-learner-denial-and-transcript');
+  stage('human-qa');
+  const questionId = await courseQaFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, actual.videoId);
+  report.phases.push('actual-human-qa-post-reply-edit-votes-moderation-and-cross-author-denial');
 
   stage('positive-reports');
   period.to = new Date().toISOString().slice(0, 10);
-  await teacherPage.goto(state.lessonUrl);
-  const teacherFrame = await privateFrame(teacherPage);
   await teacherPage.locator('#videoq-course-reports summary').click();
   await teacherFrame.locator('#reports-content tbody tr').first().waitFor();
   const summary = await teacherFrame.evaluate(period => window.__cpuRead('reports', period), period);
@@ -272,21 +692,44 @@ try {
 
   stage('same-session-source-enrolment');
   fixture('hide'); assert.equal((await materials(learnerPage)).ok, false);
+  await questionAccess(learnerFrame, questionId, 403);
+  await conversationAccess(learnerFrame, conversationId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   assert.equal((await materials(teacherPage)).ok, true);
   fixture('show'); assert.equal((await materials(learnerPage)).ok, true);
+  await questionAccess(learnerFrame, questionId, 200);
+  await conversationAccess(learnerFrame, conversationId, 200);
   fixture('suspend'); assert.equal((await materials(learnerPage)).ok, false);
+  await questionAccess(learnerFrame, questionId, 403);
+  await conversationAccess(learnerFrame, conversationId, 403);
   assert.notEqual((await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}})).status(), 206);
   fixture('resume'); assert.equal((await materials(learnerPage)).ok, true);
+  await questionAccess(learnerFrame, questionId, 200);
+  await conversationAccess(learnerFrame, conversationId, 200);
+  await deleteOwnQuestion(learnerPage, learnerFrame);
+  report.phases.push('actual-human-qa-current-source-enrolment-and-own-deletion');
   assert.equal(await learnerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   await learnerPage.screenshot({path: join(dirname(resultPath), 'moodle-native-mobile.png'), fullPage: true});
   report.phases.push('same-session-hidden-source-enrolment-current-authority');
+  stage('personal-deletion');
+  await deletePersonalConversation(learnerPage, learnerFrame, conversationId, memoryDigest);
+  const erasedReport = await teacherFrame.evaluate(period => window.__cpuRead('reports', period), period);
+  assert.equal(erasedReport.status, 200);
+  assert.deepEqual(erasedReport.body.totals, {questions: 0, good: 0, bad: 0, none: 0});
+  report.phases.push('actual-own-conversation-delete-model-memory-erasure-and-report-refresh');
   Object.assign(report, {status: 'passed', stage: 'complete', transcript: actual.transcript,
     managedVideoId: actual.videoId, standaloneSentinelDenied: true, asrChunks: actual.asrChunks,
     vectorCount: actual.vectorCount, embeddingTable, answer: text, sourceVideoIds: sources.map(source => source.video_id),
     requestedCitationSeconds: seconds, reports: summary.body.totals,
     limits: ['Public File + local CPU fixture only; cloud YouTube/provider, independent-site restore, restricted worker and wider feature inventory remain separate gates.']});
   writeFileSync(resultPath, JSON.stringify(report, null, 2) + '\n');
+} catch (error) {
+  writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({
+    stage: report.stage, completed: report.phases, failure: browserFailure(error, import.meta.url),
+    ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
+    ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
+  }) + '\n');
+  throw error;
 } finally {
   await browser.close();
 }

@@ -12,9 +12,83 @@ runs Moodle in that same owned cluster before cleanup. Combined acceptance
 requires 12 GiB. The ordinary CPU runner retains its 10 GiB minimum, and the
 signed-release CLI does not accept the test-only Moodle image.
 
-The installed-only job passed 115 checks at `e9c94ecf`. The combined pipeline is
-implemented but remains unproven until its actual CI run passes. Neither unit
-tests nor the installed-only result establish complete Moodle + real-AI behavior.
+At `f336a533`, both required jobs and CI Success passed in run `42341909106`.
+The combined job completed all 14 Moodle phases; both standalone and Moodle ASR
+independently reassess to CER 0.0 over 45 reference characters. This establishes
+the File/local-CPU workflows below, not full feature parity or release acceptance.
+Visual review found PAGE context-switch and headers-already-sent warnings in the
+mobile screenshot. The new companion pin fixes that native page lifecycle;
+final warning-free presentation still requires a complete exact-head run.
+
+At `fad9c2f6`, installed/Node acceptance passed, while the combined run
+`42345912943` completed its first eight Moodle phases before a timeout in
+`course-tags`. The new learner and teacher page-warning assertions passed on
+entry, but the final mobile screenshot and full result were not produced.
+The public stack reader recognized Node file URLs but skipped Playwright's
+filesystem helper frames, leaving only the outer call site. It now matches both
+exact forms of the reviewed source and publishes only bounded numeric
+coordinates. At `a2a856e8`, the next actual run `42349968734` again passed its
+first eight Moodle phases, then timed out at the teacher's first `#tags-create`
+click. The failing operation is now known; its cause is not. An explicit-HTTP-
+fixture local browser contract completes 12 management-close/tag-open/create
+cycles without errors, which does not reproduce or disprove the real Moodle
+failure.
+
+Failure-only evidence now records bounded native panel/button visibility,
+disabled/busy state, frame dimensions/clipping and a fresh read of each role's
+actual tag catalog (status, management permission and counts). The read uses the
+original private-frame credential and fetch without changing UI state or
+performing writes. HTML, labels, identifiers, credentials and response bodies are
+excluded. Existing functional deadlines and failure assertions remain in force;
+no tag-function correction or current full pass is claimed.
+
+At `86f7705b`, actual run `42354186618` again completes eight phases and
+times out on the first teacher tag-create click. The failure snapshot shows an
+open, exposed, unclipped frame and a visible, enabled, non-busy button; the
+original teacher catalog returns 200 with management allowed. These observations
+do not establish click actionability. Compact English/Japanese HTTP-fixture
+contracts each complete 12 cycles, and the older owned Moodle site completes two
+read-only management/tag cycles. Neither establishes current companion-pin
+behavior. Failure evidence now also retains bounded viewport/scroll positions,
+private and parent hit-test booleans, a fixed parent-target category, and fixed
+Playwright actionability signals. No markup, selector, raw action log or unbounded
+coordinate payload is published. Functional clicks and deadlines are unchanged.
+
+At `9129b65b`, run `42359049112` also fails after eight phases on the first
+teacher create-tag click. Its frame starts at y972 below the 844px parent
+viewport; the button starts at y543 below the 361px private viewport, with the
+scrollable tag panel still at scrollTop0. The original catalog remains200 with
+management allowed. Controlled offscreen-layout probes using both FrameLocator
+and a raw Frame automatically scroll and click successfully, so viewport
+position alone does not establish the cause. The journey now explicitly scrolls
+the exposed native frame into view before its unchanged child click, as a
+mobile user would. Failure diagnostics also recognize the structured Playwright
+log and fixed selector/action/navigation wait stages, plus passive main-document
+request counts and readiness enums. No response, click, authority or deadline
+is bypassed; another actual run is required.
+
+The installed runner also exercises the API's exact digest-pinned Node/Alpine
+base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
+service-account token. It compares OS and direct DNS resolution with the owned
+proxy service, verifies the real TLS peer, loads the Moodle login page and
+requires an empty OAuth request to receive 401. It mounts only its public script
+and the public CA. Images load before egress closes; no models, API owner login
+or valid credentials are involved. The original installed-site evidence is saved
+before this added gate, and `node-transport.json` records only booleans, fixed
+phase/error labels, numeric statuses and the Node version. This distinguishes
+transport failures promptly without waiting for real inference and recovery.
+Successful transport does not establish a valid signed OAuth exchange.
+
+At `02d5b549` the actual Node probe fails OS lookup, TLS connection and HTTP with
+`EAI_AGAIN`, while a direct A query returns exactly the owned proxy. The fixture
+now sets `ndots:1` only on the Node probe and the combined API Pod, preferring the
+exact local hostnames before Kubernetes namespace search expansion. It retains
+ClusterFirst, generated nameservers/searches, peer verification and blocked
+public forwarding. Effective `ndots` is included as a bounded number. At
+`f336a533`, Node 26.13.0 records ndots 1, correct OS/direct DNS, verified TLS,
+login 200 and empty OAuth 401. The combined job also passes actual signed
+Moodle processing and real inference. The prior failed artifact remains the
+negative control for this fixture correction.
 
 ## Reproducible sources
 
@@ -96,6 +170,12 @@ reads evidence from the parent's restored application database. Checkpoints and
 vectors must be nonempty in the configured embedding table, and the new managed
 video/course must differ from the owner's standalone sentinel.
 
+The scoped Moodle tick follows the configured transport: LTI snapshots and
+acknowledgements come from the real backend material service, with no legacy
+push credential. For a transfer it rehydrates the actual queued core task,
+preserving negotiated per-user visibility, and executes only the owned source's
+job. It does not run general Moodle cron or reconstruct a task with missing data.
+
 A fresh learner context has no owner login cookie. Its signed LTI frame must
 become ready, answer the public Japanese question with real local inference,
 cite only the managed video, seek and decode the actual Moodle File, save/resume
@@ -106,6 +186,49 @@ standalone transcript IDs are denied. Hiding the source and suspending enrolment
 deny the existing learner session and protected media; a teacher with hidden-view
 authority remains allowed.
 
+The broader course phase also drives actual tag create/assign/rename/delete,
+learner filtering and transcript reading, and denies a learner's tag mutation.
+Human Q&A uses normal learner posting and editing plus a teacher reply, reply
+editing/deletion, votes and featured-question controls. Learner moderation and
+editing the teacher's reply must fail. A real question stays present through
+hide/show and suspend/resume: the same learner credential must lose and regain
+that question before its author deletes it through the confirmed UI. These
+human posts must not increase the one real-AI question in the teacher's report.
+These course phases completed in the actual `f336a533` combined run. Its
+artifact `13563460393` has SHA-256
+`daefab34e27ff811fb111a44c5addc4ff68088aefbadfb523ea97a7d56c01951`.
+The exact seven public entries and all 14 phase labels were checked separately
+from the CI status. The actual 390px screenshot still exposed the native-page
+warnings, so a functional pass alone does not satisfy presentation acceptance.
+
+The browser now rejects Moodle's developer-debugging elements and header-warning
+text on both learner and teacher native pages. Debug display remains enabled.
+Companion `20ea7741` retains the source activity's core page context and checks
+LTI visibility, deletion, capability and course identity without reattaching PAGE
+to another activity; the actual LTI launch keeps its own core login. This is a
+page lifecycle correction, not a relaxation of source or launch authority.
+
+The native Moodle transcript reader must display and refresh the actual ASR
+and seek the real player through a cue button. The teacher's material editor must
+save a description, rebuild the real vector index, confirm a transcript clear,
+then restore the original ASR through normal UI operations. Actual worker output
+must replace the vector row identity on rebuild/restore and remove it on clear,
+while retaining ASR checkpoints. The owner's standalone transcript/index must
+remain unchanged, and the learner must still receive the original Moodle media
+range while the transcript is cleared. Learner material reads and writes are
+denied. The ASR quality assessment uses the original real transcript; no ready
+state, transcript or vector is inserted as fixture data to meet this requirement.
+
+Personal-history acceptance downloads the actual conversation as NDJSON, checks
+its real question/answer/sources and excludes internal/feedback credentials.
+A teacher cannot retrieve the learner's conversation UUID. The retained learner
+session must lose and regain that conversation with source visibility and
+enrolment. Confirmed own deletion must erase its saved turn and all three model
+checkpoint stores, refresh the teacher's aggregate counts to zero, and allow a
+new empty conversation. Export contents and checkpoint identifiers stay private;
+only completed phase labels/counts can be published. This verifies one saved
+conversation; approved full-subject privacy requests remain a separate gate.
+
 The browser has a self-signed exception only in its disposable context and routes
 requests solely to the three known loopback test origins. PHP/API peer checks
 remain enabled with the real CA. A test hook keeps the LTI credential inside its
@@ -113,6 +236,30 @@ private frame while issuing real feature-denial requests; no HTTP/AI response is
 substituted and no credential is exported in artifacts. Stage labels, public
 speech/answer results and a synthetic learner screenshot can be retained;
 passwords, raw browser diagnostics, cookies and private runtime state cannot.
+Public browser failures include the fixed stage/error category, numeric
+line/column in the reviewed acceptance script and a bounded command operation
+and exit/signal classification. Moodle CLI exceptions expose only reviewed PHP
+class/file labels, fixed error codes and numeric lines. The actual maintenance
+CLI uses a test-only Node preload to observe failed requests to the two fixed
+Moodle service endpoints. It forwards the original fetch unchanged and never
+reads headers or response bodies. Only a fixed service label, HTTP status or
+known network error code can enter evidence. Failed maintenance subtasks are
+identified by their fixed names; raw errors are reduced to a small enum. The
+Python report independently revalidates these values. Messages, selectors,
+URLs, SQL, HTTP bodies, credentials and raw stacks remain private.
+
+The `5cbb7505` combined run passed the ordinary CPU lifecycle, including actual
+ASR/cited answers, object/database restoration, upgrade/rollback and retention,
+then failed during Moodle processing after owner pairing and teacher enable.
+Its public artifact identifies only the shared command helper at
+`acceptance.mjs:32`. The subsequent `eef6af6f` diagnostics identify backend
+maintenance and a rejected fetch to Moodle's OAuth endpoint before any HTTP
+response; the underlying network code was not captured. Its standalone ASR
+again has CER 0.0 over 45 reference characters. The focused Node probe and
+expanded timeout/standard network classifications address that diagnostic gap.
+These were failed historical prefixes. The subsequent `02d5b549` negative
+control and complete `f336a533` result provide the actual transport correction
+and broader functional evidence; they do not prove a warning-free new revision.
 
 Full success requires the combined job, final result and transcript assessment;
 a partial browser artifact alone is insufficient. No ready rows, transcripts,

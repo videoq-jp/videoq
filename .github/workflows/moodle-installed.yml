@@ -51,6 +51,7 @@ jobs:
             ${{ runner.temp }}/moodle-build/source-identities.json
             ${{ runner.temp }}/moodle-installed/result.json
             ${{ runner.temp }}/moodle-installed/cleanup.json
+            ${{ runner.temp }}/moodle-installed/node-transport.json
             ${{ runner.temp }}/moodle-installed/diagnostics.json
             ${{ runner.temp }}/moodle-installed/private/failure-summary.json
           if-no-files-found: warn
@@ -86,6 +87,8 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
+      - name: Check public browser diagnostic boundaries
+        run: node --test .github/moodle-cpu/browser-evidence.test.mjs
       - name: Install checksum-pinned Helm and kind
         run: |
           HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh

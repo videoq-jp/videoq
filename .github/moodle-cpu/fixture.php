@@ -64,6 +64,42 @@ require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 require_once($CFG->dirroot . '/user/lib.php');
 \core\session\manager::set_user(get_admin());
+// Public CI receives only fixed metadata, never a message, query, URL or stack.
+// Install after Moodle's bootstrap so its exception handler cannot replace it.
+set_exception_handler(function (Throwable $error) use ($CFG): void {
+    $kinds = ['Error', 'TypeError', 'JsonException', 'RuntimeException', 'coding_exception',
+        'dml_read_exception', 'dml_write_exception', 'dml_missing_record_exception',
+        'dml_multiple_records_exception', 'moodle_exception'];
+    $sources = [__FILE__ => 'fixture.php'];
+    foreach (['export_material', 'synchronizer', 'client', 'materials_service', 'service_auth'] as $class) {
+        $path = $class === 'export_material' ? 'task/export_material' : $class;
+        $sources[$CFG->dirroot . '/local/videoq/classes/' . $path . '.php'] = $class . '.php';
+    }
+    foreach (['manager', 'adhoc_task', 'task_base'] as $class) {
+        $label = ['manager' => 'task-manager.php', 'adhoc_task' => 'task-adhoc.php', 'task_base' => 'task-base.php'][$class];
+        $sources[$CFG->libdir . '/classes/task/' . $class . '.php'] = $label;
+    }
+    $metadata = [];
+    if (in_array(get_class($error), $kinds, true)) {
+        $metadata['kind'] = get_class($error);
+    }
+    $frames = array_merge([['file' => $error->getFile(), 'line' => $error->getLine()]], $error->getTrace());
+    foreach ($frames as $frame) {
+        if (isset($frame['file'], $frame['line'], $sources[$frame['file']]) && is_int($frame['line']) &&
+                $frame['line'] > 0 && $frame['line'] <= 100000) {
+            $metadata['source'] = $sources[$frame['file']];
+            $metadata['line'] = $frame['line'];
+            break;
+        }
+    }
+    $code = $error instanceof moodle_exception ? $error->errorcode : null;
+    if (in_array($code, ['invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception',
+            'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname'], true)) {
+        $metadata['code'] = $code;
+    }
+    fwrite(STDERR, 'VIDEOQ_CPU_FAILURE ' . json_encode((object)$metadata, JSON_THROW_ON_ERROR) . "\n");
+    exit(1);
+});
 $prefix = 'cpu_' . substr($owner, 0, 12);
 $shortname = strtoupper($prefix);
 $course = $DB->get_record('course', ['shortname' => $shortname]);
@@ -190,13 +226,29 @@ if ($action === 'network') {
     $network = ['privateHttps' => true, 'peerCertificateVerified' => true, 'publicIpAndDnsBlocked' => true];
 }
 if ($action === 'tick' && $row) {
-    // Recompute only this owned source; never run general cron or unrelated tasks.
-    \local_videoq\synchronizer::run((int)$row->id);
+    // LTI material snapshots/acknowledgements are driven by the actual backend
+    // materials service. The legacy push client requires a different credential
+    // and must never run for a freshly paired LTI-only installation.
+    if (get_config('local_videoq', 'servicemode') !== 'lti') {
+        \local_videoq\synchronizer::run((int)$row->id);
+    }
     $jobs = $DB->get_records('local_videoq_exports', ['cmid' => $cm->id, 'courseid' => $course->id]);
     foreach ($jobs as $job) {
         if ($job->status === 'queued' || $job->status === 'uploading') {
-            $task = new \local_videoq\task\export_material();
-            $task->set_custom_data((object)['jobid' => $job->jobid]);
+            // Rehydrate the actual queued task, including its negotiated
+            // userVisibility flag. Execute only this owned source's job.
+            $matching = [];
+            $queued = $DB->get_records('task_adhoc', ['classname' => '\\local_videoq\\task\\export_material']);
+            foreach ($queued as $record) {
+                $data = json_decode($record->customdata, false, 32, JSON_THROW_ON_ERROR);
+                if (is_object($data) && ($data->jobid ?? null) === $job->jobid) {
+                    $matching[] = $record;
+                }
+            }
+            if (count($matching) !== 1) {
+                throw new RuntimeException('Owned export must have exactly one queued task');
+            }
+            $task = \core\task\manager::adhoc_task_from_record($matching[0]);
             $task->execute();
         }
     }

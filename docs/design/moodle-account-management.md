@@ -57,6 +57,12 @@ fails, and keys data by the signed-in identity so late responses from a previous
 account do not restore its controls. Switching accounts is an explicit action.
 Every destination continues to enforce its own normal VideoQ authorization.
 
+On-prem sign-in resumes from the authoritative session after the account cache
+switch. Its mutation callback does not issue a second navigation, and refreshing
+the same user object does not restart navigation. This also preserves a Moodle
+management continuation when an older login mutation settles after remounting.
+Cloud sign-in retains its success callback and OAuth continuation.
+
 ## Scope and release
 
 Deploy the matching API, web page and companion together. The local plugin is
@@ -99,6 +105,40 @@ CA. This is a backend web test, with no Node tooling added to the companion.
 The optional Linux ARM Chromium/PHP harness could not initialize its browser and
 does not count as passing evidence.
 
+An additional empty-user lifecycle on the owned site verifies UI provisioning,
+actual activation/reset and old-credential denial, quota/manual usage edits,
+stop/resume, role grant/revocation, protected-administrator deletion denials,
+immediate deletion-session revocation and same-job enqueue deduplication.
+Deletion is not yet accepted: the fresh fixture lacks the historical worker
+baseline and the actual dispatcher cannot claim its job. A later attempt stops
+at a fresh administrator login with an aborted navigation before reaching the
+worker. Both attempts are cleaned and independently checked. These are separate
+from populated deletion, general polling, global reindex and full admin parity.
+The duplicate navigation paths reproduce in two new regression cases; the
+on-prem fix and existing cloud/auth cases pass 45 focused tests. The rebuilt
+owned-site browser journey still needs to be run.
+
 The companion's 13 PHP contract suites and official Moodle coding check pass
 with zero errors or warnings. These checks do not establish complete real-AI
 processing, all course operations, billing checkout or external privacy workflows.
+
+Additional owned on-prem browser acceptance on 2026-11-07 verifies a newly
+provisioned VideoQ system administrator who does not own the Moodle connection.
+The actual single-use password setup and separate Moodle/VideoQ sign-ins
+complete without HTTP mocks. Moodle administration alone grants no VideoQ
+navigation; the independently authenticated system administrator sees only
+system administration, with connected-owner and billing navigation absent.
+The real admin UI changes only that fresh actor's quotas, disables self-role and
+self-deactivation controls, and the backend rejects a valid self-demotion write.
+After an operator revokes only this new actor's role, its original browser
+session loses both the admin API and management navigation. The 390px UI has no
+horizontal overflow. Both synthetic accounts from the failed and successful
+attempts and all their auth/reset rows are independently confirmed absent;
+original users/roles, protected source data and all 19 report receipts remain.
+
+The first activation navigation timed out before form interaction. Later
+expired-link HTTP and actual browser probes were healthy; no cause or cold-start
+correction is established. The harness supports the actual Japanese UI as well
+as English, and starts a fresh context after activation to independently prove
+the authentication boundary. This does not verify the complete provisioning,
+access-reset/deletion/global-reindex lifecycle, cloud billing or full parity.

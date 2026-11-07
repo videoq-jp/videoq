@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import secrets
 import subprocess
+import time
 
 ROOT = Path(__file__).resolve().parents[2]
 CLUSTER = 'videoq-onprem-lab'
@@ -54,6 +55,47 @@ def dns_with_proxy(corefile, address):
              ' moodle.localhost videoq.localhost storage.videoq.localhost\n'
              '        ttl 5\n        fallthrough\n    }')
     return corefile.replace('.:53 {', '.:53 {' + hosts, 1)
+
+
+def node_dns_config():
+    # Prefer exact fixture hostnames before namespace search expansion. Retain
+    # ClusterFirst nameservers/searches and the existing no-public-forwarding DNS.
+    return {'options': [{'name': 'ndots', 'value': '1'}]}
+
+
+def node_transport_evidence(value):
+    """Reconstruct public transport evidence without reflecting external strings."""
+    if not isinstance(value, dict) or not isinstance(value.get('nodeVersion'), str) or not re.fullmatch(r'v\d{1,3}\.\d{1,3}\.\d{1,3}', value['nodeVersion']):
+        raise ValueError('Missing actual Node transport evidence')
+    codes = {'EAI_AGAIN', 'ENOTFOUND', 'ENODATA', 'ESERVFAIL', 'EREFUSED', 'ETIMEOUT', 'ECONNREFUSED', 'ECONNRESET',
+             'EHOSTUNREACH', 'ENETUNREACH', 'ETIMEDOUT', 'ABORT_ERR', 'UND_ERR_CONNECT_TIMEOUT',
+             'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED',
+             'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+             'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT'}
+    result = {'nodeVersion': value['nodeVersion']}
+    if type(value.get('dnsNdots')) is int and 0 <= value['dnsNdots'] <= 15:
+        result['dnsNdots'] = value['dnsNdots']
+    for phase in ['lookup', 'resolve4', 'tls', 'login', 'oauth']:
+        source = value.get(phase)
+        if not isinstance(source, dict):
+            raise ValueError('Missing Node transport phase')
+        row = {'ok': source.get('ok') is True}
+        for key in ['proxyMatched', 'lookup', 'connected', 'secure']:
+            if type(source.get(key)) is bool:
+                row[key] = source[key]
+        if type(source.get('httpStatus')) is int and 100 <= source['httpStatus'] <= 599:
+            row['httpStatus'] = source['httpStatus']
+        if source.get('kind') in ['timeout', 'error']:
+            row['kind'] = source['kind']
+        if isinstance(source.get('codes'), list):
+            row['codes'] = sorted({code for code in source['codes'] if isinstance(code, str) and code in codes})
+        result[phase] = row
+    result['status'] = 'passed' if (result['lookup']['ok'] and result['lookup'].get('proxyMatched') is True
+        and result['resolve4']['ok'] and result['resolve4'].get('proxyMatched') is True
+        and result['tls']['ok'] and all(result['tls'].get(key) is True for key in ['lookup', 'connected', 'secure'])
+        and result['login']['ok'] and result['login'].get('httpStatus') == 200
+        and result['oauth']['ok'] and result['oauth'].get('httpStatus') == 401) else 'failed'
+    return result
 
 
 def resource(kind, name, owner, spec=None, **fields):
@@ -290,3 +332,59 @@ class MoodleRuntime:
         if network != {'privateHttps': True, 'peerCertificateVerified': True, 'publicIpAndDnsBlocked': True}:
             raise RuntimeError('Actual Moodle HTTPS/egress checks did not pass')
         return {'stages': stages, 'checks': checks + 3, 'network': network}
+
+    def verify_node_transport(self):
+        """Exercise the API's pinned Node base without models, app sessions or secrets."""
+        self.assert_owner()
+        name = 'moodle-cpu-node-transport'
+        existing = self.k('get', 'pod', name, '--ignore-not-found', '-o', 'name')
+        existing += self.k('get', 'configmap', name, '--ignore-not-found', '-o', 'name')
+        if existing.strip():
+            raise RuntimeError('Refusing to adopt an existing Node transport probe')
+        address = json.loads(self.k('get', 'service', 'moodle-proxy', '-o', 'json'))['spec']['clusterIP']
+        if ipaddress.ip_address(address) not in ipaddress.ip_network('10.96.0.0/12'):
+            raise RuntimeError('Unexpected owned proxy address')
+        self.apply([resource('ConfigMap', name, self.owner,
+            data={'transport-probe.mjs': (ROOT / '.github/moodle-cpu/transport-probe.mjs').read_text()}),
+            resource('Pod', name, self.owner, {
+                'restartPolicy': 'Never', 'activeDeadlineSeconds': 120, 'automountServiceAccountToken': False,
+                'dnsConfig': node_dns_config(),
+                'securityContext': {'runAsNonRoot': True, 'runAsUser': 1000, 'runAsGroup': 1000},
+                'containers': [{'name': 'node', 'image': 'videoq-moodle-node:onprem-ci', 'imagePullPolicy': 'Never',
+                    'command': ['node', '/probe/transport-probe.mjs'],
+                    'env': [{'name': 'VIDEOQ_MOODLE_TRANSPORT_PROBE', 'value': '1'},
+                            {'name': 'VIDEOQ_MOODLE_EXPECTED_PROXY', 'value': address},
+                            {'name': 'NODE_EXTRA_CA_CERTS', 'value': '/public-ca/root.crt'}],
+                    'securityContext': {'readOnlyRootFilesystem': True, 'allowPrivilegeEscalation': False,
+                                        'capabilities': {'drop': ['ALL']}},
+                    'resources': {'requests': {'cpu': '100m', 'memory': '64Mi'},
+                                  'limits': {'cpu': '1', 'memory': '256Mi'}},
+                    'volumeMounts': [{'name': 'script', 'mountPath': '/probe', 'readOnly': True},
+                                     {'name': 'ca', 'mountPath': '/public-ca', 'readOnly': True}]}],
+                'volumes': [{'name': 'script', 'configMap': {'name': name, 'defaultMode': 0o444}},
+                            {'name': 'ca', 'configMap': {'name': 'moodle-cpu-ca', 'defaultMode': 0o444}}]})])
+        for _ in range(140):
+            phase = self.k('get', 'pod', name, '-o', 'jsonpath={.status.phase}').strip()
+            if phase in ['Succeeded', 'Failed']:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError('Owned Node transport probe did not terminate')
+        raw = self.k('logs', 'pod/' + name)
+        log = self.output / 'node-transport.log'
+        log.touch(mode=0o600)
+        log.write_text(raw)
+        candidates = []
+        for line in raw.splitlines():
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict) and 'nodeVersion' in value:
+                candidates.append(value)
+        if len(candidates) != 1:
+            raise RuntimeError('Missing bounded Node transport report; raw log stays private')
+        report = node_transport_evidence(candidates[0])
+        if phase != 'Succeeded':
+            report['status'] = 'failed'
+        return report

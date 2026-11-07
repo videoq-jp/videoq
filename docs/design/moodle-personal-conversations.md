@@ -85,10 +85,12 @@ external AI-provider records need their own operator policies.
 
 Earlier durable logs have no reconstructible Moodle-subject mapping. Do not
 infer ownership from text, launch roles or the connected owner's user ID. The
-short-lived recent-history credential is not durable attribution. Complete
-legacy handling, all-person-data export/reset, Q&A erasure preserving peer
-replies, privacy-officer authorization and Moodle Privacy API integration remain
-open. Moodle's current callbacks still require external operator handling.
+short-lived recent-history credential is not durable attribution. Legacy
+handling still requires the operator process. Approved full-subject export/erasure,
+Q&A tombstones preserving peer replies and Moodle Privacy API callbacks are
+implemented in the later privacy increment described in `moodle-privacy.md`;
+their rollout and complete operator/UI acceptance remain separate gates. The
+conversation panel itself still has no delete-all control.
 
 ## Verification
 
