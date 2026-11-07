@@ -85,12 +85,21 @@ export function clickActionabilityEvidence(value) {
   const signals = {pointerIntercepted: 'intercepts pointer events', outsideViewport: 'outside of the viewport',
     unstable: 'element is not stable', invisible: 'element is not visible', disabled: 'element is not enabled',
     detached: 'element was detached', frameDetached: 'frame was detached', scrolled: 'done scrolling',
-    retrying: 'retrying click action'};
-  const source = value instanceof Error && typeof value.message === 'string' ? Object.fromEntries(Object.entries(signals)
-    .map(([key, phrase]) => [key, value.message.includes(phrase)])) : value;
+    retrying: 'retrying click action', waitingForLocator: 'waiting for locator', resolvedElement: 'locator resolved to',
+    attemptingClick: 'attempting click action', checkingActionability: 'waiting for element to be visible, enabled and stable',
+    scrollingStarted: 'scrolling into view if needed', waitingForNavigation: 'navigation to finish',
+    locatorHandler: 'intercepting action to run the handler', hiddenFrame: 'inside a hidden frame'};
+  let source = value;
+  if (value instanceof Error && typeof value.message === 'string') {
+    const log = Array.isArray(value.log) ? value.log.filter(line => typeof line === 'string').slice(0, 10000) : [];
+    const raw = [value.message, ...log].join('\n');
+    source = Object.fromEntries(Object.entries(signals).map(([key, phrase]) => [key, raw.includes(phrase)]));
+    if (Array.isArray(value.log)) source.logLines = log.length;
+  }
   const result = {};
   if (!source || typeof source !== 'object' || Array.isArray(source)) return result;
   for (const key of Object.keys(signals)) if (typeof source[key] === 'boolean') result[key] = source[key];
+  if (Number.isInteger(source.logLines) && source.logLines >= 0 && source.logLines <= 10000) result.logLines = source.logLines;
   return result;
 }
 
@@ -109,13 +118,16 @@ export function tagUiEvidence(value) {
       if (typeof source[key] === 'boolean') row[key] = source[key];
     }
     for (const key of ['frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight', 'panelClientHeight',
-      'panelScrollHeight', 'panelScrollTop', 'privateViewportHeight', 'privateViewportWidth', 'openDialogs']) {
+      'panelScrollHeight', 'panelScrollTop', 'privateViewportHeight', 'privateViewportWidth', 'openDialogs',
+      'parentDocumentsStarted', 'parentDocumentsFinished', 'parentDocumentsFailed', 'parentDocumentsPending']) {
       if (Number.isInteger(source[key]) && source[key] >= 0 && source[key] <= 100_000) row[key] = source[key];
     }
     for (const key of ['frameX', 'frameY', 'buttonTop', 'buttonBottom'])
       if (Number.isInteger(source[key]) && Math.abs(source[key]) <= 100_000) row[key] = source[key];
     if (['frame', 'header', 'dialog', 'overlay', 'footer', 'other', 'none'].includes(source.parentHitTarget))
       row.parentHitTarget = source.parentHitTarget;
+    if (['loading', 'interactive', 'complete'].includes(source.parentDocumentState)) row.parentDocumentState = source.parentDocumentState;
+    if (['login', 'lesson', 'other'].includes(source.parentDocumentKind)) row.parentDocumentKind = source.parentDocumentKind;
     if (source.catalog && typeof source.catalog === 'object' && !Array.isArray(source.catalog)) {
       const catalog = {};
       for (const key of ['timedOut', 'requestFailed']) if (source.catalog[key] === true) catalog[key] = true;

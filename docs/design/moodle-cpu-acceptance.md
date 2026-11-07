@@ -17,8 +17,8 @@ The combined job completed all 14 Moodle phases; both standalone and Moodle ASR
 independently reassess to CER 0.0 over 45 reference characters. This establishes
 the File/local-CPU workflows below, not full feature parity or release acceptance.
 Visual review found PAGE context-switch and headers-already-sent warnings in the
-mobile screenshot. The new companion pin fixes that native page lifecycle; the
-added warning-free browser assertions still require an exact-head rerun.
+mobile screenshot. The new companion pin fixes that native page lifecycle;
+final warning-free presentation still requires a complete exact-head run.
 
 At `fad9c2f6`, installed/Node acceptance passed, while the combined run
 `42345912943` completed its first eight Moodle phases before a timeout in
@@ -53,6 +53,19 @@ behavior. Failure evidence now also retains bounded viewport/scroll positions,
 private and parent hit-test booleans, a fixed parent-target category, and fixed
 Playwright actionability signals. No markup, selector, raw action log or unbounded
 coordinate payload is published. Functional clicks and deadlines are unchanged.
+
+At `9129b65b`, run `42359049112` also fails after eight phases on the first
+teacher create-tag click. Its frame starts at y972 below the 844px parent
+viewport; the button starts at y543 below the 361px private viewport, with the
+scrollable tag panel still at scrollTop0. The original catalog remains200 with
+management allowed. Controlled offscreen-layout probes using both FrameLocator
+and a raw Frame automatically scroll and click successfully, so viewport
+position alone does not establish the cause. The journey now explicitly scrolls
+the exposed native frame into view before its unchanged child click, as a
+mobile user would. Failure diagnostics also recognize the structured Playwright
+log and fixed selector/action/navigation wait stages, plus passive main-document
+request counts and readiness enums. No response, click, authority or deadline
+is bypassed; another actual run is required.
 
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no

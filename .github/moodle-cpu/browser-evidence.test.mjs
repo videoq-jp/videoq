@@ -31,6 +31,21 @@ test('native hit testing retains only bounded positions and fixed target classes
     panelScrollHeight: 750, panelScrollTop: 0, frameX: -10, buttonTop: 520, parentHitTarget: 'header'}});
   assert(!JSON.stringify(tagUiEvidence(value)).includes('PRIVATE'));
 });
+test('structured Playwright logs and navigation observations never expose their private strings', () => {
+  const error = new Error('Timeout');
+  error.log = ['waiting for locator(PRIVATE_SELECTOR)', 'locator resolved to PRIVATE_HTML',
+    'waiting for "https://PRIVATE_URL/?token=PRIVATE" navigation to finish...', 'PRIVATE_BODY'];
+  const value = clickActionabilityEvidence(error);
+  assert.equal(value.waitingForLocator, true); assert.equal(value.resolvedElement, true);
+  assert.equal(value.waitingForNavigation, true); assert.equal(value.logLines, 4);
+  assert(!JSON.stringify(value).includes('PRIVATE'));
+  assert.deepEqual(clickActionabilityEvidence({...value, log: error.log, raw: 'PRIVATE'}), value);
+  assert.deepEqual(tagUiEvidence({teacher: {parentDocumentsStarted: 4, parentDocumentsPending: 1,
+    parentDocumentKind: 'lesson', parentDocumentState: 'interactive', url: 'PRIVATE'},
+  learner: {parentDocumentsFailed: true, parentDocumentsFinished: 100001,
+    parentDocumentKind: 'PRIVATE', parentDocumentState: 'PRIVATE'}}),
+  {teacher: {parentDocumentsStarted: 4, parentDocumentsPending: 1, parentDocumentKind: 'lesson', parentDocumentState: 'interactive'}});
+});
 test('native tag diagnostics retain bounded UI and current catalog facts without private content', () => {
   const value = {teacher: {buttonHidden: false, buttonDisabled: true, nativeMode: true,
     frameHeight: 512, buttonWidth: 90, html: 'PRIVATE_HTML', token: 'PRIVATE_TOKEN',

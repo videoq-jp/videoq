@@ -100,12 +100,28 @@ function conversationStorage(digest) {
 }
 
 const browser = await chromium.launch({headless: true});
+const parentNavigation = new WeakMap();
 async function context() {
   // The browser context is restricted to three known loopback fixture origins.
   // PHP and API use the actual trusted CA for all server-to-server requests;
   // the browser's local self-signed exception is isolated to this test context.
   const ctx = await browser.newContext({ignoreHTTPSErrors: true, locale: 'en-US',
     viewport: {width: 390, height: 844}, serviceWorkers: 'block', acceptDownloads: true});
+  ctx.on('page', page => {
+    const navigation = {started: 0, finished: 0, failed: 0, pending: new Set(), kind: 'other'};
+    parentNavigation.set(page, navigation);
+    const isParent = request => {
+      try {return request.isNavigationRequest() && request.frame() === page.mainFrame();} catch {return false;}
+    };
+    page.on('request', request => {
+      if (!isParent(request)) return;
+      navigation.started++; navigation.pending.add(request);
+      const path = new URL(request.url()).pathname;
+      navigation.kind = path === '/login/index.php' ? 'login' : path === '/local/videoq/view.php' ? 'lesson' : 'other';
+    });
+    for (const [event, field] of [['requestfinished', 'finished'], ['requestfailed', 'failed']])
+      page.on(event, request => {if (navigation.pending.delete(request)) navigation[field]++;});
+  });
   await ctx.route('**/*', route => {
     const url = new URL(route.request().url());
     return allowedOrigins.has(url.origin) || ['data:', 'about:'].includes(url.protocol)
@@ -321,6 +337,10 @@ async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFram
           targetInParentViewport: local.targetInFrameViewport && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
           framePointerEventsNone: style.pointerEvents === 'none', frameActive: document.activeElement === frame, parentHitTarget};
       }, privateUi);
+      parent.parentDocumentState = await page.evaluate(() => document.readyState);
+      const navigation = parentNavigation.get(page);
+      if (navigation) Object.assign(parent, {parentDocumentsStarted: navigation.started, parentDocumentsFinished: navigation.finished,
+        parentDocumentsFailed: navigation.failed, parentDocumentsPending: navigation.pending.size, parentDocumentKind: navigation.kind});
       // Read the current real catalog without changing the UI. The original
       // credential/fetch and server authorization remain intact; no writes or
       // response substitution. This catalog read has its own deadline.
@@ -344,6 +364,9 @@ async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFram
 async function courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
   const name = 'CPU course tag <safe>', renamed = 'CPU course tag <renamed>';
   await teacherPage.locator('#videoq-course-tags summary').click();
+  // A mobile user scrolls to the exposed private tool before operating it.
+  // Keep the normal child click/actionability checks and their deadline.
+  await teacherPage.locator('.local-videoq-tags-open #videoq-questions:not([aria-hidden="true"])').scrollIntoViewIfNeeded();
   await teacherFrame.locator('#tags-create').click();
   await teacherFrame.locator('#tags-name').fill(name);
   await teacherFrame.locator('#tags-color').selectOption('blue');
