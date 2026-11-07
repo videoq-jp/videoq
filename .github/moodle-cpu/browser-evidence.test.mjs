@@ -4,6 +4,7 @@ import {AcceptanceCommandError, browserFailure, commandEvidence} from './browser
 import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
+import {transportError} from './transport-probe.mjs';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
 test('a real Node assertion yields only its own numeric source location', () => {
@@ -107,11 +108,11 @@ test('observer retains thrown identity and never exposes unknown endpoints or er
   const seen = [];
   const observed = observeMaintenanceFetch(async () => {throw error;}, value => seen.push(value));
   await assert.rejects(observed('https://moodle.localhost:18443/local/videoq/materials.php'), value => value === error);
-  assert.deepEqual(seen, [{service: 'moodle-materials', requestFailed: true, code: 'SELF_SIGNED_CERT_IN_CHAIN'}]);
+  assert.deepEqual(seen, [{service: 'moodle-materials', requestFailed: true, requestKind: 'error', code: 'SELF_SIGNED_CERT_IN_CHAIN'}]);
   for (const input of ['https://PRIVATE.invalid/local/videoq/token.php', 'https://moodle.localhost:18443/PRIVATE',
     'PRIVATE', null]) assert.equal(serviceFailure(input, null, error), null);
   assert.deepEqual(serviceFailure('https://moodle.localhost:18443/local/videoq/token.php', null,
-    {code: 'PRIVATE', cause: {code: 'PRIVATE'}}), {service: 'moodle-oauth', requestFailed: true});
+    {code: 'PRIVATE', cause: {code: 'PRIVATE'}}), {service: 'moodle-oauth', requestFailed: true, requestKind: 'error'});
   assert(!JSON.stringify(seen).includes('PRIVATE'));
 });
 
@@ -122,4 +123,17 @@ test('actual Node preload forwards a real data fetch with no network or metadata
     env: {...process.env, VIDEOQ_MOODLE_CPU_OBSERVER: '1'}, encoding: 'utf8', timeout: 10_000,
   });
   assert.deepEqual(JSON.parse(output), {status: 200, text: 'actual-fetch'});
+});
+
+test('transport errors retain nested standard network codes and timeout class without private values', () => {
+  const cause = new AggregateError([Object.assign(new Error('PRIVATE'), {code: 'EAI_AGAIN'}),
+    Object.assign(new Error('PRIVATE'), {code: 'PRIVATE'})], 'PRIVATE');
+  const error = new Error('PRIVATE', {cause}); error.name = 'TimeoutError';
+  assert.deepEqual(transportError(error), {kind: 'timeout', codes: ['EAI_AGAIN']});
+  assert.deepEqual(serviceFailure('https://moodle.localhost:18443/local/videoq/token.php', null, error),
+    {service: 'moodle-oauth', requestFailed: true, requestKind: 'timeout', code: 'EAI_AGAIN'});
+  assert(!JSON.stringify(transportError(error)).includes('PRIVATE'));
+  cause.cause = cause;
+  assert.deepEqual(transportError({name: 'PRIVATE', cause}), {kind: 'error', codes: ['EAI_AGAIN']});
+  assert.deepEqual(transportError('PRIVATE'), {kind: 'error', codes: []});
 });

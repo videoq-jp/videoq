@@ -16,6 +16,18 @@ The installed-only job passed 115 checks at `e9c94ecf`. The combined pipeline is
 implemented but remains unproven until its actual CI run passes. Neither unit
 tests nor the installed-only result establish complete Moodle + real-AI behavior.
 
+The installed runner also exercises the API's exact digest-pinned Node/Alpine
+base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
+service-account token. It compares OS and direct DNS resolution with the owned
+proxy service, verifies the real TLS peer, loads the Moodle login page and
+requires an empty OAuth request to receive 401. It mounts only its public script
+and the public CA. Images load before egress closes; no models, API owner login
+or valid credentials are involved. The original installed-site evidence is saved
+before this added gate, and `node-transport.json` records only booleans, fixed
+phase/error labels, numeric statuses and the Node version. This distinguishes
+transport failures promptly without waiting for real inference and recovery.
+Successful transport does not establish a valid signed OAuth exchange.
+
 ## Reproducible sources
 
 `.github/moodle-cpu/pins.json` fixes the public Moodle and companion repositories
@@ -167,10 +179,13 @@ The `5cbb7505` combined run passed the ordinary CPU lifecycle, including actual
 ASR/cited answers, object/database restoration, upgrade/rollback and retention,
 then failed during Moodle processing after owner pairing and teacher enable.
 Its public artifact identifies only the shared command helper at
-`acceptance.mjs:32`, so it does not establish which inner command failed. The
-additional command diagnostics must identify that operation before a further
-product or fixture fix is justified. This failure does not prove the broader
-Moodle phases, even though the installed-only job passed.
+`acceptance.mjs:32`. The subsequent `eef6af6f` diagnostics identify backend
+maintenance and a rejected fetch to Moodle's OAuth endpoint before any HTTP
+response; the underlying network code was not captured. Its standalone ASR
+again has CER 0.0 over 45 reference characters. The focused Node probe and
+expanded timeout/standard network classifications address that remaining
+diagnostic gap. A DNS, TLS, routing or application fix still requires actual
+evidence. These failures do not prove the broader Moodle phases.
 
 Full success requires the combined job, final result and transcript assessment;
 a partial browser artifact alone is insufficient. No ready rows, transcripts,

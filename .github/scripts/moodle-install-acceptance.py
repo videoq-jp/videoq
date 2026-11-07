@@ -42,6 +42,14 @@ def check_image(image, pins):
     return info['Id']
 
 
+def node_image(dockerfile=ROOT / 'apps/api/Dockerfile'):
+    matches = re.findall(r'^FROM (node:\d+\.\d+\.\d+-alpine@sha256:[a-f0-9]{64}) AS base$',
+                         Path(dockerfile).read_text(), re.M)
+    if len(matches) != 1:
+        raise ValueError('Expected one reviewed digest-pinned API Node base')
+    return matches[0]
+
+
 def run(output, image):
     output = runtime.private_directory(output)
     def command(parts, **options):
@@ -58,14 +66,14 @@ def run(output, image):
     image_id = check_image(image, pins)
     fixture = json.loads((ROOT / '.github/onprem-lab/dependencies.json').read_text())
     offline, backing = cpu.lab.prepare_fixtures(fixture, 'onprem-ci')
-    references = {'moodle': image, 'moodle-proxy': pins['proxyImage'],
+    references = {'moodle': image, 'moodle-proxy': pins['proxyImage'], 'moodle-node': node_image(),
                   'lab-postgres': backing['postgres']['reference']}
     anonymous = output / 'anonymous'
     anonymous.mkdir(mode=0o700)
     (anonymous / 'config.json').write_text('{"auths":{}}\n')
     public_env = {**os.environ, 'DOCKER_CONFIG': str(anonymous)}
     try:
-        for reference in [cpu.NODE, references['moodle-proxy'], references['lab-postgres']]:
+        for reference in [cpu.NODE, references['moodle-proxy'], references['lab-postgres'], references['moodle-node']]:
             subprocess.run(['docker', 'pull', reference], env=public_env, check=True, timeout=600)
         for component, reference in references.items():
             command(['docker', 'tag', reference, 'videoq-' + component + ':onprem-ci'])
@@ -120,8 +128,21 @@ def run(output, image):
         report = moodle.provision(video)
         report['installedAcceptance'] = moodle.verify_installed()
         report.update({'moodleImageId': image_id, 'nativeImageImports': imports,
-                       'dockerMemoryBytes': memory, 'publicEgressFirewall': firewall})
+                       'dockerMemoryBytes': memory, 'publicEgressFirewall': firewall,
+                       'nodeImageReference': references['moodle-node']})
         (output / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+        transport = moodle.verify_node_transport()
+        version_matches = transport['nodeVersion'] == 'v' + references['moodle-node'].split(':', 1)[1].split('-', 1)[0]
+        if not version_matches:
+            transport['status'] = 'failed'
+        (output / 'node-transport.json').write_text(json.dumps(transport, indent=2) + '\n')
+        report['nodeTransport'] = transport
+        (output / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+        print('NODE_MOODLE_TRANSPORT ' + json.dumps(transport), flush=True)
+        if not version_matches:
+            raise RuntimeError('Node transport version differs from the pinned API base')
+        if transport['status'] != 'passed':
+            raise RuntimeError('Actual Node DNS/TLS/HTTP to Moodle failed; see bounded node-transport.json')
         print(json.dumps({'installedMoodle': 'passed', 'checks': report['installedAcceptance']['checks'],
                           'limits': report['limits']}), flush=True)
         return report

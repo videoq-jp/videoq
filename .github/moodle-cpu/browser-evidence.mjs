@@ -11,7 +11,9 @@ const phpCodes = new Set(['invalidconfiguration', 'invalidparameter', 'codingerr
   'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname']);
 const httpServices = new Set(['moodle-oauth', 'moodle-materials']);
 const httpCodes = new Set(['ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
-  'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR']);
+  'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
 
 export function commandEvidence(error, operation) {
   const result = {operation: operations.has(operation) ? operation : 'cluster-read'};
@@ -59,6 +61,7 @@ export function commandEvidence(error, operation) {
       const http = {service: value.service};
       if (Number.isInteger(value.httpStatus) && value.httpStatus >= 400 && value.httpStatus <= 599) http.httpStatus = value.httpStatus;
       if (value.requestFailed === true) http.requestFailed = true;
+      if (['timeout', 'error'].includes(value.requestKind)) http.requestKind = value.requestKind;
       if (httpCodes.has(value.code)) http.code = value.code;
       if (Object.keys(http).length > 1 && !result.http) result.http = http;
     }

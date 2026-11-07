@@ -60,8 +60,12 @@ def command_failure_summary(command):
             parts.append(f"HTTP={http['httpStatus']}")
         if http.get('requestFailed') is True:
             parts.append('request-error')
+        if http.get('requestKind') == 'timeout':
+            parts.append('request-timeout')
         codes = {'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
                  'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR'}
+        codes |= {'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN',
+                  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET'}
         if isinstance(http.get('code'), str) and http['code'] in codes:
             parts.append(http['code'])
     maintenance = command.get('maintenance')

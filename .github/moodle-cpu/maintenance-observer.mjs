@@ -10,9 +10,12 @@ export function serviceFailure(input, response, error) {
     return {service, httpStatus: response.status};
   if (!error) return null;
   const known = new Set(['ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
-    'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR']);
-  const code = [error.code, error.cause?.code].find(value => typeof value === 'string' && known.has(value));
-  return {service, requestFailed: true, ...(code ? {code} : {})};
+    'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+    'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR',
+    'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
+  const code = [error.code, error.cause?.code, ...(Array.isArray(error.cause?.errors) ? error.cause.errors.slice(0, 8).map(item => item?.code) : [])]
+    .find(value => typeof value === 'string' && known.has(value));
+  return {service, requestFailed: true, requestKind: error.name === 'TimeoutError' ? 'timeout' : 'error', ...(code ? {code} : {})};
 }
 
 export function observeMaintenanceFetch(original, emit) {

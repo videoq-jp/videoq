@@ -30,6 +30,67 @@ class MoodleCpuSafetyTests(unittest.TestCase):
     def instance(self):
         return runtime.MoodleRuntime(self.kubeconfig, self.root / 'private', OWNER)
 
+    def node_report(self):
+        return {'nodeVersion': 'v26.13.0', 'status': 'passed',
+                'lookup': {'ok': True, 'proxyMatched': True}, 'resolve4': {'ok': True, 'proxyMatched': True},
+                'tls': {'ok': True, 'lookup': True, 'connected': True, 'secure': True},
+                'login': {'ok': True, 'httpStatus': 200}, 'oauth': {'ok': True, 'httpStatus': 401}}
+
+    def test_node_base_is_read_from_the_reviewed_immutable_api_dockerfile(self):
+        self.assertRegex(install.node_image(), r'^node:\d+\.\d+\.\d+-alpine@sha256:[a-f0-9]{64}$')
+        path = self.root / 'Dockerfile'
+        for source in ['FROM node:latest AS base', 'FROM unreviewed.invalid/node@sha256:' + 'a' * 64 + ' AS base',
+                       'FROM node:26.13.0-alpine AS base']:
+            path.write_text(source)
+            with self.assertRaises(ValueError):
+                install.node_image(path)
+
+    def test_node_transport_recomputes_success_and_discards_private_or_invalid_metadata(self):
+        value = self.node_report()
+        self.assertEqual(runtime.node_transport_evidence(value), value)
+        value['oauth'] = {'ok': False, 'httpStatus': True, 'kind': 'timeout', 'codes': ['EAI_AGAIN', 'PRIVATE', True],
+                          'body': 'PRIVATE', 'message': 'PRIVATE'}
+        evidence = runtime.node_transport_evidence(value)
+        self.assertEqual(evidence['status'], 'failed')
+        self.assertEqual(evidence['oauth'], {'ok': False, 'kind': 'timeout', 'codes': ['EAI_AGAIN']})
+        self.assertNotIn('PRIVATE', json.dumps(evidence))
+        for phase, field in [('lookup', 'proxyMatched'), ('resolve4', 'ok'), ('tls', 'secure'), ('login', 'ok')]:
+            changed = self.node_report(); changed[phase][field] = 1
+            self.assertEqual(runtime.node_transport_evidence(changed)['status'], 'failed')
+        for value in [None, [], {}, {'nodeVersion': 'PRIVATE'}, {'nodeVersion': 'v26.13.0'}]:
+            with self.assertRaises(ValueError):
+                runtime.node_transport_evidence(value)
+
+    def test_node_probe_has_no_service_account_or_credentials_and_mounts_only_public_ca(self):
+        fixture = self.instance()
+        with patch.object(fixture, 'assert_owner'), patch.object(fixture, 'apply') as apply, \
+                patch.object(fixture, 'k', side_effect=['', '', '{"spec":{"clusterIP":"10.96.3.42"}}',
+                                                       'Succeeded', json.dumps(self.node_report())]):
+            self.assertEqual(fixture.verify_node_transport(), self.node_report())
+        items = apply.call_args.args[0]
+        pod = next(item for item in items if item['kind'] == 'Pod')
+        self.assertFalse(pod['spec']['automountServiceAccountToken'])
+        self.assertEqual(pod['spec']['securityContext']['runAsUser'], 1000)
+        container = pod['spec']['containers'][0]
+        self.assertEqual(container['image'], 'videoq-moodle-node:onprem-ci')
+        self.assertEqual(container['imagePullPolicy'], 'Never')
+        self.assertTrue(container['securityContext']['readOnlyRootFilesystem'])
+        self.assertFalse(container['securityContext']['allowPrivilegeEscalation'])
+        self.assertEqual(container['securityContext']['capabilities']['drop'], ['ALL'])
+        self.assertEqual({item['name'] for item in container['env']},
+                         {'NODE_EXTRA_CA_CERTS', 'VIDEOQ_MOODLE_TRANSPORT_PROBE', 'VIDEOQ_MOODLE_EXPECTED_PROXY'})
+        self.assertEqual({item['configMap']['name'] for item in pod['spec']['volumes']},
+                         {'moodle-cpu-ca', 'moodle-cpu-node-transport'})
+        self.assertEqual((fixture.output / 'node-transport.log').stat().st_mode & 0o777, 0o600)
+
+    def test_node_probe_refuses_preexisting_resources_before_service_or_pod_mutation(self):
+        fixture = self.instance()
+        with patch.object(fixture, 'assert_owner'), patch.object(fixture, 'apply') as apply, \
+                patch.object(fixture, 'k', side_effect=['pod/existing', '']):
+            with self.assertRaisesRegex(RuntimeError, 'Refusing to adopt'):
+                fixture.verify_node_transport()
+        apply.assert_not_called()
+
     def test_browser_failure_summary_never_reflects_private_browser_values(self):
         path = self.root / 'stage.json'
         self.assertEqual(probe.browser_failure_summary(path), 'unknown')
