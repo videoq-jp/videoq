@@ -5,7 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {AcceptanceCommandError, browserFailure, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, tagUiEvidence} from './browser-evidence.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -282,25 +282,45 @@ async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFram
   try {
     await courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId);
   } catch (error) {
+    report.tagClick = clickActionabilityEvidence(error);
     async function snapshot(page, frame) {
-      const parent = await page.evaluate(() => {
-        const panel = document.querySelector('.local-videoq-questions'), frame = document.querySelector('#videoq-questions');
-        const rect = frame.getBoundingClientRect();
-        return {parentPanelOpen: panel.classList.contains('local-videoq-tags-open'),
-          parentDetailsOpen: document.querySelector('#videoq-course-tags details').open,
-          frameExposed: frame.getAttribute('aria-hidden') !== 'true', frameClipped: getComputedStyle(frame).clipPath !== 'none',
-          frameWidth: Math.round(rect.width), frameHeight: Math.round(rect.height)};
-      });
       const privateUi = await frame.evaluate(() => {
         const panel = document.querySelector('#course-tags'), button = document.querySelector('#tags-create');
-        const rect = button.getBoundingClientRect(), style = getComputedStyle(button);
+        const rect = button.getBoundingClientRect(), style = getComputedStyle(button),
+          centerX = rect.x + rect.width / 2, centerY = rect.y + rect.height / 2,
+          hit = document.elementFromPoint(centerX, centerY);
         return {nativeMode: document.body.classList.contains('moodle-tags'),
           otherToolOpen: ['moodle-management', 'moodle-qa', 'moodle-personal-history', 'moodle-reports']
             .some(mode => document.body.classList.contains(mode)), panelHidden: panel.hidden, panelOpen: panel.open,
           buttonHidden: button.hidden, buttonDisabled: button.disabled,
           buttonVisible: rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden',
-          buttonWidth: Math.round(rect.width), buttonHeight: Math.round(rect.height), busy: panel.getAttribute('aria-busy') === 'true'};
+          buttonWidth: Math.round(rect.width), buttonHeight: Math.round(rect.height), busy: panel.getAttribute('aria-busy') === 'true',
+          centerX, centerY, privateHitButton: hit === button || button.contains(hit),
+          targetInFrameViewport: rect.width > 0 && rect.height > 0 && centerX >= 0 && centerX < innerWidth && centerY >= 0 && centerY < innerHeight,
+          buttonPointerEventsNone: style.pointerEvents === 'none', buttonTop: Math.round(rect.top), buttonBottom: Math.round(rect.bottom),
+          panelClientHeight: panel.clientHeight, panelScrollHeight: panel.scrollHeight, panelScrollTop: Math.round(panel.scrollTop),
+          privateViewportHeight: innerHeight, privateViewportWidth: innerWidth, openDialogs: document.querySelectorAll('dialog[open]').length};
       });
+      const parent = await page.evaluate(local => {
+        const panel = document.querySelector('.local-videoq-questions'), frame = document.querySelector('#videoq-questions');
+        const rect = frame.getBoundingClientRect(), style = getComputedStyle(frame),
+          scaleX = frame.offsetWidth ? rect.width / frame.offsetWidth : 1,
+          scaleY = frame.offsetHeight ? rect.height / frame.offsetHeight : 1,
+          x = rect.x + (frame.clientLeft + local.centerX) * scaleX,
+          y = rect.y + (frame.clientTop + local.centerY) * scaleY,
+          hit = document.elementFromPoint(x, y);
+        const parentHitTarget = !hit ? 'none' : hit === frame ? 'frame'
+          : hit.closest('dialog[open],[role="dialog"]') ? 'dialog'
+          : hit.closest('header,nav,[role="navigation"]') ? 'header'
+          : hit.closest('footer,#page-footer') ? 'footer'
+          : hit.closest('.modal-backdrop,.popover,.dropdown-menu,.tour-shade') ? 'overlay' : 'other';
+        return {parentPanelOpen: panel.classList.contains('local-videoq-tags-open'),
+          parentDetailsOpen: document.querySelector('#videoq-course-tags details').open,
+          frameExposed: frame.getAttribute('aria-hidden') !== 'true', frameClipped: style.clipPath !== 'none',
+          frameWidth: Math.round(rect.width), frameHeight: Math.round(rect.height), frameX: Math.round(rect.x), frameY: Math.round(rect.y),
+          targetInParentViewport: local.targetInFrameViewport && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+          framePointerEventsNone: style.pointerEvents === 'none', frameActive: document.activeElement === frame, parentHitTarget};
+      }, privateUi);
       // Read the current real catalog without changing the UI. The original
       // credential/fetch and server authorization remain intact; no writes or
       // response substitution. This catalog read has its own deadline.
@@ -684,6 +704,7 @@ try {
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({
     stage: report.stage, completed: report.phases, failure: browserFailure(error, import.meta.url),
     ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
+    ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
   }) + '\n');
   throw error;
 } finally {

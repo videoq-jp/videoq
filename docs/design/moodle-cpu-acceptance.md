@@ -42,6 +42,18 @@ performing writes. HTML, labels, identifiers, credentials and response bodies ar
 excluded. Existing functional deadlines and failure assertions remain in force;
 no tag-function correction or current full pass is claimed.
 
+At `86f7705b`, actual run `42354186618` again completes eight phases and
+times out on the first teacher tag-create click. The failure snapshot shows an
+open, exposed, unclipped frame and a visible, enabled, non-busy button; the
+original teacher catalog returns 200 with management allowed. These observations
+do not establish click actionability. Compact English/Japanese HTTP-fixture
+contracts each complete 12 cycles, and the older owned Moodle site completes two
+read-only management/tag cycles. Neither establishes current companion-pin
+behavior. Failure evidence now also retains bounded viewport/scroll positions,
+private and parent hit-test booleans, a fixed parent-target category, and fixed
+Playwright actionability signals. No markup, selector, raw action log or unbounded
+coordinate payload is published. Functional clicks and deadlines are unchanged.
+
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
 service-account token. It compares OS and direct DNS resolution with the owned

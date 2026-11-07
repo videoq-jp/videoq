@@ -79,6 +79,21 @@ export class AcceptanceCommandError extends Error {
   get publicEvidence() {return this.#evidence;}
 }
 
+// Playwright action logs can include private selectors and markup. Recognize
+// only its fixed actionability phrases, then retain only booleans on re-read.
+export function clickActionabilityEvidence(value) {
+  const signals = {pointerIntercepted: 'intercepts pointer events', outsideViewport: 'outside of the viewport',
+    unstable: 'element is not stable', invisible: 'element is not visible', disabled: 'element is not enabled',
+    detached: 'element was detached', frameDetached: 'frame was detached', scrolled: 'done scrolling',
+    retrying: 'retrying click action'};
+  const source = value instanceof Error && typeof value.message === 'string' ? Object.fromEntries(Object.entries(signals)
+    .map(([key, phrase]) => [key, value.message.includes(phrase)])) : value;
+  const result = {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return result;
+  for (const key of Object.keys(signals)) if (typeof source[key] === 'boolean') result[key] = source[key];
+  return result;
+}
+
 // A failed native tool must be diagnosable without publishing its HTML, labels,
 // credentials or API bodies. Rebuild every field from fixed names and bounds.
 export function tagUiEvidence(value) {
@@ -88,12 +103,19 @@ export function tagUiEvidence(value) {
     if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
     const row = {};
     for (const key of ['parentPanelOpen', 'parentDetailsOpen', 'frameExposed', 'frameClipped',
-      'nativeMode', 'otherToolOpen', 'panelHidden', 'panelOpen', 'buttonHidden', 'buttonDisabled', 'buttonVisible', 'busy']) {
+      'nativeMode', 'otherToolOpen', 'panelHidden', 'panelOpen', 'buttonHidden', 'buttonDisabled', 'buttonVisible', 'busy',
+      'privateHitButton', 'targetInFrameViewport', 'targetInParentViewport', 'framePointerEventsNone',
+      'buttonPointerEventsNone', 'frameActive']) {
       if (typeof source[key] === 'boolean') row[key] = source[key];
     }
-    for (const key of ['frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight']) {
+    for (const key of ['frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight', 'panelClientHeight',
+      'panelScrollHeight', 'panelScrollTop', 'privateViewportHeight', 'privateViewportWidth', 'openDialogs']) {
       if (Number.isInteger(source[key]) && source[key] >= 0 && source[key] <= 100_000) row[key] = source[key];
     }
+    for (const key of ['frameX', 'frameY', 'buttonTop', 'buttonBottom'])
+      if (Number.isInteger(source[key]) && Math.abs(source[key]) <= 100_000) row[key] = source[key];
+    if (['frame', 'header', 'dialog', 'overlay', 'footer', 'other', 'none'].includes(source.parentHitTarget))
+      row.parentHitTarget = source.parentHitTarget;
     if (source.catalog && typeof source.catalog === 'object' && !Array.isArray(source.catalog)) {
       const catalog = {};
       for (const key of ['timedOut', 'requestFailed']) if (source.catalog[key] === true) catalog[key] = true;

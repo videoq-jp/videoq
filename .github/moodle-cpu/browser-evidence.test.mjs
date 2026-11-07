@@ -1,6 +1,6 @@
 import assert, {AssertionError} from 'node:assert/strict';
 import {test} from 'node:test';
-import {AcceptanceCommandError, browserFailure, commandEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, commandEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -8,6 +8,29 @@ import {transportError} from './transport-probe.mjs';
 import {fileURLToPath} from 'node:url';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
+test('click actionability excludes private Playwright selectors and intercepted markup', () => {
+  const error = new Error('PRIVATE_SELECTOR\nPRIVATE_HTML intercepts pointer events\nretrying click action\n' +
+    'element is not stable\ndone scrolling\nhttps://PRIVATE_URL/?token=PRIVATE_TOKEN');
+  const value = clickActionabilityEvidence(error);
+  assert.equal(value.pointerIntercepted, true);
+  assert.equal(value.unstable, true);
+  assert.equal(value.scrolled, true);
+  assert.equal(value.retrying, true);
+  assert.equal(value.outsideViewport, false);
+  assert.deepEqual(clickActionabilityEvidence({...value, message: 'PRIVATE', raw: 'PRIVATE'}), value);
+  assert(!JSON.stringify(value).includes('PRIVATE'));
+  for (const input of [null, [], 'PRIVATE', {message: 'PRIVATE', unstable: 1},
+    Object.assign(new Error('PRIVATE'), {message: {raw: 'PRIVATE'}})])
+    assert.deepEqual(clickActionabilityEvidence(input), {});
+});
+test('native hit testing retains only bounded positions and fixed target classes', () => {
+  const value = {teacher: {frameX: -10, buttonTop: 520, panelScrollTop: 0, panelScrollHeight: 750,
+    privateHitButton: false, targetInFrameViewport: false, parentHitTarget: 'header', centerY: 'PRIVATE', html: 'PRIVATE'},
+  learner: {frameY: -100001, panelClientHeight: true, openDialogs: 100001, parentHitTarget: 'PRIVATE', frameActive: 'PRIVATE'}};
+  assert.deepEqual(tagUiEvidence(value), {teacher: {privateHitButton: false, targetInFrameViewport: false,
+    panelScrollHeight: 750, panelScrollTop: 0, frameX: -10, buttonTop: 520, parentHitTarget: 'header'}});
+  assert(!JSON.stringify(tagUiEvidence(value)).includes('PRIVATE'));
+});
 test('native tag diagnostics retain bounded UI and current catalog facts without private content', () => {
   const value = {teacher: {buttonHidden: false, buttonDisabled: true, nativeMode: true,
     frameHeight: 512, buttonWidth: 90, html: 'PRIVATE_HTML', token: 'PRIVATE_TOKEN',
