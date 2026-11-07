@@ -37,7 +37,10 @@ rejected. CLI installation and file creation run as Apache's `www-data` account.
 
 Caddy terminates private HTTPS with an internal CA. Only the public root
 certificate is copied into Moodle's trust store; peer verification remains
-enabled. CoreDNS maps three exact test names to the private proxy service while
+enabled. Startup also installs that certificate at the companion image's explicit
+`curl.cainfo` path, readable by Apache after the CLI drops privileges. Updating
+only the system CA bundle does not satisfy that PHP setting. CoreDNS maps three
+exact test names to the private proxy service while
 preserving Kubernetes service resolution and disabled public forwarding. Static
 volumes use paths inside the new disposable node, avoiding helper-image downloads
 after egress closes. No service uses host networking, NodePort or LoadBalancer.
