@@ -82,6 +82,13 @@ async function session() {
   expect(response.status).toBe(200);
   return (await response.json<{ token: string }>()).token;
 }
+
+it('rejects a native server session through the browser LTI authentication path', async () => {
+  const token = await session();
+  const record = records.get(await digest(token))!;
+  record.payload.transport = 'native';
+  expect((await request('materials', {}, token)).status).toBe(401);
+});
 beforeEach(async () => {
   vi.clearAllMocks(); records.clear(); await login();
   vi.mocked(readCourseHistory).mockResolvedValue([]);

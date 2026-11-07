@@ -12,6 +12,7 @@ export const loginRecord = z.object({
   locale: z.enum(["ja", "en"]).optional(),
 });
 export const sessionRecord = z.object({
+  transport: z.literal("native").optional(),
   registrationId: z.string(), registrationHash: z.string(), deploymentId: z.string(), contextId: z.string(), resourceLinkId: z.string(),
   locale: z.enum(["ja", "en"]).default("en"),
   scopeVideoIds: z.array(z.number().int().positive()).optional(),
