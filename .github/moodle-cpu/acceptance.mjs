@@ -156,7 +156,10 @@ async function context() {
           navigation.native = true; nativePages.add(page);
         }
       }
-      if (navigation.native && ['https:', 'http:'].includes(url.protocol)) {
+      // Other origins are blocked by the fixture route above. Inspect the
+      // actual Moodle/VideoQ realms without treating Moodle's optional CDN
+      // assets as VideoQ learning transport.
+      if (navigation.native && allowedOrigins.has(url.origin)) {
         if (url.origin !== MOODLE) navigation.outsideRequests++;
         if (url.origin === MOODLE && url.pathname === '/lib/ajax/service.php') navigation.gatewayRequests++;
         const task = request.allHeaders().then(headers => {if (headers.authorization) navigation.authorizationHeaders++;},
@@ -200,7 +203,7 @@ async function nativeBrowserEvidence() {
   }
   const evidence = {pages: nativePages.size, gatewayRequests, outsideRequests, authorizationHeaders, unreadableHeaders};
   assert(evidence.pages >= 2 && evidence.gatewayRequests > 0);
-  assert.equal(outsideRequests, 0, 'Native browser requests stay on Moodle');
+  assert.equal(outsideRequests, 0, 'Native browser learning never calls VideoQ or its storage directly');
   assert.equal(authorizationHeaders, 0, 'Browser never carries VideoQ assertions or bearer sessions');
   assert.equal(unreadableHeaders, 0, 'Every native browser request was inspected');
   return evidence;
