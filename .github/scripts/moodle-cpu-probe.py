@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import socket
@@ -27,7 +28,9 @@ def command_failure_summary(command):
         return ''
     operations = {'cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick', 'moodle-hide', 'moodle-show',
                   'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
-                  'material-evidence', 'standalone-index-evidence', 'conversation-evidence'}
+                  'material-evidence', 'standalone-index-evidence', 'conversation-evidence',
+                  'privacy-memory-evidence', 'privacy-archive-evidence', 'moodle-privacy-setup',
+                  'moodle-privacy-status', 'moodle-privacy-task', 'moodle-privacy-export-evidence', 'moodle-privacy-reset'}
     operation = command.get('operation')
     if not isinstance(operation, str) or operation not in operations:
         return ''
@@ -49,7 +52,7 @@ def command_failure_summary(command):
                  'invalidrecord', 'invalidtaskclassname'}
         if isinstance(php.get('code'), str) and php['code'] in codes:
             parts.append(php['code'])
-        sources = {'fixture.php', 'export_material.php', 'synchronizer.php', 'client.php', 'materials_service.php',
+        sources = {'fixture.php', 'privacy-fixture.php', 'export_material.php', 'synchronizer.php', 'client.php', 'materials_service.php',
                    'service_auth.php', 'task-manager.php', 'task-adhoc.php', 'task-base.php'}
         if isinstance(php.get('source'), str) and php['source'] in sources and type(php.get('line')) is int and 0 < php['line'] <= 100_000:
             parts.append(f"at {php['source']}:{php['line']}")
@@ -90,7 +93,8 @@ def browser_failure_summary(path):
         return 'unknown'
     if not isinstance(evidence, dict):
         return 'unknown'
-    allowed = {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
+    privacy_stages = {'core-privacy-real-question', 'core-privacy-peer-data', 'core-privacy-export', 'core-privacy-delete'}
+    allowed = privacy_stages | {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
                'real-native-question', 'personal-history', 'native-transcript', 'teacher-management',
                'course-tags', 'human-qa', 'positive-reports',
                'same-session-source-enrolment', 'personal-deletion'}
@@ -101,10 +105,39 @@ def browser_failure_summary(path):
         summary += ' (' + failure['kind']
         row, column = failure.get('line'), failure.get('column')
         if type(row) is int and type(column) is int and 0 < row <= 100_000 and 0 < column <= 100_000:
-            summary += f' at acceptance.mjs:{row}:{column}'
+            source = 'privacy.mjs' if isinstance(stage, str) and stage in privacy_stages else 'acceptance.mjs'
+            summary += f' at {source}:{row}:{column}'
         summary += command_failure_summary(failure.get('command'))
         summary += ')'
     return summary
+
+
+def privacy_result(value):
+    # Reconstruct the public result independently of the browser. No archive
+    # records, model IDs, paths or reflected extra properties may be published.
+    def require(condition):
+        if not condition:
+            raise RuntimeError('Actual Moodle core privacy evidence is incomplete')
+    require(isinstance(value, dict))
+    checksum = value.get('archiveSha256')
+    require(isinstance(checksum, str) and re.fullmatch('[a-f0-9]{64}', checksum))
+    flags = ['ownModelMemoryErased', 'peerDataRetained', 'originalSubjectSessionDenied',
+             'sharedMaterialsPreserved', 'teacherArchiveDownloadDenied', 'reportsRefreshedToZero',
+             'modelMemoryExportMatched']
+    require(all(value.get(key) is True for key in flags))
+    collections = ['logs', 'evaluations', 'conversations', 'turns', 'questions', 'replies',
+                   'checkpoints', 'checkpoint_blobs', 'checkpoint_writes']
+    counts = value.get('exported')
+    require(isinstance(counts, dict) and all(type(counts.get(key)) is int and 0 <= counts[key] <= 100000 for key in collections))
+    require(counts['conversations'] == 1 and counts['turns'] == 1 and counts['logs'] == 1 and
+            counts['questions'] == 1 and counts['replies'] == 0)
+    memory = value.get('modelMemoryBefore')
+    require(isinstance(memory, dict))
+    for key, collection in [('checkpoints', 'checkpoints'), ('blobs', 'checkpoint_blobs'), ('writes', 'checkpoint_writes')]:
+        require(type(memory.get(key)) is int and 0 < memory[key] <= 100000 and memory[key] == counts[collection])
+    return {'archiveSha256': checksum, 'exported': {key: counts[key] for key in collections},
+            'modelMemoryBefore': {key: memory[key] for key in ['checkpoints', 'blobs', 'writes']},
+            **{key: True for key in flags}}
 
 
 def api_ca_patch():
@@ -195,6 +228,7 @@ def rehearse(kubeconfig, output, chart):
         report = json.loads(result.read_text())
         if report.get('status') != 'passed' or not report.get('transcript'):
             raise RuntimeError('Actual Moodle CPU evidence is incomplete')
+        report['privacy'] = privacy_result(report.get('privacy'))
         report['installed'] = {'checks': installed_checks['checks'],
                                'moodleRevision': installed['moodleRevision'],
                                'companionRevision': installed['companionRevision']}

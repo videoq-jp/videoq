@@ -12,60 +12,40 @@ runs Moodle in that same owned cluster before cleanup. Combined acceptance
 requires 12 GiB. The ordinary CPU runner retains its 10 GiB minimum, and the
 signed-release CLI does not accept the test-only Moodle image.
 
-At `f336a533`, both required jobs and CI Success passed in run `42341909106`.
-The combined job completed all 14 Moodle phases; both standalone and Moodle ASR
-independently reassess to CER 0.0 over 45 reference characters. This establishes
-the File/local-CPU workflows below, not full feature parity or release acceptance.
-Visual review found PAGE context-switch and headers-already-sent warnings in the
-mobile screenshot. The new companion pin fixes that native page lifecycle;
-final warning-free presentation still requires a complete exact-head run.
+At `388e666b`, both required jobs and CI Success pass in run `42362389689`.
+The combined job completes all 14 Moodle phases. Both standalone and Moodle ASR
+independently reassess to CER 0.0 over 45 reference characters, and protected
+playback decodes and seeks correctly. The exact seven-file artifact binds the
+source, pinned core/companion, phase results and mobile image. Visual review of
+the 390px native page finds no PAGE-context or headers-already-sent warnings;
+the companion native-page lifecycle correction is pinned at `20ea7741`.
+This establishes the File/local-CPU workflows below, not full parity or release
+acceptance.
 
-At `fad9c2f6`, installed/Node acceptance passed, while the combined run
-`42345912943` completed its first eight Moodle phases before a timeout in
-`course-tags`. The new learner and teacher page-warning assertions passed on
-entry, but the final mobile screenshot and full result were not produced.
-The public stack reader recognized Node file URLs but skipped Playwright's
-filesystem helper frames, leaving only the outer call site. It now matches both
-exact forms of the reviewed source and publishes only bounded numeric
-coordinates. At `a2a856e8`, the next actual run `42349968734` again passed its
-first eight Moodle phases, then timed out at the teacher's first `#tags-create`
-click. The failing operation is now known; its cause is not. An explicit-HTTP-
-fixture local browser contract completes 12 management-close/tag-open/create
-cycles without errors, which does not reproduce or disprove the real Moodle
-failure.
+The mobile tag journey explicitly scrolls the exposed native frame into view
+before its ordinary child click, retaining actionability checks and deadlines.
+Earlier runs timed out at the first create-tag click after eight phases; their
+final frames/buttons were offscreen, but controlled offscreen probes clicked
+successfully. Position alone did not establish the failure's cause. No
+speculative product/tag fix or forced click was introduced. Failure-only
+observations retain bounded visibility, scroll/hit-test state, original catalog
+status/counts, fixed Playwright action/navigation signals and passive parent
+navigation counts. Raw markup, selectors, credentials, responses and action logs
+remain private.
 
-Failure-only evidence now records bounded native panel/button visibility,
-disabled/busy state, frame dimensions/clipping and a fresh read of each role's
-actual tag catalog (status, management permission and counts). The read uses the
-original private-frame credential and fetch without changing UI state or
-performing writes. HTML, labels, identifiers, credentials and response bodies are
-excluded. Existing functional deadlines and failure assertions remain in force;
-no tag-function correction or current full pass is claimed.
-
-At `86f7705b`, actual run `42354186618` again completes eight phases and
-times out on the first teacher tag-create click. The failure snapshot shows an
-open, exposed, unclipped frame and a visible, enabled, non-busy button; the
-original teacher catalog returns 200 with management allowed. These observations
-do not establish click actionability. Compact English/Japanese HTTP-fixture
-contracts each complete 12 cycles, and the older owned Moodle site completes two
-read-only management/tag cycles. Neither establishes current companion-pin
-behavior. Failure evidence now also retains bounded viewport/scroll positions,
-private and parent hit-test booleans, a fixed parent-target category, and fixed
-Playwright actionability signals. No markup, selector, raw action log or unbounded
-coordinate payload is published. Functional clicks and deadlines are unchanged.
-
-At `9129b65b`, run `42359049112` also fails after eight phases on the first
-teacher create-tag click. Its frame starts at y972 below the 844px parent
-viewport; the button starts at y543 below the 361px private viewport, with the
-scrollable tag panel still at scrollTop0. The original catalog remains200 with
-management allowed. Controlled offscreen-layout probes using both FrameLocator
-and a raw Frame automatically scroll and click successfully, so viewport
-position alone does not establish the cause. The journey now explicitly scrolls
-the exposed native frame into view before its unchanged child click, as a
-mobile user would. Failure diagnostics also recognize the structured Playwright
-log and fixed selector/action/navigation wait stages, plus passive main-document
-request counts and readiness enums. No response, click, authority or deadline
-is bypassed; another actual run is required.
+The next acceptance extension adds three runtime-unverified phases. After the
+original 14 phases, it creates a second real AI conversation/feedback and a
+learner Q&A question with a teacher reply. It uses standard self-service core
+export/deletion forms, independent admin UI approval and only each owned
+request's actual queued task. The subject downloads the real ZIP; another
+teacher credential must be denied. An independent host parser compares all
+three model stores' complete exported payloads with private read-only database
+snapshots, including checksummed UTF-8 fragment reassembly. Deletion must erase
+those stores, invalidate the original subject session, preserve the peer reply
+and shared/standalone materials, and refresh reports to zero. Archive contents,
+model rows, generated credentials and task logs stay outside public artifacts;
+public privacy evidence is independently reconstructed from counts, checksums
+and checked booleans.
 
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no

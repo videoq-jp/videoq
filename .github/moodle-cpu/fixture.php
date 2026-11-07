@@ -27,7 +27,8 @@ if (posix_geteuid() !== $apache['uid']) {
 }
 $action = $argv[1] ?? '';
 $allowed = ['install', 'seed', 'status', 'network', 'tick', 'hide', 'show', 'suspend', 'resume',
-    'deny-reports', 'allow-reports'];
+    'deny-reports', 'allow-reports', 'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-task-run',
+    'privacy-export-evidence', 'privacy-reset'];
 if (!in_array($action, $allowed, true)) {
     throw new RuntimeException('Unknown acceptance action');
 }
@@ -71,6 +72,7 @@ set_exception_handler(function (Throwable $error) use ($CFG): void {
         'dml_read_exception', 'dml_write_exception', 'dml_missing_record_exception',
         'dml_multiple_records_exception', 'moodle_exception'];
     $sources = [__FILE__ => 'fixture.php'];
+    $sources[__DIR__ . '/privacy-fixture.php'] = 'privacy-fixture.php';
     foreach (['export_material', 'synchronizer', 'client', 'materials_service', 'service_auth'] as $class) {
         $path = $class === 'export_material' ? 'task/export_material' : $class;
         $sources[$CFG->dirroot . '/local/videoq/classes/' . $path . '.php'] = $class . '.php';
@@ -175,6 +177,10 @@ if ($action === 'seed') {
 }
 if (!$course || $course->idnumber !== $owner) {
     throw new RuntimeException('Owned acceptance course missing');
+}
+if (str_starts_with($action, 'privacy-')) {
+    require(__DIR__ . '/privacy-fixture.php');
+    exit;
 }
 $resource = $DB->get_record('resource', ['course' => $course->id, 'name' => 'Public Japanese spoken lesson'], '*', MUST_EXIST);
 $cm = get_coursemodule_from_instance('resource', $resource->id, $course->id, false, MUST_EXIST);

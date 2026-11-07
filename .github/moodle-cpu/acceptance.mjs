@@ -5,7 +5,9 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, mediaRangeEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {fileURLToPath} from 'node:url';
+import {corePrivacy} from './privacy.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -28,9 +30,9 @@ function stage(name) {
   report.stage = name;
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({stage: name, completed: report.phases}) + '\n');
 }
-function k(args, input, operation = 'cluster-read') {
+function k(args, input, operation = 'cluster-read', maxBuffer = 2_000_000) {
   try {
-    return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2_000_000});
+    return execFileSync('kubectl', [...prefix, ...args], {encoding: 'utf8', input, timeout: 120_000, maxBuffer});
   } catch (error) {
     throw new AcceptanceCommandError(error, operation);
   }
@@ -40,10 +42,12 @@ function requireOwner() {
   assert.equal(marker.data.owner, owner);
   assert.equal(marker.metadata.labels['jp.videoq.moodle-cpu-owner'], owner);
 }
-function fixture(action) {
-  assert(['status', 'tick', 'hide', 'show', 'suspend', 'resume', 'deny-reports', 'allow-reports'].includes(action));
+function fixture(action, input) {
+  assert(['status', 'tick', 'hide', 'show', 'suspend', 'resume', 'deny-reports', 'allow-reports',
+    'privacy-setup', 'privacy-status', 'privacy-task', 'privacy-export-evidence', 'privacy-reset'].includes(action));
   requireOwner();
-  return JSON.parse(k(['exec', 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action], undefined, 'moodle-' + action));
+  return JSON.parse(k(['exec', ...(input === undefined ? [] : ['-i']), 'deployment/moodle', '--', 'php', '/acceptance/fixture.php', action],
+    input === undefined ? undefined : JSON.stringify(input), 'moodle-' + action));
 }
 function maintenance() {
   requireOwner();
@@ -97,6 +101,33 @@ function conversationStorage(digest) {
     `(SELECT count(*)::int FROM ${table} WHERE md5(thread_id)='${digest}') AS ${key}`);
   const sql = 'SELECT row_to_json(t) FROM (SELECT ' + fields.join(',') + ') t;';
   return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'], sql, 'conversation-evidence'));
+}
+function conversationMemoryRecords(digest, conversationId) {
+  assert.match(digest, /^[a-f0-9]{32}$/);
+  assert.match(conversationId, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+  requireOwner();
+  // Independent read-only snapshots from the actual official model tables.
+  // The private JSON is compared to the real core archive, never logged/uploaded.
+  const fields = {
+    checkpoints: "'checkpointId',k.checkpoint_id,'parentCheckpointId',k.parent_checkpoint_id,'checkpoint',k.checkpoint",
+    checkpoint_blobs: "'channel',k.channel,'version',k.version,'type',k.type,'encoding','base64','data',encode(k.blob,'base64')",
+    checkpoint_writes: "'checkpointId',k.checkpoint_id,'index',k.idx,'channel',k.channel,'type',k.type,'encoding','base64','data',encode(k.blob,'base64')",
+  };
+  const columns = Object.entries(fields).map(([table, data]) => `(SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'conversationId','${conversationId}','namespace',k.checkpoint_ns,${data})), '[]'::jsonb)
+    FROM chat_memory.${table} k WHERE md5(k.thread_id)='${digest}') AS ${table}`);
+  const sql = 'SELECT row_to_json(t) FROM (SELECT ' + columns.join(',') + ') t;';
+  return JSON.parse(k(['exec', '-i', 'deployment/postgres', '--', 'psql', '-U', 'postgres', '-d', 'restored', '-At', '-v', 'ON_ERROR_STOP=1'],
+    sql, 'privacy-memory-evidence', 64 * 1024 * 1024));
+}
+function verifyPrivacyArchive(path, expected) {
+  try {
+    return JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./privacy-archive.py', import.meta.url)), path], {
+      input: JSON.stringify(expected), encoding: 'utf8', timeout: 30_000, maxBuffer: 4096,
+    }));
+  } catch (error) {
+    throw new AcceptanceCommandError(error, 'privacy-archive-evidence');
+  }
 }
 
 const browser = await chromium.launch({headless: true});
@@ -620,7 +651,21 @@ try {
   const mediaUrl = await media.evaluate(video => video.currentSrc);
   assert.equal(new URL(mediaUrl).origin, MOODLE);
   const range = await learner.request.get(mediaUrl, {headers: {Range: 'bytes=0-15'}});
-  assert.equal(range.status(), 206); assert.equal((await range.body()).length, 16);
+  const rangeBody = await range.body(), rangeHeaders = range.headers();
+  const contentType = (rangeHeaders['content-type'] ?? '').split(';')[0].toLowerCase();
+  const prefix = rangeBody.subarray(0, 1024).toString('utf8');
+  const encoding = rangeHeaders['content-encoding'] ?? 'identity';
+  report.mediaRange = mediaRangeEvidence({httpStatus: range.status(), bodyBytes: rangeBody.length,
+    declaredBytes: Number(rangeHeaders['content-length'] ?? NaN),
+    offloaded: rangeHeaders['x-moodle-media-offload'] === '1',
+    rangeMatches: /^bytes 0-15\/[1-9][0-9]*$/.test(rangeHeaders['content-range'] ?? ''),
+    mp4Prefix: rangeBody.subarray(4, 8).toString('ascii') === 'ftyp',
+    htmlLike: /^\s*<(?:!doctype|html|br|b)[\s>]/i.test(prefix),
+    developerWarning: /Warning|Notice|Deprecated|Debugging/i.test(prefix),
+    contentKind: contentType.startsWith('video/') ? 'video' : contentType === 'text/html' ? 'html'
+      : contentType === 'multipart/byteranges' ? 'multipart' : 'other',
+    encoding: ['identity', 'gzip', 'br', 'zstd'].includes(encoding) ? encoding : 'other'});
+  assert.equal(range.status(), 206); assert.equal(rangeBody.length, 16);
   assert.equal(range.headers()['x-moodle-media-offload'], '1');
   await media.evaluate((video, seconds) => {video.muted = true; video.currentTime = Math.min(video.duration - 0.25, seconds + 3);}, seconds);
   await learnerPage.locator('#videoq-native-messages .answer .citation').first().click();
@@ -717,17 +762,24 @@ try {
   assert.equal(erasedReport.status, 200);
   assert.deepEqual(erasedReport.body.totals, {questions: 0, good: 0, bad: 0, none: 0});
   report.phases.push('actual-own-conversation-delete-model-memory-erasure-and-report-refresh');
+  const privacy = await corePrivacy({learner, learnerPage, learnerFrame, teacher, teacherFrame,
+    videoId: actual.videoId, courseId: state.courseId, lessonUrl: state.lessonUrl, privateFrame,
+    stage, phase: name => report.phases.push(name), fixture, uiAction, login, context,
+    memoryDigest: conversationDigest, memoryState: conversationStorage, memoryRecords: conversationMemoryRecords,
+    verifyArchive: verifyPrivacyArchive, materialState: material, sentinelState: standaloneIndexState, reportPeriod: period});
   Object.assign(report, {status: 'passed', stage: 'complete', transcript: actual.transcript,
     managedVideoId: actual.videoId, standaloneSentinelDenied: true, asrChunks: actual.asrChunks,
     vectorCount: actual.vectorCount, embeddingTable, answer: text, sourceVideoIds: sources.map(source => source.video_id),
-    requestedCitationSeconds: seconds, reports: summary.body.totals,
+    requestedCitationSeconds: seconds, reports: summary.body.totals, privacy,
     limits: ['Public File + local CPU fixture only; cloud YouTube/provider, independent-site restore, restricted worker and wider feature inventory remain separate gates.']});
   writeFileSync(resultPath, JSON.stringify(report, null, 2) + '\n');
 } catch (error) {
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({
-    stage: report.stage, completed: report.phases, failure: browserFailure(error, import.meta.url),
+    stage: report.stage, completed: report.phases, failure: browserFailure(error,
+      report.stage.startsWith('core-privacy-') ? new URL('./privacy.mjs', import.meta.url).href : import.meta.url),
     ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
     ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
+    ...(report.mediaRange ? {mediaRange: mediaRangeEvidence(report.mediaRange)} : {}),
   }) + '\n');
   throw error;
 } finally {

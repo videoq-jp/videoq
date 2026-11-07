@@ -12,6 +12,7 @@ COPY companion/lab/ /lab/
 COPY fixture/moodle-config.php /var/www/html/config.php
 COPY fixture/entrypoint.sh /acceptance/entrypoint.sh
 COPY fixture/fixture.php /acceptance/fixture.php
+COPY fixture/privacy-fixture.php /acceptance/privacy-fixture.php
 COPY companion/lab/apache.conf /etc/apache2/sites-enabled/000-default.conf
 COPY companion/lab/mpm-prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
 COPY companion/lab/php-sync.ini /usr/local/etc/php/conf.d/99-videoq-sync-lab.ini

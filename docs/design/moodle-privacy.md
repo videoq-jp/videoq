@@ -104,6 +104,20 @@ discovery used verified TLS; unsigned external requests were rejected with 403.
 The archive remains private. Temporary contact/mail settings were restored and
 checked from a separate PHP process; no model or general cron was started.
 
-This verifies populated report-receipt export through core approval, not complete
-subject erasure, peer retention, all model-memory/provider/legacy stores or a
-production rollout. Those remain separate requirements.
+The same owned runtime subsequently completed core deletion for a new synthetic
+learner who posted a real course question with a distinct peer's reply. Before
+fixture cleanup, the actual approved core task deleted the subject's local
+account, erased its question text/identity and revoked read/write through the
+original private-frame session. The peer's reply and identity remained readable
+and editable. All 19 original report receipts, shared materials and the existing
+teacher export archive were preserved. Temporary settings and only the two new
+test accounts were cleaned up independently; no model or general cron was used.
+
+These results prove report-receipt export and fresh-subject human-Q&A deletion.
+The combined CPU fixture now has a locally implemented, runtime-unverified
+extension for a populated real AI conversation, feedback and all three official
+model stores through core export and deletion. It compares actual exported
+payloads with private read-only model-store snapshots and checks peer/source
+preservation and original-session revocation. This extension has not yet passed
+the actual combined run. Full provider/legacy/backups/log/operator coverage and
+production rollout remain separate requirements.

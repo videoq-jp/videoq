@@ -76,7 +76,7 @@ def prepare(output):
         shutil.rmtree(checkout)
     fixture = resolved / 'fixture'
     fixture.mkdir()
-    for name in ['moodle-config.php', 'entrypoint.sh', 'fixture.php']:
+    for name in ['moodle-config.php', 'entrypoint.sh', 'fixture.php', 'privacy-fixture.php']:
         shutil.copyfile(ROOT / '.github/moodle-cpu' / name, fixture / name)
     shutil.copyfile(ROOT / '.github/moodle-cpu/Dockerfile', resolved / 'Dockerfile')
     (resolved / '.dockerignore').write_text('*.log\nsource-identities.json\n.videoq-moodle-cpu-build\n')

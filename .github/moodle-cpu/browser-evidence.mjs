@@ -3,10 +3,12 @@ import {fileURLToPath} from 'node:url';
 
 const operations = new Set(['cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick',
   'moodle-hide', 'moodle-show', 'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
-  'material-evidence', 'standalone-index-evidence', 'conversation-evidence']);
+  'material-evidence', 'standalone-index-evidence', 'conversation-evidence',
+  'privacy-memory-evidence', 'privacy-archive-evidence', 'moodle-privacy-setup', 'moodle-privacy-status',
+  'moodle-privacy-task', 'moodle-privacy-export-evidence', 'moodle-privacy-reset']);
 const phpKinds = new Set(['Error', 'TypeError', 'JsonException', 'RuntimeException', 'coding_exception',
   'dml_read_exception', 'dml_write_exception', 'dml_missing_record_exception', 'dml_multiple_records_exception', 'moodle_exception']);
-const phpSources = new Set(['fixture.php', 'export_material.php', 'synchronizer.php', 'client.php',
+const phpSources = new Set(['fixture.php', 'privacy-fixture.php', 'export_material.php', 'synchronizer.php', 'client.php',
   'materials_service.php', 'service_auth.php', 'task-manager.php', 'task-adhoc.php', 'task-base.php']);
 const phpCodes = new Set(['invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception',
   'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname']);
@@ -143,6 +145,22 @@ export function tagUiEvidence(value) {
     }
     if (Object.keys(row).length) result[role] = row;
   }
+  return result;
+}
+
+// Media diagnostics contain only sizes, fixed transport classes and booleans.
+// Never retain the URL, response headers, body or application error text.
+export function mediaRangeEvidence(value) {
+  const result = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
+  if (Number.isInteger(value.httpStatus) && value.httpStatus >= 100 && value.httpStatus <= 599)
+    result.httpStatus = value.httpStatus;
+  for (const key of ['bodyBytes', 'declaredBytes'])
+    if (Number.isInteger(value[key]) && value[key] >= 0 && value[key] <= 100_000_000) result[key] = value[key];
+  for (const key of ['offloaded', 'rangeMatches', 'mp4Prefix', 'htmlLike', 'developerWarning'])
+    if (typeof value[key] === 'boolean') result[key] = value[key];
+  if (['video', 'html', 'multipart', 'other'].includes(value.contentKind)) result.contentKind = value.contentKind;
+  if (['identity', 'gzip', 'br', 'zstd', 'other'].includes(value.encoding)) result.encoding = value.encoding;
   return result;
 }
 
