@@ -20,6 +20,16 @@ Visual review found PAGE context-switch and headers-already-sent warnings in the
 mobile screenshot. The new companion pin fixes that native page lifecycle; the
 added warning-free browser assertions still require an exact-head rerun.
 
+At `fad9c2f6`, installed/Node acceptance passed, while the combined run
+`42345912943` completed its first eight Moodle phases before a timeout in
+`course-tags`. The new learner and teacher page-warning assertions passed on
+entry, but the final mobile screenshot and full result were not produced.
+The public stack reader recognized Node file URLs but skipped Playwright's
+filesystem helper frames, leaving only the outer call site. It now matches both
+exact forms of the reviewed source and publishes only bounded numeric
+coordinates. The failing tag operation and its cause still require the next
+actual run; this diagnostic correction does not establish a tag-function fix.
+
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
 service-account token. It compares OS and direct DNS resolution with the owned

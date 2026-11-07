@@ -5,6 +5,7 @@ import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mj
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {transportError} from './transport-probe.mjs';
+import {fileURLToPath} from 'node:url';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
 test('a real Node assertion yields only its own numeric source location', () => {
@@ -39,6 +40,19 @@ test('timeout evidence requires an own-source stack frame and bounded positive c
   }
   error.stack = `TimeoutError\n    at ${source}:194:2`;
   assert.deepEqual(browserFailure(error, source), {kind: 'timeout', line: 194, column: 2});
+});
+
+test('Playwright filesystem frames identify the failing helper before its async caller', () => {
+  const error = new Error('PRIVATE_SELECTOR');
+  error.name = 'TimeoutError';
+  const path = fileURLToPath(source);
+  error.stack = `TimeoutError: PRIVATE_MESSAGE\n    at PRIVATE_FUNCTION (/private/PRIVATE_PATH.mjs:7:9)\n    at PRIVATE_HELPER (${path}:301:85)\n    at async ${source}:577:3`;
+  assert.deepEqual(browserFailure(error, source), {kind: 'timeout', line: 301, column: 85});
+  assert(!JSON.stringify(browserFailure(error, source)).includes('PRIVATE'));
+  for (const frame of [`${path}.unreviewed:12:4`, `${path}:0:4`, `${path}:100001:4`]) {
+    error.stack = `TimeoutError\n    at PRIVATE_HELPER (${frame})\n    at async ${source}:577:3`;
+    assert.deepEqual(browserFailure(error, source), {kind: 'timeout', line: 577, column: 3});
+  }
 });
 
 test('unrecognized thrown values and error names cannot become public strings', () => {

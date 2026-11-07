@@ -1,4 +1,5 @@
 import {AssertionError} from 'node:assert';
+import {fileURLToPath} from 'node:url';
 
 const operations = new Set(['cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick',
   'moodle-hide', 'moodle-show', 'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
@@ -87,8 +88,15 @@ export function browserFailure(error, sourceUrl) {
   const evidence = {kind};
   if (error instanceof AcceptanceCommandError) evidence.command = error.publicEvidence;
   if (!(error instanceof Error) || typeof error.stack !== 'string') return evidence;
-  const escaped = sourceUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const frame = new RegExp('(?:\\(|\\s)' + escaped + ':(\\d{1,6}):(\\d{1,6})\\)?$');
+  // Playwright records helper frames as absolute filesystem paths, while Node
+  // can record their async callers as file URLs. Match both exact forms of the
+  // same reviewed source so the first failing operation wins over its caller.
+  const sources = [sourceUrl];
+  try {
+    if (new URL(sourceUrl).protocol === 'file:') sources.push(fileURLToPath(sourceUrl));
+  } catch { /* A non-file source has no equivalent filesystem frame. */ }
+  const escaped = sources.map(source => source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const frame = new RegExp('(?:\\(|\\s)(?:' + escaped + '):(\\d{1,6}):(\\d{1,6})\\)?$');
   for (const line of error.stack.split('\n')) {
     if (!/^\s+at /.test(line)) continue;
     const match = line.match(frame);
