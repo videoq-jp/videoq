@@ -79,6 +79,39 @@ export class AcceptanceCommandError extends Error {
   get publicEvidence() {return this.#evidence;}
 }
 
+// A failed native tool must be diagnosable without publishing its HTML, labels,
+// credentials or API bodies. Rebuild every field from fixed names and bounds.
+export function tagUiEvidence(value) {
+  const result = {};
+  for (const role of ['teacher', 'learner']) {
+    const source = value?.[role];
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    const row = {};
+    for (const key of ['parentPanelOpen', 'parentDetailsOpen', 'frameExposed', 'frameClipped',
+      'nativeMode', 'otherToolOpen', 'panelHidden', 'panelOpen', 'buttonHidden', 'buttonDisabled', 'buttonVisible', 'busy']) {
+      if (typeof source[key] === 'boolean') row[key] = source[key];
+    }
+    for (const key of ['frameWidth', 'frameHeight', 'buttonWidth', 'buttonHeight']) {
+      if (Number.isInteger(source[key]) && source[key] >= 0 && source[key] <= 100_000) row[key] = source[key];
+    }
+    if (source.catalog && typeof source.catalog === 'object' && !Array.isArray(source.catalog)) {
+      const catalog = {};
+      for (const key of ['timedOut', 'requestFailed']) if (source.catalog[key] === true) catalog[key] = true;
+      const status = source.catalog.status;
+      if (Number.isInteger(status) && status >= 100 && status <= 599) catalog.status = status;
+      if (status === 200) {
+        if (typeof source.catalog.canManage === 'boolean') catalog.canManage = source.catalog.canManage;
+        for (const [key, maximum] of [['tags', 200], ['videos', 1000]])
+          if (Number.isInteger(source.catalog[key]) && source.catalog[key] >= 0 && source.catalog[key] <= maximum)
+            catalog[key] = source.catalog[key];
+      }
+      if (Object.keys(catalog).length) row.catalog = catalog;
+    }
+    if (Object.keys(row).length) result[role] = row;
+  }
+  return result;
+}
+
 // Public CI evidence must never contain messages, selectors, URLs, HTTP bodies,
 // credentials or raw stacks from the private browser. Only fixed error classes
 // and a numeric location in the reviewed acceptance source are publishable.

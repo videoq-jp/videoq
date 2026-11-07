@@ -5,7 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {AcceptanceCommandError, browserFailure} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, tagUiEvidence} from './browser-evidence.mjs';
 
 const MOODLE = 'https://moodle.localhost:18443';
 const VIDEOQ = 'https://videoq.localhost:18443';
@@ -279,6 +279,49 @@ async function teacherManagementFlow(page, frame, learnerFrame, actual, verifySo
   await frame.locator('#management-close').click();
 }
 async function courseTagFlow(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
+  try {
+    await courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId);
+  } catch (error) {
+    async function snapshot(page, frame) {
+      const parent = await page.evaluate(() => {
+        const panel = document.querySelector('.local-videoq-questions'), frame = document.querySelector('#videoq-questions');
+        const rect = frame.getBoundingClientRect();
+        return {parentPanelOpen: panel.classList.contains('local-videoq-tags-open'),
+          parentDetailsOpen: document.querySelector('#videoq-course-tags details').open,
+          frameExposed: frame.getAttribute('aria-hidden') !== 'true', frameClipped: getComputedStyle(frame).clipPath !== 'none',
+          frameWidth: Math.round(rect.width), frameHeight: Math.round(rect.height)};
+      });
+      const privateUi = await frame.evaluate(() => {
+        const panel = document.querySelector('#course-tags'), button = document.querySelector('#tags-create');
+        const rect = button.getBoundingClientRect(), style = getComputedStyle(button);
+        return {nativeMode: document.body.classList.contains('moodle-tags'),
+          otherToolOpen: ['moodle-management', 'moodle-qa', 'moodle-personal-history', 'moodle-reports']
+            .some(mode => document.body.classList.contains(mode)), panelHidden: panel.hidden, panelOpen: panel.open,
+          buttonHidden: button.hidden, buttonDisabled: button.disabled,
+          buttonVisible: rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden',
+          buttonWidth: Math.round(rect.width), buttonHeight: Math.round(rect.height), busy: panel.getAttribute('aria-busy') === 'true'};
+      });
+      // Read the current real catalog without changing the UI. The original
+      // credential/fetch and server authorization remain intact; no writes or
+      // response substitution. This catalog read has its own deadline.
+      const catalog = await frame.evaluate(() => new Promise(resolve => {
+        const timer = setTimeout(() => resolve({timedOut: true}), 15_000);
+        window.__cpuRead('tags', {action: 'list'}).then(value => {
+          clearTimeout(timer);
+          resolve({status: value.status, canManage: value.body?.canManage,
+            tags: Array.isArray(value.body?.tags) ? value.body.tags.length : undefined,
+            videos: Array.isArray(value.body?.videos) ? value.body.videos.length : undefined});
+        }).catch(() => {clearTimeout(timer); resolve({requestFailed: true});});
+      }));
+      return {...parent, ...privateUi, catalog};
+    }
+    const values = await Promise.allSettled([snapshot(teacherPage, teacherFrame), snapshot(learnerPage, learnerFrame)]);
+    report.tagsUi = tagUiEvidence(Object.fromEntries(['teacher', 'learner'].flatMap((role, index) =>
+      values[index].status === 'fulfilled' ? [[role, values[index].value]] : [])));
+    throw error;
+  }
+}
+async function courseTagActions(teacherPage, teacherFrame, learnerPage, learnerFrame, videoId) {
   const name = 'CPU course tag <safe>', renamed = 'CPU course tag <renamed>';
   await teacherPage.locator('#videoq-course-tags summary').click();
   await teacherFrame.locator('#tags-create').click();
@@ -640,6 +683,7 @@ try {
 } catch (error) {
   writeFileSync(join(dirname(resultPath), 'moodle-stage.json'), JSON.stringify({
     stage: report.stage, completed: report.phases, failure: browserFailure(error, import.meta.url),
+    ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
   }) + '\n');
   throw error;
 } finally {

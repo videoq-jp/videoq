@@ -102,3 +102,24 @@ does not count as passing evidence.
 The companion's 13 PHP contract suites and official Moodle coding check pass
 with zero errors or warnings. These checks do not establish complete real-AI
 processing, all course operations, billing checkout or external privacy workflows.
+
+Additional owned on-prem browser acceptance on 2026-11-07 verifies a newly
+provisioned VideoQ system administrator who does not own the Moodle connection.
+The actual single-use password setup and separate Moodle/VideoQ sign-ins
+complete without HTTP mocks. Moodle administration alone grants no VideoQ
+navigation; the independently authenticated system administrator sees only
+system administration, with connected-owner and billing navigation absent.
+The real admin UI changes only that fresh actor's quotas, disables self-role and
+self-deactivation controls, and the backend rejects a valid self-demotion write.
+After an operator revokes only this new actor's role, its original browser
+session loses both the admin API and management navigation. The 390px UI has no
+horizontal overflow. Both synthetic accounts from the failed and successful
+attempts and all their auth/reset rows are independently confirmed absent;
+original users/roles, protected source data and all 19 report receipts remain.
+
+The first activation navigation timed out before form interaction. Later
+expired-link HTTP and actual browser probes were healthy; no cause or cold-start
+correction is established. The harness supports the actual Japanese UI as well
+as English, and starts a fresh context after activation to independently prove
+the authentication boundary. This does not verify the complete provisioning,
+access-reset/deletion/global-reindex lifecycle, cloud billing or full parity.

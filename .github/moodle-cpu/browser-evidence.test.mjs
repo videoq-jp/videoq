@@ -1,6 +1,6 @@
 import assert, {AssertionError} from 'node:assert/strict';
 import {test} from 'node:test';
-import {AcceptanceCommandError, browserFailure, commandEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, commandEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -8,6 +8,20 @@ import {transportError} from './transport-probe.mjs';
 import {fileURLToPath} from 'node:url';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
+test('native tag diagnostics retain bounded UI and current catalog facts without private content', () => {
+  const value = {teacher: {buttonHidden: false, buttonDisabled: true, nativeMode: true,
+    frameHeight: 512, buttonWidth: 90, html: 'PRIVATE_HTML', token: 'PRIVATE_TOKEN',
+    catalog: {status: 200, canManage: true, tags: 0, videos: 1, body: 'PRIVATE_BODY'}},
+  learner: {buttonHidden: true, catalog: {status: 403, canManage: 'PRIVATE', tags: 0}},
+  PRIVATE_ROLE: {body: 'PRIVATE'}};
+  assert.deepEqual(tagUiEvidence(value), {teacher: {buttonHidden: false, buttonDisabled: true, nativeMode: true,
+    frameHeight: 512, buttonWidth: 90, catalog: {status: 200, canManage: true, tags: 0, videos: 1}},
+  learner: {buttonHidden: true, catalog: {status: 403}}});
+  for (const invalid of [null, [], {teacher: {buttonHidden: 'PRIVATE', buttonWidth: true, frameHeight: 100001,
+    catalog: {status: true, canManage: true, tags: 1}}}]) assert.deepEqual(tagUiEvidence(invalid), {});
+  assert.deepEqual(tagUiEvidence({teacher: {catalog: {timedOut: true, requestFailed: 'PRIVATE'}}}),
+    {teacher: {catalog: {timedOut: true}}});
+});
 test('a real Node assertion yields only its own numeric source location', () => {
   try {
     assert.fail('PRIVATE_ASSERTION');

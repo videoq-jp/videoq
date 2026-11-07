@@ -27,8 +27,20 @@ entry, but the final mobile screenshot and full result were not produced.
 The public stack reader recognized Node file URLs but skipped Playwright's
 filesystem helper frames, leaving only the outer call site. It now matches both
 exact forms of the reviewed source and publishes only bounded numeric
-coordinates. The failing tag operation and its cause still require the next
-actual run; this diagnostic correction does not establish a tag-function fix.
+coordinates. At `a2a856e8`, the next actual run `42349968734` again passed its
+first eight Moodle phases, then timed out at the teacher's first `#tags-create`
+click. The failing operation is now known; its cause is not. An explicit-HTTP-
+fixture local browser contract completes 12 management-close/tag-open/create
+cycles without errors, which does not reproduce or disprove the real Moodle
+failure.
+
+Failure-only evidence now records bounded native panel/button visibility,
+disabled/busy state, frame dimensions/clipping and a fresh read of each role's
+actual tag catalog (status, management permission and counts). The read uses the
+original private-frame credential and fetch without changing UI state or
+performing writes. HTML, labels, identifiers, credentials and response bodies are
+excluded. Existing functional deadlines and failure assertions remain in force;
+no tag-function correction or current full pass is claimed.
 
 The installed runner also exercises the API's exact digest-pinned Node/Alpine
 base from `apps/api/Dockerfile`, in a separate readonly, unprivileged Pod with no
