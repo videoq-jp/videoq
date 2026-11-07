@@ -20,6 +20,12 @@ export function launchLocale(payload: Record<string, unknown>, fallback: LtiLoca
 
 export const ltiCopy = {
   ja: {
+    transcript: "教材の文字起こし",
+    material: "教材",
+    refreshMaterials: "教材一覧を更新",
+    moreTranscript: "続きを表示",
+    emptyTranscript: "文字起こしはまだありません。",
+    materialError: "教材を取得できません。権限と接続を確認し、教材一覧を更新してください。",
     connectTitle: "VideoQ 接続",
     connecting: "学習システムに接続しています…",
     storageError: "接続情報を保存できません。LMSから別ウィンドウで開いてください。",
@@ -48,6 +54,12 @@ export const ltiCopy = {
     answerError: "回答を取得できませんでした。時間をおいて再試行してください。",
   },
   en: {
+    transcript: "Lesson transcripts",
+    material: "Lesson",
+    refreshMaterials: "Refresh lessons",
+    moreTranscript: "Show more",
+    emptyTranscript: "No transcript is available yet.",
+    materialError: "Unable to load this lesson. Check your access and connection, then refresh the lesson list.",
     connectTitle: "VideoQ connection",
     connecting: "Connecting to your LMS…",
     storageError: "Unable to save connection details. Open this tool in a separate window from your LMS.",

@@ -1,4 +1,5 @@
 import { ltiCopy, type LtiLocale } from "./locale";
+import { materialsMarkup, materialsClientScript } from "./materials-view";
 import { streamClientScript } from "./stream-client";
 import { questionStyles } from "./view-styles";
 
@@ -20,6 +21,7 @@ export function questionView(nonce: string, state: string, idToken: string, loca
 <main aria-label="${copy.chat}">
 <header class="chat-header"><div class="chat-heading"><h1>${copy.heading}</h1><span class="brand">VideoQ</span></div>
 </header>
+${materialsMarkup(locale)}
 <section id="messages" aria-label="${copy.conversation}" aria-live="polite" aria-relevant="additions">
 <div id="empty" class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg></div><h2>${copy.emptyTitle}</h2><p>${copy.emptyBody}</p></div></section>
 <div class="composer"><p id="status" role="status">${copy.checking}</p><form id="form"><label class="sr-only" for="question">${copy.label}</label><div class="input-shell"><textarea id="question" rows="1" maxlength="4000" placeholder="${copy.placeholder}" required disabled></textarea><button id="send" type="submit" aria-label="${copy.send}" title="${copy.send}" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg></button></div><p class="composer-hint">${copy.hint}</p></form></div></main>
@@ -27,7 +29,7 @@ export function questionView(nonce: string, state: string, idToken: string, loca
 (async()=>{
 const state=${scriptJson(state)}, idToken=${scriptJson(idToken)},uiCopy=${scriptJson(copy)};
 const status=document.getElementById('status'), question=document.getElementById('question'), send=document.getElementById('send');
-let token, messages=[], history=[], bridge=null, playback=null, parentOrigin=null, nativeUi=null, nativeRequestId=null;
+let token, messages=[], history=[], bridge=null, playback=null, parentOrigin=null, nativeUi=null, nativeRequestId=null,features={};
 const seenQuestions=new Set();
 function notifyChat(event,payload={}){if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:chat',version:1,channel,videoId:bridge.videoId,event,requestId:nativeRequestId,...payload},nativeUi.origin);}
 function nativeStatus(){notifyChat('status',{busy:send.disabled,text:status.textContent,kind:status.dataset.kind||''});}
@@ -40,14 +42,16 @@ function sourceSeconds(value){
 }
 const freshPlayback=()=>playback&&performance.now()-playback.receivedAt<5000?playback:null;
 function validPlayback(value){return value&&[bridge.videoId,...(bridge.videos||[]).map(video=>video.videoId)].includes(value.videoId)&&typeof value.seconds==='number'&&Number.isFinite(value.seconds)&&typeof value.duration==='number'&&Number.isFinite(value.duration)&&value.duration>0&&value.duration<=604800&&value.seconds>=0&&value.seconds<=value.duration;}
-function announceReady(){if(bridge&&window.parent!==window)for(const origin of bridge.parentOrigins)window.parent.postMessage({type:'videoq:ready',version:1,channel,videoId:bridge.videoId,...(bridge.videos?{videos:bridge.videos}:{})},origin);}
+function announceReady(){if(bridge&&window.parent!==window)for(const origin of bridge.parentOrigins)window.parent.postMessage({type:'videoq:ready',version:1,channel,videoId:bridge.videoId,features,...(bridge.videos?{videos:bridge.videos}:{})},origin);}
 window.addEventListener('message',event=>{
  const data=event.data;
  if(!bridge||event.source!==window.parent||!bridge.parentOrigins.includes(event.origin)||!data||data.version!==1||data.channel!==channel||!([bridge.videoId,...(bridge.videos||[]).map(video=>video.videoId)].includes(data.videoId)))return;
  if(data.type==='videoq:ui'&&data.renderer==='moodle'){
   nativeUi={origin:event.origin};parentOrigin=event.origin;
+  materialsPanel.hidden=true;
   notifyChat('history',{turns:history.map(({feedbackId,...turn})=>({...turn,feedbackAvailable:!!feedbackId}))});nativeStatus();return;
  }
+ if(data.type==='videoq:materials'){void materialCommand(data,event.origin);return;}
  if(data.type==='videoq:question'){
   if(!nativeUi||nativeUi.origin!==event.origin||send.disabled||typeof data.text!=='string'||!data.text.trim()||data.text.length>4000||typeof data.requestId!=='string'||!/^[a-f0-9]{32}$/.test(data.requestId)||seenQuestions.has(data.requestId))return;
   if(Object.hasOwn(data,'playback')){if(data.playback===null)playback=null;else if(validPlayback(data.playback))playback={...data.playback,receivedAt:performance.now()};else return;}
@@ -127,12 +131,14 @@ function showAnswer(answer,existing=null){
 }
 
 ${streamClientScript}
+${materialsClientScript}
 try {
  const key='videoq-lti:'+state, browserSecret=sessionStorage.getItem(key);
  if(!browserSecret) throw new Error(${scriptJson(copy.missing)});
  const res=await fetch('/api/lti/session',{method:'POST',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,id_token:idToken,browserSecret})});
  if(!res.ok) throw new Error(${scriptJson(copy.connectionError)});
- const session=await res.json();token=session.token;sessionStorage.removeItem(key);
+ const session=await res.json();token=session.token;features=session.features||{};sessionStorage.removeItem(key);
+ materialsPanel.hidden=!features.transcripts;
  const historyResponse=await fetch('/api/lti/history',{method:'POST',credentials:'omit',headers:{'Authorization':'Bearer '+token}});
  if(!historyResponse.ok)throw new Error(${scriptJson(copy.connectionError)});
  const saved=await historyResponse.json();history=Array.isArray(saved.turns)?saved.turns:[];

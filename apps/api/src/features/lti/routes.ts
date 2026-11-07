@@ -11,7 +11,8 @@ import type { AppEnv } from "../../types/bindings";
 import { toErrorBody } from "../../shared/errors";
 import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
 import { getVideoEvidence } from "../../repositories/video-evidence-repository";
-import { courseAccess } from "./course-access";
+import { courseAccess, courseAccessContext } from "./course-access";
+import { transcriptPage } from "./transcript";
 import { playbackCueHint } from "./playback-context";
 import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
@@ -144,6 +145,7 @@ ltiRoutes.post("/session", async c => {
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
   return c.json({ token, expiresIn: 3600,
+    features: { transcripts: Boolean(reg.courseAccess || reg.materialsService) },
     ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -170,6 +172,45 @@ async function feedbackReference(c: Context<AppEnv>, sessionHash: string, course
   await putCredential(c.env, await digest(id), "lti-feedback", { sessionHash, courseId, logId }, 3600);
   return id;
 }
+
+// Material capabilities come from Moodle on every request, never from LTI roles
+// or browser-supplied course/owner IDs. The VideoQ membership is checked as well.
+async function authorizeMaterials(c: Context<AppEnv>) {
+  const access = await authorize(c);
+  if (access.error) return { error: access.error } as const;
+  const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + access.grant.subjectHash }]);
+  if (denied) return { error: throttledResponse(c, denied) } as const;
+  try {
+    const current = await courseAccessContext(access.reg, access.grant, c.env);
+    if (!current) return { error: refused(c, 403) } as const;
+    const course = await getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId,
+      ltiVideoGrant: current.videos.map(video => video.videoId) });
+    if (!course) return { error: refused(c, 403) } as const;
+    return { current, course };
+  } catch { return { error: refused(c, 403) } as const; }
+}
+
+ltiRoutes.post("/materials", async c => {
+  const access = await authorizeMaterials(c);
+  if ("error" in access) return access.error;
+  return c.json({ permissions: access.current.permissions,
+    videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)) });
+});
+
+ltiRoutes.post("/transcript", async c => {
+  const input = z.object({ videoId: z.number().int().positive().safe(), cursor: z.number().int().min(0).max(100_000).default(0),
+    limit: z.number().int().min(1).max(100).default(50) }).strict().safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return refused(c);
+  const access = await authorizeMaterials(c);
+  if ("error" in access) return access.error;
+  const { videoId, cursor, limit } = input.data;
+  const material = access.current.videos.find(video => video.videoId === videoId);
+  if (!access.current.permissions.viewTranscript || !material || !access.course.memberVideoIds.includes(videoId)) return refused(c, 403);
+  const video = await getVideoEvidence(c.env, { ownerUserId: access.course.userId, videoIds: [videoId] }, videoId);
+  if (!video) return refused(c, 403);
+  if (video.transcriptTooLarge) return c.json(toErrorBody("VALIDATION_ERROR", "This transcript is too large to display."), 413);
+  return c.json({ videoId, title: material.title, ...transcriptPage(video.transcript, cursor, limit) });
+});
 
 ltiRoutes.post("/history", async c => {
   const access = await authorize(c);
