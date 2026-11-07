@@ -13,10 +13,23 @@ const phpSources = new Set(['fixture.php', 'privacy-fixture.php', 'export_materi
 const phpCodes = new Set(['invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception',
   'dmlwriteexception', 'invalidrecord', 'invalidtaskclassname']);
 const httpServices = new Set(['moodle-oauth', 'moodle-materials']);
+const nativePageSources = new Set(['view.php', 'workspace.php', 'native_context.php', 'native_api.php',
+  'ui_strings.php', 'renderer_base.php', 'moodlelib.php']);
 const httpCodes = new Set(['ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
   'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
   'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR',
   'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
+
+export function nativeMountEvidence(value) {
+  const result = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
+  for (const key of ['workspace', 'native', 'visible', 'login', 'errorBox', 'debugging'])
+    if (typeof value[key] === 'boolean') result[key] = value[key];
+  if (Array.isArray(value.locations)) result.locations = value.locations.slice(0, 8).flatMap(location =>
+    nativePageSources.has(location?.source) && Number.isInteger(location?.line) && location.line > 0 && location.line <= 100000
+      ? [{source: location.source, line: location.line}] : []);
+  return result;
+}
 
 export function commandEvidence(error, operation) {
   const result = {operation: operations.has(operation) ? operation : 'cluster-read'};

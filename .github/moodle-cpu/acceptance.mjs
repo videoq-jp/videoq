@@ -5,7 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
-import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, mediaRangeEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, mediaRangeEvidence, nativeMountEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {fileURLToPath} from 'node:url';
 import {corePrivacy} from './privacy.mjs';
 import {installNativeReader, waitLearningResponse} from './native-browser.mjs';
@@ -209,6 +209,28 @@ async function nativeBrowserEvidence() {
   return evidence;
 }
 async function nativePage(page) {
+  delete report.nativeMount;
+  report.nativeMount = nativeMountEvidence(await page.evaluate(() => {
+    const root = document.querySelector('.local-videoq-workspace');
+    const text = document.body.innerText;
+    const locations = [];
+    for (const [path, source] of [
+      ['/local/videoq/view.php', 'view.php'], ['/local/videoq/classes/output/workspace.php', 'workspace.php'],
+      ['/local/videoq/classes/native_context.php', 'native_context.php'], ['/local/videoq/classes/native_api.php', 'native_api.php'],
+      ['/local/videoq/classes/ui_strings.php', 'ui_strings.php'], ['/lib/classes/output/renderer_base.php', 'renderer_base.php'],
+      ['/lib/moodlelib.php', 'moodlelib.php']]) {
+      const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = text.match(new RegExp('line (\\d+) of ' + escaped));
+      if (match) locations.push({source, line: Number(match[1])});
+    }
+    return {workspace: Boolean(root), native: root?.hasAttribute('data-videoq-native') === true,
+      visible: Boolean(root?.getClientRects().length), login: location.pathname === '/login/index.php',
+      errorBox: Boolean(document.querySelector('.errorbox, .alert-danger, #notice .errorcode')),
+      debugging: Boolean(document.querySelector('[data-rel="debugging"]')), locations};
+  }));
+  assert.equal(report.nativeMount.workspace, true, 'Moodle renders the workspace without a PHP/template error');
+  assert.equal(report.nativeMount.native, true, 'Current Moodle authority enables native learning');
+  assert.equal(report.nativeMount.visible, true, 'Native workspace is visible');
   await page.locator('.local-videoq-workspace[data-videoq-native]').waitFor();
   assert.equal(await page.locator('[data-rel="debugging"]').count(), 0,
     'Native Moodle page renders without developer debugging output');
@@ -759,6 +781,7 @@ try {
     ...(report.tagsUi ? {tagsUi: tagUiEvidence(report.tagsUi)} : {}),
     ...(report.tagClick ? {tagClick: clickActionabilityEvidence(report.tagClick)} : {}),
     ...(report.mediaRange ? {mediaRange: mediaRangeEvidence(report.mediaRange)} : {}),
+    ...(report.nativeMount ? {nativeMount: nativeMountEvidence(report.nativeMount)} : {}),
   }) + '\n');
   throw error;
 } finally {

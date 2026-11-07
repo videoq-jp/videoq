@@ -1,6 +1,6 @@
 import assert, {AssertionError} from 'node:assert/strict';
 import {test} from 'node:test';
-import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, commandEvidence, mediaRangeEvidence, tagUiEvidence} from './browser-evidence.mjs';
+import {AcceptanceCommandError, browserFailure, clickActionabilityEvidence, commandEvidence, mediaRangeEvidence, nativeMountEvidence, tagUiEvidence} from './browser-evidence.mjs';
 import {observeMaintenanceFetch, serviceFailure} from './maintenance-observer.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -9,6 +9,14 @@ import {fileURLToPath} from 'node:url';
 import {suppressedMailContinuation} from './privacy.mjs';
 
 const source = new URL('./acceptance.mjs', import.meta.url).href;
+test('native page diagnostics exclude HTML, credentials and unknown stack paths', () => {
+  const expected = {workspace: false, native: false, visible: false, login: false, errorBox: true, debugging: true,
+    locations: [{source: 'view.php', line: 170}]};
+  assert.deepEqual(nativeMountEvidence({...expected, body: 'PRIVATE_BODY', sesskey: 'PRIVATE_SESSION',
+    locations: [...expected.locations, {source: 'PRIVATE_PATH', line: 1}, {source: 'native_api.php', line: -1}]}), expected);
+  assert.deepEqual(nativeMountEvidence(nativeMountEvidence(expected)), expected);
+  assert.deepEqual(nativeMountEvidence({workspace: 'PRIVATE', locations: 'PRIVATE'}), {});
+});
 test('mail-suppressed core requests follow only the expected Moodle Continue destination', () => {
   const current = 'https://moodle.localhost:18443/admin/tool/dataprivacy/createdatarequest.php?manage=0&type=1';
   const target = 'https://moodle.localhost:18443/admin/tool/dataprivacy/mydatarequests.php';
