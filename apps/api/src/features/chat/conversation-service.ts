@@ -1,7 +1,7 @@
 import { chatAnswerSchema } from '@videoq/trpc/chat';
 import { withClient } from '../../db/pool';
 import { getCourseWithMembers } from '../../repositories/chat-repository';
-import { conversationThreadId, type ConversationScope } from '../../repositories/conversation-repository';
+import { conversationThreadId, ltiConversationFilter, lockLtiConversationCourse, withConversationRead, type ConversationScope } from '../../repositories/conversation-repository';
 import { apiConflict, apiNotFound, ApiError } from '../../shared/errors';
 import { createChatFeedbackToken } from '../../lib/chat-feedback-token';
 import type { Bindings } from '../../types/bindings';
@@ -29,11 +29,12 @@ export async function listConversations(env: Bindings, scope: ConversationScope,
   // Shared-link visitors have no account identity. UUIDs saved by this browser
   // select candidates only; the browser session independently authorizes access.
   const ids = scope.shareSlug ? input.conversationIds ?? [] : null;
-  return withClient(env, async client => {
+  const filter = ltiConversationFilter(scope, 5);
+  return withConversationRead(env, scope, async client => {
     const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations
       WHERE scope_key = $1 AND expires_at > now() AND committed_checkpoint_id IS NOT NULL
-        AND ($2::uuid[] IS NULL OR conversation_id = ANY($2::uuid[]))
-      ORDER BY updated_at DESC, thread_id DESC LIMIT $3 OFFSET $4`, [scopeKey, ids, input.limit + 1, input.offset]);
+        AND ($2::uuid[] IS NULL OR conversation_id = ANY($2::uuid[]))${filter.sql}
+      ORDER BY updated_at DESC, thread_id DESC LIMIT $3 OFFSET $4`, [scopeKey, ids, input.limit + 1, input.offset, ...filter.values]);
     return { items: rows.slice(0, input.limit).map(summary), hasMore: rows.length > input.limit };
   });
 }
@@ -41,18 +42,23 @@ export async function listConversations(env: Bindings, scope: ConversationScope,
 export async function getConversation(env: Bindings, scope: ConversationScope,
   input: { conversationId: string; beforeTurnId?: string; limit: number }) {
   const threadId = await conversationThreadId(scope, input.conversationId);
-  return withClient(env, async client => {
+  const filter = ltiConversationFilter(scope, 2);
+  return withConversationRead(env, scope, async client => {
     const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations
-      WHERE thread_id = $1 AND expires_at > now()`, [threadId]);
+      WHERE thread_id = $1 AND expires_at > now()${filter.sql}${scope.ltiSubject ? ' FOR SHARE' : ''}`, [threadId, ...filter.values]);
     if (!rows[0]) throw apiNotFound('Conversation not found.');
-    const turns = await client.query<{ id: string; question: string; response: unknown; chatLogId: string | null; feedback: 'good' | 'bad' | null }>(`
-      SELECT t.id::text, t.question, t.response, t.chat_log_id AS "chatLogId", l.feedback
+    const turns = await client.query<{ id: string; question: string; response: unknown; createdAt: Date; chatLogId: string | null; feedback: 'good' | 'bad' | null }>(`
+      SELECT t.id::text, t.question, t.response, t.created_at AS "createdAt", t.chat_log_id AS "chatLogId", l.feedback
       FROM chat_conversation_turns t LEFT JOIN chat_logs l ON l.id = t.chat_log_id
       WHERE t.thread_id = $1 AND ($2::bigint IS NULL OR t.id < $2::bigint)
       ORDER BY t.id DESC LIMIT $3`, [threadId, input.beforeTurnId ?? null, input.limit + 1]);
     const items = await Promise.all(turns.rows.slice(0, input.limit).reverse().map(async turn => {
       const chatLogId = turn.chatLogId === null ? null : Number(turn.chatLogId);
-      return { id: turn.id, question: turn.question, answer: chatAnswerSchema.parse(turn.response),
+      const answer = chatAnswerSchema.parse(turn.response);
+      const allowed = scope.ltiSubject?.resourceVideoIds;
+      if (allowed && answer.sources.some(source => !allowed.includes(source.video_id))) throw apiNotFound('Conversation not found.');
+      return { id: turn.id, question: turn.question, answer,
+        ...(scope.ltiSubject ? { createdAt: turn.createdAt.toISOString() } : {}),
         chatLogId, feedback: turn.feedback,
         ...(scope.shareSlug && chatLogId !== null
           ? { feedbackToken: await createChatFeedbackToken(env, chatLogId, scope.shareSlug) } : {}),
@@ -67,6 +73,7 @@ export async function deleteConversation(env: Bindings, scope: ConversationScope
   return withClient(env, async client => {
     await client.query('BEGIN');
     try {
+      await lockLtiConversationCourse(client, scope, true);
       const row = await client.query<{ busy: boolean }>(`SELECT (lease_id IS NOT NULL AND leased_until > now()) AS busy
         FROM chat_conversations WHERE thread_id = $1 FOR UPDATE`, [threadId]);
       if (row.rows[0]?.busy) throw apiConflict('Wait for the current answer to finish before deleting this conversation.', 'CONVERSATION_BUSY');

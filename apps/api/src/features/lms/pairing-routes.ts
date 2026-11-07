@@ -10,6 +10,9 @@ import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-li
 import { ltiConfig, ltiMaterialsEnabled } from "../lti/config";
 import { LmsSyncError } from "./resource";
 import { exchangeMoodlePairing, issueMoodlePairing, pairingExchangeSchema, pairingRequestSchema } from "./pairing";
+import { moodleManagementRequest } from '@videoq/trpc/moodle-management';
+import { managementContext } from './management-context';
+import { features } from '../../lib/deployment';
 
 export const moodlePairingRoutes = new Hono<AppEnv>();
 moodlePairingRoutes.use("*", bodyLimit({ maxSize: 8192 }));
@@ -35,7 +38,9 @@ moodlePairingRoutes.get("/discovery", async c => {
   if (frontend.protocol !== "https:" || frontend.username || frontend.password || frontend.pathname !== "/" || frontend.search || frontend.hash) {
     return c.json({ error: "PAIRING_FAILED" }, 503);
   }
-  return c.json({ toolOrigin: ltiConfig(c.env)!.toolOrigin, authorizationUrl: frontend.origin + "/moodle/connect" });
+  return c.json({ toolOrigin: ltiConfig(c.env)!.toolOrigin, authorizationUrl: frontend.origin + "/moodle/connect",
+    managementUrl: frontend.origin + '/moodle/manage', courseEntries: true, userVisibility: true,
+    youtubeSourceProtocol: true, youtubeSources: features(c.env).youtube });
 });
 
 // Server-to-server exchange. Account/issuer are bound by the owner's expiring code.
@@ -48,7 +53,18 @@ moodlePairingRoutes.post("/exchange", async c => {
 });
 
 moodlePairingRoutes.use("/", requireAuth(sessionMethod));
+moodlePairingRoutes.use('/management', requireAuth(sessionMethod));
 moodlePairingRoutes.use("/connections/*", requireAuth(sessionMethod));
+moodlePairingRoutes.post('/management', async c => {
+  const allowed = [ltiConfig(c.env)!.toolOrigin, ...(c.env.CORS_ALLOW_ORIGIN ?? '').split(',').map(value => value.trim())];
+  if (!c.req.header('Origin') || !allowed.includes(c.req.header('Origin')!)) return c.json({ error: 'INVALID_ORIGIN' }, 403);
+  const denied = await enforceThrottles(c.env, [{ scope: 'moodle_pairing_user', ident: c.var.userId! }]);
+  if (denied) return throttledResponse(c, denied);
+  const input = moodleManagementRequest.safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return c.json({ error: 'INVALID_CONNECTION' }, 400);
+  const context = await managementContext(c.env, c.var.userId!, input.data);
+  return context ? c.json(context) : c.json({ error: 'UNAUTHORIZED' }, 401);
+});
 moodlePairingRoutes.get("/", async c => {
   const connections = await withDb(c.env, db => db.select({ id: lmsInstallations.id, moodleUrl: lmsInstallations.issuer,
     active: lmsInstallations.active }).from(lmsInstallations).innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))

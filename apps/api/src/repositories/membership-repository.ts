@@ -100,14 +100,14 @@ export async function detachTag(
 
 async function lockOwnedCourse(db: Pick<Db, "select">, courseId: number, userId: string) {
   const rows = await db.select({ id: videoCourses.id }).from(videoCourses)
-    .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+    .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
     .limit(1).for("update");
   return rows.length > 0;
 }
 
-async function lockOwnedCourseVideos(db: Pick<Db, "select">, videoIds: number[], userId: string) {
+async function lockOwnedCourseVideos(db: Pick<Db, "select">, videoIds: number[], userId: string, allowLmsCleanup = false) {
   const rows = await db.select({ id: videos.id }).from(videos)
-    .where(and(inArray(videos.id, videoIds), eq(videos.userId, userId)))
+    .where(and(inArray(videos.id, videoIds), eq(videos.userId, userId), allowLmsCleanup ? undefined : eq(videos.managedByLms, false)))
     .orderBy(asc(videos.id)).for("share");
   return rows.length === videoIds.length;
 }
@@ -149,7 +149,7 @@ export async function removeVideoFromCourse(
 ): Promise<CourseVideoNotFound | { notMember: true } | { ok: true }> {
   return withDb(env, (db) => db.transaction(async (tx) => {
     if (!await lockOwnedCourse(tx, courseId, userId)) return { notFound: "Course not found" } as const;
-    if (!await lockOwnedCourseVideos(tx, [videoId], userId)) return { notFound: "Video not found" } as const;
+    if (!await lockOwnedCourseVideos(tx, [videoId], userId, true)) return { notFound: "Video not found" } as const;
     const rows = await tx.delete(videoCourseMembers)
       .where(and(eq(videoCourseMembers.courseId, courseId), eq(videoCourseMembers.videoId, videoId)))
       .returning({ id: videoCourseMembers.id });

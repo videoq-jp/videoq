@@ -32,7 +32,7 @@ export function CourseQaPanel(props: Props) {
 function Author({ author, date }: { author: QaQuestion['author']; date: string }) {
   const { t, i18n } = useTranslation();
   return <p className="flex flex-wrap items-center gap-x-2 text-dns-14N-130 text-solid-gray-600">
-    <span>{author.name ?? t('qa.deletedUser')}</span>
+    <span>{author.name ? (author.source === 'moodle' ? t('qa.moodleParticipant', { id: author.name }) : author.name) : t('qa.deletedUser')}</span>
     {author.instructor && <span className="font-bold text-key-900">{t('qa.instructor')}</span>}
     <time dateTime={date}>{new Date(date).toLocaleDateString(i18n.language)}</time>
   </p>;
@@ -101,6 +101,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   const feature = useMutation(trpc.qa.feature.mutationOptions());
   const busy = [ask, reply, updateQuestion, deleteQuestion, updateReply, deleteReply, vote, feature].some(mutation => mutation.isPending);
   const canPost = selected ? detail.data?.canPost : list.data?.canPost;
+  const canVote = selected ? (detail.data?.canVote ?? detail.data?.canPost) : (list.data?.canVote ?? list.data?.canPost);
   const canModerate = selected ? detail.data?.canModerate : list.data?.canModerate;
   const run = async (operation: () => Promise<void>) => {
     if (busy) return;
@@ -110,7 +111,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   const back = () => { setSelected(null); setReplyPage(0); setEditingQuestion(false); setEditingReply(null); setError(false); };
   const open = (questionId: string) => { setSelected(questionId); setReplyPage(0); setAsking(false); setEditingQuestion(false); setEditingReply(null); setError(false); setAnswer(''); };
   const login = <Link href={`/login?next=${encodeURIComponent(location.pathname)}`} className="text-key-900 underline">{t('qa.loginToPost')}</Link>;
-  const voteButton = (question: QaQuestion) => <Button type="button" variant="text" size="sm" disabled={busy || !canPost}
+  const voteButton = (question: QaQuestion) => <Button type="button" variant="text" size="sm" disabled={busy || !canVote}
     aria-pressed={question.voted} aria-label={t(question.voted ? 'qa.removeVote' : 'qa.vote')}
     onClick={() => void run(async () => { await vote.mutateAsync({ ...access, questionId: question.id, voted: !question.voted }); await refresh(); })}>
     <ThumbsUp className="h-4 w-4" aria-hidden="true" /><span>{question.votes}</span>

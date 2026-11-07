@@ -160,7 +160,7 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-local-whisper:onprem-ci
-          trivy-config: apps/inference/whisper/security/sqlite-trivy.yaml
+          trivy-config: apps/inference/whisper/security/cpu-trivy.yaml
           format: json
           output: local-whisper-security.json
           scanners: vuln

@@ -25,7 +25,8 @@ export async function setupConversationCheckpoints(pool: pg.Pool): Promise<void>
       GRANT USAGE ON SCHEMA chat_memory TO videoq_api_access;
       GRANT SELECT, INSERT, UPDATE, DELETE ON chat_memory.checkpoints,
         chat_memory.checkpoint_blobs, chat_memory.checkpoint_writes,
-        public.chat_conversations, public.chat_conversation_turns TO videoq_api_access;
+        public.chat_conversations, public.chat_conversation_turns,
+        public.lti_chat_log_subjects, public.lti_conversation_scopes TO videoq_api_access;
       GRANT USAGE, SELECT ON SEQUENCE public.chat_conversation_turns_id_seq TO videoq_api_access;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'videoq_backup_access') THEN

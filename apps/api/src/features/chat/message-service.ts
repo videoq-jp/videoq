@@ -1,3 +1,4 @@
+import type { LtiSessionProof } from '../lti/data-lock';
 import {
   getCourseWithMembers,
   createChatLog,
@@ -25,6 +26,7 @@ import { type ChatAnswer, type ChatStreamEvent } from "@videoq/trpc/chat";
 import type { Bindings } from "../../types/bindings";
 import type { ChatMessageBody } from "./schemas";
 import type { ChatMessage } from "@videoq/trpc";
+import { checkedLtiSubject, type LtiDataSubject } from '../lti/identity';
 
 type ChatSendResult =
   | { status: 200; body: ChatMessage }
@@ -102,6 +104,8 @@ type ChatSetup = {
   course: GroupChatContext | null;
   isShared: boolean;
   locale: string | null;
+  ltiSubject?: LtiDataSubject;
+  displayQuestion?: string;
 };
 
 function toChatRequestInput(body: ChatMessageBody): ChatRequestInput {
@@ -123,6 +127,9 @@ async function setupChat(
     locale: string | null;
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
+    ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
+    displayQuestion?: string;
   },
 ): Promise<{ ok: true; setup: ChatSetup } | { ok: false; failure: ChatFailure }> {
   const isShared = opts.shareSlug !== null || opts.ltiCourseGrant !== undefined;
@@ -151,6 +158,10 @@ async function setupChat(
   }
 
   const ownerUserId = course?.userId ?? userId;
+  if (opts.ltiSubjectKey && (opts.ltiCourseGrant !== course?.id || userId !== null || opts.shareSlug !== null)) {
+    return { ok: false, failure: failures.permissionDenied('Invalid external identity scope.') };
+  }
+  const ltiSubject = opts.ltiSubjectKey ? checkedLtiSubject({ subjectKey: opts.ltiSubjectKey, resourceVideoIds: course!.memberVideoIds, ...(opts.ltiSessionProof ? {sessionProof:opts.ltiSessionProof} : {}) }) : undefined;
   if (ownerUserId === null) {
     return {
       ok: false,
@@ -175,6 +186,8 @@ async function setupChat(
       course,
       isShared,
       locale: opts.locale,
+      ...(ltiSubject ? { ltiSubject } : {}),
+      ...(opts.displayQuestion !== undefined ? { displayQuestion: opts.displayQuestion } : {}),
     },
   };
 }
@@ -206,10 +219,11 @@ async function persistTurn(
   const log = await (db ? createChatLogWithDb.bind(null, db) : createChatLog.bind(null, env))({
     userId: setup.actorUserId,
     courseId: setup.course.id,
-    question: turn.question,
+    question: setup.displayQuestion ?? turn.question,
     answer: turn.answer,
     isShared: setup.isShared,
     retrievedContexts: turn.retrievedContexts,
+    ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}),
   });
   return { chatLogId: log.id, feedback: log.feedback };
 }
@@ -280,6 +294,9 @@ export async function sendChatMessage(
     /** Internal course-scoped grant; never accepted from ordinary chat input. */
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
+    ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
+    displayQuestion?: string;
   },
 ): Promise<ChatSendResult> {
   const req = toChatRequestInput(opts.body);
@@ -291,6 +308,8 @@ export async function sendChatMessage(
     locale: opts.locale,
     ltiCourseGrant: opts.ltiCourseGrant,
     ltiVideoGrant: opts.ltiVideoGrant,
+    ltiSubjectKey: opts.ltiSubjectKey, ltiSessionProof: opts.ltiSessionProof,
+    displayQuestion: opts.displayQuestion,
   });
   if (!prepared.ok) {
     const f = prepared.failure;
@@ -317,9 +336,10 @@ export async function sendChatMessage(
     }, {
       id: req.conversationId,
       resume: req.resumeConversation,
+      question: setup.displayQuestion,
       persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
       scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
-        courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId },
+        courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId, ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}) },
     });
   } catch (e) {
     const consumed = e instanceof ConversationCommitError;
@@ -375,6 +395,9 @@ export async function streamChatMessage(
     locale: string | null;
     ltiCourseGrant?: number;
     ltiVideoGrant?: number[];
+    ltiSubjectKey?: string;
+    ltiSessionProof?: LtiSessionProof;
+    displayQuestion?: string;
     clientSignal?: AbortSignal;
     includeToolProgress?: boolean;
   },
@@ -388,6 +411,8 @@ export async function streamChatMessage(
     locale: opts.locale,
     ltiCourseGrant: opts.ltiCourseGrant,
     ltiVideoGrant: opts.ltiVideoGrant,
+    ltiSubjectKey: opts.ltiSubjectKey, ltiSessionProof: opts.ltiSessionProof,
+    displayQuestion: opts.displayQuestion,
   });
 
   const messages = req.messages;
@@ -425,10 +450,11 @@ export async function streamChatMessage(
           },
           {
             id: req.conversationId,
-      resume: req.resumeConversation,
-      persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
+            resume: req.resumeConversation,
+            question: setup.displayQuestion,
+            persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
             scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
-              courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId },
+              courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId, ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}) },
           },
           clientSignal,
         )) {

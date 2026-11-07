@@ -1,0 +1,257 @@
+"""Run actual Moodle pairing/media/AI UI inside the parent real-CPU cluster."""
+import importlib.util
+import json
+import os
+import re
+from pathlib import Path
+import subprocess
+import socket
+import time
+from uuid import uuid4
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def module(name, filename):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    value = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(value)
+    return value
+
+
+runtime = module('moodle_runtime', 'moodle-cpu-runtime.py')
+install = module('moodle_install', 'moodle-install-acceptance.py')
+
+
+def command_failure_summary(command):
+    if not isinstance(command, dict):
+        return ''
+    operations = {'cluster-read', 'backend-maintenance', 'moodle-status', 'moodle-tick', 'moodle-hide', 'moodle-show',
+                  'moodle-suspend', 'moodle-resume', 'moodle-deny-reports', 'moodle-allow-reports',
+                  'material-evidence', 'standalone-index-evidence', 'conversation-evidence',
+                  'privacy-memory-evidence', 'privacy-archive-evidence', 'moodle-privacy-setup',
+                  'moodle-privacy-status', 'moodle-privacy-task', 'moodle-privacy-export-evidence', 'moodle-privacy-reset'}
+    operation = command.get('operation')
+    if not isinstance(operation, str) or operation not in operations:
+        return ''
+    parts = [operation]
+    code = command.get('exitCode')
+    if type(code) is int and 0 < code <= 255:
+        parts.append(f'exit={code}')
+    if command.get('signal') in ['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV']:
+        parts.append(command['signal'])
+    if command.get('timedOut') is True:
+        parts.append('timeout')
+    php = command.get('php')
+    if operation.startswith('moodle-') and isinstance(php, dict):
+        kinds = {'Error', 'TypeError', 'JsonException', 'RuntimeException', 'coding_exception', 'dml_read_exception',
+                 'dml_write_exception', 'dml_missing_record_exception', 'dml_multiple_records_exception', 'moodle_exception'}
+        if isinstance(php.get('kind'), str) and php['kind'] in kinds:
+            parts.append('php=' + php['kind'])
+        codes = {'invalidconfiguration', 'invalidparameter', 'codingerror', 'dmlreadexception', 'dmlwriteexception',
+                 'invalidrecord', 'invalidtaskclassname'}
+        if isinstance(php.get('code'), str) and php['code'] in codes:
+            parts.append(php['code'])
+        sources = {'fixture.php', 'privacy-fixture.php', 'export_material.php', 'synchronizer.php', 'client.php', 'materials_service.php',
+                   'service_auth.php', 'task-manager.php', 'task-adhoc.php', 'task-base.php'}
+        if isinstance(php.get('source'), str) and php['source'] in sources and type(php.get('line')) is int and 0 < php['line'] <= 100_000:
+            parts.append(f"at {php['source']}:{php['line']}")
+    http = command.get('http')
+    if operation == 'backend-maintenance' and isinstance(http, dict) and http.get('service') in ['moodle-oauth', 'moodle-materials']:
+        parts.append(http['service'])
+        if type(http.get('httpStatus')) is int and 400 <= http['httpStatus'] <= 599:
+            parts.append(f"HTTP={http['httpStatus']}")
+        if http.get('requestFailed') is True:
+            parts.append('request-error')
+        if http.get('requestKind') == 'timeout':
+            parts.append('request-timeout')
+        codes = {'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+                 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ABORT_ERR'}
+        codes |= {'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN',
+                  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET'}
+        if isinstance(http.get('code'), str) and http['code'] in codes:
+            parts.append(http['code'])
+    maintenance = command.get('maintenance')
+    if operation == 'backend-maintenance' and isinstance(maintenance, list):
+        tasks = {'externalTasks', 'ltiMaterials', 'abandonedUploads', 'staleInvitations', 'health'}
+        reasons = {'other', 'materials-service-unavailable', 'database-relation-missing',
+                   'database-column-missing', 'database-permission-denied'}
+        for task in sorted(tasks):
+            if any(isinstance(item, dict) and item.get('task') == task and isinstance(item.get('reason'), str)
+                   and item['reason'] in reasons for item in maintenance):
+                item = next(item for item in maintenance if isinstance(item, dict) and item.get('task') == task
+                            and isinstance(item.get('reason'), str) and item['reason'] in reasons)
+                parts.append(task + '=' + item['reason'])
+    return '; ' + ' '.join(parts)
+
+
+def browser_failure_summary(path):
+    # Never reflect a browser message, selector, URL or stack in public logs.
+    try:
+        evidence = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return 'unknown'
+    if not isinstance(evidence, dict):
+        return 'unknown'
+    privacy_stages = {'core-privacy-real-question', 'core-privacy-peer-data', 'core-privacy-export', 'core-privacy-delete'}
+    allowed = privacy_stages | {'startup', 'owner-pairing', 'teacher-enable', 'real-moodle-processing', 'fresh-learner-native',
+               'real-native-question', 'personal-history', 'native-transcript', 'teacher-management',
+               'course-tags', 'human-qa', 'positive-reports',
+               'same-session-source-enrolment', 'personal-deletion'}
+    stage = evidence.get('stage')
+    summary = stage if isinstance(stage, str) and stage in allowed else 'unknown'
+    failure = evidence.get('failure')
+    if isinstance(failure, dict) and isinstance(failure.get('kind'), str) and failure['kind'] in {'assertion', 'timeout', 'error'}:
+        summary += ' (' + failure['kind']
+        row, column = failure.get('line'), failure.get('column')
+        if type(row) is int and type(column) is int and 0 < row <= 100_000 and 0 < column <= 100_000:
+            source = 'privacy.mjs' if isinstance(stage, str) and stage in privacy_stages else 'acceptance.mjs'
+            summary += f' at {source}:{row}:{column}'
+        summary += command_failure_summary(failure.get('command'))
+        summary += ')'
+    return summary
+
+
+def privacy_result(value):
+    # Reconstruct the public result independently of the browser. No archive
+    # records, model IDs, paths or reflected extra properties may be published.
+    def require(condition):
+        if not condition:
+            raise RuntimeError('Actual Moodle core privacy evidence is incomplete')
+    require(isinstance(value, dict))
+    checksum = value.get('archiveSha256')
+    require(isinstance(checksum, str) and re.fullmatch('[a-f0-9]{64}', checksum))
+    flags = ['ownModelMemoryErased', 'peerDataRetained', 'originalSubjectSessionDenied',
+             'sharedMaterialsPreserved', 'teacherArchiveDownloadDenied', 'reportsRefreshedToZero',
+             'modelMemoryExportMatched']
+    require(all(value.get(key) is True for key in flags))
+    collections = ['logs', 'evaluations', 'conversations', 'turns', 'questions', 'replies',
+                   'checkpoints', 'checkpoint_blobs', 'checkpoint_writes']
+    counts = value.get('exported')
+    require(isinstance(counts, dict) and all(type(counts.get(key)) is int and 0 <= counts[key] <= 100000 for key in collections))
+    require(counts['conversations'] == 1 and counts['turns'] == 1 and counts['logs'] == 1 and
+            counts['questions'] == 1 and counts['replies'] == 0)
+    memory = value.get('modelMemoryBefore')
+    require(isinstance(memory, dict))
+    for key, collection in [('checkpoints', 'checkpoints'), ('blobs', 'checkpoint_blobs'), ('writes', 'checkpoint_writes')]:
+        require(type(memory.get(key)) is int and 0 < memory[key] <= 100000 and memory[key] == counts[collection])
+    return {'archiveSha256': checksum, 'exported': {key: counts[key] for key in collections},
+            'modelMemoryBefore': {key: memory[key] for key in ['checkpoints', 'blobs', 'writes']},
+            **{key: True for key in flags}}
+
+
+def native_transport_result(report):
+    bootstrap = report.get('nativeBootstrap') if isinstance(report, dict) else None
+    value = report.get('nativeTransport') if isinstance(report, dict) else None
+    if (not isinstance(bootstrap, dict) or bootstrap.get('status') != 200 or bootstrap.get('protocol') is not True
+            or not isinstance(value, dict)):
+        raise ValueError('Native Moodle transport evidence missing')
+    result = {}
+    for key in ['pages', 'gatewayRequests', 'outsideRequests', 'authorizationHeaders', 'unreadableHeaders']:
+        number = value.get(key)
+        if type(number) is not int or number < 0 or number > 100000:
+            raise ValueError('Invalid native Moodle transport count')
+        result[key] = number
+    if (result['pages'] < 2 or result['gatewayRequests'] < 1
+            or any(result[key] for key in ['outsideRequests', 'authorizationHeaders', 'unreadableHeaders'])):
+        raise ValueError('Native Moodle browser boundary failed')
+    return result
+
+
+def api_ca_patch():
+    return {'spec': {'template': {'spec': {
+        'dnsConfig': runtime.node_dns_config(),
+        'volumes': [{'name': 'moodle-cpu-ca', 'configMap': {'name': 'moodle-cpu-ca'}}],
+        'containers': [{'name': 'api',
+            'env': [{'name': 'NODE_EXTRA_CA_CERTS', 'value': '/moodle-cpu-ca/root.crt'}],
+            'volumeMounts': [{'name': 'moodle-cpu-ca', 'mountPath': '/moodle-cpu-ca', 'readOnly': True}]}]}}}}
+
+
+def configure_api(moodle, output, chart):
+    moodle.assert_owner()
+    values = json.loads((output / 'values.json').read_text())
+    if values.get('publicUrl') != 'http://127.0.0.1:18787':
+        raise ValueError('Expected the parent baseline fixture origin before Moodle setup')
+    values['publicUrl'] = 'https://videoq.localhost:18443'
+    values['storage']['endpoint'] = 'https://storage.videoq.localhost:18443'
+    # Keep the parent's actual CPU endpoints/models; introduce no provider keys.
+    if values['ai'].get('openaiBaseUrl') != 'http://videoq-inference-chat:8000/v1':
+        raise ValueError('Moodle acceptance requires the actual parent CPU inference services')
+    profile = values['ai'].get('embeddingProfile', 'openai')
+    if profile not in ['openai', 'embeddinggemma2']:
+        raise ValueError('Unknown parent embedding storage profile')
+    extra = [entry for entry in values['api'].get('extraEnv', []) if entry['name'] != 'LTI_CONFIG']
+    values['api']['trustedProxyHops'] = 1
+    values['api']['extraEnv'] = [*extra, {'name': 'LTI_CONFIG', 'value': json.dumps({
+        'toolOrigin': values['publicUrl'], 'databaseRegistrations': True,
+        'privacyEnabled': True, 'auditRetentionDays': 30, 'registrations': []})}]
+    path = moodle.output / 'values.json'
+    path.write_text(json.dumps(values))
+    subprocess.run([os.environ.get('HELM_BIN', 'helm'), 'upgrade', 'videoq', str(chart),
+                    '--kubeconfig', str(moodle.kubeconfig), '--kube-context', 'kind-' + runtime.CLUSTER,
+                    '--namespace', runtime.NAMESPACE, '-f', str(path), '--wait', '--timeout', '5m'],
+                   check=True, capture_output=True, text=True, timeout=330)
+    # The chart's app containers are readonly. Mount only the disposable PUBLIC
+    # CA, preserving all existing security context, envFrom and model settings.
+    moodle.k('patch', 'deployment', 'videoq-api', '--type=strategic', '-p', json.dumps(api_ca_patch()))
+    moodle.k('rollout', 'status', 'deployment/videoq-api', '--timeout=300s', timeout=330)
+    for cron in ['videoq-maintenance', 'videoq-retention']:
+        moodle.k('patch', 'cronjob', cron, '--type=merge', '-p', '{"spec":{"suspend":true}}')
+    return 'scene_embeddings_768' if profile == 'embeddinggemma2' else 'scene_embeddings'
+
+
+def rehearse(kubeconfig, output, chart):
+    output = Path(output).resolve()
+    owner = uuid4().hex
+    prefix = ['kubectl', '--kubeconfig', str(kubeconfig), '--context', 'kind-' + runtime.CLUSTER,
+              '-n', runtime.NAMESPACE]
+    # Called only by the parent after it created this fresh dedicated cluster.
+    # create (not apply) refuses an earlier run's owner marker.
+    marker = runtime.resource('ConfigMap', runtime.OWNER_MAP, owner, data={'owner': owner})
+    subprocess.run([*prefix, 'create', '-f', '-'], input=json.dumps(marker),
+                   text=True, capture_output=True, check=True, timeout=30)
+    moodle = runtime.MoodleRuntime(kubeconfig, output / 'moodle-private', owner)
+    installed = moodle.provision(output / 'video.mp4')
+    installed_checks = moodle.verify_installed()
+    embedding_table = configure_api(moodle, output, chart)
+    # Host access is loopback-only. Browser traffic is further restricted to the
+    # three test origins. Server-to-server clients use the actual public CA.
+    forward = subprocess.Popen([*prefix, 'port-forward', '--address=127.0.0.1',
+                                'service/moodle-proxy', '18443:18443'],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(30):
+            if forward.poll() is not None:
+                raise RuntimeError('Owned Moodle loopback forward exited before readiness')
+            try:
+                with socket.create_connection(('127.0.0.1', 18443), timeout=1):
+                    break
+            except OSError:
+                time.sleep(1)
+        else:
+            raise RuntimeError('Owned Moodle loopback forward did not become ready')
+        state = moodle.output / 'browser-state.json'
+        result = output / 'moodle-result.json'
+        env = {**os.environ, 'MOODLE_CPU_KUBECONFIG': str(moodle.kubeconfig), 'MOODLE_CPU_OWNER': owner,
+               'MOODLE_CPU_PRIVATE': str(moodle.output), 'MOODLE_CPU_EMBEDDING_TABLE': embedding_table}
+        log = moodle.output / 'browser.log'
+        log.touch(mode=0o600)
+        with log.open('w') as stream:
+            process = subprocess.run(['node', str(ROOT / '.github/moodle-cpu/acceptance.mjs'),
+                                      str(state), str(output / 'e2e-state.json'), str(result)],
+                                     env=env, stdout=stream, stderr=stream, timeout=2400)
+        if process.returncode:
+            suffix = browser_failure_summary(output / 'moodle-stage.json')
+            raise RuntimeError('Actual Moodle CPU browser acceptance failed at ' + suffix + '; raw browser diagnostic stays private')
+        report = json.loads(result.read_text())
+        if report.get('status') != 'passed' or not report.get('transcript'):
+            raise RuntimeError('Actual Moodle CPU evidence is incomplete')
+        report['nativeTransport'] = native_transport_result(report)
+        report['privacy'] = privacy_result(report.get('privacy'))
+        report['installed'] = {'checks': installed_checks['checks'],
+                               'moodleRevision': installed['moodleRevision'],
+                               'companionRevision': installed['companionRevision']}
+        return report
+    finally:
+        forward.terminate()
+        forward.wait(timeout=10)

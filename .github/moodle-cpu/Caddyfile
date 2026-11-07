@@ -1,0 +1,42 @@
+{
+    auto_https disable_redirects
+}
+https://moodle.localhost:18443 {
+    tls internal
+    reverse_proxy moodle:80 {
+        @accel header X-Accel-Redirect *
+        handle_response @accel {
+            route {
+                @media vars_regexp media {rp.header.X-Accel-Redirect} ^%2Fprotected_moodle%2F([a-f0-9]{2})%2F([a-f0-9]{2})%2F([a-f0-9]{40})$
+                handle @media {
+                    route {
+                        root * /moodledata/filedir
+                        rewrite * /{re.media.1}/{re.media.2}/{re.media.3}
+                        @nothead not method HEAD
+                        method @nothead GET
+                        copy_response_headers {
+                            include Content-Type Content-Disposition Cache-Control Expires Last-Modified Set-Cookie
+                        }
+                        header X-Moodle-Media-Offload 1
+                        file_server
+                    }
+                }
+                respond 403
+            }
+        }
+    }
+}
+https://videoq.localhost:18443 {
+    tls internal
+    @api path /api/* /health /ready /.well-known/*
+    handle @api {
+        reverse_proxy {$VIDEOQ_API_UPSTREAM}
+    }
+    handle {
+        reverse_proxy {$VIDEOQ_WEB_UPSTREAM}
+    }
+}
+https://storage.videoq.localhost:18443 {
+    tls internal
+    reverse_proxy {$VIDEOQ_STORAGE_UPSTREAM}
+}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
 import { videoStatusSchema } from "@videoq/trpc";
 import { type Db, withClient, withDb } from "../db/pool";
 import { isUniqueViolation } from "../db/errors";
@@ -8,8 +8,8 @@ import {
   videos,
   videoCourses,
   videoCourseMembers,
-  videoCourseMemberships,
 } from "../db/schema";
+import { nativeCourseExternalAccess, nativeCourseReadableBy } from './course-authority';
 import { toUtcIso } from "../shared/datetime";
 import { mapVideoListRow, videoTagsJson, visualProcessing, type VideoListItem } from "./video-repository";
 import type { Bindings } from "../types/bindings";
@@ -231,14 +231,7 @@ export function getCourseDetail(
     env,
     and(
       eq(videoCourses.id, courseId),
-      or(
-        eq(videoCourses.userId, userId),
-        sql`EXISTS (
-          SELECT 1 FROM ${videoCourseMemberships}
-           WHERE ${videoCourseMemberships.courseId} = ${videoCourses.id}
-             AND ${videoCourseMemberships.userId} = ${userId}
-        )`,
-      ),
+      nativeCourseReadableBy(userId),
     )!,
     { viewerUserId: userId },
     options,
@@ -254,7 +247,7 @@ export function getCourseDetailByShareSlug(
   shareSlug: string,
   options: CourseReadOptions = {},
 ): Promise<CourseDetail | null> {
-  return fetchCourseDetail(env, eq(videoCourses.shareSlug, shareSlug), "public", options);
+  return fetchCourseDetail(env, and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess())!, "public", options);
 }
 
 /** 講座作成（display_order = MAX+1 を単一 INSERT で原子採番）。作成した id を返す。 */
@@ -311,7 +304,7 @@ export async function updateCourse(
     const patch: { name?: string; description?: string } = {};
     if (fields.name !== undefined) patch.name = fields.name;
     if (fields.description !== undefined) patch.description = fields.description;
-    const where = and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId));
+    const where = and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false));
     const [course] = Object.keys(patch).length > 0
       ? await tx.update(videoCourses).set(patch).where(where).returning(courseDetailSelect)
       : await tx.select(courseDetailSelect).from(videoCourses).where(where).for("update").limit(1);
@@ -333,7 +326,7 @@ export async function deleteCourse(
       const owner = await tx
         .select({ id: videoCourses.id })
         .from(videoCourses)
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
         .for("update");
       if (owner.length === 0) return { notFound: true } as const;
 
@@ -406,7 +399,7 @@ export async function reorderVideos(
       const owner = await tx
         .select({ id: videoCourses.id })
         .from(videoCourses)
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
         .for("update");
       if (owner.length === 0) return { notFound: true } as const;
 
@@ -463,7 +456,7 @@ export async function setShareSlug(
       const rows = await db
         .update(videoCourses)
         .set({ shareSlug: slug })
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), nativeCourseExternalAccess()))
         .returning({ id: videoCourses.id });
       return rows.length > 0 ? { ok: true } as const : { notFound: true } as const;
     } catch (e) {
@@ -508,14 +501,7 @@ export async function listCoursesPage(
   offset: number,
 ): Promise<{ count: number; results: CourseListItem[] }> {
   return withDb(env, async (db) => {
-    const visibleToUser = or(
-      eq(videoCourses.userId, userId),
-      sql`EXISTS (
-        SELECT 1 FROM ${videoCourseMemberships}
-         WHERE ${videoCourseMemberships.courseId} = ${videoCourses.id}
-           AND ${videoCourseMemberships.userId} = ${userId}
-      )`,
-    );
+    const visibleToUser = nativeCourseReadableBy(userId);
     const countRows = await db
       .select({ c: sql<number>`count(*)::int` })
       .from(videoCourses)

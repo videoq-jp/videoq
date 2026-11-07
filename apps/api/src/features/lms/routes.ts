@@ -16,9 +16,14 @@ import { LmsSyncError, resourceManifestSchema } from "./resource";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { ABANDONED_UPLOAD_MS } from "../../lib/upload-reconcile";
 import { lmsUploadStream } from "./upload";
+import { moodlePrivacyRoutes } from './privacy-routes';
+import { moodleNativeRoutes } from './native-routes';
+import { features } from '../../lib/deployment';
 
 export const lmsRoutes = new Hono<AppEnv>();
 lmsRoutes.route("/pairing", moodlePairingRoutes);
+lmsRoutes.route('/privacy',moodlePrivacyRoutes);
+lmsRoutes.route('/native',moodleNativeRoutes);
 const generationSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 
 lmsRoutes.use("*", async (c, next) => {
@@ -46,14 +51,14 @@ async function resourceResponse(c: Context<AppEnv>, grant: { id: string; ownerUs
   const { resource, video } = data;
   const base = ltiConfig(c.env)!.toolOrigin + "/api/lms/resources/" + encodeURIComponent(externalId);
   let uploadUrl: string | null = null;
-  if (resource.enabled && video?.status === "uploading") {
+  if (resource.kind === 'video' && resource.enabled && video?.status === "uploading") {
     uploadUrl = isS3Storage(c.env)
       ? await presignR2Put(c.env, video.file, resource.contentType!, resource.fileSize!)
       : base + "/content?generation=" + resource.generation;
   }
   return {
     generation: resource.generation,
-    status: !resource.enabled ? "disabled" : resource.syncError ? "blocked" : video?.status ?? "awaiting_upload",
+    status: !resource.enabled ? "disabled" : resource.syncError ? "blocked" : resource.kind === 'course' ? 'completed' : video?.status ?? "awaiting_upload",
     error: resource.syncError,
     upload: uploadUrl ? { url: uploadUrl, method: "PUT", direct: isS3Storage(c.env), contentType: resource.contentType, size: resource.fileSize } : null,
     confirmUrl: base + "/confirm",
@@ -63,7 +68,8 @@ async function resourceResponse(c: Context<AppEnv>, grant: { id: string; ownerUs
 lmsRoutes.get("/connection", async c => {
   const grant = await installation(c);
   return c.json({ issuer: grant.issuer, clientId: grant.clientId, deploymentId: grant.deploymentId,
-    toolOrigin: ltiConfig(c.env)!.toolOrigin, maxVideoBytes: MAX_SINGLE_UPLOAD_BYTES });
+    toolOrigin: ltiConfig(c.env)!.toolOrigin, maxVideoBytes: MAX_SINGLE_UPLOAD_BYTES, courseEntries: true, userVisibility: true,
+    youtubeSourceProtocol: true, youtubeSources: features(c.env).youtube });
 });
 
 lmsRoutes.get("/resources/:externalId", async c => {
@@ -74,10 +80,14 @@ lmsRoutes.get("/resources/:externalId", async c => {
 lmsRoutes.put("/resources/:externalId", bodyLimit({ maxSize: 32 * 1024 }), async c => {
   const grant = await installation(c);
   const input = resourceManifestSchema.safeParse(await c.req.json().catch(() => null));
-  if (!input.success || !/^[1-9][0-9]{0,17}$/.test(c.req.param("externalId"))) throw new LmsSyncError(400, "INVALID_MANIFEST");
+  if (!input.success || !(input.data.kind === 'course'
+    ? /^[1-9][0-9]{0,17}$/.test(input.data.contextId) && c.req.param('externalId') === 'course_' + input.data.contextId
+    : /^[1-9][0-9]{0,17}$/.test(c.req.param('externalId')))) throw new LmsSyncError(400, "INVALID_MANIFEST");
   await syncLmsResource(c.env, grant, c.req.param("externalId"), input.data);
-  await armMaintenance(c.env, Date.now());
-  await armMaintenance(c.env, Date.now() + ABANDONED_UPLOAD_MS);
+  if (input.data.kind !== 'course') {
+    await armMaintenance(c.env, Date.now());
+    if (!input.data.kind) await armMaintenance(c.env, Date.now() + ABANDONED_UPLOAD_MS);
+  }
   return c.json(await resourceResponse(c, grant));
 });
 
@@ -86,7 +96,7 @@ lmsRoutes.put("/resources/:externalId/content", async c => {
   if (isS3Storage(c.env)) throw new LmsSyncError(400, "USE_DIRECT_UPLOAD");
   const generation = Number(c.req.query("generation"));
   const data = await getLmsResource(c.env, grant, c.req.param("externalId"));
-  if (!data?.video || !data.resource.enabled || data.resource.generation !== generation) throw new LmsSyncError(409, "STALE_GENERATION");
+  if (!data?.video || data.resource.kind !== 'video' || !data.resource.enabled || data.resource.generation !== generation) throw new LmsSyncError(409, "STALE_GENERATION");
   const expected = data.resource.fileSize!;
   if (c.req.header("Content-Length") !== String(expected) || c.req.header("Content-Type") !== data.resource.contentType) throw new LmsSyncError(400, "INVALID_UPLOAD_HEADERS");
   if (!c.req.raw.body) throw new LmsSyncError(400, "EMPTY_UPLOAD");
@@ -108,7 +118,7 @@ lmsRoutes.post("/resources/:externalId/confirm", bodyLimit({ maxSize: 1024 }), a
   const input = generationSchema.safeParse(await c.req.json().catch(() => null));
   if (!input.success) throw new LmsSyncError(400, "INVALID_GENERATION");
   const data = await getLmsResource(c.env, grant, c.req.param("externalId"));
-  if (!data?.resource.enabled || data.resource.generation !== input.data.generation || !data.video || !data.ownerUserId) throw new LmsSyncError(409, "STALE_GENERATION");
+  if (!data?.resource.enabled || data.resource.kind !== 'video' || data.resource.generation !== input.data.generation || !data.video || !data.ownerUserId) throw new LmsSyncError(409, "STALE_GENERATION");
   const result = await confirmVideoUpload(c.env, data.video.id, data.ownerUserId);
   if (!("video" in result)) throw new LmsSyncError(409, "UPLOAD_NOT_CONFIRMED");
   return c.json(await resourceResponse(c, grant));

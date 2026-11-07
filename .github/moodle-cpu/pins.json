@@ -1,0 +1,12 @@
+{
+  "moodle": {
+    "repository": "https://github.com/moodle/moodle.git",
+    "revision": "a682566412e1d429b95ac8ef4351a518f61b94c5"
+  },
+  "companion": {
+    "repository": "https://github.com/videoq-jp/videoq-moodle.git",
+    "revision": "b5af6b9937fc80d54e1157bc9f46bf3c1211204b"
+  },
+  "phpImage": "moodlehq/moodle-php-apache:8.3@sha256:1db7b6ed013fcb5268095b5e28c410ba9117d38d9b6a324c100c48fcbe69745e",
+  "proxyImage": "caddy:2-alpine@sha256:70b3180738b46cd88e49b300d790ae448a0aca3f58edef0f000bb57d619a9ab3"
+}

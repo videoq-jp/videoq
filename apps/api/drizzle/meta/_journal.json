@@ -337,6 +337,104 @@
       "when": 1793858738456,
       "tag": "0047_lti_managed_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793938761086,
+      "tag": "0048_lti_course_qa",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793938968948,
+      "tag": "0049_lti_course_qa_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793942767969,
+      "tag": "0050_lms_course_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793942880652,
+      "tag": "0051_lms_course_authority_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793946506291,
+      "tag": "0052_lti_personal_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793950841770,
+      "tag": "0053_lms_video_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793950842220,
+      "tag": "0054_backfill_lms_video_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793954805581,
+      "tag": "0055_lti_material_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793968298480,
+      "tag": "0056_lti_course_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793976593711,
+      "tag": "0057_lti_audit_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793976594415,
+      "tag": "0058_lti_operation_reservations_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793981138957,
+      "tag": "0059_lms_course_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793995766396,
+      "tag": "0060_moodle_course_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794004075571,
+      "tag": "0061_lms_youtube_sources",
+      "breakpoints": true
     }
   ]
 }

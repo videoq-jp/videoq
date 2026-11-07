@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/videoq-jp/videoq/security/vex/cpu-zlib-2026-11-06",
   "author": "VideoQ",
-  "timestamp": "2026-11-06T08:00:00Z",
-  "version": 1,
+  "timestamp": "2026-11-07T02:16:00Z",
+  "version": 2,
   "statements": [
     {
       "vulnerability": {
@@ -18,7 +18,7 @@
         }
       ],
       "status": "fixed",
-      "impact_statement": "The image replaces Debian zlib with official zlib 1.4, verified against the upstream SHA-256. This release includes upstream fix df84af25dc1942490e1d1c899a07619152a46148 for the gzwrite buffer overflow. build-zlib.sh runs upstream tests; verify_zlib.py checks the library loaded by Python, package record and compression round trips in the final image. Debian trixie has no fixed package yet; this assessment matches only the locally built version."
+      "impact_statement": "The CPU gateway replaces Debian zlib 1.3.1 with official upstream zlib 1.4, packaged as 1:1.4-0videoq1. Source SHA-256 02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584 matches zlib.net. Debian identifies upstream commit df84af25dc1942490e1d1c899a07619152a46148, included in 1.4, as fixing this CVE and CVE-2026-85091. The build requires upstream make check and a caller-buffer lifetime regression after gzwrite failure; that regression crashes the original 1.3.1 library and passes with 1.4 on ARM64. verify_zlib.py checks the actual loaded library, package/source records and zlib/gzip/ZIP round trips in the final distroless image. Debian trixie has not recorded a fixed distribution version; this assessment covers only this source-built package and CVE."
     },
     {
       "vulnerability": {
@@ -33,7 +33,7 @@
         }
       ],
       "status": "fixed",
-      "impact_statement": "The image replaces Debian zlib with official zlib 1.4, verified against the upstream SHA-256. This release includes upstream fix df84af25dc1942490e1d1c899a07619152a46148 for the gzwrite buffer overflow. build-zlib.sh runs upstream tests; verify_zlib.py checks the library loaded by Python, package record and compression round trips in the final image. Debian trixie has no fixed package yet; this assessment matches only the locally built version."
+      "impact_statement": "The actually loaded CPU library is checksum-pinned upstream zlib 1.4, packaged as 1:1.4-0videoq1. Upstream commit df84af25dc1942490e1d1c899a07619152a46148 resets the retained input buffer on gzwrite failure and is included in 1.4. Debian confirms this fix at https://security-tracker.debian.org/tracker/CVE-2026-85091. build-zlib.sh requires make check and the caller-buffer write-failure/retry regression; verify_zlib.py checks the loaded version and packaged source identity. Distribution metadata has no trixie fixed version; only these exact amd64/arm64 source-built packages are covered."
     }
   ]
 }

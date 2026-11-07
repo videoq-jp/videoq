@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [changes, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
+    needs: [changes, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
     steps:
       - name: Require every selected CI job to pass
         env:
@@ -104,6 +104,7 @@ jobs:
           const failed = Object.entries(jobs).filter(([name, job]) =>
             (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
+              (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
               (['onprem-validation', 'local-inference-basic'].includes(name) && jobs.changes.outputs.onprem === 'true'))
               ? job.result !== 'success'
               : !['success', 'skipped'].includes(job.result)
@@ -131,6 +132,7 @@ jobs:
       whisper_gpu: ${{ steps.filter.outputs.whisper_gpu }}
       upstream_images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.upstream_images == 'true' }}
       real_cpu: ${{ steps.filter.outputs.real_cpu }}
+      moodle: ${{ steps.filter.outputs.moodle }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -190,6 +192,15 @@ jobs:
               - '.github/scripts/onprem-lab.py'
               - '.github/onprem-lab/**'
               - 'charts/videoq-inference/**'
+            moodle:
+              - '.github/moodle-cpu/**'
+              - '.github/scripts/moodle-*'
+              - '.github/scripts/test_moodle_cpu.py'
+              - '.github/scripts/onprem-cpu-acceptance.py'
+              - '.github/scripts/onprem-lab.py'
+              - '.github/onprem-lab/dependencies.json'
+              - '.github/workflows/moodle-installed.yml'
+              - '.github/workflows/ci.yml'
             onprem:
               - 'scripts/onprem/**'
               - 'infra/garage/**'
@@ -308,6 +319,14 @@ jobs:
     needs: changes
     if: needs.changes.outputs.onprem == 'true'
     uses: ./.github/workflows/local-inference-basic.yml
+    permissions:
+      contents: read
+
+  moodle-installed:
+    name: Moodle installed acceptance
+    needs: changes
+    if: needs.changes.outputs.moodle == 'true'
+    uses: ./.github/workflows/moodle-installed.yml
     permissions:
       contents: read
 

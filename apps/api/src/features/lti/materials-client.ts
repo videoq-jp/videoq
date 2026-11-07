@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { resourceManifestSchema } from "../lms/resource";
 import { toolClientAssertion, type ToolKeyEnvironment } from "./tool-keys";
+import { coursePermissionsSchema } from "./course-permissions";
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
+export const materialManagementSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
+export const courseEntryAccessSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 const httpsEndpoint = z.url().max(2048).refine(value => {
   const url = new URL(value);
   return url.protocol === "https:" && !url.username && !url.password && !url.hash;
@@ -13,20 +16,42 @@ const identity = z.string().min(1).max(255);
 export const materialsManifestSchema = z.object({ contextId: identity,
   // A complete snapshot is explicit; missing entries are never interpreted as tombstones.
   complete: z.literal(true), resources: z.array(z.object({ externalId: identity,
-    manifest: resourceManifestSchema }).strict()).max(1000),
+    manifest: resourceManifestSchema }).strict()).max(1001),
 }).strict().superRefine((snapshot, ctx) => {
   const ids = new Set<string>();
+  let entries = 0, videos = 0;
   for (const resource of snapshot.resources) {
+    if (resource.manifest.kind === 'course') entries++; else videos++;
     if (resource.manifest.contextId !== snapshot.contextId || ids.has(resource.externalId)) {
       ctx.addIssue({ code: "custom", message: "Duplicate or cross-context material" });
     }
     ids.add(resource.externalId);
   }
+  if (entries > 1 || videos > 1000) ctx.addIssue({ code: 'custom', message: 'Too many course entries or materials' });
 });
 export const exportStatusSchema = z.object({ jobId: z.string().regex(/^[a-f0-9-]{32,64}$/),
   generation: z.number().int().positive().safe(), status: z.enum(["queued", "uploading", "uploaded", "failed", "stale"]),
   bytes: z.number().int().nonnegative().safe().optional(),
 }).strict();
+
+/** Bound the bytes while reading, before decoding or parsing an external response. */
+export async function readServiceJson(response: Response, maxBytes = 1024 * 1024) {
+  if (!response.ok || !response.body) throw new Error("LTI materials service unavailable");
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+  const parts: Uint8Array[] = []; let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new Error("LTI materials response too large");
+      parts.push(value);
+    }
+    const bytes = new Uint8Array(total); let offset = 0;
+    for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+}
 
 /** Small control-plane requests only. URLs come from an approved registration. */
 export class MaterialsClient {
@@ -37,21 +62,7 @@ export class MaterialsClient {
     materialsServiceSchema.parse(registration.materialsService);
   }
   private async json(response: Response, maxBytes = 1024 * 1024) {
-    if (!response.ok || !response.body) throw new Error("LTI materials service unavailable");
-    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
-    const parts: Uint8Array[] = []; let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        if (total > maxBytes) throw new Error("LTI materials response too large");
-        parts.push(value);
-      }
-      const bytes = new Uint8Array(total); let offset = 0;
-      for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
-      return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    return readServiceJson(response, maxBytes);
   }
   private async token() {
     if (this.credential && this.credential.until > Date.now()) return this.credential.value;
@@ -71,7 +82,10 @@ export class MaterialsClient {
     const token = await this.token();
     const response = await this.request(this.registration.materialsService.endpoint, { method: "POST", redirect: "error",
       signal: AbortSignal.timeout(10000), headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ action, ...body }) });
+      // Older Moodle versions ignore unknown request fields and keep their
+      // video-only response. New Moodle sends entries only to opted-in callers.
+      body: JSON.stringify({ action, ...body, includeCourseEntries: true, includeUserVisibility: true, includeReports: true,
+        includeYoutubeSources: true }) });
     return this.json(response);
   }
   async courses() {
@@ -88,9 +102,13 @@ export class MaterialsClient {
   }
   async access(contextId: string, resourceLinkId: string, subject: string) {
     const access = z.object({ contextId: identity, resourceLinkId: identity,
+      permissions: coursePermissionsSchema.optional(),
+      courseEntry: courseEntryAccessSchema.optional(),
       resources: z.array(z.object({ externalId: identity, resourceLinkId: identity,
-        lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500) }).strict()).max(1000),
-    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject }));
+        lesson: z.string().regex(/^[a-z0-9_-]{1,64}$/), title: z.string().max(500),
+        generation: z.number().int().positive().safe().optional(),
+        learning: z.boolean().optional(), management: materialManagementSchema.optional() }).strict()).max(1000),
+    }).strict().parse(await this.call("access", { contextId, resourceLinkId, subject, includePermissions: true, includeContentManagement: true }));
     if (access.contextId !== contextId || access.resourceLinkId !== resourceLinkId) throw new Error("Wrong LTI access context");
     return access;
   }
