@@ -65,6 +65,7 @@ WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 COPY server.py provision.py embedding_server.py ./
 COPY security/verify_sqlite.py /app/verify_sqlite.py
+COPY security/fts5-secure-delete.db /app/fts5-secure-delete.db
 COPY security/verify_zlib.py /app/verify_zlib.py
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \

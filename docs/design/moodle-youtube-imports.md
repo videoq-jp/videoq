@@ -116,6 +116,21 @@ actual CSP/referrer behavior and provider errors before selecting the final host
 
 ## Acceptance gates
 
+Companion commit `18c2f94c1be98e2c38e25fedf9cfd13d1b3b912c` has passed
+installed PostgreSQL and MySQL CI after both upgrade and reinstall. Each phase
+runs 24 URL-source checks and 84 actual archive/duplicate/recycle checks, with no
+candidate developer diagnostics. The archive checks use core course/activity
+backup/restore, module duplication and recycle-bin restoration under an ordinary
+teacher's current authority. They require portable source markers, fresh
+destination identities and pending bindings, retired-transport cleanup and no
+activation after explicit disable. They do not establish an independent site,
+completed backend initialization, browser/native startup or provider/AI behavior.
+
+Native player contracts use the actual player script with a substituted provider
+SDK and File media; 20 checks passed. Real YouTube SDK/network acceptance remains
+open. Backend protocol/database checks passed, but its broader on-prem CI failed
+and then exceeded the job deadline; complete backend CI is not yet green.
+
 1. PHP-only source parsing and direct-action contracts; no new Node/Python
    dependency in Moodle runtime, tooling or CI.
 2. Installed Moodle PostgreSQL/MySQL with real URL activities, separate teacher
