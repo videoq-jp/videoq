@@ -52,5 +52,6 @@ jobs:
             ${{ runner.temp }}/moodle-installed/result.json
             ${{ runner.temp }}/moodle-installed/cleanup.json
             ${{ runner.temp }}/moodle-installed/diagnostics.json
+            ${{ runner.temp }}/moodle-installed/private/failure-summary.json
           if-no-files-found: warn
           retention-days: 14

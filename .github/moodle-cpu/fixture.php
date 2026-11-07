@@ -169,6 +169,9 @@ if ($action === 'network') {
     $curl->get($CFG->wwwroot . '/login/index.php', [], \local_videoq\client::http_options(15));
     $info = $curl->get_info();
     if ($curl->get_errno() || ($info['http_code'] ?? 0) !== 200 || ($info['ssl_verify_result'] ?? -1) !== 0) {
+        fwrite(STDERR, 'VIDEOQ_CPU_NETWORK ' . json_encode(['stage' => 'private-https',
+            'curlErrno' => (int)$curl->get_errno(), 'httpStatus' => (int)($info['http_code'] ?? 0),
+            'tlsVerifyResult' => (int)($info['ssl_verify_result'] ?? -1)]) . "\n");
         throw new RuntimeException('Private Moodle HTTPS or peer certificate verification failed');
     }
     foreach (['tcp://1.1.1.1:443', 'tcp://[2606:4700:4700::1111]:443'] as $address) {
@@ -176,10 +179,12 @@ if ($action === 'network') {
         $socket = @stream_socket_client($address, $errorcode, $errortext, 3);
         if ($socket !== false) {
             fclose($socket);
+            fwrite(STDERR, 'VIDEOQ_CPU_NETWORK ' . json_encode(['stage' => 'public-tcp']) . "\n");
             throw new RuntimeException('Public TCP egress was allowed');
         }
     }
     if (gethostbynamel('example.com') !== false) {
+        fwrite(STDERR, 'VIDEOQ_CPU_NETWORK ' . json_encode(['stage' => 'public-dns']) . "\n");
         throw new RuntimeException('Public DNS resolution was allowed');
     }
     $network = ['privateHttps' => true, 'peerCertificateVerified' => true, 'publicIpAndDnsBlocked' => true];

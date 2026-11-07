@@ -157,6 +157,24 @@ def verify_roles(action, result):
     return len(checks)
 
 
+def network_failure(raw):
+    """Allow only enumerated stages/numeric results; never publish raw errors."""
+    for line in raw.splitlines():
+        if not line.startswith('VIDEOQ_CPU_NETWORK '):
+            continue
+        try:
+            value = json.loads(line.removeprefix('VIDEOQ_CPU_NETWORK '))
+        except ValueError:
+            continue
+        if value in [{'stage': 'public-tcp'}, {'stage': 'public-dns'}]:
+            return value
+        if isinstance(value, dict) and set(value) == {'stage', 'curlErrno', 'httpStatus', 'tlsVerifyResult'}:
+            if value['stage'] == 'private-https' and all(type(value[key]) is int and -1 <= value[key] <= 65535
+                    for key in ['curlErrno', 'httpStatus', 'tlsVerifyResult']):
+                return value
+    return None
+
+
 class MoodleRuntime:
     def __init__(self, kubeconfig, output, owner):
         self.owner = valid_owner(owner)
@@ -176,6 +194,10 @@ class MoodleRuntime:
         log.touch(mode=0o600)
         log.write_text(result.stdout + result.stderr)
         if result.returncode:
+            failure = network_failure(result.stdout + result.stderr)
+            if failure:
+                (self.output / 'failure-summary.json').write_text(json.dumps(failure) + '\n')
+                print('Moodle CPU network diagnostic: ' + json.dumps(failure), flush=True)
             raise RuntimeError('Moodle CPU fixture command failed; private diagnostic ' + log.name)
         return result.stdout
 

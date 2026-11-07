@@ -175,6 +175,14 @@ class MoodleCpuSafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'source labels'):
                 install.check_image('videoq-moodle:test', pins)
 
+    def test_network_failure_evidence_never_publishes_raw_errors_or_reflected_values(self):
+        expected = {'stage': 'private-https', 'curlErrno': 7, 'httpStatus': 0, 'tlsVerifyResult': 0}
+        self.assertEqual(runtime.network_failure('raw private content\nVIDEOQ_CPU_NETWORK ' + json.dumps(expected)), expected)
+        for invalid in [{**expected, 'password': 'private'}, {**expected, 'curlErrno': 'private'},
+                        {'stage': 'private-token'}, {**expected, 'tlsVerifyResult': True}]:
+            self.assertIsNone(runtime.network_failure('VIDEOQ_CPU_NETWORK ' + json.dumps(invalid)))
+        self.assertIsNone(runtime.network_failure('raw private failure without approved metadata'))
+
 
 if __name__ == '__main__':
     unittest.main()
