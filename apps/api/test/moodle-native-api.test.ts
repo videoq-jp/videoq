@@ -153,10 +153,11 @@ describe("Moodle server-authenticated learning API", () => {
 
   it("rejects stale, future, overlong assertions and invalid session lifetimes", async () => {
     const now = Math.floor(Date.now() / 1000);
+    // Keep claim relationships fixed if signing crosses a second boundary.
     for (const extra of [{ iat: now - 80, exp: now - 20, sessionStartedAt: now - 100 },
       { iat: now + 20, exp: now + 60 }, { exp: now + 61 },
       { sessionStartedAt: now + 1 }, { sessionStartedAt: now - 200, sessionExpiresAt: now + 3500 }]) {
-      await expect(verifyNativeAssertion(env, await assertion("/materials", "{}", extra), "/materials", await digest("{}"), keyState.keys))
+      await expect(verifyNativeAssertion(env, await assertion("/materials", "{}", { iat: now, ...extra }), "/materials", await digest("{}"), keyState.keys))
         .rejects.toMatchObject({ status: 403 });
     }
     await expect(verifyNativeAssertion(env, "x".repeat(16385), "/materials", await digest("{}"), keyState.keys)).rejects.toMatchObject({ status: 403 });

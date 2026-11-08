@@ -8,6 +8,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
 (databaseUrl ? describe : describe.skip)("Moodle native session lifecycle on PostgreSQL", () => {
   const database = "videoq_native_" + crypto.randomUUID().replaceAll("-", "");
   let admin: pg.Pool, pool: pg.Pool, env: Bindings;
+  const closedConnections: Promise<void>[] = [];
   type Input = Parameters<typeof ensureNativeSession>[1];
   const input = (): Input => ({
     ownerUserId: "owner", sessionHash: "a".repeat(64), markerHash: "b".repeat(64),
@@ -22,6 +23,9 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await admin.query(`CREATE DATABASE "${database}"`);
     const url = new URL(databaseUrl!); url.pathname = "/" + database;
     pool = new pg.Pool({ connectionString: url.toString(), max: 6 });
+    pool.on("connect", client => {
+      closedConnections.push(new Promise(resolve => client.once("end", resolve)));
+    });
     env = { DATABASE_POOL: pool } as Bindings;
     await pool.query(`CREATE TABLE users(id text PRIMARY KEY);
       CREATE TABLE lti_credentials(id text PRIMARY KEY,kind text NOT NULL,payload jsonb NOT NULL,expires_at timestamptz NOT NULL)`);
@@ -31,7 +35,9 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
   });
   afterAll(async () => {
     await pool?.end();
-    try { await admin?.query(`DROP DATABASE IF EXISTS "${database}" WITH(FORCE)`); }
+    // release(true) removes failed clients before their sockets finish closing.
+    await Promise.all(closedConnections);
+    try { await admin?.query(`DROP DATABASE IF EXISTS "${database}"`); }
     finally { await admin?.end(); }
   });
 
