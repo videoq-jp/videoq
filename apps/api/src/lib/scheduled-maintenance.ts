@@ -1,3 +1,4 @@
+import { pruneLtiAudit } from '../features/lti/audit-retention';
 import { sweepMaterials } from "../features/lti/materials-sync";
 import { pruneLtiCredentials } from "../features/lti/store";
 import {
@@ -142,6 +143,7 @@ export async function runScheduledMaintenance(
       mcpIdempotency: pruneMcpIdempotencyRecords(env),
       conversations: pruneConversations(env),
       ltiCredentials: pruneLtiCredentials(env),
+      ltiAudit: pruneLtiAudit(env, now),
     }),
     runMaintenanceSweep(env, now),
   ]);

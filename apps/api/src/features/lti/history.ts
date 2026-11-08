@@ -1,3 +1,4 @@
+import { lockLtiDataSessionWithDb, type LtiSessionProof } from './data-lock';
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { chatAnswerSchema } from "@videoq/trpc/chat";
@@ -6,7 +7,7 @@ import { chatLogs, ltiCredentials, videoCourseMembers } from "../../db/schema";
 import type { Bindings } from "../../types/bindings";
 import { digest, randomSecret, readCredential } from "./store";
 
-type Scope = { registrationId: string; subjectHash: string; courseId: number };
+type Scope = { sessionProof?: LtiSessionProof; registrationId: string; subjectHash: string; courseId: number; contextId?:string };
 const saved = z.object({ scopeVideoIds: z.array(z.number().int().positive()).max(1000), turns: z.array(z.object({
   id: z.string().regex(/^[a-f0-9]{32}$/), logId: z.number().int().positive(), question: z.string().max(4000),
 })).max(50) });
@@ -16,7 +17,12 @@ export const courseHistoryId = (scope: Scope) => digest(JSON.stringify(["lti-cou
 export async function appendCourseHistory(env: Bindings, scope: Scope, question: string, logId: number | null, allowed: number[] | undefined) {
   if (logId === null) return;
   const id = await courseHistoryId(scope);
-  await withDb(env, async db => {
+  await withDb(env, database => database.transaction(async db => {
+    if (scope.sessionProof) {
+      const result = await db.execute<{user_id:string}>(sql`SELECT user_id FROM video_courses WHERE id=${scope.courseId}`);
+      if (!result.rows[0]) throw new Error('The Moodle course is unavailable.');
+      await lockLtiDataSessionWithDb(db,result.rows[0].user_id,scope.sessionProof);
+    }
     const members = allowed ?? (await db.select({ id: videoCourseMembers.videoId }).from(videoCourseMembers).where(eq(videoCourseMembers.courseId, scope.courseId))).map(row => row.id);
     const scopeJson = JSON.stringify([...new Set(members)].sort((a,b) => a-b));
     const turn = { id: randomSecret().slice(0, 32), logId, question };
@@ -25,11 +31,12 @@ export async function appendCourseHistory(env: Bindings, scope: Scope, question:
     // prior context instead of exposing answers from newly restricted videos.
     const previous = sql`CASE WHEN ${ltiCredentials.expiresAt} > now() AND (${ltiCredentials.payload}->'scopeVideoIds') <@ ${scopeJson}::jsonb
       THEN coalesce(${ltiCredentials.payload}->'turns', '[]'::jsonb) ELSE '[]'::jsonb END`;
-    await db.insert(ltiCredentials).values({ id, kind: "lti-history", payload: { scopeVideoIds: JSON.parse(scopeJson) as number[], turns: [turn] }, expiresAt })
-      .onConflictDoUpdate({ target: ltiCredentials.id, set: { expiresAt, payload: sql`jsonb_build_object('scopeVideoIds', ${scopeJson}::jsonb, 'turns',
+    const attribution={registrationId:scope.registrationId,subjectHash:scope.subjectHash,courseId:scope.courseId,...(scope.contextId?{contextId:scope.contextId}:{})};
+    await db.insert(ltiCredentials).values({ id, kind: "lti-history", payload: { ...attribution,scopeVideoIds: JSON.parse(scopeJson) as number[], turns: [turn] }, expiresAt })
+      .onConflictDoUpdate({ target: ltiCredentials.id, set: { expiresAt, payload: sql`${JSON.stringify(attribution)}::jsonb || jsonb_build_object('scopeVideoIds', ${scopeJson}::jsonb, 'turns',
         (SELECT jsonb_agg(item ORDER BY ord) FROM (SELECT item, ord FROM jsonb_array_elements((${previous}) || ${JSON.stringify([turn])}::jsonb)
           WITH ORDINALITY AS entries(item,ord) ORDER BY ord DESC LIMIT 50) recent))` } });
-  });
+  }));
 }
 
 export async function readCourseHistory(env: Bindings, scope: Scope, ownerUserId: string, videoIds: number[]) {

@@ -13,6 +13,7 @@ const repository = vi.hoisted(() => ({
 const invitations = vi.hoisted(() => ({ failInvitationsWithoutLiveDelivery: vi.fn() }));
 const mcpIdempotency = vi.hoisted(() => ({ pruneMcpIdempotencyRecords: vi.fn() }));
 const conversations = vi.hoisted(() => ({ pruneConversations: vi.fn() }));
+const audit = vi.hoisted(() => ({ pruneLtiAudit: vi.fn() }));
 const lti = vi.hoisted(() => ({ pruneLtiCredentials: vi.fn() }));
 const scheduler = vi.hoisted(() => ({ refreshMaintenanceSchedule: vi.fn() }));
 
@@ -23,6 +24,7 @@ vi.mock("../src/repositories/course-invitation-repository", () => invitations);
 vi.mock("../src/repositories/mcp-idempotency-repository", () => mcpIdempotency);
 vi.mock("../src/lib/task-scheduler", () => scheduler);
 vi.mock("../src/features/lti/store", () => lti);
+vi.mock("../src/features/lti/audit-retention", () => audit);
 vi.mock("../src/repositories/conversation-repository", () => conversations);
 
 import {
@@ -63,6 +65,7 @@ beforeEach(() => {
   scheduler.refreshMaintenanceSchedule.mockResolvedValue(undefined);
   conversations.pruneConversations.mockResolvedValue(0);
   lti.pruneLtiCredentials.mockResolvedValue(undefined);
+  audit.pruneLtiAudit.mockResolvedValue({ enabled: false, backlog: false });
 });
 
 describe("maintenance sweep", () => {
@@ -148,9 +151,23 @@ describe("scheduled maintenance", () => {
 
     expect(repository.pruneDeliveryHistory).toHaveBeenCalledOnce();
     expect(mcpIdempotency.pruneMcpIdempotencyRecords).toHaveBeenCalledOnce();
+    expect(audit.pruneLtiAudit).toHaveBeenCalledOnce();
     expect(tasks.processExternalTasks).toHaveBeenCalledOnce();
     expect(uploads.reconcileAbandonedUploads).toHaveBeenCalledOnce();
     expect(invitations.failInvitationsWithoutLiveDelivery).toHaveBeenCalledOnce();
+  });
+
+  it("監査記録の保存期限処理にも同じ時計を渡す", async () => {
+    const now = new Date("2026-11-06T00:00:00Z");
+    await runScheduledMaintenance(env, RETENTION_CRON, now);
+    expect(audit.pruneLtiAudit).toHaveBeenCalledWith(env, now);
+  });
+
+  it("監査記録の削除に失敗しても回復と次回アラームを維持する", async () => {
+    audit.pruneLtiAudit.mockRejectedValue(new Error("audit cleanup unavailable"));
+    await expect(runScheduledMaintenance(env, RETENTION_CRON)).rejects.toBeInstanceOf(AggregateError);
+    expect(tasks.processExternalTasks).toHaveBeenCalledOnce();
+    expect(scheduler.refreshMaintenanceSchedule).toHaveBeenCalledWith(env, false);
   });
 
   it("回復の結果をDOに渡して次回の起床時刻を張り直させる", async () => {

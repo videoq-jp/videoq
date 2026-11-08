@@ -5,6 +5,7 @@
  */
 import type pg from "pg";
 import type { RateLimitBackend } from "../lib/rate-limit";
+import type { LearningAuthorization } from "../features/lti/session-authorization";
 
 type SecretBindings = {
   BETTER_AUTH_SECRET?: string;
@@ -67,6 +68,7 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
 
 // ミドルウェアが c.set/c.get で受け渡す値
 type Variables = {
+  nativeLearningAuthorization?: LearningAuthorization;
   requestId: string;
   userId?: string;
   // 認証経路。share = 共有スラッグ経由の匿名アクセス。

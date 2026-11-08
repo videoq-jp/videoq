@@ -64,6 +64,24 @@ def delete_user_vectors(user_id: str, *, conn: psycopg.Connection[Any] | None = 
     return deleted
 
 
+def clear_video_transcript_index(video: VideoRow) -> int:
+    """An explicit manual clear removes both profiles, only for its snapshot."""
+    with db_connection() as conn:
+        current = conn.execute(
+            """SELECT COALESCE(transcript, '') = %s AS matches
+                 FROM videos WHERE id = %s AND user_id = %s FOR UPDATE""",
+            (video.transcript or '', video.id, video.user_id),
+        ).fetchone()
+        if current is None:
+            return 0
+        if not current['matches'] or (video.transcript or '').strip():
+            raise ValueError('Transcript changed before clearing its index; retry')
+        deleted = 0
+        for table in sorted(ALLOWED_TABLES):
+            deleted += conn.execute(f'DELETE FROM "{table}" WHERE video_id = %s', (video.id,)).rowcount
+        return deleted
+
+
 def index_video_transcript(video: VideoRow) -> int:
     """Group original cues for search without changing the saved transcript."""
     if not video.transcript:

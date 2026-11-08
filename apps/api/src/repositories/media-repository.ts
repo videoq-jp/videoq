@@ -7,6 +7,7 @@ import {
   videoCourseMemberships,
 } from "../db/schema";
 import type { Bindings } from "../types/bindings";
+import { nativeCourseExternalAccess } from './course-authority';
 
 /** path traversal を拒否する。 */
 export function isSafeMediaPath(path: string): boolean {
@@ -33,7 +34,7 @@ export async function getMediaPathAccess(
             AND member.course_id = video_courses.id
         )` : sql<boolean>`false` })
         .from(videoCourses)
-        .where(eq(videoCourses.shareSlug, shareSlug))
+        .where(and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess()))
         .limit(1);
       return rows[0]?.allowed ?? null;
     });
@@ -45,8 +46,10 @@ export async function getMediaPathAccess(
       SELECT 1 FROM ${videoCourseMembers}
       JOIN ${videoCourseMemberships}
         ON ${videoCourseMemberships.courseId} = ${videoCourseMembers.courseId}
+      JOIN ${videoCourses} ON ${videoCourses.id} = ${videoCourseMembers.courseId}
       WHERE ${videoCourseMembers.videoId} = ${videos.id}
         AND ${videoCourseMemberships.userId} = ${opts.userId}
+        AND ${nativeCourseExternalAccess()}
     )`,
   );
   return withDb(env, async (db) => {

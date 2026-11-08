@@ -35,15 +35,16 @@ export default function LoginPage() {
       : t('auth.login.oauthCallbackFailed');
   const [showPassword, setShowPassword] = useState(false);
   const session = useAuthSession();
+  const sessionUserId = session.data?.user?.id;
 
   // AuthProvider replaces the query cache on identity changes and may unmount
-  // the login mutation before its success redirect runs. Resume from the
-  // authoritative session after remounting the on-prem login page.
+  // the login mutation before its success redirect runs. The authoritative
+  // session owns the on-prem redirect so late callbacks cannot restart it.
   useEffect(() => {
-    if (features.publicSignup || session.isPending || !session.data?.user) return;
+    if (features.publicSignup || session.isPending || !sessionUserId) return;
     if (afterLogin) window.location.href = afterLogin;
     else navigate('/');
-  }, [afterLogin, navigate, session.data?.user, session.isPending]);
+  }, [afterLogin, navigate, sessionUserId, session.isPending]);
 
   const { formData, error, isLoading, handleChange, handleSubmit } = useAuthForm({
     onSubmit: async (data) => {
@@ -53,14 +54,14 @@ export default function LoginPage() {
       await authClient.getSession();
     },
     initialData: { username: '', password: '' },
-    onSuccessRedirect: () => {
+    onSuccessRedirect: features.publicSignup ? () => {
       if (afterLogin) {
         // OAuth authorize pages are served by the API, outside the SPA router.
         window.location.href = afterLogin;
         return;
       }
       navigate('/');
-    },
+    } : undefined,
   });
 
   return (

@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
@@ -50,6 +51,7 @@ const missing = { notFound: "Course not found" };
     `);
   });
   afterEach(() => vi.restoreAllMocks());
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try { await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`); }
     finally { await admin.end(); }

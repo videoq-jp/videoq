@@ -10,6 +10,13 @@ import { verifyLaunch } from "../src/features/lti/protocol";
 import { getVideoEvidence } from "../src/repositories/video-evidence-repository";
 import { getCourseWithMembers, updateChatLogFeedback } from "../src/repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../src/features/chat/message-service";
+import { getQuestion, listQuestions, mutate } from "../src/features/qa/service";
+import { getConversation, listConversations, deleteConversation } from '../src/features/chat/conversation-service';
+import { ltiSubjectKey } from '../src/features/lti/identity';
+import { manageLtiMaterial } from '../src/features/lti/material-management';
+import { processExternalTaskById } from '../src/lib/external-tasks';
+import { courseTags } from '../src/features/lti/course-tags';
+import type { QaQuestion } from "@videoq/trpc";
 
 vi.mock("../src/features/lti/history", () => ({ appendCourseHistory: vi.fn(async () => {}), readCourseHistory: vi.fn(async () => []) }));
 
@@ -25,6 +32,7 @@ vi.mock("../src/features/lti/store", async importOriginal => ({
     record.payload.scopeVideoIds = used;
     return used;
   }),
+  putLtiFeedback: vi.fn((_env, id, sessionHash, courseId, logId) => { records.set(id, { kind: 'lti-feedback', payload: { sessionHash, courseId, logId } }); }),
   consumeLogin: vi.fn((_env, id) => records.get(id)?.kind === "login" && records.delete(id)),
 }));
 vi.mock("../src/features/lti/protocol", async importOriginal => ({
@@ -33,6 +41,19 @@ vi.mock("../src/features/lti/protocol", async importOriginal => ({
 vi.mock("../src/repositories/video-evidence-repository", () => ({ getVideoEvidence: vi.fn() }));
 vi.mock("../src/repositories/chat-repository", () => ({ getCourseWithMembers: vi.fn(), updateChatLogFeedback: vi.fn() }));
 vi.mock("../src/features/chat/message-service", () => ({ sendChatMessage: vi.fn(), streamChatMessage: vi.fn() }));
+vi.mock("../src/features/qa/service", () => ({ getQuestion: vi.fn(), listQuestions: vi.fn(), mutate: vi.fn() }));
+vi.mock('../src/features/chat/conversation-service', () => ({ getConversation: vi.fn(), listConversations: vi.fn(), deleteConversation: vi.fn() }));
+vi.mock('../src/features/lti/material-management', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/features/lti/material-management')>(), manageLtiMaterial: vi.fn(),
+}));
+vi.mock('../src/lib/external-tasks', () => ({ processExternalTaskById: vi.fn(async () => {}) }));
+vi.mock('../src/features/lti/course-tags', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/features/lti/course-tags')>(), courseTags: vi.fn(),
+}));
+const qaId = "11111111-1111-4111-8111-111111111111";
+const qaQuestion: QaQuestion = { id: qaId, title: "Question", body: "Published to course", videoId: 1, videoTitle: "Lesson",
+  author: { name: "12345678", instructor: false, source: "moodle" }, createdAt: "2026-11-06T00:00:00Z", updatedAt: "2026-11-06T00:00:00Z",
+  featured: false, replyCount: 0, votes: 0, voted: false, canEdit: true, canDelete: true };
 const resource = { deploymentId: "dep", contextId: "ctx", resourceLinkId: "res", courseId: 12, videoId: 1 };
 const registration = {
   id: "moodle", issuer: "https://lms.example", clientId: "client",
@@ -61,9 +82,23 @@ async function session() {
   expect(response.status).toBe(200);
   return (await response.json<{ token: string }>()).token;
 }
+
+it('rejects a native server session through the browser LTI authentication path', async () => {
+  const token = await session();
+  const record = records.get(await digest(token))!;
+  record.payload.transport = 'native';
+  expect((await request('materials', {}, token)).status).toBe(401);
+});
 beforeEach(async () => {
   vi.clearAllMocks(); records.clear(); await login();
   vi.mocked(readCourseHistory).mockResolvedValue([]);
+  vi.mocked(listConversations).mockResolvedValue({ items: [], hasMore: false });
+  vi.mocked(deleteConversation).mockResolvedValue({ success: true });
+  vi.mocked(getConversation).mockResolvedValue({ id: qaId, title: 'Personal conversation', createdAt: '2026-11-06T00:00:00Z', updatedAt: '2026-11-06T00:00:00Z',
+    isGenerating: false, hasMore: false, turns: [{ id: '1', question: 'Private question', answer: { segments: [{ text: 'Answer', sourceIds: [] }], sources: [] }, chatLogId: 42, feedback: null }] });
+  vi.mocked(listQuestions).mockResolvedValue({ items: [qaQuestion], total: 1, canPost: true, canVote: true, canModerate: false });
+  vi.mocked(getQuestion).mockResolvedValue({ question: qaQuestion, replies: [], replyTotal: 0, canPost: true, canVote: true, canModerate: false });
+  vi.mocked(mutate).mockImplementation(async (_env, _principal, command) => command.name === "qa.ask" || command.name === "qa.reply" ? { id: qaId } : { success: true });
   vi.mocked(verifyLaunch).mockResolvedValue({ ...resource, locale: "en", subject: "learner", roles: ["Learner"] });
   vi.mocked(getVideoEvidence).mockResolvedValue(null);
   vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1] });
@@ -77,6 +112,72 @@ beforeEach(async () => {
   } });
 });
 describe("LTI transport boundaries", () => {
+  it('keeps processing-only teacher sessions out of learning and rechecks per-resource management on every operation', async () => {
+    const managedResource={...resource,generation:1,learningAvailable:false};
+    const dbReg={...registration,id:'db:school',courseAccess:'moodle',resources:[managedResource]};
+    const bindings={LTI_CONFIG:JSON.stringify({...config,registrations:[dbReg]})} as Bindings;
+    records.get(state)!.payload.registrationId=dbReg.id;
+    vi.mocked(verifyLaunch).mockResolvedValue({...resource,resourceGeneration:1,subject:'teacher',roles:['Instructor'],locale:'en',
+      accessProof:{token:'proof',subject:'teacher'}});
+    let permitted=true,moduleGrant=true,generation=1;
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>Response.json({contextId:'ctx',resourceLinkId:'res',
+      permissions:{manageContent:permitted,viewTranscript:true},resources:[{resourceLinkId:'res',lesson:'lesson',title:'Processing',
+        generation,learning:false,...(moduleGrant?{management:{generation}}:{})}]}));
+    const material={videoId:1,title:'Processing',description:'',transcript:'',status:'indexing',revision:'c'.repeat(64),
+      canEdit:false,canReindex:false,canRetry:true,jobState:'queued'};
+    vi.mocked(manageLtiMaterial).mockResolvedValue({material,externalTaskId:17,reused:false});
+    try {
+      const launch=await request('session',{state,browserSecret:secret,id_token:'signed-token'},undefined,'https://api.example',bindings);
+      expect(launch.status).toBe(200);
+      const session=await launch.json<{token:string;learningAvailable:boolean;playback:{videos:unknown[]}}>();
+      expect(session.learningAvailable).toBe(false);expect(session.playback.videos).toEqual([]);
+      const list=await request('materials',{},session.token,'https://api.example',bindings);
+      expect(await list.json()).toMatchObject({videos:[],managementVideos:[{videoId:1}],permissions:{manageContent:true}});
+      expect((await request('messages',{messages:[{role:'user',content:'Pending lesson?'}]},session.token,'https://api.example',bindings)).status).toBe(403);
+      expect((await request('transcript',{videoId:1},session.token,'https://api.example',bindings)).status).toBe(403);
+      expect(sendChatMessage).not.toHaveBeenCalled();expect(getVideoEvidence).not.toHaveBeenCalled();
+      const input={action:'retry',videoId:1,operationId:qaId,revision:material.revision};
+      const run=(data:unknown=input,origin='https://api.example')=>request('management',data,session.token,origin,bindings);
+      const response=await run();expect(response.status).toBe(202);
+      expect(await response.json()).toEqual({material,reused:false});
+      expect(manageLtiMaterial).toHaveBeenCalledWith(bindings,{installationId:'school',ownerUserId:'owner',courseId:12,
+        contextId:'ctx',resourceLinkId:'res',videoId:1,generation:1,sessionProof:{sessionHash:await digest(session.token),registrationId:'db:school',
+          subjectHash:await digest(JSON.stringify([dbReg.issuer,dbReg.clientId,'dep','teacher']))},actorKey:await ltiSubjectKey({registrationId:'db:school',
+          subjectHash:await digest(JSON.stringify([dbReg.issuer,dbReg.clientId,'dep','teacher']))})},input);
+      expect(processExternalTaskById).toHaveBeenCalledWith(bindings,17);
+      vi.mocked(courseTags).mockResolvedValue({tags:[],videos:[],canManage:true,reused:false});
+      const tags=(data:unknown={action:'list'},origin='https://api.example')=>request('tags',data,session.token,origin,bindings);
+      expect((await tags()).status).toBe(200);
+      expect(vi.mocked(courseTags).mock.lastCall?.[1]).toMatchObject({installationId:'school',courseId:12,ownerUserId:'owner',
+        readableVideoIds:[],management:[{videoId:1,resourceLinkId:'res',generation:1}],manage:true});
+      for(const field of ['courseId','ownerUserId','actorKey','roles']) expect((await tags({action:'list',[field]:'forged'})).status).toBe(400);
+      expect((await tags({action:'list'},'https://attacker.example')).status).toBe(403);
+      vi.mocked(courseTags).mockClear();
+      permitted=false;
+      expect((await tags({action:'create',name:'Denied',color:'blue',operationId:qaId})).status).toBe(403);
+      expect((await tags()).status).toBe(403);
+      expect(courseTags).not.toHaveBeenCalled();
+      permitted=true;moduleGrant=false;expect((await tags()).status).toBe(403);
+      expect(courseTags).not.toHaveBeenCalled();
+      moduleGrant=true;
+      // The transcript budget must survive the LTI router's smaller control-plane limit.
+      const largeTranscript='1\n00:00:00,000 --> 00:00:01,000\n'+'a'.repeat(140000);
+      expect((await run({...input,action:'update',fields:{transcript:largeTranscript}})).status).toBe(202);
+      expect(vi.mocked(manageLtiMaterial).mock.lastCall?.[2]).toMatchObject({fields:{transcript:largeTranscript}});
+      expect((await run('x'.repeat(5*1024*1024))).status).toBe(413);
+      vi.mocked(manageLtiMaterial).mockClear();
+      for (const field of ['actorKey','ownerUserId','courseId','generation','installationId','roles'])
+        expect((await run({...input,[field]:'forged'})).status).toBe(400);
+      expect((await run({...input,videoId:999})).status).toBe(403);
+      expect((await run(input,'https://attacker.example')).status).toBe(403);
+      permitted=false;expect((await run()).status).toBe(403);
+      permitted=true;moduleGrant=false;expect((await run()).status).toBe(403);
+      moduleGrant=true;generation=2;expect((await run()).status).toBe(403);
+      generation=1;vi.mocked(getCourseWithMembers).mockResolvedValue({id:12,userId:'owner',memberVideoIds:[]});
+      expect((await run()).status).toBe(403);
+      expect(manageLtiMaterial).not.toHaveBeenCalled();
+    } finally {fetch.mockRestore();}
+  });
   it("returns course history for the verified learner and reissues feedback without exposing log IDs", async () => {
     const token = await session();
     vi.mocked(readCourseHistory).mockResolvedValue([{ id: "d".repeat(32), logId: 42, question: "前の質問",
@@ -222,6 +323,51 @@ describe("LTI transport boundaries", () => {
   });
 });
 
+describe('empty Moodle course entry authorization', () => {
+  async function entrySession(ready = false) {
+    const entry = {deploymentId:'dep',contextId:'ctx',resourceLinkId:'entry',courseId:12,generation:1,kind:'course' as const,learningAvailable:false};
+    const dbReg = {...registration,id:'db:school',courseAccess:'moodle',resources:[entry,...(ready ? [resource] : [])]};
+    const bindings = {LTI_CONFIG:JSON.stringify({...config,registrations:[dbReg]})} as Bindings;
+    records.get(state)!.payload.registrationId=dbReg.id;
+    vi.mocked(verifyLaunch).mockResolvedValue({deploymentId:'dep',contextId:'ctx',resourceLinkId:'entry',courseId:12,
+      resourceGeneration:1,subject:'learner',roles:['Learner'],locale:'en',accessProof:{token:'proof',subject:'learner'}});
+    vi.mocked(getCourseWithMembers).mockResolvedValue({id:12,userId:'owner',memberVideoIds:ready?[1]:[]});
+    let generation=1,qa=true,history=true;
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>Response.json({contextId:'ctx',resourceLinkId:'entry',
+      courseEntry:{generation},permissions:{viewQa:qa,postQa:qa,manageOwnHistory:history},
+      resources:ready?[{resourceLinkId:'res',lesson:'lesson',title:'Lesson'}]:[]}));
+    const response=await request('session',{state,browserSecret:secret,id_token:'signed-token'},undefined,'https://api.example',bindings);
+    expect(response.status).toBe(200);
+    const session=await response.json<{token:string;learningAvailable:boolean;playback?:{videoId:number}}>();
+    return {session,fetch,run:(path:string,data:unknown)=>request(path,data,session.token,'https://api.example',bindings),
+      revokeQa:()=>{qa=false;},revokeHistory:()=>{history=false;},stale:()=>{generation=2;}};
+  }
+  it('has no fake playback, permits coursewide Q&A and own history, and keeps chat/transcripts unavailable',async()=>{
+    const fixture=await entrySession();
+    try{
+      expect(fixture.session.learningAvailable).toBe(false);expect(fixture.session.playback).toBeUndefined();
+      expect((await fixture.run('qa',{action:'list'})).status).toBe(200);
+      expect(vi.mocked(listQuestions).mock.lastCall?.[1]).toMatchObject({kind:'lti',videoIds:[],courseId:12});
+      expect((await fixture.run('conversations',{action:'list'})).status).toBe(200);
+      expect(vi.mocked(listConversations).mock.lastCall?.[1]).toMatchObject({actorUserId:null,ltiSubject:{resourceVideoIds:[]}});
+      expect((await fixture.run('messages',{messages:[{role:'user',content:'No lesson'}]})).status).toBe(403);
+      expect((await fixture.run('transcript',{videoId:1})).status).toBe(403);
+      expect(sendChatMessage).not.toHaveBeenCalled();expect(getVideoEvidence).not.toHaveBeenCalled();
+      fixture.revokeQa();expect((await fixture.run('qa',{action:'list'})).status).toBe(403);
+      fixture.revokeHistory();expect((await fixture.run('conversations',{action:'list'})).status).toBe(403);
+      fixture.stale();expect((await fixture.run('materials',{})).status).toBe(403);
+    }finally{fixture.fetch.mockRestore();}
+  });
+  it('uses only a real currently readable video for playback and still requires the current entry proof',async()=>{
+    const fixture=await entrySession(true);
+    try{
+      expect(fixture.session.learningAvailable).toBe(true);expect(fixture.session.playback?.videoId).toBe(1);
+      fixture.stale();expect((await fixture.run('qa',{action:'list'})).status).toBe(403);
+      expect(listQuestions).not.toHaveBeenCalled();
+    }finally{fixture.fetch.mockRestore();}
+  });
+});
+
 describe("Moodle course permission checks", () => {
   const proof = { token: "aa." + "b".repeat(64), subject: "learner" };
   const bindings = { ...env, LTI_CONFIG: JSON.stringify({ ...config, registrations: [{ ...registration, courseAccess: "moodle", resources: [resource,
@@ -235,6 +381,175 @@ describe("Moodle course permission checks", () => {
     expect(response.status).toBe(200);
     return response.json<{ token: string; playback: { videos: { videoId: number }[] } }>();
   }
+  it('binds personal conversations to the verified subject and strips log IDs and feedback credentials from exports', async () => {
+    let permitted = true;
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ contextId: 'ctx', resourceLinkId: 'res',
+      permissions: { manageOwnHistory: permitted }, resources: [{ resourceLinkId: 'res', lesson: 'lesson', title: 'Lesson' }] }));
+    try {
+      const { token } = await scopedSession();
+      expect((await request('conversations', { action: 'list' }, token, 'https://api.example', bindings)).status).toBe(200);
+      const key = await ltiSubjectKey({ registrationId: 'moodle', subjectHash: await digest(JSON.stringify([registration.issuer, registration.clientId, 'dep', 'learner'])) });
+      expect(listConversations).toHaveBeenCalledWith(bindings, { ownerUserId: 'owner', actorUserId: null, courseId: 12, shareSlug: null,
+        ltiSubject: { subjectKey: key, resourceVideoIds: [1], sessionProof: { sessionHash: await digest(token), registrationId: 'moodle',
+          subjectHash: await digest(JSON.stringify([registration.issuer, registration.clientId, 'dep', 'learner'])) } } }, { action: 'list', limit: 20, offset: 0 });
+      const detail = await request('conversations', { action: 'get', conversationId: qaId }, token, 'https://api.example', bindings);
+      expect(detail.status).toBe(200);
+      const saved = await detail.json<{ turns: { feedbackId: string }[] }>();
+      expect(saved.turns[0].feedbackId).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(saved)).not.toMatch(/chatLogId|subjectKey|ownerUserId/);
+      const exported = await request('conversations', { action: 'export', conversationId: qaId }, token, 'https://api.example', bindings);
+      expect(await exported.text()).not.toMatch(/chatLogId|feedbackId|feedbackToken|subjectKey|ownerUserId/);
+      permitted = false;
+      expect((await request('conversations', { action: 'get', conversationId: qaId }, token, 'https://api.example', bindings)).status).toBe(403);
+      expect(getConversation).toHaveBeenCalledTimes(2);
+    } finally { fetch.mockRestore(); }
+  });
+  it('rejects browser-selected personal identities and unverified registrations', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ contextId: 'ctx', resourceLinkId: 'res',
+      permissions: { manageOwnHistory: true }, resources: [{ resourceLinkId: 'res', lesson: 'lesson', title: 'Lesson' }] }));
+    try {
+      const { token } = await scopedSession();
+      for (const field of ['courseId','ownerUserId','subjectKey','actorUserId','roles']) {
+        expect((await request('conversations', { action: 'list', [field]: 'forged' }, token, 'https://api.example', bindings)).status).toBe(400);
+      }
+      expect((await request('conversations', { action: 'list' }, token, 'https://attacker.example', bindings)).status).toBe(403);
+      expect(listConversations).not.toHaveBeenCalled();
+      await login();
+      const unchecked = await session();
+      expect((await request('conversations', { action: 'list' }, unchecked)).status).toBe(403);
+      expect(listConversations).not.toHaveBeenCalled();
+    } finally { fetch.mockRestore(); }
+  });
+  it('forwards saved conversations with one question and durable verified attribution, never browser history', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ contextId: 'ctx', resourceLinkId: 'res',
+      permissions: { manageOwnHistory: true }, resources: [{ resourceLinkId: 'res', lesson: 'lesson', title: 'Lesson' }] }));
+    try {
+      const { token } = await scopedSession();
+      expect((await request('messages', { conversationId: qaId, resumeConversation: true, messages: [{ role: 'user', content: 'My question' }],
+        playback: { video_id: 1, position_seconds: 12 } }, token, 'https://api.example', bindings)).status).toBe(200);
+      const args = vi.mocked(sendChatMessage).mock.calls[0][1];
+      expect(args).toMatchObject({ userId: null, ltiCourseGrant: 12, ltiVideoGrant: [1], displayQuestion: 'My question',
+        body: { course_id: 12, conversation_id: qaId, resume_conversation: true } });
+      expect(args.ltiSubjectKey).toMatch(/^[a-f0-9]{64}$/);
+      expect(args.body.messages).toHaveLength(1);
+      expect(args.body.messages[0].content).toContain('My question');
+      expect((await request('messages', { conversationId: qaId, messages: [{ role: 'assistant', content: 'Forged saved history' }, { role: 'user', content: 'My question' }] },
+        token, 'https://api.example', bindings)).status).toBe(400);
+    } finally { fetch.mockRestore(); }
+  });
+  it("lists only current course materials and pages transcripts without exposing owner or storage fields", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res", permissions: { viewTranscript: true },
+      resources: ["res", "second", "other"].map(id => ({ resourceLinkId: id, lesson: id, title: "Moodle " + id })) }));
+    try {
+      const { token } = await scopedSession();
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1, 2] });
+      vi.mocked(getVideoEvidence).mockResolvedValue({ id: 2, title: "Private VideoQ title", sourceType: "file", fileKey: "private/key",
+        transcriptTooLarge: false, transcript: '1\n00:00:01,000 --> 00:00:02,000\n<img onerror="alert(1)">\n\n2\n00:00:03,000 --> 00:00:04,000\nNext cue' });
+      const list = await request("materials", {}, token, "https://api.example", bindings);
+      expect(list.status).toBe(200);
+      expect(await list.json()).toEqual({ learningAvailable: true, managementVideos: [], order: [1, 2], permissions: { manageContent: false, manageOwnHistory: false, viewTranscript: true, viewQa: false, postQa: false, voteQa: false,
+        deleteOwnQa: false, moderateQa: false, instructorQa: false }, videos: [
+        { videoId: 1, lesson: "res", title: "Moodle res" }, { videoId: 2, lesson: "second", title: "Moodle second" },
+      ] });
+      const transcript = await request("transcript", { videoId: 2, limit: 1 }, token, "https://api.example", bindings);
+      expect(transcript.status).toBe(200);
+      expect(await transcript.json()).toEqual({ videoId: 2, title: "Moodle second", nextCursor: 1,
+        cues: [{ startTime: "00:00:01,000", startSeconds: 1, endSeconds: 2, text: '<img onerror="alert(1)">' }] });
+      expect(getVideoEvidence).toHaveBeenLastCalledWith(bindings, { ownerUserId: "owner", videoIds: [2] }, 2);
+      const next = await request("transcript", { videoId: 2, cursor: 1, limit: 1 }, token, "https://api.example", bindings);
+      expect(await next.json()).toMatchObject({ cues: [{ text: "Next cue" }], nextCursor: null });
+      expect((await request("transcript", { videoId: 3 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect((await request("transcript", { videoId: 4 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect((await request("transcript", { videoId: 2, courseId: 99 }, token, "https://api.example", bindings)).status).toBe(400);
+      expect((await request("materials", {}, token, "https://attacker.example", bindings)).status).toBe(403);
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1] });
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("uses a course-scoped pseudonym for Q&A and does not accept browser-selected course, author or role", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions: { viewQa: true, postQa: true, voteQa: true, deleteOwnQa: true },
+      resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      const ask = { action: "ask", title: "Human question", body: "Shared question", videoId: 1 };
+      const response = await request("qa", ask, token, "https://api.example", bindings);
+      expect(response.status).toBe(200);
+      const grant = records.get(await digest(token))!.payload;
+      const authorId = await digest(JSON.stringify(["lti-course-qa-v1", "moodle", grant.subjectHash, 12]));
+      expect(mutate).toHaveBeenCalledWith(bindings, {
+        kind: "lti", ownerUserId: "owner", courseId: 12, authorId, videoIds: [1],
+        sessionProof: { sessionHash: await digest(token), registrationId: 'moodle', subjectHash: grant.subjectHash },
+        permissions: { view: true, post: true, vote: true, deleteOwn: true, moderate: false, instructor: false },
+      }, { name: "qa.ask", input: expect.objectContaining({ courseId: 12, title: ask.title, body: ask.body }) });
+      expect(await response.text()).not.toContain(authorId);
+      for (const extra of [{ courseId: 99 }, { authorId: "owner" }, { instructor: true }, { shareSlug: "public" }]) {
+        expect((await request("qa", { ...ask, ...extra }, token, "https://api.example", bindings)).status).toBe(400);
+      }
+      expect((await request("qa", { action: "list" }, token, "https://api.example", bindings)).status).toBe(200);
+      const detail = await request("qa", { action: "get", questionId: qaId }, token, "https://api.example", bindings);
+      expect(await detail.json()).toMatchObject({ data: { question: qaQuestion } });
+      expect((await request("qa", ask, token, "https://attacker.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("rechecks independent Q&A capabilities and ignores cached Instructor/Administrator roles", async () => {
+    let permissions = { viewQa: true, postQa: true, voteQa: true, deleteOwnQa: true, moderateQa: false };
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions, resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      const send = (body: unknown) => request("qa", body, token, "https://api.example", bindings);
+      expect((await send({ action: "reply", questionId: qaId, body: "Reply" })).status).toBe(200);
+      permissions = { ...permissions, postQa: false, voteQa: false };
+      const calls = vi.mocked(mutate).mock.calls.length;
+      expect((await send({ action: "reply", questionId: qaId, body: "No posting permission" })).status).toBe(403);
+      expect((await send({ action: "vote", questionId: qaId, voted: true })).status).toBe(403);
+      records.get(await digest(token))!.payload.roles = ["Instructor", "Administrator"];
+      expect((await send({ action: "feature", questionId: qaId, featured: true })).status).toBe(403);
+      expect(mutate).toHaveBeenCalledTimes(calls);
+      permissions = { ...permissions, moderateQa: true };
+      expect((await send({ action: "feature", questionId: qaId, featured: true })).status).toBe(200);
+      permissions = { ...permissions, viewQa: false };
+      expect((await send({ action: "list" })).status).toBe(403);
+      fetch.mockRejectedValue(new Error("Permission service unavailable"));
+      expect((await send({ action: "get", questionId: qaId })).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("revokes transcript capabilities and resource visibility during an existing session", async () => {
+    let permitted = true, visible = true;
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      permissions: { viewTranscript: permitted }, resources: (visible ? ["res", "second"] : ["res"]).map(id => ({ resourceLinkId: id, lesson: id, title: id })) }));
+    try {
+      const { token } = await scopedSession();
+      vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [1, 2] });
+      vi.mocked(getVideoEvidence).mockResolvedValue({ id: 2, title: "", sourceType: "file", fileKey: null, transcript: "", transcriptTooLarge: false });
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(200);
+      vi.mocked(getVideoEvidence).mockClear();
+      permitted = false;
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect(getVideoEvidence).not.toHaveBeenCalled();
+      permitted = true; visible = false;
+      expect((await request("transcript", { videoId: 2 }, token, "https://api.example", bindings)).status).toBe(403);
+      fetch.mockRejectedValue(new Error("Moodle offline"));
+      expect((await request("materials", {}, token, "https://api.example", bindings)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
+  it("never grants transcript access from Instructor roles, missing capabilities, or an unchecked registration", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ contextId: "ctx", resourceLinkId: "res",
+      resources: [{ resourceLinkId: "res", lesson: "res", title: "Lesson" }] }));
+    try {
+      const { token } = await scopedSession();
+      // A browser or launch role cannot supply the server's missing capability.
+      records.get(await digest(token))!.payload.roles = ["Instructor", "Administrator"];
+      expect((await request("transcript", { videoId: 1 }, token, "https://api.example", bindings)).status).toBe(403);
+      expect(getVideoEvidence).not.toHaveBeenCalled();
+      await login();
+      vi.mocked(verifyLaunch).mockResolvedValue({ ...resource, locale: "en", subject: "teacher", roles: ["Instructor"] });
+      const unchecked = await session();
+      expect((await request("materials", {}, unchecked)).status).toBe(403);
+      expect((await request("transcript", { videoId: 1 }, unchecked)).status).toBe(403);
+    } finally { fetch.mockRestore(); }
+  });
   it("rechecks visibility before each question and scopes retrieval/playback to allowed videos", async () => {
     let allowed = ["res", "second", "other"];
     const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options) => {

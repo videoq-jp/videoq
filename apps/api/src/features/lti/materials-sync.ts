@@ -1,3 +1,4 @@
+import { materialStateKey } from '../lms/material-state-key';
 import { ltiMaterialsEnabled } from "./config";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
@@ -9,7 +10,7 @@ import { presignR2Put } from "../../integrations/media";
 import { confirmVideoUpload } from "../videos/service";
 import type { Bindings } from "../../types/bindings";
 import { MaterialsClient } from "./materials-client";
-import { digest } from "./store";
+import { LmsSyncError } from '../lms/resource';
 
 /** Bounded JSON orchestration. Media is uploaded by the platform's background task. */
 export async function synchronizeMaterials(env: Bindings, installationId: string, contextId: string) {
@@ -17,7 +18,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
     .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
     .where(and(eq(lmsInstallations.id, installationId), eq(lmsInstallations.active, true), activeLmsOwner())))[0]?.row);
   if (!installation?.materialsService || !ltiMaterialsEnabled(env)) throw new Error("LTI materials connection unavailable");
-  const leaseId = await digest("lti-materials-lease:" + installationId + ":" + contextId);
+  const leaseId = await materialStateKey("lti-materials-lease:", installationId, contextId);
   const lease = crypto.randomUUID();
   const claimed = await withDb(env, db => db.insert(ltiCredentials).values({ id: leaseId, kind: "materials-lease",
     payload: { lease }, expiresAt: new Date(Date.now() + 600000) }).onConflictDoUpdate({ target: ltiCredentials.id,
@@ -30,18 +31,27 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
     let exports = 0, pending = false;
     for (const source of snapshot.resources) {
       // Every explicit tombstone is reconciled, even when the export batch is full.
-      const reconciled = await syncLmsResource(env, installation, source.externalId, source.manifest);
+      let reconciled: Awaited<ReturnType<typeof syncLmsResource>>;
+      try {
+        reconciled = await syncLmsResource(env, installation, source.externalId, source.manifest);
+      } catch (error) {
+        if (!(error instanceof LmsSyncError) || error.code !== 'YOUTUBE_DISABLED') throw error;
+        // A deployment without native YouTube imports must still reconcile
+        // other sources and explicit tombstones in this course.
+        await client.acknowledge(contextId, source.externalId, source.manifest.generation, 'blocked', 'YOUTUBE_DISABLED');
+        continue;
+      }
       const data = await getLmsResource(env, installation, source.externalId);
-      if (!source.manifest.enabled || data?.video?.status !== "uploading") {
+      if (source.manifest.kind || !source.manifest.enabled || data?.video?.status !== "uploading") {
         await client.acknowledge(contextId, source.externalId, source.manifest.generation,
-          !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
+          !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.resource.kind === 'course' ? 'completed' : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
         continue;
       }
       pending = true;
       if (exports >= 5) continue;
       exports++;
       const generation = source.manifest.generation;
-      const stateKey = await digest("lti-export:" + installationId + ":" + source.externalId + ":" + generation);
+      const stateKey = await materialStateKey("lti-export:", installationId, source.externalId, generation);
       const state = await withDb(env, async db => (await db.select().from(ltiCredentials)
         .where(and(eq(ltiCredentials.id, stateKey), sql`${ltiCredentials.expiresAt} > now()`)))[0]);
       let status: Awaited<ReturnType<MaterialsClient["exportStatus"]>>;

@@ -1,44 +1,27 @@
 import { toolJwks } from "./tool-keys";
 import { decodeJwt } from "jose";
 import { launchLocale, resolveLtiLocale } from "./locale";
-import { appendCourseHistory, readCourseHistory } from "./history";
-import { streamSSE } from "hono/streaming";
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { chatMessagesSchema } from "@videoq/trpc/schema";
 import type { AppEnv } from "../../types/bindings";
 import { toErrorBody } from "../../shared/errors";
 import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
-import { getVideoEvidence } from "../../repositories/video-evidence-repository";
-import { courseAccess } from "./course-access";
-import { playbackCueHint } from "./playback-context";
-import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/chat-repository";
-import { sendChatMessage, streamChatMessage } from "../chat/message-service";
+import { getCourseWithMembers } from "../../repositories/chat-repository";
+import { courseAccessContext } from "./course-access";
 import { ltiConfig, type LtiRegistration } from "./config";
 import { resolvedLtiConfig } from "./registrations";
 import { loginRecord, sessionRecord, verifyLaunch } from "./protocol";
-import { consumeLogin, digest, putCredential, randomSecret, readCredential, recordScopeVideos } from "./store";
+import { consumeLogin, digest, putCredential, randomSecret, readCredential } from "./store";
 import { loginView, questionView } from "./view";
+import { mountLearningRoutes } from "./learning-routes";
+import { registrationFingerprint, learningFeatures } from "./session-authorization";
 
 export const ltiRoutes = new Hono<AppEnv>();
-function registrationFingerprint(reg: LtiRegistration) {
-  // A different lesson changing must not interrupt this lesson's conversation.
-  // Database resources are checked individually, including their generation.
-  return digest(JSON.stringify(reg.id.startsWith("db:") ? { ...reg, resources: [] } : reg));
-}
 const opaque = z.string().regex(/^[a-f0-9]{64}$/);
 const tokenString = z.string().min(1).max(100_000);
 const exchangeSchema = z.object({ state: opaque, browserSecret: opaque, id_token: tokenString }).strict();
-const messageSchema = z.object({
-  messages: chatMessagesSchema,
-  playback: z.object({
-    video_id: z.number().int().positive().safe(),
-    position_seconds: z.number().min(0).max(604800),
-  }).strict().optional(),
-}).strict().refine(
-  input => input.messages.at(-1)?.role === "user", "The last message must be a question",
-);
+
 function refused(c: Context<AppEnv>, status: 400 | 401 | 403 = 400) {
   return c.json(toErrorBody(status === 401 ? "UNAUTHORIZED" : "VALIDATION_ERROR", "LTI request could not be accepted. Relaunch from your LMS or contact the administrator."), status);
 }
@@ -53,7 +36,12 @@ async function parameters(c: Context<AppEnv>): Promise<URLSearchParams> {
   return params;
 }
 
-ltiRoutes.use("*", bodyLimit({ maxSize: 128 * 1024 }));
+const controlBodyLimit: MiddlewareHandler<AppEnv> = bodyLimit({ maxSize: 128 * 1024 });
+ltiRoutes.use("*", (c: Context<AppEnv, string>, next) => {
+  // The management route applies its own bounded SRT request budget.
+  if (c.req.path.endsWith('/management')) return next();
+  return controlBodyLimit(c, next);
+});
 ltiRoutes.use("*", async (c: Context<AppEnv>, next) => {
   c.header("Cache-Control", "no-store");
   if (!ltiConfig(c.env)) return c.json(toErrorBody("NOT_FOUND", "LTI is not configured."), 404);
@@ -133,9 +121,11 @@ ltiRoutes.post("/session", async c => {
   catch { return refused(c, 401); }
   const course = await getCourseWithMembers(c.env, { courseId: launch.courseId, ltiCourseGrant: launch.courseId });
   if (!course || (launch.videoId !== undefined && !course.memberVideoIds.includes(launch.videoId))) return refused(c, 403);
-  let allowed;
-  try { allowed = await courseAccess(reg, launch, c.env); } catch { return refused(c, 403); }
-  if (launch.videoId && allowed && !allowed.some(video => video.videoId === launch.videoId)) return refused(c, 403);
+  let current;
+  try { current = await courseAccessContext(reg, launch, c.env); } catch { return refused(c, 403); }
+  const allowed = current?.videos ?? null;
+  const playbackVideoId = launch.videoId ?? allowed?.[0]?.videoId;
+  if (launch.videoId && current && ![...current.videos, ...(current.managementVideos ?? [])].some(video => video.videoId === launch.videoId)) return refused(c, 403);
   if (!await consumeLogin(c.env, input.data.state)) return refused(c, 401);
   const token = randomSecret();
   const { subject, ...grant } = launch;
@@ -143,8 +133,9 @@ ltiRoutes.post("/session", async c => {
     ...grant, ...(allowed ? { scopeVideoIds: allowed.map(video => video.videoId).sort((a,b)=>a-b) } : {}), registrationId: reg.id, registrationHash: await registrationFingerprint(reg),
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
-  return c.json({ token, expiresIn: 3600,
-    ...(launch.videoId ? { playback: { videoId: launch.videoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
+  return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
+    features: learningFeatures(reg),
+    ...(playbackVideoId ? { playback: { videoId: playbackVideoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
 
@@ -154,7 +145,7 @@ async function authorize(c: Context<AppEnv>) {
   const token = c.req.header("Authorization")?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
   if (!token) return { error: refused(c, 401) } as const;
   const session = sessionRecord.safeParse(await readCredential(c.env, await digest(token), "session"));
-  if (!session.success) return { error: refused(c, 401) } as const;
+  if (!session.success || session.data.transport === "native") return { error: refused(c, 401) } as const;
   const grant = session.data;
   const reg = config.registrations.find(item => item.id === grant.registrationId);
   // Re-read bindings on every request: removal immediately revokes existing sessions.
@@ -164,116 +155,4 @@ async function authorize(c: Context<AppEnv>) {
   return { grant, reg, sessionHash: await digest(token) } as const;
 }
 
-async function feedbackReference(c: Context<AppEnv>, sessionHash: string, courseId: number, logId: number | null) {
-  if (logId === null) return undefined;
-  const id = randomSecret();
-  await putCredential(c.env, await digest(id), "lti-feedback", { sessionHash, courseId, logId }, 3600);
-  return id;
-}
-
-ltiRoutes.post("/history", async c => {
-  const access = await authorize(c);
-  if ("error" in access) return access.error;
-  const { grant, reg, sessionHash } = access;
-  const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]);
-  if (denied) return throttledResponse(c, denied);
-  let allowed;
-  try { allowed = await courseAccess(reg, grant, c.env); } catch { return refused(c, 403); }
-  const course = await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: allowed?.map(video => video.videoId) });
-  if (!course) return refused(c, 403);
-  const turns = await readCourseHistory(c.env, grant, course.userId, course.memberVideoIds);
-  return c.json({ turns: await Promise.all(turns.map(async ({ logId, ...turn }) => ({ ...turn,
-    feedbackId: await feedbackReference(c, sessionHash, grant.courseId, logId),
-  }))) });
-});
-
-ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
-  const access = await authorize(c);
-  if ("error" in access) return access.error;
-  const { grant, reg, sessionHash } = access;
-  const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]);
-  if (denied) return throttledResponse(c, denied);
-  const input = messageSchema.safeParse(await c.req.json().catch(() => null));
-  if (!input.success) return refused(c);
-  let allowed;
-  try { allowed = await courseAccess(reg, grant, c.env); } catch { return refused(c, 403); }
-  const ltiVideoGrant = allowed?.map(video => video.videoId);
-  // Do not feed prior answers from a newly restricted scope back into the model.
-  const usedScope = allowed ? await recordScopeVideos(c.env, sessionHash, ltiVideoGrant!) : null;
-  if (allowed && !usedScope) return refused(c, 401);
-  const scopeChanged = usedScope?.some(id => !ltiVideoGrant!.includes(id));
-  const messagesInput = scopeChanged ? [input.data.messages.at(-1)!] : input.data.messages;
-  let messages = messagesInput;
-  if (input.data.playback) {
-    const playback = input.data.playback;
-    if (allowed ? !ltiVideoGrant!.includes(playback.video_id) : grant.videoId !== playback.video_id) return refused(c, 403);
-    const course = await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant });
-    if (!course?.memberVideoIds.includes(playback.video_id)) return refused(c, 403);
-    const seconds = Math.floor(playback.position_seconds);
-    const time = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
-      .map(value => String(value).padStart(2, "0")).join(":");
-    const video = await getVideoEvidence(c.env, { ownerUserId: course.userId, videoIds: course.memberVideoIds }, playback.video_id);
-    const cueHint = playbackCueHint(video?.transcript ?? null, playback.position_seconds);
-    const last = messages.at(-1)!;
-    const contextual = chatMessagesSchema.safeParse([...messages.slice(0, -1), {
-      role: "user", content: `[視聴中の教材情報: 動画ID ${playback.video_id}、再生位置 ${time} (${seconds}秒)。「今の場面」「この説明」への質問では、この動画の字幕を確認し、再生位置を含む字幕区間を特定して、その区間の内容を中心に回答してください。${cueHint}]\n${last.content}`,
-    }]);
-    if (!contextual.success) return refused(c);
-    messages = contextual.data;
-  }
-  if (c.req.path.endsWith("/stream")) {
-    const connection = new AbortController();
-    const result = await streamChatMessage(c.env, {
-      userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-      body: { messages, course_id: grant.courseId }, locale: grant.locale,
-      clientSignal: AbortSignal.any([c.req.raw.signal, connection.signal]),
-    });
-    c.header("Content-Encoding", "Identity");
-    c.header("X-Accel-Buffering", "no");
-    const response = streamSSE(c, async stream => {
-      stream.onAbort(() => connection.abort());
-      try {
-        if (allowed) await stream.writeSSE({ data: JSON.stringify({ type: "scope", videos: allowed }) });
-        await result.write(async event => {
-          if (event.type === "done") {
-            await appendCourseHistory(c.env, grant, input.data.messages.at(-1)!.content, event.chat_log_id, ltiVideoGrant);
-            const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, event.chat_log_id);
-            await stream.writeSSE({ data: JSON.stringify({ type: "done", feedbackId, feedback: event.feedback }) });
-          } else await stream.writeSSE({ data: JSON.stringify(event) });
-        });
-      } catch {
-        if (!connection.signal.aborted) await stream.writeSSE({ data: JSON.stringify({ type: "error", code: "STREAM_FAILED", message: "Unable to complete the answer." }) });
-      }
-    });
-    response.headers.set("Content-Type", "text/event-stream; charset=utf-8");
-    return response;
-  }
-  const result = await sendChatMessage(c.env, {
-    userId: null, shareSlug: null, ltiCourseGrant: grant.courseId, ltiVideoGrant,
-    body: { messages, course_id: grant.courseId }, locale: grant.locale,
-  });
-  // Expose a session-bound feedback reference, never owner log IDs.
-  if (result.status !== 200 || !("answer" in result.body)) return c.json(result.body, result.status);
-  await appendCourseHistory(c.env, grant, input.data.messages.at(-1)!.content, result.body.chat_log_id ?? null, ltiVideoGrant);
-  const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, result.body.chat_log_id ?? null);
-  return c.json({ answer: result.body.answer, ...(feedbackId ? { feedbackId, feedback: result.body.feedback ?? null } : {}), ...(allowed ? { videos: allowed } : {}) });
-});
-
-
-ltiRoutes.post("/feedback", async c => {
-  const access = await authorize(c);
-  if ("error" in access) return access.error;
-  const input = z.object({ feedbackId: opaque, feedback: z.enum(["good", "bad"]).nullable() }).strict().safeParse(await c.req.json().catch(() => null));
-  if (!input.success) return refused(c);
-  const { grant, reg, sessionHash } = access;
-  const ref = z.object({ sessionHash: z.string(), courseId: z.number().int().positive(), logId: z.number().int().positive() })
-    .safeParse(await readCredential(c.env, await digest(input.data.feedbackId), "lti-feedback"));
-  if (!ref.success || ref.data.sessionHash !== sessionHash || ref.data.courseId !== grant.courseId) return refused(c, 403);
-  try { await courseAccess(reg, grant, c.env); } catch { return refused(c, 403); }
-  if (!await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId })) return refused(c, 403);
-  const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]);
-  if (denied) return throttledResponse(c, denied);
-  const updated = await updateChatLogFeedback(c.env, ref.data.logId, input.data.feedback, { ltiCourseGrant: grant.courseId });
-  if ("notFound" in updated || "forbidden" in updated) return refused(c, 403);
-  return c.json({ feedback: updated.feedback });
-});
+mountLearningRoutes(ltiRoutes, authorize, refused);
