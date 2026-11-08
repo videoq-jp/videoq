@@ -27,6 +27,11 @@ class ProbeTests(unittest.TestCase):
                 bad = copy.deepcopy(plan); bad[key] = value; path.write_text(json.dumps(bad))
                 with self.assertRaises(ValueError): probe.read_plan(path)
 
+    def test_serialization_order_cannot_reorder_gpu_startup(self):
+        plan = {"roles": {"chat": {"name": "chat"}, "whisper": {"name": "whisper"}, "embedding": {"name": "embedding"}}}
+        reserialized = json.loads(json.dumps(plan, sort_keys=True))
+        self.assertEqual([role for role, _config in probe.ordered_roles(reserialized)], ["embedding", "whisper", "chat"])
+
     def test_only_adapts_private_listener_and_model_path(self):
         config = {"model": {"revision": "a" * 40}, "command": ["vllm", "serve", "/models/" + "a" * 40, "--port", "8000", "--host", "0.0.0.0", "--gpu-memory-utilization", "0.43"]}
         original = copy.deepcopy(config)

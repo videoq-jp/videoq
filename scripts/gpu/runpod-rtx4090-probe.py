@@ -24,6 +24,7 @@ import uuid
 import wave
 
 ROOT = Path(__file__).resolve().parents[2]
+STARTUP_ORDER = ("embedding", "whisper", "chat")
 PORTS = {"embedding": 8001, "whisper": 8081, "chat": 8000}
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -54,6 +55,10 @@ def read_plan(path):
     if len({c["image"] for c in plan["roles"].values()}) != 1:
         raise ValueError("All roles must refer to the same immutable runtime")
     return plan
+
+
+def ordered_roles(plan):
+    return [(role, plan["roles"][role]) for role in STARTUP_ORDER]
 
 
 def model_command(role, config, model_root):
@@ -183,7 +188,7 @@ def main():
     signal.alarm(args.max_seconds)
     try:
         if args.mode == "provision":
-            for config in plan["roles"].values():
+            for _role, config in ordered_roles(plan):
                 env = {**os.environ, "MODEL_ROOT": str(args.model_root.resolve()), "MODEL_REPO": config["model"]["repo"], "MODEL_REVISION": config["model"]["revision"], "MODEL_FILE": "", "MODEL_SHA256": "", "HF_HUB_OFFLINE": "0"}
                 subprocess.run(["python3", str(ROOT / "apps/inference/whisper/provision.py")], env=env, check=True, timeout=max(1, deadline - time.monotonic()))
             report["status"] = "provisioned-only-no-model-execution"
@@ -219,7 +224,7 @@ print(json.dumps({'name': torch.cuda.get_device_name(0), 'cuda': torch.version.c
                     return
                 done.wait(0.5)
         telemetry = threading.Thread(target=monitor, daemon=True); telemetry.start()
-        for role, config in plan["roles"].items():
+        for role, config in ordered_roles(plan):
             marker = json.loads((args.model_root / config["model"]["revision"] / ".videoq-model.json").read_text())
             if marker["identity"] != config["model"]:
                 raise ValueError("Model provenance marker differs from the pinned chart")
