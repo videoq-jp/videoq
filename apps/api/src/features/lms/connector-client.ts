@@ -51,7 +51,7 @@ export class MaterialsClient {
   private credential?: { value: string; until: number };
   constructor(private env: ToolKeyEnvironment,
     private registration: { clientId: string; deploymentId: string; materialsService: MaterialsService },
-    private request: typeof fetch = fetch) {
+    private request: typeof fetch = globalThis.fetch.bind(globalThis)) {
     materialsServiceSchema.parse(registration.materialsService);
   }
   private async json(response: Response, maxBytes = 1024 * 1024) {

@@ -50,6 +50,17 @@ function mockService(result: unknown, tokenOverride = {}) {
   });
 }
 describe("LTI materials service boundary", () => {
+  it("calls the default fetch with the Workers global receiver for token and service requests", async () => {
+    const service = mockService({ contextIds: ["course"] });
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown, input, init) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return service(input, init);
+    });
+    try {
+      expect(await new MaterialsClient(env, registration).courses()).toEqual(["course"]);
+      expect(service).toHaveBeenCalledTimes(2);
+    } finally { spy.mockRestore(); }
+  });
   it.each([undefined, 1, 2])('requires fresh source generation for a URL player (%j)', async generation => {
     const binding = { deploymentId: registration.deploymentId, contextId: 'course', resourceLinkId: 'launch',
       courseId: 1, videoId: 10, generation: 2, sourceGeneration: 2 };
