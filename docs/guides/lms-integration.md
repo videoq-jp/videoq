@@ -116,7 +116,8 @@ The context API implements `courses`, `manifest`, `access`, `export`, `status` a
 opaque strings, not Moodle numbers. The access response supplies current known
 capabilities, which VideoQ intersects with its owner, course, resource and generation
 bindings. Subjects must retain exactly the same value in learning and privacy
-requests. See [the native contract and compatibility rules](../design/moodle-native-ui.md#shared-connector-boundary).
+requests. Privacy export/erasure requires separately approved platform recovery
+authority; a learner role must never authorize it. See [the native contract and compatibility rules](https://github.com/videoq-jp/videoq/blob/241bd96b81aaf2b5b77de007d7246732433331d4/docs/design/moodle-native-ui.md#shared-connector-boundary).
 
 The independent connector contract tests cover these boundaries with controlled
 network responses and real PostgreSQL/signature verification. Live integrations
