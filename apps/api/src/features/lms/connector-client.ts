@@ -51,7 +51,7 @@ export class MaterialsClient {
   private credential?: { value: string; until: number };
   constructor(private env: ToolKeyEnvironment,
     private registration: { clientId: string; deploymentId: string; materialsService: MaterialsService },
-    private request: typeof fetch = globalThis.fetch.bind(globalThis)) {
+    private request: typeof fetch = (input, init) => globalThis.fetch(input, init)) {
     materialsServiceSchema.parse(registration.materialsService);
   }
   private async json(response: Response, maxBytes = 1024 * 1024) {
@@ -61,7 +61,7 @@ export class MaterialsClient {
     if (this.credential && this.credential.until > Date.now()) return this.credential.value;
     const { tokenEndpoint } = this.registration.materialsService;
     const assertion = await toolClientAssertion(this.env, this.registration.clientId, this.registration.deploymentId, tokenEndpoint);
-    const response = await this.request(tokenEndpoint, { method: "POST", redirect: "error", signal: AbortSignal.timeout(10000),
+    const response = await this.request(tokenEndpoint, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(10000),
       headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
       body: new URLSearchParams({ grant_type: "client_credentials",
         client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", client_assertion: assertion, scope: MATERIALS_SCOPE }) });
@@ -73,7 +73,7 @@ export class MaterialsClient {
   }
   private async call(action: string, body: Record<string, unknown>) {
     const token = await this.token();
-    const response = await this.request(this.registration.materialsService.endpoint, { method: "POST", redirect: "error",
+    const response = await this.request(this.registration.materialsService.endpoint, { method: "POST", redirect: "manual",
       signal: AbortSignal.timeout(10000), headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
       // Older Moodle versions ignore unknown request fields and keep their
       // video-only response. New Moodle sends entries only to opted-in callers.

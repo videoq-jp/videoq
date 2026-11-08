@@ -36,7 +36,7 @@ describe("LTI tool service credentials", () => {
 function mockService(result: unknown, tokenOverride = {}) {
   return vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
     if (input === registration.materialsService.tokenEndpoint) {
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       const form = init?.body as URLSearchParams;
       expect(form.get("scope")).toBe(MATERIALS_SCOPE);
       await jwtVerify(form.get("client_assertion")!, createLocalJWKSet(await toolJwks(env)),
@@ -44,7 +44,7 @@ function mockService(result: unknown, tokenOverride = {}) {
       return Response.json({ access_token: "ephemeral", token_type: "Bearer", expires_in: 60, scope: MATERIALS_SCOPE, ...tokenOverride });
     }
     expect(input).toBe(registration.materialsService.endpoint);
-    expect(init?.redirect).toBe("error");
+    expect(init?.redirect).toBe("manual");
     expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer ephemeral");
     return Response.json(result);
   });
