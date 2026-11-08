@@ -224,6 +224,7 @@ class MoodleRuntime:
         self.output = private_directory(output)
         self.prefix = ['kubectl', '--kubeconfig', str(self.kubeconfig), '--context', 'kind-' + CLUSTER]
         self.password = secrets.token_hex(32)
+        self.browser_state = None
         self.counter = 0
 
     def k(self, *command, data=None, timeout=60, namespace=NAMESPACE):
@@ -310,10 +311,8 @@ class MoodleRuntime:
         self.k('rollout', 'status', 'deployment/moodle', '--timeout=180s', timeout=200)
         self.fixture('install')
         seeded = self.fixture('seed')
-        private_state = {'owner': self.owner, 'password': 'Cpu-acceptance-' + self.password + '!', **seeded}
-        state = self.output / 'browser-state.json'
-        state.touch(mode=0o600)
-        state.write_text(json.dumps(private_state))
+        # Pass browser credentials through a pipe; never persist the password.
+        self.browser_state = {'owner': self.owner, 'password': 'Cpu-acceptance-' + self.password + '!', **seeded}
         return {'moodleRevision': sources.read_pins()['moodle']['revision'],
                 'companionRevision': sources.read_pins()['companion']['revision'],
                 'databaseRole': 'moodle; no superuser, create-role or create-database privilege',

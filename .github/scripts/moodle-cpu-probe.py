@@ -230,7 +230,6 @@ def rehearse(kubeconfig, output, chart):
                 time.sleep(1)
         else:
             raise RuntimeError('Owned Moodle loopback forward did not become ready')
-        state = moodle.output / 'browser-state.json'
         result = output / 'moodle-result.json'
         env = {**os.environ, 'MOODLE_CPU_KUBECONFIG': str(moodle.kubeconfig), 'MOODLE_CPU_OWNER': owner,
                'MOODLE_CPU_PRIVATE': str(moodle.output), 'MOODLE_CPU_EMBEDDING_TABLE': embedding_table}
@@ -238,7 +237,8 @@ def rehearse(kubeconfig, output, chart):
         log.touch(mode=0o600)
         with log.open('w') as stream:
             process = subprocess.run(['node', str(ROOT / '.github/moodle-cpu/acceptance.mjs'),
-                                      str(state), str(output / 'e2e-state.json'), str(result)],
+                                      str(output / 'e2e-state.json'), str(result)],
+                                     input=json.dumps(moodle.browser_state), text=True,
                                      env=env, stdout=stream, stderr=stream, timeout=2400)
         if process.returncode:
             suffix = browser_failure_summary(output / 'moodle-stage.json')
