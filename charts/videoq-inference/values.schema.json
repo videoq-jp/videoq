@@ -610,6 +610,50 @@
         }
       },
       "additionalProperties": false
+    },
+    "gpuSharing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "runtimeClassName",
+        "memoryFractions"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "runtimeClassName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memoryFractions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "chat",
+            "embedding",
+            "whisper"
+          ],
+          "properties": {
+            "chat": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            },
+            "embedding": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            },
+            "whisper": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": false

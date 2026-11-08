@@ -1,4 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { parseAllDocuments } from "yaml";
 import { describe, expect, it } from "vitest";
@@ -148,4 +150,104 @@ withHelm("private local inference deployment", () => {
     const resources = render("--set", "requireImageDigests=true", "--set", `whisper.image.digest=sha256:${"b".repeat(64)}`);
     expect(resources.filter(r => r.kind === "Deployment").every(r => r.spec.template.spec.containers[0].image.includes("@sha256:"))).toBe(true);
   });
+  it("runs all three inference engines in separate Pods on explicitly shared NVIDIA slots", () => {
+    const documents = render("-f", `${chart}/examples/rtx4090.yaml`);
+    const deployments = documents.filter(d => d.kind === "Deployment");
+    expect(deployments).toHaveLength(3);
+    const plugin = parseAllDocuments(readFileSync(`${chart}/examples/rtx4090-device-plugin.yaml`, "utf8"))[0].toJSON();
+    const configuration = parseAllDocuments(plugin.config.map[plugin.config.default])[0].toJSON();
+    const sharing = configuration.sharing.timeSlicing;
+    expect(sharing.renameByDefault).toBe(true);
+    expect(sharing.failRequestsGreaterThanOne).toBe(true);
+    expect(sharing.resources).toEqual([{ name: "nvidia.com/gpu", replicas: deployments.length }]);
+    const fractions: Record<string, string> = { chat: "0.25", embedding: "0.43", engine: "0.14" };
+    for (const deployment of deployments) {
+      const pod = deployment.spec.template.spec;
+      expect(pod.runtimeClassName).toBe("nvidia");
+      expect(pod.nodeSelector).toMatchObject({ "kubernetes.io/arch": "amd64", "videoq.io/inference-target": "rtx4090" });
+      const gpuContainers = pod.containers.filter(c => c.resources.limits["nvidia.com/gpu.shared"]);
+      expect(gpuContainers).toHaveLength(1);
+      const engine = gpuContainers[0];
+      expect(engine.resources.requests["nvidia.com/gpu.shared"]).toBe(1);
+      expect(engine.resources.limits["nvidia.com/gpu.shared"]).toBe(1);
+      expect(engine.resources.limits["nvidia.com/gpu"]).toBeUndefined();
+      expect(engine.command).toEqual(["vllm", "serve"]);
+      expect(engine.image).toBe("ghcr.io/videoq-jp/videoq-vllm:0.2.0");
+      expect(engine.args[engine.args.indexOf("--gpu-memory-utilization") + 1])
+        .toBe(fractions[engine.name]);
+      expect(engine.args).toContain("--enforce-eager");
+      expect(engine.args[engine.args.indexOf("--max-num-seqs") + 1]).toBe("1");
+      expect(engine.args[engine.args.indexOf("--cpu-offload-gb") + 1]).toBe("0");
+      expect(engine.args).not.toContain("--no-gpu");
+      const waits = pod.initContainers.filter(c => c.name.startsWith("wait-for-"));
+      expect(waits.map(c => c.name)).toEqual(engine.name === "chat" ? ["wait-for-whisper"] : engine.name === "engine" ? ["wait-for-embedding"] : []);
+      for (const container of pod.containers.filter(c => c !== engine)) {
+        expect(container.resources.limits["nvidia.com/gpu.shared"]).toBeUndefined();
+      }
+    }
+    const embedding = deployments.find(d => d.metadata.name.endsWith("-embedding"));
+    expect(embedding.spec.template.spec.containers[0].args).toContain('{"matryoshka_dimensions":[1536]}');
+  });
+  it("retains startup ordering and private peer connectivity with pre-provisioned offline models", () => {
+    const documents = render("-f", `${chart}/examples/rtx4090.yaml`, "--set", "downloadModels=false", "--set", "networkPolicy.denyEgress=true");
+    const deployments = documents.filter(d => d.kind === "Deployment");
+    expect(deployments.flatMap(d => d.spec.template.spec.initContainers ?? []).map(c => c.name).sort())
+      .toEqual(["wait-for-embedding", "wait-for-whisper"]);
+    const policy = documents.find(d => d.kind === "NetworkPolicy");
+    expect(policy.spec.egress).toHaveLength(2);
+    expect(policy.spec.egress[0].to[0].podSelector.matchLabels["app.kubernetes.io/instance"]).toBe("inference");
+    expect(policy.spec.egress[1].to[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"]).toBe("kube-system");
+    expect(policy.spec.egress.some(rule => JSON.stringify(rule).includes("ipBlock"))).toBe(false);
+  });
+  it("rejects shared GPU oversubscription, CPU fallback and bypassed capacity settings", () => {
+    const profile = ["-f", `${chart}/examples/rtx4090.yaml`];
+    for (const setting of ["gpuSharing.enabled=false", "gpuSharing.memoryFractions.chat=0.6", "gpuSharing.memoryFractions.whisper=0", "whisper.maxSequences=8", "whisper.upstreamParallelism=4", "servers.chat.engine=llamacpp", "whisper.backend=whispercpp", "whisper.resources.limits.nvidia\\.com/gpu=1", "whisper.resources.requests.nvidia\\.com/gpu\\.shared=2"]) {
+      expect(command(...profile, "--set", setting).status, setting).not.toBe(0);
+    }
+    for (const arg of ["--gpu-memory-utilization=0.9", "--gpu_memory_utilization=0.9", "--kv-cache-memory-bytes", "--cpu-offload-gb=4", "--max-num-seqs=64", "--device=cpu"]) {
+      expect(command(...profile, "--set-json", `servers.chat.extraArgs=${JSON.stringify([arg])}`).status, arg).not.toBe(0);
+    }
+    expect(command(...profile, "--set", "gpuSharing.enabled=true", "--set-json", 'servers.chat.resources.limits={"nvidia.com/gpu.shared":1.5}').status).not.toBe(0);
+  });
+  it("uses signed release locks for every shared GPU engine and refuses missing production pins", () => {
+    const profile = ["-f", `${chart}/examples/rtx4090.yaml`, "--set", "requireImageDigests=true"];
+    expect(command(...profile).status).not.toBe(0);
+    const gateway = `sha256:${"c".repeat(64)}`;
+    const engine = `sha256:${"d".repeat(64)}`;
+    const resources = render(...profile, "--set", `whisper.image.digest=${gateway}`, "--set", `whisper.vllmImage.digest=${engine}`);
+    for (const d of resources.filter(d => d.kind === "Deployment")) {
+      for (const c of d.spec.template.spec.containers) {
+        expect(c.image).toContain(c.name === "whisper" ? gateway : engine);
+      }
+    }
+  });
+
+  it("waits through a real unhealthy HTTP response before releasing shared model startup", async () => {
+    const documents = render("-f", `${chart}/examples/rtx4090.yaml`, "--set", "downloadModels=false");
+    const whisper = documents.find(d => d.kind === "Deployment" && d.metadata.name.endsWith("-whisper"));
+    const wait = whisper.spec.template.spec.initContainers.find(c => c.name === "wait-for-embedding");
+    let requests = 0;
+    const server = createServer((_request, response) => {
+      response.writeHead(++requests === 1 ? 503 : 200);
+      response.end();
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Missing loopback fixture port");
+      const script = wait.args[0].replace(/http:\/\/[^"\s]+/, `http://127.0.0.1:${address.port}/health`);
+      const result = await new Promise<{ code: number | null; error: string }>((resolve, reject) => {
+        const child = spawn("python3", ["-c", script], { timeout: 8000 });
+        let error = "";
+        child.stderr.on("data", data => { error += String(data); });
+        child.on("error", reject);
+        child.on("close", code => resolve({ code, error }));
+      });
+      expect(result.code, result.error).toBe(0);
+      expect(requests).toBe(2);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  }, 10000);
+
 });

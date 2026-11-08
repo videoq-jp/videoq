@@ -2,9 +2,13 @@
 {{- range $name := list "chat" "embedding" }}
 {{- $server := index $root.Values.servers $name }}
 {{- $engine := default $root.Values.backend $server.engine }}
+{{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs) }}
 {{- $image := $root.Values.whisper.image }}
 {{- if ne $engine "embeddinggemma2" }}
 {{- $image = (index $root.Values $engine).image }}
+{{- end }}
+{{- if $root.Values.gpuSharing.enabled }}
+{{- $image = $root.Values.whisper.vllmImage }}
 {{- end }}
 {{- if and (eq $engine "llamacpp") (or (empty $server.modelFile) (empty $server.modelSha256)) }}
 {{- fail "llamacpp servers require modelFile and modelSha256" }}
@@ -33,6 +37,9 @@ spec:
         app.kubernetes.io/component: {{ $name }}
     spec:
       automountServiceAccountToken: false
+      {{- if $root.Values.gpuSharing.enabled }}
+      runtimeClassName: {{ $root.Values.gpuSharing.runtimeClassName }}
+      {{- end }}
       {{- with $root.Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -43,8 +50,12 @@ spec:
       {{- with $server.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if $root.Values.downloadModels }}
+      {{- if or $root.Values.downloadModels (and $root.Values.gpuSharing.enabled (eq $name "chat")) }}
       initContainers:
+        {{- if and $root.Values.gpuSharing.enabled (eq $name "chat") }}
+        {{- include "inference.sharedWait" (dict "root" $root "role" "chat") | nindent 8 }}
+        {{- end }}
+        {{- if $root.Values.downloadModels }}
         - name: provision-model
           image: {{ include "inference.image" (dict "root" $root "image" $root.Values.whisper.image "component" "whisper") | quote }}
           imagePullPolicy: {{ $root.Values.whisper.image.pullPolicy }}
@@ -58,6 +69,7 @@ spec:
           securityContext: {{ include "inference.security" $root | nindent 12 }}
           resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 1Gi } }
           volumeMounts: [{ name: models, mountPath: /models }]
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ $name }}
@@ -107,6 +119,17 @@ spec:
             - "8000"
             - --max-model-len
             - {{ $server.contextLength | quote }}
+            {{- if $root.Values.gpuSharing.enabled }}
+            - --gpu-memory-utilization
+            - {{ index $root.Values.gpuSharing.memoryFractions $name | quote }}
+            - --max-num-seqs
+            - "1"
+            - --dtype
+            - half
+            - --cpu-offload-gb
+            - "0"
+            - --enforce-eager
+            {{- end }}
             - --generation-config
             - vllm
             {{- if eq $name "chat" }}

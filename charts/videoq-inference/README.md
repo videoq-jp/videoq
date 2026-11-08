@@ -14,6 +14,16 @@ Mac development runs whisper.cpp natively with Metal, outside this Linux
 Kubernetes chart. Both speech engines use the application's `local` backend;
 see the [Mac setup and common API contract](../../docs/guides/local-inference.md#mac-development-with-whispercpp).
 
+## One RTX 4090 (candidate)
+
+Use `examples/rtx4090.yaml` for three independent CUDA inference Deployments on
+one physical RTX 4090 with NVIDIA Device Plugin time-slicing. Each requests one
+`nvidia.com/gpu.shared` slot. This replaces the three-exclusive-GPU requirements
+of `examples/vllm-nvidia.yaml`; it does not merge services or move inference to
+CPU. Follow the [workstation setup and hardware acceptance checklist](../../docs/guides/rtx4090.md).
+This candidate has no RTX 4090 hardware acceptance yet. The device-plugin values
+file is for NVIDIA's chart, not this inference chart.
+
 ## Placement and capabilities
 
 ```mermaid

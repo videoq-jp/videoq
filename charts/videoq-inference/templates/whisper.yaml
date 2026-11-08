@@ -1,12 +1,13 @@
 {{- $whisper := .Values.whisper }}
 {{- $gpu := eq $whisper.backend "vllm" }}
+{{- include "inference.validateSharing" (dict "root" . "engine" $whisper.backend "resources" $whisper.resources "extraArgs" list) }}
 {{- $cpuArch := .Values.whispercpp.architecture }}
 {{- $cpuImage := index .Values.whispercpp.images $cpuArch }}
 {{- if and (not $gpu) (hasKey $whisper.nodeSelector "kubernetes.io/arch") (ne (index $whisper.nodeSelector "kubernetes.io/arch") $cpuArch) }}
 {{- fail "whisper.nodeSelector architecture must match whispercpp.architecture" }}
 {{- end }}
 {{- $gpuCount := int (default 0 (index $whisper.resources.limits "nvidia.com/gpu")) }}
-{{- if and $gpu (ne $gpuCount 1) }}
+{{- if and $gpu (not .Values.gpuSharing.enabled) (ne $gpuCount 1) }}
 {{- fail "NVIDIA Whisper requires exactly one GPU in whisper.resources.limits" }}
 {{- end }}
 {{- if and (not $gpu) (ne $gpuCount 0) }}
@@ -32,6 +33,9 @@ spec:
         app.kubernetes.io/component: whisper
     spec:
       automountServiceAccountToken: false
+      {{- if .Values.gpuSharing.enabled }}
+      runtimeClassName: {{ .Values.gpuSharing.runtimeClassName }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -46,8 +50,12 @@ spec:
       {{- with $whisper.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.downloadModels }}
+      {{- if or .Values.downloadModels .Values.gpuSharing.enabled }}
       initContainers:
+        {{- if .Values.gpuSharing.enabled }}
+        {{- include "inference.sharedWait" (dict "root" . "role" "whisper") | nindent 8 }}
+        {{- end }}
+        {{- if .Values.downloadModels }}
         - name: provision-model
           image: {{ include "inference.image" (dict "root" . "image" $whisper.image "component" "whisper") | quote }}
           imagePullPolicy: {{ $whisper.image.pullPolicy }}
@@ -61,6 +69,7 @@ spec:
           securityContext: {{ include "inference.security" . | nindent 12 }}
           resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 1Gi } }
           volumeMounts: [{ name: models, mountPath: /models }]
+        {{- end }}
       {{- end }}
       containers:
         - name: whisper
@@ -96,7 +105,12 @@ spec:
             - --dtype
             - float16
             - --gpu-memory-utilization
-            - "0.70"
+            - {{ ternary (.Values.gpuSharing.memoryFractions.whisper | toString) "0.70" .Values.gpuSharing.enabled | quote }}
+            {{- if .Values.gpuSharing.enabled }}
+            - --cpu-offload-gb
+            - "0"
+            - --enforce-eager
+            {{- end }}
             - --max-num-seqs
             - {{ $whisper.maxSequences | quote }}
           {{- else }}

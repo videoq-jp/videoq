@@ -177,6 +177,8 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
+              - 'charts/videoq-inference/**'
+              - 'scripts/gpu/**'
               - 'apps/inference/whisper/Dockerfile.vllm'
               - '.github/workflows/onprem-validation.yml'
             upstream_images:
@@ -202,6 +204,7 @@ jobs:
               - '.github/workflows/moodle-installed.yml'
               - '.github/workflows/ci.yml'
             onprem:
+              - 'scripts/gpu/**'
               - 'scripts/onprem/**'
               - 'infra/garage/**'
               - 'infra/elasticmq.conf'

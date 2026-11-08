@@ -47,6 +47,8 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api
+      - name: Validate RTX 4090 host and allocation refusal gates (no GPU fixture)
+        run: python3 -m unittest discover -s scripts/gpu -p 'test_*.py'
       - name: Validate the lab HTTP transport and cancellation
         run: node --test .github/onprem-lab/http.test.cjs
       - name: Install pinned Helm
@@ -62,6 +64,7 @@ jobs:
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/whisper-nvidia.yaml
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/llamacpp-cpu.yaml
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/vllm-nvidia.yaml
+          "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/rtx4090.yaml
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: apps/inference/whisper/.python-version

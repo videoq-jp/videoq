@@ -204,3 +204,9 @@ It does not certify the host kernel. See `apps/inference/whispercpp/security/`.
 AMD/ROCm configuration is a separate follow-up; no target GPU/OS has been selected
 and hardware execution remains unverified. GPU adoption requires physical
 acceptance and vulnerability evaluation.
+
+## One RTX 4090 workstation (candidate)
+
+For all three inference roles on a single GPU with separate Pods, use the
+[RTX 4090 candidate guide](rtx4090.md). Hardware/model acceptance is still pending;
+the existing `vllm-nvidia` profile requires three exclusive GPUs.

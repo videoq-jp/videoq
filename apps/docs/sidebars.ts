@@ -95,7 +95,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Operations',
       items: ['guides/on-premises', 'guides/on-premises-single-server',
-          'guides/on-premises-k3s', 'guides/local-inference', 'guides/on-premises-releases', 'design/deployment-diagram', 'billing/stripe-dashboard'],
+          'guides/on-premises-k3s', 'guides/local-inference', 'guides/rtx4090', 'guides/on-premises-releases', 'design/deployment-diagram', 'billing/stripe-dashboard'],
     },
     'reference/glossary',
   ],
