@@ -77,17 +77,22 @@ through the authenticated Moodle boundary.
 
 ## Acceptance
 
-The previous 17-phase result verifies the old iframe transport only. It is a
-baseline, not evidence that this native implementation is complete.
+Backend `3991046b` with companion `eb2cca35` passes the
+[17-phase actual native acceptance](https://github.com/videoq-jp/videoq/actions/runs/42425984474/job/128564274713).
+Real Moodle PHP signatures, protocol 1, File/local-CPU processing, learner/teacher
+operations and core-approved subject export/deletion are verified. Original
+Moodle-session read/write requests are refused after deletion, while peer replies
+and shared material are retained. Native browser requests carry no VideoQ bearer
+or assertion, File pages create no application/authentication frame, and the
+390px Moodle layout is visually inspected. The old iframe result remains a
+separate historical baseline.
 
-Required evidence for the new transport includes signature/endpoint/body binding,
-fresh authority, actor isolation, request replay, concurrent scope preservation,
-erasure/session revocation, and all existing learner/teacher workflows. Actual
-Moodle browser acceptance must show the native panels, no VideoQ iframe or hidden
-authentication frame, and no browser request carrying a VideoQ bearer/assertion.
-The actual File/local-CPU and standard core-approved privacy journey must pass
-again using these native endpoints. Installer source pins and final packages
-must reference the new accepted companion version.
+Focused security/database cases cover signature/endpoint/body binding, fresh
+authority, actor isolation, nonce replay, concurrent scope preservation and the
+erasure/session barrier. These criteria also apply to future transport/session
+changes. Standard installer ZIPs match all 71 committed files at the accepted
+companion revision. See [the feature/evidence map](./moodle-feature-access.md) for
+the actual-versus-controlled coverage and edition-specific limits.
 
 ## References
 
