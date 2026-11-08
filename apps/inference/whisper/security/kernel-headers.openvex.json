@@ -2,7 +2,7 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/yukiharada1228/videoq/security/vex/whisper-kernel-headers-2026-10-23",
   "author": "VideoQ",
-  "timestamp": "2026-11-06T15:40:00Z",
+  "timestamp": "2026-11-06T07:13:38.900802+00:00",
   "version": 2,
   "statements": [
     {
@@ -10,6 +10,9 @@
         "name": "CVE-2022-50240"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -24,6 +27,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -36,6 +42,9 @@
         "name": "CVE-2024-38581"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -50,6 +59,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -62,6 +74,9 @@
         "name": "CVE-2024-44964"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -76,7 +91,23 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2024-46833"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
         }
       ],
       "status": "not_affected",
@@ -88,6 +119,9 @@
         "name": "CVE-2024-52560"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -102,6 +136,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -114,6 +151,9 @@
         "name": "CVE-2024-57857"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -128,6 +168,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -140,6 +183,9 @@
         "name": "CVE-2024-58100"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -154,6 +200,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -166,6 +215,9 @@
         "name": "CVE-2025-37743"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -180,6 +232,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -192,6 +247,9 @@
         "name": "CVE-2025-37906"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -206,6 +264,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -218,6 +279,9 @@
         "name": "CVE-2025-38717"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -232,6 +296,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -244,6 +311,9 @@
         "name": "CVE-2025-40025"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -258,6 +328,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -270,6 +343,9 @@
         "name": "CVE-2025-40074"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -284,6 +360,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -296,6 +375,9 @@
         "name": "CVE-2025-40139"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -310,6 +392,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -322,6 +407,9 @@
         "name": "CVE-2025-40168"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -336,6 +424,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -348,6 +439,9 @@
         "name": "CVE-2025-40190"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -362,6 +456,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -374,6 +471,9 @@
         "name": "CVE-2025-40344"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -388,6 +488,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -400,6 +503,9 @@
         "name": "CVE-2025-68304"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -414,6 +520,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -426,6 +535,9 @@
         "name": "CVE-2025-68729"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -440,6 +552,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -452,6 +567,9 @@
         "name": "CVE-2025-68745"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -466,6 +584,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -478,6 +599,9 @@
         "name": "CVE-2025-71074"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -492,6 +616,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -504,6 +631,9 @@
         "name": "CVE-2025-71315"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -518,6 +648,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -530,6 +663,9 @@
         "name": "CVE-2026-23208"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -544,6 +680,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -556,6 +695,9 @@
         "name": "CVE-2026-23240"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -570,6 +712,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -582,6 +727,9 @@
         "name": "CVE-2026-23377"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -596,6 +744,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -608,6 +759,9 @@
         "name": "CVE-2026-23393"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -622,6 +776,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -634,6 +791,9 @@
         "name": "CVE-2026-31536"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -648,6 +808,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -660,6 +823,9 @@
         "name": "CVE-2026-43009"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -674,6 +840,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -686,6 +855,9 @@
         "name": "CVE-2026-43042"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -700,6 +872,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -712,6 +887,9 @@
         "name": "CVE-2026-43213"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -726,6 +904,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -738,6 +919,9 @@
         "name": "CVE-2026-43379"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -752,6 +936,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -764,6 +951,9 @@
         "name": "CVE-2026-45940"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -778,6 +968,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -790,6 +983,9 @@
         "name": "CVE-2026-46330"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -804,6 +1000,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -816,6 +1015,9 @@
         "name": "CVE-2026-52991"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -830,6 +1032,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -842,6 +1047,9 @@
         "name": "CVE-2026-53178"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -856,6 +1064,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -868,6 +1079,9 @@
         "name": "CVE-2026-53281"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -882,6 +1096,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -894,6 +1111,9 @@
         "name": "CVE-2026-53401"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -908,6 +1128,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -920,6 +1143,9 @@
         "name": "CVE-2026-63825"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -934,6 +1160,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -946,6 +1175,9 @@
         "name": "CVE-2026-64036"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -960,6 +1192,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -972,6 +1207,9 @@
         "name": "CVE-2026-64077"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -986,6 +1224,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -998,6 +1239,9 @@
         "name": "CVE-2026-64523"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1012,6 +1256,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1024,6 +1271,9 @@
         "name": "CVE-2026-68103"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1038,6 +1288,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1050,6 +1303,9 @@
         "name": "CVE-2026-68198"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1064,6 +1320,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1076,6 +1335,9 @@
         "name": "CVE-2026-68257"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1090,6 +1352,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1102,6 +1367,9 @@
         "name": "CVE-2026-68401"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1116,6 +1384,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1128,6 +1399,9 @@
         "name": "CVE-2026-68409"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1142,6 +1416,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1154,6 +1431,9 @@
         "name": "CVE-2026-68447"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1168,6 +1448,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1180,6 +1463,9 @@
         "name": "CVE-2026-68470"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1194,6 +1480,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1206,6 +1495,9 @@
         "name": "CVE-2026-72111"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1220,6 +1512,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1232,6 +1527,9 @@
         "name": "CVE-2026-72198"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1246,6 +1544,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1258,6 +1559,9 @@
         "name": "CVE-2026-72375"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1272,6 +1576,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1284,6 +1591,9 @@
         "name": "CVE-2026-72383"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1298,6 +1608,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1310,6 +1623,9 @@
         "name": "CVE-2026-72423"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1324,6 +1640,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1336,6 +1655,9 @@
         "name": "CVE-2026-72493"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1350,6 +1672,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1362,6 +1687,9 @@
         "name": "CVE-2026-74257"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1376,6 +1704,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1388,6 +1719,9 @@
         "name": "CVE-2026-74269"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1402,6 +1736,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1414,6 +1751,9 @@
         "name": "CVE-2026-74317"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1428,6 +1768,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1440,6 +1783,9 @@
         "name": "CVE-2026-74344"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1454,6 +1800,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1466,6 +1815,9 @@
         "name": "CVE-2026-74350"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1480,6 +1832,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1492,6 +1847,9 @@
         "name": "CVE-2026-74388"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1506,6 +1864,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1518,6 +1879,9 @@
         "name": "CVE-2026-74454"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1532,6 +1896,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1544,6 +1911,9 @@
         "name": "CVE-2026-74470"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1558,6 +1928,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1570,6 +1943,9 @@
         "name": "CVE-2026-74510"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1584,6 +1960,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1596,6 +1975,9 @@
         "name": "CVE-2026-74530"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1610,6 +1992,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1622,6 +2007,9 @@
         "name": "CVE-2026-74534"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1636,6 +2024,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1648,6 +2039,9 @@
         "name": "CVE-2026-74537"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1662,6 +2056,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1674,6 +2071,9 @@
         "name": "CVE-2026-74578"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1688,6 +2088,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1700,6 +2103,9 @@
         "name": "CVE-2026-74684"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1714,6 +2120,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1726,6 +2135,9 @@
         "name": "CVE-2026-74714"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1740,6 +2152,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1752,6 +2167,9 @@
         "name": "CVE-2026-74723"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1766,6 +2184,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1778,6 +2199,9 @@
         "name": "CVE-2026-74744"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1792,6 +2216,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1804,6 +2231,9 @@
         "name": "CVE-2026-80551"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1818,6 +2248,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1830,6 +2263,9 @@
         "name": "CVE-2026-80631"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1844,6 +2280,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1856,6 +2295,9 @@
         "name": "CVE-2026-80668"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1870,6 +2312,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1882,6 +2327,9 @@
         "name": "CVE-2026-80681"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1896,6 +2344,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1908,6 +2359,9 @@
         "name": "CVE-2026-80692"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1922,6 +2376,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1934,6 +2391,9 @@
         "name": "CVE-2026-80700"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1948,6 +2408,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1960,6 +2423,9 @@
         "name": "CVE-2026-80710"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -1974,6 +2440,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -1986,6 +2455,9 @@
         "name": "CVE-2026-80716"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2000,6 +2472,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2012,6 +2487,9 @@
         "name": "CVE-2026-80721"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2026,6 +2504,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2038,6 +2519,9 @@
         "name": "CVE-2026-80837"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2052,6 +2536,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2064,6 +2551,9 @@
         "name": "CVE-2026-80852"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2078,6 +2568,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2090,6 +2583,9 @@
         "name": "CVE-2026-80891"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2104,6 +2600,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2116,6 +2615,9 @@
         "name": "CVE-2026-80937"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2130,6 +2632,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2142,6 +2647,9 @@
         "name": "CVE-2026-80982"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2156,6 +2664,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2168,6 +2679,9 @@
         "name": "CVE-2026-89448"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2182,6 +2696,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2194,6 +2711,9 @@
         "name": "CVE-2026-89492"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2208,6 +2728,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2220,6 +2743,9 @@
         "name": "CVE-2026-89526"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2234,6 +2760,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2246,6 +2775,9 @@
         "name": "CVE-2026-89530"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2260,6 +2792,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2272,6 +2807,9 @@
         "name": "CVE-2026-89537"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2286,6 +2824,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2298,6 +2839,9 @@
         "name": "CVE-2026-89550"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2312,6 +2856,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2324,6 +2871,9 @@
         "name": "CVE-2026-89565"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2338,6 +2888,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2350,6 +2903,9 @@
         "name": "CVE-2026-89622"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2364,6 +2920,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2376,6 +2935,9 @@
         "name": "CVE-2026-89633"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2390,6 +2952,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2402,6 +2967,9 @@
         "name": "CVE-2026-89638"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2416,6 +2984,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2428,6 +2999,9 @@
         "name": "CVE-2026-89659"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2442,6 +3016,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2454,6 +3031,9 @@
         "name": "CVE-2026-89676"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2468,6 +3048,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2480,6 +3063,9 @@
         "name": "CVE-2026-89685"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2494,6 +3080,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2506,6 +3095,9 @@
         "name": "CVE-2026-89708"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2520,6 +3112,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2532,6 +3127,9 @@
         "name": "CVE-2026-89803"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2546,6 +3144,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2558,6 +3159,9 @@
         "name": "CVE-2026-89837"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2572,6 +3176,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2584,6 +3191,9 @@
         "name": "CVE-2026-89922"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2598,6 +3208,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2610,6 +3223,9 @@
         "name": "CVE-2026-90037"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2624,6 +3240,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2636,6 +3255,9 @@
         "name": "CVE-2026-90057"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2650,6 +3272,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2662,6 +3287,9 @@
         "name": "CVE-2026-90093"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2676,6 +3304,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2688,6 +3319,9 @@
         "name": "CVE-2026-90108"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2702,6 +3336,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2714,6 +3351,9 @@
         "name": "CVE-2026-90148"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2728,6 +3368,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2740,6 +3383,9 @@
         "name": "CVE-2026-90150"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2754,6 +3400,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2766,6 +3415,9 @@
         "name": "CVE-2026-90155"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2780,6 +3432,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2792,6 +3447,9 @@
         "name": "CVE-2026-90162"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2806,6 +3464,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2818,6 +3479,9 @@
         "name": "CVE-2026-90169"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2832,6 +3496,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2844,6 +3511,9 @@
         "name": "CVE-2026-90200"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2858,6 +3528,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2870,6 +3543,9 @@
         "name": "CVE-2026-90205"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2884,6 +3560,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2896,6 +3575,9 @@
         "name": "CVE-2026-90227"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2910,6 +3592,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2922,6 +3607,9 @@
         "name": "CVE-2026-90256"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2936,6 +3624,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2948,6 +3639,9 @@
         "name": "CVE-2026-90317"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2962,6 +3656,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -2974,6 +3671,9 @@
         "name": "CVE-2026-90321"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -2988,6 +3688,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3000,6 +3703,9 @@
         "name": "CVE-2026-90343"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3014,6 +3720,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3026,6 +3735,9 @@
         "name": "CVE-2026-90380"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3040,6 +3752,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3052,6 +3767,9 @@
         "name": "CVE-2026-90398"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3066,6 +3784,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3078,6 +3799,9 @@
         "name": "CVE-2026-92499"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3092,6 +3816,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3104,6 +3831,9 @@
         "name": "CVE-2026-92509"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3118,6 +3848,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3130,6 +3863,9 @@
         "name": "CVE-2026-92511"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3144,6 +3880,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3156,6 +3895,9 @@
         "name": "CVE-2026-93105"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3170,6 +3912,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3182,6 +3927,9 @@
         "name": "CVE-2026-93144"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3196,6 +3944,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3208,6 +3959,9 @@
         "name": "CVE-2026-93154"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3222,6 +3976,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3234,6 +3991,9 @@
         "name": "CVE-2026-93176"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3248,6 +4008,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3260,6 +4023,9 @@
         "name": "CVE-2026-93196"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3274,6 +4040,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3286,6 +4055,9 @@
         "name": "CVE-2026-93210"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3300,6 +4072,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3312,6 +4087,9 @@
         "name": "CVE-2026-93282"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3326,6 +4104,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3338,6 +4119,9 @@
         "name": "CVE-2026-93790"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3352,6 +4136,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3364,6 +4151,9 @@
         "name": "CVE-2026-93796"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3378,6 +4168,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3390,6 +4183,9 @@
         "name": "CVE-2026-93817"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3404,6 +4200,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3416,6 +4215,9 @@
         "name": "CVE-2026-93828"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3430,6 +4232,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3442,6 +4247,9 @@
         "name": "CVE-2026-97429"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3456,6 +4264,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3468,6 +4279,9 @@
         "name": "CVE-2026-97493"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3482,6 +4296,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3494,6 +4311,9 @@
         "name": "CVE-2026-97513"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3508,6 +4328,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3520,6 +4343,9 @@
         "name": "CVE-2026-97555"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3534,6 +4360,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3546,6 +4375,9 @@
         "name": "CVE-2026-97562"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3560,6 +4392,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3572,6 +4407,9 @@
         "name": "CVE-2026-97565"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3586,6 +4424,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3598,6 +4439,9 @@
         "name": "CVE-2026-97603"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3612,6 +4456,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3624,6 +4471,9 @@
         "name": "CVE-2026-97906"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3638,6 +4488,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3650,6 +4503,9 @@
         "name": "CVE-2026-97988"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3664,6 +4520,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3676,6 +4535,9 @@
         "name": "CVE-2026-98019"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3690,6 +4552,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3702,6 +4567,9 @@
         "name": "CVE-2026-98034"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3716,6 +4584,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3728,6 +4599,9 @@
         "name": "CVE-2026-98056"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3742,6 +4616,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3754,6 +4631,9 @@
         "name": "CVE-2026-98085"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3768,6 +4648,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3780,6 +4663,9 @@
         "name": "CVE-2026-98107"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3794,6 +4680,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3806,6 +4695,9 @@
         "name": "CVE-2026-98134"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3820,6 +4712,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3832,6 +4727,9 @@
         "name": "CVE-2026-98167"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3846,6 +4744,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3858,6 +4759,9 @@
         "name": "CVE-2026-98222"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3872,6 +4776,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3884,6 +4791,9 @@
         "name": "CVE-2026-98260"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3898,6 +4808,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3910,6 +4823,9 @@
         "name": "CVE-2026-98332"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3924,6 +4840,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3936,6 +4855,9 @@
         "name": "CVE-2026-98341"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3950,6 +4872,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3962,6 +4887,9 @@
         "name": "CVE-2026-98364"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -3976,6 +4904,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -3988,6 +4919,9 @@
         "name": "CVE-2026-98420"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4002,6 +4936,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4014,6 +4951,9 @@
         "name": "CVE-2026-98439"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4028,6 +4968,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4040,6 +4983,9 @@
         "name": "CVE-2026-98442"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4054,6 +5000,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4066,6 +5015,9 @@
         "name": "CVE-2026-98456"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4080,6 +5032,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4092,6 +5047,9 @@
         "name": "CVE-2026-98459"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4106,6 +5064,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4118,6 +5079,9 @@
         "name": "CVE-2026-98464"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4132,6 +5096,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4144,6 +5111,9 @@
         "name": "CVE-2026-98487"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4158,6 +5128,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4170,6 +5143,9 @@
         "name": "CVE-2026-98491"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4184,6 +5160,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4196,6 +5175,9 @@
         "name": "CVE-2026-98515"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4210,6 +5192,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4222,6 +5207,9 @@
         "name": "CVE-2026-98526"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4236,6 +5224,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4248,6 +5239,9 @@
         "name": "CVE-2026-98548"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4262,6 +5256,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4274,6 +5271,9 @@
         "name": "CVE-2026-98567"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4288,6 +5288,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4300,6 +5303,9 @@
         "name": "CVE-2026-98570"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4314,6 +5320,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4326,6 +5335,9 @@
         "name": "CVE-2026-98573"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4340,6 +5352,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4352,6 +5367,9 @@
         "name": "CVE-2026-98586"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4366,6 +5384,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4378,6 +5399,9 @@
         "name": "CVE-2026-98589"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4392,6 +5416,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4404,6 +5431,9 @@
         "name": "CVE-2026-98591"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4418,6 +5448,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4430,6 +5463,9 @@
         "name": "CVE-2026-98606"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4444,6 +5480,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4456,6 +5495,9 @@
         "name": "CVE-2026-98624"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4470,6 +5512,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4482,6 +5527,9 @@
         "name": "CVE-2026-98626"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4496,6 +5544,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4508,6 +5559,9 @@
         "name": "CVE-2026-98634"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4522,6 +5576,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4534,6 +5591,9 @@
         "name": "CVE-2026-98652"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4548,6 +5608,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4560,6 +5623,9 @@
         "name": "CVE-2026-98701"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4574,6 +5640,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4586,6 +5655,9 @@
         "name": "CVE-2026-98706"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4600,6 +5672,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4612,6 +5687,9 @@
         "name": "CVE-2026-98708"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4626,6 +5704,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4638,6 +5719,9 @@
         "name": "CVE-2026-98725"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4652,6 +5736,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4664,6 +5751,9 @@
         "name": "CVE-2026-98734"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4678,6 +5768,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4690,6 +5783,9 @@
         "name": "CVE-2026-98737"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4704,6 +5800,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4716,6 +5815,9 @@
         "name": "CVE-2026-98739"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4730,6 +5832,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4742,6 +5847,9 @@
         "name": "CVE-2026-98742"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4756,6 +5864,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4768,6 +5879,9 @@
         "name": "CVE-2026-98754"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4782,6 +5896,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4794,6 +5911,9 @@
         "name": "CVE-2026-98792"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4808,6 +5928,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4820,6 +5943,9 @@
         "name": "CVE-2026-98797"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4834,6 +5960,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4846,6 +5975,9 @@
         "name": "CVE-2026-98800"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4860,6 +5992,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4872,6 +6007,9 @@
         "name": "CVE-2026-98805"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4886,6 +6024,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4898,6 +6039,9 @@
         "name": "CVE-2026-98823"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4912,6 +6056,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4924,6 +6071,9 @@
         "name": "CVE-2026-98827"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4938,6 +6088,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4950,6 +6103,9 @@
         "name": "CVE-2026-98836"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4964,6 +6120,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -4976,6 +6135,9 @@
         "name": "CVE-2026-98846"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
@@ -4990,6 +6152,9 @@
       },
       "products": [
         {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
+        {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
       ],
@@ -5002,6 +6167,9 @@
         "name": "CVE-2026-98863"
       },
       "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        },
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
