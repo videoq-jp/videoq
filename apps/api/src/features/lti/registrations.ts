@@ -1,3 +1,4 @@
+import { defaultLegacyAuthority } from '../lms/provider-registry';
 import { and, eq } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { lmsInstallations, lmsResources, users, videos, videoCourses } from "../../db/schema";
@@ -24,7 +25,7 @@ export async function resolvedLtiConfig(env: Bindings) {
     return installations.map(({ installation: row }): LtiRegistration => ({
       id: "db:" + row.id, issuer: row.issuer, clientId: row.clientId,
       authorizationUrl: row.authorizationUrl, jwksUrl: row.jwksUrl,
-      ...(row.materialsService ? { materialsService: row.materialsService, deploymentId: row.deploymentId } : { courseAccess: "moodle" as const }),
+      ...(row.materialsService ? { materialsService: row.materialsService, deploymentId: row.deploymentId } : { courseAccess: defaultLegacyAuthority }),
       frameOrigins: [new URL(row.issuer).origin],
       resources: resources.filter(({ resource, status, courseOwner, videoOwner, sourceType, youtubeVideoId }) => resource.installationId === row.id && resource.courseId !== null
         && (resource.kind !== 'youtube' || features(env).youtube)

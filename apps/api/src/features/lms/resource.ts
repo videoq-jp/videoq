@@ -1,8 +1,9 @@
+import { lmsIdentity, sourceRevision } from './contracts';
 import { z } from "zod";
 import { fileExtension, isAllowedContentType, isAllowedExtension } from "../../lib/upload";
 import { MAX_SINGLE_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
 
-const identity = z.string().min(1).max(255);
+const identity = lmsIdentity;
 export const resourceManifestSchema = z.object({
   generation: z.number().int().positive().safe(),
   contextId: identity,
@@ -15,8 +16,8 @@ export const resourceManifestSchema = z.object({
     filename: z.string().min(1).max(255).refine(value => isAllowedExtension(fileExtension(value))),
     contentType: z.string().refine(isAllowedContentType),
     size: z.number().int().positive().safe().max(MAX_SINGLE_UPLOAD_BYTES),
-    // Moodle's stored_file contenthash is SHA-1, used as a source revision ID.
-    contentHash: z.string().regex(/^[a-f0-9]{40}$/),
+    // Opaque source revision digest; existing SHA-1 and new SHA-256 connectors coexist.
+    contentHash: sourceRevision,
   }).strict().optional(),
   // Omitted for video manifests: preserve the existing canonical JSON/hash.
   kind: z.enum(['course', 'youtube']).optional(),

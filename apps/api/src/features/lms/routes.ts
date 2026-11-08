@@ -1,4 +1,5 @@
-import { moodlePairingRoutes } from "./pairing-routes";
+import { lmsIdentity } from './contracts';
+import { moodlePairingRoutes } from "./providers/moodle/routes";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -16,14 +17,14 @@ import { LmsSyncError, resourceManifestSchema } from "./resource";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { ABANDONED_UPLOAD_MS } from "../../lib/upload-reconcile";
 import { lmsUploadStream } from "./upload";
-import { moodlePrivacyRoutes } from './privacy-routes';
-import { moodleNativeRoutes } from './native-routes';
+import { lmsPrivacyRoutes } from './privacy-routes';
+import { nativeLearningRoutes } from './native-routes';
 import { features } from '../../lib/deployment';
 
 export const lmsRoutes = new Hono<AppEnv>();
 lmsRoutes.route("/pairing", moodlePairingRoutes);
-lmsRoutes.route('/privacy',moodlePrivacyRoutes);
-lmsRoutes.route('/native',moodleNativeRoutes);
+lmsRoutes.route('/privacy',lmsPrivacyRoutes);
+lmsRoutes.route('/native',nativeLearningRoutes);
 const generationSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 
 lmsRoutes.use("*", async (c, next) => {
@@ -80,9 +81,7 @@ lmsRoutes.get("/resources/:externalId", async c => {
 lmsRoutes.put("/resources/:externalId", bodyLimit({ maxSize: 32 * 1024 }), async c => {
   const grant = await installation(c);
   const input = resourceManifestSchema.safeParse(await c.req.json().catch(() => null));
-  if (!input.success || !(input.data.kind === 'course'
-    ? /^[1-9][0-9]{0,17}$/.test(input.data.contextId) && c.req.param('externalId') === 'course_' + input.data.contextId
-    : /^[1-9][0-9]{0,17}$/.test(c.req.param('externalId')))) throw new LmsSyncError(400, "INVALID_MANIFEST");
+  if (!input.success || !lmsIdentity.safeParse(c.req.param('externalId')).success) throw new LmsSyncError(400, "INVALID_MANIFEST");
   await syncLmsResource(c.env, grant, c.req.param("externalId"), input.data);
   if (input.data.kind !== 'course') {
     await armMaintenance(c.env, Date.now());

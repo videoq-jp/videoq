@@ -1,6 +1,6 @@
 ---
 title: Connect an LMS with LTI 1.3
-description: Connect the separate Moodle plugins without registering LTI server settings or signing keys.
+description: Connect Moodle with its plugins or provision another LMS connector against the shared learning contracts.
 ---
 
 # Connect an LMS with LTI 1.3
@@ -89,6 +89,38 @@ platform/client in static configuration and database registrations.
 HTTP-only development deployments do not enable automatic LTI. Deep Linking,
 grade return and roster synchronization are outside this feature. This is not
 LTI certification or compatibility with every LMS.
+
+## Other LMS connectors
+
+Moodle's automatic pairing is provider-specific. An independently operated LMS
+connector can use the same native learning, privacy and materials contracts with
+its own registered issuer and HTTPS JWKS/OAuth/context endpoints. It must derive
+the subject and current enrollment/capabilities from its authenticated LMS session,
+sign server requests, and implement material export/reconciliation. A platform that
+only supports ordinary LTI launches does not automatically implement these custom
+services. Do not use another platform's issuer or signing keys as your connector's
+identity.
+
+An operator can provision a service connection for an existing active VideoQ owner
+with `apps/api/scripts/provision-lms.ts register-service INPUT.json NEW_OUTPUT.json`
+using the deployment's `DATABASE_URL`. Input fields are `id`, `ownerUserId`, `name`,
+`issuer`, `clientId`, `deploymentId`, `authorizationUrl`, `jwksUrl` and
+`materialsService: { tokenEndpoint, endpoint }`. Authorization and JWKS URLs must
+belong to the registered issuer origin. The operator approves all endpoint URLs;
+learner requests cannot select them. The command creates its output exclusively
+with mode 0600 and returns `{ installationId, mode: "service" }` without a push
+credential. Existing Moodle pairing and the legacy `register` command are unchanged.
+
+The context API implements `courses`, `manifest`, `access`, `export`, `status` and
+`ack` as defined by `features/lms/connector-client.ts` and `contracts.ts`. IDs are
+opaque strings, not Moodle numbers. The access response supplies current known
+capabilities, which VideoQ intersects with its owner, course, resource and generation
+bindings. Subjects must retain exactly the same value in learning and privacy
+requests. See [the native contract and compatibility rules](../design/moodle-native-ui.md#shared-connector-boundary).
+
+The independent connector contract tests cover these boundaries with controlled
+network responses and real PostgreSQL/signature verification. Live integrations
+with other LMS vendors still require their own implementation and acceptance tests.
 
 Before production activation, verify the intended Moodle, theme and browsers.
 The [trial review](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)

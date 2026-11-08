@@ -637,7 +637,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       courseId: resources[0].courseId, kind: 'course', generation: 1, learningAvailable: false });
     expect((await getCourseWithMembers(env, { courseId: resources[0].courseId!, ltiCourseGrant: resources[0].courseId!, ltiVideoGrant: [] }))?.memberVideoIds).toEqual([]);
   });
-  it('accepts the canonical course endpoint, denies file upload/confirm and rejects identity or file confusion', async () => {
+  it('preserves course endpoint compatibility, denies file upload/confirm and rejects binding changes', async () => {
     expect(env.USE_S3_STORAGE).toBe('false');
     expect(await (await request('connection')).json()).toMatchObject({courseEntries:true,userVisibility:true,toolOrigin:'https://api.example'});
     const result = await request('resources/course_42', 'PUT', courseManifest());
@@ -645,10 +645,11 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(await result.json()).toMatchObject({ generation: 1, status: 'completed', upload: null, error: null });
     expect((await request('resources/course_42/confirm', 'POST', { generation: 1 })).status).toBe(409);
     expect((await request('resources/course_42/content?generation=1', 'PUT')).status).toBe(409);
-    for (const id of ['42', 'course_43', 'course_042']) expect((await request('resources/' + id, 'PUT', courseManifest())).status).toBe(400);
     expect((await request('resources/course_42', 'PUT', { ...courseManifest(2), file: manifest().file })).status).toBe(400);
-    expect((await request('resources/course_42', 'PUT', manifest(2))).status).toBe(400);
-    await expect(syncLmsResource(env, grant, 'course_43', courseManifest())).rejects.toMatchObject({ status: 400 });
+    expect((await request('resources/course_42', 'PUT', manifest(2))).status).toBe(409);
+    expect((await request('resources/course_42', 'PUT', { ...courseManifest(2), contextId: '43' })).status).toBe(409);
+    expect((await getLmsResource(env, grant, 'course_42'))?.resource).toMatchObject({ kind: 'course', contextId: '42', generation: 1 });
+    await expect(syncLmsResource(env, grant, 'x'.repeat(256), courseManifest())).rejects.toMatchObject({ status: 400 });
   });
   it('keeps canonical course titles when delayed video metadata arrives and shares the same course', async () => {
     const video = await syncLmsResource(env, grant, '10', manifest(1, { contextId: '42', courseTitle: 'Old title' }));

@@ -10,6 +10,7 @@ import type { Bindings } from "../types/bindings";
 import { features } from '../lib/deployment';
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from '../lib/job-message';
 import { insertJobTask } from './external-task-repository';
+import { lmsIdentity } from '../features/lms/contracts';
 
 export type LmsGrant = { id: string; ownerUserId: string };
 
@@ -58,8 +59,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
   if (manifest.kind === 'youtube' && manifest.enabled && !features(env).youtube) {
     throw new LmsSyncError(403, 'YOUTUBE_DISABLED');
   }
-  if (manifest.kind === 'course' && (!/^[1-9][0-9]{0,17}$/.test(manifest.contextId)
-    || externalId !== 'course_' + manifest.contextId)) throw new LmsSyncError(400, 'INVALID_MANIFEST');
+  if (!lmsIdentity.safeParse(externalId).success) throw new LmsSyncError(400, 'INVALID_MANIFEST');
   const manifestHash = await digest(JSON.stringify(manifest));
   return withDb(env, db => db.transaction(async tx => {
     const ownerUserId = await lockLmsGrant(tx, grant);
@@ -87,7 +87,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       if (manifest.enabled && courseId === null) {
         const [course] = await tx.insert(videoCourses).values({ userId: ownerUserId,
           managedByLms: true, nativeAccessDisabled: true,
-          name: manifest.courseTitle ?? 'Moodle ' + manifest.contextId, description: '', displayOrder: 0,
+          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: 0,
           createdAt: sql`now()`, updatedAt: sql`now()` }).returning({ id: videoCourses.id });
         courseId = course.id;
         await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id,
@@ -178,7 +178,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         if (!courseId) {
           const [course] = await tx.insert(videoCourses).values({
             managedByLms: true, nativeAccessDisabled: true,
-            userId: ownerUserId, name: manifest.courseTitle ?? "Moodle " + manifest.contextId, description: "", displayOrder: 0,
+            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: 0,
             createdAt: sql`now()`, updatedAt: sql`now()`,
           }).returning({ id: videoCourses.id });
           courseId = course.id;

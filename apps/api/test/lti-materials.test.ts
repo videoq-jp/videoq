@@ -61,7 +61,7 @@ describe("LTI materials service boundary", () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(mockService(result));
     try {
       const operation = courseAccessContext(reg, { ...binding, serviceSubject: 'student' }, env as Bindings);
-      if (generation !== 2) await expect(operation).rejects.toThrow('Moodle access denied');
+      if (generation !== 2) await expect(operation).rejects.toThrow('LMS access denied');
       else expect((await operation)?.videos).toEqual([{ videoId: 10, lesson: 'sync_20', title: 'URL source', sourceGeneration: 2 }]);
     } finally { spy.mockRestore(); }
   });
@@ -151,7 +151,7 @@ describe("LTI materials service boundary", () => {
     try {
       const result = courseAccessContext(reg,{...binding,resourceGeneration:test.launchGeneration,serviceSubject:'student'},env as Bindings);
       if(test.allowed) expect(await result).toMatchObject({videos:[],permissions:{viewQa:true,manageContent:false}});
-      else await expect(result).rejects.toThrow('Moodle access denied');
+      else await expect(result).rejects.toThrow('LMS access denied');
     } finally {spy.mockRestore();}
   });
   it.each([
@@ -172,7 +172,7 @@ describe("LTI materials service boundary", () => {
     try {
       const access = courseAccessContext(reg,{...binding, serviceSubject:"teacher"},env as Bindings);
       if (test.allowed) expect(await access).toMatchObject({videos:[],managementVideos:[{videoId:10,management:{generation:1}}]});
-      else await expect(access).rejects.toThrow("Moodle access denied");
+      else await expect(access).rejects.toThrow("LMS access denied");
     } finally { spy.mockRestore(); }
   });
   it("rejects a stale completed source and rechecks a revoked management capability", async () => {
@@ -191,7 +191,7 @@ describe("LTI materials service boundary", () => {
       expect(await get()).toMatchObject({videos:[{videoId:10}],permissions:{manageContent:false}});
       expect((await get())?.managementVideos).toBeUndefined();
       generation=2;
-      await expect(get()).rejects.toThrow("Moodle access denied");
+      await expect(get()).rejects.toThrow("LMS access denied");
     } finally {spy.mockRestore();}
   });
   it.each([

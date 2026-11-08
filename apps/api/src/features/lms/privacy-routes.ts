@@ -83,9 +83,9 @@ export async function executePrivacyRequest(env:Bindings,installation:PrivacyIns
 }
 
 /** Platform-signed, single-use purpose/audience-bound requests; never an LTI learner role. */
-export const moodlePrivacyRoutes=new Hono<AppEnv>();
-moodlePrivacyRoutes.use('*',bodyLimit({maxSize:65536}));
-moodlePrivacyRoutes.post('/',async c=>{
+export const lmsPrivacyRoutes=new Hono<AppEnv>();
+lmsPrivacyRoutes.use('*',bodyLimit({maxSize:65536}));
+lmsPrivacyRoutes.post('/',async c=>{
   c.header('Cache-Control','private, no-store');
   const input=z.object({assertion:z.string().min(1).max(60000)}).strict().safeParse(await c.req.json().catch(()=>null));
   if(!input.success)return c.json(toErrorBody('FORBIDDEN','Privacy request is unavailable.'),403);
@@ -98,3 +98,6 @@ moodlePrivacyRoutes.post('/',async c=>{
     return c.json(toErrorBody('INTERNAL_ERROR','Privacy request is unavailable.'),500);
   }
 });
+
+// Compatibility name for existing integrations/tests.
+export { lmsPrivacyRoutes as moodlePrivacyRoutes };

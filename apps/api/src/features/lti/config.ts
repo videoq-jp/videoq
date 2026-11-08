@@ -1,4 +1,5 @@
-import { materialsServiceSchema } from "./materials-client";
+import { materialsServiceSchema } from '../lms/contracts';
+import { legacyAuthoritySchema } from '../lms/provider-registry';
 import { isS3Storage } from "../../integrations/media";
 import { hasSecretEncryptionKey } from "../../lib/secret-encryption";
 import { z } from "zod";
@@ -26,7 +27,7 @@ const registration = z.object({
   clientId: z.string().min(1),
   authorizationUrl: httpsUrl,
   jwksUrl: httpsUrl,
-  courseAccess: z.literal("moodle").optional(),
+  courseAccess: legacyAuthoritySchema.optional(),
   materialsService: materialsServiceSchema.optional(),
   deploymentId: z.string().min(1).optional(),
   frameOrigins: z.array(origin).min(1).max(20),

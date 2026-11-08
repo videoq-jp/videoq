@@ -8,7 +8,7 @@ type NativeSessionInput = {
   ownerUserId: string; grant: LearningAuthorization["grant"]; sessionHash: string; markerHash: string;
   nonceHash: string; nonceExpiresAt: Date; expiresAt: Date;
 };
-const denied = () => new ApiError(403, "FORBIDDEN", "The Moodle learning session is unavailable.");
+const denied = () => new ApiError(403, "FORBIDDEN", "The LMS learning session is unavailable.");
 
 /** The owner lock matches subject erasure. Existing session payloads, including
  * their atomic scope union, are never overwritten. A one-time marker survives

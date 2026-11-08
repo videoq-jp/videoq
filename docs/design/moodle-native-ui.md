@@ -75,10 +75,39 @@ session lock and relays the VideoQ event stream incrementally. Model work and
 durable processing remain in VideoQ. CSV and conversation downloads also pass
 through the authenticated Moodle boundary.
 
+## Shared connector boundary
+
+The native and privacy APIs, material contracts and course capabilities are shared
+LMS services. `features/lms/providers/moodle` owns Moodle pairing, the owner handoff
+and the legacy `/local/videoq/access.php` callback. The registered connector service
+uses its configured OAuth, JWKS and context API endpoints; common learning handlers
+do not construct Moodle URLs. Compatibility re-exports preserve existing imports.
+
+Subjects, contexts, resource links, source IDs and export job IDs are opaque strings
+of 1–255 characters. Preserve their case and exact value, including through privacy
+requests. Source file revisions accept Moodle's existing 40-character SHA-1 or a
+64-character SHA-256 hexadecimal digest. External IDs do not determine material
+kind or authority: stored kind/context, generation, owner and current permissions
+still constrain every operation. Synchronization keys encode delimiter-containing
+IDs unambiguously while retaining existing delimiter-free Moodle keys.
+
+Existing public scope URLs, `moodle-native-*` session record names and identity
+hashes remain unchanged. These persisted compatibility names do not choose a
+provider; changing them would invalidate sessions or disconnect privacy erasure.
+There are no additional database migrations or duplicated AI/processing services.
+
+An independent connector fixture uses UUID subjects, URI-shaped contexts/resources,
+SHA-256 revisions and separate issuer/JWKS/OAuth endpoints. It exercises real
+signatures, API handlers, PostgreSQL bindings, current permission revocation,
+subject erasure, model-memory tables and cross-connector isolation. Its controlled
+HTTP/model-data fixtures do not establish live support for a named third-party LMS.
+Each new LMS still needs an adapter for its enrollment, capabilities and source
+delivery. See [operator provisioning](../guides/lms-integration.md#other-lms-connectors).
+
 ## Acceptance
 
-Backend `3991046b` with companion `eb2cca35` passes the
-[17-phase actual native acceptance](https://github.com/videoq-jp/videoq/actions/runs/42425984474/job/128564274713).
+The pre-refactor Moodle baseline, backend `f41e30c3` with companion `eb2cca35`, passes the
+[17-phase actual native acceptance](https://github.com/videoq-jp/videoq/actions/runs/42461040590/job/128670242218).
 Real Moodle PHP signatures, protocol 1, File/local-CPU processing, learner/teacher
 operations and core-approved subject export/deletion are verified. Original
 Moodle-session read/write requests are refused after deletion, while peer replies

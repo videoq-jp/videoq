@@ -1,3 +1,4 @@
+import { lmsIdentity } from './contracts';
 import { reservationExpression } from '../lti/operation-reservations';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -8,8 +9,8 @@ import { ltiSubjectKey } from '../lti/identity';
 export const ORPHAN_CONTEXT = '@orphan';
 export const privacyCollections = ['logs','evaluations','conversations','turns','questions','replies','votes','moderation',
   'material_operations','tag_operations','report_accesses','recent_history','checkpoints','checkpoint_blobs','checkpoint_writes'] as const;
-const subject = z.string().regex(/^[1-9][0-9]{0,17}$/);
-const contexts = z.array(z.string().min(1).max(255)).min(1).max(100).refine(ids => new Set(ids).size === ids.length);
+const subject = lmsIdentity;
+const contexts = z.array(lmsIdentity).min(1).max(100).refine(ids => new Set(ids).size === ids.length);
 const cursor = z.object({ after:z.string().min(1).max(2048).optional(),
   record:z.object({id:z.string().min(1).max(2048),offset:z.number().int().positive().max(2147483647),revision:z.string().regex(/^[a-f0-9]{64}$/)}).strict().optional(),
 }).strict().refine(value => !(value.after && value.record));

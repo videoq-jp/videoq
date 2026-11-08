@@ -1,11 +1,11 @@
 /** Operator-only initial connection. Reuses an existing VideoQ account. */
 import { open, readFile } from "node:fs/promises";
-import { provisionLmsInstallation, rotateLmsSyncToken } from "../src/repositories/lms-installation-repository";
+import { provisionLmsInstallation, provisionLmsServiceInstallation, rotateLmsSyncToken } from "../src/repositories/lms-installation-repository";
 import type { Bindings } from "../src/types/bindings";
 
 const [command, inputFile, outputFile] = process.argv.slice(2);
-if (!["register", "rotate"].includes(command) || !inputFile || !outputFile || !process.env.DATABASE_URL) {
-  throw new Error("Usage: DATABASE_URL=... tsx scripts/provision-lms.ts register|rotate INPUT.json NEW_CREDENTIAL_FILE.json");
+if (!["register", "register-service", "rotate"].includes(command) || !inputFile || !outputFile || !process.env.DATABASE_URL) {
+  throw new Error("Usage: DATABASE_URL=... tsx scripts/provision-lms.ts register|register-service|rotate INPUT.json NEW_CREDENTIAL_FILE.json");
 }
 const input: unknown = JSON.parse(await readFile(inputFile, "utf8"));
 // Exclusive creation prevents accidental replacement or disclosure through an
@@ -17,17 +17,20 @@ try {
   if (command === "register") {
     const { provisionInstallationSchema } = await import("../src/features/lms/installation");
     result = await provisionLmsInstallation(env, provisionInstallationSchema.parse(input));
+  } else if (command === 'register-service') {
+    const { provisionServiceInstallationSchema } = await import('../src/features/lms/installation');
+    result = await provisionLmsServiceInstallation(env, provisionServiceInstallationSchema.parse(input));
   } else {
     const { z } = await import("zod");
     const args = z.object({ ownerUserId: z.string().min(1), installationId: z.string().min(1) }).strict().parse(input);
     result = await rotateLmsSyncToken(env, args.ownerUserId, args.installationId);
-    if (!result) throw new Error("Moodle connection not found for this account");
+    if (!result) throw new Error("LMS connection not found for this account");
   }
   await output.writeFile(JSON.stringify(result, null, 2) + "\n");
-  console.log("Moodle connection saved; the credential is in the private output file.");
+  console.log("LMS connection saved in the private output file.");
 } catch {
   // Query errors can embed SQL parameters. Do not print them, including the
   // hashed credential or connection metadata, in this operator workflow.
-  console.error("Could not provision the Moodle connection. Verify the input and existing account, then retry with a new output file.");
+  console.error("Could not provision the LMS connection. Verify the input and existing account, then retry with a new output file.");
   process.exitCode = 1;
 } finally { await output.close(); }

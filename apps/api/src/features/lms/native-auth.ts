@@ -1,3 +1,5 @@
+import { hasCourseAuthority } from './authority';
+import { lmsIdentity } from './contracts';
 import { decodeJwt, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { z } from "zod";
 import type { Bindings } from "../../types/bindings";
@@ -10,7 +12,7 @@ import { digest } from "../lti/store";
 import { registrationFingerprint, type LearningAuthorization } from "../lti/session-authorization";
 import { ensureNativeSession } from "./native-session";
 
-const text = z.string().min(1).max(255);
+const text = lmsIdentity;
 export const nativeAssertionClaims = z.object({
   iss: z.string().min(1).max(2048), sub: text, aud: z.string().min(1).max(2300),
   deploymentId: text, subject: text, contextId: text, resourceLinkId: text,
@@ -25,7 +27,7 @@ export const nativeAssertionClaims = z.object({
   c.sessionStartedAt <= c.iat && c.exp <= c.sessionExpiresAt &&
   c.sessionExpiresAt - c.sessionStartedAt <= 3600);
 
-const denied = () => new ApiError(403, "FORBIDDEN", "The Moodle learning request is unavailable.");
+const denied = () => new ApiError(403, "FORBIDDEN", "The LMS learning request is unavailable.");
 
 /** Verify a purpose-, endpoint- and body-bound assertion from an approved LMS.
  * No roles, capabilities, VideoQ owner or VideoQ course ID come from the caller.
@@ -42,7 +44,7 @@ export async function verifyNativeAssertion(env: Bindings, assertion: string, op
     (r.deploymentId === hint.deploymentId || r.resources.some(b => b.deploymentId === hint.deploymentId)));
   if (candidates.length !== 1) throw denied();
   const reg = candidates[0];
-  if (!reg.materialsService && reg.courseAccess !== "moodle") throw denied();
+  if (!hasCourseAuthority(reg)) throw denied();
   const audience = config.toolOrigin + "/api/lms/native" + operation;
   let claims: z.infer<typeof nativeAssertionClaims>;
   try {
