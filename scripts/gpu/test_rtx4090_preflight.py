@@ -51,6 +51,11 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(set(preflight.validate_pods(pods, "workstation")), set(preflight.ROLES))
         with self.assertRaises(ValueError):
             preflight.validate_pods(pods[:2], "workstation")
+        invalid = copy.deepcopy(pods)
+        invalid[2]["spec"]["containers"].append({"name": "whisper", "resources": {"limits": {"nvidia.com/gpu.shared": "1"}}})
+        invalid[2]["status"]["containerStatuses"].append({"name": "whisper", "ready": True})
+        with self.assertRaises(ValueError):
+            preflight.validate_pods(invalid, "workstation")
         for mutation in [
             lambda p: p[0]["spec"].update(nodeName="other"),
             lambda p: p[0]["spec"]["containers"][0].update(image="vllm:latest"),

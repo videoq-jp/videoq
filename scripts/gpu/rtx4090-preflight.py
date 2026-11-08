@@ -73,7 +73,7 @@ def validate_pods(pods, node):
         if not all(s.get("ready") for s in pod.get("status", {}).get("containerStatuses", [])) or len(pod.get("status", {}).get("containerStatuses", [])) != len(containers):
             raise ValueError("Wait for every container to become Ready")
         for name, container in containers.items():
-            if name != ROLES[role] and any(k.startswith("nvidia.com/") for k in container.get("resources", {}).get("limits", {})):
+            if name != ROLES[role] and {"nvidia.com/gpu", "nvidia.com/gpu.shared"}.intersection(container.get("resources", {}).get("limits", {})):
                 raise ValueError("Only the inference engine should reserve GPU access")
         found[role] = pod["metadata"]["name"]
     if set(found) != set(ROLES):
