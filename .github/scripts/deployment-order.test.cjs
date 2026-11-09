@@ -56,6 +56,22 @@ test('unrelated operations scripts cannot trigger paid database migrations', () 
     '.github/actions/aws-db-invocation/**','.github/deploy-tools/**']) assert.ok(filter.includes(path),path);
 });
 
+test('maintenance scripts and tests do not redeploy unchanged applications or Lambda images', () => {
+  const filters = workflow.split('          filters: |\n')[1].split('      - name: Resolve deploy flags')[0];
+  assert.doesNotMatch(filters, /\.github\/scripts\/\*\*|\.github\/actions\/\*\*/);
+  for (const component of ['web','api','docs']) {
+    const section = filters.match(new RegExp(`^            ${component}:\\n([\\s\\S]*?)(?=^            \\w+:|$(?![\\s\\S]))`, 'm'))?.[1];
+    assert.ok(section);
+    for (const input of ['.github/scripts/validate-deployment.cjs','.github/scripts/deployment-config.cjs',
+      '.github/actions/setup-package-manager/**','.github/scripts/package-managers.py',
+      '.github/deploy-tools/**','.node-version','package-lock.json']) assert.ok(section.includes(input),`${component}: ${input}`);
+  }
+  const worker = filters.split('            worker:\n')[1].split('            migrate:\n')[0];
+  for (const input of ['apps/worker/**','apps/api/drizzle/**','apps/api/scripts/migrations/**',
+    '.github/workflows/cd.yml','.github/scripts/validate-deployment.cjs']) assert.ok(worker.includes(input));
+  assert.doesNotMatch(worker, /deploy-tools|package-managers|setup-package-manager/);
+});
+
 test('the deployment graph schedules shared-data readers before the worker', () => {
   assert.ok(job('api-deploy').dependencies.includes('db-migrate'));
   assert.ok(job('web-deploy').dependencies.includes('api-deploy'));

@@ -143,6 +143,9 @@ remain enabled. The migration paths filter explicitly names its request scripts
 and authentication action so unrelated operations scripts do not start it.
 Maintenance CD similarly selects operator code and runtime assets, not Terraform
 plans, infrastructure tests or documentation-only changes.
+Application deployment filters name their actual deployment scripts/actions as
+well; changing DB maintenance or its tests does not rebuild and redeploy an
+unchanged application or video-processing Lambda image.
 
 Compare complete build phases and billed minutes before and after rollout;
 startup, dependency installation and the actual production checks still cost
