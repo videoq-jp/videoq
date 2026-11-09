@@ -1255,7 +1255,7 @@
       "title": "Integrations"
     },
     "moodle": {
-      "title": "Moodle connections",
+      "title": "Moodle",
       "description": "Add connections from Moodle.",
       "connected": "Connected",
       "disabled": "Disconnected",

@@ -1253,7 +1253,7 @@
       "title": "外部連携"
     },
     "moodle": {
-      "title": "Moodleの接続",
+      "title": "Moodle",
       "description": "接続の追加はMoodleから行います。",
       "connected": "接続済み",
       "disabled": "接続解除済み",

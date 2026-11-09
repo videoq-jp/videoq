@@ -7,7 +7,7 @@ import { Heading, HeadingTitle } from '@/components/ui/heading';
 type Connection = { id: string; moodleUrl: string; active: boolean };
 const endpoint = API_URL.replace(/\/+$/, '') + '/lms/pairing';
 
-export function MoodleConnectionSection() {
+export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2', onConnectionCountChange }: { embedded?: boolean; headingLevel?: 'h2' | 'h3' | 'h4'; onConnectionCountChange?: (count: number) => void }) {
   const { t } = useTranslation();
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
@@ -27,6 +27,9 @@ export function MoodleConnectionSection() {
     void load();
     return () => abort.abort();
   }, []);
+  useEffect(() => {
+    onConnectionCountChange?.(connections?.length ?? 0);
+  }, [connections, onConnectionCountChange]);
   if (connections === null) return null;
   async function disconnect(id: string) {
     setDisconnectPending(true); setDisconnectError(false); setDisconnected(false);
@@ -39,9 +42,9 @@ export function MoodleConnectionSection() {
       setDisconnectTarget(null); setDisconnected(true);
     } catch { setDisconnectError(true); } finally { setDisconnectPending(false); }
   }
-  return <section id="moodle" aria-labelledby="moodle-heading" className="scroll-mt-24 border-t border-solid-gray-200 pt-6">
-    <Heading size="20" hasChip className="mb-2"><HeadingTitle id="moodle-heading" level="h2">{t('settings.moodle.title')}</HeadingTitle></Heading>
-    <p className="mb-4 text-std-16N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>
+  return <section id="moodle" aria-labelledby="moodle-heading" className={embedded ? "mb-4" : "scroll-mt-24 border-t border-solid-gray-200 pt-6"}>
+    <Heading size={embedded ? "16" : "20"} className="mb-2"><HeadingTitle id="moodle-heading" level={headingLevel}>{t('settings.moodle.title')}</HeadingTitle></Heading>
+    {connections.length === 0 && <p className="mb-4 text-std-16N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>}
     {connections.length > 0 && <ul className="mb-4 list-disc pl-6">{connections.map(connection => <li key={connection.id} className="mb-3" data-connection-id={connection.id}>
       <span>{connection.moodleUrl} — {t('settings.moodle.connected')}</span>
       {connection.active && <Button variant="text" className="ml-3" disabled={disconnectPending} onClick={() => { setDisconnectTarget(connection.id); setDisconnectError(false); }}>{t('settings.moodle.disconnect')}</Button>}
@@ -55,7 +58,7 @@ export function MoodleConnectionSection() {
     </li>)}</ul>}
     {disconnectError && <p role="alert" className="mb-3 text-error-1">{t('settings.moodle.disconnectError')}</p>}
     {disconnected && <p role="status" className="mb-3">{t('settings.moodle.disconnected')}</p>}
-    {connections.length === 0 && <p className="mb-3">{t('settings.moodle.empty')}</p>}
+    {!embedded && connections.length === 0 && <p className="mb-3">{t('settings.moodle.empty')}</p>}
     <a className="text-key-900 underline" href="https://github.com/videoq-jp/videoq-moodle#installation" target="_blank" rel="noopener noreferrer">{t('settings.moodle.setupGuide')}</a>
   </section>;
 }

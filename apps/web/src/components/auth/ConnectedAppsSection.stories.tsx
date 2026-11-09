@@ -7,6 +7,7 @@ import { failure, pending, restPost, success, trpcHandler, trpcQuery } from '../
 import { ConnectedAppsSection } from './ConnectedAppsSection';
 
 interface AppFixture {
+  moodle?: boolean;
   consents?: typeof consents;
   names?: Record<string, string>;
   load?: 'pending' | 'error';
@@ -35,6 +36,9 @@ const meta = {
     revokeRequest.mockClear();
     listRequest.mockClear();
     msw.use(
+      http.get('/api/lms/pairing', () => fixture.moodle
+        ? HttpResponse.json({ connections: [{ id: 'school', moodleUrl: 'https://school.example', active: true }] })
+        : new HttpResponse(null, { status: 404 })),
       trpcHandler([trpcQuery('account.connectedApps', () => {
         listRequest();
         if (fixture.load) return fixture.load === 'pending' ? pending() : failure();
@@ -215,5 +219,17 @@ export const KeyboardRevokeLastApp: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/現在連携中のアプリはありません。|No apps are currently connected./)).toBeVisible();
     await expect(canvas.getByText(successMessage).closest('[tabindex="-1"]')).toHaveFocus();
+  },
+};
+
+export const MoodleConnected: Story = {
+  args: { headingLevel: 'h3' },
+  parameters: { connectedApps: { consents: [], moodle: true } satisfies AppFixture },
+  async play({ canvasElement }) {
+    const canvas = within(canvasElement);
+    const apps = within(canvas.getByRole('region', { name: /連携アプリ|Connected Apps/ }));
+    await expect(await apps.findByText('https://school.example', { exact: false })).toBeVisible();
+    await expect(apps.getByRole('heading', { name: 'Moodle', level: 4 })).toBeVisible();
+    await expect(apps.queryByText(/現在連携中のアプリはありません|No connected apps/i)).not.toBeInTheDocument();
   },
 };
