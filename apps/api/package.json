@@ -47,7 +47,7 @@
     "@langchain/langgraph-checkpoint-postgres": "^1.1.2",
     "@langchain/openai": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@trpc/server": "^11.19.0",
+    "@trpc/server": "^11.22.1",
     "@videoq/trpc": "0.1.0",
     "@yukiharada1228/langchain-postgres": "^0.2.1",
     "aws4fetch": "^1.0.20",
