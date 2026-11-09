@@ -90,10 +90,22 @@ jobs:
       - name: Install pinned K3s operator tools
         run: bash scripts/onprem/install-tools.sh
       - name: Validate K3s backups, failed update recovery and uninstall
+        id: k3s_lifecycle
         timeout-minutes: 20
         env:
           VIDEOQ_K3S_LIFECYCLE: '1'
-        run: python3 -m unittest discover -s scripts/onprem -p test_k3s_lifecycle.py -v
+          PYTHONUNBUFFERED: '1'
+        run: |
+          set -o pipefail
+          python3 -m unittest discover -s scripts/onprem -p test_k3s_lifecycle.py -v 2>&1 | tee "$RUNNER_TEMP/k3s-lifecycle.log"
+      - name: Retain K3s lifecycle diagnostics before image scans
+        if: ${{ !cancelled() && (steps.k3s_lifecycle.outcome == 'success' || steps.k3s_lifecycle.outcome == 'failure') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: k3s-lifecycle-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/k3s-lifecycle.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Validate single-server restart and backup restore
         timeout-minutes: 10
         env:
