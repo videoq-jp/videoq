@@ -949,7 +949,7 @@
   "legal": {
     "terms": {
       "title": "Terms of Service",
-      "updated": "Last updated: October 23, 2026",
+      "updated": "Last updated: November 10, 2026",
       "sections": {
         "scope": {
           "title": "1. Scope",
@@ -989,17 +989,17 @@
         },
         "contact": {
           "title": "10. Contact",
-          "body": "Questions about these terms: yukiharada1228@gmail.com. Seller details are listed on the Specified Commercial Transactions notice."
+          "body": "Questions about these terms: support@videoq.jp. Seller details are listed on the Specified Commercial Transactions notice."
         }
       }
     },
     "privacy": {
       "title": "Privacy Policy",
-      "updated": "Last updated: October 23, 2026",
+      "updated": "Last updated: November 10, 2026",
       "sections": {
         "controller": {
           "title": "1. Controller",
-          "body": "Yuki Harada, the operator of VideoQ (https://videoq.jp), handles personal data collected through the service under this policy. Contact: yukiharada1228@gmail.com."
+          "body": "Yuki Harada, the operator of VideoQ (https://videoq.jp), handles personal data collected through the service under this policy. Contact: support@videoq.jp."
         },
         "collect": {
           "title": "2. Data we collect",
@@ -1023,7 +1023,7 @@
         },
         "rights": {
           "title": "7. Your rights",
-          "body": "You may request access, correction, suspension, or deletion of your personal data by emailing yukiharada1228@gmail.com. We will verify your identity and respond as required by law."
+          "body": "You may request access, correction, suspension, or deletion of your personal data by emailing support@videoq.jp. We will verify your identity and respond as required by law."
         },
         "cookies": {
           "title": "8. Cookies",
@@ -1031,13 +1031,13 @@
         },
         "contact": {
           "title": "9. Contact",
-          "body": "Privacy questions: yukiharada1228@gmail.com."
+          "body": "Privacy questions: support@videoq.jp."
         }
       }
     },
     "refund": {
       "title": "Refund and Cancellation Policy",
-      "updated": "Last updated: 22 August 2026",
+      "updated": "Last updated: November 10, 2026",
       "sections": {
         "summary": {
           "title": "Overview",
@@ -1057,11 +1057,11 @@
         },
         "howto": {
           "title": "If you want a refund",
-          "body": "For duplicate charges, payment errors, or cases where the law requires a refund, email yukiharada1228@gmail.com with the account and what happened. We will review it. For card chargebacks, contact us first."
+          "body": "For duplicate charges, payment errors, or cases where the law requires a refund, email support@videoq.jp with the account and what happened. We will review it. For card chargebacks, contact us first."
         },
         "contact": {
           "title": "Contact",
-          "body": "Refunds and cancellations: yukiharada1228@gmail.com"
+          "body": "Refunds and cancellations: support@videoq.jp"
         }
       }
     },
@@ -1088,7 +1088,7 @@
         },
         "email": {
           "label": "Email",
-          "value": "yukiharada1228@gmail.com"
+          "value": "support@videoq.jp"
         },
         "url": {
           "label": "Website",
