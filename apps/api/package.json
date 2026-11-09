@@ -36,9 +36,9 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@better-auth/api-key": "^1.7.13",
+    "@better-auth/api-key": "^1.7.15",
     "@better-auth/drizzle-adapter": "^1.7.12",
-    "@better-auth/oauth-provider": "^1.7.13",
+    "@better-auth/oauth-provider": "^1.7.15",
     "@hono/mcp": "^0.3.2",
     "@hono/node-server": "^2.1.5",
     "@hono/trpc-server": "^0.4.2",
@@ -47,7 +47,7 @@
     "@langchain/langgraph-checkpoint-postgres": "^1.1.2",
     "@langchain/openai": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@trpc/server": "^11.19.0",
+    "@trpc/server": "^11.22.1",
     "@videoq/trpc": "0.1.0",
     "@yukiharada1228/langchain-postgres": "^0.2.1",
     "aws4fetch": "^1.0.20",
