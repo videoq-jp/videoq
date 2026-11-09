@@ -1253,19 +1253,19 @@
       "title": "外部連携"
     },
     "moodle": {
-      "title": "Moodleの接続",
-      "description": "新しい接続はMoodleの「VideoQと接続」から開始し、VideoQのURLを入力してください。VideoQではログインと接続の承認だけを行います。",
+      "title": "Moodle",
+      "description": "接続の追加はMoodleから行います。",
       "connected": "接続済み",
       "disabled": "接続解除済み",
       "disconnect": "接続を解除",
-      "disconnectDescription": "接続を解除すると、動画の同期とMoodleからのAI質問が停止します。Moodleの教材と、VideoQに同期済みの動画・文字起こし・質問履歴は残ります。",
+      "disconnectDescription": "同期とAI質問を停止します。動画や質問データは削除されません。",
       "confirmDisconnect": "解除する",
       "cancelDisconnect": "キャンセル",
       "disconnecting": "解除しています…",
       "disconnectError": "接続を解除できませんでした。ログイン状態と通信を確認して再試行してください。",
-      "disconnected": "接続を解除しました。教材と同期済みデータは残っています。",
+      "disconnected": "接続を解除しました。",
       "empty": "接続済みのMoodleはありません。",
-      "setupGuide": "プラグインの導入・接続手順（Gitから配置できます）"
+      "setupGuide": "Moodleの設定方法"
     }
   },
   "dashboard": {

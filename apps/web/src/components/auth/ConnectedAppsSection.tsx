@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
+import { MoodleConnectionSection } from '@/components/settings/MoodleConnectionSection';
 import { apiClient, type AuthorizedOAuthToken } from '@/lib/api';
 import { trpc } from '@/lib/trpc';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
@@ -18,6 +19,7 @@ type PendingRevoke = Pick<AuthorizedOAuthToken, 'id' | 'client_id' | 'client_nam
 export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: 'h2' | 'h3' }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const [moodleConnectionCount, setMoodleConnectionCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
   const [pendingRevoke, setPendingRevoke] = useState<PendingRevoke | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -71,6 +73,8 @@ export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: '
         </p>
       </div>
 
+      <MoodleConnectionSection embedded headingLevel={headingLevel === 'h2' ? 'h3' : 'h4'} onConnectionCountChange={setMoodleConnectionCount} />
+
       {statusMessage && (
         <div ref={statusRef} tabIndex={-1} className="mb-5 focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-2">
           <MessageAlert type={statusMessage.tone} message={statusMessage.text} />
@@ -81,7 +85,7 @@ export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: '
       {tokensQuery.isError && (
         <ErrorMessage message={t('settings.connectedApps.errorLoading')} />
       )}
-      {!tokensQuery.isLoading && !tokensQuery.isError && tokensQuery.data?.length === 0 && (
+      {!tokensQuery.isLoading && !tokensQuery.isError && tokensQuery.data?.length === 0 && moodleConnectionCount === 0 && (
         <div className="p-4 rounded-8 bg-solid-gray-50 text-std-16N-170 text-solid-gray-600">
           {t('settings.connectedApps.empty')}
         </div>

@@ -340,6 +340,11 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await app.request(url, { method: "POST", headers: ownHeaders }, env)).status).toBe(200);
     expect(await authenticateLmsInstallation(env, credential.token)).toBeNull();
     expect(await authenticateLmsInstallation(env, peer.token)).toMatchObject({ id: "peer" });
+    const list = await app.request("http://localhost/api/lms/pairing", {
+      headers: { "X-VideoQ-Test-User-Id": "account-a" },
+    }, env);
+    expect(list.status).toBe(200);
+    expect(await list.json()).toEqual({ connections: [] });
     expect((await request("connection")).status).toBe(401);
     expect((await resolvedLtiConfig(env))?.registrations.some(item => item.id === "db:moodle-a")).toBe(false);
     expect(await getLmsResource(env, grant, "disconnect-source")).toBeNull();

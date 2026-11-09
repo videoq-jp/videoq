@@ -1255,19 +1255,19 @@
       "title": "Integrations"
     },
     "moodle": {
-      "title": "Moodle connections",
-      "description": "Start a new connection from “Connect to VideoQ” in Moodle and enter your VideoQ URL. In VideoQ, sign in and approve the connection.",
+      "title": "Moodle",
+      "description": "Add connections from Moodle.",
       "connected": "Connected",
       "disabled": "Disconnected",
       "disconnect": "Disconnect",
-      "disconnectDescription": "Disconnecting stops video synchronization and AI questions from Moodle. Moodle materials and synchronized VideoQ videos, transcripts and question history are retained.",
+      "disconnectDescription": "Stop synchronization and AI questions. Videos and questions will be retained.",
       "confirmDisconnect": "Confirm disconnect",
       "cancelDisconnect": "Cancel",
       "disconnecting": "Disconnecting…",
       "disconnectError": "Could not disconnect. Check your login and connection, then retry.",
-      "disconnected": "Disconnected. Learning materials and synchronized data have been retained.",
+      "disconnected": "Disconnected.",
       "empty": "No Moodle sites are connected.",
-      "setupGuide": "Plugin installation and connection guide (Git installation supported)"
+      "setupGuide": "Set up Moodle"
     }
   },
   "dashboard": {
