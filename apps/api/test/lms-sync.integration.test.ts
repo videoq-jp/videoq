@@ -109,6 +109,23 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     USE_S3_STORAGE: "true", R2_ACCESS_KEY_ID: "fixture", R2_SECRET_ACCESS_KEY: "fixture",
     R2_S3_ENDPOINT: "https://storage.example", R2_BUCKET_NAME: "fixture", R2_S3_REGION: "auto" });
 
+  it.each(['ja', 'en'] as const)('preserves the requested %s upload language for worker transcription', async language => {
+    const resource = await syncLmsResource(env, grant, 'language-video', manifest(1, { transcriptionLanguage: language }));
+    const video = (await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0];
+    expect(video.transcription_language).toBe(language);
+    expect((await request('resources/language-video', 'PUT', manifest(2, { transcriptionLanguage: language === 'ja' ? 'en' : 'ja' }))).status).toBe(409);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0].transcription_language).toBe(language);
+    const legacy = await syncLmsResource(env, grant, 'language-video', manifest(2));
+    expect(legacy.videoId).toBe(resource.videoId);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0].transcription_language).toBe(language);
+    const replacement = await syncLmsResource(env, grant, 'language-video', manifest(3, {
+      transcriptionLanguage: language === 'ja' ? 'en' : 'ja',
+      file: { filename: 'next.mp4', contentType: 'video/mp4', size: 3, contentHash: 'b'.repeat(40) },
+    }));
+    expect(replacement.videoId).not.toBe(resource.videoId);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [replacement.videoId])).rows[0].transcription_language).toBe(language === 'ja' ? 'en' : 'ja');
+  });
+
   it("discovers an administrator-selected on-prem server without creating signing keys", async () => {
     const automatic = { ...automaticEnv(), BETTER_AUTH_URL: "https://private.example:8443", FRONTEND_URL: "https://learning.example:9443" };
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);

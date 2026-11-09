@@ -1,7 +1,7 @@
 import { lmsIdentity, sourceRevision } from './contracts';
 import { z } from "zod";
 import { fileExtension, isAllowedContentType, isAllowedExtension } from "../../lib/upload";
-import { MAX_SINGLE_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
+import { MAX_SINGLE_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "@videoq/trpc/video-upload";
 
 const identity = lmsIdentity;
 export const resourceManifestSchema = z.object({
@@ -12,6 +12,7 @@ export const resourceManifestSchema = z.object({
   enabled: z.boolean(),
   deleted: z.boolean().optional(),
   title: z.string().trim().min(1).max(255),
+  transcriptionLanguage: z.enum(Object.keys(TRANSCRIPTION_LANGUAGES) as [keyof typeof TRANSCRIPTION_LANGUAGES, ...Array<keyof typeof TRANSCRIPTION_LANGUAGES>]).optional(),
   file: z.object({
     filename: z.string().min(1).max(255).refine(value => isAllowedExtension(fileExtension(value))),
     contentType: z.string().refine(isAllowedContentType),
@@ -23,9 +24,9 @@ export const resourceManifestSchema = z.object({
   kind: z.enum(['course', 'youtube']).optional(),
   youtubeVideoId: z.string().length(11).regex(/^(?=.*[A-Za-z0-9])[A-Za-z0-9_-]{11}$/).optional(),
 }).strict().refine(value => !(value.enabled && value.deleted) && (value.kind === 'course'
-  ? value.file === undefined && value.youtubeVideoId === undefined
+  ? value.file === undefined && value.youtubeVideoId === undefined && value.transcriptionLanguage === undefined
   : value.kind === 'youtube'
-    ? value.file === undefined && (!value.enabled || value.youtubeVideoId !== undefined)
+    ? value.file === undefined && value.transcriptionLanguage === undefined && (!value.enabled || value.youtubeVideoId !== undefined)
     : value.youtubeVideoId === undefined && (!value.enabled || value.file !== undefined)),
 "Enabled materials require their source identity; source kinds cannot mix media or be deleted while enabled");
 export type ResourceManifest = z.infer<typeof resourceManifestSchema>;

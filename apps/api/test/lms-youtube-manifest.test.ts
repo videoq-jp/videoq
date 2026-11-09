@@ -14,6 +14,16 @@ describe('typed Moodle source manifests', () => {
     expect(parsed).not.toHaveProperty('kind');
     expect(parsed).not.toHaveProperty('youtubeVideoId');
   });
+  it('accepts supported upload languages without changing automatic legacy manifests', () => {
+    for (const language of ['ja', 'en', 'zh', 'ko', 'es', 'fr', 'de', 'pt', 'it', 'ru', 'hi', 'ar']) {
+      expect(resourceManifestSchema.parse({ ...base, file, transcriptionLanguage: language }).transcriptionLanguage).toBe(language);
+    }
+    for (const language of ['auto', 'xx', 'en-US', '', null]) {
+      expect(resourceManifestSchema.safeParse({ ...base, file, transcriptionLanguage: language }).success).toBe(false);
+    }
+    expect(resourceManifestSchema.safeParse({ ...base, kind: 'course', transcriptionLanguage: 'ja' }).success).toBe(false);
+    expect(resourceManifestSchema.safeParse({ ...youtube, transcriptionLanguage: 'ja' }).success).toBe(false);
+  });
   it('accepts provider identity and typed tombstones without arbitrary provider URLs', () => {
     expect(resourceManifestSchema.parse(youtube)).toEqual(youtube);
     expect(resourceManifestSchema.parse({ ...youtube, enabled: false, deleted: true, youtubeVideoId: undefined }))
