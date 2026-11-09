@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import ssl
 import unittest
@@ -19,6 +20,48 @@ class VerifiedDownloadTests(unittest.TestCase):
 
     def gateway_error(self):
         return urllib.error.HTTPError(self.pin["url"], 504, "Gateway timeout", {}, None)
+
+    def github_pin(self):
+        self.pin["url"] = "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-gnu.tar.gz"
+        return {"tag_name": "0.13.7", "assets": [{"id": 123, "name": "uv-x86_64-unknown-linux-gnu.tar.gz",
+                "browser_download_url": "https://untrusted.invalid/archive"}]}
+
+    def test_persistent_release_gateway_failure_uses_exact_official_asset_and_checks_hash(self):
+        release = self.github_pin()
+        replies = [self.gateway_error() for _ in range(2)] + [io.BytesIO(json.dumps(release).encode()), io.BytesIO(self.body)]
+        with patch.object(managers.urllib.request, "urlopen", side_effect=replies) as request, patch.object(managers.time, "sleep"):
+            self.assertEqual(managers.verified(self.pin), self.body)
+        self.assertEqual(request.call_count, 4)
+        self.assertEqual(request.call_args_list[2].args[0].full_url, "https://api.github.com/repos/astral-sh/uv/releases/tags/0.13.7")
+        asset = request.call_args_list[3].args[0]
+        self.assertEqual(asset.full_url, "https://api.github.com/repos/astral-sh/uv/releases/assets/123")
+        self.assertEqual(asset.get_header("Accept"), "application/octet-stream")
+
+    def test_fallback_rejects_wrong_tag_ambiguous_assets_and_non_numeric_ids(self):
+        for variant in ("tag", "ambiguous", "id", "missing"):
+            with self.subTest(variant=variant):
+                release = self.github_pin()
+                if variant == "tag":
+                    release["tag_name"] = "0.13.8"
+                elif variant == "ambiguous":
+                    release["assets"] *= 2
+                elif variant == "id":
+                    release["assets"][0]["id"] = "../other"
+                else:
+                    release["assets"] = []
+                replies = [self.gateway_error() for _ in range(2)] + [io.BytesIO(json.dumps(release).encode())]
+                with patch.object(managers.urllib.request, "urlopen", side_effect=replies) as request, patch.object(managers.time, "sleep"):
+                    with self.assertRaisesRegex(ValueError, "Unexpected GitHub release"):
+                        managers.verified(self.pin)
+                self.assertEqual(request.call_count, 3)
+
+    def test_fallback_bytes_must_match_the_committed_checksum(self):
+        release = self.github_pin()
+        replies = [self.gateway_error() for _ in range(2)] + [io.BytesIO(json.dumps(release).encode()), io.BytesIO(b"tampered")]
+        with patch.object(managers.urllib.request, "urlopen", side_effect=replies) as request, patch.object(managers.time, "sleep"):
+            with self.assertRaisesRegex(ValueError, "hash mismatch"):
+                managers.verified(self.pin)
+        self.assertEqual(request.call_count, 4)
 
     def test_recovers_from_gateway_failure_and_verifies_the_retried_bytes(self):
         with patch.object(managers.urllib.request, "urlopen", side_effect=[self.gateway_error(), io.BytesIO(self.body)]) as request, patch.object(managers.time, "sleep") as sleep:
@@ -39,6 +82,7 @@ class VerifiedDownloadTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2, 4])
 
     def test_not_found_is_not_retried(self):
+        self.github_pin()
         error = urllib.error.HTTPError(self.pin["url"], 404, "Not found", {}, None)
         with patch.object(managers.urllib.request, "urlopen", side_effect=error) as request, patch.object(managers.time, "sleep") as sleep:
             with self.assertRaises(urllib.error.HTTPError):
@@ -47,6 +91,7 @@ class VerifiedDownloadTests(unittest.TestCase):
         sleep.assert_not_called()
 
     def test_certificate_failure_is_not_retried(self):
+        self.github_pin()
         error = urllib.error.URLError(ssl.SSLCertVerificationError(1, "Untrusted certificate"))
         with patch.object(managers.urllib.request, "urlopen", side_effect=error) as request, patch.object(managers.time, "sleep") as sleep:
             with self.assertRaises(urllib.error.URLError):

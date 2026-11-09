@@ -28,8 +28,10 @@ PY
 }
 # k3d (K3s in Docker)
 k3d_version=5.9.0
-curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/k3d-linux-${arch}" -o "$workspace/k3d"
-curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/checksums.txt" -o "$workspace/k3d-checksums.txt"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/k3d-linux-${arch}" --output "$workspace/k3d"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/checksums.txt" --output "$workspace/k3d-checksums.txt"
 verify "$workspace/k3d" "$workspace/k3d-checksums.txt" "k3d-linux-${arch}"
 # kubectl matches the minor version of the documented K3s node.
 kubectl_version=1.35.5
@@ -47,8 +49,10 @@ HELM_INSTALL_DIR="$workspace/helm-tools" bash "$root/.github/scripts/install-hel
 # gh must support attestation verification, unlike older Ubuntu packages.
 gh_version=2.103.3
 gh_archive="gh_${gh_version}_linux_${arch}.tar.gz"
-curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${gh_archive}" -o "$workspace/$gh_archive"
-curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_checksums.txt" -o "$workspace/gh-checksums.txt"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/cli/cli/releases/download/v${gh_version}/${gh_archive}" --output "$workspace/$gh_archive"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_checksums.txt" --output "$workspace/gh-checksums.txt"
 verify "$workspace/$gh_archive" "$workspace/gh-checksums.txt" "$gh_archive"
 tar -xzf "$workspace/$gh_archive" -C "$workspace" "gh_${gh_version}_linux_${arch}/bin/gh"
 install -m 0755 "$workspace/k3d" "$destination/k3d"
