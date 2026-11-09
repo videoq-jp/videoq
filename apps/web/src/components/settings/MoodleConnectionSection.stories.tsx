@@ -38,6 +38,7 @@ export const Disconnect: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /接続を解除$|Disconnect$/ }));
     await userEvent.click(canvas.getByRole('button', { name: /^解除する$|^Confirm disconnect$/ }));
     await expect(await canvas.findByRole('status')).toBeVisible();
+    await expect(canvas.queryByText(/https:\/\/moodle.example.edu/)).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: /接続を解除$|Disconnect$/ })).not.toBeInTheDocument();
   },
 };

@@ -21,7 +21,7 @@ export function MoodleConnectionSection() {
         const response = await fetch(endpoint, { credentials: 'include', signal: abort.signal });
         if (!response.ok) return;
         const data = await response.json() as { connections: Connection[] };
-        setConnections(data.connections);
+        setConnections(data.connections.filter(connection => connection.active));
       } catch { /* Unconfigured deployments do not expose this optional section. */ }
     }
     void load();
@@ -35,7 +35,7 @@ export function MoodleConnectionSection() {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}',
       });
       if (!response.ok) throw new Error();
-      setConnections(current => current?.map(connection => connection.id === id ? { ...connection, active: false } : connection) ?? null);
+      setConnections(current => current?.filter(connection => connection.id !== id) ?? null);
       setDisconnectTarget(null); setDisconnected(true);
     } catch { setDisconnectError(true); } finally { setDisconnectPending(false); }
   }
@@ -43,7 +43,7 @@ export function MoodleConnectionSection() {
     <Heading size="20" hasChip className="mb-2"><HeadingTitle id="moodle-heading" level="h2">{t('settings.moodle.title')}</HeadingTitle></Heading>
     <p className="mb-4 text-std-16N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>
     {connections.length > 0 && <ul className="mb-4 list-disc pl-6">{connections.map(connection => <li key={connection.id} className="mb-3" data-connection-id={connection.id}>
-      <span>{connection.moodleUrl} — {t(connection.active ? 'settings.moodle.connected' : 'settings.moodle.disabled')}</span>
+      <span>{connection.moodleUrl} — {t('settings.moodle.connected')}</span>
       {connection.active && <Button variant="text" className="ml-3" disabled={disconnectPending} onClick={() => { setDisconnectTarget(connection.id); setDisconnectError(false); }}>{t('settings.moodle.disconnect')}</Button>}
       {disconnectTarget === connection.id && <div className="mt-2 max-w-2xl rounded-8 bg-solid-gray-50 p-4">
         <p className="mb-3">{t('settings.moodle.disconnectDescription')}</p>

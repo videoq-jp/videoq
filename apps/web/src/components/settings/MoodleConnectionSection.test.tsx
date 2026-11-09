@@ -23,7 +23,7 @@ it('directs new connections to Moodle without a VideoQ setup form or code reques
   expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('method');
 });
 
-it('confirms disconnection, retains the list entry and shows its revoked state', async () => {
+it('removes a disconnected connection from the list and shows the empty state', async () => {
   fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', moodleUrl: 'https://moodle.example', active: true }] }))
     .mockResolvedValueOnce(response({ disconnected: true }));
   render(<MoodleConnectionSection />);
@@ -35,7 +35,8 @@ it('confirms disconnection, retains the list entry and shows its revoked state',
   fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.disconnect' }));
   fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.confirmDisconnect' }));
   expect(await screen.findByRole('status')).toHaveTextContent('settings.moodle.disconnected');
-  expect(screen.getByText(/https:\/\/moodle.example — settings.moodle.disabled/)).toBeInTheDocument();
+  expect(screen.queryByText(/https:\/\/moodle.example/)).not.toBeInTheDocument();
+  expect(screen.getByText('settings.moodle.empty')).toBeInTheDocument();
   expect(fetchMock.mock.calls[1]).toEqual([expect.stringContaining('/connections/school/disconnect'), expect.objectContaining({ method: 'POST', credentials: 'include' })]);
   expect(screen.queryByRole('button', { name: 'settings.moodle.disconnect' })).not.toBeInTheDocument();
 });
@@ -48,4 +49,14 @@ it('keeps a connection active in the UI if revocation fails', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('settings.moodle.disconnectError');
   expect(screen.getByRole('button', { name: 'settings.moodle.disconnect' })).toBeEnabled();
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
+
+it('omits disconnected connections returned by an older API', async () => {
+  fetchMock.mockResolvedValue(response({ connections: [
+    { id: 'current', moodleUrl: 'https://current.example', active: true },
+    { id: 'old', moodleUrl: 'https://old.example', active: false },
+  ] }));
+  render(<MoodleConnectionSection />);
+  expect(await screen.findByText(/https:\/\/current.example/)).toBeInTheDocument();
+  expect(screen.queryByText(/https:\/\/old.example/)).not.toBeInTheDocument();
 });
