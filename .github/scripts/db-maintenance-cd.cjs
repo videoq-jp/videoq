@@ -1,8 +1,13 @@
 // Called only after successful push CI and current canonical-main validation.
 const {execFileSync} = require('node:child_process');
 function relevant(path) {
-  if (path.startsWith('infra/db-maintenance/')) return !path.endsWith('.md');
-  if (path.startsWith('.github/operations-tools/')) return true;
+  if (path.startsWith('infra/db-maintenance/runtime/')) return !path.endsWith('.md');
+  if (['build_bundle.py','deploy.py','fetch_migration.py','state-machine.cjs']
+    .some(name => path === 'infra/db-maintenance/' + name)) return true;
+  // Infrastructure plans/tests do not change the versioned operator bundle.
+  // Keep artifact inputs explicit, matching build_bundle.py's public allowlist.
+  if (['package.json','package-lock.json','Dockerfile','fixtures/smoke.mp4']
+    .some(name => path === '.github/operations-tools/' + name)) return true;
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
   if (['.github/workflows/db-maintenance-cd.yml', '.github/actions/aws-db-invocation/action.yml',
