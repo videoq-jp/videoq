@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "worker_permissions" {
       "sqs:GetQueueUrl",
       "sqs:SendMessage",
     ]
-    resources = [aws_sqs_queue.main.arn]
+    resources = concat([aws_sqs_queue.main.arn], [for queue in aws_sqs_queue.group : queue.arn])
   }
 }
 
@@ -128,6 +128,6 @@ resource "aws_lambda_event_source_mapping" "worker" {
   }
 
   scaling_config {
-    maximum_concurrency = 10
+    maximum_concurrency = var.worker_media_maximum_concurrency
   }
 }

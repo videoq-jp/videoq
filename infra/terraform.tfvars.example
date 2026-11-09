@@ -34,7 +34,8 @@ worker_lambda_timeout_seconds = 900
 # --- SQS settings ------------------------------------------------------------
 
 # SQS visibility timeout in seconds.
-# At least 6 * worker_lambda_timeout_seconds, including time for throttling retries.
+# At least max(6 * worker_lambda_timeout_seconds, 900 + worker_lambda_timeout_seconds + 60).
+# Covers throttling retries and expiry of a lease claimed late in a timed-out invocation.
 # Failed messages can take this long to become available for retry.
 sqs_visibility_timeout_seconds = 5400
 
@@ -76,3 +77,10 @@ worker_visual_enabled = true
 # and OPENROUTER_FEDERATION_AUDIENCE, using the same values for plan and apply.
 # openrouter_federation_policy_id = "<worker-policy-id>"
 # openrouter_federation_audience  = "https://openrouter.ai"
+
+# Independent search/account consumers (media keeps worker_lambda_* settings).
+worker_media_maximum_concurrency = 10
+worker_groups = {
+  search  = { memory_mb = 2048, timeout_seconds = 900, storage_mb = 512, maximum_concurrency = 4 }
+  account = { memory_mb = 1024, timeout_seconds = 900, storage_mb = 512, maximum_concurrency = 2 }
+}

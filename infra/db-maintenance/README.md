@@ -78,7 +78,8 @@ must never be emitted into CloudWatch, which does not interpret them as redactio
    The new AWS schedule is disabled initially. No NAT gateway, VPC endpoint or
    Neon plan upgrade is created. Install the emitted worker permissions boundary
    on `videoq-worker-prod` with the operator session. It caps SSM to worker/app,
-   SQS to its queue, logs to its group, and the current constrained federation
+   SQS to the media/search/account queues, logs to those three function groups,
+   and the current constrained federation
    token operation. GitHub cannot remove that boundary, edit its policy, or
    delete/recreate the worker role to bypass it. The application Terraform root
    deliberately leaves this operator-owned boundary unchanged.

@@ -12,6 +12,54 @@ unacknowledged for retry. Start with the
 infrastructure, or the [Helm chart](../../charts/videoq/README.md) for a cluster
 with site-managed queues, storage and inference.
 
+## Hosted queue groups
+
+Hosted AWS deployments use three SQS queues and three Lambda functions sharing
+one immutable container image and the existing worker IAM identity:
+
+| Group | Queue / Lambda (prod) | Jobs | Memory / timeout / maximum concurrency |
+|---|---|---|---|
+| Media | `videoq-worker-prod` (existing) | Transcription and visuals, including chunks/finalizers | 5120 MB / 900 s / 10 |
+| Search | `videoq-worker-search-prod` | Index, per-video reindex, full-reindex dispatch | 2048 MB / 900 s / 4 |
+| Account | `videoq-worker-account-prod` | Account deletion | 1024 MB / 900 s / 2 |
+
+Each group has its own DLQ and Lambda/queue alarms. Hosted visibility must be at
+least `max(6 * timeout, 900 + timeout + 60)` seconds, allowing a DB lease claimed
+late in a timed-out invocation to expire before retry. Terraform computes this
+for search/account and validates the explicit media setting. Keep its lease
+constant synchronized with Python `JOB_LEASE_SECONDS`. Configure search/account
+resources through Terraform `worker_groups`; media retains the existing settings.
+Concurrency limits are per event source, and the account concurrency quota and
+shared DB/provider capacity must cover the combined workload (default ceiling 16).
+The role and image remain shared; this change isolates execution capacity and
+resource settings, not permissions or deployments.
+
+Both API producers and Python child-job producers select `SQS_MEDIA_QUEUE_URL`,
+`SQS_SEARCH_QUEUE_URL`, or `SQS_ACCOUNT_QUEUE_URL` by job type. An unset group URL
+falls back to `SQS_QUEUE_URL`, preserving single-queue local/on-prem operation.
+The hosted media queue keeps its original name and accepts old mixed messages
+while they drain. New search/account functions reject jobs from another group.
+Tasks are imported only when dispatched so media imports do not run at startup
+of unrelated consumers.
+
+With SQS configured, `reindex_all_videos_embeddings` dispatches at most 25 video
+IDs per invocation to `reindex_video_transcript`. It enqueues a continuation with
+`after_id` when more IDs remain. Before any send, every nonempty page validates
+embedding storage. A schema/configuration failure sends no children or continuation
+and fails the parent for retry after repair. Per-video jobs still recheck storage.
+Children retain the original root job ID across pages so boundary changes on
+retry cannot assign a second identity to the same video. Continuations also use
+deterministic IDs;
+any failed send fails the parent so it can retry. Each video loads its current
+transcript under the existing per-video lock, and failures retry independently.
+Dispatcher success means delivery was accepted, not that every video completed;
+watch search failures/backlog/DLQ for completion. No global vector lock is held
+across the rebuild. Without SQS, the local maintenance helper retains its inline,
+globally locked execution. Schema/model migrations must be coordinated separately;
+a parallel rebuild does not provide an atomic collection-wide switch.
+
+For rollout and rollback ordering, see [deployment instructions](../../infra/DEPLOY.md#split-worker-rollout).
+
 ## Job contract
 
 The API sends the following native JSON to SQS:
@@ -91,7 +139,8 @@ results. Checkpoints are deleted by foreign-key cascade when the video is delete
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | PostgreSQL |
-| `SQS_QUEUE_URL` | Amazon SQS / ElasticMQ |
+| `SQS_QUEUE_URL` | Default / legacy queue; also used by the local poller |
+| `SQS_MEDIA_QUEUE_URL`, `SQS_SEARCH_QUEUE_URL`, `SQS_ACCOUNT_QUEUE_URL` | Optional per-group routing overrides (API and Python producers) |
 | `OPENROUTER_FEDERATION_POLICY_ID` | Preferred: OpenRouter policy for AWS STS workload identity |
 | `OPENROUTER_FEDERATION_AUDIENCE` | Defaults to `https://openrouter.ai` |
 | `OPENROUTER_API_KEY` | Optional fixed-key development fallback when no policy is set |

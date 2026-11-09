@@ -52,6 +52,10 @@ R2_S3_REGION="garage"
 # Queue: http://127.0.0.1:9324/000000000000/videoq-jobs  Stats UI: :9325
 # Dummy keys (ElasticMQ accepts loose signatures). Separate from Garage's R2_* values.
 SQS_QUEUE_URL="http://127.0.0.1:9324/000000000000/videoq-jobs"
+# Optional split queues; leave unset for the bundled single-queue local poller.
+SQS_MEDIA_QUEUE_URL=""
+SQS_SEARCH_QUEUE_URL=""
+SQS_ACCOUNT_QUEUE_URL=""
 AWS_REGION="us-east-1"
 AWS_ACCESS_KEY_ID="local"
 AWS_SECRET_ACCESS_KEY="local"

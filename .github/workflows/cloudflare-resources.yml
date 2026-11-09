@@ -50,6 +50,8 @@ jobs:
             R2_ACCESS_KEY_ID \
             R2_SECRET_ACCESS_KEY \
             SQS_QUEUE_URL \
+            SQS_SEARCH_QUEUE_URL \
+            SQS_ACCOUNT_QUEUE_URL \
             AWS_ACCESS_KEY_ID \
             AWS_SECRET_ACCESS_KEY \
             STRIPE_SECRET_KEY \

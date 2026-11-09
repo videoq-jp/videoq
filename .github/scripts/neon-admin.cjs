@@ -10,7 +10,7 @@ const postgres = () => createRequire(join(__dirname, '../operations-tools/packag
 const REGION = 'ap-northeast-1';
 const ADMIN = '/videoq/security/prod/db-admin';
 const HYPERDRIVE = HYPERDRIVE_ID;
-const FUNCTION = 'videoq-worker-prod';
+const WORKER_FUNCTIONS = ['videoq-worker-prod', 'videoq-worker-search-prod', 'videoq-worker-account-prod'];
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
 const literal = value => "'" + value.replaceAll("'", "''") + "'";
 function aws(service, command, input = {}) {
@@ -196,14 +196,21 @@ async function pointHyperdrive(url, acceptedUsers) {
   if(current.origin.user!==decodeURIComponent(u.username)||current.caching.disabled!==true) throw new Error('HYPERDRIVE_VERIFICATION_FAILED');
 }
 async function refreshLambda(generation) {
+  let timeout = 0;
+  for (const functionName of WORKER_FUNCTIONS) {
+    timeout = Math.max(timeout, await refreshWorkerLambda(functionName, generation));
+  }
+  return timeout;
+}
+async function refreshWorkerLambda(functionName, generation) {
   for(let i=0;i<60;i++) {
-    const config=aws('lambda','get-function-configuration',{FunctionName:FUNCTION});
+    const config=aws('lambda','get-function-configuration',{FunctionName:functionName});
     if(![PROFILES.api.parameter,PROFILES.worker.parameter].includes(config.Environment?.Variables?.DB_PARAM_NAME)) throw new Error('UNEXPECTED_LAMBDA_DATABASE_PARAMETER');
     if(config.LastUpdateStatus==='InProgress') {await delay(5000);continue;}
-    aws('lambda','update-function-configuration',{FunctionName:FUNCTION,RevisionId:config.RevisionId,
+    aws('lambda','update-function-configuration',{FunctionName:functionName,RevisionId:config.RevisionId,
       Environment:{Variables:{...config.Environment.Variables,DB_PARAM_NAME:PROFILES.worker.parameter,DB_CREDENTIAL_GENERATION:generation,PGSSLROOTCERT:'/etc/pki/tls/certs/ca-bundle.crt'}}});
     for(let n=0;n<90;n++) {
-      const next=aws('lambda','get-function-configuration',{FunctionName:FUNCTION});
+      const next=aws('lambda','get-function-configuration',{FunctionName:functionName});
       if(next.LastUpdateStatus==='Successful') return next.Timeout;
       if(next.LastUpdateStatus==='Failed') throw new Error('LAMBDA_REFRESH_FAILED');
       await delay(5000);

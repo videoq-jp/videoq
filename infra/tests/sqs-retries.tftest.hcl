@@ -114,3 +114,24 @@ run "partial_batch_retry_failures_are_monitored" {
     error_message = "Failures and recovery must reach the operations topic, while an idle mapping must not trigger a failure alarm."
   }
 }
+
+run "reject_visibility_that_exhausts_retries_before_lease_expiry" {
+  command = plan
+  variables {
+    worker_lambda_timeout_seconds = 10
+    sqs_visibility_timeout_seconds = 60
+  }
+  expect_failures = [var.sqs_visibility_timeout_seconds]
+}
+
+run "short_media_timeout_allows_retry_after_latest_lease_expiry" {
+  command = plan
+  variables {
+    worker_lambda_timeout_seconds = 10
+    sqs_visibility_timeout_seconds = 970
+  }
+  assert {
+    condition = aws_sqs_queue.main.visibility_timeout_seconds >= aws_lambda_function.worker.timeout + 900 + 60
+    error_message = "The media queue also needs time for a timed-out invocation's lease to expire."
+  }
+}

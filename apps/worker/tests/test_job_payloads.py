@@ -41,6 +41,7 @@ def message(job_type, payload):
     (JOB_REINDEX_VIDEO_TRANSCRIPT, {"video_id": 42}),
     (JOB_DELETE_ACCOUNT_DATA, {"user_id": "user-42"}),
     (JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, {}),
+    (JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, {"after_id": 25, "root_job_id": "root-job"}),
     (JOB_TRANSCRIBE_VIDEO_CHUNK, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc", "chunk_index": 30}),
     (JOB_FINISH_VIDEO_TRANSCRIPTION, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc"}),
     (JOB_BUILD_VIDEO_VISUALS, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc", "cache_kind": "coarse"}),
@@ -49,7 +50,7 @@ def test_all_job_types_preserve_arguments_from_producer_to_task(execution, job_t
     claim, task, complete = execution
     envelope = sqs_enqueue.build_job_message(job_type, payload, job_id="job")
     lambda_handler._execute_task(json.dumps(envelope))
-    expected = {**payload, **({"job_id": "job"} if job_type == JOB_TRANSCRIBE_VIDEO else {})}
+    expected = {**payload, **({"job_id": "job"} if job_type in {JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS} else {})}
     task.assert_called_once_with(**expected)
     # Check the real callable's interface without running providers or deleting data.
     signature(get_task(job_type)).bind(*task.call_args.args, **task.call_args.kwargs)

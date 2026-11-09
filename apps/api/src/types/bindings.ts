@@ -20,6 +20,9 @@ type SecretBindings = {
   R2_SECRET_ACCESS_KEY?: string;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
+  SQS_MEDIA_QUEUE_URL?: string;
+  SQS_SEARCH_QUEUE_URL?: string;
+  SQS_ACCOUNT_QUEUE_URL?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
 };

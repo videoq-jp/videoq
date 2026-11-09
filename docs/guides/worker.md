@@ -20,6 +20,17 @@ Transcription and indexing take time, so the Python worker runs them without blo
 
 All of these files are under `apps/worker/`. Also check the API's message format in [job-message.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/job-message.ts).
 
+## Hosted execution groups
+
+Hosted deployments isolate media, search, and account deletion into separate SQS
+queues and Lambda functions, each with a DLQ, concurrency limit and alarms.
+The original queue/function remains the media consumer and drains older jobs.
+API and Python producers choose the queue by job type using `SQS_MEDIA_QUEUE_URL`,
+`SQS_SEARCH_QUEUE_URL`, and `SQS_ACCOUNT_QUEUE_URL`; unset overrides fall back to
+`SQS_QUEUE_URL` for local/on-prem installations. Code, image and IAM identity are
+shared. See the worker README for settings and the infrastructure deployment
+guide for rollout order.
+
 ## Message format
 
 ```json
@@ -47,8 +58,12 @@ SQS may deliver the same message more than once. The worker uses execution recor
 When adding processing, check whether retrying after a partial failure could duplicate data or downstream jobs. This property is called **idempotency**. Swallowing an exception can prevent retries and leave a job in an intermediate state.
 
 Tasks return no result payload. The dispatcher records successful execution after
-the task returns; exceptions trigger the existing retry handling. Full reindexing
-reports counts in its logs and raises if any video fails.
+the task returns; exceptions trigger the existing retry handling. With SQS configured, full reindexing dispatches at most 25 video IDs per job and
+enqueues a continuation for the next page. Every nonempty page checks embedding
+storage before sending any messages; a failed preflight leaves the parent retryable.
+Each video reindexes and retries
+independently; dispatcher success confirms delivery, not completion of all videos.
+Without SQS, the local helper runs inline and raises if any video fails.
 
 ## Database transaction boundaries
 

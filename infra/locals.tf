@@ -1,5 +1,10 @@
 locals {
-  name_prefix = "videoq"
+  # Keep in sync with worker_python.job_execution.JOB_LEASE_SECONDS. A lease
+  # may be claimed late in an invocation; allow its full lifetime plus a margin
+  # before a timed-out message becomes visible and consumes another attempt.
+  worker_job_lease_seconds          = 900
+  worker_lease_retry_margin_seconds = 60
+  name_prefix                       = "videoq"
   names = {
     worker        = "${local.name_prefix}-worker-${var.env_name}"
     worker_dlq    = "${local.name_prefix}-worker-dlq-${var.env_name}"
@@ -14,6 +19,9 @@ locals {
     USE_S3_STORAGE                  = "true"
     SQS_QUEUE_NAME                  = aws_sqs_queue.main.name
     SQS_QUEUE_URL                   = aws_sqs_queue.main.id
+    SQS_MEDIA_QUEUE_URL             = aws_sqs_queue.main.url
+    SQS_SEARCH_QUEUE_URL            = aws_sqs_queue.group["search"].url
+    SQS_ACCOUNT_QUEUE_URL           = aws_sqs_queue.group["account"].url
     FRONTEND_URL                    = "https://videoq.jp"
     OPENAI_BASE_URL                 = "https://openrouter.ai/api/v1"
     EMBEDDING_MODEL                 = "openai/text-embedding-3-small"
