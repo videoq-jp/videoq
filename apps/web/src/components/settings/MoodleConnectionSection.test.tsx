@@ -27,28 +27,28 @@ it('removes a disconnected connection from the list and shows the empty state', 
   fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', moodleUrl: 'https://moodle.example', active: true }] }))
     .mockResolvedValueOnce(response({ disconnected: true }));
   render(<MoodleConnectionSection />);
-  fireEvent.click(await screen.findByRole('button', { name: 'settings.moodle.disconnect' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^settings.connectedApps.revoke:/ }));
   expect(screen.getByText('settings.moodle.disconnectDescription')).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.cancelDisconnect' }));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.cancel' }));
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.disconnect' }));
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.confirmDisconnect' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('settings.moodle.disconnected');
+  fireEvent.click(screen.getByRole('button', { name: /^settings.connectedApps.revoke:/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.connectedApps.revoke' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('settings.connectedApps.successRevoked');
   expect(screen.queryByText(/https:\/\/moodle.example/)).not.toBeInTheDocument();
   expect(screen.getByText('settings.moodle.empty')).toBeInTheDocument();
   expect(fetchMock.mock.calls[1]).toEqual([expect.stringContaining('/connections/school/disconnect'), expect.objectContaining({ method: 'POST', credentials: 'include' })]);
-  expect(screen.queryByRole('button', { name: 'settings.moodle.disconnect' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^settings.connectedApps.revoke:/ })).not.toBeInTheDocument();
 });
 it('keeps a connection active in the UI if revocation fails', async () => {
   fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', moodleUrl: 'https://moodle.example', active: true }] }))
     .mockResolvedValueOnce(response({}, 500));
   render(<MoodleConnectionSection />);
-  fireEvent.click(await screen.findByRole('button', { name: 'settings.moodle.disconnect' }));
-  fireEvent.click(screen.getByRole('button', { name: 'settings.moodle.confirmDisconnect' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('settings.moodle.disconnectError');
-  expect(screen.getByRole('button', { name: 'settings.moodle.disconnect' })).toBeEnabled();
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: /^settings.connectedApps.revoke:/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.connectedApps.revoke' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('settings.connectedApps.errorRevoking');
+  expect(screen.getByRole('button', { name: /^settings.connectedApps.revoke:/ })).toBeEnabled();
+  expect(screen.queryByText('settings.connectedApps.successRevoked')).not.toBeInTheDocument();
 });
 
 it('omits disconnected connections returned by an older API', async () => {
