@@ -339,8 +339,12 @@ on the old worker finish before switching.
 
 **arm64 cutover:** Lambda's `architectures = ["arm64"]` must match the image architecture.
 
-Set SQS `sqs_visibility_timeout_seconds` to at least six times the Lambda timeout
-(5400 seconds for the default 900-second timeout). Set `sqs_max_receive_count` to at
+Set SQS `sqs_visibility_timeout_seconds` to at least
+`max(6 * Lambda timeout, 900 + Lambda timeout + 60)` seconds
+(5400 seconds for the default 900-second timeout). The second bound lets even a
+lease acquired just before a hard timeout expire before the next delivery, with
+a 60-second margin. Keep the 900-second floor in sync with Python
+`JOB_LEASE_SECONDS`. Set `sqs_max_receive_count` to at
 least five. These values follow
 [AWS recommendations](https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html)
 to allow retries during throttling. Failed messages may take up to 90 minutes to
@@ -544,3 +548,73 @@ with approved write scope, also verify one write tool call with an idempotency k
 - CloudWatch alarm states and SNS subscription confirmation
 
 Check both Cloudflare Workers logs and Lambda CloudWatch logs.
+
+## Split worker rollout
+
+The original `aws_lambda_function.worker`, `aws_sqs_queue.main`, and their names
+remain unchanged for media and old mixed messages. `worker_groups.tf` adds search
+and account queues/functions with individual DLQs and alarms. The three functions
+share the existing worker role (and its OpenRouter subject), SSM parameters and ECR
+image. No database migration is required by this split.
+
+Apply in this order to avoid sending jobs before their consumers are ready:
+
+1. Publish an immutable worker image containing the split routing and paged reindex
+   implementation to the existing ECR repository. For the first rollout, build and
+   push that image before running worker CD: CD now expects all three functions.
+2. Update the AWS operator-managed worker permissions boundary and rotation-role
+   policy from `db-maintenance/terraform/main.tf`, plus the reviewed API SQS send,
+   Terraform deploy and backend CD policies in `infra/iam/`. The boundary must
+   permit all three queue ARNs and all three log groups. Reuse the existing worker
+   IAM role; do not recreate it or change its federation subject. Redeploy the DB
+   maintenance operator bundle so DB login rotation refreshes all three functions
+   and waits for the maximum timeout before retiring credentials.
+3. Plan/apply the main Terraform configuration with `image_tag` set to that
+   immutable SHA for the two new functions. Review the plan: it must preserve the
+   existing media queue, DLQ and function. Terraform owns initial images only;
+   CD owns later updates. Queue visibility is the greater of six times each
+   function's timeout and `900 + timeout + 60` seconds, so short functions do not
+   exhaust retries while a timed-out execution's DB lease is still active.
+4. Run worker CD to update search, account, and media to the same SHA. It derives
+   search/account names from `LAMBDA_WORKER_FUNCTION_NAME` by inserting the group
+   before the environment suffix (`videoq-worker-search-prod`,
+   `videoq-worker-account-prod`). Do not mark the rollout successful until all
+   three report `LastUpdateStatus=Successful` and resolve to the same image digest.
+5. Read `terraform output -json worker_queue_urls`. Set API secrets
+   `SQS_SEARCH_QUEUE_URL` and `SQS_ACCOUNT_QUEUE_URL` to the corresponding URLs;
+   retain `SQS_QUEUE_URL` as the original media URL. `SQS_MEDIA_QUEUE_URL` is an
+   optional explicit alias of that URL. Deploy the API with split routing.
+   The resource-check workflow now checks the two additional production secrets.
+   If the deploy token is held only in GitHub, run `Sync Cloudflare Resources`
+   with `worker_search_queue_url` and `worker_account_queue_url` from those
+   outputs. This writes only these two overrides with the existing protected
+   deployment credential, verifies secret presence, and skips Hyperdrive/R2 edits.
+   Both inputs must be the matching production queue URLs in the same AWS account.
+6. Exercise one uploaded-video transcription, one index/reindex, and a disposable
+   test-account deletion. Confirm job types reach their respective log groups,
+   successful `job_executions` records, no new failure/DLQ alarms, and no unexpected
+   changes to the API outbox. Exercise a full reindex and confirm dispatch pages
+   of at most 25 IDs, followed by independent per-video completion. Each nonempty
+   page validates embedding storage before sending any video or continuation
+   messages; a schema/configuration failure leaves the parent retryable. Monitor all
+   queues until visible/in-flight counts drain; dispatcher success alone does not
+   confirm every child completed. Keep the old media queue processing until old
+   mixed messages and retry messages have drained.
+
+Defaults: media 5120 MB / 900 s / concurrency 10; search 2048 MB / 900 s /
+concurrency 4; account 1024 MB / 900 s / concurrency 2. Adjust `worker_groups` and
+`worker_media_maximum_concurrency` for DB connections, provider rate limits and
+account concurrency quotas. Splitting queues does not isolate shared DB locks,
+provider quotas, IAM permissions or container releases. Large account deletions
+and a single very large video's index can still exceed their own timeout; watch
+the new duration/failure/DLQ alarms and tune or chunk those workloads if needed.
+
+For rollback of routing, first remove the two API group overrides (fallback goes
+to the original queue) and deploy the API. Keep current compatible worker code and
+all three consumers running until search/account queues, in-flight messages and
+retry/DLQ messages are resolved. A page continuation contains `after_id`, so do not
+roll workers back to code predating paged reindex while such messages exist.
+Preserve queues/DLQs and their protected Terraform state; removing resources is
+not part of a routing rollback. Local/on-prem defaults continue using one queue;
+when choosing split queues there, run a poller per queue with its own
+`SQS_QUEUE_URL`, the three routing overrides, and `WORKER_JOB_GROUP` if desired.

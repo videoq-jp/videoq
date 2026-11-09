@@ -4,6 +4,17 @@ import { deadlineSignal } from "./request-timeout";
 
 const SQS_TIMEOUT_MS = 10_000;
 
+function queueForMessage(env: Bindings, messageBody: string): string | undefined {
+  const { type } = JSON.parse(messageBody) as { type?: string };
+  if (type === "delete_account_data") {
+    return env.SQS_ACCOUNT_QUEUE_URL?.trim() || env.SQS_QUEUE_URL?.trim();
+  }
+  if (["index_video_transcript", "reindex_video_transcript", "reindex_all_videos_embeddings"].includes(type ?? "")) {
+    return env.SQS_SEARCH_QUEUE_URL?.trim() || env.SQS_QUEUE_URL?.trim();
+  }
+  return env.SQS_MEDIA_QUEUE_URL?.trim() || env.SQS_QUEUE_URL?.trim();
+}
+
 /**
  * SQS SendMessage（aws4fetch SigV4, query プロトコル）。
  * MessageBody はそのまま送る（方式 B: 外側 base64 不要の plain JSON）。返り値は MessageId。
@@ -15,7 +26,13 @@ export async function sendSqsMessage(
 ): Promise<string | null> {
   // Local wrangler often has no SQS. Return null so callers can leave the row
   // pending and a local worker can drain it (see apps/worker README).
-  if (!env.SQS_QUEUE_URL) return null;
+  let queueUrl: string | undefined;
+  try {
+    queueUrl = queueForMessage(env, messageBody);
+  } catch {
+    return null;
+  }
+  if (!queueUrl) return null;
   if (!env.AWS_ACCESS_KEY_ID || !env.AWS_SECRET_ACCESS_KEY) {
     return null;
   }
@@ -38,7 +55,7 @@ export async function sendSqsMessage(
   });
 
   try {
-    const res = await aws.fetch(env.SQS_QUEUE_URL, {
+    const res = await aws.fetch(queueUrl, {
       method: "POST",
       body: form.toString(),
       headers: { "content-type": "application/x-www-form-urlencoded" },

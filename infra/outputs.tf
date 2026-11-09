@@ -22,3 +22,12 @@ output "worker_identity_role_arn" {
   description = "Exact AWS workload subject to register in the OpenRouter federation policy"
   value       = aws_iam_role.worker.arn
 }
+
+output "worker_queue_urls" {
+  description = "API and worker producer queue routing; configure all three before enabling split delivery."
+  value       = merge({ media = aws_sqs_queue.main.url }, { for key, queue in aws_sqs_queue.group : key => queue.url })
+}
+
+output "worker_function_names" {
+  value = merge({ media = aws_lambda_function.worker.function_name }, { for key, fn in aws_lambda_function.group : key => fn.function_name })
+}

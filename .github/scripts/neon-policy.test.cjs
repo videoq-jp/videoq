@@ -126,3 +126,27 @@ test('recovery guards retain credentials until the rollback grace period and ver
  await assert.rejects(finishRollback({phase:'rollback_pending',rollback_after:new Date(Date.now()+60000).toISOString()}),/ROLLBACK_INVOCATIONS/);
  assert.throws(()=>completeRollback({phase:'rollback_pending'}),/ROLLBACK_NOT_RETIRED/);
 });
+
+test('DB rotation refreshes all three consumers and waits for the longest timeout', async () => {
+ const filename=resolve('.github/scripts/neon-admin.cjs'), nativeRequire=createRequire(filename);
+ const calls=[];
+ const fakeRequire=name=>name==='node:child_process'?{execFileSync:(_command,args)=>{
+  const input=JSON.parse(readFileSync(args.at(-1).slice('file://'.length),'utf8'));
+  calls.push([args[1],input]);
+  if(args[1]==='update-function-configuration')return '{}';
+  return JSON.stringify({LastUpdateStatus:'Successful',RevisionId:'revision',
+   Timeout: input.FunctionName.includes('account')?300:900,
+   Environment:{Variables:{DB_PARAM_NAME:PROFILES.worker.parameter,KEEP:'unchanged'}}});
+ }}:nativeRequire(name);
+ const module={exports:{}};
+ runInNewContext(readFileSync(filename,'utf8'),{require:fakeRequire,module,__dirname:resolve('.github/scripts'),
+  process:{env:{}},console,URL,Buffer,Date});
+ assert.equal(await module.exports.refreshLambda('new-generation'),900);
+ const updates=calls.filter(([command])=>command==='update-function-configuration').map(([,input])=>input);
+ assert.deepEqual(updates.map(input=>input.FunctionName),['videoq-worker-prod','videoq-worker-search-prod','videoq-worker-account-prod']);
+ for(const update of updates){
+  assert.equal(update.Environment.Variables.DB_CREDENTIAL_GENERATION,'new-generation');
+  assert.equal(update.Environment.Variables.KEEP,'unchanged');
+  assert.equal(update.RevisionId,'revision');
+ }
+});

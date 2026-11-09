@@ -28,13 +28,18 @@ variable "worker_lambda_timeout_seconds" {
 }
 
 variable "sqs_visibility_timeout_seconds" {
-  description = "SQS の visibility timeout (秒)。Lambda のタイムアウトの6倍以上。"
+  description = "SQS の visibility timeout (秒)。Lambda の6倍以上、かつ実行リース失効後に再試行できる長さ。"
   type        = number
   default     = 5400
 
   validation {
-    condition     = var.sqs_visibility_timeout_seconds >= 6 * var.worker_lambda_timeout_seconds && var.sqs_visibility_timeout_seconds <= 43200 && floor(var.sqs_visibility_timeout_seconds) == var.sqs_visibility_timeout_seconds
-    error_message = "SQS visibility timeout must be an integer at least 6 times the Lambda timeout and at most 43200 seconds."
+    condition = (
+      var.sqs_visibility_timeout_seconds >= max(
+        6 * var.worker_lambda_timeout_seconds,
+        local.worker_job_lease_seconds + var.worker_lambda_timeout_seconds + local.worker_lease_retry_margin_seconds,
+      ) && var.sqs_visibility_timeout_seconds <= 43200 && floor(var.sqs_visibility_timeout_seconds) == var.sqs_visibility_timeout_seconds
+    )
+    error_message = "SQS visibility timeout must be an integer at least max(6 * Lambda timeout, 900 + Lambda timeout + 60) and at most 43200 seconds."
   }
 }
 
@@ -112,4 +117,38 @@ variable "openrouter_federation_audience" {
   description = "Audience registered in the OpenRouter workload identity policy"
   type        = string
   default     = "https://openrouter.ai"
+}
+
+variable "worker_media_maximum_concurrency" {
+  type    = number
+  default = 10
+  validation {
+    condition     = var.worker_media_maximum_concurrency >= 2 && var.worker_media_maximum_concurrency <= 1000 && floor(var.worker_media_maximum_concurrency) == var.worker_media_maximum_concurrency
+    error_message = "Media maximum concurrency must be an integer from 2 to 1000."
+  }
+}
+
+variable "worker_groups" {
+  description = "Independent search/account consumers; all three consumers share code and the existing workload identity."
+  type = map(object({
+    memory_mb           = number
+    timeout_seconds     = number
+    storage_mb          = number
+    maximum_concurrency = number
+  }))
+  default = {
+    search  = { memory_mb = 2048, timeout_seconds = 900, storage_mb = 512, maximum_concurrency = 4 }
+    account = { memory_mb = 1024, timeout_seconds = 900, storage_mb = 512, maximum_concurrency = 2 }
+  }
+  validation {
+    condition = toset(keys(var.worker_groups)) == toset(["search", "account"]) && alltrue([
+      for config in values(var.worker_groups) : (
+        config.memory_mb >= 128 && config.memory_mb <= 10240 && floor(config.memory_mb) == config.memory_mb &&
+        config.timeout_seconds >= 1 && config.timeout_seconds <= 900 && floor(config.timeout_seconds) == config.timeout_seconds &&
+        config.storage_mb >= 512 && config.storage_mb <= 10240 && floor(config.storage_mb) == config.storage_mb &&
+        config.maximum_concurrency >= 2 && config.maximum_concurrency <= 1000 && floor(config.maximum_concurrency) == config.maximum_concurrency
+      )
+    ])
+    error_message = "Exactly search/account must be configured with integer Lambda memory (128–10240), storage (512–10240), timeout (1–900), and concurrency (2–1000)."
+  }
 }

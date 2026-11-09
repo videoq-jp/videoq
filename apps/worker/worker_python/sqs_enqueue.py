@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import uuid
 from contextlib import closing
 from typing import Any
 
 from worker_python.contracts import validate_job_payload
 from worker_python.sqs_client import create_sqs_client
+from worker_python.job_routing import queue_url_for_job
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def enqueue_job(
 
     Returns MessageId, or None when SQS is not configured (caller should fall back).
     """
-    queue_url = os.environ.get("SQS_QUEUE_URL", "").strip()
+    queue_url = queue_url_for_job(job_type)
     if not queue_url:
         logger.info(
             "SQS_QUEUE_URL unset; skip enqueue for %s payload=%s", job_type, payload
