@@ -55,8 +55,12 @@ test('job setup preserves verified dependencies for DB operations and installs o
   assert.deepEqual(execute('migration', 'migration'), []);
   for (const purpose of ['backup', 'audit']) assert.equal(execute(purpose, purpose).length, 2);
   assert.deepEqual(execute('smoke', 'smoke', 'smoke')[2], [
-    '.github/operations-tools/node_modules/.bin/playwright', ['install', '--with-deps', '--only-shell', 'chromium'],
+    '.github/operations-tools/node_modules/.bin/playwright', ['install', '--only-shell', 'chromium'],
   ]);
+  const fontSetup = execute('smoke', 'smoke', 'smoke')[3];
+  assert.equal(fontSetup[0], 'sh');
+  assert.match(fontSetup[1][2], /fc-list :lang=ja/);
+  assert.match(fontSetup[1][2], /--no-install-recommends fonts-ipafont-gothic/);
   assert.throws(() => execute('rotation', 'smoke'), /INVALID_SETUP_STAGE/);
   assert.throws(() => setup({CODEBUILD_BUILD_ARN: 'untrusted'}, () => assert.fail()), /AWS_CODEBUILD_REQUIRED/);
 });

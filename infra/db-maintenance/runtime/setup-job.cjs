@@ -25,7 +25,10 @@ function setup(env = process.env, run = (command, args) => execFileSync(command,
   installTools(run);
   if (purpose === 'smoke') {
     // production-smoke uses chromium.launch() without a channel in AWS.
-    run('.github/operations-tools/node_modules/.bin/playwright', ['install', '--with-deps', '--only-shell', 'chromium']);
+    // standard:7.0 already supplies Chromium's shared libraries. Avoid upgrading
+    // unrelated OS packages and installing fonts for unused languages per run.
+    run('.github/operations-tools/node_modules/.bin/playwright', ['install', '--only-shell', 'chromium']);
+    run('sh', ['-eu', '-c', 'if [ -z "$(fc-list :lang=ja)" ]; then apt-get update && apt-get install -y --no-install-recommends fonts-ipafont-gothic; fi; test -n "$(fc-list :lang=ja)"']);
   }
 }
 

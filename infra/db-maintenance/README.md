@@ -114,6 +114,12 @@ promotion and rollback also install and verify tools before DB mutations.
 Production verification, rotation
 grace periods and purpose-specific permissions remain intact.
 
+The managed standard:7.0 image already includes Chromium's required shared
+libraries. Smoke setup installs Japanese fonts only when no Japanese-capable
+font is present, rather than running Playwright's general OS dependency install
+and pulling unrelated language fonts on every run. An image change that removes
+browser libraries will fail browser verification rather than skip it.
+
 When adopting this setup on an existing installation, first deploy the reviewed
 operator bundle through maintenance CD, which includes `setup-job.cjs`. Then
 apply the reviewed maintenance Terraform plan to switch the install command.
