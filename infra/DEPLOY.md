@@ -585,6 +585,11 @@ Apply in this order to avoid sending jobs before their consumers are ready:
    retain `SQS_QUEUE_URL` as the original media URL. `SQS_MEDIA_QUEUE_URL` is an
    optional explicit alias of that URL. Deploy the API with split routing.
    The resource-check workflow now checks the two additional production secrets.
+   If the deploy token is held only in GitHub, run `Sync Cloudflare Resources`
+   with `worker_search_queue_url` and `worker_account_queue_url` from those
+   outputs. This writes only these two overrides with the existing protected
+   deployment credential, verifies secret presence, and skips Hyperdrive/R2 edits.
+   Both inputs must be the matching production queue URLs in the same AWS account.
 6. Exercise one uploaded-video transcription, one index/reindex, and a disposable
    test-account deletion. Confirm job types reach their respective log groups,
    successful `job_executions` records, no new failure/DLQ alarms, and no unexpected

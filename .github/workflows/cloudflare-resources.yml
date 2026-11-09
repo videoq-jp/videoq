@@ -2,6 +2,15 @@ name: Sync Cloudflare Resources
 
 on:
   workflow_dispatch:
+    inputs:
+      worker_search_queue_url:
+        description: Search queue URL from Terraform worker_queue_urls (supply both URLs to sync routing only)
+        required: false
+        type: string
+      worker_account_queue_url:
+        description: Account queue URL from Terraform worker_queue_urls
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -32,6 +41,17 @@ jobs:
       - name: Verify deployment tool signatures
         working-directory: .github/deploy-tools
         run: npm audit signatures
+      - name: Sync worker queue routing
+        if: inputs.worker_search_queue_url != '' || inputs.worker_account_queue_url != ''
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_SEARCH_QUEUE_URL: ${{ inputs.worker_search_queue_url }}
+          WORKER_ACCOUNT_QUEUE_URL: ${{ inputs.worker_account_queue_url }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/scripts/worker-queue-secrets.cjs" "$RUNNER_TEMP/worker-queue-secrets.json"
+          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" secret bulk "$RUNNER_TEMP/worker-queue-secrets.json" --env production
       - name: Verify production Worker secrets
         working-directory: apps/api
         env:
@@ -68,6 +88,7 @@ jobs:
             exit 1
           fi
       - name: Apply and verify production resource settings
+        if: inputs.worker_search_queue_url == '' && inputs.worker_account_queue_url == ''
         working-directory: apps/api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_INFRA_TOKEN }}
