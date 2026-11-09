@@ -20,8 +20,8 @@ it('groups Moodle under connected apps and restores the empty state after discon
   expect(apps.getByRole('heading', { name: 'settings.moodle.title', level: 4 })).toBeInTheDocument();
   expect(apps.queryByText('settings.connectedApps.empty')).not.toBeInTheDocument();
   expect(apps.queryByText('settings.moodle.empty')).not.toBeInTheDocument();
-  fireEvent.click(apps.getByRole('button', { name: 'settings.moodle.disconnect' }));
-  fireEvent.click(apps.getByRole('button', { name: 'settings.moodle.confirmDisconnect' }));
+  fireEvent.click(apps.getByRole('button', { name: /^settings.connectedApps.revoke:/ }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.connectedApps.revoke' }));
   expect(await apps.findByText('settings.connectedApps.empty')).toBeInTheDocument();
   expect(apps.queryByText('https://school.example', { exact: false })).not.toBeInTheDocument();
 });
