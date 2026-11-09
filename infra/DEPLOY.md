@@ -1,5 +1,23 @@
 # Deploy VideoQ
 
+
+## Domain contact email
+
+Use `alerts@videoq.jp` for infrastructure notifications and `support@videoq.jp`
+for customer-facing Stripe support and the legal pages (Japanese and English).
+Cloudflare Email Routing forwards both aliases to the verified operations inbox.
+Keep the personal destination outside the public application text. Existing
+Mailgun sending records and other inbound aliases remain independently managed.
+
+Before publishing a new contact address, enable its exact routing rule and verify
+receipt at the destination. To migrate SNS, create and confirm the alias
+subscription while the old subscription is active, then apply the endpoint
+change with `operations_alert_email=alerts@videoq.jp`. Subscription replacement
+uses create-before-destroy; confirmation must still be checked explicitly before
+retiring the old address. Keep GitHub's `OPERATIONS_ALERT_EMAIL` and any configured
+`OPENAI_SPEND_ALERT_EMAIL` aligned with the domain alert address.
+
+
 ## Production architecture
 
 - Frontend: Cloudflare Worker + Static Assets `videoq-web` (`apps/web`, public URL: `https://videoq.jp`)

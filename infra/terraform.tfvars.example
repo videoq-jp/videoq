@@ -48,7 +48,7 @@ lambda_log_retention_days = 30
 
 # Optional SNS email subscriber for Lambda/SQS/DLQ alarms. AWS sends a
 # confirmation email after the first apply.
-# operations_alert_email = "ops@example.com"
+# operations_alert_email = "alerts@videoq.jp"
 
 # --- OpenAI project management -----------------------------------------------
 # Manage OpenAI organization project governance, including allowed models and
@@ -61,7 +61,7 @@ lambda_log_retention_days = 30
 #       app secret.
 #
 # Example overrides for a local apply:
-# openai_spend_alert_email   = "ops@example.com"
+# openai_spend_alert_email   = "alerts@videoq.jp"
 # openai_spend_threshold_usd = 50
 # openai_allowed_models = ["text-embedding-3-small", "gpt-4o-mini", "gpt-4.1-mini", "gpt-6-luna", "whisper-1"]
 # manage_openai_project = false  # Use only to disable management temporarily.

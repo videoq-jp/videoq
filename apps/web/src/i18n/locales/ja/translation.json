@@ -947,7 +947,7 @@
   "legal": {
     "terms": {
       "title": "利用規約",
-      "updated": "最終更新: 2026年10月23日",
+      "updated": "最終更新: 2026年11月10日",
       "sections": {
         "scope": {
           "title": "1. 適用",
@@ -987,17 +987,17 @@
         },
         "contact": {
           "title": "10. 連絡先",
-          "body": "本規約に関する問い合わせは yukiharada1228@gmail.com までお願いします。事業者情報は特定商取引法に基づく表記を参照してください。"
+          "body": "本規約に関する問い合わせは support@videoq.jp までお願いします。事業者情報は特定商取引法に基づく表記を参照してください。"
         }
       }
     },
     "privacy": {
       "title": "プライバシーポリシー",
-      "updated": "最終更新: 2026年10月23日",
+      "updated": "最終更新: 2026年11月10日",
       "sections": {
         "controller": {
           "title": "1. 事業者",
-          "body": "VideoQ の運営者である原田 優輝は、本サービス（https://videoq.jp）の提供に伴い取得する個人情報を、このポリシーに従って取り扱います。問い合わせ先は yukiharada1228@gmail.com です。"
+          "body": "VideoQ の運営者である原田 優輝は、本サービス（https://videoq.jp）の提供に伴い取得する個人情報を、このポリシーに従って取り扱います。問い合わせ先は support@videoq.jp です。"
         },
         "collect": {
           "title": "2. 取得する情報",
@@ -1021,7 +1021,7 @@
         },
         "rights": {
           "title": "7. 開示・訂正・削除",
-          "body": "利用者は、自己の個人情報について開示、訂正、利用停止、削除を求められます。yukiharada1228@gmail.com まで連絡してください。本人確認のうえ、法令の範囲で対応します。"
+          "body": "利用者は、自己の個人情報について開示、訂正、利用停止、削除を求められます。support@videoq.jp まで連絡してください。本人確認のうえ、法令の範囲で対応します。"
         },
         "cookies": {
           "title": "8. Cookie",
@@ -1029,13 +1029,13 @@
         },
         "contact": {
           "title": "9. 問い合わせ",
-          "body": "プライバシーに関する問い合わせは yukiharada1228@gmail.com までお願いします。"
+          "body": "プライバシーに関する問い合わせは support@videoq.jp までお願いします。"
         }
       }
     },
     "refund": {
       "title": "返金・解約ポリシー",
-      "updated": "最終更新: 2026年8月22日",
+      "updated": "最終更新: 2026年11月10日",
       "sections": {
         "summary": {
           "title": "概要",
@@ -1055,11 +1055,11 @@
         },
         "howto": {
           "title": "返金を希望する場合",
-          "body": "重複課金、決済エラー、法令で返金が必要な場合は yukiharada1228@gmail.com へ、対象アカウントと経緯を書いて連絡してください。内容を確認のうえ対応します。カード会社経由のチャージバックは、まず上記窓口へ連絡してください。"
+          "body": "重複課金、決済エラー、法令で返金が必要な場合は support@videoq.jp へ、対象アカウントと経緯を書いて連絡してください。内容を確認のうえ対応します。カード会社経由のチャージバックは、まず上記窓口へ連絡してください。"
         },
         "contact": {
           "title": "連絡先",
-          "body": "返金・解約の問い合わせ: yukiharada1228@gmail.com"
+          "body": "返金・解約の問い合わせ: support@videoq.jp"
         }
       }
     },
@@ -1086,7 +1086,7 @@
         },
         "email": {
           "label": "メールアドレス",
-          "value": "yukiharada1228@gmail.com"
+          "value": "support@videoq.jp"
         },
         "url": {
           "label": "サイト",
