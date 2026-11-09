@@ -169,12 +169,13 @@ jobs:
               - 'apps/api/scripts/purge-retired-study-data.mjs'
               - 'apps/api/scripts/stamp-baseline.mjs'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
+              - '.github/scripts/run-aws-db.py'
+              - '.github/scripts/validate-deployment.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - '.github/actions/aws-db-invocation/**'
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             docs:

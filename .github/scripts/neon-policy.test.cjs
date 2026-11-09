@@ -1,8 +1,36 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {readFileSync}=require('node:fs');
+const {runInNewContext}=require('node:vm');
+const {createRequire}=require('node:module');
+const {resolve}=require('node:path');
 const {OWNER,PROFILES,loginName,connectionUrl,encodeJournal,decodeJournal,retirementRole}=require('./neon-policy.cjs');
 const {denied,retire,rollback,finishRollback,completeRollback}=require('./neon-admin.cjs');
+
+test('fresh credential checks do not install packages; due and forced rotations install before mutations',async()=>{
+ const load=(createdAt)=>{
+  const calls=[];
+  const filename=resolve('.github/scripts/neon-admin.cjs'), nativeRequire=createRequire(filename);
+  const fakeRequire=name=>name==='node:child_process'?{execFileSync:(command,args)=>{
+   const request=JSON.parse(readFileSync(args.at(-1).slice('file://'.length),'utf8'));
+   calls.push([args[1],request.Name]);
+   if(args[1]==='describe-parameters')return '{"Parameters":[]}';
+   if(request.Name===nativeRequire('./neon-policy.cjs').JOURNAL)throw new Error('absent');
+   return JSON.stringify({Parameter:{Type:'SecureString',Value:JSON.stringify({created_at:createdAt}),Version:1}});
+  }}:nativeRequire(name);
+  const module={exports:{}};
+  runInNewContext(readFileSync(filename,'utf8'),{require:fakeRequire,module,__dirname:resolve('.github/scripts'),
+   process:{env:{}},console:{log(){}},URL,Buffer,Date});
+  return {prepare:module.exports.prepare,calls};
+ };
+ const fresh=load(new Date().toISOString());
+ assert.equal(await fresh.prepare(false,()=>assert.fail('unnecessary install')),null);
+ for(const [createdAt,force] of [[new Date(0).toISOString(),false],[new Date().toISOString(),true]]){
+  const fixture=load(createdAt);
+  await assert.rejects(fixture.prepare(force,()=>{throw new Error('TOOLS_REQUIRED');}),/TOOLS_REQUIRED/);
+  assert.ok(!fixture.calls.some(([command,name])=>command==='put-parameter'||name?.endsWith('/db-admin')));
+ }
+});
 
 test('each consumer uses its own parameter and access role',()=>{
  assert.equal(new Set(Object.values(PROFILES).map(p=>p.parameter)).size,7);

@@ -212,7 +212,7 @@ async function refreshLambda(generation) {
   }
   throw new Error('LAMBDA_UPDATE_BUSY');
 }
-async function prepare(force=false) {
+async function prepare(force=false, beforeMutation=async()=>{}) {
   const pending=readParameter(JOURNAL,true);
   if(pending&&!['complete','rolled_back'].includes(pending.phase)) return pending;
   if(pending?.phase==='rolled_back'&&!force) throw new Error('ROLLED_BACK_ROTATION_REQUIRES_REVIEW');
@@ -220,6 +220,9 @@ async function prepare(force=false) {
   for(const [purpose,profile] of Object.entries(PROFILES)) profiles[purpose]=readParameter(profile.parameter);
   const due=Object.values(profiles).some(p=>!Number.isFinite(Date.parse(p.created_at))||Date.now()-Date.parse(p.created_at)>=ROTATE_AFTER_DAYS*86400000);
   if(!force&&!due) {console.log('Database credentials are within the rotation interval');return null;}
+  // Daily age checks do not need PostgreSQL packages. AWS installs them only
+  // once a rotation is actually due, before writing its recovery journal.
+  await beforeMutation();
   const generation=new Date().toISOString().replace(/\D/g,'').slice(0,14)+'_'+randomBytes(4).toString('hex');
   const admin=readParameter(ADMIN).DATABASE_URL;
   const journal={generation,phase:'prepared',created_at:new Date().toISOString(),entries:{}};

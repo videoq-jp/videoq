@@ -48,6 +48,14 @@ test('database migrations run once before API deployment', () => {
   assert.ok(job('api-deploy').dependencies.includes('db-migrate'));
 });
 
+test('unrelated operations scripts cannot trigger paid database migrations', () => {
+  const filter = workflow.split('            migrate:\n')[1].split('            docs:\n')[0];
+  assert.doesNotMatch(filter, /\.github\/scripts\/\*\*|\.github\/actions\/\*\*/);
+  for (const path of ['apps/api/drizzle/**','apps/api/src/db/**','apps/api/scripts/migrations/**',
+    '.github/scripts/run-aws-db.py','.github/scripts/validate-deployment.cjs',
+    '.github/actions/aws-db-invocation/**','.github/deploy-tools/**']) assert.ok(filter.includes(path),path);
+});
+
 test('the deployment graph schedules shared-data readers before the worker', () => {
   assert.ok(job('api-deploy').dependencies.includes('db-migrate'));
   assert.ok(job('web-deploy').dependencies.includes('api-deploy'));

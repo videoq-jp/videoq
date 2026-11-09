@@ -102,6 +102,44 @@ must never be emitted into CloudWatch, which does not interpret them as redactio
    daily rotation schedule is absent and all old credential-reading grants are
    denied. Save the reviewed bundle manifest and execution IDs with the rollout.
 
+## CodeBuild preparation costs
+
+`runtime/setup-job.cjs` installs locked dependencies and verifies registry
+signatures for stages that use them. Rotation age checks and completion records
+need only built-in modules and the AWS CLI; migrations install their own tools
+from canonical main. Smoke jobs install only Chromium Headless Shell, matching
+their channel-free `chromium.launch()` call. Rotation preparation installs tools
+only when credentials are due, before writing recovery material; resumed
+promotion and rollback also install and verify tools before DB mutations.
+Production verification, rotation
+grace periods and purpose-specific permissions remain intact.
+
+When adopting this setup on an existing installation, first deploy the reviewed
+operator bundle through maintenance CD, which includes `setup-job.cjs`. Then
+apply the reviewed maintenance Terraform plan to switch the install command.
+Do not switch the command while projects still reference an older bundle without
+the script. Subsequent script changes use the usual versioned maintenance CD.
+
+CloudWatch's `DOWNLOAD_SOURCE` duration includes managed runtime activation.
+The standard:7.0 image already stores Node 26 and npm in
+`/usr/local/n/versions/node/$NODE_26_VERSION`. Buildspecs select Python only and
+prepend that Node directory to PATH instead of running `n`, which copies the
+entire runtime on every job. Missing binaries or a different Node major fail the
+build before setup or DB access. Apply this buildspec change to the deployment
+builder as well as the five database jobs. No custom image or writable cache is
+needed. The AWS-managed image can change its bundled Node patch version, just as
+with the previous `nodejs:26` selection.
+
+Application CD triggers smoke only when an API, web, worker or migration job
+actually ran; docs-only and no-op CDs do not repeat it. Unknown CD job layouts
+retain the check. Daily, manual, maintenance deployment and rotation verification
+remain enabled. The migration paths filter explicitly names its request scripts
+and authentication action so unrelated operations scripts do not start it.
+
+Compare complete build phases and billed minutes before and after rollout;
+startup, dependency installation and the actual production checks still cost
+time, and CodeBuild rounds each build separately.
+
 ## Recovery
 
 Manual operations remain available through `Maintain Neon Credentials`. It sends

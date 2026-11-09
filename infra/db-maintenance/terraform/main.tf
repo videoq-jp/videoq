@@ -38,6 +38,14 @@ locals {
   all_projects  = merge(local.projects, { deploy = "videoq-db-deploy-prod" })
   project_arns  = [for name in values(local.all_projects) : "arn:aws:codebuild:${local.region}:${local.account}:project/${name}"]
   execution_arn = "arn:aws:states:${local.region}:${local.account}:execution:${local.name}:*"
+  # The managed image already contains Node 26 and npm in n's cache. Selecting
+  # nodejs:26 runs `n`, copying the entire tree (~50s per build). Use the cached
+  # binaries directly, and fail closed if AWS changes the image layout/version.
+  runtime_setup_commands = [
+    "test -n \"$NODE_26_VERSION\" && test -x \"/usr/local/n/versions/node/$NODE_26_VERSION/bin/node\"",
+    "export PATH=\"/usr/local/n/versions/node/$NODE_26_VERSION/bin:$PATH\"",
+    "node -e 'if (process.versions.node.split(\".\")[0] !== \"26\") throw new Error(\"EXPECTED_NODE_26\")'"
+  ]
 }
 
 resource "aws_s3_bucket" "bundle" {
@@ -170,11 +178,8 @@ resource "aws_codebuild_project" "job" {
     type     = "S3"
     location = "${aws_s3_bucket.bundle.bucket}/${aws_s3_object.operator.key}"
     buildspec = jsonencode({ version = "0.2", phases = {
-      install = { "runtime-versions" = { nodejs = 26, python = "3.12" }, commands = concat(
-        each.key == "migration" ? [] : ["npm ci --ignore-scripts --prefix .github/operations-tools", "npm audit signatures --prefix .github/operations-tools"],
-        each.key == "smoke" ? [".github/operations-tools/node_modules/.bin/playwright install --with-deps chromium"] : []
-      ) },
-      build = { commands = ["node infra/db-maintenance/runtime/job.cjs"] }
+      install = { "runtime-versions" = { python = "3.12" }, commands = concat(local.runtime_setup_commands, ["node infra/db-maintenance/runtime/setup-job.cjs"]) },
+      build   = { commands = ["node infra/db-maintenance/runtime/job.cjs"] }
     } })
   }
   source_version = aws_s3_object.operator.version_id
