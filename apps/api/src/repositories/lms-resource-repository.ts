@@ -87,7 +87,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       if (manifest.enabled && courseId === null) {
         const [course] = await tx.insert(videoCourses).values({ userId: ownerUserId,
           managedByLms: true, nativeAccessDisabled: true,
-          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: 0,
+          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
           createdAt: sql`now()`, updatedAt: sql`now()` }).returning({ id: videoCourses.id });
         courseId = course.id;
         await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id,
@@ -185,7 +185,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         if (!courseId) {
           const [course] = await tx.insert(videoCourses).values({
             managedByLms: true, nativeAccessDisabled: true,
-            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: 0,
+            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
             createdAt: sql`now()`, updatedAt: sql`now()`,
           }).returning({ id: videoCourses.id });
           courseId = course.id;
