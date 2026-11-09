@@ -5,7 +5,7 @@ description = "Private offline subtitle gateway for whisper.cpp CPU and vLLM NVI
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "silero-vad==6.2.3",
-    "torch==2.14.1",
+    "torch==2.15.0",
     "onnxruntime==1.31.0",
     "numpy>=2,<3",
     "huggingface-hub>=2.2,<3",
