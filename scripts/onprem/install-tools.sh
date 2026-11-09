@@ -47,8 +47,36 @@ HELM_INSTALL_DIR="$workspace/helm-tools" bash "$root/.github/scripts/install-hel
 # gh must support attestation verification, unlike older Ubuntu packages.
 gh_version=2.103.3
 gh_archive="gh_${gh_version}_linux_${arch}.tar.gz"
-curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${gh_archive}" -o "$workspace/$gh_archive"
-curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_checksums.txt" -o "$workspace/gh-checksums.txt"
+download_gh_asset() {
+  local name="$1" output="$2" asset_id
+  if curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
+      "https://github.com/cli/cli/releases/download/v${gh_version}/${name}" -o "$output"; then
+    return
+  fi
+  # The release download edge can fail while the official asset API remains available.
+  # Keep the pinned tag, exact asset name and the checksum verification below.
+  if [[ ! -f "$workspace/gh-release.json" ]]; then
+    curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
+      "https://api.github.com/repos/cli/cli/releases/tags/v${gh_version}" -o "$workspace/gh-release.json"
+  fi
+  asset_id="$(python3 - "$workspace/gh-release.json" "$gh_version" "$name" <<'PYCODE'
+import json, sys
+from pathlib import Path
+release = json.loads(Path(sys.argv[1]).read_text())
+if release.get('tag_name') != 'v' + sys.argv[2]:
+    raise SystemExit('Unexpected GitHub CLI release tag')
+assets = [asset for asset in release.get('assets', []) if asset.get('name') == sys.argv[3]]
+if len(assets) != 1 or type(assets[0].get('id')) is not int or assets[0]['id'] <= 0:
+    raise SystemExit('Expected exactly one GitHub CLI release asset')
+print(assets[0]['id'])
+PYCODE
+)"
+  curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 \
+    -H 'Accept: application/octet-stream' \
+    "https://api.github.com/repos/cli/cli/releases/assets/${asset_id}" -o "$output"
+}
+download_gh_asset "$gh_archive" "$workspace/$gh_archive"
+download_gh_asset "gh_${gh_version}_checksums.txt" "$workspace/gh-checksums.txt"
 verify "$workspace/$gh_archive" "$workspace/gh-checksums.txt" "$gh_archive"
 tar -xzf "$workspace/$gh_archive" -C "$workspace" "gh_${gh_version}_linux_${arch}/bin/gh"
 install -m 0755 "$workspace/k3d" "$destination/k3d"

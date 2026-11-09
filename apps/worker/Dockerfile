@@ -33,8 +33,15 @@ RUN set -eux; \
     *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
   esac; \
   dnf install -y tar xz libstdc++; \
-  curl -fsSL -o /tmp/ffmpeg.tar.xz \
-    "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0.tar.xz"; \
+  asset_name="ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0.tar.xz"; \
+  if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 \
+    "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/${asset_name}" -o /tmp/ffmpeg.tar.xz; then \
+    asset_id="$(curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
+      "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_BUILD}" \
+      | python -c 'import json,sys; r=json.load(sys.stdin); a=[x for x in r.get("assets",[]) if x.get("name")==sys.argv[1]]; assert r.get("tag_name")==sys.argv[2] and len(a)==1 and type(a[0].get("id")) is int and a[0]["id"]>0, "Unexpected FFmpeg release asset"; print(a[0]["id"])' "$asset_name" "$FFMPEG_BUILD")"; \
+    curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 -H 'Accept: application/octet-stream' \
+      "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/${asset_id}" -o /tmp/ffmpeg.tar.xz; \
+  fi; \
   echo "${FFSHA}  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
   tar -xJf /tmp/ffmpeg.tar.xz -C /tmp; \
   cp /tmp/ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0/bin/ffmpeg /usr/local/bin/; \
