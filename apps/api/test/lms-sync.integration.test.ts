@@ -659,6 +659,19 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       courseId: resources[0].courseId, kind: 'course', generation: 1, learningAvailable: false });
     expect((await getCourseWithMembers(env, { courseId: resources[0].courseId!, ltiCourseGrant: resources[0].courseId!, ltiVideoGrant: [] }))?.memberVideoIds).toEqual([]);
   });
+  it('appends synced courses and preserves the owner order on subsequent sync', async () => {
+    await pool.query("INSERT INTO video_courses(user_id,name,description,display_order,created_at,updated_at) VALUES ('account-a','Existing','',7,now(),now())");
+    const entry = await syncLmsResource(env, grant, 'course_42', courseManifest());
+    const video = await syncLmsResource(env, grant, '10', manifest());
+    const orders = async () => (await pool.query("SELECT id::int AS id,display_order FROM video_courses WHERE user_id='account-a' ORDER BY display_order")).rows;
+    expect((await orders()).map(row => row.display_order)).toEqual([7, 8, 9]);
+    await pool.query('UPDATE video_courses SET display_order=12 WHERE id=$1', [entry.courseId]);
+    await pool.query('UPDATE video_courses SET display_order=13 WHERE id=$1', [video.courseId]);
+    const before = await orders();
+    await syncLmsResource(env, grant, 'course_42', courseManifest(2));
+    await syncLmsResource(env, grant, '10', manifest(2));
+    expect(await orders()).toEqual(before);
+  });
   it('preserves course endpoint compatibility, denies file upload/confirm and rejects binding changes', async () => {
     expect(env.USE_S3_STORAGE).toBe('false');
     expect(await (await request('connection')).json()).toMatchObject({courseEntries:true,userVisibility:true,toolOrigin:'https://api.example'});
