@@ -135,6 +135,8 @@ actually ran; docs-only and no-op CDs do not repeat it. Unknown CD job layouts
 retain the check. Daily, manual, maintenance deployment and rotation verification
 remain enabled. The migration paths filter explicitly names its request scripts
 and authentication action so unrelated operations scripts do not start it.
+Maintenance CD similarly selects operator code and runtime assets, not Terraform
+plans, infrastructure tests or documentation-only changes.
 
 Compare complete build phases and billed minutes before and after rollout;
 startup, dependency installation and the actual production checks still cost
