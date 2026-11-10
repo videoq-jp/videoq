@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T15:17:21.775Z",
+  "checkedAt": "2026-11-10T15:51:42.926Z",
   "scope": "Legal policy draft and Stripe hosted test screen review; production release not verified",
   "sourceFiles": [
     {
@@ -16,18 +16,23 @@
     },
     {
       "path": "apps/web/src/i18n/locales/ja/translation.json",
-      "sha256": "e13d8a84511558be4aa8271498e5f0538e33f24b170feb8483e81df74b8121b2"
+      "sha256": "38ba63a69ce3ea5e788b0691ed38f27ed946a72e7f7bc592d9283c586f39580c"
     },
     {
       "path": "apps/web/src/i18n/locales/en/translation.json",
-      "sha256": "2dea1904e646263a438fa5596e5558e80a312b8d987927c596ab7389f1214ccd"
+      "sha256": "2389e4abf64c6b92ecaca5f7a49fd23f59afa754ef40c8164c80d9b086379ac6"
+    },
+    {
+      "path": "apps/web/src/components/layout/AppFooter.tsx",
+      "sha256": "8d775a5cd91d3c5558e4cd196dd56a33447c30c263b178234975adadf479eee8"
     }
   ],
   "checks": {
     "html": {
       "pages": 8,
-      "textFields": 164,
-      "localizedRelatedLinks": true
+      "textFields": 172,
+      "localizedRelatedLinks": true,
+      "updateNotice": true
     },
     "apiBillingTests": {
       "files": 4,
@@ -52,7 +57,7 @@
   },
   "openItems": [
     "Production deployment and post-release verification",
-    "Required notice to existing users"
+    "Verify the bilingual in-service update notice after deployment"
   ],
   "vendorReview": {
     "basis": "Published commercial Terms and DPA, plus VideoQ controller responsibilities; see operations review for clause mapping and limitations",
