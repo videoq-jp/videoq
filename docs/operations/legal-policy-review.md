@@ -12,8 +12,8 @@
 | 料金 | 本番公開 `billing.plans` を ja/en で取得。Basic は JPY 1,480/月・14,800/年、USD 9.99/月・99.90/年。Pro は JPY 3,980/月・39,800/年、USD 26.99/月・269.90/年。文字起こし枠は45/200/1,000分。 |
 | Stripe Portal | 本番デフォルト設定で解約が有効・期間末解約、プラン変更が有効・日割り即時請求。低額プラン・短い周期への変更も「今すぐ更新」。Basic/Pro の月額・年額4価格を登録済み。設定の保存・契約変更・決済は行っていない。 |
 | Stripe 公開情報 | サポートメール、terms/privacy/legal のURLがサイトの記載と一致。本人の住所・電話・生年月日などはこの記録に転記しない。 |
-| Stripe Checkout設定 | 規約・プライバシーリンクと返金表示が有効。返金URLは `/refund`。返金補足文を `support@videoq.jp` に修正・保存し、再読み込み後も一致を確認。今回のAPI変更はセッションごとに `consent_collection.terms_of_service=required` を指定する。API変更は未公開で、実画面の確認が残る。 |
-| 運用窓口 | 運営者が、support@videoq.jp の受信・返信と、購入前の住所・電話の開示請求への対応が可能と本セッションで確認。 |
+| Stripe Checkout設定 | 規約・プライバシーリンクと返金表示が有効。返金URLは `/refund`。返金補足文を `［VideoQの公開サポートメール］` に修正・保存し、再読み込み後も一致を確認。今回のAPI変更はセッションごとに `consent_collection.terms_of_service=required` を指定する。API変更は未公開で、実画面の確認が残る。 |
+| 運用窓口 | 運営者が、［VideoQの公開サポートメール］ の受信・返信と、購入前の住所・電話の開示請求への対応が可能と本セッションで確認。 |
 | 本番動画処理 | AWS `videoq-worker-prod` の公開可能な環境設定だけを取得。OpenRouter 接続、Whisper backend=openrouter、embedding=text-embedding-3-small、visual=true。東京リージョン。 |
 | 削除 | API はアカウントを無効化し、永続タスクで Stripe 顧客削除後にデータ削除を配送。失敗は再試行。Python worker は動画・派生画像・ベクトル・チャット等を削除してからユーザー行を削除。会話チェックポイントには会話行への削除連鎖を設定。 |
 | バックアップ検証 | `.github/scripts/backup-restore.mjs` は本番DBを読み取り、隔離DBで復元検証し、finally で一時dumpとコンテナを削除。これは長期バックアップの存在や、Neon PITR/R2復元の検証を意味しない。 |
@@ -90,7 +90,7 @@ DPA が存在することと、日本の個人情報保護法28条の基準適�
 
 Stripe Checkout の返金補足文（他の設定はこの変更の対象外）:
 
-> デジタルサービスのため物理的な返品はありません。解約は課金期間末に効力を生じます。重複課金、決済エラー、サービスを提供できない場合や法令上必要な返金は support@videoq.jp へご連絡ください。詳細は返金・解約ポリシーをご確認ください。
+> デジタルサービスのため物理的な返品はありません。解約は課金期間末に効力を生じます。重複課金、決済エラー、サービスを提供できない場合や法令上必要な返金は ［VideoQの公開サポートメール］ へご連絡ください。詳細は返金・解約ポリシーをご確認ください。
 
 旧APIのログを30日に変更したコマンド（運営者承認後、実行済み）:
 
@@ -104,7 +104,7 @@ aws logs put-retention-policy --region ap-northeast-1 \
 
 OpenRouter へ日本法上の適用範囲を確認する問い合わせ案（未送信）:
 
-宛先: `support@openrouter.ai`（公式DPAに記載）。
+宛先: `［OpenRouter公式DPA記載のサポートメール］`（公式DPAに記載）。
 件名案: `APPI Article 28 safeguards for VideoQ commercial API use`。
 事業者への送信と追加契約の締結は別の操作であり、この案は新たな契約への同意を含まない。
 
@@ -132,7 +132,7 @@ Mailgunの現行Sinch DPA（2025-10-29版）3.1.4は、メール伝送・不正�
 
 ### Stripe hosted Checkout 表示検証
 
-2026-11-11、既存Stripeテスト環境のWorkbenchから、JPY1,480/月のBasic表示検証用セッションを作成。`livemode=false`、`payment_status=unpaid`、`consent=null`、規約同意requiredをAPI応答で確認。公開Checkout画面で金額・月額周期、未選択の規約同意欄、日英のうち日本語4規約リンク、利用枠、自動更新、UTCリセット、期間末解約、返金例外、support@videoq.jp、申込ボタンを確認。カード・個人情報の入力、規約同意、申込完了は行っていない。
+2026-11-11、既存Stripeテスト環境のWorkbenchから、JPY1,480/月のBasic表示検証用セッションを作成。`livemode=false`、`payment_status=unpaid`、`consent=null`、規約同意requiredをAPI応答で確認。公開Checkout画面で金額・月額周期、未選択の規約同意欄、日英のうち日本語4規約リンク、利用枠、自動更新、UTCリセット、期間末解約、返金例外、［VideoQの公開サポートメール］、申込ボタンを確認。カード・個人情報の入力、規約同意、申込完了は行っていない。
 
 既存テスト価格は現行カタログと一致しないため、inline price_dataで検証用商品を生成した。今回はUI表示の検証であり、production APIの実リクエスト、価格lookup_key、顧客紐付け、住所収集、adaptive pricing無効化、webhookの検証とは区別する。この時点では英語・年額・Proは未確認だったが、後述の追加確認で完了した。スクリーンショット: `/tmp/videoq-legal-qa/stripe-checkout-test-ja-basic-monthly.png`（一時保存のため恒久証拠ではない）。
 
@@ -177,7 +177,7 @@ VideoQのクラウド版について、利用規約、プライバシーポリ�
 返金・解約ポリシー: https://videoq.jp/refund
 特定商取引法に基づく表記: https://videoq.jp/legal
 
-ご質問、個人情報の開示・削除等のご相談は support@videoq.jp へご連絡ください。通常のサブスクリプション解約は設定画面のStripeポータルから行えます。
+ご質問、個人情報の開示・削除等のご相談は ［VideoQの公開サポートメール］ へご連絡ください。通常のサブスクリプション解約は設定画面のStripeポータルから行えます。
 
 ### English
 
@@ -196,7 +196,7 @@ Privacy: https://videoq.jp/en/privacy
 Refunds and cancellation: https://videoq.jp/en/refund
 Commerce disclosures: https://videoq.jp/en/legal
 
-Contact support@videoq.jp with questions or personal-data access/deletion requests. You can cancel a regular subscription through the Stripe portal in Settings.
+Contact ［VideoQの公開サポートメール］ with questions or personal-data access/deletion requests. You can cancel a regular subscription through the Stripe portal in Settings.
 
 ### 公開時の確認記録
 
