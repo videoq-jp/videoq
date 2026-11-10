@@ -51,8 +51,13 @@
     }
   },
   "openItems": [
-    "OpenRouter safeguards and Sensitive Data scope confirmation",
     "Production deployment and post-release verification",
     "Required notice to existing users"
-  ]
+  ],
+  "vendorReview": {
+    "basis": "Published commercial Terms and DPA, plus VideoQ controller responsibilities; see operations review for clause mapping and limitations",
+    "vendorInquiry": "Withdrawn at operator request; no message sent",
+    "sensitiveData": "Excluded from standard use; no approval for sensitive personal records is claimed",
+    "ongoingReview": "At least annually and on provider/data-flow changes"
+  }
 }

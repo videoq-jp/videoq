@@ -46,7 +46,7 @@ DPA が存在することと、日本の個人情報保護法28条の基準適�
 
 | 事業者 | 公式資料から確認したこと | 継続して確認する事項 |
 | --- | --- | --- |
-| OpenRouter | [利用規約10.2](https://openrouter.ai/terms)に商用利用者のDPAを組込み。[DPA](https://openrouter.ai/data-processing-agreement)に指示に基づく処理、秘密保持、再委託先への保護義務、本人請求への協力、削除を規定。 | DPAのData Protection Laws定義はEU/英国/スイス/米国を列挙。日本の本人請求等を含む相当措置の適用範囲を別途確認する必要がある。モデル提供元の条件と処理国、変更の把握も必要。機微情報は標準契約では想定されていない。 |
+| OpenRouter | [利用規約10.2](https://openrouter.ai/terms)に商用利用者のDPAを組込み。[DPA](https://openrouter.ai/data-processing-agreement)に指示に基づく処理、秘密保持、再委託先への保護義務、本人請求への協力、削除を規定。 | DPAのData Protection Laws定義はEU/英国/スイス/米国を列挙。この定義だけでDPA全体が日本由来データに適用されないとは判定しない。下記の条項別評価とVideoQ側の本人対応を併せて判断する。モデル提供元の条件と処理国、変更の把握も必要。機微情報は標準契約では想定されていない。 |
 | Cloudflare | [DPA](https://www.cloudflare.com/cloudflare-customer-dpa/)と[日本向け説明](https://cf-assets.www.cloudflare.com/slt3lc6tev37/1WB4s04w9rlqc2Rrvu7PwW/ecc8e0815aba8f9f42b0ce7a2ce76c8a/How_Cloudflare_helps_address_data_protection___locality_obligations_in_Japan.pdf)がある。 | 契約の適用範囲、再委託先・処理国、Workersログのアカウント別保持設定。 |
 | Neon | [現行サービス条件](https://neon.com/platform-terms)は2026-10-14改定でDatabricksのMCSA・DPAを参照。古いNeon DPA PDFだけを根拠にしない。 | 実アカウントに適用される条件、DBリージョンはHyperdriveの接続先からシンガポールと確認済み。PITRの保持期間、現行DPAに基づく国外移転条件。 |
 | AWS | [データプライバシー資料](https://aws.amazon.com/compliance/data-privacy-faq/)と本番東京リージョンを確認。 | サポート等を含む処理範囲、DPAの適用と外的環境の把握。東京実行だけで「全データ国内完結」としない。 |
@@ -63,9 +63,9 @@ DPA が存在することと、日本の個人情報保護法28条の基準適�
 ## 公開・完了前に必要なこと
 
 1. 修正文と、故意・重過失・返金等の契約条件を運営者が確認して本番反映を承認する。
-2. OpenRouter等の国外移転根拠を確定する。特に日本法の相当措置の範囲を確認し、必要なら
-   事業者との追加条件の確認または情報提供を伴う同意取得を行う。
-   追加契約の締結や事業者へのメール送信は本作業では行っていない。
+2. 国外委託は、公開DPAの実質的保護とVideoQ側の本人対応・継続確認を根拠に管理する。
+   OpenRouterからの個別回答を一律の公開条件にしない。追加契約の締結やメール送信は行わない。
+   機微情報を送らない運用を維持し、想定データ・提供元・規約が変わる場合は再評価する。
 3. 旧APIログの30日保持への変更は、運営者承認後に実施済み。
    AWS APIで保持日数を確認。既存ログの物理削除はAWS側の非同期処理であり、完了未確認。
 4. Stripe Checkoutの返金補足文は下記へ保存・再読み込み確認済み。追加案内を指定したテストCheckoutで日英各4プランの金額・周期・自動更新・解約条件・同意欄を表示確認済み。本番反映後にも確認する。
@@ -102,23 +102,7 @@ aws logs put-retention-policy --region ap-northeast-1 \
 `describe-log-groups` で保持日数30を再取得して確認済み。削除そのものはAWS側で遅延する
 場合があるので、設定変更の成功を即時削除完了と報告しない。
 
-OpenRouter へ日本法上の適用範囲を確認する問い合わせ案（未送信）:
-
-宛先: `［OpenRouter公式DPA記載のサポートメール］`（公式DPAに記載）。
-件名案: `APPI Article 28 safeguards for VideoQ commercial API use`。
-事業者への送信と追加契約の締結は別の操作であり、この案は新たな契約への同意を含まない。
-
-> We operate VideoQ (https://videoq.jp), a Japanese video-learning SaaS using
-> OpenRouter for transcription, embeddings and chat inference. Your Terms of
-> Service incorporate the DPA for commercial users, but section 1.7 of the DPA
-> lists EU, UK, Swiss and US laws. Please confirm which contractual safeguards
-> apply to personal data transferred from Japan under APPI Article 28, including
-> data-subject requests, onward processing by model providers, deletion,
-> country/location information and evidence of continuing safeguards. If an
-> APPI-specific addendum is needed, please provide it for review. Please also
-> clarify the scope of Sensitive Data restrictions for ordinary educational
-> video/audio and course-context processing. We are not requesting execution of
-> a new agreement or a paid-plan change at this stage.
+OpenRouterへの問い合わせ案は、運営者の指示により取り下げた。送信していない。公開契約・公式説明と実際のデータフローを根拠に評価し、個別回答の取得自体を公開条件にはしない。
 
 ## 2026-11-11 の追加検証
 
@@ -126,7 +110,7 @@ Checkoutに日英・Basic/Pro・月額/年額に対応した規約同意と確�
 
 API決済関連4ファイル31テストと最新フロントエンド本番ビルドが成功。実際のStripe画面や本番反映後の検証を代替しない。プライバシー本文にシンガポールのDB処理と提供元の例を追記。
 
-PPCの外国第三者提供ガイドライン4-2に従い、日本法の全条文を契約へ明記すること自体は必須としない。処理指示・安全管理・再委託・漏えい通知・本人請求協力・削除等の実質的な保護を確認する。OpenRouterの日本法に基づく本人請求協力の範囲と機微情報制限は、国名記載とは別の確認事項として残る。通常の規約同意を国外移転の同意に読み替えない。相当措置と法制度による支障は少なくとも年1回および構成変更時に確認し、確保できない場合は該当送信を停止して代替手段を検討する。
+PPCの外国第三者提供ガイドライン4-2に従い、日本法の全条文を契約へ明記すること自体は必須としない。処理指示・安全管理・再委託・漏えい通知・本人請求協力・削除等の実質的な保護を確認する。本人請求協力にはDPAの定義法令による限定があるため、無条件の日本法対応保証とは案内しない。後述の指示・削除条項とVideoQ自身の本人対応を根拠に処理し、機微情報は送信対象から除外する。通常の規約同意を国外移転の同意に読み替えない。相当措置と法制度による支障は少なくとも年1回および構成変更時に確認し、確保できない場合は該当送信を停止して代替手段を検討する。
 
 Mailgunの現行Sinch DPA（2025-10-29版）3.1.4は、メール伝送・不正対策・通信網管理等で独立したcontrollerとなる範囲を定める。すべてをVideoQの指示だけによる委託処理と断定せず、日英プライバシー本文に補足した。出典: https://sinch.com/legal/terms-and-conditions/other-sinch-terms-conditions/data-processing-agreement/ 。
 
@@ -149,7 +133,7 @@ Mailgunの現行Sinch DPA（2025-10-29版）3.1.4は、メール伝送・不正�
 
 ### 最新ビルドとの照合
 
-日英8ページの生成HTMLをparse5で解析し、見出し・更新日・全条項・全特商法項目の計164フィールドが最新翻訳と一致し、関連ポリシーリンクが言語別URLへ向くことを確認。Mailgun補足後のビルドを対象とする。検証範囲とソースのSHA-256は `docs/verification/legal-policy-review-2026-11-11.json` に記録。公開判定は未完了であり、OpenRouterの実質的保護の確認、公開・公開後検証、既存利用者への必要な通知が残る。
+日英8ページの生成HTMLをparse5で解析し、見出し・更新日・全条項・全特商法項目の計164フィールドが最新翻訳と一致し、関連ポリシーリンクが言語別URLへ向くことを確認。Mailgun補足後のビルドを対象とする。検証範囲とソースのSHA-256は `docs/verification/legal-policy-review-2026-11-11.json` に記録。公開判定は未完了であり、下記の公開契約評価を踏まえ、公開・公開後検証、既存利用者への必要な通知が残る。
 
 ## 既存利用者への変更通知案（未送信・未掲載）
 
@@ -201,3 +185,18 @@ Contact ［VideoQの公開サポートメール］ with questions or personal-da
 ### 公開時の確認記録
 
 公開するcommit、公開日時、確定した効力発生日、通知の対象・方法・実施日時・結果、必要な個別同意の取扱いをこの記録へ追記する。全文リンクは本番反映後に確認する。文案中の未確定欄が残った状態では利用者へ送信・掲載しない。この文案の作成は、利用者へのメール送信の実施を意味しない。
+
+## OpenRouterの公開契約に基づく再評価
+
+運営者から問い合わせをしないよう指示があり、問い合わせ案を撤回。個別回答を得ること自体が法律上の必須手続であるとの説明は取り下げる。以下は公開契約と実装からの評価であり、事業者の個別保証を得たという記録ではない。
+
+| 論点 | 公式契約とVideoQ側の措置 | 判断の限界・継続対応 |
+| --- | --- | --- |
+| 契約の適用 | 利用規約10.2は商用利用へDPAを組込み。DPA冒頭は処理するPersonal Dataへの契約上の義務を定める。 | 別途署名や日本専用の追加書面が常に必要とは解釈しない。 |
+| 目的・守秘 | DPA2.3は顧客の指示に基づく処理と秘密保持を規定。VideoQは文字起こし・検索・回答に必要な内容を送る。 | 不要な本人情報を送らない。公開文面も処理対象を限定して説明。 |
+| 人員・安全管理 | DPA4の秘密保持・アクセス制限、7とSchedule2の安全管理、7の事故通知。 | 技術的完全性や事故ゼロを保証するものではない。 |
+| 再委託・国外処理 | DPA5.1は同等以上の保護義務、5.4は再委託先の責任。モデル提供元の条件も適用される。 | 提供元・国・保持条件の変更を定期確認。AI提供元は通常の事前通知の対象外なので通知だけに依存しない。 |
+| 開示・訂正・停止・削除 | 本人窓口はVideoQ。保持するアカウント・動画・字幕・会話の照会と削除はVideoQが担当。OpenRouterへは2.3の処理指示、2.4と9の削除義務を根拠に対応する。3には本人請求の通知・協力もある。 | 3の一部協力義務は定義されたData Protection Lawsに依存するため、日本のあらゆる請求への無条件の協力を保証しない。VideoQで完結しない請求は対象データ・保持状況を調べ、必要な処理指示と利用停止等で対応する。 |
+| 機微情報 | DPA1.15・2.6・Schedule1は標準利用で機微情報を想定せず、送信を制限。利用規約も事前除去を案内。 | 単なる日本法の要配慮個人情報より広い。個人の雇用・金融・信用情報等も対象。通常の教材と個人の人事記録等を同一視しない。これらを処理する用途まで適合済みとは判定しない。 |
+
+判断根拠: [OpenRouter利用規約](https://openrouter.ai/terms)、[DPA](https://openrouter.ai/data-processing-agreement)、[PPC外国第三者提供ガイドライン4-1・4-2](https://www.ppc.go.jp/personalinfo/legal/guidelines_offshore/)。GDPR/SCCを日本からの移転にそのまま適用するという判断ではない。指針4-2の実質的保護の観点から、指示・安全管理・再委託・削除の契約と、VideoQの本人対応・機微情報除外・継続確認を組み合わせて通常の教材処理を管理する。日本法への言及がないことだけを理由に、公開を止める追加メール回答を要求しない。
