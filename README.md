@@ -70,7 +70,7 @@ promotion flow differs from the production on-prem installer.
 On a dedicated Ubuntu 22.04/24.04 GPU host, run:
 
 ```sh
-sudo bash scripts/onprem/install-rtx4090.sh
+bash scripts/onprem/install-rtx4090.sh
 ```
 
 This installs native K3s, backing services, GPT-OSS 20B, EmbeddingGemma 2 and

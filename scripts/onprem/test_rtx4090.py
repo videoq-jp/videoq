@@ -209,9 +209,42 @@ class NativeTests(unittest.TestCase):
         for port in [80, 65536, '8080;reboot']:
             with self.assertRaises(ValueError): forwarding_units(port, '10.43.0.20')
 
+    def test_operator_commands_stay_unprivileged_and_os_operations_use_sudo(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.run = Mock()
+            instance.kube('get', 'pods')
+            self.assertEqual(instance.run.call_args.args[0], 'k3s')
+            self.assertIn(instance.directory / 'kubeconfig', instance.run.call_args.args)
+            self.assertNotIn('sudo', instance.run.call_args.args)
+            instance.system('docker', 'info')
+            self.assertEqual(instance.run.call_args.args, ('sudo', '--', 'docker', 'info'))
+
+    def test_kubeconfig_copy_is_user_private_and_never_changes_host_file_mode(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.system = Mock(return_value='apiVersion: v1\nprivate-user-config: true\n')
+            instance.refresh_kubeconfig()
+            self.assertEqual(instance.kubeconfig.parent, instance.directory)
+            self.assertEqual(os.stat(instance.kubeconfig).st_mode & 0o777, 0o600)
+            instance.system.assert_called_once_with('cat', instance.host_kubeconfig, capture=True)
+            instance.run = Mock()
+            instance.refresh_kubeconfig()
+            self.assertNotIn('chmod', str(instance.system.call_args_list))
+
+    def test_root_entrypoint_is_rejected_before_creating_state(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(module.os, 'geteuid', return_value=0), patch.object(module.sys, 'argv', ['rtx4090.py', '--directory', folder]), patch.object(module, 'NativeInstaller') as construct, contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(module.main(), 1)
+            construct.assert_not_called()
+            self.assertFalse((Path(folder) / 'installation.json').exists())
+
     def test_bootstrap_shell_syntax(self):
         script = str(Path(__file__).with_name('install-rtx4090.sh'))
         subprocess.run(['bash', '-n', script], check=True)
+        import re
+        for index, code in enumerate(re.findall(r"<<'PY'\n(.*?)\nPY", Path(script).read_text(), re.S)):
+            compile(code, f'bootstrap-python-{index}', 'exec')
         help_result = subprocess.run(['bash', script, '--help'], text=True, capture_output=True)
         self.assertEqual(help_result.returncode, 0)
         self.assertIn('Usage:', help_result.stdout)

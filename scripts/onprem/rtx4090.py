@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tempfile
 from urllib.request import ProxyHandler, Request, build_opener
 from urllib.parse import urlsplit
 
@@ -136,7 +137,8 @@ class NativeInstaller:
             raise ValueError('再実行で既存管理者を変更できません')
         self.state.update(kind='native-rtx4090', url=self.url, admin=self.admin, storage_gib=self.storage_gib)
         self.cluster, self.ai = 'native-rtx4090', 'local-rtx4090'
-        self.kubeconfig = Path('/etc/rancher/k3s/k3s.yaml')
+        self.host_kubeconfig = Path('/etc/rancher/k3s/k3s.yaml')
+        self.kubeconfig = self.directory / 'kubeconfig'
         os.environ['KUBECONFIG'] = str(self.kubeconfig)
         os.environ['PATH'] = '/usr/local/bin:' + str(Path.home() / '.local/bin') + ':' + os.environ['PATH']
         private_json(self.state_path, self.state)
@@ -144,6 +146,9 @@ class NativeInstaller:
     def run(self, *args, capture=False, data=None):
         return subprocess.run(list(map(str, args)), input=data, text=True, check=True,
                               stdout=subprocess.PIPE if capture else None).stdout
+
+    def system(self, *args, **kwargs):
+        return self.run('sudo', '--', *args, **kwargs)
 
     def kube(self, *args, **kwargs):
         return self.run('k3s', 'kubectl', '--kubeconfig', self.kubeconfig, '-n', 'videoq', *args, **kwargs)
@@ -161,12 +166,12 @@ class NativeInstaller:
         private_json(self.state_path, self.state)
 
     def host(self):
-        if os.geteuid() != 0:
-            raise ValueError('sudo bash scripts/onprem/install-rtx4090.sh で実行してください')
+        if os.geteuid() == 0:
+            raise ValueError('通常ユーザーで bash scripts/onprem/install-rtx4090.sh を実行してください')
         release = platform.freedesktop_os_release()
         if platform.system() != 'Linux' or platform.machine() != 'x86_64' or release.get('ID') != 'ubuntu' or release.get('VERSION_ID') not in {'22.04', '24.04'}:
             raise ValueError('Ubuntu 22.04/24.04 amd64 の専用ホストが必要です')
-        if self.kubeconfig.exists() and not self.state.get('cluster_owned') and not self.args.adopt_existing:
+        if self.host_kubeconfig.exists() and not self.state.get('cluster_owned') and not self.args.adopt_existing:
             raise ValueError('既存のK3sを検出しました。専用ホストへの導入と確認できる場合のみ --adopt-existing を指定してください')
         memory = int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemTotal:'))) * 1024
         if memory < 32 * 1024 ** 3 or os.cpu_count() < 8:
@@ -184,7 +189,7 @@ class NativeInstaller:
             raise ValueError('24GB RTX 4090 が物理的に1枚あるホストが必要です')
         if tuple(map(int, rows[0][1].strip().split('.'))) < DRIVER_MIN:
             raise ValueError('CUDA 13対応の NVIDIA 580.65.06以降が必要です')
-        self.run('docker', 'info', capture=True)
+        self.system('docker', 'info', capture=True)
         self.run('nvidia-container-runtime', '--version', capture=True)
 
     def tools(self):
@@ -219,20 +224,33 @@ class NativeInstaller:
         if not self.runtime_matches(self.state['source_sha']):
             raise ValueError('署名済み推論ランタイムとソースが異なります。対応するリリースを選択してください')
 
+    def refresh_kubeconfig(self):
+        content = self.system('cat', self.host_kubeconfig, capture=True)
+        with tempfile.NamedTemporaryFile(mode='w', dir=self.directory, delete=False) as temporary:
+            staged = Path(temporary.name)
+            try:
+                os.chmod(staged, 0o600)
+                temporary.write(content)
+                temporary.close()
+                os.replace(staged, self.kubeconfig)
+            finally:
+                staged.unlink(missing_ok=True)
+
     def ensure_cluster(self):
         self.stage('2/8 既存または新規の native K3s を準備します')
         self.record(cluster_owned=True)
-        if not self.kubeconfig.exists():
+        if not self.host_kubeconfig.exists():
             script = self.directory / 'install-k3s.sh'
             self.run('curl', '-fsSL', 'https://get.k3s.io', '-o', script)
-            self.run('env', 'INSTALL_K3S_VERSION=' + K3S_VERSION, 'sh', script, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--write-kubeconfig-mode', '600')
+            self.system('env', 'INSTALL_K3S_VERSION=' + K3S_VERSION, 'sh', script, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--write-kubeconfig-mode', '600')
+        self.refresh_kubeconfig()
         self.kube('wait', '--for=condition=Ready', 'nodes', '--all', '--timeout=180s')
         nodes = json.loads(self.kube('get', 'nodes', '-o', 'json', capture=True))['items']
         if len(nodes) != 1:
             raise ValueError('このインストーラーは1ノード専用です')
         self.node = nodes[0]['metadata']['name']
-        if subprocess.run(['k3s', 'kubectl', 'get', 'runtimeclass', 'nvidia'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-            self.run('systemctl', 'restart', 'k3s')
+        if subprocess.run(['k3s', 'kubectl', '--kubeconfig', str(self.kubeconfig), 'get', 'runtimeclass', 'nvidia'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+            self.system('systemctl', 'restart', 'k3s')
             self.kube('wait', '--for=condition=Ready', 'nodes', '--all', '--timeout=180s')
         self.kube('get', 'runtimeclass', 'nvidia')
         self.kube('create', 'namespace', 'videoq', '--dry-run=client', '-o', 'json', capture=True) # validate before apply
@@ -240,7 +258,7 @@ class NativeInstaller:
         self.kube('label', 'node', self.node, 'videoq.io/inference-target=rtx4090', 'nvidia.com/gpu.present=true', '--overwrite')
         self.run('helm', 'upgrade', '--install', 'nvdp', 'nvidia-device-plugin', '--repo', 'https://nvidia.github.io/k8s-device-plugin', '--version', PLUGIN_VERSION,
                  '-n', 'nvidia-device-plugin', '--create-namespace', '-f', ROOT / 'charts/videoq-inference/examples/rtx4090-device-plugin.yaml', '--wait', '--timeout', '5m')
-        self.run('k3s', 'kubectl', '-n', 'nvidia-device-plugin', 'rollout', 'status', 'daemonset/nvdp-nvidia-device-plugin', '--timeout=180s')
+        self.run('k3s', 'kubectl', '--kubeconfig', self.kubeconfig, '-n', 'nvidia-device-plugin', 'rollout', 'status', 'daemonset/nvdp-nvidia-device-plugin', '--timeout=180s')
         for attempt in range(90):
             node = json.loads(self.kube('get', 'node', self.node, '-o', 'json', capture=True))
             if node['status']['allocatable'].get('nvidia.com/gpu.shared') == '3':
@@ -253,18 +271,18 @@ class NativeInstaller:
     def cuda_image(self):
         self.stage('3/8 CUDA EmbeddingGemma イメージをビルド・固定します（初回のみ）')
         tag = 'docker.io/library/videoq-embedding-cuda:src-' + image_source_hash(ROOT)
-        probe = subprocess.run(['docker', 'image', 'inspect', tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        probe = subprocess.run(['sudo', '--', 'docker', 'image', 'inspect', tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if probe.returncode:
-            self.run('docker', 'build', '-f', ROOT / 'apps/inference/whisper/Dockerfile.embedding-cuda', '-t', tag, ROOT / 'apps/inference/whisper')
-        self.run('docker', 'run', '--rm', '--gpus', 'all', '--entrypoint', 'python3', tag, '-c',
+            self.system('docker', 'build', '-f', ROOT / 'apps/inference/whisper/Dockerfile.embedding-cuda', '-t', tag, ROOT / 'apps/inference/whisper')
+        self.system('docker', 'run', '--rm', '--gpus', 'all', '--entrypoint', 'python3', tag, '-c',
                  'import torch; assert torch.cuda.is_available(); assert torch.cuda.get_device_capability(0)==(8,9); print(torch.cuda.get_device_name(0))')
-        images = self.run('k3s', 'ctr', 'images', 'list', capture=True)
+        images = self.system('k3s', 'ctr', 'images', 'list', capture=True)
         row = next((r.split() for r in images.splitlines()[1:] if r.split()[0] == tag), None)
         if not row:
             # Stream without an additional multi-GB tar on the system disk; check both exits.
-            producer = subprocess.Popen(['docker', 'save', tag], stdout=subprocess.PIPE)
+            producer = subprocess.Popen(['sudo', '--', 'docker', 'save', tag], stdout=subprocess.PIPE)
             try:
-                consumer = subprocess.run(['k3s', 'ctr', 'images', 'import', '--platform', 'linux/amd64', '-'], stdin=producer.stdout)
+                consumer = subprocess.run(['sudo', '--', 'k3s', 'ctr', 'images', 'import', '--platform', 'linux/amd64', '-'], stdin=producer.stdout)
                 producer.stdout.close()
                 code = producer.wait()
                 if consumer.returncode or code:
@@ -272,13 +290,13 @@ class NativeInstaller:
             finally:
                 if producer.poll() is None:
                     producer.kill(); producer.wait()
-            rows = self.run('k3s', 'ctr', 'images', 'list', capture=True).splitlines()[1:]
+            rows = self.system('k3s', 'ctr', 'images', 'list', capture=True).splitlines()[1:]
             row = next((r.split() for r in rows if r.split()[0] == tag), None)
         if not row or not re.fullmatch(r'sha256:[a-f0-9]{64}', row[2]):
             raise ValueError('ローカル CUDA イメージの digest を確認できません')
         pinned = 'docker.io/library/videoq-embedding-cuda@' + row[2]
-        if pinned not in self.run('k3s', 'ctr', 'images', 'list', '-q', capture=True).splitlines():
-            self.run('k3s', 'ctr', 'images', 'tag', tag, pinned)
+        if pinned not in self.system('k3s', 'ctr', 'images', 'list', '-q', capture=True).splitlines():
+            self.system('k3s', 'ctr', 'images', 'tag', tag, pinned)
         self.embedding_digest = row[2]
         self.record(embedding_image=pinned)
 
@@ -368,18 +386,21 @@ class NativeInstaller:
         desired = forwarding_units(port, gateway['spec']['clusterIP'])
         service = Path('/etc/systemd/system/videoq-port-forward.service')
         if service.exists() and 'kubectl' in service.read_text() and 'port-forward' in service.read_text():
-            self.run('systemctl', 'disable', '--now', 'videoq-port-forward.service')
+            self.system('systemctl', 'disable', '--now', 'videoq-port-forward.service')
         changed = False
         for name, content in desired.items():
             path = Path('/etc/systemd/system') / name
             if not path.exists() or path.read_text() != content:
-                path.write_text(content)
+                with tempfile.TemporaryDirectory(dir=self.directory) as temporary:
+                    staged = Path(temporary) / name
+                    staged.write_text(content)
+                    self.system('install', '-m', '0644', staged, path)
                 changed = True
         if changed:
-            self.run('systemctl', 'daemon-reload')
-        self.run('systemctl', 'enable', '--now', 'videoq-port-forward.socket')
+            self.system('systemctl', 'daemon-reload')
+        self.system('systemctl', 'enable', '--now', 'videoq-port-forward.socket')
         if changed:
-            self.run('systemctl', 'try-restart', 'videoq-port-forward.service')
+            self.system('systemctl', 'try-restart', 'videoq-port-forward.service')
         opener = build_opener(ProxyHandler({}))
         for attempt in range(30):
             try:
@@ -442,7 +463,7 @@ class NativeInstaller:
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument('--directory', default='/root/videoq-rtx4090')
+    result.add_argument('--directory', default=str(Path.home() / '.local/share/videoq-rtx4090'))
     result.add_argument('--url', help='SSH browser origin, default http://localhost:8080')
     result.add_argument('--username'); result.add_argument('--email')
     result.add_argument('--run-id'); result.add_argument('--source-sha')
@@ -456,10 +477,12 @@ def parser():
 def main():
     try:
         args = parser().parse_args()
+        if os.geteuid() == 0:
+            raise ValueError('通常ユーザーで実行してください。必要なOS操作だけsudoを使います')
         instance = NativeInstaller(args)
         try:
             if args.prepare_only:
-                if instance.kubeconfig.exists() and not instance.state.get('cluster_owned') and not args.adopt_existing:
+                if instance.host_kubeconfig.exists() and not instance.state.get('cluster_owned') and not args.adopt_existing:
                     raise ValueError('既存K3sへの導入には --adopt-existing が必要です')
                 instance.tools()
             else:
