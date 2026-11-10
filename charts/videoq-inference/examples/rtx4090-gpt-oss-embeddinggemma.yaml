@@ -1,0 +1,60 @@
+# Candidate: one RTX 4090, three separate CUDA inference Pods.
+# Requires the matching NVIDIA time-slicing configuration (three shared slots).
+# Use a verified release lock last; hardware/model acceptance remains required.
+backend: vllm
+gpuSharing:
+  enabled: true
+  memoryFractions: { chat: 0.66, embedding: 0.07, whisper: 0.12 }
+servers:
+  chat:
+    engine: vllm
+    dtype: bfloat16
+    modelRepo: openai/gpt-oss-20b
+    modelRevision: 6cee5e81ee83917806bbde320786a8fb61efebee
+    modelFile: ""
+    modelSha256: ""
+    toolCallParser: openai
+    reasoningParser: openai_gptoss
+    contextLength: 16384
+    persistence: { size: 20Gi }
+    extraArgs: [--max-num-batched-tokens, "512"]
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+    resources:
+      requests: { cpu: "2", memory: 8Gi, nvidia.com/gpu.shared: 1 }
+      limits: { cpu: "8", memory: 20Gi, nvidia.com/gpu.shared: 1 }
+  embedding:
+    engine: embeddinggemma2
+    device: cuda
+    cudaImage:
+      repository: videoq-embedding-cuda
+      tag: local-4090
+      digest: ""
+      pullPolicy: Never
+    servedModel: embeddinggemma-2-f9972ac
+    modelRepo: google/embeddinggemma-2
+    modelRevision: f9972ac22e696a105c482202646979e33e4b5a1e
+    modelFile: ""
+    modelSha256: ""
+    contextLength: 4096
+    persistence: { size: 20Gi }
+    # Use EMBEDDING_PROFILE=embeddinggemma2 in both API and worker.
+    extraArgs: []
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+    resources:
+      requests: { cpu: "1", memory: 2Gi, nvidia.com/gpu.shared: 1 }
+      limits: { cpu: "4", memory: 6Gi, nvidia.com/gpu.shared: 1 }
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ""
+  modelSha256: ""
+  persistence: { size: 10Gi }
+  maxConcurrentRequests: 1
+  upstreamParallelism: 1
+  requestTimeoutSeconds: 600
+  maxSequences: 1
+  nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+  resources:
+    requests: { cpu: "1", memory: 2Gi, nvidia.com/gpu.shared: 1 }
+    limits: { cpu: "4", memory: 6Gi, nvidia.com/gpu.shared: 1 }

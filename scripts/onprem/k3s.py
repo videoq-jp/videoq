@@ -448,7 +448,7 @@ class Installer(Lifecycle, LocalAI):
             raise ValueError('公開 S3 の検証に失敗しました (' + type(error).__name__ + ')') from None
         finally:
             self.kube('exec', '-i', 'deployment/videoq-worker', '--', 'python', '-', '--cleanup', probe['key'], data=script)
-        print('OK: public HTTPS S3 PUT/GET, video Range and media sandbox; probe removed.', flush=True)
+        print('OK: public S3 PUT/GET, video Range and media sandbox; probe removed.', flush=True)
 
     def finish(self, provision=True):
         self.stage('6/6 公開 HTTPS を確認します（証明書の発行を待ちます）')

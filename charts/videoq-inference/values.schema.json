@@ -420,6 +420,48 @@
               "enum": [
                 "openai_gptoss"
               ]
+            },
+            "device": {
+              "enum": [
+                "cpu",
+                "cuda"
+              ]
+            },
+            "cudaImage": {
+              "type": "object",
+              "required": [
+                "repository",
+                "tag",
+                "pullPolicy"
+              ],
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tag": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^(sha256:[a-f0-9]{64})?$"
+                },
+                "pullPolicy": {
+                  "enum": [
+                    "IfNotPresent",
+                    "Always",
+                    "Never"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "dtype": {
+              "enum": [
+                "half",
+                "bfloat16"
+              ]
             }
           },
           "additionalProperties": false
@@ -501,6 +543,48 @@
                 "llamacpp",
                 "vllm",
                 "embeddinggemma2"
+              ]
+            },
+            "device": {
+              "enum": [
+                "cpu",
+                "cuda"
+              ]
+            },
+            "cudaImage": {
+              "type": "object",
+              "required": [
+                "repository",
+                "tag",
+                "pullPolicy"
+              ],
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tag": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^(sha256:[a-f0-9]{64})?$"
+                },
+                "pullPolicy": {
+                  "enum": [
+                    "IfNotPresent",
+                    "Always",
+                    "Never"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "dtype": {
+              "enum": [
+                "half",
+                "bfloat16"
               ]
             }
           },

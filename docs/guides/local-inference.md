@@ -205,8 +205,11 @@ AMD/ROCm configuration is a separate follow-up; no target GPU/OS has been select
 and hardware execution remains unverified. GPU adoption requires physical
 acceptance and vulnerability evaluation.
 
-## One RTX 4090 workstation (candidate)
+## One RTX 4090 workstation
 
-For all three inference roles on a single GPU with separate Pods, use the
-[RTX 4090 candidate guide](rtx4090.md). Hardware/model acceptance is still pending;
-the existing `vllm-nvidia` profile requires three exclusive GPUs.
+The [RTX 4090 guide](rtx4090.md) covers GPT-OSS 20B, EmbeddingGemma 2 and Whisper
+on one GPU, with separate CUDA Pods. The native installer provisions the full
+application and prompts for an administrator. Simultaneous residency and real
+inference smoke checks passed on Ubuntu 22.04.5; full workload/performance
+qualification remains separate. The existing `vllm-nvidia` profile still requires
+three exclusive GPUs, and the alternative Qwen sharing profile remains a candidate.

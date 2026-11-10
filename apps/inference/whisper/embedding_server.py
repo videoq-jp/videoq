@@ -1,6 +1,6 @@
 """Offline, text-only EmbeddingGemma 2 service for VideoQ's private network.
 
-Runs in a separate Pod using the shared CPU inference image. Models are
+Runs in a separate Pod using a CPU or CUDA inference image. Models are
 provisioned before startup; neither requests nor startup download remote code.
 """
 from contextlib import asynccontextmanager
@@ -25,10 +25,20 @@ def load_model():
     if not directory.is_dir():
         raise RuntimeError("Provision the pinned EmbeddingGemma 2 snapshot before startup")
     torch.set_num_threads(int(os.environ.get("EMBEDDING_CPU_THREADS", "2")))
+    device = os.environ.get("EMBEDDING_DEVICE", "cpu")
+    if device not in {"cpu", "cuda"}:
+        raise RuntimeError("EMBEDDING_DEVICE must be cpu or cuda")
+    if device == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA was requested but is unavailable; refusing CPU fallback")
+        fraction = float(os.environ.get("EMBEDDING_GPU_MEMORY_FRACTION", "0.07"))
+        if not 0 < fraction <= 1:
+            raise RuntimeError("Invalid CUDA memory fraction")
+        torch.cuda.set_per_process_memory_fraction(fraction)
     model = SentenceTransformer(
-        str(directory), device="cpu", local_files_only=True, trust_remote_code=False,
+        str(directory), device=device, local_files_only=True, trust_remote_code=False,
         config_kwargs={"vision_config": None, "audio_config": None},
-        model_kwargs={"torch_dtype": torch.float32},
+        model_kwargs={"torch_dtype": torch.bfloat16 if device == "cuda" else torch.float32},
     )
     if model.get_sentence_embedding_dimension() != DIMENSIONS:
         raise RuntimeError("EmbeddingGemma 2 must return 768 dimensions")
@@ -77,7 +87,7 @@ def embeddings(request: EmbeddingRequest):
         if any(len(row) > model.max_seq_length for row in tokens):
             raise HTTPException(422, "Text exceeds the model context window")
         vectors = model.encode(texts, prompt_name=prompt, normalize_embeddings=True,
-                               batch_size=8, show_progress_bar=False, convert_to_numpy=True)
+                               batch_size=1 if os.environ.get("EMBEDDING_DEVICE") == "cuda" else 8, show_progress_bar=False, convert_to_numpy=True)
     return {
         "object": "list", "model": MODEL_ALIAS,
         "data": [{"object": "embedding", "index": index, "embedding": vector.tolist()}

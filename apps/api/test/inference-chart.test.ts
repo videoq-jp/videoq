@@ -188,6 +188,31 @@ withHelm("private local inference deployment", () => {
     const embedding = deployments.find(d => d.metadata.name.endsWith("-embedding"));
     expect(embedding.spec.template.spec.containers[0].args).toContain('{"matryoshka_dimensions":[1536]}');
   });
+  it("keeps GPT-OSS, task-aware EmbeddingGemma and Whisper on one shared CUDA GPU", () => {
+    const profile = ["-f", `${chart}/examples/rtx4090-gpt-oss-embeddinggemma.yaml`];
+    const deployments = render(...profile).filter(d => d.kind === "Deployment");
+    for (const deployment of deployments) {
+      expect(deployment.spec.template.spec.runtimeClassName).toBe("nvidia");
+      const engines = deployment.spec.template.spec.containers.filter(c => c.resources.limits["nvidia.com/gpu.shared"] === 1);
+      expect(engines).toHaveLength(1);
+    }
+    const waits = deployments.flatMap(d => (d.spec.template.spec.initContainers ?? [])
+      .filter(c => c.name.startsWith("wait-for-"))
+      .map(c => `${d.metadata.name.split("-").at(-1)}:${c.name}`));
+    expect(waits.sort()).toEqual(["chat:wait-for-whisper", "embedding:wait-for-chat"]);
+    const embedding = deployments.find(d => d.metadata.name.endsWith("-embedding")).spec.template.spec.containers[0];
+    expect(embedding.command).toEqual(["python3", "-m", "uvicorn", "embedding_server:app"]);
+    expect(embedding.image).toBe("videoq-embedding-cuda:local-4090");
+    expect(embedding.env).toContainEqual({ name: "EMBEDDING_DEVICE", value: "cuda" });
+    expect(embedding.env).toContainEqual({ name: "EMBEDDING_GPU_MEMORY_FRACTION", value: "0.07" });
+    const chat = deployments.find(d => d.metadata.name.endsWith("-chat")).spec.template.spec.containers[0];
+    expect(chat.args).toContain("openai_gptoss");
+    expect(chat.args[chat.args.indexOf("--dtype") + 1]).toBe("bfloat16");
+    const speech = deployments.find(d => d.metadata.name.endsWith("-whisper")).spec.template.spec.containers.find(c => c.name === "engine");
+    expect(Number(speech.args[speech.args.indexOf("--max-num-batched-tokens") + 1])).toBeGreaterThanOrEqual(1500);
+    expect(chat.args).toContain("--cpu-offload-gb");
+    expect(command(...profile, "--set", "servers.embedding.device=cpu").status).not.toBe(0);
+  });
   it("retains startup ordering and private peer connectivity with pre-provisioned offline models", () => {
     const documents = render("-f", `${chart}/examples/rtx4090.yaml`, "--set", "downloadModels=false", "--set", "networkPolicy.denyEgress=true");
     const deployments = documents.filter(d => d.kind === "Deployment");

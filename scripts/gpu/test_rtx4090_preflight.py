@@ -14,10 +14,11 @@ class PreflightTests(unittest.TestCase):
         os_release = {"ID": "ubuntu", "VERSION_ID": "24.04"}
         gpu = "NVIDIA GeForce RTX 4090, GPU-1234-5678, 24564"
         self.assertEqual(preflight.validate_host("Linux", "x86_64", os_release, gpu)["uuid"], "GPU-1234-5678")
+        preflight.validate_host("Linux", "x86_64", {"ID": "ubuntu", "VERSION_ID": "22.04"}, gpu)
         for system, arch, release, inventory in [
             ("Darwin", "arm64", os_release, gpu),
             ("Linux", "aarch64", os_release, gpu),
-            ("Linux", "x86_64", {"ID": "ubuntu", "VERSION_ID": "22.04"}, gpu),
+            ("Linux", "x86_64", {"ID": "ubuntu", "VERSION_ID": "20.04"}, gpu),
             ("Linux", "x86_64", os_release, gpu + "\n" + gpu),
             ("Linux", "x86_64", os_release, gpu.replace("4090", "3090")),
             ("Linux", "x86_64", os_release, gpu.replace("24564", "16000")),

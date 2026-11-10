@@ -111,6 +111,9 @@ spec:
             - "0"
             - --enforce-eager
             {{- end }}
+            # Audio encoder items require 1500 tokens even with one decoder sequence.
+            - --max-num-batched-tokens
+            - "2048"
             - --max-num-seqs
             - {{ $whisper.maxSequences | quote }}
           {{- else }}

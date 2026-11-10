@@ -31,8 +31,8 @@ capabilities:
 {{- end }}
 {{- end }}
 {{- if .root.Values.gpuSharing.enabled }}
-{{- if ne .engine "vllm" }}
-{{- fail "GPU sharing requires all three inference engines to use vllm" }}
+{{- if and (ne .engine "vllm") (not (and (eq .engine "embeddinggemma2") (eq (default "cpu" .device) "cuda"))) }}
+{{- fail "GPU sharing requires CUDA engines (vllm or embeddinggemma2 with device=cuda)" }}
 {{- end }}
 {{- if or (ne (int .root.Values.whisper.maxSequences) 1) (ne (int .root.Values.whisper.maxConcurrentRequests) 1) (ne (int .root.Values.whisper.upstreamParallelism) 1) }}
 {{- fail "shared GPU speech concurrency and maxSequences must be one" }}
@@ -59,8 +59,13 @@ capabilities:
 {{- end -}}
 
 {{- define "inference.sharedWait" -}}
+{{- $custom := eq (default "" .root.Values.servers.embedding.engine) "embeddinggemma2" }}
+{{- if not (and $custom (eq .role "whisper")) }}
 {{- $peer := ternary "embedding" "whisper" (eq .role "whisper") }}
-{{- $port := ternary 8000 8080 (eq .role "whisper") }}
+{{- if and $custom (eq .role "embedding") }}
+{{- $peer = "chat" }}
+{{- end }}
+{{- $port := ternary 8000 8080 (or (eq .role "whisper") (eq .role "embedding")) }}
 - name: wait-for-{{ $peer }}
   image: {{ include "inference.image" (dict "root" .root "image" .root.Values.whisper.image "component" "whisper") | quote }}
   imagePullPolicy: {{ .root.Values.whisper.image.pullPolicy }}
@@ -84,4 +89,5 @@ capabilities:
     {{- include "inference.security" .root | nindent 4 }}
     readOnlyRootFilesystem: true
   resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { cpu: 100m, memory: 128Mi } }
+{{- end }}
 {{- end -}}

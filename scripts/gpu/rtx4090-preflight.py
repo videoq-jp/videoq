@@ -24,8 +24,8 @@ def run(*args):
 def validate_host(system, machine, os_release, gpu_csv):
     if system != "Linux" or machine != "x86_64":
         raise ValueError("The target is native Linux amd64, not emulation, ARM64 or Windows")
-    if os_release.get("ID") != "ubuntu" or os_release.get("VERSION_ID") != "24.04":
-        raise ValueError("The target OS is Ubuntu 24.04 LTS")
+    if os_release.get("ID") != "ubuntu" or os_release.get("VERSION_ID") not in {"22.04", "24.04"}:
+        raise ValueError("The target OS is Ubuntu 22.04 or 24.04 LTS")
     gpus = list(csv.reader(io.StringIO(gpu_csv)))
     if len(gpus) != 1 or len(gpus[0]) != 3:
         raise ValueError("Exactly one physical GPU is required for this profile")

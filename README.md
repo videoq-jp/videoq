@@ -65,6 +65,19 @@ from environment configuration through account activation. The root
 `docker-compose.yml` builds a Wrangler development stack; its signup and account
 promotion flow differs from the production on-prem installer.
 
+### One RTX 4090: install the complete local stack
+
+On a dedicated Ubuntu 22.04/24.04 GPU host, run:
+
+```sh
+sudo bash scripts/onprem/install-rtx4090.sh
+```
+
+This installs native K3s, backing services, GPT-OSS 20B, EmbeddingGemma 2 and
+Whisper on the same GPU, then prompts for the initial administrator. See the
+[one-command RTX 4090 guide](scripts/onprem/RTX4090.md) for fresh-host bootstrap,
+SSH browser access, requirements and resumable installation.
+
 ### Optional: reduce costs with local AI
 
 [Local inference](docs/guides/local-inference.md) explains private chat,
