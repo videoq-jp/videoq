@@ -19,6 +19,11 @@ export function AppFooter() {
           </p>
         </div>
         <Divider className="mb-6" />
+        {features.marketing && (
+          <p className="mb-6 text-std-16N-170 text-solid-gray-700">
+            {t('legal.updateNotice')}
+          </p>
+        )}
         <nav className="mb-6 flex flex-wrap gap-x-6 gap-y-2">
           <UtilityLink asChild>
             <Link href="/">{t('navigation.home')}</Link>

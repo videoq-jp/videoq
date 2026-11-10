@@ -28,6 +28,7 @@ const ARTICLE_SECTIONS: Record<Exclude<LegalPageId, 'scta'>, readonly string[]> 
     'retention',
     'rights',
     'cookies',
+    'security',
     'contact',
   ],
   refund: ['summary', 'digital', 'cancel', 'upgrade', 'howto', 'contact'],

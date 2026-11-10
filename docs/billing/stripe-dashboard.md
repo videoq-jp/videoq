@@ -61,8 +61,19 @@ Do not use the generic `txcd_10000000`.
 
 - Payment method updates
 - Subscription updates (Basic ⇔ Pro, monthly ⇔ yearly)
-- Proration: `always_invoice` (create prorations and invoice immediately; `create_prorations` is also an option)
+- Proration: `always_invoice` (create prorations and invoice immediately, matching the published policies)
 - Cancellation at the end of the period
+
+The hosted policies describe immediate upgrades **and downgrades**, with unused
+time credited through Stripe billing adjustments. Keep both cheaper-plan and
+shorter-interval downgrades set to update immediately. A billing credit is not a
+cash refund. Review the effective date, billing-cycle change and invoice/credit
+preview before confirming a change. Changing these settings requires a policy review.
+
+The production default configuration was inspected on 2026-11-10: period-end
+cancellation, immediate prorated invoices, immediate downgrades and all four
+Basic/Pro monthly/yearly prices were enabled. This is dated evidence, not an
+automated guarantee against later Dashboard changes.
 
 ## 3.1 Public details (required)
 
@@ -78,6 +89,8 @@ To show terms and privacy policies in Checkout / Customer Portal, select the app
 Enable Legal policies and Refund policy in [Checkout settings](https://dashboard.stripe.com/settings/checkout), linking the full refund policy to `https://videoq.jp/refund`. Also publish the [disclosure under Japan's Specified Commercial Transactions Act](https://videoq.jp/legal) for Japanese mail-order sales.
 
 Use the same privacy and terms URLs in Customer Portal.
+
+The API requires explicit Terms acceptance per Checkout session using `consent_collection.terms_of_service=required`. Configure a valid public Terms URL in both test and live accounts. Localized confirmation text links all four policies and describes renewal, quotas, monthly resets, cancellation and refunds. Checkout and Subscription metadata record `legalPolicyVersion`; verify actual Session consent separately. Check the hosted screen in both languages and billing intervals before release. This checkbox is not foreign-transfer consent.
 
 ## 4. Webhook
 
