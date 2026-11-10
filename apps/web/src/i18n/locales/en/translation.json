@@ -1119,8 +1119,7 @@
           "value": "There are no physical returns for this digital service. To prevent renewal, complete cancellation through Settings and the Stripe Customer Portal before the billing period ends. Ordinary cancellation takes effect at period end, followed by Free quotas. Account deletion is a separate process. Unused time is not refunded by default; we address duplicate charges, payment errors, failure to provide the service and refunds required by law. See the Refund and Cancellation Policy."
         }
       }
-    },
-    "updateNotice": "November 11, 2026: We updated our Terms, Privacy Policy, Refund and Cancellation Policy, and commerce disclosures. The updates clarify cloud data processing, deletion, cancellation, refunds and liability limitations. Prices and contract periods are unchanged. Read the full policies using the links below."
+    }
   },
   "settings": {
     "title": "Settings",
