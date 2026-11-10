@@ -949,7 +949,7 @@
   "legal": {
     "terms": {
       "title": "Terms of Service",
-      "updated": "Last updated: November 10, 2026",
+      "updated": "Last updated: November 11, 2026",
       "sections": {
         "scope": {
           "title": "1. Scope",
@@ -965,15 +965,15 @@
         },
         "payment": {
           "title": "4. Fees and payment",
-          "body": "New subscriptions from the English site are billed in US dollars; the Japanese site uses Japanese yen. Prices include applicable tax. Existing subscriptions keep their billing currency. Stripe processes payments. VideoQ does not store card numbers. Monthly plans renew every month and yearly plans every year on the saved payment method. Mid-cycle plan changes follow the Customer Portal proration setting (immediate invoice)."
+          "body": "New subscriptions from the English site are billed in US dollars; the Japanese site uses Japanese yen. Prices include applicable tax. Existing subscriptions keep their billing currency. Stripe processes payments; VideoQ does not store card numbers. Monthly plans renew every month and yearly plans every year until canceled. Plan changes prorate the unused period and the new price; any resulting charge is invoiced immediately. Review the change, effective date, charge or credit in the Stripe Customer Portal before confirming."
         },
         "cancel": {
           "title": "5. Cancellation",
-          "body": "You can cancel from Settings or the Stripe Customer Portal. Cancellation takes effect at the end of the current billing period. You keep paid-plan quotas until then. Unused time is not refunded except as described in the refund policy."
+          "body": "Open the Stripe Customer Portal using Manage billing and cancellation in Settings to cancel a paid plan. Complete cancellation before the current billing period ends to prevent renewal. Cancellation takes effect at period end, and paid-plan quotas remain available until then. Unused time is not refunded except as described in the Refund and Cancellation Policy. Account deletion is a separate process: contact support@videoq.jp. Deleting an account also ends its paid subscriptions. To use the remaining paid period, cancel the paid plan first and request account deletion after the period ends."
         },
         "acceptableUse": {
           "title": "6. Acceptable use",
-          "body": "You may not break the law, infringe others’ rights, disrupt the service, attempt unauthorized access, send abusive automated traffic, or otherwise misuse the service. You must have the rights needed for the videos and questions you submit."
+          "body": "You may not break the law, infringe others’ rights, disrupt the service, attempt unauthorized access, send abusive automated traffic, or otherwise misuse the service. You must have the rights needed for the videos and questions you submit. For personal data about people in videos or other third parties, you must have the consents or other legal basis needed for submission and use, including processing by external services. Remove sensitive information such as national identification numbers, card numbers, passwords and medical information from videos and questions before submitting them."
         },
         "data": {
           "title": "7. Data",
@@ -981,11 +981,11 @@
         },
         "liability": {
           "title": "8. Liability",
-          "body": "The service is provided as is. We do not warrant that transcriptions or AI answers are accurate. Except for liability that cannot be excluded by law, our damages are limited to the fees you paid in the previous three months."
+          "body": "Transcripts and AI answers may contain errors. Check the original video or materials where needed. Except in cases of our intentional misconduct or gross negligence, damages caused by our ordinary negligence are limited to the fees you paid in the previous three months. This monetary cap does not apply to users who have not paid fees. Exclusions or limits prohibited by consumer protection or other applicable law do not apply."
         },
         "changes": {
           "title": "9. Changes",
-          "body": "We may update these terms. Material changes will be posted on the service or sent to your registered email. Continued use after a change means you accept it."
+          "body": "We change these terms with your consent or in accordance with the Japanese Civil Code rules on changes to standard terms and other applicable law. We will announce the changes and their effective date in advance through the service or your registered email. We will obtain individual consent where required by law."
         },
         "contact": {
           "title": "10. Contact",
@@ -995,15 +995,15 @@
     },
     "privacy": {
       "title": "Privacy Policy",
-      "updated": "Last updated: November 10, 2026",
+      "updated": "Last updated: November 11, 2026",
       "sections": {
         "controller": {
           "title": "1. Controller",
-          "body": "Yuki Harada, the operator of VideoQ (https://videoq.jp), handles personal data collected through the service under this policy. Contact: support@videoq.jp."
+          "body": "Yuki Harada, the operator of VideoQ (https://videoq.jp), handles personal data collected through the service under this policy. Contact: support@videoq.jp. The business address is provided without delay on request to this address."
         },
         "collect": {
           "title": "2. Data we collect",
-          "body": "We collect account details (email, display name, username), authentication and connected-service information, uploaded videos and metadata, YouTube video IDs, transcripts, questions, answers and chat history, usage totals, technical data about your browser or device, and billing details needed for payment. We also store SearchAPI API keys you choose to provide in encrypted form. Card numbers are processed by Stripe and are not stored on VideoQ servers."
+          "body": "We collect account details (email, display name, username), authentication and connected-service information, uploaded videos and metadata, YouTube video IDs, transcripts, questions, answers and chat history, course memberships, shared Q&A posts, replies and votes, usage totals, IP addresses, access times and processing results, technical data about your browser or device, and billing details needed for payment. We also store SearchAPI API keys you choose to provide in encrypted form. Card numbers are processed by Stripe and are not stored on VideoQ servers."
         },
         "stripe": {
           "title": "3. Sharing with Stripe",
@@ -1015,29 +1015,33 @@
         },
         "share": {
           "title": "5. External services and sharing",
-          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues and video processing.\n• OpenRouter and the providers that perform inference (such as OpenAI, DeepInfra and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Answer generation sends the current question and conversation context, including recent messages and summaries of older exchanges.\n• SearchAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation."
+          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues, video processing, database maintenance and backup/restore verification, and operational logs.\n• OpenRouter and the providers that perform inference (such as OpenAI, Microsoft Azure, Amazon Bedrock, DeepInfra, PrimeIntellect and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Answer generation sends the current question and conversation context, including recent messages and summaries of older exchanges.\n• SearchAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation.\nShared videos and course information are shown according to your sharing settings. Questions and replies published to course Q&A, with displayed author information, are visible to users permitted to view them in that course. Private AI chats are not automatically published to shared Q&A. When you authorize an external application, it receives information within the scope you authorize.\nEmail providers such as Mailgun may also process information under their own privacy policies for message transmission, spam and fraud prevention, network security and legal compliance. Do not include passwords, payment card details or sensitive information in emails."
         },
         "retention": {
           "title": "6. Retention",
-          "body": "We retain videos, transcripts and chat history while an account is active for as long as needed to provide the Service. After account deletion, data controlled by VideoQ is deleted or anonymized within a reasonable period, except where retention is required by law. Data sent to external services is subject to each provider’s retention policy. AI inputs and outputs pass through OpenRouter and the provider performing inference; logging, retention periods and conditions for training use vary by provider and settings. See https://openrouter.ai/privacy and https://openrouter.ai/docs/guides/privacy/provider-logging. Data sent to external providers before a routing change may remain subject to the policies that applied when it was sent. Payment records held by Stripe follow Stripe’s retention policy."
+          "body": "We retain videos, transcripts and chat history while an account is active for as long as needed to provide the service. Canceling a paid plan or returning to Free does not delete your account or stored data. Request account deletion at support@videoq.jp. After verifying your identity, we process deletion of videos, derived images, transcripts, search data, chat history and account information controlled by VideoQ. Payment-provider coordination and deletion run asynchronously; acceptance of a request is not completion, and failed processing is retried.\nQuestions and replies you publish to shared Q&A in courses owned by others may remain in the course after their account link is removed. Personal information within the text is not automatically anonymized. If you also want those posts or personal information in them deleted, include their URLs or other identifying details in your deletion request.\nWe retain records needed for fraud prevention, troubleshooting or legal obligations only for the necessary period. Operational logs and backup or restore data may not disappear at the same time as data removed from the application; they follow their respective retention periods and deletion procedures. Contact us about retention or deletion progress.\nData sent to external services follows their retention policies. AI inputs and outputs pass through OpenRouter and the inference provider. Logging, retention and training-use conditions vary by provider and settings; we do not guarantee zero retention or no training use for every AI operation. See https://openrouter.ai/privacy and https://openrouter.ai/docs/guides/privacy/provider-logging. Data sent before a routing change may remain subject to the policies that applied when it was sent. Payment records held by Stripe follow its retention policy."
         },
         "rights": {
           "title": "7. Your rights",
-          "body": "You may request access, correction, suspension, or deletion of your personal data by emailing support@videoq.jp. We will verify your identity and respond as required by law."
+          "body": "You may request notification of purposes, access, correction, suspension or deletion of your personal data, and disclosure of third-party disclosure records where provided by law. Email support@videoq.jp with the relevant account and request. We verify your identity, respond as required by law and explain if we cannot fulfill a request. The same contact handles questions about business details, overseas processing and security measures."
         },
         "cookies": {
           "title": "8. Cookies",
           "body": "We use cookies to keep you signed in and protect the service, and browser local storage to remember your display language. To measure landing-page actions and referral sources, we use browser session storage and send limited event data to Cloudflare logs. These events do not contain questions, videos, or email addresses. This measurement is disabled when Do Not Track or Global Privacy Control is enabled in your browser. Blocking cookies may stop some features from working."
         },
+        "security": {
+          "title": "9. Overseas processing and security",
+          "body": "We use external services including US providers such as Cloudflare, Neon and OpenRouter. AWS video processing runs in the Tokyo region, and the production Neon database endpoint is in the Singapore region. Not all data is stored or processed exclusively in Japan. The actual AI inference provider and processing location may vary by model and route.\nWe use encrypted communications, authentication and access restrictions, credential management, and access and error records to help prevent unauthorized access and disclosure. We also review providers’ data-processing agreements and published terms. OpenRouter’s agreement is at https://openrouter.ai/data-processing-agreement and Cloudflare’s is at https://www.cloudflare.com/cloudflare-customer-dpa/.\nContact support@videoq.jp for details about overseas processing, provider safeguards and our security measures. We respond as required by law, except for information whose disclosure would compromise security.\nInformation about foreign privacy laws is also available from Japan’s Personal Information Protection Commission at https://www.ppc.go.jp/enforcement/infoprovision/laws/. We review data handling and safeguards when providers or processing routes change."
+        },
         "contact": {
-          "title": "9. Contact",
+          "title": "10. Contact",
           "body": "Privacy questions: support@videoq.jp."
         }
       }
     },
     "refund": {
       "title": "Refund and Cancellation Policy",
-      "updated": "Last updated: November 10, 2026",
+      "updated": "Last updated: November 11, 2026",
       "sections": {
         "summary": {
           "title": "Overview",
@@ -1045,19 +1049,19 @@
         },
         "digital": {
           "title": "Digital service",
-          "body": "After payment succeeds we immediately apply paid-plan quotas to your account. Service delivery starts when payment completes."
+          "body": "After payment completes, we apply paid-plan quotas when we receive notification from Stripe. This normally takes a few seconds. Contact support@videoq.jp if the plan is not applied. There is no physical shipment."
         },
         "cancel": {
           "title": "Cancellation",
-          "body": "Cancel anytime from Settings or the Stripe Customer Portal. Cancellation takes effect at the end of the current billing period. You keep paid access until then, then return to Free. Unused time in the current period is not refunded by default."
+          "body": "Open the Stripe Customer Portal using Manage billing and cancellation in Settings to cancel anytime. Complete cancellation before the current billing period ends to prevent renewal. Cancellation takes effect at period end. You keep paid access until then and return to Free afterward. Cancellation alone does not delete videos or chat history. Unused time is not refunded by default, except where required by law or otherwise described here.\nFor account deletion, contact support@videoq.jp. Ending subscriptions through account deletion differs from ordinary period-end cancellation. To use the remaining paid period, cancel the plan and request deletion after the period ends. Account deletion does not automatically issue a refund."
         },
         "upgrade": {
           "title": "Plan changes",
-          "body": "Switch Basic and Pro, or monthly and yearly, in the Customer Portal. Upgrade differences are prorated and invoiced immediately."
+          "body": "Switch between Basic and Pro, or monthly and yearly billing, in the Stripe Customer Portal. Upgrades and downgrades take effect when changed, with prorated adjustments for the unused period and the new price. Any additional charge is invoiced immediately. Credits are billing adjustments in Stripe, not cash refunds to your payment method. Review the resulting quotas, effective date, charge or credit before confirming. Changing between monthly and yearly billing may change the billing cycle."
         },
         "howto": {
           "title": "If you want a refund",
-          "body": "For duplicate charges, payment errors, or cases where the law requires a refund, email support@videoq.jp with the account and what happened. We will review it. For card chargebacks, contact us first."
+          "body": "For duplicate charges, payment errors, failure to provide the service or other cases requiring a refund by law, email support@videoq.jp with the account, payment date and what happened. Do not send card numbers or security codes. We will review the request and explain eligibility and the amount. Approved refunds normally go through the original payment method; processing time depends on Stripe and the card issuer or other payment provider. Contacting us does not restrict your right to dispute a charge with your payment provider or exercise other statutory rights."
         },
         "contact": {
           "title": "Contact",
@@ -1108,11 +1112,11 @@
         },
         "delivery": {
           "label": "When the service is provided",
-          "value": "Paid-plan quotas are applied to the account immediately after payment. There is no physical shipment."
+          "value": "Paid-plan quotas are applied after payment completes and notification is received from Stripe, normally within a few seconds. Contact support@videoq.jp if the plan is not applied. There is no physical shipment."
         },
         "cancel": {
           "label": "Returns and cancellation",
-          "value": "There are no physical returns. Cancel from Settings or the Stripe Customer Portal; cancellation usually takes effect at period end. See the refund and cancellation policy."
+          "value": "There are no physical returns for this digital service. To prevent renewal, complete cancellation through Settings and the Stripe Customer Portal before the billing period ends. Ordinary cancellation takes effect at period end, followed by Free quotas. Account deletion is a separate process. Unused time is not refunded by default; we address duplicate charges, payment errors, failure to provide the service and refunds required by law. See the Refund and Cancellation Policy."
         }
       }
     }

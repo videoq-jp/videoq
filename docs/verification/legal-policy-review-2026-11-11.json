@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-11-10T15:17:21.775Z",
+  "scope": "Legal policy draft and Stripe hosted test screen review; production release not verified",
+  "sourceFiles": [
+    {
+      "path": "apps/api/src/features/billing/checkout-disclosure.ts",
+      "sha256": "3c7ee6b2d922d510f8dcb3fa760d2f103d78091875ca1be0291398c2379005d8"
+    },
+    {
+      "path": "apps/api/src/features/billing/service.ts",
+      "sha256": "ddd353da37084d7845a33067ca2c90738c04d165fee1a625acaa43916440ed11"
+    },
+    {
+      "path": "apps/web/src/pages/LegalPage.tsx",
+      "sha256": "214e53f443240735fafa0e6e8c7926b3e06d66bd9d5ecff6969ed9fc63782eb5"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/ja/translation.json",
+      "sha256": "e13d8a84511558be4aa8271498e5f0538e33f24b170feb8483e81df74b8121b2"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/en/translation.json",
+      "sha256": "2dea1904e646263a438fa5596e5558e80a312b8d987927c596ab7389f1214ccd"
+    }
+  ],
+  "checks": {
+    "html": {
+      "pages": 8,
+      "textFields": 164,
+      "localizedRelatedLinks": true
+    },
+    "apiBillingTests": {
+      "files": 4,
+      "passed": 31
+    },
+    "apiTypecheck": "passed",
+    "webProductionBuild": "passed",
+    "stripeTestDisplay": {
+      "locales": [
+        "ja",
+        "en"
+      ],
+      "plans": [
+        "basic_monthly",
+        "basic_yearly",
+        "pro_monthly",
+        "pro_yearly"
+      ],
+      "completedPurchases": 0,
+      "usesProductionLookupKeys": false
+    }
+  },
+  "openItems": [
+    "OpenRouter safeguards and Sensitive Data scope confirmation",
+    "Production deployment and post-release verification",
+    "Required notice to existing users"
+  ]
+}
