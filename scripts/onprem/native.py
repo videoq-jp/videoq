@@ -1,6 +1,6 @@
 """Configuration shared by native K3s GPU installations; no provisioning on import."""
 import copy
-from k3s import infrastructure, site_values
+from k3s import infrastructure, site_values, public_origin, caddyfile
 from local_ai import embedding_contract
 from common import origin
 
@@ -15,7 +15,13 @@ def local_origin(value):
     return result
 
 
+def browser_origin(value):
+    return public_origin(value) if origin(value).startswith('https://') else local_origin(value)
+
+
 def gateway_config(url):
+    if browser_origin(url).startswith('https://'):
+        return caddyfile(url)
     local_origin(url)
     return '''{
     auto_https off
@@ -57,25 +63,30 @@ def backing_plan(example, url, storage_gib, raw):
             item['spec']['resources']['requests']['storage'] = f'{storage_gib}Gi'
         if kind == 'Service' and name == 'videoq-gateway':
             item['spec']['type'] = 'ClusterIP'
-            item['spec']['ports'] = [{'name': 'http', 'port': 8080, 'targetPort': 8080}]
+            item['spec']['ports'] = ([{'name': 'https', 'port': 443, 'targetPort': 443}] if url.startswith('https://') else [{'name': 'http', 'port': 8080, 'targetPort': 8080}])
         if kind == 'Deployment' and name == 'videoq-gateway':
-            item['spec']['template']['spec']['containers'][0]['ports'] = [{'containerPort': 8080}, {'containerPort': 8081}]
+            pod = item['spec']['template']['spec']
+            pod['containers'][0]['ports'] = [{'containerPort': 443 if url.startswith('https://') else 8080}, {'containerPort': 8081}]
+            pod['securityContext'] = {'runAsNonRoot': True, 'runAsUser': 10001, 'runAsGroup': 10001, 'fsGroup': 10001}
+            pod['containers'][0]['securityContext'] = {'allowPrivilegeEscalation': False, 'capabilities': {'drop': ['ALL'], 'add': ['NET_BIND_SERVICE']}}
     return config, objects
 
 
 def application_values(url):
-    values = site_values(local_origin(url))
+    values = site_values(browser_origin(url))
     values['api']['resources']['limits']['memory'] = '1Gi'
     values['worker']['resources'] = {'requests': {'cpu': '1', 'memory': '1Gi'}, 'limits': {'cpu': '2', 'memory': '4Gi'}}
     return values
 
 
-def forwarding_units(port, cluster_ip):
+def forwarding_units(port, cluster_ip, public_https=False):
     import ipaddress
-    if not isinstance(port, int) or not 1024 <= port <= 65535:
+    if not isinstance(port, int) or not ((public_https and port == 443) or (not public_https and 1024 <= port <= 65535)):
         raise ValueError('SSH 用のポートは1024〜65535で指定してください')
     address = ipaddress.ip_address(cluster_ip)
-    target = f'[{address}]:8080' if address.version == 6 else f'{address}:8080'
+    upstream = 443 if public_https else 8080
+    target = f'[{address}]:{upstream}' if address.version == 6 else f'{address}:{upstream}'
+    listener = '0.0.0.0' if public_https else '127.0.0.1'
     # Ordinary TCP avoids kubectl/SPDY stream stalls during large video requests.
     return {
         'videoq-port-forward.socket': f"""[Unit]
@@ -84,7 +95,7 @@ After=k3s.service
 Requires=k3s.service
 
 [Socket]
-ListenStream=127.0.0.1:{port}
+ListenStream={listener}:{port}
 NoDelay=true
 
 [Install]

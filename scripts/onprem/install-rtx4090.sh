@@ -10,11 +10,12 @@ Ubuntu 22.04/24.04 amd64, one RTX 4090, native K3s and interactive administrator
   --directory PATH       Private installation state (default ~/.local/share/videoq-rtx4090)
   --username NAME        Initial administrator (otherwise prompted)
   --email ADDRESS        Initial administrator email (otherwise prompted)
-  --url URL              SSH origin (default http://localhost:8080)
+  --url URL              Public HTTPS origin (otherwise prompted)
   --storage-gib NUMBER   Media PVC size on first installation (default 40)
   --adopt-existing       Explicitly use this dedicated host's existing K3s
   --run-id ID            Select a reviewed successful runtime release
   --source-sha SHA       Bind the selected release source
+  --migrate-url          Explicitly migrate URL/CORS, preserving data and keys
   --reset-admin-link     Explicitly reissue an administrator setup/recovery link
 USAGE
       exit 0 ;;

@@ -3,7 +3,7 @@
 
 Dedicated host only. The shell entrypoint installs OS prerequisites; this CLI
 preserves credentials/PVCs, verifies releases, and resumes without changing the
-embedding space. HTTP is reachable only through a loopback SSH tunnel.
+embedding space. The browser endpoint uses public HTTPS on 443, or an explicit loopback SSH origin.
 """
 import argparse
 import fcntl
@@ -25,7 +25,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import private_json, json_documents
 from k3s import Installer, new_credentials, ROOT, EXAMPLE
-from native import application_values, backing_plan, forwarding_units, local_origin, model_contract
+from native import application_values, backing_plan, forwarding_units, local_origin, browser_origin, model_contract
 
 K3S_VERSION = 'v1.37.2+k3s1'
 PLUGIN_VERSION = '0.20.1'
@@ -66,7 +66,7 @@ def initial_password(ask=getpass.getpass):
 
 
 def activate_admin(url, activation_url, password, opener=None):
-    expected, target = urlsplit(local_origin(url)), urlsplit(activation_url)
+    expected, target = urlsplit(browser_origin(url)), urlsplit(activation_url)
     prefix = '/api/auth/reset-password/'
     token = target.path[len(prefix):] if target.path.startswith(prefix) else ''
     if (target.scheme, target.netloc) != (expected.scheme, expected.netloc) or not re.fullmatch(r'[A-Za-z0-9_-]{16,256}', token):
@@ -119,9 +119,18 @@ class NativeInstaller:
         self.state = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
         if self.state and self.state.get('kind') != 'native-rtx4090':
             raise ValueError('別形式の導入記録です。既存の環境は変更しません')
-        self.url = local_origin(args.url or self.state.get('url', 'http://localhost:8080'))
-        if self.state and self.state['url'] != self.url:
-            raise ValueError('再開時に URL を変更できません。CORS・署名付きURLの移行が必要です')
+        requested_url = args.url or self.state.get('pending_url') or self.state.get('url') or input('公開 HTTPS URL（例 https://videoq.example.com）: ').strip()
+        self.url = browser_origin(requested_url)
+        old_url = self.state.get('url')
+        if self.state.get('pending_url') and self.state['pending_url'] != self.url:
+            raise ValueError('URL移行が未完了です。記録した移行先URLで再開してください')
+        self.migrating_url = bool(old_url and old_url != self.url)
+        if self.migrating_url:
+            if not args.migrate_url and self.state.get('pending_url') != self.url:
+                raise ValueError('URL変更には --migrate-url を明示してください。データと鍵は保持します')
+            if self.state.get('pending_url') not in (None, self.url):
+                raise ValueError('別URLへの移行が未完了です。記録したURLで再開してください')
+            self.state['pending_url'] = self.url
         for field in ('run_id', 'source_sha'):
             requested = getattr(args, field)
             if requested and self.state.get(field) and str(requested) != str(self.state[field]):
@@ -135,7 +144,8 @@ class NativeInstaller:
         self.admin = admin_details(args.username or recorded.get('username'), args.email or recorded.get('email'))
         if recorded and recorded != self.admin and (self.state.get('admin_created') or self.state.get('admin_provisioning')):
             raise ValueError('再実行で既存管理者を変更できません')
-        self.state.update(kind='native-rtx4090', url=self.url, admin=self.admin, storage_gib=self.storage_gib)
+        self.state.update(kind='native-rtx4090', admin=self.admin, storage_gib=self.storage_gib)
+        self.state.setdefault('url', self.url)
         self.cluster, self.ai = 'native-rtx4090', 'local-rtx4090'
         self.host_kubeconfig = Path('/etc/rancher/k3s/k3s.yaml')
         self.kubeconfig = self.directory / 'kubeconfig'
@@ -220,7 +230,13 @@ class NativeInstaller:
             if not selected:
                 raise ValueError('現在の推論ランタイムと一致する成功リリースが見つかりません。対応する --run-id を指定してください')
             self.args.run_id = str(selected['databaseId'])
-        Installer.release(self)
+        previous_url = self.state['url']
+        try:
+            Installer.release(self)
+        finally:
+            if self.migrating_url:
+                self.state['url'] = previous_url
+                self.record(pending_url=self.url)
         if not self.runtime_matches(self.state['source_sha']):
             raise ValueError('署名済み推論ランタイムとソースが異なります。対応するリリースを選択してください')
 
@@ -335,6 +351,9 @@ class NativeInstaller:
                 raise ValueError('既存 Secret に対応する credentials.json がありません。鍵を自動生成し直しません')
             private_json(file, new_credentials('local-inference', self.url, 'local-gpu'))
         values = json.loads(file.read_text())
+        if self.migrating_url:
+            values['videoq-garage']['GARAGE_CORS_ORIGINS'] = self.url
+            private_json(file, values)
         for name in ('videoq-runtime', 'videoq-postgres', 'videoq-garage'):
             if not isinstance(values.get(name), dict) or not values[name]:
                 raise ValueError('保存済みの認証情報が不完全です')
@@ -342,7 +361,7 @@ class NativeInstaller:
             if existing:
                 import base64
                 current = json.loads(existing).get('data', {})
-                if any(base64.b64decode(current.get(key, '')).decode() != value for key, value in values[name].items()):
+                if any(base64.b64decode(current.get(key, '')).decode() != value and not (self.migrating_url and name == 'videoq-garage' and key == 'GARAGE_CORS_ORIGINS' and base64.b64decode(current.get(key, '')).decode() == self.state['url']) for key, value in values[name].items()):
                     raise ValueError('保存済みファイルと既存 Secret が異なります。鍵を変更しません: ' + name)
             self.apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name}, 'type': 'Opaque', 'stringData': values[name]})
 
@@ -380,10 +399,14 @@ class NativeInstaller:
         Installer.test_application(self)
 
     def forwarding(self):
-        self.stage('7/8 SSH トンネル用の localhost 接続を設定します')
-        port = urlsplit(self.url).port
+        self.stage('7/8 公開HTTPSの443番を設定します' if self.url.startswith('https://') else '7/8 SSH トンネル用の localhost 接続を設定します')
+        public_https = self.url.startswith('https://')
+        port = 443 if public_https else urlsplit(self.url).port
         gateway = json.loads(self.kube('get', 'service', 'videoq-gateway', '-o', 'json', capture=True))
-        desired = forwarding_units(port, gateway['spec']['clusterIP'])
+        desired = forwarding_units(port, gateway['spec']['clusterIP'], public_https=public_https)
+        listener = Path('/etc/systemd/system/videoq-port-forward.socket')
+        if listener.exists() and listener.read_text() != desired[listener.name]:
+            self.system('systemctl', 'stop', 'videoq-port-forward.service', 'videoq-port-forward.socket')
         service = Path('/etc/systemd/system/videoq-port-forward.service')
         if service.exists() and 'kubectl' in service.read_text() and 'port-forward' in service.read_text():
             self.system('systemctl', 'disable', '--now', 'videoq-port-forward.service')
@@ -447,14 +470,17 @@ class NativeInstaller:
                 self.record(admin_password_set=True)
                 password_set = True
         print(f'\nVideoQ 起動完了: {self.url}\n管理者: {self.admin["username"]}\n設定・鍵・初回設定リンク: {self.directory}', flush=True)
-        print(f'手元のPCで: ssh -N -L {urlsplit(self.url).port}:127.0.0.1:{urlsplit(self.url).port} <SSHホスト名>', flush=True)
+        if self.url.startswith('http://'):
+            print(f'手元のPCで: ssh -N -L {urlsplit(self.url).port}:127.0.0.1:{urlsplit(self.url).port} <SSHホスト名>', flush=True)
+        else:
+            print('ブラウザで上記のHTTPS URLを開いてください。SSH転送は不要です。', flush=True)
         if password_set:
             print('初回パスワードを設定しました。ブラウザでログインしてください。')
         elif needs_setup:
             print('次の短時間・一度限りのリンクを手元のブラウザで開き、パスワードを設定してください。')
             if sys.stdin.isatty():
                 print(json.loads((self.directory / 'admin-setup.json').read_text())['activation_url'], flush=True)
-        self.record(complete=True)
+        self.record(complete=True, url=self.url, pending_url=None)
 
     def execute(self):
         self.host(); self.tools(); self.release(); self.ensure_cluster(); self.cuda_image()
@@ -464,7 +490,8 @@ class NativeInstaller:
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('--directory', default=str(Path.home() / '.local/share/videoq-rtx4090'))
-    result.add_argument('--url', help='SSH browser origin, default http://localhost:8080')
+    result.add_argument('--url', help='Public HTTPS origin; prompted on first installation')
+    result.add_argument('--migrate-url', action='store_true', help='Explicitly migrate public URL/CORS while preserving accounts, keys and data')
     result.add_argument('--username'); result.add_argument('--email')
     result.add_argument('--run-id'); result.add_argument('--source-sha')
     result.add_argument('--storage-gib', type=int)

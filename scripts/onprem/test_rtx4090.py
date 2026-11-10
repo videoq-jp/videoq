@@ -11,12 +11,12 @@ import unittest
 from unittest.mock import Mock, patch
 
 import rtx4090 as module
-from native import application_values, backing_plan, gateway_config, local_origin, model_contract, forwarding_units
+from native import application_values, backing_plan, gateway_config, local_origin, model_contract, forwarding_units, browser_origin
 
 
 class NativeTests(unittest.TestCase):
     def args(self, directory, *extra):
-        return module.parser().parse_args(['--directory', str(directory), '--username', 'yuki', '--email', 'yuki@example.com', *extra])
+        return module.parser().parse_args(['--directory', str(directory), '--username', 'yuki', '--email', 'yuki@example.com', '--url', 'http://localhost:8080', *extra])
 
     def instance(self, directory, *extra):
         instance = module.NativeInstaller(self.args(directory, *extra))
@@ -238,6 +238,63 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(module.main(), 1)
             construct.assert_not_called()
             self.assertFalse((Path(folder) / 'installation.json').exists())
+
+    def test_public_https_uses_443_tls_gateway_and_no_public_backing_services(self):
+        self.assertEqual(browser_origin('https://VIDEOQ.example.com:443/'), 'https://videoq.example.com')
+        config = gateway_config('https://videoq.example.com')
+        self.assertIn('disable_http_challenge', config)
+        self.assertIn('https://videoq.example.com', config)
+        units = forwarding_units(443, '10.43.0.20', public_https=True)
+        self.assertIn('ListenStream=0.0.0.0:443', units['videoq-port-forward.socket'])
+        self.assertIn('10.43.0.20:443', units['videoq-port-forward.service'])
+        raw = [
+            {'kind':'Service','metadata':{'name':'videoq-gateway'},'spec':{'type':'NodePort','ports':[]}},
+            {'kind':'Deployment','metadata':{'name':'videoq-gateway'},'spec':{'template':{'metadata':{},'spec':{'containers':[{}]}}}},
+        ]
+        _, plan = backing_plan(module.EXAMPLE, 'https://videoq.example.com', 40, raw)
+        self.assertEqual(plan[0]['spec']['type'], 'ClusterIP')
+        self.assertEqual(plan[0]['spec']['ports'][0]['port'], 443)
+        self.assertTrue(plan[1]['spec']['template']['spec']['securityContext']['runAsNonRoot'])
+
+    def test_url_migration_is_explicit_and_preserves_old_origin_until_completion(self):
+        with tempfile.TemporaryDirectory() as folder:
+            initial = self.instance(folder)
+            initial.record(complete=True, admin_created=True)
+            initial.lock.close()
+            moving = self.instance(folder, '--url', 'https://videoq.example.com', '--migrate-url')
+            self.assertEqual(moving.url, 'https://videoq.example.com')
+            self.assertEqual(moving.state['url'], 'http://localhost:8080')
+            self.assertEqual(moving.state['pending_url'], moving.url)
+            self.assertTrue(moving.state['admin_created'])
+
+    def test_url_migration_changes_only_cors_and_preserves_credentials(self):
+        with tempfile.TemporaryDirectory() as folder:
+            initial = self.instance(folder)
+            values={name:{'KEY':'retained'} for name in ('videoq-runtime','videoq-postgres','videoq-garage')}
+            values['videoq-garage']['GARAGE_CORS_ORIGINS']=initial.url
+            module.private_json(initial.directory/'credentials.json',values)
+            initial.lock.close()
+            moving = self.instance(folder,'--url','https://videoq.example.com','--migrate-url')
+            def current(*args, **kwargs):
+                name=args[2]
+                return json.dumps({'data':{k:base64.b64encode(v.encode()).decode() for k,v in values[name].items()}})
+            moving.kube=Mock(side_effect=current); moving.apply=Mock()
+            moving.credentials()
+            stored=json.loads((moving.directory/'credentials.json').read_text())
+            self.assertEqual(stored['videoq-garage']['GARAGE_CORS_ORIGINS'],'https://videoq.example.com')
+            self.assertTrue(all(stored[name]['KEY']=='retained' for name in stored))
+            moving.lock.close()
+            with self.assertRaisesRegex(ValueError,'移行が未完了'):
+                self.instance(folder)
+
+    def test_https_password_setup_stays_on_the_verified_public_origin(self):
+        from unittest.mock import MagicMock
+        opener = MagicMock()
+        response = opener.open.return_value.__enter__.return_value
+        response.status = 200; response.read.return_value = b'{"status":true}'
+        url='https://videoq.example.com'
+        module.activate_admin(url, url+'/api/auth/reset-password/'+'a'*24, 'good-password-123', opener)
+        self.assertEqual(opener.open.call_args.args[0].full_url, url+'/api/auth/reset-password')
 
     def test_bootstrap_shell_syntax(self):
         script = str(Path(__file__).with_name('install-rtx4090.sh'))
