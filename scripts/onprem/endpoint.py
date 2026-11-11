@@ -139,6 +139,20 @@ def private_pem(path, content):
             os.unlink(temporary)
 
 
+def require_certificate_hostname(cert, host):
+    try:
+        ipaddress.ip_address(host)
+        option, label = '-checkip', 'IP'
+    except ValueError:
+        option, label = '-checkhost', 'Hostname'
+    result = subprocess.run(['openssl', 'x509', '-in', str(cert), '-noout', option, host],
+                            capture_output=True, text=True)
+    # OpenSSL 3.0 returns zero even for "does NOT match certificate".
+    # Require an explicit positive identity result as well as successful exit.
+    if result.returncode != 0 or result.stdout.strip() != f'{label} {host} does match certificate':
+        raise ValueError('証明書のSANがブラウザ用URLと一致しません')
+
+
 def prepare_certificate(directory, details, url):
     if details['tls_mode'] != 'provided':
         return
@@ -162,10 +176,11 @@ def prepare_certificate(directory, details, url):
             except ValueError:
                 check = '-checkhost'
             san = subprocess.run(['openssl', 'x509', '-in', str(cert), '-noout', '-ext', 'subjectAltName'], check=True, capture_output=True, text=True)
-            if 'Subject Alternative Name' not in san.stdout:
+            if 'Subject Alternative Name' not in san.stdout or (check == '-checkhost' and 'DNS:' not in san.stdout):
                 raise ValueError('証明書にURLに対応するSANが必要です')
-            for arguments in (['-checkend', '0'], [check, host]):
-                subprocess.run(['openssl', 'x509', '-in', str(cert), '-noout', *arguments], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['openssl', 'x509', '-in', str(cert), '-noout', '-checkend', '0'],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            require_certificate_hostname(cert, host)
             if 'ca.crt' in contents:
                 ssl.create_default_context(cadata=contents['ca.crt'].decode())
         except (ssl.SSLError, UnicodeError, subprocess.CalledProcessError):

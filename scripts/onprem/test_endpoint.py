@@ -19,6 +19,19 @@ class EndpointTests(unittest.TestCase):
     def args(self, *extra):
         return rtx4090.parser().parse_args(list(extra))
 
+    def test_openssl_zero_exit_on_mismatch_does_not_accept_a_certificate(self):
+        for host, label in [('192.168.10.21', 'IP'), ('::1', 'IP'), ('videoq.example', 'Hostname')]:
+            for output, code, accepted in [(f'{label} {host} does match certificate\n', 0, True),
+                    (f'{label} {host} does NOT match certificate\n', 0, False),
+                    ('', 0, False), (f'{label} {host} does match certificate\n', 1, False)]:
+                with self.subTest(host=host, output=output, code=code), patch.object(endpoint.subprocess, 'run',
+                        return_value=subprocess.CompletedProcess([], code, output, '')):
+                    if accepted:
+                        endpoint.require_certificate_hostname(Path('certificate.pem'), host)
+                    else:
+                        with self.assertRaises(ValueError):
+                            endpoint.require_certificate_hostname(Path('certificate.pem'), host)
+
     def test_private_canary_keeps_the_browser_hostname_and_tls_validation(self):
         from urllib.request import Request
         import socket
