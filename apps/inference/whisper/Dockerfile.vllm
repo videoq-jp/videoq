@@ -1,23 +1,13 @@
-# Build and scan this NVIDIA engine image separately from the CPU gateway.
-FROM vllm/vllm-openai:v0.33.0@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e
-# Refresh the digest-pinned base's OS packages and Python runtime dependencies.
-RUN apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o APT::Update::Error-Mode=any update && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 upgrade -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-# pip's vendored copies remain vulnerable even after updating top-level packages.
-# The serving image needs neither pip nor uv; remove their code after installation.
-# CUDA-specific JIT provider wheels are distributed on the official FlashInfer index.
-RUN python3 -m pip install --no-cache-dir --upgrade \
-    --extra-index-url https://flashinfer.ai/whl/cu130 'vllm[audio]==0.32.0' \
-    'flashinfer-cubin @ https://github.com/flashinfer-ai/flashinfer/releases/download/v0.7.0.post1/flashinfer_cubin-0.7.0.post1-py3-none-any.whl#sha256=f5b5fbf6e914b358219b845ed3ee586ffc1ae3c9768c8b135115ac14afbceed3' \
-    'flashinfer-jit-cache @ https://github.com/flashinfer-ai/flashinfer/releases/download/v0.7.0.post1/flashinfer_jit_cache-0.7.0.post1+cu130-cp39-abi3-manylinux_2_28_x86_64.whl#sha256=9630eeb32396adb89ce8ffa8465fedd14549eb2e2ad3aff182d9e69be4a12075' \
-    'certifi==2026.10.23' 'msgpack==1.2.3' 'pyasn1==0.6.5' 'urllib3==2.8.0' \
-    && python3 -m pip uninstall -y pip uv
+# Immutable GPU runtime, built/scanned/attested from main 355f6a7a (run 43027815979, attempt 1).
+# Refresh dependencies using Dockerfile.vllm-base and On-prem Runtime Base, then
+# review a digest update here. Ordinary releases never depend on a live PPA.
+FROM ghcr.io/videoq-jp/videoq-vllm@sha256:9dfbae8eed3f568926793b0c81640610c09096f894518ba7c46dac7fafe5eb7b
+USER 0:0
 COPY security /usr/share/videoq/security
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 RUN python3 /usr/share/videoq/security/verify_kernel_headers.py \
     && python3 /usr/share/videoq/security/verify_apt.py
 ENV HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1 HOME=/tmp
 USER 10001:10001
-# Check as the serving user so generated caches remain usable without root.
 RUN python3 /usr/share/videoq/security/verify_inference_runtime.py
 ENTRYPOINT ["vllm", "serve"]

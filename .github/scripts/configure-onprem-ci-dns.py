@@ -7,7 +7,7 @@ import socket
 import subprocess
 
 RESOLVERS = ('1.1.1.1', '8.8.8.8')
-HOSTS = ('archive.ubuntu.com', 'security.ubuntu.com', 'ppa.launchpadcontent.net')
+HOSTS = ('archive.ubuntu.com', 'security.ubuntu.com', 'ghcr.io')
 DOCKER_CONFIG = '''import json, os, stat, tempfile
 from pathlib import Path
 path = Path('/etc/docker/daemon.json')

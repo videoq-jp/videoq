@@ -1,0 +1,143 @@
+name: On-prem Runtime Base
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: onprem-runtime-base
+  cancel-in-progress: false
+jobs:
+  source:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - id: source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const validate = require('./.github/scripts/validate-deployment.cjs');
+            core.setOutput('sha', await validate({ github, context }));
+  build:
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - name: Configure disposable runner DNS
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+      - name: Reserve disk for the CUDA runtime
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
+      - name: Verify upstream DNS before dependency refresh
+        run: python3 .github/scripts/onprem-dns-diagnostic.py --require-success
+      - name: Build the dependency refresh without publishing credentials
+        run: docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -f apps/inference/whisper/Dockerfile.vllm-base -t videoq-vllm-runtime-base:scanned apps/inference/whisper
+      - name: Verify the serving imports as the image user
+        run: docker run --rm --entrypoint python3 videoq-vllm-runtime-base:scanned /usr/share/videoq/security/verify_inference_runtime.py
+      - name: Reclaim build cache before the full image scan
+        run: |
+          docker builder prune --all --force
+          mkdir -p artifact
+      - name: Block all unassessed HIGH and CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        with:
+          version: v0.76.1
+          image-ref: videoq-vllm-runtime-base:scanned
+          trivy-config: apps/inference/whisper/security/trivy.yaml
+          format: json
+          output: artifact/security.json
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'false'
+          exit-code: '1'
+          timeout: 15m
+      - name: Preserve runtime scan evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: runtime-base-security-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            artifact/security.json
+            apps/inference/whisper/security/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Export only the scanned image and inventory
+        run: |
+          trivy image --timeout 15m --image-src docker --format cyclonedx --output artifact/sbom.cdx.json videoq-vllm-runtime-base:scanned
+          docker save videoq-vllm-runtime-base:scanned | zstd -T0 -o artifact/image.tar.zst
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: artifact
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+  publish:
+    needs: [source, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Reserve disk for the scanned archive
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+      - name: Publish the scanned runtime without executing it
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zstd -d image.tar.zst --stdout | docker load
+          python3 .github/scripts/onprem_registry.py vllm-engine
+          repository=ghcr.io/videoq-jp/videoq-vllm
+          tag="$repository:runtime-base-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag videoq-vllm-runtime-base:scanned "$tag"
+          docker push "$tag"
+          python3 .github/scripts/onprem_registry.py vllm-engine
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag")
+          digest="${digest#*@}"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Sign source provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-name: ghcr.io/videoq-jp/videoq-vllm
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+      - name: Sign the package inventory
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-name: ghcr.io/videoq-jp/videoq-vllm
+          subject-digest: ${{ steps.image.outputs.digest }}
+          sbom-path: sbom.cdx.json
+          push-to-registry: true
+      - name: Record the candidate digest for a reviewed update
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          printf 'GPU runtime base candidate: `ghcr.io/videoq-jp/videoq-vllm@%s`\n\nReview a Dockerfile.vllm digest update after GPU verification.\n' "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
