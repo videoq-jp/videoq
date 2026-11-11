@@ -23,6 +23,20 @@ class NativeTests(unittest.TestCase):
         self.addCleanup(instance.lock.close)
         return instance
 
+    def test_updates_and_restore_must_target_the_original_cluster(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            uid = '12345678-1234-1234-1234-123456789abc'
+            instance.kube = Mock(return_value=uid)
+            with self.assertRaisesRegex(ValueError, '未登録'):
+                instance.check_cluster_identity()
+            self.assertEqual(instance.check_cluster_identity(enroll=True), uid)
+            self.assertEqual(instance.check_cluster_identity(), uid)
+            instance.kube.return_value = '87654321-1234-1234-1234-123456789abc'
+            with self.assertRaisesRegex(ValueError, '別のクラスタ'):
+                instance.check_cluster_identity()
+            self.assertEqual(instance.state['cluster_uid'], uid)
+
     def test_resume_reuses_imported_cuda_image_after_docker_cache_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)

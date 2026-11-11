@@ -318,6 +318,19 @@ class NativeInstaller:
             time.sleep(2)
         raise ValueError('K3s ノードが登録されないか Ready になりません。環境を保持しています。同じコマンドで再開できます。')
 
+    def check_cluster_identity(self, *, enroll=False):
+        uid = self.kube('get', 'namespace', 'kube-system', '-o', 'jsonpath={.metadata.uid}', capture=True).strip()
+        if not re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', uid):
+            raise ValueError('K3sクラスタの識別情報を確認できません')
+        recorded = self.state.get('cluster_uid')
+        if recorded is not None and recorded != uid:
+            raise ValueError('導入記録とは別のクラスタです。更新・復元を実行しません')
+        if recorded is None:
+            if not enroll:
+                raise ValueError('クラスタ識別情報が未登録です。先にインストーラーを再実行してください')
+            self.record(cluster_uid=uid)
+        return uid
+
     def ensure_cluster(self):
         self.stage('2/8 既存または新規の native K3s を準備します')
         self.record(cluster_owned=True)
@@ -327,6 +340,7 @@ class NativeInstaller:
             self.system('env', 'INSTALL_K3S_VERSION=' + K3S_VERSION, 'sh', script, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--write-kubeconfig-mode', '600')
         self.refresh_kubeconfig()
         self.node = self.wait_native_node()
+        self.check_cluster_identity(enroll=True)
         if subprocess.run(['k3s', 'kubectl', '--kubeconfig', str(self.kubeconfig), 'get', 'runtimeclass', 'nvidia'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
             self.system('systemctl', 'restart', 'k3s')
             self.node = self.wait_native_node()
