@@ -40,7 +40,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Configure disposable runner DNS
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
       - name: Reserve disk for the CUDA runtime
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
       - name: Verify upstream DNS before dependency refresh
@@ -49,6 +49,7 @@ jobs:
       - name: Build the dependency refresh without publishing credentials
         run: |
           docker buildx build --provenance=false --output "type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -f apps/inference/whisper/Dockerfile.vllm-base -t videoq-vllm-runtime-base:scanned apps/inference/whisper
+          docker buildx prune --all --force
           docker load --input "$RUNNER_TEMP/scan-image.tar"
       - name: Verify the serving imports as the image user
         run: docker run --rm --entrypoint python3 videoq-vllm-runtime-base:scanned /usr/share/videoq/security/verify_inference_runtime.py
@@ -110,6 +111,8 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+      - name: Configure the disposable Docker OCI image store
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
       - name: Publish the scanned runtime without executing it
         id: image
         env:

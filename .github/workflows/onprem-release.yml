@@ -68,7 +68,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Configure DNS on this disposable CI runner
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
       - name: Reserve disk for the CUDA image on the disposable runner
         if: matrix.component == 'vllm-engine'
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
@@ -81,6 +81,7 @@ jobs:
           BUILD_CONTEXT: ${{ matrix.context }}
         run: |
           docker buildx build --provenance=false --output "type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true" --platform "linux/$ARCH" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "videoq-$COMPONENT:release" -f "$DOCKERFILE" "$BUILD_CONTEXT"
+          docker buildx prune --all --force
           docker load --input "$RUNNER_TEMP/scan-image.tar"
           container=$(docker create "videoq-$COMPONENT:release")
           trap 'docker rm -f "$container" >/dev/null' EXIT
@@ -190,6 +191,8 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
+      - name: Configure the disposable Docker OCI image store
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
       - name: Load and publish the scanned image without executing it
         id: image
         env:
