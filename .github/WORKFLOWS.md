@@ -60,6 +60,24 @@ branch, manual follow-up inputs from the transfer, and the daily stale-PR report
 retired. Automatic follow-up after a real integration CI failure and Claude repair
 start from events.
 
+## CI execution cost
+
+Ordinary application PRs run app tests, browser tests, builds, and security checks.
+Full on-prem integration and the three-platform native inference checks run on
+`merge_group` before merge, and on pushes to main/develop when app/platform paths
+change. PRs changing platform files (charts, installers, Dockerfiles, Node runtime
+adapters, migrations, inference engines, runtime pins, or dependency locks) run
+these integration checks immediately too. `CI Success` requires both components
+whenever selected; merge queue validation must remain required before merge.
+Manual CI always selects these integration checks. Operations keeps its existing
+scheduled coverage.
+
+App-specific jobs install their required npm workspaces and root tools instead of
+the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain
+signature verification still install all workspaces. Supply-chain npm downloads
+and API/worker pip downloads are cached; lockfile hashes and signature checks
+remain enforced on every run.
+
 ## Run a check manually
 
 ```sh
