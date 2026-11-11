@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ needs.source.outputs.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Configure disposable runner DNS
         run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
@@ -98,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ needs.source.outputs.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
           sparse-checkout: .github/scripts
       - name: Reserve disk for the scanned archive
