@@ -242,3 +242,21 @@ verification; removing a workflow does not delete images, releases or attestatio
 The verifier still validates historical schemas against their original repository,
 workflow and exact source SHA, including all eight signed subjects. Mixed image
 namespaces remain invalid. Use the normal signed release workflow for new builds.
+
+## Distribution retention
+
+After a successful release, `On-prem Distribution Retention` keeps the latest two
+published on-prem releases whose source/run/attempt match a successful main
+release workflow. Other release types are preserved. It protects their image
+indexes, platform manifests, signatures/SBOM referrers, operational pins in main
+and open same-repository PRs, and seven days of build grace. Only versions outside
+that complete reference graph may be deleted. Retired engine packages disappear
+from new release manifests; historical versions remain while a protected release
+still refers to them.
+
+The workflow first saves a deletion plan, then re-reads the live inventory and
+reference graph before applying it. Missing metadata, changed references or an
+expired plan stop deletion. Exact successful deletions are journaled and kept as
+workflow artifacts for 90 days. Manual runs default to plan-only; set `apply=true`
+only when actual cleanup is intended. The installer never runs registry cleanup
+on a customer's host.
