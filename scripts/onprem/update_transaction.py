@@ -39,9 +39,16 @@ class UpdateTransaction:
             return False
         record = json.loads(self.journal.read_text())
         if record.get('version') != 1 or record.get('phase') not in (
-                'freezing', 'backing_up', 'applying', 'committing', 'rolling_back'):
+                'freezing', 'backing_up', 'applying', 'committing', 'rolling_back', 'committed'):
             raise ValueError('Unknown update journal; manual recovery is required')
-        self.restore(record)
+        if record['phase'] == 'committed':
+            # Traffic may already have accepted new writes. Never restore the
+            # pre-update database once the durable promotion point is crossed.
+            self.adapter.health(previous=False)
+            self.adapter.resume(record, previous=False)
+            self.clear()
+        else:
+            self.restore(record)
         return True
 
     def restore(self, record):
@@ -79,11 +86,17 @@ class UpdateTransaction:
             self.adapter.health(previous=False)
             self.save(record, 'committing')
             self.adapter.commit(record)
+            self.save(record, 'committed')
             self.adapter.resume(record, previous=False)
         except BaseException:
             # Includes SIGINT/KeyboardInterrupt. SIGKILL/power loss instead leaves
             # the journal for recover() on the next timer activation.
-            self.restore(record)
+            if record['phase'] == 'committed':
+                # resume() may have opened some ingress before failing. Retain
+                # target data and retry forward recovery instead of losing it.
+                self.adapter.freeze(record)
+            else:
+                self.restore(record)
             raise
         self.clear()
         return 'updated'

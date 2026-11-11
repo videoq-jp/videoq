@@ -62,12 +62,25 @@ class UpdateTransactionTests(unittest.TestCase):
                 self.actions.resume.assert_called_once()
                 self.assertFalse(self.path.exists())
 
-    def test_resume_failure_after_commit_also_restores_old_data_and_release(self):
+    def test_resume_failure_after_commit_preserves_any_newly_accepted_writes(self):
         self.actions.resume.side_effect = [RuntimeError('gateway failed'), None]
         with self.assertRaisesRegex(RuntimeError, 'gateway failed'):
             self.tx.start({'source_sha': 'new'})
-        self.actions.rollback.assert_called_once()
+        self.actions.rollback.assert_not_called()
+        self.assertEqual(json.loads(self.path.read_text())['phase'], 'committed')
+        self.assertTrue(self.tx.recover())
+        self.actions.rollback.assert_not_called()
         self.assertFalse(self.path.exists())
+
+    def test_unhealthy_committed_release_is_never_replaced_by_an_old_snapshot(self):
+        self.path.write_text(json.dumps({'version': 1, 'phase': 'committed',
+            'previous': {'source_sha': 'old'}, 'backup': '/private/backup'}))
+        self.actions.health.side_effect = RuntimeError('target unavailable')
+        with self.assertRaisesRegex(RuntimeError, 'target unavailable'):
+            self.tx.recover()
+        self.actions.rollback.assert_not_called()
+        self.actions.resume.assert_not_called()
+        self.assertTrue(self.path.exists())
 
     def test_unknown_journal_never_runs_cluster_actions(self):
         self.path.write_text('{"version":2,"phase":"applying"}')
