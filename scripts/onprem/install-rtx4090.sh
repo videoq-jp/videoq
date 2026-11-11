@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # Native Ubuntu / one RTX 4090. May install a driver and resume after one reboot.
 set -euo pipefail
+plain=0
+forwarded=()
+for option in "$@"; do
+  if [ "$option" = --no-tui ]; then plain=1; else forwarded+=("$option"); fi
+done
+set -- "${forwarded[@]}"
+if [ "${VIDEOQ_NONINTERACTIVE:-0}" = 1 ]; then
+  sudo() { command sudo -n "$@"; }
+fi
 for argument in "$@"; do
   case "$argument" in
     -h|--help)
       cat <<'USAGE'
 Usage: bash scripts/onprem/install-rtx4090.sh [options]
 Ubuntu 22.04/24.04 amd64, one RTX 4090, native K3s and interactive administrator setup.
+  --no-tui               Use plain terminal mode (default: Textual setup screen)
   --directory PATH       Private installation state (default ~/.local/share/videoq-rtx4090)
   --username NAME        Initial administrator (otherwise prompted)
   --email ADDRESS        Initial administrator email (otherwise prompted)
@@ -65,8 +75,25 @@ if [ ! -f "$source_root/scripts/onprem/rtx4090.py" ]; then
   echo '指定したソース版に RTX 4090 インストーラーがありません。VIDEOQ_SOURCE_REF を確認してください。' >&2; exit 1
 fi
 export PATH="/usr/local/bin:$HOME/.local/bin:$PATH"
+if [ "$plain" = 0 ] && [ -t 1 ] && { true </dev/tty; } 2>/dev/null; then
+  tui_venv="$HOME/.local/share/videoq-setup-tui"
+  if [ ! -x "$tui_venv/bin/python" ]; then
+    if ! python3 -m venv "$tui_venv"; then
+      sudo apt-get update
+      sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv
+      python3 -m venv "$tui_venv"
+    fi
+  fi
+  if ! "$tui_venv/bin/python" -c 'import importlib.metadata; assert importlib.metadata.version("textual") == "8.2.8"' 2>/dev/null; then
+    "$tui_venv/bin/python" -m pip install --disable-pip-version-check -r "$source_root/scripts/onprem/requirements-tui.txt"
+  fi
+  # The actual bootstrap subprocess owns the host lock, not an idle settings screen.
+  flock -u 9
+  exec 9>&-
+  exec "$tui_venv/bin/python" "$source_root/scripts/onprem/rtx4090_tui.py" "$@" </dev/tty
+fi
 # Persist only username/email and GitHub CLI's own authentication before a possible reboot.
-if { true </dev/tty; } 2>/dev/null; then
+if [ "${VIDEOQ_NONINTERACTIVE:-0}" != 1 ] && { true </dev/tty; } 2>/dev/null; then
   python3 "$source_root/scripts/onprem/rtx4090.py" "$@" --prepare-only </dev/tty
 else
   python3 "$source_root/scripts/onprem/rtx4090.py" "$@" --prepare-only
@@ -148,7 +175,11 @@ if ! sudo docker info --format '{{json .Runtimes}}' | python3 -c 'import json,sy
   sudo nvidia-ctk runtime configure --runtime=docker
   sudo systemctl restart docker
 fi
-if { true </dev/tty; } 2>/dev/null; then
+if [ "${VIDEOQ_BOOTSTRAP_ONLY:-0}" = 1 ]; then
+  rm -f -- "$install_dir/driver-boot-id"
+  exit 0
+fi
+if [ "${VIDEOQ_NONINTERACTIVE:-0}" != 1 ] && { true </dev/tty; } 2>/dev/null; then
   python3 "$source_root/scripts/onprem/rtx4090.py" "$@" </dev/tty
 else
   python3 "$source_root/scripts/onprem/rtx4090.py" "$@"

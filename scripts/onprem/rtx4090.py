@@ -162,7 +162,7 @@ class NativeInstaller:
                               stdout=subprocess.PIPE if capture else None).stdout
 
     def system(self, *args, **kwargs):
-        return self.run('sudo', '--', *args, **kwargs)
+        return self.run('sudo', *(['-n'] if os.environ.get('VIDEOQ_NONINTERACTIVE') == '1' else []), '--', *args, **kwargs)
 
     def kube(self, *args, **kwargs):
         return self.run('k3s', 'kubectl', '--kubeconfig', self.kubeconfig, '-n', 'videoq', *args, **kwargs)
@@ -216,6 +216,8 @@ class NativeInstaller:
         if not all(shutil.which(name) for name in ('helm', 'gh')) or subprocess.run(['gh', 'attestation', 'verify', '--help'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
             self.run('bash', ROOT / 'scripts/onprem/install-tools.sh')
         if subprocess.run(['gh', 'auth', 'status'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+            if os.environ.get('VIDEOQ_NONINTERACTIVE') == '1':
+                raise ValueError('GitHubログインが必要です。セットアップを再実行して標準端末で認証してください')
             self.run('gh', 'auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web')
 
     def runtime_matches(self, sha):
