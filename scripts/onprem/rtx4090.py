@@ -260,6 +260,23 @@ class NativeInstaller:
             finally:
                 staged.unlink(missing_ok=True)
 
+    def wait_native_node(self, timeout=180):
+        """The API can answer before the first kubelet registers its node."""
+        deadline = time.monotonic() + timeout
+        self.stage('K3s ノードの登録と Ready を待ちます')
+        while time.monotonic() < deadline:
+            try:
+                nodes = json.loads(self.kube('--request-timeout=10s', 'get', 'nodes', '-o', 'json', capture=True))['items']
+            except subprocess.CalledProcessError:
+                nodes = []
+            if len(nodes) > 1:
+                raise ValueError('このインストーラーは1ノード専用です')
+            if nodes and any(c.get('type') == 'Ready' and c.get('status') == 'True'
+                             for c in nodes[0].get('status', {}).get('conditions', [])):
+                return nodes[0]['metadata']['name']
+            time.sleep(2)
+        raise ValueError('K3s ノードが登録されないか Ready になりません。環境を保持しています。同じコマンドで再開できます。')
+
     def ensure_cluster(self):
         self.stage('2/8 既存または新規の native K3s を準備します')
         self.record(cluster_owned=True)
@@ -268,14 +285,10 @@ class NativeInstaller:
             self.run('curl', '-fsSL', 'https://get.k3s.io', '-o', script)
             self.system('env', 'INSTALL_K3S_VERSION=' + K3S_VERSION, 'sh', script, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--write-kubeconfig-mode', '600')
         self.refresh_kubeconfig()
-        self.kube('wait', '--for=condition=Ready', 'nodes', '--all', '--timeout=180s')
-        nodes = json.loads(self.kube('get', 'nodes', '-o', 'json', capture=True))['items']
-        if len(nodes) != 1:
-            raise ValueError('このインストーラーは1ノード専用です')
-        self.node = nodes[0]['metadata']['name']
+        self.node = self.wait_native_node()
         if subprocess.run(['k3s', 'kubectl', '--kubeconfig', str(self.kubeconfig), 'get', 'runtimeclass', 'nvidia'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
             self.system('systemctl', 'restart', 'k3s')
-            self.kube('wait', '--for=condition=Ready', 'nodes', '--all', '--timeout=180s')
+            self.node = self.wait_native_node()
         self.kube('get', 'runtimeclass', 'nvidia')
         self.kube('create', 'namespace', 'videoq', '--dry-run=client', '-o', 'json', capture=True) # validate before apply
         self.apply({'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': 'videoq'}})

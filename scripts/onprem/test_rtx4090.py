@@ -23,6 +23,27 @@ class NativeTests(unittest.TestCase):
         self.addCleanup(instance.lock.close)
         return instance
 
+    def test_native_node_wait_survives_api_startup_and_empty_registration(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.stage = Mock()
+            instance.kube = Mock(side_effect=[subprocess.CalledProcessError(1, 'kubectl'),
+                json.dumps({'items': []}),
+                json.dumps({'items': [{'metadata': {'name': 'ubuntu'}, 'status': {'conditions': []}}]}),
+                json.dumps({'items': [{'metadata': {'name': 'ubuntu'}, 'status': {'conditions': [{'type': 'Ready', 'status': 'True'}]}}]})])
+            with patch.object(module.time, 'sleep'):
+                self.assertEqual(instance.wait_native_node(), 'ubuntu')
+            self.assertEqual(instance.kube.call_count, 4)
+
+    def test_native_node_wait_times_out_without_resetting_cluster(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.stage = Mock()
+            instance.system = Mock()
+            with self.assertRaisesRegex(ValueError, '環境を保持'):
+                instance.wait_native_node(timeout=0)
+            instance.system.assert_not_called()
+
     def test_interactive_admin_defaults_and_validation(self):
         ask = Mock(side_effect=['', 'Person@example.com'])
         self.assertEqual(module.admin_details(None, None, ask), {'username': 'site_admin', 'email': 'person@example.com'})
