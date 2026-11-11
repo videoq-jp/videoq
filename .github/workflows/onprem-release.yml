@@ -460,7 +460,17 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
-      - run: node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Install Chromium and OS dependencies with bounded retries
+        run: |
+          for attempt in 1 2 3; do
+            if node node_modules/playwright/cli.js install --with-deps chromium; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
