@@ -126,3 +126,12 @@ test('on-prem hosts use an explicit supported Ubuntu baseline and record APT-use
    assert.match(source,/--entrypoint python3.*onprem-dns-diagnostic\.py/);
  }
 });
+
+test('DNS repair cannot restart the lifecycle job service containers',()=>{
+ const validation=readFileSync(join(__dirname,'../workflows/onprem-validation.yml'),'utf8');
+ const lifecycle=validation.split('  onprem:\n')[1].split('  whisper-nvidia-image:\n')[0];
+ assert.match(lifecycle,/services:\n      postgres:/);
+ assert.match(lifecycle,/run: python3 \.github\/scripts\/configure-onprem-ci-dns\.py\n/);
+ assert.doesNotMatch(lifecycle,/configure-onprem-ci-dns\.py --docker/);
+ assert.match(job('build'),/configure-onprem-ci-dns\.py --docker/);
+});
