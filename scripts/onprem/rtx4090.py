@@ -230,7 +230,48 @@ class NativeInstaller:
                 return False
         return True
 
+    def reselect_incomplete_release(self):
+        """Repair a partial install after its source recipe receives a fix.
+
+        Never use an install rerun as an application update. Existing application
+        state and explicit release pins require the normal update/recovery path.
+        """
+        if self.args.run_id or self.args.source_sha or not self.state.get('source_sha'):
+            return False
+        if self.runtime_matches(self.state['source_sha']):
+            return False
+        if self.state.get('complete') or self.state.get('admin_created'):
+            raise ValueError('稼働済み環境のリリースはインストーラーで変更しません。更新手順を使用してください')
+        if self.state.get('cluster_owned') or self.host_kubeconfig.exists():
+            for kind, name in (('deployment', 'videoq-api'), ('secret', 'videoq-runtime')):
+                if self.kube('get', kind, name, '--ignore-not-found', '-o', 'name', capture=True).strip():
+                    raise ValueError('既存アプリを検出しました。リリースを自動変更せず、更新手順を使用してください')
+        from update_policy import release_order
+        candidates = public_release.releases()
+        previous = (int(self.state['run_id']), self.state['run_attempt'])
+        selected = next((row for row in candidates
+                         if (int(row['run_id']), row['run_attempt']) > previous
+                         and release_order(self.state, row)
+                         and self.runtime_matches(row['source_sha'])), None)
+        if selected is None:
+            raise ValueError('修正ソースに対応する署名済みReleaseの公開待ちです。保存済みデータ・重みは保持しています')
+        self.public_releases = [selected]
+        # updating=True verifies the successful main run, bundles and digests
+        # without replacing the saved installation pin before verification.
+        Installer.release(self, updating=True)
+        if not self.runtime_matches(self.selected_release['source_sha']):
+            raise ValueError('修正版Releaseとソースが一致しません。導入記録は変更しません')
+        backup = self.directory / ('installation.before-release-' + str(self.state['run_id'])
+                                   + '-attempt-' + str(self.state['run_attempt']) + '.json')
+        if not backup.exists():
+            private_json(backup, self.state)
+        self.record(**self.selected_release)
+        print('未完了の導入を、検証済みの対応する修正版Releaseで再開します。', flush=True)
+        return True
+
     def release(self):
+        if self.reselect_incomplete_release():
+            return
         # Pick the newest compatible successful release, then verify its run/SLSA binding.
         if not self.args.run_id and not self.state.get('run_id'):
             self.public_releases = public_release.releases()

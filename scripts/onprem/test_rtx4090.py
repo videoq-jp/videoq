@@ -155,6 +155,63 @@ class NativeTests(unittest.TestCase):
                 instance.tools()
             instance.run.assert_not_called()
 
+    def test_partial_install_retargets_only_after_full_release_verification(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.state.update(run_id='10', run_attempt=1, source_sha='a'*40)
+            instance.host_kubeconfig = Path(folder) / 'absent-host-config'
+            instance.runtime_matches = Mock(side_effect=lambda sha: sha == 'b'*40)
+            candidate = {'run_id': '11', 'run_attempt': 1, 'source_sha': 'b'*40}
+            def verify(target, updating=False):
+                self.assertTrue(updating)
+                self.assertEqual(target.state['source_sha'], 'a'*40)
+                target.selected_release = candidate
+            with patch.object(module.public_release, 'releases', return_value=[candidate]), patch.object(module.Installer, 'release', side_effect=verify):
+                instance.release()
+            self.assertEqual(instance.state['source_sha'], 'b'*40)
+            saved = json.loads((Path(folder) / 'installation.before-release-10-attempt-1.json').read_text())
+            self.assertEqual(saved['source_sha'], 'a'*40)
+
+    def test_partial_install_with_failed_signature_keeps_its_original_pin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.state.update(run_id='10', run_attempt=1, source_sha='a'*40)
+            instance.host_kubeconfig = Path(folder) / 'absent-host-config'
+            instance.runtime_matches = Mock(side_effect=lambda sha: sha == 'b'*40)
+            candidate = {'run_id': '11', 'run_attempt': 1, 'source_sha': 'b'*40}
+            with patch.object(module.public_release, 'releases', return_value=[candidate]), patch.object(module.Installer, 'release', side_effect=ValueError('bad signature')):
+                with self.assertRaisesRegex(ValueError, 'bad signature'):
+                    instance.release()
+            self.assertEqual(instance.state['source_sha'], 'a'*40)
+
+    def test_waiting_for_a_fixed_release_does_not_downgrade_to_an_older_release(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.state.update(run_id='10', run_attempt=1, source_sha='a'*40)
+            instance.host_kubeconfig = Path(folder) / 'absent-host-config'
+            instance.runtime_matches = Mock(return_value=False)
+            choices = [{'run_id': '10', 'run_attempt': 1, 'source_sha': 'a'*40},
+                       {'run_id': '9', 'run_attempt': 1, 'source_sha': 'c'*40}]
+            with patch.object(module.public_release, 'releases', return_value=choices), patch.object(module.Installer, 'release') as verifier:
+                with self.assertRaisesRegex(ValueError, '公開待ち'):
+                    instance.release()
+            verifier.assert_not_called()
+            self.assertEqual(instance.state['run_id'], '10')
+
+    def test_completed_or_existing_application_cannot_be_retargeted_by_install(self):
+        for completed in (False, True):
+            with self.subTest(completed=completed), tempfile.TemporaryDirectory() as folder:
+                instance = self.instance(folder)
+                instance.state.update(run_id='10', run_attempt=1, source_sha='a'*40, complete=completed)
+                instance.host_kubeconfig = Path(folder) / 'existing-host-config'
+                instance.host_kubeconfig.touch()
+                instance.runtime_matches = Mock(return_value=False)
+                instance.kube = Mock(return_value='deployment.apps/videoq-api')
+                with patch.object(module.public_release, 'releases') as catalog:
+                    with self.assertRaisesRegex(ValueError, '更新手順'):
+                        instance.release()
+                catalog.assert_not_called()
+
     def test_release_selects_compatible_success_then_still_runs_signature_verifier(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)
