@@ -110,7 +110,8 @@ jobs:
             (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
               (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
-              (['onprem-validation', 'local-inference-basic'].includes(name) && jobs.changes.outputs.onprem === 'true'))
+              (name === 'onprem-validation' && jobs.changes.outputs.onprem === 'true') ||
+              (name === 'local-inference-basic' && jobs.changes.outputs.inference === 'true'))
               ? job.result !== 'success'
               : !['success', 'skipped'].includes(job.result)
           );
@@ -133,9 +134,10 @@ jobs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       docs: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.docs == 'true' }}
       worker_matrix: ${{ steps.runtimes.outputs.matrix }}
-      # App integration remains mandatory in the merge queue and on main.
-      # PRs run it immediately when the deployment platform itself changes.
-      onprem: ${{ github.event_name == 'workflow_dispatch' || (steps.filter.outputs.onprem == 'true' && (github.event_name != 'pull_request' || steps.filter.outputs.onprem_pr == 'true')) }}
+      # Image security checks and destructive lifecycle rehearsals have separate scopes.
+      onprem: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem == 'true' || steps.filter.outputs.onprem_lifecycle == 'true' || steps.filter.outputs.whisper_gpu == 'true' || steps.filter.outputs.upstream_images == 'true' }}
+      onprem_lifecycle: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem_lifecycle == 'true' }}
+      inference: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.inference == 'true' }}
       whisper_gpu: ${{ steps.filter.outputs.whisper_gpu }}
       upstream_images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.upstream_images == 'true' }}
       real_cpu: ${{ steps.filter.outputs.real_cpu }}
@@ -187,8 +189,6 @@ jobs:
               - 'apps/inference/whisper/Dockerfile.vllm'
               - 'apps/inference/whisper/security/**'
               - 'apps/inference/whisper/tests/test_kernel_headers.py'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/onprem-validation.yml'
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
@@ -211,60 +211,70 @@ jobs:
               - '.github/onprem-lab/dependencies.json'
               - '.github/workflows/moodle-installed.yml'
               - '.github/workflows/ci.yml'
-            onprem_pr:
+            onprem_lifecycle:
               - 'scripts/onprem/**'
               - 'infra/garage/**'
               - 'infra/elasticmq.conf'
               - 'charts/**'
-              - 'apps/inference/**'
-              - 'apps/api/Dockerfile*'
+              - 'docker-compose*.yml'
               - 'apps/api/src/runtime/**'
-              - 'apps/api/scripts/**'
+              - 'apps/api/src/db/**'
               - 'apps/api/drizzle/**'
+              - 'apps/api/src/integrations/media.ts'
+              - 'apps/api/scripts/*migrat*'
+              - 'apps/api/scripts/migrations/**'
+              - 'apps/api/scripts/build-node.mjs'
+              - 'apps/worker/scripts/run_worker.py'
+              - 'apps/worker/worker_python/pipeline/storage.py'
+              - '.github/workflows/onprem-validation.yml'
+              - '.github/workflows/onprem-release.yml'
+              - '.github/scripts/onprem-lab.py'
+              - '.github/scripts/onprem-cpu-acceptance.py'
+              - '.github/scripts/install-kind.sh'
+              - '.github/scripts/install-helm.sh'
+              - '.github/onprem-lab/**'
+            onprem:
+              - 'apps/api/Dockerfile*'
               - 'apps/web/Dockerfile*'
               - 'apps/web/nginx.conf'
               - 'apps/web/scripts/*nginx*'
               - 'apps/web/scripts/*onprem*'
-              - 'apps/worker/Dockerfile*'
-              - 'apps/worker/scripts/**'
+              - 'apps/worker/Dockerfile.onprem'
               - 'apps/worker/pyproject.toml'
               - 'apps/worker/uv.lock'
-              - 'docker-compose*.yml'
-              - '.dockerignore'
+              - 'apps/api/package.json'
+              - 'apps/web/package.json'
+              - 'packages/trpc/package.json'
               - 'package.json'
               - 'package-lock.json'
-              - '.github/**'
-              - '.node-version'
-              - '.python-version'
-            onprem:
-              - 'docker-compose*.yml'
-              - 'scripts/onprem/**'
-              - 'infra/garage/**'
-              - 'infra/elasticmq.conf'
-              - '.github/inference-basic-packages.json'
               - '.dockerignore'
-              - 'charts/**'
-              - 'apps/api/**'
-              - 'apps/worker/**'
-              - 'apps/inference/**'
-              - 'apps/web/**'
-              - 'packages/trpc/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/onprem-validation.yml'
-              - '.github/workflows/local-inference-basic.yml'
-              - '.github/scripts/install-helm.sh'
-              - '.github/scripts/install-kind.sh'
-              - '.github/scripts/onprem-*'
-              - '.github/onprem-lab/**'
-              - '.github/workflows/onprem-release.yml'
               - '.github/runtime-versions.json'
               - '.node-version'
               - '.python-version'
-              - '.github/actions/**'
+              - '.github/actions/setup-package-manager/**'
               - '.github/scripts/runtime-versions.py'
               - '.github/scripts/package-managers.py'
+            inference:
+              - 'apps/inference/**'
+              - 'charts/videoq-inference/**'
+              - '.github/inference-basic-packages.json'
+              - '.github/workflows/local-inference-basic.yml'
+              - '.github/scripts/onprem-basic-packages.py'
+              - '.github/scripts/install-helm.sh'
+              - '.github/scripts/install-uv.sh'
+              - 'apps/api/src/lib/chat-model.ts'
+              - 'apps/api/src/lib/structured-answer.ts'
+              - 'apps/api/test/local-chat-model.test.ts'
+              - 'apps/worker/worker_python/pipeline/transcription*.py'
+              - 'apps/worker/worker_python/pipeline/*embedding*.py'
+              - 'apps/worker/worker_python/pipeline/ai_connection.py'
+              - 'apps/worker/tests/test_transcription_whisper.py'
+              - 'apps/worker/tests/test_embeddings.py'
+              - 'apps/worker/pyproject.toml'
+              - 'apps/worker/uv.lock'
+              - '.github/runtime-versions.json'
+              - '.node-version'
+              - '.python-version'
             hono:
               - 'eslint.shared.mjs'
               - 'apps/api/**'
@@ -344,6 +354,7 @@ jobs:
     if: needs.changes.outputs.onprem == 'true'
     uses: ./.github/workflows/onprem-validation.yml
     with:
+      validate_lifecycle: ${{ needs.changes.outputs.onprem_lifecycle == 'true' }}
       validate_whisper_gpu: ${{ needs.changes.outputs.whisper_gpu == 'true' }}
       validate_real_cpu: ${{ github.event_name == 'pull_request' && needs.changes.outputs.real_cpu == 'true' }}
       scan_upstream_images: ${{ needs.changes.outputs.upstream_images == 'true' }}
@@ -353,7 +364,7 @@ jobs:
   local-inference-basic:
     name: Local Inference Basic Checks
     needs: changes
-    if: needs.changes.outputs.onprem == 'true'
+    if: needs.changes.outputs.inference == 'true'
     uses: ./.github/workflows/local-inference-basic.yml
     permissions:
       contents: read

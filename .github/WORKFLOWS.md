@@ -62,15 +62,25 @@ start from events.
 
 ## CI execution cost
 
-Ordinary application PRs run app tests, browser tests, builds, and security checks.
-Full on-prem integration and the three-platform native inference checks run on
-`merge_group` before merge, and on pushes to main/develop when app/platform paths
-change. PRs changing platform files (charts, installers, Dockerfiles, Node runtime
-adapters, migrations, inference engines, runtime pins, or dependency locks) run
-these integration checks immediately too. `CI Success` requires both components
-whenever selected; merge queue validation must remain required before merge.
-Manual CI always selects these integration checks. Operations keeps its existing
-scheduled coverage.
+Ordinary application changes run app tests, browser tests, builds, and security
+checks without rebuilding local inference engines or rehearsing backup recovery.
+The same selection applies to PRs, the merge queue, and main/develop pushes:
+
+| Change | Additional validation |
+| --- | --- |
+| Application UI/business logic, docs, or generic CI metadata | Related app jobs and required security checks |
+| Shared npm lockfiles, production Dockerfiles/configuration, Worker dependencies, runtime pins | Application image builds, runtime smoke checks, HIGH/CRITICAL scans and SBOMs |
+| Installers, Compose/Helm deployments, database migrations/schema, storage/runtime adapters, or lifecycle test definitions | Full on-prem video-processing, backup/restore, failed-update recovery and Kubernetes rehearsals |
+| Inference engines/adapters, native package pins or inference-specific workflows | Three-platform inference compatibility checks |
+| NVIDIA Whisper Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
+
+Image-only validation does not build Whisper, pull the llama.cpp inventory image,
+start K3s/kind, run backup/restore rehearsals, or install a playback browser.
+Changing a shared lockfile or generic `ci.yml` alone does not select full lifecycle
+or NVIDIA validation. Selected checks still fail closed through `CI Success`.
+Manual CI retains full lifecycle and native compatibility validation. Daily
+Operations still runs full lifecycle and GPU security checks; weekly Operations
+retains native inference checks. Signed-release acceptance also remains unchanged.
 
 App-specific jobs install their required npm workspaces and root tools instead of
 the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain

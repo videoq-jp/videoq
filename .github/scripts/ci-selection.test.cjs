@@ -5,46 +5,82 @@ const { join, matchesGlob } = require('node:path');
 const { runInNewContext } = require('node:vm');
 
 const ci = readFileSync(join(__dirname, '../workflows/ci.yml'), 'utf8');
-const expression = ci.match(/^      onprem: \$\{\{ (.+) \}\}$/m)[1];
 function filter(name, paths) {
   const body = ci.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:)`, 'm'))[1];
   const patterns = [...body.matchAll(/- '([^']+)'/g)].map(match => match[1]);
   return String(paths.some(path => patterns.some(pattern => matchesGlob(path, pattern))));
 }
-function selected(event, paths = []) {
-  return runInNewContext(expression, {
+function selected(name, event, paths = []) {
+  const expression = ci.match(new RegExp(`^      ${name}: \\$\\{\\{ (.+) \\}\\}$`, 'm'))[1];
+  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images'];
+  const value = runInNewContext(expression, {
     github: { event_name: event },
-    steps: { filter: { outputs: { onprem: filter('onprem', paths), onprem_pr: filter('onprem_pr', paths) } } },
+    steps: { filter: { outputs: Object.fromEntries(names.map(name => [name, filter(name, paths)])) } },
   });
+  return value === true || value === 'true';
 }
+const events = ['pull_request', 'merge_group', 'push'];
 
-test('ordinary app PRs defer full platform integration to the merge queue and main', () => {
+test('app, docs and CI metadata edits do not trigger full on-prem or native inference on any event', () => {
   for (const path of ['apps/web/src/pages/PricingPage.tsx', 'apps/api/src/features/chat/router.ts',
-    'apps/worker/worker_python/transcription.py', 'packages/trpc/src/index.ts']) {
-    assert.equal(selected('pull_request', [path]), false, path);
-    for (const event of ['merge_group', 'push']) assert.equal(selected(event, [path]), true, `${event}: ${path}`);
+    'apps/worker/worker_python/lambda_handler.py', 'packages/trpc/src/index.ts', 'docs/README.md',
+    '.github/workflows/ci.yml', '.github/WORKFLOWS.md', '.github/scripts/audit-signatures.cjs']) {
+    for (const event of events) {
+      for (const name of ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu']) {
+        assert.equal(selected(name, event, [path]), false, `${event}/${name}: ${path}`);
+      }
+    }
   }
 });
 
-test('platform, runtime, dependency and migration changes still require integration in the PR', () => {
-  for (const path of ['charts/videoq/values.yaml', 'scripts/onprem/install.sh', 'docker-compose.yml',
-    'apps/api/Dockerfile', 'apps/api/src/runtime/node.ts', 'apps/api/drizzle/0001.sql',
-    'apps/web/Dockerfile', 'apps/web/nginx.conf', 'apps/worker/Dockerfile.onprem',
-    'apps/worker/uv.lock', 'apps/inference/whisper/server.py', '.dockerignore', 'package-lock.json',
-    '.github/workflows/ci.yml', '.github/workflows/local-inference-basic.yml', '.node-version', '.python-version']) {
-    for (const event of ['pull_request', 'merge_group', 'push']) assert.equal(selected(event, [path]), true, `${event}: ${path}`);
+test('dependency and production image updates retain image checks without data recovery rehearsals', () => {
+  for (const path of ['package-lock.json', 'package.json', 'apps/api/package.json', 'apps/web/package.json',
+    'apps/api/Dockerfile', 'apps/web/Dockerfile', 'apps/web/nginx.conf', 'apps/worker/Dockerfile.onprem',
+    'apps/worker/uv.lock', '.dockerignore', '.node-version', '.python-version', '.github/runtime-versions.json']) {
+    for (const event of events) {
+      assert.equal(selected('onprem', event, [path]), true, `${event}: ${path}`);
+      assert.equal(selected('onprem_lifecycle', event, [path]), false, `${event}: ${path}`);
+      assert.equal(selected('whisper_gpu', event, [path]), false, `${event}: ${path}`);
+    }
   }
-  assert.equal(selected('pull_request', ['apps/web/src/App.tsx', 'charts/videoq/values.yaml']), true);
+  for (const event of events) assert.equal(selected('inference', event, ['package-lock.json']), false);
 });
 
-test('docs do not select platform integration; manual diagnostics always do', () => {
-  for (const event of ['pull_request', 'merge_group', 'push']) {
-    assert.equal(selected(event, ['docs/README.md']), false);
-    assert.equal(selected(event), false);
+test('installer, deployment, database and storage changes retain full lifecycle validation', () => {
+  for (const path of ['charts/videoq/values.yaml', 'scripts/onprem/k3s.py', 'docker-compose.yml',
+    'infra/garage/config.toml', 'apps/api/src/runtime/node.ts', 'apps/api/drizzle/0001.sql',
+    'apps/api/src/db/schema/modern.ts', 'apps/api/scripts/db-migrate.sh', 'apps/api/src/integrations/media.ts',
+    'apps/worker/worker_python/pipeline/storage.py', '.github/scripts/onprem-lab.py',
+    '.github/workflows/onprem-validation.yml']) {
+    for (const event of events) {
+      assert.equal(selected('onprem', event, [path]), true, `${event}: ${path}`);
+      assert.equal(selected('onprem_lifecycle', event, [path]), true, `${event}: ${path}`);
+    }
   }
-  assert.equal(selected('workflow_dispatch'), true);
-  for (const id of ['onprem-validation', 'local-inference-basic']) {
+  assert.equal(selected('onprem_lifecycle', 'merge_group', ['apps/web/src/App.tsx', 'charts/videoq/values.yaml']), true);
+});
+
+test('native and GPU checks are selected independently from lifecycle recovery', () => {
+  for (const path of ['apps/inference/whisper/server.py', 'charts/videoq-inference/values.yaml',
+    '.github/inference-basic-packages.json', '.github/workflows/local-inference-basic.yml',
+    'apps/api/src/lib/chat-model.ts', 'apps/worker/worker_python/pipeline/embeddings.py']) {
+    for (const event of events) assert.equal(selected('inference', event, [path]), true, `${event}: ${path}`);
+  }
+  for (const event of events) {
+    assert.equal(selected('onprem_lifecycle', event, ['apps/inference/whisper/server.py']), false);
+    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+    assert.equal(selected('onprem', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+  }
+});
+
+test('manual CI retains full validation and both components remain required when selected', () => {
+  for (const name of ['onprem', 'onprem_lifecycle', 'inference']) {
+    assert.equal(selected(name, 'workflow_dispatch'), true);
+    for (const event of events) assert.equal(selected(name, event), false);
+  }
+  for (const [id, flag] of [['onprem-validation', 'onprem'], ['local-inference-basic', 'inference']]) {
     const job = ci.split(`\n  ${id}:\n`)[1].split(/\n  [a-z][\w-]*:\n/)[0];
-    assert.match(job, /if: needs\.changes\.outputs\.onprem == 'true'/);
+    assert.ok(job.includes(`if: needs.changes.outputs.${flag} == 'true'`));
   }
+  assert.match(ci, /validate_lifecycle: \$\{\{ needs\.changes\.outputs\.onprem_lifecycle == 'true' \}\}/);
 });
