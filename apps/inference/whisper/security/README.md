@@ -106,6 +106,19 @@ already-reviewed IDs actually observed in that run. The remaining statement
 still applies only to `6.8.0-147.147`. Other versions and unknown CVEs continue
 to fail; this is not a host-kernel assessment.
 
+CI run [42970587803](https://github.com/videoq-jp/videoq/actions/runs/42970587803)
+on 2026-11-11 reported 54 additional kernel implementation CVEs on the same
+`6.8.0-149.149` package. Version 3 individually assesses those IDs for that
+exact PURL only. `kernel-headers-review-2026-11-11.json` retains the scan hash,
+each advisory description and source, and the reviewed package identity.
+The package was downloaded again and its SHA-256 matched the official Ubuntu
+metadata above. Reviewing its archive directly (without extracting onto a
+case-insensitive filesystem) confirmed 988 headers and two documentation files,
+with no executable files, symlinks or ELF. All 54 descriptions concern kernel
+implementation functions, not UAPI header implementations. The image build's
+990-file verification also passed in that run. Other versions, unknown IDs,
+and the host kernel remain outside this assessment.
+
 The image separately updates its Ubuntu packages, certifi, msgpack, pyasn1 and urllib3,
 and removes pip/uv after installing audio support. Removing pip also removes
 its vulnerable vendored copies; changing only the top-level dependencies would
