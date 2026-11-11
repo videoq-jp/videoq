@@ -517,7 +517,7 @@ jobs:
   public-distribution:
     name: Publish anonymous signed installer downloads
     needs: [source, release, staging, cpu-acceptance]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: write
