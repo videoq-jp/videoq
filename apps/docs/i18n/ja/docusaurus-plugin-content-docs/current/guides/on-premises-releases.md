@@ -12,13 +12,13 @@ description: 署名とダイジェストを検証し、Kubernetes で更新と�
 
 インターネットに接続できる導入先では、外部レジストリとイメージのダイジェストを使って配布します。`On-prem Release` は最新 main の push CI 成功を確認し、Linux amd64・arm64 の API、Web、ワーカー、CPU Whisper、アプリ・推論用の両 Helm Chart、`release.json` を作成します。NVIDIA vLLM のイメージは amd64 用として同梱します。同じ main コミットで手動実行すると、OS パッケージ修正後の再ビルドにも使えます。
 
-配布用の `ghcr.io/videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・`videoq-transcription-gateway`・`videoq-vllm` は Public とします。Docker や Kubernetes からは GHCR のログインや `imagePullSecrets` なしで取得できます。導入先独自の非公開レジストリを使う場合は、引き続き `imagePullSecrets` を設定できます。各イメージにはリポジトリの現行 LICENSE を同梱し、公開範囲の変更でライセンス条件は変更しません。
+配布用の `ghcr.io/videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・`videoq-transcription-gateway` は Public とします。Docker や Kubernetes からは GHCR のログインや `imagePullSecrets` なしで取得できます。導入先独自の非公開レジストリを使う場合は、引き続き `imagePullSecrets` を設定できます。各イメージにはリポジトリの現行 LICENSE を同梱し、公開範囲の変更でライセンス条件は変更しません。
 
 パッケージ管理者が初期設定で Public にし、**Package settings → Manage Actions access** で `videoq-jp/videoq` に **Write** を付与します。CI は push の前後とインデックス作成前に公開状態を確認し、非公開・internal・未作成の場合は配布を止めます。署名を検証した配布物は、空の Docker 認証設定で取得して匿名アクセスを確認します。公開済みパッケージを Private に戻すことは GitHub の仕様上できません。push 用の書き込み認証は引き続き必要です。
 
 ## 配布時に確認すること
 
-アプリのビルドはリポジトリの読み取り権限だけで実行します。各イメージの未修正分を含む HIGH・CRITICAL 脆弱性を検査し、イメージと CycloneDX SBOM を保存します。別の新しいランナーで、そのイメージを実行せずに配布し、GitHub OIDC による来歴とアーキテクチャ別 SBOM の署名を付けます。両アーキテクチャを束ねるイメージインデックス、Chart のバイト列、全5イメージのダイジェストと対応アーキテクチャも署名対象です。NVIDIA 版のスキャンは既存の限定的な kernel-header 評価を維持し、評価済みを含む JSON レポートと評価ファイルを `security-*` 成果物に90日間保存します。その他の HIGH・CRITICAL は引き続き配布を止めます。
+アプリのビルドはリポジトリの読み取り権限だけで実行します。各イメージの未修正分を含む HIGH・CRITICAL 脆弱性を検査し、イメージと CycloneDX SBOM を保存します。別の新しいランナーで、そのイメージを実行せずに配布し、GitHub OIDC による来歴とアーキテクチャ別 SBOM の署名を付けます。両アーキテクチャを束ねるイメージインデックス、Chart のバイト列、全4イメージのダイジェストと対応アーキテクチャも署名対象です。上流 vLLM は別の必須ワークフローで検査し、イメージを変更せず採用します。未評価の HIGH・CRITICAL・UNKNOWN は配布を止め、生の検査結果と適用性評価を90日間保存します。
 
 API とワーカーはダイジェスト固定の Alpine イメージを使い、既存の Runtime Updates がインタープリターと npm・pip・uv の検証済み配布物を更新します。ベース変更には、Python wheel、PostgreSQL、FFmpeg、認証、Kubernetes の検証を必要とします。リリースの各実行・再試行には別のレジストリタグを使い、導入時はダイジェストを指定します。
 
@@ -37,7 +37,7 @@ python3 scripts/onprem/public_release.py --source-sha "$SOURCE_SHA" \
   --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT" --directory /secure/videoq-release
 ```
 
-公開APIでmainの成功した配布実行・ソースSHA・実行回を確認します。Sigstoreは独立したproduction TUF設定から信頼ルートを取得し、署名と透明性ログ、リポジトリ・所有組織・ワークフロー・main参照・ソースコミット・GitHub-hostedランナー・run-id/attempt・対象名とダイジェストを照合します。manifest・両Chart・全5イメージの検証がすべて成功した場合だけ、アプリ用と推論用のHelm設定を生成します。失敗時は既存の値を保持します。
+公開APIでmainの成功した配布実行・ソースSHA・実行回を確認します。Sigstoreは独立したproduction TUF設定から信頼ルートを取得し、署名と透明性ログ、リポジトリ・所有組織・ワークフロー・main参照・ソースコミット・GitHub-hostedランナー・run-id/attempt・対象名とダイジェストを照合します。manifest・両Chart・全4イメージの検証がすべて成功した場合だけ、アプリ用と推論用のHelm設定を生成します。失敗時は既存の値を保持します。
 
 インストーラーは公開版を自動選択します。今後の公開ワークフローは署名検証付きリハーサルと実CPUモデル受入が成功した後に配布し、公開済みのファイルを上書きしません。CIや保守担当者は従来の`onprem-release.py`とGitHub CLIでActions成果物・SBOMを検査できますが、利用者の導入では使いません。イメージ取得にGHCRのログインは不要です。公開配布物とbundle、昇格したイメージのdigestは保管してください。Actionsの転送用artifactは90日で期限切れになります。
 
@@ -50,11 +50,11 @@ helm upgrade --install videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SH
 helm test videoq -n videoq --timeout 2m
 ```
 
-完全オンプレでは、[ローカル AI 推論](local-inference.md)に従い、推論用 Chart に `verified-inference.json` を最後に重ねます。NVIDIA のチャット・埋め込み・文字起こしは同じ署名付き vLLM イメージを使います。アプリ用 Chart は対応するローカル設定の後に `verified-images.json` を重ねます。標準設定はホスト型の OpenRouter のため、ローカル設定の適用が必要です。
+完全オンプレでは、[ローカル AI 推論](local-inference.md)に従い、推論用 Chart に `verified-inference.json` を最後に重ねます。NVIDIA のチャット・埋め込み・文字起こしは、署名付き Chart 内でダイジェスト固定した同じ上流 vLLM イメージを使います。vLLM の再ビルド・再配布は行いません。アプリ用 Chart は対応するローカル設定の後に `verified-images.json` を重ねます。標準設定はホスト型の OpenRouter のため、ローカル設定の適用が必要です。
 
 Chart が強制するのはダイジェスト指定です。署名確認は導入側のスクリプトで行うため、クラスタ管理者による回避も防ぐ必要があれば、同じ署名者を条件とする admission policy を導入先で設定します。
 
-NVIDIA の検査では、範囲を限定した既存の[カーネルヘッダー評価](https://github.com/videoq-jp/videoq/blob/main/apps/inference/whisper/security/README.md)を維持します。明示的に評価したヘッダーの検出だけを除外し、それ以外の HIGH・CRITICAL はリリースを止めます。`security-*` の artifact は、除外した検出と評価を含む JSON レポートを90日間保持します。
+NVIDIA の上流イメージと別ボリュームの音声依存を Trivy で検査し、未加工の検出結果を保持します。実ファイル・起動引数・権限・期限に一致する[適用性評価](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md)のみを認め、未評価の HIGH・CRITICAL・UNKNOWN はリリースを止めます。`upstream-vllm-inspection-*` の artifact は、生の検査結果・実ファイル一覧・実行検証・依存ロック・評価を90日間保持します。
 
 ## 検証環境から本番へ進める
 
@@ -104,7 +104,7 @@ HELM_BIN=helm python3 .github/scripts/onprem-cpu-acceptance.py \
 
 名前空間の移行は完了しています。通常の **On-prem Release** が
 `videoq-jp/videoq-api`・`videoq-worker`・`videoq-web`・
-`videoq-transcription-gateway`・`videoq-vllm` の公開5パッケージを配布します。
+`videoq-transcription-gateway` の公開4パッケージを配布します。
 Public設定と、このリポジトリに対するActions Write権限を維持してください。
 bootstrapタグは導入用のリリースではありません。
 

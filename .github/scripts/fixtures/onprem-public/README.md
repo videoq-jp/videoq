@@ -5,3 +5,5 @@ These are public provenance bundles and exact Helm/manifest bytes from the succe
 `trusted-root.json` is a public Sigstore production trust-root snapshot obtained through Sigstore Python 4.5.1's TUF-verified production configuration. Unit tests use it to verify the real bundle cryptography without network access. **Production does not load this fixture:** the public verifier obtains its roots independently through `Verifier.production()`.
 
 The archives are hash/signature test inputs only; tests do not extract or execute them. The release manifest covers both charts and all five immutable image references.
+
+The current installer accepts schema 5 with four VideoQ images and an upstream engine pinned by the signed chart. This immutable schema-4 fixture tests historical bundle cryptography only, with a test-only manifest parser; production rejects this layout. It does not certify a current four-image release.

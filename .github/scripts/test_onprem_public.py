@@ -27,12 +27,28 @@ class PublicSignatureTests(unittest.TestCase):
         verifier=Verifier(trusted_root=TrustedRoot.from_file(str(FIXTURE/'trusted-root.json')))
         self.production=patch.object(Verifier,'production',return_value=verifier)
         self.production.start();self.addCleanup(self.production.stop)
+        # This immutable real-signature fixture predates the four-image layout.
+        # Isolate cryptography from today's manifest schema; production still
+        # rejects schema 4, which the following test checks without this adapter.
+        self.current_validate = public.manifest.validate
+        def historical_fixture(data, source):
+            if source != SOURCE or data.get('schemaVersion') != 4 or data.get('repository') != public.manifest.REPOSITORY:
+                raise ValueError('Historical fixture identity mismatch')
+            return data
+        self.fixture_parser = patch.object(public.manifest, 'validate', side_effect=historical_fixture)
+        self.fixture_parser.start();self.addCleanup(self.fixture_parser.stop)
 
-    def test_real_signatures_produce_digest_pinned_helm_values_without_cli(self):
+    def test_current_manifest_policy_rejects_the_retired_fixture_layout(self):
+        data=json.loads((self.directory/'release.json').read_text())
+        with self.assertRaisesRegex(ValueError,'schema'):
+            self.current_validate(data,SOURCE)
+
+    def test_real_historical_signatures_verify_without_cli_and_do_not_override_the_upstream_engine(self):
         with patch.dict('os.environ',{'PATH':'/nonexistent','GH_TOKEN':'','GITHUB_TOKEN':''}):
             application,inference=public.verify(self.directory,SOURCE,RUN,1)
         self.assertTrue(application['requireImageDigests'])
-        self.assertEqual(inference['vllm']['image']['digest'],'sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83')
+        self.assertNotIn('vllm',inference)
+        self.assertNotIn('vllmImage',inference['whisper'])
 
     def test_wrong_source_run_attempt_or_repository_cannot_reuse_valid_bundles(self):
         for source,run,attempt in [('a'*40,RUN,1),(SOURCE,'123',1),(SOURCE,RUN,2)]:

@@ -1,8 +1,0 @@
-# Only the explicitly listed kernel implementation CVEs on this UAPI header
-# package are assessed. Unknown CVEs and every other package still fail CI.
-vulnerability:
-  vex:
-    - apps/inference/whisper/security/kernel-headers.openvex.json
-    - apps/inference/whisper/security/apt-fixed.openvex.json
-scan:
-  show-suppressed: true

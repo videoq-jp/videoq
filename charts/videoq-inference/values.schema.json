@@ -27,7 +27,6 @@
         "maxConcurrentRequests",
         "upstreamParallelism",
         "gatewayResources",
-        "vllmImage",
         "maxSequences",
         "requestTimeoutSeconds"
       ],
@@ -113,36 +112,6 @@
         "modelSha256": {
           "type": "string",
           "pattern": "^([a-f0-9]{64})?$"
-        },
-        "vllmImage": {
-          "type": "object",
-          "required": [
-            "repository",
-            "tag",
-            "pullPolicy"
-          ],
-          "properties": {
-            "repository": {
-              "type": "string",
-              "minLength": 1
-            },
-            "tag": {
-              "type": "string",
-              "minLength": 1
-            },
-            "digest": {
-              "type": "string",
-              "pattern": "^(sha256:[a-f0-9]{64})?$"
-            },
-            "pullPolicy": {
-              "enum": [
-                "IfNotPresent",
-                "Always",
-                "Never"
-              ]
-            }
-          },
-          "additionalProperties": false
         },
         "maxConcurrentRequests": {
           "type": "integer",
@@ -406,6 +375,7 @@
             },
             "engine": {
               "enum": [
+                "",
                 "llamacpp",
                 "vllm"
               ]
@@ -426,6 +396,9 @@
                 "half",
                 "bfloat16"
               ]
+            },
+            "disableTorchCompile": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -504,9 +477,9 @@
             },
             "engine": {
               "enum": [
+                "",
                 "llamacpp",
-                "vllm",
-                "embeddinggemma2"
+                "vllm"
               ]
             },
             "dtype": {
@@ -514,6 +487,9 @@
                 "half",
                 "bfloat16"
               ]
+            },
+            "disableTorchCompile": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false

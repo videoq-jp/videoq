@@ -32,12 +32,10 @@ def test_embeddinggemma_document_and_query_contract(monkeypatch):
     monkeypatch.setenv("EMBEDDING_BASE_URL", "http://embedding.test/v1")
     assert embeddings.embed_texts(["バックアップは7日間保存します。"]) == [vector]
     body = json.loads(http.call_args.args[0].data)
+    assert "input_type" not in body and "dimensions" not in body
     assert body["input"] == ["title: none | text: バックアップは7日間保存します。"]
-    assert body["dimensions"] == 768 and "input_type" not in body
     embeddings.embed_texts(["How long are backups retained?"], input_type="query")
-    body = json.loads(http.call_args.args[0].data)
-    assert body["input"] == ["task: search result | query: How long are backups retained?"]
-    assert "input_type" not in body
+    assert json.loads(http.call_args.args[0].data)["input"] == ["task: search result | query: How long are backups retained?"]
     config = resolve_embedding_config()
     conn = MagicMock()
     conn.execute.return_value.fetchone.return_value = {"type_name": "vector", "dimensions": 768}

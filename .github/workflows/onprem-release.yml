@@ -32,15 +32,15 @@ jobs:
           script: |
             const validate = require('./.github/scripts/validate-deployment.cjs');
             core.setOutput('sha', await validate({ github, context }));
+  upstream-vllm:
+    needs: source
+    uses: ./.github/workflows/upstream-vllm.yml
   build:
     needs: source
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
-        exclude:
-          - component: vllm-engine
-            arch: arm64
+        component: [api, worker, web, transcription-gateway]
         include:
           - component: api
             dockerfile: apps/api/Dockerfile
@@ -53,9 +53,6 @@ jobs:
             context: .
           - component: transcription-gateway
             dockerfile: apps/inference/whisper/Dockerfile
-            context: apps/inference/whisper
-          - component: vllm-engine
-            dockerfile: apps/inference/whisper/Dockerfile.vllm
             context: apps/inference/whisper
         arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
@@ -73,8 +70,7 @@ jobs:
           dockerfile: ${{ matrix.dockerfile }}
           context: ${{ matrix.context }}
           platform: linux/${{ matrix.arch }}
-          cuda: ${{ matrix.component == 'vllm-engine' }}
-          security-config: ${{ matrix.component == 'vllm-engine' && 'apps/inference/whisper/security/trivy.yaml' || matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
+          security-config: ${{ matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
           evidence-name: security-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
           artifact-name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
   chart:
@@ -98,11 +94,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   publish:
-    needs: [source, build]
+    needs: [source, build, upstream-vllm]
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
+        component: [api, worker, web, transcription-gateway]
         arch: [amd64, arm64]
         exclude:
           - component: vllm-engine
@@ -140,9 +136,6 @@ jobs:
           digest=$(python3 -c 'import json,re; x=json.load(open("image/index.json"))["manifests"]; assert len(x)==1; d=x[0]["digest"]; assert re.fullmatch("sha256:[a-f0-9]{64}",d); print(d)')
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
-          if [ "$COMPONENT" = vllm-engine ]; then
-            repository="ghcr.io/videoq-jp/videoq-vllm"
-          fi
           tag="$repository:$GITHUB_SHA-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           umask 077
           mkdir -p "$HOME/.docker"
@@ -207,7 +200,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        component: [api, worker, web, transcription-gateway, vllm-engine]
+        component: [api, worker, web, transcription-gateway]
     permissions:
       contents: read
       packages: write
@@ -230,17 +223,12 @@ jobs:
         run: |
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
-          if [ "$COMPONENT" = vllm-engine ]; then
-            repository="ghcr.io/videoq-jp/videoq-vllm"
-          fi
           tag="$repository:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           umask 077
           mkdir -p "$HOME/.docker"
           printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           manifests=("$repository@$(cat "$COMPONENT-amd64.digest")")
-          if [ "$COMPONENT" != vllm-engine ]; then
-            manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")
-          fi
+          manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")
           docker buildx imagetools create --tag "$tag" "${manifests[@]}"
           digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
           mkdir -p release
@@ -347,7 +335,7 @@ jobs:
         run: |
           mkdir -m 700 "$DOCKER_CONFIG"
           printf '{"auths":{}}\n' > "$DOCKER_CONFIG/config.json"
-          for component in api worker web transcription-gateway vllm-engine; do
+          for component in api worker web transcription-gateway; do
             python3 .github/scripts/onprem_registry.py "$component"
           done
           python3 .github/scripts/onprem-release.py verify "$GITHUB_SHA" release/release.json release/verified-images.json release/verified-inference.json

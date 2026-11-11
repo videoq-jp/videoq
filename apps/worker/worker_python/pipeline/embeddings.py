@@ -34,9 +34,11 @@ def _embed_openai_batch(texts: list[str], config: EmbeddingConfig, *, input_type
     if config.profile == "embeddinggemma2":
         if input_type not in {"query", "document"}:
             raise ValueError("input_type must be query or document")
-        # Checkpoint prompts belong in the input, not a nonstandard API field.
+        # Prompts from the pinned model config_sentence_transformers.json.
         prefix = "task: search result | query: " if input_type == "query" else "title: none | text: "
         body["input"] = [prefix + text for text in texts]
+        # vLLM uses the model's native 768 dimensions; no Matryoshka override.
+        del body["dimensions"]
 
     req = urllib.request.Request(
         f"{base}/embeddings",

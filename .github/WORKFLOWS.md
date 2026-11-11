@@ -93,16 +93,16 @@ remain enforced on every run.
 
 ## On-prem image pipeline
 
-PR GPU validation, signed releases and manual runtime-base refreshes all use
+Application and gateway release builds use
 [`build-onprem-image`](actions/build-onprem-image/action.yml). Their workflows
 select the component and architecture; the action owns the build, license check,
 strict vulnerability scan and inventory. Change this pipeline once rather than
-patching three copies.
+patching multiple copies.
 
 The action produces one OCI directory with individually compressed layers. BuildKit
 checks that exact output's license and gateway imports without loading another
-copy into Docker. CUDA jobs reclaim unused hosted-runner tools and check available
-disk before downloading layers. This setup never runs on operator hosts.
+copy into Docker. Upstream vLLM inspection is separate: it scans the pinned upstream image and
+locked audio volume without an engine build. This setup never runs on operator hosts.
 
 Release callers hand off that same OCI directory. ORAS copies its compressed graph
 to GHCR and the publisher requires the registry digest to equal the scanned digest.

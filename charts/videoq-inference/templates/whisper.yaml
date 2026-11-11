@@ -28,6 +28,9 @@ spec:
     metadata:
       annotations:
         videoq.io/model-revision: {{ $whisper.modelRevision | quote }}
+        {{- if $gpu }}
+        videoq.io/audio-lock: {{ .Files.Get "files/vllm-audio-wheels.json" | sha256sum | quote }}
+        {{- end }}
       labels:
         {{- include "inference.labels" . | nindent 8 }}
         app.kubernetes.io/component: whisper
@@ -41,7 +44,12 @@ spec:
       {{- end }}
       securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
       {{- $selector := deepCopy $whisper.nodeSelector }}
-      {{- if not $gpu }}
+      {{- if $gpu }}
+      {{- if and (hasKey $selector "kubernetes.io/arch") (ne (index $selector "kubernetes.io/arch") "amd64") }}
+      {{- fail "The pinned upstream vLLM image requires amd64" }}
+      {{- end }}
+      {{- $_ := set $selector "kubernetes.io/arch" "amd64" }}
+      {{- else }}
       {{- $_ := set $selector "kubernetes.io/arch" $cpuArch }}
       {{- end }}
       {{- with $selector }}
@@ -50,8 +58,11 @@ spec:
       {{- with $whisper.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or .Values.downloadModels .Values.gpuSharing.enabled }}
+      {{- if or .Values.downloadModels $gpu }}
       initContainers:
+        {{- if $gpu }}
+        {{- include "inference.vllmAudioInit" (dict "root" .) | nindent 8 }}
+        {{- end }}
         {{- if .Values.gpuSharing.enabled }}
         {{- include "inference.sharedWait" (dict "root" . "role" "whisper") | nindent 8 }}
         {{- end }}
@@ -91,8 +102,8 @@ spec:
           volumeMounts: [{ name: models, mountPath: /models, readOnly: true }]
         - name: engine
           {{- if $gpu }}
-          image: {{ include "inference.image" (dict "root" . "image" $whisper.vllmImage "component" "whisper.vllmImage") | quote }}
-          imagePullPolicy: {{ $whisper.vllmImage.pullPolicy }}
+          image: {{ include "inference.image" (dict "root" . "image" $.Values.vllm.image "component" "vllm") | quote }}
+          imagePullPolicy: {{ $.Values.vllm.image.pullPolicy }}
           command: [vllm, serve]
           args:
             - /models/{{ $whisper.modelRevision }}
@@ -140,33 +151,32 @@ spec:
             - --no-gpu
           {{- end }}
           env:
+            {{- if $gpu }}
+            - { name: PYTHONPATH, value: /opt/videoq-audio }
+            {{- end }}
             - { name: HF_HUB_OFFLINE, value: "1" }
             - { name: HF_HUB_DISABLE_TELEMETRY, value: "1" }
             - { name: VLLM_NO_USAGE_STATS, value: "1" }
             - { name: DO_NOT_TRACK, value: "1" }
             - { name: HOME, value: /tmp }
           securityContext: {{ include "inference.security" . | nindent 12 }}
-            {{- if not $gpu }}
             readOnlyRootFilesystem: true
-            {{- end }}
           resources: {{ toYaml $whisper.resources | nindent 12 }}
           volumeMounts:
             - { name: models, mountPath: /models, readOnly: true }
-            {{- if not $gpu }}
             - { name: tmp, mountPath: /tmp }
-            {{- end }}
             {{- if $gpu }}
             - { name: shm, mountPath: /dev/shm }
+            - { name: vllm-audio, mountPath: /opt/videoq-audio, readOnly: true }
             {{- end }}
       volumes:
-        {{- if not $gpu }}
         - name: tmp
-          emptyDir: { sizeLimit: 256Mi }
-        {{- end }}
+          emptyDir: { sizeLimit: {{ if $gpu }}4Gi{{ else }}256Mi{{ end }} }
         - name: models
           persistentVolumeClaim:
             claimName: {{ default (printf "%s-whisper" (include "inference.fullname" .)) $whisper.persistence.existingClaim }}
         {{- if $gpu }}
+        {{- include "inference.vllmAudioVolumes" . | nindent 8 }}
         - name: shm
           emptyDir: { medium: Memory, sizeLimit: 2Gi }
         {{- end }}

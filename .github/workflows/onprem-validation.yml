@@ -289,22 +289,9 @@ jobs:
           retention-days: 30
 
   whisper-nvidia-image:
-    name: Shared NVIDIA vLLM image
+    name: Upstream NVIDIA inference image
     if: inputs.validate_whisper_gpu
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/build-onprem-image
-        with:
-          image: videoq-whisper-vllm:onprem-ci
-          dockerfile: apps/inference/whisper/Dockerfile.vllm
-          context: apps/inference/whisper
-          cuda: 'true'
-          security-config: apps/inference/whisper/security/trivy.yaml
-          evidence-name: whisper-vllm-security
+    uses: ./.github/workflows/upstream-vllm.yml
 
   upstream-cpu-images:
     name: ${{ matrix.engine }} Linux ${{ matrix.architecture }} upstream image
