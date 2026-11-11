@@ -60,6 +60,37 @@ branch, manual follow-up inputs from the transfer, and the daily stale-PR report
 retired. Automatic follow-up after a real integration CI failure and Claude repair
 start from events.
 
+## CI execution cost
+
+Ordinary application changes run app tests, browser tests, builds, and security
+checks without rebuilding local inference engines or rehearsing backup recovery.
+The same selection applies to PRs, the merge queue, and main/develop pushes:
+
+| Change | Additional validation |
+| --- | --- |
+| Application UI/business logic, docs, or generic CI metadata | Related app jobs and required security checks |
+| Shared npm lockfiles, production Dockerfiles/configuration, Worker dependencies, runtime pins | Application image builds, runtime smoke checks, HIGH/CRITICAL scans and SBOMs |
+| Installers, Compose/Helm deployments, database migrations/schema, storage/runtime adapters, or lifecycle test definitions | Full on-prem video-processing, backup/restore, failed-update recovery and Kubernetes rehearsals |
+| Inference engines/adapters, native package pins or inference-specific workflows | Three-platform inference compatibility checks |
+| NVIDIA Whisper Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
+| Moodle fixtures, workflow or integration contracts | Moodle integration checks |
+
+Image-only validation does not build Whisper, pull the llama.cpp inventory image,
+start K3s/kind, run backup/restore rehearsals, or install a playback browser.
+Changing a shared lockfile or generic `ci.yml` alone does not select full lifecycle
+or NVIDIA validation. Shared workflow edits also do not download real CPU models
+or scan the unchanged upstream image matrix; their own scripts, fixtures and image
+pins still select those checks. Selected checks still fail closed through `CI Success`.
+Manual CI retains full lifecycle and native compatibility validation. Daily
+Operations still runs full lifecycle and GPU security checks; weekly Operations
+retains native inference checks. Signed-release acceptance also remains unchanged.
+
+App-specific jobs install their required npm workspaces and root tools instead of
+the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain
+signature verification still install all workspaces. Supply-chain npm downloads
+and API/worker pip downloads are cached; lockfile hashes and signature checks
+remain enforced on every run.
+
 ## Run a check manually
 
 ```sh

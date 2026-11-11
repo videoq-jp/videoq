@@ -41,6 +41,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            .github/deploy-tools/package-lock.json
+            infra/db-maintenance/runtime/package-lock.json
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: npm
@@ -62,11 +67,11 @@ jobs:
           fi
       # Verify registry signatures before any package code executes in this job.
       - run: npm ci --ignore-scripts
-      - run: npm audit signatures
+      - run: npm run audit:signatures
       - run: npm ci --ignore-scripts --prefix .github/deploy-tools
-      - run: npm audit signatures --prefix .github/deploy-tools
+      - run: npm run audit:signatures -- --prefix .github/deploy-tools
       - run: npm ci --ignore-scripts --prefix infra/db-maintenance/runtime
-      - run: npm audit signatures --prefix infra/db-maintenance/runtime
+      - run: npm run audit:signatures -- --prefix infra/db-maintenance/runtime
 
   workflow-security:
     name: Deployment Security Tests
@@ -105,7 +110,8 @@ jobs:
             (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
               (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
-              (['onprem-validation', 'local-inference-basic'].includes(name) && jobs.changes.outputs.onprem === 'true'))
+              (name === 'onprem-validation' && jobs.changes.outputs.onprem === 'true') ||
+              (name === 'local-inference-basic' && jobs.changes.outputs.inference === 'true'))
               ? job.result !== 'success'
               : !['success', 'skipped'].includes(job.result)
           );
@@ -128,7 +134,10 @@ jobs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       docs: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.docs == 'true' }}
       worker_matrix: ${{ steps.runtimes.outputs.matrix }}
-      onprem: ${{ steps.filter.outputs.onprem }}
+      # Image security checks and destructive lifecycle rehearsals have separate scopes.
+      onprem: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem == 'true' || steps.filter.outputs.onprem_lifecycle == 'true' || steps.filter.outputs.whisper_gpu == 'true' || steps.filter.outputs.upstream_images == 'true' }}
+      onprem_lifecycle: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem_lifecycle == 'true' }}
+      inference: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.inference == 'true' }}
       whisper_gpu: ${{ steps.filter.outputs.whisper_gpu }}
       upstream_images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.upstream_images == 'true' }}
       real_cpu: ${{ steps.filter.outputs.real_cpu }}
@@ -177,19 +186,16 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
-              - 'charts/videoq-inference/**'
-              - 'scripts/gpu/**'
               - 'apps/inference/whisper/Dockerfile.vllm'
-              - '.github/workflows/onprem-validation.yml'
+              - 'apps/inference/whisper/security/**'
+              - 'apps/inference/whisper/tests/test_kernel_headers.py'
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
               - 'apps/inference/llamacpp/security/**'
               - '.github/scripts/onprem-upstream-security*'
               - '.github/scripts/check-upstream-header-image.py'
-              - '.github/workflows/onprem-validation.yml'
             real_cpu:
-              - '.github/workflows/onprem-validation.yml'
               - '.github/scripts/onprem-cpu-acceptance.py'
               - '.github/scripts/onprem-lab.py'
               - '.github/onprem-lab/**'
@@ -202,40 +208,75 @@ jobs:
               - '.github/scripts/onprem-lab.py'
               - '.github/onprem-lab/dependencies.json'
               - '.github/workflows/moodle-installed.yml'
-              - '.github/workflows/ci.yml'
-            onprem:
-              - 'scripts/gpu/**'
-              - 'scripts/onprem/**'
-              - 'infra/garage/**'
-              - 'infra/elasticmq.conf'
-              - '.github/inference-basic-packages.json'
-              - '.dockerignore'
-              - 'charts/**'
-              - 'apps/api/**'
-              - 'apps/worker/**'
-              - 'apps/inference/**'
-              - 'apps/web/**'
-              - 'packages/trpc/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/onprem-validation.yml'
-              - '.github/workflows/local-inference-basic.yml'
-              - '.github/scripts/install-helm.sh'
-              - '.github/scripts/install-kind.sh'
-              - '.github/scripts/onprem-*'
+            onprem_lifecycle:
+              - '.github/scripts/onprem-release.py'
               - '.github/scripts/onprem_public.py'
               - '.github/scripts/test_onprem_public.py'
               - '.github/scripts/publish-onprem-release*'
               - '.github/scripts/fixtures/onprem-public/**'
-              - '.github/onprem-lab/**'
+              - 'scripts/onprem/**'
+              - 'infra/garage/**'
+              - 'infra/elasticmq.conf'
+              - 'charts/**'
+              - 'docker-compose*.yml'
+              - 'apps/api/src/runtime/**'
+              - 'apps/api/src/db/**'
+              - 'apps/api/drizzle/**'
+              - 'apps/api/src/integrations/media.ts'
+              - 'apps/api/scripts/*migrat*'
+              - 'apps/api/scripts/migrations/**'
+              - 'apps/api/scripts/build-node.mjs'
+              - 'apps/worker/scripts/run_worker.py'
+              - 'apps/worker/worker_python/pipeline/storage.py'
+              - '.github/workflows/onprem-validation.yml'
               - '.github/workflows/onprem-release.yml'
+              - '.github/scripts/onprem-lab.py'
+              - '.github/scripts/onprem-cpu-acceptance.py'
+              - '.github/scripts/install-kind.sh'
+              - '.github/scripts/install-helm.sh'
+              - '.github/onprem-lab/**'
+            onprem:
+              - 'apps/api/Dockerfile*'
+              - 'apps/web/Dockerfile*'
+              - 'apps/web/nginx.conf'
+              - 'apps/web/scripts/*nginx*'
+              - 'apps/web/scripts/*onprem*'
+              - 'apps/worker/Dockerfile.onprem'
+              - 'apps/worker/pyproject.toml'
+              - 'apps/worker/uv.lock'
+              - 'apps/api/package.json'
+              - 'apps/web/package.json'
+              - 'packages/trpc/package.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.dockerignore'
               - '.github/runtime-versions.json'
               - '.node-version'
               - '.python-version'
-              - '.github/actions/**'
+              - '.github/actions/setup-package-manager/**'
               - '.github/scripts/runtime-versions.py'
               - '.github/scripts/package-managers.py'
+            inference:
+              - 'apps/inference/**'
+              - 'charts/videoq-inference/**'
+              - '.github/inference-basic-packages.json'
+              - '.github/workflows/local-inference-basic.yml'
+              - '.github/scripts/onprem-basic-packages.py'
+              - '.github/scripts/install-helm.sh'
+              - '.github/scripts/install-uv.sh'
+              - 'apps/api/src/lib/chat-model.ts'
+              - 'apps/api/src/lib/structured-answer.ts'
+              - 'apps/api/test/local-chat-model.test.ts'
+              - 'apps/worker/worker_python/pipeline/transcription*.py'
+              - 'apps/worker/worker_python/pipeline/*embedding*.py'
+              - 'apps/worker/worker_python/pipeline/ai_connection.py'
+              - 'apps/worker/tests/test_transcription_whisper.py'
+              - 'apps/worker/tests/test_embeddings.py'
+              - 'apps/worker/pyproject.toml'
+              - 'apps/worker/uv.lock'
+              - '.github/runtime-versions.json'
+              - '.node-version'
+              - '.python-version'
             hono:
               - 'eslint.shared.mjs'
               - 'apps/api/**'
@@ -315,6 +356,7 @@ jobs:
     if: needs.changes.outputs.onprem == 'true'
     uses: ./.github/workflows/onprem-validation.yml
     with:
+      validate_lifecycle: ${{ needs.changes.outputs.onprem_lifecycle == 'true' }}
       validate_whisper_gpu: ${{ needs.changes.outputs.whisper_gpu == 'true' }}
       validate_real_cpu: ${{ github.event_name == 'pull_request' && needs.changes.outputs.real_cpu == 'true' }}
       scan_upstream_images: ${{ needs.changes.outputs.upstream_images == 'true' }}
@@ -324,7 +366,7 @@ jobs:
   local-inference-basic:
     name: Local Inference Basic Checks
     needs: changes
-    if: needs.changes.outputs.onprem == 'true'
+    if: needs.changes.outputs.inference == 'true'
     uses: ./.github/workflows/local-inference-basic.yml
     permissions:
       contents: read
@@ -374,6 +416,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: apps/worker/uv.lock
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: pip
@@ -385,7 +429,7 @@ jobs:
           python -m pip install --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/worker-requirements.txt"
       - name: Install / typecheck / test
         run: |
-          npm ci --ignore-scripts
+          npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/trpc --include-workspace-root
           npm run cf-typegen:check --workspace @videoq/api
           npx playwright install --with-deps chromium
           npm run lint --workspace @videoq/trpc
@@ -426,6 +470,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: apps/worker/uv.lock
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: pip
@@ -510,7 +556,7 @@ jobs:
         with:
           manager: npm
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --workspace @videoq/web --workspace @videoq/api --include-workspace-root
       - name: Run tests with coverage
         run: npm run test:coverage --workspace @videoq/web
       - name: Save frontend coverage
@@ -568,7 +614,7 @@ jobs:
         with:
           manager: npm
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --workspace @videoq/web --workspace @videoq/api --workspace @videoq/demo-video --include-workspace-root
       - name: Build
         run: npm run build --workspace @videoq/web
       - name: Lint demo compositions
@@ -627,7 +673,7 @@ jobs:
         with:
           manager: npm
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --workspace @videoq/web --workspace @videoq/api --include-workspace-root
       - name: Build Storybook
         run: npm run build:storybook
       - name: Install Chromium
