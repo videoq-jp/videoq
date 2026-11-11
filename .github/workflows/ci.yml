@@ -178,6 +178,9 @@ jobs:
               - '.github/workflows/operations.yml'
             whisper_gpu:
               - 'apps/inference/whisper/Dockerfile.vllm'
+              - 'apps/inference/whisper/security/**'
+              - 'apps/inference/whisper/tests/test_kernel_headers.py'
+              - '.github/workflows/ci.yml'
               - '.github/workflows/onprem-validation.yml'
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
