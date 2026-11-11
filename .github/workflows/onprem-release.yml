@@ -175,6 +175,9 @@ jobs:
           path: published/*.digest
           if-no-files-found: error
           retention-days: 1
+      - name: Clear registry credentials after signing
+        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
+        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
   cleanup-build-archives:
     name: Remove consumed image transfer archives
     needs: [source, publish]
@@ -198,9 +201,6 @@ jobs:
             const prune = require('./.github/scripts/prune-onprem-build-artifacts.cjs');
             const result = await prune({ github, context: { repo: context.repo, ref: context.ref, eventName: context.eventName, sha: context.sha, runId: context.runId, runAttempt: process.env.GITHUB_RUN_ATTEMPT }, sourceSha: process.env.SOURCE_SHA });
             core.info(`Removed ${result.deleted} consumed image archives (${result.bytes} bytes).`);
-      - name: Clear registry credentials after signing
-        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
-        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
   indexes:
     needs: [source, publish]
     runs-on: ubuntu-24.04
