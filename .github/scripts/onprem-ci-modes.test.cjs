@@ -34,8 +34,6 @@ test('image-only CI skips all inference-container and data-recovery rehearsals',
     assert.equal(enabled(name, true), true, name);
   }
   assert.equal(enabled('Scan the local Whisper image including unfixed vulnerabilities', false), false);
-  assert.equal(enabled('Resolve the pinned llama.cpp image', false), false);
-  assert.equal(enabled('Resolve the pinned llama.cpp image', false, true), true);
 });
 
 test('both modes retain application images, runtime smoke checks and strict vulnerability scans', () => {
@@ -67,16 +65,17 @@ test('inventories reference only images built in the selected mode', () => {
     .split('\n').map(line => line.replace(/^          /, '')).join('\n');
   const directory = mkdtempSync(join(tmpdir(), 'onprem-inventory-'));
   try {
-    for (const [lifecycle, upstream, expected] of [['false', 'false', 3], ['false', 'true', 4], ['true', 'false', 5]]) {
+    for (const [lifecycle, upstream, expected] of [['false', 'false', 3], ['false', 'true', 3], ['true', 'false', 4]]) {
       const run = spawnSync('bash', ['-eu', '-c', 'trivy() { printf "%s\\n" "$*"; }\n' + body], {
         cwd: directory, encoding: 'utf8', env: {...process.env,
-          VALIDATE_LIFECYCLE: lifecycle, SCAN_UPSTREAM_IMAGES: upstream, LLAMACPP_IMAGE: 'test-llama@sha256:123'},
+          VALIDATE_LIFECYCLE: lifecycle, SCAN_UPSTREAM_IMAGES: upstream},
       });
       assert.equal(run.status, 0, run.stderr);
       assert.equal(run.stdout.trim().split('\n').length, expected);
-      for (const component of ['api', 'worker', 'web']) assert.ok(run.stdout.includes(`videoq-${component}:onprem-ci`));
-      assert.equal(run.stdout.includes('videoq-local-whisper:onprem-ci'), lifecycle === 'true');
-      assert.equal(run.stdout.includes('test-llama@'), lifecycle === 'true' || upstream === 'true');
+      for (const component of ['api', 'worker', 'web']) assert.ok(run.stdout.includes(`${component}-security.json`));
+      assert.equal(run.stdout.includes('local-whisper-security.json'), lifecycle === 'true');
+      assert.ok(!run.stdout.includes('trivy image'));
+      assert.ok(!run.stdout.includes('llamacpp'));
     }
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });

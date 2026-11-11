@@ -143,6 +143,9 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-api:onprem-ci
+          format: json
+          output: api-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -155,6 +158,9 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-worker:onprem-ci
+          format: json
+          output: worker-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -167,6 +173,9 @@ jobs:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-web:onprem-ci
+          format: json
+          output: web-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -182,56 +191,23 @@ jobs:
           trivy-config: apps/inference/whisper/security/cpu-trivy.yaml
           format: json
           output: local-whisper-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
           exit-code: '1'
           timeout: 10m
-      - name: Resolve the pinned llama.cpp image
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && (inputs.validate_lifecycle || inputs.scan_upstream_images) }}
-        run: |
-          node --input-type=module <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          import { parse } from 'yaml';
-          const image = parse(readFileSync('charts/videoq-inference/values.yaml', 'utf8')).llamacpp.image;
-          const reference = `${image.repository}@${image.digest}`;
-          if (!/^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/.test(reference)) throw new Error('An exact llama.cpp image digest is required');
-          appendFileSync(process.env.GITHUB_ENV, `LLAMACPP_IMAGE=${reference}\n`);
-          JS
-      - name: Scan the llama.cpp CPU image including unfixed vulnerabilities
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
-        with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: ${{ env.LLAMACPP_IMAGE }}
-          format: json
-          output: llamacpp-security-raw.json
-          scanners: vuln
-          severity: HIGH,CRITICAL,UNKNOWN
-          ignore-unfixed: 'false'
-          exit-code: '0'
-          timeout: 10m
-      - name: Assess the llama.cpp runtime findings
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
-        env:
-          HELM_BIN: ${{ runner.temp }}/helm/helm
-        run: node .github/scripts/onprem-upstream-security.cjs llamacpp-security-raw.json amd64 llamacpp-security-assessed.json
       - name: Record package inventories for incident response
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         env:
           VALIDATE_LIFECYCLE: ${{ inputs.validate_lifecycle }}
-          SCAN_UPSTREAM_IMAGES: ${{ inputs.scan_upstream_images }}
         run: |
           mkdir -p sbom
           components=(api worker web)
           if [ "$VALIDATE_LIFECYCLE" = true ]; then components+=(local-whisper); fi
           for component in "${components[@]}"; do
-            trivy image --image-src docker --format cyclonedx --output "sbom/${component}.cdx.json" "videoq-${component}:onprem-ci"
+            trivy convert --format cyclonedx --output "sbom/${component}.cdx.json" "${component}-security.json"
           done
-          if [ "$VALIDATE_LIFECYCLE" = true ] || [ "$SCAN_UPSTREAM_IMAGES" = true ]; then
-            trivy image --format cyclonedx --output sbom/llamacpp.cdx.json "$LLAMACPP_IMAGE"
-          fi
       - name: Retain the image inventories
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -239,9 +215,7 @@ jobs:
           name: onprem-sbom-${{ github.sha }}
           path: |
             sbom/*.cdx.json
-            local-whisper-security.json
-            llamacpp-security-*.json
-            apps/inference/llamacpp/security/
+            *-security.json
             apps/inference/whisper/security/sqlite.openvex.json
             apps/inference/whisper/security/zlib.openvex.json
           if-no-files-found: error
@@ -390,6 +364,7 @@ jobs:
           trivy-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/trivy.yaml' || '' }}
           format: json
           output: upstream-cpu-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL,UNKNOWN
           ignore-unfixed: 'false'
@@ -418,6 +393,8 @@ jobs:
             throw new Error('Scan report does not identify the requested upstream digest');
           }
           JS
+      - name: Convert the scanned upstream inventory
+        run: trivy convert --format cyclonedx --output upstream-cpu.cdx.json upstream-cpu-security.json
       - name: Retain architecture-specific findings
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -425,6 +402,7 @@ jobs:
           name: upstream-cpu-security-${{ matrix.engine }}-${{ matrix.architecture }}
           path: |
             upstream-cpu-security.json
+            upstream-cpu.cdx.json
             upstream-cpu-assessed.json
             apps/inference/llamacpp/security/
             header-inventory.json

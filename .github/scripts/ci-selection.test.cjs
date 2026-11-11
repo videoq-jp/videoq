@@ -85,11 +85,11 @@ test('manual CI retains full validation and both components remain required when
   assert.match(ci, /validate_lifecycle: \$\{\{ needs\.changes\.outputs\.onprem_lifecycle == 'true' \}\}/);
 });
 
-test('shared workflow edits do not download models or scan unchanged upstream image matrices', () => {
+test('generic CI edits skip native work while upstream scan workflow edits validate their own matrix', () => {
   for (const event of events) {
     for (const name of ['whisper_gpu', 'real_cpu', 'upstream_images']) {
       assert.equal(selected(name, event, ['.github/workflows/ci.yml']), false, name);
-      assert.equal(selected(name, event, ['.github/workflows/onprem-validation.yml']), false, name);
+      assert.equal(selected(name, event, ['.github/workflows/onprem-validation.yml']), name === 'upstream_images', name);
     }
     assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
     assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);

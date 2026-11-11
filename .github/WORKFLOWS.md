@@ -78,9 +78,9 @@ The same selection applies to PRs, the merge queue, and main/develop pushes:
 Image-only validation does not build Whisper, pull the llama.cpp inventory image,
 start K3s/kind, run backup/restore rehearsals, or install a playback browser.
 Changing a shared lockfile or generic `ci.yml` alone does not select full lifecycle
-or NVIDIA validation. Shared workflow edits also do not download real CPU models
-or scan the unchanged upstream image matrix; their own scripts, fixtures and image
-pins still select those checks. Selected checks still fail closed through `CI Success`.
+or NVIDIA validation. Generic CI edits do not download real CPU models or scan unchanged upstream images.
+Changing the on-prem validation workflow itself checks its architecture-specific
+scan pipeline, as do changes to the upstream image pins and assessment policy. Selected checks still fail closed through `CI Success`.
 Manual CI retains full lifecycle and native compatibility validation. Daily
 Operations still runs full lifecycle and GPU security checks; weekly Operations
 retains native inference checks. Signed-release acceptance also remains unchanged.
@@ -131,8 +131,10 @@ gh workflow run operations.yml -f check=all
 Operations runs daily at 09:17 JST, inference compatibility every Monday at 11:17 JST,
 and the database restore on the 1st of each month at 13:41 JST.
 `check=onprem` can add validation with explicit `validate_real_cpu` and `validate_whisper_gpu`.
-In CI's on-prem validation, vulnerability scans of pinned upstream images (llama.cpp and
-whisper.cpp) are limited to PRs that change those pins or scan settings, and to manual CI.
+In CI's on-prem validation, pinned upstream images (llama.cpp and whisper.cpp) are
+scanned once per architecture in the upstream matrix, when pins, scan settings or
+the validation workflow change, and in manual CI. The lifecycle job retains only
+its own application/Whisper reports and derives inventories from those reports.
 Daily Operations always scans them.
 Monitors do not open Issues; results go to the job summary.
 See [dependency-automation.md](dependency-automation.md) for update processing and

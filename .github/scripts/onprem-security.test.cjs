@@ -43,15 +43,14 @@ test('the existing required CI gate includes on-prem validation', () => {
 
 test('all on-prem images are scanned without hiding unfixed findings', () => {
   const scans = onprem.split(/(?=      - name:)/).filter(step => step.includes('uses: aquasecurity/trivy-action@'));
-  assert.equal(scans.length, 6);
-  for (const component of ['api', 'worker', 'web', 'local-whisper', 'llamacpp']) {
-    const scan = scans.find(step => step.includes(component === 'llamacpp'
-      ? 'image-ref: ${{ env.' + component.toUpperCase() + '_IMAGE }}' : `image-ref: videoq-${component}:onprem-ci`));
+  assert.equal(scans.length, 5);
+  for (const component of ['api', 'worker', 'web', 'local-whisper']) {
+    const scan = scans.find(step => step.includes(`image-ref: videoq-${component}:onprem-ci`));
     assert.ok(scan, component);
     assert.match(scan, /severity: HIGH,CRITICAL/);
     assert.match(scan, /ignore-unfixed: 'false'/);
-    assert.match(scan, component === 'llamacpp' ? /exit-code: '0'/ : /exit-code: '1'/);
-    if (component === 'llamacpp') assert.match(onprem, /node \.github\/scripts\/onprem-upstream-security\.cjs llamacpp-security-raw\.json amd64/);
+    assert.match(scan, /exit-code: '1'/);
+    assert.match(scan, /list-all-pkgs: 'true'/);
     assert.doesNotMatch(scan, /continue-on-error: true/);
   }
 });
@@ -117,10 +116,8 @@ test('CI scans pinned upstream images only when their pins change, while Operati
   assert.match(onprem, /scan_upstream_images:\n\s+type: boolean\n\s+default: true/);
   const cpu = onprem.slice(onprem.indexOf('  upstream-cpu-images:'));
   assert.match(cpu, /^    if: inputs\.scan_upstream_images$/m);
-  const llamacpp = onprem.split(/(?=      - name:)/).find(step => step.includes('image-ref: ${{ env.LLAMACPP_IMAGE }}'));
-  assert.match(llamacpp, /&& inputs\.scan_upstream_images \}\}/);
-  // Full inventories retain the pinned image; image-only mode does not pull it.
-  assert.match(onprem.split(/(?=      - name:)/).find(step => step.includes('Resolve the pinned llama.cpp image')), /inputs\.validate_lifecycle \|\| inputs\.scan_upstream_images/);
+  assert.doesNotMatch(onprem, /LLAMACPP_IMAGE|llamacpp-security-raw/);
+  assert.match(cpu, /trivy convert --format cyclonedx --output upstream-cpu.cdx.json upstream-cpu-security.json/);
 
   const filter = ci.match(/^            upstream_images:\n([\s\S]*?)(?=^            \w+:)/m)[1];
   for (const pattern of ['charts/videoq-inference/values.yaml', 'apps/inference/whispercpp/security/**',
