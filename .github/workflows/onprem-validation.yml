@@ -314,7 +314,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure DNS on this disposable CI runner
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
       - name: Reserve disk for the CUDA image on the disposable runner
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -322,6 +322,7 @@ jobs:
         id: gpu_image
         run: |
           docker buildx build --provenance=false --output "type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true" -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
+          docker buildx prune --all --force
           docker load --input "$RUNNER_TEMP/scan-image.tar"
       - name: Verify audio extras and FlashInfer backend without a GPU
         run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci /usr/share/videoq/security/verify_inference_runtime.py

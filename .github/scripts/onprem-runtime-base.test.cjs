@@ -63,3 +63,23 @@ test('CUDA scans use indexed OCI archives with individually compressed layers',(
   }
  }
 });
+
+
+test('every OCI archive consumer enables the containerd store before loading',()=>{
+ let consumers=0;
+ for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
+  const source=readFileSync(join(root,`.github/workflows/${name}.yml`),'utf8');
+  for(const match of source.matchAll(/^  [a-z][a-z0-9_-]*:\n([\s\S]*?)(?=^  [a-z][a-z0-9_-]*:|$(?![\s\S]))/gm)){
+   const job=match[1];
+   if(!job.includes('docker load')) continue;
+   const setup=job.indexOf('configure-onprem-ci-dns.py --docker --oci');
+   assert.ok(setup>=0 && setup<job.indexOf('docker load'),name);
+   if(job.includes('docker buildx build')){
+    const prune=job.indexOf('docker buildx prune --all --force');
+    assert.ok(prune>job.indexOf('docker buildx build') && prune<job.indexOf('docker load'),name);
+   }
+   consumers++;
+  }
+ }
+ assert.equal(consumers,5);
+});
