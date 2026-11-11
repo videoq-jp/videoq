@@ -72,7 +72,7 @@ The same selection applies to PRs, the merge queue, and main/develop pushes:
 | Shared npm lockfiles, production Dockerfiles/configuration, Worker dependencies, runtime pins | Application image builds, runtime smoke checks, HIGH/CRITICAL scans and SBOMs |
 | Installers, Compose/Helm deployments, database migrations/schema, storage/runtime adapters, or lifecycle test definitions | Full on-prem video-processing, backup/restore, failed-update recovery and Kubernetes rehearsals |
 | Inference engines/adapters, native package pins or inference-specific workflows | Three-platform inference compatibility checks |
-| NVIDIA Whisper Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
+| Shared NVIDIA vLLM Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
 | Moodle fixtures, workflow or integration contracts | Moodle integration checks |
 
 Image-only validation does not build Whisper, pull the llama.cpp inventory image,

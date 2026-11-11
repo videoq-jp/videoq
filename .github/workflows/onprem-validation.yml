@@ -285,7 +285,7 @@ jobs:
           retention-days: 30
 
   whisper-nvidia-image:
-    name: NVIDIA Whisper image
+    name: Shared NVIDIA vLLM image
     if: inputs.validate_whisper_gpu
     runs-on: ubuntu-24.04
     timeout-minutes: 45

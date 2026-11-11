@@ -1,9 +1,0 @@
-# CUDA EmbeddingGemma service for the single-4090 profile.
-FROM vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
-RUN python3 -m pip install --no-cache-dir 'sentence-transformers==6.2.0'
-WORKDIR /app
-COPY embedding_server.py ./
-ENV HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 EMBEDDING_DEVICE=cuda
-USER 10001:10001
-ENTRYPOINT []
-CMD ["python3", "-m", "uvicorn", "embedding_server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -17,7 +17,8 @@ def verify(version=metadata.version, load=import_module):
         if actual != expected:
             raise RuntimeError(f"{package}: expected {expected}, installed {actual}")
     for module in ("av", "soxr", "soundfile", "flashinfer",
-                   "vllm.v1.attention.backends.flashinfer"):
+                   "vllm.v1.attention.backends.flashinfer",
+                   "vllm.model_executor.models.embedding_gemma2"):
         load(module)
 
 

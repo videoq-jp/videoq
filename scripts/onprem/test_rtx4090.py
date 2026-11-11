@@ -37,21 +37,6 @@ class NativeTests(unittest.TestCase):
                 instance.check_cluster_identity()
             self.assertEqual(instance.state['cluster_uid'], uid)
 
-    def test_resume_reuses_imported_cuda_image_after_docker_cache_cleanup(self):
-        with tempfile.TemporaryDirectory() as folder:
-            instance = self.instance(folder)
-            instance.stage = Mock()
-            digest = 'sha256:' + 'a' * 64
-            tag = 'docker.io/library/videoq-embedding-cuda:src-' + module.image_source_hash(module.ROOT)
-            pinned = 'docker.io/library/videoq-embedding-cuda@' + digest
-            instance.state['embedding_image'] = pinned
-            instance.system = Mock(return_value='REF TYPE DIGEST SIZE\n' + tag + ' type ' + digest + ' 8GiB\n' + pinned + ' type ' + digest + ' 8GiB\n')
-            with patch.object(module.subprocess, 'run') as docker_probe:
-                instance.cuda_image()
-            docker_probe.assert_not_called()
-            instance.system.assert_called_once_with('k3s', 'ctr', 'images', 'list', capture=True)
-            self.assertEqual(instance.embedding_digest, digest)
-
     def test_native_node_wait_survives_api_startup_and_empty_registration(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)
@@ -251,7 +236,6 @@ class NativeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)
             instance.state['embedding_contract'] = 'old'
-            instance.embedding_digest = 'sha256:' + 'a' * 64
             instance.inference_images = instance.directory / 'verified-inference.json'
             instance.run = Mock(return_value='rendered')
             instance.apply = Mock()

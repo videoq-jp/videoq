@@ -12,6 +12,7 @@ class InferenceRuntimeTests(unittest.TestCase):
     def test_imports_the_backend_that_failed_on_the_real_gpu(self):
         loaded = []
         runtime.verify(runtime.EXPECTED.__getitem__, loaded.append)
+        self.assertIn('vllm.model_executor.models.embedding_gemma2', loaded)
         self.assertIn('flashinfer', loaded)
         self.assertIn('vllm.v1.attention.backends.flashinfer', loaded)
 

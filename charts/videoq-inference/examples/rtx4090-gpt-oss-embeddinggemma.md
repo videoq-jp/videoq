@@ -1,10 +1,10 @@
 # GPT-OSS / EmbeddingGemma 2 / Whisper on one RTX 4090
 
-This profile keeps all three model inference engines on CUDA. EmbeddingGemma
-uses its task-aware sentence-transformers server (text encoder only, BF16,
-batch size one), not the CPU image or a generic pooling endpoint. It fails
-startup if CUDA is unavailable. Audio decoding and speech detection remain in
-the transcription gateway.
+All three engines use the same signed, digest-pinned vLLM image in separate
+CUDA Pods. EmbeddingGemma 2 uses native text-only pooling with BF16; the unused
+image/audio towers are disabled. API and worker apply the checkpoint's query
+and document prefixes before calling the standard OpenAI embeddings endpoint.
+Audio decoding and speech detection remain in the transcription gateway.
 
 Use the same three-slot NVIDIA device-plugin configuration as `rtx4090.yaml`.
 The initial memory fractions are chat 0.66, embedding 0.07, speech 0.12. These
@@ -12,12 +12,8 @@ are capacity settings, not VRAM isolation: time slicing shares GPU compute and
 does not partition its memory. Chat runs eagerly with one sequence, 16384-token
 context, 512-token prefill batches, and no CPU weight offload.
 
-Build `apps/inference/whisper/Dockerfile.embedding-cuda` on the Linux GPU host
-and import the image into K3s containerd before installation. The example uses
-`videoq-embedding-cuda:local-4090` with `pullPolicy: Never`. This local image is
-not covered by the signed application release attestation; production use
-requires an independently built, reviewed, digest-pinned image. Existing signed
-release locks still supply the GPT/speech engine and provisioning gateway.
+No local embedding image build or Docker-to-containerd transfer is required.
+The verified release lock supplies the shared vLLM image and provisioning gateway.
 
 Both API and worker must use `EMBEDDING_PROFILE=embeddinggemma2`, the example's
 embedding model alias, and its private embedding endpoint. The profile writes
@@ -32,9 +28,12 @@ Acceptance requires three Ready Pods, an actual CUDA operation in every engine,
 real query/document embeddings, chat completion, and speech transcription while
 all three are resident. A successful Helm install alone does not establish fit.
 
-Startup is serialized as Whisper → GPT-OSS → EmbeddingGemma for this profile.
-The dedicated embedding server does not run a vLLM KV-cache profiler, so it can
-start after both vLLM engines reserve their configured budgets.
+Startup is serialized as EmbeddingGemma → Whisper → GPT-OSS. Each vLLM
+engine profiles its memory after the previous engine has become healthy.
+
+The measurements below describe the previous sentence-transformers embedding
+server. They do **not** establish VRAM fit or numerical parity for this native
+vLLM configuration; repeat the full acceptance before deployment.
 
 ## Measured on 2026-11-11 JST
 

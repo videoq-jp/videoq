@@ -45,13 +45,6 @@ def admin_details(username, email, ask=input):
     return {'username': username, 'email': email}
 
 
-def image_source_hash(root):
-    digest = hashlib.sha256()
-    for name in ('Dockerfile.embedding-cuda', 'embedding_server.py'):
-        digest.update((root / 'apps/inference/whisper' / name).read_bytes())
-    return digest.hexdigest()[:20]
-
-
 def initial_password(ask=getpass.getpass):
     """Keep new passwords out of argv, environment, state and installation logs."""
     while True:
@@ -201,7 +194,7 @@ class NativeInstaller:
         minimum = 12 if self.state.get('inference_ready') else 90
         if shutil.disk_usage(self.directory).free < minimum * 1024 ** 3:
             raise ValueError(f'導入先に空き {minimum}GiB 以上が必要です（ディスク全体は200GB以上を推奨）')
-        self.stage('1/8 Ubuntu・RTX 4090・Docker・NVIDIA runtime を確認します')
+        self.stage('1/7 Ubuntu・RTX 4090・Docker・NVIDIA runtime を確認します')
         result = subprocess.run(['nvidia-smi', '--query-gpu=name,driver_version,memory.total', '--format=csv,noheader,nounits'], capture_output=True, text=True) if shutil.which('nvidia-smi') else None
         if not result or result.returncode:
             raise ValueError('NVIDIA ドライバーが準備できていません。シェルのブートストラップから再実行してください')
@@ -332,7 +325,7 @@ class NativeInstaller:
         return uid
 
     def ensure_cluster(self):
-        self.stage('2/8 既存または新規の native K3s を準備します')
+        self.stage('2/7 既存または新規の native K3s を準備します')
         self.record(cluster_owned=True)
         if not self.host_kubeconfig.exists():
             script = self.directory / 'install-k3s.sh'
@@ -360,58 +353,12 @@ class NativeInstaller:
             time.sleep(2)
         self.record(cluster_owned=True, node=self.node)
 
-    def cuda_image(self):
-        self.stage('3/8 CUDA EmbeddingGemma イメージをビルド・固定します（初回のみ）')
-        tag = 'docker.io/library/videoq-embedding-cuda:src-' + image_source_hash(ROOT)
-        # A resumed install may have reclaimed Docker's duplicate build cache.
-        # Reuse only the source-specific tag AND the previously verified digest
-        # in K3s; a state flag alone is not evidence that an image is present.
-        images = self.system('k3s', 'ctr', 'images', 'list', capture=True)
-        row = next((r.split() for r in images.splitlines()[1:] if r.split()[0] == tag), None)
-        if row and len(row) > 2 and re.fullmatch(r'sha256:[a-f0-9]{64}', row[2]):
-            pinned = 'docker.io/library/videoq-embedding-cuda@' + row[2]
-            present = {r.split()[0] for r in images.splitlines()[1:] if r.split()}
-            if self.state.get('embedding_image') == pinned and pinned in present:
-                self.embedding_digest = row[2]
-                self.record(embedding_source=image_source_hash(ROOT))
-                print('検証済みの K3s CUDA イメージを再利用します。再ビルド・再取り込みは不要です。', flush=True)
-                return
-        probe = subprocess.run(['sudo', '--', 'docker', 'image', 'inspect', tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if probe.returncode:
-            self.system('docker', 'build', '-f', ROOT / 'apps/inference/whisper/Dockerfile.embedding-cuda', '-t', tag, ROOT / 'apps/inference/whisper')
-        self.system('docker', 'run', '--rm', '--gpus', 'all', '--entrypoint', 'python3', tag, '-c',
-                 'import torch; assert torch.cuda.is_available(); assert torch.cuda.get_device_capability(0)==(8,9); print(torch.cuda.get_device_name(0))')
-        images = self.system('k3s', 'ctr', 'images', 'list', capture=True)
-        row = next((r.split() for r in images.splitlines()[1:] if r.split()[0] == tag), None)
-        if not row:
-            # Stream without an additional multi-GB tar on the system disk; check both exits.
-            producer = subprocess.Popen(['sudo', '--', 'docker', 'save', tag], stdout=subprocess.PIPE)
-            try:
-                consumer = subprocess.run(['sudo', '--', 'k3s', 'ctr', 'images', 'import', '--platform', 'linux/amd64', '-'], stdin=producer.stdout)
-                producer.stdout.close()
-                code = producer.wait()
-                if consumer.returncode or code:
-                    raise ValueError('CUDA イメージの containerd への取り込みに失敗しました。再実行できます')
-            finally:
-                if producer.poll() is None:
-                    producer.kill(); producer.wait()
-            rows = self.system('k3s', 'ctr', 'images', 'list', capture=True).splitlines()[1:]
-            row = next((r.split() for r in rows if r.split()[0] == tag), None)
-        if not row or not re.fullmatch(r'sha256:[a-f0-9]{64}', row[2]):
-            raise ValueError('ローカル CUDA イメージの digest を確認できません')
-        pinned = 'docker.io/library/videoq-embedding-cuda@' + row[2]
-        if pinned not in self.system('k3s', 'ctr', 'images', 'list', '-q', capture=True).splitlines():
-            self.system('k3s', 'ctr', 'images', 'tag', tag, pinned)
-        self.embedding_digest = row[2]
-        self.record(embedding_image=pinned, embedding_source=image_source_hash(ROOT))
-
     def inference(self):
-        self.stage('4/8 3モデルを1枚の4090に配置します（初回は重みを取得します）')
+        self.stage('3/7 3モデルを1枚の4090に配置します（初回は重みを取得します）')
         claim = 'videoq-gpt-oss-4090'
         self.apply({'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': claim},
                     'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'local-path', 'resources': {'requests': {'storage': '20Gi'}}}})
-        values = {'requireImageDigests': True, 'servers': {'chat': {'persistence': {'existingClaim': claim}},
-                  'embedding': {'cudaImage': {'repository': 'docker.io/library/videoq-embedding-cuda', 'digest': self.embedding_digest}}}}
+        values = {'requireImageDigests': True, 'servers': {'chat': {'persistence': {'existingClaim': claim}}}}
         self.inference_values = self.directory / 'inference-site.json'
         private_json(self.inference_values, values)
         args = ['-f', PROFILE, '-f', self.inference_images, '-f', self.inference_values]
@@ -455,7 +402,7 @@ class NativeInstaller:
             self.apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name}, 'type': 'Opaque', 'stringData': values[name]})
 
     def backing(self):
-        self.stage('5/8 PostgreSQL・動画ストレージ・キューを配置します')
+        self.stage('4/7 PostgreSQL・動画ストレージ・キューを配置します')
         self.credentials()
         raw = self.kube('create', '--dry-run=client', '--validate=false', '-f', EXAMPLE / 'infrastructure.yaml', '-o', 'json', capture=True)
         mode = self.network['tls_mode']
@@ -492,7 +439,7 @@ class NativeInstaller:
         self.kube('wait', '--for=condition=complete', 'job/' + job, '--timeout=600s')
 
     def application(self):
-        self.stage('6/8 署名済み VideoQ 本体と768次元のDBスキーマを導入します')
+        self.stage('5/7 署名済み VideoQ 本体と768次元のDBスキーマを導入します')
         values = self.directory / 'site-public.json'
         private_json(values, application_values(self.url))
         self.run('helm', 'upgrade', '--install', 'videoq', self.chart, '-n', 'videoq', '-f', values,
@@ -517,7 +464,7 @@ class NativeInstaller:
         self.public_urlopen = self.http_client.open
 
     def forwarding(self):
-        self.stage('7/8 HTTPSの443番を設定します' if self.url.startswith('https://') else '7/8 SSH トンネル用の localhost 接続を設定します')
+        self.stage('6/7 HTTPSの443番を設定します' if self.url.startswith('https://') else '6/7 SSH トンネル用の localhost 接続を設定します')
         self.configure_trust()
         public_https = self.url.startswith('https://')
         port = 443 if public_https else urlsplit(self.url).port
@@ -555,7 +502,7 @@ class NativeInstaller:
         Installer.check_public_storage(self)
 
     def administrator(self):
-        self.stage('8/8 管理者アカウントを準備します')
+        self.stage('7/7 管理者アカウントを準備します')
         needs_setup = not self.state.get('complete') or self.args.reset_admin_link
         if not self.state.get('admin_created'):
             # Recover the create/record crash window without creating a second user or elevating an existing one.
@@ -606,7 +553,7 @@ class NativeInstaller:
         self.record(complete=True, url=self.url, pending_url=None)
 
     def execute(self):
-        self.host(); self.tools(); self.release(); self.ensure_cluster(); self.cuda_image()
+        self.host(); self.tools(); self.release(); self.ensure_cluster()
         self.inference(); self.backing(); self.application(); self.forwarding(); self.administrator()
 
 

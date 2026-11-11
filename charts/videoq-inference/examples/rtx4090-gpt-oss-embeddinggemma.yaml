@@ -23,13 +23,8 @@ servers:
       requests: { cpu: "2", memory: 8Gi, nvidia.com/gpu.shared: 1 }
       limits: { cpu: "8", memory: 20Gi, nvidia.com/gpu.shared: 1 }
   embedding:
-    engine: embeddinggemma2
-    device: cuda
-    cudaImage:
-      repository: videoq-embedding-cuda
-      tag: local-4090
-      digest: ""
-      pullPolicy: Never
+    engine: vllm
+    dtype: bfloat16
     servedModel: embeddinggemma-2-f9972ac
     modelRepo: google/embeddinggemma-2
     modelRevision: f9972ac22e696a105c482202646979e33e4b5a1e
@@ -38,7 +33,8 @@ servers:
     contextLength: 4096
     persistence: { size: 20Gi }
     # Use EMBEDDING_PROFILE=embeddinggemma2 in both API and worker.
-    extraArgs: []
+    # Text-only pooling avoids loading unused multimodal towers.
+    extraArgs: [--limit-mm-per-prompt, '{"image":0,"audio":0,"video":0}']
     nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
     resources:
       requests: { cpu: "1", memory: 2Gi, nvidia.com/gpu.shared: 1 }

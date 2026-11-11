@@ -199,19 +199,21 @@ withHelm("private local inference deployment", () => {
     const waits = deployments.flatMap(d => (d.spec.template.spec.initContainers ?? [])
       .filter(c => c.name.startsWith("wait-for-"))
       .map(c => `${d.metadata.name.split("-").at(-1)}:${c.name}`));
-    expect(waits.sort()).toEqual(["chat:wait-for-whisper", "embedding:wait-for-chat"]);
+    expect(waits.sort()).toEqual(["chat:wait-for-whisper", "whisper:wait-for-embedding"]);
     const embedding = deployments.find(d => d.metadata.name.endsWith("-embedding")).spec.template.spec.containers[0];
-    expect(embedding.command).toEqual(["python3", "-m", "uvicorn", "embedding_server:app"]);
-    expect(embedding.image).toBe("videoq-embedding-cuda:local-4090");
-    expect(embedding.env).toContainEqual({ name: "EMBEDDING_DEVICE", value: "cuda" });
-    expect(embedding.env).toContainEqual({ name: "EMBEDDING_GPU_MEMORY_FRACTION", value: "0.07" });
+    expect(embedding.command).toEqual(["vllm", "serve"]);
+    expect(embedding.args).toContain("pooling");
+    expect(embedding.args).toContain('{"image":0,"audio":0,"video":0}');
+    expect(embedding.args[embedding.args.indexOf("--gpu-memory-utilization") + 1]).toBe("0.07");
     const chat = deployments.find(d => d.metadata.name.endsWith("-chat")).spec.template.spec.containers[0];
     expect(chat.args).toContain("openai_gptoss");
     expect(chat.args[chat.args.indexOf("--dtype") + 1]).toBe("bfloat16");
     const speech = deployments.find(d => d.metadata.name.endsWith("-whisper")).spec.template.spec.containers.find(c => c.name === "engine");
     expect(Number(speech.args[speech.args.indexOf("--max-num-batched-tokens") + 1])).toBeGreaterThanOrEqual(1500);
+    expect(embedding.image).toBe(chat.image);
+    expect(embedding.image).toBe(speech.image);
     expect(chat.args).toContain("--cpu-offload-gb");
-    expect(command(...profile, "--set", "servers.embedding.device=cpu").status).not.toBe(0);
+    expect(command(...profile, "--set", "servers.embedding.engine=embeddinggemma2", "--set", "servers.embedding.device=cpu").status).not.toBe(0);
   });
   it("retains startup ordering and private peer connectivity with pre-provisioned offline models", () => {
     const documents = render("-f", `${chart}/examples/rtx4090.yaml`, "--set", "downloadModels=false", "--set", "networkPolicy.denyEgress=true");
