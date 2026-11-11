@@ -218,12 +218,18 @@ class NativeInstaller:
             self.run('bash', ROOT / 'scripts/onprem/install-tools.sh')
 
     def runtime_matches(self, sha):
+        """Match the gateway/provisioning contract, not an unused image build recipe.
+
+        Deployed gateway and vLLM images are verified release digests. We never
+        build those images from the installer's Dockerfile or dependency locks.
+        The separately built CUDA embedding server has its own source digest.
+        """
         if not re.fullmatch(r'[a-f0-9]{40}', sha):
             raise ValueError('不正なリリース SHA です')
         probe = subprocess.run(['git', '-C', str(ROOT), 'cat-file', '-e', sha + '^{commit}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if probe.returncode:
             self.run('git', '-C', ROOT, 'fetch', '--depth=1', 'origin', sha)
-        for name in ('server.py', 'provision.py', 'Dockerfile.vllm', 'pyproject.toml', 'uv.lock'):
+        for name in ('server.py', 'provision.py'):
             path = 'apps/inference/whisper/' + name
             signed = subprocess.check_output(['git', '-C', str(ROOT), 'show', sha + ':' + path])
             if signed != (ROOT / path).read_bytes():
@@ -246,7 +252,7 @@ class NativeInstaller:
                 self.state['url'] = previous_url
                 self.record(pending_url=self.url)
         if not self.runtime_matches(self.state['source_sha']):
-            raise ValueError('署名済み推論ランタイムとソースが異なります。対応するリリースを選択してください')
+            raise ValueError('署名済み推論ランタイムのAPI・モデル準備処理がソースと異なります。対応するリリースを選択してください')
 
     def refresh_kubeconfig(self):
         content = self.system('cat', self.host_kubeconfig, capture=True)
