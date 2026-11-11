@@ -39,5 +39,27 @@
     "Supplied certificates require renewal by their issuer and installer rerun",
     "Binding an IP does not assign it to a NIC or restrict client source networks",
     "The existing shared-IP Vast instance remains on its previous browser origin"
-  ]
+  ],
+  "automatic_defaults_update": {
+    "date": "2026-11-11",
+    "defaults": {
+      "listen_ip": "0.0.0.0",
+      "url": "https://<detected LAN IPv4>",
+      "tls_mode": "internal"
+    },
+    "tests": {
+      "total": 85,
+      "passed": 81,
+      "skipped": 4
+    },
+    "checked": [
+      "No network prompts with a single LAN address",
+      "Exclude container bridges, VPN and link-local interfaces; prefer private IPv4",
+      "Ask for IP only when multiple candidates exist; manual URL fallback when none",
+      "Explicit URL bypasses interface discovery",
+      "Resume preserves saved URL and legacy ACME settings",
+      "Actual Ubuntu VM detection returned ens3 IPv4 and excluded bridge/VPN interfaces"
+    ],
+    "existing_application_changed": false
+  }
 }

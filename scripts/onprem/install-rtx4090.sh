@@ -10,9 +10,9 @@ Ubuntu 22.04/24.04 amd64, one RTX 4090, native K3s and interactive administrator
   --directory PATH       Private installation state (default ~/.local/share/videoq-rtx4090)
   --username NAME        Initial administrator (otherwise prompted)
   --email ADDRESS        Initial administrator email (otherwise prompted)
-  --url URL              Browser HTTPS URL (otherwise prompted)
+  --url URL              Browser HTTPS URL (default detected LAN IPv4)
   --listen-ip IPV4       Local listener IP (does not configure NIC or DHCP)
-  --tls-mode MODE        internal / provided / acme (otherwise prompted with URL)
+  --tls-mode MODE        internal (default) / provided / acme
   --tls-cert PATH        PEM full certificate chain for provided mode
   --tls-key PATH         PEM private key for provided mode
   --tls-ca PATH          Optional root CA PEM for HTTPS verification
@@ -40,9 +40,9 @@ mkdir -p "$HOME/.cache/videoq"
 chmod 700 "$HOME/.cache/videoq"
 exec 9>"$HOME/.cache/videoq/rtx4090.lock"
 flock -n 9 || { echo '別の RTX 4090 インストーラーが実行中です。' >&2; exit 1; }
-if ! command -v curl >/dev/null || ! command -v git >/dev/null || ! command -v python3 >/dev/null || ! command -v gpg >/dev/null || ! command -v openssl >/dev/null; then
+if ! command -v curl >/dev/null || ! command -v git >/dev/null || ! command -v python3 >/dev/null || ! command -v gpg >/dev/null || ! command -v openssl >/dev/null || ! command -v ip >/dev/null; then
   sudo apt-get update
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl git python3 ca-certificates gnupg openssl
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl git python3 ca-certificates gnupg openssl iproute2
 fi
 source_path="${BASH_SOURCE[0]:-}"
 source_root=''

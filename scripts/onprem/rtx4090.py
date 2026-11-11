@@ -534,9 +534,9 @@ class NativeInstaller:
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('--directory', default=str(Path.home() / '.local/share/videoq-rtx4090'))
-    result.add_argument('--url', help='Browser HTTPS origin (lab DNS name or IPv4); prompted initially')
+    result.add_argument('--url', help='Browser HTTPS origin (default: detected LAN IPv4)')
     result.add_argument('--listen-ip', help='Local IPv4 to bind; does not configure NIC/DHCP (default 0.0.0.0)')
-    result.add_argument('--tls-mode', choices=('internal', 'provided', 'acme'), help='Internal CA, PEM certificate, or public ACME')
+    result.add_argument('--tls-mode', choices=('internal', 'provided', 'acme'), help='Internal CA (default), PEM certificate, or public ACME')
     result.add_argument('--tls-cert', help='PEM certificate including intermediates, for provided mode')
     result.add_argument('--tls-key', help='PEM private key, for provided mode')
     result.add_argument('--tls-ca', help='Optional PEM root CA for installer HTTPS verification')

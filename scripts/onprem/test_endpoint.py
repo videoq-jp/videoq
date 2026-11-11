@@ -1,4 +1,4 @@
-"""Lab TLS dialog, state preservation and actual PEM validation."""
+"""Automatic lab endpoint, explicit TLS setup, state preservation and real PEM checks."""
 import contextlib
 import io
 import json
@@ -20,24 +20,24 @@ class EndpointTests(unittest.TestCase):
         return rtx4090.parser().parse_args(list(extra))
 
     def test_lab_wizard_defaults_to_ip_url_and_internal_ca(self):
-        ask = Mock(side_effect=['192.168.10.20', '', ''])
-        with contextlib.redirect_stdout(io.StringIO()):
+        ask = Mock(side_effect=AssertionError('network defaults must not prompt'))
+        with patch.object(endpoint, 'lan_addresses', return_value=[('192.168.10.20', 'ens3')]), contextlib.redirect_stdout(io.StringIO()):
             url, network = endpoint.network_details(self.args(), {}, ask)
         self.assertEqual(url, 'https://192.168.10.20')
-        self.assertEqual(network, {'listen_ip': '192.168.10.20', 'tls_mode': 'internal'})
-        self.assertEqual(ask.call_count, 3)
+        self.assertEqual(network, {'listen_ip': '0.0.0.0', 'tls_mode': 'internal'})
+        ask.assert_not_called()
         config = gateway_config(url, 'internal')
         self.assertIn('tls internal', config)
         self.assertIn('default_sni 192.168.10.20', config)
         self.assertNotIn('issuer acme', config)
         self.assertIn('flush_interval -1', config)
         units = forwarding_units(443, '10.43.0.3', True, network['listen_ip'])
-        self.assertIn('ListenStream=192.168.10.20:443', units['videoq-port-forward.socket'])
+        self.assertIn('ListenStream=0.0.0.0:443', units['videoq-port-forward.socket'])
 
     def test_dns_name_and_bring_your_own_certificate_dialog(self):
-        ask = Mock(side_effect=['', 'https://videoq.lab.example.ac.jp', '2', '/srv/fullchain.pem', '/srv/key.pem', ''])
+        ask = Mock(side_effect=['/srv/fullchain.pem', '/srv/key.pem', ''])
         with contextlib.redirect_stdout(io.StringIO()):
-            url, details = endpoint.network_details(self.args(), {}, ask)
+            url, details = endpoint.network_details(self.args('--url', 'https://videoq.lab.example.ac.jp', '--tls-mode', 'provided'), {}, ask)
         self.assertEqual(url, 'https://videoq.lab.example.ac.jp')
         self.assertEqual(details['tls_mode'], 'provided')
         self.assertEqual(details['tls_key'], '/srv/key.pem')
@@ -49,6 +49,34 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(endpoint.network_details(self.args(), recorded, ask), (recorded['url'], recorded['network']))
         for flags in [('--listen-ip', '0.0.0.0'), ('--tls-mode', 'acme')]:
             with self.assertRaises(ValueError): endpoint.network_details(self.args(*flags), recorded, ask)
+
+    def test_detection_excludes_container_vpn_and_link_local_addresses(self):
+        def interface(name, address, kind=None):
+            return {'ifname': name, 'linkinfo': {'info_kind': kind}, 'addr_info': [{'local': address, 'family': 'inet', 'scope': 'global'}]}
+        interfaces = [interface('lo', '127.0.0.1'), interface('docker0', '172.17.0.1'), interface('br0', '192.168.20.1', 'bridge'), interface('tailscale0', '100.64.1.2'), interface('wg0', '10.0.1.2'), interface('ens9', '169.254.1.1'), interface('ens3', '192.168.10.20'), interface('ens4', '8.8.8.8')]
+        with patch.object(endpoint.subprocess, 'check_output', return_value=json.dumps(interfaces)):
+            self.assertEqual(endpoint.lan_addresses(), [('192.168.10.20', 'ens3')])
+
+    def test_multiple_lans_need_only_an_ip_choice_and_missing_lan_accepts_url(self):
+        with patch.object(endpoint, 'lan_addresses', return_value=[('10.0.1.2', 'ens3'), ('192.168.10.20', 'ens4')]), contextlib.redirect_stdout(io.StringIO()):
+            ask = Mock(return_value='2')
+            url, details = endpoint.network_details(self.args(), {}, ask)
+            self.assertEqual(url, 'https://192.168.10.20')
+            self.assertEqual(details['tls_mode'], 'internal')
+            self.assertEqual(ask.call_count, 1)
+            with self.assertRaises(ValueError): endpoint.automatic_url(Mock(return_value='3'))
+        with patch.object(endpoint, 'lan_addresses', return_value=[]), contextlib.redirect_stdout(io.StringIO()):
+            url, _ = endpoint.network_details(self.args(), {}, Mock(return_value='https://videoq.lab.example.ac.jp'))
+            self.assertEqual(url, 'https://videoq.lab.example.ac.jp')
+
+    def test_explicit_url_skips_detection_and_legacy_acme_is_preserved(self):
+        with patch.object(endpoint, 'lan_addresses', side_effect=AssertionError('must not inspect interfaces')), contextlib.redirect_stdout(io.StringIO()):
+            url, details = endpoint.network_details(self.args('--url', 'https://192.168.10.20'), {})
+            self.assertEqual(details['tls_mode'], 'internal')
+            url, details = endpoint.network_details(self.args(), {'url': 'https://videoq.example.com'})
+            self.assertEqual(details['tls_mode'], 'acme')
+            _, migrated = endpoint.network_details(self.args('--url', 'https://192.168.10.20'), {'url': 'http://localhost:8080', 'network': {'listen_ip': '127.0.0.1', 'tls_mode': 'none'}})
+            self.assertEqual(migrated, {'listen_ip': '0.0.0.0', 'tls_mode': 'internal'})
 
     def test_bad_urls_addresses_and_private_acme_are_rejected(self):
         for url in ['https://0.0.0.0', 'https://224.0.0.1', 'https://999.1.1.1', 'https://192.168.1.1:8443', 'https://evil;command', 'https://lab/path', 'http://lab']:
@@ -70,7 +98,7 @@ class EndpointTests(unittest.TestCase):
     def test_saved_lab_setup_resumes_without_prompts(self):
         with tempfile.TemporaryDirectory() as folder:
             args = self.args('--directory', folder, '--username', 'yuki', '--email', 'yuki@example.com')
-            with patch('builtins.input', side_effect=['192.168.10.20', '', '1']), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(endpoint, 'lan_addresses', return_value=[('192.168.10.20', 'ens3')]), patch('builtins.input', side_effect=AssertionError('must not prompt')), contextlib.redirect_stdout(io.StringIO()):
                 instance = rtx4090.NativeInstaller(args)
             instance.lock.close()
             with patch('builtins.input', side_effect=AssertionError('must not prompt')):
