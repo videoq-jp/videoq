@@ -16,7 +16,7 @@ class InferenceRuntimeTests(unittest.TestCase):
         self.assertIn('vllm.v1.attention.backends.flashinfer', loaded)
 
     def test_old_base_kernels_are_rejected_before_serving(self):
-        for package in ('flashinfer-cubin', 'flashinfer-jit-cache'):
+        for package in ('flashinfer-cubin', 'flashinfer-jit-cache', 'flashinfer-jit-cache-sm89'):
             installed = dict(runtime.EXPECTED, **{package: '0.7.2.post1'})
             with self.subTest(package=package), self.assertRaisesRegex(RuntimeError, package):
                 runtime.verify(installed.__getitem__, lambda _: None)

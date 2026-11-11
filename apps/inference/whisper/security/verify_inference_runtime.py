@@ -7,6 +7,8 @@ EXPECTED = {
     "flashinfer-cubin": "0.7.0.post1",
     "flashinfer-jit-cache": "0.7.0.post1+cu130",
 }
+for architecture in ("sm100a", "sm103a", "sm120f", "sm80", "sm89", "sm90a"):
+    EXPECTED["flashinfer-jit-cache-" + architecture] = "0.7.0.post1+cu130"
 
 
 def verify(version=metadata.version, load=import_module):
