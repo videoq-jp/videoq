@@ -26,7 +26,7 @@ SCRIPT = ROOT / 'scripts/onprem/install-rtx4090.sh'
 OPTIONS = ('directory', 'url', 'username', 'email', 'listen_ip', 'tls_mode', 'tls_cert', 'tls_key', 'tls_ca', 'run_id', 'source_sha', 'storage_gib')
 FLAGS = ('adopt_existing', 'migrate_url', 'reset_admin_link')
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
-STAGES = ('環境の確認', '実行基盤の準備', '推論イメージの準備', 'AIモデルの起動', 'データ保存先の準備', 'VideoQの起動', 'HTTPSの接続確認', '管理者の準備')
+STAGES = ('環境の確認', '実行基盤の準備', 'AIモデルの起動', 'データ保存先の準備', 'VideoQの起動', 'HTTPSの接続確認', '管理者の準備')
 
 
 def arguments(args):
@@ -140,7 +140,7 @@ class VideoQInstaller(App):
                 with VerticalScroll(id='installing'):
                     yield Label('実行状況とログ', classes='heading')
                     yield Static('この画面のままお待ちください。', id='current-stage', classes='card-title', markup=False)
-                    yield ProgressBar(total=8, show_eta=False, show_percentage=False, id='progress')
+                    yield ProgressBar(total=len(STAGES), show_eta=False, show_percentage=False, id='progress')
                     yield Static('進捗は作業段階の目安です。大きなモデルの取得中は、同じ段階が続きます。', classes='muted')
                     with Collapsible(title='詳しい実行ログ', collapsed=True, id='execution-details'):
                         yield RichLog(id='logs', wrap=True, markup=False, highlight=False, max_lines=1000)
@@ -273,7 +273,7 @@ class VideoQInstaller(App):
     def install_worker(self):
         if self.preview:
             for index, stage in enumerate(STAGES, 1):
-                self.call_from_thread(self.receive_line, f'{index}/8 {stage}（プレビュー）')
+                self.call_from_thread(self.receive_line, f'{index}/{len(STAGES)} {stage}（プレビュー）')
             self.call_from_thread(self.show_result, True, '')
             return
         env = {**os.environ, 'VIDEOQ_NONINTERACTIVE': '1', 'PYTHONUNBUFFERED': '1'}
@@ -306,10 +306,10 @@ class VideoQInstaller(App):
     def receive_line(self, text):
         text = ANSI.sub('', text)
         self.query_one('#logs', RichLog).write(text)
-        match = re.match(r'([1-8])/8\s+(.+)', text)
+        match = re.match(rf'([1-{len(STAGES)}])/{len(STAGES)}\s+(.+)', text)
         if match:
             step = int(match[1])
-            self.query_one('#current-stage', Static).update(f'{step} / 8  {STAGES[step - 1]}')
+            self.query_one('#current-stage', Static).update(f'{step} / {len(STAGES)}  {STAGES[step - 1]}')
             self.query_one('#progress', ProgressBar).update(progress=step - 1)
 
     def show_result(self, success, message):
@@ -330,7 +330,7 @@ class VideoQInstaller(App):
                 text += '\n\n持ち込み証明書は発行元で更新し、新しいPEMを指定して再実行してください。'
             if self.preview:
                 text += '\n\nこれはプレビューです。実際の導入は行っていません。'
-            self.query_one('#progress', ProgressBar).update(progress=8)
+            self.query_one('#progress', ProgressBar).update(progress=len(STAGES))
         else:
             text = message + '\n\nデータと導入記録は保持しています。再実行で途中から再開できます。'
         self.query_one('#result', Static).update(text)

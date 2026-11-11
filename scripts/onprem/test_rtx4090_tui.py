@@ -60,7 +60,9 @@ class TuiTests(unittest.IsolatedAsyncioTestCase):
             app = self.make_app(folder)
             async with app.run_test(size=(120, 40)) as pilot:
                 await self.review(app, pilot)
-                app.receive_line('4/8 model boot')
+                app.receive_line('3/7 model boot')
+                self.assertEqual(app.query_one('#progress').progress, 2)
+                self.assertIn('AIモデルの起動', str(app.query_one('#current-stage', Static).render()))
                 app.show_result(False, 'Test failure; data preserved')
                 await pilot.pause()
                 await pilot.click('#view-logs')
@@ -101,7 +103,7 @@ class TuiTests(unittest.IsolatedAsyncioTestCase):
                 app.preview = False
                 child = MagicMock()
                 child.__enter__.return_value = child
-                child.stdout = iter(['1/8 check host\n', '4/8 models\n', '8/8 admin\n'])
+                child.stdout = iter(['1/7 check host\n', '3/7 models\n', '7/7 admin\n'])
                 child.wait.return_value = 0
                 (Path(folder) / 'installation.json').write_text(json.dumps({'complete': True, 'url': app.plan.url}))
                 with patch.object(ui.subprocess, 'Popen', return_value=child) as process:
