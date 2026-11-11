@@ -53,21 +53,7 @@ def test_cannot_choose_another_model_or_download_remote_weights(client):
     model.encode.assert_not_called()
 
 
-def test_cuda_request_never_falls_back_to_cpu(monkeypatch, tmp_path):
-    import sys
-    torch = MagicMock()
-    torch.cuda.is_available.return_value = False
-    constructor = MagicMock()
-    monkeypatch.setitem(sys.modules, "torch", torch)
-    monkeypatch.setitem(sys.modules, "sentence_transformers", MagicMock(SentenceTransformer=constructor))
-    monkeypatch.setenv("EMBEDDING_MODEL_PATH", str(tmp_path))
-    monkeypatch.setenv("EMBEDDING_DEVICE", "cuda")
-    with pytest.raises(RuntimeError, match="refusing CPU fallback"):
-        service.load_model()
-    constructor.assert_not_called()
-
-
-def test_cuda_loads_text_encoder_with_bounded_allocator(monkeypatch, tmp_path):
+def test_cpu_loads_only_text_encoder(monkeypatch, tmp_path):
     import sys
     torch = MagicMock()
     constructor = MagicMock()
@@ -76,10 +62,8 @@ def test_cuda_loads_text_encoder_with_bounded_allocator(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "torch", torch)
     monkeypatch.setitem(sys.modules, "sentence_transformers", MagicMock(SentenceTransformer=constructor))
     monkeypatch.setenv("EMBEDDING_MODEL_PATH", str(tmp_path))
-    monkeypatch.setenv("EMBEDDING_DEVICE", "cuda")
-    monkeypatch.setenv("EMBEDDING_GPU_MEMORY_FRACTION", "0.07")
     service.load_model()
-    assert constructor.call_args.kwargs["device"] == "cuda"
-    assert constructor.call_args.kwargs["model_kwargs"]["torch_dtype"] is torch.bfloat16
+    assert constructor.call_args.kwargs["device"] == "cpu"
+    assert constructor.call_args.kwargs["model_kwargs"]["torch_dtype"] is torch.float32
     assert constructor.call_args.kwargs["config_kwargs"] == {"vision_config": None, "audio_config": None}
-    torch.cuda.set_per_process_memory_fraction.assert_called_once_with(0.07)
+    torch.cuda.set_per_process_memory_fraction.assert_not_called()

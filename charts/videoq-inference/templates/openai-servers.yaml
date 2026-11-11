@@ -2,16 +2,13 @@
 {{- range $name := list "chat" "embedding" }}
 {{- $server := index $root.Values.servers $name }}
 {{- $engine := default $root.Values.backend $server.engine }}
-{{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs "device" (default "cpu" $server.device)) }}
+{{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs) }}
 {{- $image := $root.Values.whisper.image }}
 {{- if ne $engine "embeddinggemma2" }}
 {{- $image = (index $root.Values $engine).image }}
 {{- end }}
 {{- if and $root.Values.gpuSharing.enabled (eq $engine "vllm") }}
 {{- $image = $root.Values.whisper.vllmImage }}
-{{- end }}
-{{- if and (eq $engine "embeddinggemma2") (eq (default "cpu" $server.device) "cuda") }}
-{{- $image = $server.cudaImage }}
 {{- end }}
 {{- if and (eq $engine "llamacpp") (or (empty $server.modelFile) (empty $server.modelSha256)) }}
 {{- fail "llamacpp servers require modelFile and modelSha256" }}
@@ -53,9 +50,9 @@ spec:
       {{- with $server.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or $root.Values.downloadModels (and $root.Values.gpuSharing.enabled (or (eq $name "chat") (eq $engine "embeddinggemma2"))) }}
+      {{- if or $root.Values.downloadModels (and $root.Values.gpuSharing.enabled (eq $name "chat")) }}
       initContainers:
-        {{- if and $root.Values.gpuSharing.enabled (or (eq $name "chat") (eq $engine "embeddinggemma2")) }}
+        {{- if and $root.Values.gpuSharing.enabled (eq $name "chat") }}
         {{- include "inference.sharedWait" (dict "root" $root "role" $name) | nindent 8 }}
         {{- end }}
         {{- if $root.Values.downloadModels }}
@@ -79,7 +76,7 @@ spec:
           image: {{ include "inference.image" (dict "root" $root "image" $image "component" $engine) | quote }}
           imagePullPolicy: {{ $image.pullPolicy }}
           {{- if eq $engine "embeddinggemma2" }}
-          command: [{{ ternary "python3" "python" (eq (default "cpu" $server.device) "cuda") }}, -m, uvicorn, "embedding_server:app"]
+          command: [python, -m, uvicorn, "embedding_server:app"]
           args: [--host, "0.0.0.0", --port, "8000", --workers, "1", --limit-concurrency, "8", --no-access-log]
           {{- else if eq $engine "llamacpp" }}
           # Official server image entrypoint. All weights are local files.
@@ -160,10 +157,6 @@ spec:
             - { name: EMBEDDING_MODEL_PATH, value: {{ printf "/models/%s" $server.modelRevision | quote }} }
             - { name: EMBEDDING_MODEL_ALIAS, value: {{ $server.servedModel | quote }} }
             - { name: EMBEDDING_CPU_THREADS, value: {{ $server.cpuThreads | quote }} }
-            - { name: EMBEDDING_DEVICE, value: {{ default "cpu" $server.device | quote }} }
-            {{- if $root.Values.gpuSharing.enabled }}
-            - { name: EMBEDDING_GPU_MEMORY_FRACTION, value: {{ $root.Values.gpuSharing.memoryFractions.embedding | quote }} }
-            {{- end }}
             {{- end }}
             - { name: HF_HUB_OFFLINE, value: "1" }
             - { name: TRANSFORMERS_OFFLINE, value: "1" }
