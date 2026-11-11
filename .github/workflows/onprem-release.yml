@@ -89,7 +89,7 @@ jobs:
           if [ "$COMPONENT" = transcription-gateway ]; then
             docker run --rm --entrypoint python videoq-transcription-gateway:release -c 'import server, provision, silero_vad, torch'
           else
-            docker run --rm --entrypoint python3 videoq-vllm-engine:release -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
+            docker run --rm --entrypoint python3 videoq-vllm-engine:release /usr/share/videoq/security/verify_inference_runtime.py
           fi
       - run: mkdir -p artifact
       - name: Block vulnerable images, including unfixed HIGH and CRITICAL findings
