@@ -31,7 +31,8 @@
     "test:api": "npm run test --workspace @videoq/api",
     "test:web": "npm run test --workspace @videoq/web",
     "typecheck": "npm run typecheck --workspace @videoq/trpc && npm run typecheck --workspace @videoq/api && npm run typecheck --workspace @videoq/web && npm run typecheck --workspace @videoq/docs && npm run typecheck --workspace @videoq/demo-video",
-    "test:lint": "node --test scripts/test-eslint.mjs"
+    "test:lint": "node --test scripts/test-eslint.mjs",
+    "audit:signatures": "node .github/scripts/audit-signatures.cjs"
   },
   "overrides": {
     "vitest": "^5.0.3",
