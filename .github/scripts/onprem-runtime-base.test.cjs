@@ -34,7 +34,7 @@ test('runtime refresh requires successful current-main CI and scans before privi
  assert.match(job('build'),/ignore-unfixed: 'false'/);
  assert.match(job('build'),/severity: HIGH,CRITICAL/);
  assert.match(job('build'),/exit-code: '1'/);
- assert.ok(job('build').indexOf('aquasecurity/trivy-action@')<job('build').indexOf('docker save'));
+ assert.ok(job('build').indexOf('aquasecurity/trivy-action@')<job('build').indexOf('zstd -T0'));
  assert.match(job('publish'),/needs: \[source, build\]/);
  for(const name of ['build','publish']){
    assert.match(job(name),/ref: \$\{\{ github\.sha \}\}/);
@@ -46,4 +46,18 @@ test('runtime refresh requires successful current-main CI and scans before privi
  assert.match(job('publish'),/Sign source provenance/);
  assert.match(job('publish'),/Sign the package inventory/);
  for(const action of workflow.matchAll(/uses: [^@\n]+@(\S+)/g)) assert.match(action[1],/^[a-f0-9]{40}$/);
+});
+
+
+test('CUDA scans consume streamed archives rather than duplicating the Docker store',()=>{
+ for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
+  const source=readFileSync(join(root,`.github/workflows/${name}.yml`),'utf8');
+  assert.match(source,/docker save [^\n]+\| gzip -1 > "\$RUNNER_TEMP\//);
+  assert.match(source,/input: \$\{\{ runner.temp \}\}\/(?:whisper|scan)-image.tar.gz/);
+  // SBOM and publication must refer to the very same archive that passed the scan.
+  if(name!=='onprem-validation'){
+   assert.match(source,/trivy image --timeout 15m --input "\$RUNNER_TEMP\/scan-image.tar.gz" --format cyclonedx/);
+   assert.match(source,/gzip -dc "\$RUNNER_TEMP\/scan-image.tar.gz" \| zstd -T0 -o artifact\/image.tar.zst/);
+  }
+ }
 });

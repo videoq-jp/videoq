@@ -93,12 +93,18 @@ jobs:
           else
             docker run --rm --entrypoint python3 videoq-vllm-engine:release /usr/share/videoq/security/verify_inference_runtime.py
           fi
-      - run: mkdir -p artifact
+      - name: Stream the image archive for scanning
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: |
+          mkdir -p artifact
+          docker builder prune --all --force
+          docker save "videoq-$COMPONENT:release" | gzip -1 > "$RUNNER_TEMP/scan-image.tar.gz"
       - name: Block vulnerable images, including unfixed HIGH and CRITICAL findings
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
-          image-ref: videoq-${{ matrix.component }}:release
+          input: ${{ runner.temp }}/scan-image.tar.gz
           trivy-config: ${{ matrix.component == 'vllm-engine' && 'apps/inference/whisper/security/trivy.yaml' || matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
           format: json
           output: artifact/security.json
@@ -122,8 +128,9 @@ jobs:
           COMPONENT: ${{ matrix.component }}
         run: |
           mkdir -p artifact
-          trivy image --timeout 15m --image-src docker --format cyclonedx --output artifact/sbom.cdx.json "videoq-$COMPONENT:release"
-          docker save "videoq-$COMPONENT:release" | zstd -T0 -o artifact/image.tar.zst
+          trivy image --timeout 15m --input "$RUNNER_TEMP/scan-image.tar.gz" --format cyclonedx --output artifact/sbom.cdx.json
+          gzip -dc "$RUNNER_TEMP/scan-image.tar.gz" | zstd -T0 -o artifact/image.tar.zst
+          rm "$RUNNER_TEMP/scan-image.tar.gz"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}

@@ -15,12 +15,12 @@ test('release gates publication on the existing current-main push-CI policy',()=
   for(const name of ['build','chart']) assert.match(job(name),/needs: source/);
 });
 
-test('both native architecture builds are credential-free and scan before exporting',()=>{
+test('both native architecture builds are credential-free and scan the archive before preparing publication',()=>{
   const build = job('build');
   assert.match(build,/permissions:\n      contents: read\n    steps:/);
   assert.match(build,/arch: \[amd64, arm64\]/);
   const scan=build.indexOf('uses: aquasecurity/trivy-action@');
-  const archive=build.indexOf('docker save');
+  const archive=build.indexOf('zstd -T0');
   assert(scan>=0 && archive>scan);
   assert.match(build,/exit-code: '1'/);
   assert.match(build,/ignore-unfixed: 'false'/);
