@@ -15,8 +15,9 @@ RUN python3 -m pip install --no-cache-dir --upgrade \
 COPY security /usr/share/videoq/security
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
 RUN python3 /usr/share/videoq/security/verify_kernel_headers.py \
-    && python3 /usr/share/videoq/security/verify_apt.py \
-    && python3 /usr/share/videoq/security/verify_inference_runtime.py
+    && python3 /usr/share/videoq/security/verify_apt.py
 ENV HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1 HOME=/tmp
 USER 10001:10001
+# Check as the serving user so generated caches remain usable without root.
+RUN python3 /usr/share/videoq/security/verify_inference_runtime.py
 ENTRYPOINT ["vllm", "serve"]
