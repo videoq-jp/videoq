@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   source:
-    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -39,59 +39,15 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Configure disposable runner DNS
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
-      - name: Reserve disk for the CUDA runtime
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
-      - name: Verify upstream DNS before dependency refresh
-        run: python3 .github/scripts/onprem-dns-diagnostic.py --require-success
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - name: Build the dependency refresh without publishing credentials
-        run: |
-          docker buildx build --provenance=false --output "type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -f apps/inference/whisper/Dockerfile.vllm-base -t videoq-vllm-runtime-base:scanned apps/inference/whisper
-          docker buildx prune --all --force
-          docker load --input "$RUNNER_TEMP/scan-image.tar"
-      - name: Verify the serving imports as the image user
-        run: docker run --rm --entrypoint python3 videoq-vllm-runtime-base:scanned /usr/share/videoq/security/verify_inference_runtime.py
-      - name: Reclaim build cache before the full image scan
-        run: |
-          docker buildx prune --all --force
-          mkdir -p artifact
-      - name: Block all unassessed HIGH and CRITICAL vulnerabilities
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+      - uses: ./.github/actions/build-onprem-image
         with:
-          version: v0.76.1
-          input: ${{ runner.temp }}/scan-image.tar
-          trivy-config: apps/inference/whisper/security/trivy.yaml
-          format: json
-          output: artifact/security.json
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 15m
-      - name: Preserve runtime scan evidence
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: runtime-base-security-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
-          path: |
-            artifact/security.json
-            apps/inference/whisper/security/
-          retention-days: 90
-          if-no-files-found: error
-      - name: Export only the scanned image and inventory
-        run: |
-          trivy image --timeout 15m --input "$RUNNER_TEMP/scan-image.tar" --format cyclonedx --output artifact/sbom.cdx.json
-          zstd -T0 "$RUNNER_TEMP/scan-image.tar" -o artifact/image.tar.zst
-          rm "$RUNNER_TEMP/scan-image.tar"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
-          path: artifact
-          compression-level: 0
-          retention-days: 1
-          if-no-files-found: error
+          image: videoq-vllm-runtime-base:scanned
+          dockerfile: apps/inference/whisper/Dockerfile.vllm-base
+          context: apps/inference/whisper
+          cuda: 'true'
+          security-config: apps/inference/whisper/security/trivy.yaml
+          evidence-name: runtime-base-security-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          artifact-name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
   publish:
     needs: [source, build]
     runs-on: ubuntu-24.04

@@ -318,52 +318,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Configure DNS on this disposable CI runner
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
-      - name: Reserve disk for the CUDA image on the disposable runner
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - name: Build the pinned audio-capable vLLM engine without credentials
-        id: gpu_image
-        run: |
-          docker buildx build --provenance=false --output "type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true" -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
-          docker buildx prune --all --force
-          docker load --input "$RUNNER_TEMP/scan-image.tar"
-      - name: Verify audio extras and FlashInfer backend without a GPU
-        run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci /usr/share/videoq/security/verify_inference_runtime.py
-      - name: Reclaim disk for the CUDA image scan
-        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
-        run: |
-          # Scan the OCI archive directly, without another Docker export.
-          # This isolated job has finished building and needs no compiler toolchains.
-          docker buildx prune --all --force
-          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
-          df -h /
-      - name: Scan NVIDIA Whisper including unfixed vulnerabilities
-        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+      - uses: ./.github/actions/build-onprem-image
         with:
-          version: v0.76.1
-          scan-type: image
-          input: ${{ runner.temp }}/scan-image.tar
-          trivy-config: apps/inference/whisper/security/trivy.yaml
-          format: json
-          output: whisper-vllm-security.json
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 15m
-      - name: Retain NVIDIA scan findings and the scoped header assessment
-        if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1
-        with:
-          name: whisper-vllm-security
-          path: |
-            whisper-vllm-security.json
-            apps/inference/whisper/security/
-          retention-days: 14
-          if-no-files-found: error
+          image: videoq-whisper-vllm:onprem-ci
+          dockerfile: apps/inference/whisper/Dockerfile.vllm
+          context: apps/inference/whisper
+          cuda: 'true'
+          security-config: apps/inference/whisper/security/trivy.yaml
+          evidence-name: whisper-vllm-security
 
   upstream-cpu-images:
     name: ${{ matrix.engine }} Linux ${{ matrix.architecture }} upstream image

@@ -91,6 +91,32 @@ signature verification still install all workspaces. Supply-chain npm downloads
 and API/worker pip downloads are cached; lockfile hashes and signature checks
 remain enforced on every run.
 
+## On-prem image pipeline
+
+PR GPU validation, signed releases and manual runtime-base refreshes all use
+[`build-onprem-image`](actions/build-onprem-image/action.yml). Their workflows
+select the component and architecture; the action owns the build, license check,
+strict vulnerability scan and inventory. Change this pipeline once rather than
+patching three copies.
+
+The action produces one OCI directory with individually compressed layers, frees
+BuildKit's extracted copy before loading it, and removes the loaded test image
+before scanning. Tar archives are streamed only for loading and release handoff.
+The disposable CI runner explicitly enables Docker's containerd
+image store; operator hosts are never changed by this CI setup.
+
+Trivy scans once, including unfixed HIGH/CRITICAL findings and the complete package
+inventory. Release SBOMs are converted from that JSON report, without a second image
+scan. A failed build, license check or scan prevents archive handoff. Failure reports
+are retained. GPU runtime imports remain enforced as the serving user in both GPU
+Dockerfiles; the CPU gateway also has a container import smoke check.
+
+Only releases export an archive. Publishing and provenance/SBOM signing still run
+on separate runners with write permissions, after successful current-main CI and
+image checks. End-to-end staging and CPU acceptance remain release gates.
+Image-action changes select GPU validation; app jobs follow their actual shared
+package-manager action instead of matching every repository action.
+
 ## Run a check manually
 
 ```sh

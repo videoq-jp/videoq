@@ -161,7 +161,7 @@ jobs:
               - '.github/runtime-versions.json'
               - '.node-version'
               - '.python-version'
-              - '.github/actions/**'
+              - '.github/actions/setup-package-manager/**'
               - '.github/scripts/runtime-*'
               - '.github/scripts/package-managers.py'
             container_worker:
@@ -186,6 +186,7 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
+              - '.github/actions/build-onprem-image/**'
               - 'apps/inference/whisper/Dockerfile.vllm'
               - 'apps/inference/whisper/Dockerfile.vllm-base'
               - '.github/workflows/onprem-runtime-base.yml'
@@ -294,7 +295,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             worker:
@@ -308,7 +309,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             frontend:
@@ -327,7 +328,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             docs:
@@ -344,7 +345,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
 
