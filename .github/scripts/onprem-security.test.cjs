@@ -10,9 +10,9 @@ const gate = ci.match(/^  ci-success:\n([\s\S]*?)(?=^  [\w-]+:)/m)[1];
 const dependencies = gate.match(/needs: \[([^\]]+)\]/)[1].split(',').map(name => name.trim());
 const script = gate.match(/node <<'NODE'\n([\s\S]*?)^\s+NODE$/m)[1];
 
-function result(selected, result, basicResult = 'success') {
+function result(selected, result, basicResult = 'success', inferenceSelected = selected) {
   const jobs = Object.fromEntries(dependencies.map(name => [name, { result: 'success' }]));
-  jobs.changes.outputs = { onprem: String(selected) };
+  jobs.changes.outputs = { onprem: String(selected), inference: String(inferenceSelected) };
   jobs['onprem-validation'].result = result;
   jobs['local-inference-basic'].result = basicResult;
   let exitCode = 0;
@@ -27,9 +27,12 @@ test('the existing required CI gate includes on-prem validation', () => {
   assert.ok(dependencies.includes('onprem-validation'));
   assert.match(ci, /onprem-validation:\n[\s\S]*?uses: \.\/\.github\/workflows\/onprem-validation\.yml/);
   assert.match(onprem, /workflow_call:/);
-  for (const pattern of ['charts/**', 'apps/web/**', 'apps/worker/**', 'package-lock.json', '.github/runtime-versions.json']) {
-    const filter = ci.match(/^            onprem:\n([\s\S]*?)(?=^            \w+:)/m)[1];
-    assert.ok(filter.includes(`'${pattern}'`), pattern);
+  for (const [name, patterns] of Object.entries({
+    onprem_lifecycle: ['charts/**', 'scripts/onprem/**', 'apps/api/drizzle/**'],
+    onprem: ['apps/web/Dockerfile*', 'apps/worker/uv.lock', 'package-lock.json', '.github/runtime-versions.json'],
+  })) {
+    const filter = ci.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:)`, 'm'))[1];
+    for (const pattern of patterns) assert.ok(filter.includes(`'${pattern}'`), pattern);
   }
   assert.equal(result(true, 'success'), 0);
   assert.equal(result(false, 'skipped'), 0);
@@ -56,7 +59,7 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
 test('untrusted image builds have no production access and retain inventories', () => {
   assert.doesNotMatch(onprem, /secrets\.|secrets: inherit|environment:|id-token: write|packages: write|contents: write/);
   assert.match(onprem, /--format cyclonedx/);
-  assert.match(onprem, /for component in api worker web/);
+  assert.match(onprem, /components=\(api worker web\)/);
   assert.match(onprem, /if-no-files-found: error/);
   for (const checkout of onprem.split(/(?=      - uses: actions\/checkout@)/).slice(1)) {
     assert.match(checkout, /persist-credentials: false/);
@@ -76,6 +79,8 @@ test('native basic checks are required when selected and use standard runners', 
   assert.ok(dependencies.includes('local-inference-basic'));
   for (const status of ['failure', 'cancelled', 'skipped']) assert.equal(result(true, 'success', status), 1);
   assert.equal(result(false, 'skipped', 'skipped'), 0);
+  assert.equal(result(true, 'success', 'skipped', false), 0);
+  for (const status of ['failure', 'cancelled', 'skipped']) assert.equal(result(false, 'skipped', status, true), 1);
   for (const runner of ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-15']) assert.ok(basic.includes(`runner: ${runner},`));
   assert.ok(basic.indexOf('brew update') < basic.indexOf('brew install --force-bottle'));
   assert.match(basic, /workflow_call:/);
@@ -114,12 +119,12 @@ test('CI scans pinned upstream images only when their pins change, while Operati
   assert.match(cpu, /^    if: inputs\.scan_upstream_images$/m);
   const llamacpp = onprem.split(/(?=      - name:)/).find(step => step.includes('image-ref: ${{ env.LLAMACPP_IMAGE }}'));
   assert.match(llamacpp, /&& inputs\.scan_upstream_images \}\}/);
-  // The inventory still records the pinned image, so it keeps resolving it.
-  assert.doesNotMatch(onprem.split(/(?=      - name:)/).find(step => step.includes('Resolve the pinned llama.cpp image')), /scan_upstream_images/);
+  // Full inventories retain the pinned image; image-only mode does not pull it.
+  assert.match(onprem.split(/(?=      - name:)/).find(step => step.includes('Resolve the pinned llama.cpp image')), /inputs\.validate_lifecycle \|\| inputs\.scan_upstream_images/);
 
   const filter = ci.match(/^            upstream_images:\n([\s\S]*?)(?=^            \w+:)/m)[1];
   for (const pattern of ['charts/videoq-inference/values.yaml', 'apps/inference/whispercpp/security/**',
-    '.github/scripts/check-upstream-header-image.py', '.github/workflows/onprem-validation.yml']) {
+    '.github/scripts/check-upstream-header-image.py']) {
     assert.ok(filter.includes(`'${pattern}'`), pattern);
   }
   assert.match(ci, /scan_upstream_images: \$\{\{ needs\.changes\.outputs\.upstream_images == 'true' \}\}/);
