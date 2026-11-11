@@ -64,7 +64,7 @@ def test_assessment_is_limited_to_explicit_cves_and_reviewed_header_versions():
     ids = set()
     reviewed = {
         'pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04': 386,
-        'pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04': 385,
+        'pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04': 439,
     }
     counts = dict.fromkeys(reviewed, 0)
     for statement in vex['statements']:
@@ -80,3 +80,18 @@ def test_assessment_is_limited_to_explicit_cves_and_reviewed_header_versions():
         assert statement['status'] == 'not_affected'
         assert statement['justification'] == 'vulnerable_code_not_present'
     assert counts == reviewed
+
+
+def test_new_assessments_match_retained_individual_review_and_exact_package():
+    review = json.loads((ROOT / 'kernel-headers-review-2026-11-11.json').read_text())
+    statements = {row['vulnerability']['name']: row for row in
+                  json.loads((ROOT / 'kernel-headers.openvex.json').read_text())['statements']}
+    assert len(review['findings']) == 54
+    assert len({row['id'] for row in review['findings']}) == 54
+    assert review['inventory'] == {'regularFiles': 990, 'headers': 988,
+                                   'documentationFiles': 2, 'executableOrSymlinkOrElfFiles': 0}
+    for finding in review['findings']:
+        assert finding['title'].startswith('kernel:')
+        assert finding['description'].startswith('In the Linux kernel,')
+        assert finding['source'].startswith('https://')
+        assert statements[finding['id']]['products'] == [{'@id': review['product']}]

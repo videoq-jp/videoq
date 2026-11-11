@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/yukiharada1228/videoq/security/vex/whisper-kernel-headers-2026-10-23",
   "author": "VideoQ",
-  "timestamp": "2026-11-06T07:13:38.900802+00:00",
-  "version": 2,
+  "timestamp": "2026-11-11T07:24:23.663408+00:00",
+  "version": 3,
   "statements": [
     {
       "vulnerability": {
@@ -6170,6 +6170,708 @@
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
         },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-64017"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-64581"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68138"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68159"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68253"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68266"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68452"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-72463"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74456"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74458"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74469"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74478"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74479"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74480"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74488"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74492"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74493"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74494"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74496"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74498"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74499"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74502"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74505"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74518"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74531"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74540"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74541"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74556"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74569"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74580"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74581"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74582"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74583"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74585"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74586"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74587"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74588"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74589"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74590"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74594"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74597"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74607"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74609"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74615"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74616"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74624"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74628"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74630"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74631"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74632"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74641"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74649"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74656"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This component contains Linux UAPI headers and documentation, not the kernel implementations affected by this CVE. The image build verifies its files and absence of kernel binaries/modules. Headers remain necessary for Triton JIT compilation. This assessment applies only to this header package in the container; the Kubernetes host kernel must be assessed and patched separately."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74662"
+      },
+      "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-149.149?arch=amd64&distro=ubuntu-24.04"
         }
