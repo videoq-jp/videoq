@@ -30,11 +30,33 @@ runs:
   steps:
     - name: Prepare the disposable Docker runner
       shell: bash
-      run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
+      run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
     - name: Reserve disk for CUDA
       if: inputs.cuda == 'true'
       shell: bash
-      run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az
+      run: |
+        # This action runs on a fresh hosted runner, with no service containers.
+        # Keep the tool-cache directory/ownership so later setup actions can reuse it.
+        df -h / "$RUNNER_TEMP"
+        docker system prune --all --force --volumes
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /opt/az /usr/lib/jvm /usr/share/miniconda /opt/pipx
+        if [ -d /opt/hostedtoolcache ]; then
+          sudo find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 -exec rm -rf '{}' +
+        fi
+        while IFS= read -r swap_file; do
+          if [ -f "$swap_file" ] && [ ! -L "$swap_file" ]; then
+            sudo swapoff "$swap_file"
+            sudo rm -f "$swap_file"
+          fi
+        done < <(swapon --show=NAME --noheadings)
+        /usr/bin/python3 - <<'PYCODE'
+        import os, shutil
+        minimum = 60 * 1024**3
+        free = min(shutil.disk_usage(p).free for p in ['/var/lib/docker', os.environ['RUNNER_TEMP']])
+        print(f"CUDA build workspace: {free / 1024**3:.1f} GiB free; requires 60 GiB")
+        if free < minimum:
+            raise SystemExit("Insufficient disk for the CUDA build before downloading its layers")
+        PYCODE
     - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
     - name: Build and verify the image
       shell: bash
@@ -50,19 +72,21 @@ runs:
           --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
           --label "org.opencontainers.image.revision=$GITHUB_SHA" \
           -t "$IMAGE" -f "$DOCKERFILE" "$BUILD_CONTEXT"
-        # Drop BuildKit's extracted layers before Docker creates its own copy.
-        docker buildx prune --all --force
-        tar -C "$RUNNER_TEMP/scan-image" -cf - . | docker load
-        container=$(docker create "$IMAGE")
-        trap 'docker rm -f "$container" >/dev/null' EXIT
-        docker cp "$container:/usr/share/licenses/videoq/LICENSE" - | tar -xO | cmp LICENSE -
+        # Inspect the exact OCI output with BuildKit; do not create a second image store.
+        manifest=$(/usr/bin/python3 -c 'import json,os,re; x=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"scan-image/index.json")))["manifests"]; assert len(x)==1; d=x[0]["digest"]; assert re.fullmatch("sha256:[a-f0-9]{64}",d); print(d)')
+        mkdir -p "$RUNNER_TEMP/image-check-context"
+        printf 'FROM release-image AS checked\n' > "$RUNNER_TEMP/image-check.Dockerfile"
         if [ "$DOCKERFILE" = apps/inference/whisper/Dockerfile ]; then
-          docker run --rm --entrypoint python "$IMAGE" -c 'import server, provision, silero_vad, torch'
+          printf 'RUN ["python", "-c", "import server, provision, silero_vad, torch"]\n' >> "$RUNNER_TEMP/image-check.Dockerfile"
         fi
+        printf 'FROM scratch\nCOPY --from=checked /usr/share/licenses/videoq/LICENSE /LICENSE\n' >> "$RUNNER_TEMP/image-check.Dockerfile"
+        docker buildx build --provenance=false --platform "$PLATFORM" \
+          --build-context "release-image=oci-layout://$RUNNER_TEMP/scan-image@$manifest" \
+          --output "type=local,dest=$RUNNER_TEMP/image-check" \
+          -f "$RUNNER_TEMP/image-check.Dockerfile" "$RUNNER_TEMP/image-check-context"
+        cmp LICENSE "$RUNNER_TEMP/image-check/LICENSE"
         # NVIDIA runtime imports are already checked by RUN as the image user.
-        docker rm "$container" >/dev/null
-        trap - EXIT
-        docker image rm "$IMAGE"
+        docker buildx prune --all --force
         mkdir -p artifact
         df -h /
     - name: Scan the complete image including unfixed vulnerabilities
@@ -91,13 +115,13 @@ runs:
           apps/inference/whisper/security/
         if-no-files-found: error
         retention-days: 90
-    - name: Prepare the scanned archive and inventory for publication
+    - name: Prepare the scanned image and inventory for publication
       if: inputs.artifact-name != ''
       shell: bash
       run: |
         # Reuse the complete scan inventory instead of scanning the CUDA layers again.
         trivy convert --format cyclonedx --output artifact/sbom.cdx.json artifact/security.json
-        tar -C "$RUNNER_TEMP/scan-image" -cf - . | zstd -T0 -o artifact/image.tar.zst
+        mv "$RUNNER_TEMP/scan-image" artifact/image
     - name: Hand the scanned image to a separate publisher
       if: inputs.artifact-name != ''
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

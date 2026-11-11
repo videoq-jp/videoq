@@ -108,7 +108,7 @@ jobs:
           - component: vllm-engine
             arch: arm64
     runs-on: ubuntu-24.04
-    # The scanned CUDA archive is ~8 GB; transfer, load and push can exceed 25 minutes.
+    # The compressed CUDA OCI graph is ~8 GB; artifact transfer and push can exceed 25 minutes.
     timeout-minutes: ${{ matrix.component == 'vllm-engine' && 45 || 25 }}
     permissions:
       contents: read
@@ -117,9 +117,6 @@ jobs:
       attestations: write
     steps:
       # Fresh runner: never build or execute the application's code here.
-      - name: Reserve disk for the scanned CUDA archive and its loaded image
-        if: matrix.component == 'vllm-engine'
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
@@ -128,28 +125,31 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
-      - name: Configure the disposable Docker OCI image store
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
-      - name: Load and publish the scanned image without executing it
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+          token: ''
+      - name: Publish the scanned OCI image without executing it
         id: image
         env:
           GH_TOKEN: ${{ github.token }}
           COMPONENT: ${{ matrix.component }}
           ARCH: ${{ matrix.arch }}
         run: |
-          zstd -d image.tar.zst --stdout | docker load
+          digest=$(python3 -c 'import json,re; x=json.load(open("image/index.json"))["manifests"]; assert len(x)==1; d=x[0]["digest"]; assert re.fullmatch("sha256:[a-f0-9]{64}",d); print(d)')
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
           if [ "$COMPONENT" = vllm-engine ]; then
             repository="ghcr.io/videoq-jp/videoq-vllm"
           fi
           tag="$repository:$GITHUB_SHA-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker tag "videoq-$COMPONENT:release" "$tag"
-          docker push "$tag"
+          umask 077
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          oras cp --from-oci-layout --to-registry-config "$HOME/.docker/config.json" "image@$digest" "$tag"
+          test "$(oras resolve --registry-config "$HOME/.docker/config.json" "$tag")" = "$digest"
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
-          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag")
-          digest="${digest##*@}"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           mkdir -p published
@@ -198,6 +198,9 @@ jobs:
             const prune = require('./.github/scripts/prune-onprem-build-artifacts.cjs');
             const result = await prune({ github, context: { repo: context.repo, ref: context.ref, eventName: context.eventName, sha: context.sha, runId: context.runId, runAttempt: process.env.GITHUB_RUN_ATTEMPT }, sourceSha: process.env.SOURCE_SHA });
             core.info(`Removed ${result.deleted} consumed image archives (${result.bytes} bytes).`);
+      - name: Clear registry credentials after signing
+        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
+        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
   indexes:
     needs: [source, publish]
     runs-on: ubuntu-24.04
@@ -231,7 +234,9 @@ jobs:
             repository="ghcr.io/videoq-jp/videoq-vllm"
           fi
           tag="$repository:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          umask 077
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           manifests=("$repository@$(cat "$COMPONENT-amd64.digest")")
           if [ "$COMPONENT" != vllm-engine ]; then
             manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")

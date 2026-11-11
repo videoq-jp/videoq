@@ -17,12 +17,13 @@ function runBuild({failure='',mismatchedLicense=false}={}){
   writeFileSync(join(directory,'docker'),`#!/bin/bash
 set -eu
 printf '%s\\n' "$*" >> "$TEST_LOG"
-if [ "$1" = load ]; then cat >/dev/null; exit 0; fi
 if [ "$1 $2" = "$TEST_FAILURE" ]; then exit 7; fi
 case "$1 $2" in
-  'buildx build') mkdir -p "$RUNNER_TEMP/scan-image"; touch "$RUNNER_TEMP/scan-image/proof" ;;
-  'create '* ) printf 'container-id\\n' ;;
-  'cp '* ) tar -c -C "$TEST_DIRECTORY" image-license ;;
+  'buildx build')
+    case " $* " in
+      *' --build-context '*) mkdir -p "$RUNNER_TEMP/image-check"; cp "$TEST_DIRECTORY/image-license" "$RUNNER_TEMP/image-check/LICENSE" ;;
+      *) mkdir -p "$RUNNER_TEMP/scan-image"; printf '%s' '{"manifests":[{"digest":"sha256:${'a'.repeat(64)}"}]}' > "$RUNNER_TEMP/scan-image/index.json" ;;
+    esac ;;
 esac
 `);
   chmodSync(join(directory,'docker'),0o700);
@@ -34,22 +35,21 @@ esac
  }finally{rmSync(directory,{recursive:true,force:true});}
 }
 
-test('image pipeline releases build layers before loading and checks the actual shipped license',()=>{
+test('image pipeline checks the shipped license through the exact OCI output without Docker loading',()=>{
  const result=runBuild();
  assert.equal(result.status,0,result.stderr);
- assert.ok(result.commands.indexOf('buildx prune')<result.commands.indexOf('load\n'));
- assert.ok(result.commands.includes('cp container-id:/usr/share/licenses/videoq/LICENSE -'));
- assert.ok(result.commands.includes('image rm fixture:ci'));
+ assert.match(result.commands,/--build-context release-image=oci-layout:\/\//);
+ assert.ok(result.commands.indexOf('--build-context')<result.commands.indexOf('buildx prune'));
+ assert.doesNotMatch(result.commands,/^load|^create|^run|^cp /m);
 });
 
-test('a build failure prevents loading, and a license mismatch prevents successful handoff',()=>{
+test('a build failure prevents verification, and a license mismatch prevents successful handoff',()=>{
  const failed=runBuild({failure:'buildx build'});
  assert.equal(failed.status,7);
- assert.ok(!failed.commands.includes('load\n'));
+ assert.ok(!failed.commands.includes('--build-context'));
  const mismatch=runBuild({mismatchedLicense:true});
  assert.notEqual(mismatch.status,0);
- assert.ok(!mismatch.commands.includes('image rm fixture:ci'));
- assert.ok(mismatch.commands.includes('rm -f container-id'));
+ assert.ok(!mismatch.commands.includes('buildx prune'));
 });
 
 test('one complete strict scan supplies both the inventory and the separate publisher',()=>{
@@ -58,8 +58,8 @@ test('one complete strict scan supplies both the inventory and the separate publ
   assert.ok(action.includes(setting),setting);
  assert.ok(action.includes('trivy convert --format cyclonedx --output artifact/sbom.cdx.json artifact/security.json'));
  assert.doesNotMatch(action,/trivy image |docker save|continue-on-error|secrets\./);
- assert.ok(action.indexOf('configure-onprem-ci-dns.py --docker --oci')<action.indexOf('docker load'));
- assert.ok(action.indexOf('uses: aquasecurity/trivy-action@')<action.indexOf('zstd -T0'));
+ assert.doesNotMatch(action,/docker (?:load|create|run|cp) /);
+ assert.ok(action.indexOf('uses: aquasecurity/trivy-action@')<action.indexOf('mv "$RUNNER_TEMP/scan-image" artifact/image'));
  assert.ok(action.includes("if: inputs.artifact-name != ''"));
  for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
   const workflow=readFileSync(join(__dirname,`../workflows/${name}.yml`),'utf8');
@@ -77,5 +77,34 @@ test('image-action changes select GPU validation without selecting unrelated app
  for(const name of ['containers','hono','worker','frontend','docs']){
   assert.doesNotMatch(filter(name),/['"]\.github\/actions\/\*\*['"]/);
   assert.ok(filter(name).includes('.github/actions/setup-package-manager/**'),name);
+ }
+});
+
+
+test('CUDA preparation fails before build when its working set cannot fit',()=>{
+ const reserve=action.split('    - name: Reserve disk for CUDA\n')[1].split('    - uses:')[0];
+ assert.ok(reserve.includes("if: inputs.cuda == 'true'"));
+ const script=reserve.split("/usr/bin/python3 - <<'PYCODE'\n")[1].split('        PYCODE')[0]
+   .split('\n').map(line=>line.replace(/^        /,'')).join('\n');
+ for(const [free,passes] of [[59,false],[60,true]]){
+  const code='import shutil,types,os; os.environ["RUNNER_TEMP"]="/fixture"; shutil.disk_usage=lambda _: types.SimpleNamespace(free='+free+'*1024**3); exec('+JSON.stringify(script)+')';
+  const result=spawnSync('python3',['-c',code],{encoding:'utf8'});
+  assert.equal(result.status===0,passes,result.stdout+result.stderr);
+ }
+});
+
+test('publishers copy the scanned OCI graph directly and check the registry digest',()=>{
+ for(const name of ['onprem-release','onprem-runtime-base']){
+  const workflow=readFileSync(join(__dirname,`../workflows/${name}.yml`),'utf8');
+  const publish=workflow.match(/^  publish:\n([\s\S]*?)(?=^  [a-z][a-z-]*:|$(?![\s\S]))/m)[1];
+  assert.doesNotMatch(publish,/docker (?:load|run|build|import)|zstd|--insecure|--plain-http/);
+  assert.ok(publish.includes('oras cp --from-oci-layout'));
+  assert.ok(publish.includes('"image@$digest" "$tag"'));
+  assert.ok(publish.includes('oras resolve --registry-config'));
+  assert.ok(publish.includes('sbom-path: sbom.cdx.json'));
+  assert.match(publish,/checksum: [a-f0-9]{64}/);
+  assert.ok(publish.includes('$HOME/.docker/config.json'));
+  assert.ok(publish.indexOf('Clear registry credentials after signing')>publish.lastIndexOf('uses: actions/attest@'));
+  assert.doesNotMatch(publish,/trap 'oras logout/);
  }
 });

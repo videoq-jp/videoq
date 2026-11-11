@@ -81,7 +81,7 @@ test('release retries cannot mix artifacts from different attempts',()=>{
 test('public distribution checks visibility around publication and before staging',()=>{
   const publish=job('publish');
   const before=publish.indexOf('onprem_registry.py "$COMPONENT"');
-  const push=publish.indexOf('docker push "$tag"');
+  const push=publish.indexOf('oras cp --from-oci-layout');
   const after=publish.indexOf('onprem_registry.py "$COMPONENT"',push);
   assert(before>=0 && push>before && after>push);
   assert.doesNotMatch(workflow,/--allow-missing/);
