@@ -53,11 +53,12 @@ jobs:
         run: |
           docker builder prune --all --force
           mkdir -p artifact
+          docker save videoq-vllm-runtime-base:scanned | gzip -1 > "$RUNNER_TEMP/scan-image.tar.gz"
       - name: Block all unassessed HIGH and CRITICAL vulnerabilities
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
         with:
           version: v0.76.1
-          image-ref: videoq-vllm-runtime-base:scanned
+          input: ${{ runner.temp }}/scan-image.tar.gz
           trivy-config: apps/inference/whisper/security/trivy.yaml
           format: json
           output: artifact/security.json
@@ -78,8 +79,9 @@ jobs:
           if-no-files-found: error
       - name: Export only the scanned image and inventory
         run: |
-          trivy image --timeout 15m --image-src docker --format cyclonedx --output artifact/sbom.cdx.json videoq-vllm-runtime-base:scanned
-          docker save videoq-vllm-runtime-base:scanned | zstd -T0 -o artifact/image.tar.zst
+          trivy image --timeout 15m --input "$RUNNER_TEMP/scan-image.tar.gz" --format cyclonedx --output artifact/sbom.cdx.json
+          gzip -dc "$RUNNER_TEMP/scan-image.tar.gz" | zstd -T0 -o artifact/image.tar.zst
+          rm "$RUNNER_TEMP/scan-image.tar.gz"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
