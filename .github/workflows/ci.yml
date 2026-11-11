@@ -195,9 +195,7 @@ jobs:
               - 'apps/inference/llamacpp/security/**'
               - '.github/scripts/onprem-upstream-security*'
               - '.github/scripts/check-upstream-header-image.py'
-              - '.github/workflows/onprem-validation.yml'
             real_cpu:
-              - '.github/workflows/onprem-validation.yml'
               - '.github/scripts/onprem-cpu-acceptance.py'
               - '.github/scripts/onprem-lab.py'
               - '.github/onprem-lab/**'

@@ -12,7 +12,7 @@ function filter(name, paths) {
 }
 function selected(name, event, paths = []) {
   const expression = ci.match(new RegExp(`^      ${name}: \\$\\{\\{ (.+) \\}\\}$`, 'm'))[1];
-  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images'];
+  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images', 'real_cpu'];
   const value = runInNewContext(expression, {
     github: { event_name: event },
     steps: { filter: { outputs: Object.fromEntries(names.map(name => [name, filter(name, paths)])) } },
@@ -83,4 +83,16 @@ test('manual CI retains full validation and both components remain required when
     assert.ok(job.includes(`if: needs.changes.outputs.${flag} == 'true'`));
   }
   assert.match(ci, /validate_lifecycle: \$\{\{ needs\.changes\.outputs\.onprem_lifecycle == 'true' \}\}/);
+});
+
+test('shared workflow edits do not download models or scan unchanged upstream image matrices', () => {
+  for (const event of events) {
+    for (const name of ['whisper_gpu', 'real_cpu', 'upstream_images']) {
+      assert.equal(selected(name, event, ['.github/workflows/ci.yml']), false, name);
+      assert.equal(selected(name, event, ['.github/workflows/onprem-validation.yml']), false, name);
+    }
+    assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
+    assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);
+    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+  }
 });

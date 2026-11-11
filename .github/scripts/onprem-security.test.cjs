@@ -124,7 +124,7 @@ test('CI scans pinned upstream images only when their pins change, while Operati
 
   const filter = ci.match(/^            upstream_images:\n([\s\S]*?)(?=^            \w+:)/m)[1];
   for (const pattern of ['charts/videoq-inference/values.yaml', 'apps/inference/whispercpp/security/**',
-    '.github/scripts/check-upstream-header-image.py', '.github/workflows/onprem-validation.yml']) {
+    '.github/scripts/check-upstream-header-image.py']) {
     assert.ok(filter.includes(`'${pattern}'`), pattern);
   }
   assert.match(ci, /scan_upstream_images: \$\{\{ needs\.changes\.outputs\.upstream_images == 'true' \}\}/);

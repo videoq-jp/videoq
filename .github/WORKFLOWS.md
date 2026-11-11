@@ -77,7 +77,9 @@ The same selection applies to PRs, the merge queue, and main/develop pushes:
 Image-only validation does not build Whisper, pull the llama.cpp inventory image,
 start K3s/kind, run backup/restore rehearsals, or install a playback browser.
 Changing a shared lockfile or generic `ci.yml` alone does not select full lifecycle
-or NVIDIA validation. Selected checks still fail closed through `CI Success`.
+or NVIDIA validation. Shared workflow edits also do not download real CPU models
+or scan the unchanged upstream image matrix; their own scripts, fixtures and image
+pins still select those checks. Selected checks still fail closed through `CI Success`.
 Manual CI retains full lifecycle and native compatibility validation. Daily
 Operations still runs full lifecycle and GPU security checks; weekly Operations
 retains native inference checks. Signed-release acceptance also remains unchanged.
