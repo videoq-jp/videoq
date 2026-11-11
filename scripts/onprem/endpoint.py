@@ -174,8 +174,28 @@ def prepare_certificate(directory, details, url):
         private_pem(directory / name, content)
 
 
-def verified_opener(ca=None):
+def verified_opener(ca=None, *, connect_ip=None):
     context = ssl.create_default_context()
     if ca:
         context.load_verify_locations(cafile=str(ca))
-    return build_opener(ProxyHandler({}), HTTPSHandler(context=context))
+    if connect_ip is None:
+        return build_opener(ProxyHandler({}), HTTPSHandler(context=context))
+    # Private canary checks connect directly to a gateway Pod while public
+    # admission is closed. URL/Host/SNI and certificate hostname checks remain
+    # those of the real browser origin; only the TCP destination changes.
+    import ipaddress
+    import socket
+    from http.client import HTTPSConnection
+    address = str(ipaddress.ip_address(connect_ip))
+
+    class CanaryConnection(HTTPSConnection):
+        def __init__(self, host, **kwargs):
+            super().__init__(host, **kwargs)
+            self._create_connection = lambda destination, timeout, source_address=None: socket.create_connection(
+                (address, destination[1]), timeout, source_address)
+
+    class CanaryHandler(HTTPSHandler):
+        def https_open(self, request):
+            return self.do_open(CanaryConnection, request, context=context)
+
+    return build_opener(ProxyHandler({}), CanaryHandler(context=context))

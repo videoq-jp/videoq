@@ -373,6 +373,7 @@ class NativeInstaller:
             present = {r.split()[0] for r in images.splitlines()[1:] if r.split()}
             if self.state.get('embedding_image') == pinned and pinned in present:
                 self.embedding_digest = row[2]
+                self.record(embedding_source=image_source_hash(ROOT))
                 print('検証済みの K3s CUDA イメージを再利用します。再ビルド・再取り込みは不要です。', flush=True)
                 return
         probe = subprocess.run(['sudo', '--', 'docker', 'image', 'inspect', tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -402,7 +403,7 @@ class NativeInstaller:
         if pinned not in self.system('k3s', 'ctr', 'images', 'list', '-q', capture=True).splitlines():
             self.system('k3s', 'ctr', 'images', 'tag', tag, pinned)
         self.embedding_digest = row[2]
-        self.record(embedding_image=pinned)
+        self.record(embedding_image=pinned, embedding_source=image_source_hash(ROOT))
 
     def inference(self):
         self.stage('4/8 3モデルを1枚の4090に配置します（初回は重みを取得します）')

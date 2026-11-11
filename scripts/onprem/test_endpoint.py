@@ -19,6 +19,27 @@ class EndpointTests(unittest.TestCase):
     def args(self, *extra):
         return rtx4090.parser().parse_args(list(extra))
 
+    def test_private_canary_keeps_the_browser_hostname_and_tls_validation(self):
+        from urllib.request import Request
+        import socket
+        opener = endpoint.verified_opener(connect_ip='10.42.0.99')
+        handler = next(item for item in opener.handlers if type(item).__name__ == 'CanaryHandler')
+        captured = []
+        def open_connection(factory, request, **kwargs):
+            connection = factory('videoq.lab.example:443', **kwargs)
+            captured.append(connection)
+            return connection
+        with patch.object(handler, 'do_open', side_effect=open_connection):
+            connection = handler.https_open(Request('https://videoq.lab.example/ready'))
+        self.assertEqual(connection.host, 'videoq.lab.example')
+        self.assertTrue(connection._context.check_hostname)
+        self.assertEqual(connection._context.verify_mode, ssl.CERT_REQUIRED)
+        with patch.object(socket, 'create_connection') as connect:
+            connection._create_connection(('videoq.lab.example', 443), 5)
+        connect.assert_called_once_with(('10.42.0.99', 443), 5, None)
+        with self.assertRaises(ValueError):
+            endpoint.verified_opener(connect_ip='untrusted.example')
+
     def test_lab_wizard_defaults_to_ip_url_and_internal_ca(self):
         ask = Mock(side_effect=AssertionError('network defaults must not prompt'))
         with patch.object(endpoint, 'lan_addresses', return_value=[('192.168.10.20', 'ens3')]), contextlib.redirect_stdout(io.StringIO()):

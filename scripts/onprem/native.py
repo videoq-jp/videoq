@@ -78,6 +78,10 @@ def backing_plan(example, url, storage_gib, raw, tls_mode='acme'):
             if tls_mode == 'provided':
                 pod.setdefault('volumes', []).append({'name': 'videoq-tls', 'secret': {'secretName': 'videoq-gateway-tls', 'defaultMode': 0o440}})
                 pod['containers'][0].setdefault('volumeMounts', []).append({'name': 'videoq-tls', 'mountPath': '/etc/videoq-tls', 'readOnly': True})
+            # Caddy drains existing requests on SIGTERM; its default grace is
+            # unbounded. Allow the updater to abandon a busy drain before K8s
+            # would terminate a long upload. See caddyserver.com/docs/caddyfile/options.
+            pod['terminationGracePeriodSeconds'] = 3600
             pod['securityContext'] = {'runAsNonRoot': True, 'runAsUser': 10001, 'runAsGroup': 10001, 'fsGroup': 10001}
             pod['containers'][0]['securityContext'] = {'allowPrivilegeEscalation': False, 'capabilities': {'drop': ['ALL'], 'add': ['NET_BIND_SERVICE']}}
     return config, objects
