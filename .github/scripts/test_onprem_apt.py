@@ -42,7 +42,11 @@ class NvidiaAptFixTests(unittest.TestCase):
             f'pkg:deb/ubuntu/{name}@2.8.4ubuntu0.1?arch=amd64&distro=ubuntu-24.04' for name in apt.PACKAGES})
         dockerfile = (ROOT / 'apps/inference/whisper/Dockerfile.vllm').read_text()
         for operation in ('update', 'upgrade'):
-            self.assertIn(f'apt-get -o Acquire::Retries=0 {operation}', dockerfile)
+            self.assertIn('apt-get -o Acquire::Retries=3', dockerfile)
+            self.assertIn(' ' + operation, dockerfile)
+        self.assertIn('-o APT::Update::Error-Mode=any update', dockerfile)
+        self.assertIn('-o Acquire::http::Timeout=30', dockerfile)
+        self.assertIn('-o Acquire::https::Timeout=30', dockerfile)
         self.assertIn('python3 /usr/share/videoq/security/verify_apt.py', dockerfile)
 
 

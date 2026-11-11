@@ -97,3 +97,23 @@ test('public distribution checks visibility around publication and before stagin
   const staging=job('staging');
   assert(staging.indexOf('onprem_registry.py "$component"')<staging.indexOf('onprem-release.py verify'));
 });
+
+test('browser setup retries transient failures but never passes after three failures',()=>{
+  const {mkdtempSync,writeFileSync,chmodSync,rmSync}=require('node:fs');
+  const {tmpdir}=require('node:os');
+  const {spawnSync}=require('node:child_process');
+  const block=workflow.split('      - name: Install Chromium and OS dependencies with bounded retries\n')[1].split('\n      - ')[0];
+  const script=block.split('        run: |\n')[1].split('\n').map(line=>line.replace(/^          /,'')).join('\n');
+  for(const failures of [2,3]){
+    const directory=mkdtempSync(join(tmpdir(),'videoq-browser-retry-'));
+    try{
+      const counter=join(directory,'counter');
+      writeFileSync(join(directory,'node'),'#!/bin/sh\ncount=0\nif [ -f "$TEST_COUNTER" ]; then read -r count < "$TEST_COUNTER"; fi\ncount=$((count+1))\nprintf "%s\\n" "$count" > "$TEST_COUNTER"\nif [ "$count" -le "$TEST_FAILURES" ]; then exit 1; fi\nexit 0\n');
+      writeFileSync(join(directory,'sleep'),'#!/bin/sh\nexit 0\n');
+      for(const name of ['node','sleep']) chmodSync(join(directory,name),0o700);
+      const result=spawnSync('bash',['-e','-c',script],{env:{...process.env,PATH:directory+':'+process.env.PATH,TEST_COUNTER:counter,TEST_FAILURES:String(failures)},encoding:'utf8'});
+      assert.equal(result.status,failures===2?0:1,result.stderr);
+      assert.equal(readFileSync(counter,'utf8').trim(),'3');
+    }finally{rmSync(directory,{recursive:true,force:true})}
+  }
+});
