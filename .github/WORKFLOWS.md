@@ -81,9 +81,12 @@ Changing a shared lockfile or generic `ci.yml` alone does not select full lifecy
 or NVIDIA validation. Shared workflow edits also do not download real CPU models
 or scan the unchanged upstream image matrix; their own scripts, fixtures and image
 pins still select those checks. Selected checks still fail closed through `CI Success`.
-Manual CI retains full lifecycle and native compatibility validation. Daily
-Operations still runs full lifecycle and GPU security checks; weekly Operations
-retains native inference checks. Signed-release acceptance also remains unchanged.
+Lifecycle rehearsals run only for the deployment, migration, storage and recovery
+changes listed above, and during signed-release acceptance. Manual CI uses the
+same lifecycle change filter and retains native compatibility validation. Daily
+Operations runs image and GPU security checks without lifecycle rehearsals; weekly
+Operations retains native inference checks. Real CPU acceptance runs on relevant
+CI changes and signed releases, rather than through Operations.
 
 App-specific jobs install their required npm workspaces and root tools instead of
 the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain
