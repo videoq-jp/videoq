@@ -1,16 +1,17 @@
 # Installed Moodle and real CPU acceptance
 
-The Moodle integration needs an actual Moodle site before it can test a
-Moodle-owned video through local ASR, indexing, chat and native playback. The
-installed fixture is a separate required CI job so an unrelated installer or
-image scan cannot prevent its evidence from being collected.
+The required Moodle CI workflow runs the installed-only acceptance fixture.
+It tests actual Moodle roles, enrolment, visibility and private HTTPS, requires
+4 GiB, and makes no model downloads or AI calls.
 
-There are two required jobs. The installed-only runner requires 4 GiB and makes
-no model downloads or AI calls. The combined job calls the existing real CPU
-rehearsal with a pinned Moodle image, keeps its baseline lifecycle checks, then
-runs Moodle in that same owned cluster before cleanup. Combined acceptance
-requires 12 GiB. The ordinary CPU runner retains its 10 GiB minimum, and the
-signed-release CLI does not accept the test-only Moodle image.
+The combined Moodle/CPU inference job has been removed from CI because actual
+transcription, indexing and chat are too expensive for this integration check.
+The combined rehearsal implementation remains available for explicit local use;
+it is not a required or scheduled Moodle CI job. The ordinary CPU runner and
+signed-release acceptance are independent of this change.
+
+The combined pipeline and run evidence below describe historical verification,
+not the current required CI coverage.
 
 At `388e666b`, both required jobs and CI Success pass in run `42362389689`.
 The combined job completes all 14 Moodle phases. Both standalone and Moodle ASR
@@ -132,10 +133,10 @@ private command logs, database dumps and signing keys are excluded. Cleanup
 checks node/network ownership before deleting them. The existing live report
 environment is independent of this runner.
 
-## Combined real CPU pipeline
+## Historical combined real CPU pipeline
 
-The second job builds the actual API/worker/web/Whisper adapter images, verifies
-capacity before provisioning and invokes `rehearse(..., local_builds=True,
+The former second CI job built the actual API/worker/web/Whisper adapter images, verified
+capacity before provisioning and invoked `rehearse(..., local_builds=True,
 moodle_image='videoq-moodle:cpu-acceptance')`. Public model/image downloads finish
 before the existing node firewall is installed. Real transcription timestamp/CER,
 cited chat, playback, backup/restore, upgrade/rollback and retention checks run
