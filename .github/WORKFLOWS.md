@@ -111,6 +111,11 @@ scan. A failed build, license check or scan prevents archive handoff. Failure re
 are retained. GPU runtime imports remain enforced as the serving user in both GPU
 Dockerfiles; the CPU gateway also has a container import smoke check.
 
+Real-model CPU acceptance calls the same Kubernetes lifecycle scenario as the
+deterministic-model rehearsal. When real models are selected, that scenario runs
+once in the isolated real-model cluster; the earlier fixture cluster is skipped.
+Docker and native K3s lifecycle tests cover separate operator paths and remain.
+
 Only releases export an archive. Publishing and provenance/SBOM signing still run
 on separate runners with write permissions, after successful current-main CI and
 image checks. End-to-end staging and CPU acceptance remain release gates.

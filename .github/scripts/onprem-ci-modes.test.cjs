@@ -11,10 +11,10 @@ function step(name) {
   assert.ok(block, name);
   return block.split(/\n      - (?:name|uses|run):/)[0];
 }
-function enabled(name, lifecycle, upstream = false) {
+function enabled(name, lifecycle, upstream = false, realCpu = false) {
   const condition = step(name).match(/^        if: (.+)$/m)?.[1] ?? 'true';
   return runInNewContext(condition.replace(/^\$\{\{ | \}\}$/g, ''), {
-    inputs: {validate_lifecycle: lifecycle, scan_upstream_images: upstream},
+    inputs: {validate_lifecycle: lifecycle, scan_upstream_images: upstream, validate_real_cpu: realCpu},
     steps: {images: {outcome: 'success'}}, cancelled: () => false,
   });
 }
@@ -78,4 +78,22 @@ test('inventories reference only images built in the selected mode', () => {
       assert.ok(!run.stdout.includes('llamacpp'));
     }
   } finally { rmSync(directory, {recursive: true, force: true}); }
+});
+
+
+test('each lifecycle run exercises Kubernetes once, with fixtures or real models',()=>{
+ const fixture='Exercise Kubernetes install, processing, restore, upgrade and rollback';
+ const models='Exercise source builds with real CPU models and blocked public egress';
+ for(const lifecycle of [false,true]) for(const real of [false,true]){
+  const selected=[enabled(fixture,lifecycle,false,real),enabled(models,lifecycle,false,real)].filter(Boolean);
+  assert.equal(selected.length,lifecycle?1:0,JSON.stringify({lifecycle,real}));
+  assert.equal(Boolean(enabled(fixture,lifecycle,false,real)),lifecycle&&!real);
+  assert.equal(Boolean(enabled(models,lifecycle,false,real)),lifecycle&&real);
+ }
+ // The real-model entry point must continue calling the shared lifecycle scenario.
+ const acceptance=readFileSync(join(__dirname,'onprem-cpu-acceptance.py'),'utf8');
+ assert.match(acceptance,/onprem-lab\.py/);
+ assert.match(acceptance,/"--real-models","--inference-chart"/);
+ assert.equal(Boolean(enabled('Retain Kubernetes validation evidence',true,false,true)),false);
+ assert.equal(Boolean(enabled('Retain real CPU source-build evidence',true,false,true)),true);
 });
