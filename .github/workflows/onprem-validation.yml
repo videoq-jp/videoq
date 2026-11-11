@@ -322,11 +322,6 @@ jobs:
         run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - name: Reserve disk for the CUDA image on the disposable runner
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - name: Record host and APT sandbox DNS before the CUDA build
-        run: |
-          python3 .github/scripts/onprem-dns-diagnostic.py --require-success
-          base=$(awk '$1 == "FROM" {print $2; exit}' apps/inference/whisper/Dockerfile.vllm)
-          docker run --rm -i --entrypoint python3 "$base" - --require-success < .github/scripts/onprem-dns-diagnostic.py
       - name: Build the pinned audio-capable vLLM engine without credentials
         id: gpu_image
         run: docker build -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper

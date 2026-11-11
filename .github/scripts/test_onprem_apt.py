@@ -41,12 +41,15 @@ class NvidiaAptFixTests(unittest.TestCase):
         self.assertEqual({p['@id'] for p in statement['products']}, {
             f'pkg:deb/ubuntu/{name}@2.8.4ubuntu0.1?arch=amd64&distro=ubuntu-24.04' for name in apt.PACKAGES})
         dockerfile = (ROOT / 'apps/inference/whisper/Dockerfile.vllm').read_text()
+        refresh = (ROOT / 'apps/inference/whisper/Dockerfile.vllm-base').read_text()
+        self.assertNotIn('apt-get', dockerfile)
+        self.assertIn('FROM ghcr.io/videoq-jp/videoq-vllm@sha256:', dockerfile)
         for operation in ('update', 'upgrade'):
-            self.assertIn('apt-get -o Acquire::Retries=3', dockerfile)
-            self.assertIn(' ' + operation, dockerfile)
-        self.assertIn('-o APT::Update::Error-Mode=any update', dockerfile)
-        self.assertIn('-o Acquire::http::Timeout=30', dockerfile)
-        self.assertIn('-o Acquire::https::Timeout=30', dockerfile)
+            self.assertIn('apt-get -o Acquire::Retries=3', refresh)
+            self.assertIn(' ' + operation, refresh)
+        self.assertIn('-o APT::Update::Error-Mode=any update', refresh)
+        self.assertIn('-o Acquire::http::Timeout=30', refresh)
+        self.assertIn('-o Acquire::https::Timeout=30', refresh)
         self.assertIn('python3 /usr/share/videoq/security/verify_apt.py', dockerfile)
 
 
