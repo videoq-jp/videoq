@@ -67,6 +67,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - name: Reserve disk for the CUDA image on the disposable runner
         if: matrix.component == 'vllm-engine'
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
@@ -75,9 +77,9 @@ jobs:
         env:
           DOCKERFILE: ${{ matrix.dockerfile }}
         run: |
-          python3 .github/scripts/onprem-dns-diagnostic.py
+          python3 .github/scripts/onprem-dns-diagnostic.py --require-success
           base=$(awk '$1 == "FROM" {print $2; exit}' "$DOCKERFILE")
-          docker run --rm -i --entrypoint python3 "$base" - < .github/scripts/onprem-dns-diagnostic.py
+          docker run --rm -i --entrypoint python3 "$base" - --require-success < .github/scripts/onprem-dns-diagnostic.py
       - name: Build without publishing credentials
         env:
           COMPONENT: ${{ matrix.component }}
@@ -364,6 +366,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -444,6 +448,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -452,7 +458,7 @@ jobs:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
       - name: Record host DNS before browser dependencies
-        run: python3 .github/scripts/onprem-dns-diagnostic.py
+        run: python3 .github/scripts/onprem-dns-diagnostic.py --require-success
       - name: Install Chromium and OS dependencies with bounded retries
         run: |
           for attempt in 1 2 3; do
