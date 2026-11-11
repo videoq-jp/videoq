@@ -44,6 +44,7 @@ test('the existing required CI gate includes on-prem validation', () => {
 test('all on-prem images are scanned without hiding unfixed findings', () => {
   const scans = onprem.split(/(?=      - name:)/).filter(step => step.includes('uses: aquasecurity/trivy-action@'));
   assert.equal(scans.length, 5);
+  for (const scan of scans) assert.match(scan, /timeout-minutes: 15/);
   for (const component of ['api', 'worker', 'web', 'local-whisper']) {
     const scan = scans.find(step => step.includes(`image-ref: videoq-${component}:onprem-ci`));
     assert.ok(scan, component);

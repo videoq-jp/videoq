@@ -133,6 +133,7 @@ jobs:
           docker run --rm --entrypoint python videoq-worker:onprem-ci -c 'import os; assert os.environ["DEPLOYMENT_EDITION"] == "onprem"; import worker_python.lambda_handler; import runpy; runpy.run_path("scripts/run_worker.py", run_name="import_check")'
       - name: Scan the API image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
@@ -148,6 +149,7 @@ jobs:
           timeout: 10m
       - name: Scan the worker image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
@@ -163,6 +165,7 @@ jobs:
           timeout: 10m
       - name: Scan the web image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
@@ -178,6 +181,7 @@ jobs:
           timeout: 10m
       - name: Scan the local Whisper image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
@@ -349,6 +353,7 @@ jobs:
       # Use the registry so a cached amd64 Docker image cannot shadow arm64.
       - name: Scan upstream CPU images including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         env:
           TRIVY_PLATFORM: linux/${{ matrix.architecture }}
