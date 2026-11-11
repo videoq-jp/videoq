@@ -99,11 +99,15 @@ select the component and architecture; the action owns the build, license check,
 strict vulnerability scan and inventory. Change this pipeline once rather than
 patching three copies.
 
-The action produces one OCI directory with individually compressed layers, frees
-BuildKit's extracted copy before loading it, and removes the loaded test image
-before scanning. Tar archives are streamed only for loading and release handoff.
-The disposable CI runner explicitly enables Docker's containerd
-image store; operator hosts are never changed by this CI setup.
+The action produces one OCI directory with individually compressed layers. BuildKit
+checks that exact output's license and gateway imports without loading another
+copy into Docker. CUDA jobs reclaim unused hosted-runner tools and check available
+disk before downloading layers. This setup never runs on operator hosts.
+
+Release callers hand off that same OCI directory. ORAS copies its compressed graph
+to GHCR and the publisher requires the registry digest to equal the scanned digest.
+There is no intermediate tar/zstd conversion, Docker import, or image-store switch.
+The registry client action and binary checksum are pinned.
 
 Trivy scans once, including unfixed HIGH/CRITICAL findings and the complete package
 inventory. Release SBOMs are converted from that JSON report, without a second image
@@ -116,7 +120,7 @@ deterministic-model rehearsal. When real models are selected, that scenario runs
 once in the isolated real-model cluster; the earlier fixture cluster is skipped.
 Docker and native K3s lifecycle tests cover separate operator paths and remain.
 
-Only releases export an archive. Publishing and provenance/SBOM signing still run
+Only releases export an image artifact. Publishing and provenance/SBOM signing still run
 on separate runners with write permissions, after successful current-main CI and
 image checks. End-to-end staging and CPU acceptance remain release gates.
 Image-action changes select GPU validation; app jobs follow their actual shared

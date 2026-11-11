@@ -8,7 +8,7 @@ import subprocess
 
 RESOLVERS = ('1.1.1.1', '8.8.8.8')
 HOSTS = ('archive.ubuntu.com', 'security.ubuntu.com', 'ghcr.io')
-DOCKER_CONFIG = '''import json, os, stat, sys, tempfile
+DOCKER_CONFIG = '''import json, os, stat, tempfile
 from pathlib import Path
 path = Path('/etc/docker/daemon.json')
 old = path.stat() if path.exists() else None
@@ -16,11 +16,6 @@ config = json.loads(path.read_text()) if old else {}
 if not isinstance(config, dict):
     raise ValueError('Docker daemon configuration must be an object')
 config['dns'] = ['1.1.1.1', '8.8.8.8']
-if '--oci' in sys.argv[1:]:
-    features = config.setdefault('features', {})
-    if not isinstance(features, dict):
-        raise ValueError('Docker features must be an object')
-    features['containerd-snapshotter'] = True
 path.parent.mkdir(parents=True, exist_ok=True)
 with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, delete=False) as stream:
     temporary = Path(stream.name)
@@ -41,12 +36,10 @@ def run(command, **kwargs):
     return subprocess.run(command, text=True, capture_output=True, **kwargs)
 
 
-def configure(*, docker=False, oci=False, environment=None, execute=run, resolve=socket.getaddrinfo):
+def configure(*, docker=False, environment=None, execute=run, resolve=socket.getaddrinfo):
     environment = os.environ if environment is None else environment
     if environment.get('GITHUB_ACTIONS') != 'true' or environment.get('RUNNER_ENVIRONMENT') != 'github-hosted':
         raise ValueError('DNS setup is restricted to disposable GitHub-hosted CI runners')
-    if oci and not docker:
-        raise ValueError('OCI storage setup requires --docker')
     if docker and execute(['docker', 'ps', '-q'], check=True).stdout.strip():
         raise ValueError('Refusing to restart Docker with active service containers')
     routes = json.loads(execute(['ip', '-json', 'route', 'show', 'default'], check=True).stdout)
@@ -61,19 +54,14 @@ def configure(*, docker=False, oci=False, environment=None, execute=run, resolve
         if not resolve(host, 443, type=socket.SOCK_STREAM):
             raise ValueError('Public repository DNS validation failed: ' + host)
     if docker:
-        execute(['sudo', '-n', 'python3', '-c', DOCKER_CONFIG, *(['--oci'] if oci else [])], check=True)
+        execute(['sudo', '-n', 'python3', '-c', DOCKER_CONFIG], check=True)
         execute(['sudo', '-n', 'systemctl', 'restart', 'docker'], check=True)
         execute(['docker', 'info'], check=True)
-        if oci:
-            status = execute(['docker', 'info', '--format', '{{json .DriverStatus}}'], check=True).stdout
-            if 'io.containerd.snapshotter.v1' not in status:
-                raise ValueError('Docker OCI image store was not activated')
     print('Configured CI DNS: ' + ', '.join(RESOLVERS) + ('; Docker DNS updated' if docker else '; existing service containers retained'))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--docker', action='store_true', help='Also configure/restart Docker; refuses active containers')
-    parser.add_argument('--oci', action='store_true', help='Require the containerd image store for OCI archive loading; needs --docker')
     args = parser.parse_args()
-    configure(docker=args.docker, oci=args.oci)
+    configure(docker=args.docker)

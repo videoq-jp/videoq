@@ -65,34 +65,6 @@ class CiDnsTests(unittest.TestCase):
             self.assertNotEqual(result.returncode,0)
             self.assertEqual(path.read_text(),'{broken')
 
-    def test_oci_requires_explicit_docker_restart_and_checks_actual_backend(self):
-        with self.assertRaisesRegex(ValueError, 'requires --docker'):
-            module.configure(oci=True, environment=self.env, execute=self.execute)
-        self.assertEqual(self.commands, [])
-        with self.assertRaisesRegex(ValueError, 'not activated'):
-            module.configure(docker=True, oci=True, environment=self.env,
-                             execute=self.execute, resolve=lambda *a, **k: [('answer',)])
-        self.assertTrue(any('--oci' in c for c in self.commands))
-        self.commands.clear()
-        def containerd(command, **kwargs):
-            result = self.execute(command, **kwargs)
-            if command[:3] == ['docker', 'info', '--format']:
-                result.stdout = '[["driver-type","io.containerd.snapshotter.v1"]]'
-            return result
-        module.configure(docker=True, oci=True, environment=self.env,
-                         execute=containerd, resolve=lambda *a, **k: [('answer',)])
-
-    def test_oci_settings_preserve_other_daemon_features(self):
-        with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / 'daemon.json'
-            path.write_text(json.dumps({'features': {'buildkit': True}, 'log-driver': 'local'}))
-            code = module.DOCKER_CONFIG.replace("Path('/etc/docker/daemon.json')", 'Path('+repr(str(path))+')')
-            result = subprocess.run([sys.executable, '-c', code, '--oci'], text=True, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            config = json.loads(path.read_text())
-            self.assertEqual(config['features'], {'buildkit': True, 'containerd-snapshotter': True})
-            self.assertEqual(config['log-driver'], 'local')
-            self.assertEqual(config['dns'], list(module.RESOLVERS))
 
 
 if __name__ == '__main__':

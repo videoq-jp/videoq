@@ -59,28 +59,29 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
           sparse-checkout: .github/scripts
-      - name: Reserve disk for the scanned archive
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: runtime-base-${{ github.sha }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
-      - name: Configure the disposable Docker OCI image store
-        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker --oci
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+          token: ''
       - name: Publish the scanned runtime without executing it
         id: image
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          zstd -d image.tar.zst --stdout | docker load
+          digest=$(python3 -c 'import json,re; x=json.load(open("image/index.json"))["manifests"]; assert len(x)==1; d=x[0]["digest"]; assert re.fullmatch("sha256:[a-f0-9]{64}",d); print(d)')
           python3 .github/scripts/onprem_registry.py vllm-engine
           repository=ghcr.io/videoq-jp/videoq-vllm
           tag="$repository:runtime-base-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker tag videoq-vllm-runtime-base:scanned "$tag"
-          docker push "$tag"
+          umask 077
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          oras cp --from-oci-layout --to-registry-config "$HOME/.docker/config.json" "image@$digest" "$tag"
+          test "$(oras resolve --registry-config "$HOME/.docker/config.json" "$tag")" = "$digest"
           python3 .github/scripts/onprem_registry.py vllm-engine
-          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag")
-          digest="${digest#*@}"
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
       - name: Sign source provenance
@@ -101,3 +102,6 @@ jobs:
           DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           printf 'GPU runtime base candidate: `ghcr.io/videoq-jp/videoq-vllm@%s`\n\nReview a Dockerfile.vllm digest update after GPU verification.\n' "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+      - name: Clear registry credentials after signing
+        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
+        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
