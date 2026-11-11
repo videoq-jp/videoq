@@ -1,0 +1,370 @@
+{
+  "status": "passed_for_reviewed_workloads",
+  "inspectedAt": "2026-11-11T21:57:10.814576+00:00",
+  "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
+  "upstreamVersion": "0.33.0",
+  "imageMutation": "none; no engine build, package installation or source patch",
+  "imageScan": {
+    "scanner": "Trivy 0.76.1; unsuppressed remote image scan with all package inventories",
+    "rawReportSha256": "46de19af61aa54124206ff2d045d57cfc0339a6f15e42acea051f629890d9df8",
+    "rawHighCriticalFindings": 460,
+    "acceptedForConstrainedRuntime": 460,
+    "unassessedFindings": 0,
+    "assessment": "apps/inference/vllm/security/runtime-assessment.json",
+    "expiresAt": "2026-12-10T21:05:42.246607+00:00",
+    "scope": "This does not claim the upstream packages are patched. Exact file inventories, package paths, startup arguments and six rendered chart variants are enforced."
+  },
+  "nativeInventory": {
+    "status": "passed",
+    "sha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
+    "kernelHeaderFiles": 990,
+    "kernelHeaderInventorySha256": "65849a78c4da76ca25e582bcd728a8958bbe41572422e2b50434f3457f8ba933",
+    "kernelBinariesOrModules": false
+  },
+  "audioOverlay": {
+    "status": "passed",
+    "lock": "charts/videoq-inference/files/vllm-audio-wheels.json",
+    "lockSha256": "449386c462038c649794a3c10e1ab502a8631de4e9046317594f3f6bfe83ec5c",
+    "rawScanSha256": "95274176af2a35df86b1bf26857b46d636b679b43e008363d4b92b6b9325797b",
+    "scannerCommand": "trivy rootfs --scanners vuln --format json <audio-runtime>",
+    "installedPackages": [
+      [
+        "av",
+        "19.0.2"
+      ],
+      [
+        "scipy",
+        "1.18.1"
+      ],
+      [
+        "soundfile",
+        "0.14.0"
+      ],
+      [
+        "soxr",
+        "1.1.0"
+      ]
+    ],
+    "findings": 0,
+    "offlineRestart": "Verified cached wheel archives were re-extracted with network requests disabled.",
+    "provisioning": "Four hash-verified upstream binary wheels on a separate volume; no pip/resolver/build; serving mounts read-only."
+  },
+  "runtimeProbe": {
+    "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
+    "lockSha256": "449386c462038c649794a3c10e1ab502a8631de4e9046317594f3f6bfe83ec5c",
+    "probeSourceSha256": "750f1d2a11af48edd15f941f3ac3618575cbde9ceefb0ce7649e461b68ab4545",
+    "sandbox": "sb-yQIWLmtDq19aH0pYLa04Cx",
+    "exitCode": 0,
+    "runtime": {
+      "status": "passed",
+      "checks": {
+        "version": {
+          "status": "passed",
+          "details": "0.33.0"
+        },
+        "audioLock": {
+          "status": "passed",
+          "details": "449386c462038c649794a3c10e1ab502a8631de4e9046317594f3f6bfe83ec5c"
+        },
+        "audio.av": {
+          "status": "passed",
+          "details": "/__modal/volumes/vo-z43OsxwRW21ahyYiOw1Fnd/av/__init__.py"
+        },
+        "audio.soxr": {
+          "status": "passed",
+          "details": "/__modal/volumes/vo-z43OsxwRW21ahyYiOw1Fnd/soxr/__init__.py"
+        },
+        "audio.soundfile": {
+          "status": "passed",
+          "details": "/__modal/volumes/vo-z43OsxwRW21ahyYiOw1Fnd/soundfile.py"
+        },
+        "audio.scipy": {
+          "status": "passed",
+          "details": "/__modal/volumes/vo-z43OsxwRW21ahyYiOw1Fnd/scipy/__init__.py"
+        },
+        "audioDecodeAndResample": {
+          "status": "passed",
+          "details": {
+            "decodedSamples": 1600,
+            "rate": 16000
+          }
+        },
+        "modelRegistry": {
+          "status": "passed",
+          "details": [
+            "GptOssForCausalLM",
+            "EmbeddingGemma2Model",
+            "WhisperForConditionalGeneration"
+          ]
+        },
+        "embeddingProtocol": {
+          "status": "passed",
+          "details": {
+            "dimensions": 768
+          }
+        }
+      }
+    },
+    "stderr": "W1111 21:04:22.566000 20 torch/_opaque_base.py:6] torch._opaque_base is deprecated, use torch._custom_class_base instead\nW1111 21:04:22.567000 20 torch/_library/opaque_object.py:288] register_opaque_type is deprecated, use register_custom_class instead\nW1111 21:04:22.567000 20 torch/_library/opaque_object.py:211] typ='value' is deprecated, use typ='constant' instead\n",
+    "scope": "Modal sandbox; exact upstream image filesystem, entrypoint overridden to sleep; wheels prepared offline on an ephemeral volume; numeric UID/GID 10001; network blocked; no engine installation or build.",
+    "gpu": "NVIDIA L40S, 610.57.04, 46068 MiB\n",
+    "inventoryExitCode": 0,
+    "inventoryStderr": "",
+    "inventorySha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e"
+  },
+  "realModelAcceptance": {
+    "status": "passed",
+    "hardware": "NVIDIA L40S, 610.57.04, 46068 MiB",
+    "scope": "Sequential real inference on one GPU; production model arguments with host bound to loopback. Not a multi-node Kubernetes or capacity test.",
+    "network": "Model setup downloads pinned snapshots; serving sets HF_HUB_OFFLINE=1. Physical egress blocking was tested for the import/codec probe, not for real model inference.",
+    "models": {
+      "chat": {
+        "repository": "openai/gpt-oss-20b",
+        "revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+        "status": "passed",
+        "command": [
+          "vllm",
+          "serve",
+          "/models/6cee5e81ee83917806bbde320786a8fb61efebee",
+          "--served-model-name",
+          "videoq-chat",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--max-model-len",
+          "8192",
+          "--generation-config",
+          "vllm",
+          "--enable-auto-tool-choice",
+          "--tool-call-parser",
+          "openai",
+          "--reasoning-parser",
+          "openai_gptoss",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-num-seqs",
+          "2"
+        ],
+        "startupSeconds": 90.04910705200001,
+        "client": {
+          "status": "passed",
+          "mode": "chat",
+          "answer": {
+            "segments": [
+              {
+                "text": "Database backups are retained for seven days.",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ]
+          },
+          "streamEvents": 10,
+          "toolCalls": [
+            {
+              "name": "lookup_video",
+              "args": {
+                "name": "Amber Lantern"
+              },
+              "type": "tool_call",
+              "id": "chatcmpl-tool-a6fecf186de7b766"
+            }
+          ]
+        },
+        "elapsedSeconds": 159.416838856,
+        "reportSha256": "17f366d8eb09ceefa186b7731d828f4d5bfdc567b3478bf2a6e76abf8477b757",
+        "sandbox": "sb-RjA6J6esHWIMyR3WgGUNGx",
+        "controllerSha256": "d6878162093ecc11476a2b110050ceb24dd062d3ae60b169e1563b0afd2dbc35",
+        "clientBundleSha256": "df1490a16ab44956ce8b6143452d541e55edd01aa65193ac14efdc03dd9e4b9c"
+      },
+      "whisper": {
+        "repository": "openai/whisper-large-v3-turbo",
+        "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+        "status": "passed",
+        "command": [
+          "vllm",
+          "serve",
+          "/models/41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+          "--served-model-name",
+          "whisper-local",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8081",
+          "--dtype",
+          "float16",
+          "--gpu-memory-utilization",
+          "0.70",
+          "--max-num-seqs",
+          "8"
+        ],
+        "startupSeconds": 68.035943535,
+        "client": {
+          "status": "passed",
+          "fixtureSha256": "383c9ab832a5d546bebec1552a0c4e3d49bfd2155b468fa62c08d892a44553d4",
+          "transcript": {
+            "duration": 10.44,
+            "language": "ja",
+            "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
+            "segments": [
+              {
+                "id": 0,
+                "avg_logprob": -0.05374836731242715,
+                "compression_ratio": 1.1311475409836065,
+                "end": 8.18,
+                "no_speech_prob": null,
+                "seek": 0,
+                "start": 0.0,
+                "temperature": 0.0,
+                "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
+                "tokens": [
+                  8040,
+                  34337,
+                  15266,
+                  235,
+                  31978,
+                  2474,
+                  7017,
+                  113,
+                  35252,
+                  1546,
+                  40063,
+                  108,
+                  47885,
+                  18066,
+                  3384,
+                  9550,
+                  4108,
+                  9335,
+                  18549,
+                  38739,
+                  250,
+                  7732,
+                  95,
+                  22570,
+                  3193,
+                  1231,
+                  6117,
+                  5040,
+                  5154,
+                  6134,
+                  9581,
+                  10928,
+                  7384,
+                  223,
+                  27119,
+                  2972,
+                  21632,
+                  5966,
+                  5142,
+                  7781,
+                  2996,
+                  6134,
+                  4895,
+                  38711
+                ]
+              }
+            ],
+            "words": null
+          }
+        },
+        "elapsedSeconds": 82.29688776800003,
+        "reportSha256": "546b2b1e956165d9ec5c7ed5eb66fc987e47f7cf7e912a39c2f8a13074b78de2",
+        "sandbox": "sb-R9iueU9f0ZTJrvyYY8B0FN",
+        "controllerSha256": "ecc94d75b91b265219656418d7e5c90f35069397e5ccc565af4eea14aac43cea",
+        "clientBundleSha256": "df1490a16ab44956ce8b6143452d541e55edd01aa65193ac14efdc03dd9e4b9c"
+      },
+      "embedding": {
+        "repository": "google/embeddinggemma-2",
+        "revision": "f9972ac22e696a105c482202646979e33e4b5a1e",
+        "status": "passed",
+        "command": [
+          "vllm",
+          "serve",
+          "/models/f9972ac22e696a105c482202646979e33e4b5a1e",
+          "--served-model-name",
+          "embeddinggemma-2-f9972ac",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--max-model-len",
+          "8192",
+          "--generation-config",
+          "vllm",
+          "--runner",
+          "pooling",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-num-seqs",
+          "8",
+          "--attention-backend",
+          "FLEX_ATTENTION",
+          "--enforce-eager",
+          "--pooler-config",
+          "{\"use_activation\":true}"
+        ],
+        "runtimeEnv": {
+          "TORCHDYNAMO_DISABLE": "1"
+        },
+        "startupSeconds": 112.08022587699999,
+        "client": {
+          "status": "passed",
+          "mode": "embedding",
+          "checks": [
+            {
+              "query": "バックアップは何日間保存されますか？",
+              "dimensions": 768,
+              "norm": 0.999999986563796,
+              "similarity": [
+                0.8612113800305643,
+                0.5402644270924938
+              ]
+            },
+            {
+              "query": "How long are database backups retained?",
+              "dimensions": 768,
+              "norm": 0.9999999925438549,
+              "similarity": [
+                0.8733290595507271,
+                0.5294575280154542
+              ]
+            }
+          ]
+        },
+        "elapsedSeconds": 127.32156742200002,
+        "reportSha256": "499c3b4572d171a72cdcd3b789b7f3c056fc67aca356488abde271deb4c07b54",
+        "sandbox": "sb-FdMuePTY5USPaiPdvKE4r9",
+        "controllerSha256": "5a0c07ef81249ddc274a120ef638d2f8dde9df453294642782fd0673682653ed",
+        "clientBundleSha256": "fc2c12e8609c0be448ec92c150a42a34758fadbe1203c7aff992cdc68562c798"
+      }
+    },
+    "sandboxCleanup": "All acceptance sandboxes terminated; no persistent deployment."
+  },
+  "embeddingConfiguration": {
+    "attentionBackend": "FLEX_ATTENTION",
+    "enforceEager": true,
+    "torchDynamoDisable": "1",
+    "outputDimensions": 768,
+    "dimensionsRequestField": "omitted; native output, validated by API and worker",
+    "reason": "Default Triton prefill exceeded L40S shared memory for 512-wide heads; FlexAttention with eager mode and TORCHDYNAMO_DISABLE=1 avoids the observed nested CUDAGraph output reuse error. No engine patch or build."
+  },
+  "localValidation": {
+    "apiAndChartTests": 58,
+    "pythonAudioAndEmbeddingTests": 54,
+    "releasePythonTests": 42,
+    "workflowAndSecurityNodeTests": 44,
+    "helmLint": "passed",
+    "actualCombinedScanEvaluator": "passed"
+  },
+  "limitations": [
+    "Sequential single-GPU model contract tests, not a multi-node Kubernetes, full upload pipeline, quality benchmark or capacity test.",
+    "Host kernel, GPU driver and site overrides require operator validation.",
+    "Release CI must rerun inspection with its current vulnerability database; new or unassessed findings block publication."
+  ],
+  "references": [
+    "https://docs.vllm.ai/en/stable/deployment/docker/",
+    "https://github.com/vllm-project/vllm/blob/v0.33.0/setup.py"
+  ]
+}

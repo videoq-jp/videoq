@@ -43,8 +43,8 @@ test('the existing required CI gate includes on-prem validation', () => {
 
 test('all on-prem images are scanned without hiding unfixed findings', () => {
   const scans = onprem.split(/(?=      - name:)/).filter(step => step.includes('uses: aquasecurity/trivy-action@'));
-  assert.equal(scans.length, 7);
-  for (const component of ['api', 'worker', 'web', 'local-whisper', 'llamacpp', 'whisper-vllm']) {
+  assert.equal(scans.length, 6);
+  for (const component of ['api', 'worker', 'web', 'local-whisper', 'llamacpp']) {
     const scan = scans.find(step => step.includes(component === 'llamacpp'
       ? 'image-ref: ${{ env.' + component.toUpperCase() + '_IMAGE }}' : `image-ref: videoq-${component}:onprem-ci`));
     assert.ok(scan, component);
@@ -54,6 +54,15 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
     if (component === 'llamacpp') assert.match(onprem, /node \.github\/scripts\/onprem-upstream-security\.cjs llamacpp-security-raw\.json amd64/);
     assert.doesNotMatch(scan, /continue-on-error: true/);
   }
+});
+
+test('upstream vLLM replaces the engine build and fails closed on raw findings', () => {
+  const upstream = readFileSync(join(__dirname, '../workflows/upstream-vllm.yml'), 'utf8');
+  assert.match(onprem, /uses: \.\/\.github\/workflows\/upstream-vllm.yml/);
+  assert.doesNotMatch(upstream, /docker build|trivy-config:|vex:/);
+  assert.match(upstream, /ignore-unfixed: 'false'/);
+  assert.match(upstream, /check-vllm-scan.cjs/);
+  assert.match(upstream, /check-vllm-runtime.py/);
 });
 
 test('untrusted image builds have no production access and retain inventories', () => {

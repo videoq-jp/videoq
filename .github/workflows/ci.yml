@@ -186,9 +186,12 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
-              - 'apps/inference/whisper/Dockerfile.vllm'
-              - 'apps/inference/whisper/security/**'
-              - 'apps/inference/whisper/tests/test_kernel_headers.py'
+              - 'charts/videoq-inference/**'
+              - '.github/scripts/check-vllm-*'
+              - 'apps/inference/vllm/security/**'
+              - 'apps/inference/whisper/provision_audio.py'
+              - '.github/scripts/vllm-*-smoke.*'
+              - '.github/workflows/upstream-vllm.yml'
             upstream_images:
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'

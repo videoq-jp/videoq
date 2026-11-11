@@ -25,12 +25,6 @@ whisper:
   upstreamParallelism: 1
   requestTimeoutSeconds: 600
   maxSequences: 8
-  vllmImage:
-    # Signed amd64 NVIDIA engine, with locked audio extras and OS patches.
-    repository: ghcr.io/videoq-jp/videoq-vllm
-    tag: "0.2.0"
-    digest: ""
-    pullPolicy: IfNotPresent
   gatewayResources:
     requests: { cpu: 250m, memory: 512Mi }
     limits: { cpu: "1", memory: 2Gi }
@@ -77,8 +71,8 @@ whispercpp:
 vllm:
   image:
     repository: vllm/vllm-openai
-    tag: v0.32.0
-    digest: sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
+    tag: v0.33.0
+    digest: sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3
     pullPolicy: IfNotPresent
 servers:
   chat:
@@ -89,6 +83,7 @@ servers:
     modelSha256: 7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5
     contextLength: 8192
     cpuThreads: 4
+    disableTorchCompile: false
     extraArgs: []
     persistence: { existingClaim: "", storageClass: "", size: 10Gi }
     resources:
@@ -105,6 +100,7 @@ servers:
     modelSha256: a40df5cabb8c70f2fa144bc6a8674c2c987bfe3b4571134c767832aae1d246b9
     contextLength: 8192
     cpuThreads: 2
+    disableTorchCompile: false
     extraArgs: []
     persistence: { existingClaim: "", storageClass: "", size: 5Gi }
     resources:
