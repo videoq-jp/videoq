@@ -208,7 +208,6 @@ jobs:
               - '.github/scripts/onprem-lab.py'
               - '.github/onprem-lab/dependencies.json'
               - '.github/workflows/moodle-installed.yml'
-              - '.github/workflows/ci.yml'
             onprem_lifecycle:
               - 'scripts/onprem/**'
               - 'infra/garage/**'

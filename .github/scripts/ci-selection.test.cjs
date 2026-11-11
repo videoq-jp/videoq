@@ -12,7 +12,7 @@ function filter(name, paths) {
 }
 function selected(name, event, paths = []) {
   const expression = ci.match(new RegExp(`^      ${name}: \\$\\{\\{ (.+) \\}\\}$`, 'm'))[1];
-  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images', 'real_cpu'];
+  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images', 'real_cpu', 'moodle'];
   const value = runInNewContext(expression, {
     github: { event_name: event },
     steps: { filter: { outputs: Object.fromEntries(names.map(name => [name, filter(name, paths)])) } },
@@ -26,7 +26,7 @@ test('app, docs and CI metadata edits do not trigger full on-prem or native infe
     'apps/worker/worker_python/lambda_handler.py', 'packages/trpc/src/index.ts', 'docs/README.md',
     '.github/workflows/ci.yml', '.github/WORKFLOWS.md', '.github/scripts/audit-signatures.cjs']) {
     for (const event of events) {
-      for (const name of ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu']) {
+      for (const name of ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'moodle']) {
         assert.equal(selected(name, event, [path]), false, `${event}/${name}: ${path}`);
       }
     }
@@ -94,5 +94,14 @@ test('shared workflow edits do not download models or scan unchanged upstream im
     assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
     assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);
     assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+  }
+});
+
+test('Moodle integration still runs for its fixture, workflow and contract changes', () => {
+  for (const event of events) {
+    for (const path of ['.github/moodle-cpu/Dockerfile', '.github/workflows/moodle-installed.yml',
+      '.github/scripts/moodle-installed-acceptance.py', '.github/onprem-lab/dependencies.json']) {
+      assert.equal(selected('moodle', event, [path]), true, `${event}: ${path}`);
+    }
   }
 });
