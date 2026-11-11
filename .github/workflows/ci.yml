@@ -193,6 +193,7 @@ jobs:
               - 'apps/inference/whisper/security/**'
               - 'apps/inference/whisper/tests/test_kernel_headers.py'
             upstream_images:
+              - '.github/workflows/onprem-validation.yml'
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
               - 'apps/inference/llamacpp/security/**'
