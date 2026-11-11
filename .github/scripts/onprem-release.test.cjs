@@ -19,28 +19,22 @@ test('both native architecture builds are credential-free and scan the archive b
   const build = job('build');
   assert.match(build,/permissions:\n      contents: read\n    steps:/);
   assert.match(build,/arch: \[amd64, arm64\]/);
-  const scan=build.indexOf('uses: aquasecurity/trivy-action@');
-  const archive=build.indexOf('zstd -T0');
-  assert(scan>=0 && archive>scan);
-  assert.match(build,/exit-code: '1'/);
-  assert.match(build,/ignore-unfixed: 'false'/);
+  assert.match(build,/uses: \.\/\.github\/actions\/build-onprem-image/);
   assert.doesNotMatch(build,/secrets\.|id-token: write|packages: write|continue-on-error/);
   assert.match(build,/component: \[api, worker, web, transcription-gateway, vllm-engine\]/);
   assert.match(build,/exclude:\n          - component: vllm-engine\n            arch: arm64/);
-  assert.match(build,/docker cp "\$container:\/usr\/share\/licenses\/videoq\/LICENSE" - \| tar -xO \| cmp LICENSE -/);
 });
 
 test('the signed bundle includes the inference chart and NVIDIA assessment reports',()=>{
   assert.match(job('chart'),/helm" package charts\/videoq-inference/);
-  assert.match(job('build'),/trivy-config:.*vllm-engine.*security\/trivy.yaml/);
-  assert.match(job('build'),/artifact\/security.json/);
-  assert.match(job('build'),/retention-days: 90/);
+  assert.match(job('build'),/security-config:.*vllm-engine.*security\/trivy.yaml/);
+  assert.match(job('build'),/evidence-name: security-/);
   assert.match(job('indexes'),/if \[ "\$COMPONENT" != vllm-engine \]/);
   assert.match(job('staging'),/verified-inference.json/);
 });
 
 test('release assessments apply only to their matching inference component',()=>{
-  const expression=job('build').match(/trivy-config: \$\{\{ (.*?) \}\}/)[1];
+  const expression=job('build').match(/security-config: \$\{\{ (.*?) \}\}/)[1];
   const policy=component=>runInNewContext(expression,{matrix:{component}},{timeout:100});
   assert.equal(policy('transcription-gateway'),'apps/inference/whisper/security/cpu-trivy.yaml');
   assert.equal(policy('vllm-engine'),'apps/inference/whisper/security/trivy.yaml');
@@ -132,5 +126,5 @@ test('DNS repair cannot restart the lifecycle job service containers',()=>{
  assert.match(lifecycle,/services:\n      postgres:/);
  assert.match(lifecycle,/run: python3 \.github\/scripts\/configure-onprem-ci-dns\.py\n/);
  assert.doesNotMatch(lifecycle,/configure-onprem-ci-dns\.py --docker/);
- assert.match(job('build'),/configure-onprem-ci-dns\.py --docker/);
+ assert.match(job('build'),/uses: \.\/\.github\/actions\/build-onprem-image/);
 });

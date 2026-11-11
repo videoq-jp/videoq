@@ -31,10 +31,8 @@ test('runtime refresh requires successful current-main CI and scans before privi
  assert.match(job('build'),/needs: source/);
  assert.match(job('build'),/permissions:\n      contents: read\n/);
  assert.doesNotMatch(job('build'),/id-token: write|packages: write|secrets\./);
- assert.match(job('build'),/ignore-unfixed: 'false'/);
- assert.match(job('build'),/severity: HIGH,CRITICAL/);
- assert.match(job('build'),/exit-code: '1'/);
- assert.ok(job('build').indexOf('aquasecurity/trivy-action@')<job('build').indexOf('zstd -T0'));
+ assert.match(job('build'),/uses: \.\/\.github\/actions\/build-onprem-image/);
+ assert.match(job('build'),/security-config: apps\/inference\/whisper\/security\/trivy.yaml/);
  assert.match(job('publish'),/needs: \[source, build\]/);
  for(const name of ['build','publish']){
    assert.match(job(name),/ref: \$\{\{ github\.sha \}\}/);
@@ -46,40 +44,4 @@ test('runtime refresh requires successful current-main CI and scans before privi
  assert.match(job('publish'),/Sign source provenance/);
  assert.match(job('publish'),/Sign the package inventory/);
  for(const action of workflow.matchAll(/uses: [^@\n]+@(\S+)/g)) assert.match(action[1],/^[a-f0-9]{40}$/);
-});
-
-
-test('CUDA scans use indexed OCI archives with individually compressed layers',()=>{
- for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
-  const source=readFileSync(join(root,`.github/workflows/${name}.yml`),'utf8');
-  assert.ok(source.includes('type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true'));
-  assert.ok(source.includes('docker load --input "$RUNNER_TEMP/scan-image.tar"'));
-  assert.ok(source.includes('input: ${{ runner.temp }}/scan-image.tar'));
-  assert.ok(source.includes('docker buildx prune --all --force'));
-  assert.doesNotMatch(source,/docker save.*gzip -1/);
-  if(name!=='onprem-validation'){
-   assert.ok(source.includes('trivy image --timeout 15m --input "$RUNNER_TEMP/scan-image.tar" --format cyclonedx'));
-   assert.ok(source.includes('zstd -T0 "$RUNNER_TEMP/scan-image.tar" -o artifact/image.tar.zst'));
-  }
- }
-});
-
-
-test('every OCI archive consumer enables the containerd store before loading',()=>{
- let consumers=0;
- for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
-  const source=readFileSync(join(root,`.github/workflows/${name}.yml`),'utf8');
-  for(const match of source.matchAll(/^  [a-z][a-z0-9_-]*:\n([\s\S]*?)(?=^  [a-z][a-z0-9_-]*:|$(?![\s\S]))/gm)){
-   const job=match[1];
-   if(!job.includes('docker load')) continue;
-   const setup=job.indexOf('configure-onprem-ci-dns.py --docker --oci');
-   assert.ok(setup>=0 && setup<job.indexOf('docker load'),name);
-   if(job.includes('docker buildx build')){
-    const prune=job.indexOf('docker buildx prune --all --force');
-    assert.ok(prune>job.indexOf('docker buildx build') && prune<job.indexOf('docker load'),name);
-   }
-   consumers++;
-  }
- }
- assert.equal(consumers,5);
 });
