@@ -13,7 +13,7 @@ concurrency:
 jobs:
   source:
     if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: read
@@ -58,7 +58,7 @@ jobs:
             dockerfile: apps/inference/whisper/Dockerfile.vllm
             context: apps/inference/whisper
         arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -70,6 +70,14 @@ jobs:
       - name: Reserve disk for the CUDA image on the disposable runner
         if: matrix.component == 'vllm-engine'
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - name: Record host and APT sandbox DNS before the CUDA build
+        if: matrix.component == 'vllm-engine'
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        run: |
+          python3 .github/scripts/onprem-dns-diagnostic.py
+          base=$(awk '$1 == "FROM" {print $2; exit}' "$DOCKERFILE")
+          docker run --rm -i --entrypoint python3 "$base" - < .github/scripts/onprem-dns-diagnostic.py
       - name: Build without publishing credentials
         env:
           COMPONENT: ${{ matrix.component }}
@@ -131,7 +139,7 @@ jobs:
           retention-days: 1
   chart:
     needs: source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -159,7 +167,7 @@ jobs:
         exclude:
           - component: vllm-engine
             arch: arm64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The scanned CUDA archive is ~8 GB; transfer, load and push can exceed 25 minutes.
     timeout-minutes: ${{ matrix.component == 'vllm-engine' && 45 || 25 }}
     permissions:
@@ -229,7 +237,7 @@ jobs:
     name: Remove consumed image transfer archives
     needs: [source, publish]
     if: needs.publish.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -250,7 +258,7 @@ jobs:
             core.info(`Removed ${result.deleted} consumed image archives (${result.bytes} bytes).`);
   indexes:
     needs: [source, publish]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
       matrix:
@@ -314,7 +322,7 @@ jobs:
           retention-days: 1
   release:
     needs: [source, indexes, chart]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -358,7 +366,7 @@ jobs:
   staging:
     name: Verify signed artifacts and rehearse the release
     needs: [source, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -441,7 +449,7 @@ jobs:
   cpu-acceptance:
     name: Real CPU models with public egress blocked
     needs: [source, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
@@ -460,6 +468,8 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
+      - name: Record host DNS before browser dependencies
+        run: python3 .github/scripts/onprem-dns-diagnostic.py
       - name: Install Chromium and OS dependencies with bounded retries
         run: |
           for attempt in 1 2 3; do

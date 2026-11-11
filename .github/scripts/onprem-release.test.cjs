@@ -117,3 +117,12 @@ test('browser setup retries transient failures but never passes after three fail
     }finally{rmSync(directory,{recursive:true,force:true})}
   }
 });
+
+test('on-prem hosts use an explicit supported Ubuntu baseline and record APT-user DNS',()=>{
+ const validation=readFileSync(join(__dirname,'../workflows/onprem-validation.yml'),'utf8');
+ for(const source of [workflow,validation]){
+   assert.doesNotMatch(source,/runs-on:.*ubuntu-latest/);
+   assert.match(source,/runs-on:.*ubuntu-24\.04/);
+   assert.match(source,/--entrypoint python3.*onprem-dns-diagnostic\.py/);
+ }
+});
