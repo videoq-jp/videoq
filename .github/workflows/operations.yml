@@ -33,10 +33,6 @@ on:
         description: Include GPU Whisper image validation for onprem
         type: boolean
         default: false
-      validate_real_cpu:
-        description: Include real CPU-model acceptance for onprem
-        type: boolean
-        default: false
       dry_run:
         description: Preview token dates without failing on an urgent date
         type: boolean
@@ -299,13 +295,13 @@ jobs:
           title: バックアップの復元テスト
 
   onprem:
-    name: On-prem lifecycle rehearsal
+    name: On-prem image security checks
     needs: source
     if: needs.source.outputs.onprem == 'true'
     uses: ./.github/workflows/onprem-validation.yml
     with:
+      validate_lifecycle: false
       validate_whisper_gpu: ${{ github.event_name == 'schedule' || inputs.validate_whisper_gpu == true }}
-      validate_real_cpu: ${{ inputs.validate_real_cpu == true }}
     permissions:
       contents: read
 

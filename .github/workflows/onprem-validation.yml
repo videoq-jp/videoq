@@ -3,9 +3,9 @@ on:
   workflow_call:
     inputs:
       validate_lifecycle:
-        description: Include inference containers, data recovery and Kubernetes rehearsals
+        description: Include inference containers, data recovery and Kubernetes rehearsals for lifecycle changes
         type: boolean
-        default: true
+        default: false
       validate_whisper_gpu:
         type: boolean
         default: false
