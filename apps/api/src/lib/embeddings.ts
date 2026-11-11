@@ -42,10 +42,10 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
   try {
     const body: Record<string, unknown> = {
       model: config.model,
-      input: text,
+      // Prompts from the pinned EmbeddingGemma 2 checkpoint; standard OpenAI API.
+      input: config.profile === "embeddinggemma2" ? `task: search result | query: ${text}` : text,
       encoding_format: "float",
       dimensions: embeddingDimensions(config),
-      ...(config.profile === "embeddinggemma2" ? { input_type: "query" } : {}),
     };
 
     let res: Response;

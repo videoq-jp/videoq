@@ -60,7 +60,6 @@ class EmbeddingRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     model: str
     input: str | list[str] = Field(min_length=1, max_length=64 * 8192)
-    input_type: Literal["query", "document"]
     dimensions: Literal[768] = 768
     encoding_format: Literal["float"] = "float"
 
@@ -80,13 +79,12 @@ def embeddings(request: EmbeddingRequest):
     if sum(len(text) for text in texts) > 64 * 8192:
         raise HTTPException(413, "Embedding batch is too large")
     model = app.state.model
-    prompt = "SearchQuery" if request.input_type == "query" else "Document"
     # Reject overlong texts instead of silently truncating evidence.
     with _lock:
-        tokens = model.tokenizer([model.prompts[prompt] + text for text in texts], truncation=False)["input_ids"]
+        tokens = model.tokenizer(texts, truncation=False)["input_ids"]
         if any(len(row) > model.max_seq_length for row in tokens):
             raise HTTPException(422, "Text exceeds the model context window")
-        vectors = model.encode(texts, prompt_name=prompt, normalize_embeddings=True,
+        vectors = model.encode(texts, prompt="", normalize_embeddings=True,
                                batch_size=1 if os.environ.get("EMBEDDING_DEVICE") == "cuda" else 8, show_progress_bar=False, convert_to_numpy=True)
     return {
         "object": "list", "model": MODEL_ALIAS,

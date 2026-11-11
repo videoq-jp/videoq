@@ -19,35 +19,36 @@ def client(monkeypatch):
         yield connection, model
 
 
-def test_applies_asymmetric_prompts_for_japanese_and_english(client):
+@pytest.mark.parametrize("text", [
+    "task: search result | query: How long are backups kept?",
+    "title: none | text: バックアップは7日間保存します。",
+])
+def test_standard_openai_input_preserves_prompt_exactly_once(client, text):
     connection, model = client
-    for task, texts, prompt in [
-        ("query", "How long are backups kept?", "SearchQuery"),
-        ("document", ["バックアップは7日間保存します。", "Backups are retained for seven days."], "Document"),
-    ]:
-        response = connection.post("/v1/embeddings", json={"model": service.MODEL_ALIAS, "input": texts, "input_type": task, "dimensions": 768})
-        assert response.status_code == 200
-        rows = response.json()["data"]
-        assert all(len(row["embedding"]) == 768 for row in rows)
-        assert model.encode.call_args.kwargs["prompt_name"] == prompt
-        assert model.encode.call_args.kwargs["normalize_embeddings"] is True
+    response = connection.post("/v1/embeddings", json={"model": service.MODEL_ALIAS, "input": text, "dimensions": 768})
+    assert response.status_code == 200
+    assert len(response.json()["data"][0]["embedding"]) == 768
+    assert model.tokenizer.call_args.args[0] == [text]
+    assert model.encode.call_args.args[0] == [text]
+    assert model.encode.call_args.kwargs["prompt"] == ""
+    assert model.encode.call_args.kwargs["normalize_embeddings"] is True
 
 
 @pytest.mark.parametrize("overrides", [
     {"dimensions": 1536}, {"input_type": "unknown"}, {"input_type": None},
     {"input": []}, {"input": " "}, {"input": ["text"] * 65},
-    {"input": ["a" * 8192]}, {"encoding_format": "base64"}, {"unknown": "value"},
+    {"input": ["a" * 8193]}, {"encoding_format": "base64"}, {"unknown": "value"},
 ])
 def test_rejects_invalid_requests_before_inference(client, overrides):
     connection, model = client
-    response = connection.post("/v1/embeddings", json={"model": service.MODEL_ALIAS, "input": "text", "input_type": "query", **overrides})
+    response = connection.post("/v1/embeddings", json={"model": service.MODEL_ALIAS, "input": "text", **overrides})
     assert response.status_code == 422
     model.encode.assert_not_called()
 
 
 def test_cannot_choose_another_model_or_download_remote_weights(client):
     connection, model = client
-    response = connection.post("/v1/embeddings", json={"model": "google/other-model", "input": "text", "input_type": "query"})
+    response = connection.post("/v1/embeddings", json={"model": "google/other-model", "input": "text"})
     assert response.status_code == 404
     model.encode.assert_not_called()
 

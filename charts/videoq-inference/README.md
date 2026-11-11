@@ -162,8 +162,9 @@ the correct table. Reindex existing transcripts in a maintenance window before
 opening search, using the [cutover instructions](../../docs/guides/local-inference.md).
 Changing back to an old model requires rebuilding any subsequently changed videos.
 
-The private `/v1/embeddings` service requires `input_type: query|document`,
-applies the pinned `SearchQuery`/`Document` prompts, normalizes vectors, and
+API and worker put the pinned `SearchQuery`/`Document` prefixes into the
+standard OpenAI `input` field. The private CPU `/v1/embeddings` service preserves
+that input without adding a second prompt, normalizes vectors, and
 rejects unknown models, non-768 output requests and overlong inputs. It uses
 local weights, disables image/audio encoders and never enables remote code.
 Multimodal indexing is not enabled by selecting this profile.
