@@ -431,17 +431,18 @@ class Installer(Lifecycle, LocalAI):
         script = (ROOT / 'scripts/onprem/public-storage-check.py').read_text()
         probe = json.loads(self.kube('exec', '-i', 'deployment/videoq-worker', '--', 'python', '-', '--prepare',
                                     data=script, capture=True))
+        open_url = getattr(self, 'public_urlopen', urlopen)
         payload = base64.b64decode(probe['payload'])
         try:
-            with urlopen(Request(probe['put'], data=payload, method='PUT', headers={'Content-Type': 'application/octet-stream'}), timeout=20) as response:
+            with open_url(Request(probe['put'], data=payload, method='PUT', headers={'Content-Type': 'application/octet-stream'}), timeout=20) as response:
                 if response.status != 200:
                     raise ValueError('S3 upload')
-            with urlopen(probe['get'], timeout=20) as response:
+            with open_url(probe['get'], timeout=20) as response:
                 if response.read() != payload or 'sandbox' not in response.headers.get('Content-Security-Policy', ''):
                     raise ValueError('S3 download or media sandbox')
                 if response.headers.get('X-Content-Type-Options') != 'nosniff':
                     raise ValueError('S3 MIME protection')
-            with urlopen(Request(probe['get'], headers={'Range': 'bytes=0-5'}), timeout=20) as response:
+            with open_url(Request(probe['get'], headers={'Range': 'bytes=0-5'}), timeout=20) as response:
                 if response.status != 206 or response.read() != payload[:6]:
                     raise ValueError('S3 video Range')
         except Exception as error:

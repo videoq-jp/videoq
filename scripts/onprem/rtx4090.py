@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import private_json, json_documents
 from k3s import Installer, new_credentials, ROOT, EXAMPLE
+from endpoint import network_details, prepare_certificate, private_pem, verified_opener
 from native import application_values, backing_plan, forwarding_units, local_origin, browser_origin, model_contract
 
 K3S_VERSION = 'v1.37.2+k3s1'
@@ -119,7 +120,7 @@ class NativeInstaller:
         self.state = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
         if self.state and self.state.get('kind') != 'native-rtx4090':
             raise ValueError('別形式の導入記録です。既存の環境は変更しません')
-        requested_url = args.url or self.state.get('pending_url') or self.state.get('url') or input('公開 HTTPS URL（例 https://videoq.example.com）: ').strip()
+        requested_url, self.network = network_details(args, self.state)
         self.url = browser_origin(requested_url)
         old_url = self.state.get('url')
         if self.state.get('pending_url') and self.state['pending_url'] != self.url:
@@ -151,6 +152,9 @@ class NativeInstaller:
         self.kubeconfig = self.directory / 'kubeconfig'
         os.environ['KUBECONFIG'] = str(self.kubeconfig)
         os.environ['PATH'] = '/usr/local/bin:' + str(Path.home() / '.local/bin') + ':' + os.environ['PATH']
+        prepare_certificate(self.directory, self.network, self.url)
+        self.network = {key: self.network[key] for key in ('listen_ip', 'tls_mode')}
+        self.state['network'] = self.network
         private_json(self.state_path, self.state)
 
     def run(self, *args, capture=False, data=None):
@@ -176,6 +180,12 @@ class NativeInstaller:
         private_json(self.state_path, self.state)
 
     def host(self):
+        import socket
+        try:
+            with socket.socket() as probe:
+                probe.bind((self.network['listen_ip'], 0))
+        except OSError:
+            raise ValueError('待受IPがこのマシンに割り当てられていません。IP固定・DHCP予約を確認してください') from None
         if os.geteuid() == 0:
             raise ValueError('通常ユーザーで bash scripts/onprem/install-rtx4090.sh を実行してください')
         release = platform.freedesktop_os_release()
@@ -369,7 +379,19 @@ class NativeInstaller:
         self.stage('5/8 PostgreSQL・動画ストレージ・キューを配置します')
         self.credentials()
         raw = self.kube('create', '--dry-run=client', '--validate=false', '-f', EXAMPLE / 'infrastructure.yaml', '-o', 'json', capture=True)
-        config, objects = backing_plan(EXAMPLE, self.url, self.storage_gib, json_documents(raw))
+        mode = self.network['tls_mode']
+        tls_hash = None
+        if mode == 'provided':
+            cert = (self.directory / 'tls/tls.crt').read_bytes()
+            key = (self.directory / 'tls/tls.key').read_bytes()
+            self.apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'videoq-gateway-tls'},
+                        'type': 'kubernetes.io/tls', 'stringData': {'tls.crt': cert.decode(), 'tls.key': key.decode()}})
+            tls_hash = hashlib.sha256(cert + key).hexdigest()
+        config, objects = backing_plan(EXAMPLE, self.url, self.storage_gib, json_documents(raw), tls_mode=mode)
+        if tls_hash:
+            for obj in objects:
+                if obj['kind'] == 'Deployment' and obj['metadata']['name'] == 'videoq-gateway':
+                    obj['spec']['template']['metadata']['annotations']['videoq.jp/tls-hash'] = tls_hash
         self.apply({'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'videoq-infra-config'}, 'data': config})
         self.apply({'apiVersion': 'v1', 'kind': 'List', 'items': objects})
         for name in ('postgres', 'garage', 'queue', 'videoq-gateway'):
@@ -398,12 +420,30 @@ class NativeInstaller:
                  '-f', ROOT / 'charts/videoq/examples/local-ai-gpt-oss.yaml', '-f', self.images, '--wait', '--timeout', '15m')
         Installer.test_application(self)
 
+    def configure_trust(self):
+        mode = self.network['tls_mode']
+        ca = None
+        if mode == 'internal':
+            pem = self.kube('exec', 'deployment/videoq-gateway', '--', 'cat', '/data/caddy/pki/authorities/local/root.crt', capture=True)
+            # Read only the public root, never the CA's private key.
+            import ssl
+            ssl.create_default_context(cadata=pem)
+            ca = self.directory / 'tls/root-ca.crt'
+            if ca.exists() and ca.read_text() != pem:
+                raise ValueError('内部CAが保存済みの証明書と異なります。既存CAの復旧を確認してください')
+            private_pem(ca, pem.encode())
+        elif mode == 'provided' and (self.directory / 'tls/ca.crt').exists():
+            ca = self.directory / 'tls/ca.crt'
+        self.http_client = verified_opener(ca)
+        self.public_urlopen = self.http_client.open
+
     def forwarding(self):
-        self.stage('7/8 公開HTTPSの443番を設定します' if self.url.startswith('https://') else '7/8 SSH トンネル用の localhost 接続を設定します')
+        self.stage('7/8 HTTPSの443番を設定します' if self.url.startswith('https://') else '7/8 SSH トンネル用の localhost 接続を設定します')
+        self.configure_trust()
         public_https = self.url.startswith('https://')
         port = 443 if public_https else urlsplit(self.url).port
         gateway = json.loads(self.kube('get', 'service', 'videoq-gateway', '-o', 'json', capture=True))
-        desired = forwarding_units(port, gateway['spec']['clusterIP'], public_https=public_https)
+        desired = forwarding_units(port, gateway['spec']['clusterIP'], public_https=public_https, bind_ip=self.network['listen_ip'])
         listener = Path('/etc/systemd/system/videoq-port-forward.socket')
         if listener.exists() and listener.read_text() != desired[listener.name]:
             self.system('systemctl', 'stop', 'videoq-port-forward.service', 'videoq-port-forward.socket')
@@ -424,7 +464,7 @@ class NativeInstaller:
         self.system('systemctl', 'enable', '--now', 'videoq-port-forward.socket')
         if changed:
             self.system('systemctl', 'try-restart', 'videoq-port-forward.service')
-        opener = build_opener(ProxyHandler({}))
+        opener = self.http_client
         for attempt in range(30):
             try:
                 with opener.open(self.url + '/ready', timeout=5) as res:
@@ -465,7 +505,7 @@ class NativeInstaller:
             password = initial_password()
             if password is not None:
                 setup = json.loads((self.directory / 'admin-setup.json').read_text())
-                activate_admin(self.url, setup['activation_url'], password)
+                activate_admin(self.url, setup['activation_url'], password, getattr(self, 'http_client', None))
                 del password
                 self.record(admin_password_set=True)
                 password_set = True
@@ -480,6 +520,10 @@ class NativeInstaller:
             print('次の短時間・一度限りのリンクを手元のブラウザで開き、パスワードを設定してください。')
             if sys.stdin.isatty():
                 print(json.loads((self.directory / 'admin-setup.json').read_text())['activation_url'], flush=True)
+        if self.network['tls_mode'] == 'internal':
+            print(f'各利用端末にCA証明書 {self.directory / "tls/root-ca.crt"} を信頼登録してください（秘密鍵は配布しません）。')
+        elif self.network['tls_mode'] == 'provided':
+            print('持ち込み証明書の更新は自動ではありません。更新後のPEMを指定して同じコマンドを再実行してください。')
         self.record(complete=True, url=self.url, pending_url=None)
 
     def execute(self):
@@ -490,7 +534,12 @@ class NativeInstaller:
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('--directory', default=str(Path.home() / '.local/share/videoq-rtx4090'))
-    result.add_argument('--url', help='Public HTTPS origin; prompted on first installation')
+    result.add_argument('--url', help='Browser HTTPS origin (lab DNS name or IPv4); prompted initially')
+    result.add_argument('--listen-ip', help='Local IPv4 to bind; does not configure NIC/DHCP (default 0.0.0.0)')
+    result.add_argument('--tls-mode', choices=('internal', 'provided', 'acme'), help='Internal CA, PEM certificate, or public ACME')
+    result.add_argument('--tls-cert', help='PEM certificate including intermediates, for provided mode')
+    result.add_argument('--tls-key', help='PEM private key, for provided mode')
+    result.add_argument('--tls-ca', help='Optional PEM root CA for installer HTTPS verification')
     result.add_argument('--migrate-url', action='store_true', help='Explicitly migrate public URL/CORS while preserving accounts, keys and data')
     result.add_argument('--username'); result.add_argument('--email')
     result.add_argument('--run-id'); result.add_argument('--source-sha')
