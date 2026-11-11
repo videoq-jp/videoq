@@ -308,6 +308,18 @@ class NativeInstaller:
     def cuda_image(self):
         self.stage('3/8 CUDA EmbeddingGemma イメージをビルド・固定します（初回のみ）')
         tag = 'docker.io/library/videoq-embedding-cuda:src-' + image_source_hash(ROOT)
+        # A resumed install may have reclaimed Docker's duplicate build cache.
+        # Reuse only the source-specific tag AND the previously verified digest
+        # in K3s; a state flag alone is not evidence that an image is present.
+        images = self.system('k3s', 'ctr', 'images', 'list', capture=True)
+        row = next((r.split() for r in images.splitlines()[1:] if r.split()[0] == tag), None)
+        if row and len(row) > 2 and re.fullmatch(r'sha256:[a-f0-9]{64}', row[2]):
+            pinned = 'docker.io/library/videoq-embedding-cuda@' + row[2]
+            present = {r.split()[0] for r in images.splitlines()[1:] if r.split()}
+            if self.state.get('embedding_image') == pinned and pinned in present:
+                self.embedding_digest = row[2]
+                print('検証済みの K3s CUDA イメージを再利用します。再ビルド・再取り込みは不要です。', flush=True)
+                return
         probe = subprocess.run(['sudo', '--', 'docker', 'image', 'inspect', tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if probe.returncode:
             self.system('docker', 'build', '-f', ROOT / 'apps/inference/whisper/Dockerfile.embedding-cuda', '-t', tag, ROOT / 'apps/inference/whisper')
