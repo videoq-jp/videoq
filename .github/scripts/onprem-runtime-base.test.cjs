@@ -36,6 +36,10 @@ test('runtime refresh requires successful current-main CI and scans before privi
  assert.match(job('build'),/exit-code: '1'/);
  assert.ok(job('build').indexOf('aquasecurity/trivy-action@')<job('build').indexOf('docker save'));
  assert.match(job('publish'),/needs: \[source, build\]/);
+ for(const name of ['build','publish']){
+   assert.match(job(name),/ref: \$\{\{ github\.sha \}\}/);
+   assert.doesNotMatch(job(name),/ref:.*needs\.source\.outputs/);
+ }
  assert.match(job('publish'),/id-token: write/);
  assert.doesNotMatch(job('publish'),/docker (?:build |run )|pip install|npm (?:ci|install)/);
  assert.match(job('publish'),/runtime-base-\$GITHUB_SHA-\$GITHUB_RUN_ID-\$GITHUB_RUN_ATTEMPT/);

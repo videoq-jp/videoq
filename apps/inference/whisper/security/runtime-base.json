@@ -11,7 +11,16 @@
     "denySelfHostedRunners": true,
     "componentBuildAndHighCriticalScan": "success",
     "provenanceSignature": "verified",
-    "scope": "Scanned and attested runtime component; the overall application release failed in unrelated CPU browser setup. This is not evidence of full application acceptance."
+    "scope": "Scanned and attested runtime component; the overall application release failed in unrelated CPU browser setup. This is not evidence of full application acceptance.",
+    "gpuDiagnostic": {
+      "device": "NVIDIA GeForce RTX 4090",
+      "servingUid": 10001,
+      "model": "openai/whisper-large-v3-turbo",
+      "fixture": "apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp3",
+      "cpuOffloadGb": 0,
+      "transcriptionNonEmpty": true,
+      "logSha256": "6ad3b50c3d6e8a250ac3216412fa95cca9af29552b9ee5139db6b9c9a7f0efff"
+    }
   },
   "refreshWorkflow": ".github/workflows/onprem-runtime-base.yml",
   "promotion": "Review a digest update after the refresh workflow and GPU verification; every final image is rescanned before release."
