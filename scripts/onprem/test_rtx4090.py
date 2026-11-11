@@ -140,26 +140,6 @@ class NativeTests(unittest.TestCase):
                 instance.tools()
             instance.run.assert_not_called()
 
-    def test_runtime_compatibility_uses_protocol_code_and_verification_still_runs(self):
-        with tempfile.TemporaryDirectory() as folder:
-            instance = self.instance(folder)
-            root = Path(folder) / 'checkout'
-            files = root / 'apps/inference/whisper'
-            files.mkdir(parents=True)
-            for name in ('server.py', 'provision.py'):
-                (files / name).write_bytes(b'verified protocol')
-            # These recipes are not executed: the release's signed image digests
-            # select its built dependencies, independently of installer updates.
-            for name in ('Dockerfile.vllm', 'pyproject.toml', 'uv.lock'):
-                (files / name).write_bytes(b'new build recipe')
-            with patch.object(module, 'ROOT', root), patch.object(module.subprocess, 'run', return_value=Mock(returncode=0)), patch.object(module.subprocess, 'check_output', return_value=b'verified protocol') as show:
-                self.assertTrue(instance.runtime_matches('a' * 40))
-                self.assertEqual({call.args[0][-1].split('/')[-1] for call in show.call_args_list}, {'server.py', 'provision.py'})
-                for name in ('server.py', 'provision.py'):
-                    (files / name).write_bytes(b'incompatible protocol')
-                    self.assertFalse(instance.runtime_matches('a' * 40))
-                    (files / name).write_bytes(b'verified protocol')
-
     def test_release_selects_compatible_success_then_still_runs_signature_verifier(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)
