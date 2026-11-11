@@ -49,15 +49,17 @@ test('runtime refresh requires successful current-main CI and scans before privi
 });
 
 
-test('CUDA scans consume streamed archives rather than duplicating the Docker store',()=>{
+test('CUDA scans use indexed OCI archives with individually compressed layers',()=>{
  for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
   const source=readFileSync(join(root,`.github/workflows/${name}.yml`),'utf8');
-  assert.match(source,/docker save [^\n]+\| gzip -1 > "\$RUNNER_TEMP\//);
-  assert.match(source,/input: \$\{\{ runner.temp \}\}\/(?:whisper|scan)-image.tar.gz/);
-  // SBOM and publication must refer to the very same archive that passed the scan.
+  assert.ok(source.includes('type=oci,dest=$RUNNER_TEMP/scan-image.tar,compression=gzip,force-compression=true'));
+  assert.ok(source.includes('docker load --input "$RUNNER_TEMP/scan-image.tar"'));
+  assert.ok(source.includes('input: ${{ runner.temp }}/scan-image.tar'));
+  assert.ok(source.includes('docker buildx prune --all --force'));
+  assert.doesNotMatch(source,/docker save.*gzip -1/);
   if(name!=='onprem-validation'){
-   assert.match(source,/trivy image --timeout 15m --input "\$RUNNER_TEMP\/scan-image.tar.gz" --format cyclonedx/);
-   assert.match(source,/gzip -dc "\$RUNNER_TEMP\/scan-image.tar.gz" \| zstd -T0 -o artifact\/image.tar.zst/);
+   assert.ok(source.includes('trivy image --timeout 15m --input "$RUNNER_TEMP/scan-image.tar" --format cyclonedx'));
+   assert.ok(source.includes('zstd -T0 "$RUNNER_TEMP/scan-image.tar" -o artifact/image.tar.zst'));
   }
  }
 });

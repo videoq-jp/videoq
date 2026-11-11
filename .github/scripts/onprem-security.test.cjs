@@ -46,7 +46,7 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
   assert.equal(scans.length, 7);
   for (const component of ['api', 'worker', 'web', 'local-whisper', 'llamacpp', 'whisper-vllm']) {
     const scan = scans.find(step => component === 'whisper-vllm'
-      ? step.includes('input: ${{ runner.temp }}/whisper-image.tar.gz')
+      ? step.includes('input: ${{ runner.temp }}/scan-image.tar')
       : step.includes(component === 'llamacpp'
       ? 'image-ref: ${{ env.' + component.toUpperCase() + '_IMAGE }}' : `image-ref: videoq-${component}:onprem-ci`));
     assert.ok(scan, component);
