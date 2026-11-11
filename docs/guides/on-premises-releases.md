@@ -78,36 +78,35 @@ changes. No blanket `ignore-unfixed` or CVE ignore file is used.
 
 ## Download and verify a specific release
 
-Use a recent authenticated GitHub CLI with `gh attestation verify`, Python 3.9+
-and Helm 4.3.1. Run the verifier from your reviewed checkout, rather than from an
-unverified downloaded bundle. Select a successful `On-prem Release` run and
-independently review its full source SHA. Do not derive the trusted SHA from the
-manifest being checked.
+Public Releases include the manifest, both Helm charts and Sigstore/SLSA verification
+bundles. No GitHub account, token or CLI is required. Use Python 3.10+ and Helm
+4.3.1. Run the verifier from a reviewed checkout, not from the downloaded release.
+Review the full source SHA and run/attempt in the public release tag; do not take
+the trusted SHA only from the manifest being checked.
 
 ```sh
 SOURCE_SHA=REPLACE_WITH_REVIEWED_40_CHARACTER_COMMIT
-RUN_ID=REPLACE_WITH_SUCCESSFUL_RELEASE_RUN
-RUN_ATTEMPT=$(gh run view "$RUN_ID" --repo videoq-jp/videoq --json attempt --jq .attempt)
-mkdir -p /secure/videoq-release
-gh run download "$RUN_ID" --repo videoq-jp/videoq \
-  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir /secure/videoq-release
-python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
-  /secure/videoq-release/release.json /secure/videoq-release/verified-images.json \
-  /secure/videoq-release/verified-inference.json
+RUN_ID=REPLACE_WITH_PUBLIC_RELEASE_RUN
+RUN_ATTEMPT=REPLACE_WITH_PUBLIC_RELEASE_ATTEMPT
+bash scripts/onprem/install-verify-tools.sh
+python3 scripts/onprem/public_release.py --source-sha "$SOURCE_SHA" \
+  --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT" --directory /secure/videoq-release
 ```
 
-Image pulls do not require GHCR authentication or a `read:packages` credential.
-The authenticated GitHub CLI above is used for workflow artifacts and attestation
-verification. The verifier checks GitHub's signature and artifact
-subject, the exact repository and release workflow, `refs/heads/main`, the source
-commit and hosted-runner identity. It verifies the manifest, both chart checksums
-and signatures, and all five image index signatures before writing either values file.
-A missing signature, altered chart, different source or unexpected repository
-aborts verification and preserves existing values. Per-architecture SBOM
-attestations can also be inspected using `gh attestation verify` with predicate
-`https://cyclonedx.org/bom`. Preserve the chart, release manifest, verified values,
-SBOMs and attestation bundles in your artifact archive; workflow downloads expire
-after 90 days. Registry retention must preserve promoted digests and attestations.
+The public downloader verifies that the run succeeded on main and matches the
+source and attempt. Sigstore verifies signatures, transparency-log evidence,
+repository/owner, workflow, main ref, source commit, GitHub-hosted runner,
+run/attempt and the subject names/digests. It validates the manifest, both charts
+and all five image indexes before writing either Helm values file. Trust roots
+come independently from Sigstore production's TUF configuration. Missing bundles,
+changed bytes or a different signer fail closed and preserve existing values.
+
+The installer selects the public release automatically. Releases are published
+only after the signed-artifact and real-CPU-model rehearsal jobs succeed; public
+assets are not overwritten. CI and maintainers can still use the legacy
+`onprem-release.py`/GitHub CLI path to inspect Actions-only artifacts or SBOMs,
+but end-user installation does not use it. Preserve promoted digests and bundles
+in your archive; GitHub Actions transfer artifacts expire after 90 days.
 
 Merge the generated image values **last** so site settings cannot accidentally
 replace the reviewed digests:

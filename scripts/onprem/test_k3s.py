@@ -116,14 +116,16 @@ class PublicInstallerTests(unittest.TestCase):
             (release / 'verified-images.json').write_text(json.dumps(images))
             run = {'conclusion': 'success', 'head_branch': 'main', 'head_sha': sha,
                    'html_url': 'https://github.com/videoq-jp/videoq/actions/runs/123', 'run_attempt': 1}
-            instance.run = Mock(side_effect=[json.dumps(run), None])
-            with patch('builtins.input', side_effect=AssertionError('SHA prompt must not be used')):
+            instance.run = Mock()
+            selected = {'run_id': '123', 'source_sha': sha, 'run_attempt': 1, 'tag': 'onprem-'+sha+'-123-1'}
+            with patch('builtins.input', side_effect=AssertionError('SHA prompt must not be used')), patch.object(installer.public_release, 'releases', return_value=[selected]), patch.object(installer.public_release, 'check_run') as check, patch.object(installer.public_release, 'download'):
                 instance.release()
+            check.assert_called_once_with(selected)
             self.assertEqual(instance.selected_release['source_sha'], sha)
             verify = instance.run.call_args.args
-            self.assertIn('verify', verify)
+            self.assertNotIn('gh', verify)
             self.assertIn(sha, verify)
-            self.assertTrue(verify[1].endswith('onprem-release.py'))
+            self.assertTrue(str(verify[1]).endswith('onprem_public.py'))
 
     def test_decodes_kubectl_multiple_documents_and_lists(self):
         raw = '{"kind":"Service"}\n{"kind":"List","items":[{"kind":"Deployment"}]}'

@@ -15,6 +15,6 @@ These are **preview-mode** screens with example account and LAN values. No serve
 
 Rendered using Textual 8.2.8's headless test driver at 120×40, then exported to SVG and rendered to PNG with resvg. CJK `textLength` in the Rich SVG export is corrected to terminal cell width so Japanese remains readable in the artifact; the runtime interface is unchanged. An additional headless test exercises 80×24 keyboard navigation and the compact layout.
 
-OS setup, sudo and GitHub authentication deliberately use the standard terminal through Textual's suspend/resume API. Backend provisioning runs as the normal operator user; sudo is noninteractive during captured progress. First passwords are masked, cleared after submission, and sent directly to the verified own-origin API without command-line arguments or log output.
+OS setup and sudo authentication deliberately use the standard terminal through Textual's suspend/resume API. Public release downloads and signature verification need no GitHub account or CLI. Backend provisioning runs as the normal operator user; sudo is noninteractive during captured progress. First passwords are masked, cleared after submission, and sent directly to the verified own-origin API without command-line arguments or log output.
 
 A fresh Ubuntu installation including a physical driver reboot has not been tested through the TUI. Existing core installation and isolated gateway TLS verification are documented separately.

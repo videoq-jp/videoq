@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import private_json, json_documents
 from k3s import Installer, new_credentials, ROOT, EXAMPLE
+import public_release
 from endpoint import network_details, prepare_certificate, private_pem, verified_opener
 from native import application_values, backing_plan, forwarding_units, local_origin, browser_origin, model_contract
 
@@ -213,12 +214,8 @@ class NativeInstaller:
         self.run('nvidia-container-runtime', '--version', capture=True)
 
     def tools(self):
-        if not all(shutil.which(name) for name in ('helm', 'gh')) or subprocess.run(['gh', 'attestation', 'verify', '--help'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+        if not shutil.which('helm') or not public_release.verifier_ready():
             self.run('bash', ROOT / 'scripts/onprem/install-tools.sh')
-        if subprocess.run(['gh', 'auth', 'status'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-            if os.environ.get('VIDEOQ_NONINTERACTIVE') == '1':
-                raise ValueError('GitHubログインが必要です。セットアップを再実行して標準端末で認証してください')
-            self.run('gh', 'auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web')
 
     def runtime_matches(self, sha):
         if not re.fullmatch(r'[a-f0-9]{40}', sha):
@@ -236,12 +233,11 @@ class NativeInstaller:
     def release(self):
         # Pick the newest compatible successful release, then verify its run/SLSA binding.
         if not self.args.run_id and not self.state.get('run_id'):
-            runs = json.loads(self.run('gh', 'run', 'list', '--repo', 'videoq-jp/videoq', '--workflow', 'onprem-release.yml',
-                                      '--status', 'success', '--branch', 'main', '--limit', '20', '--json', 'databaseId,headSha', capture=True))
-            selected = next((run for run in runs if self.runtime_matches(run['headSha'])), None)
+            self.public_releases = public_release.releases()
+            selected = next((release for release in self.public_releases if (not self.args.source_sha or release['source_sha'] == self.args.source_sha) and self.runtime_matches(release['source_sha'])), None)
             if not selected:
-                raise ValueError('現在の推論ランタイムと一致する成功リリースが見つかりません。対応する --run-id を指定してください')
-            self.args.run_id = str(selected['databaseId'])
+                raise ValueError('推論ランタイムが一致する公開リリースがありません。対応する公開版を指定してください')
+            self.args.run_id = selected['run_id']
         previous_url = self.state['url']
         try:
             Installer.release(self)

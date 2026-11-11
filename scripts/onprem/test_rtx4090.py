@@ -111,16 +111,34 @@ class NativeTests(unittest.TestCase):
                 instance.credentials()
             instance.apply.assert_not_called()
 
+    def test_tool_check_works_without_gh_or_login_when_verifier_is_ready(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder)
+            instance.run = Mock()
+            with patch.object(module.shutil, 'which', side_effect=lambda name: '/usr/bin/helm' if name == 'helm' else None), patch.object(module.public_release, 'verifier_ready', return_value=True), patch.object(module.subprocess, 'run', side_effect=AssertionError('must not run GitHub auth')):
+                instance.tools()
+            instance.run.assert_not_called()
+
     def test_release_selects_compatible_success_then_still_runs_signature_verifier(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)
             instance.run = Mock(return_value=json.dumps([{'databaseId': 1, 'headSha': 'a' * 40}, {'databaseId': 2, 'headSha': 'b' * 40}]))
             instance.runtime_matches = Mock(side_effect=[False, True, True])
             def verified(_): instance.state['source_sha'] = 'b' * 40
-            with patch.object(module.Installer, 'release', side_effect=verified) as verifier:
+            with patch.object(module.Installer, 'release', side_effect=verified) as verifier, patch.object(module.public_release, 'releases', return_value=[{'run_id': '1', 'source_sha': 'a' * 40}, {'run_id': '2', 'source_sha': 'b' * 40}]):
                 instance.release()
             verifier.assert_called_once_with(instance)
             self.assertEqual(instance.args.run_id, '2')
+
+    def test_explicit_source_sha_filters_public_release_selection(self):
+        with tempfile.TemporaryDirectory() as folder:
+            instance = self.instance(folder, '--source-sha', 'b' * 40)
+            instance.runtime_matches = Mock(return_value=True)
+            choices = [{'run_id': '2', 'source_sha': 'a' * 40}, {'run_id': '1', 'source_sha': 'b' * 40}]
+            with patch.object(module.Installer, 'release', side_effect=lambda _: instance.state.update(source_sha='b'*40)), patch.object(module.public_release, 'releases', return_value=choices):
+                instance.release()
+            self.assertEqual(instance.args.run_id, '1')
+            self.assertTrue(all(call.args[0] == 'b'*40 for call in instance.runtime_matches.call_args_list))
 
     def test_inference_contract_change_stops_before_applying_helm(self):
         with tempfile.TemporaryDirectory() as folder:

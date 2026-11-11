@@ -70,8 +70,10 @@ jobs:
           python-version-file: apps/inference/whisper/.python-version
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
-      - name: Validate single-VPS K3s installer safety
-        run: python3 -m unittest discover -s scripts/onprem -p test_k3s.py -v
+      - name: Validate public downloads, signature policy and installer screens
+        run: |
+          uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt --with-requirements scripts/onprem/requirements-tui.txt python -m unittest discover -s scripts/onprem -p 'test_*.py' -v
+          uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s .github/scripts -p test_onprem_public.py -v
       - name: Validate single-server installer safety
         run: |
           python3 -m unittest discover -s scripts/onprem -p test_videoq.py -v

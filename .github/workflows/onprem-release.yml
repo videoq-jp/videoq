@@ -292,16 +292,24 @@ jobs:
           printf '%s\n' "$digest" > "release/$COMPONENT.digest"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - id: index-provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-name: ${{ steps.image.outputs.repository }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+      - name: Export public image provenance bundle
+        env:
+          BUNDLE_PATH: ${{ steps.index-provenance.outputs.bundle-path }}
+          COMPONENT: ${{ matrix.component }}
+        run: cp "$BUNDLE_PATH" "release/$COMPONENT.sigstore.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: index-${{ matrix.component }}-attempt-${{ github.run_attempt }}
-          path: release/*.digest
+          path: |
+            release/*.digest
+            release/*.sigstore.json
           if-no-files-found: error
           retention-days: 1
   release:
@@ -328,17 +336,23 @@ jobs:
           name: chart-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: release
       - run: python3 .github/scripts/onprem-release.py assemble "$GITHUB_SHA" release
-      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - id: release-provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
             release/release.json
             release/*.tgz
+      - name: Export public release provenance bundle
+        env:
+          BUNDLE_PATH: ${{ steps.release-provenance.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" release/release.sigstore.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             release/release.json
             release/*.tgz
+            release/*.sigstore.json
           if-no-files-found: error
           retention-days: 90
   staging:
@@ -380,6 +394,9 @@ jobs:
             python3 .github/scripts/onprem_registry.py "$component"
           done
           python3 .github/scripts/onprem-release.py verify "$GITHUB_SHA" release/release.json release/verified-images.json release/verified-inference.json
+          python3 -m venv "$RUNNER_TEMP/public-verifier"
+          env -u GH_TOKEN -u GITHUB_TOKEN "$RUNNER_TEMP/public-verifier/bin/python" -m pip install -r scripts/onprem/requirements-verify.txt
+          env -u GH_TOKEN -u GITHUB_TOKEN "$RUNNER_TEMP/public-verifier/bin/python" .github/scripts/onprem_public.py "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" release release/verified-images.json release/verified-inference.json
           python3 - <<'PY'
           import json, os, subprocess
           from pathlib import Path
@@ -477,3 +494,28 @@ jobs:
           if [ -x "$RUNNER_TEMP/kind" ]; then
             "$RUNNER_TEMP/kind" delete cluster --name videoq-onprem-lab --kubeconfig "$RUNNER_TEMP/cpu-acceptance/kubeconfig"
           fi
+  public-distribution:
+    name: Publish anonymous signed installer downloads
+    needs: [source, release, staging, cpu-acceptance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: release
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        with:
+          script: |
+            const publish = require('./.github/scripts/publish-onprem-release.cjs');
+            const result = await publish({ github, context, sourceSha: process.env.SOURCE_SHA, runId: context.runId, attempt: process.env.GITHUB_RUN_ATTEMPT, directory: 'release' });
+            core.info(`Published credential-free installer downloads: ${result.html_url}`);

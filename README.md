@@ -76,7 +76,8 @@ bash scripts/onprem/install-rtx4090.sh
 This installs native K3s, backing services, GPT-OSS 20B, EmbeddingGemma 2 and
 Whisper on the same GPU, with automatic LAN IPv4 detection, an HTTPS URL and internal CA certificates,
 plus a beginner-friendly Textual setup screen for administrator details, review,
-installation progress and first password setup. Listener, URL and TLS options can be overridden. See the
+installation progress and first password setup. No GitHub CLI, account or token is required;
+public downloads retain Sigstore/SLSA verification. Listener, URL and TLS options can be overridden. See the
 [one-command RTX 4090 guide](scripts/onprem/RTX4090.md) for fresh-host bootstrap,
 lab HTTPS, CA trust setup, requirements and resumable installation.
 

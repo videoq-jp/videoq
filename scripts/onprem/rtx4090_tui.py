@@ -112,7 +112,7 @@ class VideoQInstaller(App):
                         yield Label('ユーザー名（必須・英小文字／数字／_、3〜30文字）')
                         yield Input(value=self.args.username or self.saved.get('admin', {}).get('username', 'site_admin'), id='username')
                         yield Label('メールアドレス（必須）')
-                        yield Input(value=self.args.email or self.saved.get('admin', {}).get('email', ''), placeholder='例：yuki@example.ac.jp', id='email')
+                        yield Input(value=self.args.email or self.saved.get('admin', {}).get('email', ''), placeholder='例：yuki@example.com', id='email')
                         yield Static('初回パスワードは導入完了後に設定します。メールは送信しません。', classes='muted')
                     with Collapsible(title='詳細設定を変更する（通常は不要）', id='advanced'):
                         yield Label('ブラウザ用URL')
@@ -132,7 +132,7 @@ class VideoQInstaller(App):
                 with VerticalScroll(id='review'):
                     yield Label('この内容で準備します', classes='heading')
                     yield Static('', id='summary', classes='card', markup=False)
-                    yield Static('はじめにOSの準備・sudo認証・GitHubログインのため標準端末へ切り替えます。\nその後、この画面でモデルの取得と起動状況を確認できます。', classes='notice')
+                    yield Static('はじめにOSの準備・sudo認証のため標準端末へ切り替えます。\nその後、この画面でモデルの取得と起動状況を確認できます。', classes='notice')
                     yield Static('初回はモデル取得とビルドに数十分かかることがあります。ドライバー反映で再起動した場合は、同じコマンドで再開できます。', classes='description')
                     with Horizontal(classes='actions'):
                         yield Button('← 設定に戻る', id='back-button')
@@ -256,9 +256,9 @@ class VideoQInstaller(App):
         self.running = True
         self.status = 1
         if not self.preview:
-            # sudo and gh own their standard terminal UI; never collect their secrets.
+            # sudo owns its standard terminal UI; never collect its credentials.
             with self.suspend():
-                print('\nVideoQ: OSの準備・sudo認証・GitHubログインを行います。完了後はセットアップ画面に戻ります。\n', flush=True)
+                print('\nVideoQ: OSの準備・sudo認証を行います。完了後はセットアップ画面に戻ります。\n', flush=True)
                 result = subprocess.run(['bash', str(SCRIPT), '--no-tui', *arguments(self.plan)], env={**os.environ, 'VIDEOQ_BOOTSTRAP_ONLY': '1'})
             if result.returncode or (Path(self.plan.directory).expanduser() / 'driver-boot-id').exists():
                 self.show_result(False, 'OSの準備が中断されたか、再起動が必要です。同じ起動コマンドで再開してください。')

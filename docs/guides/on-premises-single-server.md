@@ -5,6 +5,9 @@ description: Install and evaluate VideoQ on one Linux server, then back up, upda
 
 # Install VideoQ on one server
 
+The installer downloads signed public Releases without a GitHub account, token or `gh` CLI. Sigstore verification remains mandatory.
+
+
 Use this installer for a small deployment on one Linux server without an existing
 Kubernetes cluster. It supplies the database, object storage and persistent job
 queue alongside the production application. For an existing managed cluster or

@@ -92,7 +92,7 @@ if [ "$plain" = 0 ] && [ -t 1 ] && { true </dev/tty; } 2>/dev/null; then
   exec 9>&-
   exec "$tui_venv/bin/python" "$source_root/scripts/onprem/rtx4090_tui.py" "$@" </dev/tty
 fi
-# Persist only username/email and GitHub CLI's own authentication before a possible reboot.
+# Persist setup before a possible reboot; public downloads need no GitHub login.
 if [ "${VIDEOQ_NONINTERACTIVE:-0}" != 1 ] && { true </dev/tty; } 2>/dev/null; then
   python3 "$source_root/scripts/onprem/rtx4090.py" "$@" --prepare-only </dev/tty
 else

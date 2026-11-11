@@ -26,25 +26,20 @@ API とワーカーはダイジェスト固定の Alpine イメージを使い�
 
 ## 配布物を取得して検証する
 
-`gh attestation verify` に対応した GitHub CLI、Python 3.9 以上、Helm 4.3.1 を用意します。検証スクリプトはレビュー済みのチェックアウトから実行します。成功した `On-prem Release` の実行 ID と、別途確認した完全なソースコミット SHA を使ってください。ダウンロードした manifest 自体から信頼する SHA を決めないでください。
+公開Releaseからmanifest・両Helm Chart・Sigstore/SLSA bundleを匿名で取得します。導入する人のGitHubアカウント・トークン・`gh`コマンドは不要です。Python 3.10以上とHelm 4.3.1を使います。検証スクリプトはレビュー済みチェックアウトから実行し、公開タグのソースSHA・run-id・attemptを別途確認してください。ダウンロードしたmanifestだけから信頼するSHAを決めないでください。
 
 ```sh
-SOURCE_SHA=REPLACE_WITH_REVIEWED_40_CHARACTER_COMMIT
-RUN_ID=REPLACE_WITH_SUCCESSFUL_RELEASE_RUN
-RUN_ATTEMPT=$(gh run view "$RUN_ID" --repo videoq-jp/videoq --json attempt --jq .attempt)
-mkdir -p /secure/videoq-release
-gh run download "$RUN_ID" --repo videoq-jp/videoq \
-  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir /secure/videoq-release
-python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
-  /secure/videoq-release/release.json /secure/videoq-release/verified-images.json \
-  /secure/videoq-release/verified-inference.json
+SOURCE_SHA=確認済みの40文字のコミットSHA
+RUN_ID=公開Releaseの実行ID
+RUN_ATTEMPT=公開Releaseの実行回
+bash scripts/onprem/install-verify-tools.sh
+python3 scripts/onprem/public_release.py --source-sha "$SOURCE_SHA" \
+  --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT" --directory /secure/videoq-release
 ```
 
-イメージの取得に GHCR のログインや `read:packages` 資格情報は不要です。上記の GitHub CLI の認証は、ワークフロー成果物のダウンロードと署名検証に使います。検証スクリプトは署名、対象ファイル、リポジトリ、配布ワークフロー、`refs/heads/main`、ソースコミット、GitHub ホストのランナーであることを確認します。manifest、両 Chart のチェックサムと署名、全5イメージの署名がすべて正しい場合だけ、アプリ用・推論用の Helm 設定ファイルを生成します。失敗時は既存の値を保持します。
+公開APIでmainの成功した配布実行・ソースSHA・実行回を確認します。Sigstoreは独立したproduction TUF設定から信頼ルートを取得し、署名と透明性ログ、リポジトリ・所有組織・ワークフロー・main参照・ソースコミット・GitHub-hostedランナー・run-id/attempt・対象名とダイジェストを照合します。manifest・両Chart・全5イメージの検証がすべて成功した場合だけ、アプリ用と推論用のHelm設定を生成します。失敗時は既存の値を保持します。
 
-アーキテクチャ別 SBOM は、`gh attestation verify` の predicate に `https://cyclonedx.org/bom` を指定して確認できます。Chart、manifest、確認済みの値、SBOM、署名バンドルを保管してください。ワークフローの成果物は 90 日で期限切れになります。採用したイメージのダイジェストと署名をレジストリの削除ポリシーから保護します。
-
-検証済みのイメージ指定は **最後** に読み込みます。
+インストーラーは公開版を自動選択します。今後の公開ワークフローは署名検証付きリハーサルと実CPUモデル受入が成功した後に配布し、公開済みのファイルを上書きしません。CIや保守担当者は従来の`onprem-release.py`とGitHub CLIでActions成果物・SBOMを検査できますが、利用者の導入では使いません。イメージ取得にGHCRのログインは不要です。公開配布物とbundle、昇格したイメージのdigestは保管してください。Actionsの転送用artifactは90日で期限切れになります。
 
 ```sh
 helm template videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SHA.tgz \

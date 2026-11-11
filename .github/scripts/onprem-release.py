@@ -1,7 +1,8 @@
 """Assemble signed release metadata, or verify it before producing Helm values.
 
-Uses the operator's authenticated gh CLI. Verification fails closed; no cluster
-changes are made. Trust this script from a reviewed checkout, never a bundle.
+Legacy CI verification uses authenticated gh CLI. End-user installers use
+onprem_public.py with public bundles and no GitHub credentials. Verification
+fails closed. Trust verifier scripts from a reviewed checkout, never a bundle.
 """
 import argparse
 import hashlib
@@ -124,6 +125,10 @@ def verify(manifest, source):
     for component in data["images"]:
         image = data["images"][component]
         attest("oci://" + image["repository"] + "@" + image["digest"], source, source_repository=identity)
+    return helm_values(data)
+
+
+def helm_values(data):
     def image(component):
         return {k: data["images"][component][k] for k in ("repository", "digest")}
     application = {"requireImageDigests": True, **{
