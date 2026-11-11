@@ -87,7 +87,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       if (manifest.enabled && courseId === null) {
         const [course] = await tx.insert(videoCourses).values({ userId: ownerUserId,
           managedByLms: true, nativeAccessDisabled: true,
-          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: 0,
+          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
           createdAt: sql`now()`, updatedAt: sql`now()` }).returning({ id: videoCourses.id });
         courseId = course.id;
         await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id,
@@ -107,7 +107,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       return resource;
     }
     const [previousVideo] = previous?.videoId ? await tx.select({ status: videos.status, userId: videos.userId,
-      sourceType: videos.sourceType, youtubeVideoId: videos.youtubeVideoId }).from(videos).where(eq(videos.id, previous.videoId)) : [];
+      sourceType: videos.sourceType, youtubeVideoId: videos.youtubeVideoId, transcriptionLanguage: videos.transcriptionLanguage }).from(videos).where(eq(videos.id, previous.videoId)) : [];
     // A new source kind has no legacy native-video adoption path. Refuse a
     // corrupted pointer before changing provenance or taking an idempotent exit.
     if (manifest.kind === 'youtube' && previous?.videoId && previousVideo
@@ -128,6 +128,12 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         : previous.contentHash === (manifest.file?.contentHash ?? previous.contentHash)
           && previous.fileSize === (manifest.file?.size ?? previous.fileSize)
           && previous.contentType === (manifest.file?.contentType ?? previous.contentType));
+    // Language is an upload-time processing option. Existing material must not
+    // be silently reprocessed or lose its history when only this option changes.
+    if (manifest.enabled && keepVideo && manifest.transcriptionLanguage !== undefined
+      && previousVideo?.transcriptionLanguage !== manifest.transcriptionLanguage) {
+      throw new LmsSyncError(409, 'TRANSCRIPTION_LANGUAGE_LOCKED');
+    }
     let videoId = keepVideo ? previous.videoId : null;
     let syncError: string | null = null;
     const [mapping] = await tx.select().from(lmsCourses).where(and(eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
@@ -166,6 +172,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
               userId: ownerUserId, title: manifest.title, description: "", transcript: "", errorMessage: "",
               file: buildPendingUploadFileKey(ownerUserId, file.size, fileExtension(file.filename)),
               status: "uploading", sourceType: "uploaded", sourceUrl: "", youtubeVideoId: "",
+              transcriptionLanguage: manifest.transcriptionLanguage ?? null,
               uploadedAt: sql`now()`, uploadUsagePeriodStart: reservation.periodStart,
             }).returning({ id: videos.id });
             videoId = video.id;
@@ -178,7 +185,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         if (!courseId) {
           const [course] = await tx.insert(videoCourses).values({
             managedByLms: true, nativeAccessDisabled: true,
-            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: 0,
+            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
             createdAt: sql`now()`, updatedAt: sql`now()`,
           }).returning({ id: videoCourses.id });
           courseId = course.id;

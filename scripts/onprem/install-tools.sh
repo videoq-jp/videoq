@@ -28,8 +28,10 @@ PY
 }
 # k3d (K3s in Docker)
 k3d_version=5.9.0
-curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/k3d-linux-${arch}" -o "$workspace/k3d"
-curl -fsSL "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/checksums.txt" -o "$workspace/k3d-checksums.txt"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/k3d-linux-${arch}" --output "$workspace/k3d"
+python3 "$root/.github/scripts/package-managers.py" github-asset \
+  --url "https://github.com/k3d-io/k3d/releases/download/v${k3d_version}/checksums.txt" --output "$workspace/k3d-checksums.txt"
 verify "$workspace/k3d" "$workspace/k3d-checksums.txt" "k3d-linux-${arch}"
 # kubectl matches the minor version of the documented K3s node.
 kubectl_version=1.35.5

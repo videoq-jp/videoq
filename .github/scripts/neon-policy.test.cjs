@@ -1,8 +1,36 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {readFileSync}=require('node:fs');
+const {runInNewContext}=require('node:vm');
+const {createRequire}=require('node:module');
+const {resolve}=require('node:path');
 const {OWNER,PROFILES,loginName,connectionUrl,encodeJournal,decodeJournal,retirementRole}=require('./neon-policy.cjs');
 const {denied,retire,rollback,finishRollback,completeRollback}=require('./neon-admin.cjs');
+
+test('fresh credential checks do not install packages; due and forced rotations install before mutations',async()=>{
+ const load=(createdAt)=>{
+  const calls=[];
+  const filename=resolve('.github/scripts/neon-admin.cjs'), nativeRequire=createRequire(filename);
+  const fakeRequire=name=>name==='node:child_process'?{execFileSync:(command,args)=>{
+   const request=JSON.parse(readFileSync(args.at(-1).slice('file://'.length),'utf8'));
+   calls.push([args[1],request.Name]);
+   if(args[1]==='describe-parameters')return '{"Parameters":[]}';
+   if(request.Name===nativeRequire('./neon-policy.cjs').JOURNAL)throw new Error('absent');
+   return JSON.stringify({Parameter:{Type:'SecureString',Value:JSON.stringify({created_at:createdAt}),Version:1}});
+  }}:nativeRequire(name);
+  const module={exports:{}};
+  runInNewContext(readFileSync(filename,'utf8'),{require:fakeRequire,module,__dirname:resolve('.github/scripts'),
+   process:{env:{}},console:{log(){}},URL,Buffer,Date});
+  return {prepare:module.exports.prepare,calls};
+ };
+ const fresh=load(new Date().toISOString());
+ assert.equal(await fresh.prepare(false,()=>assert.fail('unnecessary install')),null);
+ for(const [createdAt,force] of [[new Date(0).toISOString(),false],[new Date().toISOString(),true]]){
+  const fixture=load(createdAt);
+  await assert.rejects(fixture.prepare(force,()=>{throw new Error('TOOLS_REQUIRED');}),/TOOLS_REQUIRED/);
+  assert.ok(!fixture.calls.some(([command,name])=>command==='put-parameter'||name?.endsWith('/db-admin')));
+ }
+});
 
 test('each consumer uses its own parameter and access role',()=>{
  assert.equal(new Set(Object.values(PROFILES).map(p=>p.parameter)).size,7);
@@ -97,4 +125,28 @@ test('recovery guards retain credentials until the rollback grace period and ver
  await assert.rejects(finishRollback({phase:'rollback_pending',rollback_after:'invalid'}),/INVALID_ROLLBACK_PHASE/);
  await assert.rejects(finishRollback({phase:'rollback_pending',rollback_after:new Date(Date.now()+60000).toISOString()}),/ROLLBACK_INVOCATIONS/);
  assert.throws(()=>completeRollback({phase:'rollback_pending'}),/ROLLBACK_NOT_RETIRED/);
+});
+
+test('DB rotation refreshes all three consumers and waits for the longest timeout', async () => {
+ const filename=resolve('.github/scripts/neon-admin.cjs'), nativeRequire=createRequire(filename);
+ const calls=[];
+ const fakeRequire=name=>name==='node:child_process'?{execFileSync:(_command,args)=>{
+  const input=JSON.parse(readFileSync(args.at(-1).slice('file://'.length),'utf8'));
+  calls.push([args[1],input]);
+  if(args[1]==='update-function-configuration')return '{}';
+  return JSON.stringify({LastUpdateStatus:'Successful',RevisionId:'revision',
+   Timeout: input.FunctionName.includes('account')?300:900,
+   Environment:{Variables:{DB_PARAM_NAME:PROFILES.worker.parameter,KEEP:'unchanged'}}});
+ }}:nativeRequire(name);
+ const module={exports:{}};
+ runInNewContext(readFileSync(filename,'utf8'),{require:fakeRequire,module,__dirname:resolve('.github/scripts'),
+  process:{env:{}},console,URL,Buffer,Date});
+ assert.equal(await module.exports.refreshLambda('new-generation'),900);
+ const updates=calls.filter(([command])=>command==='update-function-configuration').map(([,input])=>input);
+ assert.deepEqual(updates.map(input=>input.FunctionName),['videoq-worker-prod','videoq-worker-search-prod','videoq-worker-account-prod']);
+ for(const update of updates){
+  assert.equal(update.Environment.Variables.DB_CREDENTIAL_GENERATION,'new-generation');
+  assert.equal(update.Environment.Variables.KEEP,'unchanged');
+  assert.equal(update.RevisionId,'revision');
+ }
 });

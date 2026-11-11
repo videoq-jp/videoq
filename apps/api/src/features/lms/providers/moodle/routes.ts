@@ -68,7 +68,7 @@ moodlePairingRoutes.post('/management', async c => {
 moodlePairingRoutes.get("/", async c => {
   const connections = await withDb(c.env, db => db.select({ id: lmsInstallations.id, moodleUrl: lmsInstallations.issuer,
     active: lmsInstallations.active }).from(lmsInstallations).innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
-    .where(and(eq(lmsInstallations.ownerUserId, c.var.userId!), activeLmsOwner())));
+    .where(and(eq(lmsInstallations.ownerUserId, c.var.userId!), eq(lmsInstallations.active, true), activeLmsOwner())));
   return c.json({ connections });
 });
 moodlePairingRoutes.post("/", async c => {

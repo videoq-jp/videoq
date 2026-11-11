@@ -114,12 +114,13 @@ jobs:
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
+              - '.github/scripts/validate-deployment.cjs'
+              - '.github/scripts/deployment-config.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - '.github/actions/setup-package-manager/**'
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             api:
@@ -128,12 +129,13 @@ jobs:
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
+              - '.github/scripts/validate-deployment.cjs'
+              - '.github/scripts/deployment-config.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - '.github/actions/setup-package-manager/**'
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             worker:
@@ -151,14 +153,7 @@ jobs:
               - 'apps/api/scripts/purge-retired-study-data.mjs'
               - 'apps/api/scripts/stamp-baseline.mjs'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
-              - '.github/deploy-tools/**'
-              - ".github/runtime-versions.json"
-              - ".node-version"
-              - ".python-version"
-              - ".github/actions/**"
-              - ".github/scripts/runtime-versions.py"
-              - ".github/scripts/package-managers.py"
+              - '.github/scripts/validate-deployment.cjs'
             migrate:
               - 'apps/api/drizzle/**'
               - 'apps/api/src/db/**'
@@ -169,12 +164,13 @@ jobs:
               - 'apps/api/scripts/purge-retired-study-data.mjs'
               - 'apps/api/scripts/stamp-baseline.mjs'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
+              - '.github/scripts/run-aws-db.py'
+              - '.github/scripts/validate-deployment.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - '.github/actions/aws-db-invocation/**'
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             docs:
@@ -184,12 +180,13 @@ jobs:
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cd.yml'
-              - '.github/scripts/**'
+              - '.github/scripts/validate-deployment.cjs'
+              - '.github/scripts/deployment-config.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - '.github/actions/setup-package-manager/**'
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
       - name: Resolve deploy flags
@@ -480,5 +477,11 @@ jobs:
           docker tag "videoq-worker:$SOURCE_SHA" "$IMAGE_REPOSITORY:latest"
           docker push "$IMAGE_REPOSITORY:$SOURCE_SHA"
           docker push "$IMAGE_REPOSITORY:latest"
-          aws lambda update-function-code --function-name "$FUNCTION_NAME" --image-uri "$IMAGE_REPOSITORY:$SOURCE_SHA"
-          aws lambda wait function-updated --function-name "$FUNCTION_NAME"
+          # Terraform preserves the original name for media and appends the group
+          # before the environment suffix for the other two consumers.
+          prefix="${FUNCTION_NAME%-*}"
+          environment="${FUNCTION_NAME##*-}"
+          for function in "$prefix-search-$environment" "$prefix-account-$environment" "$FUNCTION_NAME"; do
+            aws lambda update-function-code --function-name "$function" --image-uri "$IMAGE_REPOSITORY:$SOURCE_SHA"
+            aws lambda wait function-updated --function-name "$function"
+          done

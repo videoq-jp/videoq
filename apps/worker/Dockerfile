@@ -1,6 +1,6 @@
 # SQS worker Lambda container image (linux/arm64).
 FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
-FROM public.ecr.aws/lambda/python:3.14@sha256:cf4c3a72d1cd34b7ae289fef868bac0777afeef9895c5d0a3d83d7dcb4da9a29 AS lambda-local
+FROM public.ecr.aws/lambda/python:3.14@sha256:f34a1d137b3130ec99ff888232960e404428df49c0f3bad91ba751f41439d75f AS lambda-local
 
 # BEGIN managed pip
 ARG PIP_VERSION=26.2.2
@@ -33,8 +33,15 @@ RUN set -eux; \
     *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
   esac; \
   dnf install -y tar xz libstdc++; \
-  curl -fsSL -o /tmp/ffmpeg.tar.xz \
-    "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0.tar.xz"; \
+  asset_name="ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0.tar.xz"; \
+  if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 \
+    "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/${asset_name}" -o /tmp/ffmpeg.tar.xz; then \
+    asset_id="$(curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
+      "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_BUILD}" \
+      | python -c 'import json,sys; r=json.load(sys.stdin); a=[x for x in r.get("assets",[]) if x.get("name")==sys.argv[1]]; assert r.get("tag_name")==sys.argv[2] and len(a)==1 and type(a[0].get("id")) is int and a[0]["id"]>0, "Unexpected FFmpeg release asset"; print(a[0]["id"])' "$asset_name" "$FFMPEG_BUILD")"; \
+    curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 -H 'Accept: application/octet-stream' \
+      "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/${asset_id}" -o /tmp/ffmpeg.tar.xz; \
+  fi; \
   echo "${FFSHA}  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
   tar -xJf /tmp/ffmpeg.tar.xz -C /tmp; \
   cp /tmp/ffmpeg-${FFMPEG_VERSION}-${FFARCH}-lgpl-9.0/bin/ffmpeg /usr/local/bin/; \

@@ -21,6 +21,20 @@ run "credential_and_control_boundaries" {
   command = apply
 
   assert {
+    condition = alltrue([for project in merge(aws_codebuild_project.job, { deploy = aws_codebuild_project.deploy }) :
+      !contains(keys(jsondecode(project.source[0].buildspec).phases.install["runtime-versions"]), "nodejs") &&
+      alltrue([for command in local.runtime_setup_commands : contains(jsondecode(project.source[0].buildspec).phases.install.commands, command)])
+    ])
+    error_message = "Every job must use the verified preinstalled Node 26 binaries without copying them on every run."
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      contains(jsondecode(project.source[0].buildspec).phases.install.commands, "node infra/db-maintenance/runtime/setup-job.cjs")
+    ])
+    error_message = "Every database job must run its stage-aware dependency preparation."
+  }
+
+  assert {
     condition = alltrue([for statement in jsondecode(aws_iam_role_policy.deploy.policy).Statement :
       statement.Effect != "Allow" || alltrue([for action in statement.Action :
         !startswith(action, "ssm:") && !startswith(action, "iam:") && action != "kms:Decrypt"

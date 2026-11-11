@@ -21,8 +21,26 @@ function cd() {
     repository: { full_name: 'videoq-jp/videoq' }, head_repository: { full_name: 'videoq-jp/videoq' } };
   return { context: { ...context, eventName: 'workflow_run', payload: { workflow_run: run } },
     github: { rest: { actions: { getWorkflow: async () => ({ data: { id: 7 } }),
-      listWorkflowRuns: async () => ({ data: { workflow_runs: [{ id: 1 }] } }) } } } };
+      listWorkflowRuns: async () => ({ data: { workflow_runs: [{ id: 1 }] } }),
+      listJobsForWorkflowRun: async () => ({data:{jobs:[{name:'Deploy web (prebuilt Cloudflare artifact)',conclusion:'success'}]}}),
+    } } } };
 }
+test('docs-only and no-op deployments do not repeat application smoke', async () => {
+  const f = cd();
+  const names = ['Deploy web (prebuilt Cloudflare artifact)', 'Deploy api (prebuilt Cloudflare artifact)',
+    'Deploy prebuilt Worker Lambda image', 'Drizzle DB Migrate'];
+  const jobs = names.map(name => ({name, conclusion:'skipped'}));
+  jobs.push({name:'Deploy docs (prebuilt Cloudflare artifact)',conclusion:'success'});
+  f.github.rest.actions.listJobsForWorkflowRun = async () => ({data:{jobs}});
+  assert.deepEqual(selected(await plan(f)), []);
+  for (const name of names) {
+    jobs.find(job => job.name === name).conclusion = 'success';
+    assert.deepEqual(selected(await plan(f)), ['smoke']);
+    jobs.find(job => job.name === name).conclusion = 'skipped';
+  }
+  jobs.splice(0,1);
+  assert.deepEqual(selected(await plan(f)), ['smoke']); // Unknown layout never skips verification.
+});
 test('only the latest successful canonical CD starts the production smoke check', async () => {
   const f = cd();
   assert.deepEqual(selected(await plan(f)), ['smoke']);

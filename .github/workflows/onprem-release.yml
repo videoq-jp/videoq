@@ -93,7 +93,7 @@ jobs:
           fi
       - run: mkdir -p artifact
       - name: Block vulnerable images, including unfixed HIGH and CRITICAL findings
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           image-ref: videoq-${{ matrix.component }}:release

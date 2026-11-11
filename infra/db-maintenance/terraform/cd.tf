@@ -51,7 +51,7 @@ resource "aws_codebuild_project" "deploy" {
   source {
     type = "NO_SOURCE"
     buildspec = jsonencode({ version = "0.2", phases = {
-      install = { "runtime-versions" = { nodejs = 26, python = "3.12" } },
+      install = { "runtime-versions" = { python = "3.12" }, commands = local.runtime_setup_commands },
       build = { commands = [
         "python3 -c 'import os,re; assert re.fullmatch(\"[a-f0-9]{40}\", os.environ.get(\"MAINTENANCE_SOURCE_SHA\",\"\"))'",
         "mkdir -p /tmp/videoq-db-source && cd /tmp/videoq-db-source",

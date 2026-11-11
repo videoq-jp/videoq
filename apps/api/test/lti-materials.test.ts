@@ -36,7 +36,7 @@ describe("LTI tool service credentials", () => {
 function mockService(result: unknown, tokenOverride = {}) {
   return vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
     if (input === registration.materialsService.tokenEndpoint) {
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       const form = init?.body as URLSearchParams;
       expect(form.get("scope")).toBe(MATERIALS_SCOPE);
       await jwtVerify(form.get("client_assertion")!, createLocalJWKSet(await toolJwks(env)),
@@ -44,12 +44,23 @@ function mockService(result: unknown, tokenOverride = {}) {
       return Response.json({ access_token: "ephemeral", token_type: "Bearer", expires_in: 60, scope: MATERIALS_SCOPE, ...tokenOverride });
     }
     expect(input).toBe(registration.materialsService.endpoint);
-    expect(init?.redirect).toBe("error");
+    expect(init?.redirect).toBe("manual");
     expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer ephemeral");
     return Response.json(result);
   });
 }
 describe("LTI materials service boundary", () => {
+  it("calls the default fetch with the Workers global receiver for token and service requests", async () => {
+    const service = mockService({ contextIds: ["course"] });
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown, input, init) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return service(input, init);
+    });
+    try {
+      expect(await new MaterialsClient(env, registration).courses()).toEqual(["course"]);
+      expect(service).toHaveBeenCalledTimes(2);
+    } finally { spy.mockRestore(); }
+  });
   it.each([undefined, 1, 2])('requires fresh source generation for a URL player (%j)', async generation => {
     const binding = { deploymentId: registration.deploymentId, contextId: 'course', resourceLinkId: 'launch',
       courseId: 1, videoId: 10, generation: 2, sourceGeneration: 2 };

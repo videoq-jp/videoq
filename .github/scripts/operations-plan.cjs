@@ -26,7 +26,15 @@ async function plan({ github, context, check = 'all' }) {
       }
       const { data } = await github.rest.actions.listWorkflowRuns({ ...context.repo,
         workflow_id: workflow.id, branch: 'main', status: 'success', per_page: 1 });
-      selected = data.workflow_runs[0]?.id === run.id ? ['smoke'] : [];
+      if (data.workflow_runs[0]?.id !== run.id) { selected = []; break; }
+      const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({ ...context.repo,
+        run_id: run.id, filter: 'latest', per_page: 100 });
+      const applicationJobs = ['Deploy web (prebuilt Cloudflare artifact)',
+        'Deploy api (prebuilt Cloudflare artifact)', 'Deploy prebuilt Worker Lambda image', 'Drizzle DB Migrate'];
+      // A successful CD may have deployed only docs, or skipped every deployment.
+      // Keep daily/manual checks, and fail conservatively if job names change.
+      const known = applicationJobs.map(name => jobs.jobs.find(job => job.name === name));
+      selected = known.some(job => !job || job.conclusion !== 'skipped') ? ['smoke'] : [];
       break;
     }
     default: throw new Error('Unsupported operations event.');

@@ -124,7 +124,7 @@ jobs:
           docker run --rm --entrypoint python videoq-worker:onprem-ci -c 'import os; assert os.environ["DEPLOYMENT_EDITION"] == "onprem"; import worker_python.lambda_handler; import runpy; runpy.run_path("scripts/run_worker.py", run_name="import_check")'
       - name: Scan the API image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -136,7 +136,7 @@ jobs:
           timeout: 10m
       - name: Scan the worker image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -148,7 +148,7 @@ jobs:
           timeout: 10m
       - name: Scan the web image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -160,7 +160,7 @@ jobs:
           timeout: 10m
       - name: Scan the local Whisper image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -186,7 +186,7 @@ jobs:
           JS
       - name: Scan the llama.cpp CPU image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -312,7 +312,7 @@ jobs:
           df -h /
       - name: Scan NVIDIA Whisper including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
@@ -386,7 +386,7 @@ jobs:
       # Use the registry so a cached amd64 Docker image cannot shadow arm64.
       - name: Scan upstream CPU images including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
-        uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # v0.35.0
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         env:
           TRIVY_PLATFORM: linux/${{ matrix.architecture }}
           TRIVY_IMAGE_SRC: remote

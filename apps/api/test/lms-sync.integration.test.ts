@@ -109,6 +109,23 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     USE_S3_STORAGE: "true", R2_ACCESS_KEY_ID: "fixture", R2_SECRET_ACCESS_KEY: "fixture",
     R2_S3_ENDPOINT: "https://storage.example", R2_BUCKET_NAME: "fixture", R2_S3_REGION: "auto" });
 
+  it.each(['ja', 'en'] as const)('preserves the requested %s upload language for worker transcription', async language => {
+    const resource = await syncLmsResource(env, grant, 'language-video', manifest(1, { transcriptionLanguage: language }));
+    const video = (await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0];
+    expect(video.transcription_language).toBe(language);
+    expect((await request('resources/language-video', 'PUT', manifest(2, { transcriptionLanguage: language === 'ja' ? 'en' : 'ja' }))).status).toBe(409);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0].transcription_language).toBe(language);
+    const legacy = await syncLmsResource(env, grant, 'language-video', manifest(2));
+    expect(legacy.videoId).toBe(resource.videoId);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [resource.videoId])).rows[0].transcription_language).toBe(language);
+    const replacement = await syncLmsResource(env, grant, 'language-video', manifest(3, {
+      transcriptionLanguage: language === 'ja' ? 'en' : 'ja',
+      file: { filename: 'next.mp4', contentType: 'video/mp4', size: 3, contentHash: 'b'.repeat(40) },
+    }));
+    expect(replacement.videoId).not.toBe(resource.videoId);
+    expect((await pool.query('SELECT transcription_language FROM videos WHERE id=$1', [replacement.videoId])).rows[0].transcription_language).toBe(language === 'ja' ? 'en' : 'ja');
+  });
+
   it("discovers an administrator-selected on-prem server without creating signing keys", async () => {
     const automatic = { ...automaticEnv(), BETTER_AUTH_URL: "https://private.example:8443", FRONTEND_URL: "https://learning.example:9443" };
     const response = await app.request("https://private.example:8443/api/lms/pairing/discovery", {}, automatic);
@@ -340,6 +357,11 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect((await app.request(url, { method: "POST", headers: ownHeaders }, env)).status).toBe(200);
     expect(await authenticateLmsInstallation(env, credential.token)).toBeNull();
     expect(await authenticateLmsInstallation(env, peer.token)).toMatchObject({ id: "peer" });
+    const list = await app.request("http://localhost/api/lms/pairing", {
+      headers: { "X-VideoQ-Test-User-Id": "account-a" },
+    }, env);
+    expect(list.status).toBe(200);
+    expect(await list.json()).toEqual({ connections: [] });
     expect((await request("connection")).status).toBe(401);
     expect((await resolvedLtiConfig(env))?.registrations.some(item => item.id === "db:moodle-a")).toBe(false);
     expect(await getLmsResource(env, grant, "disconnect-source")).toBeNull();
@@ -636,6 +658,19 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(binding).toEqual({ deploymentId: registration.deploymentId, contextId: '42', resourceLinkId: 'course-lti',
       courseId: resources[0].courseId, kind: 'course', generation: 1, learningAvailable: false });
     expect((await getCourseWithMembers(env, { courseId: resources[0].courseId!, ltiCourseGrant: resources[0].courseId!, ltiVideoGrant: [] }))?.memberVideoIds).toEqual([]);
+  });
+  it('appends synced courses and preserves the owner order on subsequent sync', async () => {
+    await pool.query("INSERT INTO video_courses(user_id,name,description,display_order,created_at,updated_at) VALUES ('account-a','Existing','',7,now(),now())");
+    const entry = await syncLmsResource(env, grant, 'course_42', courseManifest());
+    const video = await syncLmsResource(env, grant, '10', manifest());
+    const orders = async () => (await pool.query("SELECT id::int AS id,display_order FROM video_courses WHERE user_id='account-a' ORDER BY display_order")).rows;
+    expect((await orders()).map(row => row.display_order)).toEqual([7, 8, 9]);
+    await pool.query('UPDATE video_courses SET display_order=12 WHERE id=$1', [entry.courseId]);
+    await pool.query('UPDATE video_courses SET display_order=13 WHERE id=$1', [video.courseId]);
+    const before = await orders();
+    await syncLmsResource(env, grant, 'course_42', courseManifest(2));
+    await syncLmsResource(env, grant, '10', manifest(2));
+    expect(await orders()).toEqual(before);
   });
   it('preserves course endpoint compatibility, denies file upload/confirm and rejects binding changes', async () => {
     expect(env.USE_S3_STORAGE).toBe('false');

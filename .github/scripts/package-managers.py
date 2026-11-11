@@ -19,6 +19,7 @@ import ssl
 import http.client
 import urllib.error
 import urllib.request
+import urllib.parse
 
 TARGETS = {
     "linux-x86_64": "x86_64-unknown-linux-gnu",
@@ -100,24 +101,64 @@ def discover(data, name, upgrade, request):
     return data
 
 
-def verified(download):
+GITHUB_RELEASE_URL = re.compile(r"https://github\.com/([A-Za-z0-9_-][A-Za-z0-9_.-]*)/([A-Za-z0-9_-][A-Za-z0-9_.-]*)/releases/download/([A-Za-z0-9_.+-]+)/([A-Za-z0-9_.+-]+)")
+
+
+def github_asset_api(url):
+    match = GITHUB_RELEASE_URL.fullmatch(url)
+    if not match:
+        return None
+    owner, repository, tag, name = match.groups()
+    endpoint = f"https://api.github.com/repos/{owner}/{repository}/releases"
+    request = urllib.request.Request(endpoint + "/tags/" + urllib.parse.quote(tag, safe=""), headers={"Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        metadata = response.read(2 * 1024 * 1024 + 1)
+    if len(metadata) > 2 * 1024 * 1024:
+        raise ValueError("GitHub release metadata exceeds the size limit")
+    release = json.loads(metadata)
+    assets = [asset for asset in release.get("assets", []) if asset.get("name") == name]
+    if (release.get("tag_name") != tag or len(assets) != 1 or
+            type(assets[0].get("id")) is not int or assets[0]["id"] <= 0):
+        raise ValueError("Unexpected GitHub release tag or asset")
+    request = urllib.request.Request(endpoint + f"/assets/{assets[0]['id']}", headers={"Accept": "application/octet-stream"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return response.read(64 * 1024 * 1024 + 1)
+
+
+def downloaded(url):
     # Public release assets can return transient gateway errors. Retry only
     # transport failures; integrity/size checks below still fail immediately.
-    for attempt in range(4):
+    attempts = 2 if GITHUB_RELEASE_URL.fullmatch(url) else 4
+    for attempt in range(attempts):
         try:
-            with urllib.request.urlopen(download["url"], timeout=60) as response:
+            with urllib.request.urlopen(url, timeout=30 if attempts == 2 else 60) as response:
                 body = response.read(64 * 1024 * 1024 + 1)
             break
         except urllib.error.HTTPError as error:
             error.close()
-            if error.code not in {408, 429, 500, 502, 503, 504} or attempt == 3:
+            if error.code not in {408, 429, 500, 502, 503, 504}:
                 raise
+            if attempt == attempts - 1:
+                body = github_asset_api(url)
+                if body is None:
+                    raise
+                break
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
-            if (isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError)) or attempt == 3:
+            if isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError):
                 raise
+            if attempt == attempts - 1:
+                body = github_asset_api(url)
+                if body is None:
+                    raise
+                break
         time.sleep(2 ** attempt)
     if len(body) > 64 * 1024 * 1024:
         raise ValueError("Package manager distribution exceeds the size limit")
+    return body
+
+
+def verified(download):
+    body = downloaded(download["url"])
     if "integrity" in download:
         actual = "sha512-" + base64.b64encode(hashlib.sha512(body).digest()).decode()
         expected = download["integrity"]
@@ -208,10 +249,18 @@ RUN python -c 'import hashlib,os,pathlib,sys,urllib.request; b=urllib.request.ur
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("manager", choices=["npm", "pip", "uv"])
+    parser.add_argument("manager", choices=["npm", "pip", "uv", "github-asset"])
     parser.add_argument("--manifest", type=Path, default=Path(__file__).resolve().parents[2] / ".github/runtime-versions.json")
     parser.add_argument("--prefix", type=Path)
+    parser.add_argument("--url")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.manager == "github-asset":
+        if not args.url or not args.output or not GITHUB_RELEASE_URL.fullmatch(args.url):
+            parser.error("github-asset requires an official release URL and an output file")
+        # Stage bytes only. Callers must verify their pinned hash before extraction/use.
+        args.output.write_bytes(downloaded(args.url))
+        return
     prefix = args.prefix or Path(tempfile.mkdtemp(prefix="verified-tools-", dir=os.environ.get("RUNNER_TEMP")))
     install(json.loads(args.manifest.read_text()), args.manager, prefix)
 

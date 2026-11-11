@@ -8,6 +8,11 @@ resource "aws_sns_topic_subscription" "operations_email" {
   topic_arn = aws_sns_topic.operations.arn
   protocol  = "email"
   endpoint  = var.operations_alert_email
+
+  # Confirm the new address before retiring the prior alert subscription.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Lambda creates this group implicitly on first invocation. Declarative import

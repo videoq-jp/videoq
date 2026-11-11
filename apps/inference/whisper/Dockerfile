@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS sqlite
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev make curl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY security/build-sqlite.sh /tmp/build-sqlite.sh
@@ -18,7 +18,15 @@ RUN set -eu; \
       arm64) archive_arch=linuxarm64; archive_sha=b8cc09200780d37801179c803f597c22440b0b06c556addd2e6a07b27475ce37 ;; \
       *) exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/ffmpeg-${FFMPEG_VERSION}-${archive_arch}-lgpl-9.0.tar.xz" -o /tmp/ffmpeg.tar.xz; \
+    asset_name="ffmpeg-${FFMPEG_VERSION}-${archive_arch}-lgpl-9.0.tar.xz"; \
+    if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 \
+      "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/${asset_name}" -o /tmp/ffmpeg.tar.xz; then \
+      asset_id="$(curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
+        "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_BUILD}" \
+        | python -c 'import json,sys; r=json.load(sys.stdin); a=[x for x in r.get("assets",[]) if x.get("name")==sys.argv[1]]; assert r.get("tag_name")==sys.argv[2] and len(a)==1 and type(a[0].get("id")) is int and a[0]["id"]>0, "Unexpected FFmpeg release asset"; print(a[0]["id"])' "$asset_name" "$FFMPEG_BUILD")"; \
+      curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 -H 'Accept: application/octet-stream' \
+        "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/${asset_id}" -o /tmp/ffmpeg.tar.xz; \
+    fi; \
     echo "$archive_sha  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
     mkdir /ffmpeg; tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /ffmpeg
 
@@ -53,7 +61,7 @@ for pattern in ('readline*.so', '_uuid*.so', '_tkinter*.so'):
     for module in pathlib.Path('/usr/local/lib/python3.12/lib-dynload').glob(pattern): module.unlink()
 PY
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:08476c244888bfb425bae1ae4dd7c17f093e972aab8426883d97f3c6f280f7c1
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cc66d222f0a7ec996b78a99fe76a969bc80b539a5016ad866c14d1949bc6d0ab
 COPY --from=dependencies /usr/local /usr/local
 COPY --from=dependencies /extra/lib/ /usr/local/lib/
 COPY --from=dependencies /extra/status.d/ /var/lib/dpkg/status.d/

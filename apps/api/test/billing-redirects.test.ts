@@ -57,7 +57,18 @@ describe.each([
       locale: locale === "en" ? "en" : "ja",
       adaptive_pricing: { enabled: false },
       line_items: [{ price: "price_basic", quantity: 1 }],
+      consent_collection: { terms_of_service: "required" },
+      metadata: { userId: "user_1", lookupKey: "basic_monthly", legalPolicyVersion: "2026-11-11" },
+      subscription_data: {
+        metadata: { userId: "user_1", lookupKey: "basic_monthly", legalPolicyVersion: "2026-11-11" },
+      },
     }));
+    const params = checkoutCreate.mock.calls[0][0];
+    const acceptance = params.custom_text.terms_of_service_acceptance.message;
+    for (const path of ["terms", "privacy", "refund", "legal"]) {
+      expect(acceptance).toContain(`https://videoq.example${prefix}/${path}`);
+    }
+    expect(params.custom_text.submit.message).toContain("support@videoq.jp");
   });
 
   it("returns the billing portal to settings in the same language", async () => {
@@ -68,6 +79,36 @@ describe.each([
       locale: locale === "en" ? "en" : "ja",
       return_url: `https://videoq.example${prefix}/settings`,
     });
+  });
+});
+
+describe.each([
+  { lookup: "basic_monthly", interval: "month", storage: 20, minutes: 200, answers: 500, uploads: 200 },
+  { lookup: "basic_yearly", interval: "year", storage: 20, minutes: 200, answers: 500, uploads: 200 },
+  { lookup: "pro_monthly", interval: "month", storage: 100, minutes: 1000, answers: 2000, uploads: 1000 },
+  { lookup: "pro_yearly", interval: "year", storage: 100, minutes: 1000, answers: 2000, uploads: 1000 },
+])("checkout contract for $lookup", ({ lookup, interval, storage, minutes, answers, uploads }) => {
+  it.each(["ja", "en"])("shows the selected plan's allowances and renewal interval in %s", async locale => {
+    pricesList.mockResolvedValue({ data: [{
+      id: "price_selected", lookup_key: lookup, active: true, type: "recurring",
+      billing_scheme: "per_unit", recurring: { interval, interval_count: 1 },
+      currency: "jpy", unit_amount: 1480, currency_options: { usd: { unit_amount: 999 } },
+    }] });
+    await createCheckoutSession(env, "user_1", lookup, locale);
+    const params = checkoutCreate.mock.calls[0][0];
+    const summary = params.custom_text.submit.message;
+    if (locale === "en") {
+      expect(summary).toContain(interval === "year" ? "Renews yearly" : "Renews monthly");
+      expect(summary).toContain(`Storage: ${storage} GB`);
+      expect(summary).toContain(`${minutes} transcription minutes, ${answers} AI answers, ${uploads} GB uploads`);
+    } else {
+      expect(summary).toContain(interval === "year" ? "毎年自動更新" : "毎月自動更新");
+      expect(summary).toContain(`ストレージ${storage}GB`);
+      expect(summary).toContain(`文字起こし${minutes}分・AI回答${answers}回・アップロード${uploads}GB`);
+    }
+    expect(summary).toContain("UTC");
+    expect(summary.length).toBeLessThanOrEqual(1200);
+    expect(params.custom_text.terms_of_service_acceptance.message.length).toBeLessThanOrEqual(1200);
   });
 });
 
