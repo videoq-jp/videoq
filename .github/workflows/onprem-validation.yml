@@ -223,8 +223,9 @@ jobs:
       - name: Install checksum-pinned kind
         if: inputs.validate_lifecycle
         run: KIND_INSTALL_DIR="$RUNNER_TEMP" bash .github/scripts/install-kind.sh
+      # Real-model acceptance below runs this same lifecycle scenario; select one.
       - name: Exercise Kubernetes install, processing, restore, upgrade and rollback
-        if: inputs.validate_lifecycle
+        if: inputs.validate_lifecycle && !inputs.validate_real_cpu
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
@@ -232,7 +233,7 @@ jobs:
           kind create cluster --name videoq-onprem-lab --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$RUNNER_TEMP/lab-kubeconfig" --wait 180s
           python3 .github/scripts/onprem-lab.py "$RUNNER_TEMP/lab-kubeconfig" "$RUNNER_TEMP/lab-result"
       - name: Retain Kubernetes validation evidence
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
+        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle && !inputs.validate_real_cpu }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-lab-${{ github.sha }}
@@ -240,7 +241,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Remove the disposable Kubernetes cluster
-        if: ${{ always() && inputs.validate_lifecycle }}
+        if: ${{ always() && inputs.validate_lifecycle && !inputs.validate_real_cpu }}
         run: |
           if [ -x "$RUNNER_TEMP/kind" ]; then
             "$RUNNER_TEMP/kind" delete cluster --name videoq-onprem-lab --kubeconfig "$RUNNER_TEMP/lab-kubeconfig"
