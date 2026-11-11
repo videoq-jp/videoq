@@ -321,8 +321,8 @@ jobs:
       - name: Build the pinned audio-capable vLLM engine without credentials
         id: gpu_image
         run: docker build -f apps/inference/whisper/Dockerfile.vllm -t videoq-whisper-vllm:onprem-ci apps/inference/whisper
-      - name: Verify audio extras without a GPU
-        run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci -c 'import av, soxr, soundfile; import importlib.metadata as m; assert m.version("vllm") == "0.32.0"'
+      - name: Verify audio extras and FlashInfer backend without a GPU
+        run: docker run --rm --entrypoint python3 videoq-whisper-vllm:onprem-ci /usr/share/videoq/security/verify_inference_runtime.py
       - name: Reclaim disk for the CUDA image scan
         if: ${{ !cancelled() && steps.gpu_image.outcome == 'success' }}
         run: |
