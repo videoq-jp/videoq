@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -211,6 +212,19 @@ class ManifestTests(unittest.TestCase):
             values = m.public_release.public_verifier.manifest.helm_values(fixture)
             objects = m.compile_videoq(directory, fixture, values, 'https://192.168.1.50', 40, '192.168.1.50')
         by_name = {item['metadata']['name']: item for item in objects}
+        for name in ('chat', 'embedding', 'whisper'):
+            deployment = by_name['videoq-inference-' + name]
+            pod = deployment['spec']['template']['spec']
+            startup = max(c.get('startupProbe', {}).get('periodSeconds', 10) *
+                          c.get('startupProbe', {}).get('failureThreshold', 0)
+                          for c in pod['containers'])
+            waits = [re.search(r'deadline = time.monotonic\(\) \+ (\d+)',
+                     '\n'.join(c.get('command', []) + c.get('args', [])))
+                     for c in pod.get('initContainers', []) if c['name'].startswith('wait-for-')]
+            self.assertTrue(all(waits), 'Every serialized startup wait must have an inspected bound')
+            peer_wait = sum(int(match[1]) for match in waits)
+            self.assertGreater(deployment['spec']['progressDeadlineSeconds'], startup + peer_wait,
+                               'Cold downloads need time in addition to peer waits and startup probes')
         migration = by_name['videoq-migrate']['metadata']['annotations']
         self.assertEqual(migration['argocd.argoproj.io/hook'], 'Sync')
         self.assertEqual(migration['argocd.argoproj.io/sync-wave'], '20')

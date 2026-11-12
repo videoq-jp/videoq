@@ -158,6 +158,14 @@ DB・永続領域（wave 0）→モデルとストレージ初期化（wave 10�
 →API/Web/worker（wave 30）の順に同期する。Helm の pre-install migration はそのまま使うと
 初回DB作成より先に実行されるため、明示的な Argo CD Sync hook に変換している。
 モデル内の起動順序は既存の Embedding → Whisper → Chat を維持する。
+モデル取得や init container の待機も Deployment の進捗期限に含まれるため、推論チャートの
+`rolloutDeadlineSeconds` は初回取得を含めて2時間に設定している。標準の10分では、正常に
+ダウンロードが続いていても Argo CD の同期が失敗する。低速回線で変更する場合は、依存モデルの
+待機と startup probe に加えて転送時間も確保する。既に期限切れになった同期は、原因を解決し
+モデルが正常起動してから同じ構成を再同期する。PVC は削除しない。
+モデル取得用 init container は一時的に最大4GiBのメモリーを使い、同時取得を2ファイルに制限する。
+大きなチェックポイントの復元処理は1GiBの上限を超えることがある。推論サーバー本体の
+CPU・メモリー・VRAMの上限とは別の、初回取得用の設定になる。
 
 同期が成功し `videoq-api` が Ready になったら、サーバー上の operator CLI で
 VideoQ の初回管理者を作成する。次のユーザー名とメールアドレスは運用者のものへ置き換える。
