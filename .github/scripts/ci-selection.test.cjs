@@ -12,7 +12,7 @@ function filter(name, paths) {
 }
 function selected(name, event, paths = []) {
   const expression = ci.match(new RegExp(`^      ${name}: \\$\\{\\{ (.+) \\}\\}$`, 'm'))[1];
-  const names = ['onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images', 'real_cpu', 'moodle'];
+  const names = ['lab', 'onprem', 'onprem_lifecycle', 'inference', 'whisper_gpu', 'upstream_images', 'real_cpu', 'moodle'];
   const value = runInNewContext(expression, {
     github: { event_name: event },
     steps: { filter: { outputs: Object.fromEntries(names.map(name => [name, filter(name, paths)])) } },
@@ -80,7 +80,7 @@ test('manual CI uses lifecycle change selection and both components remain requi
   }
   assert.equal(selected('onprem_lifecycle', 'workflow_dispatch'), false);
   assert.equal(selected('onprem_lifecycle', 'workflow_dispatch', ['scripts/onprem/k3s.py']), true);
-  for (const [id, flag] of [['onprem-validation', 'onprem'], ['local-inference-basic', 'inference']]) {
+  for (const [id, flag] of [['lab-gitops', 'lab'], ['onprem-validation', 'onprem'], ['local-inference-basic', 'inference']]) {
     const job = ci.split(`\n  ${id}:\n`)[1].split(/\n  [a-z][\w-]*:\n/)[0];
     assert.ok(job.includes(`if: needs.changes.outputs.${flag} == 'true'`));
   }
@@ -121,4 +121,21 @@ test('public release trust and publishing changes retain lifecycle validation', 
       }
     }
   }
+});
+
+
+test('lab bootstrap and updater validation is required through the shared CI entry point', () => {
+  for (const event of events) {
+    for (const path of ['infra/ansible/site.yml', 'scripts/gitops/update.py',
+      'scripts/onprem/lifecycle.py', 'charts/videoq/values.yaml', '.github/workflows/lab-gitops.yml']) {
+      assert.equal(selected('lab', event, [path]), true, `${event}: ${path}`);
+    }
+    assert.equal(selected('lab', event, ['docs/guides/lab-gitops.md']), false);
+    assert.equal(selected('onprem_lifecycle', event, ['scripts/onprem/README.md']), false);
+  }
+  assert.equal(selected('lab', 'workflow_dispatch'), true);
+  assert.match(ci, /name === 'lab-gitops' && jobs.changes.outputs.lab === 'true'/);
+  const lab = readFileSync(join(__dirname, '../workflows/lab-gitops.yml'), 'utf8');
+  assert.match(lab, /workflow_call:/);
+  assert.doesNotMatch(lab, /^  (pull_request|push|merge_group):/m);
 });

@@ -42,6 +42,8 @@ flowchart LR
 
 `container-validation.yml`, `terraform-plan.yml`, `onprem-validation.yml`, and
 `local-inference-basic.yml` are validation components called from CI and Operations.
+`lab-gitops.yml` validates Ansible and the internal Git release updater through CI;
+selected lab checks are required by `CI Success` and have no duplicate PR/push runs.
 They have no event triggers of their own. Keep per-job permissions, environments, and
 approvals rather than mixing differently privileged work on one runner.
 
@@ -152,3 +154,12 @@ Daily Operations always scans them.
 Monitors do not open Issues; results go to the job summary.
 See [dependency-automation.md](dependency-automation.md) for update processing and
 [OPERATIONS.md](OPERATIONS.md) for what the monitors do.
+
+## Lab operator tools
+
+The RTX 4090 lab path uses `infra/ansible/site.yml` for bootstrap and
+`scripts/gitops/update.py` for signed release promotion into the internal Git repository.
+Argo CD applies that repository. See [lab deployment](../docs/guides/lab-gitops.md)
+and [automatic updates](../docs/guides/lab-auto-update.md).
+The superseded RTX 4090 shell installer, Textual wizard and retired custom-vLLM
+Runpod probe were removed. Shared single-server/CPU lifecycle tools remain supported.

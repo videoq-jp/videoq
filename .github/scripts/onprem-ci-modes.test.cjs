@@ -102,7 +102,7 @@ test('each lifecycle run exercises Kubernetes once, with fixtures or real models
 test('both validation modes install uv before the unconditional installer tests', () => {
   for (const lifecycle of [false, true]) {
     assert.equal(enabled('Install checksum-pinned uv', lifecycle), true);
-    assert.equal(enabled('Validate public downloads, signature policy and installer screens', lifecycle), true);
+    assert.equal(enabled('Validate public downloads, signature policy and shared lifecycle helpers', lifecycle), true);
   }
-  assert.ok(source.indexOf('- name: Install checksum-pinned uv') < source.indexOf('- name: Validate public downloads, signature policy and installer screens'));
+  assert.ok(source.indexOf('- name: Install checksum-pinned uv') < source.indexOf('- name: Validate public downloads, signature policy and shared lifecycle helpers'));
 });

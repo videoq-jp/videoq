@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [changes, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
+    needs: [changes, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
     steps:
       - name: Require every selected CI job to pass
         env:
@@ -108,6 +108,7 @@ jobs:
           const jobs = JSON.parse(process.env.JOB_RESULTS);
           const failed = Object.entries(jobs).filter(([name, job]) =>
             (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
+              (name === 'lab-gitops' && jobs.changes.outputs.lab === 'true') ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
               (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
               (name === 'onprem-validation' && jobs.changes.outputs.onprem === 'true') ||
@@ -121,10 +122,16 @@ jobs:
           }
           NODE
 
+  lab-gitops:
+    needs: changes
+    if: needs.changes.outputs.lab == 'true'
+    uses: ./.github/workflows/lab-gitops.yml
+
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
+      lab: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.lab == 'true' }}
       containers: ${{ steps.filter.outputs.containers }}
       container_worker: ${{ steps.filter.outputs.container_worker }}
       terraform: ${{ steps.filter.outputs.terraform }}
@@ -151,6 +158,17 @@ jobs:
         with:
           base: ${{ github.event.merge_group.base_sha || github.event.repository.default_branch }}
           filters: |
+            lab:
+              - 'infra/ansible/**'
+              - 'scripts/gitops/**'
+              - 'scripts/onprem/**/*.py'
+              - 'charts/**'
+              - '.github/scripts/onprem_public.py'
+              - '.github/scripts/onprem-release.py'
+              - '.github/scripts/install-helm.sh'
+              - '.github/workflows/lab-gitops.yml'
+              - '.github/workflows/ci.yml'
+              - '.python-version'
             containers:
               - '.github/workflows/container-validation.yml'
               - 'apps/api/Dockerfile*'
@@ -218,7 +236,10 @@ jobs:
               - '.github/scripts/test_onprem_public.py'
               - '.github/scripts/publish-onprem-release*'
               - '.github/scripts/fixtures/onprem-public/**'
-              - 'scripts/onprem/**'
+              - 'scripts/onprem/**/*.py'
+              - 'scripts/onprem/**/*.sh'
+              - 'scripts/onprem/**/*.mjs'
+              - 'scripts/onprem/**/requirements*.txt'
               - 'infra/garage/**'
               - 'infra/elasticmq.conf'
               - 'charts/**'
