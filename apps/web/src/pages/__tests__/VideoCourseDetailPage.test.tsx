@@ -298,12 +298,12 @@ describe('VideoCourseDetailPage', () => {
     expect(addVideos).toHaveBeenLastCalledWith({ courseId: 1, videoIds: [3] })
   })
 
-  it('uses a compact viewer header with the existing logo and a course-list link', async () => {
+  it('uses a compact viewer header with the text wordmark and a course-list link', async () => {
     render(<VideoCourseDetailPage />)
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'VideoQ' })).toHaveAttribute('href', '/videos/courses')
-      expect(screen.getByRole('link', { name: 'VideoQ' }).querySelector('img')).toHaveAttribute('src', '/logo192.png')
+      expect(screen.getByRole('link', { name: 'VideoQ' }).querySelector('img')).toBeNull()
       expect(screen.getAllByText('Test Course').length).toBeGreaterThan(0)
     })
   })

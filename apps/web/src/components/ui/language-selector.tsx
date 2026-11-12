@@ -81,12 +81,13 @@ LanguageSelectorMenu.displayName = "LanguageSelectorMenu"
 type LanguageSelectorMenuItemProps = React.ComponentProps<"a"> & {
   isCurrent?: boolean
   isCondensed?: boolean
+  checkIcon?: React.ReactNode
 }
 
 const LanguageSelectorMenuItem = React.forwardRef<
   HTMLAnchorElement,
   LanguageSelectorMenuItemProps
->(({ className, children, isCurrent, isCondensed, ...props }, ref) => {
+>(({ className, children, isCurrent, isCondensed, checkIcon, ...props }, ref) => {
   return (
     <li>
       <a
@@ -114,7 +115,7 @@ const LanguageSelectorMenuItem = React.forwardRef<
           viewBox="0 0 24 24"
           width="24"
         >
-          <path d="m9.5 18-5.7-5.7 1.5-1.4 4.2 4.3L18.7 6l1.4 1.4L9.5 18Z" />
+          {checkIcon ?? <path d="m9.5 18-5.7-5.7 1.5-1.4 4.2 4.3L18.7 6l1.4 1.4L9.5 18Z" />}
         </svg>
         {children}
       </a>

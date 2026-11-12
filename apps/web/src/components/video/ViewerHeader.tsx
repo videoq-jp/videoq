@@ -8,8 +8,8 @@ export function ViewerHeader({ title, backHref = '/', children }: {
   children?: ReactNode;
 }) {
   return (
-    <header className="flex min-h-[4.5rem] md:min-h-20 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-white px-6 py-3 text-solid-gray-800 lg:flex-nowrap ">
-      <Link href={backHref} className="shrink-0 text-std-20B-150 focus-visible:bg-yellow-300 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black">
+    <header className="flex min-h-[var(--site-header-height)] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-white px-4 py-1 text-solid-gray-800 sm:gap-x-4 sm:px-6 sm:py-3 lg:flex-nowrap lg:py-0">
+      <Link href={backHref} className="site-header-logo text-std-20B-150">
         <BrandLogo />
       </Link>
       <span className="hidden h-6 w-px shrink-0 bg-solid-gray-420 lg:block" aria-hidden="true" />

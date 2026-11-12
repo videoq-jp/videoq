@@ -311,7 +311,7 @@ export const CourseViewerLayout: Story = {
     await expect(await canvas.findByRole('heading', { level: 1, name: course.name })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
     const brand = canvas.getByRole('link', { name: 'VideoQ' });
-    await expect(brand.querySelector('img')).toHaveAttribute('src', '/logo192.png');
+    await expect(brand.querySelector('img')).toBeNull();
     await expect(brand).toHaveAttribute('href', i18n.language.startsWith('en') ? '/en/videos/courses' : '/videos/courses');
     await expect(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.assistant') })).toHaveAttribute('aria-selected', 'true');
     await expect(canvas.getByRole('button', { name: i18n.t('videos.courseDetail.manage') })).toHaveAttribute('aria-expanded', 'false');

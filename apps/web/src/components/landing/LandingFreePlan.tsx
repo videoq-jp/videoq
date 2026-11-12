@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -20,9 +21,9 @@ export function LandingFreePlan() {
         <h2 id="landing-free-title">{t('landing.free.title')}</h2>
         <p className="lp-free-intro">{t('landing.free.intro')}</p>
         <p className="lp-reassurance"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
-        <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'free')}>
+        <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'free')}>
           {t('landing.start')}<ArrowRight size={17} aria-hidden="true" />
-        </Link>
+        </Link></Button>
         <Link href="/pricing" className="lp-text-link">{t('landing.next.pricing.title')}<ArrowRight size={15} aria-hidden="true" /></Link>
       </div>
       <div className="lp-free-details">
