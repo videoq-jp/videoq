@@ -3,12 +3,25 @@
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
+import {isIP} from 'node:net';
 import {labFetch as fetch, closeLabHttp} from './http.mjs';
 
 const output = process.argv[2];
 const origin = process.argv[3] || 'http://127.0.0.1:28787';
-assert(output && new URL(origin).hostname === '127.0.0.1', 'Use an explicit disposable localhost site');
-const password = 'Local-model-validation-only-2026!';
+const target = new URL(origin);
+const privateLab = process.env.VIDEOQ_PRIVATE_MODEL_ACCEPTANCE === '1';
+const octets = target.hostname.split('.').map(Number);
+const privateIPv4 = isIP(target.hostname) === 4 && (octets[0] === 10 ||
+  (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+  (octets[0] === 192 && octets[1] === 168));
+assert(output && target.origin === origin && (privateLab
+  ? target.protocol === 'https:' && privateIPv4
+  : target.hostname === '127.0.0.1'), 'Use a disposable localhost site or explicitly opted-in private HTTPS IPv4 site');
+const password = privateLab ? process.env.VIDEOQ_ACCEPTANCE_PASSWORD : 'Local-model-validation-only-2026!';
+assert(password && password.length >= 16, 'Set a private acceptance password of at least 16 characters');
+const email = privateLab ? process.env.VIDEOQ_ACCEPTANCE_EMAIL : 'model-validation@example.invalid';
+assert(email && email.endsWith('@example.invalid'), 'Use a disposable example.invalid acceptance account');
+const storageOrigin = privateLab ? origin : 'http://127.0.0.1:29000';
 const statePath = join(output, 'model-e2e-state.json');
 const state = existsSync(statePath) ? JSON.parse(readFileSync(statePath)) : {videos: {}};
 const save = () => writeFileSync(statePath, JSON.stringify(state, null, 2));
@@ -38,7 +51,7 @@ try {
     save();
   }
   const auth = await fetch(origin + '/api/auth/sign-in/email', {method: 'POST', headers,
-    body: JSON.stringify({email: 'model-validation@example.invalid', password})});
+    body: JSON.stringify({email, password})});
   assert.equal(auth.status, 200);
   cookie = auth.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
   assert(cookie);
@@ -47,7 +60,7 @@ try {
       const bytes = readFileSync(join(output, language + '.mp4'));
       const upload = await rpc('videos.requestUpload', {filename: language + '.mp4', contentType: 'video/mp4',
         fileSize: bytes.length, title: 'FLEURS ' + language + ' real model acceptance', transcriptionLanguage: language});
-      assert.equal(new URL(upload.upload_url).origin, 'http://127.0.0.1:29000');
+      assert.equal(new URL(upload.upload_url).origin, storageOrigin);
       assert((await fetch(upload.upload_url, {method: 'PUT', headers: {'Content-Type': 'video/mp4'}, body: bytes})).ok);
       await rpc('videos.confirmUpload', {id: upload.video.id});
       state.videos[language] = {id: upload.video.id};
@@ -104,6 +117,6 @@ try {
     console.log(item.audio + ' audio → ' + item.language + ' question: cited answer and SSE passed');
   }
   writeFileSync(join(output, 'model-e2e-result.json'), JSON.stringify({status: 'passed', inference: 'real models; no protocol fixtures',
-    models: ['gpt-oss-20b', 'EmbeddingGemma 2 text-only 768d', 'Whisper large-v3-turbo Q5_0'],
+    models: ['gpt-oss-20b', 'EmbeddingGemma 2 text-only 768d', privateLab ? 'Whisper large-v3-turbo upstream vLLM' : 'Whisper large-v3-turbo Q5_0'],
     courseId: state.courseId, videos: state.videos, cases: results}, null, 2) + '\n');
 } finally { await closeLabHttp(); }
