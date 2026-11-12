@@ -247,6 +247,14 @@ namespaces remain invalid. Use the normal signed release workflow for new builds
 
 ## Distribution retention
 
+Automatic releases compare the selected main source with the newest published
+on-prem release backed by a successful main release run. Documentation, adopted
+deployment pins and retention housekeeping alone keep the existing release.
+Unreleased runtime or distribution changes still publish even if the newest
+commit only edits documentation. Unknown, divergent or large diffs publish
+conservatively. A manual `workflow_dispatch` requests a full release after the
+same current-main CI validation.
+
 After a successful release, `On-prem Distribution Retention` keeps the latest two
 published on-prem releases whose source/run/attempt match a successful main
 release workflow. Other release types are preserved. It protects their image
