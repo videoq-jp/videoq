@@ -89,7 +89,7 @@ export function MessageBody({ answer, onVideoNavigate }: MessageBodyProps) {
   const nodes = useMemo(() => parseMessageContent(segments), [segments]);
 
   return (
-    <div className="text-std-17N-170 text-solid-gray-800 whitespace-pre-wrap">
+    <div className="text-std-17N-170 text-solid-gray-800 whitespace-pre-wrap [overflow-wrap:anywhere]">
       {nodes.map((node, i) => {
         if (node.type === 'text') {
           return <Fragment key={`text-${i}`}>{node.value}</Fragment>;

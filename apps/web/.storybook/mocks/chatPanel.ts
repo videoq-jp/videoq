@@ -21,7 +21,7 @@ export const feedbackRequest = fn();
 export const csvRequest = fn();
 export const historyError = '会話履歴を読み込めませんでした / Could not load conversation history';
 
-export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
+export function createChatPanelMock(scenario: ChatPanelScenario = {}, procedures: Parameters<typeof trpcHandler>[0] = []) {
   const lifetime = new AbortController();
   const streams = new Set<{ send: (events: ChatStreamEvent[]) => void; close: () => void }>();
   const conversations = new Map<string, { id: string; title: string; createdAt: string; updatedAt: string; isGenerating: boolean;
@@ -86,6 +86,7 @@ export function createChatPanelMock(scenario: ChatPanelScenario = {}) {
       return new HttpResponse(bodyStream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
     }),
     trpcHandler([
+      ...procedures,
       trpcQuery('chat.conversations', input => success({ items: [...conversations.values()]
         .filter(item => item.turns.length && (!input.shareSlug || input.conversationIds?.includes(item.id))), hasMore: false })),
       trpcQuery('chat.conversation', input => {

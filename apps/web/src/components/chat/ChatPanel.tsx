@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { timeStringToSeconds } from '@/lib/utils/video';
 import { cn } from '@/lib/digital-agency/cn';
@@ -24,6 +24,7 @@ interface ChatPanelProps {
   sendSuggestedQuestions?: boolean;
   /** Omit the panel's own heading when a surrounding tab already names it. */
   showTitle?: boolean;
+  onComposerFocus?: () => void;
 }
 
 type PanelTab = 'chat' | 'history';
@@ -49,6 +50,7 @@ function ChatPanelSession({
   sendSuggestedQuestions = false,
   showTitle = true,
   storageKey,
+  onComposerFocus,
 }: ChatPanelProps & { storageKey: string }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PanelTab>('chat');
@@ -122,7 +124,7 @@ function ChatPanelSession({
             courseId={courseId} shareToken={shareToken} conversationId={conversations.selected.id}
             initialMessages={conversations.messages} existingConversation={conversations.selected.restore} remoteBusy={conversations.remoteBusy}
             onSend={conversations.remember} onAnswer={conversations.refresh}
-            onVideoNavigate={navigateToVideo} suggestedQuestions={suggestedQuestions} sendSuggestedQuestions={sendSuggestedQuestions}
+            onVideoNavigate={navigateToVideo} onComposerFocus={onComposerFocus} suggestedQuestions={suggestedQuestions} sendSuggestedQuestions={sendSuggestedQuestions}
             hasEarlier={!!conversations.detail.hasNextPage} loadingEarlier={conversations.detail.isFetchingNextPage}
             onLoadEarlier={() => conversations.detail.fetchNextPage({ throwOnError: true })}
             earlierError={conversations.detail.isFetchNextPageError} />}
@@ -131,15 +133,17 @@ function ChatPanelSession({
   );
 }
 
-function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, suggestedQuestions, sendSuggestedQuestions,
+function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, suggestedQuestions, sendSuggestedQuestions, onComposerFocus,
   hasEarlier, loadingEarlier, onLoadEarlier, earlierError, ...options }: {
     courseId?: number; shareToken?: string; conversationId: string; initialMessages: Message[]; existingConversation: boolean;
     remoteBusy: boolean; visible: boolean; onSend: () => void; onAnswer: () => void;
     onVideoNavigate: (videoId: number, startTime: string) => void;
-    suggestedQuestions?: string[]; sendSuggestedQuestions?: boolean;
+    suggestedQuestions?: string[]; sendSuggestedQuestions?: boolean; onComposerFocus?: () => void;
     hasEarlier: boolean; loadingEarlier: boolean; earlierError: boolean; onLoadEarlier: () => Promise<unknown>;
   }) {
   const { t } = useTranslation();
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const suggestionsId = useId();
   const chat = useChatMessages({ ...options, initialMessages, visible });
   const { isLoading, setMessages } = chat;
   const olderScroll = useRef<{ height: number; top: number; count: number } | null>(null);
@@ -170,6 +174,7 @@ function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, sug
     void onLoadEarlier().catch(() => { olderScroll.current = null; });
   };
   const busy = chat.isLoading || remoteBusy;
+  const hasQuestions = chat.messages.some(message => message.role === 'user');
   if (!visible) return null;
   return <>
     {hasEarlier && <Button disabled={loadingEarlier || busy} onClick={loadEarlier}>{t('chat.loadEarlierMessages')}</Button>}
@@ -178,13 +183,20 @@ function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, sug
     <ChatMessagesView messages={chat.messages} isLoading={chat.isLoading}
       feedbackUpdatingIds={chat.feedbackUpdatingIds} messagesContainerRef={chat.messagesContainerRef}
       onScroll={chat.handleMessagesScroll} onVideoNavigate={onVideoNavigate} onFeedback={chat.handleFeedback} />
-    {suggestedQuestions && suggestedQuestions.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 px-4 pb-3" role="group" aria-label={t('chat.suggestedQuestions')}>
+    {suggestedQuestions && suggestedQuestions.length > 0 && <div className="shrink-0 px-4 pb-2">
+      {hasQuestions && <Button type="button" variant="text" size="xs" className="min-h-11"
+        aria-expanded={suggestionsExpanded} aria-controls={suggestionsId} onClick={() => setSuggestionsExpanded(value => !value)}>
+        {t(suggestionsExpanded ? 'chat.hideSuggestions' : 'chat.showSuggestions')}
+      </Button>}
+      <div id={suggestionsId} hidden={hasQuestions && !suggestionsExpanded}>
+      <div className="flex max-h-[20dvh] gap-2 overflow-x-auto sm:flex-wrap sm:overflow-y-auto" role="group" aria-label={t('chat.suggestedQuestions')}>
       {suggestedQuestions.map(question => <Button key={question} type="button" variant="outline" size="sm" disabled={busy}
-        className="h-auto whitespace-normal py-1.5 text-left leading-snug" onClick={() => {
+        className="h-auto min-h-11 max-w-[85%] shrink-0 whitespace-normal py-2 text-left leading-snug sm:max-w-full sm:shrink" onClick={() => {
+          setSuggestionsExpanded(false);
           if (sendSuggestedQuestions) void chat.handleSend(question); else chat.setInput(question);
         }}>{question}</Button>)}
-    </div>}
-    <ChatComposer input={chat.input} isLoading={busy} onInputChange={chat.setInput} onKeyDown={event => { if (!remoteBusy) chat.handleKeyPress(event); }}
+    </div></div></div>}
+    <ChatComposer onFocus={() => { setSuggestionsExpanded(false); onComposerFocus?.(); }} input={chat.input} isLoading={busy} onInputChange={chat.setInput} onKeyDown={event => { if (!remoteBusy) chat.handleKeyPress(event); }}
       onSend={() => remoteBusy ? Promise.resolve() : chat.handleSend()} />
   </>;
 }

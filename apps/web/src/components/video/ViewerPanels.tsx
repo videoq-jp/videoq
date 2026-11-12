@@ -2,9 +2,9 @@ import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlignLeft, List, Sparkles, MessageCircle } from 'lucide-react';
 
-export type PanelTab = 'videos' | 'assistant' | 'overview' | 'qa';
+export type PanelTab = 'videos' | 'assistant' | 'overview' | 'qa' | 'details';
 
-const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft, qa: MessageCircle };
+const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft, qa: MessageCircle, details: AlignLeft };
 
 export function PanelTabs({ tabs, activeTab, idPrefix, onChange, label }: {
   label?: string;

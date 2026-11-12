@@ -315,6 +315,8 @@ export const SuggestedQuestions: Story = { args: { suggestedQuestions: [question
   await expect(input(context)).toHaveValue(question);
   await context.userEvent.click(context.canvas.getByRole('button', { name: i18n.t('common.actions.send') }));
   await waitFor(() => expect(input(context)).toBeDisabled());
+  await expect(context.canvas.queryByRole('button', { name: question })).not.toBeInTheDocument();
+  await context.userEvent.click(context.canvas.getByRole('button', { name: label('showSuggestions') }));
   await expect(context.canvas.getByRole('button', { name: question })).toBeDisabled();
 } };
 export const JapaneseMobile: Story = { globals: { viewport: { value: 'mobile', isRotated: false } }, async play(context) { await complete(context); } };

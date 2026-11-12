@@ -38,6 +38,11 @@ export const EnglishMobile: Story = {
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } },
 };
 export const JapaneseMobile: Story = {
+  play: async ({ canvas }) => {
+    const send = canvas.getByRole('button', { name: i18n.t('common.actions.send') });
+    await expect(send.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await expect(send.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  },
   globals: { locale: 'ja', viewport: { value: 'mobile', isRotated: false } },
 };
 export const ReadyToSend: Story = { args: { input: '回転行列の定義を教えてください。' } };

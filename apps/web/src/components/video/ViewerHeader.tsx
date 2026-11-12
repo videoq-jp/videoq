@@ -14,7 +14,7 @@ export function ViewerHeader({ title, backHref = '/', children }: {
       </Link>
       <span className="hidden h-6 w-px shrink-0 bg-solid-gray-420 lg:block" aria-hidden="true" />
       <h1 className="order-last min-w-0 basis-full truncate text-std-17N-170 lg:order-none lg:flex-1 lg:basis-0" title={title}>{title}</h1>
-      <div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>
+      <div className="ml-auto flex min-w-0 max-w-[calc(100%-5.5rem)] items-center gap-2 lg:max-w-none">{children}</div>
     </header>
   );
 }
