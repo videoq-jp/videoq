@@ -100,6 +100,9 @@ export function nodeBindings(source: Environment): Bindings {
     R2_S3_INTERNAL_ENDPOINT: source.R2_S3_INTERNAL_ENDPOINT
       ? httpURL(source.R2_S3_INTERNAL_ENDPOINT, "R2_S3_INTERNAL_ENDPOINT") : undefined,
     SQS_QUEUE_URL: httpURL(required(source, "SQS_QUEUE_URL"), "SQS_QUEUE_URL"),
+    ...Object.fromEntries(["SQS_MEDIA_QUEUE_URL", "SQS_SEARCH_QUEUE_URL", "SQS_ACCOUNT_QUEUE_URL"]
+      .filter((key) => source[key]?.trim())
+      .map((key) => [key, httpURL(source[key]!.trim(), key)])),
     AWS_REGION: source.AWS_REGION || "us-east-1",
     AWS_ACCESS_KEY_ID: required(source, "AWS_ACCESS_KEY_ID"),
     AWS_SECRET_ACCESS_KEY: required(source, "AWS_SECRET_ACCESS_KEY"),

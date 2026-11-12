@@ -1,5 +1,6 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, BarChart3, BookOpen, Briefcase, Check, ChevronDown, FileText, GraduationCap, Link2, MessageCircle, MonitorPlay, Play, School, Search, Sparkles, Upload } from 'lucide-react';
+import { ArrowDown, ArrowRight, BarChart3, BookOpen, Briefcase, Check, ChevronDown, FileText, GraduationCap, UserPlus, MessageCircle, MonitorPlay, Play, School, Search, Sparkles, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocale } from '@/lib/i18n';
 import { StructuredData } from '@/components/seo/StructuredData';
@@ -12,13 +13,13 @@ import '@/styles/landing.css';
 const CAPABILITIES = [
   { key: 'create', icon: FileText },
   { key: 'source', icon: Play },
-  { key: 'share', icon: Link2 },
+  { key: 'share', icon: UserPlus },
   { key: 'insights', icon: BarChart3 },
 ] as const;
 const BENEFITS = [
   { key: 'answer', icon: MessageCircle },
   { key: 'source', icon: Play },
-  { key: 'share', icon: Link2 },
+  { key: 'share', icon: UserPlus },
   { key: 'insights', icon: BarChart3 },
 ] as const;
 const COMPARE_ROWS = ['basis', 'source', 'teacher'] as const;
@@ -30,7 +31,7 @@ const USES = [
 const STEPS = [
   { key: 'upload', icon: Upload },
   { key: 'course', icon: BookOpen },
-  { key: 'share', icon: Link2 },
+  { key: 'share', icon: UserPlus },
 ] as const;
 const FAQ_KEYS = ['free', 'accounts', 'cost', 'accuracy', 'history'] as const;
 const INSIGHT_BARS = [38, 62, 45, 80, 56] as const;
@@ -53,12 +54,12 @@ export default function LandingPage() {
           </h1>
           <p className="lp-lead">{t('landing.lead')}</p>
           <div className="lp-hero-actions">
-            <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'hero')}>
+            <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'hero')}>
               {t('landing.start')}<ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link href="/try" className="lp-button lp-button-secondary" onClick={() => trackLandingEvent('demo_open', 'hero')}>
+            </Link></Button>
+            <Button asChild variant="outline" className="lp-button"><Link href="/try" onClick={() => trackLandingEvent('demo_open', 'hero')}>
               <MessageCircle size={16} aria-hidden="true" />{t('landing.tryDemo')}
-            </Link>
+            </Link></Button>
           </div>
           <p className="lp-reassurance"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
         </div>
@@ -86,7 +87,7 @@ export default function LandingPage() {
               <div className="lp-benefit-visual" aria-hidden="true">
                 {key === 'answer' && <><span className="lp-mini-question"><Search size={15} />{t('landing.features.answer.example')}</span><span className="lp-mini-answer"><Sparkles size={15} />{t('landing.features.answer.result')}</span></>}
                 {key === 'source' && <><span className="lp-mini-timestamp"><Play size={14} fill="currentColor" />12:48</span><div className="lp-mini-timeline"><span /></div></>}
-                {key === 'share' && <><div className="lp-mini-course"><Link2 size={20} /><span>{t('landing.features.share.example')}</span></div><div className="lp-mini-course"><GraduationCap size={20} /><span>{t('landing.features.share.exampleDetail')}</span></div></>}
+                {key === 'share' && <><div className="lp-mini-course"><UserPlus size={20} /><span>{t('landing.features.share.example')}</span></div><div className="lp-mini-course"><GraduationCap size={20} /><span>{t('landing.features.share.exampleDetail')}</span></div></>}
                 {key === 'insights' && <><span className="lp-mini-insight-label">{t('landing.features.insights.example')}</span><div className="lp-mini-bars">{INSIGHT_BARS.map((height, bar) => <span key={bar} style={{ height: `${height}%` }} />)}</div></>}
               </div>
               <h3>{t(`landing.features.${key}.title`)}</h3>
@@ -191,7 +192,7 @@ export default function LandingPage() {
           <p className="lp-eyebrow">{t('landing.next.eyebrow')}</p>
           <h2 id="landing-next-title">{t('landing.next.title')}</h2>
           <p>{t('landing.next.intro')}</p>
-          <Link href="/signup" className="lp-button lp-button-lime" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link>
+          <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link></Button>
           <p className="lp-final-note"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
           <Link href="/login" className="lp-final-login">{t('landing.login')}</Link>
         </div>
@@ -199,7 +200,7 @@ export default function LandingPage() {
 
       <div className="lp-mobile-cta">
         <Link href="/try" onClick={() => trackLandingEvent('demo_open', 'mobile')}>{t('landing.tryDemo')}<ArrowRight size={16} aria-hidden="true" /></Link>
-        <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'mobile')}>{t('landing.start')}<ArrowRight size={17} aria-hidden="true" /></Link>
+        <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'mobile')}>{t('landing.start')}<ArrowRight size={17} aria-hidden="true" /></Link></Button>
       </div>
     </div>
   );

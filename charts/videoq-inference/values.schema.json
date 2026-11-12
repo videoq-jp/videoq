@@ -2,6 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "rolloutDeadlineSeconds": {
+      "type": "integer",
+      "minimum": 1801,
+      "maximum": 86400
+    },
     "downloadModels": {
       "type": "boolean"
     },
@@ -27,7 +32,6 @@
         "maxConcurrentRequests",
         "upstreamParallelism",
         "gatewayResources",
-        "vllmImage",
         "maxSequences",
         "requestTimeoutSeconds"
       ],
@@ -113,36 +117,6 @@
         "modelSha256": {
           "type": "string",
           "pattern": "^([a-f0-9]{64})?$"
-        },
-        "vllmImage": {
-          "type": "object",
-          "required": [
-            "repository",
-            "tag",
-            "pullPolicy"
-          ],
-          "properties": {
-            "repository": {
-              "type": "string",
-              "minLength": 1
-            },
-            "tag": {
-              "type": "string",
-              "minLength": 1
-            },
-            "digest": {
-              "type": "string",
-              "pattern": "^(sha256:[a-f0-9]{64})?$"
-            },
-            "pullPolicy": {
-              "enum": [
-                "IfNotPresent",
-                "Always",
-                "Never"
-              ]
-            }
-          },
-          "additionalProperties": false
         },
         "maxConcurrentRequests": {
           "type": "integer",
@@ -406,6 +380,7 @@
             },
             "engine": {
               "enum": [
+                "",
                 "llamacpp",
                 "vllm"
               ]
@@ -420,6 +395,15 @@
               "enum": [
                 "openai_gptoss"
               ]
+            },
+            "dtype": {
+              "enum": [
+                "half",
+                "bfloat16"
+              ]
+            },
+            "disableTorchCompile": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -498,10 +482,19 @@
             },
             "engine": {
               "enum": [
+                "",
                 "llamacpp",
-                "vllm",
-                "embeddinggemma2"
+                "vllm"
               ]
+            },
+            "dtype": {
+              "enum": [
+                "half",
+                "bfloat16"
+              ]
+            },
+            "disableTorchCompile": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -610,6 +603,50 @@
         }
       },
       "additionalProperties": false
+    },
+    "gpuSharing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "runtimeClassName",
+        "memoryFractions"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "runtimeClassName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memoryFractions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "chat",
+            "embedding",
+            "whisper"
+          ],
+          "properties": {
+            "chat": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            },
+            "embedding": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            },
+            "whisper": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 0.7
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": false

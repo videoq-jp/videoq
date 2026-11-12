@@ -15,7 +15,7 @@ from psycopg.rows import dict_row
 
 from worker_python.pipeline import vector_index
 from worker_python.pipeline.embedding_contract import EmbeddingContractError
-from worker_python.video_sql import VideoRow
+from worker_python.video_sql import VideoRow, finish_video_indexing
 from worker_python.tasks import reindexing
 from worker_python.advisory_locks import full_vector_write_lock
 
@@ -314,3 +314,70 @@ def test_transcript_changed_during_embedding_preserves_scenes_for_retry(database
     if transcript:
         assert vector_index.index_video_transcript(video(transcript)) == 1
         assert [row["content"] for row in snapshot(database) if row["video_id"] == 12] == ["Edited"]
+
+
+def test_manual_clear_removes_both_profiles_and_keeps_other_videos(database, monkeypatch):
+    database.execute("CREATE TABLE scene_embeddings_768 (LIKE scene_embeddings INCLUDING ALL)")
+    database.execute("INSERT INTO scene_embeddings_768 SELECT * FROM scene_embeddings")
+    before = snapshot(database)
+    database.execute("UPDATE videos SET transcript = '' WHERE id = 12")
+    monkeypatch.setattr(vector_index, "embed_texts", lambda _: pytest.fail("Manual clear must not call the provider"))
+
+    assert vector_index.clear_video_transcript_index(video("")) == 2
+
+    assert snapshot(database) == [row for row in before if row["video_id"] != 12]
+    assert database.execute("SELECT video_id FROM scene_embeddings_768 ORDER BY video_id").fetchall() == [
+        {"video_id": 13}, {"video_id": 14},
+    ]
+    assert vector_index.clear_video_transcript_index(video("")) == 0
+
+
+def test_manual_clear_rolls_back_first_profile_when_second_delete_fails(database):
+    database.execute("CREATE TABLE scene_embeddings_768 (LIKE scene_embeddings INCLUDING ALL)")
+    database.execute("INSERT INTO scene_embeddings_768 SELECT * FROM scene_embeddings")
+    database.execute("""
+        CREATE FUNCTION reject_clear() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN RAISE EXCEPTION 'synthetic profile delete failure'; END $$;
+        CREATE TRIGGER reject_clear BEFORE DELETE ON scene_embeddings_768
+            FOR EACH ROW EXECUTE FUNCTION reject_clear();
+    """)
+    before = snapshot(database)
+    database.execute("UPDATE videos SET transcript = '' WHERE id = 12")
+
+    with pytest.raises(psycopg.errors.RaiseException, match="synthetic profile delete failure"):
+        vector_index.clear_video_transcript_index(video(""))
+
+    assert snapshot(database) == before
+    assert database.execute("SELECT count(*) AS n FROM scene_embeddings_768").fetchone()["n"] == 3
+    assert database.execute("SELECT * FROM vector_writes").fetchall() == []
+
+
+def test_manual_clear_rejects_stale_text_and_wrong_owner(database):
+    before = snapshot(database)
+    with pytest.raises(ValueError, match="Transcript changed"):
+        vector_index.clear_video_transcript_index(video(""))
+    assert vector_index.clear_video_transcript_index(replace(video(""), user_id="other")) == 0
+    assert snapshot(database) == before
+
+
+@pytest.mark.parametrize("change", ["none", "transcript", "file", "owner", "status", "deleted"])
+def test_completion_checks_the_indexed_source_snapshot(database, change):
+    database.execute("""
+        ALTER TABLE videos ADD COLUMN status text NOT NULL DEFAULT 'indexing',
+            ADD COLUMN error_message text NOT NULL DEFAULT '', ADD COLUMN file text NOT NULL DEFAULT '';
+    """)
+    if change == "transcript":
+        database.execute("UPDATE videos SET transcript = 'Later edit' WHERE id = 12")
+    elif change == "file":
+        database.execute("UPDATE videos SET file = 'new-source' WHERE id = 12")
+    elif change == "owner":
+        database.execute("UPDATE videos SET user_id = 'another' WHERE id = 12")
+    elif change == "status":
+        database.execute("UPDATE videos SET status = 'pending' WHERE id = 12")
+    elif change == "deleted":
+        database.execute("DELETE FROM videos WHERE id = 12")
+
+    assert finish_video_indexing(database, video()) is (change == "none")
+    row = database.execute("SELECT status FROM videos WHERE id = 12").fetchone()
+    if row:
+        assert row["status"] == {"none": "completed", "status": "pending"}.get(change, "indexing")

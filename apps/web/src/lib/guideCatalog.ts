@@ -12,14 +12,14 @@ export const GUIDE_CATALOG: readonly GuideEntry[] = [
   {
     slug: 'online-course-questions',
     published: '2026-10-31',
-    updated: '2026-10-31',
+    updated: '2026-11-13',
     ja: {
       title: '動画講座の質問対応をAIで軽くする方法',
-      description: 'オンライン講座の受講生から届く質問に、講義動画をもとにAIで答える方法を解説。共有リンクと招待の選び方、費用の負担者、回答を確認する手順、導入前の注意点をまとめました。',
+      description: 'オンライン講座の受講生から届く質問に、講義動画をもとにAIで答える方法を解説。固定FAQ・AI・講師対応の使い分け、共有と招待、費用、1本の講義で導入効果を確かめる手順をまとめました。',
     },
     en: {
       title: 'How to reduce online course support with AI answers',
-      description: 'How to answer online course questions with AI grounded in your lecture videos: choosing share links or invitations, who pays for answers, how to check them, and what to confirm first.',
+      description: 'How to answer online course questions with AI grounded in your lecture videos: choosing FAQs, AI or instructor support, sharing access, estimating usage and checking the value with one lecture.',
     },
   },
   {

@@ -1,0 +1,1 @@
+ALTER TABLE "video_courses" ADD COLUMN "managed_by_lms" boolean DEFAULT false NOT NULL;

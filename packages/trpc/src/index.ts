@@ -30,3 +30,4 @@ export { appRouter } from "./router";
 export type { AppRouter } from "./router";
 
 export type { QaQuestion, QaReply } from './qa';
+export { qaInputSchemas, qaOutputSchemas } from './qa';

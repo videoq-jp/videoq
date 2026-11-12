@@ -2,9 +2,9 @@ import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlignLeft, List, Sparkles, MessageCircle } from 'lucide-react';
 
-export type PanelTab = 'videos' | 'assistant' | 'overview' | 'qa';
+export type PanelTab = 'videos' | 'assistant' | 'overview' | 'qa' | 'details';
 
-const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft, qa: MessageCircle };
+const PANEL_TAB_ICONS: Record<PanelTab, typeof List> = { videos: List, assistant: Sparkles, overview: AlignLeft, qa: MessageCircle, details: AlignLeft };
 
 export function PanelTabs({ tabs, activeTab, idPrefix, onChange, label }: {
   label?: string;
@@ -65,14 +65,14 @@ export function CourseOverview({ videoDescription, courseDescription }: { videoD
     <div className="space-y-6">
       {videoDescription ? (
         <section className="space-y-2">
-          <h3 className="text-std-16B-170 text-solid-gray-800">{t('videos.shared.overview')}</h3>
-          <p className="whitespace-pre-wrap break-words text-std-16N-170 text-solid-gray-700">{videoDescription}</p>
+          <h3 className="text-std-17B-170 text-solid-gray-800">{t('videos.shared.overview')}</h3>
+          <p className="whitespace-pre-wrap break-words text-std-17N-170 text-solid-gray-700">{videoDescription}</p>
         </section>
       ) : null}
       {courseDescription ? (
         <section className="space-y-2">
-          <h3 className="text-std-16B-170 text-solid-gray-800">{t('videos.shared.aboutCourse')}</h3>
-          <p className="whitespace-pre-wrap break-words text-std-16N-170 text-solid-gray-700">{courseDescription}</p>
+          <h3 className="text-std-17B-170 text-solid-gray-800">{t('videos.shared.aboutCourse')}</h3>
+          <p className="whitespace-pre-wrap break-words text-std-17N-170 text-solid-gray-700">{courseDescription}</p>
         </section>
       ) : null}
     </div>

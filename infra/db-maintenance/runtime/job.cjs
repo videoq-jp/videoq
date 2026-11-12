@@ -48,12 +48,25 @@ async function prepare() {
     metadata({phase: 'complete'}); return;
   }
   const current = m.readParameter(m.JOURNAL, true);
+  let installed = false;
+  const ensureTools = () => {
+    if (!installed) {
+      require('./setup-job.cjs').installTools();
+      installed = true;
+    }
+  };
   let j;
-  if (process.env.MAINTENANCE_KIND === 'rollback' || ['rollback_pending', 'rollback_retired'].includes(current?.phase)) j = await m.rollback(current);
+  if (process.env.MAINTENANCE_KIND === 'rollback' || ['rollback_pending', 'rollback_retired'].includes(current?.phase)) {
+    ensureTools();
+    j = await m.rollback(current);
+  }
   else {
-    j = await m.prepare(process.env.MAINTENANCE_FORCE === 'true');
+    j = await m.prepare(process.env.MAINTENANCE_FORCE === 'true', ensureTools);
     if (!j) {metadata({phase: 'complete'}); return;}
-    if (j.phase === 'prepared') j = await m.promote(j);
+    if (j.phase === 'prepared') {
+      ensureTools();
+      j = await m.promote(j);
+    }
   }
   const value = {phase: j.phase, generation: j.generation};
   for (const name of ['retire_after', 'rollback_after']) if (j[name]) value[name] = j[name];

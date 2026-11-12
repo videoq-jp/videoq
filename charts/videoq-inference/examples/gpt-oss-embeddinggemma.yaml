@@ -1,6 +1,5 @@
 # Default fully local model selection for new installations.
-# One NVIDIA GPU for gpt-oss; EmbeddingGemma 2 and Whisper run on CPU.
-# Build the shared CPU image from this source (it includes embedding_server.py).
+# Three dedicated NVIDIA GPUs: one per model, using the upstream vLLM image.
 backend: vllm
 servers:
   chat:
@@ -20,7 +19,7 @@ servers:
       requests: { cpu: "2", memory: 8Gi, nvidia.com/gpu: 1 }
       limits: { cpu: "8", memory: 16Gi, nvidia.com/gpu: 1 }
   embedding:
-    engine: embeddinggemma2
+    engine: vllm
     servedModel: embeddinggemma-2-f9972ac
     modelRepo: google/embeddinggemma-2
     modelRevision: f9972ac22e696a105c482202646979e33e4b5a1e
@@ -28,9 +27,29 @@ servers:
     modelSha256: ""
     contextLength: 8192
     cpuThreads: 2
-    extraArgs: []
+    nodeSelector: { kubernetes.io/arch: amd64 }
+    # FlexAttention supports the 512-wide bidirectional heads on L40S.
+    # Disable nested torch.compile too: FlexAttention compiles its masks itself.
+    disableTorchCompile: true
+    extraArgs: [--gpu-memory-utilization, "0.85", --max-num-seqs, "8", --attention-backend, FLEX_ATTENTION, --enforce-eager, --pooler-config, '{"use_activation":true}']
     persistence: { size: 5Gi }
     resources:
-      requests: { cpu: "1", memory: 2Gi }
-      limits: { cpu: "2", memory: 4Gi }
-# The unchanged speech defaults select large-v3-turbo Q5_0 with whisper.cpp.
+      requests: { cpu: "1", memory: 4Gi, nvidia.com/gpu: 1 }
+      limits: { cpu: "2", memory: 8Gi, nvidia.com/gpu: 1 }
+# One additional dedicated NVIDIA GPU for speech. No GPU sharing.
+# The CPU gateway performs VAD/normalization; vLLM dynamically batches speech.
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ""
+  modelSha256: ""
+  maxConcurrentRequests: 2
+  upstreamParallelism: 4
+  requestTimeoutSeconds: 110
+  maxSequences: 8
+  persistence: { size: 10Gi }
+  resources:
+    requests: { cpu: "2", memory: 8Gi, nvidia.com/gpu: 1 }
+    limits: { cpu: "4", memory: 16Gi, nvidia.com/gpu: 1 }
+  nodeSelector: { kubernetes.io/arch: amd64 }

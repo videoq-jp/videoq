@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { LandingFreePlan } from '../LandingFreePlan'
+import * as landingAnalytics from '@/lib/landingAnalytics'
 
 describe('LandingFreePlan', () => {
   it('shows the limits returned by the pricing catalog, including changed limits', async () => {
@@ -16,10 +17,18 @@ describe('LandingFreePlan', () => {
 
   it('keeps signup and pricing available if the catalog fails', async () => {
     globalThis.__setTrpcHandler('billing.plans', () => { throw new Error('Unavailable') })
+    const track = vi.spyOn(landingAnalytics, 'trackLandingEvent')
     render(<LandingFreePlan />)
     expect(await screen.findByText('landing.free.unavailable')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /landing.start/ })).toHaveAttribute('href', '/signup')
     expect(screen.getByRole('link', { name: /landing.next.pricing.title/ })).toHaveAttribute('href', '/pricing')
     expect(screen.queryByText(/landing.free.minutes/)).not.toBeInTheDocument()
+
+    const signup = screen.getByRole('link', { name: /landing.start/ })
+    // Check conversion tracking without navigating away from the test document.
+    signup.addEventListener('click', event => event.preventDefault())
+    fireEvent.click(signup)
+    expect(track).toHaveBeenCalledWith('signup_click', 'free')
+    track.mockRestore()
   })
 })

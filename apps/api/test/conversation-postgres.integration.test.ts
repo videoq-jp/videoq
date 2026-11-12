@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -7,9 +8,11 @@ import { openConversation, pruneConversations, ConversationBusyError, Conversati
 import { listConversations, getConversation, deleteConversation, conversationScope } from '../src/features/chat/conversation-service';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
 import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import { withDb } from '../src/db/pool';
 import { runRag, type RagResult } from '../src/lib/rag';
 import { chatCompletionResponse } from './helpers/chat-completion-response';
 import { requestBodyText } from './helpers/request-body';
+import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import * as vectors from '../src/repositories/vector-repository';
 import { runChatRag, streamChatRag } from '../src/lib/conversation-execution';
 import type { Bindings } from '../src/types/bindings';
@@ -20,6 +23,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
   let admin: pg.Pool;
   let pool: pg.Pool;
   let env: Bindings;
+  let releaseRoleLock: (() => Promise<void>) | undefined;
   const createdRoles: string[] = [];
   const scope = { ownerUserId: 'owner', actorUserId: 'alice', courseId: 1, shareSlug: null };
   const respond = (_messages: BaseMessage[], question: string) => Promise.resolve({
@@ -41,6 +45,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     });
   };
   beforeAll(async () => {
+    releaseRoleLock = await lockConversationTestRoles(databaseUrl!);
     admin = new pg.Pool({ connectionString: databaseUrl });
     admin.on('error', () => {});
     await admin.query(`CREATE DATABASE "${database}"`);
@@ -52,10 +57,20 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       CREATE TABLE video_courses(id bigint PRIMARY KEY, user_id text, share_slug text);
       CREATE TABLE video_course_members(id bigint, course_id bigint, video_id bigint, "order" int);
       CREATE TABLE video_course_memberships(course_id bigint, user_id text);
+      CREATE TABLE videos(id bigint PRIMARY KEY, user_id text);
       CREATE TABLE chat_logs(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, course_id bigint, user_id text,
         question text, response jsonb, retrieved_contexts jsonb, feedback text, is_shared_origin boolean, created_at timestamptz)`);
     await pool.query(readFileSync(new URL('../drizzle/0043_chat_conversation_memory.sql', import.meta.url), 'utf8').replaceAll('--> statement-breakpoint', ''));
     await pool.query(readFileSync(new URL('../drizzle/0044_resumable_conversations.sql', import.meta.url), 'utf8').replaceAll('--> statement-breakpoint', ''));
+    const personalMigration: string = readFileSync(new URL('../drizzle/0052_lti_personal_conversations.sql', import.meta.url), 'utf8');
+    await pool.query(personalMigration);
+    // This intentionally sparse conversation fixture predates report provenance.
+    // Apply the real generated statements for its subject table; complete report
+    // schema/migrations are exercised by the dedicated migration/report suites.
+    const reportingProvenance = readFileSync(new URL('../drizzle/0060_moodle_course_reports.sql', import.meta.url), 'utf8')
+      .split('--> statement-breakpoint').filter(statement => statement.includes('"lti_chat_log_subjects"'));
+    expect(reportingProvenance).toHaveLength(3);
+    for (const statement of reportingProvenance) await pool.query(statement);
     for (const role of ['videoq_api_access', 'videoq_backup_access']) {
       if (!(await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [role])).rowCount) {
         await admin.query(`CREATE ROLE ${role} NOLOGIN`); createdRoles.push(role);
@@ -64,14 +79,139 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await setupConversationCheckpoints(pool);
     await setupConversationCheckpoints(pool);
     await pool.query("INSERT INTO users VALUES ('owner'), ('alice'), ('bob'); INSERT INTO video_courses VALUES (1, 'owner', 'shared'), (2, 'owner', null); INSERT INTO video_course_memberships VALUES (1, 'alice')");
-  });
+  }, 60_000);
   afterEach(async () => { vi.unstubAllGlobals(); vi.restoreAllMocks(); await pool?.query('DELETE FROM chat_conversations; DELETE FROM chat_logs'); });
+
+  describe('verified Moodle personal conversations', () => {
+    const personal = (key = 'a', ids = [10, 11]) => ({ ownerUserId: 'owner', actorUserId: null, courseId: 1, shareSlug: null,
+      ltiSubject: { subjectKey: key.repeat(64), resourceVideoIds: ids } });
+    beforeAll(async () => {
+      await pool.query("INSERT INTO videos VALUES(10,'owner'),(11,'owner'),(20,'owner'); INSERT INTO video_course_members VALUES(10,1,10,0),(11,1,11,1),(20,2,20,0)");
+    });
+    nativeCourseAuthorityFixture(() => env);
+  afterAll(async () => { await pool.query('DELETE FROM video_course_members WHERE video_id IN (10,11,20); DELETE FROM videos'); });
+    const persist = (key = 'a') => async (answer: RagResult, db: Parameters<typeof createChatLogWithDb>[0]) => {
+      const result = await createChatLogWithDb(db, { userId: 'owner', courseId: 1, question: answer.queryText,
+        answer: answer.answer, retrievedContexts: [], isShared: true, ltiSubject: personal(key).ltiSubject });
+      return { chatLogId: result.id, feedback: result.feedback };
+    };
+
+    it('isolates two Moodle learners and native accounts without creating or impersonating users', async () => {
+      const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
+      await chat.commit(await invoke(chat, 'Private Moodle question'), persist()); await chat.close();
+      expect((await listConversations(env, personal(), { limit: 20, offset: 0 })).items.map(item => item.id)).toEqual([id]);
+      expect((await listConversations(env, personal('b'), { limit: 20, offset: 0 })).items).toEqual([]);
+      for (const other of [personal('b'), { ...scope, actorUserId: 'owner' }, { ...scope, actorUserId: null }]) {
+        await expect(getConversation(env, other, { conversationId: id, limit: 50 })).rejects.toMatchObject({ status: 404 });
+      }
+      const subjects = await pool.query('SELECT subject_key,resource_video_ids,registration_id,context_id FROM lti_chat_log_subjects');
+      expect(subjects.rows).toEqual([{ subject_key: 'a'.repeat(64), resource_video_ids: [10,11], registration_id: null, context_id: null }]);
+      expect((await pool.query('SELECT count(*)::int AS n FROM users')).rows[0].n).toBe(3);
+      await deleteConversation(env, personal('b'), id);
+      expect((await getConversation(env, personal(), { conversationId: id, limit: 50 })).turns).toHaveLength(1);
+      await deleteConversation(env, personal(), id);
+      expect((await pool.query('SELECT * FROM lti_chat_log_subjects')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM lti_conversation_scopes')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM chat_memory.checkpoints WHERE thread_id=$1', [chat.threadId])).rows).toEqual([]);
+    });
+
+    it('hides titles, turns and model memory after resource scope shrinks, while permitting own deletion', async () => {
+      const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
+      await chat.commit(await invoke(chat, 'Question about a lesson that becomes hidden'), persist()); await chat.close();
+      const restricted = personal('a', [10]);
+      expect((await listConversations(env, restricted, { limit: 20, offset: 0 })).items).toEqual([]);
+      await expect(getConversation(env, restricted, { conversationId: id, limit: 50 })).rejects.toMatchObject({ status: 404 });
+      await expect(openConversation(env, restricted, id, true)).rejects.toBeInstanceOf(ConversationNotFoundError);
+      expect((await pool.query('SELECT lease_id FROM chat_conversations WHERE thread_id=$1', [chat.threadId])).rows[0].lease_id).toBeNull();
+      expect((await getConversation(env, personal(), { conversationId: id, limit: 50 })).turns).toHaveLength(1);
+      await deleteConversation(env, restricted, id);
+      expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
+    });
+
+    it('rolls back the answer log if durable subject attribution cannot be saved', async () => {
+      await pool.query(`CREATE FUNCTION reject_lti_subject() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN RAISE EXCEPTION 'synthetic subject write failure'; END $$;
+        CREATE TRIGGER reject_lti_subject BEFORE INSERT ON lti_chat_log_subjects FOR EACH ROW EXECUTE FUNCTION reject_lti_subject()`);
+      try {
+        await expect(withDb(env, db => createChatLogWithDb(db, { userId: 'owner', courseId: 1, question: 'Must not become unassigned',
+          answer: plainChatAnswer('answer'), retrievedContexts: [], isShared: true, ltiSubject: personal().ltiSubject })))
+          .rejects.toThrow('Failed query');
+        expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
+      } finally { await pool.query('DROP TRIGGER reject_lti_subject ON lti_chat_log_subjects; DROP FUNCTION reject_lti_subject()'); }
+    });
+    it('keeps hidden conversation titles and memory inaccessible with no readable videos but permits only own deletion', async () => {
+      const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
+      await chat.commit(await invoke(chat, 'Private lesson becomes hidden'), persist()); await chat.close();
+      const empty = personal('a',[]);
+      expect((await listConversations(env,empty,{limit:20,offset:0})).items).toEqual([]);
+      await expect(getConversation(env,empty,{conversationId:id,limit:50})).rejects.toMatchObject({status:404});
+      await expect(openConversation(env,empty,id,true)).rejects.toBeInstanceOf(ConversationNotFoundError);
+      await expect(openConversation(env,empty,crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);
+      await deleteConversation(env,personal('b',[]),id);
+      expect((await pool.query('SELECT thread_id FROM chat_conversations')).rows).toHaveLength(1);
+      await deleteConversation(env,empty,id);
+      expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM chat_memory.checkpoints WHERE thread_id=$1',[chat.threadId])).rows).toEqual([]);
+    });
+
+    it('rejects a stale backend video membership before opening a model checkpoint', async () => {
+      await expect(openConversation(env, personal('a', [20]), crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);
+      await expect(openConversation(env, { ...personal(), ownerUserId: 'alice' }, crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);
+      expect((await pool.query('SELECT * FROM lti_conversation_scopes')).rows).toEqual([]);
+    });
+    it('persists, reads and deletes personal conversations with the restricted production API role', async () => {
+      // Existing public-table grants are supplied by the deployment security profile;
+      // setupConversationCheckpoints must grant the newly introduced mapping tables.
+      await pool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON video_courses, video_course_members,
+        videos, chat_logs TO videoq_api_access;
+        GRANT USAGE, SELECT ON SEQUENCE chat_logs_id_seq TO videoq_api_access`);
+      const restrictedPool = new pg.Pool({ connectionString: pool.options.connectionString,
+        options: '-c role=videoq_api_access', max: 2 });
+      const restrictedEnv = { ...env, DATABASE_POOL: restrictedPool };
+      try {
+        const id = crypto.randomUUID(), chat = await openConversation(restrictedEnv, personal(), id);
+        try { await chat.commit(await invoke(chat, 'Restricted Moodle question'), persist()); }
+        finally { await chat.close(); }
+        expect((await listConversations(restrictedEnv, personal(), { limit: 20, offset: 0 })).items.map(item => item.id)).toEqual([id]);
+        expect((await getConversation(restrictedEnv, personal(), { conversationId: id, limit: 50 })).turns).toHaveLength(1);
+        await deleteConversation(restrictedEnv, personal(), id);
+        expect((await pool.query('SELECT * FROM chat_logs')).rows).toEqual([]);
+        expect((await restrictedPool.query("SELECT has_schema_privilege(current_user, 'public', 'CREATE') AS allowed")).rows[0].allowed).toBe(false);
+      } finally { await restrictedPool.end(); }
+    });
+    it('expires Moodle answer logs and checkpoints together without deleting native owner logs', async () => {
+      const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
+      await chat.commit(await invoke(chat, 'Expired personal conversation'), persist()); await chat.close();
+      const native = await withDb(env, db => createChatLogWithDb(db, { userId: 'alice', courseId: 1, question: 'Native course log',
+        answer: plainChatAnswer('native'), retrievedContexts: [], isShared: false }));
+      await pool.query("UPDATE chat_conversations SET expires_at=now()-interval '1 second' WHERE thread_id=$1", [chat.threadId]);
+      expect(await pruneConversations(env)).toBe(1);
+      expect((await pool.query('SELECT id::float8 AS id FROM chat_logs')).rows).toEqual([{ id: native.id }]);
+      expect((await pool.query('SELECT * FROM lti_chat_log_subjects')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM lti_conversation_scopes')).rows).toEqual([]);
+      expect((await pool.query('SELECT * FROM chat_memory.checkpoints WHERE thread_id=$1', [chat.threadId])).rows).toEqual([]);
+    });
+    it('cleans old attributed legacy logs while retaining old turns in a still-active conversation', async () => {
+      const chat = await openConversation(env, personal(), crypto.randomUUID());
+      const active = await chat.commit(await invoke(chat, 'Still active conversation'), persist()); await chat.close();
+      const orphan = await withDb(env, db => createChatLogWithDb(db, { userId: 'owner', courseId: 1, question: 'Legacy without a saved thread',
+        answer: plainChatAnswer('legacy'), retrievedContexts: [], isShared: true, ltiSubject: personal().ltiSubject }));
+      await pool.query("UPDATE chat_logs SET created_at=now()-interval '31 days'");
+      expect(await pruneConversations(env)).toBe(0);
+      expect((await pool.query('SELECT id::float8 AS id FROM chat_logs ORDER BY id')).rows).toEqual([{ id: active.chatLogId }]);
+      expect((await pool.query('SELECT * FROM lti_chat_log_subjects WHERE chat_log_id=$1', [orphan.id])).rows).toEqual([]);
+    });
+  });
   afterAll(async () => {
-    await pool?.end();
-    if (admin) {
-      await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
-      for (const role of createdRoles) await admin.query(`DROP ROLE ${role}`);
-      await admin.end();
+    try {
+      await pool?.end();
+      if (admin) {
+        await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
+        for (const role of createdRoles) await admin.query(`DROP ROLE ${role}`);
+      }
+    } finally {
+      try { await admin?.end(); }
+      finally { await releaseRoleLock?.(); }
     }
   });
 

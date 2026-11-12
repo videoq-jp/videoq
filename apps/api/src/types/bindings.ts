@@ -5,6 +5,7 @@
  */
 import type pg from "pg";
 import type { RateLimitBackend } from "../lib/rate-limit";
+import type { LearningAuthorization } from "../features/lti/session-authorization";
 
 type SecretBindings = {
   BETTER_AUTH_SECRET?: string;
@@ -19,6 +20,9 @@ type SecretBindings = {
   R2_SECRET_ACCESS_KEY?: string;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
+  SQS_MEDIA_QUEUE_URL?: string;
+  SQS_SEARCH_QUEUE_URL?: string;
+  SQS_ACCOUNT_QUEUE_URL?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
 };
@@ -67,6 +71,7 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
 
 // ミドルウェアが c.set/c.get で受け渡す値
 type Variables = {
+  nativeLearningAuthorization?: LearningAuthorization;
   requestId: string;
   userId?: string;
   // 認証経路。share = 共有スラッグ経由の匿名アクセス。

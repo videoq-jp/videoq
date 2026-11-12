@@ -15,8 +15,9 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 
-from worker_python.contracts import JOB_TRANSCRIBE_VIDEO, validate_job_payload
+from worker_python.contracts import JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, validate_job_payload
 from worker_python.job_execution import (
     claim_job_execution,
     complete_job_execution,
@@ -24,6 +25,7 @@ from worker_python.job_execution import (
 )
 from worker_python.secrets_bootstrap import ensure_secrets_loaded
 from worker_python.tasks.registry import get_task
+from worker_python.job_routing import job_group
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,9 @@ def _execute_task(raw_body: str) -> None:
         return
 
     validate_job_payload(job_type, body)
+    group = os.environ.get("WORKER_JOB_GROUP", "").strip()
+    if group and job_group(job_type) != group:
+        raise ValueError(f"Job {job_type} does not belong to worker group {group}")
 
     logger.info(
         "Dispatching task: type=%s id=%s payload=%s",
@@ -83,7 +88,7 @@ def _execute_task(raw_body: str) -> None:
 
     try:
         task_fn = get_task(job_type)
-        if job_type == JOB_TRANSCRIBE_VIDEO:
+        if job_type in {JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS}:
             task_fn(**body, job_id=job_id)
         else:
             task_fn(**body)

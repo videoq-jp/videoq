@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { materialsServiceSchema } from './contracts';
 
 const identifier = z.string().trim().min(1).max(255);
 const httpsUrl = z.url().max(2048).refine(value => {
@@ -6,7 +7,7 @@ const httpsUrl = z.url().max(2048).refine(value => {
   return url.protocol === "https:" && !url.username && !url.password && !url.hash && !url.search;
 }, "An HTTPS URL without credentials, query or fragment is required");
 
-/** Only the operator provisions installations; Moodle cannot select a quota owner. */
+/** Only the operator provisions installations; a connector cannot select a quota owner. */
 export const provisionInstallationSchema = z.object({
   id: identifier,
   ownerUserId: identifier,
@@ -20,12 +21,14 @@ export const provisionInstallationSchema = z.object({
   const issuerOrigin = new URL(value.issuer).origin;
   for (const key of ["authorizationUrl", "jwksUrl"] as const) {
     if (new URL(value[key]).origin !== issuerOrigin) {
-      ctx.addIssue({ code: "custom", path: [key], message: "Moodle endpoints must belong to the issuer origin" });
+      ctx.addIssue({ code: "custom", path: [key], message: "Connector endpoints must belong to the issuer origin" });
     }
   }
 });
 
 export type ProvisionInstallation = z.infer<typeof provisionInstallationSchema>;
+export const provisionServiceInstallationSchema = provisionInstallationSchema.safeExtend({ materialsService: materialsServiceSchema });
+export type ProvisionServiceInstallation = z.infer<typeof provisionServiceInstallationSchema>;
 
 export function newSyncToken(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), value => value.toString(16).padStart(2, "0")).join("");

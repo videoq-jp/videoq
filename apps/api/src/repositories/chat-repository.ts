@@ -1,3 +1,4 @@
+import { ltiSessionRows } from '../features/lti/data-lock';
 import { chatAnswerSchema, chatAnswerText, type ChatAnswer, type ChatSource } from "@videoq/trpc/chat";
 import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import { withDb, type Db } from "../db/pool";
@@ -6,10 +7,11 @@ import {
   users,
   videoCourses,
   videoCourseMembers,
-  videoCourseMemberships,
 } from "../db/schema";
 import { toUtcIso } from "../shared/datetime";
 import type { Bindings } from "../types/bindings";
+import { checkedLtiSubject, type LtiDataSubject } from '../features/lti/identity';
+import { nativeCourseExternalAccess, nativeCourseReadableBy } from './course-authority';
 
 type ChatQuestionAuthor = {
   user_id: string;
@@ -77,18 +79,9 @@ export async function getCourseWithMembers(
           AND ${users.isActive} = true AND ${users.deactivatedAt} IS NULL
           AND (${users.banned} IS NOT TRUE OR ${users.banExpires} <= now()))`);
     } else if (params.shareToken) {
-      conditions.push(eq(videoCourses.shareSlug, params.shareToken));
+      conditions.push(eq(videoCourses.shareSlug, params.shareToken), nativeCourseExternalAccess());
     } else if (params.userId) {
-      conditions.push(
-        or(
-          eq(videoCourses.userId, params.userId),
-          sql`EXISTS (
-            SELECT 1 FROM ${videoCourseMemberships}
-             WHERE ${videoCourseMemberships.courseId} = ${videoCourses.id}
-               AND ${videoCourseMemberships.userId} = ${params.userId}
-          )`,
-        )!,
-      );
+      conditions.push(nativeCourseReadableBy(params.userId));
     }
 
     const courses = await db
@@ -126,8 +119,31 @@ export async function createChatLogWithDb(
     answer: ChatAnswer;
     isShared: boolean;
     retrievedContexts: readonly string[];
+    ltiSubject?: LtiDataSubject;
   },
 ): Promise<{ id: number; feedback: string | null }> {
+  if (params.ltiSubject) {
+    const subject = checkedLtiSubject(params.ltiSubject);
+    if (!params.isShared) throw new Error('LTI attribution requires an external course grant');
+    // One statement keeps attribution atomic even outside a conversation transaction.
+    const source = subject.sessionProof ? sql`FROM (${ltiSessionRows(params.userId,subject.sessionProof)}) permitted` : sql``;
+    const provenance = subject.sessionProof ? sql`
+      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
+        THEN c.payload->>'registrationId' END,
+      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
+        THEN c.payload->>'contextId' END` : sql`NULL,NULL`;
+    const session = subject.sessionProof ? sql`LEFT JOIN lti_credentials c ON c.id=${subject.sessionProof.sessionHash}` : sql``;
+    const result = await db.execute<{ id: number }>(sql`WITH saved AS (
+      INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,feedback,created_at)
+      SELECT ${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
+        ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now() ${source} RETURNING id
+    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id)
+      SELECT saved.id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb,${provenance}
+      FROM saved ${session}
+      RETURNING chat_log_id::float8 AS id`);
+    if (!result.rows[0]) throw new Error('Missing attributed chat log');
+    return { id: result.rows[0].id, feedback: null };
+  }
   const rows = await db
     .insert(chatLogs)
     .values({
@@ -310,8 +326,10 @@ export async function updateChatLogFeedback(
   const permission = opts.ltiCourseGrant !== undefined
     ? sql`log.course_id = ${opts.ltiCourseGrant} AND log.is_shared_origin = true`
     : opts.shareSlug
-    ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true`
-    : sql`course.user_id = ${opts.userId ?? null} OR log.user_id = ${opts.userId ?? null}`;
+    ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true
+        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)}`
+    : sql`course.user_id = ${opts.userId ?? null} OR (log.user_id = ${opts.userId ?? null}
+        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)})`;
   return withDb(env, async (db) => {
     const result = await db.execute<{ allowed: boolean; id: string | null; feedback: string | null }>(sql`
       WITH target AS (
@@ -346,7 +364,7 @@ export async function shareSlugExists(
     const rows = await db
       .select({ id: videoCourses.id })
       .from(videoCourses)
-      .where(eq(videoCourses.shareSlug, shareSlug))
+      .where(and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess()))
       .limit(1);
     return rows.length > 0;
   });

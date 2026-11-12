@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { checkoutDisclosure, LEGAL_POLICY_VERSION } from "./checkout-disclosure";
 import {
   isPaidLookupKey,
   currencyForLocale,
@@ -212,10 +213,11 @@ export async function createCheckoutSession(
     billing_address_collection: "required",
     customer_update: { address: "auto", name: "auto" },
     tax_id_collection: { enabled: true },
+    ...checkoutDisclosure(lookupKey, origin, locale),
     ...(tax ? { automatic_tax: { enabled: true } } : {}),
-    metadata: { userId: user.id, lookupKey },
+    metadata: { userId: user.id, lookupKey, legalPolicyVersion: LEGAL_POLICY_VERSION },
     subscription_data: {
-      metadata: { userId: user.id, lookupKey },
+      metadata: { userId: user.id, lookupKey, legalPolicyVersion: LEGAL_POLICY_VERSION },
     },
     integration_identifier: checkoutIntegrationIdentifier(),
   });

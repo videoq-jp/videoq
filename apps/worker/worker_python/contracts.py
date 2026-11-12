@@ -33,16 +33,28 @@ def validate_job_payload(job_type: str, payload: dict) -> None:
         raise ValueError(f"Unsupported job type: {job_type}")
     field = _PAYLOAD_FIELDS[job_type]
     expected = {field} if field else set()
+    if job_type == JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS and isinstance(payload, dict) and "after_id" in payload:
+        expected.add("after_id")
+        if "root_job_id" in payload:
+            expected.add("root_job_id")
     if job_type in {JOB_TRANSCRIBE_VIDEO_CHUNK, JOB_FINISH_VIDEO_TRANSCRIPTION, JOB_BUILD_VIDEO_VISUALS, JOB_BUILD_VIDEO_VISUAL_CHUNK, JOB_FINISH_VIDEO_VISUALS}:
         expected.add("run_id")
     if job_type in {JOB_TRANSCRIBE_VIDEO_CHUNK, JOB_BUILD_VIDEO_VISUAL_CHUNK}:
         expected.add("chunk_index")
     if job_type == JOB_BUILD_VIDEO_VISUALS:
         expected.add("cache_kind")
+    if job_type == JOB_INDEX_VIDEO_TRANSCRIPT and isinstance(payload, dict) and "allow_empty" in payload:
+        expected.add("allow_empty")
     if not isinstance(payload, dict) or set(payload) != expected:
         raise TypeError(f"{job_type} payload must contain exactly {sorted(expected)}")
     if field is None:
+        if "after_id" in expected and (type(payload["after_id"]) is not int or not 0 <= payload["after_id"] <= 2**53 - 1):
+            raise ValueError("after_id must be a non-negative safe integer")
+        if "root_job_id" in expected and (not isinstance(payload["root_job_id"], str) or not payload["root_job_id"].strip() or len(payload["root_job_id"]) > 128):
+            raise ValueError("root_job_id must be a non-empty string of at most 128 characters")
         return
+    if "allow_empty" in expected and type(payload["allow_empty"]) is not bool:
+        raise ValueError("allow_empty must be a boolean")
     value = payload[field]
     if field == "user_id":
         if not isinstance(value, str) or not value.strip():

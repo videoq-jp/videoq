@@ -146,6 +146,15 @@ it('shows load errors with retry and distinguishes empty search results', async 
   change('search', ''); click('qa.searchButton'); await screen.findByText('qa.empty');
 });
 
+it('separates posting from voting and labels Moodle course pseudonyms', async () => {
+  list.mockResolvedValue({ items: [{ ...question, author: { name: 'a1b2c3d4e5f6', source: 'moodle', instructor: false } }],
+    total: 1, canPost: true, canVote: false, canModerate: false });
+  render(<CourseQaPanel {...props} />);
+  expect(await screen.findByText(/^qa\.moodleParticipant /)).toHaveTextContent('a1b2c3d4e5f6');
+  expect(screen.getByRole('button', { name: 'qa.ask' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'qa.vote' })).toBeDisabled();
+});
+
 it('pages answers, retries detail loading and preserves lecture context', async () => {
   get.mockRejectedValueOnce(new Error('Unavailable'));
   render(<CourseQaPanel {...props} />); await open();

@@ -1,0 +1,11 @@
+{{- if or (eq .Values.whisper.backend "vllm") (eq (default .Values.backend .Values.servers.chat.engine) "vllm") (eq (default .Values.backend .Values.servers.embedding.engine) "vllm") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inference.fullname" . }}-vllm-audio
+  labels:
+    {{- include "inference.labels" . | nindent 4 }}
+data:
+  wheels.json: |
+    {{- .Files.Get "files/vllm-audio-wheels.json" | nindent 4 }}
+{{- end }}

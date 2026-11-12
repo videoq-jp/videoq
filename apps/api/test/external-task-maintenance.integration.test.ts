@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -69,6 +70,7 @@ describeWithPostgres("external task maintenance on PostgreSQL", () => {
     env = { HYPERDRIVE: { connectionString: scopedUrl.toString() } } as TaskEnv;
   });
 
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try {
       await admin.query(`DROP SCHEMA IF EXISTS ${quotedSchema} CASCADE`);

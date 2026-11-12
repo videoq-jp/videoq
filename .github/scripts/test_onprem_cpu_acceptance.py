@@ -62,6 +62,26 @@ class AcceptanceSafetyTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             cpu.require_docker_memory(cpu.MINIMUM_DOCKER_MEMORY - 1)
 
+    def test_combined_moodle_floor_does_not_relax_the_default_or_provision_on_small_hosts(self):
+        self.assertEqual(cpu.require_docker_memory(10 * 1024**3), 10 * 1024**3)
+        self.assertEqual(cpu.require_docker_memory(12 * 1024**3, moodle=True), 12 * 1024**3)
+        with patch.object(cpu.subprocess, 'check_output', side_effect=['', str(11 * 1024**3)]) as read, \
+                patch.object(cpu.subprocess, 'run') as mutate, patch.object(cpu.importlib.util, 'spec_from_file_location') as load:
+            with self.assertRaisesRegex(RuntimeError, '12 GiB'):
+                cpu.rehearse('a' * 40, Path('charts/videoq'), Path('charts/videoq-inference'),
+                             self.root / 'small-moodle', {}, local_builds=True, moodle_image='videoq-moodle:test')
+        self.assertEqual(len(read.call_args_list), 2)
+        mutate.assert_not_called()
+        load.assert_not_called()
+
+    def test_test_only_moodle_cannot_enter_the_verified_release_runner(self):
+        with patch.object(cpu.subprocess, 'check_output') as read, patch.object(cpu.subprocess, 'run') as mutate:
+            with self.assertRaisesRegex(ValueError, 'source-build'):
+                cpu.rehearse('a' * 40, Path('app.tgz'), Path('inference.tgz'), self.root / 'signed', {},
+                             moodle_image='videoq-moodle:test')
+        read.assert_not_called()
+        mutate.assert_not_called()
+
     def test_public_egress_firewall_covers_node_and_pod_ipv4_and_ipv6(self):
         info = {'IPAM':{'Config':[{'Subnet':'172.29.0.0/16','Gateway':'172.29.0.1'}]}}
         with patch.object(cpu.subprocess,'run') as mutate, patch.object(cpu.subprocess,'check_output',return_value='installed rules'):

@@ -259,7 +259,7 @@ export function CourseParticipantsDialog({
                 </div>
                 {recipientPreview.length > 0 ? (
                   <div className="space-y-2">
-                    <h3 className="text-std-16B-170">{t(features.emailDelivery ? 'videos.courseMembers.previewTitle' : 'onprem.invitePreview')}</h3>
+                    <h3 className="text-std-17B-170">{t(features.emailDelivery ? 'videos.courseMembers.previewTitle' : 'onprem.invitePreview')}</h3>
                     <p className="text-dns-14N-130 text-solid-gray-600">
                       {t(features.emailDelivery ? 'videos.courseMembers.previewSummary' : 'onprem.invitePreviewSummary', {
                         count: readyRecipientCount,

@@ -41,6 +41,40 @@ def test_execute_task_decodes_native_message(job_type) -> None:
         complete.assert_called_once_with("job-1", "lease-1")
 
 
+@pytest.mark.parametrize("allow_empty", [True, False])
+def test_execute_task_passes_explicit_clear_intent_through_native_delivery(allow_empty):
+    message = {"type": JOB_INDEX_VIDEO_TRANSCRIPT, "job_id": "manual-clear",
+               "payload": {"video_id": 42, "allow_empty": allow_empty}}
+    with (
+        patch("worker_python.lambda_handler.claim_job_execution", return_value="clear-lease") as claim,
+        patch("worker_python.lambda_handler.complete_job_execution") as complete,
+        patch("worker_python.lambda_handler.get_task") as get_task,
+    ):
+        _execute_task(json.dumps(message))
+        claim.assert_called_once_with("manual-clear", JOB_INDEX_VIDEO_TRANSCRIPT, message["payload"])
+        get_task.return_value.assert_called_once_with(video_id=42, allow_empty=allow_empty)
+        complete.assert_called_once_with("manual-clear", "clear-lease")
+
+
+@pytest.mark.parametrize("allow_empty", [None, "true", 1, 0, [], {}])
+def test_explicit_clear_rejects_coerced_flags_before_claiming_work(allow_empty):
+    message = {"type": JOB_INDEX_VIDEO_TRANSCRIPT, "job_id": "invalid-clear",
+               "payload": {"video_id": 42, "allow_empty": allow_empty}}
+    with patch("worker_python.lambda_handler.claim_job_execution") as claim:
+        with pytest.raises(ValueError, match="allow_empty must be a boolean"):
+            _execute_task(json.dumps(message))
+        claim.assert_not_called()
+
+
+def test_explicit_clear_flag_is_not_accepted_for_transcription():
+    message = {"type": JOB_TRANSCRIBE_VIDEO, "job_id": "invalid-clear",
+               "payload": {"video_id": 42, "allow_empty": True}}
+    with patch("worker_python.lambda_handler.claim_job_execution") as claim:
+        with pytest.raises(TypeError, match="exactly"):
+            _execute_task(json.dumps(message))
+        claim.assert_not_called()
+
+
 def test_execute_task_decodes_outer_base64() -> None:
     payload = {
         "type": JOB_TRANSCRIBE_VIDEO,

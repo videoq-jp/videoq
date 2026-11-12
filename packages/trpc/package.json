@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./moodle-management": {
+      "types": "./src/moodle-management.ts",
+      "default": "./src/moodle-management.ts"
+    },
     "./admin": {
       "types": "./src/inputs/admin.ts",
       "default": "./src/inputs/admin.ts"
@@ -50,7 +54,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@trpc/server": "^11.19.0",
+    "@trpc/server": "^11.22.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

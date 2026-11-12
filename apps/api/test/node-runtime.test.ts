@@ -13,6 +13,19 @@ export const runtimeEnvironment = {
 };
 
 describe("Node runtime configuration and proxy boundary", () => {
+  it("passes independent queue overrides and validates every configured endpoint", () => {
+    const overrides = {
+      SQS_MEDIA_QUEUE_URL: "https://queue.example.edu/media/",
+      SQS_SEARCH_QUEUE_URL: "https://queue.example.edu/search/",
+      SQS_ACCOUNT_QUEUE_URL: "https://queue.example.edu/account/",
+    };
+    const env = nodeBindings({ ...runtimeEnvironment, ...overrides });
+    for (const key of Object.keys(overrides) as (keyof typeof overrides)[]) {
+      expect(env[key]).toBe(overrides[key].replace(/\/$/, ""));
+      expect(() => nodeBindings({ ...runtimeEnvironment, [key]: "file:///tmp/queue" })).toThrow(key);
+    }
+    expect(nodeBindings(runtimeEnvironment).SQS_SEARCH_QUEUE_URL).toBeUndefined();
+  });
   it("passes optional LTI configuration and signing keys without enabling unconfigured deployments", () => {
     const lti = { LTI_CONFIG: '{"toolOrigin":"https://api.example","databaseRegistrations":true,"registrations":[]}', LTI_TOOL_KEYS: "fixture-key-ring" };
     expect(nodeBindings({ ...runtimeEnvironment, ...lti })).toMatchObject(lti);

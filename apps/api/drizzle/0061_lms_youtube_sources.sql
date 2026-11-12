@@ -1,0 +1,4 @@
+ALTER TABLE "lms_resources" DROP CONSTRAINT "lms_resources_kind_check";--> statement-breakpoint
+ALTER TABLE "lms_resources" ADD COLUMN "youtube_video_id" varchar(11);--> statement-breakpoint
+ALTER TABLE "lms_resources" ADD CONSTRAINT "lms_resources_youtube_check" CHECK (("lms_resources"."kind" = 'youtube' AND "lms_resources"."content_hash" IS NULL AND "lms_resources"."content_type" IS NULL AND "lms_resources"."file_size" IS NULL AND ("lms_resources"."youtube_video_id" IS NULL OR ("lms_resources"."youtube_video_id" ~ '^[A-Za-z0-9_-]{11}$' AND "lms_resources"."youtube_video_id" ~ '[A-Za-z0-9]')) AND (NOT "lms_resources"."enabled" OR "lms_resources"."youtube_video_id" IS NOT NULL)) OR ("lms_resources"."kind" <> 'youtube' AND "lms_resources"."youtube_video_id" IS NULL));--> statement-breakpoint
+ALTER TABLE "lms_resources" ADD CONSTRAINT "lms_resources_kind_check" CHECK ("lms_resources"."kind" IN ('video','course','youtube'));

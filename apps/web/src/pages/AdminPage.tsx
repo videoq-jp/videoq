@@ -40,7 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-const SECTION_CLASS = 'border-t border-solid-gray-420 pt-8';
+const SECTION_CLASS = 'pt-8';
 const PAGE_SIZE = 20;
 
 const quotaFormSchema = adminInputSchemas['admin.patchQuota']
@@ -360,7 +360,7 @@ export default function AdminPage() {
       )}
 
       <section className={`${SECTION_CLASS} @container`}>
-        <Heading size="18" hasChip className="mb-4">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
           <HeadingTitle level="h2" ref={usersHeadingRef} tabIndex={-1}>{t('admin.users.title')}</HeadingTitle>
         </Heading>
         <SupportText className="mb-4">{t('admin.users.description')}</SupportText>
@@ -396,7 +396,7 @@ export default function AdminPage() {
           <SupportText id="admin-user-search-hint" className="mt-2">{t('admin.users.searchPlaceholder')}</SupportText>
         </form>
 
-        <div role="status" aria-atomic="true" className="mb-3 text-std-16N-170 text-solid-gray-700">
+        <div role="status" aria-atomic="true" className="mb-3 text-std-17N-170 text-solid-gray-700">
           {usersQuery.isFetching ? (
             <div className="flex items-center gap-2">
               <InlineSpinner color="blue" />
@@ -427,9 +427,9 @@ export default function AdminPage() {
                     return (
                       <TableRow role="row" key={row.id} className="block rounded-8 border border-solid-gray-300 bg-white @min-[60rem]:table-row @min-[60rem]:rounded-none @min-[60rem]:border-x-0 @min-[60rem]:border-t-0 @min-[60rem]:last:border-b-0">
                         <TableHead role="rowheader" scope="row" className="block min-w-0 py-4 font-normal @min-[60rem]:table-cell">
-                          <div id={`${identityId}-name`} className="text-std-16B-170 [overflow-wrap:anywhere]">{row.username}</div>
+                          <div id={`${identityId}-name`} className="text-std-17B-170 [overflow-wrap:anywhere]">{row.username}</div>
                           <div id={`${identityId}-email`} className="text-dns-14N-130 leading-relaxed text-solid-gray-700 [overflow-wrap:anywhere]">{row.email}</div>
-                          <div className="mt-2 text-xs leading-relaxed text-solid-gray-600 [overflow-wrap:anywhere]">
+                          <div className="mt-2 text-dns-14N-130 leading-relaxed text-solid-gray-600 [overflow-wrap:anywhere]">
                             {t('admin.users.columns.id')}: <span className="font-mono">{row.id}</span>
                           </div>
                         </TableHead>
@@ -529,7 +529,7 @@ export default function AdminPage() {
       </section>
 
       <section className={`${SECTION_CLASS} mt-10`}>
-        <Heading size="18" hasChip className="mb-4">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
           <HeadingTitle level="h2">{t('admin.reindex.title')}</HeadingTitle>
         </Heading>
         <SupportText className="mb-4">{t('admin.reindex.description')}</SupportText>
@@ -555,10 +555,10 @@ export default function AdminPage() {
             )}
             <fieldset disabled={saveMutation.isPending} className="@container min-w-0 space-y-6">
               <fieldset className="space-y-2">
-                <legend className="mb-1 text-std-16B-170 text-solid-gray-800">
+                <legend className="mb-1 text-std-17B-170 text-solid-gray-800">
                   {t('admin.users.columns.flags')}
                 </legend>
-                <label className="flex items-center gap-2 text-std-16N-170 text-solid-gray-800">
+                <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
                   <input
                     type="checkbox"
                     checked={isActive}
@@ -567,7 +567,7 @@ export default function AdminPage() {
                   />
                   {t('admin.users.fields.isActive')}
                 </label>
-                <label className="flex items-center gap-2 text-std-16N-170 text-solid-gray-800">
+                <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
                   <input
                     type="checkbox"
                     checked={isAdminFlag}
@@ -663,7 +663,7 @@ export default function AdminPage() {
                   onChange={(event) => setUsedAiAnswers(event.target.value)}
                 />
               </div>
-              <label className="flex items-center gap-2 text-std-16N-170 text-solid-gray-800">
+              <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
                 <input
                   type="checkbox"
                   checked={isOverQuota}
@@ -706,7 +706,7 @@ export default function AdminPage() {
             </DialogHeading>
           </DialogHeader>
           <DialogBody>
-            <p className="text-std-16N-170 text-solid-gray-800">
+            <p className="text-std-17N-170 text-solid-gray-800">
               {t('admin.users.deleteBody')}
             </p>
           </DialogBody>
@@ -740,7 +740,7 @@ export default function AdminPage() {
             </DialogHeading>
           </DialogHeader>
           <DialogBody>
-            <p className="text-std-16N-170 text-solid-gray-800">
+            <p className="text-std-17N-170 text-solid-gray-800">
               {t('admin.reindex.confirmBody')}
             </p>
           </DialogBody>

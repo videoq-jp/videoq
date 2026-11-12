@@ -85,7 +85,8 @@ async function convert({ file, preset, name, maxBytes }: Start) {
       video: {
         ...dimensions, fit: 'contain', codec: 'avc', quality: new Quality({ bitrate }),
         frameRate: targetRate,
-        hardwareAcceleration: 'prefer-hardware', keyFrameInterval: 2, allowTransformationMetadata: false,
+        // Native software AVC encoding must remain usable without a hardware encoder.
+        hardwareAcceleration: 'no-preference', keyFrameInterval: 2, allowTransformationMetadata: false,
       },
       // Copy audio whenever MP4 supports it. No audio bitrate reduction is requested.
       audio: {}, showWarnings: false,

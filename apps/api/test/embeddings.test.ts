@@ -33,7 +33,7 @@ describe("embedQuery", () => {
     const fetch = vi.fn(async (_url: unknown, _init: RequestInit) => Response.json({ data: [{ index: 0, embedding: vector }] }));
     vi.stubGlobal("fetch", fetch);
     expect(await embedQuery(env, "バックアップの保存期間は？")).toEqual(vector);
-    expect(JSON.parse(requestBodyText(fetch.mock.calls[0][1].body))).toMatchObject({ dimensions: 768, input_type: "query" });
+    expect(JSON.parse(requestBodyText(fetch.mock.calls[0][1].body))).toEqual({ model: "embeddinggemma-2-f9972ac", encoding_format: "float", input: "task: search result | query: バックアップの保存期間は？" });
     const query = vi.fn(async (_sql: string, _values: string[]) => ({ rows: [{ type_name: "vector", dimensions: 768 }] }));
     await assertEmbeddingSchema({ query }, resolveEmbeddingConfig(env));
     expect(query.mock.calls[0][1]).toEqual(["public.scene_embeddings_768"]);

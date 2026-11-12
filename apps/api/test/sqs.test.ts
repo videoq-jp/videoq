@@ -91,3 +91,42 @@ describe("SQS delivery with the real AWS signer", () => {
     await expect(sendSqsMessage(env, message)).resolves.toBeNull();
   });
 });
+
+describe("independent queue routing", () => {
+  it.each([
+    ["transcribe_video", "media"],
+    ["transcribe_video_chunk", "media"],
+    ["finish_video_transcription", "media"],
+    ["build_video_visuals", "media"],
+    ["build_video_visual_chunk", "media"],
+    ["finish_video_visuals", "media"],
+    ["index_video_transcript", "search"],
+    ["reindex_video_transcript", "search"],
+    ["reindex_all_videos_embeddings", "search"],
+    ["delete_account_data", "account"],
+  ])("routes %s to %s without changing the message", async (type, group) => {
+    fetchMock.mockResolvedValueOnce(success());
+    const queues = {
+      ...env, SQS_QUEUE_URL: "",
+      SQS_MEDIA_QUEUE_URL: "https://sqs.ap-northeast-1.amazonaws.com/123456789012/media",
+      SQS_SEARCH_QUEUE_URL: "https://sqs.ap-northeast-1.amazonaws.com/123456789012/search",
+      SQS_ACCOUNT_QUEUE_URL: "https://sqs.ap-northeast-1.amazonaws.com/123456789012/account",
+    };
+    const body = JSON.stringify({ type, job_id: "job", payload: {} });
+    await expect(sendSqsMessage(queues, body)).resolves.toBe("message-1");
+    const request = fetchMock.mock.calls[0][0] as Request;
+    expect(request.url).toBe(`https://sqs.ap-northeast-1.amazonaws.com/123456789012/${group}`);
+    expect(new URLSearchParams(await request.text()).get("MessageBody")).toBe(body);
+  });
+
+  it("falls back to the original queue when a group override is whitespace", async () => {
+    fetchMock.mockResolvedValueOnce(success());
+    await expect(sendSqsMessage({ ...env, SQS_SEARCH_QUEUE_URL: " " }, message)).resolves.toBe("message-1");
+    expect((fetchMock.mock.calls[0][0] as Request).url).toBe(env.SQS_QUEUE_URL);
+  });
+
+  it("keeps malformed messages pending", async () => {
+    await expect(sendSqsMessage(env, "not-json")).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

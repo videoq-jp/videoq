@@ -1,5 +1,6 @@
+import { startLandingVisit } from '@/lib/landingAnalytics';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '@/lib/trpc';
@@ -23,10 +24,11 @@ function formatPrice(amount: number, currency: 'jpy' | 'usd', locale: string): s
 }
 
 export default function PricingPage() {
+  useEffect(() => { startLandingVisit(); }, []);
   const { t } = useTranslation();
   const locale = useLocale();
   const [searchParams] = useSearchParams();
-  const [interval, setInterval] = useState<Interval>('month');
+  const [interval, setInterval] = useState<Interval>(() => searchParams.get('interval') === 'year' ? 'year' : 'month');
   const session = useAuthSession();
   const hasSession = Boolean(session.data?.user);
   const account = useQuery(trpc.account.me.queryOptions(undefined, {
@@ -125,7 +127,7 @@ export default function PricingPage() {
                 <Heading size="18" className="mb-2">
                   <HeadingTitle level="h2">{t(`pricing.plans.${plan.code}.name`)}</HeadingTitle>
                 </Heading>
-                <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+                <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                   {t(`pricing.plans.${plan.code}.blurb`)}
                 </p>
                 <p className="mb-6 text-std-20B-150 text-solid-gray-800">
@@ -133,7 +135,7 @@ export default function PricingPage() {
                     ? t('pricing.freePrice')
                     : `${formatPrice(plan.unit_amount, plan.currency, locale)}${interval === 'year' ? t('pricing.perYear') : t('pricing.perMonth')}`}
                 </p>
-                <ul className="mb-6 flex-1 space-y-2 text-std-16N-170 text-solid-gray-700">
+                <ul className="mb-6 flex-1 space-y-2 text-std-17N-170 text-solid-gray-700">
                   <li>
                     {t('pricing.limits.storage', { gb: plan.entitlements.storage_limit_gb })}
                   </li>
@@ -155,14 +157,14 @@ export default function PricingPage() {
                 </ul>
                 {!hasSession && !session.isPending ? (
                   <Button asChild variant={plan.code === 'free' ? 'outline' : 'solid-fill'}>
-                    <Link href="/signup">{t(plan.code === 'free' ? 'pricing.startFree' : 'pricing.signUpToSubscribe')}</Link>
+                    <Link href={plan.code === 'free' ? '/signup' : `/signup?next=${encodeURIComponent(`${locale === 'en' ? '/en' : ''}/pricing?interval=${interval}`)}`}>{t(plan.code === 'free' ? 'pricing.startFree' : 'pricing.signUpToSubscribe')}</Link>
                   </Button>
                 ) : awaitingAccount || !account.data ? (
                   <Button type="button" disabled>
                     {t(awaitingAccount ? 'pricing.loadingAccount' : 'pricing.accountUnavailable')}
                   </Button>
                 ) : plan.code === 'free' && isCurrent ? (
-                  <p className="text-std-16N-170 text-solid-gray-600">{t('pricing.currentPlan')}</p>
+                  <p className="text-std-17N-170 text-solid-gray-600">{t('pricing.currentPlan')}</p>
                 ) : currentPlan !== 'free' ? (
                   <Button
                     type="button"
@@ -189,7 +191,25 @@ export default function PricingPage() {
           })}
         </div>
       )}
-      <p className="mt-6 text-std-16N-170 text-solid-gray-600">{t('pricing.ownerNote')}</p>
+      <p className="mt-6 text-std-17N-170 text-solid-gray-600">{t('pricing.ownerNote')}</p>
+      <section aria-labelledby="pricing-selection-title" className="mt-12 max-w-3xl space-y-6">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
+          <HeadingTitle level="h2" id="pricing-selection-title">{t('pricing.selection.title')}</HeadingTitle>
+        </Heading>
+        <p className="text-std-17N-170 text-solid-gray-700">{t('pricing.selection.intro')}</p>
+        {(['processing', 'answers', 'storage'] as const).map(key => (
+          <div key={key}>
+            <Heading size="20" className="mb-2">
+              <HeadingTitle level="h3">{t(`pricing.selection.${key}Title`)}</HeadingTitle>
+            </Heading>
+            <p className="text-std-17N-170 text-solid-gray-700">{t(`pricing.selection.${key}Body`)}</p>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          <Link href="/try" className="site-inline-link">{t('pricing.selection.tryDemo')}</Link>
+          <Link href="/guides/online-course-questions" className="site-inline-link">{t('pricing.selection.readGuide')}</Link>
+        </div>
+      </section>
     </>
   );
 }

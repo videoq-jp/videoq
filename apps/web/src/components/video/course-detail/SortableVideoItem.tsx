@@ -68,7 +68,7 @@ export function SortableVideoItem({
         </button>
       )}
       <button type="button" aria-pressed={isSelected} title={video.title} className="flex-1 min-w-0 text-left rounded-8 focus-visible:outline-4 focus-visible:outline-black">
-        <span className={`block truncate text-std-16N-170 ${isSelected ? 'font-bold text-key-900' : 'text-solid-gray-800'}`}>
+        <span className={`block truncate text-std-17N-170 ${isSelected ? 'font-bold text-key-900' : 'text-solid-gray-800'}`}>
           {video.title}
         </span>
         <StatusBadge status={getVideoDisplayStatus(video)} size="xs" className="mt-1 ml-0" />

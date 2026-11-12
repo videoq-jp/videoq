@@ -2,6 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
+const {runInNewContext} = require('node:vm');
 const workflow = readFileSync(join(__dirname,'../workflows/onprem-release.yml'),'utf8');
 const job = name => workflow.match(new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z-]+:|$(?![\\s\\S]))`,'m'))[1];
 
@@ -12,30 +13,36 @@ test('release gates publication on the existing current-main push-CI policy',()=
   assert.match(source,/require\('\.\/.github\/scripts\/validate-deployment.cjs'\)/);
   assert.match(workflow,/^permissions:\n  contents: read\n/m);
   for(const name of ['build','chart']) assert.match(job(name),/needs: source/);
+  assert.match(source,/await validate\(\{ github, context \}\)/);
+  assert.match(source,/require\('\.\/.github\/scripts\/onprem-release-needed.cjs'\)/);
+  for(const name of ['upstream-vllm','build','chart']) {
+    assert.match(job(name),/if: needs.source.outputs.needed == 'true'/);
+  }
 });
 
-test('both native architecture builds are credential-free and scan before exporting',()=>{
+test('both native architecture builds are credential-free and scan the archive before preparing publication',()=>{
   const build = job('build');
   assert.match(build,/permissions:\n      contents: read\n    steps:/);
   assert.match(build,/arch: \[amd64, arm64\]/);
-  const scan=build.indexOf('uses: aquasecurity/trivy-action@');
-  const archive=build.indexOf('docker save');
-  assert(scan>=0 && archive>scan);
-  assert.match(build,/exit-code: '1'/);
-  assert.match(build,/ignore-unfixed: 'false'/);
+  assert.match(build,/uses: \.\/\.github\/actions\/build-onprem-image/);
   assert.doesNotMatch(build,/secrets\.|id-token: write|packages: write|continue-on-error/);
-  assert.match(build,/component: \[api, worker, web, transcription-gateway, vllm-engine\]/);
-  assert.match(build,/exclude:\n          - component: vllm-engine\n            arch: arm64/);
-  assert.match(build,/docker cp "\$container:\/usr\/share\/licenses\/videoq\/LICENSE" - \| tar -xO \| cmp LICENSE -/);
+  assert.match(build,/component: \[api, worker, web, transcription-gateway\]/);
+  assert.doesNotMatch(build,/vllm-engine|Dockerfile\.vllm/);
 });
 
 test('the signed bundle includes the inference chart and NVIDIA assessment reports',()=>{
   assert.match(job('chart'),/helm" package charts\/videoq-inference/);
-  assert.match(job('build'),/trivy-config:.*vllm-engine.*security\/trivy.yaml/);
-  assert.match(job('build'),/artifact\/security.json/);
-  assert.match(job('build'),/retention-days: 90/);
-  assert.match(job('indexes'),/if \[ "\$COMPONENT" != vllm-engine \]/);
+  assert.match(job('upstream-vllm'),/uses: \.\/\.github\/workflows\/upstream-vllm.yml/);
+  assert.match(job('build'),/evidence-name: security-/);
   assert.match(job('staging'),/verified-inference.json/);
+});
+
+test('release assessments apply only to their matching inference component',()=>{
+  const expression=job('build').match(/security-config: \$\{\{ (.*?) \}\}/)[1];
+  const policy=component=>runInNewContext(expression,{matrix:{component}},{timeout:100});
+  assert.equal(policy('transcription-gateway'),'apps/inference/whisper/security/cpu-trivy.yaml');
+  assert.equal(policy('vllm-engine'),'');
+  for(const component of ['api','worker','web','unknown']) assert.equal(policy(component),'');
 });
 
 test('privileged jobs do not build images or execute application dependencies',()=>{
@@ -47,7 +54,7 @@ test('privileged jobs do not build images or execute application dependencies',(
     for(const action of text.matchAll(/uses: actions\/attest@(\S+)/g)) assert.match(action[1],/^[a-f0-9]{40}$/);
     if(text.includes('uses: actions/checkout@')) assert.match(text,/persist-credentials: false/);
   }
-  assert.match(job('publish'),/needs: \[source, build\]/);
+  assert.match(job('publish'),/needs: \[source, build, upstream-vllm\]/);
   assert.match(job('indexes'),/needs: \[source, publish\]/);
   assert.match(job('release'),/needs: \[source, indexes, chart\]/);
 });
@@ -67,6 +74,19 @@ test('staging verifies signed artifacts before loading or exercising them',()=>{
   assert.match(staging,/rm -rf "\$DOCKER_CONFIG"/);
 });
 
+test('each registry-writing job installs pinned ORAS before using it and logs out afterwards',()=>{
+  for(const name of ['publish','indexes']){
+    const text=job(name);
+    const setup=text.indexOf('uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63');
+    const login=text.indexOf('oras login --registry-config');
+    const sign=text.indexOf('uses: actions/attest@');
+    const logout=text.indexOf('oras logout --registry-config');
+    assert(setup>=0 && login>setup && sign>login && logout>sign,name);
+    assert.match(text,/checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0/);
+    assert.match(text,/if: \$\{\{ always\(\) && \(steps.image.outcome/);
+  }
+});
+
 test('release retries cannot mix artifacts from different attempts',()=>{
   for (const match of workflow.matchAll(/uses: actions\/(?:upload|download)-artifact@[^\n]+\n        with:\n([\s\S]*?)(?=^      -|^  [a-z-]+:|$(?![\s\S]))/gm)) {
     const identity = match[1].match(/^          (?:name|pattern): (.+)$/m)?.[1];
@@ -78,7 +98,7 @@ test('release retries cannot mix artifacts from different attempts',()=>{
 test('public distribution checks visibility around publication and before staging',()=>{
   const publish=job('publish');
   const before=publish.indexOf('onprem_registry.py "$COMPONENT"');
-  const push=publish.indexOf('docker push "$tag"');
+  const push=publish.indexOf('oras cp --from-oci-layout');
   const after=publish.indexOf('onprem_registry.py "$COMPONENT"',push);
   assert(before>=0 && push>before && after>push);
   assert.doesNotMatch(workflow,/--allow-missing/);
@@ -87,4 +107,86 @@ test('public distribution checks visibility around publication and before stagin
   assert(indexes.indexOf('onprem_registry.py "$COMPONENT"')<indexes.indexOf('docker buildx imagetools create'));
   const staging=job('staging');
   assert(staging.indexOf('onprem_registry.py "$component"')<staging.indexOf('onprem-release.py verify'));
+});
+
+test('browser setup retries transient failures but never passes after three failures',()=>{
+  const {mkdtempSync,writeFileSync,chmodSync,rmSync}=require('node:fs');
+  const {tmpdir}=require('node:os');
+  const {spawnSync}=require('node:child_process');
+  const block=workflow.split('      - name: Install Chromium and OS dependencies with bounded retries\n')[1].split('\n      - ')[0];
+  const script=block.split('        run: |\n')[1].split('\n').map(line=>line.replace(/^          /,'')).join('\n');
+  for(const failures of [2,3]){
+    const directory=mkdtempSync(join(tmpdir(),'videoq-browser-retry-'));
+    try{
+      const counter=join(directory,'counter');
+      writeFileSync(join(directory,'node'),'#!/bin/sh\ncount=0\nif [ -f "$TEST_COUNTER" ]; then read -r count < "$TEST_COUNTER"; fi\ncount=$((count+1))\nprintf "%s\\n" "$count" > "$TEST_COUNTER"\nif [ "$count" -le "$TEST_FAILURES" ]; then exit 1; fi\nexit 0\n');
+      writeFileSync(join(directory,'sleep'),'#!/bin/sh\nexit 0\n');
+      for(const name of ['node','sleep']) chmodSync(join(directory,name),0o700);
+      const result=spawnSync('bash',['-e','-c',script],{env:{...process.env,PATH:directory+':'+process.env.PATH,TEST_COUNTER:counter,TEST_FAILURES:String(failures)},encoding:'utf8'});
+      assert.equal(result.status,failures===2?0:1,result.stderr);
+      assert.equal(readFileSync(counter,'utf8').trim(),'3');
+    }finally{rmSync(directory,{recursive:true,force:true})}
+  }
+});
+
+test('publishing retries the same scanned graph, fails after three errors and still checks its digest',()=>{
+  const {mkdtempSync,writeFileSync,chmodSync,rmSync}=require('node:fs');
+  const {tmpdir}=require('node:os');
+  const {spawnSync}=require('node:child_process');
+  const publish=job('publish');
+  const retry=publish.match(/^          for copy_attempt in 1 2 3; do\n[\s\S]*?^          done/m)[0];
+  const verify=publish.split('\n').find(line=>line.trim().startsWith('test "$(oras resolve '));
+  assert(verify,'registry digest equality remains a publication gate');
+  const script=(retry+'\n'+verify).split('\n').map(line=>line.replace(/^          /,'')).join('\n');
+  const digest='sha256:'+'a'.repeat(64);
+  const tag='ghcr.io/videoq-jp/videoq-api:unit-fixture';
+  for(const scenario of [{failures:2,match:true,attempts:3,status:0},
+    {failures:3,match:true,attempts:3,status:1},{failures:0,match:false,attempts:1,status:1}]){
+    const directory=mkdtempSync(join(tmpdir(),'videoq-publish-retry-'));
+    try{
+      const counter=join(directory,'counter'),argumentsFile=join(directory,'arguments');
+      writeFileSync(join(directory,'oras'),`#!/bin/sh
+case "$1" in
+  cp)
+    count=0
+    if [ -f "$TEST_COUNTER" ]; then read -r count < "$TEST_COUNTER"; fi
+    count=$((count+1))
+    printf '%s\\n' "$count" > "$TEST_COUNTER"
+    printf '%s\\n' "$*" >> "$TEST_ARGUMENTS"
+    if [ "$count" -le "$TEST_FAILURES" ]; then exit 1; fi
+    ;;
+  resolve) printf '%s\\n' "$TEST_RESOLVED_DIGEST" ;;
+  *) exit 99 ;;
+esac
+`);
+      writeFileSync(join(directory,'sleep'),'#!/bin/sh\nexit 0\n');
+      for(const name of ['oras','sleep']) chmodSync(join(directory,name),0o700);
+      const result=spawnSync('bash',['-e','-o','pipefail','-c',script],{env:{...process.env,
+        PATH:directory+':'+process.env.PATH,digest,tag,TEST_COUNTER:counter,TEST_ARGUMENTS:argumentsFile,
+        TEST_FAILURES:String(scenario.failures),TEST_RESOLVED_DIGEST:scenario.match?digest:'sha256:'+'b'.repeat(64)},encoding:'utf8'});
+      assert.equal(result.status,scenario.status,result.stderr);
+      assert.equal(Number(readFileSync(counter,'utf8').trim()),scenario.attempts);
+      const argumentsLines=readFileSync(argumentsFile,'utf8').trim().split('\n');
+      assert.equal(new Set(argumentsLines).size,1,'every retry copies exactly the same graph and tag');
+      assert(argumentsLines[0].includes('image@'+digest));
+      assert(argumentsLines[0].endsWith(tag));
+    }finally{rmSync(directory,{recursive:true,force:true})}
+  }
+});
+
+test('on-prem hosts use an explicit supported Ubuntu baseline',()=>{
+ const validation=readFileSync(join(__dirname,'../workflows/onprem-validation.yml'),'utf8');
+ for(const source of [workflow,validation]){
+   assert.doesNotMatch(source,/runs-on:.*ubuntu-latest/);
+   assert.match(source,/runs-on:.*ubuntu-24\.04/);
+ }
+});
+
+test('DNS repair cannot restart the lifecycle job service containers',()=>{
+ const validation=readFileSync(join(__dirname,'../workflows/onprem-validation.yml'),'utf8');
+ const lifecycle=validation.split('  onprem:\n')[1].split('  whisper-nvidia-image:\n')[0];
+ assert.match(lifecycle,/services:\n      postgres:/);
+ assert.match(lifecycle,/run: python3 \.github\/scripts\/configure-onprem-ci-dns\.py\n/);
+ assert.doesNotMatch(lifecycle,/configure-onprem-ci-dns\.py --docker/);
+ assert.match(job('build'),/uses: \.\/\.github\/actions\/build-onprem-image/);
 });

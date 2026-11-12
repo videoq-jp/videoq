@@ -13,6 +13,7 @@ const NOINDEX_PREFIXES = [
   '/change-email',
   '/consent',
   '/moodle/connect',
+  '/moodle/manage',
   '/videos',
   '/settings',
   '/admin',

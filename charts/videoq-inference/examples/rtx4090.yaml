@@ -1,0 +1,51 @@
+# Candidate: one RTX 4090, three separate CUDA inference Pods.
+# Requires the matching NVIDIA time-slicing configuration (three shared slots).
+# Use a verified release lock last; hardware/model acceptance remains required.
+backend: vllm
+gpuSharing:
+  enabled: true
+  memoryFractions: { chat: 0.25, embedding: 0.43, whisper: 0.14 }
+servers:
+  chat:
+    engine: vllm
+    modelRepo: Qwen/Qwen3-1.7B
+    modelRevision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+    modelFile: ""
+    modelSha256: ""
+    contextLength: 4096
+    persistence: { size: 10Gi }
+    extraArgs: []
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+    resources:
+      requests: { cpu: "1", memory: 4Gi, nvidia.com/gpu.shared: 1 }
+      limits: { cpu: "4", memory: 8Gi, nvidia.com/gpu.shared: 1 }
+  embedding:
+    engine: vllm
+    servedModel: qwen3-embedding-4b-5cf2132a
+    modelRepo: Qwen/Qwen3-Embedding-4B
+    modelRevision: 5cf2132abc99cad020ac570b19d031efec650f2b
+    modelFile: ""
+    modelSha256: ""
+    contextLength: 4096
+    persistence: { size: 20Gi }
+    # Preserve VideoQ's 1536-dimensional embedding contract.
+    extraArgs: [--convert, embed, --hf-overrides, '{"matryoshka_dimensions":[1536]}']
+    nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+    resources:
+      requests: { cpu: "1", memory: 8Gi, nvidia.com/gpu.shared: 1 }
+      limits: { cpu: "4", memory: 12Gi, nvidia.com/gpu.shared: 1 }
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ""
+  modelSha256: ""
+  persistence: { size: 10Gi }
+  maxConcurrentRequests: 1
+  upstreamParallelism: 1
+  requestTimeoutSeconds: 600
+  maxSequences: 1
+  nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
+  resources:
+    requests: { cpu: "1", memory: 2Gi, nvidia.com/gpu.shared: 1 }
+    limits: { cpu: "4", memory: 6Gi, nvidia.com/gpu.shared: 1 }

@@ -1,0 +1,53 @@
+name: Lab Ansible and GitOps
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install -r infra/ansible/requirements.txt
+      - name: Install the pinned Helm binary
+        env:
+          HELM_INSTALL_DIR: ${{ runner.temp }}/helm-tools
+        run: |
+          bash .github/scripts/install-helm.sh
+          echo "$HELM_INSTALL_DIR" >> "$GITHUB_PATH"
+      - name: Validate Ansible syntax without connecting to a GPU host
+        working-directory: infra/ansible
+        run: ansible-playbook -i inventory.example.yml site.yml --syntax-check
+      - name: Verify compiled chart ordering, private services, pins and credential preservation
+        run: python -m unittest discover -s scripts/gitops -p 'test_*.py' -v
+      - name: Install the checksum-pinned OCI client for the real registry acceptance
+        run: |
+          python - <<'PYTHON'
+          import hashlib, json, os, pathlib, tarfile, urllib.request
+          pin = json.loads(pathlib.Path('infra/ansible/pins.json').read_text())['oras']
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'videoq-oras'
+          root.mkdir()
+          raw = urllib.request.urlopen(pin['url'], timeout=60).read()
+          assert hashlib.sha256(raw).hexdigest() == pin['sha256']
+          archive = root / 'oras.tar.gz'
+          archive.write_bytes(raw)
+          with tarfile.open(archive) as tar:
+              binary = tar.extractfile('oras').read()
+          target = root / 'oras'
+          target.write_bytes(binary)
+          target.chmod(0o755)
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('VIDEOQ_ORAS=' + str(target) + '\n')
+          PYTHON
+      - name: Verify retained images, CRI mirror and native boot import
+        env:
+          VIDEOQ_IMAGE_STORE_INTEGRATION: '1'
+          VIDEOQ_K3S_IMAGE: rancher/k3s@sha256:21ea6e0fac4e3930c2ce8aa40ddd41a8b18cb3e9a0222c030dc005e7e88c4332
+        run: python -m unittest discover -s scripts/gitops -p test_image_store_integration.py -v

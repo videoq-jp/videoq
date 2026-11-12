@@ -2,7 +2,7 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/videoq-jp/videoq/security/vex/cpu-sqlite-2026-11-02",
   "author": "VideoQ",
-  "timestamp": "2026-11-06T15:30:00Z",
+  "timestamp": "2026-11-07T02:16:00Z",
   "version": 2,
   "statements": [
     {
@@ -49,7 +49,7 @@
         }
       ],
       "status": "fixed",
-      "impact_statement": "The locally built SQLite 3.54.1 includes upstream fix d9de6eedbe918c074c7556400fa21df5960704d9 for the FTS5 secure-delete heap overflow, released in 3.54.0. Debian confirms the upstream fix at https://security-tracker.debian.org/tracker/CVE-2026-119374. build-sqlite.sh checks the official source SHA3-256; verify_sqlite.py verifies the loaded version and FTS5 in the final image. This statement matches only the locally built package version; Debian trixie has no fixed distribution package yet."
+      "impact_statement": "The image loads checksum-pinned upstream SQLite 3.54.1, which includes secure-delete bounds fix d9de6eedbe918c074c7556400fa21df5960704d9 from 3.54.0. Debian records the upstream fix at https://security-tracker.debian.org/tracker/CVE-2026-119374. verify_sqlite.py deserializes the public-domain 5120-byte corrupted database from that exact upstream regression and requires DELETE to return SQLITE_CORRUPT without a crash. Package versions and architectures here are exact; trixie has no fixed distribution version."
     },
     {
       "vulnerability": {
@@ -63,8 +63,9 @@
           "@id": "pkg:deb/debian/libsqlite3-0@3.54.1-0videoq1?arch=arm64&distro=debian-13.7"
         }
       ],
-      "status": "fixed",
-      "impact_statement": "The locally built SQLite 3.54.1 includes upstream fix 64459c87cc702d600704fb77ee40ca1782398a52 for the session changeset heap overflow, released in 3.54.0. Debian confirms the upstream fix at https://security-tracker.debian.org/tracker/CVE-2026-119379. build-sqlite.sh checks the official source SHA3-256; verify_sqlite.py verifies the loaded version and FTS5 in the final image. This statement matches only the locally built package version; Debian trixie has no fixed distribution package yet."
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "The source-built shared library omits SQLITE_ENABLE_SESSION. verify_sqlite.py requires sqlite_compileoption_used(ENABLE_SESSION)=0 and absence of sqlite3changeset_apply and sqlite3session_create symbols in the actually loaded library. This prevents the vulnerable sessionUpdateFind changeset path from being present. Debian identifies that path at https://security-tracker.debian.org/tracker/CVE-2026-119379. This statement covers only these exact CPU library packages; unrelated SQLite builds are not assessed."
     }
   ]
 }

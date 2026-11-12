@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
 
   return (
     <>
-      <UtilityLink asChild className="mb-12 inline-flex items-center text-sm font-bold">
+      <UtilityLink asChild className="mb-12 inline-flex items-center text-std-17N-170 font-bold">
         <Link href="/login">
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('auth.verifyEmail.backToLogin')}
@@ -70,14 +70,14 @@ export default function VerifyEmailPage() {
         {state === 'loading' && (
           <div className="flex items-center gap-3 rounded-8 border border-solid-gray-300 bg-solid-gray-50 p-4">
             <InlineSpinner color="blue" />
-            <span className="text-sm text-solid-gray-700">{message}</span>
+            <span className="text-std-17N-170 text-solid-gray-700">{message}</span>
           </div>
         )}
 
         {state === 'success' && (
           <div className="space-y-4">
             <MessageAlert type="success" message={message} />
-            <p className="text-center text-sm text-solid-gray-600">
+            <p className="text-center text-std-17N-170 text-solid-gray-600">
               {t('auth.verifyEmail.redirectPart1')}{' '}
               <UtilityLink asChild>
                 <Link href="/login">{t('auth.verifyEmail.redirectLink')}</Link>
@@ -89,7 +89,7 @@ export default function VerifyEmailPage() {
         {state === 'error' && (
           <div className="space-y-4">
             <MessageAlert type="error" message={message} />
-            <div className="space-y-2 text-sm text-solid-gray-600">
+            <div className="space-y-2 text-std-17N-170 text-solid-gray-600">
               <p>{t('auth.verifyEmail.retry')}</p>
               <UtilityLink asChild>
                 <Link href="/login">{t('auth.verifyEmail.backToLogin')}</Link>

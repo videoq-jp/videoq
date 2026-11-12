@@ -89,9 +89,13 @@ def test_slow_cpu_spans_share_a_bounded_request_budget(client, monkeypatch, budg
         calls.append(request)
         clock[0] += 75
         return httpx.Response(200, json={"segments": [{"start": .1, "end": 1, "text": "Caption"}]})
+    original = server.app.state.upstream
     with httpx.Client(base_url=server.UPSTREAM, transport=httpx.MockTransport(upstream)) as engine:
-        monkeypatch.setattr(server.app.state, "upstream", engine)
-        response = post(transport)
+        server.app.state.upstream = engine
+        try:
+            response = post(transport)
+        finally:
+            server.app.state.upstream = original
     assert response.status_code == status
     assert len(calls) == count
     if status == 200:

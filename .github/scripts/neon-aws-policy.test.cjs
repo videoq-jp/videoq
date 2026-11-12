@@ -1,12 +1,69 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
+const {runInNewContext} = require('node:vm');
+const {createRequire} = require('node:module');
+const {resolve} = require('node:path');
 const {input, executionArn, safeError} = require('../../infra/db-maintenance/runtime/policy.cjs');
 const {createBroker, currentMain} = require('../../infra/db-maintenance/runtime/broker.cjs');
 const {definition} = require('../../infra/db-maintenance/state-machine.cjs');
 const {assertBuildArn, metadataValue} = require('../../infra/db-maintenance/runtime/job.cjs');
+const {setup} = require('../../infra/db-maintenance/runtime/setup-job.cjs');
 const MACHINE = 'arn:aws:states:ap-northeast-1:257240362763:stateMachine:videoq-db-maintenance-prod';
 const SHA = 'a'.repeat(40), RUN = 'b'.repeat(32);
+test('rotation prepares tools lazily and verifies them before new, resumed, or rollback mutations', async () => {
+  async function check(kind, phase, due, failTools = false) {
+    const calls = [], filename = resolve('infra/db-maintenance/runtime/job.cjs');
+    const nativeRequire = createRequire(filename), module = {exports:{}};
+    const journal = {phase, generation:'20261101010101_aabbccdd'};
+    const promoted = {...journal, phase:'promoted', retire_after:'2026-11-01T02:42:56Z'};
+    const m = {JOURNAL:'journal', readParameter:()=>journal, aws:()=>calls.push('metadata'),
+      prepare:async(force, beforeMutation)=>{if(due)beforeMutation(); return phase === 'fresh' ? null : journal;},
+      promote:async()=>{calls.push('promote');return promoted;},
+      rollback:async()=>{calls.push('rollback');return {phase:'complete'};},
+    };
+    const fakeRequire = name => name.endsWith('/neon-admin.cjs') ? m : name === './setup-job.cjs'
+      ? {installTools:()=>{calls.push('tools');if(failTools)throw new Error('TOOLS_FAILED');}} : nativeRequire(name);
+    runInNewContext(readFileSync(filename,'utf8'), {require:fakeRequire,module,console,
+      process:{env:{MAINTENANCE_KIND:kind,MAINTENANCE_RUN_ID:RUN,MAINTENANCE_TABLE:'videoq-db-maintenance-prod'}}});
+    if(failTools)await assert.rejects(module.exports.prepare(),/TOOLS_FAILED/);
+    else await module.exports.prepare();
+    return calls;
+  }
+  assert.deepEqual(await check('rotate','fresh',false),['metadata']);
+  assert.deepEqual(await check('rotate','prepared',true),['tools','promote','metadata']);
+  assert.deepEqual(await check('rotate','prepared',false),['tools','promote','metadata']);
+  assert.deepEqual(await check('rollback','prepared',false),['tools','rollback','metadata']);
+  assert.deepEqual(await check('rotate','rollback_pending',false),['tools','rollback','metadata']);
+  assert.deepEqual(await check('rotate','prepared',true,true),['tools']);
+});
+test('job setup preserves verified dependencies for DB operations and installs only the headless browser', () => {
+  const execute = (purpose, stage, kind = 'rotate') => {
+    const calls = [];
+    setup({CODEBUILD_BUILD_ARN: `arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-${purpose}-prod:01234567-89ab-cdef-0123-456789abcdef`,
+      MAINTENANCE_STAGE: stage, MAINTENANCE_KIND: kind}, (command, args) => calls.push([command, args]));
+    return calls;
+  };
+  for (const stage of ['retire', 'retire-rollback']) {
+    const calls = execute('rotation', stage);
+    assert.deepEqual(calls.map(([command, args]) => [command, ...args.slice(0, 2)]), [
+      ['npm', 'ci', '--ignore-scripts'], ['npm', 'audit', 'signatures'],
+    ]);
+  }
+  for (const stage of ['prepare', 'complete', 'complete-rollback']) assert.deepEqual(execute('rotation', stage), []);
+  assert.deepEqual(execute('rotation', 'prepare', 'audit'), []);
+  assert.deepEqual(execute('migration', 'migration'), []);
+  for (const purpose of ['backup', 'audit']) assert.equal(execute(purpose, purpose).length, 2);
+  assert.deepEqual(execute('smoke', 'smoke', 'smoke')[2], [
+    '.github/operations-tools/node_modules/.bin/playwright', ['install', '--only-shell', 'chromium'],
+  ]);
+  const fontSetup = execute('smoke', 'smoke', 'smoke')[3];
+  assert.equal(fontSetup[0], 'sh');
+  assert.match(fontSetup[1][2], /fc-list :lang=ja/);
+  assert.match(fontSetup[1][2], /--no-install-recommends fonts-ipafont-gothic/);
+  assert.throws(() => execute('rotation', 'smoke'), /INVALID_SETUP_STAGE/);
+  assert.throws(() => setup({CODEBUILD_BUILD_ARN: 'untrusted'}, () => assert.fail()), /AWS_CODEBUILD_REQUIRED/);
+});
 const terminal = status => ({kind: {S: 'rotate'}, name: {S: 'db-' + RUN},
   execution_arn: {S: executionArn(MACHINE, 'db-' + RUN)}, input: {S: '{"kind":"rotate"}'}, created_at: {S: new Date().toISOString()}, status});
 function fixture({lock, status = 'RUNNING', active = false, missingBuild = false, missingExecution = false} = {}) {

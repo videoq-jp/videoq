@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-11",
+  "scope": "Textual front end for the native single-RTX-4090 installer",
+  "textual_version": "8.2.8",
+  "design": {
+    "reference": "https://github.com/yukiharada1228/shadcn-digital-agency-jp",
+    "implementation": "Native Textual widgets and CSS; heading, labels, cards and step-navigation concepts",
+    "palette_source": "apps/web/src/styles/videoq-theme.css",
+    "primary": "#3159dc",
+    "background": "#fbfcfa",
+    "sidebar": "#eef2eb"
+  },
+  "verification": {
+    "command": "PATH=/opt/homebrew/opt/openssl@3/bin:$PATH TMPDIR=/private/tmp uv run --python 3.10 --no-project --with textual==8.2.8 python -m unittest discover -s scripts/onprem -q",
+    "tests_total": 91,
+    "tests_passed": 87,
+    "tests_skipped": 4,
+    "screens": "docs/verification/rtx4090-tui/README.md",
+    "checks": [
+      "Keyboard-only setup and review, inline invalid-email feedback",
+      "80x24 compact layout and 120x40 desktop layout",
+      "LAN selection and retained defaults without writing installation state",
+      "Preview mode never executes host setup commands",
+      "Failure log navigation and return to retained settings",
+      "Masked password inputs are cleared; password absent from process arguments",
+      "Captured provisioning uses --no-tui and noninteractive stdin/sudo",
+      "Successful worker exit also requires a complete recorded installation",
+      "Bootstrap shell syntax and embedded Python syntax"
+    ]
+  },
+  "privilege_and_authentication": {
+    "operator": "Normal user",
+    "bootstrap": "Standard terminal through App.suspend for OS setup, sudo and GitHub authentication",
+    "captured_progress": "Noninteractive sudo uses an existing ticket; keepalive does not grant or persist new permissions",
+    "password_setup": "Direct own-origin HTTPS request with certificate validation; no argv/env/file/log storage",
+    "existing_browser_origin_changed": false
+  },
+  "limitations": [
+    "A fresh Ubuntu installation, actual interactive sudo/GitHub handoff and physical driver reboot were not exercised through the TUI",
+    "Four existing external integration/acceptance tests were skipped",
+    "Screen artifacts use preview values; SVG CJK textLength is corrected to terminal cell width"
+  ]
+}

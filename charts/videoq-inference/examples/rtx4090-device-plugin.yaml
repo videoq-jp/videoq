@@ -1,0 +1,20 @@
+# Values for NVIDIA's nvidia-device-plugin chart v0.20.1 (not VideoQ's chart).
+# Scope the DaemonSet to the one explicitly opted-in workstation.
+runtimeClassName: nvidia
+nodeSelector:
+  videoq.io/inference-target: rtx4090
+config:
+  default: rtx4090
+  map:
+    rtx4090: |-
+      version: v1
+      flags:
+        migStrategy: none
+        failOnInitError: true
+      sharing:
+        timeSlicing:
+          renameByDefault: true
+          failRequestsGreaterThanOne: true
+          resources:
+            - name: nvidia.com/gpu
+              replicas: 3

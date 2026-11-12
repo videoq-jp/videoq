@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -76,6 +77,7 @@ describeWithPostgres("AI回答枠の実PostgreSQL並列制御", () => {
     } as QuotaEnv;
   });
 
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     if (!adminConnected) return;
     try {

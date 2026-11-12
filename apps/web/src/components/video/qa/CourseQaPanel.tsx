@@ -32,7 +32,7 @@ export function CourseQaPanel(props: Props) {
 function Author({ author, date }: { author: QaQuestion['author']; date: string }) {
   const { t, i18n } = useTranslation();
   return <p className="flex flex-wrap items-center gap-x-2 text-dns-14N-130 text-solid-gray-600">
-    <span>{author.name ?? t('qa.deletedUser')}</span>
+    <span>{author.name ? (author.source === 'moodle' ? t('qa.moodleParticipant', { id: author.name }) : author.name) : t('qa.deletedUser')}</span>
     {author.instructor && <span className="font-bold text-key-900">{t('qa.instructor')}</span>}
     <time dateTime={date}>{new Date(date).toLocaleDateString(i18n.language)}</time>
   </p>;
@@ -101,6 +101,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   const feature = useMutation(trpc.qa.feature.mutationOptions());
   const busy = [ask, reply, updateQuestion, deleteQuestion, updateReply, deleteReply, vote, feature].some(mutation => mutation.isPending);
   const canPost = selected ? detail.data?.canPost : list.data?.canPost;
+  const canVote = selected ? (detail.data?.canVote ?? detail.data?.canPost) : (list.data?.canVote ?? list.data?.canPost);
   const canModerate = selected ? detail.data?.canModerate : list.data?.canModerate;
   const run = async (operation: () => Promise<void>) => {
     if (busy) return;
@@ -110,7 +111,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   const back = () => { setSelected(null); setReplyPage(0); setEditingQuestion(false); setEditingReply(null); setError(false); };
   const open = (questionId: string) => { setSelected(questionId); setReplyPage(0); setAsking(false); setEditingQuestion(false); setEditingReply(null); setError(false); setAnswer(''); };
   const login = <Link href={`/login?next=${encodeURIComponent(location.pathname)}`} className="text-key-900 underline">{t('qa.loginToPost')}</Link>;
-  const voteButton = (question: QaQuestion) => <Button type="button" variant="text" size="sm" disabled={busy || !canPost}
+  const voteButton = (question: QaQuestion) => <Button type="button" variant="text" size="sm" disabled={busy || !canVote}
     aria-pressed={question.voted} aria-label={t(question.voted ? 'qa.removeVote' : 'qa.vote')}
     onClick={() => void run(async () => { await vote.mutateAsync({ ...access, questionId: question.id, voted: !question.voted }); await refresh(); })}>
     <ThumbsUp className="h-4 w-4" aria-hidden="true" /><span>{question.votes}</span>
@@ -144,7 +145,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
           {detail.data.question.featured && <p className="flex items-center gap-1 text-dns-14B-130 text-key-900"><Pin className="h-4 w-4" aria-hidden="true" />{t('qa.featured')}</p>}
           <h3 className="break-words text-std-20B-150">{detail.data.question.title}</h3>
           <Author author={detail.data.question.author} date={detail.data.question.createdAt} />
-          <p className="whitespace-pre-wrap break-words text-std-16N-170">{detail.data.question.body}</p>
+          <p className="whitespace-pre-wrap break-words text-std-17N-170">{detail.data.question.body}</p>
           {detail.data.question.videoId && <Button type="button" variant="text" size="sm" onClick={() => onVideoPlay(detail.data.question.videoId!, '00:00:00')}>{detail.data.question.videoTitle}</Button>}
           {questionActions(detail.data.question)}
         </section>}
@@ -157,7 +158,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
               onCancel={() => setEditingReply(null)} onSubmit={() => void run(async () => {
                 await updateReply.mutateAsync({ ...access, questionId: selected, replyId: item.id, body: editedAnswer }); setEditingReply(null); await refresh();
               })} /> : <>
-              <p className="whitespace-pre-wrap break-words text-std-16N-170">{item.body}</p>
+              <p className="whitespace-pre-wrap break-words text-std-17N-170">{item.body}</p>
               <div className="flex gap-2">
                 {item.canEdit && <Button type="button" variant="text" size="sm" disabled={busy} onClick={() => { setEditingReply(item); setEditedAnswer(item.body); }}>{t('qa.editAnswer')}</Button>}
                 {item.canDelete && <Button type="button" variant="text" size="sm" className="text-error-1" disabled={busy} onClick={() => void run(async () => {
@@ -209,7 +210,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
             {list.data.items.map(question => <article key={question.id} className="space-y-2 py-4">
               {question.featured && <p className="flex items-center gap-1 text-dns-14B-130 text-key-900"><Pin className="h-4 w-4" aria-hidden="true" />{t('qa.featured')}</p>}
               <h4><button type="button" onClick={() => open(question.id)} className="break-words text-left text-std-18B-160 text-key-900 underline focus-visible:outline-4 focus-visible:outline-black">{question.title}</button></h4>
-              <p className="line-clamp-2 break-words text-std-16N-170 text-solid-gray-700">{question.body}</p>
+              <p className="line-clamp-2 break-words text-std-17N-170 text-solid-gray-700">{question.body}</p>
               <Author author={question.author} date={question.createdAt} />
               <div className="flex flex-wrap items-center gap-2 text-dns-14N-130 text-solid-gray-600">{voteButton(question)}<MessageCircle className="h-4 w-4" aria-hidden="true" />{t('qa.answerCount', { count: question.replyCount })}{question.videoTitle && <span>· {question.videoTitle}</span>}</div>
             </article>)}

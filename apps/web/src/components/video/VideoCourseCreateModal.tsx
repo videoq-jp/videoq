@@ -1,4 +1,7 @@
 import { useId, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { SupportText } from '@/components/ui/support-text';
 import { Button } from '@/components/ui/button';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import {
@@ -78,49 +81,51 @@ export function VideoCourseCreateModal({ isOpen, onClose, onCreate }: VideoCours
         </DialogHeader>
 
         <DialogBody>
-          <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+          <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('videos.courses.subtitle')}
           </p>
 
           <div className="space-y-4">
             {formError && (
-              <div role="alert" className="rounded-8 border border-error-1 bg-red-50 p-3 text-sm text-error-1">
+              <div role="alert" className="rounded-8 border border-error-1 bg-red-50 p-3 text-std-17N-170 text-error-1">
                 {formError}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor={nameId} className="text-xs font-bold uppercase tracking-wider text-solid-gray-700">
+              <Label htmlFor={nameId} className="text-std-17B-170 text-solid-gray-700">
                 {t('videos.courses.nameLabel')}
-              </label>
-              <input
+              </Label>
+              <Input
                 id={nameId}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={t('videos.courses.namePlaceholder')}
+                aria-describedby={nameId + "-hint"}
                 disabled={isCreating}
                 autoFocus
-                className="w-full rounded-8 border border-solid-gray-600 bg-white px-4 py-3 text-sm text-solid-gray-800 placeholder:text-solid-gray-600 focus:outline focus:outline-4 focus:outline-black focus:outline-offset-[calc(2/16*1rem)] focus:ring-[calc(2/16*1rem)] focus:ring-yellow-300 disabled:border-solid-gray-300 disabled:bg-solid-gray-50 disabled:text-solid-gray-420 disabled:placeholder:text-solid-gray-420 disabled:forced-colors:border-[GrayText] disabled:forced-colors:text-[GrayText]"
+                className="w-full"
               />
+              <SupportText id={nameId + '-hint'}>{t('videos.courses.namePlaceholder')}</SupportText>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={descriptionId} className="text-xs font-bold uppercase tracking-wider text-solid-gray-700">
+              <Label htmlFor={descriptionId} className="text-std-17B-170 text-solid-gray-700">
                 {t('videos.courses.descriptionLabel')}
                 <span className="ml-1 normal-case font-normal text-solid-gray-600">
                   {t('videos.courses.optional')}
                 </span>
-              </label>
-              <input
+              </Label>
+              <Input
                 id={descriptionId}
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('videos.courses.descriptionPlaceholder')}
+                aria-describedby={descriptionId + "-hint"}
                 disabled={isCreating}
-                className="w-full rounded-8 border border-solid-gray-600 bg-white px-4 py-3 text-sm text-solid-gray-800 placeholder:text-solid-gray-600 focus:outline focus:outline-4 focus:outline-black focus:outline-offset-[calc(2/16*1rem)] focus:ring-[calc(2/16*1rem)] focus:ring-yellow-300 disabled:border-solid-gray-300 disabled:bg-solid-gray-50 disabled:text-solid-gray-420 disabled:placeholder:text-solid-gray-420 disabled:forced-colors:border-[GrayText] disabled:forced-colors:text-[GrayText]"
+                className="w-full"
               />
+              <SupportText id={descriptionId + '-hint'}>{t('videos.courses.descriptionPlaceholder')}</SupportText>
             </div>
           </div>
         </DialogBody>

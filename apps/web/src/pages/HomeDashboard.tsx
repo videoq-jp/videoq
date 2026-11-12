@@ -183,8 +183,8 @@ export default function HomeDashboard() {
 
       {/* All zeros tell a new user nothing; the guide above covers that case. */}
       {videoStats.total > 0 && (
-        <section className="mb-12">
-          <Heading size="18" hasChip className="mb-4">
+        <section className="mb-16 md:mb-24">
+          <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
             <HeadingTitle level="h2">{t('home.stats.summaryTitle')}</HeadingTitle>
           </Heading>
           <dl className="grid grid-cols-1 border-t border-solid-gray-420 sm:grid-cols-2 lg:grid-cols-4">
@@ -193,7 +193,7 @@ export default function HomeDashboard() {
                 key={label}
                 className="flex items-baseline justify-between gap-4 border-b border-solid-gray-200 py-4 sm:pr-6"
               >
-                <dt className="text-std-16N-170 text-solid-gray-700">{label}</dt>
+                <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
                 <dd className="text-std-20B-150 text-solid-gray-800">{value}</dd>
               </div>
             ))}
@@ -201,8 +201,8 @@ export default function HomeDashboard() {
         </section>
       )}
 
-      <section className="mb-12">
-        <Heading size="18" hasChip className="mb-4">
+      <section className="mb-16 md:mb-24">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
           <HeadingTitle level="h2">{t('home.actions.sectionTitle')}</HeadingTitle>
         </Heading>
         <MenuList className="border-t border-solid-gray-420">
@@ -214,10 +214,10 @@ export default function HomeDashboard() {
                 onClick={item.onClick}
                 className="w-full flex-col items-start gap-1 py-4"
               >
-                <span className="text-std-16B-170 text-solid-gray-800 group-hover/menu-list-item:underline">
+                <span className="text-std-17B-170 text-solid-gray-800 group-hover/menu-list-item:underline">
                   {item.title}
                 </span>
-                <span className="text-std-16N-170 font-normal text-solid-gray-700">
+                <span className="text-std-17N-170 font-normal text-solid-gray-700">
                   {item.description}
                 </span>
               </MenuListItemButton>
@@ -226,19 +226,19 @@ export default function HomeDashboard() {
         </MenuList>
       </section>
 
-      <section className="mb-12">
-        <Heading size="18" hasChip className="mb-4">
+      <section className="mb-16 md:mb-24">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
           <HeadingTitle level="h2">{t('home.usage.title')}</HeadingTitle>
         </Heading>
-        <p className="mb-4 text-std-16N-170 text-solid-gray-700">{t('home.usage.description')}</p>
+        <p className="mb-4 text-std-17N-170 text-solid-gray-700">{t('home.usage.description')}</p>
         <dl className="border-t border-solid-gray-420">
           {usageItems.map(({ label, value, limit, unit }) => (
             <div
               key={label}
               className="flex flex-col gap-1 border-b border-solid-gray-200 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
             >
-              <dt className="text-std-16N-170 text-solid-gray-700">{label}</dt>
-              <dd className="text-std-16B-170 text-solid-gray-800">
+              <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
+              <dd className="text-std-17B-170 text-solid-gray-800">
                 {value}
                 {unit ? <span className="ml-1 font-normal text-solid-gray-700">{unit}</span> : null}
                 <span className="mx-2 text-solid-gray-420">/</span>
@@ -267,7 +267,7 @@ export default function HomeDashboard() {
       {recentVideos.length > 0 && (
         <section className="mb-8">
           <div className="mb-4 flex items-end justify-between gap-4">
-            <Heading size="18" hasChip>
+            <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
               <HeadingTitle level="h2">{t('home.recentVideos.title')}</HeadingTitle>
             </Heading>
             <UtilityLink asChild>
@@ -287,7 +287,7 @@ export default function HomeDashboard() {
                   data-size="regular"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-std-16B-170 text-solid-gray-800">
+                    <span className="block truncate text-std-17B-170 text-solid-gray-800">
                       {video.title}
                     </span>
                     <span className="mt-1 block text-dns-14N-130 text-solid-gray-600">

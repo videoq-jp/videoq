@@ -207,6 +207,40 @@ describe('ChatPanel', () => {
     ))
   })
 
+  it('collapses suggestions after sending and lets the reader open, close and reuse them', async () => {
+    render(<ChatPanel suggestedQuestions={['First question', 'Follow-up']} sendSuggestedQuestions />)
+    fireEvent.click(screen.getByRole('button', { name: 'First question' }))
+    await screen.findByText('Test response')
+    await waitFor(() => expect(screen.getByLabelText('chat.placeholder')).toBeEnabled())
+    expect(screen.queryByRole('button', { name: 'Follow-up' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'chat.showSuggestions' }))
+    expect(screen.getByRole('button', { name: 'chat.hideSuggestions' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'chat.hideSuggestions' }))
+    expect(screen.queryByRole('button', { name: 'Follow-up' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'chat.showSuggestions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Follow-up' }))
+    await waitFor(() => expect(apiClient.chatStream).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(apiClient.chatStream).mock.calls[1][0].messages.at(-1)?.content).toBe('Follow-up')
+    expect(screen.queryByRole('button', { name: 'Follow-up' })).not.toBeInTheDocument()
+  })
+
+  it('notifies the viewer on composer focus and keeps the draft when examples are closed', async () => {
+    const focus = vi.fn()
+    render(<ChatPanel suggestedQuestions={['Example']} onComposerFocus={focus} />)
+    const input = screen.getByLabelText('chat.placeholder')
+    await act(async () => { await sendMessage(input, 'Initial question') })
+    await screen.findByText('Test response')
+    fireEvent.change(input, { target: { value: 'Unsent follow-up' } })
+    fireEvent.click(screen.getByRole('button', { name: 'chat.showSuggestions' }))
+    expect(screen.getByRole('button', { name: 'Example' })).toBeVisible()
+    fireEvent.focus(input)
+    expect(focus).toHaveBeenCalledOnce()
+    expect(input).toHaveValue('Unsent follow-up')
+    expect(screen.getByRole('button', { name: 'chat.showSuggestions' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'Example' })).not.toBeInTheDocument()
+    expect(apiClient.chatStream).toHaveBeenCalledOnce()
+  })
+
   it('shows clickable timestamps while the response is still streaming', async () => {
     const onVideoPlay = vi.fn()
     const citations = [{ id: 1, video_id: 1, title: 'Test Video', start_time: '00:01:30', end_time: '00:15:30' }]

@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getCourseWithMembers } from "../src/repositories/chat-repository";
@@ -77,6 +78,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
     env = { HYPERDRIVE: { connectionString: scopedUrl.toString() } } as Bindings;
   });
 
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     await databaseClient?.end();
     try { if (databaseCreated) await admin.query(`DROP DATABASE ${quotedDatabase} WITH (FORCE)`); }

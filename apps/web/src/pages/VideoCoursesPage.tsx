@@ -98,10 +98,10 @@ function SortableCourseRow({
             onClick={() => onOpen(course.id)}
             className="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black focus-visible:bg-yellow-300"
           >
-            <span className="block truncate text-std-16B-170 text-solid-gray-800 hover:underline">
+            <span className="block truncate text-std-17B-170 text-solid-gray-800 hover:underline">
               {course.name}
             </span>
-            <span className="mt-1 block truncate text-std-16N-170 text-solid-gray-600">
+            <span className="mt-1 block truncate text-std-17N-170 text-solid-gray-600">
               {course.description || t('common.messages.noDescription')}
             </span>
           </button>
@@ -287,15 +287,15 @@ export default function VideoCoursesPage() {
             <Heading size="20" hasChip className="mb-2">
               <HeadingTitle level="h2">{t('videos.courses.empty')}</HeadingTitle>
             </Heading>
-            <p className="max-w-2xl text-std-16N-170 text-solid-gray-700">
+            <p className="max-w-2xl text-std-17N-170 text-solid-gray-700">
               {t('videos.courses.emptyDescription')}
             </p>
-            <List spacing="4" className="mt-3 text-std-16N-170 text-solid-gray-800">
+            <List spacing="4" className="mt-3 text-std-17N-170 text-solid-gray-800">
               {(t('videos.courses.emptyBenefits.bullets', { returnObjects: true }) as string[]).map((benefit) => (
                 <li key={benefit}>{benefit}</li>
               ))}
             </List>
-            <p className="mt-6 mb-4 text-std-16N-170 text-solid-gray-700">
+            <p className="mt-6 mb-4 text-std-17N-170 text-solid-gray-700">
               {t('videos.courses.emptyNeedsVideos')}
             </p>
             <div className="flex flex-wrap items-center gap-4">
@@ -370,7 +370,7 @@ export default function VideoCoursesPage() {
 
             {isFetchingNextPage && (
               <div className="flex justify-center mt-4">
-                <span className="text-std-16N-170 text-solid-gray-600">{t('videos.courses.loadingMore')}</span>
+                <span className="text-std-17N-170 text-solid-gray-600">{t('videos.courses.loadingMore')}</span>
               </div>
             )}
           </>

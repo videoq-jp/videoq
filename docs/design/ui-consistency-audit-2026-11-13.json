@@ -1,0 +1,1953 @@
+{
+  "checked_at": "2026-11-13T03:29:52+09:00",
+  "reference": "https://www.digital.go.jp/",
+  "scope": "Shared component CSS and screen rendering; VideoQ-specific player and chat structures retain their own layouts.",
+  "route_families": [
+    "/",
+    "/videos",
+    "/videos/:id",
+    "/videos/courses",
+    "/videos/courses/:id",
+    "/settings",
+    "/guides",
+    "/guides/:slug",
+    "/pricing",
+    "/terms",
+    "/privacy",
+    "/refund",
+    "/legal",
+    "/admin",
+    "/login",
+    "/signup",
+    "/signup/check-email",
+    "/signup/complete",
+    "/signup/verified",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/change-email",
+    "/consent",
+    "/moodle/connect",
+    "/moodle/manage",
+    "/course-invitations/:token",
+    "/share/:token",
+    "/try",
+    "404"
+  ],
+  "verification": {
+    "page_and_state_conditions": 207,
+    "public_route_conditions": 44,
+    "total_conditions": 251,
+    "css_comparisons": 24,
+    "css_matches": 24,
+    "unresolved_visual_or_rendering_issues": 0,
+    "locales": [
+      "ja",
+      "en"
+    ],
+    "screen_widths": [
+      390,
+      1440
+    ],
+    "additional_css_width": 768,
+    "authenticated_and_token_dependent_states": "Storybook fixed data; real route components and shared layouts"
+  },
+  "fixes": [
+    "Applied shared page-title letter spacing to authentication screens and the 404 screen.",
+    "Applied shared inline-link states to the 404 home link.",
+    "Updated the course-header test for the approved text-only VideoQ wordmark.",
+    "Added route previews with upload fixtures and readiness assertions for library, viewers, authentication, invitations and 404."
+  ],
+  "checks": {
+    "typecheck": "passed",
+    "changed_file_eslint": "passed",
+    "unit_suite_first_full_run": {
+      "files": 119,
+      "tests": 1452,
+      "result": "passed"
+    },
+    "unit_suite_latest_full_run": {
+      "passed_tests": 1446,
+      "failed_tests": 1,
+      "skipped_tests": 5,
+      "note": "One UI wait and the ESLint setup hook timed out during concurrent verification."
+    },
+    "isolated_retry": {
+      "files": 2,
+      "tests": 8,
+      "result": "passed",
+      "files_retried": [
+        "VideoLibraryPage.tags.test.tsx",
+        "eslintConfig.test.ts"
+      ]
+    },
+    "unresolved_test_failures": 0
+  },
+  "screen_groups": [
+    "Pages/Admin",
+    "Pages/Auth screen review",
+    "Pages/EmailChangeConfirmPage",
+    "Pages/Guide",
+    "Pages/HomeDashboard",
+    "Pages/Landing",
+    "Pages/Legal",
+    "Pages/Mobile viewer",
+    "Pages/Moodle account management",
+    "Pages/Moodle connection",
+    "Pages/PasswordRecovery",
+    "Pages/Pricing",
+    "Pages/Screen review",
+    "Pages/Settings",
+    "Pages/VerifyEmailPage"
+  ],
+  "evidence_directory": "/tmp/videoq-all-screen-audit",
+  "screens": [
+    {
+      "story": "pages-admin--user-directory",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory-english",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory-enlarged-text",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory-enlarged-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--edit-user-layout",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--edit-user-layout-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--edit-user-layout-enlarged-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--saving-user",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--saving-user-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--failed-save-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--invalid-quota-then-save",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--invalid-quota-then-save-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--confirm-deletion",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--confirm-deletion-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--cancel-deletion",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--pending-deletion",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--pending-deletion-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--long-username-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--long-username-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--search-after-deletion",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--search-after-deletion-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--awaiting-new-address",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--awaiting-new-address-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--completed",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--invalid-approval",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--japanese",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--japanese-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--english",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--monthly-allowance-used",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--getting-started-new-user",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--getting-started-transcribing",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--getting-started-create-course",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--getting-started-ready-to-ask",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--getting-started-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--japanese",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--english",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--legacy-ad-shows-default-use-case",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--watch-demo",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--watch-demo-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--watch-demo-english",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--video-unavailable",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--catalog-unavailable",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--use-cases-and-faq",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--terms",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--privacy",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--refund",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--commercial-notice",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--terms-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--privacy-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--refund-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--approval",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--approved",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--cancelled",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--signed-out",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--failed",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--owner",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--inactive-connection",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--different-account",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--independent-system-admin",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--signed-out",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--request-retry",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--request-retry-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--reset-retry",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--reset-retry-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--invalid-link",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--anonymous",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--anonymous-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--portal-error-retry",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--portal-error-retry-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--catalog-retry",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--catalog-retry-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--default",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--configured",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--load-failed",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--edit-username-mobile",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--email-confirmation",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--search-api-key-changes",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--search-api-key-changes-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--generated-key-copy-retry",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--generated-key-copy-retry-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-verifyemailpage--verified",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-verifyemailpage--verified-english-mobile",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-admin--user-directory",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--awaiting-new-address",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--awaiting-new-address",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-emailchangeconfirmpage--awaiting-new-address",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--japanese",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--japanese",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-guide--japanese",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--monthly-allowance-used",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--monthly-allowance-used",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-homedashboard--monthly-allowance-used",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--japanese",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--japanese",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-landing--japanese",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--terms",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--terms",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-legal--terms",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--approval",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--approval",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-connection--approval",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--owner",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--owner",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-moodle-account-management--owner",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--request-retry",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--request-retry",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-passwordrecovery--request-retry",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--anonymous",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--anonymous",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-pricing--anonymous",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--default",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--default",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-settings--default",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-verifyemailpage--verified",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-verifyemailpage--verified",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-verifyemailpage--verified",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--library",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--video",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--courses",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--shared-course",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--trial",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course-member",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--login",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--check-email",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-google-failure",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-email-failure",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--forgot-password",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--reset-password-invalid",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--consent",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation-signed-out",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--not-found",
+      "locale": "ja",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--library",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--library",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--library",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--video",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--video",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--video",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--courses",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--courses",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--courses",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--shared-course",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--shared-course",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--shared-course",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--trial",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--trial",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--trial",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course-member",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course-member",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-screen-review--course-member",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--login",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--login",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--login",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--check-email",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--check-email",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--check-email",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-google-failure",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-google-failure",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-google-failure",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-email-failure",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-email-failure",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--signup-email-failure",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--forgot-password",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--forgot-password",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--forgot-password",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--reset-password-invalid",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--reset-password-invalid",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--reset-password-invalid",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--consent",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--consent",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--consent",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation-signed-out",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation-signed-out",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--invitation-signed-out",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--not-found",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--not-found",
+      "locale": "en",
+      "width": 1440,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-auth-screen-review--not-found",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-mobile-viewer--trial",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-mobile-viewer--english-trial",
+      "locale": "en",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-mobile-viewer--shared-course",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-mobile-viewer--course-owner",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    },
+    {
+      "story": "pages-mobile-viewer--course-member",
+      "locale": "ja",
+      "width": 390,
+      "overflow_px": 0,
+      "render": "passed"
+    }
+  ],
+  "public_routes": [
+    {
+      "route": "/",
+      "locale": "ja",
+      "width": 1440,
+      "title": "受講生の質問に、あなたの講義が答える。",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/",
+      "locale": "ja",
+      "width": 390,
+      "title": "受講生の質問に、あなたの講義が答える。",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/",
+      "locale": "en",
+      "width": 1440,
+      "title": "Student questions?Let your lectures answer.",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/",
+      "locale": "en",
+      "width": 390,
+      "title": "Student questions?Let your lectures answer.",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides",
+      "locale": "ja",
+      "width": 1440,
+      "title": "動画講座の質問対応ガイド",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides",
+      "locale": "ja",
+      "width": 390,
+      "title": "動画講座の質問対応ガイド",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides",
+      "locale": "en",
+      "width": 1440,
+      "title": "Guides to answering course questions",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides",
+      "locale": "en",
+      "width": 390,
+      "title": "Guides to answering course questions",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/online-course-questions",
+      "locale": "ja",
+      "width": 1440,
+      "title": "動画講座の質問対応をAIで軽くする方法",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/online-course-questions",
+      "locale": "ja",
+      "width": 390,
+      "title": "動画講座の質問対応をAIで軽くする方法",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/online-course-questions",
+      "locale": "en",
+      "width": 1440,
+      "title": "How to reduce online course support with AI answers",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/online-course-questions",
+      "locale": "en",
+      "width": 390,
+      "title": "How to reduce online course support with AI answers",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/class-recordings-for-review",
+      "locale": "ja",
+      "width": 1440,
+      "title": "授業の録画を、生徒が質問できる復習教材にする方法",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/class-recordings-for-review",
+      "locale": "ja",
+      "width": 390,
+      "title": "授業の録画を、生徒が質問できる復習教材にする方法",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/class-recordings-for-review",
+      "locale": "en",
+      "width": 1440,
+      "title": "How to turn class recordings into review material students can ask",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/class-recordings-for-review",
+      "locale": "en",
+      "width": 390,
+      "title": "How to turn class recordings into review material students can ask",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/training-video-questions",
+      "locale": "ja",
+      "width": 1440,
+      "title": "社内研修の動画に質問できるようにする方法",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/training-video-questions",
+      "locale": "ja",
+      "width": 390,
+      "title": "社内研修の動画に質問できるようにする方法",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/training-video-questions",
+      "locale": "en",
+      "width": 1440,
+      "title": "How to let staff ask questions about training videos",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/training-video-questions",
+      "locale": "en",
+      "width": 390,
+      "title": "How to let staff ask questions about training videos",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/how-ai-answers-work",
+      "locale": "ja",
+      "width": 1440,
+      "title": "VideoQのAI回答の仕組みと、確認しておきたいこと",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/how-ai-answers-work",
+      "locale": "ja",
+      "width": 390,
+      "title": "VideoQのAI回答の仕組みと、確認しておきたいこと",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/how-ai-answers-work",
+      "locale": "en",
+      "width": 1440,
+      "title": "How VideoQ AI answers work and what to check",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/guides/how-ai-answers-work",
+      "locale": "en",
+      "width": 390,
+      "title": "How VideoQ AI answers work and what to check",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/pricing",
+      "locale": "ja",
+      "width": 1440,
+      "title": "料金プラン",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/pricing",
+      "locale": "ja",
+      "width": 390,
+      "title": "料金プラン",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/pricing",
+      "locale": "en",
+      "width": 1440,
+      "title": "Pricing",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/pricing",
+      "locale": "en",
+      "width": 390,
+      "title": "Pricing",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/terms",
+      "locale": "ja",
+      "width": 1440,
+      "title": "利用規約",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/terms",
+      "locale": "ja",
+      "width": 390,
+      "title": "利用規約",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/terms",
+      "locale": "en",
+      "width": 1440,
+      "title": "Terms of Service",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/terms",
+      "locale": "en",
+      "width": 390,
+      "title": "Terms of Service",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/privacy",
+      "locale": "ja",
+      "width": 1440,
+      "title": "プライバシーポリシー",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/privacy",
+      "locale": "ja",
+      "width": 390,
+      "title": "プライバシーポリシー",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/privacy",
+      "locale": "en",
+      "width": 1440,
+      "title": "Privacy Policy",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/privacy",
+      "locale": "en",
+      "width": 390,
+      "title": "Privacy Policy",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/refund",
+      "locale": "ja",
+      "width": 1440,
+      "title": "返金・解約ポリシー",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/refund",
+      "locale": "ja",
+      "width": 390,
+      "title": "返金・解約ポリシー",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/refund",
+      "locale": "en",
+      "width": 1440,
+      "title": "Refund and Cancellation Policy",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/refund",
+      "locale": "en",
+      "width": 390,
+      "title": "Refund and Cancellation Policy",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/legal",
+      "locale": "ja",
+      "width": 1440,
+      "title": "特定商取引法に基づく表記",
+      "lang": "ja",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/legal",
+      "locale": "ja",
+      "width": 390,
+      "title": "特定商取引法に基づく表記",
+      "lang": "ja",
+      "overflow": 0,
+      "renderFailure": false
+    },
+    {
+      "route": "/legal",
+      "locale": "en",
+      "width": 1440,
+      "title": "Notice under the Specified Commercial Transactions Act",
+      "lang": "en",
+      "overflow": -15,
+      "renderFailure": false
+    },
+    {
+      "route": "/legal",
+      "locale": "en",
+      "width": 390,
+      "title": "Notice under the Specified Commercial Transactions Act",
+      "lang": "en",
+      "overflow": 0,
+      "renderFailure": false
+    }
+  ]
+}

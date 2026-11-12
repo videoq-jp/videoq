@@ -1,0 +1,7 @@
+# Only the exact source-built CPU library packages and explicitly assessed CVEs.
+vulnerability:
+  vex:
+    - apps/inference/whisper/security/sqlite.openvex.json
+    - apps/inference/whisper/security/zlib.openvex.json
+scan:
+  show-suppressed: true

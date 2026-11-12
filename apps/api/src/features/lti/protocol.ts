@@ -12,6 +12,7 @@ export const loginRecord = z.object({
   locale: z.enum(["ja", "en"]).optional(),
 });
 export const sessionRecord = z.object({
+  transport: z.literal("native").optional(),
   registrationId: z.string(), registrationHash: z.string(), deploymentId: z.string(), contextId: z.string(), resourceLinkId: z.string(),
   locale: z.enum(["ja", "en"]).default("en"),
   scopeVideoIds: z.array(z.number().int().positive()).optional(),
@@ -22,7 +23,7 @@ export const sessionRecord = z.object({
 
 // Bound cache size and reuse keys across launches; keys never come from JWT headers.
 const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-function platformKeys(url: string) {
+export function platformKeys(url: string) {
   let keys = keySets.get(url);
   if (!keys) {
     if (keySets.size >= 100) keySets.delete(keySets.keys().next().value!);

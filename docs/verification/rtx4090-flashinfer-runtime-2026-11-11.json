@@ -1,0 +1,38 @@
+{
+  "recordedDate": "2026-11-11",
+  "scope": "Isolated diagnostic Pod on the actual RTX4090; not signed-release or full application acceptance",
+  "passed": true,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "servingUid": 10001,
+  "baseImage": "ghcr.io/videoq-jp/videoq-vllm@sha256:6278374d2e32ebd5f13cd533e44bec19cd2fe7b9b7538817606758dac8b67280",
+  "fixPullRequest": "https://github.com/videoq-jp/videoq/pull/1379",
+  "vllmVersion": "0.32.0",
+  "flashinferVersion": "0.7.0.post1",
+  "cudaJitVersion": "0.7.0.post1+cu130",
+  "jitProviders": [
+    "sm100a",
+    "sm103a",
+    "sm120f",
+    "sm80",
+    "sm89",
+    "sm90a"
+  ],
+  "model": "openai/whisper-large-v3-turbo",
+  "modelRevision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+  "gpuMemoryUtilization": 0.12,
+  "cpuOffloadGb": 0,
+  "fixture": "apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp3",
+  "endpoint": "/v1/audio/transcriptions",
+  "response": {
+    "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
+    "usage": {
+      "type": "duration",
+      "seconds": 11
+    }
+  },
+  "evidenceSha256": "9883ce7f7bc1e91f49e8b686fb8efa004c8849daac98ae7d802a22a465a4cede",
+  "limitations": [
+    "Packages were replaced inside a disposable diagnostic container; production workloads were not patched.",
+    "All three concurrent GPU models, signed replacement release deployment, browser upload/answer/playback, and nightly update/restore acceptance remain outstanding."
+  ]
+}

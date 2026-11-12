@@ -1,0 +1,202 @@
+{
+  "verified_at_jst": "2026-11-11",
+  "source_commit": "a7533911715a77c86dd92a49607b3eed80c499b5",
+  "release_commit": "2f9e90290f1edb1d904903458a592c0b87b1499b",
+  "host": {
+    "ssh_alias": "4090",
+    "ubuntu": "22.04.5 LTS",
+    "gpu": "one RTX 4090 24GB"
+  },
+  "result": "Three independent CUDA inference services resident simultaneously; actual embedding, chat, forced tool-call and timestamped audio transcription passed.",
+  "limits": {
+    "chat_context_tokens": 4096,
+    "chat_max_sequences": 1,
+    "cpu_weight_offload_gb": 0
+  },
+  "unit_tests": {
+    "embedding_server": 13,
+    "helm_chart": 17,
+    "gpu_preflight": 3
+  },
+  "limitations": [
+    "The CUDA embedding image is locally built and digest-pinned; it has no GitHub release attestation.",
+    "This is an inference smoke test, not full VideoQ upload/index/search/UI acceptance.",
+    "No sustained-load or multi-user performance claim is made."
+  ],
+  "runtime": {
+    "timestamp": "2026-11-10T17:42:13Z",
+    "tests": {
+      "embedding": {
+        "pod": "videoq-inference-embedding-6945dd6f46-np756",
+        "image": "docker.io/library/videoq-embedding-cuda@sha256:7795eefd29df025722940079d4013ef341cea33c9dab9ef6493412808c0da71d",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "dimensions": 768,
+        "similarities": [
+          0.9201459564865218,
+          0.6272135225008242
+        ],
+        "query_seconds": 0.723
+      },
+      "whisper": {
+        "pod": "videoq-inference-whisper-6fdbdb478-wfxkb",
+        "image": "ghcr.io/videoq-jp/videoq-vllm@sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "transcript": {
+          "task": "transcribe",
+          "language": "en",
+          "duration": 11.0,
+          "text": "And so, my fellow Americans, Ask not! What your country can do for you, ask what you can do for your country.",
+          "segments": [
+            {
+              "id": 0,
+              "start": 0.0,
+              "end": 2.672,
+              "text": " And so, my fellow Americans,"
+            },
+            {
+              "id": 1,
+              "start": 2.896,
+              "end": 4.816,
+              "text": " Ask not!"
+            },
+            {
+              "id": 2,
+              "start": 5.008,
+              "end": 10.347999999999999,
+              "text": " What your country can do for you, ask what you can do for your country."
+            }
+          ]
+        }
+      },
+      "chat": {
+        "pod": "videoq-inference-chat-98b49d9cf-cl455",
+        "image": "ghcr.io/videoq-jp/videoq-vllm@sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "message": {
+          "role": "assistant",
+          "content": "2です。",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": "Answer 2 in Japanese."
+        },
+        "seconds": 4.522,
+        "usage": {
+          "prompt_tokens": 87,
+          "total_tokens": 106,
+          "completion_tokens": 19,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": {
+            "reasoning_tokens": 6
+          }
+        }
+      }
+    },
+    "gpu": "name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 4090, 24564 MiB, 20523 MiB, 0 %",
+    "gpu_processes": "pid, process_name, used_gpu_memory [MiB]\n29072, VLLM::EngineCore, 3246 MiB\n35163, VLLM::EngineCore, 16254 MiB\n36578, python3, 1004 MiB"
+  },
+  "gpu_preflight": {
+    "host": {
+      "name": "NVIDIA GeForce RTX 4090",
+      "uuid": "GPU-16c3adac-a24d-c561-0c99-25d090ba8b6f",
+      "memory_mib": 24564.0
+    },
+    "logical_cpus": 30,
+    "driver": "580.178.04",
+    "allocated_cuda_checks": {
+      "chat": {
+        "gpu_uuid": "GPU-16c3adac-a24d-c561-0c99-25d090ba8b6f",
+        "device": "NVIDIA GeForce RTX 4090",
+        "cuda": "13.0",
+        "fp16_matmul": "passed",
+        "engine_health": "passed"
+      },
+      "embedding": {
+        "gpu_uuid": "GPU-16c3adac-a24d-c561-0c99-25d090ba8b6f",
+        "device": "NVIDIA GeForce RTX 4090",
+        "cuda": "13.0",
+        "fp16_matmul": "passed",
+        "engine_health": "passed"
+      },
+      "whisper": {
+        "gpu_uuid": "GPU-16c3adac-a24d-c561-0c99-25d090ba8b6f",
+        "device": "NVIDIA GeForce RTX 4090",
+        "cuda": "13.0",
+        "fp16_matmul": "passed",
+        "engine_health": "passed"
+      }
+    },
+    "full_videoq_acceptance": "not established"
+  },
+  "tool_call": {
+    "id": "chatcmpl-bb54508736954122",
+    "object": "chat.completion",
+    "created": 1794332591,
+    "model": "videoq-chat",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": [
+            {
+              "id": "chatcmpl-tool-b9591b9e81703c81",
+              "type": "function",
+              "function": {
+                "name": "search_videos",
+                "arguments": "{\"query\": \"\\u30d0\\u30c3\\u30af\\u30a2\\u30c3\\u30d7 \\u4fdd\\u5b58\\u671f\\u9593\"}"
+              }
+            }
+          ],
+          "reasoning": "Need to search video transcripts for backup retention period. Use function."
+        },
+        "logprobs": null,
+        "finish_reason": "stop",
+        "stop_reason": 200012,
+        "token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.32.0-0d84e006",
+    "usage": {
+      "prompt_tokens": 127,
+      "total_tokens": 168,
+      "completion_tokens": 41,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 21
+      }
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  },
+  "embedding_cuda_packages": {
+    "torch": "2.13.0+cu130",
+    "transformers": "5.19.0",
+    "sentence_transformers": "6.2.0",
+    "cuda": true
+  }
+}

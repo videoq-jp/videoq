@@ -14,7 +14,8 @@ from retire_ai_credentials import API_POLICY, verify_router
 
 USER = 'videoq-workers-api'
 USER_ARN = 'arn:aws:iam::257240362763:user/'+USER
-QUEUE_ARN = 'arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod'
+QUEUE_ARNS = ['arn:aws:sqs:ap-northeast-1:257240362763:'+name for name in
+              ('videoq-worker-prod', 'videoq-worker-search-prod', 'videoq-worker-account-prod')]
 JOURNAL = '/videoq/prod/api-key-rotation'
 REPO = 'videoq-jp/videoq'
 
@@ -55,7 +56,7 @@ def require_permissions(iam):
             value = document.get('Statement', [])
             statements.extend(value if isinstance(value, list) else [value])
     expected = [
-        {'Effect': 'Allow', 'Action': 'sqs:SendMessage', 'Resource': QUEUE_ARN},
+        {'Effect': 'Allow', 'Action': 'sqs:SendMessage', 'Resource': QUEUE_ARNS},
         {'Effect': 'Allow', 'Action': 'sts:GetWebIdentityToken', 'Resource': '*', 'Condition': {
             'ForAllValues:StringEquals': {'sts:IdentityTokenAudience': ['https://openrouter.ai']},
             'StringEquals': {'sts:SigningAlgorithm': 'RS256'},

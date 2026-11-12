@@ -177,7 +177,8 @@ class Lifecycle:
                 files.append('inference-plan.json')
             private_json(destination / 'backup.json', {'version': 1, 'created_at': datetime.now(timezone.utc).isoformat(),
                 'previous': {k: self.state[k] for k in RELEASE_KEYS}, 'target': pending['target'],
-                'pvcs': list(DATA_PVCS), 'files': {name: checksum(destination / name) for name in files}})
+                'pvcs': list(DATA_PVCS),
+                'pvcUids': {v['metadata']['name']: v['metadata'].get('uid') for v in volumes}, 'files': {name: checksum(destination / name) for name in files}})
             verify_backup(destination)
             pending['phase'] = 'backed_up'
             self.save_state()

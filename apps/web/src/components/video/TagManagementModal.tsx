@@ -80,7 +80,7 @@ export function TagManagementModal({ isOpen, onClose }: TagManagementModalProps)
         </DialogHeader>
 
         <DialogBody>
-          <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+          <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('tags.management.description', 'Review existing tags and remove tags you no longer need.')}
           </p>
 
@@ -94,7 +94,7 @@ export function TagManagementModal({ isOpen, onClose }: TagManagementModalProps)
 
           <div className="max-h-[60vh] space-y-4 overflow-y-auto py-2">
             {tags.length === 0 ? (
-              <div className="py-8 text-center text-sm text-solid-gray-600">
+              <div className="py-8 text-center text-std-17N-170 text-solid-gray-600">
                 {t('tags.selector.noTags', 'No tags available')}
               </div>
             ) : (

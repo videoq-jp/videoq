@@ -18,6 +18,7 @@ import {
 import { toUtcIso } from "../shared/datetime";
 import type { Bindings } from "../types/bindings";
 import { lockExternalTaskLease, type ExternalTaskLease } from "./external-task-repository";
+import { nativeCourseExternalAccess } from './course-authority';
 
 export type PendingInvitationInput = {
   email: string;
@@ -75,7 +76,7 @@ export async function createPendingCourseInvitations(
         .select({ ownerEmail: users.email })
         .from(videoCourses)
         .innerJoin(users, eq(users.id, videoCourses.userId))
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, ownerUserId)))
+        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, ownerUserId), nativeCourseExternalAccess()))
         .limit(1)
         .for("update");
       if (ownerRows.length === 0) return { notFound: true } as const;
@@ -386,7 +387,7 @@ export async function getCourseInvitationByTokenHash(
       .from(videoCourseInvitations)
       .innerJoin(videoCourses, eq(videoCourses.id, videoCourseInvitations.courseId))
       .innerJoin(users, eq(users.id, videoCourseInvitations.invitedByUserId))
-      .where(eq(videoCourseInvitations.tokenHash, tokenHash))
+      .where(and(eq(videoCourseInvitations.tokenHash, tokenHash), nativeCourseExternalAccess()))
       .limit(1);
     if (rows.length === 0) return null;
     const row = rows[0];
@@ -417,6 +418,14 @@ export async function acceptCourseInvitation(
 ): Promise<InvitationDecisionResult> {
   return withDb(env, async (db) =>
     db.transaction(async (tx) => {
+      // Lock the course before its invitation, matching creation's lock order.
+      // Check even accepted-token replays: an old native grant cannot reopen
+      // a course that has since become Moodle-controlled.
+      const course = await tx.select({ id: videoCourses.id }).from(videoCourseInvitations)
+        .innerJoin(videoCourses, eq(videoCourses.id, videoCourseInvitations.courseId))
+        .where(and(eq(videoCourseInvitations.tokenHash, tokenHash), nativeCourseExternalAccess()))
+        .limit(1).for('share', { of: videoCourses });
+      if (!course.length) return { notFound: true } as const;
       const invitationRows = await tx
         .select({
           id: videoCourseInvitations.id,
@@ -569,7 +578,7 @@ export async function rotateInvitationTokenForDelivery(
         .from(videoCourseInvitations)
         .innerJoin(videoCourses, eq(videoCourses.id, videoCourseInvitations.courseId))
         .innerJoin(users, eq(users.id, videoCourseInvitations.invitedByUserId))
-        .where(eq(videoCourseInvitations.id, invitationId))
+        .where(and(eq(videoCourseInvitations.id, invitationId), nativeCourseExternalAccess()))
         .limit(1)
         .for("update");
       if (rows.length === 0) return { notFound: true } as const;
@@ -629,6 +638,7 @@ export async function rotatePendingCourseInvitation(
             eq(videoCourseInvitations.id, invitationId),
             eq(videoCourseInvitations.courseId, courseId),
             eq(videoCourses.userId, ownerUserId),
+            nativeCourseExternalAccess(),
           ),
         )
         .limit(1)

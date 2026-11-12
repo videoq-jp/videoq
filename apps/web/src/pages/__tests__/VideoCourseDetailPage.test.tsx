@@ -57,8 +57,8 @@ vi.mock('@/hooks/useTags', () => ({
 }))
 
 vi.mock('@/components/chat/ChatPanel', () => ({
-  ChatPanel: ({ onVideoPlay }: { onVideoPlay?: (id: number, time: string) => void }) => (
-    <div data-testid="chat-panel">Chat Panel<button onClick={() => onVideoPlay?.(2, '00:02:00')}>Play citation</button></div>
+  ChatPanel: ({ onVideoPlay, onComposerFocus }: { onVideoPlay?: (id: number, time: string) => void; onComposerFocus?: () => void }) => (
+    <div data-testid="chat-panel">Chat Panel<button onFocus={onComposerFocus}>Question composer</button><button onClick={() => onVideoPlay?.(2, '00:02:00')}>Play citation</button></div>
   ),
 }))
 
@@ -138,6 +138,51 @@ describe('VideoCourseDetailPage', () => {
       expect(screen.getByTestId('chat-panel')).toBe(chat)
     } finally {
       play.mockRestore()
+    }
+  })
+
+  it.each([390, 1280])('uses composer focus to make room only on phones (%ipx), and reopens citations', async (width) => {
+    vi.stubGlobal('innerWidth', width)
+    try {
+      const { container } = render(<VideoCourseDetailPage />)
+      await screen.findByRole('heading', { level: 1, name: 'Test Course' })
+      const originalVideo = container.querySelector('video')!
+      originalVideo.currentTime = 37
+      fireEvent.focus(screen.getByRole('button', { name: 'Question composer' }))
+      const toggle = screen.getByRole('button', { name: width < 1024 ? 'videos.shared.showPlayer' : 'videos.shared.hidePlayer' })
+      expect(toggle).toHaveAttribute('aria-expanded', String(width >= 1024))
+      expect(container.querySelector('video')).toBe(originalVideo)
+      expect(originalVideo.currentTime).toBe(37)
+      fireEvent.click(screen.getByRole('button', { name: 'Play citation' }))
+      expect(screen.getByRole('button', { name: 'videos.shared.hidePlayer' })).toHaveAttribute('aria-expanded', 'true')
+      expect(new URL(container.querySelector('video')!.src).pathname).toBe('/api/video2.mp4')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('opens a video referenced in course Q&A and reopens the mobile player', async () => {
+    vi.stubGlobal('innerWidth', 390)
+    const question = {
+      id: '11111111-1111-4111-8111-111111111111', title: 'About the next lecture', body: 'Please explain the next example.',
+      videoId: 2, videoTitle: 'Video 2', author: { name: 'Learner', instructor: false },
+      createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-01T09:00:00Z', featured: false,
+      replyCount: 0, votes: 0, voted: false, canEdit: false, canDelete: false,
+    }
+    globalThis.__setTrpcHandler('qa.list', async () => ({ items: [question], total: 1, canPost: true, canModerate: false }))
+    globalThis.__setTrpcHandler('qa.get', async () => ({ question, replies: [], replyTotal: 0, canPost: true, canModerate: false }))
+    try {
+      const { container } = render(<VideoCourseDetailPage />)
+      await screen.findByRole('heading', { level: 1, name: 'Test Course' })
+      fireEvent.click(screen.getByRole('button', { name: 'videos.shared.hidePlayer' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'videos.shared.tabs.details' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'videos.shared.tabs.qa' }))
+      fireEvent.click(await screen.findByRole('button', { name: question.title }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Video 2' }))
+      expect(screen.getByRole('button', { name: 'videos.shared.hidePlayer' })).toHaveAttribute('aria-expanded', 'true')
+      expect(new URL(container.querySelector('video')!.src).pathname).toBe('/api/video2.mp4')
+    } finally {
+      vi.unstubAllGlobals()
     }
   })
 
@@ -298,12 +343,12 @@ describe('VideoCourseDetailPage', () => {
     expect(addVideos).toHaveBeenLastCalledWith({ courseId: 1, videoIds: [3] })
   })
 
-  it('uses a compact viewer header with the existing logo and a course-list link', async () => {
+  it('uses a compact viewer header with the text wordmark and a course-list link', async () => {
     render(<VideoCourseDetailPage />)
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'VideoQ' })).toHaveAttribute('href', '/videos/courses')
-      expect(screen.getByRole('link', { name: 'VideoQ' }).querySelector('img')).toHaveAttribute('src', '/logo192.png')
+      expect(screen.getByRole('link', { name: 'VideoQ' }).querySelector('img')).toBeNull()
       expect(screen.getAllByText('Test Course').length).toBeGreaterThan(0)
     })
   })

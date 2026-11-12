@@ -38,6 +38,7 @@ Choose the environment you want to run:
 | Goal | Start here |
 |---|---|
 | Try VideoQ without installing it | [Hosted demo](https://videoq.jp/en/try) |
+| Prepare a lab RTX 4090 with Ansible and manage applications with Argo CD | [Lab GitOps setup (in development)](docs/guides/lab-gitops.md) |
 | Evaluate on-prem on one Linux server | [Single-server installation](docs/guides/on-premises-single-server.md) |
 | Use an existing Kubernetes cluster and site-managed services | [Kubernetes installation](docs/guides/on-premises.md) |
 | Edit the application on your computer | [Local development setup](docs/getting-started/local-setup.md) |
@@ -64,6 +65,14 @@ For development, follow the [local setup guide](docs/getting-started/local-setup
 from environment configuration through account activation. The root
 `docker-compose.yml` builds a Wrangler development stack; its signup and account
 promotion flow differs from the production on-prem installer.
+
+### One RTX 4090: lab GitOps deployment
+
+Use [Ansible for initial preparation and Argo CD for application deployment](docs/guides/lab-gitops.md).
+Keep lab configuration in an internal Forgejo/GitLab repository and enable the
+[verified automatic release follower](docs/guides/lab-auto-update.md) after initial acceptance.
+The GPU profile shares one24GB RTX4090 between GPT-OSS20B, EmbeddingGemma2 and Whisper,
+using unchanged digest-pinned upstream vLLM images. No engine build is needed.
 
 ### Optional: reduce costs with local AI
 

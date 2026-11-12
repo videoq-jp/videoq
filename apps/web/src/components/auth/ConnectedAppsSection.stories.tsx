@@ -7,6 +7,8 @@ import { failure, pending, restPost, success, trpcHandler, trpcQuery } from '../
 import { ConnectedAppsSection } from './ConnectedAppsSection';
 
 interface AppFixture {
+  moodle?: boolean;
+  moodleUrl?: string;
   consents?: typeof consents;
   names?: Record<string, string>;
   load?: 'pending' | 'error';
@@ -35,6 +37,9 @@ const meta = {
     revokeRequest.mockClear();
     listRequest.mockClear();
     msw.use(
+      http.get('/api/lms/pairing', () => fixture.moodle
+        ? HttpResponse.json({ connections: [{ id: 'school', moodleUrl: fixture.moodleUrl ?? 'https://school.example', active: true }] })
+        : new HttpResponse(null, { status: 404 })),
       trpcHandler([trpcQuery('account.connectedApps', () => {
         listRequest();
         if (fixture.load) return fixture.load === 'pending' ? pending() : failure();
@@ -215,5 +220,61 @@ export const KeyboardRevokeLastApp: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/現在連携中のアプリはありません。|No apps are currently connected./)).toBeVisible();
     await expect(canvas.getByText(successMessage).closest('[tabindex="-1"]')).toHaveFocus();
+  },
+};
+
+export const MoodleConnected: Story = {
+  args: { headingLevel: 'h3' },
+  parameters: { connectedApps: { consents: [], moodle: true } satisfies AppFixture },
+  async play({ canvasElement }) {
+    const canvas = within(canvasElement);
+    const apps = within(canvas.getByRole('region', { name: /連携アプリ|Connected Apps/ }));
+    await expect(await apps.findByText('https://school.example', { exact: false })).toBeVisible();
+    await expect(apps.getByRole('heading', { name: 'Moodle', level: 4 })).toBeVisible();
+    await expect(apps.queryByText(/現在連携中のアプリはありません|No connected apps/i)).not.toBeInTheDocument();
+  },
+};
+
+export const MoodleAndClaude: Story = {
+  args: { headingLevel: 'h3' },
+  parameters: { connectedApps: {
+    moodle: true,
+    moodleUrl: 'https://school-with-a-long-name.example.edu/learning/moodle',
+    consents: [consents[0]],
+    names: { [consents[0].client_id]: 'Claude' },
+  } satisfies AppFixture },
+  async play({ canvasElement, userEvent }) {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Moodle', level: 4 })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Claude', level: 4 })).toBeVisible();
+    const cards = canvas.getAllByRole('article');
+    await expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      await userEvent.click(within(card).getByText(/連携の詳細|Connection details/));
+      await expect(card.querySelector('details')).toHaveAttribute('open');
+      const button = within(card).getByRole('button', { name: /連携を解除|Disconnect/ });
+      await userEvent.click(button);
+      const dialog = canvas.getByRole('dialog');
+      await expect(within(dialog).getByRole('button', { name: /^連携を解除$|^Disconnect$/ })).toBeVisible();
+      await userEvent.click(within(dialog).getByRole('button', { name: /キャンセル|Cancel/ }));
+      await expect(button).toHaveFocus();
+    }
+    await expect(canvas.getByRole('link', { name: /Moodleの設定方法|Set up Moodle/ })).toBeVisible();
+    await expect(canvas.getByText(consents[0].scope)).toBeVisible();
+  },
+};
+export const MoodleAndClaudeMobile: Story = {
+  ...MoodleAndClaude,
+  globals: { viewport: { value: 'mobile', isRotated: false } },
+  async play(context) {
+    await MoodleAndClaude.play?.(context);
+    const canvas = within(context.canvasElement);
+    const width = context.canvasElement.ownerDocument.documentElement.clientWidth;
+    for (const card of canvas.getAllByRole('article')) {
+      await expect(card.scrollWidth).toBeLessThanOrEqual(width);
+      const bounds = within(card).getByRole('button', { name: /連携を解除|Disconnect/ }).getBoundingClientRect();
+      await expect(bounds.left).toBeGreaterThanOrEqual(0);
+      await expect(bounds.right).toBeLessThanOrEqual(width);
+    }
   },
 };

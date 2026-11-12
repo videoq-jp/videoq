@@ -31,7 +31,7 @@ export function AnalyticsDashboard({
 
   return (
     <div className="space-y-6">
-      <div className="text-std-16N-170 text-solid-gray-700">
+      <div className="text-std-17N-170 text-solid-gray-700">
         <span className="font-medium">
           {t('dashboard.totalQuestions', { count: data.summary.total_questions })}
         </span>

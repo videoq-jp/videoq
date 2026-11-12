@@ -118,7 +118,7 @@ class LocalAI:
         node = next(n for n in nodes if n['metadata']['name'] == 'k3d-' + self.cluster + '-server-0')
         total = {r: quantity(node['status']['allocatable'].get(r, 0), r) for r in ('cpu', 'memory', 'nvidia.com/gpu')}
         if self.ai == 'local-gpu' and node['metadata']['labels'].get('kubernetes.io/arch') != 'amd64':
-            raise ValueError('署名済み NVIDIA 推論イメージは amd64 専用です')
+            raise ValueError('digest 固定の上流 NVIDIA 推論イメージは amd64 専用です')
         required = {r: Decimal(0) for r in total}
         for obj in self.ai_plan + getattr(self, 'ai_app_plan', []) + getattr(self, 'ai_infra_plan', []):
             if obj['kind'] == 'Deployment':

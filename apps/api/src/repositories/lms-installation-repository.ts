@@ -1,8 +1,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { withDb } from "../db/pool";
-import { lmsInstallations, ltiCredentials, users } from "../db/schema";
-import { newSyncToken, provisionInstallationSchema, syncTokenHash, type ProvisionInstallation } from "../features/lms/installation";
+import { lmsInstallations, users } from "../db/schema";
+import { newSyncToken, provisionInstallationSchema, provisionServiceInstallationSchema, syncTokenHash, type ProvisionInstallation, type ProvisionServiceInstallation } from "../features/lms/installation";
 import type { Bindings } from "../types/bindings";
+import { revokeMoodlePairingPointer } from '../features/lms/providers/moodle/lifecycle';
 
 /** The same active-account policy is used for synchronization and LTI access. */
 export function activeLmsOwner() {
@@ -15,13 +16,24 @@ export async function provisionLmsInstallation(env: Bindings, input: ProvisionIn
   const registration = provisionInstallationSchema.parse(input);
   const token = newSyncToken();
   const hash = (await syncTokenHash(token))!;
-  return withDb(env, async db => db.transaction(async tx => {
+  await insertInstallation(env, { ...registration, syncTokenHash: hash });
+  return { installationId: registration.id, token };
+}
+
+/** Registered connector service: its own JWKS and OAuth endpoints, no unused push credential. */
+export async function provisionLmsServiceInstallation(env: Bindings, input: ProvisionServiceInstallation) {
+  const registration = provisionServiceInstallationSchema.parse(input);
+  await insertInstallation(env, { ...registration, syncTokenHash: null });
+  return { installationId: registration.id, mode: 'service' as const };
+}
+
+async function insertInstallation(env: Bindings, registration: typeof lmsInstallations.$inferInsert) {
+  await withDb(env, async db => db.transaction(async tx => {
     const [owner] = await tx.select({ id: users.id }).from(users)
       .where(and(eq(users.id, registration.ownerUserId), activeLmsOwner()))
       .for("update");
     if (!owner) throw new Error("Active VideoQ account not found");
-    await tx.insert(lmsInstallations).values({ ...registration, syncTokenHash: hash });
-    return { installationId: registration.id, token };
+    await tx.insert(lmsInstallations).values(registration);
   }));
 }
 
@@ -66,13 +78,7 @@ export async function disconnectLmsInstallation(env: Bindings, ownerUserId: stri
     const [row] = await tx.update(lmsInstallations).set({ active: false })
       .where(and(eq(lmsInstallations.id, installationId), eq(lmsInstallations.ownerUserId, ownerUserId)))
       .returning({ id: lmsInstallations.id, issuer: lmsInstallations.issuer });
-    // Revoke the owner pointer rather than locking a code row. Exchange locks
-    // code -> owner, so deleting the code here (owner -> code) could deadlock.
-    if (row) await tx.delete(ltiCredentials).where(and(eq(ltiCredentials.kind, "moodle-pairing"),
-      sql`${ltiCredentials.payload}->>'codeHash' IN (
-        SELECT id FROM ${ltiCredentials} WHERE kind = 'moodle-pairing-code'
-          AND payload->>'ownerUserId' = ${ownerUserId} AND payload->>'moodleUrl' = ${row.issuer}
-      )`));
+    if (row) await revokeMoodlePairingPointer(tx, ownerUserId, row.issuer);
     return Boolean(row);
   }));
 }

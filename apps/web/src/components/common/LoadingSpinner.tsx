@@ -19,7 +19,7 @@ export function LoadingSpinner({ message, fullScreen = false }: LoadingSpinnerPr
       : 'flex items-center justify-center py-8'}>
       <ProgressIndicator type="stacked" aria-label={label}>
         <ProgressIndicatorSpinner />
-        <span className="text-center text-std-16N-170 text-solid-gray-600">
+        <span className="text-center text-std-17N-170 text-solid-gray-600">
           {label}
         </span>
       </ProgressIndicator>

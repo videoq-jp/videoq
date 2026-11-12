@@ -1,9 +1,15 @@
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Sid": "SendVideoqJobs",
-    "Effect": "Allow",
-    "Action": "sqs:SendMessage",
-    "Resource": "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod"
-  }]
+  "Statement": [
+    {
+      "Sid": "SendVideoqJobs",
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": [
+        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod",
+        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-search-prod",
+        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-account-prod"
+      ]
+    }
+  ]
 }

@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-12",
+  "status": "passed",
+  "scope": "Three co-resident CUDA models on one RTX 4090; direct component API acceptance, not full VideoQ or Argo CD application acceptance",
+  "recipe_source": "8b8df1c0e2575b09157577bbc6a44e5fb8cd3b41",
+  "gateway_release": {
+    "source": "68b53166faf8245d1ff9520140899d4c310f0459",
+    "run": 43148506223,
+    "attempt": 1,
+    "attestation_verification": "passed using onprem-release.py verify; completed workflow success confirmed"
+  },
+  "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 20772 MiB, 19 %",
+  "models": {
+    "embedding": {
+      "dimensions": 768,
+      "norms": [
+        1.000000045525015,
+        1.0000000167914096,
+        1.0000000010799226
+      ],
+      "similarity": [
+        0.8336477066576135,
+        0.5381195626992298
+      ]
+    },
+    "whisper": {
+      "task": "transcribe",
+      "language": "ja",
+      "duration": 10.44,
+      "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。",
+      "segments": [
+        {
+          "id": 0,
+          "start": 1.488,
+          "end": 8.188,
+          "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。"
+        }
+      ]
+    },
+    "chat": {
+      "context_length": 16384,
+      "answer": "Database backups are retained for seven days. [1]"
+    }
+  },
+  "pods": [
+    {
+      "component": "chat",
+      "containers": [
+        {
+          "name": "chat",
+          "ready": true,
+          "restarts": 0
+        }
+      ],
+      "images": [
+        "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3"
+      ]
+    },
+    {
+      "component": "embedding",
+      "containers": [
+        {
+          "name": "embedding",
+          "ready": true,
+          "restarts": 0
+        }
+      ],
+      "images": [
+        "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3"
+      ]
+    },
+    {
+      "component": "whisper",
+      "containers": [
+        {
+          "name": "engine",
+          "ready": true,
+          "restarts": 0
+        },
+        {
+          "name": "whisper",
+          "ready": true,
+          "restarts": 0
+        }
+      ],
+      "images": [
+        "ghcr.io/videoq-jp/videoq-transcription-gateway@sha256:88a0ab1f377e6be153f71214508336b2b56de7501efcc1964bbd4e66c368671c",
+        "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3"
+      ]
+    }
+  ],
+  "limits": [
+    "Small component requests only; no saturation or maximum context memory test",
+    "No VideoQ UI video ingestion, indexing, cited playback or data restore acceptance",
+    "Candidate source chart applied with Helm; production GitOps promotion still pending"
+  ]
+}

@@ -4,8 +4,12 @@ const {relevant, selected} = require('./db-maintenance-cd.cjs');
 test('deployment includes runtime, locked dependencies, operations fixtures and orchestration changes', () => {
   for (const path of ['infra/db-maintenance/runtime/broker.cjs','infra/db-maintenance/runtime/package-lock.json',
     'infra/db-maintenance/state-machine.cjs','.github/scripts/neon-admin.cjs',
+    'infra/db-maintenance/build_bundle.py','infra/db-maintenance/deploy.py','infra/db-maintenance/fetch_migration.py',
+    '.github/operations-tools/package-lock.json','.github/operations-tools/Dockerfile',
     '.github/operations-tools/fixtures/smoke.mp4','apps/demo-video/public/lessons/math.mp4']) assert.equal(relevant(path),true,path);
-  for (const path of ['apps/web/src/App.tsx','infra/db-maintenance/README.md','docs/guides/testing.md']) assert.equal(relevant(path),false,path);
+  for (const path of ['apps/web/src/App.tsx','infra/db-maintenance/README.md','docs/guides/testing.md',
+    'infra/db-maintenance/terraform/main.tf','infra/db-maintenance/terraform/tests/boundaries.tftest.hcl',
+    '.github/operations-tools/fixtures/README.md']) assert.equal(relevant(path),false,path);
 });
 test('compare from the last successful CD rather than a failed or superseded commit', async () => {
   const previous = 'a'.repeat(40), sha = 'b'.repeat(40);

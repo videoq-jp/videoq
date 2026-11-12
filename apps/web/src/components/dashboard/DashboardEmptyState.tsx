@@ -10,7 +10,7 @@ export function DashboardEmptyState() {
       <h3 className="mb-1 text-std-18B-160 text-solid-gray-800">
         {t('dashboard.empty.title')}
       </h3>
-      <p className="max-w-sm text-std-16N-170 text-solid-gray-600">
+      <p className="max-w-sm text-std-17N-170 text-solid-gray-600">
         {t('dashboard.empty.description')}
       </p>
     </div>

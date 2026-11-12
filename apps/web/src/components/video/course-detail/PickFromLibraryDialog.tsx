@@ -131,7 +131,7 @@ export function PickFromLibraryDialog({
           </DialogHeader>
           <DialogScrollArea>
             <DialogBody>
-              <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+              <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                 {t('videos.courseDetail.pickFromLibraryDescription')}
               </p>
               {addError && <div ref={errorRef} tabIndex={-1} className="mb-4 focus-visible:outline-4 focus-visible:outline-black"><ErrorMessage message={addError} /></div>}
@@ -200,7 +200,7 @@ export function PickFromLibraryDialog({
                   <div className="flex justify-center py-8"><LoadingSpinner /></div>
                 ) : !videosError && availableVideos.length === 0 && !hasNextPage ? (
                   <div className="flex flex-col items-center gap-3 py-8 text-center">
-                    <p className="text-std-16N-170 text-solid-gray-600">
+                    <p className="text-std-17N-170 text-solid-gray-600">
                       {t('videos.courseDetail.noAvailableVideos')}
                     </p>
                     <p className="text-dns-14N-130 text-solid-gray-600">
@@ -225,7 +225,7 @@ export function PickFromLibraryDialog({
                           }}
                         />
                         <Label htmlFor={`video-${video.id}`} className="min-w-0 flex-1 cursor-pointer [overflow-wrap:anywhere]">
-                          <div className="text-std-16B-170 text-solid-gray-800">{video.title}</div>
+                          <div className="text-std-17B-170 text-solid-gray-800">{video.title}</div>
                           <div className="text-dns-14N-130 text-solid-gray-600">{video.description || t('common.messages.noDescription')}</div>
                         </Label>
                       </div>

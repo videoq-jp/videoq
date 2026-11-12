@@ -1,0 +1,8 @@
+- name: Prepare the dedicated lab GPU host and bootstrap GitOps
+  hosts: videoq
+  become: true
+  serial: 1
+  vars_files:
+    - pins.json
+  roles:
+    - lab

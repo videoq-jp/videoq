@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AuthPageIntro } from '@/components/layout/AuthPageIntro';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { Link, useLocale } from '@/lib/i18n';
@@ -30,7 +31,8 @@ export default function SignupCompletePage({ method }: { method: 'google' | 'ema
 
   if (callbackFailed || (!session.isPending && (session.error || !userId || !verificationReady))) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <AuthPageIntro badge={t('auth.verifyEmail.badge')} title={t('auth.verifyEmail.title')} />
         <ErrorMessage message={t(method === 'google' ? 'auth.login.oauthCallbackFailed' : 'auth.verifyEmail.error')} />
         <Link href="/login">{t('auth.verifyEmail.backToLogin')}</Link>
       </div>

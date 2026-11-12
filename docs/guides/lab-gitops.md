@@ -1,0 +1,312 @@
+# 研究室の RTX 4090 を Ansible と Argo CD で管理する
+
+初回の OS・GPU・K3s・Argo CD は Ansible、アプリの配置と更新は Argo CD に分担する。
+Argo CD は研究室内の K3s に置き、研究室内の Forgejo/GitLab から設定を取得する。
+GitHub の公開正式リリースへの追従は、ホスト側の[自動更新サービス](lab-auto-update.md)が担当する。
+GitHub Actions から研究室への SSH、Webhook の受信口、外部公開した管理画面は必要ない。
+
+2026-11-12の検証では、NVIDIA ドライバー導入済み・K3s 未導入の Vast.ai VM と RTX 4090 一枚で、Ansible の
+初回導入・再実行（変更0件）、GitHub App による非公開構成の取得と Argo CD の同期、
+実3モデルの同居、日英動画の文字起こし・索引・引用付き回答、画面からの圧縮・アップロードと引用時刻の再生、
+4つのデータ領域のバックアップ・復旧後の再試験まで確認した。
+[検証記録](../verification/rtx4090-production-acceptance-2026-11-12.json)には対象リリースと
+試験範囲、初回取得中に必要になった修正を記載している。ドライバー未導入からの導入は未検証。
+既存のインストーラーによる導入済み環境を無条件に引き継ぐものではない。
+
+
+2026-11-13にはVast.aiのRTX 4090一枚で、Forgejo・Argo CD・systemd timerによる正式リリースへの自動更新、更新前データの保持、4領域のcold restore後の実API・画面操作を確認した。[実機検証記録](../verification/rtx4090-forgejo-auto-update-acceptance-2026-11-13.json)に対象版と範囲を記載する。未完了journalの拒否は合成状態で確認しており、実プロセス強制終了や破壊的migration失敗の実機試験ではない。更新中は書き込みを止めてモデルPodを再作成し、今回の更新には約8分を要した。研究室の実機、負荷試験、別ホストへの完全オフライン復元は未検証。
+
+## リポジトリの分担
+
+| 保存先 | 内容 |
+|---|---|
+| 公開 `videoq-jp/videoq` | アプリ、Helm、Ansible、配布・検証コード |
+| 非公開の構成リポジトリ | ホストごとの採用バージョン、LAN向け設定、Argo CD Application |
+| ホスト内 `/var/lib/videoq-bootstrap` | 暗号化した初期認証情報の復旧用コピー（rootのみ読取） |
+| Ansible Vault | 認証情報の暗号鍵、構成リポジトリ用のSSH鍵と確認済みホスト鍵 |
+
+構成リポジトリは研究室内の Forgejo/GitLab に非公開で用意する。接続先や所有者はコードに固定しない。
+公開アプリの配布元と、研究室の設定の保存先は別に管理する。将来のサービスは `clusters/lab/apps/` に
+別 Application として追加し、必要な namespace と AppProject の権限を管理者が明示的に追加する。
+動画、DB、パスワード、秘密鍵は構成リポジトリにも入れない。
+
+## 1. 検証済みリリースから構成変更を作る
+
+管理者の PC で Python 3.12 以降、Git、Helm を用意する。専用 venv を使う。
+
+```bash
+python3 -m venv /secure/videoq-operator
+/secure/videoq-operator/bin/pip install -r infra/ansible/requirements.txt
+```
+
+公開された成功済み On-prem Release の `source-sha`、`run-id`、`run-attempt` を選び、
+そのソースを取得する。`main` の最新コミットが公開済みリリースとは限らない。
+既存の公開配布物の取得・署名検証を使う。
+
+```bash
+VIDEOQ_VERIFY_PYTHON=/secure/videoq-operator/bin/python \
+  /secure/videoq-operator/bin/python scripts/onprem/public_release.py \
+  --source-sha SOURCE_SHA --run-id RUN_ID --run-attempt 1 \
+  --directory /secure/videoq-release
+
+/secure/videoq-operator/bin/python scripts/gitops/promote.py \
+  --release-directory /secure/videoq-release \
+  --source-sha SOURCE_SHA --run-id RUN_ID --run-attempt 1 \
+  --repository ssh://git@forgejo.example.com:2222/lab/config.git \
+  --public-url https://192.168.1.50 --listen-ip 192.168.1.50 \
+  --storage-gib 40 --output /secure/videoq-lab-config
+```
+
+`SOURCE_SHA` と `RUN_ID` は実際の配布物の値に置き換える。コンパイラは現在の配布スキーマを検査し、
+main の成功実行、Sigstore 署名・透明性ログ、ソース、チャートと各イメージの digest を検証する。
+インフラ設定を生成するソースファイルも対象リリースと一致させる。検証に失敗した場合は出力しない。
+サーバーでのビルドや、その場での未固定 `helm dependency update` は行わない。
+
+採用する署名付き配布物一式は、検証後に管理者側でも保管する。GitHub の正式リリースは最新2世代へ
+整理される。既存の配置は構成リポジトリの生成済みリソースと研究室内に保存したイメージを使って起動でき、
+保管した配布物は採用時の検証記録とチャートの再確認に使える。
+
+生成結果は研究室内の構成リポジトリで確認する。このコマンドはpush・デプロイを行わない。
+アプリ本体のGitHubリポジトリへの書き込みやPR、採用版の公開登録は不要。
+初回同期の前に、下記の手順で署名検証済みのアプリイメージを研究室内へ保存する。
+
+Ansibleは、ホストの`127.0.0.1:5000`だけで待ち受ける永続OCIレジストリを準備し、
+K3sのGHCR取得先にこのミラーを追加する。公開用のポートは開かない。
+イメージの参照とdigestは署名付き配布物の値を保ち、ミラーへ同一のOCIグラフを保存する。
+Dockerビルド、タグの再解決、署名検証の省略は行わない。
+
+配置設定を生成し、Ansibleの初回準備を完了した後、管理PCから対象サーバーへコピーする。
+以下の`lab4090`はsudo可能なユーザーで接続するSSH設定名に置き換える。root接続の場合は最後の`sudo`を省略できる。
+
+```bash
+ssh lab4090 'umask 077; mkdir -p videoq-initial-config'
+scp -r /secure/videoq-lab-config/clusters/lab/. lab4090:videoq-initial-config/
+ssh -t lab4090 'sudo python3 /usr/local/lib/videoq-lab/image_store.py --site-directory "$HOME/videoq-initial-config"'
+```
+
+4つのアプリイメージすべての保存とdigest・全グラフの検査が成功してから、
+構成を研究室内Gitへpushし、Argo CDで同期する。コピーに失敗した場合は同期しない。
+初回の取得にはGitHub/GHCRへの外向き接続が必要だが、GitHubアカウント・書込トークンは不要。
+
+```text
+clusters/lab/
+  apps/gpu.json          # GPU plugin の Application
+  apps/videoq.json       # VideoQ 一式の Application
+  gpu/resources.json    # digest 固定の NVIDIA plugin と3共有スロット設定
+  videoq/resources.json # DB、ストレージ、キュー、推論、アプリ
+  release-lock.json     # 検証した配布元と生成ファイルのハッシュ
+```
+
+初回構成と管理者の変更は PR で確認する。自動更新を有効にする場合は、更新専用の鍵が対象branchへ
+通常のpushをできるようにする。PR必須ルールを使う場合も、その更新用の権限だけを限定して許可する。
+Argo CD は読み取り専用の鍵を使い、Gitの構成を管理者の信頼済み設定として扱う。署名検証は
+構成への昇格時に行い、Argo CD が独自に
+すべてのコンテナの Sigstore 署名を検査するという意味ではない。
+
+## 2. Ansible で初回準備する
+
+Ubuntu 22.04/24.04 amd64、RTX 4090 1枚、十分な空きディスクを持つ専用ホストを用意する。
+LAN IP、DNS/DHCP予約、SSHホスト鍵、sudo権限は管理者が事前に確認する。
+
+```bash
+cd infra/ansible
+cp inventory.example.yml inventory.local.yml
+# inventory.local.yml の SSH 接続先、LAN URL、構成リポジトリを編集
+/secure/videoq-operator/bin/ansible-playbook -i inventory.local.yml site.yml --ask-become-pass
+```
+
+正常な NVIDIA ドライバーがある場合は保持し、580.65.06 以降か検査する。
+GPU ドライバー関連パッケージは unattended-upgrades の対象から外す。他の自動セキュリティ更新は
+維持する。ドライバーのライブラリだけが更新されると、ロード済みカーネルモジュールと食い違い、
+動いていた GPU コンテナも再起動できなくなるため。ドライバーの修正・セキュリティ更新は
+管理者が停止時間を確保して APT で適用し、必要な再起動後に `nvidia-smi` と実モデルを確認する。
+導入前から実行中の自動更新は中断せず、APT の完了を待つ。既にバージョン不一致がある場合は
+更新完了後に専用ホストを再起動してから Ansible を再実行する。
+未導入なら inventory に `videoq_install_driver: true` と `videoq_allow_reboot: true` を指定する。
+Ubuntu のドライバーパッケージを導入して1回再起動し、再接続する。既に導入済みなのに GPU が
+利用できない場合は再起動を繰り返さず停止する。
+
+K3s・Argo CD の上流ファイルは `pins.json` のバージョン・SHA-256で固定する。
+Argo CD と NVIDIA plugin の実行イメージも Linux amd64 の digest に固定する。
+NVIDIA Container Toolkit は署名検証される公式 APT リポジトリから指定バージョンを取得する。
+K3s の kubeconfig は root 専用とし、Traefik と ServiceLB は初期導入しない。
+Argo CD の API、DB、ストレージ、推論サービスは ClusterIP のままにする。
+VideoQ の HTTPS だけを指定したホストの LAN IPv4 と443番に割り当てる。
+
+Forgejo/GitLab に読み取り専用の SSH deploy key を登録する。Ansible Vault に以下を保存する。
+
+- `videoq_gitops_ssh_private_key`: Argo CD 用の読取専用秘密鍵
+- `videoq_gitops_known_hosts`: 管理者が確認した Git サーバーの SSH ホスト鍵（known_hosts形式）
+- `videoq_credentials_encryption_key`: Fernet の32バイト鍵をURL-safe Base64にした44文字の値
+
+Git URL は `ssh://git@forgejo.example.com:2222/lab/config.git` などとし、非標準ポートはURLに含める。
+Ansible は自動更新が無効の初回でもSSHホスト鍵を登録し、既存のホスト鍵を保持する。
+鍵がrepo-serverのファイルへ反映され、構成の取得エラーが解消することを確認してから同期する。
+`videoq_update_enabled` は初期値の `false` のままでよい。更新用の別の書込鍵と有効化手順は
+[自動更新](lab-auto-update.md)を使い、初回の実モデル・画面操作の受け入れ後に進める。
+
+暗号鍵は管理者の PC で cryptography の `Fernet.generate_key()` から生成し、Vault に保管する。
+playbook はホストの `/etc/videoq-bootstrap/credentials.key` に root 専用で配置し、
+`/var/lib/videoq-bootstrap/credentials.enc` を暗号化する。暗号鍵とバックアップは分けて保管し、
+既存の暗号鍵と異なる場合は上書きしない。
+
+```bash
+ansible-vault create vault.local.yml
+ansible-playbook site.yml -e @vault.local.yml --ask-vault-pass --ask-become-pass
+```
+
+秘密値を引数の `-e key=...` や平文の inventory に書かない。登録先は Argo CD の repository Secret とホストの root 専用暗号鍵。
+SSHホスト鍵とHTTPS証明書の検証を有効にする。GHCR の公開アプリイメージに GitHub ログインは不要。
+
+既存の GitHub 構成リポジトリを使う場合は、読取専用の GitHub App も選べる。
+Contents/Metadata は read、対象は構成リポジトリ1つ、Webhook は無効とする。
+`videoq_github_app_id`、`videoq_github_app_installation_id`、`videoq_github_app_private_key` を
+Vault で渡し、Git URL は HTTPS にする。App と SSH key は同時に設定しない。
+研究室内のForgejoを使う構成ではGitHub Appは不要。
+
+## 3. 管理者が同期する
+
+管理画面は必要時だけ開く。管理者の PC から SSH トンネルを作り、ホスト側の
+`kubectl port-forward` は loopback のみに bind する。
+
+```bash
+# サーバー上（SSH接続中の別端末で保持）
+sudo k3s kubectl -n argocd port-forward svc/argocd-server 8080:443 --address 127.0.0.1
+
+# 管理者のPC
+ssh -N -L 8080:127.0.0.1:8080 ubuntu@192.168.1.50
+```
+
+`https://localhost:8080` を開く。初期管理者パスワードはサーバー上で
+`sudo k3s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d`
+から確認し、ログへ転記せず初回ログイン後に変更する。
+
+1. `lab` を同期し、子 Application を登録する。
+2. `lab-gpu` を同期し、`nvidia.com/gpu.shared` が3スロットになることを確認する。
+3. `lab-videoq` の差分を確認して同期する。
+
+初期状態では全 Application の自動同期と自動 prune を無効にする。
+DB・永続領域（wave 0）→モデルとストレージ初期化（wave 10）→DB migration（wave 20）
+→API/Web/worker（wave 30）の順に同期する。Helm の pre-install migration はそのまま使うと
+初回DB作成より先に実行されるため、明示的な Argo CD Sync hook に変換している。
+モデル内の起動順序は既存の Embedding → Whisper → Chat を維持する。
+モデル取得や init container の待機も Deployment の進捗期限に含まれるため、推論チャートの
+`rolloutDeadlineSeconds` は初回取得を含めて2時間に設定している。標準の10分では、正常に
+ダウンロードが続いていても Argo CD の同期が失敗する。低速回線で変更する場合は、依存モデルの
+待機と startup probe に加えて転送時間も確保する。既に期限切れになった同期は、原因を解決し
+モデルが正常起動してから同じ構成を再同期する。PVC は削除しない。
+モデル取得用 init container は一時的に最大4GiBのメモリーを使い、同時取得を2ファイルに制限する。
+大きなチェックポイントの復元処理は1GiBの上限を超えることがある。推論サーバー本体の
+CPU・メモリー・VRAMの上限とは別の、初回取得用の設定になる。
+
+同期が成功し `videoq-api` が Ready になったら、サーバー上の operator CLI で
+VideoQ の初回管理者を作成する。次のユーザー名とメールアドレスは運用者のものへ置き換える。
+
+```bash
+umask 077
+sudo k3s kubectl -n videoq exec deployment/videoq-api -- \
+  node dist/provision-user.mjs --admin --username labadmin --email YOUR_EMAIL \
+  > "$HOME/videoq-admin-setup.json"
+```
+
+出力の `activation_url` は短時間有効なパスワード設定リンクで、認証情報として扱う。
+Git・PR・共有ログには保存しない。同じアカウントを再作成せず、リンクが失効した場合は
+保存した `id` を `node dist/provision-user.mjs --reset USER_ID` に渡して再発行する。
+パスワード設定が完了したらリンクを含むファイルを削除する。
+
+内部 CA の公開証明書は、認証済み SSH 接続を通して取得する。
+
+```bash
+sudo k3s kubectl -n videoq exec deployment/videoq-gateway -- \
+  cat /data/caddy/pki/authorities/local/root.crt > "$HOME/videoq-lab-ca.crt"
+openssl x509 -in "$HOME/videoq-lab-ca.crt" -noout -subject -fingerprint -sha256
+```
+
+管理者はこの証明書と SHA-256 fingerprint を研究室の利用端末へ配布し、OS・ブラウザの
+信頼ストアへ登録する。CA の秘密鍵は配布しない。HTTPS の接続先には inventory の
+`videoq_public_url` を使用し、証明書検証を無効にせず `/ready` と管理者ログインを確認する。
+Vast.ai の検証では、管理画面は SSH トンネルで使い、VideoQ の通し試験は VM 内のブラウザから
+VM 内部の HTTPS URL に接続して実行する。共有の外部IPへ研究室用の443番を公開する必要はない。
+同じホストに別のインストーラーを重ねて実行しない。
+ブラウザの管理者設定、動画投入→文字起こし→索引→引用付き回答、バックアップと復旧の
+受け入れ試験が完了するまでは、運用開始済みとは扱わない。
+
+実モデルによる API の通し試験には `.github/onprem-lab/model-e2e.mjs` を使用できる。
+使い捨ての検証環境に限定し、専用の `model-validation@example.com` アカウントを
+operator CLI で作成する。出力は Git 外の private なディレクトリへ `activation.json` として保存し、
+公開 FLEURS 音声から作った `ja.mp4` と `en.mp4` も同じ場所に用意する。
+検証端末にリポジトリの固定済み Node 依存を準備し、CA を信頼した状態で実行する。
+
+```bash
+export NODE_EXTRA_CA_CERTS="$HOME/videoq-lab-ca.crt"
+export VIDEOQ_PRIVATE_MODEL_ACCEPTANCE=1
+export VIDEOQ_ACCEPTANCE_EMAIL=model-validation@example.com
+read -r -s -p 'Disposable acceptance password (16+ characters): ' VIDEOQ_ACCEPTANCE_PASSWORD
+export VIDEOQ_ACCEPTANCE_PASSWORD
+node .github/onprem-lab/model-e2e.mjs /secure/videoq-acceptance https://YOUR_LAN_IP
+unset VIDEOQ_ACCEPTANCE_PASSWORD
+```
+
+接続先は明示的に許可した private IPv4 の HTTPS origin、アップロード先は同一 origin に制限する。
+結果は `model-e2e-result.json` に保存する。この API 試験に加えて、ブラウザで引用箇所の動画再生と
+バックアップからの復旧を確認する。検証用アカウントと動画は運用データとして扱わない。
+
+内部Forgejoを使い、正式リリースの採用から反映まで自動化する場合は
+[研究室内Gitからの自動追従](lab-auto-update.md)を参照する。以下は手動採用の基本手順。
+
+## 更新・保存データ・既存環境
+
+更新は新しい検証済み Release から構成変更を生成し、PR で採用する。
+同期前に動画処理が完了していることを確認し、DB・動画・モデル設定・秘密情報をバックアップする。
+Argo CD の同期は自動バックアップや、DB migration の取り消しを実装するものではない。
+通常のアプリ更新と、モデル変更・再索引・OS/GPUドライバー更新を区別する。
+
+PVC は `Prune=false,Delete=false` とし、Application に削除 finalizer を付けない。
+これは誤削除を減らす設定であり、物理ディスク故障へのバックアップの代わりにはならない。
+初期認証情報は生成後に保持し、再実行では変更しない。既存 Secret とホスト側コピーが
+食い違う場合や、コピーなしで既存 Secret が見つかった場合は上書きせず停止する。
+
+既存 K3s は `videoq_adopt_existing_cluster: true` で明示的に選択できるが、サービス定義や
+`config.yaml`は置き換えない。ローカルイメージストア用にレジストリミラーを追加するが、既存の他のミラー・認証情報は保持する。既存GHCR rewriteと競合する場合は停止し、管理者による設定の確認を求める。旧インストーラーと同じ URL で採用する場合は、ホスト内の private な
+旧 `credentials.json` を `videoq_existing_credentials_file` に指定してコピーできる。全既存キーの
+一致を検査し、鍵の再生成や URL の暗黙変更を行わない。Helm所有権・更新タイマーの引き継ぎは
+自動化していない。バックアップと所有権の移行を確認してから Argo CD に管理を渡す。
+
+公開配布元は最新2世代へ整理される。研究室内の永続イメージストアはその削除処理から独立しており、
+採用済みのイメージは上流で削除されてもローカルから再取得できる。
+自動更新器は新しいイメージを研究室内へ保存・検査してからGitの構成変更へ進む。
+`/var/lib/videoq-image-store`はGit・DB・動画と一緒にオフホストへバックアップする。
+ローカルのイメージを自動削除しないため、空き容量を監視し、現在版と復旧用の版を残して管理する。
+構成だけ過去へ戻してもDBが復元されたことにはならない。
+
+これはすべての依存を含む完全オフライン導入ではない。初回取得、将来の正式リリース検知、
+未保存の上流依存やモデルの取得には外向き通信が必要。
+
+Vast.ai の検証ホストは、GPUの実機試験中だけ起動し、CI待ち・実装中・試験終了後は停止する。
+停止中のディスク保持料金は別に残る。
+
+## 検証
+
+```bash
+cd infra/ansible
+ansible-playbook -i inventory.example.yml site.yml --syntax-check
+cd ../..
+python -m unittest discover -s scripts/gitops -p 'test_*.py' -v
+```
+
+テストは実 Helm チャートのローカルレンダリング、DB hook の順序、保存領域の削除保護、
+プライベートな Service、digest 固定、秘密情報の再利用と衝突時の書込拒否を検査する。
+`--check` は GPU・Kubernetes・ネットワークの準備完了を証明できないため、現 playbook では受け付けない。
+
+公式資料:
+- [Ansible get_url の checksum](https://docs.ansible.com/projects/ansible-core/2.21/collections/ansible/builtin/get_url_module.html)
+- [K3s 設定](https://docs.k3s.io/installation/configuration)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- [Argo CD 宣言的セットアップ](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)
+- [Argo CD Sync phases / waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/)
+
+ローカルイメージ保持の[検証記録](../verification/lab-image-store-acceptance-2026-11-13.json)には、
+取得元停止と保存先コンテナ再作成後のOCIグラフ検査、スキャン結果、試験範囲を記載している。
+上流registry 3.1.2のスキャンには未修正のHIGH検出が8件あるため、脆弱性ゼロとは扱わない。
+localhost限定・Podからの接続拒否・非公開・信頼済みホストからの利用という構成を保ち、
+上流の修正版が公開されたら保守時にdigestを更新する。外部公開用のレジストリとして流用しない。

@@ -15,7 +15,7 @@ python3 scripts/onprem/k3s.py uninstall --purge
 
 Replace the URL with your domain or public IPv4. The installer provisions K3s,
 persistent backing services, HTTPS on TCP 443, verified Helm artifacts and the
-initial administrator. No SSH forwarding or Python packages are required.
+initial administrator. No SSH forwarding, GitHub login or manual Python package setup is required.
 See the [operator guide](../../docs/guides/on-premises-k3s.md)
 ([Japanese](../../apps/docs/i18n/ja/docusaurus-plugin-content-docs/current/guides/on-premises-k3s.md)).
 
@@ -53,7 +53,7 @@ They do not create a new environment when the directory is wrong. Run `--help` f
 all options.
 
 `bash scripts/onprem/install-tools.sh` installs checksum-verified k3d, kubectl, Helm
-and GitHub CLI into `$HOME/.local/bin`; `VIDEOQ_TOOLS_DIR` overrides that location.
+into `$HOME/.local/bin`; `VIDEOQ_TOOLS_DIR` overrides that location. It also installs Sigstore Python 4.5.1 in a user-owned verification venv. Public Releases and their SLSA bundles are downloaded anonymously; no GitHub CLI, account or token is required.
 The root development Compose stack is separate from these Kubernetes commands.
 The Compose installer is documented separately in README.md.
 

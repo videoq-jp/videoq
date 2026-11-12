@@ -1,6 +1,9 @@
 import { and, eq, gt, lte, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
-import { ltiCredentials } from "../../db/schema";
+import { ltiCredentials, videoCourses } from "../../db/schema";
+import { ApiError } from '../../shared/errors';
+import { sessionRecord } from './protocol';
+import { ltiSessionProof, lockLtiDataSessionWithDb } from './data-lock';
 import type { Bindings } from "../../types/bindings";
 
 export async function digest(value: string): Promise<string> {
@@ -50,4 +53,17 @@ export async function consumeCredential(env: Bindings, id: string, kind: string)
 }
 export async function pruneLtiCredentials(env: Bindings) {
   await withDb(env, db => db.delete(ltiCredentials).where(lte(ltiCredentials.expiresAt, new Date())));
+}
+
+/** Prevents a late answer from recreating a feedback reference after erasure. */
+export async function putLtiFeedback(env: Bindings, id: string, sessionHash: string, courseId: number, logId: number) {
+  const session = sessionRecord.safeParse(await readCredential(env, sessionHash, 'session'));
+  if (!session.success) throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
+  await withDb(env, db => db.transaction(async tx => {
+    const [course] = await tx.select({ owner: videoCourses.userId }).from(videoCourses).where(eq(videoCourses.id, courseId));
+    if (!course) throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
+    await lockLtiDataSessionWithDb(tx, course.owner, ltiSessionProof(session.data, sessionHash));
+    await tx.insert(ltiCredentials).values({ id, kind: 'lti-feedback',
+      payload: { sessionHash, courseId, logId }, expiresAt: new Date(Date.now() + 3600_000) });
+  }));
 }

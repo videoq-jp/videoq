@@ -1,3 +1,4 @@
+import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { acceptInvitation, declineInvitation, inviteCourseMembers, previewCourseInvitation, resendInvitation } from "../src/features/course-memberships/service";
@@ -64,6 +65,7 @@ const now = new Date("2026-09-23T12:00:00.000Z");
     [await hashInvitationToken("old-token"), now, await hashInvitationToken("private-token")]);
   });
   afterEach(() => vi.restoreAllMocks());
+  nativeCourseAuthorityFixture(() => env);
   afterAll(async () => {
     try { await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`); }
     finally { await admin.end(); }

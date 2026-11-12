@@ -59,8 +59,18 @@ JPY はゼロ小数。`tax_behavior` は inclusive（内税）か、Tax settings
 
 - 支払い方法の更新
 - サブスクリプションの更新（Basic ⇔ Pro、月 ⇔ 年）
-- Proration: `always_invoice`（日割りを作って即時請求。`create_prorations` でも可）
+- Proration: `always_invoice`（公開ポリシーに合わせ、日割りを作って即時請求）
 - 解約（期間末）
+
+クラウド版の規約は、アップグレード・ダウングレードとも即時反映し、未使用分を
+Stripe の請求クレジットで調整する内容です。低額プラン・短い請求周期への変更も
+即時反映に設定してください。請求クレジットは現金返金とは異なります。
+変更を確定する前に、適用日、請求周期、請求額・クレジットを確認します。
+設定を変える場合は規約も確認してください。
+
+2026年11月10日に本番のデフォルト設定で、期間末解約、日割り即時請求、
+即時ダウングレード、Basic/Pro の月額・年額4価格の有効化を確認しました。
+これは確認時点の記録であり、その後の管理画面の変更を自動監視するものではありません。
 
 ## 3.1 Public details（必須）
 
@@ -76,6 +86,8 @@ Checkout / Customer Portal に利用規約とプライバシーを出すには�
 [Checkout settings](https://dashboard.stripe.com/settings/checkout) で Legal policies と Refund policy を有効にし、返金ポリシー全文は `https://videoq.jp/refund` を指す。日本の通信販売として [特商法表記](https://videoq.jp/legal) もサイトに置く。
 
 Customer Portal の privacy / terms URL も同じ値にする。
+
+APIはCheckoutごとに `consent_collection.terms_of_service=required` を指定します。テスト・本番両環境に有効な規約URLを登録してください。日英の確認文には4つの規約リンク、自動更新、利用枠、月次リセット、解約・返金条件を表示します。metadataの `legalPolicyVersion` だけでは同意を証明しないため、実際のSessionのconsentも確認してください。公開前に両言語・各請求周期の実画面を検証します。このチェックボックスは国外移転への同意ではありません。
 
 ## 4. Webhook
 

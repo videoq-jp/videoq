@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "generations": [
+    {
+      "sourceSha": "8c1e34361d37c6925d539859784fd5d5816b7950",
+      "runId": "43264258707",
+      "runAttempt": 1,
+      "images": {
+        "api": {
+          "repository": "ghcr.io/videoq-jp/videoq-api",
+          "digest": "sha256:63e633bb1ba3036d9a33df16cd53b96e0e89396b18b9a96003f39cb0362c16c0"
+        },
+        "worker": {
+          "repository": "ghcr.io/videoq-jp/videoq-worker",
+          "digest": "sha256:e966f7fefa2bd2180718f8ca5c3c3c95b761dd94cea5b2d661c17b62a5ecf285"
+        },
+        "web": {
+          "repository": "ghcr.io/videoq-jp/videoq-web",
+          "digest": "sha256:7355cb6e1b6b94ad7da91add5b29d42fcb4455e803916bfc01bfa9b4514e61c2"
+        },
+        "transcription-gateway": {
+          "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
+          "digest": "sha256:c86136c22e1f410699e7ff1f0fda5a6e70e3015138a84164046a0bcfd7e53798"
+        }
+      }
+    },
+    {
+      "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+      "runId": "43213448108",
+      "runAttempt": 1,
+      "images": {
+        "api": {
+          "repository": "ghcr.io/videoq-jp/videoq-api",
+          "digest": "sha256:504a316db4f45b0b55d8a10e84c20c3bd61cb3594636d3e59f5f4c214238592d"
+        },
+        "worker": {
+          "repository": "ghcr.io/videoq-jp/videoq-worker",
+          "digest": "sha256:4c12875e9654db3d30e079881c3dcb4ccbb12bf4d0d2616afdd716ad46811888"
+        },
+        "web": {
+          "repository": "ghcr.io/videoq-jp/videoq-web",
+          "digest": "sha256:a43c931530729c3961a09dca17e3e843c1d53d8a2729049f2b006b6f6f421671"
+        },
+        "transcription-gateway": {
+          "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
+          "digest": "sha256:a98dfe7efea1f67a499239d011f8ff7d5e31b6a912d9e9e770a8b4f3720539aa"
+        }
+      }
+    }
+  ]
+}

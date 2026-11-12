@@ -13,8 +13,8 @@ export function VideoList({ videos }: VideoListProps) {
   if (videos.length === 0) {
     return (
       <div className="border-t border-solid-gray-420 py-12 text-solid-gray-700">
-        <p className="text-std-16B-170">{t('videos.list.noVideos')}</p>
-        <p className="mt-1 text-std-16N-170 text-solid-gray-600">
+        <p className="text-std-17B-170">{t('videos.list.noVideos')}</p>
+        <p className="mt-1 text-std-17N-170 text-solid-gray-600">
           {t('videos.list.noVideosHint')}
         </p>
       </div>

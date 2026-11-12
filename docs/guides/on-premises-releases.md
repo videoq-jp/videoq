@@ -21,7 +21,7 @@ that commit, for example to rebuild after distribution package fixes.
 
 Distribution uses the public packages
 `ghcr.io/videoq-jp/videoq-api`, `videoq-worker` and
-`videoq-web`, `videoq-transcription-gateway` and `videoq-vllm`.
+`videoq-web` and `videoq-transcription-gateway`.
 Docker and Kubernetes can pull them without a GHCR login
 or `imagePullSecrets`. Site-owned private registries can still use
 `imagePullSecrets` when required. The images include the repository's existing
@@ -44,16 +44,19 @@ and a CycloneDX inventory. Separate fresh runners publish the exact build
 artifacts without running application containers or installing app dependencies
 with publication credentials. GitHub OIDC signs provenance and per-architecture
 SBOM attestations. A signed multi-architecture index binds the two architectures;
-the signed schema-v3 release manifest binds all five image index digests, their
-supported architectures and both charts' bytes. The NVIDIA image is amd64-only;
-its index must not advertise arm64. The inference values use that same patched,
-audio-capable vLLM image for NVIDIA chat, embeddings and speech.
+the signed schema-v5 release manifest binds all four image index digests, their
+supported architectures and both charts' bytes. The inference chart separately
+pins the unmodified Linux amd64 upstream vLLM digest for chat, embeddings and
+speech. VideoQ does not build, publish or sign a replacement engine image.
 
-NVIDIA scanning retains the existing narrowly scoped
-[kernel-header assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/whisper/security/README.md).
-Only explicitly assessed header findings are suppressed; other HIGH/CRITICAL
-findings still block publication. The `security-*` workflow artifacts retain JSON
-reports, including suppressed findings and the assessment, for 90 days.
+The mandatory upstream inspection retains unsuppressed Trivy scans of the image
+and the separate installed audio wheels, verifies actual image files and runtime
+imports, and evaluates findings against the constrained chart workloads. Only
+exact, current, evidence-backed applicability assessments are accepted; new or
+unassessed HIGH/CRITICAL/UNKNOWN findings block publication. See the
+[upstream assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md).
+The `upstream-vllm-inspection-*` artifacts retain raw reports, inventories, runtime
+checks, dependency locks and assessments for 90 days.
 
 The production API and worker use digest-pinned Alpine images. In addition to the
 interpreter, the canonical runtime updater refreshes these pins and the verified
@@ -67,7 +70,10 @@ attempt. Installation
 always uses digests.
 
 `On-prem Validation` runs on selected changes and daily against current main,
-building and scanning images and exercising a disposable Kubernetes environment.
+building and scanning images. Lifecycle rehearsals, including the disposable
+Kubernetes environment, run only when deployment, migration, storage or recovery
+mechanisms change and during release validation. Daily Operations checks do not
+run lifecycle rehearsals.
 A daily failure requires triage; it does not approve or deploy a replacement.
 Every release also verifies the signed artifacts and runs the Kubernetes rehearsal
 on a fresh hosted runner. A successful release run therefore includes this staging
@@ -78,36 +84,35 @@ changes. No blanket `ignore-unfixed` or CVE ignore file is used.
 
 ## Download and verify a specific release
 
-Use a recent authenticated GitHub CLI with `gh attestation verify`, Python 3.9+
-and Helm 4.3.1. Run the verifier from your reviewed checkout, rather than from an
-unverified downloaded bundle. Select a successful `On-prem Release` run and
-independently review its full source SHA. Do not derive the trusted SHA from the
-manifest being checked.
+Public Releases include the manifest, both Helm charts and Sigstore/SLSA verification
+bundles. No GitHub account, token or CLI is required. Use Python 3.10+ and Helm
+4.3.1. Run the verifier from a reviewed checkout, not from the downloaded release.
+Review the full source SHA and run/attempt in the public release tag; do not take
+the trusted SHA only from the manifest being checked.
 
 ```sh
 SOURCE_SHA=REPLACE_WITH_REVIEWED_40_CHARACTER_COMMIT
-RUN_ID=REPLACE_WITH_SUCCESSFUL_RELEASE_RUN
-RUN_ATTEMPT=$(gh run view "$RUN_ID" --repo videoq-jp/videoq --json attempt --jq .attempt)
-mkdir -p /secure/videoq-release
-gh run download "$RUN_ID" --repo videoq-jp/videoq \
-  --name "onprem-release-$SOURCE_SHA-attempt-$RUN_ATTEMPT" --dir /secure/videoq-release
-python3 .github/scripts/onprem-release.py verify "$SOURCE_SHA" \
-  /secure/videoq-release/release.json /secure/videoq-release/verified-images.json \
-  /secure/videoq-release/verified-inference.json
+RUN_ID=REPLACE_WITH_PUBLIC_RELEASE_RUN
+RUN_ATTEMPT=REPLACE_WITH_PUBLIC_RELEASE_ATTEMPT
+bash scripts/onprem/install-verify-tools.sh
+python3 scripts/onprem/public_release.py --source-sha "$SOURCE_SHA" \
+  --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT" --directory /secure/videoq-release
 ```
 
-Image pulls do not require GHCR authentication or a `read:packages` credential.
-The authenticated GitHub CLI above is used for workflow artifacts and attestation
-verification. The verifier checks GitHub's signature and artifact
-subject, the exact repository and release workflow, `refs/heads/main`, the source
-commit and hosted-runner identity. It verifies the manifest, both chart checksums
-and signatures, and all five image index signatures before writing either values file.
-A missing signature, altered chart, different source or unexpected repository
-aborts verification and preserves existing values. Per-architecture SBOM
-attestations can also be inspected using `gh attestation verify` with predicate
-`https://cyclonedx.org/bom`. Preserve the chart, release manifest, verified values,
-SBOMs and attestation bundles in your artifact archive; workflow downloads expire
-after 90 days. Registry retention must preserve promoted digests and attestations.
+The public downloader verifies that the run succeeded on main and matches the
+source and attempt. Sigstore verifies signatures, transparency-log evidence,
+repository/owner, workflow, main ref, source commit, GitHub-hosted runner,
+run/attempt and the subject names/digests. It validates the manifest, both charts
+and all five image indexes before writing either Helm values file. Trust roots
+come independently from Sigstore production's TUF configuration. Missing bundles,
+changed bytes or a different signer fail closed and preserve existing values.
+
+The installer selects the public release automatically. Releases are published
+only after the signed-artifact and real-CPU-model rehearsal jobs succeed; public
+assets are not overwritten. CI and maintainers can still use the legacy
+`onprem-release.py`/GitHub CLI path to inspect Actions-only artifacts or SBOMs,
+but end-user installation does not use it. Preserve promoted digests and bundles
+in your archive; GitHub Actions transfer artifacts expire after 90 days.
 
 Merge the generated image values **last** so site settings cannot accidentally
 replace the reviewed digests:
@@ -228,8 +233,8 @@ test with backing services; production sizing still needs representative videos.
 
 ## Package names and historical releases
 
-The namespace migration is complete. Current releases publish the five public
-`videoq-jp/videoq-{api,web,worker,transcription-gateway,vllm}` packages through
+The namespace migration is complete. Current releases publish the four public
+`videoq-jp/videoq-{api,web,worker,transcription-gateway}` packages through
 **On-prem Release**. Their package settings must retain repository Actions Write
 access and public visibility. Bootstrap tags are not deployment releases.
 
@@ -239,3 +244,38 @@ verification; removing a workflow does not delete images, releases or attestatio
 The verifier still validates historical schemas against their original repository,
 workflow and exact source SHA, including all eight signed subjects. Mixed image
 namespaces remain invalid. Use the normal signed release workflow for new builds.
+
+## Distribution retention
+
+Automatic releases compare the selected main source with the newest published
+on-prem release backed by a successful main release run. Documentation, adopted
+deployment pins and retention housekeeping alone keep the existing release.
+Unreleased runtime or distribution changes still publish even if the newest
+commit only edits documentation. Unknown, divergent or large diffs publish
+conservatively. A manual `workflow_dispatch` requests a full release after the
+same current-main CI validation.
+
+After a successful release, `On-prem Distribution Retention` keeps the latest two
+published on-prem releases whose source/run/attempt match a successful main
+release workflow. Other release types are preserved. It protects their image
+indexes, platform manifests, signatures/SBOM referrers, operational pins in main
+and open same-repository PRs, and seven days of build grace. Only versions outside
+that complete reference graph may be deleted. The retired `videoq-vllm` package
+remains while any retained release or protected source/deployment pin refers to
+it. Once all those references disappear, its entire package is deleted, including
+its last tagged version and recent builds from the retired publisher. The build
+grace still applies to all four active application packages. Package retirement
+checks the complete version inventory again before deletion. Later runs accept
+an exact HTTP 404 for the retired package only after verifying all four active
+package identities. Protected references to that missing package still stop
+cleanup. Other API errors stop cleanup. It does not require organization-wide
+package listing access, and it requests registry tokens only for packages still
+present.
+
+The workflow first saves a deletion plan, then re-reads the live inventory and
+reference graph before applying it. Missing metadata, changed references or an
+expired plan stop deletion. Exact successful deletions are journaled and kept as
+workflow artifacts for 90 days. A daily scheduled run clears expired build grace
+even when no new release is published. Manual runs default to plan-only; set `apply=true`
+only when actual cleanup is intended. The installer never runs registry cleanup
+on a customer's host.

@@ -13,7 +13,8 @@ resource "aws_sqs_queue" "dlq" {
 # ── Main worker queue ───────────────────────────────────────────────────
 # Allow processing and throttling retries per the Lambda/SQS recommendation:
 # https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html
-# visibility_timeout >= 6 * Lambda timeout (batching window is zero).
+# visibility_timeout >= max(6 * Lambda timeout, lease + Lambda timeout + margin).
+# The lease bound prevents hard timeouts from spending retries before recovery.
 # receive_wait_time=20s enables long polling to reduce empty polls.
 resource "aws_sqs_queue" "main" {
   name                       = local.names.worker

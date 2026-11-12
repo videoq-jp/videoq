@@ -20,6 +20,7 @@ import { getCurrentUser } from "../src/repositories/user-repository";
 import { schema, users, account } from "../src/db/schema";
 import type { Bindings } from "../src/types/bindings";
 import { purgeRetiredStudyData } from "../scripts/purge-retired-study-data.mjs";
+import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 
 const legacyStudyTables = [
   "app_learnerconceptstate", "app_plogbuildjob", "app_plogconcept",
@@ -50,6 +51,7 @@ migrationDescribe("Drizzle migration chain", () => {
     let targetPool: Pool | undefined;
     let targetClient: PoolClient | undefined;
     let stagedMigrations: string | undefined;
+    const releaseRoleLock = await lockConversationTestRoles(databaseUrl!);
 
     try {
       await adminDb.execute(sql.raw(`CREATE DATABASE "${databaseName}"`));
@@ -103,9 +105,16 @@ migrationDescribe("Drizzle migration chain", () => {
             // Existing videos gain nullable upload and language fields without changing media or state.
             for (const { row } of preservedRows[table] as { row: Record<string, unknown> }[]) {
               row.transcription_language = null;
+              row.managed_by_lms = false;
               row.multipart_upload = null;
               row.upload_heartbeat_at = null;
               row.upload_usage_period_start = null;
+            }
+          }
+          if (table === "video_courses") {
+            for (const { row } of preservedRows[table] as { row: Record<string, unknown> }[]) {
+              row.managed_by_lms = false;
+              row.native_access_disabled = false;
             }
           }
         }
@@ -323,13 +332,15 @@ migrationDescribe("Drizzle migration chain", () => {
         .toEqual({ role: "admin", banned: false, email_verified: true });
       expect(await isAdmin(env, targetId)).toBe(true);
     } finally {
-      targetClient?.release();
-      await targetPool?.end();
-      await adminDb.execute(
-        sql.raw(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`),
-      );
-      await adminPool.end();
-      if (stagedMigrations) rmSync(stagedMigrations, { recursive: true, force: true });
+      try {
+        targetClient?.release();
+        await targetPool?.end();
+        await adminDb.execute(
+          sql.raw(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`),
+        );
+        await adminPool.end();
+        if (stagedMigrations) rmSync(stagedMigrations, { recursive: true, force: true });
+      } finally { await releaseRoleLock(); }
     }
   }, 60_000);
 });

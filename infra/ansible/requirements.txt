@@ -1,0 +1,2 @@
+ansible-core==2.21.6
+sigstore==4.5.1

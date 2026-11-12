@@ -91,11 +91,11 @@ export function VideoUploadFormFields({
           <select id="transcription-language" value={transcriptionLanguage}
             onChange={event => setTranscriptionLanguage(event.target.value as TranscriptionLanguage | 'auto')}
             disabled={isUploading || disabled} aria-describedby="transcription-language-help"
-            className="h-12 rounded-8 border border-solid-gray-600 bg-white px-4 text-std-16N-170">
+            className="h-12 rounded-8 border border-solid-gray-600 bg-white px-4 text-std-17N-170">
             {Object.entries(TRANSCRIPTION_LANGUAGES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
             <option value="auto">{t('videos.upload.languageAuto')}</option>
           </select>
-          <p id="transcription-language-help" className="text-std-14N-170 text-solid-gray-700">{t('videos.upload.languageHelp')}</p>
+          <p id="transcription-language-help" className="text-dns-14N-130 text-solid-gray-700">{t('videos.upload.languageHelp')}</p>
         </div>
       )}
 
@@ -103,7 +103,7 @@ export function VideoUploadFormFields({
         <fieldset className="space-y-2" disabled={isUploading || disabled}>
           <legend className="font-bold">{t('videos.upload.compression.label')}</legend>
           {(['1080p', '720p'] as const).map(preset => (
-            <label key={preset} className="flex items-start gap-2 text-std-16N-170">
+            <label key={preset} className="flex items-start gap-2 text-std-17N-170">
               <input type="radio" name="upload-compression" value={preset}
                 checked={compressionPreset === preset}
                 disabled={!compressionSupported}
@@ -111,7 +111,7 @@ export function VideoUploadFormFields({
               <span>{t(`videos.upload.compression.presets.${preset}`)}</span>
             </label>
           ))}
-          {!compressionSupported && <p className="text-std-14N-170 text-solid-gray-700">
+          {!compressionSupported && <p className="text-dns-14N-130 text-solid-gray-700">
             {t('videos.upload.compression.unsupported')}
           </p>}
         </fieldset>
@@ -147,11 +147,11 @@ export function VideoUploadFormFields({
       </div>
 
       {error === 'videos.upload.compression.canceled'
-        ? <p role="status" className="text-std-14N-170 text-solid-gray-700">{t(error)}</p>
+        ? <p role="status" className="text-dns-14N-130 text-solid-gray-700">{t(error)}</p>
         : error && <MessageAlert type="error" message={t(error, { defaultValue: error, ...errorParams })} />}
       {warning && <MessageAlert type="warning" message={t(warning, { defaultValue: warning })} />}
       {success && <MessageAlert type="success" message={t('videos.upload.success')} />}
-      {compressedSizes && <p role="status" className="text-std-14N-170 text-solid-gray-700">
+      {compressedSizes && <p role="status" className="text-dns-14N-130 text-solid-gray-700">
         {t(compressedSizes.after < compressedSizes.before ? 'videos.upload.compression.saved' : 'videos.upload.compression.sizes', {
           before: (compressedSizes.before / 1024 ** 3).toFixed(2),
           after: (compressedSizes.after / 1024 ** 3).toFixed(2),
@@ -162,7 +162,7 @@ export function VideoUploadFormFields({
       {isUploading && (percent > 0 || isCompressing) && (
         <ProgressIndicator type="stacked" value={percent} aria-label={t(isCompressing ? 'videos.upload.compression.compressing' : 'videos.upload.uploading')}>
           <ProgressIndicatorLinear />
-          <span className="text-std-14N-170 text-solid-gray-700">{isCompressing ? `${t('videos.upload.compression.compressing')} ${percent}%` : `${percent}%`}</span>
+          <span className="text-dns-14N-130 text-solid-gray-700">{isCompressing ? `${t('videos.upload.compression.compressing')} ${percent}%` : `${percent}%`}</span>
         </ProgressIndicator>
       )}
 

@@ -33,7 +33,7 @@ not cancel usage incurred beforehand.
 | --- | --- | --- |
 | CodeQL | PRs, main updates, Mondays 11:11 | Security > Code scanning |
 | OSV scan of all dependencies | Daily 09:17 | Actions run and summary |
-| Vulnerability scan of pinned upstream on-prem images (llama.cpp, whisper.cpp) | Daily 09:17 | Actions run and summary |
+| Vulnerability scan of pinned upstream on-prem images (llama.cpp, whisper.cpp, vLLM and its audio volume) | Daily 09:17 | Actions run and summary |
 | Public page SEO audit (`seo-monitor.yml`) | Daily 08:43 | Report kept for 90 days |
 | API AWS key age audit (`api-aws-key-rotation.yml`) | Mondays 11:23 | Fails when an active key reaches 80 days |
 
@@ -43,7 +43,7 @@ Scan service errors and incomplete results do not count as passing. A finding fa
 scheduled scan, and findings without a fixed version are reported too.
 PR scans of newly introduced versions run alongside the recurring full scan.
 A pinned upstream image cannot change unless its digest changes, and new advisory data alone
-can fail a scan. CI therefore scans only PRs that change the pins or scan settings, so
+can fail a scan. CI therefore scans only PRs that change the pins, inference profiles or scan settings, so
 unrelated PRs are not blocked. Daily on-prem validation always scans and fails on findings
 without a fixed version.
 

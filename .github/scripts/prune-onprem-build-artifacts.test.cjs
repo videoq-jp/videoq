@@ -7,7 +7,7 @@ function fixture() {
   const context = { repo: { owner: 'videoq-jp', repo: 'videoq' }, ref: 'refs/heads/main', eventName: 'workflow_dispatch', sha, runId: 123, runAttempt: 2 };
   const run = { id: 123, path: '.github/workflows/onprem-release.yml', head_sha: sha, head_branch: 'main', head_repository: { full_name: 'videoq-jp/videoq' }, run_attempt: 2 };
   const artifact = (id, name) => ({ id, name, size_in_bytes: 100, expired: false, workflow_run: { id: 123, head_sha: sha } });
-  const artifacts = [artifact(1, `build-vllm-engine-amd64-${sha}-attempt-2`), artifact(2, `build-api-arm64-${sha}-attempt-2`),
+  const artifacts = [artifact(1, `build-transcription-gateway-amd64-${sha}-attempt-2`), artifact(2, `build-api-arm64-${sha}-attempt-2`),
     artifact(3, `security-api-amd64-${sha}-attempt-2`), artifact(4, `onprem-release-${sha}-attempt-2`),
     artifact(5, `build-api-amd64-${sha}-attempt-1`), artifact(6, `build-api-amd64-${'b'.repeat(40)}-attempt-2`)];
   const github = { rest: { actions: {

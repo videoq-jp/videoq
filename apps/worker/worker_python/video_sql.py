@@ -181,6 +181,18 @@ def transition_video_status(
     return cur.rowcount > 0
 
 
+def finish_video_indexing(conn: psycopg.Connection[Any], video: VideoRow) -> bool:
+    """Complete only the indexed snapshot; a concurrent edit remains pending."""
+    result = conn.execute(
+        """UPDATE videos SET status = 'completed', error_message = ''
+             WHERE id = %s AND user_id = %s AND status = 'indexing'
+               AND COALESCE(transcript, '') = %s
+               AND NULLIF(file, '') IS NOT DISTINCT FROM %s""",
+        (video.id, video.user_id, video.transcript or '', video.file_key),
+    )
+    return result.rowcount > 0
+
+
 def finish_transcription(
     conn: psycopg.Connection[Any],
     video: VideoRow,

@@ -18,17 +18,13 @@ import { trackLandingEvent } from '@/lib/landingAnalytics';
 import { useAuthSession } from '@/lib/authSession';
 import { trpc } from '@/lib/trpc';
 import { useToast } from '@/components/common/feedback';
-import { APP_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
+import { APP_HEADER_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
 import { cn } from '@/lib/digital-agency/cn';
-import { Button } from '@/components/ui/button';
 import {
-  CloseIcon,
-  HamburgerIcon,
   HamburgerMenuButton,
 } from '@/components/ui/hamburger-menu-button';
 import {
   LanguageSelector,
-  LanguageSelectorArrowIcon,
   LanguageSelectorButton,
   LanguageSelectorGlobeIcon,
   LanguageSelectorMenu,
@@ -47,18 +43,9 @@ const LOCALE_LABELS: Record<Locale, string> = {
 };
 
 const HEADER_OFFSET_VAR = '--app-header-offset';
-const HEADER_OFFSET_FALLBACK = '5rem';
-
-const navLinkClassName = (isCurrent: boolean) =>
-  cn(
-    'inline-flex shrink-0 items-center whitespace-nowrap px-4 py-2 text-dns-16B-130 text-solid-gray-800 no-underline',
-    'hover:underline hover:underline-offset-[calc(3/16*1rem)]',
-    'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black focus-visible:bg-yellow-300',
-    isCurrent && 'rounded-full border border-solid-gray-420 bg-solid-gray-50',
-  );
 
 const megaMenuLinkClassName = cn(
-  'text-blue-1000 text-[1.0625rem] leading-7 tracking-[0.04em] underline underline-offset-[0.1875rem]',
+  'site-header-dropdown-link text-blue-1000 underline underline-offset-[0.1875rem]',
   'hover:text-blue-900 hover:decoration-[0.1875rem]',
   'focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black',
   'active:text-orange-700',
@@ -213,128 +200,120 @@ export function AppNav({ activePage }: AppNavProps) {
     <>
       <header
         ref={headerRef}
-        className="fixed top-0 z-50 w-full border-b border-border bg-white"
+        className="site-header w-full"
       >
         <div
-          className={`mx-auto flex w-full items-center justify-between gap-8 py-4 ${APP_CONTAINER_CLASS}`}
+          className={`mx-auto w-full ${APP_HEADER_CONTAINER_CLASS}`}
         >
-          <Link
-            href="/"
-            className="shrink-0 text-std-20B-150 text-solid-gray-800 no-underline"
-          >
-            <BrandLogo />
-          </Link>
-
-          <div className="flex shrink-0 items-center justify-end gap-4">
-            <nav
-              className="hidden items-center xl:flex"
-              aria-label={t('navigation.menu')}
+          <div className="site-header-content">
+            <Link
+              href="/"
+              className="site-header-logo text-std-20B-150"
             >
-              <ul className="flex items-center gap-3.5">
-                {navLinks.map(({ href, label, key }) => {
-                  const isCurrent = activePage === key;
-                  return (
-                    <li key={key} className="shrink-0">
-                      <Link
-                        href={href}
-                        className={navLinkClassName(isCurrent)}
-                        aria-current={isCurrent ? 'page' : undefined}
-                      >
-                        {label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
+              <BrandLogo />
+            </Link>
 
-            <div
-              className="mx-2 hidden h-4 w-px shrink-0 bg-solid-gray-420 xl:block"
-              aria-hidden="true"
-            />
-
-            <div ref={langRootRef} className="relative hidden xl:block">
-              <LanguageSelector>
-                <LanguageSelectorButton
-                  ref={langButtonRef}
-                  className="px-3"
-                  aria-expanded={isLangOpen}
-                  aria-controls={langMenuId}
-                  onClick={() => setIsLangOpen((open) => !open)}
-                >
-                  <LanguageSelectorGlobeIcon />
-                  <span>Language</span>
-                  <LanguageSelectorArrowIcon
-                    className={cn('transition-transform', isLangOpen && 'rotate-180')}
-                  />
-                </LanguageSelectorButton>
-                {isLangOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1">
-                    <LanguageSelectorMenu id={langMenuId}>
-                      {locales.map((code) => (
-                        <LanguageSelectorMenuItem
-                          key={code}
-                          href={addLocalePrefix(removeLocalePrefix(location.pathname), code)}
-                          isCurrent={locale === code}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            switchLocale(code);
-                            langButtonRef.current?.focus();
-                          }}
-                        >
-                          {LOCALE_LABELS[code]}
-                        </LanguageSelectorMenuItem>
-                      ))}
-                    </LanguageSelectorMenu>
-                  </div>
-                )}
-              </LanguageSelector>
-            </div>
-
-            {!isAuthenticated ? (
-              <Button variant="text" size="sm" className="hidden px-3 xl:inline-flex" asChild>
-                <Link href="/login" className="no-underline">
-                  {t('auth.login.submit')}
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="text"
-                size="sm"
-                className="hidden px-3 xl:inline-flex"
-                disabled={logoutMutation.isPending}
-                onClick={() => void handleLogout()}
+            <div className="site-header-nav">
+              <nav
+                className="site-header-desktop"
+                aria-label={t('navigation.menu')}
               >
-                {t('navigation.logout')}
-              </Button>
-            )}
+                <ul className="site-header-menu">
+                  {navLinks.map(({ href, label, key }) => {
+                    const isCurrent = activePage === key;
+                    return (
+                      <li key={key} className="shrink-0">
+                        <Link
+                          href={href}
+                          className="site-header-item"
+                          aria-current={isCurrent ? 'page' : undefined}
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
 
-            {features.publicSignup && !isAuthenticated && activePage === 'home' && (
-              <Button variant="solid" size="sm" className="hidden sm:inline-flex" asChild>
-                <Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'header')}>{t('landing.start')}</Link>
-              </Button>
-            )}
+              <div ref={langRootRef} className="site-header-desktop relative">
+                <LanguageSelector>
+                  <LanguageSelectorButton
+                    ref={langButtonRef}
+                    className="site-header-language"
+                    aria-expanded={isLangOpen}
+                    aria-controls={langMenuId}
+                    onClick={() => setIsLangOpen((open) => !open)}
+                  >
+                    <LanguageSelectorGlobeIcon />
+                    <span>Language</span>
+                    <SiteLanguageArrowIcon
+                      className={cn('transition-transform', isLangOpen && 'rotate-180')}
+                    />
+                  </LanguageSelectorButton>
+                  {isLangOpen && (
+                    <div className="site-header-language-menu absolute top-full z-50">
+                      <LanguageSelectorMenu id={langMenuId}>
+                        {locales.map((code) => (
+                          <LanguageSelectorMenuItem
+                            key={code}
+                            href={addLocalePrefix(removeLocalePrefix(location.pathname), code)}
+                            checkIcon={<path transform="scale(1.2)" d="M8.57441 14.4169L4.12891 9.9714L5.01993 9.0804L8.57441 12.6349L16.2122 4.99707L17.1032 5.88807L8.57441 14.4169Z" />}
+                            isCurrent={locale === code}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              switchLocale(code);
+                              langButtonRef.current?.focus();
+                            }}
+                          >
+                            {LOCALE_LABELS[code]}
+                          </LanguageSelectorMenuItem>
+                        ))}
+                      </LanguageSelectorMenu>
+                    </div>
+                  )}
+                </LanguageSelector>
+              </div>
 
-            <HamburgerMenuButton
-              ref={menuButtonRef}
-              className="px-3 py-1.5"
-              aria-expanded={isMenuOpen}
-              aria-controls={megaMenuId}
-              onClick={() => setIsMenuOpen((open) => !open)}
-            >
-              {isMenuOpen ? (
-                <>
-                  <CloseIcon className="flex-none" />
-                  {t('navigation.closeMenu')}
-                </>
+              {!isAuthenticated ? (
+                <div className="site-header-desktop">
+                  <Link href="/login" className="site-header-item">
+                    {t('auth.login.submit')}
+                  </Link>
+                </div>
               ) : (
-                <>
-                  <HamburgerIcon className="flex-none" />
-                  {t('navigation.menu')}
-                </>
+                <div className="site-header-desktop">
+                  <button
+                    type="button"
+                    className="site-header-item"
+                    disabled={logoutMutation.isPending}
+                    onClick={() => void handleLogout()}
+                  >
+                    {t('navigation.logout')}
+                  </button>
+                </div>
               )}
-            </HamburgerMenuButton>
+
+              <HamburgerMenuButton
+                ref={menuButtonRef}
+                className="site-header-item site-header-toggle"
+                aria-expanded={isMenuOpen}
+                aria-controls={megaMenuId}
+                onClick={() => setIsMenuOpen((open) => !open)}
+              >
+                {isMenuOpen ? (
+                  <>
+                    <SiteMenuIcon open />
+                    <span>{t('navigation.closeMenu')}</span>
+                  </>
+                ) : (
+                  <>
+                    <SiteMenuIcon />
+                    <span>{t('navigation.menu')}</span>
+                  </>
+                )}
+              </HamburgerMenuButton>
+            </div>
           </div>
         </div>
 
@@ -347,73 +326,87 @@ export function AppNav({ activePage }: AppNavProps) {
               aria-label={t('navigation.closeMenu')}
               onClick={() => { closeMenu(); menuButtonRef.current?.focus(); }}
             />
-            <div className="absolute inset-x-0 top-full z-50">
+            <div className="contents">
               <div
                 id={megaMenuId}
-                className="max-h-[calc(100dvh-var(--app-header-offset,5rem))] overflow-y-auto border-t border-solid-gray-300 bg-white/90 shadow-[0_0.25rem_0.25rem_0_#00000029] backdrop-blur-[0.5rem] [scrollbar-gutter:stable]"
+                className="site-header-dropdown"
               >
                 <nav
-                  className={`mx-auto w-full py-10 md:py-12 ${APP_CONTAINER_CLASS}`}
+                  className="site-header-dropdown-content"
                   aria-label={t('navigation.menu')}
                 >
-                  <ul className="grid grid-cols-1 gap-x-10 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {navLinks.map(({ href, label, key }) => (
-                      <li
-                        key={key}
-                        className="flex min-h-12 items-center pl-5"
-                      >
-                        <Link
-                          href={href}
-                          className={megaMenuLinkClassName}
-                          aria-current={activePage === key ? 'page' : undefined}
-                          onClick={closeMenu}
+                  <div className="site-header-dropdown-grid">
+                    <ul className="site-header-dropdown-list grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {navLinks.map(({ href, label, key }) => (
+                        <li
+                          key={key}
+                          className="flex min-h-12 items-center pl-5"
                         >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                          <Link
+                            href={href}
+                            className={megaMenuLinkClassName}
+                            aria-current={activePage === key ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            {label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
 
-                  <div className="my-8 h-px bg-solid-gray-300" aria-hidden="true" />
-
-                  <ul className="grid grid-cols-1 gap-x-10 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {locales.map((code) => (
-                      <li key={code} className="flex min-h-12 items-center pl-5">
-                        <button
-                          type="button"
-                          lang={code}
-                          className={cn(megaMenuLinkClassName, 'bg-transparent text-left')}
-                          aria-current={locale === code ? 'true' : undefined}
-                          onClick={() => {
-                            switchLocale(code);
-                            closeMenu();
-                          }}
-                        >
-                          {LOCALE_LABELS[code]}
-                        </button>
+                    <ul className="site-header-dropdown-list site-header-dropdown-secondary">
+                      {locales.map((code) => (
+                        <li key={code} className="flex min-h-12 items-center pl-5">
+                          <button
+                            type="button"
+                            lang={code}
+                            className={cn(megaMenuLinkClassName, 'bg-transparent text-left')}
+                            aria-current={locale === code ? 'true' : undefined}
+                            onClick={() => {
+                              switchLocale(code);
+                              closeMenu();
+                            }}
+                          >
+                            {LOCALE_LABELS[code]}
+                          </button>
+                        </li>
+                      ))}
+                      <li className="flex min-h-12 items-center pl-5">
+                        {!isAuthenticated ? (
+                          <Link
+                            href="/login"
+                            className={megaMenuLinkClassName}
+                            onClick={closeMenu}
+                          >
+                            {t('auth.login.submit')}
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            className={cn(megaMenuLinkClassName, 'bg-transparent text-left')}
+                            onClick={() => void handleLogout()}
+                            disabled={logoutMutation.isPending}
+                          >
+                            {t('navigation.logout')}
+                          </button>
+                        )}
                       </li>
-                    ))}
-                    <li className="flex min-h-12 items-center pl-5">
-                      {!isAuthenticated ? (
-                        <Link
-                          href="/login"
-                          className={megaMenuLinkClassName}
-                          onClick={closeMenu}
-                        >
-                          {t('auth.login.submit')}
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          className={cn(megaMenuLinkClassName, 'bg-transparent text-left')}
-                          onClick={() => void handleLogout()}
-                          disabled={logoutMutation.isPending}
-                        >
-                          {t('navigation.logout')}
-                        </button>
+                      {features.publicSignup && !isAuthenticated && (
+                        <li>
+                          <Link
+                            href="/signup"
+                            className={megaMenuLinkClassName}
+                            onClick={() => {
+                              trackLandingEvent('signup_click', 'header');
+                              closeMenu();
+                            }}
+                          >
+                            {t('landing.start')}
+                          </Link>
+                        </li>
                       )}
-                    </li>
-                  </ul>
+                    </ul>
+                  </div>
                 </nav>
               </div>
             </div>
@@ -421,11 +414,27 @@ export function AppNav({ activePage }: AppNavProps) {
         ) : null}
       </header>
 
-      <div
-        aria-hidden="true"
-        className="w-full shrink-0"
-        style={{ height: `var(${HEADER_OFFSET_VAR}, ${HEADER_OFFSET_FALLBACK})` }}
-      />
     </>
+  );
+}
+
+/** The public digital.go.jp masthead uses thinner icons than the registry button. */
+function SiteMenuIcon({ open = false }: { open?: boolean }) {
+  return (
+    <span className="site-header-toggle-icon" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d={open
+          ? 'm18.029 5.07-5.87 5.87-5.797-5.8-1.06 1.06 5.797 5.8-5.798 5.798 1.06 1.06 5.799-5.797 5.869 5.869 1.06-1.061L13.22 12l5.87-5.869-1.061-1.06Z'
+          : 'M3 6v1h18V6Zm0 5v1h18v-1Zm0 5v1h18v-1Z'} />
+      </svg>
+    </span>
+  );
+}
+
+function SiteLanguageArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg data-slot="language-selector-arrow-icon" className={className} aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 8.67L5.67 8L12 14.33L18.33 8L19 8.67L12 15.67L5 8.67Z" />
+    </svg>
   );
 }

@@ -1,0 +1,4 @@
+ALTER TABLE "lms_resources" ADD COLUMN "kind" text DEFAULT 'video' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "lms_resources_course_entry_key" ON "lms_resources" USING btree ("installation_id","context_id") WHERE "lms_resources"."kind" = 'course';--> statement-breakpoint
+ALTER TABLE "lms_resources" ADD CONSTRAINT "lms_resources_kind_check" CHECK ("lms_resources"."kind" IN ('video','course'));--> statement-breakpoint
+ALTER TABLE "lms_resources" ADD CONSTRAINT "lms_resources_course_media_check" CHECK ("lms_resources"."kind" <> 'course' OR ("lms_resources"."video_id" IS NULL AND "lms_resources"."content_hash" IS NULL AND "lms_resources"."content_type" IS NULL AND "lms_resources"."file_size" IS NULL));

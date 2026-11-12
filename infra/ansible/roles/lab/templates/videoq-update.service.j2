@@ -1,0 +1,17 @@
+[Unit]
+Description=Follow verified formal VideoQ releases through internal Git and Argo CD
+After=k3s.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/videoq-updater/state.json
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+Environment="PATH=/opt/videoq-updater/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="HELM_BIN=/opt/videoq-updater/bin/helm"
+Environment="VIDEOQ_VERIFY_PYTHON=/opt/videoq-updater/venv/bin/python"
+Environment="GIT_TERMINAL_PROMPT=0"
+Environment="GIT_SSH_COMMAND=ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i /etc/videoq-updater/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/videoq-updater/known_hosts"
+ExecStart=/opt/videoq-updater/venv/bin/python /opt/videoq-updater/source/scripts/gitops/update.py --config /etc/videoq-updater/config.json
+TimeoutStartSec=infinity

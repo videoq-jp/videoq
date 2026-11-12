@@ -176,18 +176,18 @@ export function VideoCard({ video, showLink = true, className = '', onClick }: V
   const rowContent = (
     <div
       className={cn(
-        'group flex w-full cursor-pointer items-center gap-4 px-2 py-3 md:px-4',
+        'group grid w-full cursor-pointer grid-cols-[7rem_minmax(0,1fr)] items-start gap-x-4 gap-y-2 px-2 py-6 sm:flex sm:items-center md:px-4',
         className,
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="aspect-video w-28 shrink-0 overflow-hidden border border-solid-gray-420 bg-solid-gray-100 sm:w-36">
+      <div className="row-span-2 aspect-video w-28 shrink-0 overflow-hidden border border-solid-gray-420 bg-solid-gray-100 sm:w-36">
         <VideoThumbnail video={video} videoRef={videoRef} />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-std-16B-170 text-solid-gray-800 group-hover:underline">
+        <p className="break-words text-std-17B-170 text-solid-gray-800 group-hover:underline">
           {video.title}
         </p>
         <p className="mt-1 text-dns-14N-130 text-solid-gray-600">
@@ -202,7 +202,7 @@ export function VideoCard({ video, showLink = true, className = '', onClick }: V
         ) : null}
       </div>
 
-      <div className="shrink-0">
+      <div className="col-start-2 shrink-0">
         <StatusBadgeWithIcon status={getVideoDisplayStatus(video)} label={t(getStatusLabel(getVideoDisplayStatus(video)))} />
       </div>
     </div>

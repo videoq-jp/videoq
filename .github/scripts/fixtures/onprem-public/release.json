@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 4,
+  "repository": "videoq-jp/videoq",
+  "sourceSha": "2f9e90290f1edb1d904903458a592c0b87b1499b",
+  "images": {
+    "api": {
+      "repository": "ghcr.io/videoq-jp/videoq-api",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "digest": "sha256:c893af33bd7908daeaa4066990f41ed6f2b4a0289d5a6083021e3f26d5d47cf4"
+    },
+    "worker": {
+      "repository": "ghcr.io/videoq-jp/videoq-worker",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "digest": "sha256:ad0edae5484b82c5902d574038c910ee0a773b49b4b894a40932b6c3e89bf70c"
+    },
+    "web": {
+      "repository": "ghcr.io/videoq-jp/videoq-web",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "digest": "sha256:056f26e0a7114ed389be9e824b20cf3a26cd4c762bacb5091d821bae64f2db0b"
+    },
+    "transcription-gateway": {
+      "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "digest": "sha256:b50d300a7ae1ea5fc99601a59b83461aeb62438b2123fd03ee5d96505648c3b2"
+    },
+    "vllm-engine": {
+      "repository": "ghcr.io/videoq-jp/videoq-vllm",
+      "platforms": [
+        "linux/amd64"
+      ],
+      "digest": "sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83"
+    }
+  },
+  "charts": {
+    "application": {
+      "name": "videoq-0.1.0-sha.2f9e90290f1edb1d904903458a592c0b87b1499b.tgz",
+      "digest": "sha256:f7fa86c72ca2068f37d64b5ba23ba505cf340a0945f2e9d4bab4aff0156e978c"
+    },
+    "inference": {
+      "name": "videoq-inference-0.1.0-sha.2f9e90290f1edb1d904903458a592c0b87b1499b.tgz",
+      "digest": "sha256:71397fc6968e3cd921e9b5f4e71112b34f4981b96e1c64b1fa628fea1f1f5eea"
+    }
+  }
+}

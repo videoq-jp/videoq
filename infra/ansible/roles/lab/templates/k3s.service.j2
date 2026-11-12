@@ -1,0 +1,21 @@
+[Unit]
+Description=Lightweight Kubernetes (VideoQ lab)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=notify
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s server --config /etc/rancher/k3s/config.yaml
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+KillMode=process
+Delegate=yes
+LimitNOFILE=1048576
+LimitNPROC=infinity
+TasksMax=infinity
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

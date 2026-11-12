@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-11-10T15:51:42.926Z",
+  "scope": "Legal policy draft and Stripe hosted test screen review; production release not verified",
+  "sourceFiles": [
+    {
+      "path": "apps/api/src/features/billing/checkout-disclosure.ts",
+      "sha256": "3c7ee6b2d922d510f8dcb3fa760d2f103d78091875ca1be0291398c2379005d8"
+    },
+    {
+      "path": "apps/api/src/features/billing/service.ts",
+      "sha256": "ddd353da37084d7845a33067ca2c90738c04d165fee1a625acaa43916440ed11"
+    },
+    {
+      "path": "apps/web/src/pages/LegalPage.tsx",
+      "sha256": "214e53f443240735fafa0e6e8c7926b3e06d66bd9d5ecff6969ed9fc63782eb5"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/ja/translation.json",
+      "sha256": "38ba63a69ce3ea5e788b0691ed38f27ed946a72e7f7bc592d9283c586f39580c"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/en/translation.json",
+      "sha256": "2389e4abf64c6b92ecaca5f7a49fd23f59afa754ef40c8164c80d9b086379ac6"
+    },
+    {
+      "path": "apps/web/src/components/layout/AppFooter.tsx",
+      "sha256": "8d775a5cd91d3c5558e4cd196dd56a33447c30c263b178234975adadf479eee8"
+    }
+  ],
+  "checks": {
+    "html": {
+      "pages": 8,
+      "textFields": 172,
+      "localizedRelatedLinks": true,
+      "updateNotice": true
+    },
+    "apiBillingTests": {
+      "files": 4,
+      "passed": 31
+    },
+    "apiTypecheck": "passed",
+    "webProductionBuild": "passed",
+    "stripeTestDisplay": {
+      "locales": [
+        "ja",
+        "en"
+      ],
+      "plans": [
+        "basic_monthly",
+        "basic_yearly",
+        "pro_monthly",
+        "pro_yearly"
+      ],
+      "completedPurchases": 0,
+      "usesProductionLookupKeys": false
+    }
+  },
+  "openItems": [
+    "Production deployment and post-release verification",
+    "Verify the bilingual in-service update notice after deployment"
+  ],
+  "vendorReview": {
+    "basis": "Published commercial Terms and DPA, plus VideoQ controller responsibilities; see operations review for clause mapping and limitations",
+    "vendorInquiry": "Withdrawn at operator request; no message sent",
+    "sensitiveData": "Excluded from standard use; no approval for sensitive personal records is claimed",
+    "ongoingReview": "At least annually and on provider/data-flow changes"
+  }
+}

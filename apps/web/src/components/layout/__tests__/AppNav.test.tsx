@@ -2,6 +2,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@te
 import { apiClient } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { useI18nNavigate } from '@/lib/i18n'
+import * as landingAnalytics from '@/lib/landingAnalytics'
 
 // Unmock AppNav so we can test the real implementation
 vi.unmock('@/components/layout/AppNav')
@@ -74,6 +75,21 @@ describe('AppNav - disclosure focus and pending actions', () => {
     await waitFor(() => expect(actions[0]).toBeEnabled())
   })
 
+  it('logs out from the expanded menu and closes it on success', async () => {
+    const navigate = vi.mocked(useI18nNavigate())
+    navigate.mockClear()
+    render(<AppNav />)
+    const trigger = screen.getByRole('button', { name: 'navigation.menu' })
+    fireEvent.click(trigger)
+    const panel = document.getElementById(trigger.getAttribute('aria-controls')!)!
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'navigation.logout' }))
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/login'))
+    expect(apiClient.logout).toHaveBeenCalledTimes(1)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('shows logout failure, preserves the current page and cache, and allows retry', async () => {
     const navigate = vi.mocked(useI18nNavigate())
     navigate.mockClear()
@@ -128,6 +144,25 @@ describe('AppNav - no authenticated user (empty cache)', () => {
   it('shows pricing nav link', () => {
     render(<AppNav />)
     expect(within(getPrimaryNav()).getByText('navigation.pricing')).toBeInTheDocument()
+  })
+
+  it('keeps signup available in the menu and closes it after tracking the click', () => {
+    const track = vi.spyOn(landingAnalytics, 'trackLandingEvent')
+    render(<AppNav />)
+    const trigger = screen.getByRole('button', { name: 'navigation.menu' })
+    fireEvent.click(trigger)
+    const panel = document.getElementById(trigger.getAttribute('aria-controls')!)!
+    const signup = within(panel).getByRole('link', { name: 'landing.start' })
+    expect(signup).toHaveAttribute('href', '/signup')
+
+    // jsdom cannot follow the native link; its destination is checked above.
+    signup.addEventListener('click', event => event.preventDefault())
+    fireEvent.click(signup)
+
+    expect(track).toHaveBeenCalledWith('signup_click', 'header')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).toBeNull()
+    track.mockRestore()
   })
 
   it('shows login button', () => {

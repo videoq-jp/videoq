@@ -1,4 +1,5 @@
-import { materialsServiceSchema } from "./materials-client";
+import { materialsServiceSchema } from '../lms/contracts';
+import { legacyAuthoritySchema } from '../lms/provider-registry';
 import { isS3Storage } from "../../integrations/media";
 import { hasSecretEncryptionKey } from "../../lib/secret-encryption";
 import { z } from "zod";
@@ -16,6 +17,9 @@ const resource = z.object({
   courseId: z.number().int().positive().safe(),
   videoId: z.number().int().positive().safe().optional(),
   generation: z.number().int().positive().safe().optional(),
+  sourceGeneration: z.number().int().positive().safe().optional(),
+  learningAvailable: z.boolean().optional(),
+  kind: z.literal('course').optional(),
 }).strict();
 const registration = z.object({
   id: z.string().min(1),
@@ -23,7 +27,7 @@ const registration = z.object({
   clientId: z.string().min(1),
   authorizationUrl: httpsUrl,
   jwksUrl: httpsUrl,
-  courseAccess: z.literal("moodle").optional(),
+  courseAccess: legacyAuthoritySchema.optional(),
   materialsService: materialsServiceSchema.optional(),
   deploymentId: z.string().min(1).optional(),
   frameOrigins: z.array(origin).min(1).max(20),
@@ -32,6 +36,8 @@ const registration = z.object({
 const schema = z.object({
   toolOrigin: origin,
   databaseRegistrations: z.boolean().optional(),
+  privacyEnabled: z.boolean().optional(),
+  auditRetentionDays: z.number().int().min(1).max(3650).optional(),
   registrations: z.array(registration).max(100),
 }).strict().superRefine((config, ctx) => {
   if (!config.databaseRegistrations && !config.registrations.length) ctx.addIssue({ code: "custom", message: "At least one registration is required" });

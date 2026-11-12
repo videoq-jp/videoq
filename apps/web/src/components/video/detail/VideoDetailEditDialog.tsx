@@ -57,7 +57,7 @@ export function VideoDetailEditDialog({
           <DialogHeading {...dialog.headingProps}>{t('videos.detail.editButton')}</DialogHeading>
         </DialogHeader>
         <DialogBody>
-          <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+          <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('videos.detail.editDescriptionLabel')}
           </p>
           <div className="space-y-4">

@@ -11,7 +11,7 @@ describe('LandingDemoVideo',()=>{
   it('waits for an explicit play and then exposes native controls',()=>{
     const {container}=render(<LandingDemoVideo/>);
     const video=container.querySelector('video')!;
-    expect(video).toHaveAttribute('src','/demo/provider-demo-ja.mp4?v=4');
+    expect(video).toHaveAttribute('src','/demo/provider-demo-ja.mp4?v=7');
     expect(video.parentElement).toHaveStyle({aspectRatio:'16 / 9'});
     expect(video).toHaveAttribute('preload','none');
     expect(video.autoplay).toBe(false);

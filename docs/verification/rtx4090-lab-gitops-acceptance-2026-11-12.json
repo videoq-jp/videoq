@@ -1,0 +1,158 @@
+{
+  "status": "passed",
+  "scope": "Initial full application and cold-data restore acceptance for release 40. Cold model provisioning fixes have a separate source-specific validation.",
+  "release": {
+    "sourceSha": "40adc7bdd8e3c99970d6851486fca30f06085863",
+    "runId": "43172519519",
+    "runAttempt": 1,
+    "publicSignaturesAndDigestsVerified": true
+  },
+  "host": {
+    "gpu": "RTX 4090",
+    "gpuCount": 1,
+    "driver": "580.178.04",
+    "kernel": "6.8.0-149-generic",
+    "gpuMemoryUsedMiB": 20801,
+    "gpuMemoryTotalMiB": 24564,
+    "base": "Ubuntu 22.04 VM with an existing NVIDIA driver and no K3s"
+  },
+  "bootstrap": {
+    "initialAnsible": {
+      "ok": 38,
+      "changed": 21,
+      "failed": 0
+    },
+    "rerunAfterDriverPolicy": {
+      "ok": 39,
+      "changed": 0,
+      "failed": 0
+    },
+    "configuration": "Separate private GitOps repository, read-only GitHub App; no public Argo CD API"
+  },
+  "gitops": {
+    "availableDeployments": 10,
+    "applications": [
+      {
+        "name": "lab",
+        "sync": "Synced",
+        "health": "Healthy"
+      },
+      {
+        "name": "lab-gpu",
+        "sync": "Synced",
+        "health": "Healthy"
+      },
+      {
+        "name": "lab-videoq",
+        "sync": "Synced",
+        "health": "Healthy"
+      }
+    ]
+  },
+  "models": [
+    {
+      "role": "chat",
+      "backend": "vllm",
+      "repository": "openai/gpt-oss-20b",
+      "revision": "6cee5e81ee83917806bbde320786a8fb61efebee"
+    },
+    {
+      "role": "embedding",
+      "backend": "vllm",
+      "repository": "google/embeddinggemma-2",
+      "revision": "f9972ac22e696a105c482202646979e33e4b5a1e"
+    },
+    {
+      "role": "transcription",
+      "backend": "vllm",
+      "repository": "openai/whisper-large-v3-turbo",
+      "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9"
+    }
+  ],
+  "videoAcceptance": {
+    "uploadedVideos": 2,
+    "transcriptionAndIndexing": [
+      "ja",
+      "en"
+    ],
+    "fixtureAttribution": "apps/inference/whisper/tests/fixtures/README.md",
+    "cases": [
+      {
+        "audioLanguage": "ja",
+        "questionLanguage": "ja",
+        "question": "動画によると、インターネットで「敵対的環境コース」を検索すると、何の住所が出てきますか？",
+        "answer": "動画によると、インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+        "directAndStreamedAnswerSeconds": 20.272638403
+      },
+      {
+        "audioLanguage": "ja",
+        "questionLanguage": "en",
+        "question": "According to the video, searching online for hostile environment courses will probably return whose addresses? Answer in English.",
+        "answer": "Searching online for hostile environment courses will probably return local company addresses.",
+        "directAndStreamedAnswerSeconds": 11.424948299000004
+      },
+      {
+        "audioLanguage": "en",
+        "questionLanguage": "en",
+        "question": "According to the video, what determines the color of cabbage juice? Answer in English.",
+        "answer": "The color of cabbage juice is determined by its acidity or alkalinity; it changes color depending on how acidic, basic, or alkaline the chemical is.",
+        "directAndStreamedAnswerSeconds": 11.218839887000001
+      },
+      {
+        "audioLanguage": "en",
+        "questionLanguage": "ja",
+        "question": "動画によると、キャベツの汁の色は何によって変わりますか？日本語で答えてください。",
+        "answer": "キャベツの汁の色は、酸性・塩基性・アルカリ性など、化学的なpHの状態によって変わります。",
+        "directAndStreamedAnswerSeconds": 11.625496035000003
+      }
+    ],
+    "afterRestore": {
+      "status": "passed",
+      "cases": 4
+    }
+  },
+  "ui": {
+    "status": "passed",
+    "tls": "internal CA trusted; certificate verification enabled",
+    "login": "actual UI username/password form",
+    "question": "actual UI streamed chat",
+    "answerText": "Searching online for hostile environment courses will probably return the addresses of local companies. (0:01-0:08)",
+    "citation": "FLEURS ja real model acceptance 00:00:01,488",
+    "requestedTime": 1.488,
+    "currentTime": 1.627698,
+    "duration": 12.44,
+    "readyState": 4,
+    "error": null,
+    "pageErrors": []
+  },
+  "backupRestore": {
+    "status": "passed",
+    "method": "validated four-volume cold backup and restore",
+    "volumeCount": 4,
+    "snapshotSha256": "3c615b421a2c8f9b02f7da05e9f8c7bdeaa2774d096d832b8e3466555f53848d",
+    "postSnapshotMarkersRemoved": 4,
+    "clusterIdentityChecked": true,
+    "originalPvcUidsChecked": true,
+    "allWritersAndBackendsQuiesced": true,
+    "applicationAcceptanceAfterRestore": "passed: JA/EN four-way cited answers and SSE; actual UI citation playback over verified HTTPS"
+  },
+  "afterRestoreUi": {
+    "status": "passed",
+    "requestedTime": 1.488,
+    "currentTime": 1.626888,
+    "duration": 12.44,
+    "error": null,
+    "pageErrors": []
+  },
+  "offHostRecovery": {
+    "encrypted": true,
+    "decryptionVerifiedInMemory": true,
+    "verifiedBackupFiles": 5,
+    "encryptionKeyKeptSeparatelyInAnsibleVault": true
+  },
+  "initialIssues": {
+    "driverUpdate": "An unattended NVIDIA userspace update caused a driver/module mismatch; package processing stopped at its documented safe boundary, package audit passed, and the VM rebooted. Maintenance policy is PR 1396.",
+    "coldStart": "The initial 600-second progress deadline and 1GiB downloader limit required recovery. PR 1398 records a separate empty-PVC download using two workers and a 4GiB limit."
+  },
+  "screenshot": "rtx4090-lab-gitops-citation-playback-2026-11-12.png"
+}

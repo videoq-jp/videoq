@@ -9,14 +9,16 @@ const meta = {
   component: GuidePage,
   parameters: { pathname: '/guides/online-course-questions', layout: 'fullscreen' },
   decorators: [(Story) => (
-    <main className="mx-auto max-w-screen-xl px-6 py-8">
+    <main className="mx-auto max-w-[77.375rem] px-6 py-8">
       <Routes><Route path="guides/:slug" element={<Story />} /></Routes>
     </main>
   )],
   async play({ canvas, canvasElement }) {
     const prefix = i18n.language === 'en' ? '/en' : '';
     await expect(canvas.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: i18n.t('guides.tryDemo') })).toHaveAttribute('href', `${prefix}/try`);
+    const demoLinks = canvas.getAllByRole('link', { name: i18n.t('guides.tryDemo') });
+    await expect(demoLinks).toHaveLength(2);
+    for (const link of demoLinks) await expect(link).toHaveAttribute('href', `${prefix}/try`);
     await expect(canvas.getByRole('link', { name: i18n.t('guides.cta') })).toHaveAttribute('href', `${prefix}/signup`);
     await expect(canvas.getByRole('link', { name: i18n.t('guides.pricing') })).toHaveAttribute('href', `${prefix}/pricing`);
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
