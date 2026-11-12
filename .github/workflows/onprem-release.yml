@@ -216,6 +216,11 @@ jobs:
         with:
           pattern: published-${{ matrix.component }}-*-attempt-${{ github.run_attempt }}
           merge-multiple: true
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+          token: ''
       - id: image
         env:
           GH_TOKEN: ${{ github.token }}
@@ -255,6 +260,9 @@ jobs:
             release/*.sigstore.json
           if-no-files-found: error
           retention-days: 1
+      - name: Clear registry credentials after signing the index
+        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
+        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
   release:
     needs: [source, indexes, chart]
     runs-on: ubuntu-24.04
