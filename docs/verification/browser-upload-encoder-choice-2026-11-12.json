@@ -1,5 +1,5 @@
 {
-  "scope": "Controlled real-browser diagnosis; signed-release production acceptance is still required",
+  "scope": "Historical controlled real-browser diagnosis, followed by separate unmodified signed production acceptance",
   "date": "2026-11-12",
   "baselineSourceSha": "32fd53364729d88b87641590f15392e9f8a79b7f",
   "environment": {
@@ -23,5 +23,13 @@
     "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
     "pageErrors": []
   },
-  "regression": "A browser with native software AVC encoding must be able to compress and upload without a hardware encoder."
+  "regression": "A browser with native software AVC encoding must be able to compress and upload without a hardware encoder.",
+  "productionAcceptance": {
+    "status": "passed",
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "record": "rtx4090-production-acceptance-2026-11-12.json",
+    "workerJavaScriptOverride": false,
+    "backendMocked": false,
+    "uncompressedUploadFallback": false
+  }
 }
