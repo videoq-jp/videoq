@@ -170,6 +170,32 @@ class ManifestTests(unittest.TestCase):
         self.assertNotIn('directory', root['spec']['source'])
         self.assertNotIn('finalizers', root['metadata'])
 
+    def test_initial_ssh_host_trust_preserves_existing_keys_without_enabling_updates(self):
+        import yaml
+        tasks = yaml.safe_load((m.ROOT / 'infra/ansible/roles/lab/tasks/main.yml').read_text())
+        trust = next(t for t in tasks if t['name'] == 'Register verified internal SSH host keys with Argo CD')
+        auth = next(t for t in tasks if t['name'] == 'Configure an optional read-only SSH deploy key from Ansible Vault')
+        self.assertLess(tasks.index(trust), tasks.index(auth))
+        self.assertEqual(trust['when'], 'videoq_gitops_ssh_private_key | length > 0')
+        updater = yaml.safe_load((m.ROOT / 'infra/ansible/roles/lab/tasks/updater.yml').read_text())
+        self.assertFalse(any(t['name'] == trust['name'] for t in updater))
+        old = 'github.com ssh-ed25519 OLD'
+        new = '[forgejo.example.com]:2222 ssh-ed25519 NEW'
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'patch.json'
+            playbook = Path(temporary) / 'render.yml'
+            playbook.write_text(yaml.safe_dump([{'hosts': 'all', 'connection': 'local',
+                'gather_facts': False, 'vars': {'ansible_python_interpreter': sys.executable,
+                    'videoq_update_enabled': False, 'videoq_gitops_ssh_private_key': 'test-only',
+                    'videoq_gitops_known_hosts': new + '\n',
+                    'current_argocd_known_hosts': {'stdout': json.dumps({'data': {'ssh_known_hosts': old + '\n' + new + '\n'}})}},
+                'tasks': [{'ansible.builtin.copy': {'content': trust['ansible.builtin.command']['argv'][-1],
+                    'dest': str(output), 'mode': '0600'}, 'when': trust['when']}]}]))
+            subprocess.run([str(Path(sys.executable).with_name('ansible-playbook')), '-i', 'localhost,', str(playbook)],
+                           check=True, capture_output=True)
+            keys = json.loads(output.read_text())['data']['ssh_known_hosts'].splitlines()
+        self.assertEqual(keys, [old, new])
+
     def test_upstream_checksum_and_exact_image_inventory_are_enforced(self):
         raw = json.dumps({'apiVersion': 'apps/v1', 'kind': 'Deployment',
             'metadata': {'labels': {'app.kubernetes.io/instance': 'videoq'}},
@@ -185,6 +211,20 @@ class ManifestTests(unittest.TestCase):
         pin['images'] = {'other:v1': 'other@sha256:' + 'b'*64}
         with self.assertRaisesRegex(ValueError, 'Unreviewed'):
             p.pin_argocd_manifest(raw, pin)
+
+    def test_reinstall_preserves_operator_added_ssh_host_trust(self):
+        raw = json.dumps({'apiVersion': 'v1', 'kind': 'ConfigMap',
+            'metadata': {'name': 'argocd-ssh-known-hosts-cm'},
+            'data': {'ssh_known_hosts': 'upstream defaults'}})
+        pin = {'sha256': hashlib.sha256(raw.encode()).hexdigest(), 'images': {}}
+        existing = 'github.com ssh-ed25519 OLD\n[forgejo.example.com]:2222 ssh-ed25519 NEW\n'
+        for hosts in (existing, ''):
+            result = json.loads(p.pin_argocd_manifest(raw, pin, hosts))
+            self.assertEqual(result['items'][0]['data']['ssh_known_hosts'], hosts)
+        self.assertEqual(json.loads(p.pin_argocd_manifest(raw, pin))['items'][0]['data']['ssh_known_hosts'],
+                         'upstream defaults')
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            p.pin_argocd_manifest(raw + '\n', pin, existing)
 
     def test_unreviewed_hooks_and_unpinned_images_cannot_be_promoted(self):
         with self.assertRaisesRegex(ValueError, 'unreviewed Helm hook'):

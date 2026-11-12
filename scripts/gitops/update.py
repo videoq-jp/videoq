@@ -58,6 +58,28 @@ def image_refs(objects):
     return sorted(refs)
 
 
+def ctr_reference(reference):
+    """Expand Kubernetes/Docker familiar names for containerd's stricter CLI."""
+    name, digest = reference.rsplit('@', 1)
+    if not re.fullmatch(r'sha256:[a-f0-9]{64}', digest):
+        raise ValueError('Cache only digest-pinned images')
+    parts = name.split('/')
+    if len(parts) == 1:
+        parts = ['docker.io', 'library', *parts]
+    elif '.' not in parts[0] and ':' not in parts[0] and parts[0] != 'localhost':
+        parts.insert(0, 'docker.io')
+    if parts[0] == 'index.docker.io':
+        parts[0] = 'docker.io'
+    if parts[0] == 'docker.io' and len(parts) == 2:
+        parts.insert(1, 'library')
+    name = '/'.join(parts)
+    # The digest selects the exact bytes; a tag is unnecessary for caching.
+    repository, colon, tag = name.rpartition(':')
+    if colon and '/' not in tag:
+        name = repository
+    return name + '@' + digest
+
+
 def assert_manual(app):
     policy = app['spec'].get('syncPolicy', {}).get('automated')
     if policy is not None and policy.get('enabled') is not False:
@@ -139,7 +161,7 @@ class Host(Lifecycle):
     def cache_images(self, root, objects):
         # Cache every referenced image before downtime. Archive the four own image
         # families so GitHub retention does not control local restart/recovery.
-        refs = image_refs(objects)
+        refs = sorted({ctr_reference(ref) for ref in image_refs(objects)})
         for ref in refs:
             run('k3s', 'ctr', 'images', 'pull', '--platform', 'linux/amd64', ref)
         own = [x for x in refs if x.startswith('ghcr.io/videoq-jp/videoq-')]

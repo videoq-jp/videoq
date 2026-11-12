@@ -129,6 +129,51 @@ test('browser setup retries transient failures but never passes after three fail
   }
 });
 
+test('publishing retries the same scanned graph, fails after three errors and still checks its digest',()=>{
+  const {mkdtempSync,writeFileSync,chmodSync,rmSync}=require('node:fs');
+  const {tmpdir}=require('node:os');
+  const {spawnSync}=require('node:child_process');
+  const publish=job('publish');
+  const retry=publish.match(/^          for copy_attempt in 1 2 3; do\n[\s\S]*?^          done/m)[0];
+  const verify=publish.split('\n').find(line=>line.trim().startsWith('test "$(oras resolve '));
+  assert(verify,'registry digest equality remains a publication gate');
+  const script=(retry+'\n'+verify).split('\n').map(line=>line.replace(/^          /,'')).join('\n');
+  const digest='sha256:'+'a'.repeat(64);
+  const tag='ghcr.io/videoq-jp/videoq-api:unit-fixture';
+  for(const scenario of [{failures:2,match:true,attempts:3,status:0},
+    {failures:3,match:true,attempts:3,status:1},{failures:0,match:false,attempts:1,status:1}]){
+    const directory=mkdtempSync(join(tmpdir(),'videoq-publish-retry-'));
+    try{
+      const counter=join(directory,'counter'),argumentsFile=join(directory,'arguments');
+      writeFileSync(join(directory,'oras'),`#!/bin/sh
+case "$1" in
+  cp)
+    count=0
+    if [ -f "$TEST_COUNTER" ]; then read -r count < "$TEST_COUNTER"; fi
+    count=$((count+1))
+    printf '%s\\n' "$count" > "$TEST_COUNTER"
+    printf '%s\\n' "$*" >> "$TEST_ARGUMENTS"
+    if [ "$count" -le "$TEST_FAILURES" ]; then exit 1; fi
+    ;;
+  resolve) printf '%s\\n' "$TEST_RESOLVED_DIGEST" ;;
+  *) exit 99 ;;
+esac
+`);
+      writeFileSync(join(directory,'sleep'),'#!/bin/sh\nexit 0\n');
+      for(const name of ['oras','sleep']) chmodSync(join(directory,name),0o700);
+      const result=spawnSync('bash',['-e','-o','pipefail','-c',script],{env:{...process.env,
+        PATH:directory+':'+process.env.PATH,digest,tag,TEST_COUNTER:counter,TEST_ARGUMENTS:argumentsFile,
+        TEST_FAILURES:String(scenario.failures),TEST_RESOLVED_DIGEST:scenario.match?digest:'sha256:'+'b'.repeat(64)},encoding:'utf8'});
+      assert.equal(result.status,scenario.status,result.stderr);
+      assert.equal(Number(readFileSync(counter,'utf8').trim()),scenario.attempts);
+      const argumentsLines=readFileSync(argumentsFile,'utf8').trim().split('\n');
+      assert.equal(new Set(argumentsLines).size,1,'every retry copies exactly the same graph and tag');
+      assert(argumentsLines[0].includes('image@'+digest));
+      assert(argumentsLines[0].endsWith(tag));
+    }finally{rmSync(directory,{recursive:true,force:true})}
+  }
+});
+
 test('on-prem hosts use an explicit supported Ubuntu baseline',()=>{
  const validation=readFileSync(join(__dirname,'../workflows/onprem-validation.yml'),'utf8');
  for(const source of [workflow,validation]){

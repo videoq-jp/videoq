@@ -1,10 +1,11 @@
 # 研究室の RTX 4090 を Ansible と Argo CD で管理する
 
 初回の OS・GPU・K3s・Argo CD は Ansible、アプリの配置と更新は Argo CD に分担する。
-Argo CD は研究室内の K3s に置き、GitHub に外向きに接続して設定を取得する。
+Argo CD は研究室内の K3s に置き、研究室内の Forgejo/GitLab から設定を取得する。
+GitHub の公開正式リリースへの追従は、ホスト側の[自動更新サービス](lab-auto-update.md)が担当する。
 GitHub Actions から研究室への SSH、Webhook の受信口、外部公開した管理画面は必要ない。
 
-NVIDIA ドライバー導入済み・K3s 未導入の Vast.ai VM と RTX 4090 一枚で、Ansible の
+2026-11-12の検証では、NVIDIA ドライバー導入済み・K3s 未導入の Vast.ai VM と RTX 4090 一枚で、Ansible の
 初回導入・再実行（変更0件）、GitHub App による非公開構成の取得と Argo CD の同期、
 実3モデルの同居、日英動画の文字起こし・索引・引用付き回答、画面からの圧縮・アップロードと引用時刻の再生、
 4つのデータ領域のバックアップ・復旧後の再試験まで確認した。
@@ -19,10 +20,10 @@ NVIDIA ドライバー導入済み・K3s 未導入の Vast.ai VM と RTX 4090 �
 | 公開 `videoq-jp/videoq` | アプリ、Helm、Ansible、配布・検証コード |
 | 非公開の構成リポジトリ | ホストごとの採用バージョン、LAN向け設定、Argo CD Application |
 | ホスト内 `/var/lib/videoq-bootstrap` | 暗号化した初期認証情報の復旧用コピー（rootのみ読取） |
-| Ansible Vault | 認証情報の暗号鍵と、構成リポジトリの読取専用 GitHub App 秘密鍵 |
+| Ansible Vault | 認証情報の暗号鍵、構成リポジトリ用のSSH鍵と確認済みホスト鍵 |
 
-構成リポジトリの初期名は `videoq-jp/videoq-lab-config` を想定するが、コードには固定しない。
-研究室の Organization があれば、そちらで所有してもよい。将来のサービスは `clusters/lab/apps/` に
+構成リポジトリは研究室内の Forgejo/GitLab に非公開で用意する。接続先や所有者はコードに固定しない。
+公開アプリの配布元と、研究室の設定の保存先は別に管理する。将来のサービスは `clusters/lab/apps/` に
 別 Application として追加し、必要な namespace と AppProject の権限を管理者が明示的に追加する。
 動画、DB、パスワード、秘密鍵は構成リポジトリにも入れない。
 
@@ -48,7 +49,7 @@ VIDEOQ_VERIFY_PYTHON=/secure/videoq-operator/bin/python \
 /secure/videoq-operator/bin/python scripts/gitops/promote.py \
   --release-directory /secure/videoq-release \
   --source-sha SOURCE_SHA --run-id RUN_ID --run-attempt 1 \
-  --repository https://github.com/videoq-jp/videoq-lab-config.git \
+  --repository ssh://git@forgejo.example.com:2222/lab/config.git \
   --public-url https://192.168.1.50 --listen-ip 192.168.1.50 \
   --storage-gib 40 --output /secure/videoq-lab-config \
   --deployment-pin-output .github/deployment-pins/lab.json
@@ -78,8 +79,10 @@ clusters/lab/
   release-lock.json     # 検証した配布元と生成ファイルのハッシュ
 ```
 
-構成リポジトリの default branch を PR 経由の変更に制限する。Argo CD はこのリポジトリを
-管理者の信頼済み設定として扱う。署名検証は構成への昇格時に行い、Argo CD が独自に
+初回構成と管理者の変更は PR で確認する。自動更新を有効にする場合は、更新専用の鍵が対象branchへ
+通常のpushをできるようにする。PR必須ルールを使う場合も、その更新用の権限だけを限定して許可する。
+Argo CD は読み取り専用の鍵を使い、Gitの構成を管理者の信頼済み設定として扱う。署名検証は
+構成への昇格時に行い、Argo CD が独自に
 すべてのコンテナの Sigstore 署名を検査するという意味ではない。
 
 ## 2. Ansible で初回準備する
@@ -112,23 +115,22 @@ K3s の kubeconfig は root 専用とし、Traefik と ServiceLB は初期導入
 Argo CD の API、DB、ストレージ、推論サービスは ClusterIP のままにする。
 VideoQ の HTTPS だけを指定したホストの LAN IPv4 と443番に割り当てる。
 
-非公開構成リポジトリには GitHub App を使う。Contents と Metadata は read のみ、
-インストール対象は構成リポジトリ1つだけ、Webhook は無効にする。組織の deploy key 制限を
-変更する必要はない。Git URL は HTTPS にする。Argo CD が短命の installation token を更新する。
+Forgejo/GitLab に読み取り専用の SSH deploy key を登録する。Ansible Vault に以下を保存する。
 
-Ansible Vault に次の値を保存する。
-
-- `videoq_github_app_id` と `videoq_github_app_installation_id`
-- `videoq_github_app_private_key`: App の秘密鍵
+- `videoq_gitops_ssh_private_key`: Argo CD 用の読取専用秘密鍵
+- `videoq_gitops_known_hosts`: 管理者が確認した Git サーバーの SSH ホスト鍵（known_hosts形式）
 - `videoq_credentials_encryption_key`: Fernet の32バイト鍵をURL-safe Base64にした44文字の値
 
-暗号鍵は管理者の PC で cryptography の `Fernet.generate_key()` から生成し、Vault のみに保管する。
+Git URL は `ssh://git@forgejo.example.com:2222/lab/config.git` などとし、非標準ポートはURLに含める。
+Ansible は自動更新が無効の初回でもSSHホスト鍵を登録し、既存のホスト鍵を保持する。
+鍵がrepo-serverのファイルへ反映され、構成の取得エラーが解消することを確認してから同期する。
+`videoq_update_enabled` は初期値の `false` のままでよい。更新用の別の書込鍵と有効化手順は
+[自動更新](lab-auto-update.md)を使い、初回の実モデル・画面操作の受け入れ後に進める。
+
+暗号鍵は管理者の PC で cryptography の `Fernet.generate_key()` から生成し、Vault に保管する。
 playbook はホストの `/etc/videoq-bootstrap/credentials.key` に root 専用で配置し、
 `/var/lib/videoq-bootstrap/credentials.enc` を暗号化する。暗号鍵とバックアップは分けて保管し、
 既存の暗号鍵と異なる場合は上書きしない。
-
-組織が deploy key を許可している場合に限り、代替として read-only の SSH key と
-`videoq_gitops_ssh_private_key` を使用できる。App と SSH key は同時に設定しない。
 
 ```bash
 ansible-vault create vault.local.yml
@@ -136,7 +138,13 @@ ansible-playbook site.yml -e @vault.local.yml --ask-vault-pass --ask-become-pass
 ```
 
 秘密値を引数の `-e key=...` や平文の inventory に書かない。登録先は Argo CD の repository Secret とホストの root 専用暗号鍵。
-GitHub のホスト鍵検証は維持する。GHCR の公開アプリイメージに GitHub ログインは不要。
+SSHホスト鍵とHTTPS証明書の検証を有効にする。GHCR の公開アプリイメージに GitHub ログインは不要。
+
+既存の GitHub 構成リポジトリを使う場合は、読取専用の GitHub App も選べる。
+Contents/Metadata は read、対象は構成リポジトリ1つ、Webhook は無効とする。
+`videoq_github_app_id`、`videoq_github_app_installation_id`、`videoq_github_app_private_key` を
+Vault で渡し、Git URL は HTTPS にする。App と SSH key は同時に設定しない。
+研究室内のForgejoを使う構成ではGitHub Appは不要。
 
 ## 3. 管理者が同期する
 

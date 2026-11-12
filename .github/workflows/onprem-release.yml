@@ -148,7 +148,13 @@ jobs:
           umask 077
           mkdir -p "$HOME/.docker"
           printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          oras cp --from-oci-layout --to-registry-config "$HOME/.docker/config.json" "image@$digest" "$tag"
+          for copy_attempt in 1 2 3; do
+            if oras cp --from-oci-layout --to-registry-config "$HOME/.docker/config.json" "image@$digest" "$tag"; then
+              break
+            fi
+            if [ "$copy_attempt" -eq 3 ]; then exit 1; fi
+            sleep "$((copy_attempt * 5))"
+          done
           test "$(oras resolve --registry-config "$HOME/.docker/config.json" "$tag")" = "$digest"
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
