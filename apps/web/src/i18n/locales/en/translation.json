@@ -171,7 +171,8 @@
       "derivative": "What does a derivative actually mean?",
       "dna": "How does DNA lead to proteins?",
       "price": "How do supply and demand set prices?"
-    }
+    },
+    "introSummary": "How to try this sample course"
   },
   "landing": {
     "badge": "For course creators and instructors",
@@ -618,17 +619,20 @@
     "shared": {
       "tabs": {
         "videos": "Videos",
-        "assistant": "AI Assistant",
+        "assistant": "Ask AI",
         "overview": "Overview",
         "label": "Course panel",
-        "qa": "Q&A"
+        "qa": "Student Q&A",
+        "details": "Course info"
       },
       "playerPlaceholder": "Select a video from the list",
       "videoNoFile": "Video file is unavailable",
       "noVideos": "No videos yet",
       "overview": "Overview",
       "aboutCourse": "About this course",
-      "publicBadge": "Public share link"
+      "publicBadge": "Public share link",
+      "hidePlayer": "Hide video",
+      "showPlayer": "Show video"
     }
   },
   "courseSharing": {
@@ -892,7 +896,9 @@
     "errorOverQuota": "AI chat is unavailable because your storage is over the configured limit. Please delete videos to free up space.",
     "errorAnswersLimit": "This course has reached its answer limit for this month, so it can't reply right now.",
     "errorRateLimited": "Too many questions in a short time. Please try again a little later.",
-    "citationGroup": "Sources ({{count}})"
+    "citationGroup": "Sources ({{count}})",
+    "showSuggestions": "Show example questions",
+    "hideSuggestions": "Hide example questions"
   },
   "validation": {
     "required": "This field is required"

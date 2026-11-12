@@ -171,7 +171,8 @@
       "derivative": "微分って、結局何を表すの？",
       "dna": "DNAからタンパク質はどう作られる？",
       "price": "需要と供給で価格はどう決まる？"
-    }
+    },
+    "introSummary": "サンプル講座の試し方・注意事項"
   },
   "landing": {
     "badge": "動画講座の運営者・講師の方へ",
@@ -616,17 +617,20 @@
     "shared": {
       "tabs": {
         "videos": "動画一覧",
-        "assistant": "AIアシスタント",
+        "assistant": "AIに質問",
         "overview": "概要",
         "label": "講座パネル",
-        "qa": "Q&A"
+        "qa": "受講生のQ&A",
+        "details": "講座情報"
       },
       "playerPlaceholder": "動画一覧から動画を選択してください",
       "videoNoFile": "動画ファイルがありません",
       "noVideos": "動画がありません",
       "overview": "概要",
       "aboutCourse": "この講座について",
-      "publicBadge": "公開共有リンク"
+      "publicBadge": "公開共有リンク",
+      "hidePlayer": "たたむ",
+      "showPlayer": "動画を表示"
     }
   },
   "courseSharing": {
@@ -890,7 +894,9 @@
     "errorOverQuota": "ストレージ超過のためAIチャットを利用できません。動画を削除してストレージを空けてください。",
     "errorAnswersLimit": "この講座の今月の回答枠が上限に達したため、回答できません。",
     "errorRateLimited": "短時間に質問が集中しています。しばらくしてからもう一度お試しください。",
-    "citationGroup": "参照シーン（{{count}}件）"
+    "citationGroup": "参照シーン（{{count}}件）",
+    "showSuggestions": "質問例を見る",
+    "hideSuggestions": "質問例を閉じる"
   },
   "validation": {
     "required": "この項目は必須です"

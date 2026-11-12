@@ -1,3 +1,5 @@
+import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
+import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
 import { features } from "@/lib/deployment";
 import { useId, useRef, useState, type RefObject } from 'react';
@@ -308,19 +310,23 @@ function GroupPlayerPanel({
   youtubeStartSeconds,
   youtubeSeekId,
   onVideoCanPlay,
+  expanded,
+  onExpandedChange,
 }: {
   selectedVideo: VideoInCourse | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   youtubeStartSeconds: number | null;
   youtubeSeekId: number;
   onVideoCanPlay: () => void;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <section className="flex min-h-0 flex-col">
+    <ViewerPlayerFrame title={selectedVideo?.title ?? t('videos.courseDetail.playerPlaceholder')} expanded={expanded} onExpandedChange={onExpandedChange}>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-        <div className="aspect-video max-h-[45dvh] bg-black flex items-center justify-center lg:max-h-[72dvh]">
+        <div className="aspect-video max-h-[clamp(4rem,calc(100dvh-27rem),28dvh)] bg-black flex items-center justify-center lg:max-h-[72dvh]">
           {selectedVideo ? (
             features.youtube && selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
               <iframe
@@ -349,15 +355,9 @@ function GroupPlayerPanel({
             <p className="text-solid-gray-200 text-std-17N-170 text-center px-4">{t('videos.courseDetail.playerPlaceholder')}</p>
           )}
         </div>
-        <div className="flex min-w-0 shrink-0 items-center justify-between gap-4 px-5 py-4">
-          <Heading size="18" className="min-w-0 flex-1 truncate">
-            <HeadingTitle level="h2">
-              {selectedVideo ? selectedVideo.title : t('videos.courseDetail.playerPlaceholder')}
-            </HeadingTitle>
-          </Heading>
-        </div>
+
       </div>
-    </section>
+    </ViewerPlayerFrame>
   );
 }
 
@@ -407,13 +407,15 @@ export function VideoCourseDetailView({
   onCopyShareLink,
 }: VideoCourseDetailViewProps) {
   const { t } = useTranslation();
+  const viewportHeight = useViewerViewport();
+  const [playerExpanded, setPlayerExpanded] = useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
   const panelId = useId();
   const pageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  const panelTabs: PanelTab[] = ['videos', 'assistant'];
+  const panelTabs: PanelTab[] = isMobile ? ['assistant', 'videos', 'details'] : ['videos', 'assistant'];
   const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
   const panelProps = (tab: PanelTab) => ({
     id: `${panelId}-panel-${tab}`,
@@ -422,6 +424,7 @@ export function VideoCourseDetailView({
     className: `absolute inset-0 flex min-h-0 flex-col ${activeTab === tab ? '' : 'invisible'}`,
   });
   const revealPlayer = () => {
+    setPlayerExpanded(true);
     if (pageRef.current) pageRef.current.scrollTop = 0;
     if (playerRef.current) playerRef.current.scrollTop = 0;
   };
@@ -432,6 +435,10 @@ export function VideoCourseDetailView({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  const learningDetails = courseId ? <CourseLearningDetails key={courseId} courseId={courseId}
+    videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course?.description}
+    onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }} /> : null;
 
   return (
     <>
@@ -491,7 +498,7 @@ export function VideoCourseDetailView({
 
           {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
 
-          <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
+          <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
             <ViewerHeader title={course.name} backHref="/videos/courses">
                 {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
                   <MenuList>
@@ -548,7 +555,7 @@ export function VideoCourseDetailView({
 
             {deleteError ? <div className="shrink-0"><ErrorMessage message={deleteError} /></div> : null}
 
-            <main className="flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+            <main className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
               <div ref={playerRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
                 <GroupPlayerPanel
                   selectedVideo={selectedVideo}
@@ -556,15 +563,16 @@ export function VideoCourseDetailView({
                   youtubeStartSeconds={youtubeStartSeconds}
                   youtubeSeekId={youtubeSeekId}
                   onVideoCanPlay={onVideoCanPlay}
+                  expanded={playerExpanded}
+                  onExpandedChange={setPlayerExpanded}
                 />
 
-                {courseId ? <CourseLearningDetails key={courseId} courseId={courseId}
-                  videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course.description}
-                  onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }} /> : null}
+                {!isMobile && learningDetails}
               </div>
-              <aside className="flex min-h-[28rem] flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
+              <aside className="flex min-h-0 flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
                 <PanelTabs tabs={panelTabs} activeTab={activeTab} idPrefix={panelId} onChange={setPanelTab} />
                 <div className="relative min-h-0 flex-1">
+                  {isMobile && <div {...panelProps('details')}><div className="min-h-0 flex-1 overflow-y-auto">{learningDetails}</div></div>}
                   <div {...panelProps('videos')}>
                     <GroupVideoList
                       course={course}
@@ -583,6 +591,7 @@ export function VideoCourseDetailView({
                   </div>
                   <div {...panelProps('assistant')}>
                     <ChatPanel
+                onComposerFocus={() => { if (isMobile) setPlayerExpanded(false); }}
                       courseId={courseId ?? undefined}
                       showHistory={canManage}
                       showTitle={false}

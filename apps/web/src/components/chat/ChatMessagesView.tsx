@@ -24,7 +24,7 @@ export function ChatMessagesView({
   onFeedback,
 }: ChatMessagesViewProps) {
   return (
-    <div ref={messagesContainerRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4 [overflow-anchor:none] [scrollbar-gutter:stable]">
+    <div ref={messagesContainerRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 [overflow-anchor:none] [scrollbar-gutter:stable]">
       {messages.map((message, index) => (
         <ChatMessageBubble
           key={index}
