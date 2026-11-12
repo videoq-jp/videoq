@@ -168,6 +168,9 @@ class TransactionTests(unittest.TestCase):
         self.assertNotIn('pending_update',host.state)
         self.assertEqual(host.state['runId'],'21')
         self.assertEqual(host.state['previousImages'],'old.tar')
+        self.assertEqual(host.state['source_sha'],host.state['sourceSha'])
+        self.assertEqual(host.state['run_id'],host.state['runId'])
+        self.assertEqual(host.state['run_attempt'],host.state['runAttempt'])
 
     def test_termination_waits_for_controller_before_scaling(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)

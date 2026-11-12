@@ -301,7 +301,8 @@ class Host(Lifecycle):
                 raise ValueError('Argo release sync timed out; inspect it before recovering')
             self.healthy(commit, smoke=True)
             self.restore_cronjobs(runtime)
-            self.state.update(identity(target), revision=commit, previousImages=self.state['acceptedImages'],
+            self.state.update(identity(target), source_sha=target['sourceSha'], run_id=target['runId'],
+                              run_attempt=target['runAttempt'], revision=commit, previousImages=self.state['acceptedImages'],
                               acceptedImages=str(root / 'application-images.tar'), lastBackup=pending['backup'])
             self.state.pop('pending_update')
             self.save_state()
