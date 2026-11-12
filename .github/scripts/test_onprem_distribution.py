@@ -160,18 +160,50 @@ class RetentionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'missing'):
             m.plan(data,roots,[],[],fetch,now)
 
-    def test_snapshot_uses_a_complete_catalog_instead_of_swallowing_api_errors(self):
-        catalog=[{'name':p} for p in m.PACKAGES if p not in m.RETIRED_PACKAGES]
-        def listing(endpoint):
-            if '/releases?' in endpoint:return []
-            if '/packages?' in endpoint:return catalog
-            return []
-        with patch.object(m,'listing',side_effect=listing),patch.object(m,'gh',return_value={
-            'repository':{'full_name':m.REPO},'visibility':'public'}):
+    def test_snapshot_needs_only_repository_scoped_package_metadata(self):
+        def metadata(endpoint,**kwargs):
+            if endpoint.endswith('/videoq-vllm'):
+                self.assertTrue(kwargs['allow_missing'])
+                return None
+            self.assertFalse(kwargs['allow_missing'])
+            return {'repository':{'full_name':m.REPO},'visibility':'public'}
+        with patch.object(m,'listing',return_value=[]) as listing,patch.object(m,'gh',side_effect=metadata):
             data=m.snapshot()
+        self.assertFalse(any('/packages?' in call.args[0] for call in listing.call_args_list))
         self.assertNotIn('videoq-vllm',data['presentPackages'])
         self.assertEqual(data['packages']['videoq-vllm'],[])
         with patch.object(m,'listing',side_effect=RuntimeError('API unavailable')),self.assertRaises(RuntimeError):
             m.snapshot()
+
+    def test_only_an_explicit_retired_metadata_404_is_optional(self):
+        from types import SimpleNamespace
+        endpoint='orgs/videoq-jp/packages/container/videoq-vllm'
+        for status in (401,403,500):
+            response=SimpleNamespace(returncode=1,stdout=f'HTTP/2.0 {status} Error\nContent-Type: application/json\n\n{{}}')
+            with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+                m.gh(endpoint,allow_missing=True)
+        response=SimpleNamespace(returncode=1,stdout='HTTP/2.0 404 Not Found\nContent-Type: application/json\n\n{}')
+        with patch.object(m.subprocess,'run',return_value=response):
+            self.assertIsNone(m.gh(endpoint,allow_missing=True))
+        with patch.object(m.subprocess,'run') as run,self.assertRaises(ValueError):
+            m.gh(endpoint.replace('videoq-vllm','videoq-api'),allow_missing=True)
+        run.assert_not_called()
+        response=SimpleNamespace(returncode=0,stdout='HTTP/2.0 200 OK\nContent-Type: application/json\n\n{"name":"videoq-vllm"}')
+        with patch.object(m.subprocess,'run',return_value=response):
+            self.assertEqual(m.gh(endpoint,allow_missing=True)['name'],'videoq-vllm')
+        for body in ('', 'null', '[]'):
+            response=SimpleNamespace(returncode=0,stdout='HTTP/2.0 200 OK\nContent-Type: application/json\n\n'+body)
+            with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+                m.gh(endpoint,allow_missing=True)
+        response=SimpleNamespace(returncode=1,stdout='not an HTTP response')
+        with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+            m.gh(endpoint,allow_missing=True)
+
+    def test_deleted_retired_package_does_not_require_an_anonymous_registry_token(self):
+        present=sorted(set(m.PACKAGES)-m.RETIRED_PACKAGES)
+        with patch.object(m,'fetch_json',return_value={'token':'test'}) as fetch:
+            registry=m.Registry(packages=present)
+        self.assertEqual(set(registry.tokens),set(present))
+        self.assertTrue(all('videoq-vllm' not in call.args[0] for call in fetch.call_args_list))
 
 if __name__=='__main__':unittest.main()
