@@ -20,7 +20,7 @@ assert(output && target.origin === origin && (privateLab
 const password = privateLab ? process.env.VIDEOQ_ACCEPTANCE_PASSWORD : 'Local-model-validation-only-2026!';
 assert(password && password.length >= 16, 'Set a private acceptance password of at least 16 characters');
 const email = privateLab ? process.env.VIDEOQ_ACCEPTANCE_EMAIL : 'model-validation@example.invalid';
-assert(email && email.endsWith('@example.invalid'), 'Use a disposable example.invalid acceptance account');
+assert(email && /^[^@]+@example\.(invalid|com)$/.test(email), 'Use a disposable example.com or example.invalid acceptance account');
 const storageOrigin = privateLab ? origin : 'http://127.0.0.1:29000';
 const statePath = join(output, 'model-e2e-state.json');
 const state = existsSync(statePath) ? JSON.parse(readFileSync(statePath)) : {videos: {}};

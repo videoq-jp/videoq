@@ -186,7 +186,7 @@ VM 内部の HTTPS URL に接続して実行する。共有の外部IPへ研究�
 受け入れ試験が完了するまでは、運用開始済みとは扱わない。
 
 実モデルによる API の通し試験には `.github/onprem-lab/model-e2e.mjs` を使用できる。
-使い捨ての検証環境に限定し、専用の `model-validation@example.invalid` アカウントを
+使い捨ての検証環境に限定し、専用の `model-validation@example.com` アカウントを
 operator CLI で作成する。出力は Git 外の private なディレクトリへ `activation.json` として保存し、
 公開 FLEURS 音声から作った `ja.mp4` と `en.mp4` も同じ場所に用意する。
 検証端末にリポジトリの固定済み Node 依存を準備し、CA を信頼した状態で実行する。
@@ -194,7 +194,7 @@ operator CLI で作成する。出力は Git 外の private なディレクト�
 ```bash
 export NODE_EXTRA_CA_CERTS="$HOME/videoq-lab-ca.crt"
 export VIDEOQ_PRIVATE_MODEL_ACCEPTANCE=1
-export VIDEOQ_ACCEPTANCE_EMAIL=model-validation@example.invalid
+export VIDEOQ_ACCEPTANCE_EMAIL=model-validation@example.com
 read -r -s -p 'Disposable acceptance password (16+ characters): ' VIDEOQ_ACCEPTANCE_PASSWORD
 export VIDEOQ_ACCEPTANCE_PASSWORD
 node .github/onprem-lab/model-e2e.mjs /secure/videoq-acceptance https://YOUR_LAN_IP
