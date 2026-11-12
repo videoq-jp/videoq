@@ -153,7 +153,32 @@ DB・永続領域（wave 0）→モデルとストレージ初期化（wave 10�
 初回DB作成より先に実行されるため、明示的な Argo CD Sync hook に変換している。
 モデル内の起動順序は既存の Embedding → Whisper → Chat を維持する。
 
-VideoQ 管理者の初回作成と LAN 内 HTTPS の CA 配布は別途行う。
+同期が成功し `videoq-api` が Ready になったら、サーバー上の operator CLI で
+VideoQ の初回管理者を作成する。次のユーザー名とメールアドレスは運用者のものへ置き換える。
+
+```bash
+umask 077
+sudo k3s kubectl -n videoq exec deployment/videoq-api -- \
+  node dist/provision-user.mjs --admin --username labadmin --email YOUR_EMAIL \
+  > "$HOME/videoq-admin-setup.json"
+```
+
+出力の `activation_url` は短時間有効なパスワード設定リンクで、認証情報として扱う。
+Git・PR・共有ログには保存しない。同じアカウントを再作成せず、リンクが失効した場合は
+保存した `id` を `node dist/provision-user.mjs --reset USER_ID` に渡して再発行する。
+パスワード設定が完了したらリンクを含むファイルを削除する。
+
+内部 CA の公開証明書は、認証済み SSH 接続を通して取得する。
+
+```bash
+sudo k3s kubectl -n videoq exec deployment/videoq-gateway -- \
+  cat /data/caddy/pki/authorities/local/root.crt > "$HOME/videoq-lab-ca.crt"
+openssl x509 -in "$HOME/videoq-lab-ca.crt" -noout -subject -fingerprint -sha256
+```
+
+管理者はこの証明書と SHA-256 fingerprint を研究室の利用端末へ配布し、OS・ブラウザの
+信頼ストアへ登録する。CA の秘密鍵は配布しない。HTTPS の接続先には inventory の
+`videoq_public_url` を使用し、証明書検証を無効にせず `/ready` と管理者ログインを確認する。
 Vast.ai の検証では、管理画面は SSH トンネルで使い、VideoQ の通し試験は VM 内のブラウザから
 VM 内部の HTTPS URL に接続して実行する。共有の外部IPへ研究室用の443番を公開する必要はない。
 既存の `scripts/onprem/rtx4090.py` をこの構成に重ねて実行しない。
