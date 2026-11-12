@@ -1,7 +1,10 @@
 import copy
 from datetime import datetime, timedelta, timezone
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -10,6 +13,32 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 D=lambda n:'sha256:'+f'{n:064x}'
 
 class RetentionTests(unittest.TestCase):
+    def test_public_deployment_pins_protect_both_site_generations_from_a_real_git_ref(self):
+        images = {name: {'repository': 'ghcr.io/videoq-jp/videoq-' + name, 'digest': D(i)}
+                  for i, name in enumerate(('api', 'web', 'worker', 'transcription-gateway'), 1)}
+        pin = {'schemaVersion': 1, 'generations': [
+            {'sourceSha': 'a'*40, 'runId': '123', 'runAttempt': 1, 'images': images},
+            {'sourceSha': 'b'*40, 'runId': '122', 'runAttempt': 1, 'images': {
+                name: {**image, 'digest': D(i+10)} for i, (name, image) in enumerate(images.items(), 1)}}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / '.github/deployment-pins/test-site.json'
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(pin))
+            subprocess.run(['git', 'init', '-q', directory], check=True)
+            subprocess.run(['git', '-C', directory, 'add', '.'], check=True)
+            subprocess.run(['git', '-C', directory, '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                            'commit', '-qm', 'active site pins'], check=True)
+            real_run = subprocess.run
+            with patch.object(m.subprocess, 'run', side_effect=lambda *a, **k: real_run(*a, cwd=directory, **k)):
+                roots = m.source_roots(['HEAD'])
+        self.assertEqual(roots['videoq-api'], {D(1), D(11)})
+        self.assertEqual(roots['videoq-vllm'], set())
+        changed = copy.deepcopy(pin)
+        changed['generations'][0]['images']['api']['repository'] = 'ghcr.io/attacker/videoq-api'
+        with self.assertRaises(ValueError):
+            m.deployment_roots(changed)
+
     def fixture(self):
         now=datetime.now(timezone.utc)
         def version(n,tags=(),young=False):

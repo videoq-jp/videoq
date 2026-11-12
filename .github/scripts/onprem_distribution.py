@@ -151,6 +151,38 @@ def source_roots(refs):
             if package not in roots:
                 raise ValueError('Unknown source package')
             roots[package].add(digest)
+        files = subprocess.run(['git', 'ls-tree', '-r', '--name-only', ref, '--', '.github/deployment-pins/'],
+                               capture_output=True, text=True, check=True)
+        for path in files.stdout.splitlines():
+            if not path.endswith('.json'):
+                continue
+            if not re.fullmatch(r'\.github/deployment-pins/[a-z0-9-]+\.json', path):
+                raise ValueError('Unreviewed deployment pin path')
+            raw = subprocess.run(['git', 'show', ref + ':' + path], capture_output=True, text=True, check=True)
+            for package, digests in deployment_roots(json.loads(raw.stdout)).items():
+                roots[package].update(digests)
+    return roots
+
+
+def deployment_roots(data):
+    """Only public image identities; never read a lab's private Git credentials."""
+    generations = data.get('generations')
+    if data.get('schemaVersion') != 1 or not isinstance(generations, list) or not 1 <= len(generations) <= 2:
+        raise ValueError('Invalid deployed-generation pin file')
+    roots = {p: set() for p in PACKAGES}
+    components = {'api', 'worker', 'web', 'transcription-gateway'}
+    for generation in generations:
+        if (not re.fullmatch(r'[a-f0-9]{40}', generation.get('sourceSha', '')) or
+                not re.fullmatch(r'[1-9][0-9]*', str(generation.get('runId', ''))) or
+                not isinstance(generation.get('runAttempt'), int) or generation['runAttempt'] < 1 or
+                set(generation.get('images', {})) != components):
+            raise ValueError('Invalid deployed release identity')
+        for component, image in generation['images'].items():
+            package = 'videoq-' + component
+            digest = image.get('digest', '')
+            if image.get('repository') != f'ghcr.io/{ORG}/{package}' or not DIGEST.fullmatch(digest):
+                raise ValueError('Unreviewed deployed image identity')
+            roots[package].add(digest)
     return roots
 
 
