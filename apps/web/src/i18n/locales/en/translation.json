@@ -1,7 +1,7 @@
 {
   "site": {
     "title": "Answer online course questions from your lecture videos | VideoQ",
-    "description": "For course creators and instructors. Upload your lecture videos and an AI assistant answers student questions from them. Every answer links to the source moment, and students just open a link to ask. Try it free with one lecture."
+    "description": "For course creators and instructors. Upload lectures and invite selected students by email. VideoQ answers questions from your course videos and links to the supporting moments. Start with one lecture for free."
   },
   "common": {
     "notProvided": "Not provided",
@@ -188,7 +188,7 @@
       "title": "What you can do with VideoQ",
       "create": "An AI assistant that answers from your lectures",
       "source": "Answers link to the source moment",
-      "share": "Students just open a link",
+      "share": "Invite selected students by email",
       "insights": "See question trends on a dashboard"
     },
     "features": {
@@ -206,10 +206,10 @@
         "body": "Students select a timestamp to jump to the source moment and check their understanding in your own words."
       },
       "share": {
-        "title": "No setup for students.",
-        "body": "Send a course link and students can ask questions without signing in. Use member invitations to limit access. Answers count against the course owner’s allowance, so students pay nothing.",
-        "example": "Send the course link",
-        "exampleDetail": "Students ask without signing in"
+        "title": "Share your course with the right students.",
+        "body": "Invite students by email. They sign in with a verified email matching the invitation and accept to join. Members can watch and ask questions, while editing remains with the owner. Answers use the course owner’s allowance.",
+        "example": "Invite students by email",
+        "exampleDetail": "Sign in and accept to join"
       },
       "insights": {
         "title": "Questions that improve your next lecture.",
@@ -286,8 +286,8 @@
         "body": "Organize videos by subject or unit to set what students can ask about."
       },
       "share": {
-        "title": "Send the link to students",
-        "body": "Publish with a course link or member invitations. Students can start asking right away."
+        "title": "Invite your students",
+        "body": "Enter their email addresses. Students sign in with matching verified emails and accept the invitation to join."
       },
       "note": "Only upload videos you have the right to use."
     },
@@ -300,7 +300,7 @@
       },
       "accounts": {
         "question": "Do students need an account?",
-        "answer": "Not with a course link. Anyone with the link can view and ask questions without signing in. To limit access, use member invitations."
+        "answer": "Email invitations require an account with a verified email matching the invitation. Students sign in and accept to watch and ask questions. A share link is also available for access without registration."
       },
       "cost": {
         "question": "Who pays for the AI assistant?",

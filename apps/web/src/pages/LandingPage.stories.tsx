@@ -1,3 +1,4 @@
+import { providerDemoMedia } from '@/lib/providerDemo';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { BillingPlan } from '@videoq/trpc';
 import { http, HttpResponse } from 'msw';
@@ -50,7 +51,7 @@ export const WatchDemo: Story = {
     button.focus(); await userEvent.keyboard('{Enter}');
     await waitFor(()=>expect(video.currentTime).toBeGreaterThan(0),{timeout:10000});
     await expect(video.controls).toBe(true);
-    await expect(video.duration).toBeCloseTo(30,0);
+    await expect(video.duration).toBeCloseTo(providerDemoMedia(i18n.language).duration,0);
     await expect(video.videoWidth / video.videoHeight).toBeCloseTo(16 / 9,2);
     await expect(canvas.queryByRole('button', {name:i18n.t('landing.film.play')})).not.toBeInTheDocument();
     const seekTime = 20;

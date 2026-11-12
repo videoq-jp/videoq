@@ -2,7 +2,6 @@ import { providerDemoMedia } from './providerDemo';
 import { absoluteUrl, SITE_ORIGIN, type SiteLocale } from './seo';
 
 const ORGANIZATION_ID = `${SITE_ORIGIN}/#organization`;
-const DEMO_UPLOAD_DATE = '2026-10-31';
 
 export function homeStructuredData(locale: SiteLocale, description: string, demoTitle: string) {
   const home = absoluteUrl('/', locale);
@@ -49,8 +48,8 @@ export function homeStructuredData(locale: SiteLocale, description: string, demo
         name: demoTitle,
         description,
         inLanguage: locale,
-        duration: 'PT30S',
-        uploadDate: DEMO_UPLOAD_DATE,
+        duration: `PT${demo.duration}S`,
+        uploadDate: demo.uploadDate,
         thumbnailUrl: `${SITE_ORIGIN}${demo.poster}`,
         contentUrl: `${SITE_ORIGIN}${demo.video}`,
       },
