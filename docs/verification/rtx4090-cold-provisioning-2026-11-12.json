@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "scope": "Model provisioning only; empty disposable PVC on an RTX 4090 VM. Serving and application acceptance are separate.",
+  "sourceShaUnderTest": "827f03c7b1d592066f4a23089be0b18715fa1af8",
+  "provisionCodeSha256": "eaa366e26e5f2f13006a400dc9b109e718956d8382cc63fb6c506198d0bacf7e",
+  "provisioningImage": "ghcr.io/videoq-jp/videoq-transcription-gateway@sha256:1f237b9dc54dbae575a1c950589bff91f30e7813c5b84610c9626a0c7c5d0365",
+  "codeMount": "Read-only ConfigMap containing the source file under test",
+  "model": {
+    "repository": "openai/gpt-oss-20b",
+    "revision": "6cee5e81ee83917806bbde320786a8fb61efebee"
+  },
+  "emptyCache": true,
+  "parallelFiles": 2,
+  "requests": {
+    "cpu": "100m",
+    "memory": "256Mi"
+  },
+  "limits": {
+    "memory": "4Gi"
+  },
+  "startedAt": "2026-11-12T08:38:31Z",
+  "completedAt": "2026-11-12T08:43:54Z",
+  "exitCode": 0,
+  "restarts": 0,
+  "backoffLimit": 0,
+  "baselineFailure": {
+    "memoryLimit": "1Gi",
+    "reason": "OOMKilled",
+    "exitCode": 137
+  },
+  "rolloutRegression": "Real chart compilation checks progress deadlines exceed serialized peer waits plus startup probes.",
+  "durationSeconds": 323
+}

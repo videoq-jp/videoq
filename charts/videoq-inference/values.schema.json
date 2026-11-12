@@ -2,6 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "rolloutDeadlineSeconds": {
+      "type": "integer",
+      "minimum": 1801,
+      "maximum": 86400
+    },
     "downloadModels": {
       "type": "boolean"
     },
