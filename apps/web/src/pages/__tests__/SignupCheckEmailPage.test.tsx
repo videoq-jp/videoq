@@ -2,6 +2,10 @@ import { render, screen } from '@testing-library/react'
 import SignupCheckEmailPage from '../SignupCheckEmailPage'
 
 describe('SignupCheckEmailPage', () => {
+  beforeEach(() => {
+    globalThis.__setMockSearchParams('')
+  })
+
   afterEach(() => {
     globalThis.__setMockLanguage('en')
   })
@@ -43,5 +47,18 @@ describe('SignupCheckEmailPage', () => {
     expect(container).toBeInTheDocument()
   })
 
+  it.each(['/pricing?interval=year', '/en/pricing?interval=month', '/course-invitations/example'])('preserves the requested destination when returning to login: %s', next => {
+    globalThis.__setMockSearchParams(`?next=${encodeURIComponent(next)}`)
+    render(<SignupCheckEmailPage />)
+    const link = screen.getByRole('link', { name: 'auth.checkEmail.backToLogin' })
+    expect(new URL(link.getAttribute('href')!, 'https://videoq.jp').searchParams.get('next')).toBe(next)
+  })
+
+  it.each(['https://example.org', '//example.org', '/\\example.org'])('drops an unsafe return destination: %s', next => {
+    globalThis.__setMockSearchParams(`?next=${encodeURIComponent(next)}`)
+    render(<SignupCheckEmailPage />)
+    const link = screen.getByRole('link', { name: 'auth.checkEmail.backToLogin' })
+    expect(new URL(link.getAttribute('href')!, 'https://videoq.jp').search).toBe('')
+  })
 
 })

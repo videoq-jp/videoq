@@ -347,7 +347,7 @@ No new external analytics service or database is required.
 
 | Event | Meaning |
 | --- | --- |
-| `landing_view` | Landing page viewed |
+| `landing_view` | First measured marketing page viewed in a tab visit (homepage, demo, guide index/article, or pricing) |
 | `demo_open` | In-page link to the demo clicked |
 | `demo_engaged` | Demo video playback started |
 | `demo_complete` | Demo video playback ended |
@@ -374,8 +374,9 @@ Names, emails, question text, video IDs, user IDs, session IDs, and UTM strings 
 Events include language, audience (normally `general`; `creator` for instructor ads; `school` / `training` follow the `audience` parameter or the teacher cohort; historic student ads use `student`), sign-up button location,
 and one of the fixed `acquisition` values below. Raw UTM values, URLs, and click IDs are neither stored nor sent.
 
-| `acquisition` | Conditions on the initial landing page visit |
+| `acquisition` | Conditions on the initial measured marketing page visit |
 | --- | --- |
+| `search_referral` | Referrer matches an explicitly allowed major search host, without campaign tags or known paid-click parameters; indicative referrals, not verified organic clicks (see [SEO measurement limits](../../docs/operations/seo.md#measuring-results)) |
 | `x_paid_demo15_search` | All of `utm_source=x`, `utm_medium=paid_social`, `utm_campaign=student_demo_test`, and `utm_content=demo15_search` match |
 | `x_paid_student_ja` / `x_paid_student_en` | `utm_source=x`, `utm_medium=paid_social`, `utm_campaign=student_return_202610`, and `utm_content=demo15_search_ja` / `demo15_search_en` |
 | `x_paid_instructor_ja` / `x_paid_instructor_en` | `utm_source=x`, `utm_medium=paid_social`, `utm_campaign=instructor_202611`, and `utm_content=demo30_ja` / `demo30_en` |
