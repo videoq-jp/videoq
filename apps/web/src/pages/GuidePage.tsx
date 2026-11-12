@@ -1,3 +1,5 @@
+import { startLandingVisit } from '@/lib/landingAnalytics';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppPageHeader } from '@/components/layout/AppPageHeader';
@@ -13,6 +15,7 @@ import { articleStructuredData, breadcrumbStructuredData } from '@/lib/structure
 import NotFoundPage from '@/pages/NotFoundPage';
 
 export default function GuidePage() {
+  useEffect(() => { startLandingVisit(); }, []);
   const { t } = useTranslation();
   const locale = useLocale();
   const guide = guideBySlug(useParams().slug);

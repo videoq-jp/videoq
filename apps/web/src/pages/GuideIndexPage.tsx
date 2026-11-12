@@ -1,3 +1,5 @@
+import { startLandingVisit } from '@/lib/landingAnalytics';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppPageHeader } from '@/components/layout/AppPageHeader';
 import { StructuredData } from '@/components/seo/StructuredData';
@@ -7,6 +9,7 @@ import { absoluteUrl } from '@/lib/seo';
 import { breadcrumbStructuredData } from '@/lib/structuredData';
 
 export default function GuideIndexPage() {
+  useEffect(() => { startLandingVisit(); }, []);
   const { t } = useTranslation();
   const locale = useLocale();
 

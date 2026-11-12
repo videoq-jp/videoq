@@ -1,5 +1,6 @@
+import { startLandingVisit } from '@/lib/landingAnalytics';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '@/lib/trpc';
@@ -23,10 +24,11 @@ function formatPrice(amount: number, currency: 'jpy' | 'usd', locale: string): s
 }
 
 export default function PricingPage() {
+  useEffect(() => { startLandingVisit(); }, []);
   const { t } = useTranslation();
   const locale = useLocale();
   const [searchParams] = useSearchParams();
-  const [interval, setInterval] = useState<Interval>('month');
+  const [interval, setInterval] = useState<Interval>(() => searchParams.get('interval') === 'year' ? 'year' : 'month');
   const session = useAuthSession();
   const hasSession = Boolean(session.data?.user);
   const account = useQuery(trpc.account.me.queryOptions(undefined, {
@@ -155,7 +157,7 @@ export default function PricingPage() {
                 </ul>
                 {!hasSession && !session.isPending ? (
                   <Button asChild variant={plan.code === 'free' ? 'outline' : 'solid-fill'}>
-                    <Link href="/signup">{t(plan.code === 'free' ? 'pricing.startFree' : 'pricing.signUpToSubscribe')}</Link>
+                    <Link href={plan.code === 'free' ? '/signup' : `/signup?next=${encodeURIComponent(`${locale === 'en' ? '/en' : ''}/pricing?interval=${interval}`)}`}>{t(plan.code === 'free' ? 'pricing.startFree' : 'pricing.signUpToSubscribe')}</Link>
                   </Button>
                 ) : awaitingAccount || !account.data ? (
                   <Button type="button" disabled>
