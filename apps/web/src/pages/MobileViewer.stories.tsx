@@ -121,3 +121,9 @@ export const EnglishSmallPhone: Story = {
   ...SmallPhone,
   globals: { locale: 'en', viewport: { value: 'smallPhone', isRotated: false } },
 };
+
+export const CompactEnglishPhone: Story = {
+  ...Trial,
+  parameters: { viewport: { options: { compactPhone: { name: 'Compact phone', styles: { width: '320px', height: '520px' }, type: 'mobile' } } } },
+  globals: { locale: 'en', viewport: { value: 'compactPhone', isRotated: false } },
+};

@@ -183,7 +183,7 @@ function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, sug
     <ChatMessagesView messages={chat.messages} isLoading={chat.isLoading}
       feedbackUpdatingIds={chat.feedbackUpdatingIds} messagesContainerRef={chat.messagesContainerRef}
       onScroll={chat.handleMessagesScroll} onVideoNavigate={onVideoNavigate} onFeedback={chat.handleFeedback} />
-    {suggestedQuestions && suggestedQuestions.length > 0 && <div className="shrink-0 px-4 pb-2">
+    {suggestedQuestions && suggestedQuestions.length > 0 && <div className="min-h-0 shrink overflow-y-auto px-4 pb-2">
       {hasQuestions && <Button type="button" variant="text" size="xs" className="min-h-11"
         aria-expanded={suggestionsExpanded} aria-controls={suggestionsId} onClick={() => setSuggestionsExpanded(value => !value)}>
         {t(suggestionsExpanded ? 'chat.hideSuggestions' : 'chat.showSuggestions')}

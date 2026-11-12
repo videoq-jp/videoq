@@ -377,3 +377,12 @@ export const AutomaticConversationContinuity: Story = { async play(context) {
 } };
 export const AutomaticConversationContinuityEnglishMobile: Story = { ...AutomaticConversationContinuity,
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };
+
+export const ConstrainedSuggestions: Story = {
+  args: { showTitle: false, showHistory: false, className: 'h-[150px]', suggestedQuestions: [question, '回転行列を使った練習問題を出してください。'] },
+  async play({ canvas, canvasElement }) {
+    const composer = await canvas.findByRole('textbox', { name: label('placeholder') });
+    const frame = canvasElement.querySelector('[data-testid="chat-panel-frame"]')!;
+    await expect(composer.getBoundingClientRect().bottom).toBeLessThanOrEqual(frame.getBoundingClientRect().bottom);
+  },
+};
