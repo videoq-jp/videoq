@@ -7,6 +7,7 @@ all:
           ansible_user: ubuntu
           videoq_public_url: https://192.168.1.50
           # Prepared using scripts/gitops/promote.py; no credentials in this URL.
-          videoq_gitops_repository: https://github.com/YOUR-ORG/lab-config.git
+          # Store the read-only SSH key and verified host keys in Ansible Vault.
+          videoq_gitops_repository: ssh://git@forgejo.example.com:2222/lab/config.git
           videoq_gitops_revision: main
           videoq_gitops_path: clusters/lab/apps

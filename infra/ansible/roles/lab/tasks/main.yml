@@ -17,6 +17,7 @@
     that:
       - videoq_credentials_encryption_key is match('^[A-Za-z0-9_-]{43}=$')
       - not (videoq_gitops_ssh_private_key | length > 0 and videoq_github_app_private_key | length > 0)
+      - videoq_gitops_ssh_private_key | length == 0 or (videoq_gitops_known_hosts | length > 0 and videoq_gitops_repository is match('^(ssh://git@|git@)'))
       - videoq_github_app_private_key | length == 0 or (videoq_github_app_id | string is match('^[1-9][0-9]*$') and videoq_github_app_installation_id | string is match('^[1-9][0-9]*$'))
   no_log: true
 
@@ -288,6 +289,20 @@
   register: credentials
   changed_when: "'created' in credentials.stdout"
   no_log: true
+
+- name: Read existing Argo CD SSH host keys before adding the internal host
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, get, configmap, argocd-ssh-known-hosts-cm, -o, json]
+  register: current_argocd_known_hosts
+  changed_when: false
+  when: videoq_gitops_ssh_private_key | length > 0
+
+- name: Register verified internal SSH host keys with Argo CD
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, patch, configmap, argocd-ssh-known-hosts-cm, '--type=merge', '-p', "{{ {'data': {'ssh_known_hosts': (((current_argocd_known_hosts.stdout | from_json).data.ssh_known_hosts | default('')).splitlines() + videoq_gitops_known_hosts.splitlines()) | unique | join('\n')}} | to_json }}"]
+  register: update_known_hosts
+  changed_when: "'patched (no change)' not in update_known_hosts.stdout"
+  when: videoq_gitops_ssh_private_key | length > 0
 
 - name: Configure an optional read-only SSH deploy key from Ansible Vault
   ansible.builtin.command:
