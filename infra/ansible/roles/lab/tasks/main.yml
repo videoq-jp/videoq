@@ -12,6 +12,14 @@
       - videoq_gitops_path is match('^clusters/[a-z0-9-]+/apps$')
     fail_msg: Configure inventory.local.yml for an Ubuntu dedicated host. Use --syntax-check locally; --check cannot prove GPU or Kubernetes readiness.
 
+- name: Require an encryption key and one complete repository authentication method
+  ansible.builtin.assert:
+    that:
+      - videoq_credentials_encryption_key is match('^[A-Za-z0-9_-]{43}=$')
+      - not (videoq_gitops_ssh_private_key | length > 0 and videoq_github_app_private_key | length > 0)
+      - videoq_github_app_private_key | length == 0 or (videoq_github_app_id | string is match('^[1-9][0-9]*$') and videoq_github_app_installation_id | string is match('^[1-9][0-9]*$'))
+  no_log: true
+
 - name: Inspect existing Kubernetes configuration
   ansible.builtin.stat:
     path: /etc/rancher/k3s/k3s.yaml
@@ -30,7 +38,7 @@
 
 - name: Install host prerequisites
   ansible.builtin.apt:
-    name: [ca-certificates, curl, gnupg, python3, iptables, conntrack, socat]
+    name: [ca-certificates, curl, gnupg, python3, python3-cryptography, iptables, conntrack, socat]
     state: present
     update_cache: true
     cache_valid_time: 3600
@@ -42,7 +50,7 @@
     owner: root
     group: root
     mode: '0700'
-  loop: [/var/lib/videoq-bootstrap, /etc/rancher/k3s, /usr/local/lib/videoq-bootstrap]
+  loop: [/var/lib/videoq-bootstrap, /etc/videoq-bootstrap, /etc/rancher/k3s, /usr/local/lib/videoq-bootstrap]
 
 - name: Inspect the NVIDIA driver
   ansible.builtin.command:
@@ -227,6 +235,31 @@
     dest: /usr/local/lib/videoq-bootstrap/credentials.py
     mode: '0700'
 
+- name: Inspect the existing credential encryption key
+  ansible.builtin.stat:
+    path: /etc/videoq-bootstrap/credentials.key
+  register: credential_key_file
+
+- name: Compare the existing key without disclosing it
+  when: credential_key_file.stat.exists
+  block:
+    - name: Read the existing key
+      ansible.builtin.slurp:
+        src: /etc/videoq-bootstrap/credentials.key
+      register: existing_credential_key
+      no_log: true
+    - name: Refuse accidental encryption key rotation
+      ansible.builtin.assert:
+        that: [(existing_credential_key.content | b64decode | trim) == videoq_credentials_encryption_key]
+      no_log: true
+
+- name: Install the Vault-managed credential encryption key
+  ansible.builtin.copy:
+    dest: /etc/videoq-bootstrap/credentials.key
+    content: "{{ videoq_credentials_encryption_key }}\n"
+    mode: '0600'
+  no_log: true
+
 - name: Initialize credentials once without putting secrets in Git or logs
   ansible.builtin.command:
     argv: "{{ ['python3', '/usr/local/lib/videoq-bootstrap/credentials.py', videoq_public_url] + (['--import-file', videoq_existing_credentials_file] if videoq_existing_credentials_file | length > 0 else []) }}"
@@ -242,6 +275,15 @@
   no_log: true
   register: repository_key
   changed_when: "'created' in repository_key.stdout or 'configured' in repository_key.stdout"
+
+- name: Configure read-only GitHub App repository authentication from Ansible Vault
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'stringData': {'type': 'git', 'url': videoq_gitops_repository, 'githubAppID': videoq_github_app_id | string, 'githubAppInstallationID': videoq_github_app_installation_id | string, 'githubAppPrivateKey': videoq_github_app_private_key}} | to_json }}"
+  when: videoq_github_app_private_key | length > 0
+  no_log: true
+  register: repository_app
+  changed_when: "'created' in repository_app.stdout or 'configured' in repository_app.stdout"
 
 - name: Render restricted projects and the manually synchronized root application
   ansible.builtin.template:

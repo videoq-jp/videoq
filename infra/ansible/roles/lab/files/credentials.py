@@ -8,6 +8,15 @@ import secrets
 import subprocess
 import sys
 from urllib.parse import urlsplit
+from cryptography.fernet import Fernet, InvalidToken
+
+KEYS = {
+    'videoq-runtime': {'DATABASE_URL', 'BETTER_AUTH_SECRET', 'USER_SECRET_ENCRYPTION_KEY',
+                      'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY'},
+    'videoq-postgres': {'POSTGRES_USER', 'POSTGRES_DB', 'POSTGRES_PASSWORD'},
+    'videoq-garage': {'GARAGE_DEFAULT_ACCESS_KEY', 'GARAGE_DEFAULT_SECRET_KEY', 'GARAGE_DEFAULT_BUCKET',
+                     'GARAGE_RPC_SECRET', 'GARAGE_ACCESS_KEY_ID', 'GARAGE_SECRET_ACCESS_KEY', 'GARAGE_BUCKET', 'GARAGE_CORS_ORIGINS'},
+}
 
 
 def generate(url):
@@ -39,7 +48,8 @@ def kube(*args, data=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def initialize(path, url, run=kube, import_path=None):
+def initialize(path, url, run=kube, import_path=None, *, encryption_key):
+    cipher = Fernet(encryption_key)
     parsed = urlsplit(url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
         raise ValueError('A plain HTTPS origin is required')
@@ -48,7 +58,7 @@ def initialize(path, url, run=kube, import_path=None):
     if path.exists():
         if path.is_symlink() or path.stat().st_mode & 0o077:
             raise ValueError('Credential state must be a private regular file')
-        state = json.loads(path.read_text())
+        state = json.loads(cipher.decrypt(path.read_bytes()))
         if state['url'] != url or set(state['secrets']) != set(names):
             raise ValueError('Existing credentials belong to a different site; migrate explicitly')
     else:
@@ -66,7 +76,7 @@ def initialize(path, url, run=kube, import_path=None):
     # Validate ALL existing keys before writing any missing Secret.
     for name in names:
         expected = state['secrets'][name]
-        if not expected or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in expected.items()):
+        if set(expected) != KEYS[name] or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in expected.items()):
             raise ValueError('Incomplete credential state')
         if live[name]:
             actual = {k: base64.b64decode(v, validate=True).decode() for k, v in live[name].get('data', {}).items()}
@@ -74,8 +84,8 @@ def initialize(path, url, run=kube, import_path=None):
                 raise ValueError('Live keys differ from the host backup; refusing to overwrite them')
     if not path.exists():
         # Persist after validating ALL live keys but before creating any Secret.
-        with open(path, 'x', opener=lambda p, flags: os.open(p, flags, 0o600)) as output:
-            output.write(json.dumps(state))
+        with open(path, 'xb', opener=lambda p, flags: os.open(p, flags, 0o600)) as output:
+            output.write(cipher.encrypt(json.dumps(state).encode()))
             output.flush()
             os.fsync(output.fileno())
     changed = False
@@ -94,13 +104,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('url')
     parser.add_argument('--import-file', type=Path)
+    parser.add_argument('--key-file', type=Path, default=Path('/etc/videoq-bootstrap/credentials.key'))
     args = parser.parse_args()
     os.umask(0o077)
     directory = Path('/var/lib/videoq-bootstrap')
     with (directory / 'credentials.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
-            print('created' if initialize(directory / 'credentials.json', args.url, import_path=args.import_file) else 'unchanged')
-        except (ValueError, OSError, KeyError) as error:
+            if args.key_file.is_symlink() or args.key_file.stat().st_mode & 0o077:
+                raise ValueError('The encryption key must be a private regular file')
+            print('created' if initialize(directory / 'credentials.enc', args.url, import_path=args.import_file,
+                                         encryption_key=args.key_file.read_bytes().strip()) else 'unchanged')
+        except (ValueError, OSError, KeyError, InvalidToken) as error:
             # Error messages contain policy descriptions only, never raw API data.
-            raise SystemExit(str(error))
+            raise SystemExit('Credential state could not be decrypted; original data was preserved' if isinstance(error, InvalidToken) else str(error))

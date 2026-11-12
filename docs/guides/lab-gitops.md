@@ -13,8 +13,8 @@ GitHub Actions から研究室への SSH、Webhook の受信口、外部公開�
 |---|---|
 | 公開 `videoq-jp/videoq` | アプリ、Helm、Ansible、配布・検証コード |
 | 非公開の構成リポジトリ | ホストごとの採用バージョン、LAN向け設定、Argo CD Application |
-| ホスト内 `/var/lib/videoq-bootstrap` | 初期認証情報の復旧用コピー（rootのみ読取） |
-| Ansible Vault | 必要な場合の構成リポジトリの読取専用 deploy key |
+| ホスト内 `/var/lib/videoq-bootstrap` | 暗号化した初期認証情報の復旧用コピー（rootのみ読取） |
+| Ansible Vault | 認証情報の暗号鍵と、構成リポジトリの読取専用 GitHub App 秘密鍵 |
 
 構成リポジトリの初期名は `videoq-jp/videoq-lab-config` を想定するが、コードには固定しない。
 研究室の Organization があれば、そちらで所有してもよい。将来のサービスは `clusters/lab/apps/` に
@@ -97,16 +97,30 @@ K3s の kubeconfig は root 専用とし、Traefik と ServiceLB は初期導入
 Argo CD の API、DB、ストレージ、推論サービスは ClusterIP のままにする。
 VideoQ の HTTPS だけを指定したホストの LAN IPv4 と443番に割り当てる。
 
-非公開構成リポジトリには読取専用 deploy key を登録し、Git URL を
-リポジトリ画面の **Code → SSH** からコピーした URL にする。
-秘密鍵は `videoq_gitops_ssh_private_key` を定義した Ansible Vault ファイルから渡す。
+非公開構成リポジトリには GitHub App を使う。Contents と Metadata は read のみ、
+インストール対象は構成リポジトリ1つだけ、Webhook は無効にする。組織の deploy key 制限を
+変更する必要はない。Git URL は HTTPS にする。Argo CD が短命の installation token を更新する。
+
+Ansible Vault に次の値を保存する。
+
+- `videoq_github_app_id` と `videoq_github_app_installation_id`
+- `videoq_github_app_private_key`: App の秘密鍵
+- `videoq_credentials_encryption_key`: Fernet の32バイト鍵をURL-safe Base64にした44文字の値
+
+暗号鍵は管理者の PC で cryptography の `Fernet.generate_key()` から生成し、Vault のみに保管する。
+playbook はホストの `/etc/videoq-bootstrap/credentials.key` に root 専用で配置し、
+`/var/lib/videoq-bootstrap/credentials.enc` を暗号化する。暗号鍵とバックアップは分けて保管し、
+既存の暗号鍵と異なる場合は上書きしない。
+
+組織が deploy key を許可している場合に限り、代替として read-only の SSH key と
+`videoq_gitops_ssh_private_key` を使用できる。App と SSH key は同時に設定しない。
 
 ```bash
 ansible-vault create vault.local.yml
 ansible-playbook site.yml -e @vault.local.yml --ask-vault-pass --ask-become-pass
 ```
 
-秘密値を引数の `-e key=...` や平文の inventory に書かない。登録先は Argo CD の repository Secret。
+秘密値を引数の `-e key=...` や平文の inventory に書かない。登録先は Argo CD の repository Secret とホストの root 専用暗号鍵。
 GitHub のホスト鍵検証は維持する。GHCR の公開アプリイメージに GitHub ログインは不要。
 
 ## 3. 管理者が同期する
@@ -137,6 +151,8 @@ DB・永続領域（wave 0）→モデルとストレージ初期化（wave 10�
 モデル内の起動順序は既存の Embedding → Whisper → Chat を維持する。
 
 VideoQ 管理者の初回作成と LAN 内 HTTPS の CA 配布は別途行う。
+Vast.ai の検証では、管理画面は SSH トンネルで使い、VideoQ の通し試験は VM 内のブラウザから
+VM 内部の HTTPS URL に接続して実行する。共有の外部IPへ研究室用の443番を公開する必要はない。
 既存の `scripts/onprem/rtx4090.py` をこの構成に重ねて実行しない。
 ブラウザの管理者設定、動画投入→文字起こし→索引→引用付き回答、バックアップと復旧の
 受け入れ試験が完了するまでは、運用開始済みとは扱わない。

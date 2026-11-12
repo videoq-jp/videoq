@@ -28,26 +28,57 @@ p = load('platform_pins', 'infra/ansible/filter_plugins/platform_pins.py')
 
 
 class CredentialsTests(unittest.TestCase):
+    def setUp(self):
+        self.key = c.Fernet.generate_key()
+
+    def initialize(self, *args):
+        return c.initialize(*args, encryption_key=self.key)
+
+    def state(self, path):
+        return json.loads(c.Fernet(self.key).decrypt(path.read_bytes()))
+
+    def test_backup_is_encrypted_and_wrong_keys_or_tampering_never_write_to_the_cluster(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'credentials.enc'
+            cluster = {}
+            run, calls = self.cluster(cluster)
+            self.initialize(path, 'https://192.168.1.50', run)
+            state = self.state(path)
+            self.assertNotIn(state['secrets']['videoq-postgres']['POSTGRES_PASSWORD'].encode(), path.read_bytes())
+            calls.clear()
+            with self.assertRaises(c.InvalidToken):
+                c.initialize(path, 'https://192.168.1.50', run, encryption_key=c.Fernet.generate_key())
+            self.assertTrue(all(args[0] == 'get' for args, _ in calls))
+            raw = path.read_bytes()
+            path.write_bytes(raw[:-5] + b'xxxxx')
+            calls.clear()
+            with self.assertRaises(c.InvalidToken):
+                self.initialize(path, 'https://192.168.1.50', run)
+            self.assertTrue(all(args[0] == 'get' for args, _ in calls))
+
     def test_explicit_import_preserves_live_keys_and_rejects_a_conflicting_backup(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / 'original-state.json'
             cluster = {}
             run, calls = self.cluster(cluster)
-            c.initialize(path, 'https://192.168.1.50', run)
+            fixture = {name: {key: 'unit-test-placeholder' for key in keys} for name, keys in c.KEYS.items()}
+            fixture['videoq-garage']['GARAGE_CORS_ORIGINS'] = 'https://192.168.1.50'
+            with patch.object(c, 'generate', return_value=fixture):
+                self.initialize(path, 'https://192.168.1.50', run)
             source = root / 'native-credentials.json'
-            source.write_text(json.dumps(json.loads(path.read_text())['secrets']))
+            source.write_text(json.dumps(fixture))
             source.chmod(0o600)
             new_state = root / 'ansible-state.json'
             calls.clear()
-            self.assertFalse(c.initialize(new_state, 'https://192.168.1.50', run, source))
-            self.assertEqual(json.loads(new_state.read_text())['secrets'], json.loads(source.read_text()))
+            self.assertFalse(self.initialize(new_state, 'https://192.168.1.50', run, source))
+            self.assertEqual(self.state(new_state)['secrets'], json.loads(source.read_text()))
             self.assertTrue(all(args[0] == 'get' for args, _ in calls))
             conflict = json.loads(source.read_text())
             conflict['videoq-runtime']['BETTER_AUTH_SECRET'] = 'different-key'
             source.write_text(json.dumps(conflict))
             with self.assertRaisesRegex(ValueError, 'differ'):
-                c.initialize(root / 'conflict.json', 'https://192.168.1.50', run, source)
+                self.initialize(root / 'conflict.json', 'https://192.168.1.50', run, source)
             self.assertFalse((root / 'conflict.json').exists())
 
     def cluster(self, state):
@@ -69,12 +100,12 @@ class CredentialsTests(unittest.TestCase):
             path = Path(directory) / 'credentials.json'
             cluster = {}
             run, calls = self.cluster(cluster)
-            self.assertTrue(c.initialize(path, 'https://192.168.1.50', run))
+            self.assertTrue(self.initialize(path, 'https://192.168.1.50', run))
             original = path.read_bytes()
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
-            self.assertFalse(c.initialize(path, 'https://192.168.1.50', run))
+            self.assertFalse(self.initialize(path, 'https://192.168.1.50', run))
             del cluster['videoq-runtime']
-            self.assertTrue(c.initialize(path, 'https://192.168.1.50', run))
+            self.assertTrue(self.initialize(path, 'https://192.168.1.50', run))
             self.assertEqual(path.read_bytes(), original)
             self.assertTrue(all(args[0] in ('get', 'create') for args, _ in calls))
 
@@ -83,16 +114,16 @@ class CredentialsTests(unittest.TestCase):
             path = Path(directory) / 'credentials.json'
             cluster = {}
             run, calls = self.cluster(cluster)
-            c.initialize(path, 'https://192.168.1.50', run)
+            self.initialize(path, 'https://192.168.1.50', run)
             del cluster['videoq-runtime']
             cluster['videoq-garage']['data']['GARAGE_SECRET_ACCESS_KEY'] = base64.b64encode(b'changed').decode()
             calls.clear()
             with self.assertRaisesRegex(ValueError, 'differ'):
-                c.initialize(path, 'https://192.168.1.50', run)
+                self.initialize(path, 'https://192.168.1.50', run)
             self.assertTrue(all(args[0] == 'get' for args, _ in calls))
             path.unlink()
             with self.assertRaisesRegex(ValueError, 'no matching host backup'):
-                c.initialize(path, 'https://192.168.1.50', run)
+                self.initialize(path, 'https://192.168.1.50', run)
 
 
 class ManifestTests(unittest.TestCase):
