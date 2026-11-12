@@ -1,11 +1,11 @@
 // Run against `npm run storybook`. Uses only isolated fixture data, no live API.
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const base = process.env.DESIGN_PREVIEW_URL ?? 'http://127.0.0.1:6006';
-const output = process.env.DESIGN_OUTPUT_DIR ?? join(tmpdir(), 'videoq-design-review');
+const output = process.env.DESIGN_OUTPUT_DIR ?? await mkdtemp(join(tmpdir(), 'videoq-design-review-'));
 await mkdir(output, { recursive: true });
 const index = await (await fetch(`${base}/index.json`)).json();
 const catalog = Object.values(index.entries).filter(s => s.type === 'story' && s.title === 'Application/Design coverage');
