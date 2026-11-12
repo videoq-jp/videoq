@@ -107,7 +107,8 @@
     "otherPodIngressRejected": true,
     "compressedLayersRehydratedBeforeExport": true,
     "nativeImporterAcceptedBothRegistryAndApplicationArchiveNames": true,
-    "archiveNaming": "Digest-derived local tags; deployment digest references unchanged"
+    "archiveNaming": "Digest-derived local tags; deployment digest references unchanged",
+    "originalDigestStartsWithPullPolicyNeverAfterNativeRestore": true
   },
   "historicalArchiveCheck": "Earlier application acceptance checked archive copy equality and restart with retained runtime cache. This additional acceptance removes a CRI image and verifies native import, including compressed-layer rehydration and import-compatible archive names."
 }

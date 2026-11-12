@@ -126,8 +126,8 @@ class K3sImageStoreIntegration(unittest.TestCase):
                 source = 'ghcr.io/videoq-jp/videoq-api@' + image.split('@')[1]
                 node('/tmp/videoq-oras', 'copy', '--to-plain-http', image,
                      '127.0.0.1:5000/videoq-jp/videoq-api:fixture')
-                def pod(podname):
-                    node('kubectl', 'run', podname, '--image=' + source, '--image-pull-policy=Always', '--restart=Never', '--command', '--', '/bin/registry', '--version')
+                def pod(podname, policy='Always'):
+                    node('kubectl', 'run', podname, '--image=' + source, '--image-pull-policy=' + policy, '--restart=Never', '--command', '--', '/bin/registry', '--version')
                     node('kubectl', 'wait', '--for=jsonpath={.status.phase}=Succeeded', 'pod/' + podname, '--timeout=120s')
                 pod('mirror-proof')
                 node('kubectl', 'delete', 'pod', 'mirror-proof')
@@ -155,6 +155,18 @@ class K3sImageStoreIntegration(unittest.TestCase):
                     if 'Imported 2 images from ' + archive in logs: break
                     time.sleep(.5)
                 else: self.fail('Native K3s importer did not accept both digest-derived archive tags')
+                node('kubectl', 'delete', 'pod', 'mirror-after-removal')
+                node('crictl', 'rmi', source)
+                restored = archive.replace('.tar', '-restored.tar')
+                node('mv', archive, restored)
+                for _ in range(60):
+                    result = subprocess.run(['docker', 'logs', name], capture_output=True, text=True, check=True)
+                    if 'Imported 2 images from ' + restored in result.stdout + result.stderr: break
+                    time.sleep(.5)
+                else: self.fail('Native archive did not restore removed CRI image metadata')
+                # Never must start by the original digest from imported metadata,
+                # rather than silently fetching through a mirror or upstream.
+                pod('mirror-imported-without-pull', 'Never')
             finally:
                 if created: command('docker', 'rm', '-f', '-v', name)
 
