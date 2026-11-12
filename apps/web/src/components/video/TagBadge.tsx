@@ -19,7 +19,7 @@ export function TagBadge({ tag, onRemove, size = 'md', className = '' }: TagBadg
       color={resolveTagChipColor(tag.color)}
       className={cn(
         'min-h-0',
-        size === 'sm' ? 'px-2 py-0.5 text-oln-14N-100' : 'px-2.5 py-1 text-std-16N-170',
+        size === 'sm' ? 'px-2 py-0.5 text-oln-14N-100' : 'px-2.5 py-1 text-std-17N-170',
         className,
       )}
     >

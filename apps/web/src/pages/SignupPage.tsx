@@ -52,7 +52,7 @@ export default function SignupPage() {
 
       {error && <div className="mb-4"><ErrorMessage message={error} /></div>}
 
-      <p className="mb-6 text-std-14N-170 text-solid-gray-700">
+      <p className="mb-6 text-dns-14N-130 text-solid-gray-700">
         {t('auth.signup.legalBefore')}
         <UtilityLink asChild><Link href="/terms">{t('legal.terms.title')}</Link></UtilityLink>
         {t('auth.signup.legalAnd')}

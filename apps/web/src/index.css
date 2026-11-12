@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./styles/digital-agency.css";
-@import "./styles/videoq-theme.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -25,5 +24,8 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
   }
 }

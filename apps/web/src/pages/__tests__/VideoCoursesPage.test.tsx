@@ -141,7 +141,8 @@ describe('VideoCoursesPage', () => {
 
     fireEvent.click(screen.getByText('videos.courses.create'))
 
-    const nameInput = screen.getByPlaceholderText('videos.courses.namePlaceholder')
+    const nameInput = screen.getByRole('textbox', { name: 'videos.courses.nameLabel' })
+    expect(nameInput).toHaveAccessibleDescription('videos.courses.namePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'New Course' } })
 
     const createSubmitButton = screen.getByText('common.actions.create')

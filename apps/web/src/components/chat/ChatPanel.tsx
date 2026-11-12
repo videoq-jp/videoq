@@ -90,7 +90,7 @@ function ChatPanelSession({
         {showTitle && <Heading size="18" className="shrink-0">
           <HeadingTitle level={shareToken ? 'h3' : 'h2'}>{t('chat.title')}</HeadingTitle>
         </Heading>}
-        {showTabs && <div className="flex w-full flex-wrap gap-4 text-sm">
+        {showTabs && <div className="flex w-full flex-wrap gap-4 text-std-17N-170">
           <button type="button" onClick={() => setTab('chat')} aria-pressed={tab === 'chat'}
             className={tab === 'chat' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
             {t('chat.currentConversation')}

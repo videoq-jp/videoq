@@ -158,7 +158,7 @@ export function TranscriptPanel({
                     {segment.timestamp}
                   </span>
                   <span
-                    className={`min-w-0 [overflow-wrap:anywhere] text-std-16N-170 leading-relaxed ${
+                    className={`min-w-0 [overflow-wrap:anywhere] text-std-17N-170 leading-relaxed ${
                       activeSegmentIdx === index
                         ? 'text-solid-gray-800 font-medium'
                         : 'text-solid-gray-700 group-hover:text-solid-gray-800'
@@ -170,7 +170,7 @@ export function TranscriptPanel({
               ))
             ) : isPlainTextTranscript ? (
               <div className="p-4 bg-white rounded-8">
-                <p className="text-std-16N-170 text-solid-gray-700 [overflow-wrap:anywhere] whitespace-pre-wrap leading-relaxed">
+                <p className="text-std-17N-170 text-solid-gray-700 [overflow-wrap:anywhere] whitespace-pre-wrap leading-relaxed">
                   {video.transcript}
                 </p>
               </div>
@@ -179,7 +179,7 @@ export function TranscriptPanel({
                 <div className="w-16 h-16 bg-solid-gray-50 border border-solid-gray-200 rounded-full flex items-center justify-center mb-4">
                   <Search className="w-8 h-8 text-solid-gray-420" />
                 </div>
-                <p className="text-std-16N-170 font-medium text-center px-4">
+                <p className="text-std-17N-170 font-medium text-center px-4">
                   {transcriptSearch
                     ? t('videos.detail.transcriptNotFound')
                     : (() => {

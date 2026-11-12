@@ -40,7 +40,7 @@ export function ConnectedAppCard({ name, subtitle, headingLevel = 'h3', disabled
         </Button>
       </div>
       <details className="mt-3 text-solid-gray-600">
-        <summary className="w-fit cursor-pointer rounded-4 text-std-16N-170 underline underline-offset-4 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black">
+        <summary className="w-fit cursor-pointer rounded-4 text-std-17N-170 underline underline-offset-4 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black">
           {t('settings.connectedApps.details')}
         </summary>
         <div className="mt-3 rounded-8 bg-solid-gray-50 p-4 text-dns-14N-130">{children}</div>
@@ -75,9 +75,9 @@ export function DisconnectAppDialog({ open, name, subtitle, description, pending
           <DialogHeading {...confirmation.headingProps}>{t('settings.connectedApps.confirmTitle')}</DialogHeading>
         </DialogHeader>
         <DialogBody>
-          <p className="break-words text-std-16B-170 [overflow-wrap:anywhere]">{name}</p>
+          <p className="break-words text-std-17B-170 [overflow-wrap:anywhere]">{name}</p>
           {subtitle && <p className="mt-1 break-words text-dns-14N-130 text-solid-gray-600 [overflow-wrap:anywhere]">{subtitle}</p>}
-          <p id={descriptionId} className="mt-3 text-std-16N-170 text-solid-gray-700">{description}</p>
+          <p id={descriptionId} className="mt-3 text-std-17N-170 text-solid-gray-700">{description}</p>
         </DialogBody>
         <DialogActions>
           <div className="flex flex-wrap justify-end gap-3">

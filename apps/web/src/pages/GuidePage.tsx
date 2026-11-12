@@ -30,16 +30,16 @@ export default function GuidePage() {
         { name: t('guides.title'), url: absoluteUrl('/guides', locale) },
         { name: title, url },
       ])} />
-      <nav aria-label={t('guides.title')} className="mb-6 text-std-16N-170">
+      <nav aria-label={t('guides.title')} className="mb-6 text-std-17N-170">
         <UtilityLink asChild><Link href="/guides">{t('guides.title')}</Link></UtilityLink>
       </nav>
       <AppPageHeader title={title} description={body.intro} className="!mb-4" />
-      <p className="mb-8 text-std-16N-170 text-solid-gray-600">
+      <p className="mb-8 text-std-17N-170 text-solid-gray-600">
         {t('guides.author')} · {t('guides.updated')} <time dateTime={guide.updated}>{guide.updated}</time>
       </p>
       <nav aria-label={t('guides.toc')} className="mb-10 border border-solid-gray-420 p-6">
-        <p className="mb-2 text-std-16B-170">{t('guides.toc')}</p>
-        <ul className="list-disc space-y-1 pl-6 text-std-16N-170">
+        <p className="mb-2 text-std-17B-170">{t('guides.toc')}</p>
+        <ul className="list-disc space-y-1 pl-6 text-std-17N-170">
           {body.sections.map((section, index) => (
             <li key={section.heading}><a href={`#section-${index + 1}`} className="text-blue-1000 underline underline-offset-[0.1875rem]">{section.heading}</a></li>
           ))}
@@ -48,12 +48,12 @@ export default function GuidePage() {
       <div className="space-y-10">
         {body.sections.map((section, index) => (
           <section key={section.heading} id={`section-${index + 1}`} className="scroll-mt-24">
-            <Heading size="24" className="mb-3"><HeadingTitle level="h2">{section.heading}</HeadingTitle></Heading>
+            <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3"><HeadingTitle level="h2">{section.heading}</HeadingTitle></Heading>
             {section.paragraphs.map(paragraph => (
-              <p key={paragraph} className="mb-4 text-std-16N-170 text-solid-gray-800">{paragraph}</p>
+              <p key={paragraph} className="mb-4 text-std-17N-170 text-solid-gray-800">{paragraph}</p>
             ))}
             {section.steps && (
-              <ol className="list-decimal space-y-2 pl-6 text-std-16N-170 text-solid-gray-800">
+              <ol className="list-decimal space-y-2 pl-6 text-std-17N-170 text-solid-gray-800">
                 {section.steps.map(step => <li key={step}>{step}</li>)}
               </ol>
             )}
@@ -61,8 +61,8 @@ export default function GuidePage() {
         ))}
       </div>
       <aside className="mt-12 border-2 border-blue-900 p-6">
-        <Heading size="20" className="mb-2"><HeadingTitle level="h2">{t('guides.ctaTitle')}</HeadingTitle></Heading>
-        <p className="mb-4 text-std-16N-170 text-solid-gray-700">{t('guides.ctaBody')}</p>
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-2"><HeadingTitle level="h2">{t('guides.ctaTitle')}</HeadingTitle></Heading>
+        <p className="mb-4 text-std-17N-170 text-solid-gray-700">{t('guides.ctaBody')}</p>
         <div className="flex flex-wrap items-center gap-4">
           <Button asChild><Link href="/try">{t('guides.tryDemo')}</Link></Button>
           <Button variant="outline" asChild><Link href="/signup">{t('guides.cta')}</Link></Button>
@@ -70,8 +70,8 @@ export default function GuidePage() {
         </div>
       </aside>
       <nav aria-label={t('guides.related')} className="mt-12">
-        <Heading size="20" className="mb-3"><HeadingTitle level="h2">{t('guides.related')}</HeadingTitle></Heading>
-        <ul className="space-y-2 text-std-16N-170">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3"><HeadingTitle level="h2">{t('guides.related')}</HeadingTitle></Heading>
+        <ul className="space-y-2 text-std-17N-170">
           {GUIDE_CATALOG.filter(other => other.slug !== guide.slug).map(other => (
             <li key={other.slug}><Link href={guidePath(other.slug)} className="text-blue-1000 underline underline-offset-[0.1875rem]">{other[locale].title}</Link></li>
           ))}

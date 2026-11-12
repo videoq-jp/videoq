@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, waitFor } from 'storybook/test';
 import i18n from '@/i18n/config';
 import LandingPage from './LandingPage';
+import { APP_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
 import { authFixtures } from '../../.storybook/fixtures/auth';
 import { failure, success, trpcQuery } from '../../.storybook/mocks/network';
 import { landingMedia } from '../../.storybook/mocks/landingMedia';
@@ -17,7 +18,7 @@ const meta = {
   parameters: { layout: 'fullscreen', a11y: { test: 'error' },
     api: { auth: authFixtures.loggedOut, trpc: [trpcQuery('billing.plans', success([freePlan]))], rest: [landingMedia] },
   },
-  decorators: [Story => <main className="mx-auto w-full max-w-screen-xl px-6 pb-16 pt-8 lg:px-8"><Story /></main>],
+  decorators: [Story => <main className={`mx-auto w-full pb-36 pt-12 md:pt-20 ${APP_CONTAINER_CLASS}`}><Story /></main>],
   async play({ canvas, canvasElement }) {
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.t('landing.title'));
     await expect(canvas.getByRole('link', { name: i18n.t('landing.tryOwn') })).toHaveAttribute('href', i18n.language === 'en' ? '/en/signup' : '/signup');

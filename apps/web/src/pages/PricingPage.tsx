@@ -125,7 +125,7 @@ export default function PricingPage() {
                 <Heading size="18" className="mb-2">
                   <HeadingTitle level="h2">{t(`pricing.plans.${plan.code}.name`)}</HeadingTitle>
                 </Heading>
-                <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+                <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                   {t(`pricing.plans.${plan.code}.blurb`)}
                 </p>
                 <p className="mb-6 text-std-20B-150 text-solid-gray-800">
@@ -133,7 +133,7 @@ export default function PricingPage() {
                     ? t('pricing.freePrice')
                     : `${formatPrice(plan.unit_amount, plan.currency, locale)}${interval === 'year' ? t('pricing.perYear') : t('pricing.perMonth')}`}
                 </p>
-                <ul className="mb-6 flex-1 space-y-2 text-std-16N-170 text-solid-gray-700">
+                <ul className="mb-6 flex-1 space-y-2 text-std-17N-170 text-solid-gray-700">
                   <li>
                     {t('pricing.limits.storage', { gb: plan.entitlements.storage_limit_gb })}
                   </li>
@@ -162,7 +162,7 @@ export default function PricingPage() {
                     {t(awaitingAccount ? 'pricing.loadingAccount' : 'pricing.accountUnavailable')}
                   </Button>
                 ) : plan.code === 'free' && isCurrent ? (
-                  <p className="text-std-16N-170 text-solid-gray-600">{t('pricing.currentPlan')}</p>
+                  <p className="text-std-17N-170 text-solid-gray-600">{t('pricing.currentPlan')}</p>
                 ) : currentPlan !== 'free' ? (
                   <Button
                     type="button"
@@ -189,7 +189,7 @@ export default function PricingPage() {
           })}
         </div>
       )}
-      <p className="mt-6 text-std-16N-170 text-solid-gray-600">{t('pricing.ownerNote')}</p>
+      <p className="mt-6 text-std-17N-170 text-solid-gray-600">{t('pricing.ownerNote')}</p>
     </>
   );
 }

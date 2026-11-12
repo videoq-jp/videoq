@@ -18,7 +18,7 @@ import { trackLandingEvent } from '@/lib/landingAnalytics';
 import { useAuthSession } from '@/lib/authSession';
 import { trpc } from '@/lib/trpc';
 import { useToast } from '@/components/common/feedback';
-import { APP_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
+import { APP_CONTAINER_CLASS, APP_HEADER_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
 import { cn } from '@/lib/digital-agency/cn';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,10 +51,10 @@ const HEADER_OFFSET_FALLBACK = '5rem';
 
 const navLinkClassName = (isCurrent: boolean) =>
   cn(
-    'inline-flex shrink-0 items-center whitespace-nowrap px-4 py-2 text-dns-16B-130 text-solid-gray-800 no-underline',
+    'inline-flex shrink-0 items-center whitespace-nowrap px-4 py-2 text-oln-14N-100 text-solid-gray-800 no-underline',
     'hover:underline hover:underline-offset-[calc(3/16*1rem)]',
     'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black focus-visible:bg-yellow-300',
-    isCurrent && 'rounded-full border border-solid-gray-420 bg-solid-gray-50',
+    isCurrent && 'rounded-full border border-solid-gray-800 font-bold',
   );
 
 const megaMenuLinkClassName = cn(
@@ -213,10 +213,10 @@ export function AppNav({ activePage }: AppNavProps) {
     <>
       <header
         ref={headerRef}
-        className="fixed top-0 z-50 w-full border-b border-border bg-white"
+        className="fixed top-0 z-50 w-full bg-white"
       >
         <div
-          className={`mx-auto flex w-full items-center justify-between gap-8 py-4 ${APP_CONTAINER_CLASS}`}
+          className={`mx-auto flex w-full items-center justify-between min-h-[4.5rem] gap-6 py-3 md:min-h-20 ${APP_HEADER_CONTAINER_CLASS}`}
         >
           <Link
             href="/"
@@ -257,7 +257,7 @@ export function AppNav({ activePage }: AppNavProps) {
               <LanguageSelector>
                 <LanguageSelectorButton
                   ref={langButtonRef}
-                  className="px-3"
+                  className="px-3 text-oln-14N-100"
                   aria-expanded={isLangOpen}
                   aria-controls={langMenuId}
                   onClick={() => setIsLangOpen((open) => !open)}
@@ -318,7 +318,7 @@ export function AppNav({ activePage }: AppNavProps) {
 
             <HamburgerMenuButton
               ref={menuButtonRef}
-              className="px-3 py-1.5"
+              className="px-3 py-1.5 text-oln-14N-100"
               aria-expanded={isMenuOpen}
               aria-controls={megaMenuId}
               onClick={() => setIsMenuOpen((open) => !open)}

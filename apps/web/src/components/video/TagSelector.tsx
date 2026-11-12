@@ -44,7 +44,7 @@ export function TagSelector({
       </div>
       <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-8 border border-solid-gray-300 bg-solid-gray-50 p-2">
         {tags.length === 0 ? (
-          <p className="text-sm text-solid-gray-600">{t('tags.selector.noTags')}</p>
+          <p className="text-std-17N-170 text-solid-gray-600">{t('tags.selector.noTags')}</p>
         ) : (
           tags.map((tag) => {
             const isSelected = selectedTagIds.includes(tag.id);

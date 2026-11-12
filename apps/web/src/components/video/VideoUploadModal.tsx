@@ -131,7 +131,7 @@ export function VideoUploadModal({ isOpen, onClose, autoCloseDelayMs = 2000 }: V
           >
             <DialogScrollArea>
               <DialogBody>
-                <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+                <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                   {t('videos.upload.description')}
                 </p>
 
@@ -144,7 +144,7 @@ export function VideoUploadModal({ isOpen, onClose, autoCloseDelayMs = 2000 }: V
                         disabled={isUploading}
                         aria-pressed={sourceMode === mode}
                         onClick={() => setSourceMode(mode)}
-                        className={`flex-1 px-3 py-2 text-sm font-semibold transition-colors ${
+                        className={`flex-1 px-3 py-2 text-std-17N-170 font-semibold transition-colors ${
                           sourceMode === mode
                             ? 'border-b-2 border-key-900 text-key-900'
                             : 'text-solid-gray-700 hover:text-solid-gray-800'

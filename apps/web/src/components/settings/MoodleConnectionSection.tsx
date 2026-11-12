@@ -57,7 +57,7 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
   return (
     <section id="moodle" aria-label={embedded ? t('settings.moodle.title') : undefined} aria-labelledby={embedded ? undefined : 'moodle-heading'} className={embedded ? 'mb-3 scroll-mt-24' : 'scroll-mt-24 border-t border-solid-gray-200 pt-6'}>
       {!embedded && <Heading size="20" className="mb-2"><HeadingTitle id="moodle-heading" level={headingLevel}>{t('settings.moodle.title')}</HeadingTitle></Heading>}
-      {!embedded && connections.length === 0 && <p className="mb-4 text-std-16N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>}
+      {!embedded && connections.length === 0 && <p className="mb-4 text-std-17N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>}
       {(disconnectError || disconnected) && <div ref={statusRef} tabIndex={-1} className="mb-5 focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-2">
         <MessageAlert type={disconnectError ? 'error' : 'success'} message={t(disconnectError ? 'settings.connectedApps.errorRevoking' : 'settings.connectedApps.successRevoked')} />
       </div>}
@@ -80,7 +80,7 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
           </ConnectedAppCard>
         </li>)}
       </ul>}
-      {connections.length === 0 && <div className="text-std-16N-170">
+      {connections.length === 0 && <div className="text-std-17N-170">
         {!embedded && <p className="mb-3">{t('settings.moodle.empty')}</p>}
         {setupGuide}
       </div>}

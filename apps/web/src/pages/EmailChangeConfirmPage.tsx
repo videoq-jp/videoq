@@ -60,7 +60,7 @@ export default function EmailChangeConfirmPage() {
 
   return (
     <>
-      <UtilityLink asChild className="mb-12 inline-flex items-center text-sm font-bold">
+      <UtilityLink asChild className="mb-12 inline-flex items-center text-std-17N-170 font-bold">
         <Link href="/login">
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('auth.emailChange.backToLogin')}
@@ -77,14 +77,14 @@ export default function EmailChangeConfirmPage() {
         {state === 'loading' && (
           <div className="flex items-center gap-3 rounded-8 border border-solid-gray-300 bg-solid-gray-50 p-4">
             <InlineSpinner color="blue" />
-            <span className="text-sm text-solid-gray-700">{message}</span>
+            <span className="text-std-17N-170 text-solid-gray-700">{message}</span>
           </div>
         )}
 
         {state === 'success' && (
           <div className="space-y-4">
             <MessageAlert type="success" message={message} />
-            <p className="text-center text-sm text-solid-gray-600">
+            <p className="text-center text-std-17N-170 text-solid-gray-600">
               <UtilityLink asChild>
                 <Link href="/login">{t('auth.emailChange.backToLogin')}</Link>
               </UtilityLink>

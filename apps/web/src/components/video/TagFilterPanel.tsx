@@ -33,7 +33,7 @@ export function TagFilterPanel({
     <div className="rounded-8 border border-solid-gray-300 bg-white p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-std-16B-170 text-solid-gray-800">{t('tags.filter.title')}</h3>
+          <h3 className="text-std-17B-170 text-solid-gray-800">{t('tags.filter.title')}</h3>
           {onManageTags && (
             <Button
               type="button"
@@ -56,7 +56,7 @@ export function TagFilterPanel({
             size="sm"
             onClick={onClear}
             disabled={disabled}
-            className="h-7 min-w-0 px-2 text-xs"
+            className="h-7 min-w-0 px-2 text-dns-14N-130"
           >
             {t('tags.filter.clear')}
           </Button>
@@ -95,7 +95,7 @@ export function TagFilterPanel({
 
       {selectedTagIds.length > 0 && (
         <div className="mt-3 border-t border-solid-gray-200 pt-3">
-          <p className="text-xs text-solid-gray-600">
+          <p className="text-dns-14N-130 text-solid-gray-600">
             {t('tags.filter.selected', { count: selectedTagIds.length })}
           </p>
         </div>

@@ -60,7 +60,7 @@ export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: '
         <Heading size="18" className="mb-2">
           <HeadingTitle id="connected-apps-heading" level={headingLevel}>{t('settings.connectedApps.title')}</HeadingTitle>
         </Heading>
-        <p className="text-std-16N-170 text-solid-gray-600">
+        <p className="text-std-17N-170 text-solid-gray-600">
           {t('settings.connectedApps.description')}
         </p>
       </div>
@@ -78,7 +78,7 @@ export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: '
         <ErrorMessage message={t('settings.connectedApps.errorLoading')} />
       )}
       {!tokensQuery.isLoading && !tokensQuery.isError && tokensQuery.data?.length === 0 && moodleConnectionCount === 0 && (
-        <div className="p-4 rounded-8 bg-solid-gray-50 text-std-16N-170 text-solid-gray-600">
+        <div className="p-4 rounded-8 bg-solid-gray-50 text-std-17N-170 text-solid-gray-600">
           {t('settings.connectedApps.empty')}
         </div>
       )}

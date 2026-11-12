@@ -165,7 +165,7 @@ export default function VideoLibraryPage() {
                 key={label}
                 className="flex items-baseline justify-between gap-4 border-b border-solid-gray-200 py-4 sm:pr-6"
               >
-                <dt className="text-std-16N-170 text-solid-gray-700">{label}</dt>
+                <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
                 <dd className="text-std-20B-150 text-solid-gray-800">{value}</dd>
               </div>
             ))}
@@ -235,7 +235,7 @@ export default function VideoLibraryPage() {
 
               {tags.length > 0 && (
                 <>
-                  <div className="w-px h-6 bg-solid-gray-300 mx-2" />
+                  <div className="mx-2 hidden h-6 w-px bg-solid-gray-300 sm:block" />
                   <div className="flex flex-wrap items-center gap-2">
                     {tags.map((tag) => {
                       const isSelected = selectedTagIds.includes(tag.id);
@@ -292,8 +292,8 @@ export default function VideoLibraryPage() {
           <Heading size="20" hasChip className="mb-3">
             <HeadingTitle level="h2">{t('videos.list.emptyTitle')}</HeadingTitle>
           </Heading>
-          <p className="max-w-2xl text-std-16N-170 text-solid-gray-700">{t('videos.list.emptyDescription')}</p>
-          <p className="mt-1 text-std-16N-170 text-solid-gray-700">{t('videos.list.emptyFormats')}</p>
+          <p className="max-w-2xl text-std-17N-170 text-solid-gray-700">{t('videos.list.emptyDescription')}</p>
+          <p className="mt-1 text-std-17N-170 text-solid-gray-700">{t('videos.list.emptyFormats')}</p>
           <Button
             type="button"
             variant="solid"
@@ -311,7 +311,7 @@ export default function VideoLibraryPage() {
           <Heading size="20" hasChip className="mb-3">
             <HeadingTitle level="h2">{t('videos.list.noMatch')}</HeadingTitle>
           </Heading>
-          <p className="text-std-16N-170 text-solid-gray-700">{t('videos.list.noMatchHint')}</p>
+          <p className="text-std-17N-170 text-solid-gray-700">{t('videos.list.noMatchHint')}</p>
           <Button
             type="button"
             variant="outline"
@@ -330,7 +330,7 @@ export default function VideoLibraryPage() {
 
           {isFetchingNextPage && (
             <div className="flex justify-center mt-4">
-              <span className="text-std-16N-170 text-solid-gray-600">{t('videos.list.loadingMore')}</span>
+              <span className="text-std-17N-170 text-solid-gray-600">{t('videos.list.loadingMore')}</span>
             </div>
           )}
         </>

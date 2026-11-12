@@ -14,7 +14,7 @@ export function AppFooter() {
       <div className={`mx-auto w-full py-10 ${APP_CONTAINER_CLASS}`}>
         <div className="mb-6">
           <p className="text-std-18B-160 text-solid-gray-800"><BrandLogo /></p>
-          <p className="mt-2 text-std-16N-170 text-solid-gray-700">
+          <p className="mt-2 text-std-17N-170 text-solid-gray-700">
             {t('layout.authBranding.tagline')}
           </p>
         </div>

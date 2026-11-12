@@ -58,7 +58,7 @@ export function ShareLinkDialog({
         </DialogHeader>
         <DialogScrollArea>
           <DialogBody>
-            <p className="mb-6 text-std-16N-170 text-solid-gray-700">
+            <p className="mb-6 text-std-17N-170 text-solid-gray-700">
               {shareLink
                 ? t('videos.courseDetail.share.enabled')
                 : t('videos.courseDetail.share.disabled')}
@@ -123,7 +123,7 @@ export function ShareLinkDialog({
                   <div className="flex flex-col gap-4">
                     <div
                       aria-labelledby="course-share-link-label"
-                      className="min-h-16 break-all rounded-8 border border-solid-gray-420 bg-solid-gray-50 px-5 py-4 font-mono text-std-16N-170 text-solid-gray-800"
+                      className="min-h-16 break-all rounded-8 border border-solid-gray-420 bg-solid-gray-50 px-5 py-4 font-mono text-std-17N-170 text-solid-gray-800"
                     >
                       {shareLink}
                     </div>

@@ -72,10 +72,10 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
               key={field}
               className="grid gap-2 py-4 md:grid-cols-[14rem_1fr] md:gap-6"
             >
-              <dt className="text-std-16B-170 text-solid-gray-800">
+              <dt className="text-std-17B-170 text-solid-gray-800">
                 {t(`legal.scta.fields.${field}.label`)}
               </dt>
-              <dd className="text-std-16N-170 text-solid-gray-700">
+              <dd className="text-std-17N-170 text-solid-gray-700">
                 {t(`legal.scta.fields.${field}.value`)}
               </dd>
             </div>
@@ -85,12 +85,12 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
         <div className="flex flex-col gap-8">
           {ARTICLE_SECTIONS[page].map((section) => (
             <section key={section}>
-              <Heading size="18" className="mb-3">
+              <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3">
                 <HeadingTitle level="h2">
                   {t(`legal.${page}.sections.${section}.title`)}
                 </HeadingTitle>
               </Heading>
-              <p className="whitespace-pre-line text-std-16N-170 text-solid-gray-700">
+              <p className="whitespace-pre-line text-std-17N-170 text-solid-gray-700">
                 {t(`legal.${page}.sections.${section}.body`)}
               </p>
             </section>
