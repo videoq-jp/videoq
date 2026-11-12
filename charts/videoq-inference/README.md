@@ -14,6 +14,27 @@ Mac development runs whisper.cpp natively with Metal, outside this Linux
 Kubernetes chart. Both speech engines use the application's `local` backend;
 see the [Mac setup and common API contract](../../docs/guides/local-inference.md#mac-development-with-whispercpp).
 
+## One RTX 4090
+
+For GPT-OSS 20B, text-only EmbeddingGemma 2 (768 dimensions) and Whisper
+large-v3-turbo on the same GPU, use `examples/rtx4090-gpt-oss-embeddinggemma.yaml`.
+The [native one-command installer](../../scripts/onprem/RTX4090.md) also installs
+K3s, backing services, VideoQ and the initial administrator. This configuration
+passed simultaneous residency and real inference smoke checks on Ubuntu 22.04.5
+with about 20 GiB VRAM in use. The CUDA embedding image is built locally and
+pinned by digest, rather than being covered by the signed release attestation.
+See [profile details](examples/rtx4090-gpt-oss-embeddinggemma.md) for limits and evidence.
+
+### Alternative Qwen candidate
+
+Use `examples/rtx4090.yaml` for three independent CUDA inference Deployments on
+one physical RTX 4090 with NVIDIA Device Plugin time-slicing. Each requests one
+`nvidia.com/gpu.shared` slot. This replaces the three-exclusive-GPU requirements
+of `examples/vllm-nvidia.yaml`; it does not merge services or move inference to
+CPU. Follow the [workstation setup and hardware acceptance checklist](../../docs/guides/rtx4090.md).
+The Qwen variant has not received hardware/model acceptance. The device-plugin values
+file is for NVIDIA's chart, not this inference chart.
+
 ## Placement and capabilities
 
 ```mermaid
@@ -152,18 +173,11 @@ the correct table. Reindex existing transcripts in a maintenance window before
 opening search, using the [cutover instructions](../../docs/guides/local-inference.md).
 Changing back to an old model requires rebuilding any subsequently changed videos.
 
-The private upstream `/v1/embeddings` service accepts standard OpenAI requests.
-API queries and worker documents add the pinned task prompts to `input` and
-validate normalized 768-dimensional output. Requests leave `dimensions` unset
-for this model: vLLM returns its native 768 dimensions and rejects the optional
-Matryoshka override. The profile uses FlexAttention with `--enforce-eager` to
-serve its 512-wide bidirectional attention heads on L40S.
-`disableTorchCompile: true` also sets the upstream `TORCHDYNAMO_DISABLE=1`
-environment switch for this service, including nested mask compilation. This
-uses the eager attention implementation without a source patch; measure its
-throughput on the target workload.
-It uses local weights and never
-enables remote model code.
+API and worker put the pinned `SearchQuery`/`Document` prefixes into the
+standard OpenAI `input` field. The private CPU `/v1/embeddings` service preserves
+that input without adding a second prompt, normalizes vectors, and
+rejects unknown models, non-768 output requests and overlong inputs. It uses
+local weights, disables image/audio encoders and never enables remote code.
 Multimodal indexing is not enabled by selecting this profile.
 
 For a real-model protocol check, set private endpoint URLs and run the opt-in

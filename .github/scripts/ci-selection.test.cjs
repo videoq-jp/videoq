@@ -87,11 +87,11 @@ test('manual CI uses lifecycle change selection and both components remain requi
   assert.match(ci, /validate_lifecycle: \$\{\{ needs\.changes\.outputs\.onprem_lifecycle == 'true' \}\}/);
 });
 
-test('shared workflow edits do not download models or scan unchanged upstream image matrices', () => {
+test('generic CI edits skip native work while upstream scan workflow edits validate their own matrix', () => {
   for (const event of events) {
     for (const name of ['whisper_gpu', 'real_cpu', 'upstream_images']) {
       assert.equal(selected(name, event, ['.github/workflows/ci.yml']), false, name);
-      assert.equal(selected(name, event, ['.github/workflows/onprem-validation.yml']), false, name);
+      assert.equal(selected(name, event, ['.github/workflows/onprem-validation.yml']), name === 'upstream_images', name);
     }
     assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
     assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);
@@ -104,6 +104,21 @@ test('Moodle integration still runs for its fixture, workflow and contract chang
     for (const path of ['.github/moodle-cpu/Dockerfile', '.github/workflows/moodle-installed.yml',
       '.github/scripts/moodle-installed-acceptance.py', '.github/onprem-lab/dependencies.json']) {
       assert.equal(selected('moodle', event, [path]), true, `${event}: ${path}`);
+    }
+  }
+});
+
+
+test('public release trust and publishing changes retain lifecycle validation', () => {
+  for (const path of ['.github/scripts/onprem-release.py', '.github/scripts/onprem_public.py',
+    '.github/scripts/test_onprem_public.py', '.github/scripts/publish-onprem-release.cjs',
+    '.github/scripts/fixtures/onprem-public/release.sigstore.json']) {
+    for (const event of events) {
+      assert.equal(selected('onprem', event, [path]), true, `${event}: ${path}`);
+      assert.equal(selected('onprem_lifecycle', event, [path]), true, `${event}: ${path}`);
+      for (const name of ['whisper_gpu', 'real_cpu', 'upstream_images']) {
+        assert.equal(selected(name, event, [path]), false, `${event}/${name}: ${path}`);
+      }
     }
   }
 });

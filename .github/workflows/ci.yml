@@ -161,7 +161,7 @@ jobs:
               - '.github/runtime-versions.json'
               - '.node-version'
               - '.python-version'
-              - '.github/actions/**'
+              - '.github/actions/setup-package-manager/**'
               - '.github/scripts/runtime-*'
               - '.github/scripts/package-managers.py'
             container_worker:
@@ -193,6 +193,7 @@ jobs:
               - '.github/scripts/vllm-*-smoke.*'
               - '.github/workflows/upstream-vllm.yml'
             upstream_images:
+              - '.github/workflows/onprem-validation.yml'
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
               - 'apps/inference/llamacpp/security/**'
@@ -212,6 +213,11 @@ jobs:
               - '.github/onprem-lab/dependencies.json'
               - '.github/workflows/moodle-installed.yml'
             onprem_lifecycle:
+              - '.github/scripts/onprem-release.py'
+              - '.github/scripts/onprem_public.py'
+              - '.github/scripts/test_onprem_public.py'
+              - '.github/scripts/publish-onprem-release*'
+              - '.github/scripts/fixtures/onprem-public/**'
               - 'scripts/onprem/**'
               - 'infra/garage/**'
               - 'infra/elasticmq.conf'
@@ -234,6 +240,7 @@ jobs:
               - '.github/scripts/install-helm.sh'
               - '.github/onprem-lab/**'
             onprem:
+              - '.github/actions/build-onprem-image/**'
               - 'apps/api/Dockerfile*'
               - 'apps/web/Dockerfile*'
               - 'apps/web/nginx.conf'
@@ -290,7 +297,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             worker:
@@ -304,7 +311,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             frontend:
@@ -323,7 +330,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             docs:
@@ -340,7 +347,7 @@ jobs:
               - ".github/runtime-versions.json"
               - ".node-version"
               - ".python-version"
-              - ".github/actions/**"
+              - ".github/actions/setup-package-manager/**"
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
 
@@ -403,6 +410,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS before OS and browser dependencies
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: python3 .github/scripts/configure-onprem-ci-dns.py
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -465,6 +475,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS before OS and browser dependencies
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: python3 .github/scripts/configure-onprem-ci-dns.py
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
@@ -603,6 +616,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS before OS and browser dependencies
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: python3 .github/scripts/configure-onprem-ci-dns.py
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -662,6 +678,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS before OS and browser dependencies
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: python3 .github/scripts/configure-onprem-ci-dns.py
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version

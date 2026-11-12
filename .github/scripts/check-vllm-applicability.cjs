@@ -71,7 +71,7 @@ function assess(report, policy, native, profiles, now = new Date()) {
     assert.ok(actual.python[name].modulePath.startsWith('/usr/local/lib/python3.12/dist-packages/'));
     assert.ok(!actual.python[name].modulePath.includes('/pip/_vendor/'));
   }
-  assert.equal(profiles.length, 6, 'Review all three NVIDIA profiles before and after offline provisioning');
+  assert.equal(profiles.length, 10, 'Review all five NVIDIA profiles before and after offline provisioning');
   profiles.forEach(documents => verifyWorkload(documents, policy));
   const accepted = [], blocking = [];
   for (const result of report.Results) {

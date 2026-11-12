@@ -1,0 +1,45 @@
+{
+  "gh_on_path": false,
+  "github_tokens_present": false,
+  "public_release": {
+    "run_id": "42505541209",
+    "source_sha": "2f9e90290f1edb1d904903458a592c0b87b1499b",
+    "run_attempt": 1
+  },
+  "signature_verification": "passed",
+  "application_values": true,
+  "inference_values": true,
+  "host_installation_started": false,
+  "date": "2026-11-11",
+  "scope": "Account-free public on-prem release acquisition and verification",
+  "public_url": "https://github.com/videoq-jp/videoq/releases/tag/onprem-2f9e90290f1edb1d904903458a592c0b87b1499b-42505541209-1",
+  "public_assets": 9,
+  "uploaded_assets_sha256_checked": true,
+  "public_download_cli_without_gh_or_tokens": "passed",
+  "verifier": "Sigstore Python 4.5.1 / production TUF roots",
+  "policy": [
+    "GitHub OIDC issuer",
+    "Exact repository and owner URI",
+    "Main workflow signer URI and main source ref",
+    "Exact source commit",
+    "GitHub-hosted runner",
+    "Exact workflow run and attempt",
+    "SLSA v1 predicate and signed source dependency",
+    "Artifact/chart/image subject names and SHA-256 digests",
+    "Transparency log and certificate verification"
+  ],
+  "tests": {
+    "installer_total": 99,
+    "installer_passed": 95,
+    "installer_skipped": 4,
+    "real_signature_fixture_tests": 6,
+    "legacy_verifier_tests": 13,
+    "workflow_and_security_tests": 317,
+    "docs": "English/Japanese production build and source/build public-content checks passed"
+  },
+  "limitations": [
+    "No full fresh-OS/GPU reinstall was run; the reset RTX 4090 VM remains unchanged",
+    "Future automated Release publication will activate after this workflow change is merged",
+    "A broad macOS run of unrelated on-prem apt tests needs dpkg; the changed verifier suites were run separately and passed"
+  ]
+}

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   source:
     if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: read
@@ -55,7 +55,7 @@ jobs:
             dockerfile: apps/inference/whisper/Dockerfile
             context: apps/inference/whisper
         arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -64,61 +64,18 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Build without publishing credentials
-        env:
-          COMPONENT: ${{ matrix.component }}
-          ARCH: ${{ matrix.arch }}
-          DOCKERFILE: ${{ matrix.dockerfile }}
-          BUILD_CONTEXT: ${{ matrix.context }}
-        run: |
-          docker build --platform "linux/$ARCH" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "videoq-$COMPONENT:release" -f "$DOCKERFILE" "$BUILD_CONTEXT"
-          container=$(docker create "videoq-$COMPONENT:release")
-          trap 'docker rm -f "$container" >/dev/null' EXIT
-          docker cp "$container:/usr/share/licenses/videoq/LICENSE" - | tar -xO | cmp LICENSE -
-      - name: Check the CPU gateway
-        if: matrix.component == 'transcription-gateway'
-        run: docker run --rm --entrypoint python videoq-transcription-gateway:release -c 'import server, provision, silero_vad, torch'
-      - run: mkdir -p artifact
-      - name: Block vulnerable images, including unfixed HIGH and CRITICAL findings
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+      - uses: ./.github/actions/build-onprem-image
         with:
-          version: v0.76.1
-          image-ref: videoq-${{ matrix.component }}:release
-          trivy-config: ${{ matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
-          format: json
-          output: artifact/security.json
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 10m
-      - name: Retain application and gateway scan findings
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: security-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
-          path: |
-            artifact/security.json
-            apps/inference/whisper/security/
-          if-no-files-found: error
-          retention-days: 90
-      - name: Prepare immutable image archive and SBOM
-        env:
-          COMPONENT: ${{ matrix.component }}
-        run: |
-          mkdir -p artifact
-          trivy image --timeout 15m --image-src docker --format cyclonedx --output artifact/sbom.cdx.json "videoq-$COMPONENT:release"
-          docker save "videoq-$COMPONENT:release" | zstd -T0 -o artifact/image.tar.zst
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
-          path: artifact
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 1
+          image: videoq-${{ matrix.component }}:release
+          dockerfile: ${{ matrix.dockerfile }}
+          context: ${{ matrix.context }}
+          platform: linux/${{ matrix.arch }}
+          security-config: ${{ matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
+          evidence-name: security-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          artifact-name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
   chart:
     needs: source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -143,8 +100,12 @@ jobs:
       matrix:
         component: [api, worker, web, transcription-gateway]
         arch: [amd64, arm64]
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+        exclude:
+          - component: vllm-engine
+            arch: arm64
+    runs-on: ubuntu-24.04
+    # The compressed CUDA OCI graph is ~8 GB; artifact transfer and push can exceed 25 minutes.
+    timeout-minutes: ${{ matrix.component == 'vllm-engine' && 45 || 25 }}
     permissions:
       contents: read
       packages: write
@@ -160,23 +121,28 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
-      - name: Load and publish the scanned image without executing it
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+          token: ''
+      - name: Publish the scanned OCI image without executing it
         id: image
         env:
           GH_TOKEN: ${{ github.token }}
           COMPONENT: ${{ matrix.component }}
           ARCH: ${{ matrix.arch }}
         run: |
-          zstd -d image.tar.zst --stdout | docker load
+          digest=$(python3 -c 'import json,re; x=json.load(open("image/index.json"))["manifests"]; assert len(x)==1; d=x[0]["digest"]; assert re.fullmatch("sha256:[a-f0-9]{64}",d); print(d)')
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
           tag="$repository:$GITHUB_SHA-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker tag "videoq-$COMPONENT:release" "$tag"
-          docker push "$tag"
+          umask 077
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          oras cp --from-oci-layout --to-registry-config "$HOME/.docker/config.json" "image@$digest" "$tag"
+          test "$(oras resolve --registry-config "$HOME/.docker/config.json" "$tag")" = "$digest"
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
-          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag")
-          digest="${digest##*@}"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           mkdir -p published
@@ -202,11 +168,14 @@ jobs:
           path: published/*.digest
           if-no-files-found: error
           retention-days: 1
+      - name: Clear registry credentials after signing
+        if: ${{ always() && (steps.image.outcome == 'success' || steps.image.outcome == 'failure' || steps.image.outcome == 'cancelled') }}
+        run: oras logout --registry-config "$HOME/.docker/config.json" ghcr.io
   cleanup-build-archives:
     name: Remove consumed image transfer archives
     needs: [source, publish]
     if: needs.publish.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -227,7 +196,7 @@ jobs:
             core.info(`Removed ${result.deleted} consumed image archives (${result.bytes} bytes).`);
   indexes:
     needs: [source, publish]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
       matrix:
@@ -255,7 +224,9 @@ jobs:
           python3 .github/scripts/onprem_registry.py "$COMPONENT"
           repository="ghcr.io/videoq-jp/videoq-$COMPONENT"
           tag="$repository:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          umask 077
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$HOME/.docker/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           manifests=("$repository@$(cat "$COMPONENT-amd64.digest")")
           manifests+=("$repository@$(cat "$COMPONENT-arm64.digest")")
           docker buildx imagetools create --tag "$tag" "${manifests[@]}"
@@ -264,21 +235,29 @@ jobs:
           printf '%s\n' "$digest" > "release/$COMPONENT.digest"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - id: index-provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-name: ${{ steps.image.outputs.repository }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+      - name: Export public image provenance bundle
+        env:
+          BUNDLE_PATH: ${{ steps.index-provenance.outputs.bundle-path }}
+          COMPONENT: ${{ matrix.component }}
+        run: cp "$BUNDLE_PATH" "release/$COMPONENT.sigstore.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: index-${{ matrix.component }}-attempt-${{ github.run_attempt }}
-          path: release/*.digest
+          path: |
+            release/*.digest
+            release/*.sigstore.json
           if-no-files-found: error
           retention-days: 1
   release:
     needs: [source, indexes, chart]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -300,23 +279,29 @@ jobs:
           name: chart-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: release
       - run: python3 .github/scripts/onprem-release.py assemble "$GITHUB_SHA" release
-      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - id: release-provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
             release/release.json
             release/*.tgz
+      - name: Export public release provenance bundle
+        env:
+          BUNDLE_PATH: ${{ steps.release-provenance.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" release/release.sigstore.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             release/release.json
             release/*.tgz
+            release/*.sigstore.json
           if-no-files-found: error
           retention-days: 90
   staging:
     name: Verify signed artifacts and rehearse the release
     needs: [source, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -328,6 +313,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -352,6 +339,9 @@ jobs:
             python3 .github/scripts/onprem_registry.py "$component"
           done
           python3 .github/scripts/onprem-release.py verify "$GITHUB_SHA" release/release.json release/verified-images.json release/verified-inference.json
+          python3 -m venv "$RUNNER_TEMP/public-verifier"
+          env -u GH_TOKEN -u GITHUB_TOKEN "$RUNNER_TEMP/public-verifier/bin/python" -m pip install -r scripts/onprem/requirements-verify.txt
+          env -u GH_TOKEN -u GITHUB_TOKEN "$RUNNER_TEMP/public-verifier/bin/python" .github/scripts/onprem_public.py "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" release release/verified-images.json release/verified-inference.json
           python3 - <<'PY'
           import json, os, subprocess
           from pathlib import Path
@@ -396,7 +386,7 @@ jobs:
   cpu-acceptance:
     name: Real CPU models with public egress blocked
     needs: [source, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
@@ -408,6 +398,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -415,7 +407,17 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
-      - run: node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Install Chromium and OS dependencies with bounded retries
+        run: |
+          for attempt in 1 2 3; do
+            if node node_modules/playwright/cli.js install --with-deps chromium; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
@@ -449,3 +451,28 @@ jobs:
           if [ -x "$RUNNER_TEMP/kind" ]; then
             "$RUNNER_TEMP/kind" delete cluster --name videoq-onprem-lab --kubeconfig "$RUNNER_TEMP/cpu-acceptance/kubeconfig"
           fi
+  public-distribution:
+    name: Publish anonymous signed installer downloads
+    needs: [source, release, staging, cpu-acceptance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: onprem-release-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: release
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_SHA: ${{ needs.source.outputs.sha }}
+        with:
+          script: |
+            const publish = require('./.github/scripts/publish-onprem-release.cjs');
+            const result = await publish({ github, context, sourceSha: process.env.SOURCE_SHA, runId: context.runId, attempt: process.env.GITHUB_RUN_ATTEMPT, directory: 'release' });
+            core.info(`Published credential-free installer downloads: ${result.html_url}`);

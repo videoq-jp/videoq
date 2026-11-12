@@ -72,7 +72,7 @@ The same selection applies to PRs, the merge queue, and main/develop pushes:
 | Shared npm lockfiles, production Dockerfiles/configuration, Worker dependencies, runtime pins | Application image builds, runtime smoke checks, HIGH/CRITICAL scans and SBOMs |
 | Installers, Compose/Helm deployments, database migrations/schema, storage/runtime adapters, or lifecycle test definitions | Full on-prem video-processing, backup/restore, failed-update recovery and Kubernetes rehearsals |
 | Inference engines/adapters, native package pins or inference-specific workflows | Three-platform inference compatibility checks |
-| NVIDIA Whisper Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
+| Upstream vLLM digest/audio/security inputs | Unmodified upstream image and audio-volume inspection |
 | Moodle fixtures, workflow or integration contracts | Moodle integration checks |
 
 Image-only validation does not build Whisper, pull the llama.cpp inventory image,
@@ -88,11 +88,47 @@ Operations runs image and GPU security checks without lifecycle rehearsals; week
 Operations retains native inference checks. Real CPU acceptance runs on relevant
 CI changes and signed releases, rather than through Operations.
 
+
 App-specific jobs install their required npm workspaces and root tools instead of
 the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain
 signature verification still install all workspaces. Supply-chain npm downloads
 and API/worker pip downloads are cached; lockfile hashes and signature checks
 remain enforced on every run.
+
+## On-prem image pipeline
+
+Application and gateway release builds use
+[`build-onprem-image`](actions/build-onprem-image/action.yml). Their workflows
+select the component and architecture; the action owns the build, license check,
+strict vulnerability scan and inventory. Change this pipeline once rather than
+patching multiple copies.
+
+The action produces one OCI directory with individually compressed layers. BuildKit
+checks that exact output's license and gateway imports without loading another
+copy into Docker. Upstream vLLM inspection is separate: it scans the pinned upstream image and
+locked audio volume without an engine build. This setup never runs on operator hosts.
+
+Release callers hand off that same OCI directory. ORAS copies its compressed graph
+to GHCR and the publisher requires the registry digest to equal the scanned digest.
+There is no intermediate tar/zstd conversion, Docker import, or image-store switch.
+The registry client action and binary checksum are pinned.
+
+Trivy scans once, including unfixed HIGH/CRITICAL findings and the complete package
+inventory. Release SBOMs are converted from that JSON report, without a second image
+scan. A failed build, license check or scan prevents archive handoff. Failure reports
+are retained. GPU runtime imports remain enforced as the serving user in both GPU
+Dockerfiles; the CPU gateway also has a container import smoke check.
+
+Real-model CPU acceptance calls the same Kubernetes lifecycle scenario as the
+deterministic-model rehearsal. When real models are selected, that scenario runs
+once in the isolated real-model cluster; the earlier fixture cluster is skipped.
+Docker and native K3s lifecycle tests cover separate operator paths and remain.
+
+Only releases export an image artifact. Publishing and provenance/SBOM signing still run
+on separate runners with write permissions, after successful current-main CI and
+image checks. End-to-end staging and CPU acceptance remain release gates.
+Image-action changes select GPU validation; app jobs follow their actual shared
+package-manager action instead of matching every repository action.
 
 ## Run a check manually
 
@@ -108,8 +144,10 @@ gh workflow run operations.yml -f check=all
 Operations runs daily at 09:17 JST, inference compatibility every Monday at 11:17 JST,
 and the database restore on the 1st of each month at 13:41 JST.
 `check=onprem` can add validation with explicit `validate_real_cpu` and `validate_whisper_gpu`.
-In CI's on-prem validation, vulnerability scans of pinned upstream images (llama.cpp,
-whisper.cpp and vLLM, including its locked audio volume) are limited to PRs that change those pins or scan settings, and to manual CI.
+In CI's on-prem validation, pinned upstream images (llama.cpp and whisper.cpp) are
+scanned once per architecture in the upstream matrix, when pins, scan settings or
+the validation workflow change, and in manual CI. The lifecycle job retains only
+its own application/Whisper reports and derives inventories from those reports.
 Daily Operations always scans them.
 Monitors do not open Issues; results go to the job summary.
 See [dependency-automation.md](dependency-automation.md) for update processing and

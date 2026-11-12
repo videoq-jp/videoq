@@ -1,4 +1,5 @@
-# Pair with videoq-inference/examples/gpt-oss-embeddinggemma.yaml.
+# Pair with videoq-inference/examples/gpt-oss-embeddinggemma.yaml,
+# or rtx4090-gpt-oss-embeddinggemma.yaml for three CUDA engines on one GPU.
 # Endpoints assume namespace=videoq and inference fullname=videoq-inference.
 ai:
   openaiBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1

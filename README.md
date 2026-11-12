@@ -38,6 +38,7 @@ Choose the environment you want to run:
 | Goal | Start here |
 |---|---|
 | Try VideoQ without installing it | [Hosted demo](https://videoq.jp/en/try) |
+| Prepare a lab RTX 4090 with Ansible and manage applications with Argo CD | [Lab GitOps setup (in development)](docs/guides/lab-gitops.md) |
 | Evaluate on-prem on one Linux server | [Single-server installation](docs/guides/on-premises-single-server.md) |
 | Use an existing Kubernetes cluster and site-managed services | [Kubernetes installation](docs/guides/on-premises.md) |
 | Edit the application on your computer | [Local development setup](docs/getting-started/local-setup.md) |
@@ -64,6 +65,22 @@ For development, follow the [local setup guide](docs/getting-started/local-setup
 from environment configuration through account activation. The root
 `docker-compose.yml` builds a Wrangler development stack; its signup and account
 promotion flow differs from the production on-prem installer.
+
+### One RTX 4090: install the complete local stack
+
+On a dedicated Ubuntu 22.04/24.04 GPU host, run:
+
+```sh
+bash scripts/onprem/install-rtx4090.sh
+```
+
+This installs native K3s, backing services, GPT-OSS 20B, EmbeddingGemma 2 and
+Whisper on the same GPU, with automatic LAN IPv4 detection, an HTTPS URL and internal CA certificates,
+plus a beginner-friendly Textual setup screen for administrator details, review,
+installation progress and first password setup. No GitHub CLI, account or token is required;
+public downloads retain Sigstore/SLSA verification. Listener, URL and TLS options can be overridden. See the
+[one-command RTX 4090 guide](scripts/onprem/RTX4090.md) for fresh-host bootstrap,
+lab HTTPS, CA trust setup, requirements and resumable installation.
 
 ### Optional: reduce costs with local AI
 

@@ -55,7 +55,7 @@ if (require.main === module) {
   assert.equal(createHash('sha256').update(readFileSync(resolve(root, '.github/scripts/check-vllm-inventory.py'))).digest('hex'), policy.inventoryProbeSourceSha256);
   const {execFileSync} = require('node:child_process');
   const {parseAllDocuments} = require('yaml');
-  const profiles = ['gpt-oss-embeddinggemma', 'vllm-nvidia', 'whisper-nvidia'].flatMap(profile =>
+  const profiles = ['gpt-oss-embeddinggemma', 'vllm-nvidia', 'whisper-nvidia', 'rtx4090', 'rtx4090-gpt-oss-embeddinggemma'].flatMap(profile =>
     [[], ['--set', 'downloadModels=false', '--set', 'networkPolicy.denyEgress=true']].map(extra =>
       parseAllDocuments(execFileSync(process.env.HELM_BIN || 'helm', ['template', 'assessment', 'charts/videoq-inference',
         '-f', `charts/videoq-inference/examples/${profile}.yaml`, ...extra], {cwd: root, encoding: 'utf8'}))

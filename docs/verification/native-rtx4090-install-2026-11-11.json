@@ -1,0 +1,139 @@
+{
+  "timestamp_utc": "2026-11-10T18:29:21Z",
+  "installation_kind": "native-rtx4090",
+  "complete": true,
+  "existing_host_adoption_and_same_command_rerun": "passed",
+  "invariants": {
+    "secrets_preserved": true,
+    "pvc_uids_preserved": true,
+    "admin_setup_not_reissued": true,
+    "model_pods_not_restarted": true
+  },
+  "admin_created": true,
+  "origin": "http://localhost:8080",
+  "browser_transport": "SSH to loopback systemd socket-proxyd to Gateway ClusterIP; no public listener",
+  "gpu_context_tokens": 16384,
+  "release_sha": "2f9e90290f1edb1d904903458a592c0b87b1499b",
+  "image_provenance": "Application and vLLM/gateway images verified against main release; CUDA embedding image locally built and digest pinned.",
+  "tests": {
+    "onprem_python": {
+      "run": 67,
+      "skipped": 4
+    },
+    "helm_inference": 17,
+    "embedding_server": 13,
+    "gpu_preflight": 3
+  },
+  "limits": [
+    "Fresh-OS driver installation and reboot/resume were not exercised on a second blank VM.",
+    "This is not sustained-load or full learning-journey acceptance.",
+    "The existing worker can fall back to original SRT scene boundaries when its optional tokenizer asset is unavailable under private egress."
+  ],
+  "inference_smoke": {
+    "timestamp": "2026-11-10T17:42:13Z",
+    "tests": {
+      "embedding": {
+        "pod": "videoq-inference-embedding-6945dd6f46-np756",
+        "image": "docker.io/library/videoq-embedding-cuda@sha256:7795eefd29df025722940079d4013ef341cea33c9dab9ef6493412808c0da71d",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "dimensions": 768,
+        "similarities": [
+          0.9201459564865218,
+          0.6272135225008242
+        ],
+        "query_seconds": 0.723
+      },
+      "whisper": {
+        "pod": "videoq-inference-whisper-6fdbdb478-wfxkb",
+        "image": "ghcr.io/videoq-jp/videoq-vllm@sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "transcript": {
+          "task": "transcribe",
+          "language": "en",
+          "duration": 11.0,
+          "text": "And so, my fellow Americans, Ask not! What your country can do for you, ask what you can do for your country.",
+          "segments": [
+            {
+              "id": 0,
+              "start": 0.0,
+              "end": 2.672,
+              "text": " And so, my fellow Americans,"
+            },
+            {
+              "id": 1,
+              "start": 2.896,
+              "end": 4.816,
+              "text": " Ask not!"
+            },
+            {
+              "id": 2,
+              "start": 5.008,
+              "end": 10.347999999999999,
+              "text": " What your country can do for you, ask what you can do for your country."
+            }
+          ]
+        }
+      },
+      "chat": {
+        "pod": "videoq-inference-chat-98b49d9cf-cl455",
+        "image": "ghcr.io/videoq-jp/videoq-vllm@sha256:add0f47174d48caffdba80516f83cfa64ad1cccba95ce98437b83c7bd4c3cd83",
+        "cuda": {
+          "device": "cuda:0",
+          "sum": 4.0,
+          "gpu": "NVIDIA GeForce RTX 4090"
+        },
+        "message": {
+          "role": "assistant",
+          "content": "2です。",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": "Answer 2 in Japanese."
+        },
+        "seconds": 4.522,
+        "usage": {
+          "prompt_tokens": 87,
+          "total_tokens": 106,
+          "completion_tokens": 19,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": {
+            "reasoning_tokens": 6
+          }
+        }
+      }
+    },
+    "gpu": "name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 4090, 24564 MiB, 20523 MiB, 0 %",
+    "gpu_processes": "pid, process_name, used_gpu_memory [MiB]\n29072, VLLM::EngineCore, 3246 MiB\n35163, VLLM::EngineCore, 16254 MiB\n36578, python3, 1004 MiB"
+  },
+  "long_context": {
+    "elapsed_seconds": 2.119,
+    "usage": {
+      "prompt_tokens": 9435,
+      "total_tokens": 9467,
+      "completion_tokens": 32,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 19
+      }
+    },
+    "message": {
+      "role": "assistant",
+      "content": "7日間",
+      "refusal": null,
+      "annotations": null,
+      "audio": null,
+      "function_call": null,
+      "reasoning": "Need to answer: backup retention period is seven days. Japanese short: 「7日間」"
+    },
+    "max_model_len": 16384
+  }
+}

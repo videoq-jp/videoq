@@ -12,8 +12,9 @@ serving image. Runtime mounts the audio volume and model weights read-only.
 The reviewed raw scan contains 460 HIGH/CRITICAL findings. A passing applicability
 check is not a claim that the upstream packages are patched or that the raw scan
 is empty. `runtime-assessment.json` permits only the exact listed CVE/package/PURL
-combinations, after verifying actual image files and all six rendered deployment
-variants (three NVIDIA profiles, with downloads enabled and disabled).
+combinations, after verifying actual image files and all ten rendered deployment
+variants (five NVIDIA profiles, including the two shared RTX 4090 profiles,
+with downloads enabled and disabled).
 
 | Finding scope | Raw count | Evidence and applicability |
 |---|---:|---|

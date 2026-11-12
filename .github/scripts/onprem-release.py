@@ -91,6 +91,10 @@ def verify(manifest, source):
     for component in data["images"]:
         image = data["images"][component]
         attest("oci://" + image["repository"] + "@" + image["digest"], source)
+    return helm_values(data)
+
+
+def helm_values(data):
     def image(component):
         return {k: data["images"][component][k] for k in ("repository", "digest")}
     application = {"requireImageDigests": True, **{

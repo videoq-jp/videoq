@@ -27,7 +27,7 @@ function fixture() {
       securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: 'RuntimeDefault'}},
       containers: [container], volumes: [{name: 'tmp', emptyDir: {sizeLimit: '4Gi'}}]}}}}];
   const report = {Metadata: {RepoDigests: [image]}, Results: [{Type: 'ubuntu', Vulnerabilities: [{PkgName: 'apt', InstalledVersion: '2.8.3', Severity: 'HIGH', VulnerabilityID: 'CVE-reviewed', PkgIdentifier: {PURL: policy.groups[0].packages.apt.purl}}]}]};
-  return {policy, native, profiles: Array.from({length: 6}, () => structuredClone(documents)), report};
+  return {policy, native, profiles: Array.from({length: 10}, () => structuredClone(documents)), report};
 }
 const run = f => assess(f.report, f.policy, f.native, f.profiles, now);
 test('keeps exact reviewed findings visible while new CVEs, versions and identities block', () => {

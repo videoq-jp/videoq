@@ -108,3 +108,9 @@ servers:
       limits: { cpu: "2", memory: 4Gi }
     nodeSelector: {}
     tolerations: []
+
+# Explicit shared GPU resource; default deployments still reserve whole GPUs.
+gpuSharing:
+  enabled: false
+  runtimeClassName: nvidia
+  memoryFractions: { chat: 0.25, embedding: 0.43, whisper: 0.12 }

@@ -2,6 +2,6 @@ apiVersion: v2
 name: videoq-inference
 description: Private selectable LLM, embedding and whisper.cpp/vLLM speech services for VideoQ
 type: application
-version: 0.3.0
+version: 0.4.0
 appVersion: "0.1.0"
 kubeVersion: ">=1.29.0-0"

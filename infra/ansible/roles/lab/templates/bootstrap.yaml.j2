@@ -1,0 +1,65 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lab-bootstrap
+  namespace: argocd
+spec:
+  sourceRepos: [{{ videoq_gitops_repository | to_json }}]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: argoproj.io, kind: Application}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: videoq-lab
+  namespace: argocd
+spec:
+  sourceRepos: [{{ videoq_gitops_repository | to_json }}]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: videoq
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: Service}
+    - {group: "", kind: PersistentVolumeClaim}
+    - {group: apps, kind: Deployment}
+    - {group: batch, kind: Job}
+    - {group: batch, kind: CronJob}
+    - {group: networking.k8s.io, kind: NetworkPolicy}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: videoq-gpu
+  namespace: argocd
+spec:
+  sourceRepos: [{{ videoq_gitops_repository | to_json }}]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: videoq-gpu
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: "", kind: ConfigMap}
+    - {group: apps, kind: DaemonSet}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lab
+  namespace: argocd
+spec:
+  project: lab-bootstrap
+  source:
+    repoURL: {{ videoq_gitops_repository | to_json }}
+    targetRevision: {{ videoq_gitops_revision | to_json }}
+    path: {{ videoq_gitops_path | to_json }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions: [FailOnSharedResource=true]

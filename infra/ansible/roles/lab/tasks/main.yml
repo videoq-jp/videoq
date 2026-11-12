@@ -1,0 +1,302 @@
+- name: Validate the dedicated host and required site configuration
+  ansible.builtin.assert:
+    that:
+      - not ansible_check_mode
+      - ansible_facts.distribution == 'Ubuntu'
+      - ansible_facts.distribution_version in ['22.04', '24.04']
+      - ansible_facts.architecture == 'x86_64'
+      - videoq_public_url is match('^https://[^/]+$')
+      - videoq_gitops_repository is match('^(https://github.com/|git@github.com:)[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+[.]git$')
+      - videoq_gitops_repository is not search('YOUR-ORG')
+      - videoq_gitops_revision is match('^[A-Za-z0-9_./-]+$')
+      - videoq_gitops_path is match('^clusters/[a-z0-9-]+/apps$')
+    fail_msg: Configure inventory.local.yml for an Ubuntu dedicated host. Use --syntax-check locally; --check cannot prove GPU or Kubernetes readiness.
+
+- name: Require an encryption key and one complete repository authentication method
+  ansible.builtin.assert:
+    that:
+      - videoq_credentials_encryption_key is match('^[A-Za-z0-9_-]{43}=$')
+      - not (videoq_gitops_ssh_private_key | length > 0 and videoq_github_app_private_key | length > 0)
+      - videoq_github_app_private_key | length == 0 or (videoq_github_app_id | string is match('^[1-9][0-9]*$') and videoq_github_app_installation_id | string is match('^[1-9][0-9]*$'))
+  no_log: true
+
+- name: Inspect existing Kubernetes configuration
+  ansible.builtin.stat:
+    path: /etc/rancher/k3s/k3s.yaml
+  register: existing_cluster
+
+- name: Inspect this playbook's ownership marker
+  ansible.builtin.stat:
+    path: /var/lib/videoq-bootstrap/managed-k3s
+  register: managed_cluster
+
+- name: Require explicit adoption of an existing cluster
+  ansible.builtin.assert:
+    that:
+      - not existing_cluster.stat.exists or managed_cluster.stat.exists or videoq_adopt_existing_cluster
+    fail_msg: Existing K3s found. Review ownership and set videoq_adopt_existing_cluster=true; adoption does not replace its service or configuration.
+
+- name: Install host prerequisites
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, gnupg, python3, python3-cryptography, iptables, conntrack, socat]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create private bootstrap directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop: [/var/lib/videoq-bootstrap, /etc/videoq-bootstrap, /etc/rancher/k3s, /usr/local/lib/videoq-bootstrap]
+
+- name: Inspect the NVIDIA driver
+  ansible.builtin.command:
+    argv: [nvidia-smi, '--query-gpu=name,driver_version', '--format=csv,noheader']
+  register: initial_driver
+  changed_when: false
+  failed_when: false
+
+- name: Install a driver only when explicitly requested
+  when: initial_driver.rc != 0 and videoq_install_driver
+  block:
+    - name: Require explicit reboot authorization before driver installation
+      ansible.builtin.assert:
+        that: [videoq_allow_reboot]
+        fail_msg: Driver installation requires videoq_allow_reboot=true on this dedicated host.
+    - name: Install the Ubuntu NVIDIA driver package
+      ansible.builtin.apt:
+        name: ["{{ videoq_driver_package }}", "linux-headers-{{ ansible_facts.kernel }}"]
+        state: present
+      register: driver_install
+    - name: Refuse repeated reboots for an installed but unusable driver
+      ansible.builtin.assert:
+        that: [driver_install.changed]
+        fail_msg: The driver is already installed but nvidia-smi fails. Diagnose Secure Boot, passthrough or module loading; no repeated reboot will be attempted.
+    - name: Reboot once after driver installation
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+
+- name: Verify one RTX 4090 and a CUDA 13 capable driver
+  ansible.builtin.shell: |
+    set -eu
+    nvidia-smi --query-gpu=name,driver_version --format=csv,noheader | python3 -c '
+    import sys
+    rows = [line.strip().split(",") for line in sys.stdin if line.strip()]
+    assert len(rows) == 1 and "RTX 4090" in rows[0][0], "Exactly one RTX 4090 is required"
+    assert tuple(map(int, rows[0][1].strip().split("."))) >= (580,65,6), "Driver >= 580.65.06 required"
+    '
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Fetch the pinned NVIDIA repository signing key
+  ansible.builtin.get_url:
+    url: "{{ nvidia_key.url }}"
+    checksum: "sha256:{{ nvidia_key.sha256 }}"
+    dest: /usr/share/keyrings/videoq-nvidia-container.asc
+    mode: '0644'
+
+- name: Inspect the standard NVIDIA repository configuration
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+  register: existing_toolkit_repository
+
+- name: Configure the NVIDIA Container Toolkit repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/videoq-nvidia-container.list
+    content: "deb [arch=amd64 signed-by=/usr/share/keyrings/videoq-nvidia-container.asc] https://nvidia.github.io/libnvidia-container/stable/deb/amd64 /\n"
+    mode: '0644'
+  register: toolkit_repository
+  when: not existing_toolkit_repository.stat.exists
+
+- name: Install the pinned Container Toolkit packages
+  ansible.builtin.apt:
+    name:
+      - "nvidia-container-toolkit={{ toolkit_version }}"
+      - "nvidia-container-toolkit-base={{ toolkit_version }}"
+      - "libnvidia-container-tools={{ toolkit_version }}"
+      - "libnvidia-container1={{ toolkit_version }}"
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ 0 if toolkit_repository.changed else 3600 }}"
+  notify: Restart K3s
+
+- name: Install and configure a new K3s server
+  when: not existing_cluster.stat.exists or managed_cluster.stat.exists
+  block:
+    - name: Download the checksum-pinned K3s binary
+      ansible.builtin.get_url:
+        url: "{{ k3s.url }}"
+        checksum: "sha256:{{ k3s.sha256 }}"
+        dest: /usr/local/bin/k3s
+        mode: '0755'
+      notify: Restart K3s
+    - name: Keep Kubernetes administration private and disable public ingress add-ons
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.yaml
+        mode: '0600'
+        content: |
+          write-kubeconfig-mode: "0600"
+          disable:
+            - traefik
+            - servicelb
+      notify: Restart K3s
+    - name: Install the K3s service
+      ansible.builtin.template:
+        src: k3s.service.j2
+        dest: /etc/systemd/system/k3s.service
+        mode: '0644'
+      notify: Restart K3s
+    - name: Record ownership of the new cluster
+      ansible.builtin.copy:
+        dest: /var/lib/videoq-bootstrap/managed-k3s
+        content: "Managed by infra/ansible/site.yml\n"
+        mode: '0600'
+
+- name: Activate K3s
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Apply pending runtime changes before probing Kubernetes
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the node to register
+  ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes -o json
+  register: nodes
+  until: nodes.rc == 0 and (nodes.stdout | from_json).get('items', []) | length == 1
+  retries: 90
+  delay: 2
+  changed_when: false
+
+- name: Wait for Kubernetes readiness
+  ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s
+  changed_when: false
+
+- name: Verify that K3s discovered the NVIDIA runtime
+  ansible.builtin.command: /usr/local/bin/k3s kubectl get runtimeclass nvidia
+  changed_when: false
+
+- name: Opt the node into the one-GPU shared inference profile
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, label, node, "{{ (nodes.stdout | from_json)['items'][0]['metadata']['name'] }}", videoq.io/inference-target=rtx4090, '--overwrite']
+  register: label_node
+  changed_when: "'not labeled' not in label_node.stdout"
+
+- name: Create application and management namespaces
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': item}} | to_json }}"
+  loop: [argocd, videoq, videoq-gpu]
+  register: namespaces
+  changed_when: "'created' in namespaces.stdout or 'configured' in namespaces.stdout"
+
+- name: Download the checksum-pinned upstream Argo CD installation
+  ansible.builtin.get_url:
+    url: "{{ argocd.url }}"
+    checksum: "sha256:{{ argocd.sha256 }}"
+    dest: /var/lib/videoq-bootstrap/argocd.yaml
+    mode: '0600'
+
+- name: Read the verified upstream manifest
+  ansible.builtin.slurp:
+    src: /var/lib/videoq-bootstrap/argocd.yaml
+  register: upstream_argocd
+
+- name: Fix Argo CD container images to the reviewed amd64 digests
+  ansible.builtin.copy:
+    dest: /var/lib/videoq-bootstrap/argocd-pinned.json
+    content: "{{ upstream_argocd.content | b64decode | pin_argocd_manifest(argocd) }}"
+    mode: '0600'
+
+- name: Compare Argo CD resources
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n argocd diff --server-side --field-manager=videoq-bootstrap -f /var/lib/videoq-bootstrap/argocd-pinned.json
+  register: argocd_diff
+  changed_when: false
+  failed_when: argocd_diff.rc not in [0, 1]
+  no_log: true
+
+- name: Install Argo CD without exposing its API outside the cluster
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n argocd apply --server-side --field-manager=videoq-bootstrap -f /var/lib/videoq-bootstrap/argocd-pinned.json
+  when: argocd_diff.rc == 1
+  changed_when: true
+
+- name: Wait for Argo CD's API
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n argocd rollout status deployment/argocd-server --timeout=600s
+  changed_when: false
+
+- name: Install the persistent credential initializer
+  ansible.builtin.copy:
+    src: credentials.py
+    dest: /usr/local/lib/videoq-bootstrap/credentials.py
+    mode: '0700'
+
+- name: Inspect the existing credential encryption key
+  ansible.builtin.stat:
+    path: /etc/videoq-bootstrap/credentials.key
+  register: credential_key_file
+
+- name: Compare the existing key without disclosing it
+  when: credential_key_file.stat.exists
+  block:
+    - name: Read the existing key
+      ansible.builtin.slurp:
+        src: /etc/videoq-bootstrap/credentials.key
+      register: existing_credential_key
+      no_log: true
+    - name: Refuse accidental encryption key rotation
+      ansible.builtin.assert:
+        that: [(existing_credential_key.content | b64decode | trim) == videoq_credentials_encryption_key]
+      no_log: true
+
+- name: Install the Vault-managed credential encryption key
+  ansible.builtin.copy:
+    dest: /etc/videoq-bootstrap/credentials.key
+    content: "{{ videoq_credentials_encryption_key }}\n"
+    mode: '0600'
+  no_log: true
+
+- name: Initialize credentials once without putting secrets in Git or logs
+  ansible.builtin.command:
+    argv: "{{ ['python3', '/usr/local/lib/videoq-bootstrap/credentials.py', videoq_public_url] + (['--import-file', videoq_existing_credentials_file] if videoq_existing_credentials_file | length > 0 else []) }}"
+  register: credentials
+  changed_when: "'created' in credentials.stdout"
+  no_log: true
+
+- name: Configure an optional read-only SSH deploy key from Ansible Vault
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'data': {'type': 'git' | b64encode, 'url': videoq_gitops_repository | b64encode, 'sshPrivateKey': videoq_gitops_ssh_private_key | b64encode}} | to_json }}"
+  when: videoq_gitops_ssh_private_key | length > 0
+  no_log: true
+  register: repository_key
+  changed_when: "'created' in repository_key.stdout or 'configured' in repository_key.stdout"
+
+- name: Configure read-only GitHub App repository authentication from Ansible Vault
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'data': {'type': 'git' | b64encode, 'url': videoq_gitops_repository | b64encode, 'githubAppID': videoq_github_app_id | string | b64encode, 'githubAppInstallationID': videoq_github_app_installation_id | string | b64encode, 'githubAppPrivateKey': videoq_github_app_private_key | b64encode}} | to_json }}"
+  when: videoq_github_app_private_key | length > 0
+  no_log: true
+  register: repository_app
+  changed_when: "'created' in repository_app.stdout or 'configured' in repository_app.stdout"
+
+- name: Render restricted projects and the manually synchronized root application
+  ansible.builtin.template:
+    src: bootstrap.yaml.j2
+    dest: /var/lib/videoq-bootstrap/gitops.yaml
+    mode: '0600'
+
+- name: Register the GitOps configuration source
+  ansible.builtin.command: /usr/local/bin/k3s kubectl apply -f /var/lib/videoq-bootstrap/gitops.yaml
+  register: bootstrap
+  changed_when: "'created' in bootstrap.stdout or 'configured' in bootstrap.stdout"
+
+- name: Explain the next administrative step
+  ansible.builtin.debug:
+    msg: Bootstrap is ready. Open Argo CD through an SSH tunnel/port-forward; sync lab, then lab-gpu, then lab-videoq. No applications have been automatically updated. See docs/guides/lab-gitops.md.

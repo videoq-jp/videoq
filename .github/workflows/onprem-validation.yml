@@ -23,7 +23,7 @@ permissions:
 jobs:
   onprem:
     name: ${{ inputs.validate_lifecycle && 'Lifecycle rehearsal' || 'Image security checks' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
@@ -42,6 +42,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py
       - name: Reserve disk for on-prem images and Kubernetes caches
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -52,6 +54,8 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts --workspace @videoq/api
+      - name: Validate RTX 4090 host and allocation refusal gates (no GPU fixture)
+        run: python3 -m unittest discover -s scripts/gpu -p 'test_*.py'
       - name: Validate the lab HTTP transport and cancellation
         run: node --test .github/onprem-lab/http.test.cjs
       - name: Install pinned Helm
@@ -67,14 +71,17 @@ jobs:
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/whisper-nvidia.yaml
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/llamacpp-cpu.yaml
           "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/vllm-nvidia.yaml
+          "$RUNNER_TEMP/helm/helm" lint charts/videoq-inference --strict -f charts/videoq-inference/examples/rtx4090.yaml
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: apps/inference/whisper/.python-version
       - name: Install checksum-pinned uv
         if: inputs.validate_lifecycle
         run: bash .github/scripts/install-uv.sh
-      - name: Validate single-VPS K3s installer safety
-        run: python3 -m unittest discover -s scripts/onprem -p test_k3s.py -v
+      - name: Validate public downloads, signature policy and installer screens
+        run: |
+          uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt --with-requirements scripts/onprem/requirements-tui.txt python -m unittest discover -s scripts/onprem -p 'test_*.py' -v
+          uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s .github/scripts -p test_onprem_public.py -v
       - name: Validate single-server installer safety
         run: |
           python3 -m unittest discover -s scripts/onprem -p test_videoq.py -v
@@ -131,11 +138,15 @@ jobs:
           docker run --rm --entrypoint python videoq-worker:onprem-ci -c 'import os; assert os.environ["DEPLOYMENT_EDITION"] == "onprem"; import worker_python.lambda_handler; import runpy; runpy.run_path("scripts/run_worker.py", run_name="import_check")'
       - name: Scan the API image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-api:onprem-ci
+          format: json
+          output: api-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -143,11 +154,15 @@ jobs:
           timeout: 10m
       - name: Scan the worker image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-worker:onprem-ci
+          format: json
+          output: worker-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -155,11 +170,15 @@ jobs:
           timeout: 10m
       - name: Scan the web image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
           scan-type: image
           image-ref: videoq-web:onprem-ci
+          format: json
+          output: web-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
@@ -167,6 +186,7 @@ jobs:
           timeout: 10m
       - name: Scan the local Whisper image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         with:
           version: v0.76.1
@@ -175,56 +195,23 @@ jobs:
           trivy-config: apps/inference/whisper/security/cpu-trivy.yaml
           format: json
           output: local-whisper-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'false'
           exit-code: '1'
           timeout: 10m
-      - name: Resolve the pinned llama.cpp image
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && (inputs.validate_lifecycle || inputs.scan_upstream_images) }}
-        run: |
-          node --input-type=module <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          import { parse } from 'yaml';
-          const image = parse(readFileSync('charts/videoq-inference/values.yaml', 'utf8')).llamacpp.image;
-          const reference = `${image.repository}@${image.digest}`;
-          if (!/^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/.test(reference)) throw new Error('An exact llama.cpp image digest is required');
-          appendFileSync(process.env.GITHUB_ENV, `LLAMACPP_IMAGE=${reference}\n`);
-          JS
-      - name: Scan the llama.cpp CPU image including unfixed vulnerabilities
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
-        with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: ${{ env.LLAMACPP_IMAGE }}
-          format: json
-          output: llamacpp-security-raw.json
-          scanners: vuln
-          severity: HIGH,CRITICAL,UNKNOWN
-          ignore-unfixed: 'false'
-          exit-code: '0'
-          timeout: 10m
-      - name: Assess the llama.cpp runtime findings
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.scan_upstream_images }}
-        env:
-          HELM_BIN: ${{ runner.temp }}/helm/helm
-        run: node .github/scripts/onprem-upstream-security.cjs llamacpp-security-raw.json amd64 llamacpp-security-assessed.json
       - name: Record package inventories for incident response
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         env:
           VALIDATE_LIFECYCLE: ${{ inputs.validate_lifecycle }}
-          SCAN_UPSTREAM_IMAGES: ${{ inputs.scan_upstream_images }}
         run: |
           mkdir -p sbom
           components=(api worker web)
           if [ "$VALIDATE_LIFECYCLE" = true ]; then components+=(local-whisper); fi
           for component in "${components[@]}"; do
-            trivy image --image-src docker --format cyclonedx --output "sbom/${component}.cdx.json" "videoq-${component}:onprem-ci"
+            trivy convert --format cyclonedx --output "sbom/${component}.cdx.json" "${component}-security.json"
           done
-          if [ "$VALIDATE_LIFECYCLE" = true ] || [ "$SCAN_UPSTREAM_IMAGES" = true ]; then
-            trivy image --format cyclonedx --output sbom/llamacpp.cdx.json "$LLAMACPP_IMAGE"
-          fi
       - name: Retain the image inventories
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -232,9 +219,7 @@ jobs:
           name: onprem-sbom-${{ github.sha }}
           path: |
             sbom/*.cdx.json
-            local-whisper-security.json
-            llamacpp-security-*.json
-            apps/inference/llamacpp/security/
+            *-security.json
             apps/inference/whisper/security/sqlite.openvex.json
             apps/inference/whisper/security/zlib.openvex.json
           if-no-files-found: error
@@ -242,8 +227,9 @@ jobs:
       - name: Install checksum-pinned kind
         if: inputs.validate_lifecycle
         run: KIND_INSTALL_DIR="$RUNNER_TEMP" bash .github/scripts/install-kind.sh
+      # Real-model acceptance below runs this same lifecycle scenario; select one.
       - name: Exercise Kubernetes install, processing, restore, upgrade and rollback
-        if: inputs.validate_lifecycle
+        if: inputs.validate_lifecycle && !inputs.validate_real_cpu
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
@@ -251,7 +237,7 @@ jobs:
           kind create cluster --name videoq-onprem-lab --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$RUNNER_TEMP/lab-kubeconfig" --wait 180s
           python3 .github/scripts/onprem-lab.py "$RUNNER_TEMP/lab-kubeconfig" "$RUNNER_TEMP/lab-result"
       - name: Retain Kubernetes validation evidence
-        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
+        if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle && !inputs.validate_real_cpu }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-lab-${{ github.sha }}
@@ -259,7 +245,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Remove the disposable Kubernetes cluster
-        if: ${{ always() && inputs.validate_lifecycle }}
+        if: ${{ always() && inputs.validate_lifecycle && !inputs.validate_real_cpu }}
         run: |
           if [ -x "$RUNNER_TEMP/kind" ]; then
             "$RUNNER_TEMP/kind" delete cluster --name videoq-onprem-lab --kubeconfig "$RUNNER_TEMP/lab-kubeconfig"
@@ -315,12 +301,14 @@ jobs:
       matrix:
         engine: [llamacpp, whispercpp]
         architecture: [amd64, arm64]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Configure DNS on this disposable CI runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -357,6 +345,7 @@ jobs:
       # Use the registry so a cached amd64 Docker image cannot shadow arm64.
       - name: Scan upstream CPU images including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        timeout-minutes: 15
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
         env:
           TRIVY_PLATFORM: linux/${{ matrix.architecture }}
@@ -368,6 +357,7 @@ jobs:
           trivy-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/trivy.yaml' || '' }}
           format: json
           output: upstream-cpu-security.json
+          list-all-pkgs: 'true'
           scanners: vuln
           severity: HIGH,CRITICAL,UNKNOWN
           ignore-unfixed: 'false'
@@ -396,6 +386,8 @@ jobs:
             throw new Error('Scan report does not identify the requested upstream digest');
           }
           JS
+      - name: Convert the scanned upstream inventory
+        run: trivy convert --format cyclonedx --output upstream-cpu.cdx.json upstream-cpu-security.json
       - name: Retain architecture-specific findings
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -403,6 +395,7 @@ jobs:
           name: upstream-cpu-security-${{ matrix.engine }}-${{ matrix.architecture }}
           path: |
             upstream-cpu-security.json
+            upstream-cpu.cdx.json
             upstream-cpu-assessed.json
             apps/inference/llamacpp/security/
             header-inventory.json

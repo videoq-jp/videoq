@@ -23,6 +23,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import image_refs, origin, private_json, json_documents
+import public_release
 from local_ai import LocalAI
 from lifecycle import Lifecycle
 
@@ -180,19 +181,12 @@ class Installer(Lifecycle, LocalAI):
         print('\n' + message, flush=True)
 
     def tools(self, auth=True):
-        names = ('k3d', 'kubectl', 'helm', 'gh') if auth else ('k3d', 'kubectl', 'helm')
-        installed = all(shutil.which(name) for name in names)
-        if installed and auth:
-            probe = subprocess.run(['gh', 'attestation', 'verify', '--help'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            installed = probe.returncode == 0
+        names = ('k3d', 'kubectl', 'helm')
+        installed = all(shutil.which(name) for name in names) and (not auth or public_release.verifier_ready())
         if not installed:
             if not auth:
                 raise ValueError('操作用ツールが不足しています。install-tools.sh を実行してください')
             self.run('bash', str(ROOT / 'scripts/onprem/install-tools.sh'))
-        if auth:
-            authenticated = subprocess.run(['gh', 'auth', 'status'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if authenticated.returncode:
-                self.run('gh', 'auth', 'login')
         result = subprocess.run(['docker', 'info'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if result.returncode:
             probe = subprocess.run(['sudo', '-n', 'docker', 'info'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -212,40 +206,22 @@ class Installer(Lifecycle, LocalAI):
                 raise ValueError('未完了の更新は記録したリリースで再開してください')
             if self.args.source_sha and self.args.source_sha != selection['source_sha']:
                 raise ValueError('未完了の更新は記録したソース SHA で再開してください')
-        run_id = self.args.run_id or selection.get('run_id')
-        if not run_id:
-            runs = json.loads(self.run('gh', 'run', 'list', '--repo', REPOSITORY, '--workflow', 'onprem-release.yml',
-                                      '--status', 'success', '--limit', '1', '--json', 'databaseId,headSha,url', capture=True))
-            if not runs:
-                raise ValueError('成功した On-prem Release がありません')
-            run_id = runs[0]['databaseId']
-        if not re.fullmatch(r'[0-9]+', str(run_id)):
-            raise ValueError('run-id は数値で指定してください')
-        run = json.loads(self.run('gh', 'api', f'repos/{REPOSITORY}/actions/runs/{run_id}', capture=True))
-        if run['conclusion'] != 'success' or run.get('head_branch') != 'main':
-            raise ValueError('main の成功したリリースを指定してください')
-        print(f"Release: {run['html_url']}\nSource: {run['head_sha']}", flush=True)
-        # Bind verification to GitHub's successful run metadata, not the downloaded manifest.
-        sha = self.args.source_sha or selection.get('source_sha') or run['head_sha']
-        if not re.fullmatch(r'[a-f0-9]{40}', sha) or sha != run['head_sha']:
-            raise ValueError('指定または記録済みの SHA とリリース実行のソースが一致しません')
-        if selection.get('run_attempt', run['run_attempt']) != run['run_attempt']:
-            raise ValueError('記録したリリースの実行回が変わりました。再開では別の配布物へ切り替えません')
-        self.selected_release = {'run_id': str(run_id), 'source_sha': sha, 'run_attempt': run['run_attempt']}
+        candidates = getattr(self, 'public_releases', None)
+        if candidates is None:
+            candidates = public_release.catalog_for(self.args.run_id or selection.get('run_id'), self.args.source_sha or selection.get('source_sha'), selection.get('run_attempt'))
+        selected = public_release.select(candidates, self.args.run_id or selection.get('run_id'),
+                                         self.args.source_sha or selection.get('source_sha'), selection.get('run_attempt'))
+        public_release.check_run(selected)
+        run_id, sha, attempt = selected['run_id'], selected['source_sha'], selected['run_attempt']
+        print(f"Public release: https://github.com/videoq-jp/videoq/releases/tag/{selected['tag']}\nSource: {sha}", flush=True)
+        self.selected_release = {'run_id': run_id, 'source_sha': sha, 'run_attempt': attempt}
         if not updating:
             self.state.update({'cluster': self.cluster, 'url': self.url, 'ai': getattr(self, 'ai', 'openrouter'), **self.selected_release})
             private_json(self.state_path, self.state)
-        release = self.directory / 'release' / f'{run_id}-attempt-{run["run_attempt"]}'
-        release.mkdir(parents=True, exist_ok=True)
-        required = ('release.json', f'videoq-0.1.0-sha.{sha}.tgz', f'videoq-inference-0.1.0-sha.{sha}.tgz')
-        if not all((release / name).is_file() and (release / name).stat().st_size for name in required):
-            with tempfile.TemporaryDirectory(dir=release.parent) as download:
-                self.run('gh', 'run', 'download', str(run_id), '--repo', REPOSITORY,
-                         '--name', f'onprem-release-{sha}-attempt-{run["run_attempt"]}', '--dir', download)
-                shutil.copytree(download, release, dirs_exist_ok=True)
-        # Never trust locally generated values without rechecking the signed manifest.
-        self.run(sys.executable, str(ROOT / '.github/scripts/onprem-release.py'), 'verify', sha,
-                 str(release / 'release.json'), str(release / 'verified-images.json'), str(release / 'verified-inference.json'))
+        release = self.directory / 'release' / f'{run_id}-attempt-{attempt}'
+        public_release.download(selected, release)
+        self.run(public_release.verifier_python(), public_release.VERIFIER, sha, run_id, str(attempt), release,
+                 release / 'verified-images.json', release / 'verified-inference.json')
         manifest = json.loads((release / 'release.json').read_text())
         self.chart = release / manifest['charts']['application']['name']
         self.inference_chart = release / manifest['charts']['inference']['name'] if 'inference' in manifest['charts'] else None
@@ -431,24 +407,25 @@ class Installer(Lifecycle, LocalAI):
         script = (ROOT / 'scripts/onprem/public-storage-check.py').read_text()
         probe = json.loads(self.kube('exec', '-i', 'deployment/videoq-worker', '--', 'python', '-', '--prepare',
                                     data=script, capture=True))
+        open_url = getattr(self, 'public_urlopen', urlopen)
         payload = base64.b64decode(probe['payload'])
         try:
-            with urlopen(Request(probe['put'], data=payload, method='PUT', headers={'Content-Type': 'application/octet-stream'}), timeout=20) as response:
+            with open_url(Request(probe['put'], data=payload, method='PUT', headers={'Content-Type': 'application/octet-stream'}), timeout=20) as response:
                 if response.status != 200:
                     raise ValueError('S3 upload')
-            with urlopen(probe['get'], timeout=20) as response:
+            with open_url(probe['get'], timeout=20) as response:
                 if response.read() != payload or 'sandbox' not in response.headers.get('Content-Security-Policy', ''):
                     raise ValueError('S3 download or media sandbox')
                 if response.headers.get('X-Content-Type-Options') != 'nosniff':
                     raise ValueError('S3 MIME protection')
-            with urlopen(Request(probe['get'], headers={'Range': 'bytes=0-5'}), timeout=20) as response:
+            with open_url(Request(probe['get'], headers={'Range': 'bytes=0-5'}), timeout=20) as response:
                 if response.status != 206 or response.read() != payload[:6]:
                     raise ValueError('S3 video Range')
         except Exception as error:
             raise ValueError('公開 S3 の検証に失敗しました (' + type(error).__name__ + ')') from None
         finally:
             self.kube('exec', '-i', 'deployment/videoq-worker', '--', 'python', '-', '--cleanup', probe['key'], data=script)
-        print('OK: public HTTPS S3 PUT/GET, video Range and media sandbox; probe removed.', flush=True)
+        print('OK: public S3 PUT/GET, video Range and media sandbox; probe removed.', flush=True)
 
     def finish(self, provision=True):
         self.stage('6/6 公開 HTTPS を確認します（証明書の発行を待ちます）')

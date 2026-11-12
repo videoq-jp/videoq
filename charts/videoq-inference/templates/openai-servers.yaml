@@ -2,8 +2,9 @@
 {{- range $name := list "chat" "embedding" }}
 {{- $server := index $root.Values.servers $name }}
 {{- $engine := default $root.Values.backend $server.engine }}
+{{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs) }}
 {{- $image := (index $root.Values $engine).image }}
-{{- if and $server.disableTorchCompile (or (ne $engine "vllm") (not (has "--enforce-eager" $server.extraArgs))) }}
+{{- if and $server.disableTorchCompile (or (ne $engine "vllm") (and (not $root.Values.gpuSharing.enabled) (not (has "--enforce-eager" $server.extraArgs)))) }}
 {{- fail "disableTorchCompile requires vllm with --enforce-eager" }}
 {{- end }}
 {{- if and (eq $engine "llamacpp") (or (empty $server.modelFile) (empty $server.modelSha256)) }}
@@ -36,6 +37,9 @@ spec:
         app.kubernetes.io/component: {{ $name }}
     spec:
       automountServiceAccountToken: false
+      {{- if $root.Values.gpuSharing.enabled }}
+      runtimeClassName: {{ $root.Values.gpuSharing.runtimeClassName }}
+      {{- end }}
       {{- with $root.Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -57,6 +61,9 @@ spec:
       initContainers:
         {{- if eq $engine "vllm" }}
         {{- include "inference.vllmAudioInit" (dict "root" $root) | nindent 8 }}
+        {{- end }}
+        {{- if and $root.Values.gpuSharing.enabled (eq $name "chat") }}
+        {{- include "inference.sharedWait" (dict "root" $root "role" $name) | nindent 8 }}
         {{- end }}
         {{- if $root.Values.downloadModels }}
         - name: provision-model
@@ -119,6 +126,17 @@ spec:
             - "8000"
             - --max-model-len
             - {{ $server.contextLength | quote }}
+            {{- if $root.Values.gpuSharing.enabled }}
+            - --gpu-memory-utilization
+            - {{ index $root.Values.gpuSharing.memoryFractions $name | quote }}
+            - --max-num-seqs
+            - "1"
+            - --dtype
+            - {{ default "half" $server.dtype | quote }}
+            - --cpu-offload-gb
+            - "0"
+            - --enforce-eager
+            {{- end }}
             - --generation-config
             - vllm
             {{- if eq $name "chat" }}
