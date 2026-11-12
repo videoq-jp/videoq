@@ -39,6 +39,23 @@ def pin_argocd_manifest(raw, pin, known_hosts=None):
     return json.dumps({'apiVersion': 'v1', 'kind': 'List', 'items': objects})
 
 
+def lab_registry_mirror(existing):
+    config = copy.deepcopy({} if existing is None else existing)
+    if not isinstance(config, dict):
+        raise ValueError('Registry configuration must be a mapping')
+    mirrors = config.setdefault('mirrors', {})
+    if not isinstance(mirrors, dict):
+        raise ValueError('Registry mirrors must be a mapping')
+    ghcr = mirrors.setdefault('ghcr.io', {})
+    if not isinstance(ghcr, dict) or ghcr.get('rewrite'):
+        raise ValueError('Review existing GHCR rewrites before adding the lab store')
+    endpoints = ghcr.get('endpoint', [])
+    if not isinstance(endpoints, list) or any(not isinstance(e, str) for e in endpoints):
+        raise ValueError('Registry endpoints must be a list of URLs')
+    ghcr['endpoint'] = list(dict.fromkeys(['http://127.0.0.1:5000', *endpoints]))
+    return config
+
+
 class FilterModule:
     def filters(self):
-        return {'pin_argocd_manifest': pin_argocd_manifest, 'videoq_repository': validate_repository}
+        return {'pin_argocd_manifest': pin_argocd_manifest, 'videoq_repository': validate_repository, 'lab_registry_mirror': lab_registry_mirror}

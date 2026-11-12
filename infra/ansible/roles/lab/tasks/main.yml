@@ -178,6 +178,24 @@
         content: "Managed by infra/ansible/site.yml\n"
         mode: '0600'
 
+- name: Preserve existing registry configuration and add the lab image mirror
+  ansible.builtin.stat:
+    path: /etc/rancher/k3s/registries.yaml
+  register: registries_file
+- name: Read the existing registry configuration
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/registries.yaml
+  register: registries_raw
+  when: registries_file.stat.exists
+  no_log: true
+- name: Configure the loopback image mirror without replacing other credentials
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/registries.yaml
+    content: "{{ ((registries_raw.content | default('') | b64decode | from_yaml) | lab_registry_mirror) | to_nice_yaml }}"
+    mode: '0600'
+  notify: Restart K3s
+  no_log: true
+
 - name: Activate K3s
   ansible.builtin.systemd_service:
     name: k3s
@@ -199,6 +217,9 @@
 - name: Wait for Kubernetes readiness
   ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s
   changed_when: false
+
+- name: Prepare persistent lab-owned application image storage
+  ansible.builtin.include_tasks: image-store.yml
 
 - name: Verify that K3s discovered the NVIDIA runtime
   ansible.builtin.command: /usr/local/bin/k3s kubectl get runtimeclass nvidia

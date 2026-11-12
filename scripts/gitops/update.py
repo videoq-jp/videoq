@@ -19,6 +19,7 @@ import urllib.request
 
 from repository import validate_repository
 import promote
+import image_store
 from lifecycle import Lifecycle, WRITERS, BACKENDS, verify_backup
 from common import private_json
 
@@ -162,15 +163,29 @@ class Host(Lifecycle):
         # Cache every referenced image before downtime. Archive the four own image
         # families so GitHub retention does not control local restart/recovery.
         refs = sorted({ctr_reference(ref) for ref in image_refs(objects)})
-        for ref in refs:
-            run('k3s', 'ctr', 'images', 'pull', '--platform', 'linux/amd64', ref)
         own = [x for x in refs if x.startswith('ghcr.io/videoq-jp/videoq-')]
-        if len(set(x.split('@')[0] for x in own)) != 4:
-            raise ValueError('Expected exactly four signed application image families')
+        if len(own) != 4:
+            raise ValueError('Expected exactly four application image references')
+        images = {x.split('@')[0].removeprefix('ghcr.io/videoq-jp/videoq-'):
+                  {'repository': x.split('@')[0], 'digest': x.split('@')[1]} for x in own}
+        image_store.preserve(images)
+        for ref in refs:
+            if ref in own:
+                # ctr's CLI does not read K3s CRI mirror configuration.
+                local = image_store.local_ref(ref)
+                run('k3s', 'ctr', 'images', 'pull', '--local', '--plain-http', '--platform', 'linux/amd64', local)
+                run('k3s', 'ctr', 'images', 'tag', '--force', local, ref)
+            else:
+                run('k3s', 'ctr', 'images', 'pull', '--local', '--platform', 'linux/amd64', ref)
+        archived = []
+        for ref in own:
+            alias = image_store.archive_ref(ref)
+            run('k3s', 'ctr', 'images', 'tag', '--force', ref, alias)
+            archived.append(alias)
         archive = root / 'application-images.tar'
         if not archive.exists():
             staging = root / 'application-images.partial'
-            run('k3s', 'ctr', 'images', 'export', '--platform', 'linux/amd64', str(staging), *own)
+            run('k3s', 'ctr', 'images', 'export', '--platform', 'linux/amd64', str(staging), *archived)
             os.replace(staging, archive)
         os.chmod(archive, 0o600)
         # Native K3s imports these archives on boot (and watches while running).
@@ -222,7 +237,7 @@ class Host(Lifecycle):
             '--source-sha', selected['source_sha'], '--run-id', selected['run_id'], '--run-attempt', str(selected['run_attempt']),
             '--repository', self.config['repository'], '--revision', self.config['branch'], '--site', self.config['site'],
             '--public-url', self.config['public_url'], '--listen-ip', self.config['listen_ip'], '--storage-gib', str(self.config['storage_gib']),
-            '--output', str(output), '--deployment-pin-output', str(root / 'local-image-pins.json'))
+            '--output', str(output))
         generated = output / self.site
         # Infrastructure/GPU topology changes need explicit acceptance rather than
         # changing the shared GPU driver/plugin during an application update.

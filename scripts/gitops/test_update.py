@@ -53,6 +53,10 @@ class SelectionTests(unittest.TestCase):
 
 
 class ImageCacheTests(unittest.TestCase):
+    def setUp(self):
+        self.store = patch.object(u.image_store, 'preserve').start()
+        self.addCleanup(patch.stopall)
+
     def test_containerd_references_expand_familiar_names_without_changing_digests(self):
         digest = '@sha256:' + 'a' * 64
         cases = {
@@ -68,6 +72,19 @@ class ImageCacheTests(unittest.TestCase):
         for original, expected in cases.items():
             with self.subTest(original=original):
                 self.assertEqual(u.ctr_reference(original + digest), expected + digest)
+
+    def test_store_failure_blocks_cache_and_archive_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            objects = [{'kind': 'Deployment', 'spec': {'template': {'spec': {'containers': [
+                {'image': 'ghcr.io/videoq-jp/videoq-' + n + '@sha256:' + 'a'*64}]}}}}
+                for n in ['api', 'web', 'worker', 'transcription-gateway']]
+            self.store.side_effect = ValueError('local store full')
+            with patch.object(u, 'run') as command:
+                with self.assertRaisesRegex(ValueError, 'local store full'):
+                    u.Host.cache_images(object.__new__(u.Host), root, objects)
+                command.assert_not_called()
+            self.assertEqual(list(root.iterdir()), [])
 
     def test_unpinned_cache_inputs_fail_before_calling_containerd(self):
         objects = [{'kind': 'Deployment', 'spec': {'template': {'spec': {
