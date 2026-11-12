@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "passed",
-  "scope": "Local CPU Docker acceptance; production staging functions with fixture OCI graphs, not a new GPU or app acceptance",
+  "scope": "Local CPU Docker and real K3s acceptance with fixture OCI graphs; no new GPU/app deployment",
   "applicationImageFamiliesTested": 4,
   "fixture": "Official Distribution registry OCI index and all child graphs copied under four application repository names",
   "signatureVerifierChanged": false,
@@ -97,5 +97,17 @@
     "No complete air-gap rebuild claim",
     "Uncached external dependencies and models still need their upstream source",
     "Local registry data requires separate off-host backup and capacity management"
-  ]
+  ],
+  "k3s": {
+    "version": "v1.37.2+k3s1",
+    "localPlatform": "linux/arm64",
+    "productionRegistryManifestApplied": true,
+    "criDigestReferencePulledThroughLocalMirror": true,
+    "podStartedAfterCriImageRemoval": true,
+    "otherPodIngressRejected": true,
+    "compressedLayersRehydratedBeforeExport": true,
+    "nativeImporterAcceptedBothRegistryAndApplicationArchiveNames": true,
+    "archiveNaming": "Digest-derived local tags; deployment digest references unchanged"
+  },
+  "historicalArchiveCheck": "Earlier application acceptance checked archive copy equality and restart with retained runtime cache. This additional acceptance removes a CRI image and verifies native import, including compressed-layer rehydration and import-compatible archive names."
 }

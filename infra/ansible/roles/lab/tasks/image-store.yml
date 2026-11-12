@@ -46,12 +46,17 @@
 - name: Cache the upstream registry so it can start without an upstream pull
   when: not registry_archive.stat.exists
   block:
+    # The transfer pull may skip compressed blobs for an already-unpacked
+    # snapshot. The local fetch path restores them before OCI export.
     - name: Fetch the digest-pinned registry image
       ansible.builtin.command:
-        argv: [/usr/local/bin/k3s, ctr, images, pull, '--platform', linux/amd64, "{{ image_store.image }}"]
+        argv: [/usr/local/bin/k3s, ctr, images, pull, '--local', '--platform', linux/amd64, "{{ image_store.image }}"]
+    - name: Name the boot image for the native K3s importer
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, ctr, images, tag, '--force', "{{ image_store.image }}", "{{ image_store.image.split('@')[0] }}:videoq-sha256-{{ image_store.image.split('sha256:')[1] }}"]
     - name: Export the registry for native boot-time import
       ansible.builtin.command:
-        argv: [/usr/local/bin/k3s, ctr, images, export, '--platform', linux/amd64, /var/lib/rancher/k3s/agent/images/videoq-image-store.partial, "{{ image_store.image }}"]
+        argv: [/usr/local/bin/k3s, ctr, images, export, '--platform', linux/amd64, /var/lib/rancher/k3s/agent/images/videoq-image-store.partial, "{{ image_store.image.split('@')[0] }}:videoq-sha256-{{ image_store.image.split('sha256:')[1] }}"]
     - name: Publish the completed registry boot archive
       ansible.builtin.command: mv /var/lib/rancher/k3s/agent/images/videoq-image-store.partial /var/lib/rancher/k3s/agent/images/videoq-image-store-{{ image_store.image.split('sha256:')[1] }}.tar
 

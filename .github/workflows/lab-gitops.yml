@@ -46,7 +46,8 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a') as env:
               env.write('VIDEOQ_ORAS=' + str(target) + '\n')
           PYTHON
-      - name: Verify local images after upstream loss and registry restart
+      - name: Verify retained images, CRI mirror and native boot import
         env:
           VIDEOQ_IMAGE_STORE_INTEGRATION: '1'
+          VIDEOQ_K3S_IMAGE: rancher/k3s@sha256:21ea6e0fac4e3930c2ce8aa40ddd41a8b18cb3e9a0222c030dc005e7e88c4332
         run: python -m unittest discover -s scripts/gitops -p test_image_store_integration.py -v

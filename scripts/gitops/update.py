@@ -173,14 +173,19 @@ class Host(Lifecycle):
             if ref in own:
                 # ctr's CLI does not read K3s CRI mirror configuration.
                 local = image_store.local_ref(ref)
-                run('k3s', 'ctr', 'images', 'pull', '--plain-http', '--platform', 'linux/amd64', local)
+                run('k3s', 'ctr', 'images', 'pull', '--local', '--plain-http', '--platform', 'linux/amd64', local)
                 run('k3s', 'ctr', 'images', 'tag', '--force', local, ref)
             else:
-                run('k3s', 'ctr', 'images', 'pull', '--platform', 'linux/amd64', ref)
+                run('k3s', 'ctr', 'images', 'pull', '--local', '--platform', 'linux/amd64', ref)
+        archived = []
+        for ref in own:
+            alias = image_store.archive_ref(ref)
+            run('k3s', 'ctr', 'images', 'tag', '--force', ref, alias)
+            archived.append(alias)
         archive = root / 'application-images.tar'
         if not archive.exists():
             staging = root / 'application-images.partial'
-            run('k3s', 'ctr', 'images', 'export', '--platform', 'linux/amd64', str(staging), *own)
+            run('k3s', 'ctr', 'images', 'export', '--platform', 'linux/amd64', str(staging), *archived)
             os.replace(staging, archive)
         os.chmod(archive, 0o600)
         # Native K3s imports these archives on boot (and watches while running).

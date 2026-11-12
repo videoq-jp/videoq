@@ -37,6 +37,15 @@ def local_ref(reference):
     return REGISTRY + '/' + reference.split('/', 1)[1]
 
 
+def archive_ref(reference):
+    # K3s's native importer retags NamedTagged references; canonical digest-only
+    # archive names are rejected. A digest-derived local tag keeps exact bytes.
+    repository, digest = reference.rsplit('@', 1)
+    if not re.fullmatch(r'sha256:[a-f0-9]{64}', digest):
+        raise ValueError('Archive only digest-pinned images')
+    return repository + ':videoq-sha256-' + digest.split(':')[1]
+
+
 def descriptor(reference):
     raw = subprocess.check_output([ORAS, 'manifest', 'fetch', '--descriptor', '--plain-http', reference], text=True, timeout=300)
     return json.loads(raw)['digest']
