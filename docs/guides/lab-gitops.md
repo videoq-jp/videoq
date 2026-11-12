@@ -32,7 +32,7 @@ GitHub Actions から研究室への SSH、Webhook の受信口、外部公開�
 
 ## 1. 検証済みリリースから構成変更を作る
 
-管理者の PC で Python 3.12 以降、Git、Helm を用意する。専用 venv を使う。
+管理者の PC で Python 3.13 以降、Git、Helm を用意する。専用 venv を使う。
 
 ```bash
 python3 -m venv /secure/videoq-operator
@@ -299,7 +299,7 @@ python -m unittest discover -s scripts/gitops -p 'test_*.py' -v
 `--check` は GPU・Kubernetes・ネットワークの準備完了を証明できないため、現 playbook では受け付けない。
 
 公式資料:
-- [Ansible get_url の checksum](https://docs.ansible.com/projects/ansible-core/2.21/collections/ansible/builtin/get_url_module.html)
+- [Ansible get_url の checksum](https://docs.ansible.com/projects/ansible-core/2.22/collections/ansible/builtin/get_url_module.html)
 - [K3s 設定](https://docs.k3s.io/installation/configuration)
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 - [Argo CD 宣言的セットアップ](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)

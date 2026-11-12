@@ -1,15 +1,15 @@
 {
   "node": "26.13.1",
-  "python": "3.14.10",
+  "python": "3.15.2",
   "python_minimum": "3.12",
   "images": {
     "node_bookworm": "node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1",
     "node_alpine": "node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5",
-    "python_local": "python:3.14.10-slim-bookworm@sha256:3fe1a0b6c2d6b2ebb572906cdabeca75aeb558c0c17db5ffefbcf8094871c32b",
-    "python_lambda": "public.ecr.aws/lambda/python:3.14@sha256:af5e126c7bf423607e0ed9f96384186d108346d9df6a5d8e913aa6c2f1746308",
+    "python_local": "python:3.15.2-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd",
+    "python_lambda": "public.ecr.aws/lambda/python:3.15@sha256:92d0229221ddbb340d12cd8a4ca462b597f84e1770d3a75cacb9430382f16b72",
     "uv": "ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490",
     "node_onprem": "node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5",
-    "python_onprem": "python:3.14.10-alpine@sha256:5862d971d1f0ae26b258cefa4e893556b1d3aba81bd2ff30888704ad378bab67"
+    "python_onprem": "python:3.15.2-alpine@sha256:20a82dbc2783112ddb91d1534603f802d222a3e63e593cd002eb2ac534e70211"
   },
   "npm": "12.2.2",
   "pip": "26.2.2",
