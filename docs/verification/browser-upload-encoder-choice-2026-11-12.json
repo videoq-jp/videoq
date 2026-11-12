@@ -1,0 +1,27 @@
+{
+  "scope": "Controlled real-browser diagnosis; signed-release production acceptance is still required",
+  "date": "2026-11-12",
+  "baselineSourceSha": "32fd53364729d88b87641590f15392e9f8a79b7f",
+  "environment": {
+    "browser": "Chromium156 headless shell on Ubuntu22.04",
+    "tls": "Internal CA trusted; certificate verification enabled",
+    "softwareAvcEncodingSupported": true,
+    "hardwareAvcEncodingSupported": false
+  },
+  "baseline": {
+    "visibleError": "Video compression failed. Please try again.",
+    "uploadRequestSent": false
+  },
+  "experiment": {
+    "onlyCodeChange": "Application worker video.hardwareAcceleration changed from prefer-hardware to no-preference",
+    "applicationImageModified": false,
+    "backendMocked": false,
+    "uncompressedUploadFallback": false,
+    "actualUiFileSelectionAndSubmit": true,
+    "nativeCompressionAndRealUpload": "passed",
+    "realTranscription": "passed",
+    "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
+    "pageErrors": []
+  },
+  "regression": "A browser with native software AVC encoding must be able to compress and upload without a hardware encoder."
+}
