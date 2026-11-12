@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { ViewerHeader } from './ViewerHeader';
 import { ViewerActionsMenu } from './ViewerActionsMenu';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ export const KeyboardMenu: Story = {
     await userEvent.tab();
     await expect(trigger).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
-    await expect(canvas.getByRole('button', { name: '共有設定' })).toHaveFocus();
+    await waitFor(() => expect(canvas.getByRole('button', { name: '共有設定' })).toHaveFocus());
     await userEvent.keyboard('{Escape}');
     await expect(trigger).toHaveFocus();
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
