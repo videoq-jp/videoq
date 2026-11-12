@@ -53,9 +53,9 @@ class ImageStoreIntegration(unittest.TestCase):
                 command(oras, 'copy', *flags, '--to-plain-http', fixture_source, source + '/videoq-jp/videoq-' + n + ':fixture')
             transfers = []
             def transfer(args, **kw):
-                if args[0] == oras and '--to-plain-http' in args and any(a.startswith('ghcr.io/') for a in args):
+                if args[0] == oras and '--to-plain-http' in args and any(a.partition('/')[0] == 'ghcr.io' for a in args):
                     transfers.append(args)
-                    args = [source + '/' + a.split('/', 1)[1] if a.startswith('ghcr.io/') else a for a in args]
+                    args = [source + '/' + a.split('/', 1)[1] if a.partition('/')[0] == 'ghcr.io' else a for a in args]
                     args.insert(2, '--from-plain-http')
                 return real_run(args, **kw)
             with patch.object(m, 'ORAS', oras), patch.object(m, 'REGISTRY', destination), patch.object(m.subprocess, 'run', side_effect=transfer):

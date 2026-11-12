@@ -152,7 +152,7 @@ class ManifestTests(unittest.TestCase):
         import yaml
         pin = json.loads((m.ROOT / 'infra/ansible/pins.json').read_text())['image_store']
         raw = (m.ROOT / 'infra/ansible/roles/lab/templates/image-registry.yaml.j2').read_text()
-        deployment, policy = list(yaml.safe_load_all(Template(raw).render(image_store=pin)))
+        deployment, policy = list(yaml.safe_load_all(Template(raw, autoescape=True).render(image_store=pin)))
         pod = deployment['spec']['template']['spec']
         container = pod['containers'][0]
         self.assertEqual(container['image'], pin['image'])
