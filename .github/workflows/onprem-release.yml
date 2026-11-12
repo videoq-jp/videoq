@@ -20,6 +20,7 @@ jobs:
       contents: read
     outputs:
       sha: ${{ steps.source.outputs.sha }}
+      needed: ${{ steps.source.outputs.needed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,12 +32,18 @@ jobs:
         with:
           script: |
             const validate = require('./.github/scripts/validate-deployment.cjs');
-            core.setOutput('sha', await validate({ github, context }));
+            const sha = await validate({ github, context });
+            const decision = await require('./.github/scripts/onprem-release-needed.cjs')({ github, context, sha });
+            core.setOutput('sha', sha);
+            core.setOutput('needed', String(decision.needed));
+            core.notice(decision.reason);
   upstream-vllm:
     needs: source
+    if: needs.source.outputs.needed == 'true'
     uses: ./.github/workflows/upstream-vllm.yml
   build:
     needs: source
+    if: needs.source.outputs.needed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +82,7 @@ jobs:
           artifact-name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
   chart:
     needs: source
+    if: needs.source.outputs.needed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
