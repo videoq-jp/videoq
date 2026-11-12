@@ -76,7 +76,6 @@ jobs:
         with:
           python-version-file: apps/inference/whisper/.python-version
       - name: Install checksum-pinned uv
-        if: inputs.validate_lifecycle
         run: bash .github/scripts/install-uv.sh
       - name: Validate public downloads, signature policy and installer screens
         run: |
