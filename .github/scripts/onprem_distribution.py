@@ -1,6 +1,6 @@
 """Reference-aware GHCR/release retention. Plan first; apply only the saved plan.
 
-Keep two published on-prem generations, all other release types, recent builds,
+Keep two published on-prem generations, all other release types, recent active builds,
 operational source references, index children and signature/referrer graphs.
 No image builds or deployment changes. Authentication stays inside gh.
 """
@@ -20,6 +20,9 @@ import urllib.request
 REPO = 'videoq-jp/videoq'
 ORG = 'videoq-jp'
 PACKAGES = tuple('videoq-' + c for c in ('api', 'web', 'worker', 'transcription-gateway', 'vllm'))
+# No workflow publishes this engine any more. Retire its package only after
+# release, operational and open-PR roots have all disappeared.
+RETIRED_PACKAGES = frozenset({'videoq-vllm'})
 DIGEST = re.compile(r'sha256:[a-f0-9]{64}')
 TAG = re.compile(r'onprem-([a-f0-9]{40})-([1-9][0-9]*)-([1-9][0-9]*)')
 ACCEPT = ', '.join(('application/vnd.oci.image.index.v1+json', 'application/vnd.oci.image.manifest.v1+json',
@@ -57,13 +60,20 @@ def snapshot():
                 run.get('path') == '.github/workflows/onprem-release.yml' and
                 run.get('repository', {}).get('full_name') == REPO)
     inventory = {}
+    catalog = {p['name'] for p in listing(f'orgs/{ORG}/packages?package_type=container&per_page=100')}
+    present = []
     for package in PACKAGES:
+        if package in RETIRED_PACKAGES and package not in catalog:
+            inventory[package] = []
+            continue
         endpoint = f'orgs/{ORG}/packages/container/{package}'
         meta = gh(endpoint)
         if meta.get('repository', {}).get('full_name') != REPO or meta.get('visibility') != 'public':
             raise ValueError('Unreviewed package identity: ' + package)
         inventory[package] = listing(endpoint + '/versions?per_page=100')
-    return {'repository': REPO, 'capturedAt': datetime.now(timezone.utc).isoformat(), 'releases': releases, 'packages': inventory}
+        present.append(package)
+    return {'repository': REPO, 'capturedAt': datetime.now(timezone.utc).isoformat(), 'releases': releases,
+            'packages': inventory, 'presentPackages': present}
 
 
 def release_roots(releases, keep, fetch_json):
@@ -191,6 +201,10 @@ def plan(data, roots, retained, removed, fetch_manifest, now, grace_days=7):
         raise ValueError('Unexpected inventory scope')
     cutoff = now - timedelta(days=grace_days)
     protected = {p: set(roots[p]) for p in PACKAGES}
+    present = set(data['presentPackages'])
+    if (not present.issubset(PACKAGES) or not (set(PACKAGES) - RETIRED_PACKAGES).issubset(present)
+            or any((roots[p] or data['packages'][p]) and p not in present for p in PACKAGES)):
+        raise ValueError('A referenced package is missing from the live catalog')
     by_digest = {}
     for package, versions in data['packages'].items():
         index = {}
@@ -198,7 +212,7 @@ def plan(data, roots, retained, removed, fetch_manifest, now, grace_days=7):
             if not isinstance(v['id'], int) or not DIGEST.fullmatch(v['name']) or v['name'] in index:
                 raise ValueError('Invalid or duplicate package version')
             index[v['name']] = v
-            if stamp(v['created_at']) >= cutoff:
+            if stamp(v['created_at']) >= cutoff and (package not in RETIRED_PACKAGES or roots[package]):
                 protected[package].add(v['name'])
         by_digest[package] = index
     # Inspect candidates too: untagged OCI 1.1 referrers may have no fallback tag.
@@ -233,16 +247,22 @@ def plan(data, roots, retained, removed, fetch_manifest, now, grace_days=7):
                 if not DIGEST.fullmatch(child):
                     raise ValueError('Invalid manifest child')
                 protected[package].add(child)
+    retired = [{'package': p, 'versionsSha256': checksum(data['packages'][p])}
+               for p in sorted(RETIRED_PACKAGES & present) if not protected[p]]
+    retired_names = {p['package'] for p in retired}
     deletions = []
     for package, versions in data['packages'].items():
+        if package in retired_names:
+            continue
         for version in versions:
             if version['name'] not in protected[package]:
                 deletions.append({'package': package, 'id': version['id'], 'digest': version['name'],
                                   'tags': version['metadata']['container']['tags'], 'createdAt': version['created_at']})
-    return {'schemaVersion': 1, 'repository': REPO, 'generatedAt': now.isoformat(), 'graceDays': grace_days,
+    return {'schemaVersion': 2, 'repository': REPO, 'generatedAt': now.isoformat(), 'graceDays': grace_days,
             'keepReleases': [{'id': r['id'], 'tag': r['tag_name']} for r in retained],
             'deleteReleases': [{'id': r['id'], 'tag': r['tag_name']} for r in removed],
             'protectedDigests': {p: sorted(ds) for p, ds in protected.items()}, 'deleteVersions': deletions,
+            'deletePackages': retired,
             'inventorySha256': checksum(data), 'manifestGraphsVerified': len(visited)}
 
 
@@ -251,15 +271,20 @@ def checksum(value):
 
 
 def apply(saved, live, fresh, record=None):
-    if saved['repository'] != REPO or saved['schemaVersion'] != 1:
+    if saved['repository'] != REPO or saved['schemaVersion'] != 2:
         raise ValueError('Unexpected cleanup plan')
     if datetime.now(timezone.utc) - stamp(saved['generatedAt']) > timedelta(hours=24):
         raise ValueError('Plan expired; regenerate and review')
     # The entire live plan must match before the first destructive request.
-    for key in ['keepReleases', 'deleteReleases', 'protectedDigests', 'deleteVersions']:
+    for key in ['keepReleases', 'deleteReleases', 'protectedDigests', 'deleteVersions', 'deletePackages']:
         if saved[key] != fresh[key]:
             raise ValueError('References/inventory changed; regenerate cleanup plan')
-    journal = {'status': 'running', 'deletedReleases': [], 'deletedVersions': [], 'planSha256': checksum(saved)}
+    for package in saved['deletePackages']:
+        name = package['package']
+        if (name not in RETIRED_PACKAGES or saved['protectedDigests'][name]
+                or package['versionsSha256'] != checksum(live['packages'][name])):
+            raise ValueError('Only an unreferenced retired package with unchanged inventory may be removed')
+    journal = {'status': 'running', 'deletedReleases': [], 'deletedVersions': [], 'deletedPackages': [], 'planSha256': checksum(saved)}
     if record:
         record(journal)
     for release in saved['deleteReleases']:
@@ -281,10 +306,22 @@ def apply(saved, live, fresh, record=None):
         if record:
             record(journal)
             time.sleep(0.8)
+    for package in saved['deletePackages']:
+        try:
+            gh(f'orgs/{ORG}/packages/container/{package["package"]}', method='DELETE')
+        except Exception:
+            journal.update(status='failed', failedPackage=package)
+            if record:
+                record(journal)
+            raise
+        journal['deletedPackages'].append(package)
+        if record:
+            record(journal)
     journal['status'] = 'complete'
     if record:
         record(journal)
-    return {'deletedReleases': len(saved['deleteReleases']), 'deletedVersions': len(deleted)}
+    return {'deletedReleases': len(saved['deleteReleases']), 'deletedVersions': len(deleted),
+            'deletedPackages': len(journal['deletedPackages'])}
 
 
 def main():
@@ -320,6 +357,7 @@ def main():
     if args.command == 'plan':
         args.file.write_text(json.dumps(result, indent=2) + '\n')
         print(json.dumps({'keptReleases': len(retained), 'deleteReleases': len(removed), 'deleteVersions': len(result['deleteVersions']),
+                          'deletePackages': len(result['deletePackages']),
                           'manifestGraphsVerified': result['manifestGraphsVerified'], 'plan': str(args.file)}))
     else:
         saved = json.loads(args.file.read_text())
@@ -330,7 +368,8 @@ def main():
             temporary.replace(journal_path)
             count = len(value['deletedVersions'])
             if count % 25 == 0 or value['status'] != 'running':
-                print(json.dumps({'status': value['status'], 'deletedVersions': count, 'journal': str(journal_path)}), flush=True)
+                print(json.dumps({'status': value['status'], 'deletedVersions': count,
+                                  'deletedPackages': len(value['deletedPackages']), 'journal': str(journal_path)}), flush=True)
         print(json.dumps(apply(saved, data, result, record)))
 
 
