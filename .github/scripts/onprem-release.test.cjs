@@ -69,6 +69,19 @@ test('staging verifies signed artifacts before loading or exercising them',()=>{
   assert.match(staging,/rm -rf "\$DOCKER_CONFIG"/);
 });
 
+test('each registry-writing job installs pinned ORAS before using it and logs out afterwards',()=>{
+  for(const name of ['publish','indexes']){
+    const text=job(name);
+    const setup=text.indexOf('uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63');
+    const login=text.indexOf('oras login --registry-config');
+    const sign=text.indexOf('uses: actions/attest@');
+    const logout=text.indexOf('oras logout --registry-config');
+    assert(setup>=0 && login>setup && sign>login && logout>sign,name);
+    assert.match(text,/checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0/);
+    assert.match(text,/if: \$\{\{ always\(\) && \(steps.image.outcome/);
+  }
+});
+
 test('release retries cannot mix artifacts from different attempts',()=>{
   for (const match of workflow.matchAll(/uses: actions\/(?:upload|download)-artifact@[^\n]+\n        with:\n([\s\S]*?)(?=^      -|^  [a-z-]+:|$(?![\s\S]))/gm)) {
     const identity = match[1].match(/^          (?:name|pattern): (.+)$/m)?.[1];
