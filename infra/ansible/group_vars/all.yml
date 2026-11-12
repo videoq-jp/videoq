@@ -8,3 +8,13 @@ videoq_credentials_encryption_key: ""
 videoq_github_app_id: ""
 videoq_github_app_installation_id: ""
 videoq_github_app_private_key: ""
+# Enable after the initial Forgejo-backed deployment and smoke-test acceptance.
+videoq_update_enabled: false
+videoq_update_source_revision: ""
+videoq_update_git_ssh_private_key: ""
+videoq_gitops_known_hosts: ""
+videoq_update_site: lab
+videoq_update_listen_ip: ""
+videoq_update_storage_gib: 40
+videoq_update_health_command: []
+videoq_update_ca_file: /etc/videoq-bootstrap/lab-ca.crt

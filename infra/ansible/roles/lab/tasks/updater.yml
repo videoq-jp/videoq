@@ -1,0 +1,98 @@
+- name: Validate unattended update inputs
+  ansible.builtin.assert:
+    that:
+      - videoq_update_source_revision is match('^[a-f0-9]{40}$')
+      - videoq_gitops_repository is match('^(ssh://git@|git@)')
+      - videoq_gitops_known_hosts | length > 0
+      - videoq_update_git_ssh_private_key | length > 0
+      - videoq_gitops_ssh_private_key | length > 0
+      - videoq_update_git_ssh_private_key != videoq_gitops_ssh_private_key
+      - videoq_update_health_command | length > 0
+      - videoq_update_health_command[0] is match('^/')
+      - videoq_update_site is match('^[a-z][a-z0-9-]{0,30}$')
+      - videoq_update_listen_ip | length > 0
+    fail_msg: Use an internal SSH Git repository, verified host keys, separate read/write deploy keys and an operator-owned smoke test. Pin the reviewed updater source SHA.
+  no_log: true
+
+- name: Install update prerequisites
+  ansible.builtin.apt:
+    name: [git, python3-venv]
+    state: present
+    lock_timeout: 600
+
+- name: Create private update directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+  loop: [/etc/videoq-updater, /var/lib/videoq-updater, /opt/videoq-updater, /opt/videoq-updater/bin]
+
+- name: Install the Forgejo writer key and verified host keys
+  ansible.builtin.copy:
+    dest: "/etc/videoq-updater/{{ item.name }}"
+    content: "{{ item.value }}\n"
+    mode: '0600'
+  loop:
+    - {name: id_ed25519, value: "{{ videoq_update_git_ssh_private_key }}"}
+    - {name: known_hosts, value: "{{ videoq_gitops_known_hosts }}"}
+  no_log: true
+
+- name: Read existing Argo CD SSH host keys before adding the internal host
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, get, configmap, argocd-ssh-known-hosts-cm, -o, json]
+  register: current_argocd_known_hosts
+  changed_when: false
+
+- name: Register verified internal SSH host keys with Argo CD
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, patch, configmap, argocd-ssh-known-hosts-cm, '--type=merge', '-p', "{{ {'data': {'ssh_known_hosts': (((current_argocd_known_hosts.stdout | from_json).data.ssh_known_hosts | default('')).splitlines() + videoq_gitops_known_hosts.splitlines()) | unique | join('\n')}} | to_json }}"]
+  register: update_known_hosts
+  changed_when: "'patched (no change)' not in update_known_hosts.stdout"
+
+- name: Check out the reviewed updater implementation
+  ansible.builtin.git:
+    repo: https://github.com/videoq-jp/videoq.git
+    dest: /opt/videoq-updater/source
+    version: "{{ videoq_update_source_revision }}"
+    force: false
+
+- name: Install the existing pinned signature verifier and YAML parser
+  ansible.builtin.pip:
+    name: [sigstore==4.5.1, PyYAML==6.0.3]
+    virtualenv: /opt/videoq-updater/venv
+    virtualenv_command: python3 -m venv
+
+- name: Install pinned Helm for verified release compilation
+  ansible.builtin.command: bash /opt/videoq-updater/source/.github/scripts/install-helm.sh
+  environment:
+    HELM_INSTALL_DIR: /opt/videoq-updater/bin
+  args:
+    creates: /opt/videoq-updater/bin/helm
+
+- name: Install a native kubectl wrapper for shared backup helpers
+  ansible.builtin.copy:
+    dest: /opt/videoq-updater/bin/kubectl
+    mode: '0700'
+    content: |
+      #!/bin/sh
+      exec /usr/local/bin/k3s kubectl "$@"
+
+- name: Write secret-free update policy
+  ansible.builtin.copy:
+    dest: /etc/videoq-updater/config.json
+    mode: '0600'
+    content: "{{ {'repository': videoq_gitops_repository, 'branch': videoq_gitops_revision, 'site': videoq_update_site, 'public_url': videoq_public_url, 'listen_ip': videoq_update_listen_ip, 'storage_gib': videoq_update_storage_gib | int, 'state_directory': '/var/lib/videoq-updater', 'checkout': '/var/lib/videoq-updater/config', 'kubeconfig': '/etc/rancher/k3s/k3s.yaml', 'ca_file': videoq_update_ca_file, 'health_command': videoq_update_health_command} | to_nice_json }}\n"
+
+- name: Install the update service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: '0644'
+  loop: [videoq-update.service, videoq-update-initialize.service, videoq-update.timer]
+
+- name: Start polling with the initialization acceptance guard
+  ansible.builtin.systemd_service:
+    name: videoq-update.timer
+    daemon_reload: true
+    enabled: true
+    state: started
