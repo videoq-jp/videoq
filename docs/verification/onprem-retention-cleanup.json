@@ -1,0 +1,39 @@
+{
+  "repository": "videoq-jp/videoq",
+  "operation": "Remove old unreferenced distribution package versions",
+  "successfulVersionDeletions": 1878,
+  "deletedReleases": 0,
+  "byPackage": {
+    "videoq-api": 402,
+    "videoq-transcription-gateway": 412,
+    "videoq-vllm": 244,
+    "videoq-web": 412,
+    "videoq-worker": 408
+  },
+  "keptReleases": [
+    {
+      "id": 441587839,
+      "tag": "onprem-25be8081950d2952821a6a277e23576385d2d9ba-42999855822-1"
+    },
+    {
+      "id": 441328600,
+      "tag": "onprem-2f9e90290f1edb1d904903458a592c0b87b1499b-42505541209-1"
+    }
+  ],
+  "graceDays": 7,
+  "batches": [
+    {
+      "planSha256": "dfd3cb14d6afa55922bdf9723a4b3ddc75e202700a6584bbf2682bc56a29783b",
+      "journalSha256": "8896d63946faafc70e79e3d1205076e65ca9ee8ce23c27c352df906679c0bf93",
+      "successfulDeletions": 25,
+      "note": "Interrupted after 25 successful deletes; resumed using a fresh live plan."
+    },
+    {
+      "planSha256": "ab929098bbcd94aa58b60c584b2ddae43210816bc5abd4f169fb2f9500ba1055",
+      "journalSha256": "0dba7d612b347715321b3107f5c7301526129a5e330e9f54874b3ccef4dda8d3",
+      "successfulDeletions": 1853,
+      "note": "Completed all remaining planned operations."
+    }
+  ],
+  "scope": "Both existing published releases and their image/platform/signature/referrer graphs were protected. No GPU resources or persistent model data were deleted."
+}
