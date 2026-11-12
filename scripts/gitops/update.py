@@ -63,15 +63,16 @@ def ctr_reference(reference):
     name, digest = reference.rsplit('@', 1)
     if not re.fullmatch(r'sha256:[a-f0-9]{64}', digest):
         raise ValueError('Cache only digest-pinned images')
-    first, slash, _ = name.partition('/')
-    if not slash:
-        name = 'docker.io/library/' + name
-    elif '.' not in first and ':' not in first and first != 'localhost':
-        name = 'docker.io/' + name
-    if name.startswith('index.docker.io/'):
-        name = 'docker.io/' + name.removeprefix('index.docker.io/')
-    if name.startswith('docker.io/') and name.count('/') == 1:
-        name = 'docker.io/library/' + name.removeprefix('docker.io/')
+    parts = name.split('/')
+    if len(parts) == 1:
+        parts = ['docker.io', 'library', *parts]
+    elif '.' not in parts[0] and ':' not in parts[0] and parts[0] != 'localhost':
+        parts.insert(0, 'docker.io')
+    if parts[0] == 'index.docker.io':
+        parts[0] = 'docker.io'
+    if parts[0] == 'docker.io' and len(parts) == 2:
+        parts.insert(1, 'library')
+    name = '/'.join(parts)
     # The digest selects the exact bytes; a tag is unnecessary for caching.
     repository, colon, tag = name.rpartition(':')
     if colon and '/' not in tag:
