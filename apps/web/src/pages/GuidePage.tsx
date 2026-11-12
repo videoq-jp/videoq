@@ -41,13 +41,13 @@ export default function GuidePage() {
         <p className="mb-2 text-std-17B-170">{t('guides.toc')}</p>
         <ul className="list-disc space-y-1 pl-6 text-std-17N-170">
           {body.sections.map((section, index) => (
-            <li key={section.heading}><a href={`#section-${index + 1}`} className="text-blue-1000 underline underline-offset-[0.1875rem]">{section.heading}</a></li>
+            <li key={section.heading}><a href={`#section-${index + 1}`} className="site-inline-link">{section.heading}</a></li>
           ))}
         </ul>
       </nav>
-      <div className="space-y-10">
+      <div className="site-article-sections">
         {body.sections.map((section, index) => (
-          <section key={section.heading} id={`section-${index + 1}`} className="scroll-mt-24">
+          <section key={section.heading} id={`section-${index + 1}`} className="site-article-section scroll-mt-24">
             <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3"><HeadingTitle level="h2">{section.heading}</HeadingTitle></Heading>
             {section.paragraphs.map(paragraph => (
               <p key={paragraph} className="mb-4 text-std-17N-170 text-solid-gray-800">{paragraph}</p>
@@ -73,7 +73,7 @@ export default function GuidePage() {
         <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3"><HeadingTitle level="h2">{t('guides.related')}</HeadingTitle></Heading>
         <ul className="space-y-2 text-std-17N-170">
           {GUIDE_CATALOG.filter(other => other.slug !== guide.slug).map(other => (
-            <li key={other.slug}><Link href={guidePath(other.slug)} className="text-blue-1000 underline underline-offset-[0.1875rem]">{other[locale].title}</Link></li>
+            <li key={other.slug}><Link href={guidePath(other.slug)} className="site-inline-link">{other[locale].title}</Link></li>
           ))}
         </ul>
       </nav>

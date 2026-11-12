@@ -21,13 +21,10 @@ import { useToast } from '@/components/common/feedback';
 import { APP_HEADER_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
 import { cn } from '@/lib/digital-agency/cn';
 import {
-  CloseIcon,
-  HamburgerIcon,
   HamburgerMenuButton,
 } from '@/components/ui/hamburger-menu-button';
 import {
   LanguageSelector,
-  LanguageSelectorArrowIcon,
   LanguageSelectorButton,
   LanguageSelectorGlobeIcon,
   LanguageSelectorMenu,
@@ -250,7 +247,7 @@ export function AppNav({ activePage }: AppNavProps) {
                   >
                     <LanguageSelectorGlobeIcon />
                     <span>Language</span>
-                    <LanguageSelectorArrowIcon
+                    <SiteLanguageArrowIcon
                       className={cn('transition-transform', isLangOpen && 'rotate-180')}
                     />
                   </LanguageSelectorButton>
@@ -261,6 +258,7 @@ export function AppNav({ activePage }: AppNavProps) {
                           <LanguageSelectorMenuItem
                             key={code}
                             href={addLocalePrefix(removeLocalePrefix(location.pathname), code)}
+                            checkIcon={<path transform="scale(1.2)" d="M8.57441 14.4169L4.12891 9.9714L5.01993 9.0804L8.57441 12.6349L16.2122 4.99707L17.1032 5.88807L8.57441 14.4169Z" />}
                             isCurrent={locale === code}
                             onClick={(event) => {
                               event.preventDefault();
@@ -305,12 +303,12 @@ export function AppNav({ activePage }: AppNavProps) {
               >
                 {isMenuOpen ? (
                   <>
-                    <CloseIcon className="flex-none" />
+                    <SiteMenuIcon open />
                     <span>{t('navigation.closeMenu')}</span>
                   </>
                 ) : (
                   <>
-                    <HamburgerIcon className="flex-none" />
+                    <SiteMenuIcon />
                     <span>{t('navigation.menu')}</span>
                   </>
                 )}
@@ -417,5 +415,26 @@ export function AppNav({ activePage }: AppNavProps) {
       </header>
 
     </>
+  );
+}
+
+/** The public digital.go.jp masthead uses thinner icons than the registry button. */
+function SiteMenuIcon({ open = false }: { open?: boolean }) {
+  return (
+    <span className="site-header-toggle-icon" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d={open
+          ? 'm18.029 5.07-5.87 5.87-5.797-5.8-1.06 1.06 5.797 5.8-5.798 5.798 1.06 1.06 5.799-5.797 5.869 5.869 1.06-1.061L13.22 12l5.87-5.869-1.061-1.06Z'
+          : 'M3 6v1h18V6Zm0 5v1h18v-1Zm0 5v1h18v-1Z'} />
+      </svg>
+    </span>
+  );
+}
+
+function SiteLanguageArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg data-slot="language-selector-arrow-icon" className={className} aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 8.67L5.67 8L12 14.33L18.33 8L19 8.67L12 15.67L5 8.67Z" />
+    </svg>
   );
 }

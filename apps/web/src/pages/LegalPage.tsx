@@ -82,9 +82,9 @@ export default function LegalPage({ page }: { page: LegalPageId }) {
           ))}
         </dl>
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className="site-article-sections">
           {ARTICLE_SECTIONS[page].map((section) => (
-            <section key={section}>
+            <section key={section} className="site-article-section">
               <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-3">
                 <HeadingTitle level="h2">
                   {t(`legal.${page}.sections.${section}.title`)}

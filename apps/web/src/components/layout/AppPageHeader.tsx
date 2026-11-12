@@ -20,7 +20,7 @@ export function AppPageHeader({
       <div className="min-w-0">
         <div className="mb-6">
           {badge ? <p className="mb-4 text-std-17B-170 text-solid-gray-600">{badge}</p> : null}
-          <h1 className="break-words text-std-28B-150 md:text-std-45B-140">{title}</h1>
+          <h1 className="site-page-title break-words text-std-28B-150 md:text-std-45B-140">{title}</h1>
         </div>
         {description ? (
           <p className="max-w-4xl text-std-17N-170 text-solid-gray-700">{description}</p>

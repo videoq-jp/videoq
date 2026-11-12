@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { AppPageHeader } from '@/components/layout/AppPageHeader';
 import { StructuredData } from '@/components/seo/StructuredData';
-import { Heading, HeadingTitle } from '@/components/ui/heading';
 import { GUIDE_CATALOG, guidePath } from '@/lib/guideCatalog';
 import { Link, useLocale } from '@/lib/i18n';
 import { absoluteUrl } from '@/lib/seo';
@@ -18,15 +17,15 @@ export default function GuideIndexPage() {
         { name: t('guides.title'), url: absoluteUrl('/guides', locale) },
       ])} />
       <AppPageHeader title={t('guides.title')} description={t('guides.intro')} />
-      <ul className="grid gap-6 md:grid-cols-2">
+      <ul className="grid gap-8 md:grid-cols-2">
         {GUIDE_CATALOG.map(guide => (
-          <li key={guide.slug} className="flex flex-col border border-solid-gray-420 p-6">
-            <Heading size="18" className="mb-2">
-              <HeadingTitle level="h2">
-                <Link href={guidePath(guide.slug)} className="text-blue-1000 underline underline-offset-[0.1875rem]">{guide[locale].title}</Link>
-              </HeadingTitle>
-            </Heading>
-            <p className="text-std-17N-170 text-solid-gray-700">{guide[locale].description}</p>
+          <li key={guide.slug}>
+            <Link href={guidePath(guide.slug)} className="site-card">
+              <div className="site-card-body">
+                <h2 className="site-card-title">{guide[locale].title}</h2>
+                <p className="site-card-description">{guide[locale].description}</p>
+              </div>
+            </Link>
           </li>
         ))}
       </ul>

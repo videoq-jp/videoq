@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowRight, BarChart3, BookOpen, Briefcase, Check, ChevronDown, FileText, GraduationCap, Link2, MessageCircle, MonitorPlay, Play, School, Search, Sparkles, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -53,12 +54,12 @@ export default function LandingPage() {
           </h1>
           <p className="lp-lead">{t('landing.lead')}</p>
           <div className="lp-hero-actions">
-            <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'hero')}>
+            <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'hero')}>
               {t('landing.start')}<ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link href="/try" className="lp-button lp-button-secondary" onClick={() => trackLandingEvent('demo_open', 'hero')}>
+            </Link></Button>
+            <Button asChild variant="outline" className="lp-button"><Link href="/try" onClick={() => trackLandingEvent('demo_open', 'hero')}>
               <MessageCircle size={16} aria-hidden="true" />{t('landing.tryDemo')}
-            </Link>
+            </Link></Button>
           </div>
           <p className="lp-reassurance"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
         </div>
@@ -191,7 +192,7 @@ export default function LandingPage() {
           <p className="lp-eyebrow">{t('landing.next.eyebrow')}</p>
           <h2 id="landing-next-title">{t('landing.next.title')}</h2>
           <p>{t('landing.next.intro')}</p>
-          <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link>
+          <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link></Button>
           <p className="lp-final-note"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
           <Link href="/login" className="lp-final-login">{t('landing.login')}</Link>
         </div>
@@ -199,7 +200,7 @@ export default function LandingPage() {
 
       <div className="lp-mobile-cta">
         <Link href="/try" onClick={() => trackLandingEvent('demo_open', 'mobile')}>{t('landing.tryDemo')}<ArrowRight size={16} aria-hidden="true" /></Link>
-        <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'mobile')}>{t('landing.start')}<ArrowRight size={17} aria-hidden="true" /></Link>
+        <Button asChild className="lp-button"><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'mobile')}>{t('landing.start')}<ArrowRight size={17} aria-hidden="true" /></Link></Button>
       </div>
     </div>
   );

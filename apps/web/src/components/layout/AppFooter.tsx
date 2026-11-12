@@ -18,36 +18,38 @@ export function AppFooter() {
               {t('layout.authBranding.tagline')}
             </p>
           </div>
-          <nav className="site-footer-nav">
-            <UtilityLink asChild>
+          <nav>
+            <ul className="site-footer-nav">
+            <li><UtilityLink asChild>
               <Link href="/">{t('navigation.home')}</Link>
-            </UtilityLink>
+            </UtilityLink></li>
             {features.marketing && <>
-            <UtilityLink asChild>
+            <li><UtilityLink asChild>
               <Link href="/pricing">{t('navigation.pricing')}</Link>
-            </UtilityLink>
-            <UtilityLink asChild>
+            </UtilityLink></li>
+            <li><UtilityLink asChild>
               <Link href="/guides">{t('navigation.guides')}</Link>
-            </UtilityLink>
-            <UtilityLink asChild>
+            </UtilityLink></li>
+            <li><UtilityLink asChild>
               <Link href="/terms">{t('legal.terms.title')}</Link>
-            </UtilityLink>
-            <UtilityLink asChild>
+            </UtilityLink></li>
+            <li><UtilityLink asChild>
               <Link href="/privacy">{t('legal.privacy.title')}</Link>
-            </UtilityLink>
-            <UtilityLink asChild>
+            </UtilityLink></li>
+            <li><UtilityLink asChild>
               <Link href="/refund">{t('legal.refund.title')}</Link>
-            </UtilityLink>
-            <UtilityLink asChild>
+            </UtilityLink></li>
+            <li><UtilityLink asChild>
               <Link href="/legal">{t('legal.scta.shortTitle')}</Link>
-            </UtilityLink>
+            </UtilityLink></li>
             </>}
-            <UtilityLink asChild>
+            <li><UtilityLink asChild>
               <Link href="/login">{t('auth.login.submit')}</Link>
-            </UtilityLink>
-            {features.publicSignup && <UtilityLink asChild>
+            </UtilityLink></li>
+            {features.publicSignup && <li><UtilityLink asChild>
               <Link href="/signup">{t('auth.signup.submit')}</Link>
-            </UtilityLink>}
+            </UtilityLink></li>}
+            </ul>
           </nav>
           {/* The prerendered year can predate the visit. */}
           <p className="site-footer-copyright" suppressHydrationWarning>
