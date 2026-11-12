@@ -177,6 +177,30 @@ def application(name, project, repository, revision, path, namespace):
                 'syncPolicy': {'syncOptions': ['FailOnSharedResource=true']}}}
 
 
+def deployment_pin(path, manifest, run_id, attempt):
+    """Export public image identities so cleanup never needs private repo access."""
+    previous = []
+    if path.exists():
+        data = json.loads(path.read_text())
+        if data.get('schemaVersion') != 1 or not isinstance(data.get('generations'), list) or not 1 <= len(data['generations']) <= 2:
+            raise ValueError('Invalid existing deployment pins')
+        previous = data['generations']
+    current = {'sourceSha': manifest['sourceSha'], 'runId': str(run_id), 'runAttempt': attempt,
+               'images': {name: {'repository': image['repository'], 'digest': image['digest']}
+                          for name, image in manifest['images'].items()}}
+    generations = [current] + [item for item in previous if item != current][:1]
+    for item in generations:
+        if (not re.fullmatch(r'[a-f0-9]{40}', item.get('sourceSha', '')) or
+                not re.fullmatch(r'[1-9][0-9]*', str(item.get('runId', ''))) or
+                not isinstance(item.get('runAttempt'), int) or item['runAttempt'] < 1 or
+                set(item.get('images', {})) != {'api', 'worker', 'web', 'transcription-gateway'}):
+            raise ValueError('Invalid protected generation identity')
+        for component, image in item['images'].items():
+            if image.get('repository') != 'ghcr.io/videoq-jp/videoq-' + component or not re.fullmatch(r'sha256:[a-f0-9]{64}', image.get('digest', '')):
+                raise ValueError('Invalid protected image identity')
+    return {'schemaVersion': 1, 'generations': generations}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--release-directory', required=True, type=Path)
@@ -190,6 +214,8 @@ def main():
     parser.add_argument('--listen-ip', required=True)
     parser.add_argument('--storage-gib', default=40, type=int)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--deployment-pin-output', required=True, type=Path,
+                        help='Public application-repository .github/deployment-pins/SITE.json; merge before activating the private config change')
     args = parser.parse_args()
     import ipaddress
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,30}', args.site):
@@ -208,6 +234,7 @@ def main():
     # Complete verification and rendering before writing any output files.
     resources = compile_videoq(args.release_directory, manifest, verified, args.public_url, args.storage_gib, str(address))
     gpu = compile_gpu(pins)
+    protected = deployment_pin(args.deployment_pin_output, manifest, args.run_id, args.run_attempt)
     root = args.output / 'clusters' / args.site
     files = {'videoq/resources.json': {'apiVersion': 'v1', 'kind': 'List', 'items': resources},
              'gpu/resources.json': {'apiVersion': 'v1', 'kind': 'List', 'items': gpu},
@@ -218,11 +245,13 @@ def main():
                 'bootstrapPins': pins, 'publicUrl': args.public_url, 'listenIp': str(address),
                 'renderedFilesSha256': {name: hashlib.sha256((json.dumps(value, indent=2) + '\n').encode()).hexdigest() for name, value in files.items()}}
     files['release-lock.json'] = evidence
+    args.deployment_pin_output.parent.mkdir(parents=True, exist_ok=True)
+    args.deployment_pin_output.write_text(json.dumps(protected, indent=2) + '\n')
     for name, value in files.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value, indent=2) + '\n')
-    print(f'Prepared {root}; review and commit this change in the configuration repository. Nothing was deployed.')
+    print(f'Prepared {root}. Merge public deployment pins FIRST, then review the private configuration change. Nothing was deployed.')
 
 
 if __name__ == '__main__':

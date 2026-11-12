@@ -45,7 +45,8 @@ VIDEOQ_VERIFY_PYTHON=/secure/videoq-operator/bin/python \
   --source-sha SOURCE_SHA --run-id RUN_ID --run-attempt 1 \
   --repository https://github.com/videoq-jp/videoq-lab-config.git \
   --public-url https://192.168.1.50 --listen-ip 192.168.1.50 \
-  --storage-gib 40 --output /secure/videoq-lab-config
+  --storage-gib 40 --output /secure/videoq-lab-config \
+  --deployment-pin-output .github/deployment-pins/lab.json
 ```
 
 `SOURCE_SHA` と `RUN_ID` は実際の配布物の値に置き換える。コンパイラは現在の配布スキーマを検査し、
@@ -54,6 +55,10 @@ main の成功実行、Sigstore 署名・透明性ログ、ソース、チャー
 サーバーでのビルドや、その場での未固定 `helm dependency update` は行わない。
 
 生成結果は構成リポジトリで PR にして確認する。このコマンドは push・デプロイを行わない。
+先にアプリ本体リポジトリの `.github/deployment-pins/lab.json` を PR で取り込む。公開するのは
+リリースとイメージの既に公開済みの識別情報だけで、LAN IP・設定・秘密情報は含めない。
+その後に非公開構成リポジトリの変更を採用する。前の採用バージョンも1世代分保護し、
+当該ホストの同期と確認が終わるまで次の昇格を重ねない。
 
 ```text
 clusters/lab/
@@ -149,12 +154,15 @@ PVC は `Prune=false,Delete=false` とし、Application に削除 finalizer を�
 食い違う場合や、コピーなしで既存 Secret が見つかった場合は上書きせず停止する。
 
 既存 K3s は `videoq_adopt_existing_cluster: true` で明示的に選択できるが、サービス定義や
-K3s設定は置き換えない。旧インストーラーの認証情報・Helm所有権・更新タイマーの引き継ぎは
+K3s設定は置き換えない。旧インストーラーと同じ URL で採用する場合は、ホスト内の private な
+旧 `credentials.json` を `videoq_existing_credentials_file` に指定してコピーできる。全既存キーの
+一致を検査し、鍵の再生成や URL の暗黙変更を行わない。Helm所有権・更新タイマーの引き継ぎは
 自動化していない。バックアップと所有権の移行を確認してから Argo CD に管理を渡す。
 
 配布物の削除は「最新2世代」に加えて、構成リポジトリで現在採用中の digest も保護する必要がある。
-非公開構成リポジトリを既存の retention 処理へ登録する連携は未実装のため、実運用を開始する前に
-組み込む。構成だけ過去へ戻しても、DB復元や削除済みイメージの再取得ができるとは限らない。
+retention は main と未マージの PR 内の `.github/deployment-pins/*.json` から保護対象を取得する。
+非公開リポジトリの読取トークンを cleanup に渡す必要はない。保護処理を含む retention の導入と
+公開側の pin 登録を完了してから、非公開側の構成を同期する。構成だけ過去へ戻しても、DB復元や削除済みイメージの再取得ができるとは限らない。
 
 Vast.ai の検証ホストは、GPUの実機試験中だけ起動し、CI待ち・実装中・試験終了後は停止する。
 停止中のディスク保持料金は別に残る。

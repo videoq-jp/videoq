@@ -229,7 +229,7 @@
 
 - name: Initialize credentials once without putting secrets in Git or logs
   ansible.builtin.command:
-    argv: [python3, /usr/local/lib/videoq-bootstrap/credentials.py, "{{ videoq_public_url }}"]
+    argv: "{{ ['python3', '/usr/local/lib/videoq-bootstrap/credentials.py', videoq_public_url] + (['--import-file', videoq_existing_credentials_file] if videoq_existing_credentials_file | length > 0 else []) }}"
   register: credentials
   changed_when: "'created' in credentials.stdout"
   no_log: true

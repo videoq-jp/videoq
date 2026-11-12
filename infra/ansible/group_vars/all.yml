@@ -3,3 +3,4 @@ videoq_install_driver: false
 videoq_driver_package: nvidia-driver-580-open
 videoq_gitops_ssh_private_key: ""
 videoq_allow_reboot: false
+videoq_existing_credentials_file: ""

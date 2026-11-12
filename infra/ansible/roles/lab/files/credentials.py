@@ -39,7 +39,7 @@ def kube(*args, data=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def initialize(path, url, run=kube):
+def initialize(path, url, run=kube, import_path=None):
     parsed = urlsplit(url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
         raise ValueError('A plain HTTPS origin is required')
@@ -52,14 +52,17 @@ def initialize(path, url, run=kube):
         if state['url'] != url or set(state['secrets']) != set(names):
             raise ValueError('Existing credentials belong to a different site; migrate explicitly')
     else:
-        if any(live.values()):
+        if import_path:
+            if import_path.is_symlink() or import_path.stat().st_mode & 0o077:
+                raise ValueError('The imported credential file must be private and not a symlink')
+            imported = json.loads(import_path.read_text())
+            if set(imported) != set(names) or imported['videoq-garage'].get('GARAGE_CORS_ORIGINS') != url:
+                raise ValueError('Imported credentials belong to a different site; migrate the URL explicitly')
+            state = {'url': url, 'secrets': imported}
+        elif any(live.values()):
             raise ValueError('Existing secrets have no matching host backup; import the original credentials before adoption')
-        state = {'url': url, 'secrets': generate(url)}
-        # Persist before touching Kubernetes, so interruptions can safely resume.
-        with open(path, 'x', opener=lambda p, flags: os.open(p, flags, 0o600)) as output:
-            output.write(json.dumps(state))
-            output.flush()
-            os.fsync(output.fileno())
+        else:
+            state = {'url': url, 'secrets': generate(url)}
     # Validate ALL existing keys before writing any missing Secret.
     for name in names:
         expected = state['secrets'][name]
@@ -69,6 +72,12 @@ def initialize(path, url, run=kube):
             actual = {k: base64.b64decode(v, validate=True).decode() for k, v in live[name].get('data', {}).items()}
             if actual != expected:
                 raise ValueError('Live keys differ from the host backup; refusing to overwrite them')
+    if not path.exists():
+        # Persist after validating ALL live keys but before creating any Secret.
+        with open(path, 'x', opener=lambda p, flags: os.open(p, flags, 0o600)) as output:
+            output.write(json.dumps(state))
+            output.flush()
+            os.fsync(output.fileno())
     changed = False
     for name in names:
         if not live[name]:
@@ -81,12 +90,17 @@ def initialize(path, url, run=kube):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('url')
+    parser.add_argument('--import-file', type=Path)
+    args = parser.parse_args()
     os.umask(0o077)
     directory = Path('/var/lib/videoq-bootstrap')
     with (directory / 'credentials.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
-            print('created' if initialize(directory / 'credentials.json', sys.argv[1]) else 'unchanged')
+            print('created' if initialize(directory / 'credentials.json', args.url, import_path=args.import_file) else 'unchanged')
         except (ValueError, OSError, KeyError) as error:
             # Error messages contain policy descriptions only, never raw API data.
             raise SystemExit(str(error))

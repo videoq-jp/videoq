@@ -28,6 +28,28 @@ p = load('platform_pins', 'infra/ansible/filter_plugins/platform_pins.py')
 
 
 class CredentialsTests(unittest.TestCase):
+    def test_explicit_import_preserves_live_keys_and_rejects_a_conflicting_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'original-state.json'
+            cluster = {}
+            run, calls = self.cluster(cluster)
+            c.initialize(path, 'https://192.168.1.50', run)
+            source = root / 'native-credentials.json'
+            source.write_text(json.dumps(json.loads(path.read_text())['secrets']))
+            source.chmod(0o600)
+            new_state = root / 'ansible-state.json'
+            calls.clear()
+            self.assertFalse(c.initialize(new_state, 'https://192.168.1.50', run, source))
+            self.assertEqual(json.loads(new_state.read_text())['secrets'], json.loads(source.read_text()))
+            self.assertTrue(all(args[0] == 'get' for args, _ in calls))
+            conflict = json.loads(source.read_text())
+            conflict['videoq-runtime']['BETTER_AUTH_SECRET'] = 'different-key'
+            source.write_text(json.dumps(conflict))
+            with self.assertRaisesRegex(ValueError, 'differ'):
+                c.initialize(root / 'conflict.json', 'https://192.168.1.50', run, source)
+            self.assertFalse((root / 'conflict.json').exists())
+
     def cluster(self, state):
         calls = []
         def run(*args, data=None):
@@ -74,6 +96,21 @@ class CredentialsTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_promotions_protect_the_previous_site_generation_without_private_configuration(self):
+        images = {name: {'repository': 'ghcr.io/videoq-jp/videoq-' + name, 'digest': 'sha256:' + 'a'*64}
+                  for name in ('api', 'worker', 'web', 'transcription-gateway')}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'site.json'
+            first = {'sourceSha': 'a'*40, 'images': images}
+            path.write_text(json.dumps(m.deployment_pin(path, first, '123', 1)))
+            second = {'sourceSha': 'b'*40, 'images': images}
+            promoted = m.deployment_pin(path, second, '124', 1)
+            self.assertEqual([g['sourceSha'] for g in promoted['generations']], ['b'*40, 'a'*40])
+            path.write_text(json.dumps(promoted))
+            self.assertEqual(m.deployment_pin(path, second, '124', 1), promoted)
+            third = {'sourceSha': 'c'*40, 'images': images}
+            self.assertEqual([g['sourceSha'] for g in m.deployment_pin(path, third, '125', 1)['generations']], ['c'*40, 'b'*40])
+
     def test_ansible_renders_only_restricted_projects_and_a_manual_root_application(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / 'bootstrap.yaml'
