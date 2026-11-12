@@ -38,7 +38,10 @@ export default function TryPage() {
           </Link>
         </Button>
       )}
-      intro={<p className="shrink-0 text-std-17N-170 text-solid-gray-800">{t('tryDemo.intro')}</p>}
+      intro={<details className="text-std-16N-170 text-solid-gray-800">
+        <summary className="flex min-h-11 cursor-pointer items-center text-key-900 underline underline-offset-4">{t('tryDemo.introSummary')}</summary>
+        <p className="pb-2">{t('tryDemo.intro')}</p>
+      </details>}
       suggestedQuestions={QUESTION_KEYS.map(key => t(`tryDemo.questions.${key}`))}
       onCitationPlay={() => trackLandingEvent('demo_source')}
     />

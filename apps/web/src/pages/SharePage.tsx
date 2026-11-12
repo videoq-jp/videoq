@@ -1,3 +1,6 @@
+import { PUBLIC_DEMO_SHARE_SLUG } from '@videoq/trpc/public-demo';
+import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
+import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
@@ -60,13 +63,15 @@ interface SharedCourseViewProps {
 export function SharedCourseView({ shareToken, headerAction, intro, suggestedQuestions, onCitationPlay, loadingContent }: SharedCourseViewProps) {
   const { t } = useTranslation();
   const navigate = useI18nNavigate();
+  const viewportHeight = useViewerViewport();
+  const [playerExpanded, setPlayerExpanded] = useState(true);
   const panelIdPrefix = useId();
   const pageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLElement>(null);
 
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
-  const { mobileTab: requestedTab, setMobileTab: setPanelTab } = useMobileTab<PanelTab>('assistant');
+  const { mobileTab: requestedTab, setMobileTab: setPanelTab, isMobile } = useMobileTab<PanelTab>('assistant');
   const courseQuery = useSharedCourseQuery(shareToken);
   const course = courseQuery.data ?? null;
   const error = courseQuery.error ? t('common.messages.shareLoadFailed') : null;
@@ -85,10 +90,11 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     onVideoSelect: setSelectedVideoId,
   });
 
-  const panelTabs: PanelTab[] = ['videos', 'assistant'];
+  const panelTabs: PanelTab[] = isMobile ? ['assistant', 'videos', 'details'] : ['videos', 'assistant'];
   const activeTab = panelTabs.includes(requestedTab) ? requestedTab : 'assistant';
 
   const revealPlayer = () => {
+    setPlayerExpanded(true);
     if (pageRef.current) pageRef.current.scrollTop = 0;
     if (contentRef.current) contentRef.current.scrollTop = 0;
   };
@@ -99,7 +105,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     'aria-labelledby': `${panelIdPrefix}-tab-${tab}`,
     // Hide without unmounting or display:none: a streaming answer and its scroll
     // position must survive switching tabs.
-    className: `absolute inset-0 flex flex-col ${activeTab === tab ? '' : 'invisible'}`,
+    className: `absolute inset-0 flex min-h-0 flex-col ${activeTab === tab ? '' : 'invisible'}`,
   });
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -125,10 +131,20 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     );
   }
 
+  // Registration fingerprints belong to the demo's provisioning script, not its lesson overview.
+  const readableDescription = (description?: string) => {
+    if (shareToken !== PUBLIC_DEMO_SHARE_SLUG) return description;
+    return description?.replace(/^\[videoq-campus-basics-v1\]\s*/, '')
+      .replace(/^\S+ sha256:[a-f0-9]{64}$/, '');
+  };
+  const learningDetails = <CourseLearningDetails key={JSON.stringify([course.id, shareToken])} courseId={course.id} shareSlug={shareToken}
+    videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={readableDescription(selectedVideo?.description)} courseDescription={readableDescription(course.description)}
+    onVideoPlay={(id, time) => { onCitationPlay?.(); handleVideoPlayFromTime(id, time); revealPlayer(); }} />;
+
   // ── Main ───────────────────────────────────────────────────────────────────
 
   return (
-    <div ref={pageRef} className="flex h-dvh flex-col overflow-y-auto bg-white lg:overflow-hidden">
+    <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
       <ViewerHeader title={course.name}>
           {headerAction ?? (
             <ChipLabel variant="filled-1" color="blue" className="min-h-0 text-oln-14N-100">
@@ -137,12 +153,13 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
           )}
       </ViewerHeader>
 
-      {intro ? <div className="shrink-0 border-b border-solid-gray-420 px-4 py-2 lg:px-6">{intro}</div> : null}
+      {intro ? <div className="max-h-[22dvh] shrink-0 overflow-y-auto border-b border-solid-gray-420 px-4 py-1 lg:px-6 lg:py-2">{intro}</div> : null}
 
-      <main className="flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+      <main className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
         {/* LEFT: player, then details that scroll under it */}
         <section ref={contentRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
-          <div className="flex aspect-video max-h-[45dvh] w-full items-center justify-center bg-black lg:max-h-[72dvh]">
+          <ViewerPlayerFrame title={selectedVideo?.title ?? t('videos.shared.playerPlaceholder')} expanded={playerExpanded} onExpandedChange={setPlayerExpanded}>
+          <div className="flex aspect-video max-h-[clamp(4rem,calc(100dvh-27rem),28dvh)] w-full items-center justify-center bg-black lg:max-h-[72dvh]">
             {selectedVideo ? (
               selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
                 <iframe
@@ -171,20 +188,15 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
               <p className="text-solid-gray-200 text-std-17N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
             )}
           </div>
-          <div className="space-y-4 px-4 py-3 lg:mx-auto lg:max-w-4xl lg:px-8 lg:py-6">
-            <h2 className="truncate text-std-17B-170 text-solid-gray-800 lg:whitespace-normal lg:text-std-20B-150">
-              {selectedVideo ? selectedVideo.title : t('videos.shared.playerPlaceholder')}
-            </h2>
-          </div>
-          <CourseLearningDetails key={JSON.stringify([course.id, shareToken])} courseId={course.id} shareSlug={shareToken}
-            videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course.description}
-            onVideoPlay={(id, time) => { onCitationPlay?.(); handleVideoPlayFromTime(id, time); revealPlayer(); }} />
+          </ViewerPlayerFrame>
+          {!isMobile && learningDetails}
         </section>
 
         {/* RIGHT: one mounted chat beside the player on desktop, below it on mobile. */}
-        <aside className="flex min-h-[28rem] flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
+        <aside className="flex min-h-0 flex-1 flex-col border-t border-solid-gray-420 pb-[env(safe-area-inset-bottom)] lg:min-h-0 lg:border-l lg:border-t-0">
           <PanelTabs tabs={panelTabs} activeTab={activeTab} idPrefix={panelIdPrefix} onChange={setPanelTab} />
           <div className="relative min-h-0 flex-1">
+            {isMobile && <div {...panelProps('details')}><div className="min-h-0 flex-1 overflow-y-auto">{learningDetails}</div></div>}
             <div {...panelProps('videos')}>
               <p className="shrink-0 px-4 pt-3 text-dns-14N-130 text-solid-gray-600">
                 {t('videos.courseDetail.videoCount', { count: course.videos?.length ?? 0 })}
@@ -211,6 +223,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
             </div>
             <div {...panelProps('assistant')}>
               <ChatPanel
+                onComposerFocus={() => { if (isMobile) setPlayerExpanded(false); }}
                 courseId={course.id}
                 onVideoPlay={(videoId, startTime) => {
                   onCitationPlay?.();

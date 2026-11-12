@@ -315,6 +315,8 @@ export const SuggestedQuestions: Story = { args: { suggestedQuestions: [question
   await expect(input(context)).toHaveValue(question);
   await context.userEvent.click(context.canvas.getByRole('button', { name: i18n.t('common.actions.send') }));
   await waitFor(() => expect(input(context)).toBeDisabled());
+  await expect(context.canvas.queryByRole('button', { name: question })).not.toBeInTheDocument();
+  await context.userEvent.click(context.canvas.getByRole('button', { name: label('showSuggestions') }));
   await expect(context.canvas.getByRole('button', { name: question })).toBeDisabled();
 } };
 export const JapaneseMobile: Story = { globals: { viewport: { value: 'mobile', isRotated: false } }, async play(context) { await complete(context); } };
@@ -375,3 +377,12 @@ export const AutomaticConversationContinuity: Story = { async play(context) {
 } };
 export const AutomaticConversationContinuityEnglishMobile: Story = { ...AutomaticConversationContinuity,
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };
+
+export const ConstrainedSuggestions: Story = {
+  args: { showTitle: false, showHistory: false, className: 'h-[150px]', suggestedQuestions: [question, '回転行列を使った練習問題を出してください。'] },
+  async play({ canvas, canvasElement }) {
+    const composer = await canvas.findByRole('textbox', { name: label('placeholder') });
+    const frame = canvasElement.querySelector('[data-testid="chat-panel-frame"]')!;
+    await expect(composer.getBoundingClientRect().bottom).toBeLessThanOrEqual(frame.getBoundingClientRect().bottom);
+  },
+};

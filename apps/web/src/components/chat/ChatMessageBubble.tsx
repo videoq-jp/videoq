@@ -28,7 +28,7 @@ export function ChatMessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex flex-col items-end gap-1">
-        <div className="max-w-[90%] border border-solid-gray-420 bg-solid-gray-50 px-4 py-3 text-std-17N-170 text-solid-gray-800">
+        <div className="max-w-[90%] [overflow-wrap:anywhere] border border-solid-gray-420 bg-solid-gray-50 px-4 py-3 text-std-17N-170 text-solid-gray-800">
           {message.content}
         </div>
       </div>
@@ -37,7 +37,7 @@ export function ChatMessageBubble({
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="w-[90%] space-y-2 border border-solid-gray-420 border-l-4 border-l-key-900 bg-white p-4 text-std-17N-170">
+      <div className="w-full sm:w-[90%] space-y-2 border border-solid-gray-420 border-l-4 border-l-key-900 bg-white p-4 text-std-17N-170">
         <div className="mb-1 flex items-center gap-2 text-dns-14B-120 font-bold text-key-900">
           <BookOpen className="h-3.5 w-3.5" />
           {t('chat.answerLabel')}
@@ -64,7 +64,7 @@ export function ChatMessageBubble({
               size="xs"
               disabled={isFeedbackUpdating}
               onClick={() => { void onFeedback(message.chatLogId!, 'good'); }}
-              className={`min-w-0 p-1 ${
+              className={`h-11 w-11 min-w-0 p-2 ${
                 message.feedback === 'good' ? 'text-key-900' : 'text-solid-gray-420'
               }`}
               aria-label={t('chat.feedbackGood')}
@@ -78,7 +78,7 @@ export function ChatMessageBubble({
               size="xs"
               disabled={isFeedbackUpdating}
               onClick={() => { void onFeedback(message.chatLogId!, 'bad'); }}
-              className={`min-w-0 p-1 ${
+              className={`h-11 w-11 min-w-0 p-2 ${
                 message.feedback === 'bad' ? 'text-error-1' : 'text-solid-gray-420'
               }`}
               aria-label={t('chat.feedbackBad')}

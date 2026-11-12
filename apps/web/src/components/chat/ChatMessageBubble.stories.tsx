@@ -30,7 +30,10 @@ export const LongText: Story = { args: { message: { role: 'assistant', answer: l
 export const Feedback: Story = {
   args: { message: { role: 'assistant', answer: answerData, chatLogId: 42 } },
   play: async ({ canvas, userEvent, args }) => {
-    await userEvent.click(canvas.getByRole('button', { name: i18n.t('chat.feedbackGood') }));
+    const good = canvas.getByRole('button', { name: i18n.t('chat.feedbackGood') });
+    await expect(good.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await expect(good.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await userEvent.click(good);
     await expect(args.onFeedback).toHaveBeenCalledWith(42, 'good');
     await userEvent.click(canvas.getByRole('button', { name: i18n.t('chat.feedbackBad') }));
     await expect(args.onFeedback).toHaveBeenCalledWith(42, 'bad');

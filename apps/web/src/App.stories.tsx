@@ -228,7 +228,8 @@ export const CourseQaPreview: Story = {
   parameters: { pathname: `/videos/courses/${course.id}`, api: { ...api, trpc: [...api.trpc, trpcQuery('courses.get', success(previewCourse)), ...qaPreviewMocks()] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    if (window.innerWidth < 1024) await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.details') }));
+    await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await expect(await canvas.findByRole('button', { name: qaQuestion.title })).toBeVisible();
   },
 };
@@ -243,7 +244,8 @@ export const CourseQaPostAndAnswer: Story = {
   ...CourseQaPreview,
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    if (window.innerWidth < 1024) await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.details') }));
+    await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await userEvent.click(await canvas.findByRole('button', { name: i18n.t('qa.ask') }));
     await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), 'ベクトルの向きについて');
     await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionBody')), '負の数を掛けるとどうなりますか？');
@@ -259,7 +261,8 @@ export const SharedQaReadOnly: Story = {
   ...SharedQaPreview,
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    if (window.innerWidth < 1024) await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.details') }));
+    await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await expect(await canvas.findByRole('link', { name: i18n.t('qa.loginToPost') })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: i18n.t('qa.ask') })).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: qaQuestion.title }));
@@ -271,7 +274,8 @@ export const CourseQaFiltersAndDraft: Story = {
   ...CourseQaPreview,
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    if (window.innerWidth < 1024) await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.details') }));
+    await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await expect(await canvas.findByRole('button', { name: qaQuestion.title })).toBeVisible();
     await userEvent.click(canvas.getByRole('checkbox', { name: i18n.t('qa.unanswered') }));
     await expect(await canvas.findByText(i18n.t('qa.noMatches'))).toBeVisible();
@@ -280,7 +284,7 @@ export const CourseQaFiltersAndDraft: Story = {
     await userEvent.click(canvas.getByRole('button', { name: i18n.t('qa.ask') }));
     await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), '下書きの質問');
     await userEvent.click(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.overview') }));
-    await userEvent.click(canvas.getByRole('tab', { name: 'Q&A' }));
+    await userEvent.click(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await expect(canvas.getByLabelText(i18n.t('qa.questionTitle'))).toHaveValue('下書きの質問');
   },
 };
@@ -293,7 +297,8 @@ export const CourseQaPostError: Story = {
   ] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Q&A' }));
+    if (window.innerWidth < 1024) await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.details') }));
+    await userEvent.click(await canvas.findByRole('tab', { name: i18n.t('videos.shared.tabs.qa') }));
     await userEvent.click(await canvas.findByRole('button', { name: i18n.t('qa.ask') }));
     await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionTitle')), '送信前の質問');
     await userEvent.type(canvas.getByLabelText(i18n.t('qa.questionBody')), '入力した内容を保持する');
