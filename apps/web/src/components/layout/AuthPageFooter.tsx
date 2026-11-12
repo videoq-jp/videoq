@@ -12,7 +12,7 @@ export function AuthPageFooter({ bordered = false, align = 'center' }: AuthPageF
   return (
     <div
       className={cn(
-        bordered ? 'mt-16 border-t border-solid-gray-420 pt-6' : 'border-t border-solid-gray-420 pt-6',
+        bordered ? 'mt-16 border-t border-solid-gray-420 pt-6' : 'pt-6',
         align === 'left' ? 'text-left' : 'text-center',
       )}
     >

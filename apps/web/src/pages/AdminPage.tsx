@@ -40,7 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-const SECTION_CLASS = 'border-t border-solid-gray-420 pt-8';
+const SECTION_CLASS = 'pt-8';
 const PAGE_SIZE = 20;
 
 const quotaFormSchema = adminInputSchemas['admin.patchQuota']

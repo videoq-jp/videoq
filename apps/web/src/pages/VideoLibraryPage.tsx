@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Divider } from '@/components/ui/divider';
 import { ChipLabel } from '@/components/ui/chip-label';
 import { resolveTagChipColor } from '@/lib/tagColors';
 import { cn } from '@/lib/digital-agency/cn';
@@ -171,7 +170,7 @@ export default function VideoLibraryPage() {
             ))}
           </dl>
 
-          <section className="mb-10 border-t border-solid-gray-420 pt-6">
+          <section className="mb-10 pt-6">
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="relative flex-grow">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-solid-gray-600 w-4 h-4 z-10" />
@@ -209,7 +208,7 @@ export default function VideoLibraryPage() {
               </div>
             </div>
 
-            <Divider className="my-6" />
+            <div className="my-6" aria-hidden="true" />
 
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -288,7 +287,7 @@ export default function VideoLibraryPage() {
       ) : error ? (
         <ErrorMessage message={error} />
       ) : isLibraryEmpty ? (
-        <section className="border-t border-solid-gray-420 py-10">
+        <section className="py-10">
           <Heading size="20" hasChip className="mb-3">
             <HeadingTitle level="h2">{t('videos.list.emptyTitle')}</HeadingTitle>
           </Heading>
@@ -307,7 +306,7 @@ export default function VideoLibraryPage() {
           </Button>
         </section>
       ) : videos.length === 0 && hasFilters ? (
-        <section className="border-t border-solid-gray-420 py-10">
+        <section className="py-10">
           <Heading size="20" hasChip className="mb-3">
             <HeadingTitle level="h2">{t('videos.list.noMatch')}</HeadingTitle>
           </Heading>

@@ -115,7 +115,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
         </Button>
       </div>
 
-      <StepNavigation orientation="vertical" className="border-t border-solid-gray-420 pt-6">
+      <StepNavigation orientation="vertical" className="pt-6">
         <StepNavigationList>
           {STEP_ORDER.map((key, index) => {
             const state = done[key] ? 'completed' : undefined;

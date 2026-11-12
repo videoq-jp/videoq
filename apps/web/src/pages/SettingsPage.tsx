@@ -33,7 +33,7 @@ import { MessageAlert } from '@/components/common/MessageAlert';
 import { trpc } from '@/lib/trpc';
 
 const SETTINGS_SECTION_CLASS =
-  'scroll-mt-28 border-t border-solid-gray-200 pt-8 md:pt-12';
+  'scroll-mt-28';
 const SETTINGS_CALLOUT_CLASS =
   'rounded-8 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700';
 
@@ -286,14 +286,14 @@ export default function SettingsPage() {
         description={t(features.billing ? 'settings.subtitle' : 'onprem.settingsSubtitle')}
       />
 
-      <nav aria-label={t('settings.navigation')} className="mb-6 flex flex-wrap gap-x-6 gap-y-2 border-b border-solid-gray-200 pb-4">
+      <nav aria-label={t('settings.navigation')} className="mb-6 flex flex-wrap gap-x-6 gap-y-2 pb-4">
         <DaLink href="#account">{t('settings.account.title')}</DaLink>
         {features.billing && <DaLink href="#billing">{t('settings.billing.title')}</DaLink>}
         {features.youtube && <DaLink href="#youtube">{t('settings.searchApiKey.title')}</DaLink>}
         <DaLink href="#integrations">{t(features.emailDelivery ? 'settings.integrations.title' : 'onprem.localIntegrations')}</DaLink>
       </nav>
 
-      <div className="flex flex-col gap-12 md:gap-20">
+      <div className="flex flex-col gap-16 md:gap-24">
           <AccountSettingsSection />
           {features.billing && <>
           <section id="billing" aria-labelledby="billing-heading" className={SETTINGS_SECTION_CLASS}>

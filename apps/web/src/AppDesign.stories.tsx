@@ -62,6 +62,22 @@ const meta = {
     if (title && !parameters.compactTitle) {
       await expect(win.getComputedStyle(title).fontSize).toBe(win.innerWidth < 768 ? '28px' : '45px');
     }
+    // Values measured on digital.go.jp at 390 / 1024 / 1280px (2026-11-13).
+    // Test computed layout and interaction states, including authenticated shells.
+    const header = canvasElement.querySelector<HTMLElement>('.site-header');
+    if (header) {
+      await expect(header.getBoundingClientRect().height).toBe(win.innerWidth < 1024 ? 72 : 80);
+      await expect(win.getComputedStyle(header).borderBottomWidth).toBe('0px');
+    }
+    const menu = canvasElement.querySelector<HTMLElement>('.site-header-toggle');
+    if (menu) {
+      const style = win.getComputedStyle(menu);
+      await expect(menu.getBoundingClientRect().height).toBe(32);
+      await expect(style.fontSize).toBe('14px');
+      await expect(style.paddingInlineStart).toBe(win.innerWidth < 1024 ? '8px' : win.innerWidth < 1280 ? '12px' : '16px');
+    }
+    const footer = canvasElement.querySelector('footer.site-footer');
+    if (footer) await expect(win.getComputedStyle(footer).borderTopWidth).toBe('0px');
     // Exclude loading placeholders: exercise real content for authenticated routes.
     await expect(canvasElement.querySelector('main')!.textContent.trim().length).toBeGreaterThan(10);
   },

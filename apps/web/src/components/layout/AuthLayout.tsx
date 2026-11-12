@@ -11,18 +11,20 @@ interface AuthLayoutProps {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border bg-white">
-        <div className={`mx-auto flex w-full items-center min-h-[4.5rem] py-3 md:min-h-20 ${APP_HEADER_CONTAINER_CLASS}`}>
-          <Link
-            href="/"
-            className="text-std-20B-150 text-solid-gray-800"
-          >
-            <BrandLogo />
-          </Link>
+      <header className="site-header">
+        <div className={`mx-auto w-full ${APP_HEADER_CONTAINER_CLASS}`}>
+          <div className="site-header-content">
+            <Link
+              href="/"
+              className="site-header-logo text-std-20B-150"
+            >
+              <BrandLogo />
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className={`mx-auto w-full flex-1 py-12 md:pt-20 md:pb-36 ${APP_CONTAINER_CLASS}`}>
+      <main className={`mx-auto w-full flex-1 py-12 lg:pt-20 lg:pb-36 ${APP_CONTAINER_CLASS}`}>
         <div className="mx-auto w-full max-w-[32rem]">
           {children}
         </div>

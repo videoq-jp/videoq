@@ -55,7 +55,7 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
   const target = connections.find(connection => connection.id === disconnectTarget);
   const setupGuide = <a className="text-key-900 underline underline-offset-4" href="https://github.com/videoq-jp/videoq-moodle#installation" target="_blank" rel="noopener noreferrer">{t('settings.moodle.setupGuide')}</a>;
   return (
-    <section id="moodle" aria-label={embedded ? t('settings.moodle.title') : undefined} aria-labelledby={embedded ? undefined : 'moodle-heading'} className={embedded ? 'mb-3 scroll-mt-24' : 'scroll-mt-24 border-t border-solid-gray-200 pt-6'}>
+    <section id="moodle" aria-label={embedded ? t('settings.moodle.title') : undefined} aria-labelledby={embedded ? undefined : 'moodle-heading'} className={embedded ? 'mb-3 scroll-mt-24' : 'scroll-mt-24 pt-6'}>
       {!embedded && <Heading size="20" className="mb-2"><HeadingTitle id="moodle-heading" level={headingLevel}>{t('settings.moodle.title')}</HeadingTitle></Heading>}
       {!embedded && connections.length === 0 && <p className="mb-4 text-std-17N-170 text-solid-gray-600">{t('settings.moodle.description')}</p>}
       {(disconnectError || disconnected) && <div ref={statusRef} tabIndex={-1} className="mb-5 focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-2">

@@ -18,7 +18,7 @@ try {
   await Promise.all(Array.from({ length: 2 }, async () => {
     while (next < stories.length) {
       const story = stories[next++];
-      const context = await browser.newContext({ viewport: { width: story.id.includes('mobile') ? 390 : 1280, height: story.id.includes('mobile') ? 844 : 900 } });
+      const context = await browser.newContext({ viewport: { width: process.env.DESIGN_WIDTH ? Number(process.env.DESIGN_WIDTH) : story.id.includes('mobile') ? 390 : 1280, height: story.id.includes('mobile') ? 844 : 900 } });
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -34,6 +34,43 @@ try {
         });
         if (metrics.phase !== 'finished') errors.push(`Render phase: ${metrics.phase}`);
         if (metrics.scrollWidth > metrics.width) errors.push(`Horizontal overflow: ${metrics.scrollWidth} > ${metrics.width}`);
+        // Native pointer input is required: synthetic userEvent hover does not
+        // activate CSS :hover in Storybook's standalone iframe runner.
+        const toggle = page.locator('.site-header-toggle');
+        if (await toggle.count() && !await page.locator('dialog[open], [role="dialog"], [role="alertdialog"]').count()) {
+          await toggle.hover();
+          const hover = await toggle.evaluate(el => {
+            const s = getComputedStyle(el);
+            return { background: s.backgroundColor, decoration: s.textDecorationLine, offset: s.textUnderlineOffset, cursor: s.cursor };
+          });
+          if (hover.background !== 'rgb(242, 242, 242)' || hover.decoration !== 'underline' || hover.offset !== '2px' || hover.cursor !== 'pointer') {
+            errors.push(`Header hover differs from digital.go.jp: ${JSON.stringify(hover)}`);
+          }
+          await toggle.focus();
+          await page.keyboard.press('Tab');
+          await page.keyboard.press('Shift+Tab');
+          const focus = await toggle.evaluate(el => {
+            const s = getComputedStyle(el);
+            return { background: s.backgroundColor, outline: s.outline, offset: s.outlineOffset };
+          });
+          if (focus.background !== 'rgb(255, 212, 61)' || focus.outline !== 'rgb(0, 0, 0) solid 4px' || focus.offset !== '2px') {
+            errors.push(`Header keyboard focus differs from digital.go.jp: ${JSON.stringify(focus)}`);
+          }
+          await toggle.evaluate(el => el.blur());
+          await page.mouse.move(0, 0);
+        }
+        const primary = page.locator('.lp-button-primary').first();
+        if (await primary.count()) {
+          await primary.hover();
+          const hover = await primary.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, decoration: getComputedStyle(el).textDecorationLine }));
+          if (hover.background !== 'rgb(0, 17, 143)' || hover.decoration !== 'underline') errors.push(`Primary button hover differs: ${JSON.stringify(hover)}`);
+          await page.mouse.down();
+          const active = await primary.evaluate(el => getComputedStyle(el).backgroundColor);
+          if (active !== 'rgb(0, 0, 96)') errors.push(`Primary button active differs: ${active}`);
+          // Release away from the link to avoid navigation.
+          await page.mouse.move(0, 0);
+          await page.mouse.up();
+        }
         await page.screenshot({ path: join(output, `${story.id}.png`), fullPage: true });
         results.push({ id: story.id, ...metrics, errors });
       } catch (error) { results.push({ id: story.id, errors: [...errors, error.message] }); }
