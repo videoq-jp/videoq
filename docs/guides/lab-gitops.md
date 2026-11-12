@@ -76,12 +76,12 @@ K3sのGHCR取得先にこのミラーを追加する。公開用のポートは�
 Dockerビルド、タグの再解決、署名検証の省略は行わない。
 
 配置設定を生成し、Ansibleの初回準備を完了した後、管理PCから対象サーバーへコピーする。
-以下の`lab4090`はSSH設定の接続名に置き換える。
+以下の`lab4090`はsudo可能なユーザーで接続するSSH設定名に置き換える。root接続の場合は最後の`sudo`を省略できる。
 
 ```bash
-ssh lab4090 mkdir -p /root/videoq-initial-config
-scp -r /secure/videoq-lab-config/clusters/lab/. lab4090:/root/videoq-initial-config/
-ssh lab4090 'python3 /usr/local/lib/videoq-lab/image_store.py --site-directory /root/videoq-initial-config'
+ssh lab4090 'umask 077; mkdir -p videoq-initial-config'
+scp -r /secure/videoq-lab-config/clusters/lab/. lab4090:videoq-initial-config/
+ssh -t lab4090 'sudo python3 /usr/local/lib/videoq-lab/image_store.py --site-directory "$HOME/videoq-initial-config"'
 ```
 
 4つのアプリイメージすべての保存とdigest・全グラフの検査が成功してから、
