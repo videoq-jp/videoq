@@ -936,6 +936,18 @@
       "answers": "{{count}} automatic answers / month",
       "monthlyUpload": "{{gb}} GB uploads / month"
     },
+    "selection": {
+      "title": "Estimate your usage before choosing a plan",
+      "intro": "Compare the allowances above using the videos you will add and the questions you expect, as well as the number of learners.",
+      "processingTitle": "New transcription time",
+      "processingBody": "Estimate the total duration of lecture videos you will upload for transcription each month. Keep this separate from the duration of videos already stored and the time learners spend watching.",
+      "answersTitle": "Questions across all your courses",
+      "answersBody": "Estimate AI answers from the number of learners and the questions each may ask per month. Learner questions use the owner’s allowance, shared across all courses in the account.",
+      "storageTitle": "Stored videos and monthly uploads",
+      "storageBody": "Check the total size of videos you will keep and the size you expect to upload each month. Videos of the same duration can have different sizes depending on quality, so use your actual file sizes.",
+      "tryDemo": "Try answers and citations without signing up",
+      "readGuide": "Check the value with one lecture first"
+    },
     "ownerNote": "Students ask for free. Questions from students who join through a course link or invitation count against the course owner’s automatic answer allowance.",
     "plans": {
       "free": {
