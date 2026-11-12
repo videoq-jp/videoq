@@ -6,6 +6,9 @@ requireImageDigests: false
 # First installation downloads model weights. Cached restarts do not pull again.
 # Set false after provisioning, or when using pre-populated existing claims.
 downloadModels: true
+# Initial image/model transfers, serialized GPU startup and startup probes all
+# count toward the Deployment progress deadline, including init containers.
+rolloutDeadlineSeconds: 7200
 
 whisper:
   # Signed release verification supplies the immutable digest.

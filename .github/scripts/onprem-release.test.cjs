@@ -13,6 +13,11 @@ test('release gates publication on the existing current-main push-CI policy',()=
   assert.match(source,/require\('\.\/.github\/scripts\/validate-deployment.cjs'\)/);
   assert.match(workflow,/^permissions:\n  contents: read\n/m);
   for(const name of ['build','chart']) assert.match(job(name),/needs: source/);
+  assert.match(source,/await validate\(\{ github, context \}\)/);
+  assert.match(source,/require\('\.\/.github\/scripts\/onprem-release-needed.cjs'\)/);
+  for(const name of ['upstream-vllm','build','chart']) {
+    assert.match(job(name),/if: needs.source.outputs.needed == 'true'/);
+  }
 });
 
 test('both native architecture builds are credential-free and scan the archive before preparing publication',()=>{

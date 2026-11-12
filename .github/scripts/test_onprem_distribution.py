@@ -45,7 +45,8 @@ class RetentionTests(unittest.TestCase):
             return {'id':n,'name':D(n),'created_at':(now-timedelta(days=1 if young else 30)).isoformat(),
                     'metadata':{'container':{'tags':list(tags)}}}
         data={'repository':m.REPO,'capturedAt':now.isoformat(),'releases':[],
-              'packages':{p:[] for p in m.PACKAGES}}
+              'packages':{p:[] for p in m.PACKAGES},
+              'presentPackages':sorted(set(m.PACKAGES)-m.RETIRED_PACKAGES)}
         data['packages']['videoq-api']=[version(1),version(2),version(3),version(4,['sha256-'+D(1)[7:]]),
             version(5),version(6,young=True),version(7),version(8),version(9)]
         graph={D(1):{'manifests':[{'digest':D(2)}]},D(2):{},D(3):{'subject':{'digest':D(1)}},
@@ -75,6 +76,12 @@ class RetentionTests(unittest.TestCase):
         data,roots,fetch,now=self.fixture();roots['videoq-api'].add(D(8))
         self.assertEqual(m.plan(data,roots,[],[],fetch,now)['deleteVersions'],[])
 
+    def test_daily_cleanup_can_expire_unadopted_builds_without_expiring_release_graphs(self):
+        data,roots,fetch,now=self.fixture()
+        result=m.plan(data,roots,[],[],fetch,now+timedelta(days=8))
+        self.assertEqual({v['id'] for v in result['deleteVersions']},{6,7,8,9})
+        self.assertEqual(set(result['protectedDigests']['videoq-api']),{D(n) for n in range(1,6)})
+
     def test_latest_two_generations_are_retained_and_other_release_types_are_preserved(self):
         releases=[]
         for n in range(1,5):
@@ -102,10 +109,107 @@ class RetentionTests(unittest.TestCase):
     def test_apply_deletes_only_exact_reviewed_version_ids(self):
         data,roots,fetch,now=self.fixture();plan=m.plan(data,roots,[],[],fetch,now)
         with patch.object(m,'gh') as gh:result=m.apply(plan,data,plan)
-        self.assertEqual(result,{'deletedReleases':0,'deletedVersions':2})
+        self.assertEqual(result,{'deletedReleases':0,'deletedVersions':2,'deletedPackages':0})
         self.assertEqual([c.args[0] for c in gh.call_args_list],[
             'orgs/videoq-jp/packages/container/videoq-api/versions/8',
             'orgs/videoq-jp/packages/container/videoq-api/versions/9'])
         self.assertTrue(all(c.kwargs['method']=='DELETE' for c in gh.call_args_list))
+
+    def test_retired_engine_is_kept_while_any_release_or_source_root_remains(self):
+        data,roots,fetch,now=self.fixture()
+        data['presentPackages'].append('videoq-vllm')
+        data['packages']['videoq-vllm']=[copy.deepcopy(data['packages']['videoq-api'][5])]
+        roots['videoq-vllm'].add(D(6))
+        result=m.plan(data,roots,[],[],fetch,now)
+        self.assertEqual(result['deletePackages'],[])
+        self.assertIn(D(7),result['protectedDigests']['videoq-vllm'])
+
+    def test_unreferenced_retired_engine_removes_the_whole_package_including_last_tag(self):
+        data,roots,fetch,now=self.fixture()
+        data['presentPackages'].append('videoq-vllm')
+        data['packages']['videoq-vllm']=[copy.deepcopy(data['packages']['videoq-api'][5])]
+        result=m.plan(data,roots,[],[],fetch,now)
+        self.assertEqual(result['deletePackages'],[{'package':'videoq-vllm',
+            'versionsSha256':m.checksum(data['packages']['videoq-vllm'])}])
+        self.assertFalse(any(v['package']=='videoq-vllm' for v in result['deleteVersions']))
+        with patch.object(m,'gh') as gh:
+            applied=m.apply(result,data,result)
+        self.assertEqual(applied['deletedPackages'],1)
+        self.assertEqual(gh.call_args_list[-1].args[0],'orgs/videoq-jp/packages/container/videoq-vllm')
+        changed=copy.deepcopy(data)
+        changed['packages']['videoq-vllm'].append(copy.deepcopy(data['packages']['videoq-api'][0]))
+        fresh=m.plan(changed,roots,[],[],fetch,now)
+        with patch.object(m,'gh') as gh,self.assertRaises(ValueError):
+            m.apply(result,changed,fresh)
+        gh.assert_not_called()
+
+    def test_active_or_referenced_package_cannot_be_retired_even_by_a_forged_plan(self):
+        data,roots,fetch,now=self.fixture()
+        result=m.plan(data,roots,[],[],fetch,now)
+        result['deletePackages']=[{'package':'videoq-api','versionsSha256':m.checksum(data['packages']['videoq-api'])}]
+        with patch.object(m,'gh') as gh,self.assertRaises(ValueError):
+            m.apply(result,data,result)
+        gh.assert_not_called()
+        data['presentPackages'].append('videoq-vllm')
+        data['packages']['videoq-vllm']=[copy.deepcopy(data['packages']['videoq-api'][5])]
+        roots['videoq-vllm'].add(D(6))
+        result=m.plan(data,roots,[],[],fetch,now)
+        result['deletePackages']=[{'package':'videoq-vllm','versionsSha256':m.checksum(data['packages']['videoq-vllm'])}]
+        with patch.object(m,'gh') as gh,self.assertRaises(ValueError):
+            m.apply(result,data,result)
+        gh.assert_not_called()
+
+    def test_absent_retired_package_is_allowed_but_a_missing_reference_fails_closed(self):
+        data,roots,fetch,now=self.fixture()
+        self.assertEqual(m.plan(data,roots,[],[],fetch,now)['deletePackages'],[])
+        roots['videoq-vllm'].add(D(8))
+        with self.assertRaisesRegex(ValueError,'missing'):
+            m.plan(data,roots,[],[],fetch,now)
+
+    def test_snapshot_needs_only_repository_scoped_package_metadata(self):
+        def metadata(endpoint,**kwargs):
+            if endpoint.endswith('/videoq-vllm'):
+                self.assertTrue(kwargs['allow_missing'])
+                return None
+            self.assertFalse(kwargs['allow_missing'])
+            return {'repository':{'full_name':m.REPO},'visibility':'public'}
+        with patch.object(m,'listing',return_value=[]) as listing,patch.object(m,'gh',side_effect=metadata):
+            data=m.snapshot()
+        self.assertFalse(any('/packages?' in call.args[0] for call in listing.call_args_list))
+        self.assertNotIn('videoq-vllm',data['presentPackages'])
+        self.assertEqual(data['packages']['videoq-vllm'],[])
+        with patch.object(m,'listing',side_effect=RuntimeError('API unavailable')),self.assertRaises(RuntimeError):
+            m.snapshot()
+
+    def test_only_an_explicit_retired_metadata_404_is_optional(self):
+        from types import SimpleNamespace
+        endpoint='orgs/videoq-jp/packages/container/videoq-vllm'
+        for status in (401,403,500):
+            response=SimpleNamespace(returncode=1,stdout=f'HTTP/2.0 {status} Error\nContent-Type: application/json\n\n{{}}')
+            with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+                m.gh(endpoint,allow_missing=True)
+        response=SimpleNamespace(returncode=1,stdout='HTTP/2.0 404 Not Found\nContent-Type: application/json\n\n{}')
+        with patch.object(m.subprocess,'run',return_value=response):
+            self.assertIsNone(m.gh(endpoint,allow_missing=True))
+        with patch.object(m.subprocess,'run') as run,self.assertRaises(ValueError):
+            m.gh(endpoint.replace('videoq-vllm','videoq-api'),allow_missing=True)
+        run.assert_not_called()
+        response=SimpleNamespace(returncode=0,stdout='HTTP/2.0 200 OK\nContent-Type: application/json\n\n{"name":"videoq-vllm"}')
+        with patch.object(m.subprocess,'run',return_value=response):
+            self.assertEqual(m.gh(endpoint,allow_missing=True)['name'],'videoq-vllm')
+        for body in ('', 'null', '[]'):
+            response=SimpleNamespace(returncode=0,stdout='HTTP/2.0 200 OK\nContent-Type: application/json\n\n'+body)
+            with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+                m.gh(endpoint,allow_missing=True)
+        response=SimpleNamespace(returncode=1,stdout='not an HTTP response')
+        with patch.object(m.subprocess,'run',return_value=response),self.assertRaises(RuntimeError):
+            m.gh(endpoint,allow_missing=True)
+
+    def test_deleted_retired_package_does_not_require_an_anonymous_registry_token(self):
+        present=sorted(set(m.PACKAGES)-m.RETIRED_PACKAGES)
+        with patch.object(m,'fetch_json',return_value={'token':'test'}) as fetch:
+            registry=m.Registry(packages=present)
+        self.assertEqual(set(registry.tokens),set(present))
+        self.assertTrue(all('videoq-vllm' not in call.args[0] for call in fetch.call_args_list))
 
 if __name__=='__main__':unittest.main()

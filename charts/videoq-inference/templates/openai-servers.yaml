@@ -22,6 +22,7 @@ metadata:
     {{- include "inference.labels" $root | nindent 4 }}
 spec:
   replicas: 1
+  progressDeadlineSeconds: {{ $root.Values.rolloutDeadlineSeconds }}
   strategy: { type: Recreate }
   selector:
     matchLabels: { app.kubernetes.io/instance: {{ $root.Release.Name }}, app.kubernetes.io/component: {{ $name }} }
@@ -77,7 +78,8 @@ spec:
             - { name: MODEL_SHA256, value: {{ $server.modelSha256 | quote }} }
             - { name: HF_HUB_OFFLINE, value: "0" }
           securityContext: {{ include "inference.security" $root | nindent 12 }}
-          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 1Gi } }
+          # Large checkpoint reconstruction can exceed 1 GiB before serving starts.
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { memory: 4Gi } }
           volumeMounts: [{ name: models, mountPath: /models }]
         {{- end }}
       {{- end }}

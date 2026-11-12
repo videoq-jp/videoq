@@ -42,6 +42,7 @@ def provision(env=os.environ):
     else:
         # No pickle weights or downloaded Python code; trust_remote_code stays off.
         snapshot_download(repo, revision=revision, local_dir=directory,
+                          max_workers=2,
                           allow_patterns=["*.safetensors", "*.json", "*.jinja", "*.txt", "*.model", "tokenizer.*"],
                           # gpt-oss also ships a second native-format checkpoint.
                           # vLLM uses the root Transformers shards, not original/.

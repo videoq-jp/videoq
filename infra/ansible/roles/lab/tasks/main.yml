@@ -36,12 +36,33 @@
       - not existing_cluster.stat.exists or managed_cluster.stat.exists or videoq_adopt_existing_cluster
     fail_msg: Existing K3s found. Review ownership and set videoq_adopt_existing_cluster=true; adoption does not replace its service or configuration.
 
+- name: Reserve NVIDIA driver updates for an explicit maintenance window
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99-videoq-gpu-maintenance
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      // Driver userspace and the loaded kernel module must change together.
+      // Keep other unattended security updates enabled.
+      Unattended-Upgrade::Package-Blacklist {
+        "^nvidia-";
+        "^libnvidia-";
+        "^linux-modules-nvidia-";
+        "^linux-objects-nvidia-";
+        "^linux-firmware-nvidia";
+        "^xserver-xorg-video-nvidia-";
+        "^cuda-drivers";
+        "^libcuda1$";
+      };
+
 - name: Install host prerequisites
   ansible.builtin.apt:
     name: [ca-certificates, curl, gnupg, python3, python3-cryptography, iptables, conntrack, socat]
     state: present
     update_cache: true
     cache_valid_time: 3600
+    lock_timeout: 600
 
 - name: Create private bootstrap directories
   ansible.builtin.file:

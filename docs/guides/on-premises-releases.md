@@ -247,18 +247,35 @@ namespaces remain invalid. Use the normal signed release workflow for new builds
 
 ## Distribution retention
 
+Automatic releases compare the selected main source with the newest published
+on-prem release backed by a successful main release run. Documentation, adopted
+deployment pins and retention housekeeping alone keep the existing release.
+Unreleased runtime or distribution changes still publish even if the newest
+commit only edits documentation. Unknown, divergent or large diffs publish
+conservatively. A manual `workflow_dispatch` requests a full release after the
+same current-main CI validation.
+
 After a successful release, `On-prem Distribution Retention` keeps the latest two
 published on-prem releases whose source/run/attempt match a successful main
 release workflow. Other release types are preserved. It protects their image
 indexes, platform manifests, signatures/SBOM referrers, operational pins in main
 and open same-repository PRs, and seven days of build grace. Only versions outside
-that complete reference graph may be deleted. Retired engine packages disappear
-from new release manifests; historical versions remain while a protected release
-still refers to them.
+that complete reference graph may be deleted. The retired `videoq-vllm` package
+remains while any retained release or protected source/deployment pin refers to
+it. Once all those references disappear, its entire package is deleted, including
+its last tagged version and recent builds from the retired publisher. The build
+grace still applies to all four active application packages. Package retirement
+checks the complete version inventory again before deletion. Later runs accept
+an exact HTTP 404 for the retired package only after verifying all four active
+package identities. Protected references to that missing package still stop
+cleanup. Other API errors stop cleanup. It does not require organization-wide
+package listing access, and it requests registry tokens only for packages still
+present.
 
 The workflow first saves a deletion plan, then re-reads the live inventory and
 reference graph before applying it. Missing metadata, changed references or an
 expired plan stop deletion. Exact successful deletions are journaled and kept as
-workflow artifacts for 90 days. Manual runs default to plan-only; set `apply=true`
+workflow artifacts for 90 days. A daily scheduled run clears expired build grace
+even when no new release is published. Manual runs default to plan-only; set `apply=true`
 only when actual cleanup is intended. The installer never runs registry cleanup
 on a customer's host.
