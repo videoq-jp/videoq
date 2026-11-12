@@ -252,9 +252,14 @@ published on-prem releases whose source/run/attempt match a successful main
 release workflow. Other release types are preserved. It protects their image
 indexes, platform manifests, signatures/SBOM referrers, operational pins in main
 and open same-repository PRs, and seven days of build grace. Only versions outside
-that complete reference graph may be deleted. Retired engine packages disappear
-from new release manifests; historical versions remain while a protected release
-still refers to them.
+that complete reference graph may be deleted. The retired `videoq-vllm` package
+remains while any retained release or protected source/deployment pin refers to
+it. Once all those references disappear, its entire package is deleted, including
+its last tagged version and recent builds from the retired publisher. The build
+grace still applies to all four active application packages. Package retirement
+checks the complete version inventory again before deletion. Later runs accept
+the retired package's absence only after a successful complete catalog read;
+an absent referenced package still stops cleanup.
 
 The workflow first saves a deletion plan, then re-reads the live inventory and
 reference graph before applying it. Missing metadata, changed references or an

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: Delete only versions and releases in the freshly revalidated plan
+        description: Delete only versions, retired packages and releases in the freshly revalidated plan
         type: boolean
         default: false
 permissions:
