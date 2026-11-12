@@ -94,10 +94,13 @@ def compile_videoq(directory, manifest, verified, public_url, storage_gib, liste
             for port in item['spec']['template']['spec']['containers'][0]['ports']:
                 if port['containerPort'] == 443:
                     port.update({'hostPort': 443, 'hostIP': listen_ip})
-    infra.append({'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': 'videoq-gpt-oss-4090'},
+    # local-path waits for a consuming Pod before binding. Keep this claim in
+    # the model wave or Argo waits for Bound before creating its consumer.
+    model_claim = {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': 'videoq-gpt-oss-4090'},
                   'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'local-path',
-                           'resources': {'requests': {'storage': '20Gi'}}}})
+                           'resources': {'requests': {'storage': '20Gi'}}}}
     objects = [order(item, 0) for item in infra]
+    objects.append(order(model_claim, 10))
     script = (ROOT / 'infra/garage/init.py').read_text()
     objects.append(order({'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'videoq-storage-init'},
                           'data': {'init.py': script}}, 0))
