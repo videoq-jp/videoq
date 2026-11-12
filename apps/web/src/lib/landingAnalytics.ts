@@ -17,10 +17,26 @@ export function getLandingAudience(search = window.location.search): LandingAudi
   return acquisition === 'x_paid_teacher_qa' ? 'school' : 'general';
 }
 
+function searchReferral(search: string): LandingAcquisition {
+  const params = new URLSearchParams(search);
+  // Campaign-tagged and known paid-click visits must not inflate search referrals.
+  if ([...params.keys()].some(key => key.startsWith('utm_') || ['gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid'].includes(key))) return 'unattributed';
+  try {
+    const referrer = new URL(document.referrer);
+    if (referrer.protocol !== 'https:' && referrer.protocol !== 'http:') return 'unattributed';
+    // Explicit hosts avoid lookalikes such as google.com.example.org.
+    return ['google.com', 'www.google.com', 'google.co.jp', 'www.google.co.jp',
+      'bing.com', 'www.bing.com', 'search.yahoo.co.jp', 'search.yahoo.com',
+      'duckduckgo.com', 'www.duckduckgo.com'].includes(referrer.hostname) ? 'search_referral' : 'unattributed';
+  } catch {
+    return 'unattributed';
+  }
+}
+
 export function getLandingAcquisition(search = window.location.search): LandingAcquisition {
   const params = new URLSearchParams(search);
   if (params.get('measurement') === 'test') return 'internal_test';
-  if (params.get('utm_source') !== 'x') return 'unattributed';
+  if (params.get('utm_source') !== 'x') return searchReferral(search);
   if (params.get('utm_medium') === 'paid_social'
     && params.get('utm_campaign') === 'student_demo_test'
     && params.get('utm_content') === 'demo15_search') return 'x_paid_demo15_search';

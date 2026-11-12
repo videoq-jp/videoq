@@ -1,3 +1,5 @@
+import { startLandingVisit, trackLandingEvent } from '@/lib/landingAnalytics';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppPageHeader } from '@/components/layout/AppPageHeader';
@@ -13,6 +15,7 @@ import { articleStructuredData, breadcrumbStructuredData } from '@/lib/structure
 import NotFoundPage from '@/pages/NotFoundPage';
 
 export default function GuidePage() {
+  useEffect(() => { startLandingVisit(); }, []);
   const { t } = useTranslation();
   const locale = useLocale();
   const guide = guideBySlug(useParams().slug);
@@ -37,6 +40,9 @@ export default function GuidePage() {
       <p className="mb-8 text-std-17N-170 text-solid-gray-600">
         {t('guides.author')} · {t('guides.updated')} <time dateTime={guide.updated}>{guide.updated}</time>
       </p>
+      <div className="mb-8">
+        <UtilityLink asChild><Link href="/try">{t('guides.tryDemo')}</Link></UtilityLink>
+      </div>
       <nav aria-label={t('guides.toc')} className="mb-10 border border-solid-gray-420 p-6">
         <p className="mb-2 text-std-17B-170">{t('guides.toc')}</p>
         <ul className="list-disc space-y-1 pl-6 text-std-17N-170">
@@ -65,7 +71,7 @@ export default function GuidePage() {
         <p className="mb-4 text-std-17N-170 text-solid-gray-700">{t('guides.ctaBody')}</p>
         <div className="flex flex-wrap items-center gap-4">
           <Button asChild><Link href="/try">{t('guides.tryDemo')}</Link></Button>
-          <Button variant="outline" asChild><Link href="/signup">{t('guides.cta')}</Link></Button>
+          <Button variant="outline" asChild><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('guides.cta')}</Link></Button>
           <UtilityLink asChild><Link href="/pricing">{t('guides.pricing')}</Link></UtilityLink>
         </div>
       </aside>

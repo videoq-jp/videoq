@@ -10,7 +10,7 @@ export const LANDING_EVENTS = [
 export const LANDING_AUDIENCES = ['general', 'creator', 'school', 'training', 'student'] as const;
 export const LANDING_PLACEMENTS = ['none', 'hero', 'free', 'footer', 'mobile', 'header'] as const;
 // Fixed cohorts only; never accept or log arbitrary UTM values.
-export const LANDING_ACQUISITIONS = ['unattributed', 'x_paid_demo15_search', 'x_paid_teacher_qa', 'x_paid_student_ja', 'x_paid_student_en', 'x_paid_instructor_ja', 'x_paid_instructor_en', 'x_organic_launch', 'internal_test'] as const;
+export const LANDING_ACQUISITIONS = ['unattributed', 'search_referral', 'x_paid_demo15_search', 'x_paid_teacher_qa', 'x_paid_student_ja', 'x_paid_student_en', 'x_paid_instructor_ja', 'x_paid_instructor_en', 'x_organic_launch', 'internal_test'] as const;
 export type LandingEvent = (typeof LANDING_EVENTS)[number];
 export type LandingAudience = (typeof LANDING_AUDIENCES)[number];
 export type LandingPlacement = (typeof LANDING_PLACEMENTS)[number];

@@ -82,6 +82,38 @@ describe('landing funnel measurement', () => {
     expect(JSON.stringify(sessionStorage)).not.toContain('private-value');
   });
 
+  it.each([
+    ['https://www.google.com/search?q=private-query', '', 'search_referral'],
+    ['https://www.google.co.jp/', '', 'search_referral'],
+    ['https://www.bing.com/', '', 'search_referral'],
+    ['https://search.yahoo.co.jp/', '', 'search_referral'],
+    ['https://duckduckgo.com/', '', 'search_referral'],
+    ['https://www.google.com.example.org/', '', 'unattributed'],
+    ['https://videoq.jp/guides', '', 'unattributed'],
+    ['', '', 'unattributed'],
+    ['invalid-url', '', 'unattributed'],
+    ['https://www.google.com/', '?gclid=private-id', 'unattributed'],
+    ['https://www.bing.com/', '?msclkid=private-id', 'unattributed'],
+    ['https://www.google.com/', '?utm_medium=cpc', 'unattributed'],
+    ['https://www.google.com/', '?utm_source=x&utm_medium=paid_social&utm_campaign=instructor_202611&utm_content=demo30_ja', 'x_paid_instructor_ja'],
+  ])('classifies search referrals conservatively: %s %s', (referrer, search, expected) => {
+    vi.spyOn(document, 'referrer', 'get').mockReturnValue(referrer);
+    expect(getLandingAcquisition(search)).toBe(expected);
+  });
+
+  it('preserves a guide search referral through signup without collecting the referrer or query', () => {
+    vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://www.google.com/search?q=private-query');
+    Object.defineProperty(window, 'location', { configurable: true, value: new URL('https://videoq.jp/guides/online-course-questions') });
+    startLandingVisit();
+    Object.defineProperty(window, 'location', { configurable: true, value: new URL('https://videoq.jp/signup') });
+    trackLandingEvent('email_signup_created');
+    completeSignupTracking('email');
+    const events = send.mock.calls.map(([, init]) => JSON.parse(init.body));
+    expect(events.map(event => event.event)).toEqual(['landing_view', 'email_signup_created', 'email_verified']);
+    expect(events.every(event => event.acquisition === 'search_referral')).toBe(true);
+    expect(JSON.stringify(send.mock.calls) + JSON.stringify(sessionStorage)).not.toMatch(/private-query|google.com|online-course-questions/);
+  });
+
   it('does not attribute unrelated account activity to the LP', () => {
     trackLandingEvent('email_signup_created');
     trackLandingEvent('first_answer');

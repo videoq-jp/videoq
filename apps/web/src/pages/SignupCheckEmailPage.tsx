@@ -1,3 +1,5 @@
+import { useSearchParams } from 'react-router-dom';
+import { getSafeNextPath } from '@/lib/authRedirect';
 import { Link } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { AuthPageIntro } from '@/components/layout/AuthPageIntro';
@@ -6,6 +8,8 @@ import { UtilityLink } from '@/components/ui/utility-link';
 
 export default function SignupCheckEmailPage() {
   const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const next = getSafeNextPath(params.get('next'));
 
   return (
     <>
@@ -24,7 +28,7 @@ export default function SignupCheckEmailPage() {
 
         <div className="text-center">
           <UtilityLink asChild>
-            <Link href="/login">{t('auth.checkEmail.backToLogin')}</Link>
+            <Link href={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}>{t('auth.checkEmail.backToLogin')}</Link>
           </UtilityLink>
         </div>
       </div>

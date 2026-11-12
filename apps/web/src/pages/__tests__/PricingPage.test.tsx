@@ -11,6 +11,7 @@ const checkout = vi.fn()
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.__setMockSearchParams('')
     globalThis.__setMockLanguage('ja')
     globalThis.__setTrpcHandler('account.me', getAccount)
     globalThis.__setTrpcHandler('billing.plans', getPlans)
@@ -107,9 +108,24 @@ describe('PricingPage', () => {
     globalThis.__setMockAuthSession(null)
     render(<PricingPage />)
     expect(await screen.findByRole('link', { name: 'pricing.startFree' })).toHaveAttribute('href', '/signup')
-    expect(screen.getByRole('link', { name: 'pricing.signUpToSubscribe' })).toHaveAttribute('href', '/signup')
+    expect(screen.getByRole('link', { name: 'pricing.signUpToSubscribe' })).toHaveAttribute('href', '/signup?next=%2Fpricing%3Finterval%3Dmonth')
     expect(screen.queryByText('pricing.currentPlan')).not.toBeInTheDocument()
     expect(getAccount).not.toHaveBeenCalled()
+  })
+
+  it.each(['ja', 'en'])('returns anonymous %s yearly buyers to the localized yearly catalog', async locale => {
+    globalThis.__setMockLanguage(locale)
+    globalThis.__setMockAuthSession(null)
+    const plans = await getPlans()
+    getPlans.mockResolvedValue(plans.map((plan: { code: string }) => ({
+      ...plan, interval: plan.code === 'free' ? null : 'year',
+    })))
+    globalThis.__setMockSearchParams('?interval=year')
+    render(<PricingPage />)
+    const link = await screen.findByRole('link', { name: 'pricing.signUpToSubscribe' })
+    const next = new URL(link.getAttribute('href')!, 'https://videoq.jp').searchParams.get('next')
+    expect(next).toBe(`${locale === 'en' ? '/en' : ''}/pricing?interval=year`)
+    expect(screen.getByText('pricing.plans.basic.name')).toBeInTheDocument()
   })
 
   it('does not offer checkout until the account plan is known, even with cached prices', async () => {
