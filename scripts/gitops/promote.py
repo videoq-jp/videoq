@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts/onprem'))
 import public_release
 from native import application_values, backing_plan
+from repository import validate_repository
 
 
 def read_documents(raw):
@@ -223,8 +224,7 @@ def main():
     import ipaddress
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,30}', args.site):
         raise ValueError('Invalid site name')
-    if not re.fullmatch(r'(https://github.com/|git@github.com:)[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+[.]git', args.repository):
-        raise ValueError('A GitHub repository URL without credentials is required')
+    validate_repository(args.repository)
     address = ipaddress.ip_address(args.listen_ip)
     if address.version != 4 or address.is_unspecified or address.is_loopback or not address.is_private:
         raise ValueError('Bind HTTPS to the dedicated host LAN IPv4 address')

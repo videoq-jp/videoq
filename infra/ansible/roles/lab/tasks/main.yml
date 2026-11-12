@@ -6,7 +6,7 @@
       - ansible_facts.distribution_version in ['22.04', '24.04']
       - ansible_facts.architecture == 'x86_64'
       - videoq_public_url is match('^https://[^/]+$')
-      - videoq_gitops_repository is match('^(https://github.com/|git@github.com:)[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+[.]git$')
+      - (videoq_gitops_repository | videoq_repository) == videoq_gitops_repository
       - videoq_gitops_repository is not search('YOUR-ORG')
       - videoq_gitops_revision is match('^[A-Za-z0-9_./-]+$')
       - videoq_gitops_path is match('^clusters/[a-z0-9-]+/apps$')
@@ -321,3 +321,22 @@
 - name: Explain the next administrative step
   ansible.builtin.debug:
     msg: Bootstrap is ready. Open Argo CD through an SSH tunnel/port-forward; sync lab, then lab-gpu, then lab-videoq. No applications have been automatically updated. See docs/guides/lab-gitops.md.
+
+- name: Configure the host-local signed release follower
+  ansible.builtin.include_tasks: updater.yml
+  when: videoq_update_enabled | bool
+
+- name: Inspect an existing update timer when unattended updates are disabled
+  ansible.builtin.stat:
+    path: /etc/systemd/system/videoq-update.timer
+  register: existing_update_timer
+  when: not (videoq_update_enabled | bool)
+
+- name: Disable future polling without interrupting an in-flight transaction
+  ansible.builtin.systemd_service:
+    name: videoq-update.timer
+    state: stopped
+    enabled: false
+  when:
+    - not (videoq_update_enabled | bool)
+    - existing_update_timer.stat.exists | default(false)

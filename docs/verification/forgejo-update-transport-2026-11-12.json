@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "forgejoVersion": "17.0.1",
+  "imageDigest": "sha256:5ef02fbcf22beef56b8c844952ffad58cfe177b6f98e46e6abb5df90b88dc8d3",
+  "scope": "Actual local Forgejo SSH Git transport, not a GPU/Argo release deployment",
+  "privateRepository": true,
+  "verifiedHostKeyFromContainer": true,
+  "writerCommitPush": true,
+  "readerFetchUpdatedConfig": true,
+  "readerPushRejected": true,
+  "gpuRented": false,
+  "signedProductionReleaseCompilation": {
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "runId": "43213448108",
+    "runAttempt": 1,
+    "publicSignatureAndRunVerified": true,
+    "forgejoRepositoryInGeneratedApplications": true,
+    "renderedFileHashesVerified": 4,
+    "applicationResources": 36,
+    "deployed": false
+  },
+  "controllerTests": {
+    "passed": 25,
+    "scope": "Unit/control-flow tests; not a real Argo/GPU update transaction"
+  }
+}

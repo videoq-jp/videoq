@@ -4,6 +4,10 @@ import hashlib
 import json
 import re
 import yaml
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts/gitops"))
+from repository import validate_repository
 
 
 def pin_argocd_manifest(raw, pin):
@@ -31,4 +35,4 @@ def pin_argocd_manifest(raw, pin):
 
 class FilterModule:
     def filters(self):
-        return {'pin_argocd_manifest': pin_argocd_manifest}
+        return {'pin_argocd_manifest': pin_argocd_manifest, 'videoq_repository': validate_repository}
