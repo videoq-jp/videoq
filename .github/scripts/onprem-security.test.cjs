@@ -56,6 +56,15 @@ test('all on-prem images are scanned without hiding unfixed findings', () => {
   }
 });
 
+test('upstream vLLM replaces the engine build and fails closed on raw findings', () => {
+  const upstream = readFileSync(join(__dirname, '../workflows/upstream-vllm.yml'), 'utf8');
+  assert.match(onprem, /uses: \.\/\.github\/workflows\/upstream-vllm.yml/);
+  assert.doesNotMatch(upstream, /docker build|trivy-config:|vex:/);
+  assert.match(upstream, /ignore-unfixed: 'false'/);
+  assert.match(upstream, /check-vllm-scan.cjs/);
+  assert.match(upstream, /check-vllm-runtime.py/);
+});
+
 test('untrusted image builds have no production access and retain inventories', () => {
   assert.doesNotMatch(onprem, /secrets\.|secrets: inherit|environment:|id-token: write|packages: write|contents: write/);
   assert.match(onprem, /--format cyclonedx/);

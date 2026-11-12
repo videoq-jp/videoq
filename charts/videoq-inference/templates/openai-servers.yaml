@@ -3,12 +3,9 @@
 {{- $server := index $root.Values.servers $name }}
 {{- $engine := default $root.Values.backend $server.engine }}
 {{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs) }}
-{{- $image := $root.Values.whisper.image }}
-{{- if ne $engine "embeddinggemma2" }}
-{{- $image = (index $root.Values $engine).image }}
-{{- end }}
-{{- if and $root.Values.gpuSharing.enabled (eq $engine "vllm") }}
-{{- $image = $root.Values.whisper.vllmImage }}
+{{- $image := (index $root.Values $engine).image }}
+{{- if and $server.disableTorchCompile (or (ne $engine "vllm") (and (not $root.Values.gpuSharing.enabled) (not (has "--enforce-eager" $server.extraArgs)))) }}
+{{- fail "disableTorchCompile requires vllm with --enforce-eager" }}
 {{- end }}
 {{- if and (eq $engine "llamacpp") (or (empty $server.modelFile) (empty $server.modelSha256)) }}
 {{- fail "llamacpp servers require modelFile and modelSha256" }}
@@ -32,6 +29,9 @@ spec:
     metadata:
       annotations:
         videoq.io/model-revision: {{ $server.modelRevision | quote }}
+        {{- if eq $engine "vllm" }}
+        videoq.io/audio-lock: {{ $root.Files.Get "files/vllm-audio-wheels.json" | sha256sum | quote }}
+        {{- end }}
       labels:
         {{- include "inference.labels" $root | nindent 8 }}
         app.kubernetes.io/component: {{ $name }}
@@ -44,14 +44,24 @@ spec:
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
       securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
-      {{- with $server.nodeSelector }}
+      {{- $selector := deepCopy $server.nodeSelector }}
+      {{- if eq $engine "vllm" }}
+      {{- if and (hasKey $selector "kubernetes.io/arch") (ne (index $selector "kubernetes.io/arch") "amd64") }}
+      {{- fail "The pinned upstream vLLM image requires amd64" }}
+      {{- end }}
+      {{- $_ := set $selector "kubernetes.io/arch" "amd64" }}
+      {{- end }}
+      {{- with $selector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
       {{- with $server.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or $root.Values.downloadModels (and $root.Values.gpuSharing.enabled (eq $name "chat")) }}
+      {{- if or $root.Values.downloadModels (eq $engine "vllm") }}
       initContainers:
+        {{- if eq $engine "vllm" }}
+        {{- include "inference.vllmAudioInit" (dict "root" $root) | nindent 8 }}
+        {{- end }}
         {{- if and $root.Values.gpuSharing.enabled (eq $name "chat") }}
         {{- include "inference.sharedWait" (dict "root" $root "role" $name) | nindent 8 }}
         {{- end }}
@@ -75,10 +85,7 @@ spec:
         - name: {{ $name }}
           image: {{ include "inference.image" (dict "root" $root "image" $image "component" $engine) | quote }}
           imagePullPolicy: {{ $image.pullPolicy }}
-          {{- if eq $engine "embeddinggemma2" }}
-          command: [python, -m, uvicorn, "embedding_server:app"]
-          args: [--host, "0.0.0.0", --port, "8000", --workers, "1", --limit-concurrency, "8", --no-access-log]
-          {{- else if eq $engine "llamacpp" }}
+          {{- if eq $engine "llamacpp" }}
           # Official server image entrypoint. All weights are local files.
           args:
             - --model
@@ -153,10 +160,11 @@ spec:
             {{- end }}
           ports: [{ name: http, containerPort: 8000 }]
           env:
-            {{- if eq $engine "embeddinggemma2" }}
-            - { name: EMBEDDING_MODEL_PATH, value: {{ printf "/models/%s" $server.modelRevision | quote }} }
-            - { name: EMBEDDING_MODEL_ALIAS, value: {{ $server.servedModel | quote }} }
-            - { name: EMBEDDING_CPU_THREADS, value: {{ $server.cpuThreads | quote }} }
+            {{- if eq $engine "vllm" }}
+            - { name: PYTHONPATH, value: /opt/videoq-audio }
+            {{- if $server.disableTorchCompile }}
+            - { name: TORCHDYNAMO_DISABLE, value: "1" }
+            {{- end }}
             {{- end }}
             - { name: HF_HUB_OFFLINE, value: "1" }
             - { name: TRANSFORMERS_OFFLINE, value: "1" }
@@ -170,27 +178,23 @@ spec:
           readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10 }
           livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 30, timeoutSeconds: 5 }
           securityContext: {{ include "inference.security" $root | nindent 12 }}
-            {{- if eq $engine "llamacpp" }}
             readOnlyRootFilesystem: true
-            {{- end }}
           resources: {{ toYaml $server.resources | nindent 12 }}
           volumeMounts:
             - { name: models, mountPath: /models, readOnly: true }
-            {{- if eq $engine "llamacpp" }}
             - { name: tmp, mountPath: /tmp }
-            {{- end }}
             {{- if eq $engine "vllm" }}
             - { name: shm, mountPath: /dev/shm }
+            - { name: vllm-audio, mountPath: /opt/videoq-audio, readOnly: true }
             {{- end }}
       volumes:
-        {{- if eq $engine "llamacpp" }}
         - name: tmp
-          emptyDir: { sizeLimit: 256Mi }
-        {{- end }}
+          emptyDir: { sizeLimit: {{ if eq $engine "vllm" }}4Gi{{ else }}256Mi{{ end }} }
         - name: models
           persistentVolumeClaim:
             claimName: {{ default (printf "%s-%s" (include "inference.fullname" $root) $name) $server.persistence.existingClaim }}
         {{- if eq $engine "vllm" }}
+        {{- include "inference.vllmAudioVolumes" $root | nindent 8 }}
         - name: shm
           emptyDir: { medium: Memory, sizeLimit: 2Gi }
         {{- end }}

@@ -116,9 +116,8 @@ an old alias. The existing database does not automatically migrate vector spaces
 
 This profile pins `openai/gpt-oss-20b` and `google/embeddinggemma-2` to immutable
 Hugging Face revisions. Chat uses vLLM's OpenAI tool and reasoning parsers with
-low reasoning effort. Embeddings use `embedding_server.py` in a separate CPU
-Pod, loading only the 270M text encoder. Whisper remains the existing
-large-v3-turbo Q5_0 whisper.cpp service. The GPU must support the pinned vLLM
+low reasoning effort. Embeddings and Whisper use separate upstream vLLM Pods.
+The profile reserves three dedicated NVIDIA GPUs, one per model. The GPU must support the pinned vLLM
 runtime and gpt-oss quantization; measure VRAM with the configured 8192-token
 context and concurrency on the target GPU. CPU-only inference for gpt-oss is
 not provided by this profile.
@@ -129,21 +128,33 @@ terminal answer. The real-model compatibility check requires this separation
 with the pinned vLLM runtime. Preserve gpt-oss reasoning internally across tool
 continuations with `preserveToolReasoning: true`.
 
-The CPU image must include this version's `embedding_server.py` and locked
-sentence-transformers dependencies. Build from this source and record the
-resulting digest; do not reuse an older Whisper-only image:
+The signed inference chart pins the upstream `vllm/vllm-openai` digest for all
+three model services. The VideoQ gateway only preprocesses audio and provisions
+models; it no longer contains an embedding server. API and worker add the pinned
+model's `SearchQuery` / `Document` prefixes to OpenAI-compatible embedding input.
 
-```sh
-docker build -t registry.example.edu/videoq/inference-cpu:YOUR_TAG apps/inference/whisper
-docker push registry.example.edu/videoq/inference-cpu:YOUR_TAG
-```
+Whisper's missing optional dependencies are supplied by four upstream binary
+wheels in `files/vllm-audio-wheels.json`. Each URL, version, size and SHA-256 is
+fixed. A gateway init container verifies/caches them on each model PVC, then
+extracts them into a separate `vllm-audio` volume. The unmodified upstream vLLM
+container mounts that volume read-only at `/opt/videoq-audio` and imports it via
+`PYTHONPATH`. Neither vLLM, PyTorch nor the base image's dependencies are rebuilt
+or replaced. The supported target is Linux amd64 / Python 3.12.
 
-Set `whisper.image.repository`, `whisper.image.tag` and `whisper.image.digest`
-in an operator-owned `/secure/inference-site.yaml` to that reviewed build. The
-shared CPU image supplies the speech gateway, embedding server and setup-only
-model downloader in separate containers. It does not share a loaded model
-between Pods. Use a signed release built from the same source when available;
-retain its scan, SBOM and provenance checks.
+With `downloadModels=false`, this init container remains but never downloads:
+it verifies the cached wheels and populates a fresh runtime volume. Pre-populated
+claims must include the matching `.videoq-vllm-audio/<lock-SHA256>/` cache as well
+as model weights. A missing or modified wheel prevents startup. The lock checksum
+is part of each Pod template, so dependency changes trigger a restart. Image
+updates must update and revalidate the wheel lock and base package versions.
+
+The upstream inspection workflow must pass raw vulnerability evaluation, exact
+file inventories and audio import/model registration checks before every release.
+The pinned image and separate audio volume have also passed sequential L40S
+contract tests for all three real models; these are not a capacity or site
+Kubernetes acceptance test. See
+[inspection evidence](../../docs/verification/upstream-vllm-inspection.json).
+
 
 ```sh
 helm upgrade --install inference charts/videoq-inference -n videoq --create-namespace \
@@ -200,7 +211,7 @@ policy still need validation on the deployment hardware.
 Download and verify a [signed public release](../../docs/guides/on-premises-releases.md)
 first. It includes both chart archives and generates `verified-images.json` for
 the app and `verified-inference.json` for inference. The CPU gateway supports
-amd64/arm64; the patched NVIDIA vLLM engine supports amd64. No site image build
+amd64/arm64; the upstream NVIDIA vLLM image supports amd64. No site image build
 or GHCR pull authentication is required. Chat and embedding init containers
 reuse the gateway image's locked Hugging Face downloader.
 GGUF downloads use exact revisions and SHA256; safetensors snapshots use exact
@@ -225,10 +236,9 @@ For vLLM replace both profile filenames with `vllm-nvidia.yaml` and
 `local-ai-vllm.yaml`. Install the NVIDIA device plugin and review GPU VRAM first.
 The profile reserves **three allocatable GPUs** without sharing: chat, embedding and Whisper. Resource limits are starting values, not measured production sizing.
 vLLM GPU inference and driver compatibility require actual site acceptance;
-the CPU llama.cpp test does not validate them. The signed NVIDIA image is used
-for chat, embeddings and speech. Review its retained scan report and scoped
-kernel-header assessment before promotion. Direct use of another upstream
-vLLM image needs a separate scan and compatibility acceptance.
+the CPU llama.cpp test does not validate them. The upstream NVIDIA image is used
+for chat, embeddings and speech. Review its retained raw scan and runtime import
+checks before promotion. The previous custom-image assessments do not apply.
 
 These profiles serve `videoq-inference-chat:8000`,
 `videoq-inference-embedding:8000` and `videoq-inference-whisper:8080`.
@@ -247,13 +257,12 @@ networkPolicy:
   clientRelease: videoq
 ```
 
-The release verifier supplies `whisper.image`, `whisper.vllmImage` and
-`vllm.image` as immutable public image references and requires image digests.
-The signed chart pins the upstream llama.cpp image. Never replace reviewed
-image values with a tag. If a site needs a private rebuild, build
-`apps/inference/whisper/Dockerfile` (amd64/arm64) or `Dockerfile.vllm` (amd64),
-retain the same license, scan/SBOM and provenance controls, and use an explicitly
-reviewed site-owned image values file instead of the public image values.
+The release verifier supplies `whisper.image` as an immutable public image
+reference and requires image digests. The signed chart pins upstream llama.cpp,
+whisper.cpp and vLLM images. Release metadata uses schema version 5 and includes
+only the four VideoQ application/gateway images. It does not override engine
+pins or publish a VideoQ vLLM image. The gateway is built from
+`apps/inference/whisper/Dockerfile` (amd64/arm64).
 
 External-image findings are evaluated against the actual deployment before
 blocking promotion. See the [upstream inference runtime assessments and maintenance
@@ -327,25 +336,15 @@ and embeddings. To add only a speech GPU to a CPU chat/embedding installation,
 apply `examples/whisper-nvidia.yaml` and set the application's
 `ai.whisperChunkSeconds: 300`. Each model has its own process and dedicated GPU.
 
-Build the audio-capable NVIDIA engine from its separate Dockerfile, scan the
-result, push it privately and record its digest alongside the gateway digest:
+Use the chart's digest-pinned upstream vLLM image; there is no engine Dockerfile
+or VideoQ engine build. `.github/workflows/upstream-vllm.yml` scans the exact
+serving digest and the installed audio volume separately without inherited VEX
+suppressions, retains both reports, and tests audio imports, WAV decoding,
+resampling and model registration with the volume mounted in the unchanged image. Publication fails
+if either check fails. Upstream audio dependencies are required; a model support
+entry alone does not establish that the container includes them.
 
-```sh
-docker build --platform linux/amd64 -f apps/inference/whisper/Dockerfile.vllm \
-  -t registry.intranet/videoq-vllm-engine:0.2.0 apps/inference/whisper
-trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed=false --exit-code 1 \
-  registry.intranet/videoq-vllm-engine:0.2.0
-docker push registry.intranet/videoq-vllm-engine:0.2.0
-```
-
-```yaml
-whisper:
-  vllmImage:
-    repository: registry.intranet/videoq-vllm-engine
-    digest: sha256:REPLACE_WITH_REVIEWED_DIGEST
-```
-
-The pinned vLLM 0.32.0 base needs its `vllm[audio]` extras. The profile provisions
+The profile provisions
 `openai/whisper-large-v3-turbo` at an immutable revision before serving; runtime
 uses that local directory. Initial L4 validation used 70% GPU-memory reservation
 and eight active sequences. This is not a measured minimum VRAM requirement.

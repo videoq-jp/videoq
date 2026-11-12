@@ -12,22 +12,21 @@ Web・API・ワーカーに加えて、LLM・埋め込み生成・Whisper も社
 
 | 構成 | LLM・埋め込み生成 | アプリ側の設定 |
 |---|---|---|
-| 推奨：NVIDIA + CPU | gpt-oss-20b を vLLM、EmbeddingGemma 2 を CPU で実行 | `local-ai-gpt-oss.yaml` |
+| NVIDIA GPU | 3モデルを上流 vLLM で実行 | `local-ai-gpt-oss.yaml` |
 | CPU | llama.cpp。回答用・埋め込み用を別サービスに配置 | `local-ai-llamacpp.yaml` |
 | NVIDIA GPU | vLLM。回答用・埋め込み用を別サービスに配置 | `local-ai-vllm.yaml` |
 
 推奨するモデルは **gpt-oss-20b + EmbeddingGemma 2 + Whisper large-v3-turbo** です。
 推論側の `charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml` と、
 アプリ側の `charts/videoq/examples/local-ai-gpt-oss.yaml` を組み合わせます。
-LLM に NVIDIA GPU を1台割り当て、埋め込みと whisper.cpp は CPU で動かします。
+LLM・埋め込み・Whisper に、それぞれ専用の NVIDIA GPU を1台ずつ割り当てます。
 従来の Qwen 構成も互換性確認用に残しています。小さい CPU 専用 VPS では、
 LLM の接続先を別の社内 GPU サーバーに設定してください。
 
-EmbeddingGemma 2 は270Mのテキスト用部分だけを読み込みます。質問には `SearchQuery`、
+EmbeddingGemma 2 は vLLM の pooling で実行します。質問には `SearchQuery`、
 字幕には `Document` のプロンプトを適用し、正規化した768次元を返します。
 `ai.embeddingProfile: embeddinggemma2` を API・ワーカーの両方に適用します。
-専用 API は OpenAI 互換の入力に加え、`input_type: query|document` を受け付けます。
-未知のモデル、異なる次元数、長すぎる入力は受け付けません。
+API・ワーカーが用途に応じた固定プレフィックスを入力に付け、通常の OpenAI 互換 API に送ります。
 
 新しいアプリを起動する前に DB マイグレーションを適用します。768次元用の
 `scene_embeddings_768` テーブルを追加し、従来の1536次元データは変更しません。
@@ -46,13 +45,15 @@ kubectl -n videoq exec deployment/videoq-worker -- python -c \
 gpt-oss は `reasoningEffort: low`、OpenAI 用のツール・推論パーサーを使います。
 `preserveToolReasoning: true` でツール呼び出し後の推論情報を内部的に引き継ぎ、回答文には
 混ぜません。gpt-oss はテキスト専用のため視覚解析は無効です。EmbeddingGemma 2 も画像・音声の
-エンコーダーは読み込みません。映像を直接検索するには別途インデックス処理の実装が必要です。
+エンコーダーはアプリから利用しません。映像を直接検索するには別途インデックス処理の実装が必要です。
 `separateToolSchema: true` で、検索ツールを選ぶ処理と最終回答の JSON 形式の強制を分けます。
 検索を最終回答用の制約で抑制しないための互換設定です。
 
-CPU 推論イメージには、新しい `embedding_server.py` とロック済み依存関係が必要です。
-旧 Whisper 専用イメージでは動作しません。ソースからのビルドと導入は
-[推論用 Chart の推奨構成](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#recommended-gpt-oss--embeddinggemma-2--whisper-profile)
+推論エンジンは Chart で digest 固定した上流イメージを使い、自前ビルドは行いません。
+不足する音声依存は SHA-256 固定した上流 wheel で補い、別の読み取り専用ボリュームに配置します。
+初回取得した wheel をモデル用 PVC に保存し、オフライン再起動でも検証・展開できます。
+各リリースで上流イメージの脆弱性・実ファイル・音声依存の検査を必須にしています。固定した3モデルは L40S 上で順番に実行し、API 契約を確認済みです。導入先の容量とドライバー互換性は別途検証してください。
+[推論用 Chart の構成](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#recommended-gpt-oss--embeddinggemma-2--whisper-profile)
 を参照してください。
 
 文字起こしは **CPU で whisper.cpp、NVIDIA GPU で vLLM** を使います。

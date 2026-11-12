@@ -33,8 +33,9 @@ servers:
     contextLength: 4096
     persistence: { size: 20Gi }
     # Use EMBEDDING_PROFILE=embeddinggemma2 in both API and worker.
-    # Text-only pooling avoids loading unused multimodal towers.
-    extraArgs: [--limit-mm-per-prompt, '{"image":0,"audio":0,"video":0}']
+    # Match the reviewed upstream text embedding contract.
+    disableTorchCompile: true
+    extraArgs: [--limit-mm-per-prompt, '{"image":0,"audio":0,"video":0}', --attention-backend, FLEX_ATTENTION, --pooler-config, '{"use_activation":true}']
     nodeSelector: { kubernetes.io/arch: amd64, kubernetes.io/os: linux, videoq.io/inference-target: rtx4090 }
     resources:
       requests: { cpu: "1", memory: 2Gi, nvidia.com/gpu.shared: 1 }

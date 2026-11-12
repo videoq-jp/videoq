@@ -216,11 +216,18 @@ class NativeInstaller:
         probe = subprocess.run(['git', '-C', str(ROOT), 'cat-file', '-e', sha + '^{commit}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if probe.returncode:
             self.run('git', '-C', ROOT, 'fetch', '--depth=1', 'origin', sha)
-        for name in ('server.py', 'provision.py', 'Dockerfile.vllm', 'pyproject.toml', 'uv.lock'):
-            path = 'apps/inference/whisper/' + name
-            signed = subprocess.check_output(['git', '-C', str(ROOT), 'show', sha + ':' + path])
-            if signed != (ROOT / path).read_bytes():
-                return False
+        try:
+            for name in ('server.py', 'provision.py', 'provision_audio.py', 'pyproject.toml', 'uv.lock'):
+                path = 'apps/inference/whisper/' + name
+                signed = subprocess.check_output(['git', '-C', str(ROOT), 'show', sha + ':' + path], stderr=subprocess.DEVNULL)
+                if signed != (ROOT / path).read_bytes():
+                    return False
+            for path in ('charts/videoq-inference/files/vllm-audio-wheels.json', 'charts/videoq-inference/values.yaml'):
+                signed = subprocess.check_output(['git', '-C', str(ROOT), 'show', sha + ':' + path], stderr=subprocess.DEVNULL)
+                if signed != (ROOT / path).read_bytes():
+                    return False
+        except subprocess.CalledProcessError:
+            return False
         return True
 
     def reselect_incomplete_release(self):

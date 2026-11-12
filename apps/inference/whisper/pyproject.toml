@@ -14,7 +14,6 @@ dependencies = [
     "python-multipart==0.0.33",
     "uvicorn>=0.38,<1",
     "httpx>=0.27,<1",
-    "sentence-transformers==6.2.0",
 ]
 
 [dependency-groups]

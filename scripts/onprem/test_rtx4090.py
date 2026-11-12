@@ -23,6 +23,35 @@ class NativeTests(unittest.TestCase):
         self.addCleanup(instance.lock.close)
         return instance
 
+    def test_runtime_release_matching_checks_audio_lock_and_rejects_legacy_recipes(self):
+        paths = ['apps/inference/whisper/' + name for name in
+                 ('server.py', 'provision.py', 'provision_audio.py', 'pyproject.toml', 'uv.lock')]
+        paths += ['charts/videoq-inference/files/vllm-audio-wheels.json', 'charts/videoq-inference/values.yaml']
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'source'
+            root.mkdir()
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            for path in paths:
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(path)
+            subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(root), '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                            'commit', '-qm', 'fixture'], check=True)
+            sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
+            instance = self.instance(Path(folder) / 'state')
+            with patch.object(module, 'ROOT', root):
+                self.assertTrue(instance.runtime_matches(sha))
+                lock = root / paths[-2]
+                lock.write_text('different audio dependencies')
+                self.assertFalse(instance.runtime_matches(sha))
+                lock.write_text(paths[-2])
+                subprocess.run(['git', '-C', str(root), 'rm', '-q', paths[2]], check=True)
+                subprocess.run(['git', '-C', str(root), '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                                'commit', '-qm', 'legacy recipe'], check=True)
+                legacy = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
+                self.assertFalse(instance.runtime_matches(legacy))
+
     def test_updates_and_restore_must_target_the_original_cluster(self):
         with tempfile.TemporaryDirectory() as folder:
             instance = self.instance(folder)

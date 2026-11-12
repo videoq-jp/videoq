@@ -2,7 +2,7 @@
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const REPO = 'videoq-jp/videoq';
-const COMPONENTS = ['api', 'worker', 'web', 'transcription-gateway', 'vllm-engine'];
+const COMPONENTS = ['api', 'worker', 'web', 'transcription-gateway'];
 
 module.exports = async function publish({ github, context, sourceSha, runId, attempt, directory }) {
   if (`${context.repo.owner}/${context.repo.repo}` !== REPO || context.ref !== 'refs/heads/main' ||
@@ -11,7 +11,7 @@ module.exports = async function publish({ github, context, sourceSha, runId, att
     throw new Error('Only the validated main workflow may publish on-prem downloads');
   }
   const manifest = JSON.parse(readFileSync(join(directory, 'release.json'), 'utf8'));
-  if (manifest.repository !== REPO || manifest.sourceSha !== sourceSha || manifest.schemaVersion !== 4 ||
+  if (manifest.repository !== REPO || manifest.sourceSha !== sourceSha || manifest.schemaVersion !== 5 ||
       Object.keys(manifest.images).sort().join(',') !== [...COMPONENTS].sort().join(',')) {
     throw new Error('Unexpected public release manifest');
   }

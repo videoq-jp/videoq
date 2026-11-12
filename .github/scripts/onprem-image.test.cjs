@@ -61,7 +61,7 @@ test('one complete strict scan supplies both the inventory and the separate publ
  assert.doesNotMatch(action,/docker (?:load|create|run|cp) /);
  assert.ok(action.indexOf('uses: aquasecurity/trivy-action@')<action.indexOf('mv "$RUNNER_TEMP/scan-image" artifact/image'));
  assert.ok(action.includes("if: inputs.artifact-name != ''"));
- for(const name of ['onprem-validation','onprem-release','onprem-runtime-base']){
+ for(const name of ['onprem-release']){
   const workflow=readFileSync(join(__dirname,`../workflows/${name}.yml`),'utf8');
   assert.ok(workflow.includes('uses: ./.github/actions/build-onprem-image'),name);
   assert.doesNotMatch(workflow,/docker buildx build|scan-image.tar/,name);
@@ -70,10 +70,11 @@ test('one complete strict scan supplies both the inventory and the separate publ
 });
 
 
-test('image-action changes select GPU validation without selecting unrelated app jobs',()=>{
+test('image-action changes select app image checks without selecting upstream GPU checks',()=>{
  const workflow=readFileSync(join(__dirname,'../workflows/ci.yml'),'utf8');
  const filter=name=>workflow.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:|^      - name:)`,'m'))[1];
- assert.ok(filter('whisper_gpu').includes("'.github/actions/build-onprem-image/**'"));
+ assert.ok(filter('onprem').includes("'.github/actions/build-onprem-image/**'"));
+ assert.ok(!filter('whisper_gpu').includes("'.github/actions/build-onprem-image/**'"));
  for(const name of ['containers','hono','worker','frontend','docs']){
   assert.doesNotMatch(filter(name),/['"]\.github\/actions\/\*\*['"]/);
   assert.ok(filter(name).includes('.github/actions/setup-package-manager/**'),name);
@@ -94,7 +95,7 @@ test('CUDA preparation fails before build when its working set cannot fit',()=>{
 });
 
 test('publishers copy the scanned OCI graph directly and check the registry digest',()=>{
- for(const name of ['onprem-release','onprem-runtime-base']){
+ for(const name of ['onprem-release']){
   const workflow=readFileSync(join(__dirname,`../workflows/${name}.yml`),'utf8');
   const publish=workflow.match(/^  publish:\n([\s\S]*?)(?=^  [a-z][a-z-]*:|$(?![\s\S]))/m)[1];
   assert.doesNotMatch(publish,/docker (?:load|run|build|import)|zstd|--insecure|--plain-http/);

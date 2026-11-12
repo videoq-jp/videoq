@@ -21,15 +21,14 @@ test('both native architecture builds are credential-free and scan the archive b
   assert.match(build,/arch: \[amd64, arm64\]/);
   assert.match(build,/uses: \.\/\.github\/actions\/build-onprem-image/);
   assert.doesNotMatch(build,/secrets\.|id-token: write|packages: write|continue-on-error/);
-  assert.match(build,/component: \[api, worker, web, transcription-gateway, vllm-engine\]/);
-  assert.match(build,/exclude:\n          - component: vllm-engine\n            arch: arm64/);
+  assert.match(build,/component: \[api, worker, web, transcription-gateway\]/);
+  assert.doesNotMatch(build,/vllm-engine|Dockerfile\.vllm/);
 });
 
 test('the signed bundle includes the inference chart and NVIDIA assessment reports',()=>{
   assert.match(job('chart'),/helm" package charts\/videoq-inference/);
-  assert.match(job('build'),/security-config:.*vllm-engine.*security\/trivy.yaml/);
+  assert.match(job('upstream-vllm'),/uses: \.\/\.github\/workflows\/upstream-vllm.yml/);
   assert.match(job('build'),/evidence-name: security-/);
-  assert.match(job('indexes'),/if \[ "\$COMPONENT" != vllm-engine \]/);
   assert.match(job('staging'),/verified-inference.json/);
 });
 
@@ -37,7 +36,7 @@ test('release assessments apply only to their matching inference component',()=>
   const expression=job('build').match(/security-config: \$\{\{ (.*?) \}\}/)[1];
   const policy=component=>runInNewContext(expression,{matrix:{component}},{timeout:100});
   assert.equal(policy('transcription-gateway'),'apps/inference/whisper/security/cpu-trivy.yaml');
-  assert.equal(policy('vllm-engine'),'apps/inference/whisper/security/trivy.yaml');
+  assert.equal(policy('vllm-engine'),'');
   for(const component of ['api','worker','web','unknown']) assert.equal(policy(component),'');
 });
 
@@ -50,7 +49,7 @@ test('privileged jobs do not build images or execute application dependencies',(
     for(const action of text.matchAll(/uses: actions\/attest@(\S+)/g)) assert.match(action[1],/^[a-f0-9]{40}$/);
     if(text.includes('uses: actions/checkout@')) assert.match(text,/persist-credentials: false/);
   }
-  assert.match(job('publish'),/needs: \[source, build\]/);
+  assert.match(job('publish'),/needs: \[source, build, upstream-vllm\]/);
   assert.match(job('indexes'),/needs: \[source, publish\]/);
   assert.match(job('release'),/needs: \[source, indexes, chart\]/);
 });
