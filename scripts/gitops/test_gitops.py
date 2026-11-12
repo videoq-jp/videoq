@@ -212,6 +212,20 @@ class ManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unreviewed'):
             p.pin_argocd_manifest(raw, pin)
 
+    def test_reinstall_preserves_operator_added_ssh_host_trust(self):
+        raw = json.dumps({'apiVersion': 'v1', 'kind': 'ConfigMap',
+            'metadata': {'name': 'argocd-ssh-known-hosts-cm'},
+            'data': {'ssh_known_hosts': 'upstream defaults'}})
+        pin = {'sha256': hashlib.sha256(raw.encode()).hexdigest(), 'images': {}}
+        existing = 'github.com ssh-ed25519 OLD\n[forgejo.example.com]:2222 ssh-ed25519 NEW\n'
+        for hosts in (existing, ''):
+            result = json.loads(p.pin_argocd_manifest(raw, pin, hosts))
+            self.assertEqual(result['items'][0]['data']['ssh_known_hosts'], hosts)
+        self.assertEqual(json.loads(p.pin_argocd_manifest(raw, pin))['items'][0]['data']['ssh_known_hosts'],
+                         'upstream defaults')
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            p.pin_argocd_manifest(raw + '\n', pin, existing)
+
     def test_unreviewed_hooks_and_unpinned_images_cannot_be_promoted(self):
         with self.assertRaisesRegex(ValueError, 'unreviewed Helm hook'):
             m.order({'kind': 'Job', 'metadata': {'name': 'surprise', 'annotations': {'helm.sh/hook': 'pre-install'}}}, 0)

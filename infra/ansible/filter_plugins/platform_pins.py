@@ -10,12 +10,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts/gitops"))
 from repository import validate_repository
 
 
-def pin_argocd_manifest(raw, pin):
+def pin_argocd_manifest(raw, pin, known_hosts=None):
     if hashlib.sha256(raw.encode()).hexdigest() != pin['sha256']:
         raise ValueError('Upstream Argo CD manifest checksum mismatch')
     objects = [copy.deepcopy(item) for item in yaml.safe_load_all(raw) if item]
     used = set()
     for item in objects:
+        if (known_hosts is not None and item.get('kind') == 'ConfigMap'
+                and item.get('metadata', {}).get('name') == 'argocd-ssh-known-hosts-cm'):
+            # Keep operator-added host trust when comparing/reapplying upstream.
+            # Applying the upstream defaults would remove keys or conflict with
+            # the field manager that registered the internal Git server.
+            item.setdefault('data', {})['ssh_known_hosts'] = known_hosts
         if item.get('kind') == 'ConfigMap' and item.get('metadata', {}).get('name') == 'argocd-cm':
             # Preserve Helm release labels used by Service/NetworkPolicy selectors.
             # Application names deliberately differ from the Helm release names.

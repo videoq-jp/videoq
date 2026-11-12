@@ -230,10 +230,16 @@
     src: /var/lib/videoq-bootstrap/argocd.yaml
   register: upstream_argocd
 
+- name: Preserve existing SSH host trust before comparing the upstream installation
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, -n, argocd, get, configmap, argocd-ssh-known-hosts-cm, '--ignore-not-found', -o, json]
+  register: installed_argocd_known_hosts
+  changed_when: false
+
 - name: Fix Argo CD container images to the reviewed amd64 digests
   ansible.builtin.copy:
     dest: /var/lib/videoq-bootstrap/argocd-pinned.json
-    content: "{{ upstream_argocd.content | b64decode | pin_argocd_manifest(argocd) }}"
+    content: "{{ upstream_argocd.content | b64decode | pin_argocd_manifest(argocd, (installed_argocd_known_hosts.stdout | from_json).get('data', {}).get('ssh_known_hosts', '') if installed_argocd_known_hosts.stdout | length > 0 else none) }}"
     mode: '0600'
 
 - name: Compare Argo CD resources
