@@ -1,0 +1,80 @@
+- name: Create the private persistent image store and boot import directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+  loop:
+    - /var/lib/videoq-image-store
+    - /var/lib/videoq-image-store/registry
+    - /var/lib/rancher/k3s/agent/images
+    - /usr/local/lib/videoq-lab
+    - "/var/lib/videoq-image-store/tools/{{ oras.version }}"
+
+- name: Install the checksum-pinned upstream OCI copy tool
+  ansible.builtin.get_url:
+    url: "{{ oras.url }}"
+    checksum: "sha256:{{ oras.sha256 }}"
+    dest: /var/lib/videoq-image-store/tools/{{ oras.version }}/oras.tar.gz
+    mode: '0600'
+  register: oras_download
+
+- name: Extract the verified upstream OCI tool
+  ansible.builtin.unarchive:
+    src: /var/lib/videoq-image-store/tools/{{ oras.version }}/oras.tar.gz
+    dest: "/var/lib/videoq-image-store/tools/{{ oras.version }}"
+    remote_src: true
+    creates: "/var/lib/videoq-image-store/tools/{{ oras.version }}/oras"
+
+- name: Install the pinned OCI tool executable
+  ansible.builtin.copy:
+    src: "/var/lib/videoq-image-store/tools/{{ oras.version }}/oras"
+    dest: /usr/local/bin/videoq-oras
+    remote_src: true
+    mode: '0755'
+
+- name: Install the operator image staging command
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/gitops/image_store.py"
+    dest: /usr/local/lib/videoq-lab/image_store.py
+    mode: '0700'
+
+- name: Check the image registry boot archive
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/agent/images/videoq-image-store-{{ image_store.image.split('sha256:')[1] }}.tar
+  register: registry_archive
+
+- name: Cache the upstream registry so it can start without an upstream pull
+  when: not registry_archive.stat.exists
+  block:
+    - name: Fetch the digest-pinned registry image
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, ctr, images, pull, '--platform', linux/amd64, "{{ image_store.image }}"]
+    - name: Export the registry for native boot-time import
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, ctr, images, export, '--platform', linux/amd64, /var/lib/rancher/k3s/agent/images/videoq-image-store.partial, "{{ image_store.image }}"]
+    - name: Publish the completed registry boot archive
+      ansible.builtin.command: mv /var/lib/rancher/k3s/agent/images/videoq-image-store.partial /var/lib/rancher/k3s/agent/images/videoq-image-store-{{ image_store.image.split('sha256:')[1] }}.tar
+
+- name: Install the loopback-only persistent registry as a K3s managed manifest
+  ansible.builtin.template:
+    src: image-registry.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/videoq-image-store.yaml
+    mode: '0600'
+
+- name: Wait for the owned registry deployment
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n kube-system rollout status deployment/videoq-image-store --timeout=300s
+  register: registry_rollout
+  until: registry_rollout.rc == 0
+  retries: 5
+  delay: 2
+  changed_when: false
+
+- name: Wait for the private image store
+  ansible.builtin.uri:
+    url: http://127.0.0.1:5000/v2/
+    status_code: 200
+  register: image_store_ready
+  until: image_store_ready.status | default(0) == 200
+  retries: 90
+  delay: 2
+  changed_when: false

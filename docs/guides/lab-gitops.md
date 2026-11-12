@@ -54,8 +54,7 @@ VIDEOQ_VERIFY_PYTHON=/secure/videoq-operator/bin/python \
   --source-sha SOURCE_SHA --run-id RUN_ID --run-attempt 1 \
   --repository ssh://git@forgejo.example.com:2222/lab/config.git \
   --public-url https://192.168.1.50 --listen-ip 192.168.1.50 \
-  --storage-gib 40 --output /secure/videoq-lab-config \
-  --deployment-pin-output .github/deployment-pins/lab.json
+  --storage-gib 40 --output /secure/videoq-lab-config
 ```
 
 `SOURCE_SHA` と `RUN_ID` は実際の配布物の値に置き換える。コンパイラは現在の配布スキーマを検査し、
@@ -64,14 +63,30 @@ main の成功実行、Sigstore 署名・透明性ログ、ソース、チャー
 サーバーでのビルドや、その場での未固定 `helm dependency update` は行わない。
 
 採用する署名付き配布物一式は、検証後に管理者側でも保管する。GitHub の正式リリースは最新2世代へ
-整理される。既存の配置は構成リポジトリの生成済みリソースと保護されたイメージを使って起動でき、
+整理される。既存の配置は構成リポジトリの生成済みリソースと研究室内に保存したイメージを使って起動でき、
 保管した配布物は採用時の検証記録とチャートの再確認に使える。
 
-生成結果は構成リポジトリで PR にして確認する。このコマンドは push・デプロイを行わない。
-先にアプリ本体リポジトリの `.github/deployment-pins/lab.json` を PR で取り込む。公開するのは
-リリースとイメージの既に公開済みの識別情報だけで、LAN IP・設定・秘密情報は含めない。
-その後に非公開構成リポジトリの変更を採用する。前の採用バージョンも1世代分保護し、
-当該ホストの同期と確認が終わるまで次の昇格を重ねない。
+生成結果は研究室内の構成リポジトリで確認する。このコマンドはpush・デプロイを行わない。
+アプリ本体のGitHubリポジトリへの書き込みやPR、採用版の公開登録は不要。
+初回同期の前に、下記の手順で署名検証済みのアプリイメージを研究室内へ保存する。
+
+Ansibleは、ホストの`127.0.0.1:5000`だけで待ち受ける永続OCIレジストリを準備し、
+K3sのGHCR取得先にこのミラーを追加する。公開用のポートは開かない。
+イメージの参照とdigestは署名付き配布物の値を保ち、ミラーへ同一のOCIグラフを保存する。
+Dockerビルド、タグの再解決、署名検証の省略は行わない。
+
+配置設定を生成し、Ansibleの初回準備を完了した後、管理PCから対象サーバーへコピーする。
+以下の`lab4090`はSSH設定の接続名に置き換える。
+
+```bash
+ssh lab4090 mkdir -p /root/videoq-initial-config
+scp -r /secure/videoq-lab-config/clusters/lab/. lab4090:/root/videoq-initial-config/
+ssh lab4090 'python3 /usr/local/lib/videoq-lab/image_store.py --site-directory /root/videoq-initial-config'
+```
+
+4つのアプリイメージすべての保存とdigest・全グラフの検査が成功してから、
+構成を研究室内Gitへpushし、Argo CDで同期する。コピーに失敗した場合は同期しない。
+初回の取得にはGitHub/GHCRへの外向き接続が必要だが、GitHubアカウント・書込トークンは不要。
 
 ```text
 clusters/lab/
@@ -252,15 +267,20 @@ PVC は `Prune=false,Delete=false` とし、Application に削除 finalizer を�
 食い違う場合や、コピーなしで既存 Secret が見つかった場合は上書きせず停止する。
 
 既存 K3s は `videoq_adopt_existing_cluster: true` で明示的に選択できるが、サービス定義や
-K3s設定は置き換えない。旧インストーラーと同じ URL で採用する場合は、ホスト内の private な
+`config.yaml`は置き換えない。ローカルイメージストア用にレジストリミラーを追加するが、既存の他のミラー・認証情報は保持する。既存GHCR rewriteと競合する場合は停止し、管理者による設定の確認を求める。旧インストーラーと同じ URL で採用する場合は、ホスト内の private な
 旧 `credentials.json` を `videoq_existing_credentials_file` に指定してコピーできる。全既存キーの
 一致を検査し、鍵の再生成や URL の暗黙変更を行わない。Helm所有権・更新タイマーの引き継ぎは
 自動化していない。バックアップと所有権の移行を確認してから Argo CD に管理を渡す。
 
-配布物の削除は「最新2世代」に加えて、構成リポジトリで現在採用中の digest も保護する必要がある。
-retention は main と未マージの PR 内の `.github/deployment-pins/*.json` から保護対象を取得する。
-非公開リポジトリの読取トークンを cleanup に渡す必要はない。保護処理を含む retention の導入と
-公開側の pin 登録を完了してから、非公開側の構成を同期する。構成だけ過去へ戻しても、DB復元や削除済みイメージの再取得ができるとは限らない。
+公開配布元は最新2世代へ整理される。研究室内の永続イメージストアはその削除処理から独立しており、
+採用済みのイメージは上流で削除されてもローカルから再取得できる。
+自動更新器は新しいイメージを研究室内へ保存・検査してからGitの構成変更へ進む。
+`/var/lib/videoq-image-store`はGit・DB・動画と一緒にオフホストへバックアップする。
+ローカルのイメージを自動削除しないため、空き容量を監視し、現在版と復旧用の版を残して管理する。
+構成だけ過去へ戻してもDBが復元されたことにはならない。
+
+これはすべての依存を含む完全オフライン導入ではない。初回取得、将来の正式リリース検知、
+未保存の上流依存やモデルの取得には外向き通信が必要。
 
 Vast.ai の検証ホストは、GPUの実機試験中だけ起動し、CI待ち・実装中・試験終了後は停止する。
 停止中のディスク保持料金は別に残る。
@@ -284,3 +304,9 @@ python -m unittest discover -s scripts/gitops -p 'test_*.py' -v
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 - [Argo CD 宣言的セットアップ](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)
 - [Argo CD Sync phases / waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/)
+
+ローカルイメージ保持の[検証記録](../verification/lab-image-store-acceptance-2026-11-13.json)には、
+取得元停止と保存先コンテナ再作成後のOCIグラフ検査、スキャン結果、試験範囲を記載している。
+上流registry 3.1.2のスキャンには未修正のHIGH検出が8件あるため、脆弱性ゼロとは扱わない。
+localhost限定・Podからの接続拒否・非公開・信頼済みホストからの利用という構成を保ち、
+上流の修正版が公開されたら保守時にdigestを更新する。外部公開用のレジストリとして流用しない。

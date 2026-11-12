@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "scope": "Local CPU Docker acceptance; production staging functions with fixture OCI graphs, not a new GPU or app acceptance",
+  "applicationImageFamiliesTested": 4,
+  "fixture": "Official Distribution registry OCI index and all child graphs copied under four application repository names",
+  "signatureVerifierChanged": false,
+  "originalManifestDigestPreserved": true,
+  "sourceRegistryStopped": true,
+  "noUpstreamRequestForRetainedGraphs": true,
+  "destinationContainerRecreatedWithPersistentVolume": true,
+  "readOnlyContainerFilesystemAndNoCapabilities": true,
+  "githubAccountOrWriteTokenRequired": false,
+  "githubDeploymentPrRequired": false,
+  "updaterStoreFailureBlocksGitChanges": true,
+  "registryImage": "docker.io/library/registry@sha256:82f6ff4a7f982960c8aa51617fea3aabc485df6e55cce80d22deb1de36f1bc3c",
+  "securityScan": {
+    "tool": "Trivy 0.76.1",
+    "platform": "linux/amd64",
+    "severities": [
+      "HIGH",
+      "CRITICAL"
+    ],
+    "critical": 0,
+    "high": 8,
+    "rawReportSha256": "b6aaec0bd0da684b927c8500e7fa944c33d425d6e3e4bb25cd370d8af45ae2ec",
+    "findings": [
+      {
+        "VulnerabilityID": "CVE-2026-116587",
+        "PkgName": "github.com/go-jose/go-jose/v4",
+        "InstalledVersion": "v4.1.4",
+        "FixedVersion": "4.1.6",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-63209",
+        "PkgName": "github.com/klauspost/compress",
+        "InstalledVersion": "v1.18.4",
+        "FixedVersion": "1.18.7",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-78661",
+        "PkgName": "golang.org/x/net",
+        "InstalledVersion": "v0.59.0",
+        "FixedVersion": "0.62.0",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-78669",
+        "PkgName": "golang.org/x/net",
+        "InstalledVersion": "v0.59.0",
+        "FixedVersion": "0.60.0",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-111943",
+        "PkgName": "stdlib",
+        "InstalledVersion": "v1.26.8",
+        "FixedVersion": "1.26.10, 1.27.3",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-78667",
+        "PkgName": "stdlib",
+        "InstalledVersion": "v1.26.8",
+        "FixedVersion": "1.26.9, 1.27.2",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-78669",
+        "PkgName": "stdlib",
+        "InstalledVersion": "v1.26.8",
+        "FixedVersion": "1.26.9, 1.27.2",
+        "Severity": "HIGH"
+      },
+      {
+        "VulnerabilityID": "CVE-2026-97031",
+        "PkgName": "stdlib",
+        "InstalledVersion": "v1.26.8",
+        "FixedVersion": "1.26.9, 1.27.2",
+        "Severity": "HIGH"
+      }
+    ],
+    "upstreamLatestReleaseChecked": "https://github.com/distribution/distribution/releases/tag/v3.1.2",
+    "disposition": "Findings retained, not suppressed or claimed fixed. This registry is limited to trusted host clients; monitor upstream and upgrade during maintenance.",
+    "deploymentRestrictions": [
+      "Host port bound only to 127.0.0.1",
+      "No public service or ingress",
+      "Default-deny pod ingress NetworkPolicy",
+      "No token-auth, TLS or proxy-cache mode configured",
+      "Persistent storage outside container; deletion disabled"
+    ]
+  },
+  "limitations": [
+    "No production VM changes made for this acceptance",
+    "No complete air-gap rebuild claim",
+    "Uncached external dependencies and models still need their upstream source",
+    "Local registry data requires separate off-host backup and capacity management"
+  ]
+}

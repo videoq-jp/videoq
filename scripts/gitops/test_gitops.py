@@ -127,21 +127,46 @@ class CredentialsTests(unittest.TestCase):
                 self.initialize(path, 'https://192.168.1.50', run)
 
 
+class RegistryConfigurationTests(unittest.TestCase):
+    def test_mirror_preserves_credentials_and_other_endpoints_without_mutating_input(self):
+        existing = {'configs': {'private.example': {'auth': {'password': 'test-only'}}},
+                    'mirrors': {'ghcr.io': {'endpoint': ['https://existing.example']},
+                                'private.example': {'endpoint': ['https://private.example']}}}
+        original = copy.deepcopy(existing)
+        updated = p.lab_registry_mirror(existing)
+        self.assertEqual(existing, original)
+        self.assertEqual(updated['configs'], existing['configs'])
+        self.assertEqual(updated['mirrors']['private.example'], existing['mirrors']['private.example'])
+        self.assertEqual(updated['mirrors']['ghcr.io']['endpoint'], ['http://127.0.0.1:5000', 'https://existing.example'])
+        self.assertEqual(p.lab_registry_mirror(updated), updated)
+
+    def test_existing_rewrites_or_invalid_config_fail_before_installation(self):
+        for config in [[], {'mirrors': []}, {'mirrors': {'ghcr.io': {'rewrite': {'x': 'y'}}}},
+                       {'mirrors': {'ghcr.io': {'endpoint': 'http://invalid'}}}]:
+            with self.assertRaises(ValueError): p.lab_registry_mirror(config)
+
+
 class ManifestTests(unittest.TestCase):
-    def test_promotions_protect_the_previous_site_generation_without_private_configuration(self):
-        images = {name: {'repository': 'ghcr.io/videoq-jp/videoq-' + name, 'digest': 'sha256:' + 'a'*64}
-                  for name in ('api', 'worker', 'web', 'transcription-gateway')}
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'site.json'
-            first = {'sourceSha': 'a'*40, 'images': images}
-            path.write_text(json.dumps(m.deployment_pin(path, first, '123', 1)))
-            second = {'sourceSha': 'b'*40, 'images': images}
-            promoted = m.deployment_pin(path, second, '124', 1)
-            self.assertEqual([g['sourceSha'] for g in promoted['generations']], ['b'*40, 'a'*40])
-            path.write_text(json.dumps(promoted))
-            self.assertEqual(m.deployment_pin(path, second, '124', 1), promoted)
-            third = {'sourceSha': 'c'*40, 'images': images}
-            self.assertEqual([g['sourceSha'] for g in m.deployment_pin(path, third, '125', 1)['generations']], ['c'*40, 'b'*40])
+    def test_registry_manifest_is_private_and_storage_survives_container_replacement(self):
+        from jinja2 import Template
+        import yaml
+        pin = json.loads((m.ROOT / 'infra/ansible/pins.json').read_text())['image_store']
+        raw = (m.ROOT / 'infra/ansible/roles/lab/templates/image-registry.yaml.j2').read_text()
+        deployment, policy = list(yaml.safe_load_all(Template(raw).render(image_store=pin)))
+        pod = deployment['spec']['template']['spec']
+        container = pod['containers'][0]
+        self.assertEqual(container['image'], pin['image'])
+        self.assertIn('@sha256:', container['image'])
+        self.assertEqual(container['ports'], [{'containerPort': 5000, 'hostPort': 5000, 'hostIP': '127.0.0.1'}])
+        self.assertEqual(pod['volumes'][0]['hostPath']['path'], '/var/lib/videoq-image-store/registry')
+        self.assertTrue(container['securityContext']['readOnlyRootFilesystem'])
+        self.assertEqual(policy['spec']['ingress'], [])
+        self.assertFalse(pod['automountServiceAccountToken'])
+
+    def test_promotion_has_no_public_deployment_registration_argument(self):
+        result = subprocess.run([sys.executable, str(m.ROOT / 'scripts/gitops/promote.py'), '--help'],
+                                text=True, capture_output=True, check=True)
+        self.assertNotIn('--deployment-pin-output', result.stdout)
 
     def test_ansible_renders_only_restricted_projects_and_a_manual_root_application(self):
         with tempfile.TemporaryDirectory() as temporary:

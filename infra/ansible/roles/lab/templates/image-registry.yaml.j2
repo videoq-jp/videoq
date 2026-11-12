@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: videoq-image-store
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: videoq-image-store
+  template:
+    metadata:
+      labels:
+        app: videoq-image-store
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: registry
+          image: {{ image_store.image }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+              value: /var/lib/registry
+            - name: REGISTRY_HTTP_ADDR
+              value: 0.0.0.0:5000
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "false"
+            - name: OTEL_TRACES_EXPORTER
+              value: none
+          ports:
+            - containerPort: 5000
+              hostPort: 5000
+              hostIP: 127.0.0.1
+          readinessProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/videoq-image-store/registry
+            type: Directory
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: videoq-image-store
+  namespace: kube-system
+spec:
+  podSelector:
+    matchLabels:
+      app: videoq-image-store
+  policyTypes: [Ingress]
+  ingress: []
