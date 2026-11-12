@@ -1,0 +1,111 @@
+name: Upstream vLLM inspection
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: ./.github/actions/setup-package-manager
+        with:
+          manager: npm
+      - run: npm ci --ignore-scripts --workspace @videoq/api
+      - name: Resolve the exact upstream serving image
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync, appendFileSync} from 'node:fs';
+          import {parse} from 'yaml';
+          const values = parse(readFileSync('charts/videoq-inference/values.yaml', 'utf8'));
+          const {repository, digest} = values.vllm.image;
+          assert.equal(repository, 'vllm/vllm-openai');
+          assert.match(digest, /^sha256:[a-f0-9]{64}$/);
+          appendFileSync(process.env.GITHUB_ENV, `VLLM_IMAGE=${repository}@${digest}\n`);
+          JS
+      - name: Prepare verified audio wheels without building an engine
+        id: audio
+        run: |
+          python3 apps/inference/whisper/provision_audio.py \
+            --manifest charts/videoq-inference/files/vllm-audio-wheels.json \
+            --cache "$RUNNER_TEMP/vllm-audio-cache" --destination "$PWD/audio-runtime" --download
+          cp audio-runtime/.videoq-audio.json vllm-audio-receipt.json
+      - name: Reserve disk for the upstream CUDA image
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/share/swift /usr/local/.ghcup
+      - name: Scan upstream without suppressing findings
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        with:
+          version: v0.76.1
+          image-ref: ${{ env.VLLM_IMAGE }}
+          format: json
+          output: vllm-security-raw.json
+          scanners: vuln
+          severity: LOW,MEDIUM,HIGH,CRITICAL,UNKNOWN
+          ignore-unfixed: 'false'
+          exit-code: '0'
+          timeout: 25m
+        env:
+          TRIVY_IMAGE_SRC: remote
+          TRIVY_LIST_ALL_PKGS: true
+      - name: Scan the exact installed audio dependencies
+        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        with:
+          version: v0.76.1
+          scan-type: rootfs
+          scan-ref: audio-runtime
+          format: json
+          output: vllm-audio-security-raw.json
+          scanners: vuln
+          severity: LOW,MEDIUM,HIGH,CRITICAL,UNKNOWN
+          ignore-unfixed: 'false'
+          exit-code: '0'
+          timeout: 10m
+      - name: Verify upstream audio imports and model registration without rebuilding
+        if: ${{ !cancelled() && env.VLLM_IMAGE != '' && steps.audio.outcome == 'success' }}
+        run: |
+          docker run --rm --platform linux/amd64 --network none --user 10001:10001 \
+            -e HOME=/tmp -e HF_HUB_OFFLINE=1 -e VLLM_NO_USAGE_STATS=1 -e PYTHONPATH=/opt/videoq-audio \
+            -v "$PWD/audio-runtime:/opt/videoq-audio:ro" \
+            -v "$PWD/.github/scripts/check-vllm-runtime.py:/probe.py:ro" \
+            --entrypoint python3 "$VLLM_IMAGE" /probe.py > vllm-runtime.json
+      - name: Verify exact upstream file inventory
+        if: ${{ !cancelled() && env.VLLM_IMAGE != '' }}
+        run: |
+          docker run --rm --platform linux/amd64 --network none --user 10001:10001 \
+            -v "$PWD/.github/scripts/check-vllm-inventory.py:/inventory.py:ro" \
+            --entrypoint python3 "$VLLM_IMAGE" /inventory.py > vllm-native-inventory.json
+      - name: Install the reviewed Helm renderer
+        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
+        run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
+      - name: Reject unassessed upstream or audio findings
+        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
+        run: |
+          node .github/scripts/check-vllm-scan.cjs vllm-security-raw.json "$VLLM_IMAGE" vllm-security-assessed.json \
+            vllm-audio-security-raw.json charts/videoq-inference/files/vllm-audio-wheels.json audio-runtime vllm-native-inventory.json
+      - name: Retain upstream inspection evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: upstream-vllm-inspection-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            vllm-security-raw.json
+            vllm-security-assessed.json
+            vllm-audio-security-raw.json
+            vllm-audio-receipt.json
+            charts/videoq-inference/files/vllm-audio-wheels.json
+            vllm-runtime.json
+            vllm-native-inventory.json
+            apps/inference/vllm/security/
+          if-no-files-found: error
+          retention-days: 90

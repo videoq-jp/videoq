@@ -19,8 +19,8 @@ module.exports = async function pruneBuildArtifacts({ github, context, sourceSha
   assert.equal(run.head_branch, 'main');
   assert.equal(run.head_repository.full_name, `${owner}/${repo}`);
   assert.equal(run.run_attempt, attempt);
-  const names = new Set(['api', 'worker', 'web', 'transcription-gateway', 'vllm-engine'].flatMap(component =>
-    (component === 'vllm-engine' ? ['amd64'] : ['amd64', 'arm64']).map(arch =>
+  const names = new Set(['api', 'worker', 'web', 'transcription-gateway'].flatMap(component =>
+    ['amd64', 'arm64'].map(arch =>
       `build-${component}-${arch}-${sourceSha}-attempt-${attempt}`)));
   const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, { owner, repo, run_id: runId, per_page: 100 });
   const selected = artifacts.filter(artifact => names.has(artifact.name) && !artifact.expired);

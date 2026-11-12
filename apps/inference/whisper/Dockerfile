@@ -71,7 +71,7 @@ COPY --from=native /ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-COPY server.py provision.py embedding_server.py ./
+COPY server.py provision.py provision_audio.py ./
 COPY security/verify_sqlite.py /app/verify_sqlite.py
 COPY security/fts5-secure-delete.db /app/fts5-secure-delete.db
 COPY security/verify_zlib.py /app/verify_zlib.py

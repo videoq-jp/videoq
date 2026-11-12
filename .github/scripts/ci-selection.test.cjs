@@ -68,8 +68,8 @@ test('native and GPU checks are selected independently from lifecycle recovery',
   }
   for (const event of events) {
     assert.equal(selected('onprem_lifecycle', event, ['apps/inference/whisper/server.py']), false);
-    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
-    assert.equal(selected('onprem', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/provision_audio.py']), true);
+    assert.equal(selected('onprem', event, ['apps/inference/whisper/provision_audio.py']), true);
   }
 });
 
@@ -95,7 +95,7 @@ test('shared workflow edits do not download models or scan unchanged upstream im
     }
     assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
     assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);
-    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/Dockerfile.vllm']), true);
+    assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/provision_audio.py']), true);
   }
 });
 

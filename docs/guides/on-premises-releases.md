@@ -21,7 +21,7 @@ that commit, for example to rebuild after distribution package fixes.
 
 Distribution uses the public packages
 `ghcr.io/videoq-jp/videoq-api`, `videoq-worker` and
-`videoq-web`, `videoq-transcription-gateway` and `videoq-vllm`.
+`videoq-web` and `videoq-transcription-gateway`.
 Docker and Kubernetes can pull them without a GHCR login
 or `imagePullSecrets`. Site-owned private registries can still use
 `imagePullSecrets` when required. The images include the repository's existing
@@ -44,16 +44,19 @@ and a CycloneDX inventory. Separate fresh runners publish the exact build
 artifacts without running application containers or installing app dependencies
 with publication credentials. GitHub OIDC signs provenance and per-architecture
 SBOM attestations. A signed multi-architecture index binds the two architectures;
-the signed schema-v3 release manifest binds all five image index digests, their
-supported architectures and both charts' bytes. The NVIDIA image is amd64-only;
-its index must not advertise arm64. The inference values use that same patched,
-audio-capable vLLM image for NVIDIA chat, embeddings and speech.
+the signed schema-v5 release manifest binds all four image index digests, their
+supported architectures and both charts' bytes. The inference chart separately
+pins the unmodified Linux amd64 upstream vLLM digest for chat, embeddings and
+speech. VideoQ does not build, publish or sign a replacement engine image.
 
-NVIDIA scanning retains the existing narrowly scoped
-[kernel-header assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/whisper/security/README.md).
-Only explicitly assessed header findings are suppressed; other HIGH/CRITICAL
-findings still block publication. The `security-*` workflow artifacts retain JSON
-reports, including suppressed findings and the assessment, for 90 days.
+The mandatory upstream inspection retains unsuppressed Trivy scans of the image
+and the separate installed audio wheels, verifies actual image files and runtime
+imports, and evaluates findings against the constrained chart workloads. Only
+exact, current, evidence-backed applicability assessments are accepted; new or
+unassessed HIGH/CRITICAL/UNKNOWN findings block publication. See the
+[upstream assessment](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md).
+The `upstream-vllm-inspection-*` artifacts retain raw reports, inventories, runtime
+checks, dependency locks and assessments for 90 days.
 
 The production API and worker use digest-pinned Alpine images. In addition to the
 interpreter, the canonical runtime updater refreshes these pins and the verified
@@ -104,7 +107,7 @@ The authenticated GitHub CLI above is used for workflow artifacts and attestatio
 verification. The verifier checks GitHub's signature and artifact
 subject, the exact repository and release workflow, `refs/heads/main`, the source
 commit and hosted-runner identity. It verifies the manifest, both chart checksums
-and signatures, and all five image index signatures before writing either values file.
+and signatures, and all four image index signatures before writing either values file.
 A missing signature, altered chart, different source or unexpected repository
 aborts verification and preserves existing values. Per-architecture SBOM
 attestations can also be inspected using `gh attestation verify` with predicate
@@ -231,8 +234,8 @@ test with backing services; production sizing still needs representative videos.
 
 ## Package names and historical releases
 
-The namespace migration is complete. Current releases publish the five public
-`videoq-jp/videoq-{api,web,worker,transcription-gateway,vllm}` packages through
+The namespace migration is complete. Current releases publish the four public
+`videoq-jp/videoq-{api,web,worker,transcription-gateway}` packages through
 **On-prem Release**. Their package settings must retain repository Actions Write
 access and public visibility. Bootstrap tags are not deployment releases.
 

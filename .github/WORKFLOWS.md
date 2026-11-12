@@ -108,8 +108,8 @@ gh workflow run operations.yml -f check=all
 Operations runs daily at 09:17 JST, inference compatibility every Monday at 11:17 JST,
 and the database restore on the 1st of each month at 13:41 JST.
 `check=onprem` can add validation with explicit `validate_real_cpu` and `validate_whisper_gpu`.
-In CI's on-prem validation, vulnerability scans of pinned upstream images (llama.cpp and
-whisper.cpp) are limited to PRs that change those pins or scan settings, and to manual CI.
+In CI's on-prem validation, vulnerability scans of pinned upstream images (llama.cpp,
+whisper.cpp and vLLM, including its locked audio volume) are limited to PRs that change those pins or scan settings, and to manual CI.
 Daily Operations always scans them.
 Monitors do not open Issues; results go to the job summary.
 See [dependency-automation.md](dependency-automation.md) for update processing and

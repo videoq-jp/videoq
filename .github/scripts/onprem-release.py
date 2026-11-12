@@ -13,36 +13,24 @@ import subprocess
 import tempfile
 
 REPOSITORY = "videoq-jp/videoq"
-HISTORICAL_REPOSITORY = "yukiharada1228/videoq"
 WORKFLOW = REPOSITORY + "/.github/workflows/onprem-release.yml"
 APP_COMPONENTS = ("api", "worker", "web")
-COMPONENTS = (*APP_COMPONENTS, "transcription-gateway", "vllm-engine")
-LEGACY_COMPONENTS = (*APP_COMPONENTS, "whisper", "whisper-vllm")
-PLATFORMS = {c: (["linux/amd64"] if c == "vllm-engine" else ["linux/amd64", "linux/arm64"]) for c in COMPONENTS}
+COMPONENTS = (*APP_COMPONENTS, "transcription-gateway")
+PLATFORMS = {c: ["linux/amd64", "linux/arm64"] for c in COMPONENTS}
 CHARTS = {"application": "videoq", "inference": "videoq-inference"}
 PREFIX = "ghcr.io/" + REPOSITORY + "-"
-LEGACY_PREFIX = PREFIX + "onprem-"
 
 
 def layout(version):
-    if type(version) is not int or version not in (2, 3, 4):
+    if type(version) is not int or version != 5:
         raise ValueError("Unsupported release schema version")
-    components = LEGACY_COMPONENTS if version == 2 else COMPONENTS
-    prefix = LEGACY_PREFIX if version == 2 else PREFIX
-    platforms = {c: (["linux/amd64"] if c in ("whisper-vllm", "vllm-engine") else ["linux/amd64", "linux/arm64"]) for c in components}
-    return components, prefix, platforms
+    return COMPONENTS, PREFIX, PLATFORMS
 
 
-def repository(component, version=4, source_repository=REPOSITORY):
-    if source_repository not in (REPOSITORY, HISTORICAL_REPOSITORY):
-        raise ValueError("Unexpected release repository")
-    components, prefix, _ = layout(version)
-    prefix = "ghcr.io/" + source_repository + ("-onprem-" if version == 2 else "-")
-    if component not in components:
+def repository(component):
+    if component not in COMPONENTS:
         raise ValueError("Unknown release component")
-    if component == "vllm-engine":
-        return "ghcr.io/" + source_repository + ("-onprem-whisper-vllm" if version == 3 else "-vllm")
-    return prefix + component
+    return PREFIX + component
 
 
 def sha(value):
@@ -62,13 +50,13 @@ def digest(value):
 def validate(data, expected_sha):
     sha(expected_sha)
     components, prefix, platforms = layout(data.get("schemaVersion"))
-    if data.get("repository") not in (REPOSITORY, HISTORICAL_REPOSITORY) or data.get("sourceSha") != expected_sha:
+    if data.get("repository") != REPOSITORY or data.get("sourceSha") != expected_sha:
         raise ValueError("Release repository or source commit does not match the reviewed source")
     if set(data.get("images", {})) != set(components):
         raise ValueError("Release must include all application and inference components")
     for component in components:
         image = data["images"][component]
-        if image.get("repository") != repository(component, data["schemaVersion"], data["repository"]):
+        if image.get("repository") != repository(component):
             raise ValueError("Unexpected image repository")
         if image.get("platforms") != platforms[component]:
             raise ValueError("Unexpected image architectures")
@@ -83,56 +71,35 @@ def validate(data, expected_sha):
     return data
 
 
-def attest(target, source, predicate=None, *, source_repository=REPOSITORY):
-    if source_repository not in (REPOSITORY, HISTORICAL_REPOSITORY):
-        raise ValueError("Unexpected release repository")
-    command = ["gh", "attestation", "verify", str(target), "--repo", source_repository,
-               "--signer-workflow", source_repository + "/.github/workflows/onprem-release.yml", "--source-ref", "refs/heads/main",
+def attest(target, source, predicate=None):
+    command = ["gh", "attestation", "verify", str(target), "--repo", REPOSITORY,
+               "--signer-workflow", WORKFLOW, "--source-ref", "refs/heads/main",
                "--source-digest", sha(source), "--deny-self-hosted-runners"]
     if predicate:
         command += ["--predicate-type", predicate]
-    # Do not shell-expand release metadata. gh verifies the signature, subject,
-    # GitHub OIDC identity and source revision, not just an embedded predicate.
-    if source_repository == HISTORICAL_REPOSITORY:
-        # Attestations remain under their original owner after a repository
-        # transfer. Fetch the bundle there, then apply the SAME exact repository,
-        # workflow, source-ref and commit policy locally; never trust lookup scope
-        # as a substitute for signature verification.
-        with tempfile.TemporaryDirectory(prefix="videoq-historical-attestation-") as directory:
-            artifact = str(target) if str(target).startswith("oci://") else str(Path(target).resolve())
-            subprocess.run(["gh", "attestation", "download", artifact, "--owner", "yukiharada1228"],
-                           cwd=directory, check=True)
-            bundles = list(Path(directory).glob("*.jsonl"))
-            if len(bundles) != 1:
-                raise ValueError("Expected exactly one historical attestation bundle")
-            subprocess.run(command + ["--bundle", str(bundles[0])], check=True)
-    else:
-        subprocess.run(command, check=True)
+    subprocess.run(command, check=True)
 
 
 def verify(manifest, source):
     data = validate(json.loads(manifest.read_text()), source)
-    # Metadata selects only between two fixed identities; verify every signature
-    # against that exact identity, never an arbitrary repository from a bundle.
-    identity = data["repository"]
-    attest(manifest, source, source_repository=identity)
+    attest(manifest, source)
     for entry in data["charts"].values():
         chart = manifest.parent / entry["name"]
         if "sha256:" + hashlib.sha256(chart.read_bytes()).hexdigest() != entry["digest"]:
             raise ValueError("Chart bytes do not match the signed release")
-        attest(chart, source, source_repository=identity)
+        attest(chart, source)
     for component in data["images"]:
         image = data["images"][component]
-        attest("oci://" + image["repository"] + "@" + image["digest"], source, source_repository=identity)
+        attest("oci://" + image["repository"] + "@" + image["digest"], source)
     def image(component):
         return {k: data["images"][component][k] for k in ("repository", "digest")}
     application = {"requireImageDigests": True, **{
         c: {"image": {**image(c), "tag": "", "pullPolicy": "IfNotPresent"}}
         for c in APP_COMPONENTS}}
-    gateway, engine = ("whisper", "whisper-vllm") if data["schemaVersion"] == 2 else ("transcription-gateway", "vllm-engine")
+    # Upstream engines are digest-pinned in the verified, signed inference chart.
+    # Release values only override the VideoQ gateway, never those upstream pins.
     inference = {"requireImageDigests": True,
-                 "whisper": {"image": image(gateway), "vllmImage": image(engine)},
-                 "vllm": {"image": image(engine)}}
+                 "whisper": {"image": image("transcription-gateway")}}
     return application, inference
 
 
@@ -172,7 +139,7 @@ def main():
         print("Verified release; application and inference Helm image values written")
         return
     charts = {key: args.directory / (name + "-0.1.0-sha." + args.source + ".tgz") for key, name in CHARTS.items()}
-    data = {"schemaVersion": 4, "repository": REPOSITORY, "sourceSha": args.source,
+    data = {"schemaVersion": 5, "repository": REPOSITORY, "sourceSha": args.source,
             "images": {c: {"repository": repository(c),
                            "platforms": PLATFORMS[c],
                            "digest": (args.directory / (c + ".digest")).read_text().strip()} for c in COMPONENTS},
