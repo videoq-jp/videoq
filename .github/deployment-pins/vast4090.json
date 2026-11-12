@@ -2,6 +2,29 @@
   "schemaVersion": 1,
   "generations": [
     {
+      "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+      "runId": "43213448108",
+      "runAttempt": 1,
+      "images": {
+        "api": {
+          "repository": "ghcr.io/videoq-jp/videoq-api",
+          "digest": "sha256:504a316db4f45b0b55d8a10e84c20c3bd61cb3594636d3e59f5f4c214238592d"
+        },
+        "worker": {
+          "repository": "ghcr.io/videoq-jp/videoq-worker",
+          "digest": "sha256:4c12875e9654db3d30e079881c3dcb4ccbb12bf4d0d2616afdd716ad46811888"
+        },
+        "web": {
+          "repository": "ghcr.io/videoq-jp/videoq-web",
+          "digest": "sha256:a43c931530729c3961a09dca17e3e843c1d53d8a2729049f2b006b6f6f421671"
+        },
+        "transcription-gateway": {
+          "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
+          "digest": "sha256:a98dfe7efea1f67a499239d011f8ff7d5e31b6a912d9e9e770a8b4f3720539aa"
+        }
+      }
+    },
+    {
       "sourceSha": "32fd53364729d88b87641590f15392e9f8a79b7f",
       "runId": "43197856422",
       "runAttempt": 1,
@@ -21,29 +44,6 @@
         "transcription-gateway": {
           "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
           "digest": "sha256:ec3747a506ad03730f15c1296c3f112538dc30e884fcaf0302d139046abfb56a"
-        }
-      }
-    },
-    {
-      "sourceSha": "40adc7bdd8e3c99970d6851486fca30f06085863",
-      "runId": "43172519519",
-      "runAttempt": 1,
-      "images": {
-        "api": {
-          "repository": "ghcr.io/videoq-jp/videoq-api",
-          "digest": "sha256:152fdd3d012411107728673fc8e27b76faa1ca55ff637c8f4cdc6c3a87f8c652"
-        },
-        "worker": {
-          "repository": "ghcr.io/videoq-jp/videoq-worker",
-          "digest": "sha256:31d533dd4c906a9ea9e3a1042ea3e406988294a793886624dbc7dfce1f15eddf"
-        },
-        "web": {
-          "repository": "ghcr.io/videoq-jp/videoq-web",
-          "digest": "sha256:261c994b199c8979da778efabdd80f4fdff91cd72cc4fbef9a2fc382bfd9a00c"
-        },
-        "transcription-gateway": {
-          "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
-          "digest": "sha256:1f237b9dc54dbae575a1c950589bff91f30e7813c5b84610c9626a0c7c5d0365"
         }
       }
     }
