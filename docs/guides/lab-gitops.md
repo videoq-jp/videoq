@@ -1,5 +1,8 @@
 # 研究室の RTX 4090 を Ansible と Argo CD で管理する
 
+**初めて作業する人へ：** [空のサーバーからの導入マニュアル](lab-first-install.md)では、Macの準備、Forgejo、Vault、画面確認、自動更新、停止まで順番に進められます。
+
+
 初回の OS・GPU・K3s・Argo CD は Ansible、アプリの配置と更新は Argo CD に分担する。
 Argo CD は研究室内の K3s に置き、研究室内の Forgejo/GitLab から設定を取得する。
 GitHub の公開正式リリースへの追従は、ホスト側の[自動更新サービス](lab-auto-update.md)が担当する。

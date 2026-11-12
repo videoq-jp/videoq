@@ -33,6 +33,7 @@
     "guides/frontend.md",
     "guides/local-inference.md",
     "guides/rtx4090.md",
+    "guides/lab-first-install.md",
     "guides/lms-integration.md",
     "guides/on-premises.md",
     "guides/on-premises-single-server.md",
