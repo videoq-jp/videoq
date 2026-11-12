@@ -12,6 +12,10 @@ def pin_argocd_manifest(raw, pin):
     objects = [copy.deepcopy(item) for item in yaml.safe_load_all(raw) if item]
     used = set()
     for item in objects:
+        if item.get('kind') == 'ConfigMap' and item.get('metadata', {}).get('name') == 'argocd-cm':
+            # Preserve Helm release labels used by Service/NetworkPolicy selectors.
+            # Application names deliberately differ from the Helm release names.
+            item.setdefault('data', {})['application.resourceTrackingMethod'] = 'annotation'
         pod = item.get('spec', {}).get('template', {}).get('spec', {})
         for container in pod.get('containers', []) + pod.get('initContainers', []):
             image = container['image']

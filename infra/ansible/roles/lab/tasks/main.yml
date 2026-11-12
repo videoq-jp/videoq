@@ -219,6 +219,7 @@
   register: argocd_diff
   changed_when: false
   failed_when: argocd_diff.rc not in [0, 1]
+  no_log: true
 
 - name: Install Argo CD without exposing its API outside the cluster
   ansible.builtin.command: /usr/local/bin/k3s kubectl -n argocd apply --server-side --field-manager=videoq-bootstrap -f /var/lib/videoq-bootstrap/argocd-pinned.json
