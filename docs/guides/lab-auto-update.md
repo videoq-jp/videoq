@@ -11,8 +11,8 @@
 
 ## 更新の順序
 
-1. 現在のGit版、クラスタの識別情報、10 Deployment、Argo CDの同期・正常状態、HTTPS `/ready`、
-   正常状態を確認する。実アプリのsmoke testは初回受け入れと更新後に実行し、更新のない定期確認では動画を増やさない。
+1. 現在のGit版、クラスタの識別情報、10 Deployment、Argo CDの同期・正常状態、HTTPS `/ready`を確認する。
+   実アプリのsmoke testは初回受け入れと更新後に実行し、更新のない定期確認では動画を増やさない。
 2. GitHubの公開カタログから新しい正式リリースを選び、mainの成功実行、Sigstore署名、透明性ログ、
    配布物のSHAとイメージdigestを既存の検証器で検査する。通信・検証に失敗したら稼働環境を変更しない。
 3. 固定したレビュー済みコンパイラで、検証したソースSHAと必要な生成レシピが一致することを確認して構成を生成する。LAN IP・保存容量・Git接続先はホストの設定を使う。
@@ -35,13 +35,13 @@ Forgejoで設定リポジトリを作り、初期構成を登録する。Forgejo
 担当外で、Ansibleから独立して復旧できるようにする。専用SSH deploy keyを2本用意する。
 Argo CDはread-only、更新サービスは当該リポジトリだけwrite可能にする。両者で鍵を共用しない。
 SSHホスト鍵を管理者が確認し、Vaultに秘密鍵を保存する。HTTPSの資格情報入りURLは使わない。
-コンパイラは`ssh://git@forgejo.lab:2222/lab/config.git`などを受け付ける。
+コンパイラは`ssh://git@forgejo.example.com:2222/lab/config.git`などを受け付ける。
 
 inventoryへ以下を追加し、Ansibleを実行する。`videoq_update_source_revision`はこの実装を含む
 レビュー済みコミットの完全なSHAへ置き換える。更新器自身を無条件にmainへ更新しない。
 
 ```yaml
-videoq_gitops_repository: ssh://git@forgejo.lab:2222/lab/config.git
+videoq_gitops_repository: ssh://git@forgejo.example.com:2222/lab/config.git
 videoq_update_enabled: true
 videoq_update_source_revision: REVIEWED_FULL_40_CHARACTER_SHA
 videoq_update_site: lab
