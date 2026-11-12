@@ -201,7 +201,7 @@ openssl x509 -in "$HOME/videoq-lab-ca.crt" -noout -subject -fingerprint -sha256
 `videoq_public_url` を使用し、証明書検証を無効にせず `/ready` と管理者ログインを確認する。
 Vast.ai の検証では、管理画面は SSH トンネルで使い、VideoQ の通し試験は VM 内のブラウザから
 VM 内部の HTTPS URL に接続して実行する。共有の外部IPへ研究室用の443番を公開する必要はない。
-既存の `scripts/onprem/rtx4090.py` をこの構成に重ねて実行しない。
+同じホストに別のインストーラーを重ねて実行しない。
 ブラウザの管理者設定、動画投入→文字起こし→索引→引用付き回答、バックアップと復旧の
 受け入れ試験が完了するまでは、運用開始済みとは扱わない。
 

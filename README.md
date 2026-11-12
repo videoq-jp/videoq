@@ -66,21 +66,13 @@ from environment configuration through account activation. The root
 `docker-compose.yml` builds a Wrangler development stack; its signup and account
 promotion flow differs from the production on-prem installer.
 
-### One RTX 4090: install the complete local stack
+### One RTX 4090: lab GitOps deployment
 
-On a dedicated Ubuntu 22.04/24.04 GPU host, run:
-
-```sh
-bash scripts/onprem/install-rtx4090.sh
-```
-
-This installs native K3s, backing services, GPT-OSS 20B, EmbeddingGemma 2 and
-Whisper on the same GPU, with automatic LAN IPv4 detection, an HTTPS URL and internal CA certificates,
-plus a beginner-friendly Textual setup screen for administrator details, review,
-installation progress and first password setup. No GitHub CLI, account or token is required;
-public downloads retain Sigstore/SLSA verification. Listener, URL and TLS options can be overridden. See the
-[one-command RTX 4090 guide](scripts/onprem/RTX4090.md) for fresh-host bootstrap,
-lab HTTPS, CA trust setup, requirements and resumable installation.
+Use [Ansible for initial preparation and Argo CD for application deployment](docs/guides/lab-gitops.md).
+Keep lab configuration in an internal Forgejo/GitLab repository and enable the
+[verified automatic release follower](docs/guides/lab-auto-update.md) after initial acceptance.
+The GPU profile shares one24GB RTX4090 between GPT-OSS20B, EmbeddingGemma2 and Whisper,
+using unchanged digest-pinned upstream vLLM images. No engine build is needed.
 
 ### Optional: reduce costs with local AI
 
