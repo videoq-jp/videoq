@@ -1,0 +1,28 @@
+{
+  "argocd": {
+    "version": "v3.6.1",
+    "url": "https://raw.githubusercontent.com/argoproj/argo-cd/94037c4d4e1af4bd0651d37a179fbd9e347e668c/manifests/install.yaml",
+    "sha256": "7be23ca7d9ca3d3074dee8332f1ca92a933b990cee7c9cf22cf3843ee8c2913e",
+    "images": {
+      "ghcr.io/dexidp/dex:v2.46.0": "ghcr.io/dexidp/dex@sha256:fd4ab5d117005b927433133f1d7db7cc30fbb537c377912b75b349edff47df01",
+      "public.ecr.aws/docker/library/redis:8.10.1-alpine": "public.ecr.aws/docker/library/redis@sha256:de4d18872bf67ad0bd62224a712263975ca1d53b9b1d0d5d076082e7fa887890",
+      "quay.io/argoproj/argocd:v3.6.1": "quay.io/argoproj/argocd@sha256:967306562700bc6f4bab7c247caf69892d77624b019ca510e86b4b00fc9c5584"
+    }
+  },
+  "k3s": {
+    "version": "v1.37.2+k3s1",
+    "url": "https://github.com/k3s-io/k3s/releases/download/v1.37.2%2Bk3s1/k3s",
+    "sha256": "265b3ee6a3198ef14033c63ef46cbb32370d83795199fb6d1b01f21575eddbda"
+  },
+  "nvidia_key": {
+    "url": "https://nvidia.github.io/libnvidia-container/gpgkey",
+    "sha256": "c880576d6cf75a48e5027a871bac70fd0421ab07d2b55f30877b21f1c87959c9"
+  },
+  "device_plugin": {
+    "version": "v0.20.1",
+    "url": "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/487d7a93894b0f3ad08097169593972eb3ca8206/deployments/static/nvidia-device-plugin.yml",
+    "sha256": "59fe0d606843213032656ad560b2c04095946b2b0a53cf843ca9acf122bfd898",
+    "image": "nvcr.io/nvidia/k8s-device-plugin@sha256:d279ecdb47b252c4cd96f4224650e9808c36012f6979570c9611ddbc5b0749a7"
+  },
+  "toolkit_version": "1.20.1-1"
+}

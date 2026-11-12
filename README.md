@@ -38,6 +38,7 @@ Choose the environment you want to run:
 | Goal | Start here |
 |---|---|
 | Try VideoQ without installing it | [Hosted demo](https://videoq.jp/en/try) |
+| Prepare a lab RTX 4090 with Ansible and manage applications with Argo CD | [Lab GitOps setup (in development)](docs/guides/lab-gitops.md) |
 | Evaluate on-prem on one Linux server | [Single-server installation](docs/guides/on-premises-single-server.md) |
 | Use an existing Kubernetes cluster and site-managed services | [Kubernetes installation](docs/guides/on-premises.md) |
 | Edit the application on your computer | [Local development setup](docs/getting-started/local-setup.md) |
