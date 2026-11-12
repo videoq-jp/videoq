@@ -53,6 +53,54 @@ class SelectionTests(unittest.TestCase):
 
 
 class ImageCacheTests(unittest.TestCase):
+    def test_containerd_references_expand_familiar_names_without_changing_digests(self):
+        digest = '@sha256:' + 'a' * 64
+        cases = {
+            'caddy:2-alpine': 'docker.io/library/caddy',
+            'postgres:18.3': 'docker.io/library/postgres',
+            'vllm/vllm-openai': 'docker.io/vllm/vllm-openai',
+            'docker.io/caddy:2-alpine': 'docker.io/library/caddy',
+            'index.docker.io/library/caddy:2': 'docker.io/library/caddy',
+            'ghcr.io/videoq-jp/videoq-api': 'ghcr.io/videoq-jp/videoq-api',
+            'localhost:5000/image:tag': 'localhost:5000/image',
+            'registry.example.com:5000/team/image:tag': 'registry.example.com:5000/team/image',
+        }
+        for original, expected in cases.items():
+            with self.subTest(original=original):
+                self.assertEqual(u.ctr_reference(original + digest), expected + digest)
+
+    def test_unpinned_cache_inputs_fail_before_calling_containerd(self):
+        objects = [{'kind': 'Deployment', 'spec': {'template': {'spec': {
+            'containers': [{'image': 'caddy:latest'}]}}}}]
+        with patch.object(u, 'run') as command:
+            with self.assertRaises(ValueError):
+                u.Host.cache_images(object.__new__(u.Host), Path('/unused'), objects)
+            command.assert_not_called()
+
+    def test_cache_normalizes_init_and_cron_images_without_editing_signed_resources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            digest = '@sha256:' + 'a' * 64
+            objects = [{'kind': 'Deployment', 'spec': {'template': {'spec': {'containers': [
+                {'image': 'ghcr.io/videoq-jp/videoq-' + name + digest}]}}}}
+                for name in ['api', 'web', 'worker', 'transcription-gateway']]
+            objects[0]['spec']['template']['spec']['initContainers'] = [{'image': 'caddy:2-alpine' + digest}]
+            objects.append({'kind': 'CronJob', 'spec': {'jobTemplate': {'spec': {'template': {'spec': {
+                'containers': [{'image': 'vllm/vllm-openai' + digest}]}}}}}})
+            original = json.dumps(objects)
+            commands = []
+            def command(*args, **kwargs):
+                commands.append(args)
+                if args[:4] == ('k3s', 'ctr', 'images', 'export'):
+                    Path(args[6]).write_bytes(b'exported OCI archive')
+            with patch.object(u, 'run', side_effect=command), patch.object(u, 'IMAGE_IMPORT_DIRECTORY', root/'imports'):
+                u.Host.cache_images(object.__new__(u.Host), root, objects)
+            pulls = [args[-1] for args in commands if args[3] == 'pull']
+            self.assertEqual(len(pulls), 6)
+            self.assertIn('docker.io/library/caddy' + digest, pulls)
+            self.assertIn('docker.io/vllm/vllm-openai' + digest, pulls)
+            self.assertEqual(json.dumps(objects), original)
+
     def test_four_own_images_are_archived_for_native_restart(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);release=root/'release';release.mkdir()
