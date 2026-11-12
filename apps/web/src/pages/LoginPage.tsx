@@ -150,7 +150,7 @@ export default function LoginPage() {
           href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : '/signup'}
         />
       </div>}
-      {!features.publicSignup && <p className="mt-6 text-std-16N-170">{t("onprem.loginHelp")}</p>}
+      {!features.publicSignup && <p className="mt-6 text-std-17N-170">{t("onprem.loginHelp")}</p>}
     </>
   );
 }

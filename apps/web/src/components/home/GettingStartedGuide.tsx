@@ -107,7 +107,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
   return (
     <section aria-labelledby="getting-started-title" className="mb-12">
       <div className="mb-6 flex items-end justify-between gap-4">
-        <Heading size="18" hasChip>
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
           <HeadingTitle level="h2" id="getting-started-title">{t('home.gettingStarted.title')}</HeadingTitle>
         </Heading>
         <Button type="button" variant="text" size="sm" onClick={dismiss}>
@@ -115,7 +115,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
         </Button>
       </div>
 
-      <StepNavigation orientation="vertical" className="border-t border-solid-gray-420 pt-6">
+      <StepNavigation orientation="vertical" className="pt-6">
         <StepNavigationList>
           {STEP_ORDER.map((key, index) => {
             const state = done[key] ? 'completed' : undefined;
@@ -144,7 +144,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
                 {isCurrent ? (
                   <div className="mt-4 pl-[calc(var(--step-number-size)+var(--step-number-margin)*2+1rem)]">
                     {isWaiting ? (
-                      <p role="status" className="text-std-16B-170 text-solid-gray-800">
+                      <p role="status" className="text-std-17B-170 text-solid-gray-800">
                         {t('home.gettingStarted.processing')}
                       </p>
                     ) : (

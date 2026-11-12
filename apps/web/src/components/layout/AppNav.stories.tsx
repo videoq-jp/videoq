@@ -119,10 +119,13 @@ export const EnglishAdministratorTablet: Story = {
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
     const trigger = canvas.getByRole('button', { name: menuName });
-    const viewportWidth = canvasElement.ownerDocument.documentElement.clientWidth;
-    // Fixed headers can clip their children without increasing document.scrollWidth.
+    const viewportWidth = canvasElement.ownerDocument.documentElement.getBoundingClientRect().width;
+    // At 1024px the real site shows desktop navigation; it must still fit.
     await expect(trigger.getBoundingClientRect().right).toBeLessThanOrEqual(viewportWidth);
-    await expect(canvas.queryByRole('button', { name: logoutName })).not.toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: logoutName })).toBeVisible();
+    const brand = canvasElement.querySelector('.site-header-logo')!;
+    const nav = canvasElement.querySelector('.site-header-nav')!;
+    await expect(nav.getBoundingClientRect().left).toBeGreaterThanOrEqual(brand.getBoundingClientRect().right);
     await userEvent.click(trigger);
     const panel = within(menuPanel(canvasElement, trigger));
     await expect(await panel.findByRole('link', { name: 'Admin' })).toHaveAttribute('aria-current', 'page');

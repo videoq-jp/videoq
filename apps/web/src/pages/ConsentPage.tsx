@@ -48,14 +48,14 @@ export default function ConsentPage() {
         badge="OAuth"
         title={t('auth.consent.title', { defaultValue: 'Authorize application' })}
       />
-      <p className="mb-6 text-dns-16N-100 text-solid-gray-620">
+      <p className="mb-6 text-std-17N-170 text-solid-gray-600">
         {t('auth.consent.body', {
           defaultValue: '{{name}} is requesting access to your VideoQ account.',
           name: clientName,
         })}
       </p>
       {(canReadVideoq || canWriteVideoq) && (
-        <div className="mb-6 rounded-lg border border-solid-gray-300 bg-solid-gray-50 p-4 text-dns-14N-100 text-solid-gray-700">
+        <div className="mb-6 rounded-lg border border-solid-gray-300 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700">
           <p className="mb-2 font-bold">
             {t('auth.consent.permissions', { defaultValue: 'Requested permissions' })}
           </p>

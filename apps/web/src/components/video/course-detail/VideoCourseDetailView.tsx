@@ -146,7 +146,7 @@ function GroupEditDialog({
           <DialogHeading {...dialog.headingProps}>{t('videos.courseDetail.editTitle')}</DialogHeading>
         </DialogHeader>
         <DialogBody>
-          <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+          <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('videos.courseDetail.editDescription', 'Update the course name and description.')}
           </p>
           <div className="space-y-4">
@@ -281,7 +281,7 @@ function GroupVideoList({
             </DndContext>
           ) : (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-std-16N-170 text-solid-gray-600">
+              <p className="text-std-17N-170 text-solid-gray-600">
                 {t('videos.courseDetail.videoListEmpty')}
               </p>
               {canManage ? (
@@ -343,10 +343,10 @@ function GroupPlayerPanel({
                 {t('common.messages.browserNoVideoSupport')}
               </video>
             ) : (
-              <p className="text-solid-gray-200 text-std-16N-170">{t('videos.courseDetail.videoNoFile')}</p>
+              <p className="text-solid-gray-200 text-std-17N-170">{t('videos.courseDetail.videoNoFile')}</p>
             )
           ) : (
-            <p className="text-solid-gray-200 text-std-16N-170 text-center px-4">{t('videos.courseDetail.playerPlaceholder')}</p>
+            <p className="text-solid-gray-200 text-std-17N-170 text-center px-4">{t('videos.courseDetail.playerPlaceholder')}</p>
           )}
         </div>
         <div className="flex min-w-0 shrink-0 items-center justify-between gap-4 px-5 py-4">

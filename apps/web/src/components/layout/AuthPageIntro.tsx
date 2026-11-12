@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Heading, HeadingShoulder, HeadingTitle } from '@/components/ui/heading';
 
 interface AuthPageIntroProps {
   badge: ReactNode;
@@ -9,13 +8,11 @@ interface AuthPageIntroProps {
 
 export function AuthPageIntro({ badge, title, description }: AuthPageIntroProps) {
   return (
-    <div className="mb-8">
-      <Heading size="28" hasChip rule="4" className="mb-4">
-        <HeadingShoulder>{badge}</HeadingShoulder>
-        <HeadingTitle level="h1">{title}</HeadingTitle>
-      </Heading>
+    <div className="mb-12">
+      <p className="mb-4 text-std-17B-170 text-solid-gray-600">{badge}</p>
+      <h1 className="mb-6 break-words text-std-28B-150 md:text-std-45B-140">{title}</h1>
       {description ? (
-        <p className="text-std-16N-170 text-solid-gray-700">{description}</p>
+        <p className="text-std-17N-170 text-solid-gray-700">{description}</p>
       ) : null}
     </div>
   );

@@ -82,7 +82,7 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
         </DialogHeader>
 
         <DialogBody>
-          <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+          <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('tags.create.description')}
           </p>
 

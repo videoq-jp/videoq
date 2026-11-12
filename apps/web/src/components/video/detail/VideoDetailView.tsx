@@ -161,7 +161,7 @@ function VideoPlayerPanel({
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-solid-gray-200">
           <VideoIcon className="w-16 h-16 text-solid-gray-300" />
-          <p className="text-std-16N-170">{t('common.messages.videoFileMissing')}</p>
+          <p className="text-std-17N-170">{t('common.messages.videoFileMissing')}</p>
         </div>
       )}
     </div>
@@ -193,10 +193,10 @@ function VideoMetaPanel({
     <div className="flex flex-col gap-4 border border-solid-gray-420 bg-white p-6">
       <div className="flex justify-between items-start gap-4">
         <div>
-          <Heading size="20" className="mb-1">
+          <Heading size="32" className="mb-3 text-std-24B-150 md:text-std-32B-150">
             <HeadingTitle level="h1">{video.title}</HeadingTitle>
           </Heading>
-          <div className="flex items-center gap-2 text-std-16N-170 text-solid-gray-600">
+          <div className="flex items-center gap-2 text-std-17N-170 text-solid-gray-600">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
             <span>{formatDate(video.uploaded_at, 'full', locale)}</span>
           </div>
@@ -244,7 +244,7 @@ function VideoMetaPanel({
 
       {video.error_message && <ErrorMessage message={video.error_message} />}
       {video.visual_processing && (
-        <div role="status" className="border-t border-solid-gray-200 pt-4 text-std-16N-170">
+        <div role="status" className="border-t border-solid-gray-200 pt-4 text-std-17N-170">
           <p>{t(`videos.detail.visual.${video.visual_processing.status}`)}</p>
           {video.visual_processing.status !== 'ready' && (
             <p>{t('videos.detail.visual.progress', { completed: video.visual_processing.completed_chunks, total: video.visual_processing.total_chunks })}</p>
@@ -254,7 +254,7 @@ function VideoMetaPanel({
 
       {video.description && (
         <div className="border-t border-solid-gray-200 pt-4">
-          <p className="text-std-16N-170 text-solid-gray-700 leading-relaxed">{video.description}</p>
+          <p className="text-std-17N-170 text-solid-gray-700 leading-relaxed">{video.description}</p>
         </div>
       )}
 
@@ -368,7 +368,7 @@ export function VideoDetailView({
             <VideoDetailMobileTabs activeTab={mobileTab} onChange={onMobileTabChange} />
           )}
 
-          <div className="mx-auto flex w-full max-w-screen-xl flex-grow flex-col gap-6 px-6 py-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[77.375rem] flex-grow flex-col gap-8 px-6 py-12 md:py-20">
             <Breadcrumbs aria-label={t('common.actions.backToList')}>
               <BreadcrumbsLabel className="sr-only">
                 {t('common.actions.backToList')}

@@ -20,13 +20,13 @@ export function QuestionTimeSeriesChart({ data }: QuestionTimeSeriesChartProps) 
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={chartData} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-solid-gray-200)" />
-          <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-solid-gray-700)' }} />
+          <XAxis dataKey="date" tick={{ fontSize: 14, fill: 'var(--color-solid-gray-700)' }} />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: 'var(--color-solid-gray-700)' }}
+            tick={{ fontSize: 14, fill: 'var(--color-solid-gray-700)' }}
           />
           <Tooltip
-            contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-line)', color: 'var(--color-ink)' }}
+            contentStyle={{ backgroundColor: 'var(--color-white)', borderColor: 'var(--color-solid-gray-300)', color: 'var(--color-solid-gray-800)' }}
             formatter={(value) => [value, t('dashboard.timeSeries.count')]}
           />
           <Line

@@ -33,9 +33,9 @@ import { MessageAlert } from '@/components/common/MessageAlert';
 import { trpc } from '@/lib/trpc';
 
 const SETTINGS_SECTION_CLASS =
-  'scroll-mt-24 border-t border-solid-gray-200 pt-6';
+  'scroll-mt-28';
 const SETTINGS_CALLOUT_CLASS =
-  'rounded-8 bg-solid-gray-50 p-4 text-std-16N-170 text-solid-gray-700';
+  'rounded-8 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700';
 
 type AccessLevel = 'all' | 'read_only';
 type ApiKeyCopyState = { keyId: string; status: 'pending' | 'success' | 'error' };
@@ -286,22 +286,22 @@ export default function SettingsPage() {
         description={t(features.billing ? 'settings.subtitle' : 'onprem.settingsSubtitle')}
       />
 
-      <nav aria-label={t('settings.navigation')} className="mb-6 flex flex-wrap gap-x-6 gap-y-2 border-b border-solid-gray-200 pb-4">
+      <nav aria-label={t('settings.navigation')} className="mb-6 flex flex-wrap gap-x-6 gap-y-2 pb-4">
         <DaLink href="#account">{t('settings.account.title')}</DaLink>
         {features.billing && <DaLink href="#billing">{t('settings.billing.title')}</DaLink>}
         {features.youtube && <DaLink href="#youtube">{t('settings.searchApiKey.title')}</DaLink>}
         <DaLink href="#integrations">{t(features.emailDelivery ? 'settings.integrations.title' : 'onprem.localIntegrations')}</DaLink>
       </nav>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-16 md:gap-24">
           <AccountSettingsSection />
           {features.billing && <>
           <section id="billing" aria-labelledby="billing-heading" className={SETTINGS_SECTION_CLASS}>
             <div className="mb-4">
-              <Heading size="20" hasChip className="mb-2">
+              <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-2">
                 <HeadingTitle id="billing-heading" level="h2">{t('settings.billing.title')}</HeadingTitle>
               </Heading>
-              <p className="text-std-16N-170 text-solid-gray-600">
+              <p className="text-std-17N-170 text-solid-gray-600">
                 {t('settings.billing.description')}
               </p>
             </div>
@@ -317,7 +317,7 @@ export default function SettingsPage() {
             )}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-std-16N-170 text-solid-gray-600">{t('settings.billing.currentPlan')}</p>
+                <p className="text-std-17N-170 text-solid-gray-600">{t('settings.billing.currentPlan')}</p>
                 <p className="text-std-24B-150">{t(`pricing.plans.${user?.plan_code ?? 'free'}.name`)}</p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -336,7 +336,7 @@ export default function SettingsPage() {
           <section id="youtube" aria-labelledby="youtube-heading" className={SETTINGS_SECTION_CLASS}>
             <div className="mb-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <Heading size="20" hasChip>
+                <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
                   <HeadingTitle id="youtube-heading" level="h2">{t('settings.searchApiKey.title')}</HeadingTitle>
                 </Heading>
                 {searchApiKeyStatusQuery.isSuccess && (
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                   </ChipLabel>
                 )}
               </div>
-              <p className="text-std-16N-170 text-solid-gray-600">
+              <p className="text-std-17N-170 text-solid-gray-600">
                 {t('settings.searchApiKey.description')}
               </p>
             </div>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
 
           {/* ── Integration API Keys ─────────────────────────────────── */}
           <section id="integrations" aria-labelledby="integrations-heading" className={SETTINGS_SECTION_CLASS}>
-            <Heading size="20" hasChip className="mb-4">
+            <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
               <HeadingTitle id="integrations-heading" level="h2">{t(features.emailDelivery ? 'settings.integrations.title' : 'onprem.localIntegrations')}</HeadingTitle>
             </Heading>
             <ConnectedAppsSection headingLevel="h3" />
@@ -463,7 +463,7 @@ export default function SettingsPage() {
                 <Heading size="18" className="mb-2">
                   <HeadingTitle id="api-keys-heading" level="h3">{t('settings.integrationApiKeys.title')}</HeadingTitle>
                 </Heading>
-                <p className="text-std-16N-170 text-solid-gray-600">
+                <p className="text-std-17N-170 text-solid-gray-600">
                   {t('settings.integrationApiKeys.description')}
                 </p>
               </div>
@@ -497,7 +497,7 @@ export default function SettingsPage() {
               <ErrorMessage message={t('settings.integrationApiKeys.errorLoading')} />
             )}
             {!apiKeysQuery.isLoading && !apiKeysQuery.isError && apiKeysQuery.data?.length === 0 && (
-              <p className="rounded-8 bg-solid-gray-50 p-4 text-std-16N-170 text-solid-gray-600">
+              <p className="rounded-8 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-600">
                 {t('settings.integrationApiKeys.empty')}
               </p>
             )}
@@ -508,7 +508,7 @@ export default function SettingsPage() {
                   <li key={apiKey.id} className="p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="break-words text-std-16B-170 [overflow-wrap:anywhere]">{apiKey.name}</p>
+                        <p className="break-words text-std-17B-170 [overflow-wrap:anywhere]">{apiKey.name}</p>
                         <p className="mt-1 break-all font-mono text-dns-14N-130 text-solid-gray-600">{apiKey.prefix}...</p>
                       </div>
                       <Button
@@ -574,7 +574,7 @@ export default function SettingsPage() {
             </DialogHeader>
 
             <DialogBody>
-              <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+              <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                 {t('settings.integrationApiKeys.createDialogDescription')}
               </p>
 
@@ -616,8 +616,8 @@ export default function SettingsPage() {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="space-y-1">
-                              <div className="text-std-16B-170">{option.title}</div>
-                              <div className={`text-std-16N-170 ${isSelected ? 'text-white/80' : 'text-solid-gray-600'}`}>
+                              <div className="text-std-17B-170">{option.title}</div>
+                              <div className={`text-std-17N-170 ${isSelected ? 'text-white/80' : 'text-solid-gray-600'}`}>
                                 {option.description}
                               </div>
                             </div>
@@ -678,7 +678,7 @@ export default function SettingsPage() {
             </DialogHeader>
 
             <DialogBody>
-              <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+              <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                 {t('settings.integrationApiKeys.generatedDialogDescription')}
               </p>
 
@@ -694,7 +694,7 @@ export default function SettingsPage() {
                     {t('settings.integrationApiKeys.secretKeyLabel')}
                   </p>
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-center">
-                    <div className="min-w-0 rounded-8 border border-solid-gray-300 bg-solid-gray-50 px-4 py-3 font-mono text-std-16N-170 text-solid-gray-800">
+                    <div className="min-w-0 rounded-8 border border-solid-gray-300 bg-solid-gray-50 px-4 py-3 font-mono text-std-17N-170 text-solid-gray-800">
                       <span className="block truncate">{generatedApiKey.api_key}</span>
                     </div>
                     <Button
@@ -714,7 +714,7 @@ export default function SettingsPage() {
                   <p className="text-std-17B-170 text-solid-gray-800">
                     {t('settings.integrationApiKeys.permissionsLabel')}
                   </p>
-                  <p className="text-std-16N-170 text-solid-gray-800">
+                  <p className="text-std-17N-170 text-solid-gray-800">
                     {getAccessLevelLabel(generatedApiKey.access_level)}
                   </p>
                   <SupportText>
@@ -755,7 +755,7 @@ export default function SettingsPage() {
             </DialogHeader>
 
             <DialogBody>
-              <p className="mb-4 text-std-16N-170 text-solid-gray-700">
+              <p className="mb-4 text-std-17N-170 text-solid-gray-700">
                 {t('settings.integrationApiKeys.revokeConfirmDescription')}
               </p>
 
@@ -766,7 +766,7 @@ export default function SettingsPage() {
                   message={t('settings.integrationApiKeys.revokeConfirmWarning')}
                 />
                 <div className="rounded-8 border border-solid-gray-200 bg-solid-gray-50 px-4 py-4">
-                  <div className="text-std-16B-170 text-solid-gray-800">{pendingRevokeKey.name}</div>
+                  <div className="text-std-17B-170 text-solid-gray-800">{pendingRevokeKey.name}</div>
                   <div className="mt-1 font-mono text-dns-14N-130 text-solid-gray-600">{pendingRevokeKey.prefix}...</div>
                 </div>
               </div>

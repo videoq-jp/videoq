@@ -143,7 +143,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
             </DialogHeader>
             {visibleConfirmRequest.options.description && (
               <DialogBody>
-                <p className="text-std-16N-170 text-solid-gray-700">
+                <p className="text-std-17N-170 text-solid-gray-700">
                   {visibleConfirmRequest.options.description}
                 </p>
               </DialogBody>
@@ -182,7 +182,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               key={toastItem.id}
               role={toastItem.variant === 'error' ? 'alert' : 'status'}
               className={cn(
-                'flex items-start gap-3 border bg-white px-4 py-3 text-sm font-medium',
+                'flex items-start gap-3 border bg-white px-4 py-3 text-std-17N-170 font-medium',
                 toastItem.variant === 'error' && 'border-error-1 text-error-1',
                 toastItem.variant === 'success' && 'border-success-2 text-success-2',
                 toastItem.variant === 'info' && 'border-solid-gray-420 text-solid-gray-800',

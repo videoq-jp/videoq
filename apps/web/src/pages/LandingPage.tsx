@@ -191,7 +191,7 @@ export default function LandingPage() {
           <p className="lp-eyebrow">{t('landing.next.eyebrow')}</p>
           <h2 id="landing-next-title">{t('landing.next.title')}</h2>
           <p>{t('landing.next.intro')}</p>
-          <Link href="/signup" className="lp-button lp-button-lime" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/signup" className="lp-button lp-button-primary" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('landing.tryOwn')}<ArrowRight size={18} aria-hidden="true" /></Link>
           <p className="lp-final-note"><Check size={15} aria-hidden="true" />{t('landing.startNote')}</p>
           <Link href="/login" className="lp-final-login">{t('landing.login')}</Link>
         </div>

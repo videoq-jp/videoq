@@ -17,7 +17,7 @@ export function DashboardPanel({ className, ...props }: DashboardPanelProps) {
 export function DashboardChartTitle({ children }: { children: ReactNode }) {
   return (
     <>
-      <Heading size="16" hasChip>
+      <Heading size="20">
         <HeadingTitle level="h3">{children}</HeadingTitle>
       </Heading>
       <Divider />

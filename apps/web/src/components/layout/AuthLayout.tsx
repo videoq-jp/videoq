@@ -2,7 +2,7 @@ import { BrandLogo } from '@/components/layout/BrandLogo';
 import type { ReactNode } from 'react';
 import { Link } from '@/lib/i18n';
 import { AuthPageFooter } from '@/components/layout/AuthPageFooter';
-import { APP_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
+import { APP_CONTAINER_CLASS, APP_HEADER_CONTAINER_CLASS } from '@/components/layout/layoutTokens';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -11,18 +11,20 @@ interface AuthLayoutProps {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border bg-white">
-        <div className={`mx-auto flex w-full items-center py-4 ${APP_CONTAINER_CLASS}`}>
-          <Link
-            href="/"
-            className="text-std-20B-150 text-solid-gray-800"
-          >
-            <BrandLogo />
-          </Link>
+      <header className="site-header">
+        <div className={`mx-auto w-full ${APP_HEADER_CONTAINER_CLASS}`}>
+          <div className="site-header-content">
+            <Link
+              href="/"
+              className="site-header-logo text-std-20B-150"
+            >
+              <BrandLogo />
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className={`mx-auto w-full flex-1 py-10 sm:py-14 ${APP_CONTAINER_CLASS}`}>
+      <main className={`mx-auto w-full flex-1 py-12 lg:pt-20 lg:pb-36 ${APP_CONTAINER_CLASS}`}>
         <div className="mx-auto w-full max-w-[32rem]">
           {children}
         </div>

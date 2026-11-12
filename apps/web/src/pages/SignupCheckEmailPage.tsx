@@ -18,7 +18,7 @@ export default function SignupCheckEmailPage() {
 
         <MessageAlert type="success" message={t('auth.checkEmail.alert')} />
 
-        <p className="text-center text-sm text-solid-gray-600">
+        <p className="text-center text-std-17N-170 text-solid-gray-600">
           {t('auth.checkEmail.help')}
         </p>
 

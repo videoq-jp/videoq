@@ -84,7 +84,7 @@ export default function CourseInvitationPage() {
                 {t(`courseInvitation.status.${invitation.status}`)}
               </ChipLabel>
             </div>
-            <dl className="space-y-3 text-std-16N-170">
+            <dl className="space-y-3 text-std-17N-170">
               <div>
                 <dt className="text-solid-gray-600">{t('courseInvitation.inviter')}</dt>
                 <dd className="font-bold text-solid-gray-800">{invitation.inviter_name}</dd>

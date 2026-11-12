@@ -145,7 +145,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
           {detail.data.question.featured && <p className="flex items-center gap-1 text-dns-14B-130 text-key-900"><Pin className="h-4 w-4" aria-hidden="true" />{t('qa.featured')}</p>}
           <h3 className="break-words text-std-20B-150">{detail.data.question.title}</h3>
           <Author author={detail.data.question.author} date={detail.data.question.createdAt} />
-          <p className="whitespace-pre-wrap break-words text-std-16N-170">{detail.data.question.body}</p>
+          <p className="whitespace-pre-wrap break-words text-std-17N-170">{detail.data.question.body}</p>
           {detail.data.question.videoId && <Button type="button" variant="text" size="sm" onClick={() => onVideoPlay(detail.data.question.videoId!, '00:00:00')}>{detail.data.question.videoTitle}</Button>}
           {questionActions(detail.data.question)}
         </section>}
@@ -158,7 +158,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
               onCancel={() => setEditingReply(null)} onSubmit={() => void run(async () => {
                 await updateReply.mutateAsync({ ...access, questionId: selected, replyId: item.id, body: editedAnswer }); setEditingReply(null); await refresh();
               })} /> : <>
-              <p className="whitespace-pre-wrap break-words text-std-16N-170">{item.body}</p>
+              <p className="whitespace-pre-wrap break-words text-std-17N-170">{item.body}</p>
               <div className="flex gap-2">
                 {item.canEdit && <Button type="button" variant="text" size="sm" disabled={busy} onClick={() => { setEditingReply(item); setEditedAnswer(item.body); }}>{t('qa.editAnswer')}</Button>}
                 {item.canDelete && <Button type="button" variant="text" size="sm" className="text-error-1" disabled={busy} onClick={() => void run(async () => {
@@ -210,7 +210,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
             {list.data.items.map(question => <article key={question.id} className="space-y-2 py-4">
               {question.featured && <p className="flex items-center gap-1 text-dns-14B-130 text-key-900"><Pin className="h-4 w-4" aria-hidden="true" />{t('qa.featured')}</p>}
               <h4><button type="button" onClick={() => open(question.id)} className="break-words text-left text-std-18B-160 text-key-900 underline focus-visible:outline-4 focus-visible:outline-black">{question.title}</button></h4>
-              <p className="line-clamp-2 break-words text-std-16N-170 text-solid-gray-700">{question.body}</p>
+              <p className="line-clamp-2 break-words text-std-17N-170 text-solid-gray-700">{question.body}</p>
               <Author author={question.author} date={question.createdAt} />
               <div className="flex flex-wrap items-center gap-2 text-dns-14N-130 text-solid-gray-600">{voteButton(question)}<MessageCircle className="h-4 w-4" aria-hidden="true" />{t('qa.answerCount', { count: question.replyCount })}{question.videoTitle && <span>· {question.videoTitle}</span>}</div>
             </article>)}

@@ -23,8 +23,8 @@ export default function TryPage() {
         <main className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center gap-6 px-6 py-12">
           <Link href="/" className="text-std-20B-150">VideoQ</Link>
           <h1 className="text-std-24B-150">{t('tryDemo.title')}</h1>
-          <p className="text-std-16N-170">{t('tryDemo.intro')}</p>
-          <ul className="list-disc space-y-2 pl-6 text-std-16N-170">
+          <p className="text-std-17N-170">{t('tryDemo.intro')}</p>
+          <ul className="list-disc space-y-2 pl-6 text-std-17N-170">
             {QUESTION_KEYS.map(key => <li key={key}>{t(`tryDemo.questions.${key}`)}</li>)}
           </ul>
           <LoadingSpinner />
@@ -38,7 +38,7 @@ export default function TryPage() {
           </Link>
         </Button>
       )}
-      intro={<p className="shrink-0 text-std-16N-170 text-solid-gray-800">{t('tryDemo.intro')}</p>}
+      intro={<p className="shrink-0 text-std-17N-170 text-solid-gray-800">{t('tryDemo.intro')}</p>}
       suggestedQuestions={QUESTION_KEYS.map(key => t(`tryDemo.questions.${key}`))}
       onCitationPlay={() => trackLandingEvent('demo_source')}
     />

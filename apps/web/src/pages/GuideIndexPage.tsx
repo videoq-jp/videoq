@@ -26,7 +26,7 @@ export default function GuideIndexPage() {
                 <Link href={guidePath(guide.slug)} className="text-blue-1000 underline underline-offset-[0.1875rem]">{guide[locale].title}</Link>
               </HeadingTitle>
             </Heading>
-            <p className="text-std-16N-170 text-solid-gray-700">{guide[locale].description}</p>
+            <p className="text-std-17N-170 text-solid-gray-700">{guide[locale].description}</p>
           </li>
         ))}
       </ul>

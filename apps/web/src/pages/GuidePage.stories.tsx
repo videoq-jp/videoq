@@ -9,7 +9,7 @@ const meta = {
   component: GuidePage,
   parameters: { pathname: '/guides/online-course-questions', layout: 'fullscreen' },
   decorators: [(Story) => (
-    <main className="mx-auto max-w-screen-xl px-6 py-8">
+    <main className="mx-auto max-w-[77.375rem] px-6 py-8">
       <Routes><Route path="guides/:slug" element={<Story />} /></Routes>
     </main>
   )],

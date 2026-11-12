@@ -35,7 +35,7 @@ function VideoItem({ video, isSelected, onSelect }: VideoItemProps) {
       }`}
     >
       <span className="flex-1 min-w-0">
-        <span className={`block text-std-16N-170 truncate leading-tight ${isSelected ? 'font-bold text-key-900' : 'font-medium text-solid-gray-800'}`}>
+        <span className={`block text-std-17N-170 truncate leading-tight ${isSelected ? 'font-bold text-key-900' : 'font-medium text-solid-gray-800'}`}>
           {video.title}
         </span>
         <StatusBadge status={video.status} size="xs" className="mt-1 ml-0" />
@@ -165,14 +165,14 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                   {t('common.messages.browserNoVideoSupport')}
                 </video>
               ) : (
-                <p className="text-solid-gray-200 text-std-16N-170">{t('videos.shared.videoNoFile')}</p>
+                <p className="text-solid-gray-200 text-std-17N-170">{t('videos.shared.videoNoFile')}</p>
               )
             ) : (
-              <p className="text-solid-gray-200 text-std-16N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
+              <p className="text-solid-gray-200 text-std-17N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
             )}
           </div>
           <div className="space-y-4 px-4 py-3 lg:mx-auto lg:max-w-4xl lg:px-8 lg:py-6">
-            <h2 className="truncate text-std-16B-170 text-solid-gray-800 lg:whitespace-normal lg:text-std-20B-150">
+            <h2 className="truncate text-std-17B-170 text-solid-gray-800 lg:whitespace-normal lg:text-std-20B-150">
               {selectedVideo ? selectedVideo.title : t('videos.shared.playerPlaceholder')}
             </h2>
           </div>
@@ -203,7 +203,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                     />
                   ))
                 ) : (
-                  <p className="text-center text-solid-gray-600 py-8 text-std-16N-170">
+                  <p className="text-center text-solid-gray-600 py-8 text-std-17N-170">
                     {t('videos.shared.noVideos')}
                   </p>
                 )}
