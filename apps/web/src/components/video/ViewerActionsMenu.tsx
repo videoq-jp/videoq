@@ -41,7 +41,7 @@ export function ViewerActionsMenu({ label, children }: { label: string; children
     }}>
       <Button ref={trigger} type="button" variant="outline" size="sm"
         aria-label={label} aria-expanded={open} aria-controls={id}
-        className="min-h-11 min-w-11 border-solid-gray-536 bg-transparent px-3 text-white hover:bg-solid-gray-700 hover:text-white active:bg-solid-gray-800 active:text-white focus-visible:outline-white"
+        className="min-h-11 min-w-11 px-3"
         onClick={() => setOpen(value => !value)}
         onKeyDown={event => {
           if (event.key === 'ArrowDown') {
