@@ -1,0 +1,528 @@
+{
+  "status": "passed",
+  "date": "2026-11-12",
+  "scope": "Fresh Ansible/bootstrap, signed unmodified production images, actual GPU/API/UI acceptance and same-cluster cold data restore on one RTX4090",
+  "release": {
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "runId": "43213448108",
+    "runAttempt": 1
+  },
+  "publicSignaturesAndDigestsVerified": true,
+  "host": {
+    "gpuCount": 1,
+    "gpu": "RTX4090 24GB",
+    "base": "Ubuntu22.04.5 VM with existing NVIDIA580.95.05 and no K3s",
+    "initialGpuMemoryUsedMiB": 20677,
+    "gpuMemoryTotalMiB": 24564
+  },
+  "bootstrap": {
+    "initial": {
+      "ok": 39,
+      "changed": 22,
+      "failed": 0
+    },
+    "repeat": {
+      "ok": 39,
+      "changed": 0,
+      "failed": 0
+    },
+    "gitops": "Private GitHub configuration pulled by read-only GitHub App; public image pin PR1403 merged before private PR6",
+    "coldSync": {
+      "phase": "Succeeded",
+      "startedAt": "2026-11-12T12:43:48Z",
+      "finishedAt": "2026-11-12T12:55:00Z"
+    }
+  },
+  "runtime": {
+    "availableDeployments": 10,
+    "applications": [
+      {
+        "name": "lab",
+        "health": "Healthy",
+        "sync": "Synced"
+      },
+      {
+        "name": "lab-gpu",
+        "health": "Healthy",
+        "sync": "Synced"
+      },
+      {
+        "name": "lab-videoq",
+        "health": "Healthy",
+        "sync": "Synced"
+      }
+    ],
+    "signedOwnImagesUnchanged": true,
+    "modelRuntimeRestarts": 0,
+    "noPublicManagementService": true
+  },
+  "inference": {
+    "all3Roles": "Unchanged digest-pinned upstream vLLM;chat GPTOSS20B,EmbeddingGemma2 768d,Whisper large-v3-turbo",
+    "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
+    "audioExtras": "Four hash-locked inspected wheels on separate volume; readonly PYTHONPATH at runtime",
+    "coldModelInitMemoryLimit": "4Gi",
+    "progressDeadlineSeconds": 7200,
+    "allModelInitExitCodes": 0
+  },
+  "api": {
+    "fixtureAttribution": "../../apps/inference/whisper/tests/fixtures/README.md",
+    "beforeRestore": {
+      "status": "passed",
+      "inference": "real models; no protocol fixtures",
+      "models": [
+        "gpt-oss-20b",
+        "EmbeddingGemma 2 text-only 768d",
+        "Whisper large-v3-turbo upstream vLLM"
+      ],
+      "courseId": 1,
+      "videos": {
+        "ja": {
+          "id": 1,
+          "transcript": "1\n00:00:01,488 --> 00:00:08,188\nインターネットで敵対的環境構成について検索すると、おそらく現地企業の住所が出てくるでしょう。\n",
+          "processingSeconds": 10.231302015999999
+        },
+        "en": {
+          "id": 2,
+          "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
+          "processingSeconds": 3.081856341000001
+        }
+      },
+      "cases": [
+        {
+          "audioLanguage": "ja",
+          "questionLanguage": "ja",
+          "question": "動画によると、インターネットで「敵対的環境コース」を検索すると、何の住所が出てきますか？",
+          "answer": {
+            "segments": [
+              {
+                "text": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              },
+              {
+                "id": 2,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              }
+            ]
+          },
+          "streamedAnswer": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+          "elapsedSeconds": 30.491803817
+        },
+        {
+          "audioLanguage": "ja",
+          "questionLanguage": "en",
+          "question": "According to the video, searching online for hostile environment courses will probably return whose addresses? Answer in English.",
+          "answer": {
+            "segments": [
+              {
+                "text": "Searching online for hostile environment courses will probably return local company addresses.",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              },
+              {
+                "id": 2,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              }
+            ]
+          },
+          "streamedAnswer": "Searching online for hostile environment courses will probably return the addresses of local companies.",
+          "elapsedSeconds": 15.89034115
+        },
+        {
+          "audioLanguage": "en",
+          "questionLanguage": "en",
+          "question": "According to the video, what determines the color of cabbage juice? Answer in English.",
+          "answer": {
+            "segments": [
+              {
+                "text": "The color of cabbage juice changes depending on how acidic, basic, or alkaline the chemical is.",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              },
+              {
+                "id": 2,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              }
+            ]
+          },
+          "streamedAnswer": "The color of cabbage juice is determined by the pH of the solution: it changes color depending on how acidic, basic, or alkaline the chemical is.",
+          "elapsedSeconds": 16.998788038000008
+        },
+        {
+          "audioLanguage": "en",
+          "questionLanguage": "ja",
+          "question": "動画によると、キャベツの汁の色は何によって変わりますか？日本語で答えてください。",
+          "answer": {
+            "segments": [
+              {
+                "text": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的性質によって変わります。",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              },
+              {
+                "id": 2,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              }
+            ]
+          },
+          "streamedAnswer": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的状態によって変わります。",
+          "elapsedSeconds": 16.693617818999993
+        }
+      ]
+    },
+    "afterRestore": {
+      "status": "passed",
+      "inference": "real models; no protocol fixtures",
+      "models": [
+        "gpt-oss-20b",
+        "EmbeddingGemma 2 text-only 768d",
+        "Whisper large-v3-turbo upstream vLLM"
+      ],
+      "courseId": 1,
+      "videos": {
+        "ja": {
+          "id": 1,
+          "transcript": "1\n00:00:01,488 --> 00:00:08,188\nインターネットで敵対的環境構成について検索すると、おそらく現地企業の住所が出てくるでしょう。\n",
+          "processingSeconds": 0.04036136900000002
+        },
+        "en": {
+          "id": 2,
+          "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
+          "processingSeconds": 0.015529403000000002
+        }
+      },
+      "cases": [
+        {
+          "audioLanguage": "ja",
+          "questionLanguage": "ja",
+          "question": "動画によると、インターネットで「敵対的環境コース」を検索すると、何の住所が出てきますか？",
+          "answer": {
+            "segments": [
+              {
+                "text": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              },
+              {
+                "id": 2,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              }
+            ]
+          },
+          "streamedAnswer": "インターネットで「敵対的環境コース」を検索すると、現地企業の住所が出てきます。",
+          "elapsedSeconds": 22.328923440000004
+        },
+        {
+          "audioLanguage": "ja",
+          "questionLanguage": "en",
+          "question": "According to the video, searching online for hostile environment courses will probably return whose addresses? Answer in English.",
+          "answer": {
+            "segments": [
+              {
+                "text": "Searching online for hostile environment courses will probably return the addresses of local companies.",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              },
+              {
+                "id": 2,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              }
+            ]
+          },
+          "streamedAnswer": "Searching online for hostile environment courses will probably return the addresses of local companies.",
+          "elapsedSeconds": 12.405319844000001
+        },
+        {
+          "audioLanguage": "en",
+          "questionLanguage": "en",
+          "question": "According to the video, what determines the color of cabbage juice? Answer in English.",
+          "answer": {
+            "segments": [
+              {
+                "text": "The color of cabbage juice is determined by the pH of the solution: it changes color depending on how acidic, basic, or alkaline the chemical is.",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              },
+              {
+                "id": 2,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              }
+            ]
+          },
+          "streamedAnswer": "The color of cabbage juice is determined by the pH of the solution: it changes color depending on how acidic, basic, or alkaline the chemical is.",
+          "elapsedSeconds": 16.912398842
+        },
+        {
+          "audioLanguage": "en",
+          "questionLanguage": "ja",
+          "question": "動画によると、キャベツの汁の色は何によって変わりますか？日本語で答えてください。",
+          "answer": {
+            "segments": [
+              {
+                "text": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的性質によって変わります。",
+                "sourceIds": [
+                  1
+                ]
+              }
+            ],
+            "sources": [
+              {
+                "id": 1,
+                "video_id": 2,
+                "title": "FLEURS en real model acceptance",
+                "start_time": "00:00:00,000",
+                "end_time": "00:00:05,680"
+              },
+              {
+                "id": 2,
+                "video_id": 1,
+                "title": "FLEURS ja real model acceptance",
+                "start_time": "00:00:01,488",
+                "end_time": "00:00:08,188"
+              }
+            ]
+          },
+          "streamedAnswer": "キャベツの汁の色は、酸性・塩基性・アルカリ性などの化学的性質によって変わります。",
+          "elapsedSeconds": 16.519881689999995
+        }
+      ]
+    }
+  },
+  "uiUploadBeforeRestore": {
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "status": "passed",
+    "videoId": 4,
+    "initialUiSubmitObserved": true,
+    "uploadConfirmed": true,
+    "courseId": 3,
+    "membershipConfirmed": true,
+    "currentRunPerformedUpload": true,
+    "workerJavaScriptOverride": false,
+    "backendMocked": false,
+    "uncompressedUploadFallback": false,
+    "upload": "Actual UI file selection, language/title entry and submit in initial acceptance run",
+    "processing": "Real transcription completed",
+    "courseSetup": "Authenticated API creation and membership for this uploaded video only",
+    "question": "Actual UI streamed chat",
+    "questionText": "According to the uploaded video, what determines the color of cabbage juice? Answer in English.",
+    "answerText": "The color of cabbage juice is determined by the pH of the solution: it changes color depending on how acidic, basic, or alkaline the chemical is. (0:00-0:05)",
+    "citation": "FLEURS English actual UI upload acceptance 00:00:00,000",
+    "requestedTime": 0,
+    "playback": {
+      "currentTime": 0.138968,
+      "duration": 5.76,
+      "readyState": 4,
+      "error": null
+    },
+    "mediaRange": {
+      "status": 206,
+      "bytes": 16
+    },
+    "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
+    "tls": "Internal CA trusted; certificate verification enabled",
+    "pageErrors": []
+  },
+  "uiUploadAfterRestore": {
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "status": "passed",
+    "videoId": 4,
+    "initialUiSubmitObserved": true,
+    "uploadConfirmed": true,
+    "courseId": 3,
+    "membershipConfirmed": true,
+    "currentRunPerformedUpload": false,
+    "workerJavaScriptOverride": false,
+    "backendMocked": false,
+    "uncompressedUploadFallback": false,
+    "upload": "Actual UI file selection, language/title entry and submit in initial acceptance run",
+    "processing": "Real transcription completed",
+    "courseSetup": "Authenticated API creation and membership for this uploaded video only",
+    "question": "Actual UI streamed chat",
+    "questionText": "According to the uploaded video, what determines the color of cabbage juice? Answer in English.",
+    "answerText": "The color of cabbage juice is determined by the pH of the solution: it changes color depending on how acidic, basic, or alkaline the chemical is. (0:00-0:05)",
+    "citation": "FLEURS English actual UI upload acceptance 00:00:00,000",
+    "requestedTime": 0,
+    "playback": {
+      "currentTime": 0.143079,
+      "duration": 5.76,
+      "readyState": 4,
+      "error": null
+    },
+    "mediaRange": {
+      "status": 206,
+      "bytes": 16
+    },
+    "transcript": "1\n00:00:00,000 --> 00:00:05,680\nThe cabbage juice changes color depending on how acidic, basic, alkaline the chemical is.\n",
+    "tls": "Internal CA trusted; certificate verification enabled",
+    "pageErrors": []
+  },
+  "uiCitationAfterRestore": {
+    "status": "passed",
+    "tls": "internal CA trusted; certificate verification enabled",
+    "login": "actual UI username/password form",
+    "question": "actual UI streamed chat",
+    "answerText": "Searching online for hostile environment courses will probably return the addresses of local companies. (0:01-0:08)",
+    "citation": "FLEURS ja real model acceptance 00:00:01,488",
+    "requestedTime": 1.488,
+    "currentTime": 1.625354,
+    "duration": 12.44,
+    "readyState": 4,
+    "error": null,
+    "mediaRange": {
+      "status": 206,
+      "bytes": 16
+    },
+    "pageErrors": []
+  },
+  "recovery": {
+    "status": "passed",
+    "method": "validated four-volume cold backup and restore",
+    "volumeCount": 4,
+    "snapshotSha256": "30581a8daa3c25f73ec68e90aa93e7b8e5192e208d33067d37c1500ddcb4ab39",
+    "postSnapshotMarkersRemoved": 4,
+    "clusterIdentityChecked": true,
+    "originalPvcUidsChecked": true,
+    "allWritersAndBackendsQuiesced": true,
+    "applicationAcceptanceAfterRestore": "required separately"
+  },
+  "offHostRecovery": {
+    "status": "passed",
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "ciphertextSha256": "13e5df2dabfb9cc33c84e01c362816d4ab0e22e17b38f4b233145fe4e92da630",
+    "plaintextSha256": "8927bfade8a5fdcbbc196fa17fe755017e0a84378302430a59000be860e1076e",
+    "nativeManifestFilesVerified": 5,
+    "postSnapshotMarkersRemoved": 4,
+    "postRestoreReceiptsVerified": [
+      {
+        "file": "media/model-e2e-result.json",
+        "sha256": "59eed0c0070fd71e9f3f4017de9862f78057ac6b367dc471a8ed9dc2fd6fee96"
+      },
+      {
+        "file": "media/ui-upload.json",
+        "sha256": "07c93bde30fe39143665f079e48de452379db70a1ec104ae7b537e386bfa2435"
+      },
+      {
+        "file": "media/ui-citation-playback.json",
+        "sha256": "9aa1a9dd7f286e2d12c5bff823f5a3ccd3af25d57c35d1ecfe71a3cf9b24c8cd"
+      }
+    ],
+    "initialProductionUiUploadVerified": true,
+    "plaintextWrittenToDisk": false,
+    "keyStoredSeparatelyInAnsibleVault": true
+  },
+  "cost": {
+    "observedAt": "2026-11-12T13:04:35.664Z",
+    "allInstancesInactive": true,
+    "retainedInstances": 4,
+    "gpuComputeStopped": true,
+    "dataDestroyed": false,
+    "stoppedStorageHourlyUsd": [
+      0.093,
+      0.028,
+      0.047,
+      0.047
+    ],
+    "approximateDailyStorageUsd": 5.16,
+    "source": "Vast.ai instance page; all four Inactive after stopping final acceptance host"
+  },
+  "observedLimitations": [
+    "NVIDIA driver installation from an OS without a driver was not exercised.",
+    "Restore was on the same cluster/PVC identities, not a replacement-host disaster-recovery test.",
+    "One initial actual-UI chat returned a generic error. A subsequent request and a fresh upload-to-playback run passed; its root cause was not identified. This acceptance does not establish an error-free long-running service."
+  ],
+  "screenshots": [
+    "rtx4090-production-upload-2026-11-12.png",
+    "rtx4090-production-citation-2026-11-12.png"
+  ]
+}
