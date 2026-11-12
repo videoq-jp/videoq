@@ -226,7 +226,7 @@ jobs:
         with:
           manager: npm
       - run: npm ci --ignore-scripts
-      - run: npm audit signatures
+      - run: npm run audit:signatures
       - name: Build API Worker
         if: needs.changes.outputs.api == 'true'
         run: |
