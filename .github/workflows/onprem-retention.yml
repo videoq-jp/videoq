@@ -1,5 +1,7 @@
 name: On-prem Distribution Retention
 on:
+  schedule:
+    - cron: '17 3 * * *'
   workflow_run:
     workflows: [On-prem Release]
     types: [completed]
@@ -44,7 +46,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/scripts/onprem_distribution.py plan --file "$RUNNER_TEMP/retention-plan.json"
       - name: Revalidate all references before applying the saved plan
-        if: github.event_name == 'workflow_run' || inputs.apply == true
+        if: github.event_name == 'workflow_run' || github.event_name == 'schedule' || inputs.apply == true
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/scripts/onprem_distribution.py apply --file "$RUNNER_TEMP/retention-plan.json"

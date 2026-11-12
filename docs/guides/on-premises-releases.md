@@ -275,6 +275,7 @@ present.
 The workflow first saves a deletion plan, then re-reads the live inventory and
 reference graph before applying it. Missing metadata, changed references or an
 expired plan stop deletion. Exact successful deletions are journaled and kept as
-workflow artifacts for 90 days. Manual runs default to plan-only; set `apply=true`
+workflow artifacts for 90 days. A daily scheduled run clears expired build grace
+even when no new release is published. Manual runs default to plan-only; set `apply=true`
 only when actual cleanup is intended. The installer never runs registry cleanup
 on a customer's host.

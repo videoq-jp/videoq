@@ -74,3 +74,17 @@ test('invalid repository, source or event is rejected before API use',async()=>{
     const f=fixture();Object.assign(f,patch);await assert.rejects(decide(f));assert.deepEqual(f.calls,[]);
   }
 });
+
+test('daily retention applies expired-build cleanup while manual runs still default to plan-only',()=>{
+  const {readFileSync}=require('node:fs');
+  const {join}=require('node:path');
+  const {runInNewContext}=require('node:vm');
+  const text=readFileSync(join(__dirname,'../workflows/onprem-retention.yml'),'utf8');
+  assert.match(text,/schedule:\n\s+- cron: '\d+ \d+ \* \* \*'/);
+  const expression=text.match(/- name: Revalidate all references before applying the saved plan\n\s+if: (.*)/)[1];
+  const apply=(event,requested=false)=>runInNewContext(expression,{github:{event_name:event},inputs:{apply:requested}},{timeout:100});
+  assert.equal(apply('schedule'),true);
+  assert.equal(apply('workflow_run'),true);
+  assert.equal(apply('workflow_dispatch'),false);
+  assert.equal(apply('workflow_dispatch',true),true);
+});
