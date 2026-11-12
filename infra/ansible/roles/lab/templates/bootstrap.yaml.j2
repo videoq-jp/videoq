@@ -58,8 +58,6 @@ spec:
     repoURL: {{ videoq_gitops_repository | to_json }}
     targetRevision: {{ videoq_gitops_revision | to_json }}
     path: {{ videoq_gitops_path | to_json }}
-    directory:
-      recurse: false
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -166,6 +166,7 @@ class ManifestTests(unittest.TestCase):
                          [{'group': 'argoproj.io', 'kind': 'Application'}])
         root = next(item for item in objects if item['kind'] == 'Application')
         self.assertNotIn('automated', root['spec']['syncPolicy'])
+        self.assertNotIn('directory', root['spec']['source'])
         self.assertNotIn('finalizers', root['metadata'])
 
     def test_upstream_checksum_and_exact_image_inventory_are_enforced(self):
