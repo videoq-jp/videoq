@@ -271,7 +271,7 @@
 - name: Configure an optional read-only SSH deploy key from Ansible Vault
   ansible.builtin.command:
     argv: [/usr/local/bin/k3s, kubectl, -n, argocd, apply, -f, '-']
-    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'stringData': {'type': 'git', 'url': videoq_gitops_repository, 'sshPrivateKey': videoq_gitops_ssh_private_key}} | to_json }}"
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'data': {'type': 'git' | b64encode, 'url': videoq_gitops_repository | b64encode, 'sshPrivateKey': videoq_gitops_ssh_private_key | b64encode}} | to_json }}"
   when: videoq_gitops_ssh_private_key | length > 0
   no_log: true
   register: repository_key
@@ -280,7 +280,7 @@
 - name: Configure read-only GitHub App repository authentication from Ansible Vault
   ansible.builtin.command:
     argv: [/usr/local/bin/k3s, kubectl, -n, argocd, apply, -f, '-']
-    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'stringData': {'type': 'git', 'url': videoq_gitops_repository, 'githubAppID': videoq_github_app_id | string, 'githubAppInstallationID': videoq_github_app_installation_id | string, 'githubAppPrivateKey': videoq_github_app_private_key}} | to_json }}"
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'lab-config-repository', 'labels': {'argocd.argoproj.io/secret-type': 'repository'}}, 'data': {'type': 'git' | b64encode, 'url': videoq_gitops_repository | b64encode, 'githubAppID': videoq_github_app_id | string | b64encode, 'githubAppInstallationID': videoq_github_app_installation_id | string | b64encode, 'githubAppPrivateKey': videoq_github_app_private_key | b64encode}} | to_json }}"
   when: videoq_github_app_private_key | length > 0
   no_log: true
   register: repository_app
