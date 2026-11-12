@@ -29,14 +29,32 @@ ACCEPT = ', '.join(('application/vnd.oci.image.index.v1+json', 'application/vnd.
                     'application/vnd.docker.distribution.manifest.list.v2+json', 'application/vnd.docker.distribution.manifest.v2+json'))
 
 
-def gh(endpoint, *, pages=False, method='GET'):
+def gh(endpoint, *, pages=False, method='GET', allow_missing=False):
+    if allow_missing and (pages or method != 'GET' or endpoint not in {
+            f'orgs/{ORG}/packages/container/{p}' for p in RETIRED_PACKAGES}):
+        raise ValueError('Only an exact retired-package metadata lookup may allow 404')
     command = ['gh', 'api', '-X', method]
     if pages:
         command += ['--paginate', '--slurp']
+    if allow_missing:
+        command += ['--include']
     result = subprocess.run(command + [endpoint], capture_output=True, text=True)
+    body = result.stdout
+    if allow_missing:
+        headers, separator, body = body.partition('\n\n')
+        status = re.match(r'^HTTP/\S+ (\d{3})(?:\s|$)', headers)
+        if not separator or not status:
+            raise RuntimeError('Retired-package lookup did not return an inspectable HTTP status')
+        if int(status[1]) == 404:
+            return None
+        if int(status[1]) != 200:
+            raise RuntimeError(f'Retired-package lookup failed with HTTP {status[1]}')
     if result.returncode:
         raise RuntimeError(f'GitHub {method} failed for {endpoint}; no credentials/body logged')
-    return json.loads(result.stdout) if result.stdout.strip() else None
+    value = json.loads(body) if body.strip() else None
+    if allow_missing and not isinstance(value, dict):
+        raise RuntimeError('HTTP 200 retired-package metadata must be an object')
+    return value
 
 
 def listing(endpoint):
@@ -60,14 +78,13 @@ def snapshot():
                 run.get('path') == '.github/workflows/onprem-release.yml' and
                 run.get('repository', {}).get('full_name') == REPO)
     inventory = {}
-    catalog = {p['name'] for p in listing(f'orgs/{ORG}/packages?package_type=container&per_page=100')}
     present = []
     for package in PACKAGES:
-        if package in RETIRED_PACKAGES and package not in catalog:
+        endpoint = f'orgs/{ORG}/packages/container/{package}'
+        meta = gh(endpoint, allow_missing=package in RETIRED_PACKAGES)
+        if meta is None:
             inventory[package] = []
             continue
-        endpoint = f'orgs/{ORG}/packages/container/{package}'
-        meta = gh(endpoint)
         if meta.get('repository', {}).get('full_name') != REPO or meta.get('visibility') != 'public':
             raise ValueError('Unreviewed package identity: ' + package)
         inventory[package] = listing(endpoint + '/versions?per_page=100')
@@ -104,11 +121,13 @@ def release_roots(releases, keep, fetch_json):
 
 
 class Registry:
-    def __init__(self, cache=None):
+    def __init__(self, cache=None, *, packages=PACKAGES):
         self.directory = cache
         self.tokens = {}
         self.cache = {}
-        for package in PACKAGES:
+        for package in packages:
+            if package not in PACKAGES:
+                raise ValueError('Unreviewed registry package')
             url = 'https://ghcr.io/token?' + urllib.parse.urlencode({'service': 'ghcr.io', 'scope': f'repository:{ORG}/{package}:pull'})
             self.tokens[package] = fetch_json(url)['token']
 
@@ -351,7 +370,8 @@ def main():
     roots, retained, removed = release_roots(data['releases'], args.keep, fetch_json)
     for package, refs in source_roots(args.source_ref).items():
         roots[package].update(refs)
-    registry = Registry(args.file.parent / "videoq-retention-manifests")
+    needed = [p for p in data['presentPackages'] if data['packages'][p] or roots[p]]
+    registry = Registry(args.file.parent / "videoq-retention-manifests", packages=needed)
     result = plan(data, roots, retained, removed, registry.manifest, datetime.now(timezone.utc), args.grace_days)
     result['sourceRefs'] = args.source_ref
     if args.command == 'plan':

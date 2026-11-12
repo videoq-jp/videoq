@@ -258,8 +258,11 @@ it. Once all those references disappear, its entire package is deleted, includin
 its last tagged version and recent builds from the retired publisher. The build
 grace still applies to all four active application packages. Package retirement
 checks the complete version inventory again before deletion. Later runs accept
-the retired package's absence only after a successful complete catalog read;
-an absent referenced package still stops cleanup.
+an exact HTTP 404 for the retired package only after verifying all four active
+package identities. Protected references to that missing package still stop
+cleanup. Other API errors stop cleanup. It does not require organization-wide
+package listing access, and it requests registry tokens only for packages still
+present.
 
 The workflow first saves a deletion plan, then re-reads the live inventory and
 reference graph before applying it. Missing metadata, changed references or an
