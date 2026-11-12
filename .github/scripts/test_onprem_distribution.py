@@ -76,6 +76,12 @@ class RetentionTests(unittest.TestCase):
         data,roots,fetch,now=self.fixture();roots['videoq-api'].add(D(8))
         self.assertEqual(m.plan(data,roots,[],[],fetch,now)['deleteVersions'],[])
 
+    def test_daily_cleanup_can_expire_unadopted_builds_without_expiring_release_graphs(self):
+        data,roots,fetch,now=self.fixture()
+        result=m.plan(data,roots,[],[],fetch,now+timedelta(days=8))
+        self.assertEqual({v['id'] for v in result['deleteVersions']},{6,7,8,9})
+        self.assertEqual(set(result['protectedDigests']['videoq-api']),{D(n) for n in range(1,6)})
+
     def test_latest_two_generations_are_retained_and_other_release_types_are_preserved(self):
         releases=[]
         for n in range(1,5):
