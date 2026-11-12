@@ -90,8 +90,10 @@ SSH鍵、kubeconfig、smoke testの資格情報、認証情報バックアップ
 空き容量不足によるイメージ取得・バックアップ失敗時は、新版の同期へ進まない。
 
 アプリ更新は自動追従するが、OS・GPUドライバー・K3s・Argo CD・GPU pluginの保守は分ける。
-この変更の単体試験は外部API/クラスタを置き換えた制御フロー試験を含む。Forgejoと実Argo CDを組み合わせた
-連続更新・失敗復旧の実機受け入れを省略して「運用済み」と扱わない。
+
+2026-11-13にはVast.aiのRTX 4090一枚で、Forgejo・Argo CD・systemd timerによる正式リリースへの自動更新、更新前データの保持、4領域のcold restore後の実API・画面操作を確認した。[実機検証記録](../verification/rtx4090-forgejo-auto-update-acceptance-2026-11-13.json)に対象版と範囲を記載する。未完了journalの拒否は合成状態で確認しており、実プロセス強制終了や破壊的migration失敗の実機試験ではない。更新中は書き込みを止めてモデルPodを再作成し、今回の更新には約8分を要した。研究室の実機、負荷試験、別ホストへの完全オフライン復元は未検証。
+
+OS更新後の再起動前には、`dpkg --audit`と新カーネル向けの`dkms status`・`modinfo`を確認する。GPUドライバーのユーザー空間とカーネルモジュールを同じ版に揃え、実GPU処理を止めて保守する。
 
 参考: [K3sのイメージ取り込み](https://docs.k3s.io/add-ons/import-images)、
 [Argo CDの自動同期](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/)。

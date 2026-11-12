@@ -1,0 +1,128 @@
+{
+  "status": "passed",
+  "at": "2026-11-12T18:20:17.469565+00:00",
+  "method": "Native systemd timer enabled through Ansible; no manual update service start",
+  "updaterSourceSha": "c5fe374e4530a3a8ddbc2be621f088bf300e6997",
+  "before": {
+    "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "runId": "43213448108",
+    "runAttempt": 1,
+    "revision": "11e92eb2251fc39bee485011449dad3bd47d043a"
+  },
+  "after": {
+    "sourceSha": "8c1e34361d37c6925d539859784fd5d5816b7950",
+    "runId": "43264258707",
+    "runAttempt": 1,
+    "revision": "f6a5c6a99bb294d876746e9c6bc00388671f33ca"
+  },
+  "serviceInvocationId": "7b221220a298419c8a7b21977cb06d9c",
+  "serviceStart": "Thu 2026-11-12 18:10:29 UTC",
+  "serviceExit": "Thu 2026-11-12 18:18:21 UTC",
+  "timerEnabledAndActiveAtAcceptance": true,
+  "signedReleaseVerificationCompleted": true,
+  "clusterIdentityVerified": true,
+  "allTenDeploymentsReady": true,
+  "argoMatchingCommitHealthySynced": true,
+  "onlyChangedGitPaths": [
+    "clusters/vast4090/release-lock.json",
+    "clusters/vast4090/videoq/resources.json"
+  ],
+  "beforeUpdateColdBackupFilesVerified": 5,
+  "modelAndBrowserSmokePassed": true,
+  "fourLanguageQaAndSsePassed": true,
+  "productionUiFreshUpload": true,
+  "workerJavaScriptOverride": false,
+  "verifiedHttps": true,
+  "compressedVideoRangeStatus": 206,
+  "imageArchives": [
+    {
+      "role": "acceptedImages",
+      "bytes": 619869184,
+      "sha256": "1d1d3f68397588c2c26706a42b6d36964a14aaeb1bacb607d25ad8517bc65131",
+      "nativeBootImportIdentical": true
+    },
+    {
+      "role": "previousImages",
+      "bytes": 620038656,
+      "sha256": "a5b599463b4b142fdcd4114163777fa49caf068549bf8d02326be915bf03119f",
+      "nativeBootImportIdentical": true
+    }
+  ],
+  "schemaVersion": 1,
+  "hardware": {
+    "gpu": "RTX 4090",
+    "gpuCount": 1,
+    "vramMiB": 24564,
+    "provider": "Vast.ai",
+    "labHardwareTested": false
+  },
+  "cleanupPullRequest": 1406,
+  "bootstrapFixPullRequest": 1411,
+  "existingData": {
+    "apiCourseAndTwoVideoIdsRetained": true,
+    "uiVideoRetained": true,
+    "fourLanguageQaAndSsePassed": true,
+    "compressedRangeStatus": 206
+  },
+  "pendingGuard": {
+    "status": "passed",
+    "method": "Synthetic unfinished journal; actual service rejected before runtime changes",
+    "actualProcessCrashTested": false
+  },
+  "coldRecovery": {
+    "status": "passed",
+    "sameClusterAndOriginalPvcIdentities": true,
+    "dataVolumesRestored": 4,
+    "postSnapshotMarkersRemoved": 4,
+    "secretsMatched": true,
+    "acceptedJournalUnchanged": true,
+    "realApiAndUiAfterRestorePassed": true
+  },
+  "browserNetwork": {
+    "initialHostNetworkTrial": "failed: Chromium HTTP/2 SSE ERR_NETWORK_CHANGED",
+    "resolution": "Run unchanged browser assertions in isolated Kubernetes pod network namespace",
+    "workerJavaScriptOverride": false,
+    "firstFailedTrialPreserved": true
+  },
+  "offhostBackup": {
+    "status": "passed",
+    "sourceSha": "8c1e34361d37c6925d539859784fd5d5816b7950",
+    "ciphertextSha256": "b3ef54694a3addbd662c885abe9a2e635bb09e7d3b9ddd4c781d353d387eace6",
+    "plaintextSha256": "f18ce26cfdaab4b2298c935d00718e54a0224d9881fff4d6489a2c603429f1d0",
+    "ciphertextBytes": 88253540,
+    "nativeManifestFilesVerified": 15,
+    "acceptedNativeBackupSetsVerified": 2,
+    "diagnosticNativeBackupSetsVerified": 1,
+    "postSnapshotMarkersRemoved": 4,
+    "forgejoStoppedForSnapshot": true,
+    "localGitRepositoriesIncluded": true,
+    "applicationImageArchivesIncluded": false,
+    "plaintextWrittenToLocalDisk": false,
+    "keyStoredSeparatelyInAnsibleVault": true
+  },
+  "limitations": [
+    "NVIDIA driver was preinstalled at initial bootstrap",
+    "Single 24 GB GPU, chat context 16384; no load or availability SLA measured",
+    "Update stops writers and recreates model pods; this measured cycle took about eight minutes",
+    "No actual process crash or destructive migration failure injected on the VM",
+    "Same-cluster restore tested; no cross-host fully offline rebuild tested",
+    "OS, GPU driver, K3s and Argo CD maintenance are separate from app updates"
+  ],
+  "reboot": {
+    "status": "passed",
+    "kernel": "6.8.0-149-generic",
+    "driver": "580.178.04",
+    "newBootIdObserved": true,
+    "allTenDeploymentsReadyWithoutManualRedeploy": true,
+    "allThreeArgoApplicationsHealthySynced": true,
+    "timerEnabledOnBoot": true,
+    "timerStartedByBoot": true,
+    "timerStoppedDuringFinalMaintenance": true,
+    "actualCudaReadbackPassed": true,
+    "retainedApiAndBrowserAssertionsPassed": true,
+    "acceptedJournalUnchanged": true
+  },
+  "appUpdateKernel": "6.8.0-87-generic",
+  "appUpdateDriver": "580.95.05",
+  "maintenance": "Official Ubuntu 580-server-open patch update; dpkg audit clean and modules verified for both old/new kernels before controlled reboot"
+}
