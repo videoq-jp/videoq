@@ -26,6 +26,14 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           ],
         },
         {
+          heading: '動画講座のFAQとAIをどう使い分けるか',
+          paragraphs: [
+            '受講期間、ログイン方法、支払いなど、講座の運営ルールは固定のFAQにまとめ、最新の案内をひとつにそろえます。動画で説明していない条件を、動画を参照するAIだけで案内しようとしないでください。',
+            '「この用語はどういう意味？」「例題でこの式になるのはなぜ？」など、講義で説明している内容には、動画の場面へ戻れるAI回答を添えます。FAQを一問ずつ書き足す前に、元の説明で解決できる質問かを確認します。',
+            '個別の添削、講義にない内容、回答の根拠が分からない質問は、講師が対応する窓口を別に案内します。VideoQが質問を自動転送する機能ではなく、講座運営者が案内先を決める運用です。AIと人のどちらへ聞けばよいかを、受講生が判断できるようにします。',
+          ],
+        },
+        {
           heading: '一般的なAIチャットとの違い',
           paragraphs: [
             '一般的なAIチャットは、講師の授業内容を前提に答えるわけではありません。受講生が使うと、講義と異なる用語や説明の順序で答えが返ることがあります。',
@@ -36,7 +44,7 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           heading: 'サンプル講座で、質問から復習までを確かめる',
           paragraphs: [
             '登録なしで試せるサンプル講座には、微分などを扱う短い講義が入っています。たとえば「x²を微分するとどうなりますか？」と質問すると、講義で説明している「2x」という答えと、その説明に使った動画の場面を確認できます。これはサンプルの内容に基づく例で、回答の文章や引用される範囲は質問ごとに変わります。',
-            '答えだけを読むのではなく、引用を開いて講義を再生し、質問への説明が実際に含まれているかを確認してください。この流れを先に体験すると、自分の講座でもどんな質問を試すべきか判断しやすくなります。ページ下部の「登録なしで質問してみる」から開けます。サンプルにも利用上限があります。',
+            '答えだけを読むのではなく、引用を開いて講義を再生し、質問への説明が実際に含まれているかを確認してください。この流れを先に体験すると、自分の講座でもどんな質問を試すべきか判断しやすくなります。記事冒頭または下部の「登録なしで質問してみる」から開けます。サンプルにも利用上限があります。',
           ],
           steps: [
             '講義内で説明している内容を質問し、回答と引用先の説明が一致するかを確認します。',
@@ -68,6 +76,19 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           ],
         },
         {
+          heading: '1本の講義で、導入する価値を確かめる',
+          paragraphs: [
+            '最初から全講義を登録する前に、同じような質問が届く講義を1本選びます。最近受けた質問を、講義内で説明しているもの、運営ルール、講師の個別判断が必要なものに分けると、AIに任せたい範囲が見えます。質問文に個人情報が含まれる場合は、試す前に取り除いてください。',
+            '試用前後で受講生の人数や授業の範囲が違うと、質問の総数だけでは比較できません。たとえば同じ授業回の同じ人数を対象に、講師が直接答えた件数、対応にかかった時間、引用先に正しい説明があったかを記録します。これは導入判断のための確認方法であり、質問削減率を保証するものではありません。',
+          ],
+          steps: [
+            '講義に答えがある質問をいくつか試し、回答と引用先を照合します。答えがない質問も含め、講師に確認すべきケースを決めます。',
+            '少人数に共有し、講座の所有者が質問履歴から確認する項目と、別途記録する対応時間を決めます。質問履歴だけでは、解決したかや講師の対応時間までは分かりません。',
+            '利用したAI回答数と、参加者を増やしたときの見込みを料金ページの利用枠と照らし合わせます。動画の文字起こし時間や保存容量も別に確認します。',
+            '根拠の確認、講師への質問先、費用の見込みがそろってから、対象の講義や受講生を増やします。',
+          ],
+        },
+        {
           heading: '始める前に確認したいこと',
           paragraphs: [
             'AIの回答や文字起こしには誤りが含まれることがあります。受講生には、AIの回答であることと、引用された場面で内容を確認できることを伝えてください。また、質問と回答の履歴は講座の所有者が閲覧・CSV出力できます。受講生の質問を講師が読むことも、あらかじめ案内しておくと安心です。',
@@ -86,6 +107,14 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           ],
         },
         {
+          heading: 'When to use a course FAQ, video AI or an instructor',
+          paragraphs: [
+            'Keep course administration rules, such as access periods, login instructions and payment information, in a fixed FAQ with one current answer. Do not rely on a video-grounded AI to explain conditions the lectures do not cover.',
+            'For questions such as “What does this term mean?” or “Why does the example use this formula?”, add an AI answer that leads back to the lecture. Before writing another FAQ entry, check whether an explanation in the source video can answer the question.',
+            'Provide a separate instructor contact for individual feedback, material outside the lectures and answers without clear evidence. This is a process you arrange, not an automatic question-forwarding feature in VideoQ. Tell students which questions belong with the AI and which need an instructor.',
+          ],
+        },
+        {
           heading: 'How this differs from a general AI chat',
           paragraphs: [
             'A general AI chat does not assume what you taught. A student using one may get terminology or an order of explanation that differs from your course.',
@@ -96,7 +125,7 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           heading: 'Try the path from a question back to a lecture',
           paragraphs: [
             'The sample course, available without signing up, includes short lectures on topics such as differentiation. For example, ask “What is the derivative of x²?” and check the lecture’s explanation that the answer is 2x, together with the cited video moment. This example comes from the sample material; the wording and cited range can vary between questions.',
-            'Open the citation and play the lecture to check that it supports the answer. Trying this first helps you choose questions to test with your own course. Use “Ask without signing up” below to open the sample. Usage limits apply to the sample too.',
+            'Open the citation and play the lecture to check that it supports the answer. Trying this first helps you choose questions to test with your own course. Use “Ask without signing up” near the start or end of this article to open the sample. Usage limits apply to the sample too.',
           ],
           steps: [
             'Ask something the lecture explains, then compare the answer with the cited explanation.',
@@ -125,6 +154,19 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           heading: 'Costs and limits',
           paragraphs: [
             'AI answers use the course owner’s allowance, and students pay nothing. The allowance is shared across your account rather than split by course or student. At the limit, new questions are refused. Estimate your student numbers and question volume, then check the plan limits.',
+          ],
+        },
+        {
+          heading: 'Check the value with one lecture first',
+          paragraphs: [
+            'Before uploading every lecture, choose one that attracts repeated questions. Sort recent questions into lecture content, administration rules and those needing an instructor’s judgment. Remove personal information from questions before using them in a test.',
+            'Different class sizes or lesson topics can make raw question totals misleading. For example, compare the same lesson and group, recording how many questions the instructor answered directly, the time spent and whether citations supported the AI answers. This is a way to assess a pilot, not a promised reduction in support work.',
+          ],
+          steps: [
+            'Test several questions the lecture answers and compare each answer with its citation. Include questions it does not cover and decide when students should ask the instructor.',
+            'Share with a small group. Decide what the owner will check in question history and record support time separately. Question history alone does not show whether a student resolved the issue or how long the instructor spent.',
+            'Compare actual AI answer usage and your expected usage at a larger group size with the allowances on the pricing page. Check transcription time and storage separately too.',
+            'Expand to more lectures or students once you have checked the evidence, the instructor contact route and expected costs.',
           ],
         },
         {
