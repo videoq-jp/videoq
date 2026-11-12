@@ -172,7 +172,7 @@ def application(name, project, repository, revision, path, namespace):
     return {'apiVersion': 'argoproj.io/v1alpha1', 'kind': 'Application',
             'metadata': {'name': name, 'namespace': 'argocd'}, 'spec': {
                 'project': project, 'source': {'repoURL': repository, 'targetRevision': revision,
-                    'path': path, 'directory': {'recurse': False}},
+                    'path': path},
                 'destination': {'server': 'https://kubernetes.default.svc', 'namespace': namespace},
                 'syncPolicy': {'syncOptions': ['FailOnSharedResource=true']}}}
 

@@ -166,14 +166,19 @@ class ManifestTests(unittest.TestCase):
                          [{'group': 'argoproj.io', 'kind': 'Application'}])
         root = next(item for item in objects if item['kind'] == 'Application')
         self.assertNotIn('automated', root['spec']['syncPolicy'])
+        self.assertNotIn('directory', root['spec']['source'])
         self.assertNotIn('finalizers', root['metadata'])
 
     def test_upstream_checksum_and_exact_image_inventory_are_enforced(self):
         raw = json.dumps({'apiVersion': 'apps/v1', 'kind': 'Deployment',
+            'metadata': {'labels': {'app.kubernetes.io/instance': 'videoq'}},
             'spec': {'template': {'spec': {'containers': [{'image': 'upstream:v1'}]}}}})
+        raw += '\n---\n' + json.dumps({'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'argocd-cm'}})
         pin = {'sha256': hashlib.sha256(raw.encode()).hexdigest(), 'images': {'upstream:v1': 'upstream@sha256:' + 'a'*64}}
         result = json.loads(p.pin_argocd_manifest(raw, pin))
         self.assertEqual(result['items'][0]['spec']['template']['spec']['containers'][0]['image'], pin['images']['upstream:v1'])
+        self.assertEqual(result['items'][0]['metadata']['labels']['app.kubernetes.io/instance'], 'videoq')
+        self.assertEqual(result['items'][1]['data']['application.resourceTrackingMethod'], 'annotation')
         with self.assertRaisesRegex(ValueError, 'checksum'):
             p.pin_argocd_manifest(raw + '\n', pin)
         pin['images'] = {'other:v1': 'other@sha256:' + 'b'*64}
