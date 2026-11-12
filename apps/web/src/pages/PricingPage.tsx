@@ -192,6 +192,24 @@ export default function PricingPage() {
         </div>
       )}
       <p className="mt-6 text-std-17N-170 text-solid-gray-600">{t('pricing.ownerNote')}</p>
+      <section aria-labelledby="pricing-selection-title" className="mt-12 max-w-3xl space-y-6">
+        <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
+          <HeadingTitle level="h2" id="pricing-selection-title">{t('pricing.selection.title')}</HeadingTitle>
+        </Heading>
+        <p className="text-std-17N-170 text-solid-gray-700">{t('pricing.selection.intro')}</p>
+        {(['processing', 'answers', 'storage'] as const).map(key => (
+          <div key={key}>
+            <Heading size="20" className="mb-2">
+              <HeadingTitle level="h3">{t(`pricing.selection.${key}Title`)}</HeadingTitle>
+            </Heading>
+            <p className="text-std-17N-170 text-solid-gray-700">{t(`pricing.selection.${key}Body`)}</p>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          <Link href="/try" className="site-inline-link">{t('pricing.selection.tryDemo')}</Link>
+          <Link href="/guides/online-course-questions" className="site-inline-link">{t('pricing.selection.readGuide')}</Link>
+        </div>
+      </section>
     </>
   );
 }
