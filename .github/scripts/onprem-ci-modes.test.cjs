@@ -53,10 +53,11 @@ test('both modes retain application images, runtime smoke checks and strict vuln
   }
 });
 
-test('Operations and other existing callers keep full lifecycle validation by default', () => {
-  assert.match(source, /validate_lifecycle:\n\s+description: [^\n]+\n\s+type: boolean\n\s+default: true/);
+test('reusable validation defaults to image checks and Operations explicitly skips lifecycle rehearsals', () => {
+  assert.match(source, /validate_lifecycle:\n\s+description: [^\n]+\n\s+type: boolean\n\s+default: false/);
   const operations = readFileSync(join(__dirname, '../workflows/operations.yml'), 'utf8');
-  assert.doesNotMatch(operations, /validate_lifecycle: false/);
+  assert.match(operations, /validate_lifecycle: false/);
+  assert.doesNotMatch(operations, /validate_real_cpu:/);
   assert.match(operations, /uses: \.\/\.github\/workflows\/onprem-validation\.yml/);
 });
 

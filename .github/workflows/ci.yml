@@ -136,7 +136,7 @@ jobs:
       worker_matrix: ${{ steps.runtimes.outputs.matrix }}
       # Image security checks and destructive lifecycle rehearsals have separate scopes.
       onprem: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem == 'true' || steps.filter.outputs.onprem_lifecycle == 'true' || steps.filter.outputs.whisper_gpu == 'true' || steps.filter.outputs.upstream_images == 'true' }}
-      onprem_lifecycle: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.onprem_lifecycle == 'true' }}
+      onprem_lifecycle: ${{ steps.filter.outputs.onprem_lifecycle == 'true' }}
       inference: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.inference == 'true' }}
       whisper_gpu: ${{ steps.filter.outputs.whisper_gpu }}
       upstream_images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.upstream_images == 'true' }}

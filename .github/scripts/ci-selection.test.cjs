@@ -73,11 +73,13 @@ test('native and GPU checks are selected independently from lifecycle recovery',
   }
 });
 
-test('manual CI retains full validation and both components remain required when selected', () => {
-  for (const name of ['onprem', 'onprem_lifecycle', 'inference']) {
+test('manual CI uses lifecycle change selection and both components remain required when selected', () => {
+  for (const name of ['onprem', 'inference']) {
     assert.equal(selected(name, 'workflow_dispatch'), true);
     for (const event of events) assert.equal(selected(name, event), false);
   }
+  assert.equal(selected('onprem_lifecycle', 'workflow_dispatch'), false);
+  assert.equal(selected('onprem_lifecycle', 'workflow_dispatch', ['scripts/onprem/k3s.py']), true);
   for (const [id, flag] of [['onprem-validation', 'onprem'], ['local-inference-basic', 'inference']]) {
     const job = ci.split(`\n  ${id}:\n`)[1].split(/\n  [a-z][\w-]*:\n/)[0];
     assert.ok(job.includes(`if: needs.changes.outputs.${flag} == 'true'`));

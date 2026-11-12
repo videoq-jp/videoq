@@ -72,18 +72,22 @@ The same selection applies to PRs, the merge queue, and main/develop pushes:
 | Shared npm lockfiles, production Dockerfiles/configuration, Worker dependencies, runtime pins | Application image builds, runtime smoke checks, HIGH/CRITICAL scans and SBOMs |
 | Installers, Compose/Helm deployments, database migrations/schema, storage/runtime adapters, or lifecycle test definitions | Full on-prem video-processing, backup/restore, failed-update recovery and Kubernetes rehearsals |
 | Inference engines/adapters, native package pins or inference-specific workflows | Three-platform inference compatibility checks |
-| Shared NVIDIA vLLM Dockerfile/security inputs | NVIDIA image build and vulnerability scan |
+| Upstream vLLM digest/audio/security inputs | Unmodified upstream image and audio-volume inspection |
 | Moodle fixtures, workflow or integration contracts | Moodle integration checks |
 
 Image-only validation does not build Whisper, pull the llama.cpp inventory image,
 start K3s/kind, run backup/restore rehearsals, or install a playback browser.
 Changing a shared lockfile or generic `ci.yml` alone does not select full lifecycle
-or NVIDIA validation. Generic CI edits do not download real CPU models or scan unchanged upstream images.
-Changing the on-prem validation workflow itself checks its architecture-specific
-scan pipeline, as do changes to the upstream image pins and assessment policy. Selected checks still fail closed through `CI Success`.
-Manual CI retains full lifecycle and native compatibility validation. Daily
-Operations still runs full lifecycle and GPU security checks; weekly Operations
-retains native inference checks. Signed-release acceptance also remains unchanged.
+or NVIDIA validation. Shared workflow edits also do not download real CPU models
+or scan the unchanged upstream image matrix; their own scripts, fixtures and image
+pins still select those checks. Selected checks still fail closed through `CI Success`.
+Lifecycle rehearsals run only for the deployment, migration, storage and recovery
+changes listed above, and during signed-release acceptance. Manual CI uses the
+same lifecycle change filter and retains native compatibility validation. Daily
+Operations runs image and GPU security checks without lifecycle rehearsals; weekly
+Operations retains native inference checks. Real CPU acceptance runs on relevant
+CI changes and signed releases, rather than through Operations.
+
 
 App-specific jobs install their required npm workspaces and root tools instead of
 the whole monorepo. The cross-workspace ESLint compatibility job and supply-chain

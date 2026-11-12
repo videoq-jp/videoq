@@ -70,7 +70,10 @@ attempt. Installation
 always uses digests.
 
 `On-prem Validation` runs on selected changes and daily against current main,
-building and scanning images and exercising a disposable Kubernetes environment.
+building and scanning images. Lifecycle rehearsals, including the disposable
+Kubernetes environment, run only when deployment, migration, storage or recovery
+mechanisms change and during release validation. Daily Operations checks do not
+run lifecycle rehearsals.
 A daily failure requires triage; it does not approve or deploy a replacement.
 Every release also verifies the signed artifacts and runs the Kubernetes rehearsal
 on a fresh hosted runner. A successful release run therefore includes this staging

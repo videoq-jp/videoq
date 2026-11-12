@@ -62,6 +62,6 @@ test('PR and unknown scheduled events cannot start production checks', async () 
   await assert.rejects(plan({ context: { ...context, payload: { schedule: '* * * * *' } } }));
 });
 
-test('weekly inference compatibility keeps its schedule separate from the daily lifecycle rehearsal', async () => {
+test('weekly inference compatibility keeps its schedule separate from the daily image security checks', async () => {
   assert.deepEqual(selected(await plan({ context: { ...context, payload: { schedule: '17 2 * * 1' } } })), ['inference']);
 });
