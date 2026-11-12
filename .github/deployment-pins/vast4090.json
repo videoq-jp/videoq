@@ -2,6 +2,29 @@
   "schemaVersion": 1,
   "generations": [
     {
+      "sourceSha": "32fd53364729d88b87641590f15392e9f8a79b7f",
+      "runId": "43197856422",
+      "runAttempt": 1,
+      "images": {
+        "api": {
+          "repository": "ghcr.io/videoq-jp/videoq-api",
+          "digest": "sha256:920c481b67ea331e2f248660ff63dc1785a491af37f6d96b92e1e69c53f3b1ed"
+        },
+        "worker": {
+          "repository": "ghcr.io/videoq-jp/videoq-worker",
+          "digest": "sha256:8bf60f0c890fb9a09eeb516fb8e64b2991a647759074b2c5aadc756e129c6e3c"
+        },
+        "web": {
+          "repository": "ghcr.io/videoq-jp/videoq-web",
+          "digest": "sha256:2658ad9e86f766cdd5c25c691c0c3f29510a13d69eb584f29ce0fd948b006ace"
+        },
+        "transcription-gateway": {
+          "repository": "ghcr.io/videoq-jp/videoq-transcription-gateway",
+          "digest": "sha256:ec3747a506ad03730f15c1296c3f112538dc30e884fcaf0302d139046abfb56a"
+        }
+      }
+    },
+    {
       "sourceSha": "40adc7bdd8e3c99970d6851486fca30f06085863",
       "runId": "43172519519",
       "runAttempt": 1,
