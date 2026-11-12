@@ -28,7 +28,7 @@ test('the existing required CI gate includes on-prem validation', () => {
   assert.match(ci, /onprem-validation:\n[\s\S]*?uses: \.\/\.github\/workflows\/onprem-validation\.yml/);
   assert.match(onprem, /workflow_call:/);
   for (const [name, patterns] of Object.entries({
-    onprem_lifecycle: ['charts/**', 'scripts/onprem/**', 'apps/api/drizzle/**'],
+    onprem_lifecycle: ['charts/**', 'scripts/onprem/**/*.py', 'scripts/onprem/**/*.sh', 'scripts/onprem/**/*.mjs', 'scripts/onprem/**/requirements*.txt', 'apps/api/drizzle/**'],
     onprem: ['apps/web/Dockerfile*', 'apps/worker/uv.lock', 'package-lock.json', '.github/runtime-versions.json'],
   })) {
     const filter = ci.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:)`, 'm'))[1];
