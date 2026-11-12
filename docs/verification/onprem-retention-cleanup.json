@@ -1,39 +1,151 @@
 {
   "repository": "videoq-jp/videoq",
-  "operation": "Remove old unreferenced distribution package versions",
-  "successfulVersionDeletions": 1878,
-  "deletedReleases": 0,
-  "byPackage": {
-    "videoq-api": 402,
-    "videoq-transcription-gateway": 412,
-    "videoq-vllm": 244,
-    "videoq-web": 412,
-    "videoq-worker": 408
+  "observedAt": "2026-11-12T12:56:39.381219+00:00",
+  "operation": "Keep the latest two successful formal releases and protected image graphs; retire the unused self-built vLLM package",
+  "currentDistribution": {
+    "publicOwnPackages": [
+      {
+        "name": "videoq-api",
+        "visibility": "public"
+      },
+      {
+        "name": "videoq-web",
+        "visibility": "public"
+      },
+      {
+        "name": "videoq-worker",
+        "visibility": "public"
+      },
+      {
+        "name": "videoq-transcription-gateway",
+        "visibility": "public"
+      }
+    ],
+    "retiredPackageAbsent": "videoq-vllm",
+    "keptFormalReleases": [
+      {
+        "id": 442912371,
+        "sourceSha": "cae23f25c6c6381151a0cc839a31d53da3923434",
+        "tag": "onprem-cae23f25c6c6381151a0cc839a31d53da3923434-43213448108-1"
+      },
+      {
+        "id": 442848026,
+        "sourceSha": "23a40a762972465653b7d3a88b8735c09975957b",
+        "tag": "onprem-23a40a762972465653b7d3a88b8735c09975957b-43204660287-1"
+      }
+    ],
+    "upstreamEngines": "Consumed from digest-pinned upstream images, not republished as VideoQ engine packages"
   },
-  "keptReleases": [
+  "policy": {
+    "successfulFormalReleasesToKeep": 2,
+    "protect": "Current deployment pins, open source references and their index/platform/signature/referrer graphs",
+    "unpublishedBuildGraceDays": 7,
+    "expiryCleanup": "Daily03:17UTC; manual runs default to plan-only",
+    "dataScope": "No GPU instance, model data or user video volume deletion"
+  },
+  "initialVersionCleanup": {
+    "repository": "videoq-jp/videoq",
+    "operation": "Remove old unreferenced distribution package versions",
+    "successfulVersionDeletions": 1878,
+    "deletedReleases": 0,
+    "byPackage": {
+      "videoq-api": 402,
+      "videoq-transcription-gateway": 412,
+      "videoq-vllm": 244,
+      "videoq-web": 412,
+      "videoq-worker": 408
+    },
+    "keptReleases": [
+      {
+        "id": 441587839,
+        "tag": "onprem-25be8081950d2952821a6a277e23576385d2d9ba-42999855822-1"
+      },
+      {
+        "id": 441328600,
+        "tag": "onprem-2f9e90290f1edb1d904903458a592c0b87b1499b-42505541209-1"
+      }
+    ],
+    "graceDays": 7,
+    "batches": [
+      {
+        "planSha256": "dfd3cb14d6afa55922bdf9723a4b3ddc75e202700a6584bbf2682bc56a29783b",
+        "journalSha256": "8896d63946faafc70e79e3d1205076e65ca9ee8ce23c27c352df906679c0bf93",
+        "successfulDeletions": 25,
+        "note": "Interrupted after 25 successful deletes; resumed using a fresh live plan."
+      },
+      {
+        "planSha256": "ab929098bbcd94aa58b60c584b2ddae43210816bc5abd4f169fb2f9500ba1055",
+        "journalSha256": "0dba7d612b347715321b3107f5c7301526129a5e330e9f54874b3ccef4dda8d3",
+        "successfulDeletions": 1853,
+        "note": "Completed all remaining planned operations."
+      }
+    ],
+    "scope": "Both existing published releases and their image/platform/signature/referrer graphs were protected. No GPU resources or persistent model data were deleted."
+  },
+  "recordedFollowUpCleanups": [
     {
-      "id": 441587839,
-      "tag": "onprem-25be8081950d2952821a6a277e23576385d2d9ba-42999855822-1"
+      "runId": "43191191616",
+      "status": "complete",
+      "planSha256": "0a9a2253469b2a472f629c74095b145a52690542215da0ad4663acee5c74c0d0",
+      "deletedReleases": [
+        {
+          "id": 442626535,
+          "tag": "onprem-40adc7bdd8e3c99970d6851486fca30f06085863-43172519519-1"
+        },
+        {
+          "id": 441587839,
+          "tag": "onprem-25be8081950d2952821a6a277e23576385d2d9ba-42999855822-1"
+        }
+      ],
+      "deletedPackages": []
     },
     {
-      "id": 441328600,
-      "tag": "onprem-2f9e90290f1edb1d904903458a592c0b87b1499b-42505541209-1"
-    }
-  ],
-  "graceDays": 7,
-  "batches": [
-    {
-      "planSha256": "dfd3cb14d6afa55922bdf9723a4b3ddc75e202700a6584bbf2682bc56a29783b",
-      "journalSha256": "8896d63946faafc70e79e3d1205076e65ca9ee8ce23c27c352df906679c0bf93",
-      "successfulDeletions": 25,
-      "note": "Interrupted after 25 successful deletes; resumed using a fresh live plan."
+      "runId": "43192956523",
+      "status": "complete",
+      "planSha256": "4d87d4f85615f411661d09e41a869b35d4408646a8ece5d51a94fa31a2ecc436",
+      "deletedReleases": [],
+      "deletedPackages": [
+        {
+          "package": "videoq-vllm",
+          "versionsSha256": "4f4b4e804ea88774630427b8547cfcb3813a068b232dc68fbf0f7c938502498c"
+        }
+      ]
     },
     {
-      "planSha256": "ab929098bbcd94aa58b60c584b2ddae43210816bc5abd4f169fb2f9500ba1055",
-      "journalSha256": "0dba7d612b347715321b3107f5c7301526129a5e330e9f54874b3ccef4dda8d3",
-      "successfulDeletions": 1853,
-      "note": "Completed all remaining planned operations."
+      "runId": "43203915780",
+      "status": "complete",
+      "planSha256": "453d51fa717b05410e26dba6869c1d248209ee230c4afeac3a45aaac690f291a",
+      "deletedReleases": [
+        {
+          "id": 442685140,
+          "tag": "onprem-d42beaa352ad7f23e313a9934af1650f0e7bc222-43178069970-2"
+        }
+      ],
+      "deletedPackages": []
+    },
+    {
+      "runId": "43208805564",
+      "status": "complete",
+      "planSha256": "59d6269bd1f2fb32b50dd95a918420b533302d47d3f36b3eed655a8fcaff3125",
+      "deletedReleases": [
+        {
+          "id": 442724752,
+          "tag": "onprem-40654fb4a686afc4d6fa247eec913e5a685d83ff-43183423982-1"
+        }
+      ],
+      "deletedPackages": []
+    },
+    {
+      "status": "complete",
+      "deletedReleases": [
+        {
+          "id": 442813429,
+          "tag": "onprem-32fd53364729d88b87641590f15392e9f8a79b7f-43197856422-1"
+        }
+      ],
+      "deletedPackages": [],
+      "planSha256": "1d2d545e91dae42b08772ac3173beb757c3ec2f17c6106ca6ac4f7539ddba97e",
+      "runId": "43217564594"
     }
-  ],
-  "scope": "Both existing published releases and their image/platform/signature/referrer graphs were protected. No GPU resources or persistent model data were deleted."
+  ]
 }

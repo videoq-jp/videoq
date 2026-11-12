@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "scope": "Model provisioning only; empty disposable PVC on an RTX 4090 VM. Serving and application acceptance are separate.",
+  "scope": "Standalone empty-cache model provisioning under the source listed below. A separately scoped fresh GitOps deployment is recorded in additionalFreshGitOpsDeployment; full production UI acceptance has its own release-specific record.",
   "sourceShaUnderTest": "827f03c7b1d592066f4a23089be0b18715fa1af8",
   "provisionCodeSha256": "eaa366e26e5f2f13006a400dc9b109e718956d8382cc63fb6c506198d0bacf7e",
   "provisioningImage": "ghcr.io/videoq-jp/videoq-transcription-gateway@sha256:1f237b9dc54dbae575a1c950589bff91f30e7813c5b84610c9626a0c7c5d0365",
@@ -29,5 +29,67 @@
     "exitCode": 137
   },
   "rolloutRegression": "Real chart compilation checks progress deadlines exceed serialized peer waits plus startup probes.",
-  "durationSeconds": 323
+  "durationSeconds": 323,
+  "additionalFreshGitOpsDeployment": {
+    "status": "passed",
+    "sourceSha": "32fd53364729d88b87641590f15392e9f8a79b7f",
+    "runId": "43197856422",
+    "runAttempt": 1,
+    "signedReleaseVerified": true,
+    "base": "Fresh Ubuntu22.04 VM with an existing NVIDIA driver, no K3s and new model PVCs",
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 4090",
+      "count": 1,
+      "driver": "580.95.05",
+      "memoryUsedMiB": 20677,
+      "memoryTotalMiB": 24564
+    },
+    "ansibleInitial": {
+      "ok": 39,
+      "changed": 22,
+      "failed": 0
+    },
+    "ansibleRepeat": {
+      "ok": 39,
+      "changed": 0,
+      "failed": 0
+    },
+    "syncSeconds": 609,
+    "manualDeploymentRepairNeeded": false,
+    "availableDeployments": 10,
+    "models": [
+      {
+        "role": "chat",
+        "downloadSeconds": 145,
+        "exitCode": 0,
+        "restarts": 0,
+        "modelProvisionMemoryLimit": "4Gi",
+        "progressDeadlineSeconds": 7200
+      },
+      {
+        "role": "embedding",
+        "downloadSeconds": 14,
+        "exitCode": 0,
+        "restarts": 0,
+        "modelProvisionMemoryLimit": "4Gi",
+        "progressDeadlineSeconds": 7200
+      },
+      {
+        "role": "whisper",
+        "downloadSeconds": 17,
+        "exitCode": 0,
+        "restarts": 0,
+        "modelProvisionMemoryLimit": "4Gi",
+        "progressDeadlineSeconds": 7200
+      }
+    ],
+    "unchangedInferenceRecipeAtSource": "cae23f25c6c6381151a0cc839a31d53da3923434",
+    "recipeComparisonScope": [
+      "charts/videoq-inference",
+      "apps/inference/whisper",
+      "scripts/gitops/promote.py",
+      "infra/ansible"
+    ],
+    "applicationScope": "API JA/EN4-way QA/SSE and actual UI citation playback passed before/after restore. Native software-encoder upload issue was separately diagnosed and fixed by PR1402; final unmodified signed frontend acceptance remains separate."
+  }
 }
