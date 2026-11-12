@@ -29,9 +29,14 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version-file: .python-version
       - run: python -m pip install -r infra/ansible/requirements.txt
-      - run: bash .github/scripts/install-helm.sh
+      - name: Install the pinned Helm binary
+        env:
+          HELM_INSTALL_DIR: ${{ runner.temp }}/helm-tools
+        run: |
+          bash .github/scripts/install-helm.sh
+          echo "$HELM_INSTALL_DIR" >> "$GITHUB_PATH"
       - name: Validate Ansible syntax without connecting to a GPU host
         working-directory: infra/ansible
         run: ansible-playbook -i inventory.example.yml site.yml --syntax-check

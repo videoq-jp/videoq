@@ -93,7 +93,7 @@ Argo CD の API、DB、ストレージ、推論サービスは ClusterIP のま�
 VideoQ の HTTPS だけを指定したホストの LAN IPv4 と443番に割り当てる。
 
 非公開構成リポジトリには読取専用 deploy key を登録し、Git URL を
-`git@github.com:videoq-jp/videoq-lab-config.git` にする。
+リポジトリ画面の **Code → SSH** からコピーした URL にする。
 秘密鍵は `videoq_gitops_ssh_private_key` を定義した Ansible Vault ファイルから渡す。
 
 ```bash
