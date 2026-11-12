@@ -221,6 +221,21 @@ class ManifestTests(unittest.TestCase):
                 self.assertEqual(item['metadata']['annotations']['argocd.argoproj.io/sync-options'], 'Prune=false,Delete=false')
         self.assertEqual(by_name['videoq-api']['metadata']['annotations']['argocd.argoproj.io/sync-wave'], '30')
         self.assertEqual(by_name['postgres']['metadata']['annotations']['argocd.argoproj.io/sync-wave'], '0')
+        # WaitForFirstConsumer claims must be created with their first Pod.
+        # An earlier Pending claim blocks Argo before it creates that Pod;
+        # a later claim leaves the Pod Pending and blocks its own creation.
+        consumers = {}
+        for item in objects:
+            pod = item.get('spec', {}).get('template', {}).get('spec', {})
+            for volume in pod.get('volumes', []):
+                claim = volume.get('persistentVolumeClaim', {}).get('claimName')
+                if claim:
+                    consumers.setdefault(claim, []).append(int(item['metadata']['annotations']['argocd.argoproj.io/sync-wave']))
+        for item in objects:
+            if item['kind'] == 'PersistentVolumeClaim':
+                name = item['metadata']['name']
+                self.assertIn(name, consumers)
+                self.assertEqual(int(item['metadata']['annotations']['argocd.argoproj.io/sync-wave']), min(consumers[name]), name)
         gateway = next(item for item in objects if item['kind'] == 'Deployment' and item['metadata']['name'] == 'videoq-gateway')
         port = gateway['spec']['template']['spec']['containers'][0]['ports'][0]
         self.assertEqual((port['hostIP'], port['hostPort']), ('192.168.1.50', 443))
