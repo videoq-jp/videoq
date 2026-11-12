@@ -1,0 +1,36 @@
+{
+  "verified_at": "2026-11-12",
+  "scope": "Existing-cluster bootstrap and private GitOps configuration reconciliation only",
+  "environment": {
+    "provider": "Vast.ai",
+    "gpu": "One RTX 4090, 24 GB",
+    "os": "Ubuntu 22.04.5",
+    "driver": "595.99.02",
+    "k3s": "v1.37.2+k3s1",
+    "existing_cluster_explicitly_adopted": true
+  },
+  "ansible": {
+    "initial": {"ok": 33, "changed": 13, "unreachable": 0, "failed": 0, "skipped": 12},
+    "repeat_after_configuration_fixes": {"ok": 34, "changed": 0, "unreachable": 0, "failed": 0, "skipped": 11},
+    "credential_storage": "Fernet encrypted host backup, key and GitHub App private key in operator Ansible Vault"
+  },
+  "argocd": {
+    "version": "v3.6.1",
+    "ready_pods": 7,
+    "repository_auth": "GitHub App with Contents and Metadata read permission, installed on one private configuration repository only",
+    "tracking": "annotation",
+    "automatic_sync": false,
+    "configuration_revision": "18270308f58764f03808d04cd6cbfcea2cb5fd58",
+    "root_application_operation": "Succeeded",
+    "probe_application_operation": "Succeeded",
+    "probe": {"kind": "ConfigMap", "name": "videoq-gitops-probe", "namespace": "videoq", "version": "1"}
+  },
+  "excluded_from_acceptance": [
+    "Fresh Ubuntu host preparation and GPU driver installation",
+    "Three-model co-residency on one RTX 4090",
+    "Complete VideoQ deployment through Argo CD",
+    "Video transcription, indexing and cited answer end to end",
+    "Application data backup and restore"
+  ],
+  "cost_control": "Instance stopped after bootstrap verification; stopped storage remains billable"
+}
