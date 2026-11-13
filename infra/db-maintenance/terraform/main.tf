@@ -15,6 +15,11 @@ variable "schedule_enabled" {
   type    = bool
   default = false # Enable only after successful production verification/cutover.
 }
+variable "retain_verified_backups" {
+  type        = bool
+  default     = false
+  description = "Retain restored backups in the dedicated private archive bucket; enable only with reviewed operator code."
+}
 
 locals {
   account  = "257240362763"
@@ -150,7 +155,9 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["lambda:GetFunctionConfiguration", "lambda:UpdateFunctionConfiguration"], Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:lambda:${local.region}:${local.account}:function:${name}"] },
       { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } } }
-  ] : permission if each.key == "rotation"]) })
+    ] : permission if each.key == "rotation"], each.key == "backup" && var.retain_verified_backups ? [
+    { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
+  ] : []) })
 }
 resource "aws_codebuild_project" "job" {
   lifecycle {
@@ -172,6 +179,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_RETAIN_BACKUP"
+      value = each.key == "backup" && var.retain_verified_backups ? "true" : "false"
     }
   }
   source {

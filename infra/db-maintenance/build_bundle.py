@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
     "neon-admin.cjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-stream-proof.cjs",
-    "backup-restore.mjs", "provision-public-demo.mjs", "public-demo-policy.cjs",
+    "backup-restore.mjs", "backup-archive.mjs", "provision-public-demo.mjs", "public-demo-policy.cjs",
 ]
 
 
@@ -30,7 +30,7 @@ def operator_files():
     operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
     for name in ["package.json", "package-lock.json", "Dockerfile", "fixtures/smoke.mp4", "fixtures/README.md"]:
         operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
-    for name in ["runtime/job.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
+    for name in ["runtime/job.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
     for name in ["content/course.json", *["public/lessons/" + key + ".mp4" for key in ["japanese", "math", "science", "social", "english"]]]:

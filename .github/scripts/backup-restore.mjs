@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
@@ -20,12 +21,13 @@ const password = randomBytes(32).toString('hex');
 const sourceUrl = new URL(process.env.DATABASE_URL);
 if (!['postgres:', 'postgresql:'].includes(sourceUrl.protocol)) throw new Error('Expected PostgreSQL');
 const dumpEnvironment = { ...process.env,
-  PGHOST: sourceUrl.hostname, PGPORT: sourceUrl.port || '5432',
+  PGHOST: process.platform === 'darwin' && ['localhost', '127.0.0.1', '[::1]'].includes(sourceUrl.hostname)
+    ? 'host.docker.internal' : sourceUrl.hostname, PGPORT: sourceUrl.port || '5432',
   PGDATABASE: decodeURIComponent(sourceUrl.pathname.slice(1)),
   PGUSER: decodeURIComponent(sourceUrl.username), PGPASSWORD: decodeURIComponent(sourceUrl.password),
   PGSSLMODE: sourceUrl.searchParams.get('sslmode') || 'prefer',
   PGCHANNELBINDING: sourceUrl.searchParams.get('channel_binding') || 'prefer',
-  PGSSLROOTCERT: '/videoq-ca.crt',
+  PGSSLROOTCERT: '/backup/ca.crt',
   PGOPTIONS: '-c default_transaction_read_only=on',
 };
 let temporary, restored, started = false, stage = 'database-connect';
@@ -33,7 +35,7 @@ const docker = (args, options = {}) => exec('docker', args, { maxBuffer: 4_000_0
 const identifier = value => '"' + value.replaceAll('"', '""') + '"';
 async function inventory(client) {
   const { rows } = await client.query(`SELECT schemaname, tablename FROM pg_tables
-    WHERE schemaname IN ('public', 'drizzle', 'videoq_security') ORDER BY schemaname, tablename`);
+    WHERE schemaname = ANY($1::text[]) ORDER BY schemaname, tablename`, [BACKUP_SCHEMAS]);
   const result = {};
   for (const row of rows) {
     const table = identifier(row.schemaname) + '.' + identifier(row.tablename);
@@ -43,12 +45,17 @@ async function inventory(client) {
 }
 let report = { status: 'error', summary: 'バックアップの復元テストを完了できませんでした。', details: [] };
 try {
+  const archiveContext = backupArchiveContext();
   await source.connect();
   const version = Number((await source.query('SHOW server_version_num')).rows[0].server_version_num);
   if (Math.floor(version / 10000) !== 17) throw new Error('Review matching PostgreSQL client before restoring');
   await docker(['pull', IMAGE]);
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'videoq-restore-'));
   await fs.chmod(temporary, 0o700);
+  // Copy the host trust bundle into the shared private directory so Docker
+  // mounts a real file on both Linux runners and macOS developer machines.
+  await fs.copyFile(process.platform === 'darwin' ? '/etc/ssl/cert.pem' : '/etc/ssl/certs/ca-certificates.crt', path.join(temporary, 'ca.crt'));
+  await fs.chmod(path.join(temporary, 'ca.crt'), 0o600);
   stage = 'read-only-snapshot';
   await source.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   await source.query("SET LOCAL idle_in_transaction_session_timeout = '20min'");
@@ -57,11 +64,11 @@ try {
   const expected = await inventory(source);
   if (Object.keys(expected).length < 3) throw new Error('Incomplete source inventory');
   stage = 'logical-backup';
-  await docker(['run', '--rm', '--network', 'host', '--user', process.getuid() + ':' + process.getgid(),
+  await docker(['run', '--rm', ...(process.platform === 'darwin' ? [] : ['--network', 'host']), '--user', process.getuid() + ':' + process.getgid(),
     '-e', 'PGDATABASE', '-e', 'PGOPTIONS',
     '-e', 'PGHOST', '-e', 'PGPORT', '-e', 'PGUSER', '-e', 'PGPASSWORD', '-e', 'PGSSLMODE', '-e', 'PGCHANNELBINDING', '-e', 'PGSSLROOTCERT',
-    '-v', temporary + ':/backup', '-v', '/etc/ssl/certs/ca-certificates.crt:/videoq-ca.crt:ro', IMAGE, 'pg_dump', '--format=custom', '--no-owner', '--no-acl', '--no-comments',
-    '--schema=public', '--schema=drizzle', '--schema=videoq_security', '--snapshot=' + snapshot, '--file=/backup/database.dump'], {
+    '-v', temporary + ':/backup', IMAGE, 'pg_dump', '--format=custom', '--no-owner', '--no-acl', '--no-comments',
+    ...BACKUP_SCHEMAS.map(schema => '--schema=' + schema), '--snapshot=' + snapshot, '--file=/backup/database.dump'], {
     env: dumpEnvironment,
   });
   await source.query('COMMIT');
@@ -92,11 +99,15 @@ try {
   const actual = await inventory(restored);
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Restored counts differ from the exported snapshot');
   const invalid = await restored.query(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
-    WHERE n.nspname IN ('public','drizzle','videoq_security') AND NOT c.convalidated`);
+    WHERE n.nspname = ANY($1::text[]) AND NOT c.convalidated`, [BACKUP_SCHEMAS]);
   if (Number(invalid.rows[0].count)) throw new Error('Unvalidated restored constraints');
-  report = { status: 'ok', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
+  stage = 'verified-backup-handoff';
+  const staged = await stageVerifiedBackup({directory: temporary, destination: process.env.VIDEOQ_BACKUP_HANDOFF, inventory: expected,
+    schemas: BACKUP_SCHEMAS, image: IMAGE, context: archiveContext});
+  report = { status: 'ok', backup_retention: staged ? 'staged' : 'disabled', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
     details: ['- 本番DBへの書き込み、バックアップファイルやレコード内容の公開は行っていません。',
-      '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。'] };
+      '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
+      staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
 } catch (error) {
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {
