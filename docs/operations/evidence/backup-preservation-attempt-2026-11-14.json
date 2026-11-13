@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "date": "2026-11-14",
+  "scope": "initial private complete PostgreSQL backup preservation and recovery rehearsal",
+  "approved_pull_requests": [
+    1436,
+    1433
+  ],
+  "main_commit": "ede1af6ed8434e65e0c844c54120777bb1748b6f",
+  "enablement": {
+    "apply_succeeded": true,
+    "creates": 6,
+    "updates": 6,
+    "deletes": 0,
+    "private_access_blocked": true,
+    "versioning_enabled": true,
+    "encryption": "AES256",
+    "job_code_pins_unchanged": true,
+    "schedule_preserved": true
+  },
+  "attempt": {
+    "github_run_id": 43474946981,
+    "maintenance_run_id": "5665b418f7def4f84ec46e7774bcfa51",
+    "status": "FAILED",
+    "reported_error": "PRODUCTION_VERIFICATION_FAILED",
+    "failure_stage": "unknown; parent replaced child report details",
+    "completed_archive_objects": 0,
+    "backup_preservation_verified": false,
+    "retrieval_verified": false,
+    "retrieved_backup_restore_verified": false
+  },
+  "safe_state": {
+    "new_uploads_enabled": false,
+    "archive_infrastructure_preserved": true,
+    "pause_apply_updates": 2,
+    "pause_apply_deletes": 0,
+    "maintenance_schedule": "ENABLED",
+    "production_d1_cutover": false,
+    "legacy_tables_excluded_from_export": false
+  },
+  "next_step": "Review and deploy allowlisted child failure-stage diagnostics, resolve the observed failure, then repeat the approved preservation and retrieval/recovery rehearsal. Do not treat this attempt as a valid backup."
+}
