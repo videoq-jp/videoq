@@ -15,6 +15,11 @@ describe("persistence configuration", () => {
     expect(() => persistenceBackend({ DEPLOYMENT_EDITION: "cloud", PERSISTENCE_BACKEND: "postgres" })).toThrow();
     expect(persistenceBackend({ DEPLOYMENT_EDITION: "cloud", PERSISTENCE_BACKEND: "postgres", MIGRATION_ALLOW_CLOUD_POSTGRES: "true" })).toBe("postgres");
   });
+  it.each(["", "clodu", "on-prem", "CLOUD", null])("rejects an invalid edition before repository creation: %s", async edition => {
+    const settings = { DEPLOYMENT_EDITION: edition, DATABASE_URL: "postgresql://unused" } as unknown as Bindings;
+    expect(() => persistenceBackend(settings)).toThrow("Invalid deployment edition");
+    await expect(createUserSecretsRepository(settings)).rejects.toThrow("Invalid deployment edition");
+  });
   it("never uses a PostgreSQL URL when the required D1 binding is absent", async () => {
     await expect(createUserSecretsRepository({
       DEPLOYMENT_EDITION: "cloud", DATABASE_URL: "postgresql://unused",

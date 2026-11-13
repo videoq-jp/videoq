@@ -8,6 +8,9 @@ export type PersistenceSettings = {
 
 /** Unspecified edition retains the legacy configuration until the explicit cutover. */
 export function persistenceBackend(config: PersistenceSettings): PersistenceBackend {
+  if (config.DEPLOYMENT_EDITION !== undefined && config.DEPLOYMENT_EDITION !== "cloud" && config.DEPLOYMENT_EDITION !== "onprem") {
+    throw new Error("Invalid deployment edition");
+  }
   const edition = config.DEPLOYMENT_EDITION ?? (config.RUNTIME === "node" ? "onprem" : undefined);
   const backend = config.PERSISTENCE_BACKEND ?? (edition === "cloud" ? "d1" : "postgres");
   if (backend !== "d1" && backend !== "postgres") throw new Error("Invalid persistence backend");
