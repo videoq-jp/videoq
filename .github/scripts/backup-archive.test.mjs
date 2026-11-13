@@ -185,3 +185,27 @@ test('parent refuses a symlink marker and binds the upload checksum to the child
   await writeFile(marker,JSON.stringify(metadata));
   await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/BACKUP_HANDOFF_INTEGRITY_FAILED/);
 });
+
+test('restore failures expose fixed categories without SQL, rows, names or credentials', async()=>{
+ const {restoreArchiveFailureStage,RESTORE_FAILURE_CATEGORIES}=await import('./backup-archive.mjs');
+ const examples=[
+  ['missing-role','ERROR: role "synthetic-secret" does not exist'],
+  ['missing-extension','ERROR: extension "synthetic-secret" is not available'],
+  ['missing-function','ERROR: function synthetic_secret(text) does not exist'],
+  ['missing-type','ERROR: type "synthetic-secret" does not exist'],
+  ['missing-schema','ERROR: schema "synthetic-secret" does not exist'],
+  ['missing-relation','ERROR: relation "synthetic-secret" does not exist'],
+  ['missing-collation','ERROR: collation "synthetic-secret" does not exist'],
+  ['missing-access-method','ERROR: operator class "synthetic-secret" does not exist'],
+  ['duplicate-object','ERROR: schema "synthetic-secret" already exists'],
+  ['permission-denied','ERROR: permission denied for table synthetic_secret'],
+  ['foreign-key','ERROR: insert violates foreign key constraint "synthetic-secret"'],
+  ['unique-key','ERROR: duplicate key value violates unique constraint "synthetic-secret"'],
+  ['unsupported-setting','ERROR: unrecognized configuration parameter "synthetic-secret"'],
+  ['disk-full','No space left on device: synthetic-secret'],
+  ['out-of-memory','ERROR: out of memory: synthetic-secret'],
+ ];
+ assert.deepEqual(examples.map(([name])=>name),RESTORE_FAILURE_CATEGORIES.map(([name])=>name));
+ for(const [category,stderr] of examples) assert.equal(restoreArchiveFailureStage({stderr}), 'restore-archive-apply-'+category);
+ for(const error of [null,{}, {stderr:5}, {stderr:'postgresql://synthetic-secret'}, {message:'ERROR: role "synthetic-secret" does not exist'}]) assert.equal(restoreArchiveFailureStage(error),'restore-archive-apply');
+});

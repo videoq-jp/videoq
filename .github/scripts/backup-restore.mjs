@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
+import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureStage } from './backup-archive.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
@@ -116,6 +116,7 @@ try {
       '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
       staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
 } catch (error) {
+  if (stage === 'restore-archive-apply') stage = restoreArchiveFailureStage(error);
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {
     console.error(error.stderr || error.message);
