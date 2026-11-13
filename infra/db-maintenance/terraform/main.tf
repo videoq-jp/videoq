@@ -94,6 +94,10 @@ resource "aws_s3_bucket_policy" "bundle" {
   }] })
 }
 resource "aws_s3_object" "operator" {
+  # Bootstrap only: subsequent reviewed operator versions are uploaded by CD.
+  lifecycle {
+    ignore_changes = [source, source_hash]
+  }
   bucket      = aws_s3_bucket.bundle.id
   key         = "operator.zip"
   source      = var.operator_zip

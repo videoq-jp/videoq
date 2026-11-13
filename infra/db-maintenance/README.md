@@ -261,3 +261,8 @@ resource deletion and the bucket's `prevent_destroy` guard will reject the plan.
 No automatic expiry or deletion policy is introduced. Infrastructure changes still
 require a separately reviewed plan and operator apply; code deployment does not
 enable either option.
+
+The operator ZIP object is bootstrapped by Terraform, then managed by maintenance
+CD. Terraform ignores later source/path-hash changes for that object, as it does
+for pinned job sources and live Lambda code. Provisioning or pausing archive
+storage must not upload a different operator ZIP as an infrastructure side effect.
