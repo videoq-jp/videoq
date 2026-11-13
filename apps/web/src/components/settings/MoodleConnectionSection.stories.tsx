@@ -33,22 +33,22 @@ export const Disconnect: Story = {
   parameters: { api: { rest: [connected, restPost('/api/teaching/connections/school/disconnect', success({ disconnected: true }))] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Mathematics|Disconnect: Mathematics/ }));
     await userEvent.click(canvas.getByRole('button', { name: /キャンセル|Cancel/ }));
-    await userEvent.click(canvas.getByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /連携を解除: Mathematics|Disconnect: Mathematics/ }));
     await userEvent.click(within(canvas.getByRole('dialog')).getByRole('button', { name: /^連携を解除$|^Disconnect$/ }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
     await expect(canvasElement.querySelector('[data-connection-id="school"]')).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: /連携を解除: Mathematics|Disconnect: Mathematics/ })).not.toBeInTheDocument();
   },
 };
 export const DisconnectFailed: Story = {
   parameters: { api: { rest: [connected, restPost('/api/teaching/connections/school/disconnect', failure())] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Mathematics|Disconnect: Mathematics/ }));
     await userEvent.click(within(canvas.getByRole('dialog')).getByRole('button', { name: /^連携を解除$|^Disconnect$/ }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /連携を解除: Mathematics|Disconnect: Mathematics/ })).toBeEnabled();
   },
 };

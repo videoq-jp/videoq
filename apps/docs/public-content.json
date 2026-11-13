@@ -35,6 +35,7 @@
     "guides/rtx4090.md",
     "guides/lab-first-install.md",
     "guides/lms-integration.md",
+    "guides/google-classroom-integration.md",
     "guides/on-premises.md",
     "guides/on-premises-single-server.md",
     "guides/on-premises-k3s.md",

@@ -126,7 +126,7 @@ The former site-wide quota-owner model is removed. Existing installations do not
 implicitly grant their installer ownership of new courses. Old mappings are not
 adopted by another teacher; reconnect each course explicitly. Apply migration 0063,
 reapply `infra/sql/neon-security.sql`, and deploy the matching companion plugin.
-See [teacher ownership](../design/teacher-owned-lms-connections.md) for the authority model.
+See [teacher ownership](https://github.com/videoq-jp/videoq/blob/main/docs/design/teacher-owned-lms-connections.md) for the authority model.
 
 Before production activation, verify the intended Moodle, theme and browsers.
 The [trial review](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)
