@@ -82,8 +82,12 @@ async function main() {
   if (stage === 'complete') return m.complete(journal());
   if (stage === 'retire-rollback') return m.finishRollback(journal());
   if (stage === 'complete-rollback') return m.completeRollback(journal());
-  if (['backup', 'smoke', 'audit'].includes(stage)) {
-    const script = {backup: 'backup-restore.mjs', smoke: 'production-smoke.mjs', audit: 'provision-public-demo.mjs'}[stage];
+  if (stage === 'backup') {
+    await require('./backup.cjs').runBackup();
+    console.log('Production verification succeeded: backup'); return;
+  }
+  if (['smoke', 'audit'].includes(stage)) {
+    const script = {smoke: 'production-smoke.mjs', audit: 'provision-public-demo.mjs'}[stage];
     execFileSync('python3', ['.github/scripts/with-neon-credentials.py', stage, 'node', '.github/scripts/' + script],
       {stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 8*1024*1024, env: {...process.env, OPERATION: 'audit',
         GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'videoq-jp/videoq', VIDEOQ_BUNDLED_CHROMIUM: 'true'}});

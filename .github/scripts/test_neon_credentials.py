@@ -47,7 +47,10 @@ class CredentialsTest(unittest.TestCase):
     def test_scoped_fetch_and_child_environment(self):
         url = "postgresql://videoq_migration_test:secret%21@db.example/db?sslmode=verify-full&options=-c%20role%3Dvideoq_migrate_20260918"
         with patch.object(neon.sys, "argv", ["wrapper", "migration", "command", "argument"]), patch.dict(
-            os.environ, {"AWS_ACCESS_KEY_ID": "private", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "private", "GITHUB_ACTIONS": "true"}
+            os.environ, {"AWS_ACCESS_KEY_ID": "private", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": "/synthetic-parent-role",
+                         "AWS_CONTAINER_CREDENTIALS_FULL_URI": "http://synthetic.invalid/credentials",
+                         "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "private", "GITHUB_ACTIONS": "true",
+                         "VIDEOQ_BACKUP_HANDOFF": "/tmp/videoq-backup-handoff-synthetic"}
         ), patch.object(neon.subprocess, "run", side_effect=[self.response(url),
                 subprocess.CompletedProcess([], 7)]) as run, patch("sys.stdout", new_callable=io.StringIO) as out:
             self.assertEqual(neon.main(), 7)
@@ -57,6 +60,9 @@ class CredentialsTest(unittest.TestCase):
             self.assertEqual(child.args[0], ["command", "argument"])
             self.assertEqual(child.kwargs["env"]["DATABASE_URL"], url)
             self.assertNotIn("AWS_ACCESS_KEY_ID", child.kwargs["env"])
+            self.assertNotIn("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", child.kwargs["env"])
+            self.assertNotIn("AWS_CONTAINER_CREDENTIALS_FULL_URI", child.kwargs["env"])
+            self.assertEqual(child.kwargs["env"]["VIDEOQ_BACKUP_HANDOFF"], "/tmp/videoq-backup-handoff-synthetic")
             self.assertNotIn("ACTIONS_ID_TOKEN_REQUEST_TOKEN", child.kwargs["env"])
             self.assertIn("::add-mask::secret!", out.getvalue())
             self.assertIn("::add-mask::secret%2521", out.getvalue())

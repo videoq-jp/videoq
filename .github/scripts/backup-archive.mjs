@@ -64,3 +64,51 @@ export async function retainVerifiedBackup({directory, inventory, schemas, image
   await upload(path, prefix + 'verified-backup.json');
   return true;
 }
+
+export const BACKUP_SCHEMAS = Object.freeze(['public', 'drizzle', 'videoq_security', 'chat_memory']);
+
+async function privateHandoffDirectory(directory) {
+  if (typeof directory !== 'string' || !directory.startsWith('/') || !/^videoq-backup-handoff-/.test(directory.split('/').at(-1))) throw new Error('INVALID_BACKUP_HANDOFF');
+  const info = await lstat(directory);
+  if (!info.isDirectory() || (info.mode & 0o077) || info.uid !== process.getuid()) throw new Error('INVALID_BACKUP_HANDOFF');
+}
+
+/** The DB child has NO AWS credentials. Publish a private completion marker only
+ * after the exact isolated dump has passed restoration and inventory checks. */
+export async function stageVerifiedBackup({directory, destination, inventory, schemas, image, context}) {
+  if (!context) return false;
+  backupArchiveContext({VIDEOQ_RETAIN_BACKUP:'true', MAINTENANCE_STAGE:'backup', MAINTENANCE_RUN_ID:context.runId,
+    CODEBUILD_BUILD_ARN:context.buildArn, CODEBUILD_SOURCE_VERSION:context.sourceVersion});
+  await privateHandoffDirectory(destination);
+  const {copyFile,readdir,chmod} = await import('node:fs/promises');
+  const {constants} = await import('node:fs');
+  if ((await readdir(destination)).length) throw new Error('BACKUP_HANDOFF_NOT_EMPTY');
+  const source = join(directory,'database.dump'), info = await lstat(source);
+  if (!info.isFile() || (info.mode & 0o077) || info.size <= 0) throw new Error('INVALID_PRIVATE_BACKUP_FILE');
+  const target = join(destination,'database.dump');
+  await copyFile(source,target,constants.COPYFILE_EXCL); await chmod(target,0o600);
+  const metadata = {version:1,status:'restore-verified',context,inventory,schemas,image,
+    dump:{bytes:info.size,sha256_base64:await checksum(target)}};
+  await writeFile(join(destination,'verified-backup-input.json'),JSON.stringify(metadata)+'\n',{mode:0o600,flag:'wx'});
+  return true;
+}
+
+/** Only the AWS parent invokes this, after the DB child has exited successfully.
+ * The fixed parent-owned directory and run-bound marker prevent caller-selected
+ * output paths or a stale/partial child result from authorizing an upload. */
+export async function retainStagedBackup(directory,context,run = execute) {
+  await privateHandoffDirectory(directory);
+  const {readFile,readdir} = await import('node:fs/promises');
+  if (JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(['database.dump','verified-backup-input.json'])) throw new Error('INCOMPLETE_BACKUP_HANDOFF');
+  const marker = join(directory,'verified-backup-input.json'), markerInfo = await lstat(marker);
+  if (!markerInfo.isFile() || (markerInfo.mode & 0o077) || markerInfo.size > 4*1024*1024) throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
+  const metadata = JSON.parse(await readFile(marker,'utf8'));
+  const image = (await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  if (metadata.version !== 1 || metadata.status !== 'restore-verified' || JSON.stringify(metadata.context) !== JSON.stringify(context) ||
+      JSON.stringify(metadata.schemas) !== JSON.stringify(BACKUP_SCHEMAS) || metadata.image !== image ||
+      !metadata.inventory || typeof metadata.inventory !== 'object' || Array.isArray(metadata.inventory) ||
+      !Object.keys(metadata.inventory).length || Object.values(metadata.inventory).some(count=>typeof count !== 'string' || !/^(0|[1-9][0-9]*)$/.test(count))) throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
+  const dump = join(directory,'database.dump'), info = await lstat(dump);
+  if (!info.isFile() || (info.mode & 0o077) || info.size !== metadata.dump?.bytes || await checksum(dump) !== metadata.dump?.sha256_base64) throw new Error('BACKUP_HANDOFF_INTEGRITY_FAILED');
+  return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context},run);
+}

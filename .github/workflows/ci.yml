@@ -838,3 +838,5 @@ jobs:
           JS
       - name: Restore synthetic vectors, model memory and cross-schema foreign keys without production access
         run: node .github/scripts/backup-restore-fixture.mjs
+      - name: Verify the credential-free DB handoff and parent retention with fake S3
+        run: node .github/scripts/backup-preservation-fixture.mjs

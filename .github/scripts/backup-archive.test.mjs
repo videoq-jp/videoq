@@ -110,3 +110,50 @@ test('refuses world-readable dump files and symlink substitution', async t => {
   await symlink(join(options.directory,'other'),join(options.directory,'database.dump'));
   await assert.rejects(retainVerifiedBackup(options,()=>assert.fail('storage request')),/INVALID_PRIVATE_BACKUP_FILE/);
 });
+
+test('DB child stages a private verified dump; AWS parent uploads the exact staged copy', async t => {
+  const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS} = await import('./backup-archive.mjs');
+  const {options,run,calls} = await fixture(t);
+  const destination = await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+  t.after(()=>rm(destination,{recursive:true,force:true}));
+  const image = (await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  assert.equal(await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS}),true);
+  assert.equal(calls.length,0,'The DB child must not contact AWS.');
+  const marker=JSON.parse(await readFile(join(destination,'verified-backup-input.json'),'utf8'));
+  assert.equal(marker.status,'restore-verified');
+  assert.deepEqual(marker.context,context);
+  await rm(join(options.directory,'database.dump'));
+  assert.equal(await retainStagedBackup(destination,context,run),true);
+  assert.equal(calls.length,4);
+  const manifest=JSON.parse(await readFile(join(destination,'verified-backup.json'),'utf8'));
+  assert.equal(manifest.status,'restored-and-retained');
+});
+
+test('stale handoff context or modified dump cannot authorize any AWS request', async t => {
+  const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS} = await import('./backup-archive.mjs');
+  const {options} = await fixture(t);
+  const destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+  t.after(()=>rm(destination,{recursive:true,force:true}));
+  const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS});
+  const noAWS=()=>assert.fail('Unverified handoff must not contact AWS.');
+  await assert.rejects(retainStagedBackup(destination,{...context,runId:'b'.repeat(32)},noAWS),/INVALID_BACKUP_HANDOFF_MARKER/);
+  await writeFile(join(destination,'database.dump'),Buffer.from([9,255,34,92,128]));
+  await assert.rejects(retainStagedBackup(destination,context,noAWS),/BACKUP_HANDOFF_INTEGRITY_FAILED/);
+});
+
+test('requires an empty private parent-owned directory and complete private marker', async t => {
+  const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS} = await import('./backup-archive.mjs');
+  const {options} = await fixture(t);
+  const destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+  t.after(()=>rm(destination,{recursive:true,force:true}));
+  const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  await chmod(destination,0o755);
+  await assert.rejects(stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS}),/INVALID_BACKUP_HANDOFF/);
+  await chmod(destination,0o700);
+  await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/INCOMPLETE_BACKUP_HANDOFF/);
+  await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS});
+  await assert.rejects(stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS}),/BACKUP_HANDOFF_NOT_EMPTY/);
+  await chmod(join(destination,'verified-backup-input.json'),0o644);
+  await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/INVALID_BACKUP_HANDOFF_MARKER/);
+});
