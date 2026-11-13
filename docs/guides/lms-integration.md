@@ -1,93 +1,37 @@
 ---
-title: Connect an LMS with LTI 1.3
-description: Connect Moodle with its plugins or provision another LMS connector against the shared learning contracts.
+title: Connect Moodle and other LMS platforms
+description: Install the standalone Moodle plugin and connect each teacher to an owned VideoQ course.
 ---
 
-# Connect an LMS with LTI 1.3
+# Connect Moodle and other LMS platforms
 
-VideoQ authenticates learner launches with LTI 1.3 and generates course-scoped
-answers. Moodle owns enrollment and the learning UI; the linked native VideoQ course owns its videos. Its two plugins,
-installers and lab are maintained in
-[videoq-moodle](https://github.com/videoq-jp/videoq-moodle).
-Normal VideoQ builds do not require that repository.
+Moodle manages enrollment, current course permissions and the native learning screen. VideoQ stores and processes the linked course videos and provides AI answers. The Moodle integration is maintained in [videoq-moodle](https://github.com/videoq-jp/videoq-moodle). Normal VideoQ builds do not require that repository.
 
-Google Classroom uses a separate [Classroom add-on integration](google-classroom-integration.md), rather than LTI.
+Google Classroom uses the separate [Classroom add-on](google-classroom-integration.md).
 
 ## Connect Moodle
 
-1. Choose the current cloud service at `https://videoq.jp` or an up-to-date
-   on-premises VideoQ deployment. Cloud users need no server-side setup.
-   On-premises operators update through ordinary deployment and DB migration gates. The
-   existing canonical HTTPS `BETTER_AUTH_URL`, `USER_SECRET_ENCRYPTION_KEY` and
-   working S3-compatible storage configuration are used automatically. No
-   `LTI_CONFIG` or `LTI_TOOL_KEYS` registration is required.
-2. Install both Moodle plugins from Git (ZIP is optional) using the
-   [Moodle setup guide](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md).
-3. As a Moodle administrator, open **Connect to VideoQ**, select the service,
-   sign in and approve communication with this school. This installs the connector;
-   it does not allocate the installer's quota or assign ownership of course data.
-4. As a course teacher, choose **Connect my VideoQ account** in the course navigation.
-   Sign in independently to VideoQ, select an existing owned course and confirm the account. Materials, question history, storage,
-   processing and AI usage belong to that account. Each course must be connected explicitly.
-   Add/edit videos in VideoQ; Moodle File activities are not imported.
-5. As a permitted learner, launch the course assistant, ask a question, check
-   incremental text/citations, switch videos and test Good/Bad/reset. Verify an
-   unenrolled learner cannot access the material. Remove a video from the VideoQ course and verify that it disappears from the Moodle playlist.
+1. Use the current cloud service at `https://videoq.jp` or a compatible HTTPS on-premises deployment with teacher-owned connection APIs and DB migrations 0062–0064. Cloud users do not configure server secrets. On-premises operators retain their existing `BETTER_AUTH_URL`, `USER_SECRET_ENCRYPTION_KEY` and S3-compatible storage settings and use the normal deployment/migration procedure.
+2. Install **one plugin, local_videoq.zip**, through Moodle's **Install plugins** screen. Version 0.25.4 removes the old helper dependency. Download the ZIP and verification-only SHA256SUMS from the [release](https://github.com/videoq-jp/videoq-moodle/releases/tag/v0.25.4). Follow the [Moodle setup guide](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md); Git is an optional operator method. The plugin remains a prerelease and has not been approved for the Moodle directory.
+3. As the Moodle administrator, open **Connect to VideoQ**, choose the service, sign in and approve communication with this school. Return to Moodle to finish. This grants transport access; it does not assign all courses or allocate learning quota to the installer.
+4. As an editing teacher, choose **Connect my VideoQ account** from the Moodle course. Sign into your own VideoQ account, select an existing course you own and confirm. Each Moodle course has an explicit responsible teacher and linked course; co-teachers cannot replace someone else's connection.
+5. Add and edit videos in VideoQ. Learners open the course assistant in Moodle, with no VideoQ account registration. Moodle File activities are not imported. Confirm playback, AI questions, citations, video switching, course Q&A and feedback with the intended Moodle/theme/browser.
 
-Hosted VideoQ must be able to reach the Moodle HTTPS endpoints. An SSH-forwarded
-localhost trial URL does not make Moodle reachable from the hosted service.
-Moodle must also reach the selected VideoQ server. Discovery uses the selected
-server's existing API and frontend URL settings, including custom HTTPS ports.
-If the API has a separate hostname, enter that public API origin in Moodle;
-discovery opens the configured frontend automatically.
-The return destination is fixed to that Moodle's plugin callback. Session state
-and S256 proof bind the temporary code to the initiating Moodle administrator;
-intercepting the code alone does not authorize an exchange or its retry.
+The learning screen follows the native VideoQ arrangement using Moodle templates and theme styles. Conversations resume automatically. The connected owner teacher can read the latest 100 question logs and export all logs with learner profile information as CSV; students and other co-teachers cannot use those exports. Current Moodle permissions are checked for protected requests.
 
-## Automatic signing identity
+## Upgrade an existing Moodle installation
 
-The first authenticated connection approval generates an RSA signing key.
-The private key is encrypted with the existing application encryption key and
-stored in `lti_tool_keys`. Replicas serialize initialization in the same owner
-transaction and reuse the stored identity. Anonymous requests and simply opening
-the settings page do not generate keys. Public components are available at
-`GET /api/lti/jwks` after initialization; before that it returns an empty key set.
+Update the VideoQ service first when self-hosting. Update **local_videoq in place** with the new ZIP; do not uninstall the local plugin or delete courses/videos. An already installed `ltisource_videoq` helper does not prevent the update. After checking the native course connection, uninstall only that retired helper using Moodle's plugin overview and remove its code if Moodle cannot do so. Generated VideoQ activity links open the native viewer automatically; a second LTI-helper installer is no longer distributed.
 
-Restarts and normal updates retain the key. Database backups include the encrypted
-identity; restore them with the same application encryption key. An unreadable or
-corrupt existing identity fails closed rather than being silently replaced. Keep
-the application's normal encryption key with its secret backups: do not generate
-a replacement during an ordinary update.
+The former installation-wide ownership/import workflow is retired. Teachers reconnect their own accounts and select existing VideoQ courses; ownership is not silently transferred from the installer. Source videos and historical records are preserved during an in-place plugin update. See the [exact update steps](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md#existing-installations-update-without-losing-courses).
 
-Generated migrations `0046_lti_materials` and `0047_lti_managed_keys` add only
-integration tables to the normal `main` history through `0045_course_qa`.
-They do not alter existing videos, courses or user records. The earlier
-unreleased lab uses a different migration history; keep that DB separate rather
-than treating these migrations as its upgrade procedure.
+## Transport and signing identity
 
-## Contracts and administrative overrides
+The selected VideoQ and Moodle services need reachable HTTPS endpoints. An SSH-forwarded localhost trial does not make a local Moodle reachable from hosted VideoQ. If the API has a separate hostname, enter its public origin; discovery opens the configured frontend. Custom HTTPS ports are supported. The return callback is fixed to the initiating Moodle, and administrator session state and S256 proof bind the temporary authorization code.
 
-The Moodle player requests authorized playback of the selected VideoQ video. Every
-question rechecks current Moodle access. The custom materials service is
-**not a standardized LTI video-sync service**: LTI authenticates launches and
-service assertions; the VideoQ/Moodle contract defines export and reconciliation.
+Moodle uses its core tool registration internally and signs native server requests; users do not install a separate LTI helper or create a manual launch activity. VideoQ manages its encrypted signing identity through its existing integration tables. Retain the established application encryption key across updates and restore database backups with the matching key. Unreadable saved keys fail closed rather than being silently replaced. Ordinary setup does not require manual `LTI_CONFIG` or `LTI_TOOL_KEYS` registration.
 
-The teacher can disconnect an individual course in VideoQ settings. Future launches,
-questions and media access are denied; existing learning data is retained.
-To revoke platform-side trust as well, disable/remove the VideoQ external tool
-through Moodle's standard administration. Missing or failed snapshots never
-mean that every remote video should be deleted.
-
-An administrator can opt out with `LTI_CONFIG=false`. Explicit JSON registrations
-in `LTI_CONFIG` and an operator-owned `LTI_TOOL_KEYS` ring remain advanced
-compatibility overrides; ordinary setup requires neither. Existing overrides
-continue to take precedence. The optional `generate-lti-tool-keys.mjs` helper is
-for that operator-managed path, not normal installation. Do not duplicate a
-platform/client in static configuration and database registrations.
-
-HTTP-only development deployments do not enable automatic LTI. Deep Linking,
-grade return and roster synchronization are outside this feature. This is not
-LTI certification or compatibility with every LMS.
+Teachers disconnect their individual course connection through VideoQ connected-app settings. A school administrator manages school transport authorization separately. Disconnecting prevents future protected access and retains stored learning data; it is distinct from a privacy erasure request. Grade passback, roster synchronization and general LTI certification are outside this integration.
 
 ## Other LMS connectors
 
@@ -122,14 +66,8 @@ The independent connector contract tests cover these boundaries with controlled
 network responses and real PostgreSQL/signature verification. Live integrations
 with other LMS vendors still require their own implementation and acceptance tests.
 
-The former site-wide quota-owner model is removed. Existing installations do not
-implicitly grant their installer ownership of new courses. Old mappings are not
-adopted by another teacher; reconnect each course explicitly. Apply migration 0063,
-reapply `infra/sql/neon-security.sql`, and deploy the matching companion plugin.
-See [teacher ownership](https://github.com/videoq-jp/videoq/blob/main/docs/design/teacher-owned-lms-connections.md) for the authority model.
+## Verification
 
-Before production activation, verify the intended Moodle, theme and browsers.
-The [trial review](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)
-records unresolved independent-site chat startup, 100-viewer full-file delivery
-and an observed model stream failure. Removing manual configuration does not
-resolve those findings or provide a capacity/response-time guarantee.
+The standalone plugin is tested with Moodle 5.1.8+/Boost, PostgreSQL/MySQL upgrades from 0.25.3, helper removal and a fresh single-plugin reinstall. Installed tests also cover real school authorization, teacher connection, student playback/local AI answers, conversation/feedback restoration and owner-only CSV. See [plugin verification](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/verification.md).
+
+These tests do not establish load capacity for every school, iPhone hardware behavior or compatibility with every LMS vendor. Other LMS connectors need their own implementation and acceptance checks.

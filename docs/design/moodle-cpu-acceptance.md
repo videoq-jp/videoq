@@ -79,7 +79,7 @@ The source preparer fetches only those public repositories without stored Git
 credentials, checks their fetched commits and records archive SHA-256 values.
 It refuses nonempty, symlinked or in-checkout output directories.
 
-The test image contains the actual Moodle source and both companion plugins.
+The test image contains the actual Moodle source and the standalone local_videoq plugin.
 All Python orchestration and CI changes are in the backend repository. Moodle's
 plugins, runtime, developer tooling and CI remain PHP-only.
 

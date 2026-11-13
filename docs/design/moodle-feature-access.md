@@ -103,10 +103,10 @@ response is fabricated. A fast Chromium check uses the pinned actual core/ajax
 and jQuery client to verify navigation, cookie rotation, original-cookie replay
 and rejection of unknown/HTML/redirect/transport failures as refusal evidence.
 
-The standard installers match all 65 `local_videoq` and 6 `ltisource_videoq` committed
-files at the exact accepted companion revision. Deliver the paired backend and
-companion together; actual hosted-provider paths and Marketplace approval remain
-separate delivery checks.
+The standalone `local_videoq.zip` installer matches the committed runtime at the
+accepted companion revision. Version 0.25.4 retires the separate `ltisource_videoq`
+installer. Deliver a compatible backend and plugin; actual hosted-provider paths
+and Marketplace approval remain separate delivery checks.
 
 ## Historical iframe baseline
 
