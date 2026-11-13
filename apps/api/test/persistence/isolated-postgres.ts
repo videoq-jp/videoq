@@ -1,10 +1,10 @@
 import pg from "pg";
 
-export async function isolatedPostgres(databaseUrl: string) {
+export async function isolatedPostgres(databaseUrl: string, options: {includePublic?: boolean} = {}) {
   const schema = `contract_${crypto.randomUUID().replaceAll("-", "")}`;
   const admin = new pg.Client({ connectionString: databaseUrl });
   await admin.connect();
-  const pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 4 });
+  const pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}${options.includePublic ? ',public' : ''}`, max: 4 });
   const dispose = async () => {
     try { await pool.end(); }
     finally {

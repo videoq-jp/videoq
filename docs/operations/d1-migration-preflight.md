@@ -326,3 +326,44 @@ verifyでvectorize_delivery_completeがfalseの場合、終了コード2と件�
 ローカルのworkerd D1と使い捨てPostgreSQLを使用した永続化テストは1,346件が成功した。別のAPI回帰テストは2,182件、workerdのAPIテストは59件、Python Workerは594件が成功した。実サービス・外部認証・ストレージ等を必要とするopt-inテストにはskipがあり、この件数を本番E2Eや本番データ移行の完了とは扱わない。全workspaceの型チェック、API ESLint、Nodeビルド、両DBのDrizzle履歴検査も成功した。
 
 実Cloudflareでは、旧schema（0017まで）のv1記録を保持し、別のv2 DB/indexに0018までを適用して58テーブル・合成15行で再検証した。共通56テーブルと13採番状態の移行・再投入、2ベクトルの値照合、教員/質問者情報の取得、認証、D1 Time Travel後のhash一致が成功している。旧receiptやbookmarkを新targetへ流用しない。本番切り替えの前提には、未マッピング27テーブルの保持方針、AWS内での保護された一貫スナップショット取得、実データの整合性・認証・検索品質・性能・費用の検証が引き続き残る。
+
+## 同一Embeddingによる検索比較
+
+`db:d1:staging:evaluate-search`は、事前生成した同一Embedding・userId・動画選択・limitを、PostgreSQLと固定v2 stagingのD1/Vectorize検索契約へ渡す。Embedding APIやLLMは呼び出さない。PostgreSQLの通常検索も同じprecomputed-vector実装を使用する。接続初期化後に各検索呼び出しを計時し、backendの呼出順を交互にする。
+
+入力JSONはprivateな通常ファイル（0600等）とし、次のTypeScript相当の構造を保存する。`existingQueryEmbedding`は対象モデルで事前生成した768/1536個の有限値で、ゼロベクトルは不可。本文・質問や所有者IDをpublic fixtureへ書き出さない。
+
+```typescript
+const cases = {
+  version: 1,
+  cohort: "production-rehearsal", // 合成試験では "synthetic"
+  corpusSha256: verifiedArchive.archive_sha256,
+  model: "text-embedding-3-small",
+  dimensions: 1536,
+  samples: 3,
+  cases: [{
+    queryEmbedding: existingQueryEmbedding,
+    userId: ownerId,
+    videoIds: selectedVideoIds,
+    limit: 20,
+  }],
+};
+```
+
+同じ凍結コーパスのPostgreSQL rehearsal copyを用意し、writerを停止・drainする。`DATABASE_URL`は既存の承認済み経路で環境へ渡す。保護された本番backup/migration credentialをローカルへ取り出すためのコマンドではない。リモートPostgreSQLには`sslmode=verify-full`を要求し、評価用セッションにはread-onlyとstatement timeoutを設定する。`EMBEDDING_PROFILE`/`EMBEDDING_MODEL`（768では専用`EMBEDDING_BASE_URL`も）を入力モデルと一致させる。
+
+```sh
+PERSISTENCE_EVALUATION_SOURCE_OFFLINE=1 \
+  npm run db:d1:staging:evaluate-search --workspace @videoq/api -- \
+  --input /private/rehearsal/search-cases.json \
+  --archive /private/rehearsal/source.videoq-export.ndjson \
+  --output /private/rehearsal/search-report.json
+```
+
+archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus hashを照合する。接続先は固定staging configだけで、production/任意configの指定はない。検索前に、archiveの全sceneのD1所有関係・本文・revisionとVectorize値・metadata・配信完了receiptを再照合する。不一致や未配信なら評価しない。全処理はsource/targetに対してread-onlyであり、完了済みoutboxを再初期化しない。出力は0600で原子的に作成し、既存レポートを上書きしない。
+
+レポートはPG top-kとの平均重複率、順位までの完全一致数、空結果、重複sceneを考慮した件数、両backendの検索呼出p50/p95/p99を集計する。PGが空の組は完全一致率を水増しするための「Recall=1」とせず、重複率の分母から除外する。sceneはvideo/time/evidence type/本文で同一性を比較し、タイトルは比較キーから除く。結果本文・Embedding・所有者IDは出力しない。
+
+これは人手の正解ラベルに対するRecallではなく、PGとの検索結果の一致を測る道具である。sourceの凍結assertionとモデル名だけでは、実際のsource snapshotとarchiveの全値一致を証明できないため、`source_snapshot_equality_verified=false`を残す。別途、source copyのsnapshot/全値照合・代表クエリ集合・認可の攻撃ケース・承認済み閾値をそろえる。接続確立・Embedding・API/LLMを除く時間を、E2Eやcold-startの改善値として扱わない。`acceptance_criteria_applied=false`と`execution_complete=false`を維持し、本番切り替えの合格を自動宣言しない。
+
+2026-11-13に、既存の合成v2 staging（各次元1ベクトル）とローカルPostgreSQLでこのCLIを実行した。各次元でowner/別ownerの2ケースを3回ずつ比較し、ownerの結果が一致し、別ownerは両方で空だった。両次元ともarchiveの2ベクトル全値照合も通過した。これは実Vectorizeを通る評価経路の疎通確認であり、代表的なANN品質・本番性能・本番source整合性の証拠ではない。

@@ -1,10 +1,10 @@
-import type { SceneHit } from "../contracts/scene-search";
+import type { SceneHit, SceneSearchRepository } from "../contracts/scene-search";
 import { PGEngine, PGVectorStore } from "@yukiharada1228/langchain-postgres";
 import type { EmbeddingsInterface } from "@langchain/core/embeddings";
 import pg from "pg";
 import { databaseConnectionString } from "../../db/pool";
 import { embedQuery } from "../../lib/embeddings";
-import { embeddingTable, resolveEmbeddingConfig } from "../../lib/embedding-contract";
+import { embeddingDimensions, embeddingTable, resolveEmbeddingConfig } from "../../lib/embedding-contract";
 import { assertEmbeddingSchema } from "../../lib/embedding-schema";
 import type { Bindings } from "../../types/bindings";
 import type { AnswerCostLedger } from "../../lib/answer-cost-ledger";
@@ -100,56 +100,23 @@ export type SceneSearch = {
   close(): Promise<void>;
 };
 
-export async function openPostgresSceneSearch(
-  env: Bindings,
-  params: { userId: string; videoIds: readonly number[] },
-  signal?: AbortSignal,
-  costLedger?: AnswerCostLedger,
-): Promise<SceneSearch> {
-  signal?.throwIfAborted();
-  const table = resolveVectorTable(env);
-  const config = resolveEmbeddingConfig(env);
-  const allowedVideoIds = new Set(params.videoIds);
-
-  // Pool はリクエストごとに生成し、
-  // リクエストをまたいで使い回さない（max: 1 で実質 pg.Client 相当）。
-  const pool = withMetadataParsing(
-    new pg.Pool({
-      connectionString: databaseConnectionString(env),
-      connectionTimeoutMillis: 10_000,
-      max: 1,
-    }),
-  );
-  const engine = PGEngine.fromPool(pool);
-  let store: PGVectorStore;
-  try {
-    await assertEmbeddingSchema(pool, config);
-    signal?.throwIfAborted();
-    store = await PGVectorStore.initialize(engine, sceneEmbeddings(env, signal, costLedger), table, {
-      metadataColumns: ["user_id", "video_id"],
-    });
-    signal?.throwIfAborted();
-  } catch (error) {
-    // 初期化や中断の原因を、接続の後始末のエラーで上書きしない。
-    await engine.close().catch(() => undefined);
-    throw error;
-  }
-
+/** Precomputed-vector contract used by both runtime and migration evaluation. */
+export function createPostgresSceneSearchRepository(
+  store: Pick<PGVectorStore, "similaritySearchVectorWithScore">,
+  dimensions: 768 | 1536,
+): SceneSearchRepository {
   return {
-    async search(query: string, videoIds?: readonly number[]): Promise<SceneHit[]> {
-      signal?.throwIfAborted();
-      if (videoIds !== undefined && (
-        videoIds.length === 0 || videoIds.some((id) => !allowedVideoIds.has(id))
-      )) {
-        throw new Error("Video selection must be a non-empty subset of the current course.");
-      }
-      const selected = videoIds === undefined ? [...allowedVideoIds] : [...new Set(videoIds)];
-      if (selected.length === 0) return [];
-      const filter = {
-        user_id: params.userId,
-        video_id: { $in: selected },
-      };
-      const hits = await store.similaritySearchWithScore(query, RETRIEVER_K, filter);
+    async search({ queryEmbedding, userId, videoIds, limit }) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("Search limit must be between 1 and 50");
+      if (queryEmbedding.length !== dimensions ||
+          !queryEmbedding.every(value => Number.isFinite(value) && Number.isFinite(Math.fround(value))) ||
+          !queryEmbedding.some(value => Math.fround(value) !== 0)) throw new Error("Invalid query embedding");
+      if (videoIds.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new Error("Invalid video ID");
+      const selected = [...new Set(videoIds)];
+      if (!selected.length) return [];
+      const hits = await store.similaritySearchVectorWithScore(queryEmbedding, limit, {
+        user_id: userId, video_id: { $in: selected },
+      });
       return hits.map(([doc]) => ({
         content: doc.pageContent ?? "",
         videoId: Number(doc.metadata?.video_id),
@@ -158,6 +125,64 @@ export async function openPostgresSceneSearch(
         endTime: text(doc.metadata?.end_time),
       }));
     },
-    close: () => engine.close(),
+  };
+}
+
+/** Caller owns this request-scoped connection and must close it in finally. */
+export async function openPostgresEmbeddingSceneSearch(
+  env: Bindings,
+  signal?: AbortSignal,
+  costLedger?: AnswerCostLedger,
+): Promise<SceneSearchRepository & { close(): Promise<void> }> {
+  signal?.throwIfAborted();
+  const table = resolveVectorTable(env);
+  const config = resolveEmbeddingConfig(env);
+  const pool = withMetadataParsing(new pg.Pool({
+    connectionString: databaseConnectionString(env), connectionTimeoutMillis: 10_000, max: 1,
+  }));
+  const engine = PGEngine.fromPool(pool);
+  try {
+    await assertEmbeddingSchema(pool, config);
+    signal?.throwIfAborted();
+    const store = await PGVectorStore.initialize(engine, sceneEmbeddings(env, signal, costLedger), table, {
+      metadataColumns: ["user_id", "video_id"],
+    });
+    signal?.throwIfAborted();
+    const repository = createPostgresSceneSearchRepository(store, embeddingDimensions(config) as 768 | 1536);
+    return {
+      async search(params) {
+        signal?.throwIfAborted();
+        const hits = await repository.search(params);
+        signal?.throwIfAborted();
+        return hits;
+      },
+      close: () => engine.close(),
+    };
+  } catch (error) {
+    await engine.close().catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function openPostgresSceneSearch(
+  env: Bindings,
+  params: { userId: string; videoIds: readonly number[] },
+  signal?: AbortSignal,
+  costLedger?: AnswerCostLedger,
+): Promise<SceneSearch> {
+  const repository = await openPostgresEmbeddingSceneSearch(env, signal, costLedger);
+  const allowedVideoIds = new Set(params.videoIds);
+  return {
+    async search(query: string, videoIds?: readonly number[]): Promise<SceneHit[]> {
+      signal?.throwIfAborted();
+      if (videoIds !== undefined && (
+        videoIds.length === 0 || videoIds.some((id) => !allowedVideoIds.has(id))
+      )) throw new Error("Video selection must be a non-empty subset of the current course.");
+      const selected = videoIds === undefined ? [...allowedVideoIds] : [...new Set(videoIds)];
+      if (!selected.length) return [];
+      const queryEmbedding = await embedQuery(env, query, signal, costLedger);
+      return repository.search({queryEmbedding, userId: params.userId, videoIds: selected, limit: RETRIEVER_K});
+    },
+    close: () => repository.close(),
   };
 }

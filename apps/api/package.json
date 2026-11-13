@@ -47,7 +47,8 @@
     "db:d1:staging:migrate": "tsx scripts/d1-staging-migrate.ts",
     "db:d1:rehearsal:fixture": "tsx scripts/d1-rehearsal-fixture.ts",
     "db:d1:staging:recovery": "tsx scripts/d1-staging-recovery.ts",
-    "db:d1:source-schema": "tsx scripts/d1-source-schema.ts"
+    "db:d1:source-schema": "tsx scripts/d1-source-schema.ts",
+    "db:d1:staging:evaluate-search": "tsx scripts/d1-staging-evaluate-search.ts"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.7.15",

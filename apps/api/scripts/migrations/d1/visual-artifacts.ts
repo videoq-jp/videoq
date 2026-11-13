@@ -1,3 +1,4 @@
+import {TextDecoder} from 'node:util';
 import {createHash} from 'node:crypto';
 import {open,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';

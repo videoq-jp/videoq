@@ -1,6 +1,6 @@
 import {readFile} from 'node:fs/promises';
 import {validateStagingTarget} from './migrations/d1/staging-target';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath,URL} from 'node:url';
 import {getPlatformProxy} from 'wrangler';
 import type {D1Database,Vectorize} from '@cloudflare/workers-types';
 import {createD1SceneIndexWriter} from '../src/persistence/d1/scene-index-writer';
