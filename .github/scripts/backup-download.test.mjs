@@ -5,7 +5,7 @@ import {mkdtemp,writeFile,readFile,rm,stat,mkdir,access} from 'node:fs/promises'
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {downloadVerifiedBackup,parseBackupDownloadArguments} from './backup-download.mjs';
-import {ARCHIVE_BUCKET,BACKUP_SCHEMAS} from './backup-archive.mjs';
+import {ARCHIVE_BUCKET,BACKUP_SCHEMAS,inspectPrivateBackupFile} from './backup-archive.mjs';
 const runId='a'.repeat(32),prefix='verified/'+runId+'/',sha=body=>createHash('sha256').update(body).digest('base64');
 async function fixture(t,{d1=true}={}){
  const directory=await mkdtemp(join(tmpdir(),'videoq-download-test-'));t.after(()=>rm(directory,{recursive:true,force:true}));
@@ -111,4 +111,10 @@ test('CLI invoked through a symlink still rejects invalid arguments without logg
  const alias=join(directory,'download.mjs');await symlink(new URL('./backup-download.mjs',import.meta.url),alias);
  let failure;try{await promisify(execFile)(process.execPath,[alias,'--manifest-version','private-version-canary']);}catch(error){failure=error;}
  assert.equal(failure.code,1);assert.equal(failure.stdout,'');assert.ok(!failure.stderr.includes('private-version-canary'));
+});
+
+test('private inspection never creates a missing input',async t=>{
+ const f=await fixture(t),missing=f.options.outputDirectory;
+ await assert.rejects(inspectPrivateBackupFile(missing),/INVALID_PRIVATE_BACKUP_FILE/);
+ await assert.rejects(access(missing),{code:'ENOENT'});
 });
