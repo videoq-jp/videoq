@@ -242,3 +242,57 @@ using `infra/scripts/setup_neon_access.py`. Merge the workflow and verify its fi
 successful automatic run, including the AWS smoke stage. Subsequent relevant main
 merges deploy automatically; `workflow_dispatch` retries the current verified main.
 Infrastructure/IAM changes still require the independent Terraform procedure.
+
+## Isolated restored-backup D1 export tool
+
+The operator allowlist now packages `.github/scripts/backup-d1-export.mts`, the
+minimal read-only exporter/verifier graph and the latest reviewed PostgreSQL/D1
+snapshots. `tsx` and `zod` are pinned in the isolated operations lockfile, installed
+without scripts and signature-checked with the existing setup. A tiny operator
+`package.json` selects ESM; application package metadata, application dependencies
+and API/Worker entrypoints are not copied into this runtime.
+
+This tool is a prepared building block. **The automatic backup job does not call
+it yet**, and it has not exported production data. A reviewed bridge must invoke
+it while the verified restored DB is still alive, bind the resulting archive to
+that dump's private handoff, and let the AWS parent retain both artifacts. Do not
+fetch a production DB parameter locally to exercise this entrypoint.
+
+Inside a clean operator bundle, with `DATABASE_URL` already supplied for the
+private restored PostgreSQL instance only:
+
+```sh
+VIDEOQ_BACKUP_ISOLATED_EXPORT=true \
+  .github/operations-tools/node_modules/.bin/tsx \
+  .github/scripts/backup-d1-export.mts \
+  --output /private/restore-run/d1-source.videoq-export.ndjson
+```
+
+The connection must explicitly select `127.0.0.1`, a port, database `postgres` and
+its temporary `postgres` credential. Other hosts/users/databases, URL query
+parameters and fragments are refused before importing DB/export dependencies.
+The tool supplies its own read-only session option and a bounded query timeout.
+Its output parent must be private and owned by the current user; output is 0600,
+atomically published and never overwritten. The `node_modules` link may point
+only at the independently installed operations dependencies. An existing
+application dependency directory is refused before any application-installed
+module can execute. Secrets and source records are never written to diagnostics.
+
+The normal archive contracts remain unchanged: full mapped schema coverage,
+normalized row conversion and complete archive verification are mandatory.
+Unmapped legacy tables stop the export; the preserved PostgreSQL dump is not a
+permission to silently omit them. The output still contains sensitive auth and
+application data and must remain in the private backup lifecycle. It is a D1
+import input, not a completed migration or a PostgreSQL recovery artifact.
+
+`backup-d1-export-fixture.mjs` builds/extracts the actual allowlisted ZIP, uses the
+signature-checked operations dependencies and performs real PostgreSQL
+`pg_dump`/`pg_restore` before running the packaged tool. Its synthetic schema
+contains current columns, primary/unique keys and foreign keys; it is not a full
+application/default/check-constraint or authentication rehearsal. The fixture
+checks export/verification of 58 tables and four synthetic rows, overwrite
+refusal, rejection of foreign application dependencies before a canary module
+executes, URL override refusal and refusal of an extra legacy table. It makes no
+AWS call. The archive's source/module assets and schema snapshots are also
+covered by maintenance-CD selection tests so future changes cannot silently
+leave stale privileged operator code deployed.

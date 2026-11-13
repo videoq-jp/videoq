@@ -840,3 +840,5 @@ jobs:
         run: node .github/scripts/backup-restore-fixture.mjs
       - name: Verify the credential-free DB handoff and parent retention with fake S3
         run: node .github/scripts/backup-preservation-fixture.mjs
+      - name: Export a restored synthetic database using the actual isolated operator ZIP
+        run: node .github/scripts/backup-d1-export-fixture.mjs

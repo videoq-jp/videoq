@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
     "neon-admin.cjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-stream-proof.cjs",
-    "backup-restore.mjs", "backup-archive.mjs", "provision-public-demo.mjs", "public-demo-policy.cjs",
+    "backup-restore.mjs", "backup-archive.mjs", "backup-d1-export.mts", "provision-public-demo.mjs", "public-demo-policy.cjs",
 ]
 
 
@@ -33,6 +33,21 @@ def operator_files():
     for name in ["runtime/job.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
+    # Minimal read-only D1 export graph, not the application's dependency tree.
+    operator.append((ROOT / "infra/db-maintenance/operator-package.json", "package.json"))
+    for name in ["scripts/d1-migration-manifest.ts",
+                 "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
+                 "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",
+                 "scripts/migrations/d1/verify-archive.ts", "src/persistence/postgres/read-snapshot.ts"]:
+        operator.append((ROOT / "apps/api" / name, "apps/api/" + name))
+    for dialect in ["drizzle", "drizzle-d1"]:
+        meta = ROOT / "apps/api" / dialect / "meta"
+        journal = json.loads((meta / "_journal.json").read_text())
+        index = journal["entries"][-1]["idx"]
+        if type(index) is not int or not 0 <= index <= 9999:
+            raise ValueError("Invalid migration snapshot index")
+        for name in ["_journal.json", f"{index:04d}_snapshot.json"]:
+            operator.append((meta / name, f"apps/api/{dialect}/meta/{name}"))
     for name in ["content/course.json", *["public/lessons/" + key + ".mp4" for key in ["japanese", "math", "science", "social", "english"]]]:
         operator.append((ROOT / "apps/demo-video" / name, "apps/demo-video/" + name))
     return operator

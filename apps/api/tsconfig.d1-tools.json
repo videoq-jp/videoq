@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["node"] },
-  "include": ["worker-configuration.d.ts", "scripts/d1-*.ts", "scripts/migrations/d1/**/*.ts"]
+  "include": ["worker-configuration.d.ts", "scripts/d1-*.ts", "scripts/migrations/d1/**/*.ts", "../../.github/scripts/backup-d1-export.mts"]
 }
