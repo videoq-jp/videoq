@@ -8,6 +8,7 @@ import { embeddingDimensions, embeddingTable, resolveEmbeddingConfig } from "../
 import { assertEmbeddingSchema } from "../../lib/embedding-schema";
 import type { Bindings } from "../../types/bindings";
 import type { AnswerCostLedger } from "../../lib/answer-cost-ledger";
+import { importReadSnapshot, validateReadSnapshot } from "./read-snapshot";
 
 const ALLOWED_TABLES = new Set(["scene_embeddings", "scene_embeddings_768"]);
 
@@ -133,33 +134,54 @@ export async function openPostgresEmbeddingSceneSearch(
   env: Bindings,
   signal?: AbortSignal,
   costLedger?: AnswerCostLedger,
+  options: { snapshot?: string } = {},
 ): Promise<SceneSearchRepository & { close(): Promise<void> }> {
   signal?.throwIfAborted();
+  if (options.snapshot !== undefined) validateReadSnapshot(options.snapshot);
   const table = resolveVectorTable(env);
   const config = resolveEmbeddingConfig(env);
   const pool = withMetadataParsing(new pg.Pool({
     connectionString: databaseConnectionString(env), connectionTimeoutMillis: 10_000, max: 1,
+    ...(options.snapshot !== undefined ? { idleTimeoutMillis: 0 } : {}),
   }));
+  let snapshotUnavailable = false, snapshotConnections = 0;
+  pool.on("error", () => { if (options.snapshot !== undefined) snapshotUnavailable = true; });
+  pool.on("connect", () => {
+    if (options.snapshot !== undefined && ++snapshotConnections > 1) snapshotUnavailable = true;
+  });
+  const assertSnapshot = () => {
+    if (snapshotUnavailable) throw new Error("PostgreSQL read snapshot is unavailable; restart the complete evaluation.");
+  };
   const engine = PGEngine.fromPool(pool);
+  const close = async () => {
+    try { if (options.snapshot !== undefined && !snapshotUnavailable) await pool.query("ROLLBACK"); }
+    finally { await engine.close(); }
+  };
   try {
+    if (options.snapshot !== undefined) await importReadSnapshot(pool, options.snapshot);
+    if (options.snapshot !== undefined) await pool.query("SET LOCAL idle_in_transaction_session_timeout='20min'");
     await assertEmbeddingSchema(pool, config);
     signal?.throwIfAborted();
+    assertSnapshot();
     const store = await PGVectorStore.initialize(engine, sceneEmbeddings(env, signal, costLedger), table, {
       metadataColumns: ["user_id", "video_id"],
     });
     signal?.throwIfAborted();
+    assertSnapshot();
     const repository = createPostgresSceneSearchRepository(store, embeddingDimensions(config) as 768 | 1536);
     return {
       async search(params) {
         signal?.throwIfAborted();
+        assertSnapshot();
         const hits = await repository.search(params);
         signal?.throwIfAborted();
+        assertSnapshot();
         return hits;
       },
-      close: () => engine.close(),
+      close,
     };
   } catch (error) {
-    await engine.close().catch(() => undefined);
+    await close().catch(() => undefined);
     throw error;
   }
 }

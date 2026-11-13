@@ -34,7 +34,7 @@ export async function verifyPostgresArchive(path:string,manifest:Manifest,option
  const metadata=await lstat(path);if(!metadata.isFile()||(metadata.mode&0o077)!==0)throw new ArchiveVerificationError('Archive must be a private regular file.');
  const expectedHash=createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),hash=createHash('sha256');
  let header:z.infer<typeof startSchema>|undefined,current:{header:z.infer<typeof tableSchema>;hash:ReturnType<typeof createHash>;rows:bigint}|undefined,ended=false,archiveSha256:string|undefined;
- const expected=new Set<string>(),seen=new Set<string>(),summaries:z.infer<typeof tableSummary>[]=[];
+ const expected=new Set<string>(),seen=new Set<string>(),summaries:z.infer<typeof tableSummary>[]=[],layouts:z.infer<typeof tableSchema>[]=[];
  const processLine=(bytes:Buffer)=>{
   if(ended)throw new ArchiveVerificationError('Unexpected data after archive footer.');
   let raw:unknown;try{const text=new TextDecoder('utf8',{fatal:true,ignoreBOM:true}).decode(bytes.subarray(0,-1));raw=JSON.parse(text) as unknown;if(JSON.stringify(raw)!==text)throw new ArchiveVerificationError();}catch{throw new ArchiveVerificationError('Invalid archive JSON or UTF-8.');}
@@ -55,7 +55,7 @@ export async function verifyPostgresArchive(path:string,manifest:Manifest,option
    if(plan?.policy==='convert_rows'){
     if(table.mode!=='converted'||table.columns.length!==plan.columns.length||table.columns.some(column=>!plan.columns.some(mapped=>mapped.name===column.name&&canonical(mapped.source_type)===canonical(column.type)&&mapped.conversion===column.encoding)))throw new ArchiveVerificationError('Converted archive columns differ from migration mapping.');
    }else if(table.mode!=='raw-special'||table.columns.some(column=>column.encoding!==(column.type==='bytea'?'hex':'postgres-text')))throw new ArchiveVerificationError('Invalid special-table encoding.');
-   seen.add(id);current={header:table,hash:createHash('sha256'),rows:0n};
+   seen.add(id);layouts.push(table);current={header:table,hash:createHash('sha256'),rows:0n};
   }else if(kind==='row'){
    if(!current)throw new ArchiveVerificationError('Archive row outside a table.');const row=parse(rowSchema,raw);if(row.values.length!==current.header.columns.length)throw new ArchiveVerificationError('Archive row width mismatch.');
    const plan=current.header.mode==='converted'?manifest.tables.find(table=>table.source===current!.header.table):undefined;
@@ -72,7 +72,7 @@ export async function verifyPostgresArchive(path:string,manifest:Manifest,option
  };
  for await(const line of readArchiveLines(path,limit))processLine(line);
  if(!header||!ended||current)throw new ArchiveVerificationError('Truncated or incomplete archive.');
- return {sequence_states:header.sequences,archive_sha256:archiveSha256!,table_summaries:summaries,verified:true,version:ARCHIVE_VERSION,tables:summaries.length,rows:summaries.reduce((sum,table)=>sum+BigInt(table.rows),0n).toString(),execution_complete:false};
+ return {source_schema:header.source_schema,migration_history:header.migration_history,table_layouts:layouts,sequence_states:header.sequences,archive_sha256:archiveSha256!,table_summaries:summaries,verified:true,version:ARCHIVE_VERSION,tables:summaries.length,rows:summaries.reduce((sum,table)=>sum+BigInt(table.rows),0n).toString(),execution_complete:false};
 }
 
 /** Internal bounded line reader; callers must verify the complete private file

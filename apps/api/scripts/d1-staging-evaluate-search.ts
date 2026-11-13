@@ -7,6 +7,7 @@ import {buildMigrationManifest} from './migrations/d1/manifest';
 import {prepareCommonImport} from './migrations/d1/prepare-import';
 import {validateStagingTarget} from './migrations/d1/staging-target';
 import {verifyMigratedSceneVectors} from './migrations/d1/verify-scene-delivery';
+import {openVerifiedPostgresSource} from './migrations/d1/verified-postgres-source';
 import {evaluatePairedSceneSearch,validateSearchEvaluationInput} from './migrations/d1/search-evaluation';
 import type {StagingBindings} from './migrations/d1/staging-migration';
 import {createD1SceneSearchRepository} from '../src/persistence/d1/scene-search';
@@ -49,23 +50,28 @@ export async function main(args=process.argv.slice(2)) {
  let directory: string|undefined;
  try{
   if(input.corpusSha256!==prepared.verified.archive_sha256)throw new Error('Evaluation corpus differs from the verified archive.');
-  const proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});
+  const verifiedSource=await openVerifiedPostgresSource({connectionString:source.toString(),archivePath:join(prepared.directory,'source.videoq-export.ndjson'),manifest});
   try{
-   const {DB,SCENE_VECTORIZE_768:small,SCENE_VECTORIZE_1536:large}=proxy.env;
-   const delivery=await verifyMigratedSceneVectors(DB,prepared.scenes,input.corpusSha256,{768:small,1536:large},{offlineStaging:true});
-   if(!delivery.vectorize_delivery_complete)throw new Error('Vector delivery is incomplete.');
-   const postgres=await openPostgresEmbeddingSceneSearch(env);
+   if(verifiedSource.archiveSha256!==input.corpusSha256)throw new Error('Frozen source archive changed during verification.');
+   const proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});
    try{
-    const d1=createD1SceneSearchRepository(DB,input.dimensions===768?small:large,input.dimensions);
-    const report={...await evaluatePairedSceneSearch({postgres,d1},input),target_archive_vectors_verified:true,
-     source_offline_asserted:true,source_snapshot_equality_verified:false};
-    directory=await mkdtemp(join(dirname(options.output),'.videoq-search-evaluation-'));
-    const path=join(directory,'report.json'),file=await open(path,'wx',0o600);
-    try{await file.writeFile(JSON.stringify(report,null,2)+'\n');await file.sync();}finally{await file.close();}
-    await link(path,options.output);
-    console.info(JSON.stringify({event:'d1_search_evaluation_written',cohort:input.cohort,paired_searches:report.paired_searches,execution_complete:false}));
-   }finally{await postgres.close();}
-  }finally{await proxy.dispose();}
+    const {DB,SCENE_VECTORIZE_768:small,SCENE_VECTORIZE_1536:large}=proxy.env;
+    const delivery=await verifyMigratedSceneVectors(DB,prepared.scenes,input.corpusSha256,{768:small,1536:large},{offlineStaging:true});
+    if(!delivery.vectorize_delivery_complete)throw new Error('Vector delivery is incomplete.');
+    const postgres=await openPostgresEmbeddingSceneSearch(env,undefined,undefined,{snapshot:verifiedSource.snapshot});
+    try{
+     const d1=createD1SceneSearchRepository(DB,input.dimensions===768?small:large,input.dimensions);
+     const report={...await evaluatePairedSceneSearch({postgres,d1},input),target_archive_vectors_verified:true,
+      source_offline_asserted:true,...verifiedSource.proof};
+     await verifiedSource.assertLive();
+     directory=await mkdtemp(join(dirname(options.output),'.videoq-search-evaluation-'));
+     const path=join(directory,'report.json'),file=await open(path,'wx',0o600);
+     try{await file.writeFile(JSON.stringify(report,null,2)+'\n');await file.sync();}finally{await file.close();}
+     await link(path,options.output);
+     console.info(JSON.stringify({event:'d1_search_evaluation_written',cohort:input.cohort,paired_searches:report.paired_searches,execution_complete:false}));
+    }finally{await postgres.close();}
+   }finally{await proxy.dispose();}
+  }finally{await verifiedSource.dispose();}
  }finally{await prepared.dispose();if(directory)await rm(directory,{recursive:true,force:true});}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){

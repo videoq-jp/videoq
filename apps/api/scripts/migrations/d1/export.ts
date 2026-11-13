@@ -4,6 +4,7 @@ import {ARCHIVE_VERSION} from './archive-format';
 import {createHash} from 'node:crypto';
 import {open,mkdtemp,link,rm,lstat} from 'node:fs/promises';
 import {dirname,join} from 'node:path';
+import {importReadSnapshot} from '../../../src/persistence/postgres/read-snapshot';
 import {buildMigrationManifest,convertMigrationValue,migrationSelectExpression,quoteMigrationIdentifier as quote} from './manifest';
 type Manifest=ReturnType<typeof buildMigrationManifest>;
 type Column={name:string;type:string};
@@ -12,7 +13,7 @@ const canonical=(type:string)=>type.replace(/^character varying/,'varchar').repl
 /** Archive data, not SQL. No target writes and no source row data in diagnostics.
  * The private archive includes credentials and must be handled like a DB backup.
  */
-export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manifest:Manifest,output:string,options:{schema?:string;fetchRows?:number;statementTimeoutMs?:number}={}){
+export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manifest:Manifest,output:string,options:{schema?:string;fetchRows?:number;statementTimeoutMs?:number;snapshot?:string}={}){
  const schema=options.schema??'public',fetchRows=options.fetchRows??10,timeout=options.statementTimeoutMs??60000;
  if(!manifest.mapping_complete)throw new Error('Migration mapping is incomplete.');
  if(!output.endsWith('.videoq-export.ndjson'))throw new Error('Archive filename must end in .videoq-export.ndjson.');
@@ -22,7 +23,9 @@ export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manif
  try{await lstat(output);throw new Error('Archive output already exists.');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
  let stage:string|undefined,transaction=false;
  try{
-  await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');transaction=true;
+  if(options.snapshot!==undefined)await importReadSnapshot(client,options.snapshot);
+  else await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  transaction=true;
   await client.query("SELECT set_config('statement_timeout',$1,true),set_config('lock_timeout','5000',true),set_config('idle_in_transaction_session_timeout','60000',true),set_config('DateStyle','ISO, YMD',true),set_config('TimeZone','UTC',true),set_config('extra_float_digits','3',true)",[String(timeout)]);
   const tables:Table[]=[],auxiliaryInventory=[];
   for(const sourceSchema of [schema,...manifest.auxiliary_sources.map(source=>source.schema)]){
