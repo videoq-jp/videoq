@@ -36,7 +36,8 @@ function sameFile(expected,actual) {return expected?.bytes===actual.bytes&&expec
 async function privateFile(file,maxBytes=5*1024**3,text=false) {
   let handle;
   try {
-    handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+    // Read existing files only; keep a private mode explicit for numeric flags.
+    handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK,0o600);
     const info=await handle.stat();
     if(!info.isFile()||(info.mode&0o077)||info.uid!==process.getuid()||info.size<=0||info.size>maxBytes)throw new Error();
     const hash=createHash('sha256'),buffer=Buffer.alloc(64*1024),chunks=[];let bytes=0;
