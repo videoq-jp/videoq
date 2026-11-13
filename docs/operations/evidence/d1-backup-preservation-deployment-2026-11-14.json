@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "observed_date": "2026-11-14",
+  "scope": "Approved backup-preservation maintenance code deployment; no D1 application cutover",
+  "pull_request": 1432,
+  "reviewed_source_commit": "c51620e656226f8b6e425d300a91e50a1053dab0",
+  "merge_queue_ci": {
+    "run_id": 43467516198,
+    "conclusion": "success"
+  },
+  "main_push_ci": {
+    "run_id": 43468268891,
+    "conclusion": "success"
+  },
+  "maintenance_cd": {
+    "run_id": 43469043746,
+    "conclusion": "success"
+  },
+  "aws_execution": {
+    "name": "db-de1152602af0975bc5487eb221b0a359",
+    "status": "SUCCEEDED",
+    "started_at": "2026-11-13T17:04:43.215Z",
+    "stopped_at": "2026-11-13T17:09:05.673Z",
+    "post_deployment_smoke_completed": true
+  },
+  "codebuild_readback": {
+    "projects": [
+      "videoq-db-backup-prod",
+      "videoq-db-migration-prod",
+      "videoq-db-smoke-prod",
+      "videoq-db-audit-prod",
+      "videoq-db-rotation-prod"
+    ],
+    "same_pinned_operator_version": true,
+    "reviewed_source_tag_matches_commit": true,
+    "backup_retention_flag_absent": true
+  },
+  "backup_retention_enabled": false,
+  "infrastructure_apply_performed": false,
+  "production_backup_retrieval_rehearsed": false,
+  "application_cutover_performed": false,
+  "migration_execution_complete": false,
+  "next_gate": "Review the independently proposed archive-provisioning/upload controls and an updated infrastructure plan before enabling preservation; preserve the existing enabled schedule and wait for all maintenance executions to finish."
+}

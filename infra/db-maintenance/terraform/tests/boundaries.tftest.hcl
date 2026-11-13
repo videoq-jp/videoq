@@ -26,6 +26,14 @@ run "d1_export_requires_private_retention" {
   expect_failures = [var.export_d1_from_verified_backup]
 }
 
+run "retention_requires_archive_infrastructure" {
+  command = plan
+  variables {
+    retain_verified_backups = true
+  }
+  expect_failures = [var.retain_verified_backups]
+}
+
 run "credential_and_control_boundaries" {
   command = apply
 
@@ -121,6 +129,7 @@ run "credential_and_control_boundaries" {
 run "private_backup_archive_boundaries" {
   command = apply
   variables {
+    provision_backup_archive = true
     retain_verified_backups        = true
     export_d1_from_verified_backup = true
   }
@@ -161,5 +170,33 @@ run "private_backup_archive_boundaries" {
     condition = (length(jsondecode(aws_s3_bucket_policy.archive[0].policy).Statement) == 3 &&
     alltrue([for statement in jsondecode(aws_s3_bucket_policy.archive[0].policy).Statement : statement.Effect == "Deny"]))
     error_message = "Archive bucket policy must deny insecure transport, missing encryption and unconditional writes."
+  }
+}
+
+run "pause_uploads_without_destroying_archives" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition = (length(aws_s3_bucket.archive) == 1 &&
+      aws_s3_bucket_versioning.archive[0].versioning_configuration[0].status == "Enabled" &&
+      aws_s3_bucket_public_access_block.archive[0].block_public_policy &&
+      !aws_s3_bucket.archive[0].force_destroy)
+    error_message = "Pausing uploads must preserve the private versioned archive infrastructure."
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_RETAIN_BACKUP"]) == "false"
+    ])
+    error_message = "Pausing retention must disable every job's archive uploads."
+  }
+  assert {
+    condition = alltrue(flatten([for policy in aws_iam_role_policy.build : [
+      for statement in jsondecode(policy.policy).Statement :
+      !strcontains(jsonencode(statement.Resource), aws_s3_bucket.archive[0].arn)
+    ]]))
+    error_message = "Paused retention must remove archive permissions from DB jobs while preserving stored backups."
   }
 }

@@ -15,10 +15,19 @@ variable "schedule_enabled" {
   type    = bool
   default = false # Enable only after successful production verification/cutover.
 }
+variable "provision_backup_archive" {
+  type        = bool
+  default     = false
+  description = "Keep the private archive infrastructure provisioned independently of new backup uploads. Keep enabled after creation to preserve retained backups."
+}
 variable "retain_verified_backups" {
   type        = bool
   default     = false
   description = "Retain restored backups in the dedicated private archive bucket; enable only with reviewed operator code."
+  validation {
+    condition     = !var.retain_verified_backups || var.provision_backup_archive
+    error_message = "Backup retention requires explicitly provisioned archive infrastructure."
+  }
 }
 variable "export_d1_from_verified_backup" {
   type        = bool
