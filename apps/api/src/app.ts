@@ -15,6 +15,8 @@ import { healthRoutes } from "./features/health/routes";
 import { videoRoutes } from "./features/videos/routes";
 import { chatRoutes } from "./features/chat/routes";
 import { mcpRoutes } from "./features/mcp/routes";
+import { teachingRoutes } from "./features/teaching/routes";
+import { classroomRoutes } from "./features/classroom/routes";
 import { ltiRoutes } from "./features/lti/routes";
 import { lmsRoutes } from "./features/lms/routes";
 import { mediaRoutes } from "./features/media/routes";
@@ -142,6 +144,8 @@ export function createApp() {
   app.route("/api/chat", chatRoutes);
   app.route("/api/mcp", mcpRoutes);
   app.route("/api/lti", ltiRoutes);
+  app.route("/api/classroom", classroomRoutes);
+  app.route("/api/teaching", teachingRoutes);
   app.route("/api/lms", lmsRoutes);
   app.route("/api/media", mediaRoutes);
 

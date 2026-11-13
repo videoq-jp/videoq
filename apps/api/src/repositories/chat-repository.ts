@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import { withDb, type Db } from "../db/pool";
 import {
   chatLogs,
+  ltiChatLogSubjects,
   users,
   videoCourses,
   videoCourseMembers,
@@ -132,13 +133,19 @@ export async function createChatLogWithDb(
         THEN c.payload->>'registrationId' END,
       CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
         THEN c.payload->>'contextId' END` : sql`NULL,NULL`;
+    // Reuse the existing author snapshot column for either verified LMS transport.
+    const classroomAuthor = subject.sessionProof ? sql`
+      CASE WHEN c.payload->>'transport'='classroom' AND c.payload->>'courseId'=${String(params.courseId)}
+        THEN c.payload->'classroomAuthor'
+      WHEN c.payload->>'transport'='native' AND c.payload->>'courseId'=${String(params.courseId)}
+        THEN c.payload->'moodleAuthor' END` : sql`NULL`;
     const session = subject.sessionProof ? sql`LEFT JOIN lti_credentials c ON c.id=${subject.sessionProof.sessionHash}` : sql``;
     const result = await db.execute<{ id: number }>(sql`WITH saved AS (
       INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,feedback,created_at)
       SELECT ${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
         ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now() ${source} RETURNING id
-    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id)
-      SELECT saved.id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb,${provenance}
+    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id,classroom_author)
+      SELECT saved.id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb,${provenance},${classroomAuthor}
       FROM saved ${session}
       RETURNING chat_log_id::float8 AS id`);
     if (!result.rows[0]) throw new Error('Missing attributed chat log');
@@ -250,6 +257,7 @@ async function getCourseChatHistoryExportPage(
         isSharedOrigin: chatLogs.isSharedOrigin,
         feedback: chatLogs.feedback,
         id: chatLogs.id,
+        classroomAuthor: ltiChatLogSubjects.classroomAuthor,
       })
       .from(chatLogs)
       .innerJoin(
@@ -260,6 +268,7 @@ async function getCourseChatHistoryExportPage(
         ),
       )
       .leftJoin(users, eq(users.id, chatLogs.userId))
+      .leftJoin(ltiChatLogSubjects, eq(ltiChatLogSubjects.chatLogId, chatLogs.id))
       .where(and(eq(chatLogs.courseId, courseId), afterCursor))
       .orderBy(asc(chatLogs.createdAt), asc(chatLogs.id))
       .limit(CHAT_HISTORY_EXPORT_PAGE_SIZE);
@@ -271,7 +280,7 @@ async function getCourseChatHistoryExportPage(
         const answer = chatAnswerSchema.parse(row.answer);
         return {
           created_at: toUtcIso(row.createdAt),
-          asked_by: mapQuestionAuthor(
+          asked_by: row.classroomAuthor ?? mapQuestionAuthor(
             row.isSharedOrigin,
             row.userId,
             row.username,
@@ -474,9 +483,11 @@ export async function getCourseChatHistory(
         is_shared_origin: chatLogs.isSharedOrigin,
         feedback: chatLogs.feedback,
         created_at: chatLogs.createdAt,
+        classroomAuthor: ltiChatLogSubjects.classroomAuthor,
       })
       .from(chatLogs)
       .leftJoin(users, eq(users.id, chatLogs.userId))
+      .leftJoin(ltiChatLogSubjects, eq(ltiChatLogSubjects.chatLogId, chatLogs.id))
       .where(eq(chatLogs.courseId, courseId))
       .orderBy(desc(chatLogs.createdAt), desc(chatLogs.id))
       .limit(limit)
@@ -485,7 +496,7 @@ export async function getCourseChatHistory(
     const results: ChatLogItem[] = rows.map((r) => ({
       id: Number(r.id),
       course: Number(r.course_id),
-      asked_by: mapQuestionAuthor(
+      asked_by: r.classroomAuthor ?? mapQuestionAuthor(
         r.is_shared_origin,
         r.user_id,
         r.username,

@@ -1,3 +1,4 @@
+import { historyForCourse, exportHistoryCsv } from '../chat/service';
 import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
@@ -79,11 +80,30 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
   mountLtiTags(ltiRoutes, authorizeCourse);
   mountLtiReports(ltiRoutes, authorizeCourse);
 
+  // Same owner-only history and CSV as the native VideoQ course screen.
+  // A Moodle/Classroom teacher role alone never grants another owner's logs.
+  ltiRoutes.post('/course-history', async c => {
+    const access = await authorizeCourse(c);
+    if ('error' in access) return access.error;
+    if (access.current.ownerHistory !== true) return refused(c, 403);
+    const input = z.object({ action: z.enum(['list', 'csv']) }).strict()
+      .safeParse(await c.req.json().catch(() => null));
+    if (!input.success) return refused(c);
+    if (input.data.action === 'csv') {
+      const result = await exportHistoryCsv(c.env, access.grant.courseId, access.course.userId);
+      if ('notFound' in result) return refused(c, 403);
+      return new Response(result.body, { headers: { 'Content-Type': 'text/csv; charset=utf-8',
+        'Cache-Control': 'private, no-store', 'Content-Disposition': 'attachment; filename="' + result.filename + '"' } });
+    }
+    const result = await historyForCourse(c.env, access.grant.courseId, access.course.userId, 100, 0);
+    return 'notFound' in result ? refused(c, 403) : c.json(result);
+  });
+
   ltiRoutes.post("/materials", async c => {
     const access = await authorizeCourse(c);
     if ("error" in access) return access.error;
-    return c.json({ permissions: access.current.permissions, learningAvailable: access.current.videos.length > 0,
-      ...(access.grant.transport === "native" ? { nativeProtocol: 1, features: learningFeatures(access.reg) } : {}),
+    return c.json({ ...(access.current.courseTitle ? { courseTitle: access.current.courseTitle } : {}), courseHistoryAvailable: access.current.ownerHistory === true, permissions: access.current.permissions, learningAvailable: access.current.videos.length > 0,
+      ...(access.grant.transport === "native" ? { nativeProtocol: 1, features: learningFeatures(access.reg, access.grant) } : {}),
       order: (access.current.materialOrder ?? [...access.current.videos, ...(access.current.managementVideos ?? [])].map(video => video.videoId))
         .filter(videoId => access.course.memberVideoIds.includes(videoId)),
       videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)),

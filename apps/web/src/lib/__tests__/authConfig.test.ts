@@ -12,6 +12,7 @@ describe('isPublicAuthPath', () => {
 
   it('keeps existing public prefixes', () => {
     expect(isPublicAuthPath('/login')).toBe(true)
+    expect(isPublicAuthPath('/teaching/connect')).toBe(true)
     expect(isPublicAuthPath('/docs/openai')).toBe(false)
     expect(isPublicAuthPath('/pricing')).toBe(true)
   })

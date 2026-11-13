@@ -1,7 +1,7 @@
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
-import { syncLmsResource } from '../src/repositories/lms-resource-repository';
+import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { courseTags, courseTagInput, type CourseTagScope } from '../src/features/lti/course-tags';
 import type { Bindings } from '../src/types/bindings';
 

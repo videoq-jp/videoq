@@ -39,7 +39,7 @@ const common = [
 const meta = {
   title: 'Application/Design coverage', component: App,
   parameters: { layout: 'fullscreen', api: { auth: authFixtures.user, trpc: common, rest: [
-    http.get('/api/lms/pairing', () => HttpResponse.json({ connections: [] })),
+    http.get('/api/teaching/connections', () => HttpResponse.json({ connections: [] })),
     http.post('/api/lms/pairing/management', () => HttpResponse.json({ connection: { owned: true, active: true }, permissions: { account: true, billing: true, systemAdmin: false } })),
     landingMedia,
     http.get('/api/auth/verify-email', () => HttpResponse.json({ status: true })),

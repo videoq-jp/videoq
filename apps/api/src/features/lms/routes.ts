@@ -45,7 +45,7 @@ async function installation(c: Context<AppEnv>) {
   return grant;
 }
 
-async function resourceResponse(c: Context<AppEnv>, grant: { id: string; ownerUserId: string }) {
+async function resourceResponse(c: Context<AppEnv>, grant: { id: string }) {
   const externalId = c.req.param("externalId")!;
   const data = await getLmsResource(c.env, grant, externalId);
   if (!data) throw new LmsSyncError(404, "RESOURCE_NOT_FOUND");
@@ -103,7 +103,7 @@ lmsRoutes.put("/resources/:externalId/content", async c => {
   // ReadableStream<any> rather than expressing that platform guarantee.
   const stream = lmsUploadStream(c.req.raw.body as ReadableStream<Uint8Array>, expected);
   await withDb(c.env, db => db.transaction(async tx => {
-    await lockLmsGrant(tx, grant);
+    await lockLmsGrant(tx, { id: grant.id, ownerUserId: data.ownerUserId });
     const [resource] = await tx.select().from(lmsResources).where(eq(lmsResources.id, data.resource.id)).for("update");
     const [video] = await tx.select().from(videos).where(eq(videos.id, data.video!.id)).for("update");
     if (!resource?.enabled || resource.generation !== generation || resource.videoId !== video?.id || video.status !== "uploading") throw new LmsSyncError(409, "STALE_GENERATION");

@@ -5,7 +5,7 @@ import { plainChatAnswer } from '@videoq/trpc/chat';
 import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
-import { syncLmsResource } from '../src/repositories/lms-resource-repository';
+import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { executePrivacyRequest, verifyPrivacyAssertion, moodlePrivacyRoutes } from '../src/features/lms/privacy-routes';
 import { privacyCollections, privacyRequest, privacySubject, type PrivacyInstallation } from '../src/features/lms/privacy-data';
 import { digest, putLtiFeedback } from '../src/features/lti/store';
@@ -117,8 +117,31 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect((await pool.query('SELECT lti_actor_id FROM course_qa_moderation WHERE question_id=$1', [question])).rows[0].lti_actor_id).toBeNull();
     expect(await run({ action: 'erase', subject: '11', contexts: ['2'] })).toHaveProperty('erased');
   });
+  it('keeps teacher-owned native course privacy requests in the approved Moodle context', async () => {
+    await pool.query(`INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,storage_limit_gb,monthly_upload_limit_gb)
+      VALUES('teacher','teacher','teacher@example.test',false,0,0,0,1,2)`);
+    const course = Number((await pool.query(`INSERT INTO video_courses(user_id,name,description,display_order,created_at,updated_at)
+      VALUES('teacher','Native linked course','',0,now(),now()) RETURNING id`)).rows[0].id);
+    await pool.query(`INSERT INTO teaching_connections(provider,installation_id,context_id,teacher_subject,owner_user_id,course_id,active)
+      VALUES('moodle','school','linked-context','teacher-subject','teacher',$1,false)`,[course]);
+    const log = Number((await pool.query(`INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,created_at)
+      VALUES('teacher',$1,'Linked private question',$2,'[]',true,now()) RETURNING id`,[course,JSON.stringify(plainChatAnswer('Linked answer'))])).rows[0].id);
+    await pool.query("INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids) VALUES($1,$2,'[]')",[log,own.subjectKey]);
+    expect((await run({action:'contexts',subject:'11'})).contexts).toContain('linked-context');
+    expect((await run({action:'catalog'})).contexts).toContain('linked-context');
+    const exported = await run({action:'export',subject:'11',contexts:['linked-context'],collection:'logs'});
+    expect(exported.part!.chunk).toContain('Linked private question');
+    expect(exported.part!.chunk).not.toContain('own private question');
+    await run({action:'erase',subject:'11',contexts:['2']});
+    expect((await pool.query('SELECT id FROM chat_logs WHERE id=$1',[log])).rowCount).toBe(1);
+    await run({action:'erase',subject:'11',contexts:['linked-context']});
+    expect((await pool.query('SELECT id FROM chat_logs WHERE id=$1',[log])).rowCount).toBe(0);
+  });
+
   it('exports long Unicode without truncation and rejects a changed record between fragments', async () => {
     const text = '漢字😀'.repeat(30000);
+    const questionAuthor = { user_id: 'moodle:learner', username: '検証 生徒', email: 'learner@example.test' };
+    await pool.query('UPDATE lti_chat_log_subjects SET classroom_author=$2 WHERE chat_log_id=$1', [ownLog,JSON.stringify(questionAuthor)]);
     await pool.query('UPDATE chat_logs SET question=$1 WHERE id=$2', [text, ownLog]);
     const request = { action: 'export', subject: '11', contexts: ['2'], collection: 'logs' };
     let response = await run(request), combined = '';
@@ -129,6 +152,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       response = await run({ ...request, cursor: response.next });
     }
     expect(JSON.parse(combined).question).toBe(text);
+    expect(JSON.parse(combined).questionAuthor).toEqual(questionAuthor);
     expect(await digest(combined)).toBe(first.part!.revision);
     expect([...first.part!.chunk]).toHaveLength(65536);
     await pool.query("UPDATE chat_logs SET question=question||'changed' WHERE id=$1", [ownLog]);
@@ -136,7 +160,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect((await run({ ...request, contexts: ['3'] })).part!.chunk).not.toContain('own private');
   });
   it('handles residual contexts and permits recovery for inactive, over-quota installations', async () => {
-    await pool.query("UPDATE lms_installations SET active=false; UPDATE users SET is_over_quota=true; DELETE FROM lms_courses WHERE context_id='2'");
+    await pool.query("UPDATE lms_installations SET active=false; UPDATE users SET is_over_quota=true; DELETE FROM lms_courses WHERE context_id='2'; DELETE FROM teaching_connections WHERE context_id='2'");
     expect((await run({ action: 'contexts', subject: '11' })).contexts).toEqual(['3', '@orphan', '2'].sort());
     await run({ action: 'erase', subject: '11', contexts: ['@orphan', '2'] });
     expect((await run({ action: 'contexts', subject: '11' })).contexts).toEqual(['3']);

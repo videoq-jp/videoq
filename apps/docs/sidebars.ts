@@ -35,6 +35,7 @@ const sidebars: SidebarsConfig = {
         'concepts/auth',
         'concepts/course-sharing',
         'guides/lms-integration',
+        'guides/google-classroom-integration',
       ],
     },
     {

@@ -327,9 +327,9 @@ describeWithPostgres("next maintenance wakeup on PostgreSQL", () => {
     it.each(["LTI_TOOL_KEYS", "LTI_CONFIG", "USE_S3_STORAGE"] as const)("stops wakeups when %s is removed", async key => {
       await expect(getNextMaintenanceWakeup({ ...enabledEnv(), [key]: undefined }, WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
     });
-    it.each(["is_active=false", "deactivated_at=now()", "banned=true", "banned=true,ban_expires=now()+interval '1 day'"])("ignores an owner with %s", async change => {
+    it.each(["is_active=false", "deactivated_at=now()", "banned=true", "banned=true,ban_expires=now()+interval '1 day'"])("keeps the installation scheduled independently of installer state %s", async change => {
       await admin.query(`UPDATE ${quotedSchema}.users SET ${change}`);
-      await expect(getNextMaintenanceWakeup(enabledEnv(), WINDOWS)).resolves.toEqual({ nextAt: null, nextFutureAt: null });
+      expectFutureWakeup(await getNextMaintenanceWakeup(enabledEnv(), WINDOWS), Date.now() + 4 * 60_000);
     });
     it.each(["active=false", "materials_service=NULL"])("ignores a connection with %s", async change => {
       await admin.query(`UPDATE ${quotedSchema}.lms_installations SET ${change}`);

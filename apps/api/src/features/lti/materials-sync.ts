@@ -3,8 +3,8 @@ import { ltiMaterialsEnabled } from "./config";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
-import { lmsInstallations, ltiCredentials, users } from "../../db/schema";
-import { activeLmsOwner } from "../../repositories/lms-installation-repository";
+import { lmsInstallations, ltiCredentials } from "../../db/schema";
+import { teachingConnection } from '../teaching/service';
 import { getLmsResource, syncLmsResource } from "../../repositories/lms-resource-repository";
 import { presignR2Put } from "../../integrations/media";
 import { confirmVideoUpload } from "../videos/service";
@@ -15,9 +15,11 @@ import { LmsSyncError } from '../lms/resource';
 /** Bounded JSON orchestration. Media is uploaded by the platform's background task. */
 export async function synchronizeMaterials(env: Bindings, installationId: string, contextId: string) {
   const installation = await withDb(env, async db => (await db.select({ row: lmsInstallations }).from(lmsInstallations)
-    .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
-    .where(and(eq(lmsInstallations.id, installationId), eq(lmsInstallations.active, true), activeLmsOwner())))[0]?.row);
+    .where(and(eq(lmsInstallations.id, installationId), eq(lmsInstallations.active, true))))[0]?.row);
   if (!installation?.materialsService || !ltiMaterialsEnabled(env)) throw new Error("LTI materials connection unavailable");
+  const teacher = await teachingConnection(env, 'moodle', installationId, contextId);
+  if (teacher?.resourceLinkId) return { busy: false, pending: false, linked: true };
+  if (!teacher) return { busy: false, pending: false, unconnected: true };
   const leaseId = await materialStateKey("lti-materials-lease:", installationId, contextId);
   const lease = crypto.randomUUID();
   const claimed = await withDb(env, db => db.insert(ltiCredentials).values({ id: leaseId, kind: "materials-lease",
@@ -33,7 +35,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
       // Every explicit tombstone is reconciled, even when the export batch is full.
       let reconciled: Awaited<ReturnType<typeof syncLmsResource>>;
       try {
-        reconciled = await syncLmsResource(env, installation, source.externalId, source.manifest);
+        reconciled = await syncLmsResource(env, { id: installation.id }, source.externalId, source.manifest);
       } catch (error) {
         if (!(error instanceof LmsSyncError) || error.code !== 'YOUTUBE_DISABLED') throw error;
         // A deployment without native YouTube imports must still reconcile
@@ -41,7 +43,7 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
         await client.acknowledge(contextId, source.externalId, source.manifest.generation, 'blocked', 'YOUTUBE_DISABLED');
         continue;
       }
-      const data = await getLmsResource(env, installation, source.externalId);
+      const data = await getLmsResource(env, { id: installation.id }, source.externalId);
       if (source.manifest.kind || !source.manifest.enabled || data?.video?.status !== "uploading") {
         await client.acknowledge(contextId, source.externalId, source.manifest.generation,
           !source.manifest.enabled ? "disabled" : data?.resource.syncError ? "blocked" : data?.resource.kind === 'course' ? 'completed' : data?.video?.status ?? "awaiting_upload", data?.resource.syncError ?? null);
@@ -74,10 +76,10 @@ export async function synchronizeMaterials(env: Bindings, installationId: string
       }
       if (status.status !== "uploaded") continue;
       if (status.bytes !== source.manifest.file!.size) throw new Error("Invalid LTI export byte count");
-      const current = await getLmsResource(env, installation, source.externalId);
+      const current = await getLmsResource(env, { id: installation.id }, source.externalId);
       if (!current?.resource.enabled || current.resource.generation !== reconciled.generation || current.video?.id !== data.video.id) continue;
       // Confirmation verifies the actual object size and uses the existing quota/worker flow.
-      const confirmed = await confirmVideoUpload(env, data.video.id, installation.ownerUserId);
+      const confirmed = await confirmVideoUpload(env, data.video.id, teacher.ownerUserId);
       if (!("video" in confirmed)) throw new Error("LTI export confirmation failed");
     }
     await armMaintenance(env, Date.now());
@@ -92,9 +94,8 @@ export async function sweepMaterials(env: Bindings) {
   if (!ltiMaterialsEnabled(env)) return { synchronized: 0 };
   const connection = await withDb(env, db => db.transaction(async tx => {
     const [item] = await tx.select({ row: lmsInstallations }).from(lmsInstallations)
-      .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
-      .where(and(eq(lmsInstallations.active, true), isNotNull(lmsInstallations.materialsService),
-        lte(lmsInstallations.nextMaterialsSyncAt, new Date().toISOString()), activeLmsOwner()))
+        .where(and(eq(lmsInstallations.active, true), isNotNull(lmsInstallations.materialsService),
+        lte(lmsInstallations.nextMaterialsSyncAt, new Date().toISOString())))
       .orderBy(lmsInstallations.nextMaterialsSyncAt).limit(1).for("update", { of: lmsInstallations, skipLocked: true });
     if (!item) return null;
     await tx.update(lmsInstallations).set({ nextMaterialsSyncAt: new Date(Date.now() + 60000).toISOString() }).where(eq(lmsInstallations.id, item.row.id));

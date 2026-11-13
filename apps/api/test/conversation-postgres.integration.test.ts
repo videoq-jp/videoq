@@ -71,6 +71,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       .split('--> statement-breakpoint').filter(statement => statement.includes('"lti_chat_log_subjects"'));
     expect(reportingProvenance).toHaveLength(3);
     for (const statement of reportingProvenance) await pool.query(statement);
+    const classroomMigration: string = readFileSync(new URL('../drizzle/0062_classroom_question_authors.sql', import.meta.url), 'utf8');
+    await pool.query(classroomMigration);
     for (const role of ['videoq_api_access', 'videoq_backup_access']) {
       if (!(await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [role])).rowCount) {
         await admin.query(`CREATE ROLE ${role} NOLOGIN`); createdRoles.push(role);

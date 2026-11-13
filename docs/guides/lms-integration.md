@@ -6,10 +6,12 @@ description: Connect Moodle with its plugins or provision another LMS connector 
 # Connect an LMS with LTI 1.3
 
 VideoQ authenticates learner launches with LTI 1.3 and generates course-scoped
-answers. Moodle owns enrollment, source files and playback. Its two plugins,
+answers. Moodle owns enrollment and the learning UI; the linked native VideoQ course owns its videos. Its two plugins,
 installers and lab are maintained in
 [videoq-moodle](https://github.com/videoq-jp/videoq-moodle).
 Normal VideoQ builds do not require that repository.
+
+Google Classroom uses a separate [Classroom add-on integration](google-classroom-integration.md), rather than LTI.
 
 ## Connect Moodle
 
@@ -21,19 +23,16 @@ Normal VideoQ builds do not require that repository.
    `LTI_CONFIG` or `LTI_TOOL_KEYS` registration is required.
 2. Install both Moodle plugins from Git (ZIP is optional) using the
    [Moodle setup guide](https://github.com/videoq-jp/videoq-moodle/blob/main/docs/setup.md).
-3. As a Moodle administrator, open **Connect to VideoQ** and enter the cloud or
-   on-premises VideoQ HTTPS URL. Continue to VideoQ, sign in to the owning account,
-   check the displayed Moodle URL and quota permissions, and allow the connection.
-   You return to Moodle automatically; no connection-code copying is required.
-   Complete this flow within ten minutes. It needs no per-connection API key or
-   per-video JSON. VideoQ settings only list existing connections and allow disconnection.
-4. Enable **VideoQ questions** on Moodle File activities. Keep Moodle cron,
-   VideoQ's processing worker/queue and maintenance scheduler running. Wait for
-   ordinary export, transcription and indexing.
+3. As a Moodle administrator, open **Connect to VideoQ**, select the service,
+   sign in and approve communication with this school. This installs the connector;
+   it does not allocate the installer's quota or assign ownership of course data.
+4. As a course teacher, choose **Connect my VideoQ account** in the course navigation.
+   Sign in independently to VideoQ, select an existing owned course and confirm the account. Materials, question history, storage,
+   processing and AI usage belong to that account. Each course must be connected explicitly.
+   Add/edit videos in VideoQ; Moodle File activities are not imported.
 5. As a permitted learner, launch the course assistant, ask a question, check
    incremental text/citations, switch videos and test Good/Bad/reset. Verify an
-   unenrolled learner cannot access the material. Replace/delete an owned test
-   File and check that unrelated videos and private histories remain intact.
+   unenrolled learner cannot access the material. Remove a video from the VideoQ course and verify that it disappears from the Moodle playlist.
 
 Hosted VideoQ must be able to reach the Moodle HTTPS endpoints. An SSH-forwarded
 localhost trial URL does not make Moodle reachable from the hosted service.
@@ -68,13 +67,13 @@ than treating these migrations as its upgrade procedure.
 
 ## Contracts and administrative overrides
 
-Moodle stores and plays the original; VideoQ stores a processed copy. Every
+The Moodle player requests authorized playback of the selected VideoQ video. Every
 question rechecks current Moodle access. The custom materials service is
 **not a standardized LTI video-sync service**: LTI authenticates launches and
 service assertions; the VideoQ/Moodle contract defines export and reconciliation.
 
-The owner can disconnect a Moodle connection in VideoQ settings. Future launches,
-questions and synchronization are denied; existing learning data is retained.
+The teacher can disconnect an individual course in VideoQ settings. Future launches,
+questions and media access are denied; existing learning data is retained.
 To revoke platform-side trust as well, disable/remove the VideoQ external tool
 through Moodle's standard administration. Missing or failed snapshots never
 mean that every remote video should be deleted.
@@ -109,7 +108,7 @@ using the deployment's `DATABASE_URL`. Input fields are `id`, `ownerUserId`, `na
 belong to the registered issuer origin. The operator approves all endpoint URLs;
 learner requests cannot select them. The command creates its output exclusively
 with mode 0600 and returns `{ installationId, mode: "service" }` without a push
-credential. Existing Moodle pairing and the legacy `register` command are unchanged.
+credential. Provisioning grants transport access only; an explicit teacher course connection is still required.
 
 The context API implements `courses`, `manifest`, `access`, `export`, `status` and
 `ack` as defined by `features/lms/connector-client.ts` and `contracts.ts`. IDs are
@@ -122,6 +121,12 @@ authority; a learner role must never authorize it. See [the native contract and 
 The independent connector contract tests cover these boundaries with controlled
 network responses and real PostgreSQL/signature verification. Live integrations
 with other LMS vendors still require their own implementation and acceptance tests.
+
+The former site-wide quota-owner model is removed. Existing installations do not
+implicitly grant their installer ownership of new courses. Old mappings are not
+adopted by another teacher; reconnect each course explicitly. Apply migration 0063,
+reapply `infra/sql/neon-security.sql`, and deploy the matching companion plugin.
+See [teacher ownership](https://github.com/videoq-jp/videoq/blob/main/docs/design/teacher-owned-lms-connections.md) for the authority model.
 
 Before production activation, verify the intended Moodle, theme and browsers.
 The [trial review](https://github.com/videoq-jp/videoq-moodle/blob/v0.10.1/docs/integration-review.md)

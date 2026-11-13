@@ -781,14 +781,14 @@
       }
     },
     "moodleConnect": {
-      "title": "Connect Moodle to VideoQ",
+      "title": "Allow this Moodle installation",
       "invalid": "Invalid connection request. Start again from Moodle.",
       "loading": "Checking your session…",
       "error": "Could not connect. Start again from Moodle.",
       "loginHelp": "Sign in to the VideoQ account you want to connect.",
       "login": "Sign in to VideoQ",
       "account": "Connecting account: {{account}}",
-      "permissions": "Allow this Moodle to transfer and synchronize its video materials and use this account’s quotas for transcription and AI answers. You can disconnect in VideoQ settings.",
+      "permissions": "Allow this school to communicate with VideoQ. This does not assign course ownership or usage quotas. Each teacher connects their own VideoQ account from their course.",
       "allow": "Allow and return to Moodle",
       "cancel": "Cancel and return to Moodle",
       "connecting": "Connecting…"
@@ -1277,18 +1277,18 @@
       "title": "Integrations"
     },
     "moodle": {
-      "title": "Moodle",
-      "description": "Add connections from Moodle.",
+      "title": "Teaching connections",
+      "description": "Connect your Moodle or Google Classroom classes to your own VideoQ courses.",
       "connected": "Connected",
       "disabled": "Disconnected",
       "disconnect": "Disconnect",
-      "disconnectDescription": "Stop synchronization and AI questions. Videos and questions will be retained.",
+      "disconnectDescription": "Stop VideoQ access from this class. Materials and question logs are retained.",
       "confirmDisconnect": "Confirm disconnect",
       "cancelDisconnect": "Cancel",
       "disconnecting": "Disconnecting…",
       "disconnectError": "Could not disconnect. Check your login and connection, then retry.",
       "disconnected": "Disconnected.",
-      "empty": "No Moodle sites are connected.",
+      "empty": "No classes connected. Start the connection from your class.",
       "setupGuide": "Set up Moodle"
     }
   },

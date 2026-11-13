@@ -17,8 +17,8 @@ async function materialFetch(action,payload){
  // The server may perform two bounded ten-second Moodle authorization calls
  // before its database work. Keep the complete client operation bounded too.
  const response=await fetch('/api/lti/'+(action==='list'?'materials':'transcript'),{method:'POST',credentials:'omit',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
- if(!response.ok){if(action==='list'&&[401,403].includes(response.status)){learningRefresh([]);qaAvailability(false);personalAvailability(false);managementAvailability(false);reportsAvailability(false);}throw new Error(uiCopy.materialError);}
- const result=await response.json();if(action==='list'&&result?.permissions){const videos=Array.isArray(result.videos)?result.videos:[];learningRefresh(videos);qaAvailability(result.permissions.viewQa===true);personalAvailability(result.permissions.manageOwnHistory===true);managementCatalog(result);reportsAvailability(result.permissions.viewReports===true);}return result;
+ if(!response.ok){if(action==='list'&&[401,403].includes(response.status)){learningRefresh([]);if(typeof ownerHistoryAvailability==='function')ownerHistoryAvailability(false);qaAvailability(false);personalAvailability(false);managementAvailability(false);reportsAvailability(false);}throw new Error(uiCopy.materialError);}
+ const result=await response.json();if(action==='list'&&result?.permissions){if(typeof ownerHistoryAvailability==='function')ownerHistoryAvailability(result.courseHistoryAvailable);const videos=Array.isArray(result.videos)?result.videos:[];learningRefresh(videos);qaAvailability(result.permissions.viewQa===true);personalAvailability(result.permissions.manageOwnHistory===true);managementCatalog(result);reportsAvailability(result.permissions.viewReports===true);}return result;
 }
 // Coalesce only concurrent, identical metadata reads. Later operations always
 // request fresh authority; transcripts and writes are never cached here.
@@ -44,7 +44,7 @@ async function loadMaterialList(){
  try{const result=await materialRequest('list');materialSelect.replaceChildren();
   if(!result.permissions?.viewTranscript){materialsPanel.hidden=true;return;}
   for(const video of result.videos){const option=document.createElement('option');option.value=video.videoId;option.textContent=video.title;materialSelect.append(option);}
-  materialListLoaded=true;
+  materialListLoaded=true;if(typeof classroomSyncTranscriptSelection==='function')classroomSyncTranscriptSelection();
  }catch{materialListLoaded=false;materialSelect.replaceChildren();materialStatus.textContent=uiCopy.materialError;}finally{materialBusy(false);}
 }
 async function loadMaterialTranscript(append=false){

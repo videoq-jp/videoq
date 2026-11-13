@@ -32,6 +32,7 @@ export const ltiToolKeys = pgTable("lti_tool_keys", {
 /** A revocable LTI identity, using either a materials service or legacy push. */
 export const lmsInstallations = pgTable("lms_installations", {
   id: text("id").primaryKey(),
+  /** Installer/revocation authority only. Teaching connections determine all quota and content owners. */
   ownerUserId: text("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   issuer: text("issuer").notNull(),
@@ -149,3 +150,19 @@ export const ltiCourseTagOperations = pgTable('lti_course_tag_operations', {
 export const ltiOperationReservations = pgTable('lti_operation_reservations', {
   key: varchar('key', { length: 64 }).primaryKey(),
 }, table => [check('lti_operation_reservation_key_format', sql`${table.key} ~ '^[a-f0-9]{64}$'`)]);
+
+/** A teacher explicitly authorizes one LMS classroom to use one owned course. */
+export const teachingConnections = pgTable('teaching_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provider: text('provider').notNull(),
+  installationId: text('installation_id').notNull(),
+  contextId: text('context_id').notNull(),
+  teacherSubject: text('teacher_subject').notNull(),
+  resourceLinkId: text('resource_link_id'),
+  ownerUserId: text('owner_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [unique('teaching_connections_context_key').on(table.provider, table.installationId, table.contextId),
+  index('teaching_connections_owner_idx').on(table.ownerUserId),
+  check('teaching_connections_provider_check', sql`${table.provider} IN ('moodle','classroom')`)]);

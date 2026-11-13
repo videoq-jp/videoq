@@ -23,6 +23,12 @@ export async function readCredential(env: Bindings, id: string, kind: string) {
     eq(ltiCredentials.id, id), eq(ltiCredentials.kind, kind), gt(ltiCredentials.expiresAt, new Date()),
   )).limit(1))[0]?.payload ?? null);
 }
+/** Replace an existing live credential without extending retention or reviving deletion. */
+export async function replaceCredentialPayload(env: Bindings, id: string, kind: string, payload: Record<string, unknown>): Promise<boolean> {
+  return withDb(env, async db => (await db.update(ltiCredentials).set({ payload }).where(and(
+    eq(ltiCredentials.id, id), eq(ltiCredentials.kind, kind), gt(ltiCredentials.expiresAt, new Date()),
+  )).returning({ id: ltiCredentials.id })).length === 1);
+}
 /** Remember every scope used by this session, without extending its expiry.
  * Atomic union prevents concurrent questions from forgetting a previously allowed video.
  */

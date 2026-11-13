@@ -11,6 +11,9 @@ type SecretBindings = {
   BETTER_AUTH_SECRET?: string;
   AUTH_JWT_SECRET?: string;
   USER_SECRET_ENCRYPTION_KEY: string;
+  CLASSROOM_CLIENT_ID?: string;
+  CLASSROOM_CLIENT_SECRET?: string;
+  CLASSROOM_CONFIG?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   OPENAI_API_KEY?: string;

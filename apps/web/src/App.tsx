@@ -18,6 +18,7 @@ const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
 const VerifyEmailPage = isOnprem ? null : lazy(() => import('@/pages/VerifyEmailPage'));
 const EmailChangeConfirmPage = isOnprem ? null : lazy(() => import('@/pages/EmailChangeConfirmPage'));
 const ConsentPage = lazy(() => import('@/pages/ConsentPage'));
+const TeachingConnectPage = lazy(() => import('@/pages/TeachingConnectPage'));
 const MoodleConnectPage = lazy(() => import('@/pages/MoodleConnectPage'));
 const MoodleManagementPage = lazy(() => import('@/pages/MoodleManagementPage'));
 const VideoLibraryPage = lazy(() => import('@/pages/VideoLibraryPage'));
@@ -116,6 +117,7 @@ const routeChildren = (
       {VerifyEmailPage && <Route path="verify-email" element={<VerifyEmailPage />} />}
       {EmailChangeConfirmPage && <Route path="change-email" element={<EmailChangeConfirmPage />} />}
       <Route path="consent" element={<ConsentPage />} />
+      <Route path="teaching/connect" element={<TeachingConnectPage />} />
       <Route path="moodle/connect" element={<MoodleConnectPage />} />
       <Route path="moodle/manage" element={<MoodleManagementPage />} />
       <Route path="course-invitations/:token" element={<CourseInvitationPage />} />

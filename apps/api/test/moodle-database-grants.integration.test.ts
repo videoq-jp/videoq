@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { provisionLmsInstallation } from '../src/repositories/lms-installation-repository';
-import { syncLmsResource } from '../src/repositories/lms-resource-repository';
+import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { manageLtiMaterial, type ManagedMaterialScope } from '../src/features/lti/material-management';
 import { courseTags, type CourseTagScope } from '../src/features/lti/course-tags';
 import { resolvedLtiConfig } from '../src/features/lti/registrations';
@@ -24,7 +24,7 @@ import type { Bindings } from '../src/types/bindings';
 const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;
 const roles=['videoq_migrate_20260918','videoq_worker_20261014','videoq_api_access','videoq_worker_access',
   'videoq_backup_access','videoq_audit_access','videoq_smoke_access','videoq_demo_access'];
-const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_courses','lms_resources',
+const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_courses','lms_resources','teaching_connections',
   'lti_operation_reservations','lti_report_accesses','lti_material_operations','lti_course_tags','lti_course_video_tags','lti_course_tag_operations','course_questions','course_question_replies','course_question_votes',
   'course_question_lti_votes','course_qa_moderation'];
 

@@ -32,36 +32,40 @@ export async function privacySubject(installation:PrivacyInstallation,rawSubject
 const parameters=`WITH params AS(SELECT $1::text owner,$2::text subject,$3::text qa_prefix,$4::text history_prefix,
   $5::text registration,$6::text subject_hash,$7::text installation,$8::text[] contexts)`;
 const contextFor=(course:string)=>`coalesce((SELECT m.context_id FROM lms_courses m
-  WHERE m.installation_id=p.installation AND m.course_id=${course} ORDER BY m.id LIMIT 1),'${ORPHAN_CONTEXT}')`;
+  WHERE m.installation_id=p.installation AND m.course_id=${course} ORDER BY m.id LIMIT 1),
+  (SELECT t.context_id FROM teaching_connections t WHERE t.provider='moodle' AND t.installation_id=p.installation
+    AND t.course_id=${course} ORDER BY t.context_id COLLATE "C" LIMIT 1),'${ORPHAN_CONTEXT}')`;
 const reportContext=(alias:string)=>`CASE WHEN EXISTS(SELECT 1 FROM lms_courses rc WHERE rc.installation_id=p.installation
-  AND rc.course_id=${alias}.course_id AND rc.context_id=${alias}.context_id) THEN ${alias}.context_id ELSE '${ORPHAN_CONTEXT}' END`;
+  AND rc.course_id=${alias}.course_id AND rc.context_id=${alias}.context_id) OR EXISTS(SELECT 1 FROM teaching_connections tc
+  WHERE tc.provider='moodle' AND tc.installation_id=p.installation AND tc.course_id=${alias}.course_id
+    AND tc.context_id=${alias}.context_id) THEN ${alias}.context_id ELSE '${ORPHAN_CONTEXT}' END`;
 const author=(course:string)=>`encode(sha256(convert_to(p.qa_prefix||${course}::text||']','UTF8')),'hex')`;
 type Collection = {from:string;where:string;key:string;cast:'bigint'|'uuid'|'text';context:string;data:string};
-const conversationFrom=`params p JOIN chat_conversations c ON c.owner_user_id=p.owner
+const conversationFrom=`params p JOIN chat_conversations c ON true
   JOIN lti_conversation_scopes s ON s.thread_id=c.thread_id AND s.subject_key=p.subject`;
-const logFrom=`params p JOIN chat_logs l ON l.user_id=p.owner JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id AND s.subject_key=p.subject`;
+const logFrom=`params p JOIN chat_logs l ON true JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id AND s.subject_key=p.subject`;
 const defs:Record<typeof privacyCollections[number],Collection>={
   logs:{from:logFrom,where:'true',key:'l.id',cast:'bigint',context:contextFor('l.course_id'),
-    data:`jsonb_build_object('question',l.question,'answer',l.response,'feedback',l.feedback,'retrievedContexts',l.retrieved_contexts,'createdAt',l.created_at,'resourceVideoIds',s.resource_video_ids,'registrationId',s.registration_id,'contextId',s.context_id)`},
+    data:`jsonb_build_object('question',l.question,'answer',l.response,'feedback',l.feedback,'retrievedContexts',l.retrieved_contexts,'createdAt',l.created_at,'resourceVideoIds',s.resource_video_ids,'registrationId',s.registration_id,'contextId',s.context_id,'questionAuthor',s.classroom_author)`},
   evaluations:{from:logFrom+' JOIN chat_log_evaluations e ON e.chat_log_id=l.id',where:'true',key:'e.id',cast:'bigint',context:contextFor('l.course_id'),
     data:`jsonb_build_object('status',e.status,'faithfulness',e.faithfulness,'answerRelevancy',e.answer_relevancy,'contextPrecision',e.context_precision,'createdAt',e.created_at,'evaluatedAt',e.evaluated_at)`},
   conversations:{from:conversationFrom,where:'true',key:'c.conversation_id',cast:'uuid',context:contextFor('c.course_id'),
     data:`jsonb_build_object('conversationId',c.conversation_id,'title',c.title,'createdAt',c.created_at,'updatedAt',c.updated_at,'expiresAt',c.expires_at,'resourceVideoIds',s.resource_video_ids)`},
   turns:{from:conversationFrom+' JOIN chat_conversation_turns t ON t.thread_id=c.thread_id',where:'true',key:'t.id',cast:'bigint',context:contextFor('c.course_id'),
     data:`jsonb_build_object('conversationId',c.conversation_id,'question',t.question,'answer',t.response,'createdAt',t.created_at)`},
-  questions:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN course_questions q ON q.course_id=c.id',where:`q.lti_author_id=${author('c.id')}`,key:'q.id',cast:'uuid',context:contextFor('c.id'),
+  questions:{from:'params p JOIN video_courses c ON true JOIN course_questions q ON q.course_id=c.id',where:`q.lti_author_id=${author('c.id')}`,key:'q.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('questionId',q.id,'title',q.title,'body',q.body,'featured',q.featured,'sourceVideoId',q.source_video_id,'createdAt',q.created_at,'updatedAt',q.updated_at)`},
-  replies:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN course_questions q ON q.course_id=c.id JOIN course_question_replies r ON r.question_id=q.id',where:`r.lti_author_id=${author('c.id')}`,key:'r.id',cast:'uuid',context:contextFor('c.id'),
+  replies:{from:'params p JOIN video_courses c ON true JOIN course_questions q ON q.course_id=c.id JOIN course_question_replies r ON r.question_id=q.id',where:`r.lti_author_id=${author('c.id')}`,key:'r.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('questionId',q.id,'replyId',r.id,'body',r.body,'createdAt',r.created_at,'updatedAt',r.updated_at)`},
-  votes:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN course_questions q ON q.course_id=c.id JOIN course_question_lti_votes v ON v.question_id=q.id',where:`v.lti_author_id=${author('c.id')}`,key:'v.question_id',cast:'uuid',context:contextFor('c.id'),
+  votes:{from:'params p JOIN video_courses c ON true JOIN course_questions q ON q.course_id=c.id JOIN course_question_lti_votes v ON v.question_id=q.id',where:`v.lti_author_id=${author('c.id')}`,key:'v.question_id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('questionId',q.id,'createdAt',v.created_at)`},
-  moderation:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN course_qa_moderation m ON m.course_id=c.id',where:`m.lti_actor_id=${author('c.id')}`,key:'m.id',cast:'uuid',context:contextFor('c.id'),
+  moderation:{from:'params p JOIN video_courses c ON true JOIN course_qa_moderation m ON m.course_id=c.id',where:`m.lti_actor_id=${author('c.id')}`,key:'m.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('questionId',m.question_id,'replyId',m.reply_id,'action',m.action,'createdAt',m.created_at)`},
-  material_operations:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN lti_material_operations m ON m.course_id=c.id',where:'m.actor_key=p.subject',key:'m.id',cast:'uuid',context:contextFor('c.id'),
+  material_operations:{from:'params p JOIN video_courses c ON true JOIN lti_material_operations m ON m.course_id=c.id',where:'m.actor_key=p.subject',key:'m.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('operationId',m.id,'action',m.action,'sourceGeneration',m.source_generation,'requestHash',m.request_hash,'beforeRevision',m.before_revision,'afterRevision',m.after_revision,'createdAt',m.created_at)`},
-  tag_operations:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN lti_course_tag_operations m ON m.course_id=c.id',where:'m.actor_key=p.subject',key:'m.id',cast:'uuid',context:contextFor('c.id'),
+  tag_operations:{from:'params p JOIN video_courses c ON true JOIN lti_course_tag_operations m ON m.course_id=c.id',where:'m.actor_key=p.subject',key:'m.id',cast:'uuid',context:contextFor('c.id'),
     data:`jsonb_build_object('operationId',m.id,'action',m.action,'requestHash',m.request_hash,'createdAt',m.created_at)`},
-  report_accesses:{from:'params p JOIN video_courses c ON c.user_id=p.owner JOIN lti_report_accesses m ON m.course_id=c.id',
+  report_accesses:{from:'params p JOIN video_courses c ON true JOIN lti_report_accesses m ON m.course_id=c.id',
     where:'m.actor_key=p.subject AND m.installation_id=p.installation',key:'m.id',cast:'uuid',context:reportContext('m'),
     data:`jsonb_build_object('accessId',m.id,'from',m.from_date,'to',m.to_date,'resourceCount',m.resource_count,'scopeHash',m.scope_hash,'createdAt',m.created_at)`},
   recent_history:{from:'params p JOIN lti_credentials h ON h.kind=\'lti-history\'',where:`h.kind='lti-history' AND h.payload->>'registrationId'=p.registration AND h.payload->>'subjectHash'=p.subject_hash`,key:'h.id',cast:'text',
@@ -122,34 +126,33 @@ export async function erasePrivacyData(client:pg.Client,installation:PrivacyInst
     feedback AS(DELETE FROM lti_credentials f USING params p WHERE f.kind='lti-feedback' AND (
       f.payload->>'sessionHash' IN(SELECT id FROM revoked) OR f.payload->>'logId' IN(
         SELECT l.id::text FROM chat_logs l JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id
-        WHERE l.user_id=p.owner AND s.subject_key=p.subject AND ${contextFor('l.course_id')}=ANY(p.contexts))) RETURNING f.id)
+        WHERE s.subject_key=p.subject AND ${contextFor('l.course_id')}=ANY(p.contexts))) RETURNING f.id)
     SELECT (SELECT count(*) FROM revoked) sessions,(SELECT count(*) FROM feedback) feedback`,v);
   result.sessions=Number(revoked.rows[0].sessions);result.feedback=Number(revoked.rows[0].feedback);
   const history=defs.recent_history;
   await execute('recentHistory',`DELETE FROM lti_credentials h USING params p WHERE ${scoped(history)}`);
   await execute('conversations',`DELETE FROM chat_conversations c USING params p,lti_conversation_scopes s
-    WHERE c.owner_user_id=p.owner AND s.thread_id=c.thread_id AND s.subject_key=p.subject AND ${contextFor('c.course_id')}=ANY(p.contexts)`);
+    WHERE s.thread_id=c.thread_id AND s.subject_key=p.subject AND ${contextFor('c.course_id')}=ANY(p.contexts)`);
   // Conversation FKs also erase model checkpoints, blobs, writes and turn copies.
-  await execute('logs',`DELETE FROM chat_logs l USING params p,lti_chat_log_subjects s WHERE l.user_id=p.owner
-    AND s.chat_log_id=l.id AND s.subject_key=p.subject AND ${contextFor('l.course_id')}=ANY(p.contexts)`);
+  await execute('logs',`DELETE FROM chat_logs l USING params p,lti_chat_log_subjects s WHERE s.chat_log_id=l.id AND s.subject_key=p.subject AND ${contextFor('l.course_id')}=ANY(p.contexts)`);
   await execute('questions',`UPDATE course_questions q SET title='[deleted]',body='[deleted]',lti_author_id=repeat('0',64),lti_instructor=false,featured=false,updated_at=now()
-    FROM params p,video_courses c WHERE q.course_id=c.id AND c.user_id=p.owner AND q.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
+    FROM params p,video_courses c WHERE q.course_id=c.id AND q.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
   await execute('replies',`UPDATE course_question_replies r SET body='[deleted]',lti_author_id=repeat('0',64),lti_instructor=false,updated_at=now()
-    FROM params p,video_courses c,course_questions q WHERE r.question_id=q.id AND q.course_id=c.id AND c.user_id=p.owner
+    FROM params p,video_courses c,course_questions q WHERE r.question_id=q.id AND q.course_id=c.id
     AND r.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
   await execute('votes',`DELETE FROM course_question_lti_votes a USING params p,video_courses c,course_questions q WHERE a.question_id=q.id AND q.course_id=c.id
-    AND c.user_id=p.owner AND a.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
+    AND a.lti_author_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
   await execute('moderation',`UPDATE course_qa_moderation a SET lti_actor_id=NULL FROM params p,video_courses c WHERE a.course_id=c.id
-    AND c.user_id=p.owner AND a.lti_actor_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
+    AND a.lti_actor_id=${author('c.id')} AND ${contextFor('c.id')}=ANY(p.contexts)`);
   for(const [name,table,kind] of [['materialOperations','lti_material_operations','material'],['tagOperations','lti_course_tag_operations','tag']] as const) {
     await client.query(parameters+` INSERT INTO lti_operation_reservations(key)
-      SELECT ${reservationExpression(kind,'a.id')} FROM ${table} a,params p,video_courses c WHERE a.course_id=c.id AND c.user_id=p.owner
+      SELECT ${reservationExpression(kind,'a.id')} FROM ${table} a,params p,video_courses c WHERE a.course_id=c.id
         AND a.actor_key=p.subject AND ${contextFor('c.id')}=ANY(p.contexts) ORDER BY 1 ON CONFLICT DO NOTHING`,v);
-    await execute(name,`DELETE FROM ${table} a USING params p,video_courses c WHERE a.course_id=c.id AND c.user_id=p.owner
+    await execute(name,`DELETE FROM ${table} a USING params p,video_courses c WHERE a.course_id=c.id
       AND a.actor_key=p.subject AND ${contextFor('c.id')}=ANY(p.contexts)`);
   }
   await execute('reportAccesses',`DELETE FROM lti_report_accesses a USING params p,video_courses c
-    WHERE a.course_id=c.id AND c.user_id=p.owner AND a.installation_id=p.installation AND a.actor_key=p.subject
+    WHERE a.course_id=c.id AND a.installation_id=p.installation AND a.actor_key=p.subject
       AND ${reportContext('a')}=ANY(p.contexts)`);
   return result;
 }

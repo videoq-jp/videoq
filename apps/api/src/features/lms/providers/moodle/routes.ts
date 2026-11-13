@@ -1,11 +1,7 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { and, eq } from "drizzle-orm";
 import type { AppEnv } from "../../../../types/bindings";
-import { withDb } from "../../../../db/pool";
-import { lmsInstallations, users } from "../../../../db/schema";
 import { requireAuth, sessionMethod } from "../../../../middleware/auth";
-import { activeLmsOwner, disconnectLmsInstallation } from "../../../../repositories/lms-installation-repository";
 import { clientIp, enforceThrottles, throttledResponse } from "../../../../lib/rate-limit";
 import { ltiConfig, ltiMaterialsEnabled } from "../../../lti/config";
 import { LmsSyncError } from "../../resource";
@@ -54,7 +50,6 @@ moodlePairingRoutes.post("/exchange", async c => {
 
 moodlePairingRoutes.use("/", requireAuth(sessionMethod));
 moodlePairingRoutes.use('/management', requireAuth(sessionMethod));
-moodlePairingRoutes.use("/connections/*", requireAuth(sessionMethod));
 moodlePairingRoutes.post('/management', async c => {
   const allowed = [ltiConfig(c.env)!.toolOrigin, ...(c.env.CORS_ALLOW_ORIGIN ?? '').split(',').map(value => value.trim())];
   if (!c.req.header('Origin') || !allowed.includes(c.req.header('Origin')!)) return c.json({ error: 'INVALID_ORIGIN' }, 403);
@@ -65,12 +60,6 @@ moodlePairingRoutes.post('/management', async c => {
   const context = await managementContext(c.env, c.var.userId!, input.data);
   return context ? c.json(context) : c.json({ error: 'UNAUTHORIZED' }, 401);
 });
-moodlePairingRoutes.get("/", async c => {
-  const connections = await withDb(c.env, db => db.select({ id: lmsInstallations.id, moodleUrl: lmsInstallations.issuer,
-    active: lmsInstallations.active }).from(lmsInstallations).innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
-    .where(and(eq(lmsInstallations.ownerUserId, c.var.userId!), eq(lmsInstallations.active, true), activeLmsOwner())));
-  return c.json({ connections });
-});
 moodlePairingRoutes.post("/", async c => {
   const allowed = [ltiConfig(c.env)!.toolOrigin, ...(c.env.CORS_ALLOW_ORIGIN ?? "").split(",").map(value => value.trim())];
   if (!c.req.header("Origin") || !allowed.includes(c.req.header("Origin")!)) return c.json({ error: "INVALID_ORIGIN" }, 403);
@@ -79,15 +68,4 @@ moodlePairingRoutes.post("/", async c => {
   const input = pairingRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return c.json({ error: "INVALID_MOODLE_URL" }, 400);
   return c.json(await issueMoodlePairing(c.env, c.var.userId!, input.data.moodleUrl, ltiConfig(c.env)!.toolOrigin, input.data.codeChallenge));
-});
-
-// Disconnection is a protocol credential revocation; it never deletes learning data.
-moodlePairingRoutes.post("/connections/:id/disconnect", async c => {
-  const allowed = [ltiConfig(c.env)!.toolOrigin, ...(c.env.CORS_ALLOW_ORIGIN ?? "").split(",").map(value => value.trim())];
-  if (!c.req.header("Origin") || !allowed.includes(c.req.header("Origin")!)) return c.json({ error: "INVALID_ORIGIN" }, 403);
-  const denied = await enforceThrottles(c.env, [{ scope: "moodle_pairing_user", ident: c.var.userId! }]);
-  if (denied) return throttledResponse(c, denied);
-  if (!c.req.param("id") || c.req.param("id").length > 255) return c.json({ error: "INVALID_CONNECTION" }, 400);
-  if (!await disconnectLmsInstallation(c.env, c.var.userId!, c.req.param("id"))) return c.json({ error: "CONNECTION_NOT_FOUND" }, 404);
-  return c.json({ disconnected: true });
 });

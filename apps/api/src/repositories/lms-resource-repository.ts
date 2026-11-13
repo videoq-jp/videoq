@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { withDb, type Db } from "../db/pool";
-import { externalTasks, lmsCourses, lmsInstallations, lmsResources, users, videoCourseMembers, videoCourses, videos } from "../db/schema";
+import { teachingConnections, externalTasks, lmsCourses, lmsInstallations, lmsResources, users, videoCourseMembers, videoCourses, videos } from "../db/schema";
 import { buildPendingUploadFileKey, fileExtension, parseReservedBytesFromFileKey } from "../lib/upload";
 import { reserveUploadInTransaction, refundUnconfirmedUpload } from "./quota-repository";
 import { activeLmsOwner } from "./lms-installation-repository";
@@ -12,15 +12,18 @@ import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from '../lib/job-message';
 import { insertJobTask } from './external-task-repository';
 import { lmsIdentity } from '../features/lms/contracts';
 
-export type LmsGrant = { id: string; ownerUserId: string };
+export type LmsGrant = { id: string; ownerUserId?: string };
 
 /** Owner first: share the existing account's atomic quota and lock order. */
-export async function lockLmsGrant(db: Db, grant: LmsGrant) {
+export async function lockLmsGrant(db: Db, grant: { id: string; ownerUserId: string }) {
   const [owner] = await db.select({ id: users.id }).from(users)
     .where(and(eq(users.id, grant.ownerUserId), activeLmsOwner())).for("update");
   const [installation] = await db.select({ id: lmsInstallations.id }).from(lmsInstallations)
-    .where(and(eq(lmsInstallations.id, grant.id), eq(lmsInstallations.ownerUserId, grant.ownerUserId), eq(lmsInstallations.active, true))).for("update");
-  if (!owner || !installation) throw new LmsSyncError(403, "INSTALLATION_UNAVAILABLE");
+    .where(and(eq(lmsInstallations.id, grant.id), eq(lmsInstallations.active, true))).for("update");
+  const [link] = await db.select({ id: teachingConnections.id }).from(teachingConnections).where(and(
+    eq(teachingConnections.provider, 'moodle'), eq(teachingConnections.installationId, grant.id),
+    eq(teachingConnections.ownerUserId, grant.ownerUserId), eq(teachingConnections.active, true))).for('share');
+  if (!owner || !installation || !link) throw new LmsSyncError(403, "INSTALLATION_UNAVAILABLE");
   return owner.id;
 }
 
@@ -62,7 +65,14 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
   if (!lmsIdentity.safeParse(externalId).success) throw new LmsSyncError(400, 'INVALID_MANIFEST');
   const manifestHash = await digest(JSON.stringify(manifest));
   return withDb(env, db => db.transaction(async tx => {
-    const ownerUserId = await lockLmsGrant(tx, grant);
+    const [link] = await tx.select().from(teachingConnections).where(and(eq(teachingConnections.provider, 'moodle'),
+      eq(teachingConnections.installationId, grant.id), eq(teachingConnections.contextId, manifest.contextId), eq(teachingConnections.active, true)));
+    if (!link || link.resourceLinkId) throw new LmsSyncError(403, 'TEACHER_CONNECTION_REQUIRED');
+    if (grant.ownerUserId && grant.ownerUserId !== link.ownerUserId) throw new LmsSyncError(403, 'INSTALLATION_UNAVAILABLE');
+    const ownerUserId = await lockLmsGrant(tx, { id: grant.id, ownerUserId: link.ownerUserId });
+    const [teacherCourse] = await tx.select({ id: lmsCourses.courseId }).from(lmsCourses).where(and(
+      eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId), eq(lmsCourses.courseId, link.courseId)));
+    if (!teacherCourse) throw new LmsSyncError(403, 'TEACHER_CONNECTION_REQUIRED');
     const [previous] = await tx.select().from(lmsResources)
       .where(and(eq(lmsResources.installationId, grant.id), eq(lmsResources.externalId, externalId))).for("update");
     if (previous && (previous.kind !== (manifest.kind ?? 'video')
@@ -76,7 +86,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
     if (manifest.kind === 'course') {
       const [mapping] = await tx.select().from(lmsCourses).where(and(
         eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
-      let courseId = mapping?.courseId ?? null;
+      const courseId = mapping?.courseId ?? null;
       if (courseId !== null) {
         const [course] = await tx.select().from(videoCourses).where(eq(videoCourses.id, courseId)).for('update');
         if (!course || course.userId !== ownerUserId || !course.managedByLms || !course.nativeAccessDisabled
@@ -84,17 +94,8 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
       }
       if (previous?.generation === manifest.generation && (!manifest.enabled || courseId !== null)) return previous;
       // No media, upload reservation, processing task, or AI usage for an entry.
-      if (manifest.enabled && courseId === null) {
-        const [course] = await tx.insert(videoCourses).values({ userId: ownerUserId,
-          managedByLms: true, nativeAccessDisabled: true,
-          name: manifest.courseTitle ?? 'LMS ' + manifest.contextId, description: '', displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
-          createdAt: sql`now()`, updatedAt: sql`now()` }).returning({ id: videoCourses.id });
-        courseId = course.id;
-        await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id,
-          contextId: manifest.contextId, courseId });
-      } else if (courseId !== null && manifest.courseTitle) {
-        await tx.update(videoCourses).set({ name: manifest.courseTitle, updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
-      }
+      if (courseId === null) throw new LmsSyncError(403, 'TEACHER_CONNECTION_REQUIRED');
+      if (manifest.courseTitle) await tx.update(videoCourses).set({ name: manifest.courseTitle, updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
       // Entry tombstones revoke this launch; the shared course and its history
       // remain available to privacy processing and other enabled activities.
       const values = { installationId: grant.id, externalId, kind: 'course', contextId: manifest.contextId,
@@ -108,6 +109,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
     }
     const [previousVideo] = previous?.videoId ? await tx.select({ status: videos.status, userId: videos.userId,
       sourceType: videos.sourceType, youtubeVideoId: videos.youtubeVideoId, transcriptionLanguage: videos.transcriptionLanguage }).from(videos).where(eq(videos.id, previous.videoId)) : [];
+    if (previousVideo && previousVideo.userId !== ownerUserId) throw new LmsSyncError(409, 'RESOURCE_OWNER_CHANGED');
     // A new source kind has no legacy native-video adoption path. Refuse a
     // corrupted pointer before changing provenance or taking an idempotent exit.
     if (manifest.kind === 'youtube' && previous?.videoId && previousVideo
@@ -139,7 +141,7 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
     const [mapping] = await tx.select().from(lmsCourses).where(and(eq(lmsCourses.installationId, grant.id), eq(lmsCourses.contextId, manifest.contextId)));
     const [courseEntry] = await tx.select({ id: lmsResources.id }).from(lmsResources).where(and(
       eq(lmsResources.installationId, grant.id), eq(lmsResources.contextId, manifest.contextId), eq(lmsResources.kind, 'course'))).limit(1);
-    let courseId: number | null = mapping?.courseId ?? null;
+    const courseId: number | null = mapping?.courseId ?? null;
     // Removing membership revokes questions immediately, before any processing.
     if (previous?.courseId && previous.videoId && previous.contextId !== manifest.contextId) {
       // Course vocabulary must not travel with a source moved to another course.
@@ -182,18 +184,9 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
         await tx.update(videos).set({ title: manifest.title, managedByLms: true }).where(eq(videos.id, videoId!));
       }
       if (videoId !== null) {
-        if (!courseId) {
-          const [course] = await tx.insert(videoCourses).values({
-            managedByLms: true, nativeAccessDisabled: true,
-            userId: ownerUserId, name: manifest.courseTitle ?? "LMS " + manifest.contextId, description: "", displayOrder: sql`(SELECT COALESCE(MAX(display_order), -1) + 1 FROM video_courses WHERE user_id = ${ownerUserId})`,
-            createdAt: sql`now()`, updatedAt: sql`now()`,
-          }).returning({ id: videoCourses.id });
-          courseId = course.id;
-          await tx.insert(lmsCourses).values({ id: crypto.randomUUID(), installationId: grant.id, contextId: manifest.contextId, courseId });
-        } else {
-          await tx.update(videoCourses).set({ managedByLms: true, nativeAccessDisabled: true,
-            ...(!courseEntry && manifest.courseTitle ? { name: manifest.courseTitle } : {}), updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
-        }
+        if (!courseId) throw new LmsSyncError(403, 'TEACHER_CONNECTION_REQUIRED');
+        await tx.update(videoCourses).set({ managedByLms: true, nativeAccessDisabled: true,
+          ...(!courseEntry && manifest.courseTitle ? { name: manifest.courseTitle } : {}), updatedAt: sql`now()` }).where(eq(videoCourses.id, courseId));
         await tx.insert(videoCourseMembers).values({ courseId, videoId, order: 0, addedAt: sql`now()` });
       }
     }
@@ -214,12 +207,14 @@ export async function syncLmsResource(env: Bindings, grant: LmsGrant, externalId
 
 export function getLmsResource(env: Bindings, grant: LmsGrant, externalId: string) {
   return withDb(env, async db => {
-    const [resource] = await db.select({ resource: lmsResources, video: videos, ownerUserId: lmsInstallations.ownerUserId })
+    const [resource] = await db.select({ resource: lmsResources, video: videos, ownerUserId: teachingConnections.ownerUserId })
       .from(lmsResources).innerJoin(lmsInstallations, eq(lmsInstallations.id, lmsResources.installationId))
-      .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
+      .innerJoin(teachingConnections, and(eq(teachingConnections.provider, 'moodle'), eq(teachingConnections.installationId, lmsInstallations.id),
+        eq(teachingConnections.contextId, lmsResources.contextId), eq(teachingConnections.courseId, lmsResources.courseId), eq(teachingConnections.active, true)))
+      .innerJoin(users, eq(users.id, teachingConnections.ownerUserId))
       .leftJoin(videos, eq(videos.id, lmsResources.videoId))
       .where(and(eq(lmsResources.installationId, grant.id), eq(lmsResources.externalId, externalId),
-        eq(lmsInstallations.ownerUserId, grant.ownerUserId), eq(lmsInstallations.active, true), activeLmsOwner())).limit(1);
+        grant.ownerUserId ? eq(teachingConnections.ownerUserId, grant.ownerUserId) : undefined, eq(lmsInstallations.active, true), activeLmsOwner())).limit(1);
     return resource ?? null;
   });
 }
