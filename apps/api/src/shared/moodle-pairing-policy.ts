@@ -26,4 +26,3 @@ export const pairingExchangeSchema = z.object({
 }).strict().refine(value => value.mode === "materials" ? value.syncToken === undefined && Boolean(value.materialsService) && Object.values(value.materialsService!).every(endpoint => endpoint.startsWith(value.issuer + "/") && new URL(endpoint).origin === new URL(value.issuer).origin) : Boolean(value.syncToken) && value.materialsService === undefined, "Invalid connection authentication mode");
 export const pairingPayloadSchema = z.object({ ownerUserId: z.string().min(1), moodleUrl: moodleUrlSchema, mode: z.enum(["legacy", "materials"]).default("legacy"), codeChallenge: codeChallengeSchema.optional() });
 export const PAIRING_SECONDS = 600;
-

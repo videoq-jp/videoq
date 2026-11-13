@@ -4,4 +4,3 @@ export function isSafeMediaPath(path: string): boolean {
   const parts = path.split("/");
   return !parts.some((p) => p === ".." || p === "");
 }
-

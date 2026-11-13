@@ -7,4 +7,3 @@ export function ltiSessionProof(grant: { registrationId: string; subjectHash: st
     throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
   return { sessionHash, registrationId: grant.registrationId, subjectHash: grant.subjectHash };
 }
-

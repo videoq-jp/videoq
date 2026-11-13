@@ -8,4 +8,3 @@ export type UploadReservationResult =
   | { overQuota: true }
   | { exceeded: true; limit: number }
   | { monthlyUploadExceeded: true; limit: number };
-

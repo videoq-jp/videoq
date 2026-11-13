@@ -35,4 +35,3 @@ export async function verifyPrivacyAssertion(env:Bindings,assertion:string,keys?
   if(!accepted)throw unavailable();
   return {installation,request:verified.request};
 }
-

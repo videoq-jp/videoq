@@ -13,4 +13,3 @@ export function normalizeTagName(name: string): string | null {
 export function isValidTagColor(color: string): boolean {
   return (TAG_COLORS as readonly string[]).includes(color);
 }
-

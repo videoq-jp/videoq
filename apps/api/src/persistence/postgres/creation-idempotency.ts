@@ -55,4 +55,3 @@ export async function recordIdempotentResource(
     createdAt: sql`CURRENT_TIMESTAMP`,
   });
 }
-

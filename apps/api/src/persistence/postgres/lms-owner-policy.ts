@@ -5,4 +5,3 @@ export function activeLmsOwner() {
   return sql`${users.isActive} = true AND ${users.deactivatedAt} IS NULL
     AND (${users.banned} IS NOT TRUE OR ${users.banExpires} <= now())`;
 }
-
