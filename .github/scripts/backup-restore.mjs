@@ -75,7 +75,7 @@ try {
   await fs.chmod(path.join(temporary, 'database.dump'), 0o600);
   stage = 'isolated-restore';
   await docker(['run', '--detach', '--name', name, '--label', 'videoq.operation=restore-test',
-    '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', '-v', temporary + ':/backup:ro', IMAGE],
+    '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', '-v', temporary + ':/backup:ro', IMAGE, 'postgres', '-c', 'log_error_verbosity=verbose'],
   { env: { ...process.env, POSTGRES_PASSWORD: password } });
   started = true;
   stage = 'restore-server-readiness';
@@ -116,7 +116,14 @@ try {
       '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
       staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
 } catch (error) {
-  if (stage === 'restore-archive-apply') stage = restoreArchiveFailureStage(error);
+  if (stage === 'restore-archive-apply') {
+    let serverLog = '';
+    try {
+      const log = await docker(['logs', '--tail', '200', name]);
+      serverLog = log.stdout + log.stderr;
+    } catch { /* Never print database logs or fall back to raw exception text. */ }
+    stage = restoreArchiveFailureStage(error, serverLog);
+  }
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {
     console.error(error.stderr || error.message);
