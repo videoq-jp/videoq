@@ -22,7 +22,8 @@ export function backupArchiveContext(env = process.env) {
 async function privateFile(file,maxBytes=5*1024**3,text=false) {
   let handle;
   try {
-    handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+    // Read existing files only; keep a private mode explicit for numeric flags.
+    handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK,0o600);
     const info=await handle.stat();
     if(!info.isFile()||(info.mode&0o077)||info.uid!==process.getuid()||info.size<=0||info.size>maxBytes)throw new Error();
     const hash=createHash('sha256'),buffer=Buffer.alloc(64*1024),chunks=[];let bytes=0;
@@ -138,3 +139,6 @@ export async function retainStagedBackup(directory,context,run = execute) {
   if(!Number.isSafeInteger(metadata.dump?.bytes)||metadata.dump.bytes<=0||typeof metadata.dump?.sha256_base64!=='string')throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
   return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context,expectedDump:metadata.dump},run);
 }
+
+// Shared descriptor-based inspection for the private, version-pinned downloader.
+export {privateFile as inspectPrivateBackupFile};
