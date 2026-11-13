@@ -24,6 +24,7 @@ class BundleTest(unittest.TestCase):
                 self.assertIn('infra/db-maintenance/runtime/setup-job.cjs', names)
                 self.assertIn('infra/db-maintenance/runtime/backup.cjs', names)
                 self.assertIn('.github/scripts/backup-archive.mjs', names)
+                self.assertIn('.github/scripts/backup-download.mjs', names)
                 self.assertIn('.github/scripts/backup-d1-export.mts', names)
                 self.assertIn('apps/api/scripts/migrations/d1/export.ts', names)
                 self.assertIn('apps/api/scripts/migrations/d1/verify-archive.ts', names)
