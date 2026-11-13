@@ -290,3 +290,27 @@ real storage and production recovery remain unproven. This PR does not add the D
 export producer or migration archive verifier; version-2 manifests are supported
 as an explicit forward-compatible transport contract only.
 The version-read/checksum behavior follows the [AWS GetObject reference](https://docs.aws.amazon.com/cli/latest/reference/s3api/get-object.html).
+
+## Pause backup uploads while preserving archives
+
+Archive infrastructure and new uploads have separate operator controls. Set
+`provision_backup_archive=true` to provision and keep the private versioned bucket;
+set `retain_verified_backups=true` only when approved backup code is deployed and
+new uploads should run. Retention without provisioned infrastructure is rejected.
+Both options default to false.
+
+To stop future uploads after a run, keep `provision_backup_archive=true` and set
+`retain_verified_backups=false`. This removes DB-job archive permissions and sets
+the upload flag to false while preserving bucket versioning, private policies and
+existing objects. Keep the existing schedule setting explicit. Wait for active DB
+maintenance executions to finish before changing job configuration or permissions.
+Never disable archive provisioning as a way to pause uploads: it would attempt
+resource deletion and the bucket's `prevent_destroy` guard will reject the plan.
+No automatic expiry or deletion policy is introduced. Infrastructure changes still
+require a separately reviewed plan and operator apply; code deployment does not
+enable either option.
+
+The operator ZIP object is bootstrapped by Terraform, then managed by maintenance
+CD. Terraform ignores later source/path-hash changes for that object, as it does
+for pinned job sources and live Lambda code. Provisioning or pausing archive
+storage must not upload a different operator ZIP as an infrastructure side effect.
