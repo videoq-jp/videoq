@@ -205,7 +205,21 @@ test('restore failures expose fixed categories without SQL, rows, names or crede
   ['disk-full','No space left on device: synthetic-secret'],
   ['out-of-memory','ERROR: out of memory: synthetic-secret'],
  ];
- assert.deepEqual(examples.map(([name])=>name),RESTORE_FAILURE_CATEGORIES.map(([name])=>name));
+ assert.ok(examples.every(([name])=>RESTORE_FAILURE_CATEGORIES.some(([category])=>category===name)));
  for(const [category,stderr] of examples) assert.equal(restoreArchiveFailureStage({stderr}), 'restore-archive-apply-'+category);
  for(const error of [null,{}, {stderr:5}, {stderr:'postgresql://synthetic-secret'}, {message:'ERROR: role "synthetic-secret" does not exist'}]) assert.equal(restoreArchiveFailureStage(error),'restore-archive-apply');
+});
+
+test('SQLSTATE and client failure diagnostics never expose database log contents',async()=>{
+ const {restoreArchiveFailureStage,RESTORE_SQLSTATE_CATEGORIES}=await import('./backup-archive.mjs');
+ for(const [code,category] of Object.entries(RESTORE_SQLSTATE_CATEGORIES)) {
+  assert.equal(restoreArchiveFailureStage({},'2026-11-14 UTC [42] ERROR:  '+code+': synthetic-secret\nSTATEMENT: synthetic-secret'), 'restore-archive-apply-'+category);
+ }
+ assert.equal(restoreArchiveFailureStage({stderr:Buffer.from('ERROR: role "synthetic-secret" does not exist')}),'restore-archive-apply-missing-role');
+ assert.equal(restoreArchiveFailureStage({code:'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',stderr:'synthetic-secret'}),'restore-archive-apply-output-limit');
+ for(const stderr of ['pg_restore: error: could not open TOC file "synthetic-secret"','pg_restore: error: could not open input file "synthetic-secret"','OCI runtime exec failed: synthetic-secret']) {
+  assert.ok(!restoreArchiveFailureStage({stderr}).includes('synthetic-secret'));
+  assert.notEqual(restoreArchiveFailureStage({stderr}),'restore-archive-apply');
+ }
+ assert.equal(restoreArchiveFailureStage({},'ERROR:  ZZZZZ: synthetic-secret'),'restore-archive-apply');
 });
