@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
-import {createReadStream} from 'node:fs';
-import {lstat, writeFile} from 'node:fs/promises';
+import {createReadStream,constants} from 'node:fs';
+import {lstat, writeFile,open} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -80,15 +80,31 @@ export async function stageVerifiedBackup({directory, destination, inventory, sc
   backupArchiveContext({VIDEOQ_RETAIN_BACKUP:'true', MAINTENANCE_STAGE:'backup', MAINTENANCE_RUN_ID:context.runId,
     CODEBUILD_BUILD_ARN:context.buildArn, CODEBUILD_SOURCE_VERSION:context.sourceVersion});
   await privateHandoffDirectory(destination);
-  const {copyFile,readdir,chmod} = await import('node:fs/promises');
-  const {constants} = await import('node:fs');
+  const {readdir} = await import('node:fs/promises');
   if ((await readdir(destination)).length) throw new Error('BACKUP_HANDOFF_NOT_EMPTY');
-  const source = join(directory,'database.dump'), info = await lstat(source);
-  if (!info.isFile() || (info.mode & 0o077) || info.size <= 0) throw new Error('INVALID_PRIVATE_BACKUP_FILE');
-  const target = join(destination,'database.dump');
-  await copyFile(source,target,constants.COPYFILE_EXCL); await chmod(target,0o600);
+  // Validate and read the same opened inode; do not lstat then copy by pathname.
+  // O_NOFOLLOW also refuses a symlink swapped in before the open itself.
+  const source = await open(join(directory,'database.dump'),constants.O_RDONLY|constants.O_NOFOLLOW);
+  let target,bytes=0;
+  const hash=createHash('sha256');
+  try {
+    const info=await source.stat();
+    if (!info.isFile() || (info.mode & 0o077) || info.uid!==process.getuid() || info.size<=0) throw new Error('INVALID_PRIVATE_BACKUP_FILE');
+    target=await open(join(destination,'database.dump'),constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|constants.O_NOFOLLOW,0o600);
+    const buffer=Buffer.alloc(64*1024);
+    for (;;) {
+      const {bytesRead}=await source.read(buffer,0,buffer.length,null);
+      if (!bytesRead) break;
+      hash.update(buffer.subarray(0,bytesRead));bytes+=bytesRead;
+      for(let offset=0;offset<bytesRead;){const result=await target.write(buffer,offset,bytesRead-offset,null);if(!result.bytesWritten)throw new Error('BACKUP_HANDOFF_WRITE_FAILED');offset+=result.bytesWritten;}
+    }
+    if(bytes!==info.size)throw new Error('BACKUP_HANDOFF_SOURCE_CHANGED');
+    await target.sync();
+  } finally {
+    try {await target?.close();}finally{await source.close();}
+  }
   const metadata = {version:1,status:'restore-verified',context,inventory,schemas,image,
-    dump:{bytes:info.size,sha256_base64:await checksum(target)}};
+    dump:{bytes,sha256_base64:hash.digest('base64')}};
   await writeFile(join(destination,'verified-backup-input.json'),JSON.stringify(metadata)+'\n',{mode:0o600,flag:'wx'});
   return true;
 }
