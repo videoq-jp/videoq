@@ -6,12 +6,10 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, retainVerifiedBackup } from './backup-archive.mjs';
+import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
-// Keep inventory, dump selection and restored-constraint checks in one scope.
-const BACKUP_SCHEMAS = Object.freeze(['public', 'drizzle', 'videoq_security', 'chat_memory']);
 const IMAGE = (await fs.readFile(new URL('../operations-tools/Dockerfile', import.meta.url), 'utf8')).trim().replace(/^FROM /, '');
 if (!/^pgvector\/pgvector:pg17@sha256:[a-f0-9]{64}$/.test(IMAGE)) throw new Error('Review the restore image before changing PostgreSQL versions');
 const source = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15_000,
@@ -103,13 +101,13 @@ try {
   const invalid = await restored.query(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = ANY($1::text[]) AND NOT c.convalidated`, [BACKUP_SCHEMAS]);
   if (Number(invalid.rows[0].count)) throw new Error('Unvalidated restored constraints');
-  stage = 'verified-backup-retention';
-  const retained = await retainVerifiedBackup({directory: temporary, inventory: expected,
+  stage = 'verified-backup-handoff';
+  const staged = await stageVerifiedBackup({directory: temporary, destination: process.env.VIDEOQ_BACKUP_HANDOFF, inventory: expected,
     schemas: BACKUP_SCHEMAS, image: IMAGE, context: archiveContext});
-  report = { status: 'ok', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
+  report = { status: 'ok', backup_retention: staged ? 'staged' : 'disabled', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
     details: ['- 本番DBへの書き込み、バックアップファイルやレコード内容の公開は行っていません。',
       '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
-      retained ? '- 復元検証済みdumpとprivate manifestを専用S3へ保存し、version・checksum・size・暗号化を照合しました。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
+      staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
 } catch (error) {
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {

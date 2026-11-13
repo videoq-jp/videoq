@@ -78,6 +78,16 @@ bucket (`videoq-db-archives-prod-257240362763`) receives
 The private manifest records the immutable operator source version, build ARN,
 schemas, table counts, dump checksum/size/version and pinned restore image.
 Only a manifest whose upload/readback succeeded is a completed retention result.
+The credential wrapper continues to remove **all** AWS credentials and metadata
+credential endpoints from the DB child. That child stages the verified dump and
+a checksum/size/run-bound marker in a fresh 0700 directory owned by the parent.
+It never calls S3. Only after the child exits successfully does the AWS parent
+validate that handoff and perform the uploads. A child report marked `staged`
+is not durable preservation; the parent must record `retained`. Upload failure
+marks the operation `failed`, and the parent removes its private handoff files
+on both success and failure. Synthetic CI tests exercise a real PostgreSQL
+dump/restore and the complete handoff using a fake S3 protocol; they do not
+establish production AWS storage or recovery success.
 A failed manifest write may leave a private orphan dump; do not treat it as a
 completed preservation copy or restart a live maintenance execution.
 
