@@ -72,3 +72,8 @@ test('exposes only allowlisted failure stages and never source errors or details
   await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details}))}),/PRODUCTION_VERIFICATION_FAILED/);
  }
 });
+
+test('propagates an allowlisted restore category without its original stderr',async t=>{
+ await fixture(t);
+ await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details:['- 失敗した段階: `restore-archive-apply-missing-role`。DB接続情報・レコード・バックアップは出力していません。']}))}),/BACKUP_VERIFICATION_FAILED_RESTORE_ARCHIVE_APPLY_MISSING_ROLE/);
+});

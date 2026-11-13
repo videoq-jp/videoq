@@ -142,3 +142,28 @@ export async function retainStagedBackup(directory,context,run = execute) {
 
 // Shared descriptor-based inspection for the private, version-pinned downloader.
 export {privateFile as inspectPrivateBackupFile};
+
+// Return fixed categories only. PostgreSQL stderr may contain COPY rows, SQL and
+// secrets: never include any matched text or the original error in the result.
+export const RESTORE_FAILURE_CATEGORIES = Object.freeze([
+  ['missing-role', /ERROR:\s+role [^\n]* does not exist/i],
+  ['missing-extension', /ERROR:\s+extension [^\n]* (is not available|does not exist)/i],
+  ['missing-function', /ERROR:\s+function [^\n]* does not exist/i],
+  ['missing-type', /ERROR:\s+type [^\n]* does not exist/i],
+  ['missing-schema', /ERROR:\s+schema [^\n]* does not exist/i],
+  ['missing-relation', /ERROR:\s+relation [^\n]* does not exist/i],
+  ['missing-collation', /ERROR:\s+collation [^\n]* does not exist/i],
+  ['missing-access-method', /ERROR:\s+(operator class|access method) [^\n]* does not exist/i],
+  ['duplicate-object', /ERROR:[^\n]* already exists/i],
+  ['permission-denied', /permission denied/i],
+  ['foreign-key', /ERROR:[^\n]* violates foreign key constraint/i],
+  ['unique-key', /ERROR:[^\n]* duplicate key value violates unique constraint/i],
+  ['unsupported-setting', /ERROR:\s+unrecognized configuration parameter/i],
+  ['disk-full', /no space left on device/i],
+  ['out-of-memory', /out of memory|could not (allocate|resize shared memory)/i],
+]);
+export function restoreArchiveFailureStage(error) {
+  const stderr = typeof error?.stderr === 'string' ? error.stderr.slice(0,4_000_000) : '';
+  const category = RESTORE_FAILURE_CATEGORIES.find(([,pattern]) => pattern.test(stderr))?.[0];
+  return 'restore-archive-apply' + (category ? '-' + category : '');
+}
