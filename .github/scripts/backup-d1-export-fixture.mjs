@@ -103,7 +103,7 @@ try{
  const parentEnv={...env,VIDEOQ_RETAIN_BACKUP:'true',VIDEOQ_EXPORT_D1_FROM_BACKUP:'true',MAINTENANCE_STAGE:'backup',
   MAINTENANCE_RUN_ID:randomBytes(16).toString('hex'),CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-backup-prod:00000000-0000-0000-0000-000000000000',CODEBUILD_SOURCE_VERSION:'synthetic-fixture-only'};
  delete parentEnv.DATABASE_URL;delete parentEnv.VIDEOQ_BACKUP_ISOLATED_EXPORT;
- const objects=new Map();let archiveHash,handoff;
+ const objects=new Map(),objectBodies=new Map();let archiveHash,handoff;
  const fakeAWS=async(command,args)=>{
   assert.equal(command,'aws');const value=flag=>args[args.indexOf(flag)+1],key=value('--key');
   assert.equal(value('--bucket'),'videoq-db-archives-prod-257240362763');assert.equal(value('--expected-bucket-owner'),'257240362763');
@@ -113,7 +113,7 @@ try{
    if(key.endsWith('/database.dump'))assert.equal(body.subarray(0,5).toString(),'PGDMP');
    else if(key.endsWith('/d1-source.videoq-export.ndjson'))archiveHash=JSON.parse(body.toString('utf8').trim().split('\n').at(-1)).sha256;
    else{const marker=JSON.parse(body.toString('utf8'));assert.equal(marker.version,2);assert.equal(marker.execution_complete,false);assert.equal(marker.d1_export.archive_sha256,archiveHash);assert.equal(marker.d1_export.rows,'4');}
-   const object={VersionId:'synthetic-'+objects.size,ChecksumSHA256:digest,ContentLength:body.length,ServerSideEncryption:'AES256'};objects.set(key,object);return {stdout:JSON.stringify(object)};
+   const object={VersionId:'synthetic-'+objects.size,ChecksumSHA256:digest,ContentLength:body.length,ServerSideEncryption:'AES256'};objects.set(key,object);objectBodies.set(key,body);return {stdout:JSON.stringify(object)};
   }
   assert.equal(args[1],'head-object');const object=objects.get(key);assert.equal(value('--version-id'),object.VersionId);return {stdout:JSON.stringify(object)};
  };
@@ -129,6 +129,32 @@ try{
   const final=JSON.parse(await readFile(join(bundle,'operations-report.json'),'utf8'));assert.equal(final.backup_retention,'retained');assert.equal(final.d1_archive,'retained');assert.equal(objects.size,3);
  }finally{process.chdir(previous);}
  await assert.rejects(access(handoff),{code:'ENOENT'});
+ const {downloadVerifiedBackup}=await import(pathToFileURL(join(bundle,'.github/scripts/backup-download.mjs')).href);
+ const downloaded=join(directory,'downloaded'),manifestKey='verified/'+parentEnv.MAINTENANCE_RUN_ID+'/verified-backup.json';
+ const received=await downloadVerifiedBackup({runId:parentEnv.MAINTENANCE_RUN_ID,manifestVersion:objects.get(manifestKey).VersionId,
+  outputDirectory:downloaded,requireD1:true,env:{PATH:process.env.PATH}},async(command,args,settings)=>{
+   assert.equal(command,'aws');assert.ok(['head-object','get-object'].includes(args[1]));assert.equal(settings.env.DATABASE_URL,undefined);
+   const value=flag=>args[args.indexOf(flag)+1],key=value('--key'),object=objects.get(key);assert.ok(object);
+   assert.equal(value('--bucket'),'videoq-db-archives-prod-257240362763');assert.equal(value('--expected-bucket-owner'),'257240362763');
+   assert.equal(args.find(arg=>arg.startsWith('--version-id=')),'--version-id='+object.VersionId);
+   if(args[1]==='get-object')await writeFile(args.at(-1),objectBodies.get(key));return {stdout:JSON.stringify(object)};
+  });
+ assert.equal(received.backup_download_verified,true);assert.equal(received.d1_archive_format_verified,false);
+ const verifyCode="import{verifyPostgresArchive}from'./apps/api/scripts/migrations/d1/verify-archive.ts';import{buildMigrationManifest}from'./apps/api/scripts/migrations/d1/manifest.ts';import{loadMigrationSnapshot}from'./apps/api/scripts/d1-migration-manifest.ts';const m=buildMigrationManifest(await loadMigrationSnapshot('apps/api/drizzle'),await loadMigrationSnapshot('apps/api/drizzle-d1'));const v=await verifyPostgresArchive(process.argv[1],m);console.log(JSON.stringify({hash:v.archive_sha256,tables:v.tables,rows:v.rows}));";
+ const checked=await execute(process.execPath,['--import',loader,'--input-type=module','--eval',verifyCode,join(downloaded,'d1-source.videoq-export.ndjson')],
+  {cwd:bundle,env:Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(key=>process.env[key]).map(key=>[key,process.env[key]])),timeout:120000,maxBuffer:1000000});
+ assert.deepEqual(JSON.parse(checked.stdout.trim()),{hash:archiveHash,tables:58,rows:'4'});
+ await restored.client.query('CREATE DATABASE recovered_download');
+ const recoveredUrl=new URL(restored.url);recoveredUrl.pathname='/recovered_download';
+ const recovered=new Client({connectionString:recoveredUrl.toString()});recovered.on('error',()=>undefined);await recovered.connect();clients.push(recovered);
+ await recovered.query('CREATE EXTENSION vector');
+ await docker(['cp',join(downloaded,'database.dump'),names[1]+':/tmp/retrieved.dump']);
+ const {stdout:retrievedToc}=await docker(['exec',names[1],'pg_restore','--list','/tmp/retrieved.dump']);
+ const retrievedList=join(directory,'retrieved.list');await writeFile(retrievedList,retrievedToc.split('\n').filter(line=>!/^\d+;\s+\d+\s+\d+\s+SCHEMA - public\s/.test(line)).join('\n'),{mode:0o600});
+ await docker(['cp',retrievedList,names[1]+':/tmp/retrieved.list']);
+ await docker(['exec',names[1],'pg_restore','--exit-on-error','--no-owner','--no-acl','--use-list=/tmp/retrieved.list','-U','postgres','--dbname=recovered_download','/tmp/retrieved.dump']);
+ let recoveredRows=0n;for(const table of tables)recoveredRows+=BigInt((await recovered.query(`SELECT count(*)::text AS rows FROM public.${quote(table.name)}`)).rows[0].rows);
+ assert.equal(recoveredRows,4n);
  const modules=join(bundle,'node_modules');await rm(modules);await mkdir(join(modules,'pg'),{recursive:true});
  const canary=join(directory,'untrusted-module-loaded');
  await writeFile(join(modules,'pg/package.json'),JSON.stringify({name:'pg',main:'index.cjs'}));
@@ -151,7 +177,9 @@ try{
  await assert.rejects(access(handoff),{code:'ENOENT'});
  console.log(JSON.stringify({synthetic_restored_backup_export_verified:true,packaged_operator_used:true,tables:58,rows:4,
   no_application_dependencies_loaded:true,overwrite_refused:true,non_loopback_and_query_override_refused:true,unmapped_legacy_table_refused:true,
-  full_backup_export_handoff_parent_retention_bridge_verified:true,failed_export_cannot_downgrade_to_dump_only:true,aws_network_call_made:false,production_modified:false}));
+  full_backup_export_handoff_parent_retention_bridge_verified:true,version_pinned_download_verified:true,
+  downloaded_archive_format_verified:true,downloaded_dump_restored_and_counts_verified:true,
+  failed_export_cannot_downgrade_to_dump_only:true,aws_network_call_made:false,production_modified:false}));
 }finally{
  for(const client of clients)await client.end().catch(()=>undefined);
  for(const name of started.reverse())await docker(['rm','--force','--volumes',name]);

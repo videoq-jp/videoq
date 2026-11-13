@@ -10,7 +10,7 @@ function relevant(path) {
     .some(name => path === '.github/operations-tools/' + name)) return true;
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
-  if (path === '.github/scripts/backup-archive.mjs') return true;
+  if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
   if (['scripts/d1-migration-manifest.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
     'scripts/migrations/d1/archive-format.ts','scripts/migrations/d1/sequence-format.ts','scripts/migrations/d1/verify-archive.ts',

@@ -170,3 +170,6 @@ export async function retainStagedBackup(directory,context,run = execute,{requir
   if(!Number.isSafeInteger(metadata.dump?.bytes)||metadata.dump.bytes<=0||typeof metadata.dump?.sha256_base64!=='string')throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
   return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context,expectedDump:metadata.dump,d1Export:metadata.d1_export},run);
 }
+
+// Shared descriptor-based inspection for the private, version-pinned downloader.
+export {privateFile as inspectPrivateBackupFile};

@@ -826,7 +826,7 @@ jobs:
       - uses: ./.github/actions/setup-operations-tools
       - run: node --test .github/scripts/production-stream-proof.integration.cjs
       - name: Verify private backup retention and failure handling
-        run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-d1-run.test.mjs
+        run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-d1-run.test.mjs .github/scripts/backup-download.test.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'

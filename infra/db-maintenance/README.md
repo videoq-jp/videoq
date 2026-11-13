@@ -114,6 +114,55 @@ The protocol follows the AWS references for [conditional writes](https://docs.aw
 [PutObject checksums and encryption](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html)
 and [CodeBuild source versions](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html).
 
+## Version-pinned private backup download
+
+`.github/scripts/backup-download.mjs` retrieves a selected completed backup into a
+new private directory. Supply the exact maintenance run ID and the completion
+manifest's S3 VersionId, obtained through a separately reviewed operator inventory
+for that run. The tool does not discover/list versions, select latest, assume a
+role, fetch SSM parameters or broaden IAM. Use an approved operator session with
+`s3:GetObjectVersion` on the required `verified/<run-id>/*` objects; routine GitHub
+invocation roles still have no archive read grants. No DB credential is needed.
+
+```sh
+node .github/scripts/backup-download.mjs \
+  --run-id <exact-maintenance-run-id> \
+  --manifest-version <exact-S3-VersionId> \
+  --output-dir /private/rehearsal/new-download \
+  --require-d1
+```
+
+The bucket, owner and region are fixed. Every HEAD and GET specifies a version and
+requests its checksum; HEAD checks encryption, version, size and checksum before
+any body download. Referenced object keys must belong to that same run and use the
+fixed dump/archive names. Local descriptor-based SHA-256 and byte counts must then
+match both the manifest and S3 response. Credentials for DBs, PG settings and OIDC
+are not forwarded to the AWS CLI; configured endpoint overrides are ignored.
+
+The output directory must not exist; exclusive creation preserves existing files.
+It is 0700 and downloaded files are precreated as 0600. Success writes a private
+`download-verified.json` receipt; failure removes only the directory created by
+that attempt, including previously downloaded partial files. No receipt, object
+version or record content is printed. Version-1 dump-only manifests are supported
+without `--require-d1`; requesting D1 refuses them instead of falling back.
+
+Download verification proves transport integrity, not the D1 format, source data
+provenance outside the selected trusted manifest, or cutover readiness. The local
+receipt leaves `d1_archive_format_verified=false` and `execution_complete=false`.
+Run the existing migration archive verifier against the intended reviewed mapping
+before import, and independently restore the exact downloaded dump and compare its
+inventory. Do not execute unreviewed repository code/dependencies against private
+archives. R2/Vectorize state, credentials/grants, production auth, search quality
+and performance require their separate checks.
+
+The synthetic operator-ZIP fixture now transfers the actual generated dump,
+manifest and D1 archive through fake versioned S3, downloads them using this tool,
+verifies the retrieved archive against the packaged mapping, and restores the
+retrieved dump into another PostgreSQL database with 58 tables/four rows checked.
+This closes the local preservation/retrieval/recovery loop; actual AWS read
+permissions, real storage and production recovery remain unproven.
+The version-read/checksum behavior follows the [AWS GetObject reference](https://docs.aws.amazon.com/cli/latest/reference/s3api/get-object.html).
+
 ## Provision and cut over
 
 1. Review/commit the code and install the runtime lockfile:
