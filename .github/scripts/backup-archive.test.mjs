@@ -185,3 +185,56 @@ test('parent refuses a symlink marker and binds the upload checksum to the child
   await writeFile(marker,JSON.stringify(metadata));
   await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/BACKUP_HANDOFF_INTEGRITY_FAILED/);
 });
+
+test('retains dump plus the verified D1 archive before publishing a version-2 completion manifest',async t=>{
+ const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS}=await import('./backup-archive.mjs');
+ const {options,run,calls}=await fixture(t),destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+ t.after(()=>rm(destination,{recursive:true,force:true}));
+ const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+ const body=Buffer.from('synthetic archive'),proof={version:3,tables:58,rows:'4',archive_sha256:'a'.repeat(64),file_bytes:body.length,file_sha256_base64:createHash('sha256').update(body).digest('base64')};
+ await writeFile(join(options.directory,'d1-source.videoq-export.ndjson'),body,{mode:0o600});
+ await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS,d1Export:proof});
+ await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/INCOMPLETE_BACKUP_HANDOFF/);
+ assert.equal(await retainStagedBackup(destination,context,run,{requireD1Export:true}),true);
+ assert.equal(calls.length,6);
+ const manifest=JSON.parse(await readFile(join(destination,'verified-backup.json'),'utf8'));
+ assert.equal(manifest.version,2);assert.equal(manifest.execution_complete,false);
+ assert.equal(manifest.d1_export.format_version,3);assert.equal(manifest.d1_export.artifact.version_id,'version-1');
+});
+
+test('changed D1 artifact cannot authorize any dump upload or completion marker',async t=>{
+ const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS}=await import('./backup-archive.mjs');
+ const {options}=await fixture(t),destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+ t.after(()=>rm(destination,{recursive:true,force:true}));
+ const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+ const body=Buffer.from('synthetic archive'),proof={version:3,tables:58,rows:'4',archive_sha256:'a'.repeat(64),file_bytes:body.length,file_sha256_base64:createHash('sha256').update(body).digest('base64')};
+ await writeFile(join(options.directory,'d1-source.videoq-export.ndjson'),body,{mode:0o600});
+ await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS,d1Export:proof});
+ await writeFile(join(destination,'d1-source.videoq-export.ndjson'),'modified artifact');
+ await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('No AWS request'),{requireD1Export:true}),/BACKUP_HANDOFF_INTEGRITY_FAILED/);
+ await assert.rejects(readFile(join(destination,'verified-backup.json')),{code:'ENOENT'});
+});
+
+test('D1 source mutation before handoff or archive upload failure cannot publish completion',async t=>{
+ const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS}=await import('./backup-archive.mjs');
+ const {options,run}=await fixture(t),destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+ t.after(()=>rm(destination,{recursive:true,force:true}));
+ const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+ const body=Buffer.from('synthetic archive'),proof={version:3,tables:58,rows:'4',archive_sha256:'a'.repeat(64),file_bytes:body.length,file_sha256_base64:createHash('sha256').update(body).digest('base64')};
+ const source=join(options.directory,'d1-source.videoq-export.ndjson');
+ await writeFile(source,body,{mode:0o600});await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS,d1Export:proof});
+ const attempted=[];
+ await assert.rejects(retainStagedBackup(destination,context,async(command,args,settings)=>{
+  if(args[1]==='put-object'){
+   const key=args[args.indexOf('--key')+1];attempted.push(key);
+   if(key.endsWith('/d1-source.videoq-export.ndjson'))throw new Error('synthetic archive upload failure');
+  }
+  return run(command,args,settings);
+ },{requireD1Export:true}),/synthetic archive upload failure/);
+ assert.equal(attempted.length,2);assert.ok(!attempted.some(key=>key.endsWith('/verified-backup.json')));
+ await assert.rejects(readFile(join(destination,'verified-backup.json')),{code:'ENOENT'});
+ const changed=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));t.after(()=>rm(changed,{recursive:true,force:true}));
+ await writeFile(source,'modified artifact');
+ await assert.rejects(stageVerifiedBackup({...options,destination:changed,image,schemas:BACKUP_SCHEMAS,d1Export:proof}),/D1_BACKUP_EXPORT_CHANGED/);
+ await assert.rejects(readFile(join(changed,'verified-backup-input.json')),{code:'ENOENT'});
+});

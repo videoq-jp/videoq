@@ -6,7 +6,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
+import { backupArchiveContext, backupD1ExportRequested, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
+import {exportRestoredBackup} from './backup-d1-run.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
@@ -46,6 +47,7 @@ async function inventory(client) {
 let report = { status: 'error', summary: 'バックアップの復元テストを完了できませんでした。', details: [] };
 try {
   const archiveContext = backupArchiveContext();
+  const exportD1 = backupD1ExportRequested();
   await source.connect();
   const version = Number((await source.query('SHOW server_version_num')).rows[0].server_version_num);
   if (Math.floor(version / 10000) !== 17) throw new Error('Review matching PostgreSQL client before restoring');
@@ -101,10 +103,14 @@ try {
   const invalid = await restored.query(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = ANY($1::text[]) AND NOT c.convalidated`, [BACKUP_SCHEMAS]);
   if (Number(invalid.rows[0].count)) throw new Error('Unvalidated restored constraints');
+  stage = 'restored-backup-d1-export';
+  const restoredUrl=new URL(`postgresql://postgres@127.0.0.1:${port}/postgres`);restoredUrl.password=password;
+  const d1Export=exportD1?await exportRestoredBackup({databaseUrl:restoredUrl.toString(),directory:temporary}):undefined;
+  if(exportD1&&!d1Export)throw new Error('D1 backup export was not verified');
   stage = 'verified-backup-handoff';
   const staged = await stageVerifiedBackup({directory: temporary, destination: process.env.VIDEOQ_BACKUP_HANDOFF, inventory: expected,
-    schemas: BACKUP_SCHEMAS, image: IMAGE, context: archiveContext});
-  report = { status: 'ok', backup_retention: staged ? 'staged' : 'disabled', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
+    schemas: BACKUP_SCHEMAS, image: IMAGE, context: archiveContext,d1Export});
+  report = { status: 'ok', backup_retention: staged ? 'staged' : 'disabled', d1_archive: exportD1?'staged':'not_requested', summary: `${Object.keys(expected).length}テーブルの論理バックアップを隔離DBへ復元し、全テーブルの件数と制約を確認しました。`,
     details: ['- 本番DBへの書き込み、バックアップファイルやレコード内容の公開は行っていません。',
       '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
       staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };

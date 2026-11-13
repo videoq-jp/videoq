@@ -20,6 +20,15 @@ variable "retain_verified_backups" {
   default     = false
   description = "Retain restored backups in the dedicated private archive bucket; enable only with reviewed operator code."
 }
+variable "export_d1_from_verified_backup" {
+  type        = bool
+  default     = false
+  description = "Export D1 input only from the isolated verified backup and retain it with the dump. Requires reviewed operator code and explicit legacy-table policy."
+  validation {
+    condition     = !var.export_d1_from_verified_backup || var.retain_verified_backups
+    error_message = "D1 export requires verified backup retention; an archive must not be discarded after exporting protected data."
+  }
+}
 
 locals {
   account  = "257240362763"
@@ -183,6 +192,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "VIDEOQ_RETAIN_BACKUP"
       value = each.key == "backup" && var.retain_verified_backups ? "true" : "false"
+    }
+    environment_variable {
+      name  = "VIDEOQ_EXPORT_D1_FROM_BACKUP"
+      value = each.key == "backup" && var.export_d1_from_verified_backup ? "true" : "false"
     }
   }
   source {

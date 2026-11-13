@@ -58,3 +58,10 @@ test('disabled preservation creates no handoff and does not use AWS storage',asy
 test('rejects invalid build context before reading any source credential',async()=>{
  await assert.rejects(runBackup({env:{...env,MAINTENANCE_RUN_ID:'invalid'},execute:()=>assert.fail('No credential read')}),/INVALID_BACKUP_ARCHIVE_CONTEXT/);
 });
+
+test('requested D1 export must be staged and retained; a dump-only result cannot downgrade it',async t=>{
+ await fixture(t);const config={...env,VIDEOQ_EXPORT_D1_FROM_BACKUP:'true'};
+ await assert.rejects(runBackup({env:config,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify(report('staged'))),retain:()=>assert.fail('No retention on missing D1 proof')}),/D1_BACKUP_EXPORT_NOT_CONFIRMED/);
+ await runBackup({env:config,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({...report('staged'),d1_archive:'staged'})),retain:async(_directory,_context,options)=>{assert.equal(options.requireD1Export,true);return true;}});
+ const result=JSON.parse(await fs.readFile('operations-report.json','utf8'));assert.equal(result.d1_archive,'retained');
+});

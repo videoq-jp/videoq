@@ -1,13 +1,13 @@
 // Real PostgreSQL dump/restore plus the ACTUAL operator ZIP's isolated export.
 // Synthetic rows only. No SSM, AWS network calls or live credentials are used.
 import {createRequire} from 'node:module';
-import {execFile} from 'node:child_process';
+import {execFile,execFileSync} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtemp,readFile,writeFile,mkdir,symlink,rm,access,stat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {setTimeout as delay} from 'node:timers/promises';
 const require=createRequire(new URL('../operations-tools/package.json',import.meta.url)),{Client}=require('pg');
@@ -96,6 +96,39 @@ try{
  const bytes=await readFile(positive,'utf8');assert.ok(bytes.includes('Synthetic restored backup evidence'));
  const rerun=await run(positive).then(()=>null,error=>error);assert.equal(rerun.code,1);
  assert.equal(await readFile(positive,'utf8'),bytes);
+ // Exercise the real packaged backup child -> exporter -> handoff -> AWS parent
+ // bridge. Only SSM retrieval and the S3 network transport are simulated.
+ const {runBackup}=createRequire(join(bundle,'package.json'))('./infra/db-maintenance/runtime/backup.cjs');
+ const {retainStagedBackup}=await import(pathToFileURL(join(bundle,'.github/scripts/backup-archive.mjs')).href);
+ const parentEnv={...env,VIDEOQ_RETAIN_BACKUP:'true',VIDEOQ_EXPORT_D1_FROM_BACKUP:'true',MAINTENANCE_STAGE:'backup',
+  MAINTENANCE_RUN_ID:randomBytes(16).toString('hex'),CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-backup-prod:00000000-0000-0000-0000-000000000000',CODEBUILD_SOURCE_VERSION:'synthetic-fixture-only'};
+ delete parentEnv.DATABASE_URL;delete parentEnv.VIDEOQ_BACKUP_ISOLATED_EXPORT;
+ const objects=new Map();let archiveHash,handoff;
+ const fakeAWS=async(command,args)=>{
+  assert.equal(command,'aws');const value=flag=>args[args.indexOf(flag)+1],key=value('--key');
+  assert.equal(value('--bucket'),'videoq-db-archives-prod-257240362763');assert.equal(value('--expected-bucket-owner'),'257240362763');
+  if(args[1]==='put-object'){
+   assert.equal(value('--if-none-match'),'*');assert.equal(value('--server-side-encryption'),'AES256');assert.equal(objects.has(key),false);
+   const body=await readFile(value('--body')),digest=createHash('sha256').update(body).digest('base64');assert.equal(value('--checksum-sha256'),digest);
+   if(key.endsWith('/database.dump'))assert.equal(body.subarray(0,5).toString(),'PGDMP');
+   else if(key.endsWith('/d1-source.videoq-export.ndjson'))archiveHash=JSON.parse(body.toString('utf8').trim().split('\n').at(-1)).sha256;
+   else{const marker=JSON.parse(body.toString('utf8'));assert.equal(marker.version,2);assert.equal(marker.execution_complete,false);assert.equal(marker.d1_export.archive_sha256,archiveHash);assert.equal(marker.d1_export.rows,'4');}
+   const object={VersionId:'synthetic-'+objects.size,ChecksumSHA256:digest,ContentLength:body.length,ServerSideEncryption:'AES256'};objects.set(key,object);return {stdout:JSON.stringify(object)};
+  }
+  assert.equal(args[1],'head-object');const object=objects.get(key);assert.equal(value('--version-id'),object.VersionId);return {stdout:JSON.stringify(object)};
+ };
+ const executeBackup=(_command,args,settings)=>{
+  assert.deepEqual(args,['.github/scripts/with-neon-credentials.py','backup','node','.github/scripts/backup-restore.mjs']);handoff=settings.env.VIDEOQ_BACKUP_HANDOFF;
+  execFileSync(process.execPath,[join(bundle,'.github/scripts/backup-restore.mjs')],{cwd:bundle,
+   env:{...settings.env,DATABASE_URL:source.url.toString()},stdio:['ignore','pipe','pipe'],timeout:300000,maxBuffer:4000000});
+ };
+ const previous=process.cwd();
+ try{
+  process.chdir(bundle);
+  await runBackup({env:parentEnv,execute:executeBackup,retain:(folder,context,options)=>retainStagedBackup(folder,context,fakeAWS,options)});
+  const final=JSON.parse(await readFile(join(bundle,'operations-report.json'),'utf8'));assert.equal(final.backup_retention,'retained');assert.equal(final.d1_archive,'retained');assert.equal(objects.size,3);
+ }finally{process.chdir(previous);}
+ await assert.rejects(access(handoff),{code:'ENOENT'});
  const modules=join(bundle,'node_modules');await rm(modules);await mkdir(join(modules,'pg'),{recursive:true});
  const canary=join(directory,'untrusted-module-loaded');
  await writeFile(join(modules,'pg/package.json'),JSON.stringify({name:'pg',main:'index.cjs'}));
@@ -109,8 +142,16 @@ try{
  await restored.client.query("CREATE TABLE retired_legacy_fixture(id integer PRIMARY KEY,secret text); INSERT INTO retired_legacy_fixture VALUES(1,'synthetic-private-canary')");
  const target=await output(),failure=await run(target).then(()=>null,error=>error);assert.equal(failure.code,1);
  assert.ok(!failure.stderr.includes('synthetic-private-canary'));await assert.rejects(access(target),{code:'ENOENT'});
+ await source.client.query('CREATE TABLE unmapped_source_table(id integer PRIMARY KEY)');
+ try{
+  process.chdir(bundle);
+  await assert.rejects(runBackup({env:{...parentEnv,MAINTENANCE_RUN_ID:randomBytes(16).toString('hex')},execute:executeBackup,retain:()=>assert.fail('No upload for a failed D1 export')}),/PRODUCTION_VERIFICATION_FAILED/);
+  const failed=JSON.parse(await readFile(join(bundle,'operations-report.json'),'utf8'));assert.equal(failed.status,'error');assert.equal(failed.d1_archive,'failed');assert.equal(objects.size,3);
+ }finally{process.chdir(previous);}
+ await assert.rejects(access(handoff),{code:'ENOENT'});
  console.log(JSON.stringify({synthetic_restored_backup_export_verified:true,packaged_operator_used:true,tables:58,rows:4,
-  no_application_dependencies_loaded:true,overwrite_refused:true,non_loopback_and_query_override_refused:true,unmapped_legacy_table_refused:true,production_modified:false}));
+  no_application_dependencies_loaded:true,overwrite_refused:true,non_loopback_and_query_override_refused:true,unmapped_legacy_table_refused:true,
+  full_backup_export_handoff_parent_retention_bridge_verified:true,failed_export_cannot_downgrade_to_dump_only:true,aws_network_call_made:false,production_modified:false}));
 }finally{
  for(const client of clients)await client.end().catch(()=>undefined);
  for(const name of started.reverse())await docker(['rm','--force','--volumes',name]);

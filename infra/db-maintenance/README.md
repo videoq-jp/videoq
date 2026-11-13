@@ -252,11 +252,41 @@ without scripts and signature-checked with the existing setup. A tiny operator
 `package.json` selects ESM; application package metadata, application dependencies
 and API/Worker entrypoints are not copied into this runtime.
 
-This tool is a prepared building block. **The automatic backup job does not call
-it yet**, and it has not exported production data. A reviewed bridge must invoke
-it while the verified restored DB is still alive, bind the resulting archive to
-that dump's private handoff, and let the AWS parent retain both artifacts. Do not
-fetch a production DB parameter locally to exercise this entrypoint.
+The backup job now has an opt-in bridge, controlled by the operator-managed
+`export_d1_from_verified_backup` Terraform setting (default `false`). It requires
+`retain_verified_backups=true`; only the backup project receives
+`VIDEOQ_EXPORT_D1_FROM_BACKUP=true`. This source change has not enabled it in
+production, and no production D1 export has been performed. Deploy reviewed
+canonical-main code, including the updated isolated lockfile and snapshot assets,
+before enabling the infrastructure setting. Do not fetch a production DB parameter
+locally to exercise this entrypoint.
+
+After the exact dump passes isolated restore, row-count and constraint checks,
+the DB child invokes the exporter while that restored instance is still alive.
+Only a temporary loopback credential and a minimal environment are forwarded;
+the original DB URL, PG settings, AWS credentials and OIDC values are not inherited.
+The exporter verifies the complete format-v3 archive and records both its archive
+content hash and its whole-file size/SHA-256. The child copies both dump and archive
+through no-follow descriptors into the parent-owned handoff directory and verifies
+the copied archive against that export proof before writing a version-2 marker.
+
+The parent requires both artifacts when export was requested; a dump-only child
+result cannot downgrade the operation. It checks the entire artifact set before
+uploading and checks each upload's bytes again against the child record. It stores
+the dump, `d1-source.videoq-export.ndjson`, and only then the version-2
+`verified-backup.json` completion manifest. Each object gets conditional creation,
+SSE-S3, checksum validation and versioned HEAD readback. The private manifest binds
+the D1 archive's format/content hash and its S3 object version to the same dump and
+operator run, with `execution_complete=false`. Export, copy or upload failure fails
+the requested operation; partial uploads never receive a completion manifest, and
+local handoff files are removed. Default dump-only retention keeps version 1.
+
+First preserve and rehearse recovery of a PostgreSQL dump with D1 export disabled.
+Resolve the live legacy-table policy before enabling export. An unmapped table
+fails the combined operation; it does not trigger a partial D1 export or delete
+earlier preserved backup versions. Source roles/grants, sequence restoration,
+external objects, auth, search quality, performance and cutover still require
+their separate migration checks.
 
 Inside a clean operator bundle, with `DATABASE_URL` already supplied for the
 private restored PostgreSQL instance only:
@@ -295,4 +325,10 @@ refusal, rejection of foreign application dependencies before a canary module
 executes, URL override refusal and refusal of an extra legacy table. It makes no
 AWS call. The archive's source/module assets and schema snapshots are also
 covered by maintenance-CD selection tests so future changes cannot silently
-leave stale privileged operator code deployed.
+leave stale privileged operator code deployed. It also runs the packaged backup
+child, exporter, handoff and parent retention together with simulated SSM retrieval
+and fake S3. That complete path verifies three object uploads and the version-2
+completion manifest. An extra source table is then introduced to confirm that the
+combined operation fails without uploading or falling back to dump-only success.
+These simulations do not prove production AWS credential retrieval, storage or
+recovery; those remain required before any production cutover.

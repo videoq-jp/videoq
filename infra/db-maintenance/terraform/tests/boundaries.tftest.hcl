@@ -17,12 +17,27 @@ variables {
   source_commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
 
+run "d1_export_requires_private_retention" {
+  command = plan
+  variables {
+    retain_verified_backups        = false
+    export_d1_from_verified_backup = true
+  }
+  expect_failures = [var.export_d1_from_verified_backup]
+}
+
 run "credential_and_control_boundaries" {
   command = apply
 
   assert {
     condition     = length(aws_s3_bucket.archive) == 0
     error_message = "Backup retention must stay disabled until explicitly enabled by the infrastructure operator."
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_EXPORT_D1_FROM_BACKUP"]) == "false"
+    ])
+    error_message = "D1 backup export must stay disabled by default."
   }
   assert {
     condition = alltrue([for project in merge(aws_codebuild_project.job, { deploy = aws_codebuild_project.deploy }) :
@@ -105,7 +120,16 @@ run "credential_and_control_boundaries" {
 
 run "private_backup_archive_boundaries" {
   command = apply
-  variables { retain_verified_backups = true }
+  variables {
+    retain_verified_backups        = true
+    export_d1_from_verified_backup = true
+  }
+  assert {
+    condition = alltrue([for purpose, project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_EXPORT_D1_FROM_BACKUP"]) == (purpose == "backup" ? "true" : "false")
+    ])
+    error_message = "Only the backup project may export from its isolated restored DB."
+  }
   assert {
     condition = (aws_s3_bucket.archive[0].bucket == "videoq-db-archives-prod-257240362763" &&
       aws_s3_bucket.archive[0].bucket != aws_s3_bucket.bundle.bucket &&

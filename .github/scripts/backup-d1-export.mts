@@ -1,6 +1,8 @@
 /** Isolated restored-backup export only. This entrypoint never retrieves source
  * credentials, contacts S3 or loads application-installed dependencies. */
-import {lstat,realpath,symlink} from 'node:fs/promises';
+import {lstat,realpath,symlink,open} from 'node:fs/promises';
+import {constants} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {dirname,resolve,join,basename} from 'node:path';
 import {fileURLToPath,pathToFileURL,URL} from 'node:url';
 
@@ -31,8 +33,16 @@ export async function main(args=process.argv.slice(2)) {
  try{
   await client.connect();await exportPostgresArchive(client,manifest,output,{statementTimeoutMs:300000});
   const verified=await verifyPostgresArchive(output,manifest);
+  const file=await open(output,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  let fileBytes=0;const hash=createHash('sha256');
+  try{
+   const info=await file.stat();if(!info.isFile()||(info.mode&0o077)||info.uid!==process.getuid?.())throw new Error('Private archive is required.');
+   const buffer=Buffer.alloc(64*1024);
+   for(;;){const {bytesRead}=await file.read(buffer,0,buffer.length,null);if(!bytesRead)break;fileBytes+=bytesRead;hash.update(buffer.subarray(0,bytesRead));}
+   if(fileBytes!==info.size)throw new Error('Archive changed while hashing.');
+  }finally{await file.close();}
   console.info(JSON.stringify({event:'restored_backup_d1_archive_verified',version:verified.version,tables:verified.tables,rows:verified.rows,
-   archive_sha256:verified.archive_sha256,execution_complete:false}));
+   archive_sha256:verified.archive_sha256,file_bytes:fileBytes,file_sha256_base64:hash.digest('base64'),execution_complete:false}));
  }finally{await client.end();}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(await realpath(resolve(process.argv[1]))).href){

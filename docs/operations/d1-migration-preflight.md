@@ -107,6 +107,13 @@ bigintは安全整数範囲外なら値を出さずに拒否し、黙って切�
 
 ## PostgreSQLからのprivate archive export
 
+本番データを扱う経路には、保守ジョブの`export_d1_from_verified_backup`（既定false）を用意した。
+復元検証済みdumpの隔離DBからD1 archiveを作り、dumpとarchiveを同じprivate handoff/保全manifestへ紐付ける。
+有効化には`retain_verified_backups=true`と、canonical-mainの承認済み保守コード・独立した運用設定の反映が必要である。
+詳しくは[隔離backupからのD1 export手順](../../infra/db-maintenance/README.md#isolated-restored-backup-d1-export-tool)を参照する。
+これは本番の保護された接続情報をローカルへ取得する許可ではない。以下の直接CLIは、承認済みのローカル/on-prem rehearsal copy等の環境で扱う。
+未マッピングの旧テーブルを省略する例外や、本番切り替えの自動許可は追加していない。
+
 移行前の保全コピーは、復元テストの成功だけでは存在しない。AWS保守ジョブには
 復元検証済みdumpを専用private S3へ保存するopt-in実装を追加したが、既定では無効である。
 有効化の順序・権限・保存期間・復旧確認は[保守ジョブの手順](../../infra/db-maintenance/README.md#verified-backup-preservation-for-d1-migration)に従う。

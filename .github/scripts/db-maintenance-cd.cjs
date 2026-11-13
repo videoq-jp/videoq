@@ -11,7 +11,7 @@ function relevant(path) {
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
   if (path === '.github/scripts/backup-archive.mjs') return true;
-  if (path === '.github/scripts/backup-d1-export.mts') return true;
+  if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
   if (['scripts/d1-migration-manifest.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
     'scripts/migrations/d1/archive-format.ts','scripts/migrations/d1/sequence-format.ts','scripts/migrations/d1/verify-archive.ts',
     'src/persistence/postgres/read-snapshot.ts'].some(name=>path==='apps/api/'+name)) return true;
