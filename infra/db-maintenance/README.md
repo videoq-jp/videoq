@@ -242,3 +242,22 @@ using `infra/scripts/setup_neon_access.py`. Merge the workflow and verify its fi
 successful automatic run, including the AWS smoke stage. Subsequent relevant main
 merges deploy automatically; `workflow_dispatch` retries the current verified main.
 Infrastructure/IAM changes still require the independent Terraform procedure.
+
+## Pause backup uploads while preserving archives
+
+Archive infrastructure and new uploads have separate operator controls. Set
+`provision_backup_archive=true` to provision and keep the private versioned bucket;
+set `retain_verified_backups=true` only when approved backup code is deployed and
+new uploads should run. Retention without provisioned infrastructure is rejected.
+Both options default to false.
+
+To stop future uploads after a run, keep `provision_backup_archive=true` and set
+`retain_verified_backups=false`. This removes DB-job archive permissions and sets
+the upload flag to false while preserving bucket versioning, private policies and
+existing objects. Keep the existing schedule setting explicit. Wait for active DB
+maintenance executions to finish before changing job configuration or permissions.
+Never disable archive provisioning as a way to pause uploads: it would attempt
+resource deletion and the bucket's `prevent_destroy` guard will reject the plan.
+No automatic expiry or deletion policy is introduced. Infrastructure changes still
+require a separately reviewed plan and operator apply; code deployment does not
+enable either option.
