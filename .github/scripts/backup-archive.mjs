@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {createReadStream,constants} from 'node:fs';
+import {constants} from 'node:fs';
 import {lstat, writeFile,open} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFile} from 'node:child_process';
@@ -19,17 +19,29 @@ export function backupArchiveContext(env = process.env) {
   return {runId: env.MAINTENANCE_RUN_ID, buildArn: env.CODEBUILD_BUILD_ARN, sourceVersion: env.CODEBUILD_SOURCE_VERSION};
 }
 
-async function checksum(file) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(file)) hash.update(chunk);
-  return hash.digest('base64');
+async function privateFile(file,maxBytes=5*1024**3,text=false) {
+  let handle;
+  try {
+    handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+    const info=await handle.stat();
+    if(!info.isFile()||(info.mode&0o077)||info.uid!==process.getuid()||info.size<=0||info.size>maxBytes)throw new Error();
+    const hash=createHash('sha256'),buffer=Buffer.alloc(64*1024),chunks=[];let bytes=0;
+    for(;;){
+      const {bytesRead}=await handle.read(buffer,0,buffer.length,null);if(!bytesRead)break;
+      bytes+=bytesRead;if(bytes>maxBytes)throw new Error();
+      const part=buffer.subarray(0,bytesRead);hash.update(part);if(text)chunks.push(Buffer.from(part));
+    }
+    if(bytes!==info.size)throw new Error();
+    return {bytes,sha256_base64:hash.digest('base64'),text:text?Buffer.concat(chunks).toString('utf8'):undefined};
+  } catch {throw new Error('INVALID_PRIVATE_BACKUP_FILE');}
+  finally {await handle?.close();}
 }
 
 /** Called only after the exact dump has passed isolated restoration. The private
  * manifest is the commit marker; an orphan dump never implies a complete backup.
  * No credentials, records, counts or storage receipts are printed by this module.
  */
-export async function retainVerifiedBackup({directory, inventory, schemas, image, context}, run = execute) {
+export async function retainVerifiedBackup({directory, inventory, schemas, image, context, expectedDump}, run = execute) {
   if (!context) return false;
   // Revalidate even for programmatic callers. No caller-selected bucket or key.
   backupArchiveContext({VIDEOQ_RETAIN_BACKUP: 'true', MAINTENANCE_STAGE: 'backup',
@@ -39,21 +51,20 @@ export async function retainVerifiedBackup({directory, inventory, schemas, image
       {timeout: 900000, maxBuffer: 1000000, env: {...process.env, AWS_PAGER: '', AWS_IGNORE_CONFIGURED_ENDPOINT_URLS: 'true'}});
     return JSON.parse(stdout);
   };
-  const upload = async (file, key) => {
-    const stat = await lstat(file);
+  const upload = async (file, key, expected) => {
     // This intentionally uses single-object PUT, with an explicit bounded size.
-    if (!stat.isFile() || stat.size <= 0 || stat.size > 5 * 1024 ** 3 || (stat.mode & 0o077)) throw new Error('INVALID_PRIVATE_BACKUP_FILE');
-    const digest = await checksum(file);
+    const checked=await privateFile(file),digest=checked.sha256_base64;
+    if(expected&&(expected.bytes!==checked.bytes||expected.sha256_base64!==digest))throw new Error('BACKUP_HANDOFF_INTEGRITY_FAILED');
     const result = await call(['put-object', '--bucket', ARCHIVE_BUCKET, '--key', key, '--body', file,
       '--server-side-encryption', 'AES256', '--checksum-sha256', digest, '--if-none-match', '*']);
     if (!result.VersionId || result.VersionId === 'null' || result.ChecksumSHA256 !== digest || result.ServerSideEncryption !== 'AES256') throw new Error('BACKUP_UPLOAD_NOT_VERIFIED');
     const stored = await call(['head-object', '--bucket', ARCHIVE_BUCKET, '--key', key,
       '--version-id', result.VersionId, '--checksum-mode', 'ENABLED']);
-    if (stored.VersionId !== result.VersionId || stored.ChecksumSHA256 !== digest || stored.ContentLength !== stat.size || stored.ServerSideEncryption !== 'AES256') throw new Error('BACKUP_READBACK_NOT_VERIFIED');
-    return {key, version_id: result.VersionId, bytes: stat.size, sha256_base64: digest};
+    if (stored.VersionId !== result.VersionId || stored.ChecksumSHA256 !== digest || stored.ContentLength !== checked.bytes || stored.ServerSideEncryption !== 'AES256') throw new Error('BACKUP_READBACK_NOT_VERIFIED');
+    return {key, version_id: result.VersionId, bytes: checked.bytes, sha256_base64: digest};
   };
   const prefix = 'verified/' + context.runId + '/';
-  const dump = await upload(join(directory, 'database.dump'), prefix + 'database.dump');
+  const dump = await upload(join(directory, 'database.dump'), prefix + 'database.dump',expectedDump);
   const manifest = {version: 1, status: 'restored-and-retained', created_at: new Date().toISOString(),
     source: {build_arn: context.buildArn, operator_source_version: context.sourceVersion, snapshot: 'repeatable-read/read-only'},
     schemas, inventory, restore_image: image, dump,
@@ -84,7 +95,7 @@ export async function stageVerifiedBackup({directory, destination, inventory, sc
   if ((await readdir(destination)).length) throw new Error('BACKUP_HANDOFF_NOT_EMPTY');
   // Validate and read the same opened inode; do not lstat then copy by pathname.
   // O_NOFOLLOW also refuses a symlink swapped in before the open itself.
-  const source = await open(join(directory,'database.dump'),constants.O_RDONLY|constants.O_NOFOLLOW);
+  const source = await open(join(directory,'database.dump'),constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   let target,bytes=0;
   const hash=createHash('sha256');
   try {
@@ -116,15 +127,14 @@ export async function retainStagedBackup(directory,context,run = execute) {
   await privateHandoffDirectory(directory);
   const {readFile,readdir} = await import('node:fs/promises');
   if (JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(['database.dump','verified-backup-input.json'])) throw new Error('INCOMPLETE_BACKUP_HANDOFF');
-  const marker = join(directory,'verified-backup-input.json'), markerInfo = await lstat(marker);
-  if (!markerInfo.isFile() || (markerInfo.mode & 0o077) || markerInfo.size > 4*1024*1024) throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
-  const metadata = JSON.parse(await readFile(marker,'utf8'));
+  let metadata;
+  try{metadata=JSON.parse((await privateFile(join(directory,'verified-backup-input.json'),4*1024*1024,true)).text);}
+  catch{throw new Error('INVALID_BACKUP_HANDOFF_MARKER');}
   const image = (await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
   if (metadata.version !== 1 || metadata.status !== 'restore-verified' || JSON.stringify(metadata.context) !== JSON.stringify(context) ||
       JSON.stringify(metadata.schemas) !== JSON.stringify(BACKUP_SCHEMAS) || metadata.image !== image ||
       !metadata.inventory || typeof metadata.inventory !== 'object' || Array.isArray(metadata.inventory) ||
       !Object.keys(metadata.inventory).length || Object.values(metadata.inventory).some(count=>typeof count !== 'string' || !/^(0|[1-9][0-9]*)$/.test(count))) throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
-  const dump = join(directory,'database.dump'), info = await lstat(dump);
-  if (!info.isFile() || (info.mode & 0o077) || info.size !== metadata.dump?.bytes || await checksum(dump) !== metadata.dump?.sha256_base64) throw new Error('BACKUP_HANDOFF_INTEGRITY_FAILED');
-  return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context},run);
+  if(!Number.isSafeInteger(metadata.dump?.bytes)||metadata.dump.bytes<=0||typeof metadata.dump?.sha256_base64!=='string')throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
+  return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context,expectedDump:metadata.dump},run);
 }

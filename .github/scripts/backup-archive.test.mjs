@@ -169,3 +169,19 @@ test('handoff copy refuses symlink sources using a no-follow file descriptor', a
   await assert.rejects(stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS}),{code:'ELOOP'});
   await assert.rejects(readFile(join(destination,'verified-backup-input.json')),{code:'ENOENT'});
 });
+
+test('parent refuses a symlink marker and binds the upload checksum to the child verification', async t => {
+  const {stageVerifiedBackup,retainStagedBackup,BACKUP_SCHEMAS}=await import('./backup-archive.mjs');
+  const {options}=await fixture(t),destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+  t.after(()=>rm(destination,{recursive:true,force:true}));
+  const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  await stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS});
+  const marker=join(destination,'verified-backup-input.json'),saved=await readFile(marker);
+  await rm(marker);await writeFile(join(options.directory,'unrelated-marker'),saved,{mode:0o600});
+  await symlink(join(options.directory,'unrelated-marker'),marker);
+  await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/INVALID_BACKUP_HANDOFF_MARKER/);
+  await rm(marker);await writeFile(marker,saved,{mode:0o600});
+  const metadata=JSON.parse(saved);metadata.dump.sha256_base64='incorrect-verified-checksum';
+  await writeFile(marker,JSON.stringify(metadata));
+  await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/BACKUP_HANDOFF_INTEGRITY_FAILED/);
+});
