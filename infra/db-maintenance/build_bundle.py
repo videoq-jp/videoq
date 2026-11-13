@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
     "neon-admin.cjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-stream-proof.cjs",
-    "backup-restore.mjs", "provision-public-demo.mjs", "public-demo-policy.cjs",
+    "backup-restore.mjs", "backup-archive.mjs", "provision-public-demo.mjs", "public-demo-policy.cjs",
 ]
 
 

@@ -21,6 +21,10 @@ run "credential_and_control_boundaries" {
   command = apply
 
   assert {
+    condition     = length(aws_s3_bucket.archive) == 0
+    error_message = "Backup retention must stay disabled until explicitly enabled by the infrastructure operator."
+  }
+  assert {
     condition = alltrue([for project in merge(aws_codebuild_project.job, { deploy = aws_codebuild_project.deploy }) :
       !contains(keys(jsondecode(project.source[0].buildspec).phases.install["runtime-versions"]), "nodejs") &&
       alltrue([for command in local.runtime_setup_commands : contains(jsondecode(project.source[0].buildspec).phases.install.commands, command)])
@@ -96,5 +100,42 @@ run "credential_and_control_boundaries" {
       ]
     ])
     error_message = "Even a broadened worker inline policy must not gain maintenance/admin credential access."
+  }
+}
+
+run "private_backup_archive_boundaries" {
+  command = apply
+  variables { retain_verified_backups = true }
+  assert {
+    condition = (aws_s3_bucket.archive[0].bucket == "videoq-db-archives-prod-257240362763" &&
+      aws_s3_bucket.archive[0].bucket != aws_s3_bucket.bundle.bucket &&
+      !aws_s3_bucket.archive[0].force_destroy &&
+      aws_s3_bucket_versioning.archive[0].versioning_configuration[0].status == "Enabled" &&
+      aws_s3_bucket_public_access_block.archive[0].block_public_acls &&
+      aws_s3_bucket_public_access_block.archive[0].block_public_policy &&
+      aws_s3_bucket_public_access_block.archive[0].ignore_public_acls &&
+      aws_s3_bucket_public_access_block.archive[0].restrict_public_buckets &&
+    aws_s3_bucket_ownership_controls.archive[0].rule[0].object_ownership == "BucketOwnerEnforced")
+    error_message = "Database archives require a separate versioned private bucket without public access or ACLs."
+  }
+  assert {
+    condition = alltrue(flatten([for purpose, policy in aws_iam_role_policy.build : [
+      for statement in jsondecode(policy.policy).Statement :
+      !strcontains(jsonencode(statement.Resource), aws_s3_bucket.archive[0].arn) || (purpose == "backup" &&
+        statement.Resource == "${aws_s3_bucket.archive[0].arn}/verified/*" &&
+      statement.Action == ["s3:PutObject", "s3:GetObjectVersion"])
+    ]]))
+    error_message = "Only backup jobs may write/read exact archive versions; no deletion, listing or other job access is allowed."
+  }
+  assert {
+    condition = alltrue([for purpose, project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_RETAIN_BACKUP"]) == (purpose == "backup" ? "true" : "false")
+    ])
+    error_message = "Only the backup project may enable retention."
+  }
+  assert {
+    condition = (length(jsondecode(aws_s3_bucket_policy.archive[0].policy).Statement) == 3 &&
+    alltrue([for statement in jsondecode(aws_s3_bucket_policy.archive[0].policy).Statement : statement.Effect == "Deny"]))
+    error_message = "Archive bucket policy must deny insecure transport, missing encryption and unconditional writes."
   }
 }

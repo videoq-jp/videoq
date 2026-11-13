@@ -58,8 +58,17 @@ reconstruct all deployed legacy grants or prove transcription/AI processing;
 the completed rows and vectors are synthetic authorization fixtures, and an
 embedding-provider call fails the test.
 
-Backup has SELECT on application, migration and security tables, including the
-smoke identity registry. The logical dump/restore includes all three schemas.
+Backup has SELECT on application, migration, security and conversation-memory
+tables, including the smoke identity registry. The logical dump/restore selects
+`public`, `drizzle`, `videoq_security` and `chat_memory` consistently for the source
+inventory, dump and restored-constraint checks. The synthetic restore fixture
+covers all four schemas, cross-schema foreign keys, vectors, JSONB and binary
+checkpoint values. This source change requires the canonical-main maintenance
+deployment before it changes the production backup job.
+Optional verified-backup preservation uses a separate private versioned S3 bucket
+and backup-only object permissions; see `infra/db-maintenance/README.md`.
+The default restore test still deletes the dump, so success alone does not prove
+that a durable preservation copy exists.
 Audit can SELECT only views for the dedicated public demo. It cannot read password
 hashes or execute the demo preparation function.
 
