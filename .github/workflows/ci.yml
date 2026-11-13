@@ -825,6 +825,8 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-operations-tools
       - run: node --test .github/scripts/production-stream-proof.integration.cjs
+      - name: Verify private backup retention and failure handling
+        run: node --test .github/scripts/backup-archive.test.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'
@@ -834,5 +836,5 @@ jobs:
           const browser = await chromium.launch({ channel: 'chrome' });
           await browser.close();
           JS
-      - name: Restore synthetic vector data and foreign keys without production access
+      - name: Restore synthetic vectors, model memory and cross-schema foreign keys without production access
         run: node .github/scripts/backup-restore-fixture.mjs

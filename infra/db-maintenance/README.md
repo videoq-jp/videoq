@@ -60,6 +60,50 @@ Credential reads happen at runtime inside AWS. SQL/subprocess errors are capture
 and only sanitized failure identifiers reach CloudWatch. GitHub masking commands
 must never be emitted into CloudWatch, which does not interpret them as redaction.
 
+## Verified backup preservation for D1 migration
+
+By default the restore test deletes its temporary dump and does **not** preserve
+a backup. The source includes an opt-in `retain_verified_backups` Terraform
+setting (default `false`). This code has not by itself enabled production
+retention. Enable it only after the reviewed canonical-main operator containing
+`backup-archive.mjs` is deployed; the bucket, IAM and project environment are
+operator-managed infrastructure changes, not part of maintenance CD.
+
+When enabled, the backup job retains the exact dump only after isolated restore,
+table-count and constraint verification. It covers `public`, `drizzle`,
+`videoq_security` and `chat_memory`, including retired public tables that the
+D1 importer currently refuses to ignore. A separate private, versioned SSE-S3
+bucket (`videoq-db-archives-prod-257240362763`) receives
+`verified/<maintenance-run-id>/database.dump` and then `verified-backup.json`.
+The private manifest records the immutable operator source version, build ARN,
+schemas, table counts, dump checksum/size/version and pinned restore image.
+Only a manifest whose upload/readback succeeded is a completed retention result.
+A failed manifest write may leave a private orphan dump; do not treat it as a
+completed preservation copy or restart a live maintenance execution.
+
+Uploads require conditional creation, explicit encryption and SHA-256. Versioned
+HEAD readback must match checksum, bytes and encryption before success. The
+backup role receives only PutObject and GetObjectVersion on `verified/*`; other
+jobs and routine GitHub roles receive no archive grants. The bucket has no
+automatic expiration, and Terraform prevents its destruction. Retention therefore
+incurs ongoing storage cost; an operator must set a preservation/deletion policy
+before enabling recurring backup runs. This is versioned storage, not Object Lock.
+The current single-PUT implementation rejects dumps larger than 5 GiB.
+
+Recovery/download requires a separately reviewed operator session with narrowly
+scoped version-read access. Never add DB credentials or source records to public
+artifacts, logs or the executable-bundle bucket. Restore a selected manifest and
+its exact dump version into an isolated database, verify its SHA-256 and inventory,
+and repeat application/auth checks before considering recovery. The dump omits
+roles, ownership and grants, and does not restore R2, Vectorize or Neon PITR.
+It is not a D1 import archive and does not resolve which legacy records should
+become active D1 data. Production retention and recovery remain unproven until
+the protected AWS job and an archive retrieval/restore rehearsal succeed.
+
+The protocol follows the AWS references for [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes-enforce.html),
+[PutObject checksums and encryption](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html)
+and [CodeBuild source versions](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html).
+
 ## Provision and cut over
 
 1. Review/commit the code and install the runtime lockfile:

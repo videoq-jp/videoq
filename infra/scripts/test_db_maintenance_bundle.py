@@ -20,6 +20,7 @@ class BundleTest(unittest.TestCase):
             with zipfile.ZipFile(path) as archive:
                 names = set(archive.namelist())
                 self.assertIn('infra/db-maintenance/runtime/setup-job.cjs', names)
+                self.assertIn('.github/scripts/backup-archive.mjs', names)
                 self.assertFalse(any(".env" in Path(name).parts or name.startswith(".git/") for name in names))
                 for script in ["backup-restore.mjs", "production-smoke.mjs", "provision-public-demo.mjs"]:
                     source = archive.read(".github/scripts/" + script).decode()
