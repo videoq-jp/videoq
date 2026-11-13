@@ -15,7 +15,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
 import { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections } from "../src/db/schema";
+import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections, mcpIdempotencyRecords } from "../src/db/schema";
 import { provisionLmsInstallation, authenticateLmsInstallation, rotateLmsSyncToken, disconnectLmsInstallation } from "../src/repositories/lms-installation-repository";
 import { getLmsResource } from "../src/repositories/lms-resource-repository";
 import { resolvedLtiConfig } from "../src/features/lti/registrations";
@@ -59,7 +59,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     admin = new pg.Client({ connectionString: databaseUrl }); await admin.connect();
     await admin.query(`CREATE SCHEMA "${schema}"`); created = true;
     pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 10 });
-    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections });
+    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections, mcpIdempotencyRecords });
     const statements = await generateMigration(generateDrizzleJson({}), snapshot);
     for (const statement of statements) await pool.query(statement.replaceAll('"public".', `"${schema}".`));
     // Apply the actual generated sync migration, including foreign keys.
@@ -75,6 +75,8 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     await pool.query({ text: youtubeSources });
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
     env = { FRONTEND_URL: "https://api.example", RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
+      // Cloud feature-policy cases explicitly use the PostgreSQL migration backend.
+      PERSISTENCE_BACKEND: "postgres", MIGRATION_ALLOW_CLOUD_POSTGRES: "true", USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),
       VIDEO_BUCKET: {
         put: async (key: string, body: ReadableStream) => { objects.set(key, new Uint8Array(await new Response(body).arrayBuffer())); },
@@ -847,7 +849,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const tasks = await pool.query("SELECT payload FROM external_tasks WHERE kind='sqs_job'");
     expect(tasks.rows.map(row => row.payload.message.payload.video_id).sort((a, b) => a - b))
       .toEqual([initial.videoId, retried.videoId].sort((a, b) => a - b));
-    expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='storage_cleanup'")).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT count(*)::int AS n FROM external_tasks WHERE kind='storage_cleanup' AND (payload->>'bytes')::bigint>0")).rows[0].n).toBe(1);
     expect((await pool.query("SELECT id::int FROM videos")).rows).toEqual([{ id: retried.videoId }]);
     await pool.query("UPDATE videos SET status='completed' WHERE id=$1", [retried.videoId]);
     expect((await resolvedLtiConfig(env))!.registrations[0].resources)

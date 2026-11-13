@@ -6,7 +6,7 @@ import { DEFAULT_LLM_MODEL, resolveLlmConnection, providerModel, isOpenRouter, L
 import { deadlineSignal } from "./request-timeout";
 import { frameCacheKey, MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, MAX_FRAME_CACHE_BYTES, sampleByTime } from "./video-evidence";
 import { readFocusFrames, type FrameSelection } from "./focus-frames";
-import { readVisualManifest, visualChunkKey, jpegBase64 } from "./visual-manifest";
+import { readVisualManifest, visualChunkKey, jpegBase64, type VisualVideo } from "./visual-manifest";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 
 const frameSchema = z.object({
@@ -35,7 +35,7 @@ export function selectClipFrames(frames: readonly Frame[], start: number, end: n
 export type VisualMode = "overview" | "skim" | "inspect" | "focus";
 
 async function readSparseFrames(
-  env: Bindings, video: { id: number; fileKey: string },
+  env: Bindings, video: VisualVideo,
   start: number, end: number, signal: AbortSignal, limit: number,
 ): Promise<FrameSelection> {
   const plan = await readVisualManifest(env, video, signal);
@@ -44,13 +44,14 @@ async function readSparseFrames(
     if (!selected.length) return { unavailable: "No sampled frames fall in this interval; this does not prove the scene is absent." };
     const frames: Frame[] = [];
     for (const [time, index, offset, length] of selected) {
-      const image = await readMediaRange(env, visualChunkKey(video.fileKey, plan.run_id, index), offset, length, signal);
+      const image = await readMediaRange(env, visualChunkKey(video.fileKey, plan.run_id, index, plan.chunk_versions?.[index]), offset, length, signal);
       if (!image) return { unavailable: "Visual evidence is not available for this video yet." };
       if (image.size > 60 * 256 * 1024 + 64 * 1024) throw new Error("Visual chunk exceeds size limit");
       frames.push({ timestamp_seconds: time / 1000, jpeg_base64: jpegBase64(image.bytes) });
     }
     return { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: Math.max(5, plan.duration_seconds / plan.overview.length) };
   }
+  if (video.visualRunId !== undefined) return { unavailable: "Visual evidence is not available for this video yet." };
   const bytes = await readMediaBytes(env, frameCacheKey(video.fileKey), MAX_FRAME_CACHE_BYTES, signal);
   if (!bytes) return { unavailable: "Visual evidence is not available for this video yet." } as const;
   const cache = cacheSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
@@ -69,7 +70,7 @@ async function readSparseFrames(
 
 export async function inspectVideoClip(
   env: Bindings,
-  video: { id: number; fileKey: string },
+  video: VisualVideo,
   start: number, end: number, query: string, signal: AbortSignal,
   options: { mode: VisualMode; maxFrames: number } = { mode: "inspect", maxFrames: MAX_CLIP_FRAMES },
   costLedger?: AnswerCostLedger,

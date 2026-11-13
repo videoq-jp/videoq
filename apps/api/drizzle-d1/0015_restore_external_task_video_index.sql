@@ -1,0 +1,1 @@
+CREATE INDEX `external_tasks_video_job_idx` ON `external_tasks` (("payload" ->> '$.message.payload.video_id'),`created_at`) WHERE "external_tasks"."kind" = 'sqs_job';

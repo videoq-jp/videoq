@@ -2,7 +2,6 @@ import type { LtiSessionProof } from '../lti/data-lock';
 import {
   getCourseWithMembers,
   createChatLog,
-  createChatLogWithDb,
   type GroupChatContext,
 } from "../../repositories/chat-repository";
 import {
@@ -18,7 +17,7 @@ import {
   type AnswerAttemptStatus,
 } from "../../lib/answer-cost-ledger";
 import type { RagResult } from "../../lib/rag";
-import type { Db } from "../../db/pool";
+import type {CreateChatLogInput} from "../../persistence/contracts/chat-repository";
 import { runChatRag, streamChatRag, ConversationCommitError } from "../../lib/conversation-execution";
 import { ConversationBusyError, ConversationNotFoundError } from "../../repositories/conversation-repository";
 import { createChatFeedbackToken } from "../../lib/chat-feedback-token";
@@ -205,18 +204,16 @@ const toFailure = (e: unknown): ChatFailure => {
   return failures.llmProvider();
 };
 
-async function persistTurn(
-  env: Bindings,
+function prepareTurnLog(
   setup: ChatSetup,
   turn: {
     question: string;
     answer: ChatAnswer;
     retrievedContexts: string[];
   },
-  db?: Db,
-): Promise<{ chatLogId: number | null; feedback: string | null }> {
-  if (!setup.course) return { chatLogId: null, feedback: null };
-  const log = await (db ? createChatLogWithDb.bind(null, db) : createChatLog.bind(null, env))({
+): CreateChatLogInput|null {
+  if (!setup.course) return null;
+  return {
     userId: setup.actorUserId,
     courseId: setup.course.id,
     question: setup.displayQuestion ?? turn.question,
@@ -224,8 +221,13 @@ async function persistTurn(
     isShared: setup.isShared,
     retrievedContexts: turn.retrievedContexts,
     ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}),
-  });
-  return { chatLogId: log.id, feedback: log.feedback };
+  };
+}
+
+async function persistTurn(env:Bindings,setup:ChatSetup,turn:{question:string;answer:ChatAnswer;retrievedContexts:string[]}) {
+  const input=prepareTurnLog(setup,turn);
+  if(!input)return {chatLogId:null,feedback:null};
+  const log=await createChatLog(env,input);return {chatLogId:log.id,feedback:log.feedback};
 }
 
 async function releaseReservedUsage(env: Bindings, setup: ChatSetup): Promise<void> {
@@ -337,7 +339,7 @@ export async function sendChatMessage(
       id: req.conversationId,
       resume: req.resumeConversation,
       question: setup.displayQuestion,
-      persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
+      persistLog: answer => prepareTurnLog(setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }),
       scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
         courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId, ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}) },
     });
@@ -452,7 +454,7 @@ export async function streamChatMessage(
             id: req.conversationId,
             resume: req.resumeConversation,
             question: setup.displayQuestion,
-            persistLog: (answer, db) => persistTurn(env, setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }, db),
+            persistLog: answer => prepareTurnLog(setup, { question: answer.queryText, answer: answer.answer, retrievedContexts: answer.retrievedContexts }),
             scope: { ownerUserId: setup.ownerUserId, actorUserId: opts.shareSlug ? null : opts.userId,
               courseId: setup.course?.id ?? null, shareSlug: opts.shareSlug, visitorSessionId: opts.visitorSessionId, ...(setup.ltiSubject ? { ltiSubject: setup.ltiSubject } : {}) },
           },

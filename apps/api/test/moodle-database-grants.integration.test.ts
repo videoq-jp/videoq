@@ -111,7 +111,7 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
   });
 
   it('creates and retires isolated YouTube source jobs through the restricted API role',async()=>{
-    const cloud:Bindings={...env,DEPLOYMENT_EDITION:'cloud'};
+    const cloud:Bindings={...env,DEPLOYMENT_EDITION:'cloud',PERSISTENCE_BACKEND:'postgres',MIGRATION_ALLOW_CLOUD_POSTGRES:'true'};
     await provisionLmsInstallation(cloud,{id:'youtube-school',ownerUserId:'owner',name:'Synthetic YouTube Moodle',
       issuer:'https://youtube-moodle.example',clientId:'youtube-client',deploymentId:'youtube-deployment',
       authorizationUrl:'https://youtube-moodle.example/auth',jwksUrl:'https://youtube-moodle.example/keys'});

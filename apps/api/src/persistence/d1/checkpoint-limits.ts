@@ -1,0 +1,1 @@
+export const D1_CHECKPOINT_MAX_BYTES=1_800_000;

@@ -1,0 +1,2 @@
+ALTER TABLE "external_tasks" DROP CONSTRAINT "external_tasks_kind_check";--> statement-breakpoint
+ALTER TABLE "external_tasks" ADD CONSTRAINT "external_tasks_kind_check" CHECK (kind IN ('sqs_job', 'storage_cleanup', 'invitation_email', 'multipart_abort', 'multipart_cleanup'));

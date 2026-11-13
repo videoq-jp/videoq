@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["scripts/d1-*.ts", "scripts/migrations/d1/**/*.ts"]
+}

@@ -1,3 +1,4 @@
+import { maintainSceneIndex, maintainVisualObjects } from "../persistence/factory";
 import { pruneLtiAudit } from '../features/lti/audit-retention';
 import { sweepMaterials } from "../features/lti/materials-sync";
 import { pruneLtiCredentials } from "../features/lti/store";
@@ -89,10 +90,14 @@ function sweepProgressed(results: Record<string, unknown>): boolean {
   const materials = results.ltiMaterials as { synchronized?: number } | undefined;
   const tasks = results.externalTasks as ExternalTaskRunResult | undefined;
   const uploads = results.abandonedUploads as ReconcileResult | undefined;
+  const visualObjects = results.visualObjects as {claimed?:number} | undefined;
+  const sceneIndex = results.sceneIndex as { claimed?: number; reconciled?: number; verified?: number; repairQueued?: number } | undefined;
   const invitations = results.staleInvitations as { failed?: number } | undefined;
   return (
     (materials?.synchronized ?? 0) > 0 ||
     (tasks?.claimed ?? 0) > 0 ||
+    (sceneIndex?.claimed ?? 0) > 0 || (sceneIndex?.reconciled ?? 0) > 0 || (sceneIndex?.verified ?? 0) > 0 || (sceneIndex?.repairQueued ?? 0) > 0 ||
+    (visualObjects?.claimed ?? 0) > 0 ||
     (uploads?.released ?? 0) > 0 ||
     (invitations?.failed ?? 0) > 0
   );
@@ -111,6 +116,8 @@ export async function runMaintenanceSweep(
 ): Promise<MaintenanceSweepResult> {
   const results = await settleAndReport("scheduled_delivery_recovery", {
     externalTasks: processExternalTasks(env, { limit: 50, arm: false }),
+    sceneIndex: maintainSceneIndex(env),
+    visualObjects: maintainVisualObjects(env),
     ltiMaterials: sweepMaterials(env),
     abandonedUploads: reconcileAbandonedUploads(env),
     staleInvitations: failInvitationsWithoutLiveDelivery(

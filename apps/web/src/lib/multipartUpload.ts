@@ -1,3 +1,4 @@
+import {isValidUploadPartEtag} from '@videoq/trpc/video-upload';
 type UploadedPart = { partNumber: number; etag: string };
 
 class PartUploadError extends Error {
@@ -22,8 +23,9 @@ export function uploadPart(
     xhr.addEventListener('load', () => {
       cleanup();
       if (xhr.status >= 200 && xhr.status < 300) {
-        const etag = xhr.getResponseHeader('ETag')?.replace(/^"|"$/g, '');
-        if (!etag || !/^[a-fA-F0-9]{32}$/.test(etag)) {
+        const raw = xhr.getResponseHeader('ETag');
+        const etag = raw?.startsWith('"') && raw.endsWith('"') ? raw.slice(1, -1) : raw;
+        if (!etag || !isValidUploadPartEtag(etag)) {
           reject(new PartUploadError('Upload response is missing ETag. Check storage CORS settings.', false));
         } else resolve(etag);
       } else {

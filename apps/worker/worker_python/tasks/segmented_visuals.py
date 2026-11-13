@@ -1,15 +1,16 @@
 """Bounded visual decoding with durable checkpoints and atomic readiness."""
 
-import json
 import logging
 
 from worker_python import visual_checkpoints as checkpoints
 from worker_python.contracts import JOB_BUILD_VIDEO_VISUAL_CHUNK, JOB_FINISH_VIDEO_VISUALS
 from worker_python.db import db_connection
+from worker_python.internal_api import uses_internal_persistence
+from worker_python.pipeline.visual_publication import publication_payloads
 from worker_python.pipeline.media_process import _redact_urls
-from worker_python.pipeline.storage import resolve_media_input, upload_file, upload_bytes, read_bytes
-from worker_python.pipeline.visual_chunks import build_visual_chunk, chunk_key, manifest_key, CHUNK_SECONDS
-from worker_python.pipeline.visual_frames import MAX_CACHE_BYTES, frame_cache_key
+from worker_python.pipeline.storage import resolve_media_input, upload_file, upload_bytes
+from worker_python.pipeline.visual_chunks import build_visual_chunk, chunk_key, manifest_key
+from worker_python.pipeline.visual_frames import frame_cache_key
 from worker_python.sqs_enqueue import child_job_id, enqueue_job
 
 logger = logging.getLogger(__name__)
@@ -54,18 +55,23 @@ def build_video_visual_chunk(video_id: int, run_id: str, chunk_index: int, *, di
         if not checkpoints.chunk_complete(run, chunk_index):
             source = resolve_media_input(run.file_key)
             with build_visual_chunk(source, video_id, run.duration_ms / 1000, chunk_index) as (pack, sparse, count):
-                # Publication and checkpoint share the video deletion lock.
-                # A retry after a failed PUT overwrites the same bounded objects.
-                with db_connection() as conn:
-                    if not checkpoints.lock_current(conn, run):
+                if uses_internal_persistence():
+                    from worker_python.tasks.cloud_visuals import publish_chunk
+                    if not publish_chunk(run, chunk_index, pack, sparse, count):
                         return
-                    upload_file(chunk_key(run.file_key, run.run_id, chunk_index), pack, 'application/octet-stream')
-                    upload_bytes(chunk_key(run.file_key, run.run_id, chunk_index, 'json'), sparse, 'application/json')
-                    conn.execute("""UPDATE video_visual_chunks SET frame_count = %s, last_error = '', updated_at = now()
-                                    WHERE run_id = %s AND chunk_index = %s""", (count, run_id, chunk_index))
-                    conn.execute("""UPDATE video_visual_runs SET status = 'processing', last_error = '' WHERE run_id = %s
-                                    AND NOT EXISTS (SELECT 1 FROM video_visual_chunks WHERE run_id = %s AND last_error <> '')""",
-                                 (run_id, run_id))
+                else:
+                    # Publication and checkpoint share the video deletion lock.
+                    # A retry after a failed PUT overwrites the same bounded objects.
+                    with db_connection() as conn:
+                        if not checkpoints.lock_current(conn, run):
+                            return
+                        upload_file(chunk_key(run.file_key, run.run_id, chunk_index), pack, 'application/octet-stream')
+                        upload_bytes(chunk_key(run.file_key, run.run_id, chunk_index, 'json'), sparse, 'application/json')
+                        conn.execute("""UPDATE video_visual_chunks SET frame_count = %s, last_error = '', updated_at = now()
+                                        WHERE run_id = %s AND chunk_index = %s""", (count, run_id, chunk_index))
+                        conn.execute("""UPDATE video_visual_runs SET status = 'processing', last_error = '' WHERE run_id = %s
+                                        AND NOT EXISTS (SELECT 1 FROM video_visual_chunks WHERE run_id = %s AND last_error <> '')""",
+                                     (run_id, run_id))
             logger.info('Visual checkpoint saved: video=%d chunk=%d/%d frames=%d', video_id, chunk_index + 1, run.chunk_count, count)
         if dispatch_next and not checkpoints.pending_chunks(run):
             _send(run, JOB_FINISH_VIDEO_VISUALS)
@@ -79,35 +85,14 @@ def finish_video_visuals(video_id: int, run_id: str):
     if not run or run.status == 'ready':
         return
     try:
+        if uses_internal_persistence():
+            from worker_python.tasks.cloud_visuals import finish_run
+            finish_run(run)
+            return
         with db_connection() as conn:
             rows = conn.execute('SELECT chunk_index, frame_count FROM video_visual_chunks WHERE run_id = %s ORDER BY chunk_index',
                                 (run_id,)).fetchall()
-        if len(rows) != run.chunk_count or any(row['frame_count'] is None for row in rows):
-            raise RuntimeError('Visual chunks are incomplete')
-        if not sum(row['frame_count'] for row in rows):
-            raise ValueError('No video frames are available')
-        frames, overview = [], []
-        for row in rows:
-            samples = json.loads(read_bytes(chunk_key(run.file_key, run_id, row['chunk_index'], 'json'), MAX_CACHE_BYTES))
-            for frame in samples:
-                overview.append([round(frame['timestamp_seconds'] * 1000), row['chunk_index'], frame['offset'], frame['length']])
-                frames.append({key: frame[key] for key in ('timestamp_seconds', 'jpeg_base64')})
-        if not frames:
-            raise ValueError('No overview frames are available')
-        duration = run.duration_ms / 1000
-        def overview_payload():
-            return json.dumps({'version': 1, 'video_id': video_id, 'duration_seconds': duration,
-                               'sampling_interval_seconds': max(5, duration / len(frames)), 'frames': frames},
-                              separators=(',', ':')).encode()
-        payload = overview_payload()
-        # Keep the original dense images. An unusually complex video can use
-        # fewer evenly distributed overview stills to respect the API RAM bound.
-        while len(payload) > MAX_CACHE_BYTES:
-            frames = frames[::2]
-            payload = overview_payload()
-        manifest = json.dumps({'version': 2, 'video_id': video_id, 'run_id': run_id,
-                               'duration_seconds': duration, 'chunk_seconds': CHUNK_SECONDS,
-                               'chunk_count': run.chunk_count, 'overview': overview}, separators=(',', ':')).encode()
+        payload, manifest = publication_payloads(run, rows)
         with db_connection() as conn:
             if not checkpoints.lock_current(conn, run):
                 return

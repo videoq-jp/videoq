@@ -4,8 +4,7 @@ import { isAPIError } from "better-auth/api";
 import { parseAccessTokenAuthorization, requestToResourceInput } from "better-auth/oauth2";
 import type { AppEnv } from "../types/bindings";
 import { toErrorBody } from "../shared/errors";
-import { withDb } from "../db/pool";
-import { createAuth } from "../lib/auth";
+import { withAuth } from "../persistence/auth";
 import type { ResourceAccessResult } from "../lib/auth-access";
 import { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "../lib/mcp-auth";
 
@@ -68,8 +67,7 @@ export const sessionMethod: AuthMethod = async (c) => {
     }
   }
 
-  return withDb<AuthOutcome>(c.env, async (db) => {
-    const auth = createAuth(c.env, db, "browser");
+  return withAuth<AuthOutcome>(c.env, async auth => {
     // Authorization decisions must observe session revocation and account changes
     // immediately. Better Auth's signed cookie cache is suitable for display-only
     // session reads, but would otherwise keep a revoked session usable until expiry.
@@ -81,7 +79,7 @@ export const sessionMethod: AuthMethod = async (c) => {
     const userId = toUserId(session.user.id);
     if (!userId) return { kind: "invalid", message: "Invalid session" };
     return { kind: "ok", userId, via: "session" };
-  }).catch((error: unknown): AuthOutcome => {
+  }, "browser").catch((error: unknown): AuthOutcome => {
     // Server-side Better Auth calls throw APIError instead of an HTTP response.
     // Translate only auth refusals; database/server failures must remain errors.
     if (isAPIError(error) && (error.statusCode === 401 || error.statusCode === 403)) {
@@ -111,8 +109,7 @@ const apiKeyMethodWithKeyword = (keyword: string): AuthMethod => async (c) => {
     }
   }
 
-  return withDb(c.env, async (db) => {
-    const auth = createAuth(c.env, db);
+  return withAuth(c.env, async auth => {
     return auth.api.verifyVideoqApiKey({ body: { key: raw } });
   });
 };
@@ -163,8 +160,7 @@ export const oauthBearerMethod: AuthMethod = async (c) => {
     }
   }
 
-  return withDb(c.env, async (db) => {
-    const auth = createAuth(c.env, db);
+  return withAuth(c.env, async auth => {
     return auth.api.verifyVideoqOAuth({ body: requestToResourceInput(c.req.raw) });
   });
 };

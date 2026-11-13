@@ -114,6 +114,16 @@ describe('multipart video transfer', () => {
     expect(api.abort).toHaveBeenCalledTimes(1);
   });
 
+  it('preserves opaque R2 part ETags rather than requiring MD5', async () => {
+    const opaque='r2_opaque-part/value+suffix=';
+    TestXhr.reply=xhr=>{xhr.responseEtag=`"${opaque}"`;xhr.finish();};
+    const api=operations();await uploadMultipartFile(new File(['123'],'clip.mp4'),'video/mp4',{part_size:5,part_count:1},api);
+    expect(api.complete).toHaveBeenCalledExactlyOnceWith([{partNumber:1,etag:opaque}]);
+  });
+  it.each(['"mismatched','invalid\nheader','x'.repeat(1025)])('rejects malformed or oversized ETags (%s)', async raw=>{
+    TestXhr.reply=xhr=>{xhr.responseEtag=raw;xhr.finish();};const api=operations();
+    await expect(uploadMultipartFile(new File(['123'],'clip.mp4'),'video/mp4',{part_size:5,part_count:1},api)).rejects.toThrow('ETag');expect(api.complete).not.toHaveBeenCalled();
+  });
   it('reports missing CORS ETag without completing an unverifiable upload', async () => {
     TestXhr.reply = xhr => { xhr.responseEtag = null; xhr.finish(); };
     const api = operations();

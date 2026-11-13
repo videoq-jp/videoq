@@ -412,6 +412,7 @@ jobs:
     if: needs.changes.outputs.hono == 'true'
     env:
       QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PERSISTENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       EMBEDDING_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       LMS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       LTI_BROWSER_TESTS: "1"
@@ -466,8 +467,11 @@ jobs:
           npm run typecheck --workspace @videoq/trpc
           npm run typecheck --workspace @videoq/api
           npm run db:check --workspace @videoq/api
+          npm run db:d1:check --workspace @videoq/api
+          npm run db:d1:manifest:check --workspace @videoq/api
           npm run db:verify --workspace @videoq/api
-          npm test --workspace @videoq/api
+          npm run test:unit --workspace @videoq/api -- --maxWorkers=2
+          npm run test:workers --workspace @videoq/api
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:

@@ -10,6 +10,7 @@ from uuid import uuid4
 from psycopg.types.json import Jsonb
 
 from worker_python.db import db_connection
+from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.video_sql import VideoRow, reserve_processing_seconds
 
 CHUNK_SECONDS = 300
@@ -46,7 +47,18 @@ def _run(row) -> TranscriptionRun | None:
     )
 
 
+def _cloud_run(row) -> TranscriptionRun | None:
+    if row is None:
+        return None
+    return TranscriptionRun(video_id=row["videoId"], run_id=row["runId"], file_key=row["fileKey"],
+        transcript_hash=row["sourceRevision"], duration_ms=row["durationMs"], chunk_seconds=row["chunkSeconds"],
+        chunk_count=row["chunkCount"], completed=row["completed"], transcription_language=row.get("transcriptionLanguage"))
+
+
 def load_run(video_id: int, run_id: str | None = None) -> TranscriptionRun | None:
+    if uses_internal_persistence():
+        result = call_internal_api("checkpoints/load", {"videoId": video_id, **({"runId": run_id} if run_id else {})})
+        return _cloud_run(result.get("run"))
     with db_connection() as conn:
         return _run(conn.execute("""
             SELECT r.*, v.transcription_language FROM video_transcription_runs r JOIN videos v ON v.id = r.video_id
@@ -75,6 +87,14 @@ def initialize_run(video: VideoRow, duration: float) -> TranscriptionRun | None:
     count = math.ceil(duration_ms / (chunk_seconds * 1000))
     if count > 10000:
         raise ValueError("Transcription plan exceeds the 10,000-checkpoint limit")
+    if uses_internal_persistence():
+        result = call_internal_api("checkpoints/initialize", {
+            "videoId": video.id, "userId": video.user_id, "fileKey": video.file_key,
+            "sourceRevision": video.transcript_hash, "durationMs": duration_ms, "chunkSeconds": chunk_seconds,
+        })
+        if result.get("quotaExceeded") is True:
+            raise TranscriptionQuotaError("Processing quota exceeded")
+        return _cloud_run(result.get("run"))
     with db_connection() as conn:
         # Always lock video before run/chunks, also matching deletion/finalization.
         current = conn.execute("""
@@ -111,6 +131,10 @@ def initialize_run(video: VideoRow, duration: float) -> TranscriptionRun | None:
 
 def pending_heads(run: TranscriptionRun, *, after_index: int | None = None) -> list[int]:
     """At most one unfinished chunk per lane; no unbounded SQS fan-out."""
+    if uses_internal_persistence():
+        result = call_internal_api("checkpoints/pending", {"runId": run.run_id,
+            **({"afterIndex": after_index} if after_index is not None else {})})
+        return result["indices"]
     with db_connection() as conn:
         rows = conn.execute("""
             SELECT DISTINCT ON (lane) chunk_index FROM (
@@ -142,6 +166,17 @@ def reject_no_audio(video_id: int, file_key: str, transcript_hash: str,
                     message: str, *, run_id: str | None = None,
                     chunk_index: int | None = None) -> bool:
     """Fence a terminal media error by source and run, then stop queued lanes."""
+    if uses_internal_persistence():
+        source = call_internal_api("transcription/source", {"videoId": video_id}).get("source")
+        if not source:
+            return False
+        result = call_internal_api("checkpoints/reject", {
+            "videoId": video_id, "userId": source["userId"], "fileKey": file_key,
+            "sourceRevision": transcript_hash,
+            **({"runId": run_id} if run_id else {}),
+            **({"index": chunk_index} if chunk_index is not None else {}),
+        })
+        return result.get("accepted") is True
     with db_connection() as conn:
         row = conn.execute("""
             SELECT v.status, v.file, md5(COALESCE(v.transcript, '')) AS transcript_hash,
@@ -174,6 +209,9 @@ def reject_no_audio(video_id: int, file_key: str, transcript_hash: str,
 
 def chunk_state(run: TranscriptionRun, index: int) -> tuple[bool, bool]:
     """(current run still owns video, result already saved)."""
+    if uses_internal_persistence():
+        result = call_internal_api("checkpoints/state", {"videoId": run.video_id, "runId": run.run_id, "index": index})
+        return result["active"], result["completed"]
     with db_connection() as conn:
         if not _lock_current(conn, run):
             return False, False
@@ -187,6 +225,9 @@ def chunk_state(run: TranscriptionRun, index: int) -> tuple[bool, bool]:
 
 
 def save_chunk(run: TranscriptionRun, index: int, segments: list[dict]) -> bool:
+    if uses_internal_persistence():
+        result = call_internal_api("checkpoints/save", {"videoId": run.video_id, "runId": run.run_id, "index": index, "segments": segments})
+        return result.get("accepted") is True
     with db_connection() as conn:
         if not _lock_current(conn, run):
             return False
@@ -200,6 +241,9 @@ def save_chunk(run: TranscriptionRun, index: int, segments: list[dict]) -> bool:
 
 
 def record_chunk_failure(run: TranscriptionRun, index: int, error: str) -> None:
+    if uses_internal_persistence():
+        call_internal_api("checkpoints/failure", {"videoId": run.video_id, "runId": run.run_id, "index": index})
+        return
     with db_connection() as conn:
         if not _lock_current(conn, run):
             return

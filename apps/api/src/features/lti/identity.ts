@@ -1,5 +1,5 @@
 import { digest } from './store';
-import { ltiSessionProof, type LtiSessionProof } from './data-lock';
+import { ltiSessionProof, type LtiSessionProof } from '../../shared/lti-session-proof';
 
 /** Internal attribution only; never an authentication credential or browser input. */
 export type LtiDataSubject = { subjectKey: string; resourceVideoIds: number[]; sessionProof?: LtiSessionProof };

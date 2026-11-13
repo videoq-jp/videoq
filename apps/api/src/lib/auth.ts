@@ -112,7 +112,7 @@ export function usernameFromEmail(email: string): string {
   return base.slice(0, 150);
 }
 
-async function allocateUniqueUsername(db: Db, preferred: string): Promise<string> {
+async function allocateUniqueUsername(usernameExists: (candidate: string) => Promise<boolean>, preferred: string): Promise<string> {
   let seed = preferred.includes("@")
     ? usernameFromEmail(preferred)
     : preferred
@@ -126,12 +126,7 @@ async function allocateUniqueUsername(db: Db, preferred: string): Promise<string
   for (let i = 0; i < 50; i++) {
     const suffix = i === 0 ? "" : `_${i}`;
     const candidate = `${seed.slice(0, Math.max(1, 150 - suffix.length))}${suffix}`;
-    const rows = await db
-      .select({ id: schema.users.id })
-      .from(schema.users)
-      .where(eq(schema.users.username, candidate))
-      .limit(1);
-    if (rows.length === 0) return candidate;
+    if (!await usernameExists(candidate)) return candidate;
   }
   return `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
@@ -175,17 +170,14 @@ export function durableRateLimitStorage(env: Bindings): AuthRateLimitStorage {
  * The browser profile serves only session reads and native Google sign-in;
  * MCP/OAuth/API-key callers must use the default full profile.
  */
-export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
-  const quota = resolveSignupQuotaDefaults(env);
-  const baseURL = authBaseURL(env);
-  const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
-  const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
-  const googleEnabled = features(env).googleLogin && Boolean(googleClientId && googleClientSecret);
-  const oauthConfig = oauthProviderConfig(env);
-  const security = videoqAuthSecurity(oauthConfig);
+export type AuthPersistence = {
+  adapter: ReturnType<typeof drizzleAdapter>;
+  usernameExists: (candidate: string) => Promise<boolean>;
+};
 
-  return betterAuth({
-    database: drizzleAdapter(db, {
+export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
+  return createAuthWithPersistence(env, {
+    adapter: drizzleAdapter(db, {
       provider: "pg",
       transaction: true,
       schema: {
@@ -204,6 +196,24 @@ export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = 
         oauthClientAssertion: schema.oauthClientAssertion,
       },
     }),
+    usernameExists: async candidate => {
+      const rows = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, candidate)).limit(1);
+      return rows.length > 0;
+    },
+  }, profile, delivery);
+}
+
+export function createAuthWithPersistence(env: Bindings, persistence: AuthPersistence, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
+  const quota = resolveSignupQuotaDefaults(env);
+  const baseURL = authBaseURL(env);
+  const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
+  const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+  const googleEnabled = features(env).googleLogin && Boolean(googleClientId && googleClientSecret);
+  const oauthConfig = oauthProviderConfig(env);
+  const security = videoqAuthSecurity(oauthConfig);
+
+  return betterAuth({
+    database: persistence.adapter,
     secret: authSecret(env),
     baseURL,
     basePath: "/api/auth",
@@ -280,7 +290,7 @@ export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = 
                 typeof profile.name === "string" && profile.name.trim()
                   ? profile.name.trim()
                   : email;
-              const allocated = await allocateUniqueUsername(db, email || preferred);
+              const allocated = await allocateUniqueUsername(persistence.usernameExists, email || preferred);
               return {
                 name: preferred || allocated,
                 email,
@@ -439,7 +449,7 @@ export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = 
                 : undefined;
             if (!username) {
               username = await allocateUniqueUsername(
-                db,
+                persistence.usernameExists,
                 typeof user.email === "string" ? user.email : "user",
               );
             }

@@ -60,3 +60,9 @@ export function multipartPartSize(fileSize: number): number {
   const mib = 1024 * 1024;
   return Math.max(64 * mib, Math.ceil(fileSize / MAX_UPLOAD_PARTS / mib) * mib);
 }
+
+/** An HTTP opaque entity tag without its surrounding quotes. R2 Workers part
+ * ETags need not be MD5 hashes. Bound size and reject quotes/control bytes. */
+export function isValidUploadPartEtag(value:unknown):value is string {
+  return typeof value==='string'&&/^[\x21\x23-\x7e]{1,1024}$/.test(value);
+}

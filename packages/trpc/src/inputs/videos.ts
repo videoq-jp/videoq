@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_UPLOAD_PARTS, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "../video-upload";
+import { isValidUploadPartEtag, MAX_UPLOAD_PARTS, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "../video-upload";
 
 const id = z.number().int().positive();
 const title = z.string().trim().min(1).max(255);
@@ -30,7 +30,7 @@ export const videosInputSchemas = {
     id,
     parts: z.array(z.object({
       partNumber: z.number().int().min(1).max(MAX_UPLOAD_PARTS),
-      etag: z.string().regex(/^[a-fA-F0-9]{32}$/),
+      etag: z.string().refine(isValidUploadPartEtag,{message:"Invalid upload part ETag"}),
     })).min(1).max(MAX_UPLOAD_PARTS),
   }),
   "videos.abortUpload": z.object({ id }),

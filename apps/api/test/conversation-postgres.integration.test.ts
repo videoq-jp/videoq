@@ -1,3 +1,4 @@
+import {createChatLogWithDb} from '../src/repositories/chat-repository';
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
@@ -7,7 +8,6 @@ import { plainChatAnswer, chatAnswerText } from '@videoq/trpc/chat';
 import { openConversation, pruneConversations, ConversationBusyError, ConversationNotFoundError } from '../src/repositories/conversation-repository';
 import { listConversations, getConversation, deleteConversation, conversationScope } from '../src/features/chat/conversation-service';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
-import { createChatLogWithDb } from '../src/repositories/chat-repository';
 import { withDb } from '../src/db/pool';
 import { runRag, type RagResult } from '../src/lib/rag';
 import { chatCompletionResponse } from './helpers/chat-completion-response';
@@ -92,11 +92,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     });
     nativeCourseAuthorityFixture(() => env);
   afterAll(async () => { await pool.query('DELETE FROM video_course_members WHERE video_id IN (10,11,20); DELETE FROM videos'); });
-    const persist = (key = 'a') => async (answer: RagResult, db: Parameters<typeof createChatLogWithDb>[0]) => {
-      const result = await createChatLogWithDb(db, { userId: 'owner', courseId: 1, question: answer.queryText,
-        answer: answer.answer, retrievedContexts: [], isShared: true, ltiSubject: personal(key).ltiSubject });
-      return { chatLogId: result.id, feedback: result.feedback };
-    };
+    const persist = (key = 'a') => (answer: RagResult) => ({ userId: 'owner', courseId: 1, question: answer.queryText,
+      answer: answer.answer, retrievedContexts: [], isShared: true, ltiSubject: personal(key).ltiSubject });
 
     it('isolates two Moodle learners and native accounts without creating or impersonating users', async () => {
       const id = crypto.randomUUID(), chat = await openConversation(env, personal(), id);
@@ -377,11 +374,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     const id = crypto.randomUUID();
     const chat = await openConversation(env, scope, id);
     const result = await invoke(chat, 'Question with a course log', respond);
-    const log = await chat.commit(result, async (answer, db) => {
-      const saved = await createChatLogWithDb(db, { userId: 'alice', courseId: 1, question: answer.queryText,
-        answer: answer.answer, retrievedContexts: [], isShared: false });
-      return { chatLogId: saved.id, feedback: saved.feedback };
-    });
+    const log = await chat.commit(result, answer => ({ userId: 'alice', courseId: 1, question: answer.queryText,
+      answer: answer.answer, retrievedContexts: [], isShared: false }));
     await expect(deleteConversation(env, scope, id)).rejects.toThrow('Wait for the current answer');
     await chat.close();
     const detail = await getConversation(env, scope, { conversationId: id, limit: 50 });

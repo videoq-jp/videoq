@@ -1,59 +1,28 @@
-import { calculateJwkThumbprint, exportJWK, generateKeyPair, importJWK, SignJWT, type JWK } from "jose";
-import { eq, sql } from "drizzle-orm";
-import { z } from "zod";
-import type { Bindings } from "../../types/bindings";
-import { withDb, type Db } from "../../db/pool";
-import { ltiToolKeys } from "../../db/schema";
-import { decryptServerSecret, encryptServerSecret, hasSecretEncryptionKey } from "../../lib/secret-encryption";
-
-const publicKey = z.object({ kty: z.literal("RSA"), n: z.string().min(1), e: z.string().min(1) }).strict();
-const privateKey = publicKey.extend({ d: z.string().min(1), p: z.string().min(1), q: z.string().min(1),
-  dp: z.string().min(1), dq: z.string().min(1), qi: z.string().min(1) }).strict();
-const keyRing = z.object({ current: privateKey, previous: z.array(publicKey).max(3).default([]) }).strict();
-const purpose = "videoq:lti-tool-keys:v1";
-const identity = "default";
-type KeyRing = z.infer<typeof keyRing>;
-type KeyStore = Pick<Db, "select" | "insert" | "execute">;
-export type ToolKeyEnvironment = Pick<Bindings, "LTI_TOOL_KEYS"> & Partial<Pick<Bindings,
-  "USER_SECRET_ENCRYPTION_KEY" | "DATABASE_URL" | "DATABASE_POOL" | "HYPERDRIVE">>;
-
-function parseKeys(value: string): KeyRing {
-  try {
-    const ring = keyRing.parse(JSON.parse(value));
-    for (const key of [ring.current, ...ring.previous]) {
-      // A 2048-bit RSA modulus is at least 256 octets (base64url length 342).
-      if (key.n.length < 342) throw new Error();
-    }
-    return ring;
-  } catch { throw new Error("Invalid LTI tool signing-key configuration"); }
+import {calculateJwkThumbprint,importJWK,SignJWT,type JWK} from 'jose';
+import type {Bindings} from '../../types/bindings';
+import {hasSecretEncryptionKey} from '../../lib/secret-encryption';
+import {createToolKeyRepository} from '../../persistence/factory';
+import {parseKeys,parseStoredToolKeyRing,generateEncryptedToolKeyRing,type KeyRing,type ToolKeyEnvironment} from '../../shared/lti-tool-keyring';
+export type {ToolKeyEnvironment} from '../../shared/lti-tool-keyring';
+async function keys(env:ToolKeyEnvironment):Promise<KeyRing|null>{
+  if(env.LTI_TOOL_KEYS?.trim())return parseKeys(env.LTI_TOOL_KEYS);
+  if(!hasSecretEncryptionKey(env))return null;
+  try{
+    const encrypted=await (await createToolKeyRepository(env as Bindings)).readEncrypted();
+    return encrypted?await parseStoredToolKeyRing(env,encrypted):null;
+  }catch{throw new Error('LTI signing keys could not be loaded');}
 }
-
-async function managedKeys(env: ToolKeyEnvironment, store: KeyStore): Promise<KeyRing | null> {
-  const [stored] = await store.select({ encrypted: ltiToolKeys.encryptedKeyRing }).from(ltiToolKeys).where(eq(ltiToolKeys.id, identity));
-  return stored ? parseKeys(await decryptServerSecret(env as Bindings, stored.encrypted, purpose)) : null;
-}
-
-async function keys(env: ToolKeyEnvironment): Promise<KeyRing | null> {
-  if (env.LTI_TOOL_KEYS?.trim()) return parseKeys(env.LTI_TOOL_KEYS);
-  if (!hasSecretEncryptionKey(env)) return null;
-  try { return await withDb(env as Bindings, db => managedKeys(env, db)); }
-  catch { throw new Error("LTI signing keys could not be loaded"); }
-}
-
-/** Called only after authenticating/locking the owner, using that same transaction. */
-export async function ensureToolKeys(env: ToolKeyEnvironment, transaction: KeyStore): Promise<void> {
-  if (env.LTI_TOOL_KEYS?.trim()) { parseKeys(env.LTI_TOOL_KEYS); return; }
-  if (!hasSecretEncryptionKey(env)) throw new Error("LTI signing keys are unavailable");
-  try {
-    // One initialization across processes/replicas. A transaction-scoped lock
-    // cannot outlive rollback, and reusing the owner's connection avoids pool deadlocks.
-    await transaction.execute(sql`SELECT pg_advisory_xact_lock(998, 1)`);
-    if (await managedKeys(env, transaction)) return;
-    const generated = await generateKeyPair("RS256", { extractable: true, modulusLength: 2048 });
-    const ring = parseKeys(JSON.stringify({ current: await exportJWK(generated.privateKey), previous: [] }));
-    const encrypted = await encryptServerSecret(env as Bindings, JSON.stringify(ring), purpose);
-    await transaction.insert(ltiToolKeys).values({ id: identity, encryptedKeyRing: encrypted });
-  } catch { throw new Error("LTI signing-key initialization failed"); }
+/** Call only after authorizing the operation that needs managed signing keys. */
+export async function ensureManagedToolKeys(env:ToolKeyEnvironment):Promise<void>{
+  if(env.LTI_TOOL_KEYS?.trim()){parseKeys(env.LTI_TOOL_KEYS);return;}
+  if(!hasSecretEncryptionKey(env))throw new Error('LTI signing keys are unavailable');
+  try{
+    const repository=await createToolKeyRepository(env as Bindings);
+    const existing=await repository.readEncrypted();
+    if(existing){await parseStoredToolKeyRing(env,existing);return;}
+    const stored=await repository.initializeEncrypted(await generateEncryptedToolKeyRing(env));
+    await parseStoredToolKeyRing(env,stored);
+  }catch{throw new Error('LTI signing-key initialization failed');}
 }
 async function publicJwk(key: JWK) {
   // Select public components explicitly; never rely on a serializer stripping secrets.

@@ -1,0 +1,1 @@
+ALTER TABLE `scene_index_tasks` ADD `verified_at` text;

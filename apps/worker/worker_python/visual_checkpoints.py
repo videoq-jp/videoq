@@ -5,6 +5,7 @@ import math
 from uuid import uuid4
 
 from worker_python.db import db_connection
+from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.pipeline.visual_chunks import CHUNK_SECONDS, MAX_DURATION_SECONDS
 
 
@@ -23,7 +24,13 @@ def _run(row):
                      row['chunk_count'], row['status']) if row else None
 
 
+def _cloud_run(row):
+    return VisualRun(row["videoId"], row["runId"], row["fileKey"], row["durationMs"], row["chunkCount"], row["status"]) if row else None
+
+
 def load_run(video_id: int, run_id: str | None = None) -> VisualRun | None:
+    if uses_internal_persistence():
+        return _cloud_run(call_internal_api("visual/load", {"videoId":video_id, **({"runId":run_id} if run_id else {})}).get("run"))
     with db_connection() as conn:
         return _run(conn.execute("""
             SELECT r.* FROM video_visual_runs r JOIN videos v ON v.id = r.video_id
@@ -37,6 +44,8 @@ def initialize(video_id: int, file_key: str, duration: float) -> VisualRun | Non
         raise ValueError("Visual inspection supports videos up to 10 hours")
     duration_ms = math.ceil(duration * 1000)
     count = math.ceil(duration_ms / (CHUNK_SECONDS * 1000))
+    if uses_internal_persistence():
+        return _cloud_run(call_internal_api("visual/initialize", {"videoId":video_id,"fileKey":file_key,"durationMs":duration_ms}).get("run"))
     with db_connection() as conn:
         row = conn.execute("SELECT file, source_type FROM videos WHERE id = %s FOR UPDATE", (video_id,)).fetchone()
         if not row or row['file'] != file_key or row['source_type'] != 'uploaded':
@@ -63,6 +72,8 @@ def lock_current(conn, run: VisualRun) -> bool:
 
 
 def pending_chunks(run: VisualRun) -> list[int]:
+    if uses_internal_persistence():
+        return call_internal_api("visual/pending", {"videoId":run.video_id,"runId":run.run_id})["indices"]
     with db_connection() as conn:
         rows = conn.execute("""
             SELECT chunk_index FROM video_visual_chunks
@@ -72,6 +83,9 @@ def pending_chunks(run: VisualRun) -> list[int]:
 
 
 def chunk_complete(run: VisualRun, index: int) -> bool:
+    if uses_internal_persistence():
+        rows = call_internal_api("visual/chunks", {"videoId":run.video_id,"runId":run.run_id}).get("chunks")
+        return bool(rows and any(row["index"]==index and row["frameCount"] is not None for row in rows))
     with db_connection() as conn:
         row = conn.execute("SELECT frame_count FROM video_visual_chunks WHERE run_id = %s AND chunk_index = %s",
                            (run.run_id, index)).fetchone()
@@ -79,6 +93,9 @@ def chunk_complete(run: VisualRun, index: int) -> bool:
 
 
 def record_failure(run: VisualRun, error: str, index: int | None = None) -> None:
+    if uses_internal_persistence():
+        call_internal_api("visual/failure", {"videoId":run.video_id,"runId":run.run_id,**({"index":index} if index is not None else {})})
+        return
     with db_connection() as conn:
         if not lock_current(conn, run):
             return

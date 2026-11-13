@@ -11,6 +11,7 @@ import { corsMiddleware } from "./middleware/cors";
 import { securityHeaders } from "./middleware/security-headers";
 import { onError } from "./middleware/error-handler";
 import { toErrorBody } from "./shared/errors";
+import { workerInternalRoutes } from "./features/worker-internal/routes";
 import { healthRoutes } from "./features/health/routes";
 import { videoRoutes } from "./features/videos/routes";
 import { chatRoutes } from "./features/chat/routes";
@@ -21,8 +22,8 @@ import { ltiRoutes } from "./features/lti/routes";
 import { lmsRoutes } from "./features/lms/routes";
 import { mediaRoutes } from "./features/media/routes";
 import { billingRoutes } from "./features/billing/routes";
-import { withDb } from "./db/pool";
-import { authBaseURL, createAuth } from "./lib/auth";
+import { withAuth } from "./persistence/auth";
+import { authBaseURL } from "./lib/auth";
 import { createTrpcContext } from "./trpc/context";
 import { appRouter } from "@videoq/trpc/router";
 import {
@@ -59,6 +60,7 @@ export function createApp() {
   app.onError(onError);
 
   app.route("/", healthRoutes);
+  app.route("/internal/worker", workerInternalRoutes);
 
   // Better Auth handler (sessions, email/password, API keys, OAuth AS).
   app.on(["POST", "GET"], "/api/auth/*", async (c) => {
@@ -68,21 +70,15 @@ export function createApp() {
       "/api/auth/request-password-reset", "/api/auth/send-verification-email", "/api/auth/verify-email",
       "/api/auth/change-email", "/api/auth/update-user/email",
     ].includes(path)) return c.json(toErrorBody("FEATURE_DISABLED", "This feature is unavailable in this deployment."), 404);
-    return withDb(c.env, async (db) => {
-      const browserOnly = [
-        "/api/auth/get-session",
-        "/api/auth/sign-in/social",
-        "/api/auth/callback/google",
-      ].includes(new URL(c.req.url).pathname);
-      const auth = createAuth(c.env, db, browserOnly ? "browser" : "full");
-      return auth.handler(c.req.raw);
-    });
+    const browserOnly = [
+      "/api/auth/get-session", "/api/auth/sign-in/social", "/api/auth/callback/google",
+    ].includes(new URL(c.req.url).pathname);
+    return withAuth(c.env, auth => auth.handler(c.req.raw), browserOnly ? "browser" : "full");
   });
 
   // OAuth / OIDC discovery at well-known roots (MCP clients expect these).
   const authorizationServerMetadata = async (c: Context<AppEnv>) => {
-    return withDb(c.env, async (db) => {
-      const auth = createAuth(c.env, db);
+    return withAuth(c.env, async auth => {
       // Plugin typing does not always surface oauth metadata helpers on Auth.
       return oauthProviderAuthServerMetadata(auth as never)(c.req.raw);
     });
@@ -93,8 +89,7 @@ export function createApp() {
   app.get("/.well-known/oauth-authorization-server/mcp", authorizationServerMetadata);
   app.get("/.well-known/oauth-authorization-server/api/mcp", authorizationServerMetadata);
   app.get("/.well-known/openid-configuration", async (c) => {
-    return withDb(c.env, async (db) => {
-      const auth = createAuth(c.env, db);
+    return withAuth(c.env, async auth => {
       return oauthProviderOpenIdConfigMetadata(auth as never)(c.req.raw);
     });
   });

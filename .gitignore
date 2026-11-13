@@ -36,3 +36,7 @@ test-results
 *.a
 .cutover-secrets/
 runtime-plan.json
+
+# Private migration archives include authentication data.
+*.videoq-export.ndjson
+.videoq-d1-export-*/
