@@ -126,6 +126,18 @@ run "credential_and_control_boundaries" {
   }
 }
 
+run "preserve_cd_owned_operator_artifact" {
+  command = plan
+  variables {
+    operator_zip = "tests/boundaries.tftest.hcl"
+  }
+  assert {
+    condition = (aws_s3_object.operator.source == "versions.tf" &&
+    aws_s3_object.operator.source_hash == filesha256("versions.tf"))
+    error_message = "Infrastructure changes must not replace the CD-owned operator artifact after bootstrap."
+  }
+}
+
 run "private_backup_archive_boundaries" {
   command = apply
   variables {
