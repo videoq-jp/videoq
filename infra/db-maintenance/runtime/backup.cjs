@@ -20,7 +20,14 @@ async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
       {stdio:['ignore','pipe','pipe'],maxBuffer:8*1024*1024,env:{...env,VIDEOQ_BACKUP_HANDOFF:directory??'',OPERATION:'audit',
         GITHUB_REF:'refs/heads/main',GITHUB_REPOSITORY:'videoq-jp/videoq'}});
     report = JSON.parse(await fs.readFile('operations-report.json','utf8'));
-    if (report.status !== 'ok' || report.backup_retention !== (context ? 'staged' : 'disabled')) throw new Error('PRODUCTION_VERIFICATION_FAILED');
+    if (report.status !== 'ok' || report.backup_retention !== (context ? 'staged' : 'disabled')) {
+      const stages = new Set(['database-connect','read-only-snapshot','logical-backup','isolated-restore','restore-server-readiness','restore-server-oom','restore-server-exited','restore-vector-extension','restore-archive-list','restore-list-file','restore-archive-apply','restore-loopback-port','restore-client-connect','row-count-and-constraint-verification','verified-backup-handoff']);
+      for (const [category] of archive.RESTORE_FAILURE_CATEGORIES) stages.add('restore-archive-apply-' + category);
+      const match = Array.isArray(report.details) && report.details.length === 1 && typeof report.details[0] === 'string'
+        ? /^- 失敗した段階: `([a-z-]+)`。DB接続情報・レコード・バックアップは出力していません。$/.exec(report.details[0]) : null;
+      const stage = match && stages.has(match[1]) ? match[1].replaceAll('-', '_').toUpperCase() : null;
+      throw new Error(stage ? 'BACKUP_VERIFICATION_FAILED_' + stage : 'PRODUCTION_VERIFICATION_FAILED');
+    }
     if ((report.d1_archive??'not_requested') !== (exportD1?'staged':'not_requested')) throw new Error('D1_BACKUP_EXPORT_NOT_CONFIRMED');
     if (context) {
       const retained=retain?await retain(directory,context,{requireD1Export:exportD1}):

@@ -238,3 +238,41 @@ test('D1 source mutation before handoff or archive upload failure cannot publish
  await assert.rejects(stageVerifiedBackup({...options,destination:changed,image,schemas:BACKUP_SCHEMAS,d1Export:proof}),/D1_BACKUP_EXPORT_CHANGED/);
  await assert.rejects(readFile(join(changed,'verified-backup-input.json')),{code:'ENOENT'});
 });
+
+test('restore failures expose fixed categories without SQL, rows, names or credentials', async()=>{
+ const {restoreArchiveFailureStage,RESTORE_FAILURE_CATEGORIES}=await import('./backup-archive.mjs');
+ const examples=[
+  ['missing-role','ERROR: role "synthetic-secret" does not exist'],
+  ['missing-extension','ERROR: extension "synthetic-secret" is not available'],
+  ['missing-function','ERROR: function synthetic_secret(text) does not exist'],
+  ['missing-type','ERROR: type "synthetic-secret" does not exist'],
+  ['missing-schema','ERROR: schema "synthetic-secret" does not exist'],
+  ['missing-relation','ERROR: relation "synthetic-secret" does not exist'],
+  ['missing-collation','ERROR: collation "synthetic-secret" does not exist'],
+  ['missing-access-method','ERROR: operator class "synthetic-secret" does not exist'],
+  ['duplicate-object','ERROR: schema "synthetic-secret" already exists'],
+  ['permission-denied','ERROR: permission denied for table synthetic_secret'],
+  ['foreign-key','ERROR: insert violates foreign key constraint "synthetic-secret"'],
+  ['unique-key','ERROR: duplicate key value violates unique constraint "synthetic-secret"'],
+  ['unsupported-setting','ERROR: unrecognized configuration parameter "synthetic-secret"'],
+  ['disk-full','No space left on device: synthetic-secret'],
+  ['out-of-memory','ERROR: out of memory: synthetic-secret'],
+ ];
+ assert.ok(examples.every(([name])=>RESTORE_FAILURE_CATEGORIES.some(([category])=>category===name)));
+ for(const [category,stderr] of examples) assert.equal(restoreArchiveFailureStage({stderr}), 'restore-archive-apply-'+category);
+ for(const error of [null,{}, {stderr:5}, {stderr:'postgresql://synthetic-secret'}, {message:'ERROR: role "synthetic-secret" does not exist'}]) assert.equal(restoreArchiveFailureStage(error),'restore-archive-apply');
+});
+
+test('SQLSTATE and client failure diagnostics never expose database log contents',async()=>{
+ const {restoreArchiveFailureStage,RESTORE_SQLSTATE_CATEGORIES}=await import('./backup-archive.mjs');
+ for(const [code,category] of Object.entries(RESTORE_SQLSTATE_CATEGORIES)) {
+  assert.equal(restoreArchiveFailureStage({},'2026-11-14 UTC [42] ERROR:  '+code+': synthetic-secret\nSTATEMENT: synthetic-secret'), 'restore-archive-apply-'+category);
+ }
+ assert.equal(restoreArchiveFailureStage({stderr:Buffer.from('ERROR: role "synthetic-secret" does not exist')}),'restore-archive-apply-missing-role');
+ assert.equal(restoreArchiveFailureStage({code:'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',stderr:'synthetic-secret'}),'restore-archive-apply-output-limit');
+ for(const stderr of ['pg_restore: error: could not open TOC file "synthetic-secret"','pg_restore: error: could not open input file "synthetic-secret"','OCI runtime exec failed: synthetic-secret']) {
+  assert.ok(!restoreArchiveFailureStage({stderr}).includes('synthetic-secret'));
+  assert.notEqual(restoreArchiveFailureStage({stderr}),'restore-archive-apply');
+ }
+ assert.equal(restoreArchiveFailureStage({},'ERROR:  ZZZZZ: synthetic-secret'),'restore-archive-apply');
+});

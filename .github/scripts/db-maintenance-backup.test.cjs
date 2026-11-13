@@ -65,3 +65,22 @@ test('requested D1 export must be staged and retained; a dump-only result cannot
  await runBackup({env:config,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({...report('staged'),d1_archive:'staged'})),retain:async(_directory,_context,options)=>{assert.equal(options.requireD1Export,true);return true;}});
  const result=JSON.parse(await fs.readFile('operations-report.json','utf8'));assert.equal(result.d1_archive,'retained');
 });
+
+test('exposes only allowlisted failure stages and never source errors or details',async t=>{
+ await fixture(t);
+ for (const stage of ['database-connect','read-only-snapshot','logical-backup','isolated-restore','restore-server-readiness','restore-server-oom','restore-server-exited','restore-vector-extension','restore-archive-list','restore-list-file','restore-archive-apply','restore-loopback-port','restore-client-connect','row-count-and-constraint-verification','verified-backup-handoff','secret-database-url']) {
+  const failed={status:'error',details:['- 失敗した段階: `'+stage+'`。DB接続情報・レコード・バックアップは出力していません。']};
+  await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify(failed)),retain:()=>assert.fail('No upload after failure')}),error=>{
+   assert.equal(error.message,stage==='secret-database-url'?'PRODUCTION_VERIFICATION_FAILED':'BACKUP_VERIFICATION_FAILED_'+stage.replaceAll('-','_').toUpperCase());return true;
+  });
+  assert.ok(!JSON.stringify(JSON.parse(await fs.readFile('operations-report.json','utf8'))).includes(stage));
+ }
+ for (const details of [null,{},['postgresql://synthetic-secret'],['- 失敗した段階: `logical-backup`。DB接続情報・レコード・バックアップは出力していません。','synthetic-secret']]) {
+  await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details}))}),/PRODUCTION_VERIFICATION_FAILED/);
+ }
+});
+
+test('propagates an allowlisted restore category without its original stderr',async t=>{
+ await fixture(t);
+ await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details:['- 失敗した段階: `restore-archive-apply-missing-role`。DB接続情報・レコード・バックアップは出力していません。']}))}),/BACKUP_VERIFICATION_FAILED_RESTORE_ARCHIVE_APPLY_MISSING_ROLE/);
+});

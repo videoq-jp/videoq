@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, backupD1ExportRequested, stageVerifiedBackup, BACKUP_SCHEMAS } from './backup-archive.mjs';
+import { backupArchiveContext, backupD1ExportRequested, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureStage } from './backup-archive.mjs';
 import {exportRestoredBackup} from './backup-d1-run.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
@@ -77,25 +77,32 @@ try {
   await fs.chmod(path.join(temporary, 'database.dump'), 0o600);
   stage = 'isolated-restore';
   await docker(['run', '--detach', '--name', name, '--label', 'videoq.operation=restore-test',
-    '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', '-v', temporary + ':/backup:ro', IMAGE],
+    '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', '-v', temporary + ':/backup:ro', IMAGE, 'postgres', '-c', 'log_error_verbosity=verbose'],
   { env: { ...process.env, POSTGRES_PASSWORD: password } });
   started = true;
+  stage = 'restore-server-readiness';
   for (let attempt = 0; attempt < 60; attempt++) {
     try { await docker(['exec', name, 'pg_isready', '-U', 'postgres']); break; }
     catch { if (attempt === 59) throw new Error('Restore server unavailable'); await delay(1000); }
   }
+  stage = 'restore-vector-extension';
   await docker(['exec', name, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', 'CREATE EXTENSION vector;']);
+  stage = 'restore-archive-list';
   const { stdout: toc } = await docker(['exec', name, 'pg_restore', '--list', '/backup/database.dump']);
   // The default public schema already exists and hosts the vector extension.
   const filtered = toc.split('\n').filter(line => !/^\d+;\s+\d+\s+\d+\s+SCHEMA - public\s/.test(line)).join('\n');
+  stage = 'restore-list-file';
   await fs.writeFile(path.join(temporary, 'restore.list'), filtered, { mode: 0o600 });
+  stage = 'restore-archive-apply';
   await docker(['exec', name, 'pg_restore', '--exit-on-error', '--no-owner', '--no-acl',
     '--use-list=/backup/restore.list', '-U', 'postgres', '--dbname=postgres', '/backup/database.dump']);
+  stage = 'restore-loopback-port';
   const { stdout: ports } = await docker(['port', name, '5432/tcp']);
   const port = /^127\.0\.0\.1:(\d+)\s*$/.exec(ports)?.[1];
   if (!port) throw new Error('Restore database is not bound exclusively to loopback');
   restored = new Client({ host: '127.0.0.1', port: Number(port), user: 'postgres', database: 'postgres', password,
     connectionTimeoutMillis: 15_000, statement_timeout: 300_000 });
+  stage = 'restore-client-connect';
   await restored.connect();
   stage = 'row-count-and-constraint-verification';
   const actual = await inventory(restored);
@@ -115,9 +122,25 @@ try {
       '- この検査はPostgreSQLの論理復元を対象とし、NeonのPITRやR2の復元は対象に含みません。',
       staged ? '- 復元検証済みdumpを親AWSジョブへ一時受け渡ししました。S3への永続保存は親ジョブの結果で確認してください。' : '- 永続保存は無効です。検証用dumpは終了時に削除され、保全コピーは残りません。'] };
 } catch (error) {
+  if (stage === 'restore-archive-apply') {
+    let serverLog = '';
+    try {
+      const log = await docker(['logs', '--tail', '200', name]);
+      serverLog = log.stdout + log.stderr;
+    } catch { /* Never print database logs or fall back to raw exception text. */ }
+    stage = restoreArchiveFailureStage(error, serverLog);
+  }
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {
     console.error(error.stderr || error.message);
+  }
+  if (stage === 'restore-server-readiness' && started) {
+    try {
+      const { stdout } = await docker(['inspect', '--format', '{{json .State}}', name]);
+      const state = JSON.parse(stdout);
+      if (state.OOMKilled === true) stage = 'restore-server-oom';
+      else if (state.Running === false) stage = 'restore-server-exited';
+    } catch { /* Keep the fixed readiness stage; never log Docker state/errors. */ }
   }
   report.details = ['- 失敗した段階: `' + stage + '`。DB接続情報・レコード・バックアップは出力していません。'];
 } finally {

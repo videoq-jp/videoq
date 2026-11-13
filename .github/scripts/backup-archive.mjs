@@ -174,3 +174,50 @@ export async function retainStagedBackup(directory,context,run = execute,{requir
 
 // Shared descriptor-based inspection for the private, version-pinned downloader.
 export {privateFile as inspectPrivateBackupFile};
+
+// Return fixed categories only. PostgreSQL stderr may contain COPY rows, SQL and
+// secrets: never include any matched text or the original error in the result.
+export const RESTORE_FAILURE_CATEGORIES = Object.freeze([
+  ['toc-read', /could not open (TOC|toc) file/i],
+  ['input-read', /could not (open|read from) input file/i],
+  ['archive-format', /unsupported version .*file header|not .*valid archive|unrecognized data block|could not (uncompress|decompress)/i],
+  ['docker-exec', /OCI runtime exec failed|container .* is not running|no such container/i],
+  ['missing-object', /ERROR:\s+object [^\n]* does not exist/i],
+  ['syntax-error', /ERROR:\s+syntax error/i],
+  ['invalid-value', /ERROR:\s+(invalid|out of range)/i],
+  ['object-state', /ERROR:[^\n]*(cannot|must|not yet)/i],
+  ['output-limit', /maxBuffer length exceeded/],
+  ['missing-role', /ERROR:\s+role [^\n]* does not exist/i],
+  ['missing-extension', /ERROR:\s+extension [^\n]* (is not available|does not exist)/i],
+  ['missing-function', /ERROR:\s+function [^\n]* does not exist/i],
+  ['missing-type', /ERROR:\s+type [^\n]* does not exist/i],
+  ['missing-schema', /ERROR:\s+schema [^\n]* does not exist/i],
+  ['missing-relation', /ERROR:\s+relation [^\n]* does not exist/i],
+  ['missing-collation', /ERROR:\s+collation [^\n]* does not exist/i],
+  ['missing-access-method', /ERROR:\s+(operator class|access method) [^\n]* does not exist/i],
+  ['duplicate-object', /ERROR:[^\n]* already exists/i],
+  ['permission-denied', /permission denied/i],
+  ['foreign-key', /ERROR:[^\n]* violates foreign key constraint/i],
+  ['unique-key', /ERROR:[^\n]* duplicate key value violates unique constraint/i],
+  ['unsupported-setting', /ERROR:\s+unrecognized configuration parameter/i],
+  ['disk-full', /no space left on device/i],
+  ['out-of-memory', /out of memory|could not (allocate|resize shared memory)/i],
+  ['backend-other', /could not execute query/i],
+]);
+export const RESTORE_SQLSTATE_CATEGORIES = Object.freeze({
+ '42704':'missing-object','42P01':'missing-relation','42883':'missing-function',
+ '3F000':'missing-schema','42501':'permission-denied','23505':'unique-key',
+ '23503':'foreign-key','53100':'disk-full','53200':'out-of-memory',
+ '42601':'syntax-error','22023':'invalid-value','22003':'invalid-value',
+ '22P02':'invalid-value','55000':'object-state','0A000':'object-state',
+ 'XX000':'backend-other',
+});
+export function restoreArchiveFailureStage(error, serverLog='') {
+  if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return 'restore-archive-apply-output-limit';
+  const sqlstate = typeof serverLog === 'string' ? /(?:ERROR|FATAL|PANIC):\s+([A-Z0-9]{5}):/.exec(serverLog.slice(0,4_000_000))?.[1] : null;
+  if (sqlstate && RESTORE_SQLSTATE_CATEGORIES[sqlstate]) return 'restore-archive-apply-' + RESTORE_SQLSTATE_CATEGORIES[sqlstate];
+  const stderr = typeof error?.stderr === 'string' ? error.stderr.slice(0,4_000_000)
+    : Buffer.isBuffer(error?.stderr) ? error.stderr.subarray(0,4_000_000).toString('utf8') : '';
+  const category = RESTORE_FAILURE_CATEGORIES.find(([,pattern]) => pattern.test(stderr))?.[0];
+  return 'restore-archive-apply' + (category ? '-' + category : '');
+}
