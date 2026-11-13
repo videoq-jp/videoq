@@ -21,3 +21,8 @@ export interface TagRepository {
  create(userId: string,name: string,color: string): Promise<TagListItem>;
  delete(tagId: number,userId: string): Promise<{notFound: true}|{ok: true}>;
 }
+
+/** Both dialects normalize only the per-owner tag-name unique constraint. */
+export class TagNameConflictError extends Error {
+  constructor() { super("A tag with this name already exists."); this.name = "TagNameConflictError"; }
+}

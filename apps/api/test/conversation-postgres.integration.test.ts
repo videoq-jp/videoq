@@ -1,4 +1,4 @@
-import {createChatLogWithDb} from '../src/repositories/chat-repository';
+import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';

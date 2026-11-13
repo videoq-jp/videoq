@@ -4,7 +4,7 @@ import { sceneEmbeddings,mcpIdempotencyRecords,videos } from "../../db/schema";
 import { insertJobTask,insertStorageCleanupTask } from "./external-task-repository";
 import { buildJobMessage,JOB_REINDEX_VIDEO_TRANSCRIPT } from "../../lib/job-message";
 import { parseReservedBytesFromFileKey } from "../../lib/upload";
-import { refundUnconfirmedUpload } from "../../repositories/quota-repository";
+import { refundUnconfirmedUpload } from "./storage-quota";
 import { readVideoDetail,videoDetailSelect } from "./video-read-repository";
 import type { Bindings } from "../../types/bindings";
 import { validateVideoDeletionOptions,type VideoMutationRepository } from "../contracts/video-mutation-repository";

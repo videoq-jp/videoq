@@ -4,8 +4,6 @@ import type { ExternalTaskLease } from "../persistence/contracts/external-task-r
 import { createExternalTaskRepository } from "../persistence/factory";
 
 export type { ExternalTaskLease, ClaimedExternalTask, PersistedExternalTask, ExternalTaskHealth } from "../persistence/contracts/external-task-repository";
-// Existing PostgreSQL transaction callers keep these primitives during migration.
-export { insertJobTask, insertStorageCleanupTask, lockExternalTaskLease, EXTERNAL_TASK_LEASE_MS } from "../persistence/postgres/external-task-repository";
 
 export async function createJobTask(env: Bindings, params: {message: JobMessage;dedupeKey?: string}) {
   return (await createExternalTaskRepository(env)).createJob(params);
@@ -28,3 +26,5 @@ export async function getExternalTaskHealth(env: Bindings) {
 export async function pruneDeliveryHistory(env: Bindings, retentionDays=30,limit=500) {
   return (await createExternalTaskRepository(env)).pruneHistory(retentionDays,limit);
 }
+
+export {EXTERNAL_TASK_LEASE_MS} from "../persistence/contracts/external-task-repository";

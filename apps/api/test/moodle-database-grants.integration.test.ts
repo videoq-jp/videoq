@@ -14,7 +14,7 @@ import { resolvedLtiConfig } from '../src/features/lti/registrations';
 import { putCredential, readCredential } from '../src/features/lti/store';
 import { toolJwks } from '../src/features/lti/tool-keys';
 import { withDb } from '../src/db/pool';
-import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import { privacySubject } from '../src/features/lms/privacy-data';
 import { courseReport } from '../src/features/lti/course-reports';
 import { issueMoodlePairing } from '../src/features/lms/pairing';

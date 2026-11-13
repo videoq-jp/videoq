@@ -1,3 +1,5 @@
+import {isUniqueViolation} from "../../db/errors";
+import {TagNameConflictError} from "../contracts/tag-repository";
 import { mapVideoListRow } from "../../repositories/video-mapping";
 import { INVALID_COLOR_MESSAGE, EMPTY_NAME_MESSAGE, normalizeTagName, isValidTagColor } from "../../shared/tag-policy";
 import type { TagListItem,TagDetail,TagRepository } from "../contracts/tag-repository";
@@ -191,6 +193,11 @@ export async function deleteTag(
 
 export function createPostgresTagRepository(env: Bindings): TagRepository {
  return {listPage: (userId,limit,offset)=>listTagsPage(env,userId,limit,offset),
- getDetail: (tagId,userId)=>getTagDetail(env,tagId,userId), update: (tagId,userId,fields)=>updateTag(env,tagId,userId,fields),
- create: (userId,name,color)=>createTag(env,userId,name,color),delete: (tagId,userId)=>deleteTag(env,tagId,userId)};
+ getDetail: (tagId,userId)=>getTagDetail(env,tagId,userId), update: (tagId,userId,fields)=>updateTag(env,tagId,userId,fields).catch(normalizeTagNameConflict),
+ create: (userId,name,color)=>createTag(env,userId,name,color).catch(normalizeTagNameConflict),delete: (tagId,userId)=>deleteTag(env,tagId,userId)};
+}
+
+function normalizeTagNameConflict(error:unknown):never {
+ if(isUniqueViolation(error,"tags_user_id_name_uniq"))throw new TagNameConflictError();
+ throw error;
 }

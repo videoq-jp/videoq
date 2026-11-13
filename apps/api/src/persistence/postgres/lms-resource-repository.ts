@@ -9,7 +9,7 @@ import { activeLmsOwner } from "./lms-owner-policy";
 import { LmsSyncError, type ResourceManifest } from "../../features/lms/resource";
 import type { Bindings } from "../../types/bindings";
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from '../../lib/job-message';
-import { insertJobTask } from '../../repositories/external-task-repository';
+import { insertJobTask } from './external-task-repository';
 
 import type {LmsGrant,OwnedLmsGrant,LmsResourceReadRepository,LmsResourceSyncRepository} from '../contracts/lms-resource-repository';
 import {normalizeLmsResource,normalizeLmsResourceData} from '../../shared/lms-resource-values';

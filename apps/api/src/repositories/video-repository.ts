@@ -1,7 +1,6 @@
 import type { VideoDetail, VideoListItem, VideoListCriteria, VideoStatusCounts, StaleUploadingVideo } from "../persistence/contracts/video-read-repository";
 export type { VideoDetail, VideoListItem, VideoListCriteria, VideoStatusCounts, StaleUploadingVideo } from "../persistence/contracts/video-read-repository";
 export { mapVideoListRow, mapVideoDetailRow } from "./video-mapping";
-export { videoTagsJson, visualProcessing } from "../persistence/postgres/video-read-repository";
 import { createVideoMutationRepository, createVideoReadRepository, createVideoUploadRepository } from "../persistence/factory";
 import type { OutboxedVideoJob, PendingVideoReservation, YoutubeVideoCreation } from "../persistence/contracts/video-upload-repository";
 export type { OutboxedVideoJob, PendingVideoReservation } from "../persistence/contracts/video-upload-repository";

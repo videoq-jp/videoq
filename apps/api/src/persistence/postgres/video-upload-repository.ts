@@ -1,9 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { users, videos } from "../../db/schema";
-import { insertJobTask } from "../../repositories/external-task-repository";
+import { insertJobTask } from "./external-task-repository";
 import { findIdempotentResource, recordIdempotentResource, type CreationIdempotency } from "./creation-idempotency";
-import { reserveUploadInTransaction } from "../../repositories/quota-repository";
+import { reserveUploadInTransaction } from "./storage-quota";
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
 import type { Bindings } from "../../types/bindings";
 import type { OutboxedVideoJob, PendingVideoReservation, VideoUploadRepository } from "../contracts/video-upload-repository";

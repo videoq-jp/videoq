@@ -1,3 +1,4 @@
+import {TagNameConflictError} from "../../../src/persistence/contracts/tag-repository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TAG_COLORS } from "@videoq/trpc";
 import type { TagRepository } from "../../../src/persistence/contracts/tag-repository";
@@ -37,6 +38,16 @@ export function tagRepositoryContract(backend: string, createFixture: () => Prom
       expect(first).toMatchObject({ count: 2, results: [{ name: "Alpha", video_count: 0 }] });
       expect(await f.repository.listPage("owner", 1, 10)).toEqual({ count: 2, results: [] });
       expect(await f.repository.getDetail(zeta.id, "owner")).toMatchObject({ video_count: 1, videos: [{ id: videoId, title: "Related", file: "/api/media/related.mp4" }] });
+    });
+    it("normalizes duplicate names within an owner without changing either tag", async()=>{
+      const repo=current().repository;
+      const first=await repo.create("owner","Duplicate",TAG_COLORS[0]);
+      const second=await repo.create("owner","Other",TAG_COLORS[1]);
+      await expect(repo.create("owner","Duplicate",TAG_COLORS[1])).rejects.toBeInstanceOf(TagNameConflictError);
+      await expect(repo.update(second.id,"owner",{name:"Duplicate"})).rejects.toBeInstanceOf(TagNameConflictError);
+      expect((await repo.getDetail(first.id,"owner"))?.color).toBe(TAG_COLORS[0]);
+      expect((await repo.getDetail(second.id,"owner"))?.name).toBe("Other");
+      expect(await repo.create("other","Duplicate",TAG_COLORS[0])).toMatchObject({name:"Duplicate"});
     });
     it("deletes owned tags with cascading links", async () => {
       const f = current(); const tag = await f.repository.create("owner", "Tag", TAG_COLORS[0]);

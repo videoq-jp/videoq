@@ -1,3 +1,4 @@
+import {TagNameConflictError} from "../contracts/tag-repository";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { tags, videos, videoTags } from "../../db/schema/sqlite";
@@ -13,7 +14,7 @@ const projection = { id: tags.id, name: tags.name, color: tags.color, created_at
 const normalize = (row: TagListItem) => ({ ...row, created_at: toUtcIso(row.created_at) });
 export function createD1TagRepository(database: D1Database, env: Bindings): TagRepository {
   const db = createD1Connection(database);
-  return {
+  const repository:TagRepository = {
     async listPage(userId, limit, offset) {
       const [totals, rows] = await db.batch([
         db.select({ count: count() }).from(tags).where(eq(tags.userId, userId)),
@@ -54,4 +55,17 @@ export function createD1TagRepository(database: D1Database, env: Bindings): TagR
       return rows.length ? { ok: true } : { notFound: true };
     },
   };
+  return {...repository,
+    create:(...args)=>repository.create(...args).catch(normalizeTagNameConflict),
+    update:(...args)=>repository.update(...args).catch(normalizeTagNameConflict),
+  };
+}
+
+function normalizeTagNameConflict(error:unknown):never {
+ let cause=error;
+ for(let depth=0;depth<4&&cause instanceof Error;depth++){
+  if(/UNIQUE constraint failed: tags\.(?:name, tags\.user_id|user_id, tags\.name)(?:$|:)/.test(cause.message))throw new TagNameConflictError();
+  cause=cause.cause;
+ }
+ throw error;
 }

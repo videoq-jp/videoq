@@ -9,7 +9,7 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
   tagRepositoryContract("postgres", async () => {
     const { pool, dispose } = await isolatedPostgres(databaseUrl!);
     try {
-      await pool.query(`CREATE TABLE tags(id bigserial PRIMARY KEY,name text NOT NULL,color text NOT NULL,created_at timestamptz NOT NULL,user_id text NOT NULL);
+      await pool.query(`CREATE TABLE tags(id bigserial PRIMARY KEY,name text NOT NULL,color text NOT NULL,created_at timestamptz NOT NULL,user_id text NOT NULL,CONSTRAINT tags_user_id_name_uniq UNIQUE(name,user_id));
         CREATE TABLE videos(id bigserial PRIMARY KEY,file text NOT NULL,title text NOT NULL,description text NOT NULL DEFAULT '',uploaded_at timestamptz NOT NULL DEFAULT now(),
           status text NOT NULL DEFAULT 'completed',source_type text NOT NULL DEFAULT 'uploaded',source_url text NOT NULL DEFAULT '',youtube_video_id text NOT NULL DEFAULT '');
         CREATE TABLE video_tags(id bigserial PRIMARY KEY,tag_id bigint REFERENCES tags(id) ON DELETE CASCADE,video_id bigint REFERENCES videos(id),added_at timestamptz NOT NULL DEFAULT now());`);

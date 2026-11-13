@@ -2,8 +2,6 @@ import type {Bindings} from "../types/bindings";
 import type {ChatContextInput,CreateChatLogInput,ChatFeedbackInput,ChatHistoryExportCursor,ChatHistoryExportRow} from "../persistence/contracts/chat-repository";
 import {createChatRepository} from "../persistence/factory";
 export type {ChatLogItem,GroupChatContext,ChatHistoryExportRow,ChatAnalytics} from "../persistence/contracts/chat-repository";
-// Compatibility for PostgreSQL conversation transactions not yet migrated.
-export {createChatLogWithDb} from "../persistence/postgres/chat-repository";
 export const getCourseWithMembers=async(env:Bindings,params:ChatContextInput)=>(await createChatRepository(env)).context(params);
 export const createChatLog=async(env:Bindings,params:CreateChatLogInput)=>(await createChatRepository(env)).create(params);
 export const deleteCourseChatLogs=async(env:Bindings,courseId:number,userId:string)=>(await createChatRepository(env)).deleteHistory(courseId,userId);

@@ -2,7 +2,7 @@ import type { CurrentUser } from "../contracts/user-repository";
 import { eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { MAX_VIDEO_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
-import { currentUploadBytes } from "../../repositories/quota-repository";
+import { currentUploadBytes } from "./storage-quota";
 import { users } from "../../db/schema";
 import type { Bindings } from "../../types/bindings";
 

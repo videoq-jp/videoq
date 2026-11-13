@@ -12,7 +12,8 @@ import {
 } from "../../db/schema";
 import { nativeCourseExternalAccess, nativeCourseReadableBy } from './course-authority';
 import { toUtcIso } from "../../shared/datetime";
-import { mapVideoListRow, videoTagsJson, visualProcessing } from "../../repositories/video-repository";
+import { mapVideoListRow } from "../../repositories/video-mapping";
+import { videoTagsJson, visualProcessing } from "./video-read-repository";
 import type { Bindings } from "../../types/bindings";
 import {
   findIdempotentResource,

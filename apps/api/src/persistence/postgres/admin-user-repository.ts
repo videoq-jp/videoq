@@ -12,7 +12,7 @@ import {
   session,
   users,
 } from "../../db/schema";
-import { insertJobTask } from "../../repositories/external-task-repository";
+import { insertJobTask } from "./external-task-repository";
 import { entitlementsForSubscription } from "../../features/billing/catalog";
 import {
   buildJobMessage,
