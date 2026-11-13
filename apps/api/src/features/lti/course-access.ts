@@ -1,6 +1,5 @@
-import { teachingConnection } from '../teaching/service';
-import { getCourseWithMembers } from '../../repositories/chat-repository';
-import { classroomVideoSummaries } from '../classroom/repository';
+import type { GroupChatContext } from '../../repositories/chat-repository';
+import { linkedLearningCourse } from '../../repositories/linked-learning-repository';
 import type { Bindings } from "../../types/bindings";
 import { requestCourseAuthority } from '../lms/authority';
 import type { CourseAuthorityResponse } from '../lms/contracts';
@@ -12,7 +11,8 @@ import type { sessionRecord } from "./protocol";
 
 export type CourseVideo = { videoId: number; lesson: string; title: string; sourceGeneration?: number;
   management?: z.infer<typeof materialManagementSchema> };
-export type CourseAccess = { courseTitle?: string; ownerHistory?: boolean; videos: CourseVideo[]; managementVideos?: CourseVideo[]; materialOrder?: number[]; permissions: CoursePermissions };
+export type CourseAccess = { courseTitle?: string; ownerHistory?: boolean; course?: GroupChatContext;
+  videos: CourseVideo[]; managementVideos?: CourseVideo[]; materialOrder?: number[]; permissions: CoursePermissions };
 type CourseGrant = Pick<z.infer<typeof sessionRecord>, "deploymentId" | "contextId" | "resourceLinkId" | "courseId" | "accessProof" | "serviceSubject" | 'resourceGeneration'>;
 
 function boundAccess(reg: LtiRegistration, grant: CourseGrant, access: CourseAuthorityResponse): CourseAccess {
@@ -58,15 +58,12 @@ export async function courseAccessContext(reg: LtiRegistration, grant: CourseGra
     && item.contextId === grant.contextId && item.resourceLinkId === grant.resourceLinkId && item.courseId === grant.courseId);
   if (linked) {
     if (!env || !access?.courseEntry || !reg.id.startsWith('db:')) throw new Error('LMS access denied');
-    const connection = await teachingConnection(env, 'moodle', reg.id.slice(3), grant.contextId);
+    const connection = await linkedLearningCourse(env, reg.id.slice(3), grant.contextId);
     if (!connection || connection.courseId !== grant.courseId || connection.resourceLinkId !== grant.resourceLinkId) throw new Error('LMS access denied');
-    const course = await getCourseWithMembers(env, { courseId: connection.courseId, userId: connection.ownerUserId });
-    if (!course) throw new Error('LMS access denied');
-    const summaries = await classroomVideoSummaries(env, course.userId, course.memberVideoIds);
-    return { courseTitle: connection.courseTitle, ownerHistory: access.permissions?.manageContent === true && grant.serviceSubject === connection.teacherSubject, videos: course.memberVideoIds.flatMap(id => {
-      const video = summaries.find(item => item.id === id);
-      return video ? [{ videoId: id, lesson: String(id), title: video.title || connection.courseTitle }] : [];
-    }), permissions: { ...(access.permissions ?? deniedCoursePermissions), manageContent: false, viewReports: false } };
+    return { courseTitle: connection.courseTitle,
+      course: { id: connection.courseId, userId: connection.ownerUserId, memberVideoIds: connection.videos.map(video => video.videoId) },
+      ownerHistory: access.permissions?.manageContent === true && grant.serviceSubject === connection.teacherSubject,
+      videos: connection.videos, permissions: { ...(access.permissions ?? deniedCoursePermissions), manageContent: false, viewReports: false } };
   }
   return access ? boundAccess(reg, grant, access) : null;
 }

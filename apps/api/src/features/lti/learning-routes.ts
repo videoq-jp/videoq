@@ -133,7 +133,7 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     if (denied) return throttledResponse(c, denied);
     let allowed;
     try { allowed = (await currentContext(access, c.env))?.videos ?? null; } catch { return refused(c, 403); }
-    const course = await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: allowed?.map(video => video.videoId) });
+    const course = access.course ?? await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: allowed?.map(video => video.videoId) });
     if (!course) return refused(c, 403);
     const turns = await readCourseHistory(c.env, grant, course.userId, course.memberVideoIds);
     return c.json({ turns: await Promise.all(turns.map(async ({ logId, ...turn }) => ({ ...turn,
