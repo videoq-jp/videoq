@@ -107,6 +107,12 @@ bigintは安全整数範囲外なら値を出さずに拒否し、黙って切�
 
 ## PostgreSQLからのprivate archive export
 
+移行前の保全コピーは、復元テストの成功だけでは存在しない。AWS保守ジョブには
+復元検証済みdumpを専用private S3へ保存するopt-in実装を追加したが、既定では無効である。
+有効化の順序・権限・保存期間・復旧確認は[保守ジョブの手順](../../infra/db-maintenance/README.md#verified-backup-preservation-for-d1-migration)に従う。
+本番の保存・取得・再復元が成功するまで、未マッピングの旧テーブルを保全済みとは扱わない。
+このdumpはD1用archiveと別の成果物であり、旧データの移行/保管方針を決めずにexportの網羅性検査を緩めない。
+
 ```sh
 npm run db:d1:export --workspace @videoq/api -- \
   --output /absolute/private/path/source.videoq-export.ndjson \
