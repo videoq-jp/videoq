@@ -161,7 +161,7 @@ run "pause_uploads_without_destroying_archives" {
     condition = (length(aws_s3_bucket.archive) == 1 &&
       aws_s3_bucket_versioning.archive[0].versioning_configuration[0].status == "Enabled" &&
       aws_s3_bucket_public_access_block.archive[0].block_public_policy &&
-      !aws_s3_bucket.archive[0].force_destroy)
+    !aws_s3_bucket.archive[0].force_destroy)
     error_message = "Pausing uploads must preserve the private versioned archive infrastructure."
   }
   assert {
