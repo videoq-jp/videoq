@@ -5,7 +5,7 @@
   },
   "companion": {
     "repository": "https://github.com/videoq-jp/videoq-moodle.git",
-    "revision": "5d1e98a83f42de1a9410e833da6e335873e8dc48"
+    "revision": "dd8d5c926a96b9b402898e18c784b6235453f49b"
   },
   "phpImage": "moodlehq/moodle-php-apache:8.3@sha256:1db7b6ed013fcb5268095b5e28c410ba9117d38d9b6a324c100c48fcbe69745e",
   "proxyImage": "caddy:2-alpine@sha256:70b3180738b46cd88e49b300d790ae448a0aca3f58edef0f000bb57d619a9ab3"
