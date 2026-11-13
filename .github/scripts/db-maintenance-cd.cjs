@@ -10,7 +10,7 @@ function relevant(path) {
     .some(name => path === '.github/operations-tools/' + name)) return true;
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
-  if (path === '.github/scripts/backup-archive.mjs') return true;
+  if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/workflows/db-maintenance-cd.yml', '.github/actions/aws-db-invocation/action.yml',
     '.github/scripts/run-aws-db.py', '.github/scripts/db-maintenance-cd.cjs'].includes(path)) return true;
   return /^\.github\/scripts\/(neon-(admin|policy)\.cjs|neon-profiles\.json|with-neon-credentials\.py|production-(smoke\.mjs|smoke-policy\.cjs|stream-proof\.cjs)|backup-restore\.mjs|provision-public-demo\.mjs|public-demo-policy\.cjs)$/.test(path);
