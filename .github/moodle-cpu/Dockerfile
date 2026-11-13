@@ -7,7 +7,6 @@ LABEL jp.videoq.test-only="moodle-cpu-acceptance" \
       jp.videoq.companion-revision="${COMPANION_REVISION}"
 COPY moodle/ /var/www/html/
 COPY companion/plugins/local/videoq/ /var/www/html/public/local/videoq/
-COPY companion/plugins/ltisource/videoq/ /var/www/html/public/mod/lti/source/videoq/
 COPY companion/lab/ /lab/
 COPY fixture/moodle-config.php /var/www/html/config.php
 COPY fixture/entrypoint.sh /acceptance/entrypoint.sh
