@@ -39,7 +39,7 @@ export async function verifyNativeAssertion(env: Bindings, assertion: string, op
   if (assertion.length > 16384) throw denied();
   let hint: z.infer<typeof nativeAssertionClaims>;
   try { hint = nativeAssertionClaims.parse(decodeJwt(assertion)); } catch { throw denied(); }
-  const config = await resolvedLtiConfig(env);
+  const config = await resolvedLtiConfig(env, { issuer: hint.iss, clientId: hint.sub });
   if (!config) throw denied();
   const candidates = config.registrations.filter(r => r.issuer === hint.iss && r.clientId === hint.sub &&
     (r.deploymentId === hint.deploymentId || r.resources.some(b => b.deploymentId === hint.deploymentId)));
@@ -79,7 +79,7 @@ export async function authorizeNativeRequest(env: Bindings, assertion: string, o
   let current;
   try { current = await courseAccessContext(reg, grant, env); } catch { throw denied(); }
   if (!current) throw denied();
-  const course = await getCourseWithMembers(env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId,
+  const course = current.course ?? await getCourseWithMembers(env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId,
     ltiVideoGrant: [...current.videos, ...(current.managementVideos ?? [])].map(v => v.videoId) });
   if (!course) throw denied();
   grant.scopeVideoIds = current.videos.map(v => v.videoId).sort((a, b) => a - b);

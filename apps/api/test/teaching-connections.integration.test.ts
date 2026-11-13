@@ -68,6 +68,17 @@ const url = process.env.QUOTA_TEST_DATABASE_URL;
     await pool.query("UPDATE users SET is_active=false WHERE id='installer'");
     expect(await teachingConnection(env,'moodle','school','class-a')).toMatchObject({ ownerUserId:'alice',courseId:aliceId,resourceLinkId:'entry' });
   });
+  it('loads only the selected platform and rechecks installation revocation without a global cache', async () => {
+    await provisionLmsServiceInstallation(env, { ...site, id:'other-school', issuer:'https://other.example', clientId:'other-client',
+      authorizationUrl:'https://other.example/auth', jwksUrl:'https://other.example/keys',
+      materialsService:{tokenEndpoint:'https://other.example/token',endpoint:'https://other.example/materials'} });
+    const platform={issuer:site.issuer,clientId:site.clientId};
+    expect((await resolvedLtiConfig(env,platform))?.registrations.map(reg=>reg.id)).toEqual(['db:school']);
+    expect((await resolvedLtiConfig(env,{...platform,clientId:'wrong'}))?.registrations).toEqual([]);
+    expect((await resolvedLtiConfig(env))?.registrations).toHaveLength(2);
+    await pool.query("UPDATE lms_installations SET active=false WHERE id='school'");
+    expect((await resolvedLtiConfig(env,platform))?.registrations).toEqual([]);
+  });
   it('uses the current native playlist and fails closed after anchor or teacher link revocation', async () => {
     const courseId = await course();
     await connectTeachingCourse(env, await ticket(), 'alice', courseId);
@@ -83,6 +94,15 @@ const url = process.env.QUOTA_TEST_DATABASE_URL;
     expect((await courseAccessContext(reg,{...grant,serviceSubject:'teacher-a'},env))?.ownerHistory).toBe(true);
     expect((await courseAccessContext(reg,{...grant,serviceSubject:'co-teacher'},env))?.ownerHistory).toBe(false);
     expect((await courseAccessContext(reg,grant,env))?.ownerHistory).toBe(false);
+    expect((await courseAccessContext(reg,grant,env))?.course).toEqual({id:courseId,userId:'alice',memberVideoIds:[id]});
+    await pool.query("UPDATE videos SET status='processing' WHERE id=$1",[id]);
+    expect((await courseAccessContext(reg,grant,env))?.course?.memberVideoIds).toEqual([]);
+    await pool.query("UPDATE videos SET status='completed',user_id='bob' WHERE id=$1",[id]);
+    expect((await courseAccessContext(reg,grant,env))?.videos).toEqual([]);
+    await pool.query("UPDATE videos SET user_id='alice' WHERE id=$1",[id]);
+    await pool.query("UPDATE users SET is_active=false WHERE id='alice'");
+    await expect(courseAccessContext(reg,grant,env)).rejects.toThrow('LMS access denied');
+    await pool.query("UPDATE users SET is_active=true WHERE id='alice'");
     await pool.query('DELETE FROM video_course_members WHERE course_id=$1',[courseId]);
     expect((await courseAccessContext(reg,grant,env))?.videos).toEqual([]);
     vi.mocked(MaterialsClient.prototype.access).mockResolvedValue({contextId:'class-a',resourceLinkId:'entry',resources:[]});

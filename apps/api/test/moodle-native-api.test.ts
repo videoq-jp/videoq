@@ -78,6 +78,16 @@ async function request(operation = "/materials", body = "{}", headers: Record<st
 }
 
 describe("Moodle server-authenticated learning API", () => {
+  it('reuses only the course already freshly authorized for this request', async () => {
+    vi.mocked(courseAccessContext).mockResolvedValue({ ...structuredClone(current),
+      course:{id:12,userId:'owner',memberVideoIds:[3]} });
+    expect((await request()).status).toBe(200);
+    expect(getCourseWithMembers).not.toHaveBeenCalled();
+    expect(resolvedLtiConfig).toHaveBeenCalledWith(env,{issuer:reg.issuer,clientId:reg.clientId});
+    vi.mocked(courseAccessContext).mockRejectedValueOnce(new Error('Access revoked'));
+    expect((await request()).status).toBe(403);
+    expect(courseAccessContext).toHaveBeenCalledTimes(2);
+  });
   it("returns course data through the shared handlers without exposing a session bearer", async () => {
     const response = await request();
     expect(response.status).toBe(200);
