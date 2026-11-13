@@ -1,6 +1,7 @@
+import {copyPrivateInput} from './private-input';
 import pg from 'pg';
 import {createHash} from 'node:crypto';
-import {mkdtemp,copyFile,chmod,rm,lstat} from 'node:fs/promises';
+import {mkdtemp,chmod,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {buildMigrationManifest} from './manifest';
@@ -37,11 +38,9 @@ export async function openVerifiedPostgresSource(options:{connectionString:strin
    finally{if(directory)await rm(directory,{recursive:true,force:true});}}
  };
  try{
-  const info=await lstat(options.archivePath);
-  if(!info.isFile()||(info.mode&0o077)!==0)throw new PostgresSourceVerificationError('Private source archive is required.');
   directory=await mkdtemp(join(tmpdir(),'.videoq-source-proof-'));
   const expectedPath=join(directory,'expected.videoq-export.ndjson'),actualPath=join(directory,'actual.videoq-export.ndjson');
-  await copyFile(options.archivePath,expectedPath);await chmod(expectedPath,0o400);
+  await copyPrivateInput(options.archivePath,expectedPath);await chmod(expectedPath,0o400);
   const expected=await verifyPostgresArchive(expectedPath,options.manifest);
   coordinator=new pg.Client({connectionString:options.connectionString,connectionTimeoutMillis:10000,statement_timeout:300000,application_name:'videoq-search-snapshot'});
   coordinator.on('error',()=>{unavailable=true;});

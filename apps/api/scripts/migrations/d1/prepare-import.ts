@@ -1,4 +1,5 @@
-import {chmod,copyFile,lstat,mkdtemp,open,rm} from 'node:fs/promises';
+import {copyPrivateInput} from './private-input';
+import {chmod,mkdtemp,open,rm} from 'node:fs/promises';
 import type {FileHandle} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -14,10 +15,9 @@ export type PreparedSpecialTable=PreparedTable&{schema:string;types:string[]};
 /** Freeze a private copy before verification. Subsequent source-file edits cannot
  * change the imported rows. The working directory must never be published. */
 export async function prepareCommonImport(input:string,manifest:Manifest){
- const info=await lstat(input);if(!info.isFile()||(info.mode&0o077)!==0)throw new Error('A private regular archive is required.');
  const directory=await mkdtemp(join(tmpdir(),'.videoq-import-'));let file:FileHandle|undefined;
  try{
-  const copy=join(directory,'source.videoq-export.ndjson');await copyFile(input,copy);await chmod(copy,0o600);
+  const copy=join(directory,'source.videoq-export.ndjson');await copyPrivateInput(input,copy);
   const verified=await verifyPostgresArchive(copy,manifest),sequences=planSequenceRestore(verified.sequence_states,manifest);await chmod(copy,0o400);
   const tables:PreparedTable[]=[],specialTables:PreparedSpecialTable[]=[];let current:PreparedTable|undefined,special=false,pendingSpecialRows=0n;
   for await(const line of readArchiveLines(copy)){

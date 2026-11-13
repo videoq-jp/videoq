@@ -3,7 +3,7 @@ import {execFile} from 'node:child_process';
 import {generateDrizzleJson,generateMigration} from 'drizzle-kit/api';
 import * as sourceSchema from '../../src/db/schema';
 import {createHash} from 'node:crypto';
-import {mkdtemp,readFile,writeFile,stat,readdir,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,open,readdir,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
@@ -30,7 +30,7 @@ describe.skipIf(!url)('private PostgreSQL migration archives',()=>{
  const run=async(manifest=plan())=>{const client=await fixture.pool.connect();try{return await exportPostgresArchive(client,manifest,output,{schema,fetchRows:1});}finally{client.release();}};
  const records=async()=> (await readFile(output,'utf8')).trimEnd().split('\n').map(line=>JSON.parse(line) as RecordValue);
  it('exports converted data, sequence high-water marks and verifiable hashes with private file permissions',async()=>{
-  expect(await run()).toEqual({tables:1,rows:'1'});expect(await verifyPostgresArchive(output,plan())).toMatchObject({verified:true,tables:1,rows:'1'});expect((await stat(output)).mode&0o777).toBe(0o600);
+  expect(await run()).toEqual({tables:1,rows:'1'});expect(await verifyPostgresArchive(output,plan())).toMatchObject({verified:true,tables:1,rows:'1'});expect(await privateMode(output)&0o777).toBe(0o600);
   const rows=await records(),header=rows[0],start=rows.find(row=>row.kind==='table_start')!;
   expect(header).toMatchObject({execution_complete:false,sequences:[{last_value:'100',is_called:true}]});
   expect(start).toMatchObject({mode:'converted',primary_key:['id'],columns:expect.arrayContaining([{name:'active',type:'boolean',encoding:'boolean_integer'}])});
@@ -92,3 +92,5 @@ describe.skipIf(!url)('private PostgreSQL migration archives',()=>{
   }finally{client.release();}
  });
 });
+
+async function privateMode(path:string){const file=await open(path,'r');try{return (await file.stat()).mode;}finally{await file.close();}}

@@ -14,7 +14,6 @@ export async function main(args=process.argv.slice(2)) {
     url.pathname!=='/postgres'||url.search||url.hash||!Number.isInteger(port)||port<1||port>65535)throw new Error('Only an explicit loopback restored database is allowed.');
  const output=resolve(args[1]),directory=await lstat(dirname(output));
  if(basename(output)!=='d1-source.videoq-export.ndjson'||!directory.isDirectory()||(directory.mode&0o077)!==0||directory.uid!==process.getuid?.())throw new Error('Private parent-owned export directory is required.');
- try{await lstat(output);throw new Error('Export output already exists.');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..'),modules=join(root,'node_modules'),isolated=join(root,'.github/operations-tools/node_modules');
  // Only a clean operator bundle may create this link. Never replace or load the
  // application node_modules, even when running a local synthetic rehearsal.
@@ -33,7 +32,7 @@ export async function main(args=process.argv.slice(2)) {
  try{
   await client.connect();await exportPostgresArchive(client,manifest,output,{statementTimeoutMs:300000});
   const verified=await verifyPostgresArchive(output,manifest);
-  const file=await open(output,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  const file=await open(output,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK,0o600);
   let fileBytes=0;const hash=createHash('sha256');
   try{
    const info=await file.stat();if(!info.isFile()||(info.mode&0o077)||info.uid!==process.getuid?.())throw new Error('Private archive is required.');

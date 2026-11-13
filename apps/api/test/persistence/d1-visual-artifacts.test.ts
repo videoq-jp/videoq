@@ -1,4 +1,4 @@
-import {mkdtemp,writeFile,readFile,rm,stat,mkdir} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,rm,open,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {beforeEach,afterEach,describe,it,expect} from 'vitest';
@@ -30,7 +30,7 @@ describe('legacy visual artifact validation and private preparation',()=>{
  it('freezes versioned chunks and reconstructs a publication with stable IDs and content hashes',async()=>{
   const result=await prepare();expect(result).toMatchObject({artifacts:'6',runs:'1',visual_objects_migrated:false});
   const records=(await readFile(result.path,'utf8')).trim().split('\n').map(line=>JSON.parse(line) as VisualArtifact);expect(records).toHaveLength(6);
-  for(const record of records){expect((await stat(record.path)).mode&0o777).toBe(0o600);expect(record.version).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-a[a-f0-9]{3}-[a-f0-9]{12}$/);expect((await readFile(record.path)).length).toBe(record.bytes);}
+  for(const record of records){expect(await privateMode(record.path)&0o777).toBe(0o600);expect(record.version).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-a[a-f0-9]{3}-[a-f0-9]{12}$/);expect((await readFile(record.path)).length).toBe(record.bytes);}
   const manifest=JSON.parse(await readFile(records.find(record=>record.kind==='manifest')!.path,'utf8')) as {chunk_versions:string[];overview:number[][]};expect(manifest.chunk_versions).toEqual([records[0].version,records[2].version]);expect(manifest.overview).toHaveLength(1);
   const other=join(directory,'repeat');await mkdir(other,{mode:0o700});const repeated=await prepareVisualArtifacts({path},'archive',other,source);expect(repeated.sha256).toBe(result.sha256);
  });
@@ -60,3 +60,5 @@ describe('legacy visual artifact validation and private preparation',()=>{
  });
 
 });
+
+async function privateMode(path:string){const file=await open(path,'r');try{return (await file.stat()).mode;}finally{await file.close();}}

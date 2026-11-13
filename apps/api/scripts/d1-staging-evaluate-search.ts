@@ -1,3 +1,4 @@
+import {readPrivateInput} from './migrations/d1/private-input';
 import {lstat,readFile,mkdtemp,open,link,rm} from 'node:fs/promises';
 import {dirname,resolve,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -29,9 +30,7 @@ export function parseSearchEvaluationArguments(args: string[]) {
 export async function main(args=process.argv.slice(2)) {
  const options=parseSearchEvaluationArguments(args);
  try{await lstat(options.output);throw new Error('Evaluation output already exists.');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
- const info=await lstat(options.input);
- if(!info.isFile()||(info.mode&0o077)!==0||info.size<=0||info.size>128*1024*1024)throw new Error('Private bounded evaluation input is required.');
- const input=validateSearchEvaluationInput(JSON.parse(await readFile(options.input,'utf8')));
+ const input=validateSearchEvaluationInput(JSON.parse((await readPrivateInput(options.input,128*1024*1024)).toString('utf8')));
  if(process.env.PERSISTENCE_EVALUATION_SOURCE_OFFLINE!=='1')throw new Error('Source must be an explicitly frozen/offline rehearsal copy.');
  if(!process.env.DATABASE_URL)throw new Error('A read-only PostgreSQL rehearsal connection is required.');
  const source=new URL(process.env.DATABASE_URL);

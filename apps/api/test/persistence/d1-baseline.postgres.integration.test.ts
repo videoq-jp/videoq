@@ -1,6 +1,6 @@
 import {promisify} from 'node:util';
 import {execFile} from 'node:child_process';
-import {mkdtemp,readFile,stat,rm,readdir} from 'node:fs/promises';
+import {mkdtemp,readFile,open,rm,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
@@ -55,9 +55,11 @@ describe.skipIf(!url)('read-only D1 migration baseline',()=>{
   const run=(path:string,sourceSchema=schema)=>promisify(execFile)(process.execPath,['--import','tsx','scripts/d1-baseline.ts','--output',path,'--schema',sourceSchema,'--samples','1'],{env:{...process.env,DATABASE_URL:url}});
   try{
    const result=await run(output);expect(result.stdout+result.stderr).not.toMatch(/private-.*canary|postgresql:\/\//);
-   const original=await readFile(output,'utf8');expect(JSON.parse(original).tables).toHaveLength(3);expect((await stat(output)).mode&0o777).toBe(0o600);
+   const original=await readFile(output,'utf8');expect(JSON.parse(original).tables).toHaveLength(3);expect(await privateMode(output)&0o777).toBe(0o600);
    await expect(run(output)).rejects.toThrow();expect(await readFile(output,'utf8')).toBe(original);
    await expect(run(join(directory,'failed.json'),'missing_schema')).rejects.toThrow();expect(await readdir(directory)).toEqual(['baseline.json']);
   }finally{await rm(directory,{recursive:true,force:true});}
  },20000);
 });
+
+async function privateMode(path:string){const file=await open(path,'r');try{return (await file.stat()).mode;}finally{await file.close();}}

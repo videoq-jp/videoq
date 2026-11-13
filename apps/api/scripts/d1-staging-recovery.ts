@@ -1,4 +1,5 @@
-import {readFile,writeFile,lstat} from 'node:fs/promises';
+import {readPrivateInput} from './migrations/d1/private-input';
+import {readFile,writeFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {getPlatformProxy} from 'wrangler';
@@ -11,7 +12,7 @@ export async function main(args=process.argv.slice(2)){
  if(args.length!==4||args[0]!=='--mode'||!['prepare','mutate','verify'].includes(args[1])||args[2]!=='--state')throw new RecoveryProbeError('Use --mode prepare|mutate|verify --state <private state file>.');
  const mode=args[1],statePath=resolve(args[3]),root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),configPath=resolve(root,'wrangler.d1-staging.jsonc');validateStagingTarget(await readFile(configPath,'utf8'));
  let state:z.infer<typeof stateSchema>|undefined;
- if(mode!=='prepare'){const info=await lstat(statePath);if(!info.isFile()||(info.mode&0o077)!==0)throw new RecoveryProbeError('A private recovery state file is required.');state=stateSchema.parse(JSON.parse(await readFile(statePath,'utf8')) as unknown);}
+ if(mode!=='prepare')state=stateSchema.parse(JSON.parse((await readPrivateInput(statePath,4*1024*1024)).toString('utf8')) as unknown);
  const proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});
  try{
   const snapshot=await fingerprintRecoveryStaging(proxy.env.DB);

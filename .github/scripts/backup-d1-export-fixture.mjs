@@ -3,7 +3,7 @@
 import {createRequire} from 'node:module';
 import {execFile,execFileSync} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdtemp,readFile,writeFile,mkdir,symlink,rm,access,stat} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,mkdir,symlink,rm,access,open} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -92,7 +92,7 @@ try{
  async function output(){const parent=await mkdtemp(join(directory,'output-'));return join(parent,'d1-source.videoq-export.ndjson');}
  const positive=await output(),result=await run(positive),report=JSON.parse(result.stdout.trim());
  assert.equal(report.event,'restored_backup_d1_archive_verified');assert.equal(report.tables,58);assert.equal(report.rows,'4');assert.equal(report.execution_complete,false);
- assert.equal((await stat(positive)).mode&0o777,0o600);
+ assert.equal(await privateMode(positive)&0o777,0o600);
  const bytes=await readFile(positive,'utf8');assert.ok(bytes.includes('Synthetic restored backup evidence'));
  const rerun=await run(positive).then(()=>null,error=>error);assert.equal(rerun.code,1);
  assert.equal(await readFile(positive,'utf8'),bytes);
@@ -185,3 +185,5 @@ try{
  for(const name of started.reverse())await docker(['rm','--force','--volumes',name]);
  await rm(directory,{recursive:true,force:true});
 }
+
+async function privateMode(path){const file=await open(path,'r');try{return (await file.stat()).mode;}finally{await file.close();}}
