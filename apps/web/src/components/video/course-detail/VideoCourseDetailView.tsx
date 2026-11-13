@@ -47,7 +47,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ChipLabel } from '@/components/ui/chip-label';
-import { Heading, HeadingTitle } from '@/components/ui/heading';
 import { UtilityLink } from '@/components/ui/utility-link';
 import { CourseParticipantsDialog } from './CourseParticipantsDialog';
 import {
@@ -234,9 +233,6 @@ function GroupVideoList({
     <aside className="flex h-full min-h-0 flex-col">
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border border-solid-gray-420 bg-white">
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-solid-gray-200 px-5 py-4">
-          <Heading size="18" className="shrink-0">
-            <HeadingTitle level="h2">{t('videos.courseDetail.videoListTitle')}</HeadingTitle>
-          </Heading>
           <ChipLabel variant="filled-1" color="gray" className="min-h-0 shrink-0 text-oln-14N-100">
             {t('videos.courseDetail.videoCount', { count: course.videos?.length ?? 0 })}
           </ChipLabel>
