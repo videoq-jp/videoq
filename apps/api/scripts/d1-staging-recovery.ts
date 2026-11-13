@@ -3,10 +3,10 @@ import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {getPlatformProxy} from 'wrangler';
 import {z} from 'zod';
-import {validateStagingTarget} from './migrations/d1/staging-target';
+import {validateStagingTarget,STAGING_DATABASE_ID} from './migrations/d1/staging-target';
 import type {StagingBindings} from './migrations/d1/staging-migration';
 import {fingerprintRecoveryStaging,RecoveryProbeError} from './migrations/d1/recovery-fingerprint';
-const stateSchema=z.object({version:z.literal(1),database_id:z.literal('538bebc4-9485-4e91-8799-c236eeed1dd2'),nonce:z.uuid(),snapshot:z.object({tables:z.array(z.object({name:z.string(),rows:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/)})),sha256:z.string().regex(/^[a-f0-9]{64}$/)})});
+const stateSchema=z.object({version:z.literal(1),database_id:z.literal(STAGING_DATABASE_ID),nonce:z.uuid(),snapshot:z.object({tables:z.array(z.object({name:z.string(),rows:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/)})),sha256:z.string().regex(/^[a-f0-9]{64}$/)})});
 export async function main(args=process.argv.slice(2)){
  if(args.length!==4||args[0]!=='--mode'||!['prepare','mutate','verify'].includes(args[1])||args[2]!=='--state')throw new RecoveryProbeError('Use --mode prepare|mutate|verify --state <private state file>.');
  const mode=args[1],statePath=resolve(args[3]),root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),configPath=resolve(root,'wrangler.d1-staging.jsonc');validateStagingTarget(await readFile(configPath,'utf8'));
@@ -15,7 +15,7 @@ export async function main(args=process.argv.slice(2)){
  const proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});
  try{
   const snapshot=await fingerprintRecoveryStaging(proxy.env.DB);
-  if(mode==='prepare'){await writeFile(statePath,JSON.stringify({version:1,database_id:'538bebc4-9485-4e91-8799-c236eeed1dd2',nonce:crypto.randomUUID(),snapshot}),{flag:'wx',mode:0o600});console.info(JSON.stringify({recovery_state_prepared:true,tables:snapshot.tables.length,rows:snapshot.tables.reduce((sum,table)=>sum+table.rows,0),snapshot_sha256:snapshot.sha256,production_modified:false}));return;}
+  if(mode==='prepare'){await writeFile(statePath,JSON.stringify({version:1,database_id:STAGING_DATABASE_ID,nonce:crypto.randomUUID(),snapshot}),{flag:'wx',mode:0o600});console.info(JSON.stringify({recovery_state_prepared:true,tables:snapshot.tables.length,rows:snapshot.tables.reduce((sum,table)=>sum+table.rows,0),snapshot_sha256:snapshot.sha256,production_modified:false}));return;}
   if(snapshot.sha256!==state!.snapshot.sha256)throw new RecoveryProbeError('Recovery staging state differs from the recorded snapshot.');
   if(mode==='verify'){console.info(JSON.stringify({recovery_snapshot_verified:true,tables:snapshot.tables.length,snapshot_sha256:snapshot.sha256,production_modified:false}));return;}
   const marker='Synthetic recovery probe '+state!.nonce;

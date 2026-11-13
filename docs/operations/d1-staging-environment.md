@@ -2,6 +2,18 @@
 
 2026-11-13に、既存の本番Worker・Hyperdrive・R2とは独立した検証リソースを作成した。
 
+## 現行ターゲット（v2、新schemaリハーサル用）
+
+| 種類 | リソース | 設定 |
+|---|---|---|
+| D1 | videoq-d1-migration-staging-v2 | 8e84cb18-4712-48cf-b528-e880188b045f、APAC |
+| Vectorize | videoq-scenes-migration-v2-1536 | 1536次元、cosine |
+| Vectorize | videoq-scenes-migration-v2-768 | 768次元、cosine |
+
+`apps/api/wrangler.d1-staging.jsonc`と検証CLIはこのv2ターゲットに固定する。0000〜0018を適用済みで、両Vectorizeのuser_id（string）・video_id（number）metadata indexを一覧で確認した。旧リソース・旧import receipt・旧復旧記録には書き込まず、そのまま保持した。v1 configを渡すとCLIは拒否する。
+
+## 旧ターゲット（v1、以前の検証記録）
+
 | 種類 | リソース | 設定 |
 |---|---|---|
 | D1 | videoq-d1-migration-staging | 538bebc4-9485-4e91-8799-c236eeed1dd2、APAC（実行時NRT） |
@@ -9,7 +21,7 @@
 | Vectorize | videoq-scenes-migration-768 | 768次元、cosine |
 
 両Vectorizeにuser_id（string）とvideo_id（number）のmetadata indexを作成・一覧照合した。D1にはdrizzle-d1の0000〜0017を適用した。
-構成は`apps/api/wrangler.d1-staging.jsonc`に保存する。本番のwrangler.jsoncは変更していない。
+v1の構成は`apps/api/wrangler.d1-staging.v1.jsonc`に退避した。本番のwrangler.jsoncは変更していない。
 専用configはworkers.dev・preview URL・routesを無効にし、binding確認用のmainも404だけを返す。アプリの公開routeやproduction secretを持たない。
 
 ## 合成データのremote smoke
@@ -26,7 +38,7 @@ Wranglerのremote binding proxyを使い、D1のuser/video/scene作成、LangCha
 合格しても、実データ移行・認証/全体E2E・Recall/ランキング・性能/容量/コスト・復旧の受け入れ基準を満たしたことにはならない。
 リソースは引き続き移行リハーサル専用として保持する。本番切り替えは実施していない。
 
-## 2026-11-13の実測結果
+## v1の2026-11-13実測結果
 
 実D1/Vectorizeで合成probeが成功した。4ベクトルをID指定で取得し、両次元のfilter検索からD1の正本文を取得した。別所有者による2件の参照は空結果だった。取得値の次元とfloat32精度もprobeで確認した。
 初期化から確認までは97,575msで、検索/API単体のレイテンシ値ではない。新規indexへの非同期反映では0→1→2→3→4件の段階的な可視化を観測した。書込受付だけで移行完了にせず、全件のID取得とscope検索を待つ必要がある。
@@ -98,4 +110,17 @@ D1の復旧はVectorize・R2・SQS等を同時には戻さない。今回はそ�
 
 ## 最新main統合後の差分
 
-教員接続を含む現在のコードは、PostgreSQL 58テーブル・共通行移行56テーブル・D1 migration 0018までを使用する。この文書のリモート成功記録は0017までのschemaに対するもので、0018のリモート適用と新archiveでのリハーサルは未実施である。以前のimport receiptや復旧fingerprintを、新schemaの検証結果として流用しない。本番設定・本番データは変更していない。
+教員接続を含む現在のコードは、PostgreSQL 58テーブル・共通行移行56テーブル・D1 migration 0018までを使用する。上記v1の記録は0017までのschemaに対するもので、旧receiptやfingerprintを新schemaの証拠として流用しない。v2では別DB・別indexを作成し、新しい合成archiveと復旧記録で検証した。本番設定・本番データは変更していない。
+
+
+## v2の新schemaリハーサル結果
+
+使い捨てPostgreSQL 17/pgvectorで58テーブル・合成15行のprivate archiveを作り、v2 D1へ共通56テーブルを投入した。教員接続、接続管理者とは異なる講座所有者、質問者情報のJSON snapshotを追加している。全列の値・件数・FK照合、13採番状態の復元、2シーンの投入と単独での再投入に成功した。
+
+認証試験と照合を並行させた最初の再投入は拒否された。認証試験の一時sessionが片付いた後、照合を単独で再実行すると成功した。移行中に認証を含むwriterを停止する前提を維持し、照合を緩めて通す変更は行っていない。
+
+LangChain経由の別の検索probeでは、768/1536次元の4ベクトル取得、所有者filter検索2件、別所有者への拒否2件、終了後の削除反映確認が成功した。初期化・非同期反映待ちを含む103,618msはAPI単体の性能値ではない。archiveの2件は配信後に元Embedding/metadataと照合し、verified=2、missing=0、mismatched=0、pending_tasks=0だった。
+
+69テーブル・57行（内部管理表を含む）のschema/値/採番状態をhashで記録し、合成動画を変更した時の照合失敗を確認した。実際のD1 Time Travel restore後にhashが一致し、Vectorizeの2件照合、移行credentialでのログイン・新規sessionのDB取得、教員/質問者情報のhydrate、接続管理者への所有者データ拒否の2テストが成功した。認証試験の後始末後にもhash一致を再確認した。bookmarkとrestore結果はprivateに保持し、公開記録に認証情報やcookieを含めていない。
+
+旧v1のリソースと検証記録は保持している。復旧したのはD1のみで、Vectorize/R2/SQSの同時復旧ではない。合成archiveのmodel checkpointとvisual objectは空なので、そのremote移行を検証した結果でもない。既存の実セッションcookie、外部OAuth、実データRecall、p95・費用や本番切り替えは未検証である。[v2結果記録](evidence/d1-v2-rehearsal-2026-11-13.json)を参照する。

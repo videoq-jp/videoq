@@ -1,0 +1,162 @@
+{
+  "date": "2026-11-13",
+  "scope": "synthetic isolated v2 migration rehearsal; not production acceptance",
+  "production_modified": false,
+  "target": {
+    "config": "apps/api/wrangler.d1-staging.jsonc",
+    "database": "videoq-d1-migration-staging-v2",
+    "database_id": "8e84cb18-4712-48cf-b528-e880188b045f",
+    "vectorize": [
+      "videoq-scenes-migration-v2-768",
+      "videoq-scenes-migration-v2-1536"
+    ],
+    "d1_migrations": "0000..0018",
+    "metadata_indexes": {
+      "user_id": "string",
+      "video_id": "number"
+    },
+    "v1_resources_preserved": true
+  },
+  "archive": {
+    "format_version": 3,
+    "source_tables": 58,
+    "source_rows": "15",
+    "sha256": "d51996327b4ee0b7cee38d81b0c521e02caf1fde6794a00761c1eaf0ea02310d",
+    "private_artifact_retained": true,
+    "includes": [
+      "Better Auth credential and synthetic session",
+      "native course owned by a different user than its LMS installer",
+      "teacher connection",
+      "verified question-author snapshot",
+      "768 and 1536 dimension vectors"
+    ]
+  },
+  "smoke": {
+    "remote_synthetic_smoke_passed": true,
+    "dimensions": [
+      768,
+      1536
+    ],
+    "vectors_observed": 4,
+    "owned_queries_passed": 2,
+    "cross_owner_queries_denied": 2,
+    "elapsed_ms": 103618,
+    "production_modified": false
+  },
+  "smoke_cleanup_verified": true,
+  "import": {
+    "phase": "import",
+    "pending_visual_runs": "0",
+    "visual_objects_migrated": false,
+    "scene_import_complete": true,
+    "scenes_imported": "2",
+    "vectorize_delivery_complete": false,
+    "pending_vectorize_rows": "2",
+    "checkpoint_migration": {
+      "source_checkpoints": "0",
+      "source_blobs": "0",
+      "source_writes": "0",
+      "source_migrations": "0",
+      "unused_blobs": "0"
+    },
+    "checkpoint_import_complete": true,
+    "checkpoints": "0",
+    "writes": "0",
+    "common_import_complete": true,
+    "execution_complete": false,
+    "pending_special_rows": "0",
+    "pending_sequence_restore": false,
+    "sequences_restored": 13,
+    "tables": 56
+  },
+  "offline_reimport": {
+    "phase": "import",
+    "pending_visual_runs": "0",
+    "visual_objects_migrated": false,
+    "scene_import_complete": true,
+    "scenes_imported": "2",
+    "vectorize_delivery_complete": false,
+    "pending_vectorize_rows": "2",
+    "checkpoint_migration": {
+      "source_checkpoints": "0",
+      "source_blobs": "0",
+      "source_writes": "0",
+      "source_migrations": "0",
+      "unused_blobs": "0"
+    },
+    "checkpoint_import_complete": true,
+    "checkpoints": "0",
+    "writes": "0",
+    "common_import_complete": true,
+    "execution_complete": false,
+    "pending_special_rows": "0",
+    "pending_sequence_restore": false,
+    "sequences_restored": 13,
+    "tables": 56
+  },
+  "concurrent_auth_import_attempt_rejected": true,
+  "delivery": {
+    "phase": "deliver",
+    "claimed": 2,
+    "completed": 2,
+    "failed": 0,
+    "leaseLost": 0,
+    "pending_tasks": 0,
+    "vectorize_delivery_complete": false,
+    "search_quality_verified": false,
+    "execution_complete": false
+  },
+  "post_restore_vector_verification": {
+    "phase": "verify",
+    "vectorize_delivery_complete": true,
+    "checked": "2",
+    "verified": "2",
+    "missing": "0",
+    "mismatched": "0",
+    "pending_tasks": "0",
+    "dimensions": [
+      768,
+      1536
+    ],
+    "search_quality_verified": false,
+    "execution_complete": false
+  },
+  "post_restore_auth_and_business_tests": {
+    "passed": 2,
+    "includes": [
+      "password login with imported credential",
+      "fresh session read from D1",
+      "original synthetic session row retained",
+      "teacher link and course ownership hydration",
+      "question author snapshot hydration",
+      "installer denied owner history and video metadata"
+    ]
+  },
+  "recovery": {
+    "tables": 69,
+    "rows": 57,
+    "snapshot_sha256": "cd351d217d172883f01daae0a2590a2d85b81c572ac5eb9e4046672669dc1349",
+    "changed_snapshot_rejected": true,
+    "actual_time_travel_restore_passed": true,
+    "hash_reverified_after_auth_cleanup": true,
+    "private_bookmark_and_restore_result_retained": true,
+    "external_services_restored": false
+  },
+  "local_checks": {
+    "target_and_recovery_tests_passed": 35,
+    "api_typecheck_passed": true,
+    "api_lint_passed": true,
+    "dedicated_staging_types_generated": true
+  },
+  "not_verified": [
+    "real production data migration",
+    "production live-session cookie compatibility",
+    "nonempty model-memory migration on remote D1 in this fixture",
+    "visual/R2 object migration in this fixture",
+    "real RAG recall or ranking quality",
+    "API latency throughput or cost",
+    "external OAuth or LTI end-to-end flow",
+    "coordinated multi-service recovery"
+  ],
+  "execution_complete": false
+}

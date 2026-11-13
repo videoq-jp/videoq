@@ -1,3 +1,4 @@
+import {createTeachingRepository,createLinkedLearningRepository,createChatRepository,createLearningMediaRepository} from '../../src/persistence/factory';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {getPlatformProxy,type PlatformProxy} from 'wrangler';
@@ -22,4 +23,15 @@ describe.skipIf(process.env.PERSISTENCE_REMOTE_REHEARSAL_TEST!=='1')('synthetic 
    expect(await db.prepare("SELECT count(*) AS count FROM session WHERE id='rehearsal-session' AND user_id='migration-rehearsal-owner'").first('count')).toBe(1);
   }finally{const after=(await db.prepare("SELECT id FROM session WHERE user_id='migration-rehearsal-owner'").all<{id:string}>()).results;for(const row of after)if(!before.has(row.id))await db.prepare('DELETE FROM session WHERE id=?').bind(row.id).run();}
  },120000);
+ it('hydrates migrated teacher ownership and verified author snapshots without granting the installer course ownership',async()=>{
+  const env={DB:proxy.env.DB,DEPLOYMENT_EDITION:'cloud'} as Bindings;
+  const teaching=await createTeachingRepository(env),linked=await createLinkedLearningRepository(env),chat=await createChatRepository(env),media=await createLearningMediaRepository(env);
+  expect(await teaching.findConnection('moodle','rehearsal-school','rehearsal-context')).toMatchObject({ownerUserId:'migration-rehearsal-owner',courseId:1,resourceLinkId:'rehearsal-entry',teacherSubject:'synthetic-teacher'});
+  expect(await linked.findCourse('rehearsal-school','rehearsal-context')).toMatchObject({ownerUserId:'migration-rehearsal-owner',courseId:1,videos:[{videoId:1,title:'Synthetic rehearsal'}]});
+  const history=await chat.history(1,'migration-rehearsal-owner',10,0);expect(history).toMatchObject({count:1,results:[{question:'Synthetic attributed question',asked_by:{user_id:'synthetic-learner',username:'Synthetic learner',email:'rehearsal-learner@example.invalid'}}]});
+  expect(await chat.history(1,'migration-rehearsal-learner',10,0)).toEqual({notFound:true});
+  expect(await media.summaries('migration-rehearsal-learner',[1])).toEqual([]);
+  expect(await media.playback('migration-rehearsal-learner',1)).toBeNull();
+ },60000);
+
 });

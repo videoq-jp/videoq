@@ -1679,3 +1679,12 @@ ClassroomとMoodleの再生メタデータ、教員接続bootstrapの単回nonce
 統合したlockfileでnpm/uvの依存関係を再構築した。永続化テスト122ファイル・1,346件、別のAPI回帰169ファイル・2,182件、workerd API 13ファイル・59件、Python Worker 594件が成功した。skipはそれぞれ1件、93件、0件、114件で、外部サービスを必要とする検証の完了とはみなさない。全workspaceの型チェック、API ESLint、オンプレミスNodeビルド、PostgreSQL/D1双方のDrizzle検査、migration manifest、差分の整形検査も成功した。教員bootstrap nonce追加は別途両DBと既存教員接続経路の31件を実行し成功した。
 
 元の作業ツリーを統合開始時のprivate退避とファイル単位で比較し、以後の差分がこちらで加えたpackage scriptと設計記録の2ファイルだけであることを確認した。退避を保持したうえで、検証した統合内容を元の作業ツリーへ戻す。本番の切り替え・本番データ移行・ステージング0018適用はこの段階では実施していない。
+
+
+### 新schemaの実Cloudflareリハーサル（v2）
+
+v1の復旧記録を壊さないよう、新しい専用D1と768/1536のVectorizeを作成し、v2 configへ固定した。v1 configは退避し、検証CLIが旧targetを拒否するテストも追加した。D1の0000〜0018適用と両indexのmetadata設定をread-backで確認した。
+
+教員接続・異なる接続管理者/講座所有者・質問者情報を含む58テーブル/合成15行をexport・検証し、D1共通56テーブルの値/FKと13採番状態の移行・再投入が成功した。4件の検索probeと後始末、archiveの2ベクトルの配信と元の値の照合が成功した。認証と移行照合を並行させた試行は拒否されたため、認証の後始末後に照合を単独で再実行し、成功を確認した。
+
+69テーブル/57行のhash記録、変更検出、実Time Travel restore、復旧後の同一hash・Vectorize照合・認証/教員/質問者情報の2テストまで成功した。型チェック・API lint・staging型生成と、ローカル35テストも成功した。privateなarchive・bookmark・restore結果を保持し、結果だけをoperations evidenceへ記録した。本番データや本番構成は変更していない。実セッション互換性、非空checkpoint/visualのremote移行、実データ品質/性能/費用、保護されたAWS内の本番データ取得と未マッピング27テーブルの保持方針は引き続き未完了である。
