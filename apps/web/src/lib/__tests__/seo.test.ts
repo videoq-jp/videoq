@@ -22,6 +22,8 @@ describe('isNoindexPath', () => {
     expect(isNoindexPath('/settings')).toBe(true)
     expect(isNoindexPath('/admin')).toBe(true)
     expect(isNoindexPath('/login')).toBe(true)
+    expect(isNoindexPath('/teaching/connect')).toBe(true)
+    expect(isKnownPath('/teaching/connect')).toBe(true)
     expect(isNoindexPath('/signup/check-email')).toBe(true)
     expect(isNoindexPath('/share/token')).toBe(true)
   })

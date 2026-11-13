@@ -32,6 +32,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
         user_id text, question text NOT NULL DEFAULT 'Question', response jsonb NOT NULL DEFAULT '{"segments":[{"text":"Answer","sourceIds":[]}],"sources":[]}', is_shared_origin boolean NOT NULL DEFAULT false,
         feedback text, created_at timestamptz NOT NULL
       );
+      CREATE TABLE lti_chat_log_subjects (chat_log_id bigint PRIMARY KEY, classroom_author jsonb);
       CREATE INDEX ON chat_logs (course_id);
       CREATE INDEX ON chat_logs (course_id, created_at DESC);
       INSERT INTO users VALUES

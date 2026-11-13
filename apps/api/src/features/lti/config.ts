@@ -19,7 +19,7 @@ const resource = z.object({
   generation: z.number().int().positive().safe().optional(),
   sourceGeneration: z.number().int().positive().safe().optional(),
   learningAvailable: z.boolean().optional(),
-  kind: z.literal('course').optional(),
+  kind: z.enum(['course', 'linked']).optional(),
 }).strict();
 const registration = z.object({
   id: z.string().min(1),

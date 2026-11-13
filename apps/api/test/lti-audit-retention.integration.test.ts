@@ -2,7 +2,7 @@ import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
-import { syncLmsResource } from '../src/repositories/lms-resource-repository';
+import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { courseTags, type CourseTagScope } from '../src/features/lti/course-tags';
 import { manageLtiMaterial, type ManagedMaterialScope } from '../src/features/lti/material-management';
 import { pruneLtiAudit } from '../src/features/lti/audit-retention';

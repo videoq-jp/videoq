@@ -5,8 +5,8 @@ import { ConnectedAppCard, DisconnectAppDialog } from '@/components/auth/Connect
 import { MessageAlert } from '@/components/common/MessageAlert';
 import { Heading, HeadingTitle } from '@/components/ui/heading';
 
-type Connection = { id: string; moodleUrl: string; active: boolean };
-const endpoint = API_URL.replace(/\/+$/, '') + '/lms/pairing';
+type Connection = { id: string; provider: 'moodle' | 'classroom'; name: string; contextId: string; active: boolean };
+const endpoint = API_URL.replace(/\/+$/, '') + '/teaching';
 
 export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2', onConnectionCountChange }: { embedded?: boolean; headingLevel?: 'h2' | 'h3' | 'h4'; onConnectionCountChange?: (count: number) => void }) {
   const { t } = useTranslation();
@@ -22,7 +22,7 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
     const abort = new AbortController();
     async function load() {
       try {
-        const response = await fetch(endpoint, { credentials: 'include', signal: abort.signal });
+        const response = await fetch(endpoint + '/connections', { credentials: 'include', signal: abort.signal });
         if (!response.ok) return;
         const data = await response.json() as { connections: Connection[] };
         setConnections(data.connections.filter(connection => connection.active));
@@ -64,8 +64,8 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
       {connections.length > 0 && <ul aria-label={t('settings.moodle.title')} className="space-y-3">
         {connections.map(connection => <li key={connection.id} data-connection-id={connection.id}>
           <ConnectedAppCard
-            name={t('settings.moodle.title')}
-            subtitle={connection.moodleUrl}
+            name={connection.name}
+            subtitle={(connection.provider === 'classroom' ? 'Google Classroom' : 'Moodle') + ' · ' + connection.contextId}
             headingLevel={embedded ? headingLevel : 'h3'}
             disabled={disconnectPending}
             disconnecting={disconnectPending && disconnectTarget === connection.id}
@@ -86,8 +86,8 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
       </div>}
       <DisconnectAppDialog
         open={target !== undefined}
-        name={t('settings.moodle.title')}
-        subtitle={target?.moodleUrl}
+        name={target?.name ?? t('settings.moodle.title')}
+        subtitle={target?.contextId}
         description={t('settings.moodle.disconnectDescription')}
         pending={disconnectPending}
         onOpenChange={(open) => { if (!open) setDisconnectTarget(null); }}

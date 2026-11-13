@@ -17,9 +17,11 @@ export function registrationFingerprint(reg: LtiRegistration) {
   return digest(JSON.stringify(reg.id.startsWith("db:") ? { ...reg, resources: [] } : reg));
 }
 
-export function learningFeatures(reg: LtiRegistration) {
-  const courseAccess = Boolean(reg.courseAccess || reg.materialsService);
-  const managed = reg.id.startsWith("db:");
+export function learningFeatures(reg: LtiRegistration, grant?: Pick<LearningAuthorization['grant'], 'courseId' | 'contextId' | 'resourceLinkId'>) {
+  const courseAccess = Boolean(reg.courseAccess || reg.materialsService || reg.id.startsWith("classroom:"));
+  const linked = grant && reg.resources.some(item => item.kind === 'linked' && item.courseId === grant.courseId
+    && item.contextId === grant.contextId && item.resourceLinkId === grant.resourceLinkId);
+  const managed = reg.id.startsWith("db:") && !linked;
   return { transcripts: courseAccess, qa: courseAccess, conversations: courseAccess,
     management: managed, tags: managed, reports: managed };
 }

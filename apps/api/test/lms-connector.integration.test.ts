@@ -8,7 +8,7 @@ import { migrateDatabase } from '../scripts/migrate-database';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
 import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { provisionLmsInstallation, provisionLmsServiceInstallation } from '../src/repositories/lms-installation-repository';
-import { syncLmsResource } from '../src/repositories/lms-resource-repository';
+import { prepareTeacherFixture, syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { lmsRoutes } from '../src/features/lms/routes';
 import { privacySubject } from '../src/features/lms/privacy-data';
 import { digest } from '../src/features/lti/store';
@@ -192,6 +192,7 @@ const fileManifest = resourceManifestSchema.parse({ contextId, resourceLinkId: a
     const legacy = await provisionLmsInstallation(env, { id: 'push-connector', ownerUserId: 'owner', name: 'Push connector',
       issuer: 'https://push.example', clientId: 'push-client', deploymentId: 'deployment:opaque',
       authorizationUrl: 'https://push.example/authorize', jwksUrl: 'https://push.example/keys' });
+    await prepareTeacherFixture(env, { id: 'push-connector', ownerUserId: 'owner' }, contextId);
     const response = await app.request('https://api.example/api/lms/resources/' + encodeURIComponent('course:opaque-id'), {
       method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + legacy.token },
       body: JSON.stringify(courseManifest),

@@ -1,0 +1,1 @@
+ALTER TABLE "lti_chat_log_subjects" ADD COLUMN "classroom_author" jsonb;

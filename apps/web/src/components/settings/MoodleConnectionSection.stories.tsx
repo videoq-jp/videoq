@@ -5,8 +5,8 @@ import { failure, restPost, success } from '../../../.storybook/mocks/network';
 import { authFixture, regularUser } from '../../../.storybook/fixtures/auth';
 import { MoodleConnectionSection } from './MoodleConnectionSection';
 
-const endpoint = '/api/lms/pairing';
-const connection = { id: 'school', moodleUrl: 'https://moodle.example.edu', active: true };
+const endpoint = '/api/teaching/connections';
+const connection = { id: 'school', provider: 'moodle', name: 'Mathematics', contextId: 'course-1', active: true };
 const empty = http.get(endpoint, () => HttpResponse.json({ connections: [] }));
 const connected = http.get(endpoint, () => HttpResponse.json({ connections: [connection] }));
 const meta = {
@@ -30,7 +30,7 @@ export const Mobile: Story = { ...Empty, globals: { viewport: { value: 'mobile',
 export const EnglishMobile: Story = { ...Mobile, globals: { ...Mobile.globals, locale: 'en' } };
 
 export const Disconnect: Story = {
-  parameters: { api: { rest: [connected, restPost('/api/lms/pairing/connections/school/disconnect', success({ disconnected: true }))] } },
+  parameters: { api: { rest: [connected, restPost('/api/teaching/connections/school/disconnect', success({ disconnected: true }))] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ }));
@@ -43,7 +43,7 @@ export const Disconnect: Story = {
   },
 };
 export const DisconnectFailed: Story = {
-  parameters: { api: { rest: [connected, restPost('/api/lms/pairing/connections/school/disconnect', failure())] } },
+  parameters: { api: { rest: [connected, restPost('/api/teaching/connections/school/disconnect', failure())] } },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /連携を解除: Moodle|Disconnect: Moodle/ }));

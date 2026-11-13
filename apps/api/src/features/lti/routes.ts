@@ -134,7 +134,7 @@ ltiRoutes.post("/session", async c => {
     subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
   }, 3600);
   return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
-    features: learningFeatures(reg),
+    features: learningFeatures(reg, grant),
     ...(playbackVideoId ? { playback: { videoId: playbackVideoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
   });
 });
@@ -145,7 +145,7 @@ async function authorize(c: Context<AppEnv>) {
   const token = c.req.header("Authorization")?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
   if (!token) return { error: refused(c, 401) } as const;
   const session = sessionRecord.safeParse(await readCredential(c.env, await digest(token), "session"));
-  if (!session.success || session.data.transport === "native") return { error: refused(c, 401) } as const;
+  if (!session.success || session.data.transport !== undefined) return { error: refused(c, 401) } as const;
   const grant = session.data;
   const reg = config.registrations.find(item => item.id === grant.registrationId);
   // Re-read bindings on every request: removal immediately revokes existing sessions.

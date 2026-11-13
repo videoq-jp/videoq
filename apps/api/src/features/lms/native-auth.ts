@@ -16,6 +16,7 @@ const text = lmsIdentity;
 export const nativeAssertionClaims = z.object({
   iss: z.string().min(1).max(2048), sub: text, aud: z.string().min(1).max(2300),
   deploymentId: text, subject: text, contextId: text, resourceLinkId: text,
+  author: z.object({ name: z.string().trim().min(1).max(255), email: z.string().max(320) }).strict().optional(),
   sessionId: z.string().regex(/^[a-f0-9]{64}$/),
   sessionStartedAt: z.number().int().positive().safe(),
   sessionExpiresAt: z.number().int().positive().safe(),
@@ -66,6 +67,7 @@ export async function authorizeNativeRequest(env: Bindings, assertion: string, o
   if (!binding || (!reg.materialsService && !claims.accessProof)) throw denied();
   const subjectHash = await digest(JSON.stringify([reg.issuer, reg.clientId, claims.deploymentId, claims.subject]));
   const grant: LearningAuthorization["grant"] = {
+    ...(claims.author ? { moodleAuthor: { user_id: "moodle:" + subjectHash, username: claims.author.name, email: claims.author.email } } : {}),
     transport: "native", registrationId: reg.id, registrationHash: await registrationFingerprint(reg),
     deploymentId: claims.deploymentId, contextId: claims.contextId, resourceLinkId: claims.resourceLinkId,
     courseId: binding.courseId, subjectHash, roles: [], locale: claims.locale,

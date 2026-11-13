@@ -8,7 +8,7 @@ import { ConnectedAppsSection } from './ConnectedAppsSection';
 
 interface AppFixture {
   moodle?: boolean;
-  moodleUrl?: string;
+  courseName?: string;
   consents?: typeof consents;
   names?: Record<string, string>;
   load?: 'pending' | 'error';
@@ -37,8 +37,8 @@ const meta = {
     revokeRequest.mockClear();
     listRequest.mockClear();
     msw.use(
-      http.get('/api/lms/pairing', () => fixture.moodle
-        ? HttpResponse.json({ connections: [{ id: 'school', moodleUrl: fixture.moodleUrl ?? 'https://school.example', active: true }] })
+      http.get('/api/teaching/connections', () => fixture.moodle
+        ? HttpResponse.json({ connections: [{ id: 'school', provider: 'moodle', name: fixture.courseName ?? 'Mathematics', contextId: 'class-1', active: true }] })
         : new HttpResponse(null, { status: 404 })),
       trpcHandler([trpcQuery('account.connectedApps', () => {
         listRequest();
@@ -229,8 +229,8 @@ export const MoodleConnected: Story = {
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
     const apps = within(canvas.getByRole('region', { name: /連携アプリ|Connected Apps/ }));
-    await expect(await apps.findByText('https://school.example', { exact: false })).toBeVisible();
-    await expect(apps.getByRole('heading', { name: 'Moodle', level: 4 })).toBeVisible();
+    await expect(await apps.findByText('Mathematics', { exact: false })).toBeVisible();
+    await expect(apps.getByRole('heading', { name: /Mathematics/, level: 4 })).toBeVisible();
     await expect(apps.queryByText(/現在連携中のアプリはありません|No connected apps/i)).not.toBeInTheDocument();
   },
 };
@@ -239,13 +239,13 @@ export const MoodleAndClaude: Story = {
   args: { headingLevel: 'h3' },
   parameters: { connectedApps: {
     moodle: true,
-    moodleUrl: 'https://school-with-a-long-name.example.edu/learning/moodle',
+    courseName: 'Mathematics — foundations and practice with multiple videos',
     consents: [consents[0]],
     names: { [consents[0].client_id]: 'Claude' },
   } satisfies AppFixture },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Moodle', level: 4 })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: /Mathematics/, level: 4 })).toBeVisible();
     await expect(await canvas.findByRole('heading', { name: 'Claude', level: 4 })).toBeVisible();
     const cards = canvas.getAllByRole('article');
     await expect(cards).toHaveLength(2);

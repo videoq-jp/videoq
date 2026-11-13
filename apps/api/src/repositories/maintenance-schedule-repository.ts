@@ -39,10 +39,8 @@ export async function getNextMaintenanceWakeup(
           UNION ALL
           SELECT installation.next_materials_sync_at
             FROM lms_installations AS installation
-            JOIN users AS owner ON owner.id = installation.owner_user_id
            WHERE installation.active = true AND installation.materials_service IS NOT NULL
-             AND owner.is_active = true AND owner.deactivated_at IS NULL
-             AND (owner.banned IS NOT TRUE OR owner.ban_expires <= now())` : "";
+` : "";
   return withClient(env, async (client) => {
     const result = await client.query<{
       next_at: Date | null;

@@ -24,7 +24,7 @@ it('directs new connections to Moodle without a VideoQ setup form or code reques
 });
 
 it('removes a disconnected connection from the list and shows the empty state', async () => {
-  fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', moodleUrl: 'https://moodle.example', active: true }] }))
+  fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', provider: 'moodle', name: 'Mathematics', contextId: 'course-1', active: true }] }))
     .mockResolvedValueOnce(response({ disconnected: true }));
   render(<MoodleConnectionSection />);
   fireEvent.click(await screen.findByRole('button', { name: /^settings.connectedApps.revoke:/ }));
@@ -41,7 +41,7 @@ it('removes a disconnected connection from the list and shows the empty state', 
   expect(screen.queryByRole('button', { name: /^settings.connectedApps.revoke:/ })).not.toBeInTheDocument();
 });
 it('keeps a connection active in the UI if revocation fails', async () => {
-  fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', moodleUrl: 'https://moodle.example', active: true }] }))
+  fetchMock.mockResolvedValueOnce(response({ connections: [{ id: 'school', provider: 'moodle', name: 'Mathematics', contextId: 'course-1', active: true }] }))
     .mockResolvedValueOnce(response({}, 500));
   render(<MoodleConnectionSection />);
   fireEvent.click(await screen.findByRole('button', { name: /^settings.connectedApps.revoke:/ }));
@@ -53,10 +53,10 @@ it('keeps a connection active in the UI if revocation fails', async () => {
 
 it('omits disconnected connections returned by an older API', async () => {
   fetchMock.mockResolvedValue(response({ connections: [
-    { id: 'current', moodleUrl: 'https://current.example', active: true },
-    { id: 'old', moodleUrl: 'https://old.example', active: false },
+    { id: 'current', provider: 'moodle', name: 'Mathematics', contextId: 'course-1', active: true },
+    { id: 'old', provider: 'moodle', name: 'Old class', contextId: 'course-2', active: false },
   ] }));
   render(<MoodleConnectionSection />);
-  expect(await screen.findByText(/https:\/\/current.example/)).toBeInTheDocument();
-  expect(screen.queryByText(/https:\/\/old.example/)).not.toBeInTheDocument();
+  expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+  expect(screen.queryByText('Old class')).not.toBeInTheDocument();
 });

@@ -13,6 +13,11 @@ BETTER_AUTH_URL="http://localhost:8787"
 # Google sign-in (optional). Redirect URI: {BETTER_AUTH_URL}/api/auth/callback/google
 # GOOGLE_CLIENT_ID=""
 # GOOGLE_CLIENT_SECRET=""
+# Google Classroom add-on (optional; separate from ordinary Google sign-in).
+# See docs/guides/google-classroom-integration.md for Marketplace setup and teacher connections.
+# CLASSROOM_CLIENT_ID=""
+# CLASSROOM_CLIENT_SECRET=""
+# CLASSROOM_CONFIG='{"toolOrigin":"https://api.example.com"}'
 # Base64url-encoded 32-byte AES-GCM key.
 USER_SECRET_ENCRYPTION_KEY=""
 

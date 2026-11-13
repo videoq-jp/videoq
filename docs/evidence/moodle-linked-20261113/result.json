@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-13",
+  "environment": "isolated installed Moodle 5.1 with actual VideoQ API, PostgreSQL, object storage and local model servers",
+  "adminBrowserPairing": true,
+  "teacherBrowserCourseConnection": true,
+  "nativePlaylistCount": 2,
+  "studentVideoOneDecodedAndAdvanced": true,
+  "studentVideoTwoDecodedAndAdvanced": true,
+  "studentOwnerControlsHidden": true,
+  "samples": "Previously processed public test videos and their real transcripts/vectors, cloned from the existing local lab into an isolated database; no new ASR/indexing run claimed.",
+  "realAiAnswerWithTwoVideoSources": true,
+  "studentCitationSwitchedVideo": true,
+  "studentFeedbackSaved": true,
+  "studentCsvDenied": true,
+  "studentReloadRestoredAnswerAndFeedback": true,
+  "mobile": {
+    "collapsed": true,
+    "detailsMoved": true,
+    "noOverflow": true,
+    "samePlayer": true
+  },
+  "ownerHistoryShowsStudent": true,
+  "ownerHistoryCommaCitationSeeks": true,
+  "csvQuestion": true,
+  "csvStudentName": true,
+  "csvStudentEmail": true,
+  "csvAnswer": true,
+  "csvFeedback": true,
+  "coTeacherHistoryControlsHidden": true,
+  "coTeacherHistoryStatus": [
+    403,
+    403
+  ],
+  "coTeacherCanLearn": true,
+  "pluginVersion": "0.25.3",
+  "pluginBuild": 2026111304,
+  "moodle": "5.1.8+ (Build: 20261030)",
+  "sourceTree": "Working tree based on 8a76e1ca4ec8c8f39d661ecb6cc3d6aa7b2bc9f6",
+  "checks": {
+    "connectionAndHistory": 12,
+    "nativeAndAuthorAttribution": 35,
+    "signedTeacherConnection": 8,
+    "privacyExportAndErasure": 8,
+    "webRoutesAndConnectPage": 27,
+    "apiTypecheck": true,
+    "apiLint": true,
+    "apiNodeBuild": true,
+    "webBuild": true,
+    "moodlePhpAndPackaging": true
+  },
+  "sourceSha256": {
+    "apps/api/src/features/lms/native-auth.ts": "d5f5446245d3704a2bfab358ae22adaa788501fc0cff0994de3f24e3d8ef340d",
+    "apps/api/src/features/lms/native-routes.ts": "abaf41762d268eafa10282dff2cf9561db0561a002b836c45ed99e63df5462ae",
+    "apps/api/src/repositories/chat-repository.ts": "b617682a740e501157997cce91bcc4a4e413bd612438655b44f2281dc44eced2",
+    "apps/api/src/features/lms/privacy-data.ts": "7d95660fdfd28bac2e799a5531f04659979228260d5c05509f9c5b5f9c6c0370"
+  },
+  "pluginSha256": {
+    "version.php": "5bc8ec77f628875665f0f1a8ccbd0ea4e3f593ca70340682a848ba92944875ed",
+    "classes/native_api.php": "2e9401d6d37d7e093dd0e0a759fea0909894d16d577532424c2409c34e7cdb5b",
+    "classes/output/workspace.php": "22cdf4eb56edc5b3c20ed9144d9fa5a819e935589b86142a8501463a6d6659b0",
+    "learning.js": "af536f9b53edfc8d9746ba0f463215b9f87dba09e78106a5d60b97c00453116c",
+    "player.js": "b2927955141bfec62b59a27e8029cb570bb05b0235f6851e3fe43ccfa9fe6eef",
+    "layout.js": "930cd6d5ea12aaee8de8cd09596409a334db5a080a6f65934a27db27eb1b0e04",
+    "styles.css": "7173e65b189d13030837ce8f7c5f91102606d55e0e70e049f50b893b6dd558ce",
+    "templates/workspace.mustache": "30a2ad95be83e9ed620daf09da35c98af027499cf4d2d219e9b41992b5896348"
+  },
+  "postUpgradeAuthority": {
+    "linkedteacher": {
+      "status": 200,
+      "studentEmailInCsv": true
+    },
+    "linkedstudent": {
+      "status": 403
+    },
+    "linkedcoteacher": {
+      "status": 403
+    }
+  },
+  "pluginArchivesSha256": {
+    "local_videoq.zip": "ea15dec284e092bca9967ccd185f3fb611a358661394c654637f33e3c845b9b6",
+    "ltisource_videoq.zip": "06dc8f6aa2acceb6deb273bec18f5ab6538e3927ced1d5709b5e65f6ec6513c4"
+  }
+}

@@ -435,6 +435,27 @@
       "when": 1794004075571,
       "tag": "0061_lms_youtube_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794535592537,
+      "tag": "0062_classroom_question_authors",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794538934088,
+      "tag": "0063_teacher_course_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1794540989227,
+      "tag": "0064_moodle_linked_courses",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "teaching_connections" ADD COLUMN "resource_link_id" text;

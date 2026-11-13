@@ -1,3 +1,5 @@
+import { teachingRoutes } from '../src/features/teaching/routes';
+import { prepareTeacherFixture, syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
 import { issueMoodlePairing, exchangeMoodlePairing, pairingCodeChallenge } from "../src/features/lms/pairing";
 import { createHash } from "node:crypto";
 import { exportJWK, generateKeyPair, createLocalJWKSet, jwtVerify } from "jose";
@@ -13,9 +15,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
 import { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects } from "../src/db/schema";
+import { users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections } from "../src/db/schema";
 import { provisionLmsInstallation, authenticateLmsInstallation, rotateLmsSyncToken, disconnectLmsInstallation } from "../src/repositories/lms-installation-repository";
-import { getLmsResource, syncLmsResource } from "../src/repositories/lms-resource-repository";
+import { getLmsResource } from "../src/repositories/lms-resource-repository";
 import { resolvedLtiConfig } from "../src/features/lti/registrations";
 import { resourceManifestSchema } from "../src/features/lms/resource";
 import { lmsRoutes } from "../src/features/lms/routes";
@@ -50,14 +52,14 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   let manualKeyRing: string;
   const grant = { id: "moodle-a", ownerUserId: "account-a" };
   const objects = new Map<string, Uint8Array>();
-  const app = new Hono<AppEnv>().route("/api/lms", lmsRoutes).route("/api/lti", ltiRoutes);
+  const app = new Hono<AppEnv>().route("/api/lms", lmsRoutes).route("/api/lti", ltiRoutes).route("/api/teaching", teachingRoutes);
 
   beforeAll(async () => {
     manualKeyRing = JSON.stringify({ current: await exportJWK((await generateKeyPair("RS256", { extractable: true })).privateKey), previous: [] });
     admin = new pg.Client({ connectionString: databaseUrl }); await admin.connect();
     await admin.query(`CREATE SCHEMA "${schema}"`); created = true;
     pool = new pg.Pool({ connectionString: databaseUrl, options: `-c search_path=${schema}`, max: 10 });
-    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects });
+    const snapshot = generateDrizzleJson({ users, videos, chatLogs, videoCourses, videoCourseMembers, tags, videoTags, videoVisualRuns, videoVisualChunks, externalTasks, ltiChatLogSubjects, teachingConnections });
     const statements = await generateMigration(generateDrizzleJson({}), snapshot);
     for (const statement of statements) await pool.query(statement.replaceAll('"public".', `"${schema}".`));
     // Apply the actual generated sync migration, including foreign keys.
@@ -72,7 +74,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const youtubeSources = await readFile(new URL('../drizzle/0061_lms_youtube_sources.sql', import.meta.url), 'utf8');
     await pool.query({ text: youtubeSources });
     await pool.query("CREATE TABLE scene_embeddings(video_id bigint)");
-    env = { RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
+    env = { FRONTEND_URL: "https://api.example", RUNTIME: "node", DATABASE_POOL: pool, USE_S3_STORAGE: "false",
       LTI_CONFIG: JSON.stringify({ toolOrigin: "https://api.example", databaseRegistrations: true, registrations: [] }),
       VIDEO_BUCKET: {
         put: async (key: string, body: ReadableStream) => { objects.set(key, new Uint8Array(await new Response(body).arrayBuffer())); },
@@ -98,10 +100,16 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     try { if (created) await admin.query(`DROP SCHEMA "${schema}" CASCADE`); } finally { await admin?.end(); }
   });
 
-  const request = (path: string, method = "GET", body?: unknown, token?: string, runtime = env) => app.request("https://api.example/api/lms/" + path, {
-    method, headers: { Authorization: "Bearer " + (token ?? credential.token), ...(body ? { "Content-Type": "application/json" } : {}) },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  }, runtime);
+  const request = async (path: string, method = "GET", body?: unknown, token?: string, runtime = env) => {
+    const manifestInput = resourceManifestSchema.safeParse(body);
+    if (method === 'PUT' && path.startsWith('resources/') && !path.includes('/content') && manifestInput.success && (!token || token === credential.token)) {
+      await prepareTeacherFixture(runtime, grant, manifestInput.data.contextId, manifestInput.data.courseTitle);
+    }
+    return app.request("https://api.example/api/lms/" + path, {
+      method, headers: { Authorization: "Bearer " + (token ?? credential.token), ...(body ? { "Content-Type": "application/json" } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    }, runtime);
+  };
 
   const automaticEnv = (): Bindings => ({ ...env, LTI_CONFIG: undefined, LTI_TOOL_KEYS: undefined,
     BETTER_AUTH_SECRET: "lti-test-session-secret-".repeat(3),
@@ -145,8 +153,12 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       'Content-Type': 'application/json', Origin: origin, ...(userId ? { 'X-VideoQ-Test-User-Id': userId } : {}), ...extraHeaders,
     }, body: JSON.stringify(body) }, { ...env, BETTER_AUTH_SECRET: 'owner-navigation-fixture-secret-'.repeat(3),
       BETTER_AUTH_URL: 'https://api.example', ...overrides });
-  const operatorConnection = () => provisionLmsInstallation(env, { ...registration, id: 'operator',
-    clientId: managementInput.clientId, deploymentId: managementInput.deploymentId });
+  const operatorConnection = async () => {
+    const connection = await provisionLmsInstallation(env, { ...registration, id: 'operator',
+      clientId: managementInput.clientId, deploymentId: managementInput.deploymentId });
+    await prepareTeacherFixture(env, { id: 'operator', ownerUserId: 'account-a' }, 'course-1');
+    return connection;
+  };
 
   it('requires an independent VideoQ browser session for account navigation', async () => {
     await operatorConnection();
@@ -234,7 +246,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
   it("needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance", async () => {
     const automatic = automaticEnv();
     expect(await toolJwks(automatic)).toEqual({ keys: [] });
-    const listing = await app.request("http://localhost/api/lms/pairing", {
+    const listing = await app.request("http://localhost/api/teaching/connections", {
       headers: { "X-VideoQ-Test-User-Id": "account-a" },
     }, automatic);
     expect(listing.status).toBe(200);
@@ -341,36 +353,21 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(await toolJwks(automatic)).toEqual(expected);
   });
 
-  it("disconnects only the owner's installation, revokes sync/LTI and retains all learning data", async () => {
-    const resource = await syncLmsResource(env, grant, "disconnect-source", manifest());
-    const peer = await provisionLmsInstallation(env, { ...registration, id: "peer", ownerUserId: "account-b", clientId: "peer" });
-    const pending = await issueMoodlePairing(env, "account-a", registration.issuer, "https://api.example");
-    const { secret } = JSON.parse(atob(pending.code.slice(8))) as { secret: string };
-    const before = (await pool.query("SELECT (SELECT count(*) FROM videos) AS videos,(SELECT count(*) FROM video_courses) AS courses,(SELECT count(*) FROM lms_resources) AS resources,(SELECT count(*) FROM external_tasks) AS tasks")).rows;
-    const url = "http://localhost/api/lms/pairing/connections/moodle-a/disconnect";
-    const headers = { "X-VideoQ-Test-User-Id": "account-b", Origin: "https://api.example" };
-    expect((await app.request(url, { method: "POST", headers }, env)).status).toBe(404);
+  it("disconnects only a teacher's course while retaining the school installation and all learning data", async () => {
+    const resource = await syncLmsResource(env, grant, 'disconnect-source', manifest());
+    const link = (await pool.query("SELECT id FROM teaching_connections WHERE context_id='course-1'")).rows[0];
+    const url = 'http://localhost/api/teaching/connections/' + link.id + '/disconnect';
+    const headers = { 'X-VideoQ-Test-User-Id': 'account-b', Origin: 'https://api.example' };
+    expect((await app.request(url, { method:'POST', headers }, env)).status).toBe(404);
+    expect((await app.request(url, { method:'POST', headers: { ...headers, 'X-VideoQ-Test-User-Id':'account-a', Origin:'https://evil.example' } }, env)).status).toBe(403);
+    const own = { ...headers, 'X-VideoQ-Test-User-Id':'account-a' };
+    expect((await app.request(url, { method:'POST', headers:own }, env)).status).toBe(200);
+    expect((await app.request(url, { method:'POST', headers:own }, env)).status).toBe(200);
     expect(await authenticateLmsInstallation(env, credential.token)).not.toBeNull();
-    expect((await app.request(url, { method: "POST", headers: { ...headers, "X-VideoQ-Test-User-Id": "account-a", Origin: "https://evil.example" } }, env)).status).toBe(403);
-    const ownHeaders = { ...headers, "X-VideoQ-Test-User-Id": "account-a" };
-    expect((await app.request(url, { method: "POST", headers: ownHeaders }, env)).status).toBe(200);
-    expect((await app.request(url, { method: "POST", headers: ownHeaders }, env)).status).toBe(200);
-    expect(await authenticateLmsInstallation(env, credential.token)).toBeNull();
-    expect(await authenticateLmsInstallation(env, peer.token)).toMatchObject({ id: "peer" });
-    const list = await app.request("http://localhost/api/lms/pairing", {
-      headers: { "X-VideoQ-Test-User-Id": "account-a" },
-    }, env);
-    expect(list.status).toBe(200);
-    expect(await list.json()).toEqual({ connections: [] });
-    expect((await request("connection")).status).toBe(401);
-    expect((await resolvedLtiConfig(env))?.registrations.some(item => item.id === "db:moodle-a")).toBe(false);
-    expect(await getLmsResource(env, grant, "disconnect-source")).toBeNull();
-    const [retained] = (await pool.query("SELECT video_id,enabled FROM lms_resources WHERE installation_id=$1 AND external_id=$2", [grant.id, "disconnect-source"])).rows;
-    expect(Number(retained.video_id)).toBe(resource.videoId);
-    expect(retained.enabled).toBe(true);
-    expect((await pool.query("SELECT (SELECT count(*) FROM videos) AS videos,(SELECT count(*) FROM video_courses) AS courses,(SELECT count(*) FROM lms_resources) AS resources,(SELECT count(*) FROM external_tasks) AS tasks")).rows).toEqual(before);
-    await expect(exchangeMoodlePairing(env, { secret, issuer: registration.issuer, clientId: "new", deploymentId: "3", syncToken: "c".repeat(64) })).rejects.toMatchObject({ code: "INVALID_PAIRING_CODE" });
-    await expect(syncLmsResource(env, grant, "disconnect-source", manifest(2, { enabled: false }))).rejects.toMatchObject({ code: "INSTALLATION_UNAVAILABLE" });
+    expect((await resolvedLtiConfig(env))!.registrations.flatMap(reg => reg.resources)).toEqual([]);
+    expect(await getLmsResource(env, grant, 'disconnect-source')).toBeNull();
+    expect((await pool.query('SELECT video_id,enabled FROM lms_resources WHERE id=$1',[resource.id])).rows[0]).toMatchObject({ video_id:String(resource.videoId), enabled:true });
+    await expect(syncLmsResource(env, grant, 'disconnect-source', manifest(2))).rejects.toMatchObject({code:'TEACHER_CONNECTION_REQUIRED'});
   });
 
   const pairingInput = (secret: string, overrides = {}) => ({ secret, issuer: "https://moodle.example/campus",
@@ -384,7 +381,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(code.origin).toBe("https://api.example");
     const saved = await exchangeMoodlePairing(env, pairingInput(code.secret));
     expect(await authenticateLmsInstallation(env, "b".repeat(64))).toMatchObject({ id: saved.installationId,
-      ownerUserId: "account-a", issuer: "https://moodle.example/campus", clientId: "new-client", deploymentId: "17" });
+      issuer: "https://moodle.example/campus", clientId: "new-client", deploymentId: "17" });
     const { rows } = await pool.query("SELECT * FROM lms_installations WHERE id=$1", [saved.installationId]);
     expect(rows[0].authorization_url).toBe("https://moodle.example/campus/mod/lti/auth.php");
     expect(rows[0].jwks_url).toBe("https://moodle.example/campus/mod/lti/certs.php");
@@ -426,7 +423,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const { secret } = JSON.parse(atob(bound.code.slice(8))) as { secret: string };
     await expect(exchangeMoodlePairing(env, pairingInput(secret, { issuer: registration.issuer,
       clientId: registration.clientId, deploymentId: "1" }))).rejects.toMatchObject({ code: "CONNECTION_EXISTS" });
-    expect(await authenticateLmsInstallation(env, credential.token)).toMatchObject({ ownerUserId: "account-a" });
+    expect(await authenticateLmsInstallation(env, credential.token)).toMatchObject({ id: grant.id });
   });
   it("requires a browser session and allowed Origin to issue a code, and ignores caller-selected owners", async () => {
     const url = "http://localhost/api/lms/pairing";
@@ -441,10 +438,10 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const response = await app.request("http://localhost/api/lms/pairing/exchange", { method: "POST",
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(pairingInput(secret, { issuer: "https://moodle.example" })) }, env);
     expect(response.status).toBe(200);
-    const list = await app.request(url, { headers: { "X-VideoQ-Test-User-Id": "account-b" } }, env);
+    const list = await app.request("http://localhost/api/teaching/connections", { headers: { "X-VideoQ-Test-User-Id": "account-b" } }, env);
     expect(await list.json()).toEqual({ connections: [] });
-    const own = await app.request(url, { headers: { "X-VideoQ-Test-User-Id": "account-a" } }, env);
-    expect((await own.json<{ connections: unknown[] }>()).connections).toHaveLength(2);
+    const own = await app.request("http://localhost/api/teaching/connections", { headers: { "X-VideoQ-Test-User-Id": "account-a" } }, env);
+    expect((await own.json<{ connections: unknown[] }>()).connections).toHaveLength(0);
   });
 
   it("shares completed history across video launches, isolates learners/courses, and revokes restricted context", async () => {
@@ -494,7 +491,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       materialsService: { tokenEndpoint: registration.issuer + "/local/videoq/token.php", endpoint: registration.issuer + "/local/videoq/materials.php" } };
     const connected = await exchangeMoodlePairing(serviceEnv, request);
     expect(connected).toMatchObject({ installationId: grant.id, toolOrigin: "https://api.example",
-      uploadTargets: [{ origin: "https://storage.example", prefix: "/fixture/media/videos/account-a/" }] });
+      uploadTargets: [{ origin: "https://storage.example", prefix: "/fixture/media/videos/" }] });
     expect(await exchangeMoodlePairing(serviceEnv, request)).toEqual(connected);
     const current = await getLmsResource(serviceEnv, grant, "10");
     expect(current?.video?.id).toBe(original.videoId);
@@ -513,7 +510,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     await expect(exchangeMoodlePairing(serviceEnv, request)).rejects.toMatchObject({ code: "INVALID_PAIRING_CODE" });
   });
 
-  it("creates no user accounts and binds media/quota to the school's existing account", async () => {
+  it("creates no user accounts and binds media/quota to the explicitly connected teacher's account", async () => {
     const resource = await syncLmsResource(env, grant, "10", manifest());
     expect(resource.videoId).not.toBeNull();
     expect((await pool.query("SELECT managed_by_lms FROM video_courses WHERE id=$1", [resource.courseId])).rows[0].managed_by_lms).toBe(true);
@@ -728,6 +725,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const service = {tokenEndpoint:registration.issuer+'/local/videoq/token.php',endpoint:registration.issuer+'/local/videoq/materials.php'};
     await pool.query('UPDATE lms_installations SET materials_service=$1,sync_token_hash=NULL WHERE id=$2',[service,grant.id]);
     const serviceEnv={...env,DEPLOYMENT_EDITION:edition,USE_S3_STORAGE:'true',LTI_TOOL_KEYS:manualKeyRing} as Bindings;
+    await prepareTeacherFixture(serviceEnv, grant, '42');
     const actions:Record<string,unknown>[]=[];
     const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async(input,init)=>{
       if(input===service.tokenEndpoint)return Response.json({access_token:'fixture',token_type:'Bearer',expires_in:60,scope:'https://videoq.org/spec/lti-materials/v1'});
@@ -756,6 +754,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     const service = {tokenEndpoint:registration.issuer+'/local/videoq/token.php',endpoint:registration.issuer+'/local/videoq/materials.php'};
     await pool.query('UPDATE lms_installations SET materials_service=$1,sync_token_hash=NULL WHERE id=$2',[service,grant.id]);
     const serviceEnv={...env,USE_S3_STORAGE:'true',LTI_TOOL_KEYS:manualKeyRing} as Bindings;
+    await prepareTeacherFixture(serviceEnv, grant, '42');
     const actions:Record<string,unknown>[]=[];
     const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async(input,init)=>{
       if(input===service.tokenEndpoint) return Response.json({access_token:'fixture',token_type:'Bearer',expires_in:60,scope:'https://videoq.org/spec/lti-materials/v1'});
@@ -964,11 +963,11 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
     expect(await rotateLmsSyncToken(env, "account-b", "moodle-a")).toBeNull();
     const rotated = await rotateLmsSyncToken(env, "account-a", "moodle-a");
     expect(await authenticateLmsInstallation(env, credential.token)).toBeNull();
-    expect(await authenticateLmsInstallation(env, rotated!.token)).toHaveProperty("ownerUserId", "account-a");
+    expect(await authenticateLmsInstallation(env, rotated!.token)).toHaveProperty("id", "moodle-a");
     await pool.query("UPDATE users SET banned=true WHERE id='account-a'");
-    expect(await authenticateLmsInstallation(env, rotated!.token)).toBeNull();
-    expect((await resolvedLtiConfig(env))!.registrations).toHaveLength(0);
-    expect((await request("connection", "GET", undefined, rotated!.token)).status).toBe(401);
+    expect(await authenticateLmsInstallation(env, rotated!.token)).not.toBeNull();
+    expect((await resolvedLtiConfig(env))!.registrations.flatMap(item => item.resources)).toHaveLength(0);
+    expect((await request("connection", "GET", undefined, rotated!.token)).status).toBe(200);
   });
 
   it("revokes hidden lessons without retransferring or recharging them when reopened", async () => {

@@ -79,7 +79,7 @@ function managementAwaitingLearning(detail){return detail?.status==='completed'&
 function managementAvailability(value){
  managementAllowed=value===true;
  if(!managementAllowed&&managementNativeOpen&&!managementDirty()){managementNativeOpen=false;document.body.classList.remove('moodle-management');}
- if(!managementAllowed&&!managementDirty()&&!nativeUi){managementPanel.open=false;document.body.classList.remove('standalone-management');document.querySelector('h1').textContent=uiCopy.heading;}
+ if(!managementAllowed&&!managementDirty()&&!nativeUi&&!document.getElementById('classroom-material-title')){managementPanel.open=false;document.body.classList.remove('standalone-management');document.querySelector('h1').textContent=uiCopy.heading;}
  managementPanel.hidden=nativeUi?!managementNativeOpen:(!features.management||(!managementAllowed&&!managementDirty()));
  if(nativeUi&&bridge)window.parent.postMessage({type:'videoq:management-availability',version:1,channel,videoId:bridge.videoId,available:managementAllowed,draft:managementDirty()},nativeUi.origin);
  managementDraw();
@@ -150,7 +150,7 @@ function managementSchedule(){
  managementTimer=setTimeout(()=>{if(document.hidden||managementBusy||chatInFlight){managementSchedule();return;}managementPolls++;void managementRun(()=>managementLoad(true));},5000);
 }
 async function managementInit(){if(features.management){managementPanel.hidden=!!nativeUi;await managementRun(()=>materialRequest('list'));}}
-managementPanel.addEventListener('toggle',()=>{if(!nativeUi){document.body.classList.toggle('standalone-management',managementPanel.open);document.querySelector('h1').textContent=managementPanel.open?managementCopy.title:uiCopy.heading;if(managementPanel.open)void managementRun(()=>managementLoad());}managementDraw();managementSchedule();});
+managementPanel.addEventListener('toggle',()=>{if(!nativeUi&&!document.getElementById('classroom-material-title')){document.body.classList.toggle('standalone-management',managementPanel.open);document.querySelector('h1').textContent=managementPanel.open?managementCopy.title:uiCopy.heading;if(managementPanel.open)void managementRun(()=>managementLoad());}managementDraw();managementSchedule();});
 managementRefresh.addEventListener('click',async()=>{if(await managementDiscard()){managementPolls=0;await managementRun(()=>managementLoad());}});
 managementSelect.addEventListener('change',async()=>{const id=Number(managementSelect.value);if(!await managementDiscard()){if(managementDetail)managementSelect.value=String(managementDetail.videoId);return;}managementSelect.value=String(id);managementPolls=0;await managementRun(()=>managementLoad(false));});
 for(const field of [managementDescription,managementTranscript])field.addEventListener('input',()=>{managementError='';managementNotice='';managementDraw();});

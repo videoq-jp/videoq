@@ -44,13 +44,11 @@ export async function authenticateLmsInstallation(env: Bindings, token: string) 
   return withDb(env, async db => {
     const [installation] = await db.select({
       id: lmsInstallations.id,
-      ownerUserId: lmsInstallations.ownerUserId,
       issuer: lmsInstallations.issuer,
       clientId: lmsInstallations.clientId,
       deploymentId: lmsInstallations.deploymentId,
     }).from(lmsInstallations)
-      .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
-      .where(and(eq(lmsInstallations.syncTokenHash, hash), isNull(lmsInstallations.materialsService), eq(lmsInstallations.active, true), activeLmsOwner()))
+      .where(and(eq(lmsInstallations.syncTokenHash, hash), isNull(lmsInstallations.materialsService), eq(lmsInstallations.active, true)))
       .limit(1);
     return installation ?? null;
   });

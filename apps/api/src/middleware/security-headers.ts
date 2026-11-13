@@ -12,7 +12,7 @@ export const securityHeaders = createMiddleware<AppEnv>(async (c, next) => {
   c.res.headers.set("X-Content-Type-Options", "nosniff");
   // Integration HTML sets a nonce CSP and explicit LMS frame origins.
   // Keep every other response, including integration errors, unframeable.
-  const integrationHtml = c.req.path.startsWith("/api/lti/")
+  const integrationHtml = (c.req.path.startsWith("/api/lti/") || c.req.path.startsWith("/api/classroom/"))
     && c.res.headers.get("Content-Type")?.startsWith("text/html")
     && c.res.headers.has("Content-Security-Policy");
   if (!integrationHtml) {

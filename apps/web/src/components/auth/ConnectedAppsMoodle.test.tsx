@@ -12,16 +12,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 it('groups Moodle under connected apps and restores the empty state after disconnection', async () => {
-  fetchMock.mockResolvedValueOnce(response([{ id: 'school', moodleUrl: 'https://school.example', active: true }]))
+  fetchMock.mockResolvedValueOnce(response([{ id: 'school', provider: 'moodle', name: 'Mathematics', contextId: 'class-1', active: true }]))
     .mockResolvedValueOnce(new Response('{}'));
   render(<ConnectedAppsSection headingLevel="h3" />);
   const apps = within(screen.getByRole('region', { name: 'settings.connectedApps.title' }));
-  expect(await apps.findByText('https://school.example', { exact: false })).toBeInTheDocument();
-  expect(apps.getByRole('heading', { name: 'settings.moodle.title', level: 4 })).toBeInTheDocument();
+  expect(await apps.findByText('Mathematics', { exact: false })).toBeInTheDocument();
+  expect(apps.getByRole('heading', { name: 'Mathematics', level: 4 })).toBeInTheDocument();
   expect(apps.queryByText('settings.connectedApps.empty')).not.toBeInTheDocument();
   expect(apps.queryByText('settings.moodle.empty')).not.toBeInTheDocument();
   fireEvent.click(apps.getByRole('button', { name: /^settings.connectedApps.revoke:/ }));
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.connectedApps.revoke' }));
   expect(await apps.findByText('settings.connectedApps.empty')).toBeInTheDocument();
-  expect(apps.queryByText('https://school.example', { exact: false })).not.toBeInTheDocument();
+  expect(apps.queryByText('Mathematics', { exact: false })).not.toBeInTheDocument();
 });

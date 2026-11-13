@@ -16,6 +16,7 @@ const PUBLIC_AUTH_PATHS = [
   '/change-email',
   '/consent',
   '/moodle/connect',
+  '/teaching/connect',
   '/moodle/manage',
   '/share',
   '/course-invitations',
@@ -29,7 +30,7 @@ const PUBLIC_AUTH_PATHS = [
 ] as const;
 
 export function isPublicAuthPath(pathname: string): boolean {
-  if (isOnprem) return ['/login', '/reset-password', '/consent', '/moodle/connect', '/moodle/manage', '/share', '/course-invitations'].some(path => pathname === path || pathname.startsWith(`${path}/`));
+  if (isOnprem) return ['/login', '/reset-password', '/consent', '/moodle/connect', '/teaching/connect', '/moodle/manage', '/share', '/course-invitations'].some(path => pathname === path || pathname.startsWith(`${path}/`));
   if (pathname === '/') return true;
   return PUBLIC_AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }

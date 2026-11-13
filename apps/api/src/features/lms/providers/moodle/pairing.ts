@@ -67,8 +67,8 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
   const input = pairingExchangeSchema.parse(rawInput);
   const codeHash = await digest("moodle-pairing:" + input.secret);
   const receiptId = await digest("lti-materials-pairing:" + input.secret);
-  const settings = async (ownerUserId: string, installationId: string) => {
-    const url = new URL(await presignR2Put(env, `videos/${ownerUserId}/policy`, "video/mp4", 1));
+  const settings = async (installationId: string) => {
+    const url = new URL(await presignR2Put(env, 'videos/policy', "video/mp4", 1));
     return { installationId, toolOrigin: ltiConfig(env)!.toolOrigin,
       uploadTargets: [{ origin: url.origin, prefix: url.pathname.slice(0, url.pathname.lastIndexOf("/") + 1) }] };
   };
@@ -119,7 +119,7 @@ export async function exchangeMoodlePairing(env: Bindings, rawInput: z.input<typ
   }));
   if (input.mode === "materials") {
     await armMaintenance(env, Date.now());
-    return settings(result.ownerUserId, result.installationId);
+    return settings(result.installationId);
   }
   return { installationId: result.installationId };
 }
