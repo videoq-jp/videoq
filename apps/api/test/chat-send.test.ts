@@ -44,6 +44,7 @@ vi.mock("pg", () => {
   }
   // vector-repository.ts (@yukiharada1228/langchain-postgres の PGEngine.fromPool) 用。
   class FakePool {
+    on() { return this; }
     async query(sqlOrConfig: unknown, args: unknown[] = []) {
       return executeFakePgQuery({
         calls,
