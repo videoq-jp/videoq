@@ -157,3 +157,15 @@ test('requires an empty private parent-owned directory and complete private mark
   await chmod(join(destination,'verified-backup-input.json'),0o644);
   await assert.rejects(retainStagedBackup(destination,context,()=>assert.fail('AWS')),/INVALID_BACKUP_HANDOFF_MARKER/);
 });
+
+test('handoff copy refuses symlink sources using a no-follow file descriptor', async t => {
+  const {stageVerifiedBackup,BACKUP_SCHEMAS}=await import('./backup-archive.mjs');
+  const {options}=await fixture(t),destination=await mkdtemp(join(tmpdir(),'videoq-backup-handoff-'));
+  t.after(()=>rm(destination,{recursive:true,force:true}));
+  const image=(await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
+  await rm(join(options.directory,'database.dump'));
+  await writeFile(join(options.directory,'unrelated-private-file'),'synthetic-canary',{mode:0o600});
+  await symlink(join(options.directory,'unrelated-private-file'),join(options.directory,'database.dump'));
+  await assert.rejects(stageVerifiedBackup({...options,destination,image,schemas:BACKUP_SCHEMAS}),{code:'ELOOP'});
+  await assert.rejects(readFile(join(destination,'verified-backup-input.json')),{code:'ENOENT'});
+});
