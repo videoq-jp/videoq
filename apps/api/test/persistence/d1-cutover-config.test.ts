@@ -18,3 +18,23 @@ it.each(['rollback','postgres','onprem','development','zero-id','wrong-history',
 it('reports syntax errors without echoing configuration contents',()=>{
  expect(inspectCloudCutoverConfig('{private-canary-value','production')).toEqual({configuration_valid:false,errors:['Invalid Wrangler JSONC.'],warnings:[]});
 });
+it.each([
+ 'WORKER_INTERNAL_API_SECRET','BETTER_AUTH_SECRET','AUTH_JWT_SECRET','USER_SECRET_ENCRYPTION_KEY',
+ 'GOOGLE_CLIENT_SECRET','CLASSROOM_CLIENT_SECRET','OPENAI_API_KEY','OPENROUTER_API_KEY',
+ 'LLM_API_KEY','EMBEDDING_API_KEY','MAILGUN_API_KEY','R2_SECRET_ACCESS_KEY',
+ 'AWS_SECRET_ACCESS_KEY','AWS_SESSION_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET',
+ 'DATABASE_URL','LTI_TOOL_KEYS',
+])('rejects plaintext %s without copying its value to diagnostics',key=>{
+ const scope=target();Object.assign(scope.vars,{[key]:'private-config-regression-canary'});
+ const result=check(scope);
+ expect(result.configuration_valid).toBe(false);
+ expect(result.errors).toContain(`${key} must be provisioned as a secret, not plaintext Wrangler vars.`);
+ expect(JSON.stringify(result)).not.toContain('private-config-regression-canary');
+});
+it('allows public client identifiers and workload federation configuration',()=>{
+ const scope=target();Object.assign(scope.vars,{
+  GOOGLE_CLIENT_ID:'public-google-client',CLASSROOM_CLIENT_ID:'public-classroom-client',
+  OPENROUTER_FEDERATION_POLICY_ID:'public-policy-id',OPENROUTER_FEDERATION_AUDIENCE:'https://openrouter.ai',
+ });
+ expect(check(scope).configuration_valid).toBe(true);
+});

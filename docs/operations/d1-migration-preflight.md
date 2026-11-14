@@ -100,6 +100,8 @@ npm run db:d1:cutover-check --workspace @videoq/api -- \
 `MIGRATION_ALLOW_CLOUD_POSTGRES=true`はD1切替候補では拒否する。Neon保持のため残したHyperdriveは警告として扱う。
 `WORKER_INTERNAL_API_SECRET`と`BETTER_AUTH_SECRET`等は秘密として設定し、AWS側の内部API接続設定も別途照合する。
 
+既知の署名・暗号化・provider credential等18項目は、対象環境の通常`vars`に存在するだけで拒否する。公開OAuth client IDやfederation policy IDはこの禁止対象ではない。これは既知名の設定チェックであり、未知の秘密値の汎用検出や実リモートsecretの存在確認ではない。[追加監査と回帰試験](d1-langchain-security-review.md#切替設定の秘密値検査の修正)を参照。
+
 このチェックはリモートのschema履歴、indexの実次元・metric・metadata filter、秘密値の存在、AWS設定、データ整合性、認証互換性、検索品質、性能、予算を検証しない。
 本番切替には計画書の全受け入れ基準と復旧演習の証跡が必要である。
 

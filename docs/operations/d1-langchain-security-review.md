@@ -86,3 +86,12 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 
 
 同じ実サービス攻撃試験を768次元indexでも実行した。合成v2の固定guardを維持し、別の所有者・scene・physical vector IDを新規に生成した。実LangChain経由の5候補すべての検索反映を待ってから、別owner偽装、physical ID偽装、古いrevision、SQL風ID、SQL風owner、owner無効化を検証し、正規sceneのD1本文だけが返ることを確認した。model呼出しは0回で、最後に全fixtureのDB不存在とvector ID不存在・owner ANN空結果を確認した。[768次元の集約証跡](evidence/d1-langchain-live-security-768-2026-11-15.json)。これでこの合成攻撃ケースは768/1536の両indexで実施済みとなった。公開API認証や全モデル回答のE2Eまでの証明範囲は拡大しない。
+
+
+## 切替設定の秘密値検査の修正
+
+移行前チェックの追加監査で、`inspectCloudCutoverConfig`が通常の`vars`への秘密値記載を拒否する対象は4項目だけで、APIが実際に読む暗号化キー、旧JWT署名キー、OAuth client secret、OpenRouter/LLM/Embeddingキー、Stripe、R2/AWS secret/session token、LTI private key-ringが漏れていた。合成canaryを使った回帰試験を先に実行し、14件の誤受入を再現した。実秘密値の漏えいを検出したという意味ではない。
+
+[Workersのsecrets管理](https://developers.cloudflare.com/workers/configuration/secrets/)に従い、対象環境の既知18項目を通常varsへ記載すると設定チェックが失敗するよう修正した。公開OAuth client ID、federation policy ID/audienceは許可する。出力は固定の設定名と診断だけで、値を含まない。任意の未知名や、別の値に埋め込まれた秘密まで検出する汎用スキャナーとは扱わない。
+
+修正後は設定・backendの2ファイル42試験、API/移行ツール型検査、変更TSのLintが成功した。[修正証跡](evidence/d1-cutover-secret-guard-2026-11-15.json)。現在の本番Wrangler設定に対するCLIは、既存Neon設定にD1/Vectorize切替用bindingがないため、従来通り終了1で拒否した。本番設定・secrets・デプロイは変更していない。このローカル修正は、先行するremote headのCI成功で検証済みと読み替えず、後続CIの対象とする。

@@ -3,6 +3,15 @@ type RecordValue=Record<string,unknown>;
 const record=(value:unknown):RecordValue=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as RecordValue:{};
 const list=(value:unknown):RecordValue[]=>Array.isArray(value)?value.map(record):[];
 const present=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>0;
+// Actual credential/signing/encryption inputs used by the API. Public OAuth
+// client IDs, endpoint URLs and federation policy identifiers remain ordinary vars.
+const secretKeys=[
+ 'WORKER_INTERNAL_API_SECRET','BETTER_AUTH_SECRET','AUTH_JWT_SECRET','USER_SECRET_ENCRYPTION_KEY',
+ 'GOOGLE_CLIENT_SECRET','CLASSROOM_CLIENT_SECRET','OPENAI_API_KEY','OPENROUTER_API_KEY',
+ 'LLM_API_KEY','EMBEDDING_API_KEY','MAILGUN_API_KEY','R2_SECRET_ACCESS_KEY',
+ 'AWS_SECRET_ACCESS_KEY','AWS_SESSION_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET',
+ 'DATABASE_URL','LTI_TOOL_KEYS',
+] as const;
 export function inspectCloudCutoverConfig(text:string,environment:string){
  const parsed=ts.parseConfigFileTextToJson('wrangler.jsonc',text);
  if(parsed.error)return {configuration_valid:false,errors:['Invalid Wrangler JSONC.'],warnings:[] as string[]};
@@ -35,7 +44,7 @@ export function inspectCloudCutoverConfig(text:string,environment:string){
  if(list(scope.hyperdrive).length)warnings.push('Hyperdrive remains configured; remove it after the rollback retention period.');
  if(scope.workers_dev!==false)errors.push('workers_dev must remain false for the cutover target.');
  if(!present(scope.name))errors.push('Target Worker name is required.');
- for(const key of ['WORKER_INTERNAL_API_SECRET','BETTER_AUTH_SECRET','DATABASE_URL','OPENAI_API_KEY'])if(Object.hasOwn(vars,key))errors.push(`${key} must be provisioned as a secret, not plaintext Wrangler vars.`);
+ for(const key of secretKeys)if(Object.hasOwn(vars,key))errors.push(`${key} must be provisioned as a secret, not plaintext Wrangler vars.`);
  warnings.push('This local check does not verify remote database migrations, Vectorize dimensions/metric/filter indexes, secret presence, AWS Worker configuration, data integrity, search quality, performance or budget.');
  return {configuration_valid:errors.length===0,errors,warnings};
 }
