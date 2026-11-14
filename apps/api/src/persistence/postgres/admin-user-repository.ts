@@ -1,4 +1,4 @@
-import {createAuth} from "../../lib/auth";
+import {createAuth} from "./auth";
 import {toUtcIso} from "../../shared/datetime";
 import { and, asc, count, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { RpcInputMap } from "@videoq/trpc";

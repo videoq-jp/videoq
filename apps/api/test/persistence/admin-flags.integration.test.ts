@@ -5,7 +5,7 @@ import {generateDrizzleJson,generateMigration} from 'drizzle-kit/api';
 import {drizzle} from 'drizzle-orm/node-postgres';
 import * as pgSchema from '../../src/db/schema';
 import * as authSchema from '../../src/db/schema/better-auth';
-import {createAuth} from '../../src/lib/auth';
+import {createAuth} from '../../src/persistence/postgres/auth';
 import {createD1Auth} from '../../src/persistence/d1/auth';
 import {createApp} from '../../src/app';
 import {patchFlags} from '../../src/features/admin/service';

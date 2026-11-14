@@ -1,7 +1,7 @@
 import { workspaceConfig } from '../../eslint.shared.mjs'
 
 const databaseImports = [
-  'drizzle-orm', 'drizzle-orm/**', 'pg', 'pg/**', '@neondatabase/**',
+  'drizzle-orm', 'drizzle-orm/**', '@better-auth/drizzle-adapter', '@better-auth/drizzle-adapter/**', 'pg', 'pg/**', '@neondatabase/**',
   '@langchain/cloudflare', '@langchain/cloudflare/**', '@cloudflare/**',
   '@yukiharada1228/langchain-postgres', '@yukiharada1228/langchain-postgres/**', 'pgvector', 'pgvector/**',
   '**/db/**', '**/persistence/d1/**', '**/persistence/postgres/**',
@@ -15,15 +15,14 @@ export default [
       'src/features/**/*.ts', 'src/repositories/**/*.ts', 'src/persistence/contracts/**/*.ts',
       'src/lib/**/*.ts', 'src/middleware/**/*.ts', 'src/shared/**/*.ts', 'src/trpc/**/*.ts',
     ],
-    // These compatibility entrypoints still construct the PostgreSQL auth adapter
-    // or provision local PostgreSQL users. All other shared code uses contracts.
-    ignores: ['src/features/admin/onprem-users.ts', 'src/lib/auth.ts'],
+    // This on-prem entrypoint provisions PostgreSQL users in one transaction.
+    ignores: ['src/features/admin/onprem-users.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [{ group: databaseImports, message: databaseImportMessage }],
       }],
       'no-restricted-syntax': ['error', {
-        selector: 'ImportExpression[source.value=/^(drizzle-orm($|\\/)|pg($|\\/)|@neondatabase\\/|@langchain\\/cloudflare($|\\/)|@yukiharada1228\\/langchain-postgres($|\\/)|pgvector($|\\/)|@cloudflare\\/)|\\/(db|persistence\\/(d1|postgres))\\//]',
+        selector: 'ImportExpression[source.value=/^(drizzle-orm($|\\/)|@better-auth\\/drizzle-adapter($|\\/)|pg($|\\/)|@neondatabase\\/|@langchain\\/cloudflare($|\\/)|@yukiharada1228\\/langchain-postgres($|\\/)|pgvector($|\\/)|@cloudflare\\/)|\\/(db|persistence\\/(d1|postgres))\\//]',
         message: databaseImportMessage,
       }],
     },

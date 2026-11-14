@@ -2,7 +2,7 @@ import {hashPassword} from 'better-auth/crypto';
 import {drizzle} from 'drizzle-orm/node-postgres';
 import * as authSchema from '../../src/db/schema/better-auth';
 import * as schema from '../../src/db/schema';
-import {createAuth} from '../../src/lib/auth';
+import {createAuth} from '../../src/persistence/postgres/auth';
 import {createD1Auth} from '../../src/persistence/d1/auth';
 import {createApp} from '../../src/app';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';

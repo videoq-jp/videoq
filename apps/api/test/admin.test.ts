@@ -13,8 +13,8 @@ import {
 const nativeAdmin = vi.hoisted(() => ({
   banUser: vi.fn(), unbanUser: vi.fn(), setRole: vi.fn(),
 }));
-vi.mock("../src/lib/auth", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../src/lib/auth")>(),
+vi.mock("../src/persistence/postgres/auth", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/persistence/postgres/auth")>(),
   createAuth: () => ({ api: nativeAdmin }),
 }));
 

@@ -13,7 +13,7 @@ vi.mock("@better-auth/drizzle-adapter", async () => {
 vi.mock("../src/persistence/factory", () => ({
   createUploadSessionRepository: () => ({ findUnexpiredUser }),
 }));
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { uploadSessionMethod, isUploadControlRequest } from "../src/middleware/upload-session-auth";
 import { requireAuth } from "../src/middleware/auth";
 

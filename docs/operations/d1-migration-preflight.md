@@ -516,3 +516,9 @@ PythonはWorkerの要件に合わせ3.12以降を必須とし、ローカルの`
 実マイグレーションを適用したローカルworkerd D1と隔離PostgreSQL 17で、同じ6契約を実行した。繰り返し認証による状態不変、失効・期限切れ・退会・BANの即時反映、期限切れBANの解除扱い、トークンに対応する本人識別を確認した。Better Auth発行cookieとの互換性、署名偽造、誤った鍵、本番テストヘッダー拒否、混在tRPC batchの経路判定を含む関連17試験が成功した。[集約証跡](evidence/d1-upload-session-contract-2026-11-14.json)を参照する。本番cookieやR2への実アップロードの合格証拠ではない。
 
 DB SDK・スキーマ・具体アダプターの直接参照を禁止する既存Lintを、共有ライブラリ、ミドルウェア、shared、tRPCにも適用した。既存PostgreSQL認証アダプターの互換エントリーポイント`lib/auth.ts`とオンプレユーザー管理だけは明示的な例外として残す。
+
+### 認証設定とDBアダプターの完全分離
+
+2026-11-14、共有`lib/auth.ts`にあったPostgreSQLのDrizzle接続型・schema・username検索・アダプター生成を`persistence/postgres/auth.ts`へ移した。共有の認証設定はBetter Authの汎用`DBAdapterInstance`とusername存在確認操作を受け取り、具体的なSQL方言・Drizzle型を参照しない。`withAuth`は選択したバックエンドのモジュールを必要な場合だけ読み込む。PostgreSQL側の呼び出し元と既存試験を新しいアダプターのパスへ更新し、接続・transactionの寿命は維持した。
+
+共有認証ファイルのLint例外を撤去し、静的・動的なDB/schema/Drizzleアダプター参照が拒否されることを確認した。オンプレ専用ユーザー管理の例外は継続する。D1の実ログイン・セッション取得・ログアウト試験は、PostgreSQL接続モジュールを読み込むと必ず失敗する条件で実行し、成功した。関連単体・D1試験14ファイル225件と、隔離PostgreSQLを含む移行・復旧・OAuth・管理者操作・QA等8ファイル132件が成功した。[集約証跡](evidence/d1-auth-core-isolation-2026-11-14.json)を参照する。本番認証や外部OAuthの実ログイン、D1切り替えの受け入れを示すものではない。

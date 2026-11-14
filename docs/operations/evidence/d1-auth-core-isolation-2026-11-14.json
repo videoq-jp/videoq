@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T13:09:08.260000+00:00",
+  "scope": "Shared Better Auth configuration separated from PostgreSQL adapter; local synthetic and isolated database regression checks",
+  "postgres_factory": "apps/api/src/persistence/postgres/auth.ts",
+  "common_configuration": "apps/api/src/lib/auth.ts",
+  "runtime_selector": "apps/api/src/persistence/auth.ts",
+  "shared_configuration_uses_better_auth_db_adapter_interface": true,
+  "shared_configuration_imports_postgres_or_drizzle": false,
+  "d1_runtime_loads_postgres_connection_module": false,
+  "d1_test_fails_on_postgres_connection_module_load": true,
+  "related_unit_and_d1_test_files_passed": 14,
+  "related_unit_and_d1_tests_passed": 225,
+  "isolated_postgres_and_mixed_backend_test_files_passed": 8,
+  "isolated_postgres_and_mixed_backend_tests_passed": 132,
+  "api_typecheck_passed": true,
+  "changed_typescript_lint_passed": true,
+  "shared_auth_lint_exception_removed": true,
+  "static_and_dynamic_database_import_guard_verified": true,
+  "postgres_cloudflare_bindings_required": false,
+  "production_modified": false,
+  "real_model_invoked": false,
+  "execution_complete": false,
+  "limitations": [
+    "Tests use synthetic credentials and isolated databases.",
+    "No production cookie secret or live external OAuth sign-in was used.",
+    "Representative-question RAG quality and production D1 cutover remain unverified."
+  ]
+}

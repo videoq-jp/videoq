@@ -15,7 +15,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import {
   createMemoryRateLimitBackend,
   setRateLimitBackendForTests,

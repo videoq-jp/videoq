@@ -7,7 +7,7 @@ import {synchronizeD1SceneIndex} from '../../src/persistence/d1/scene-index-sync
 import {createD1SceneSearchRepository} from '../../src/persistence/d1/scene-search';
 import {hashPassword} from 'better-auth/crypto';
 import {drizzle} from 'drizzle-orm/node-postgres';
-import {createAuth} from '../../src/lib/auth';
+import {createAuth} from '../../src/persistence/postgres/auth';
 import {createD1Auth} from '../../src/persistence/d1/auth';
 import type {Bindings} from '../../src/types/bindings';
 import {readFileSync} from 'node:fs';

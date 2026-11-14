@@ -1,6 +1,5 @@
 import { features } from "./deployment";
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { betterAuth, type DBAdapterInstance } from "better-auth";
 import { apiKey } from "@better-auth/api-key";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import {
@@ -8,9 +7,6 @@ import {
   jwt,
   username,
 } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
-import type { Db } from "../db/pool";
-import * as schema from "../db/schema";
 import type { Bindings } from "../types/bindings";
 import { sendMail } from "./mail";
 import { authLogger, summarizeAuthApiError } from "./auth-error-log";
@@ -165,43 +161,15 @@ export function durableRateLimitStorage(env: Bindings): AuthRateLimitStorage {
 }
 
 /**
- * Per-request Better Auth instance bound to the Hyperdrive-backed Drizzle client.
- * Do not reuse across requests — the DB client is request-scoped.
+ * Per-request Better Auth configuration with injected persistence operations.
+ * Do not reuse across requests — the adapter lifetime belongs to the caller.
  * The browser profile serves only session reads and native Google sign-in;
  * MCP/OAuth/API-key callers must use the default full profile.
  */
 export type AuthPersistence = {
-  adapter: ReturnType<typeof drizzleAdapter>;
+  adapter: DBAdapterInstance;
   usernameExists: (candidate: string) => Promise<boolean>;
 };
-
-export function createAuth(env: Bindings, db: Db, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
-  return createAuthWithPersistence(env, {
-    adapter: drizzleAdapter(db, {
-      provider: "pg",
-      transaction: true,
-      schema: {
-        user: schema.users,
-        session: schema.session,
-        account: schema.account,
-        verification: schema.verification,
-        apikey: schema.apikey,
-        jwks: schema.jwks,
-        oauthClient: schema.oauthClient,
-        oauthResource: schema.oauthResource,
-        oauthClientResource: schema.oauthClientResource,
-        oauthRefreshToken: schema.oauthRefreshToken,
-        oauthAccessToken: schema.oauthAccessToken,
-        oauthConsent: schema.oauthConsent,
-        oauthClientAssertion: schema.oauthClientAssertion,
-      },
-    }),
-    usernameExists: async candidate => {
-      const rows = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, candidate)).limit(1);
-      return rows.length > 0;
-    },
-  }, profile, delivery);
-}
 
 export function createAuthWithPersistence(env: Bindings, persistence: AuthPersistence, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
   const quota = resolveSignupQuotaDefaults(env);

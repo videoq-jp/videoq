@@ -1,11 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { hashPassword } from "better-auth/crypto";
 import { eq } from "drizzle-orm";
 import { createD1Connection } from "../../src/db/d1/connection";
 import { users, account, oauthClient } from "../../src/db/schema/sqlite";
 import { createD1Auth } from "../../src/persistence/d1/auth";
+import { withAuth } from "../../src/persistence/auth";
 import { createD1Fixture } from "./d1-fixture";
 import type { Bindings } from "../../src/types/bindings";
+
+vi.mock("../../src/db/pool", () => {
+  throw new Error("D1 authentication must not load the PostgreSQL connection module");
+});
 
 let fixture: Awaited<ReturnType<typeof createD1Fixture>>;
 const env = {
@@ -24,18 +29,18 @@ beforeAll(async () => {
 afterAll(async () => { await fixture?.dispose(); });
 
 describe("Better Auth on D1", () => {
-  it("uses an existing credential hash to log in, read and revoke a session", async () => {
-    const auth = createD1Auth(env, fixture.database, "browser");
-    const signedIn = await auth.api.signInEmail({ body: { email: "auth@example.test", password: "D1-contract-password-123" }, returnHeaders: true });
-    expect(signedIn.response.user.id).toBe("auth-user");
-    const cookie = signedIn.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
-    expect(cookie).toContain("session_token=");
-    const session = await auth.api.getSession({ headers: new Headers({ cookie }), query: { disableCookieCache: true } });
-    expect(session?.user.id).toBe("auth-user");
-    expect(session?.session.expiresAt).toBeInstanceOf(Date);
-    await auth.api.signOut({ headers: new Headers({ cookie }) });
-    expect(await auth.api.getSession({ headers: new Headers({ cookie }), query: { disableCookieCache: true } })).toBeNull();
-  });
+  it("logs in, reads and revokes a session through the runtime factory without loading PostgreSQL", () =>
+    withAuth({ ...env, DB: fixture.database }, async auth => {
+      const signedIn = await auth.api.signInEmail({ body: { email: "auth@example.test", password: "D1-contract-password-123" }, returnHeaders: true });
+      expect(signedIn.response.user.id).toBe("auth-user");
+      const cookie = signedIn.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+      expect(cookie).toContain("session_token=");
+      const session = await auth.api.getSession({ headers: new Headers({ cookie }), query: { disableCookieCache: true } });
+      expect(session?.user.id).toBe("auth-user");
+      expect(session?.session.expiresAt).toBeInstanceOf(Date);
+      await auth.api.signOut({ headers: new Headers({ cookie }) });
+      expect(await auth.api.getSession({ headers: new Headers({ cookie }), query: { disableCookieCache: true } })).toBeNull();
+    }, "browser"));
   it("creates and verifies an API key and rejects a banned owner", async () => {
     const auth = createD1Auth(env, fixture.database);
     const key = await auth.api.createApiKey({ body: { userId: "auth-user" } });
