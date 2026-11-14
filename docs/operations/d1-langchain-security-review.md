@@ -73,3 +73,13 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 境界の追加監査で、利用枠返却失敗とSSE transport失敗のcatchが例外の`message`をログへ出していた。DBドライバーのmessageにはSQL引数が含まれ得るため、通常応答/SSEのquota cleanupとSSE writerに合成の私有診断値を注入した回帰試験3件を追加し、修正前はいずれもログへ本文が出ることを再現した。実秘密値や本番レコードを使った試験ではない。
 
 `message-service.ts`と`routes.ts`の該当ログは固定eventと`errorType`だけにし、quota cleanupログのowner IDも除いた。HTTP/SSEへの一般化済みエラー応答は維持した。修正後は`chat-send.test.ts`、`auth-security.test.ts`、`security-primitives.test.ts`の**150件成功**、API/移行ツールの型検査成功を確認した。LangChain/Drizzle経由の処理でも、providerまたはSQL例外の本文をこのcatchからログへコピーしない。
+
+## 実D1・Vectorize上での攻撃ケース
+
+コミット`f60049ba255bf9e5df487808fda63ded9c89245d`の実装を使い、固定guardで合成v2だけを許可する追加試験を実行した。実データ用v3と本番は操作していない。[集約証跡](evidence/d1-langchain-live-security-2026-11-15.json)には個人情報・vector・credentialsを含めない。再現用probeと詳細診断はローカル私有領域`/tmp/videoq-retention-plan.ZLDiCA/langchain-live-security-v1/`に保管した。
+
+合成の実在所有者2人と動画・sceneを作成し、1536次元の既定vectorを用いて、実際の`CloudflareVectorizeStore.addVectors`で5件を投入した。model呼び出しは0回。5件すべてが実インデックスから検索可能になったことを確認してから判定したため、反映前の空結果を拒否成功とは数えていない。
+
+候補は正規scene、別所有者のsceneを要求者所有と偽装したmetadata、正規IDをmetadataへ写した偽physical ID、古いrevision、SQL構文に見えるscene ID。実際のLangChain検索からD1再照合を通すと、正規sceneのD1本文1件だけが返った。indexの偽本文は返らず、実在する他方の所有者での検索とSQL風owner文字列は0件、owner無効化後も0件だった。
+
+最後に試験所有者/sceneを削除し、投入したphysical vector ID全件の不存在と、試験ownerをfilterしたANN検索の空結果を確認した。この結果は実サービスの検索認可境界を補強するが、768次元の同一攻撃試験、公開API認証、モデル回答全体のE2Eを実施した意味ではない。768/1536双方の通常同期・検索は別の既存staging smoke証跡に記録している。
