@@ -26,10 +26,9 @@ async function flushInvitationEmails(
   await armMaintenance(c.env, Date.now() + DISPATCH_SAFETY_NET_MS);
   try {
     c.executionCtx.waitUntil(
-      processExternalTasks(c.env, { limit: count, arm: false }).catch((error) => {
+      processExternalTasks(c.env, { limit: count, arm: false }).catch(() => {
         console.error(JSON.stringify({
           event: "invitation_email_flush_failed",
-          error: error instanceof Error ? error.message : String(error),
         }));
       }),
     );

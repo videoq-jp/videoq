@@ -124,12 +124,11 @@ export async function resolveFileUrl(
   }
   try {
     return await presignR2Get(env, fileKey);
-  } catch (e) {
+  } catch {
     console.error(
       JSON.stringify({
         level: "error",
         error: "resolveFileUrl failed",
-        message: e instanceof Error ? e.message : String(e),
       }),
     );
     return null;

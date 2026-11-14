@@ -38,10 +38,6 @@ export const MAINTENANCE_WINDOWS: MaintenanceWindows = {
   staleInvitationMs: INVITATION_QUEUED_STALE_MS,
 };
 
-function errorMessage(reason: unknown): string {
-  return reason instanceof Error ? reason.message : String(reason);
-}
-
 async function observeExternalTaskHealth(env: Bindings) {
   const health = await getExternalTaskHealth(env);
   if (
@@ -65,11 +61,13 @@ async function settleAndReport(
       entries[index][0],
       result.status === "fulfilled"
         ? result.value
-        : { error: errorMessage(result.reason) },
+        : { error: "Maintenance operation failed" },
     ]),
   );
-  const failures = settled.flatMap((result): unknown[] =>
-    result.status === "rejected" ? [result.reason] : [],
+  // Driver/provider messages and nested causes can contain bound tokens or
+  // scene data. Do not retain them in AggregateError: runtimes log rejections.
+  const failures = settled.flatMap((result, index): Error[] =>
+    result.status === "rejected" ? [new Error(`${entries[index][0]} failed`)] : [],
   );
 
   const log = JSON.stringify({ event, ...results });
@@ -160,7 +158,7 @@ export async function runScheduledMaintenance(
   await refreshMaintenanceSchedule(
     env,
     sweep.status === "fulfilled" && sweep.value.progressed,
-  );
+  ).catch(() => { throw new Error("Maintenance schedule refresh failed"); });
 
   const failures = [retention, sweep].flatMap((result): unknown[] =>
     result.status === "rejected" ? [result.reason] : [],

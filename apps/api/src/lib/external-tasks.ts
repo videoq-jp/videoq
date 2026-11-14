@@ -151,9 +151,11 @@ export async function processExternalTasks(
     try {
       const outcome=await runTask(env, task);
       if(outcome!=='deferred')result.completed += 1;
-    } catch (error) {
+    } catch {
       result.failed += 1;
-      const message = error instanceof Error ? error.message : String(error);
+      // Provider/driver diagnostics can contain signed URLs, tokens and SQL
+      // values. Persist a fixed code, never the original message or cause.
+      const message = "EXTERNAL_TASK_EXECUTION_FAILED";
       const failure = await failExternalTask(env, task, message);
       if (failure.dead) result.dead += 1;
       console.error(
@@ -179,13 +181,12 @@ export async function processExternalTaskById(
   try {
     const result = await processExternalTasks(env, { taskId });
     return result.completed === 1;
-  } catch (error) {
+  } catch {
     // Claiming or recording a failure can itself fail. Recovery was requested
     // before claiming; the daily sweep also recovers interrupted leases.
     console.error(JSON.stringify({
       event: "external_task_dispatch_failed",
       taskId,
-      error: error instanceof Error ? error.message : String(error),
     }));
     return false;
   }

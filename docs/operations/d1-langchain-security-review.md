@@ -132,3 +132,20 @@ head `31b66b3c`の[全CI](https://github.com/videoq-jp/videoq/actions/runs/43625
 既存のOAuth security suiteはmemory adapterを使うため、新たに実D1/実PostgreSQLで同じtoken契約を実行した。5件ずつ計10件が成功し、関連4ファイル52件・型検査・変更TS Lintも成功した。[共通OAuth契約](evidence/d1-oauth-token-contract-2026-11-15.json)。コード交換とrefreshの競合を含むが、外部Google loginや本番cookieの実証へは読み替えない。
 
 [CI #43619852843](https://github.com/videoq-jp/videoq/actions/runs/43619852843)も成功し、実CPU/通信遮断の成果物14124732928を取得した。動画upload→ASR→index→QA、再生、object/DB復元、upgrade/rollback、Helm test/retentionが成功。公開日本語fixtureのCERは0、再生errorはnullだった。[CI証跡](evidence/d1-ci-real-cpu-2026-11-15.json)。これはsource buildのオンプレCPU検証であり、cloud D1の全体E2E、署名済みrelease、NVIDIA GPUの新規実証ではない。後続のローカルguard/契約追加は新headで別にCI確認する。
+
+
+## 非同期保守・配送の診断情報の追加修正
+
+検索反映待ちを追加した後、保守処理からログ・再送出例外までを追跡した。`settleAndReport`がD1/ドライバーの`message`をそのまま記録し、元の例外を`AggregateError.errors`にも保持していた。合成canaryを使い、scene同期のError/文字列reject、schedule refresh、配送の記録失敗、DO alarm、Node background rejectionで再現した。実秘密値の漏えいを確認したという意味ではない。
+
+保守ログは固定診断と操作名だけにし、再送出するAggregateErrorにも元のmessage/causeを入れない。外部タスクの再試行記録は`EXTERNAL_TASK_EXECUTION_FAILED`に統一した。招待配送では、失敗したtransportが生成済み招待URLをechoする試験も追加した。保存・再送出とも`INVITATION_EMAIL_DELIVERY_FAILED`だけになり、平文リンクをエラー経由でDBへ保存しない。成功時の配送結果と完了の原子性、失敗時の再試行、全保守処理のsettleと次回alarmは維持する。
+
+DOへのarm/reschedule、即時配送、招待flush、Node waitUntil/DB poolのcatchも、元のmessageをログへコピーしない。cloud/onprem共通の処理に適用し、既存DBの診断履歴や保全済みバックアップの削除は行わない。SQS HTTPエラー本文は読み取って記録せずcancelし、HTTP statusだけを残す。SQS transport例外、media署名失敗、動画uploadの補償cleanup失敗も本文をログへコピーしない。この変更によるモデル・メールの実送信、本番DB更新は0。[追加証跡](evidence/d1-async-diagnostic-security-2026-11-15.json)に合成試験と検証範囲を記録する。過去のCI成功を変更後HEADの検証へ流用しない。
+
+### CIの取得アーカイブ不一致
+
+readiness実装head `7d69b6a6`のCodeQLは成功したが、[CI](https://github.com/videoq-jp/videoq/actions/runs/43649212984)のオンプレlifecycle jobはzlib取得ファイルのSHA-256不一致で停止した。検査を省略せず、固定値も変更しない。同じURLを独立に取得すると、[公式公開値](https://zlib.net/)・既存pinの`02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584`に一致し、既存`fetch-verified.sh`でも成功した。失敗したCIを成功と扱わず、後続の同一検査を確認する。この独立取得はイメージ全体のbuild/CPU lifecycleの代替ではない。
+
+追加修正の対象14ファイル209試験、実D1と隔離PostgreSQL 17.11の共通配送3ファイル52試験、API/移行ツール型検査、変更TSのLintが成功した。旧エラー本文を期待した実D1契約は固定codeの保存確認へ更新し、再試行とtoken再発行・成功時の原子的完了は維持した。先行head `7d69b6a6`のHono CIは3765試験成功・77 skip、native Workerは59試験成功だが、この後続の診断修正を検証済みとは扱わない。
+
+変更後の全API試験も`--maxWorkers=2`で221ファイル・2417試験成功、115ファイル・1441試験skipとなった。skipされたDB/ブラウザ試験は成功件数へ含めない。変更後HEADのremote CIは別途確認する。

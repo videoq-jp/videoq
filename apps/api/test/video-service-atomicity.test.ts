@@ -69,6 +69,20 @@ beforeEach(() => {
 });
 
 describe("動画処理の原子性", () => {
+  it("does not log private cleanup diagnostics when upload signing also fails", async () => {
+    const canary = "synthetic-private-upload-cleanup-SQL-token";
+    media.presignR2Put.mockRejectedValueOnce(new Error("sign failed"));
+    videoRepository.deleteVideoCascade.mockRejectedValueOnce(new Error(canary));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(requestPresignedUpload(env, userId, {
+        filename: "clip.mp4", content_type: "video/mp4", file_size: 4096, title: "clip", description: "",
+      })).rejects.toThrow("sign failed");
+      expect(log.mock.calls.filter(call => String(call[0]).includes("presigned_upload_cleanup"))).toHaveLength(1);
+      expect(JSON.stringify(log.mock.calls)).not.toContain(canary);
+    } finally { log.mockRestore(); }
+  });
+
   it("update metadata updates rely on the atomic ownership check", async () => {
     const fields = { title: "Edited", description: "Updated description" };
     expect(await patchUserVideo(env, 42, userId, fields)).toEqual({ video: { id: 42 } });

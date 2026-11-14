@@ -207,6 +207,15 @@ describe("chooseWakeup", () => {
 });
 
 describe("armMaintenance", () => {
+  it.each(["armAt", "reschedule"] as const)("redacts Durable Object diagnostics from %s failures", async method => {
+    const canary = "synthetic-private-DO-SQL-token";
+    const { env } = envWith({ [method]: vi.fn().mockRejectedValueOnce(new Error(canary)) });
+    if (method === "armAt") await armMaintenance(env, Date.now());
+    else await refreshMaintenanceSchedule(env, false);
+    expect(errorSpy).toHaveBeenCalledOnce();
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(canary);
+  });
+
   it("単一インスタンスへ起床時刻を渡す", async () => {
     const armAt = vi.fn().mockResolvedValue(undefined);
     const { env, getByName } = envWith({ armAt });

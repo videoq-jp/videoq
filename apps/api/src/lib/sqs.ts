@@ -62,25 +62,24 @@ export async function sendSqsMessage(
       signal: deadlineSignal(SQS_TIMEOUT_MS),
     });
 
-    const text = await res.text();
     if (!res.ok) {
+      await res.body?.cancel();
       console.error(
         JSON.stringify({
           level: "error",
           error: "SQS SendMessage failed",
           status: res.status,
-          body: text.slice(0, 500),
         }),
       );
       return null;
     }
+    const text = await res.text();
     return (text.match(/<MessageId>([^<]+)<\/MessageId>/) || [])[1] ?? null;
-  } catch (e) {
+  } catch {
     console.error(
       JSON.stringify({
         level: "error",
         error: "SQS SendMessage threw",
-        message: e instanceof Error ? e.message : String(e),
       }),
     );
     return null;

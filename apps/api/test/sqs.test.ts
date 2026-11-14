@@ -25,6 +25,23 @@ afterEach(() => {
 });
 
 describe("SQS delivery with the real AWS signer", () => {
+  it("does not log an error response that echoes a private request", async () => {
+    const canary = "synthetic-private-SQS-request-and-token";
+    fetchMock.mockResolvedValueOnce(new Response(canary, { status: 403 }));
+    await expect(sendSqsMessage(env, message)).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).toContain("403");
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(canary);
+  });
+
+  it("does not log a transport exception containing signed request details", async () => {
+    const canary = "synthetic-private-SQS-transport-token";
+    fetchMock.mockRejectedValueOnce(new Error(canary));
+    await expect(sendSqsMessage(env, message)).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(canary);
+  });
+
   it("signs one request and preserves the job body and temporary credentials", async () => {
     fetchMock.mockResolvedValueOnce(success());
 

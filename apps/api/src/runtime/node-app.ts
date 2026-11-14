@@ -15,8 +15,8 @@ export function createNodeApp(env: Bindings, trustedProxyHops = 0) {
   const pending = new Set<Promise<unknown>>();
   const context = {
     waitUntil(promise: Promise<unknown>) {
-      const task = promise.catch(error => {
-        console.error(JSON.stringify({ event: "background_task_failed", error: error instanceof Error ? error.message : String(error) }));
+      const task = promise.catch(() => {
+        console.error(JSON.stringify({ event: "background_task_failed" }));
       }).finally(() => pending.delete(task));
       pending.add(task);
     },

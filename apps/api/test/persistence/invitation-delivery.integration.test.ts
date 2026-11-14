@@ -87,7 +87,7 @@ for(const backend of ['d1','postgres']as const){
   });
   if(backend==='d1')it('recovers a provider failure with a fresh delivery lease and token',async()=>{
    vi.mocked(sendMail).mockRejectedValueOnce(new Error('provider unavailable'));
-   await expect(deliverInvitationEmail(env,1,lease)).rejects.toThrow('provider unavailable');const failed=await state();expect(failed.invitations[0]).toMatchObject({delivery_status:'failed',send_attempts:1});expect(failed.tasks[0].completed_at).toBeNull();
+   await expect(deliverInvitationEmail(env,1,lease)).rejects.toThrow('INVITATION_EMAIL_DELIVERY_FAILED');const failed=await state();expect(failed.invitations[0]).toMatchObject({delivery_status:'failed',send_attempts:1,last_error:'INVITATION_EMAIL_DELIVERY_FAILED'});expect(failed.tasks[0].completed_at).toBeNull();
    await failExternalTask(env,lease,'provider unavailable');await execute("UPDATE external_tasks SET available_at='2000-01-01' WHERE id=1");const [fresh]=await claimExternalTasks(env,{limit:1,taskId:1});expect(await deliverInvitationEmail(env,1,fresh)).toEqual({delivered:true});const current=await state();expect(current.invitations[0]).toMatchObject({delivery_status:'sent',send_attempts:2,last_error:null});expect(current.invitations[0].token_hash).not.toBe(failed.invitations[0].token_hash);expect(current.tasks[0].completed_at).not.toBeNull();
   });
   if(backend==='d1')it('delivers through the real orchestrator with a mocked mail provider and persists no plaintext token',async()=>{

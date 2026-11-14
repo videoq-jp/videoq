@@ -106,12 +106,11 @@ export async function armMaintenance(env: Bindings, atMs: number): Promise<void>
   if (env.RUNTIME === "node") return;
   try {
     await scheduler(env).armAt(atMs);
-  } catch (error) {
+  } catch {
     console.error(
       JSON.stringify({
         event: "maintenance_arm_failed",
         atMs,
-        error: error instanceof Error ? error.message : String(error),
       }),
     );
   }
@@ -128,11 +127,10 @@ export async function refreshMaintenanceSchedule(
   if (env.RUNTIME === "node") return;
   try {
     await scheduler(env).reschedule(progressed);
-  } catch (error) {
+  } catch {
     console.error(
       JSON.stringify({
         event: "maintenance_reschedule_failed",
-        error: error instanceof Error ? error.message : String(error),
       }),
     );
   }

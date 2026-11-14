@@ -33,6 +33,31 @@ beforeEach(() => {
 });
 
 describe("external task processor", () => {
+  it.each(["error", "string"])("redacts provider diagnostics from persisted failures and logs (%s)", async kind => {
+    const canary = "synthetic-private-provider-token-and-request";
+    const task = { id: 77, attempt: 1, kind: "sqs_job", payload: { message: {} } };
+    repository.claimExternalTasks.mockResolvedValueOnce([task]);
+    sqs.sendSqsMessage.mockRejectedValueOnce(kind === "error" ? new Error(canary) : canary);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(processExternalTaskById(env, task.id)).resolves.toBe(false);
+      expect(repository.failExternalTask).toHaveBeenCalledOnce();
+      expect(repository.failExternalTask.mock.calls[0][2]).not.toContain(canary);
+      expect(JSON.stringify(log.mock.calls)).not.toContain(canary);
+    } finally { log.mockRestore(); }
+  });
+
+  it("redacts dispatch bookkeeping failures without rejecting committed work", async () => {
+    const canary = "synthetic-private-claim-SQL-token";
+    repository.claimExternalTasks.mockRejectedValueOnce(new Error(canary));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(processExternalTaskById(env, 77)).resolves.toBe(false);
+      expect(log).toHaveBeenCalled();
+      expect(JSON.stringify(log.mock.calls)).not.toContain(canary);
+    } finally { log.mockRestore(); }
+  });
+
   it("acknowledges retired evaluation jobs without sending them to SQS", async () => {
     const task = { id: 1, attempt: 1, kind: "sqs_job", payload: {
       message: { type: "evaluate_chat_log", job_id: "retired", payload: { chat_log_id: 42 } },
@@ -94,7 +119,7 @@ describe("external task processor", () => {
     await expect(processExternalTaskById(env, deletionTask.id)).resolves.toBe(false);
     expect(sqs.sendSqsMessage).not.toHaveBeenCalled();
     expect(repository.completeExternalTask).not.toHaveBeenCalled();
-    expect(repository.failExternalTask).toHaveBeenCalledWith(env, deletionTask, "Stripe unavailable");
+    expect(repository.failExternalTask).toHaveBeenCalledWith(env, deletionTask, "EXTERNAL_TASK_EXECUTION_FAILED");
   });
 
   it("rechecks billing and reuses the job identity when SQS delivery is retried", async () => {
@@ -160,7 +185,7 @@ describe("external task processor", () => {
     expect(repository.failExternalTask).toHaveBeenCalledWith(
       env,
       expect.objectContaining({ id: 2, attempt: 3 }),
-      expect.stringContaining("SQS"),
+      "EXTERNAL_TASK_EXECUTION_FAILED",
     );
   });
 
