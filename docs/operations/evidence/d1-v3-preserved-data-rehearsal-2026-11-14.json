@@ -179,5 +179,14 @@
     "oauth_live_flow_verified": false,
     "execution_complete": false,
     "onprem_auth_cloudflare_bindings_supplied": false
+  },
+  "native_edge_read_benchmark": {
+    "evidence": "d1-v3-native-edge-read-benchmark-2026-11-14.json",
+    "paired_reads": 75,
+    "postgres_p95_ms": 192,
+    "d1_p95_ms": 210,
+    "performance_improvement_demonstrated": false,
+    "api_e2e_measured": false,
+    "performance_acceptance_complete": false
   }
 }

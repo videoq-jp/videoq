@@ -444,3 +444,13 @@ SQL exportは認証情報を含むため私有のまま扱い、内容や署名�
 repository-call-onlyのp95は、ローカルPostgreSQLで15.33 ms、開発用remote binding proxy経由のD1で528.56 msだった。接続条件が異なるため、本番APIの性能比較や合否判定には使わない。Cloudflare実行環境内で条件をそろえた測定と、品質・料金の受け入れ条件は引き続き必要である。
 
 認証は共通のテスト署名鍵を使い、有効な既存19セッション（2ユーザー）の返却内容をPG/D1で全件比較し、一致した。session refreshを無効にし、D1ではSELECT以外を拒否、PostgreSQLでは読み取り専用設定を使用した。未知セッションと別鍵の署名は両方で拒否され、D1への変更試行は0件だった。オンプレ側authにはCloudflare bindingを渡していない。本番cookieの署名鍵継承や外部OAuthの実ログイン確認は、切り替え前の条件として残す。
+
+## 同一Worker内のDB読み取り比較
+
+2026-11-14、専用WorkerのRPC内で、既存Hyperdrive経由の稼働中Neonと隔離v3 D1を比較した。既存の所有者と動画IDによる固定のパラメーター付きSELECTだけを使用し、PostgreSQLではREAD ONLYトランザクションとタイムアウトを設定した。接続文字列はWorker内だけで使用し、ローカルへ取得していない。HTTP fetchは常に404で、公開route、workers.dev、preview URL、アプリsecretsは設定しない。
+
+5動画を各5回、3 invocation、合計75組で交互に測定し、全組で両DBから同じ所有対象を取得できた。nearest-rank方式のp95はNeon 192 ms、D1 210 msだった。PostgreSQLの接続・読み取り専用設定には別途540〜583 msかかっており、読み取り時間から分離して記録した。この測定ではD1の性能改善は実証されていない。Workerの実行地域、Hyperdriveのキャッシュ条件、Neonのcold状態は制御していない。少数の主キー検索であり、主要APIのE2E・同時負荷・RAG品質の合格判定には使わない。[測定証跡](evidence/d1-v3-native-edge-read-benchmark-2026-11-14.json)を参照する。
+
+実装は`edge-benchmark-worker.ts`の`MigrationBenchmark.measure`で、入力は`{version:1,cases:[{videoId,userId}],samples}`、1 invocationにつき最大25組に制限する。応答は件数と時間だけで、識別子・行内容・DBエラーを含めない。`validateEdgeBenchmarkTarget`は専用Worker名、既存Hyperdrive ID、v3 D1 ID、非公開設定を固定し、未知の設定項目やsecrets・route追加を拒否する。実行時のケースとRPC呼び出し用設定は私有のまま保持する。再実行は同じ固定設定の検証とdry-run後に限り、任意SQLを受け付ける機能や公開の呼び出し経路を追加しない。
+
+Freeプランでは`limits.cpu_ms`を指定できず最初のデプロイが拒否されたため、指定を除去し、プラン変更せず測定した。測定後は一時Workerを削除し、既存Hyperdrive、稼働アプリ、D1のデータは保持する。

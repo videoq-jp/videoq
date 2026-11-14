@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T11:55:56.842960+00:00",
+  "scope": "Native same-Worker read-only comparison; isolated staging D1 versus existing live Neon Hyperdrive binding",
+  "worker": "videoq-db-migration-benchmark-v3",
+  "public_http_endpoint": false,
+  "worker_version": "29631dfd-b413-4376-bbeb-8c5d812fbc5c",
+  "invocations": 3,
+  "source_derived_owned_videos": 5,
+  "paired_reads": 75,
+  "all_owned_rows_found": true,
+  "postgres_readonly_verified": true,
+  "backend_order_alternated": true,
+  "workload": "owned-video-identifier-lookup",
+  "quantile_method": "nearest rank, pooled 75 reads per backend",
+  "durations_ms": {
+    "postgres": {
+      "samples": 75,
+      "p50": 179,
+      "p95": 192,
+      "p99": 193,
+      "min": 173,
+      "max": 193
+    },
+    "d1": {
+      "samples": 75,
+      "p50": 185,
+      "p95": 210,
+      "p99": 255,
+      "min": 166,
+      "max": 255
+    }
+  },
+  "postgres_connection_and_readonly_setup_ms": [
+    558,
+    540,
+    583
+  ],
+  "source_modified": false,
+  "production_application_changed": false,
+  "plan_upgrade_performed": false,
+  "hyperdrive_cache_configuration_controlled": false,
+  "worker_region_controlled": false,
+  "cold_start_controlled": false,
+  "api_e2e_measured": false,
+  "performance_improvement_demonstrated": false,
+  "acceptance_criteria_applied": false,
+  "execution_complete": false,
+  "temporary_worker_deleted_after_measurement": true
+}
