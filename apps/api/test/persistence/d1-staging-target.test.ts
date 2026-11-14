@@ -4,12 +4,12 @@ import {validateStagingTarget} from '../../scripts/migrations/d1/staging-target'
 import {parseStagingMigrationArguments,stagingMigrationExitCode} from '../../scripts/migrations/d1/staging-migration';
 const text=readFileSync(new URL('../../wrangler.d1-staging.jsonc',import.meta.url),'utf8');
 describe('dedicated remote staging target isolation',()=>{
- it('accepts the actual nonpublic dedicated resource config',()=>{expect(validateStagingTarget(text).d1_databases[0].database_name).toBe('videoq-d1-migration-staging-v2');});
+ it('accepts the actual nonpublic dedicated resource config',()=>{expect(validateStagingTarget(text).d1_databases[0].database_name).toBe('videoq-d1-migration-staging-v3');});
  it('rejects the existing production config',()=>{expect(()=>validateStagingTarget(readFileSync(new URL('../../wrangler.jsonc',import.meta.url),'utf8'))).toThrow();});
  it.each(['account','database','public-route','workers-dev','preview','index-profile','duplicate-index','main','secret','r2','hyperdrive'] as const)('rejects %s config drift',kind=>{
   const config=structuredClone(validateStagingTarget(text)) as unknown as Record<string,unknown>;
   if(kind==='account')config.account_id='other';if(kind==='database')config.d1_databases=[{binding:'DB',database_id:'other'}];if(kind==='public-route')config.routes=['example.test/*'];if(kind==='workers-dev')config.workers_dev=true;if(kind==='preview')config.preview_urls=true;if(kind==='main')config.main='src/index.ts';if(kind==='secret')config.vars={BETTER_AUTH_SECRET:'private-canary'};if(kind==='r2')config.r2_buckets=[{bucket_name:'production'}];if(kind==='hyperdrive')config.hyperdrive=[{}];
-  if(kind==='index-profile'||kind==='duplicate-index')config.vectorize=[{binding:'SCENE_VECTORIZE_1536',index_name:kind==='index-profile'?'videoq-scenes-migration-v2-768':'videoq-scenes-migration-v2-1536',remote:true},{binding:'SCENE_VECTORIZE_768',index_name:'videoq-scenes-migration-v2-1536',remote:true}];
+  if(kind==='index-profile'||kind==='duplicate-index')config.vectorize=[{binding:'SCENE_VECTORIZE_1536',index_name:kind==='index-profile'?'videoq-scenes-migration-v3-768':'videoq-scenes-migration-v3-1536',remote:true},{binding:'SCENE_VECTORIZE_768',index_name:'videoq-scenes-migration-v3-1536',remote:true}];
   let error:unknown;try{validateStagingTarget(JSON.stringify(config));}catch(value){error=value;}expect(error).toBeInstanceOf(Error);expect(String(error)).not.toContain('private-canary');
  });
 });
