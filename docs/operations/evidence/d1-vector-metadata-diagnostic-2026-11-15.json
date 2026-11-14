@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T17:37:46.510719+00:00",
+  "sourceCommit": "00634d69",
+  "scope": "Diagnostic only: real LangChain Vectorize store queries with all vs indexed metadata, same vectors/scopes and alternating order; no D1 hydration or application authorization result",
+  "dimensions": 1536,
+  "unique_normal_queries": 40,
+  "negative_filter_cases": 40,
+  "samples_per_case": 3,
+  "paired_vectorize_queries": 240,
+  "summary": {
+    "all": {
+      "normal": {
+        "samples": 120,
+        "p50_ms": 125,
+        "p95_ms": 154,
+        "p99_ms": 344
+      },
+      "negative": {
+        "samples": 120,
+        "p50_ms": 113,
+        "p95_ms": 208,
+        "p99_ms": 1010
+      }
+    },
+    "indexed": {
+      "normal": {
+        "samples": 120,
+        "p50_ms": 118,
+        "p95_ms": 136,
+        "p99_ms": 296
+      },
+      "negative": {
+        "samples": 120,
+        "p50_ms": 113,
+        "p95_ms": 118,
+        "p99_ms": 1028
+      }
+    }
+  },
+  "agreement": {
+    "pairs": 240,
+    "normalPairs": 120,
+    "setsEqual": 240,
+    "ordersEqual": 240,
+    "scoresEqual": 240,
+    "negativeNonempty": 0
+  },
+  "model_calls": 0,
+  "source_readonly_and_fingerprint_verified_each_batch": true,
+  "placement_response_headers": [
+    "remote-NRT"
+  ],
+  "temporary_worker_deleted": true,
+  "application_metadata_mode_unchanged": true,
+  "worker_source_sha256": "603096a77827549e4bd2356a4b97148ab652db36e20e530e59dd6ecf33f3333d",
+  "limitations": [
+    "Top-50 physical Vectorize IDs/scores are compared, not final D1-authorized top-20 scene content or answer quality.",
+    "Empty negative metadata-filter matches are not proof of application authorization.",
+    "Indexed metadata omits unindexed scene_id and revision fields required by the current repository; this is not a drop-in application change.",
+    "This does not establish full API latency, controlled cold start, concurrency or zero JavaScript CPU.",
+    "Metadata query modes were read-only and index schema/content were not changed."
+  ],
+  "current_metadata_indexes_read_back": [
+    {
+      "propertyName": "user_id",
+      "type": "String"
+    },
+    {
+      "propertyName": "video_id",
+      "type": "Number"
+    }
+  ]
+}

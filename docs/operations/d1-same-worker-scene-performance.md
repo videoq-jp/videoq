@@ -63,3 +63,31 @@ VectorizeとD1の2回のI/O待機が確認されたが、binding時間にはサ�
 別の専用Workerで同じread-only source照合を通した後、`SELECT 1 AS value`を10回直列に実行した。全件の結果が1であることを確認し、D1のmetaも記録した。配置レスポンスは`remote-NRT`、全件`served_by_region=APAC`・`served_by_primary=true`だった。D1が返したSQL実行時間は0.0924〜0.146msに対し、Workerが観測したI/O待機は76〜87msだった。[単純クエリ証跡](evidence/d1-constant-query-baseline-2026-11-15.json)。このWorkerも試験後に削除した。
 
 単純クエリではSQL計算以外の待機が大きいことを確認できた。ただし、これは実際のscene/動画/userのjoin queryではなく、実検索のSQL engine時間を測った結果ではない。通信・queue・serviceのどれが何msを占めるかも未分離である。認可の再照合削除やread replicaへの無条件切替を正当化する証拠にはしない。
+
+## シンガポール配置での再測定
+
+[Placement Hintsの公式仕様](https://developers.cloudflare.com/workers/configuration/placement/)を確認し、同じコード・コーパス・40質問/40負例・各3回を`aws:ap-southeast-1`で測定した。全8バッチのレスポンスは`remote-SIN`。snapshot/全対象fingerprintとread-onlyを各回確認し、試験後に専用Workerを削除した。[集約証跡](evidence/d1-singapore-scene-performance-2026-11-15.json)。アプリの配置・DB・index・read replicationの設定は変更していない。
+
+| 通常検索120回 | p50 (ms) | p95 (ms) | p99 (ms) |
+|---|---:|---:|---:|
+| PostgreSQL repository全体 | 18 | 28 | 32 |
+| D1＋Vectorize repository全体 | 255 | 281 | 1007 |
+| Vectorize binding待機 | 234 | 257 | 989 |
+| D1 statement待機 | 19 | 33 | 43 |
+
+D1単純`SELECT 1`の40回も、Worker待機p50 10ms/p95 16ms、D1報告SQL時間0.0665〜0.2141ms、全件APAC primaryだった。東京配置よりD1待機は短くなったが、Vectorize待機が増え、検索全体の改善は実証できなかった。上位集合は全件一致し、負例は両側空のままだった。
+
+異なる配置の試験は時刻も異なるため、無作為同時A/Bとは扱わない。また、結果からNeon/D1/Vectorizeの物理都市を断定しない。配置hintだけを変更すれば受入条件を満たせるという結論にはならず、認可を削る変更も採用していない。
+
+## Vectorize metadata取得方法の切り分け
+
+実際の`CloudflareVectorizeStore`と同じbinding bridgeを使い、`returnMetadata: all`と`indexed`だけを変えて、40質問/40負例を各3回、順序を交互にして比較した。D1の本文照合はこの診断には含めず、返すのは集計と時間のみ。全8レスポンスは`remote-NRT`で、sourceのread-only snapshot/fingerprintも確認した。試験後に専用Workerを削除した。[診断証跡](evidence/d1-vector-metadata-diagnostic-2026-11-15.json)。
+
+| 通常のVectorize呼出し120回 | p50 (ms) | p95 (ms) | p99 (ms) |
+|---|---:|---:|---:|
+| `all` | 125 | 154 | 344 |
+| `indexed` | 118 | 136 | 296 |
+
+全240組でtop-50 physical ID・順序・scoreは一致し、負例filterの結果は両側空だった。ただし、これは最終的なD1認可結果やRAG回答の品質を測った比較ではない。p50の差は7msで、未達の検索全体の性能改善を実証するものではない。
+
+実indexのmetadata index一覧も読み取りで再確認し、`user_id: String`と`video_id: Number`の2項目だけだった。現在のrepositoryは`scene_id`・`revision`を候補照合に使うため、`indexed`への単純な切替は行わない。診断ではphysical ID/scoreだけを比較できても、アプリで必要なmetadataまで同じという意味ではない。schema追加・既存indexの再構築・アプリの検索方式変更も行っていない。
