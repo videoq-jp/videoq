@@ -12,7 +12,7 @@
 - 代表40質問・40所有者負例の自動比較は完了し、通常のtop-k集合は全件一致、負例hitは0。AIによる非網羅candidate評価を人手の正解・一般Recallとは扱わない。人手レビューを利用者の必須作業にはしていない。[自動評価](d1-automatic-query-evaluation.md)。
 - `@langchain/cloudflare@1.1.0`の実検索・登録・削除を確認し、実D1/Vectorizeの768/1536双方で偽metadata・physical ID・revision・別owner・owner失効を検証した。fixture削除も確認済み。[セキュリティ検証](d1-langchain-security-review.md)。
 - 同一Workerからの実シーン検索ではD1＋Vectorizeのp50が全8バッチで遅く、性能改善の条件は未達。段階別診断でもVectorizeとD1の直列I/O待機を確認した。認可の再照合を削除したり、read replicaへ無条件に変更したりしていない。[性能記録](d1-same-worker-scene-performance.md)。
-- 実装`8f16b666`の全CIは成功。`f60049ba`のCIは証跡更新pushでsuperseded/cancelledとなり、成功とは扱わない。証跡head`7b63a454`の[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43619852759)は成功、[CI](https://github.com/videoq-jp/videoq/actions/runs/43619852843)は照合時点で実行中。後続のローカル証跡commitは実装変更を含まない。
+- 証跡head`7b63a454`の[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43619852759)・[全CI](https://github.com/videoq-jp/videoq/actions/runs/43619852843)が成功。PRの検証用merge commit `5f66d076`とheadのtreeが同一であることを照合した。実CPUモデル・外部通信遮断・動画処理/QA/復旧/更新/切戻しの成果物も取得して確認した。[CI集約証跡](evidence/d1-ci-real-cpu-2026-11-15.json)。後続の切替設定guard修正とOAuth契約追加は、この先行CIで検証済みと読み替えず、新しいheadのCIで確認する。
 
 ### 計画書の本番切替受入条件との対応
 
@@ -26,7 +26,7 @@
 | 6. 性能改善 | **未達** | 実検索の遅延診断、主要APIの配置・cold・同時負荷比較 |
 | 7. 制限・予算 | 容量は適合、予算未確定 | 通常/ピーク量、増加率、アカウント全体の料金と予算判定 |
 | 8. 復旧演習 | バックアップ/D1 Time Travelは実証 | D1書込後のNeon側再適用を含む切戻し演習 |
-| 9. オンプレでCloudflare不要 | 既存CIで実証、最新CI確認中 | 最新headのオンプレライフサイクル完了 |
+| 9. オンプレでCloudflare不要 | 実CPUモデル・通信遮断を含むCIで実証 | 後続HEADのCI結果を別途確認 |
 
 この表は未達条件を消すための範囲変更ではない。下記の古い手順や部分試験が成功していても、未検証の配備経路を合格とは扱わず、本番切替の許可に読み替えない。
 
@@ -617,3 +617,14 @@ PythonはTLS検証を有効にしたloopback HTTPS bridgeへ接続し、bridge�
 最後に非表示化→vector削除→固有fixture削除を行い、別の読取り接続でusers/videos/scenes/runs/staging/tasks/jobs/external tasks/versions/headsがすべて0件であることを再照合した。physical vector IDの不存在とowner ANN空結果も確認した。専用Workerの削除はAPIで成功し、TLS鍵/証明書・内部HMAC secretの私有ファイルも削除した。
 
 これは配備済み**内部API経路**の補完証拠であり、本番public API、全middleware/DO、動画upload、音声認識、LLM回答、外部OAuth、実Lambda/SQS/scheduler配送の全体E2Eを意味しない。同期処理の起動は私有driverから行った。これらの残る受入条件や性能未達は維持する。
+
+
+## 実DBを使うOAuthトークン契約（2026-11-15）
+
+追加監査で、`auth-security.test.ts`のOAuthコード交換/refresh試験は本物のBetter Auth verifiersを使う一方、永続化をmemory adapterへ差し替えていることを確認した。実D1の既存試験はログイン/API key/型変換等であり、メモリー試験の成功だけをD1のtoken更新の証拠にはできない。
+
+共通`oauth-token.contract.ts`を追加し、実Drizzle D1（全SQLite migration適用済みworkerd binding）と、隔離PostgreSQL 17.11の実Drizzle PostgreSQLアダプターで同じ5件ずつを実行した。PKCEコード交換、JWT/opaque両形式、OIDC UserInfo、refresh回転・再利用によるfamily失効、コード再利用による発行済みrefresh失効、同一refreshの同時要求で成功が1件だけとなること、BAN後に新しいcredentialsを保存しないことを確認した。
+
+新契約10件、切替設定/DB選択を含め4ファイル52件が成功。型検査と変更TSのLintも成功し、試験用PostgreSQL containerを削除した。[OAuth契約証跡](evidence/d1-oauth-token-contract-2026-11-15.json)。API標準のVitest setupはrate-limit counterだけを試験ごとのmemoryへ隔離する。authの永続化やcredential verifierは差し替えない。
+
+試験はローカルHTTP handlerと合成資格情報であり、外部Google OAuth、production cookie継承、配備済みCloudflare OAuthのE2Eを証明するものではない。認可コード再利用は本来のproviderが既発行refreshを失効させるため、通常refresh試験とは別ケースに分けた。アプリのOAuth実装を合格させるために変更したものではない。

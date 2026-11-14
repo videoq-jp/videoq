@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T18:09:16.367885+00:00",
+  "baseCommit": "7c9c6afd",
+  "scope": "Same HTTP OAuth contract against real Drizzle adapters on local workerd D1 and isolated PostgreSQL; no memory persistence adapter",
+  "oauthProviderVersion": "1.7.15",
+  "postgresServerVersion": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "contractTestsPerBackend": 5,
+  "totalNewOAuthTestsPassed": 10,
+  "relatedTestsPassed": 52,
+  "relatedTestFiles": 4,
+  "apiAndToolsTypecheckPassed": true,
+  "changedTypescriptLintPassed": true,
+  "checks": [
+    "PKCE authorization-code exchange with resource JWT and resource-less opaque tokens",
+    "OIDC UserInfo after refresh, ID token presence and five-minute access-token lifetime",
+    "Issued refresh credential differs from persisted token value",
+    "Authorization-code reuse rejected and its refresh credentials invalidated",
+    "Refresh rotation and old-token replay reject the token family",
+    "Concurrent refresh of one token has exactly one success and one invalid_grant",
+    "Banned owner cannot create replacement tokens"
+  ],
+  "postgresContainerRemoved": true,
+  "sourceSha256": {
+    "apps/api/test/persistence/contracts/oauth-token.contract.ts": "5daaf6fc2c3622f265e241933b0276d58d2de2d9d12132d7c5edd99ba3d69507",
+    "apps/api/test/persistence/oauth-token.d1.integration.test.ts": "ad60c2ecf61972ede51447b66514da3b2480727a5827423cecaa08fd2e881a08",
+    "apps/api/test/persistence/oauth-token.postgres.integration.test.ts": "f21b3c3b4fc05c5b3e4e416da0dae90656d5c78ed2a3aa6d6dfc41af63717a38"
+  },
+  "limitations": [
+    "Standard API Vitest setup replaces rate-limit counters with per-test memory counters; auth persistence and Better Auth verifiers are real.",
+    "Synthetic users, local endpoints and local database fixtures; no Google OAuth or production cookies used.",
+    "This is not an external identity provider or deployed Cloudflare OAuth E2E.",
+    "Initial harness execution without API Vitest setup failed closed at rate limiting; a replay assertion was separated because native code reuse revokes its issued token family. Neither required an application code change.",
+    "Initial Docker readiness accepted initdb temporary Unix socket; the corrected driver waits for TCP and both DB contract runs passed."
+  ],
+  "productionChanged": false,
+  "productionCredentialValuesUsed": false
+}

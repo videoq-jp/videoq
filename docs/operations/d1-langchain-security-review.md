@@ -95,3 +95,10 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 [Workersのsecrets管理](https://developers.cloudflare.com/workers/configuration/secrets/)に従い、対象環境の既知18項目を通常varsへ記載すると設定チェックが失敗するよう修正した。公開OAuth client ID、federation policy ID/audienceは許可する。出力は固定の設定名と診断だけで、値を含まない。任意の未知名や、別の値に埋め込まれた秘密まで検出する汎用スキャナーとは扱わない。
 
 修正後は設定・backendの2ファイル42試験、API/移行ツール型検査、変更TSのLintが成功した。[修正証跡](evidence/d1-cutover-secret-guard-2026-11-15.json)。現在の本番Wrangler設定に対するCLIは、既存Neon設定にD1/Vectorize切替用bindingがないため、従来通り終了1で拒否した。本番設定・secrets・デプロイは変更していない。このローカル修正は、先行するremote headのCI成功で検証済みと読み替えず、後続CIの対象とする。
+
+
+## OAuth永続化と最新オンプレCIの補完
+
+既存のOAuth security suiteはmemory adapterを使うため、新たに実D1/実PostgreSQLで同じtoken契約を実行した。5件ずつ計10件が成功し、関連4ファイル52件・型検査・変更TS Lintも成功した。[共通OAuth契約](evidence/d1-oauth-token-contract-2026-11-15.json)。コード交換とrefreshの競合を含むが、外部Google loginや本番cookieの実証へは読み替えない。
+
+[CI #43619852843](https://github.com/videoq-jp/videoq/actions/runs/43619852843)も成功し、実CPU/通信遮断の成果物14124732928を取得した。動画upload→ASR→index→QA、再生、object/DB復元、upgrade/rollback、Helm test/retentionが成功。公開日本語fixtureのCERは0、再生errorはnullだった。[CI証跡](evidence/d1-ci-real-cpu-2026-11-15.json)。これはsource buildのオンプレCPU検証であり、cloud D1の全体E2E、署名済みrelease、NVIDIA GPUの新規実証ではない。後続のローカルguard/契約追加は新headで別にCI確認する。

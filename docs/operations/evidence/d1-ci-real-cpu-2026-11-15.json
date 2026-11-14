@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T18:06:06.608255+00:00",
+  "runId": 43619852843,
+  "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/43619852843",
+  "conclusion": "success",
+  "prHeadCommit": "7b63a4545283887eeab71976fdd6bf447755da50",
+  "testedMergeCommit": "5f66d076e753967688648d0347b591e19342e72c",
+  "testedMergeAndPrHeadTreeEqual": true,
+  "tree": "db3f336bd6bdc2cf491cd880f05681125fbcdbb5",
+  "artifactId": 14124732928,
+  "artifactName": "onprem-cpu-preflight-5f66d076e753967688648d0347b591e19342e72c",
+  "artifactSha256": {
+    "result.json": "d4201fd734d2794b40cc787e963836220574229b6c01366ba82ecac67030328f",
+    "playback.json": "5401ae33ebb935244a4b364fb67b04caf99021f7c471820eb0e2a71f83809625",
+    "real-ai-result.json": "de18d2b61211e126b14b5fb221cb0544df94052a93ed4ba7d4810531cd7687c1"
+  },
+  "scope": "PR source build test; not signed-release verification",
+  "runtimeSubtreesUnchangedThroughLocalCommit": "7c9c6afd67cf35e7f581708d2a1b9e9b48176ee9",
+  "uploadTranscriptionIndexingAndQa": "passed",
+  "inference": "real CPU llama.cpp chat/embeddings and whisper.cpp ASR; public Japanese FLEURS fixture",
+  "objectRestore": "passed; SHA256 identical",
+  "databaseRestore": "passed; restored to a separate database and app switched",
+  "upgrade": "passed; two API replicas and migration hook",
+  "rollback": "passed; one API replica, restored DB and data retained",
+  "helmTest": "passed",
+  "retention": "passed",
+  "publicEgress": "blocked by dedicated node IPv4/IPv6 firewall; public DNS forwarding disabled; worker Pod probe passed",
+  "playback": {
+    "status": "passed",
+    "readyState": 4,
+    "error": null
+  },
+  "transcriptionAssessment": {
+    "errors": [],
+    "cer": 0.0,
+    "segment_count": 1
+  },
+  "elapsedSeconds": 1298.4159949890002,
+  "limitations": [
+    "PR source-built on-premises CPU fixture, not signed-release or NVIDIA GPU acceptance.",
+    "Public Japanese fixture with local inference, not production data or cloud D1/Lambda/OpenRouter full E2E.",
+    "The local cutover guard and later OAuth contract tests require their own subsequent CI; this run did not include them."
+  ]
+}
