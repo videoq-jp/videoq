@@ -99,6 +99,8 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 
 ## OAuth永続化と最新オンプレCIの補完
 
+768次元の専用indexでも同じ実サービス確認を実行した。受付は約1.06秒、受付後の最初の認可済みhitは約130.00秒で、直前の約126.81秒時点まで59回は空結果だった。可視化後のowner無効化は拒否され、所有DB行・physical ID・owner ANNの残存0も確認した。[768次元の反映証跡](evidence/d1-vector-visibility-768-2026-11-15.json)。各indexで1回ずつの観測であり、次元数による性能差や一定の反映時間を結論しない。固定sleepを検索readinessの根拠にせず、動画完了と検索準備状態の契約・実証を移行前の未達条件に保持する。
+
 ### Vectorizeの非同期反映と認可の区別
 
 [公式API仕様](https://developers.cloudflare.com/vectorize/reference/client-api/)では、V2のupsert/削除は非同期のmutation受付である。現在の同期処理の`completed`はprovider受付後のタスク完了を表し、ANN検索反映の完了を表さない。既存の実サービス試験も、候補の検索反映を待ってから認可を判定している。動画完了直後の検索readinessや反映遅延のSLOは、別の受入条件として検証が必要である。

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "target": "synthetic-v2-only",
+  "dimensions": 768,
+  "realLangchainAndD1Vectorize": true,
+  "upsertAckMs": 1057.5257500000007,
+  "firstAuthorizedHitAfterAckMs": 130003.65566700001,
+  "visibleCandidateRejectedAfterDeactivation": true,
+  "syntheticCleanupVerified": true,
+  "modelCalls": 0,
+  "productionChanged": false,
+  "scope": "Single local remote-binding observation; not deployed-worker readiness SLO or full pipeline",
+  "passed": true,
+  "checkedAt": "2026-11-14T20:05:00.249019+00:00",
+  "applicationCommit": "81a0c2cba013174cea500655dd3abffe8878ac6c",
+  "privateProbeSha256": "74762ccf799c2fc840991821be95767442da695da1346f8e81c06c98f8204450",
+  "sampleCount": 1,
+  "pollCount": 60,
+  "emptyPollCount": 59,
+  "lastEmptyPollAfterAckMs": 126813.652333,
+  "readinessSloProven": false,
+  "source": "https://developers.cloudflare.com/vectorize/reference/client-api/"
+}
