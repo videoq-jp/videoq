@@ -3,14 +3,14 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {getPlatformProxy,type PlatformProxy} from 'wrangler';
 import {afterAll,beforeAll,describe,it,expect} from 'vitest';
-import {validateStagingTarget} from '../../scripts/migrations/d1/staging-target';
+import {validateSyntheticStagingTarget} from '../../scripts/migrations/d1/synthetic-staging-target';
 import type {StagingBindings} from '../../scripts/migrations/d1/staging-migration';
 import {createD1Auth} from '../../src/persistence/d1/auth';
 import type {Bindings} from '../../src/types/bindings';
 /** Opt-in only, after the synthetic PostgreSQL rehearsal archive was imported. */
 describe.skipIf(process.env.PERSISTENCE_REMOTE_REHEARSAL_TEST!=='1')('synthetic PostgreSQL credentials on remote D1',()=>{
  let proxy:PlatformProxy<StagingBindings>;
- beforeAll(async()=>{const configPath=fileURLToPath(new URL('../../wrangler.d1-staging.jsonc',import.meta.url));validateStagingTarget(await readFile(configPath,'utf8'));proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});},60000);
+ beforeAll(async()=>{const configPath=fileURLToPath(new URL('../../wrangler.d1-staging.v2.jsonc',import.meta.url));validateSyntheticStagingTarget(await readFile(configPath,'utf8'));proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});},60000);
  afterAll(async()=>{await proxy?.dispose();});
  it('signs in with the imported credential and reads the issued session from D1',async()=>{
   const db=proxy.env.DB,owner=await db.prepare("SELECT id,email FROM users WHERE id='migration-rehearsal-owner'").first<{id:string;email:string}>();expect(owner).toEqual({id:'migration-rehearsal-owner',email:'rehearsal-owner@example.invalid'});

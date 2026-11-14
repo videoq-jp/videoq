@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises';
-import {validateStagingTarget} from './migrations/d1/staging-target';
+import {validateSyntheticStagingTarget} from './migrations/d1/synthetic-staging-target';
 import {fileURLToPath,URL} from 'node:url';
 import {getPlatformProxy} from 'wrangler';
 import type {D1Database,Vectorize} from '@cloudflare/workers-types';
@@ -33,8 +33,8 @@ async function cleanupSynthetic(env:Env){
 /** Synthetic-only remote verification, isolated from production bindings. */
 let phase='connect';
 async function main(){
- const configPath=fileURLToPath(new URL('../wrangler.d1-staging.jsonc',import.meta.url));
- validateStagingTarget(await readFile(configPath,'utf8'));
+ const configPath=fileURLToPath(new URL('../wrangler.d1-staging.v2.jsonc',import.meta.url));
+ validateSyntheticStagingTarget(await readFile(configPath,'utf8'));
  const proxy=await getPlatformProxy<Env>({configPath,envFiles:[],persist:false,remoteBindings:true});
  const {DB:db,SCENE_VECTORIZE_1536:large,SCENE_VECTORIZE_768:small}=proxy.env,indexes={1536:large,768:small};
  const key=crypto.randomUUID(),owners=[`migration-smoke-a-${key}`,`migration-smoke-b-${key}`],videos:number[]=[],vectorIds=new Map<number,string[]>(),writer=createD1SceneIndexWriter(db),pause=()=>new Promise(resolve=>setTimeout(resolve,2000));

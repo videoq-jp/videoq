@@ -416,6 +416,8 @@ archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus h
 
 `wrangler.d1-staging.jsonc`は実バックアップ用のv3 DB（`373d6ca5-2796-460d-8ab1-e644de46bb3c`）と`videoq-scenes-migration-v3-{768,1536}`を固定する。v2の合成検証設定は`wrangler.d1-staging.v2.jsonc`に保持する。旧DB・index・receiptや復旧bookmarkをv3の証拠として流用しない。公開route、workers.dev、preview URL、アプリのsecretsは設定しない。
 
+合成データ用の`db:d1:staging:smoke`、`db:d1:staging:recovery`、opt-inの`d1-auth.remote.integration.test.ts`は、v2設定と`validateSyntheticStagingTarget`を固定で使用する。v3への既定設定変更後も、合成試験が実データのv3へ書き込まないよう、両検証器は互いの設定を拒否する。任意のconfigやDB IDを指定するオプションは設けない。2026-11-14にv2で認証・所有権の2試験、768/1536両次元の検索と別所有者の拒否、追加した全合成データの削除を確認した。その終了後に合成復旧用snapshotのprepareと独立verifyも成功した。新たなTime Travelは実施していない。[再確認証跡](evidence/d1-v2-synthetic-target-reverification-2026-11-14.json)を参照する。
+
 初期取り込みは`db:d1:staging:migrate -- --mode import --input <private archive> --allow-pending-visuals`で行う。writerを停止した専用環境でのみ実行し、配信は取り込み完了後に開始する。シーンは最大5行かつ入力512 KiB程度の小さな単位で、各行の進捗チェック・参照・outbox更新を同じ原子的batchへまとめる。応答喪失時も確定済み進捗から再開でき、全行の値チェックは省略しない。
 
 完了済みの共通データや会話履歴を再投入せずシーンだけを再開する場合は、元の処理の終了を確認してから`--mode resume-scenes --input <同じprivate archive>`を使う。この経路は、同一archiveに対応する共通データ・会話履歴の完了記録を確認し、保存されたシーン行位置から続ける。同時に複数のimporterを起動しない。取り込み完了後のVectorize配信では4件までの並列処理を使い、リース・immutable ID・所有権の再確認を維持する。通常の同期処理は既定の並列数1を維持する。
@@ -454,3 +456,5 @@ repository-call-onlyのp95は、ローカルPostgreSQLで15.33 ms、開発用rem
 実装は`edge-benchmark-worker.ts`の`MigrationBenchmark.measure`で、入力は`{version:1,cases:[{videoId,userId}],samples}`、1 invocationにつき最大25組に制限する。応答は件数と時間だけで、識別子・行内容・DBエラーを含めない。`validateEdgeBenchmarkTarget`は専用Worker名、既存Hyperdrive ID、v3 D1 ID、非公開設定を固定し、未知の設定項目やsecrets・route追加を拒否する。実行時のケースとRPC呼び出し用設定は私有のまま保持する。再実行は同じ固定設定の検証とdry-run後に限り、任意SQLを受け付ける機能や公開の呼び出し経路を追加しない。
 
 Freeプランでは`limits.cpu_ms`を指定できず最初のデプロイが拒否されたため、指定を除去し、プラン変更せず測定した。測定後は一時Workerを削除し、既存Hyperdrive、稼働アプリ、D1のデータは保持する。
+
+代表質問での既存Embeddingモデル評価については、現在の運用者のAWS認証でSTSの短命workload IDを発行できることを確認したが、設定済みOpenRouter federation policyとの交換は`400 invalid_grant`だった。長期APIキー、DB秘密情報、別roleの取得や、信頼設定の変更は行っていない。トークンはメモリ内だけで扱い、私有receiptにも保存しない。[公式仕様](https://openrouter.ai/docs/guides/overview/auth/workload-identity-federation)上、このエラーだけではポリシーの有効状態、subject等の不一致、署名や期限のどれが原因かは特定できない。代表質問によるモデル評価は未実行として扱い、既存ベクトル由来の比較を代わりの合格証拠にはしない。
