@@ -35,5 +35,8 @@
     "This code does not grant the local operator the production workload identity.",
     "The existing worker role has SSM/SQS privileges; code deployment and new resource activation need the normal review/operator boundary.",
     "Representative labels, approved thresholds, actual model connectivity, deployed E2E and production D1 cutover remain unverified."
-  ]
+  ],
+  "bridge_ci_success": "https://github.com/videoq-jp/videoq/actions/runs/43601617407",
+  "bridge_codeql_success": "https://github.com/videoq-jp/videoq/actions/runs/43601617090",
+  "bridge_merged": false
 }

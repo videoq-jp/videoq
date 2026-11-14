@@ -543,6 +543,12 @@ D1アダプターへ`OAuthGrantRepository`を追加し、対象の所有者・cl
 
 2026-11-14、通常のSSM/DB bootstrapを通らない専用`search_evaluation_lambda.handler`を追加した。既定では無効で、専用関数でのhandler選択と明示的な有効化を要求する。既存のモデルとworkload federation設定を照合し、最大16ケースのEmbedding生成だけを行う。既存SQS handlerやroutingは変更しない。質問・生成物は私有の一時領域で扱い、応答とログから質問本文・SDK例外詳細を除外する。
 
-main由来の独立worktreeでも関連5ファイル123試験が成功し、評価コードを先行レビューする[ドラフトPR #1444](https://github.com/videoq-jp/videoq/pull/1444)を作成した。DB、秘密情報bootstrap、queueモジュールのimportを拒否した条件でも、有効化した合成処理が成功した。実モデル応答はstubであり、接続証明には使わない。[実行境界](search-evaluation-runtime.md)と[集約証跡](evidence/d1-evaluation-runtime-preparation-2026-11-14.json)を参照する。
+main由来の独立worktreeでも関連5ファイル123試験が成功し、評価コードを先行レビューする[先行レビューPR #1444](https://github.com/videoq-jp/videoq/pull/1444)を作成した。DB、秘密情報bootstrap、queueモジュールのimportを拒否した条件でも、有効化した合成処理が成功した。実モデル応答はstubであり、接続証明には使わない。[実行境界](search-evaluation-runtime.md)と[集約証跡](evidence/d1-evaluation-runtime-preparation-2026-11-14.json)を参照する。
 
 専用関数の作成・数値versionとimage digestの確定・私有invoke client・実接続は未実施である。既存worker用ロールはDB用SSM/SQSの権限も持つため、mainコードレビューとoperator管理の境界を維持する。ローカル運用者による本番roleのassumeや、フェデレーション信頼設定の変更は行っていない。
+
+### オンプレCIの配布物取得失敗
+
+2026-11-14、[CI #43600462435](https://github.com/videoq-jp/videoq/actions/runs/43600462435)はWhisper用zlibの固定SHA-256照合で停止した。Honoを含む他の選択された試験は成功した。CIが受け取った不一致の実体は保存されておらず、根本原因は特定できていない。[公式サイト](https://zlib.net/)の掲載値と、通常URL・fossils URLからの独立取得は現在のpinと一致したため、期待値やバージョンは変更していない。
+
+取得・SHA照合を最大3回まで行い、正しいpinに一致した候補だけを展開用パスへ公開するhelperを追加した。ネットワーク失敗と不正な本文からの再取得、継続不一致の失敗・既存ファイル保護、未検証一時ファイルの削除等7試験と、実公式配布物の取得が成功した。[集約証跡](evidence/d1-onprem-source-download-2026-11-14.json)を参照する。完全なWhisperイメージ再buildとオンプレライフサイクルの合格は、最新headのCIで確認する。
