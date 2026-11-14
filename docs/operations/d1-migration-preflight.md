@@ -463,6 +463,18 @@ Freeプランでは`limits.cpu_ms`を指定できず最初のデプロイが拒�
 
 代表質問での既存Embeddingモデル評価については、現在の運用者のAWS認証でSTSの短命workload IDを発行できることを確認したが、設定済みOpenRouter federation policyとの交換は`400 invalid_grant`だった。長期APIキー、DB秘密情報、別roleの取得や、信頼設定の変更は行っていない。トークンはメモリ内だけで扱い、私有receiptにも保存しない。[公式仕様](https://openrouter.ai/docs/guides/overview/auth/workload-identity-federation)上、このエラーだけではポリシーの有効状態、subject等の不一致、署名や期限のどれが原因かは特定できない。代表質問によるモデル評価は未実行として扱い、既存ベクトル由来の比較を代わりの合格証拠にはしない。
 
+## 読み取りレプリカとプライマリbookmarkの評価
+
+2026-11-14、隔離v3だけでread replicationを一時的に`auto`へ変更し、東京近傍の専用HTTP Workerで測定した。[D1の仕様](https://developers.cloudflare.com/d1/best-practices/read-replication/)上、通常のDB bindingへのqueryはプライマリへ送られ、レプリカにはSessions APIが必要である。業務アダプターの接続方法や本番DB設定は変更していない。
+
+検証器は、各invocationでまず`withSession('first-primary')`のbatchで全対象の動画ID・所有者を照合する。そのsessionのbookmarkを新しい読み取りsessionへ渡し、少なくともその時点以降のデータを読む。所有権不一致やbookmark欠落は失敗させ、無制約のsessionへフォールバックしない。bookmarkや行内容は応答・公開証跡へ含めない。これは認証済みユーザーの業務APIではなく、別の一時capabilityで保護したDB測定専用操作である。
+
+有効化直後の初回75組では69回がレプリカで、D1のp95は116 ms、Neonは90 msだった。追加試行は開始前に3 invocationをwarmup、続く9 invocationを測定対象とし、各25組・合計300組を記録した。warmupを含むD1のp95/p99は34/124 ms、Neonは89/96 msだった。warmup後の225組は全件レプリカで、D1のp50/p95/p99は21/31/51 ms、Neonは82/90/96 msだった。全12応答で`cf-placement=remote-NRT`を確認した。
+
+プライマリでの所有権確認には各invocationで別途76〜92 msかかっており、31 msをAPI全体の時間として扱わない。PostgreSQLの接続と検証用READ ONLY設定の時間も別に記録する。起動直後を含むp99、主要APIのE2E・同時負荷・認証失効や所有権変更後の動作は未合格である。古い認可状態でアクセスが通る変更や、全repositoryの無条件なレプリカ化は採用しない。
+
+各試行は元の`disabled`を確認してから開始し、終了時に設定を戻してGETで再照合した。一時Workerとcapabilityも削除した。最後に既存の実データ復旧stateに対して独立verifyを行い、全元テーブルのSQL export、スキーマ・採番のハッシュ一致、probe不在を確認した。新たなTime Travel restoreは行っていない。[全試行・warmup・復旧確認の集約証跡](evidence/d1-v3-bookmarked-replica-benchmark-2026-11-14.json)を参照する。
+
 ## 実データ容量と料金条件の再確認
 
 2026-11-14のv3再取得値はD1 109,314,048 bytes、1536次元2,190ベクトル、768次元0件だった。以前のDB物理サイズの観測値とは別時点の値として記録する。ベクトルの保存次元数は3,363,840である。[D1制限](https://developers.cloudflare.com/d1/platform/limits/)の単一DB上限はFree 500 MB、Paid 10 GBで、現時点のv3 DBは収まる。[Vectorize料金](https://developers.cloudflare.com/vectorize/platform/pricing/)の保存次元枠はFree 500万、Paidの内包分1,000万であり、このコーパス単独では内包範囲に収まる。枠は他環境と共有されるため、アカウント全体の余裕を保証するものではない。

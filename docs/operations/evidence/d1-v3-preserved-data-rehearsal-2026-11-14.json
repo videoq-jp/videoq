@@ -209,5 +209,18 @@
     "stored_vector_dimensions": 3363840,
     "account_wide_entitlements_and_utilization_verified": false,
     "cost_acceptance_complete": false
+  },
+  "bookmarked_replica_evaluation": {
+    "evidence": "d1-v3-bookmarked-replica-benchmark-2026-11-14.json",
+    "additional_trial_total_pairs": 300,
+    "prespecified_warmup_pairs": 75,
+    "measured_after_warmup_pairs": 225,
+    "postgres_warm_p95_ms": 90,
+    "d1_warm_p95_ms": 31,
+    "primary_ownership_check_cost_separate": true,
+    "production_replica_adoption": false,
+    "production_performance_acceptance_complete": false,
+    "read_replication_restored_disabled": true,
+    "original_data_schema_sequences_reverified": true
   }
 }
