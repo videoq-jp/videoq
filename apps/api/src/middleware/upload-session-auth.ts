@@ -1,6 +1,6 @@
 import { getCookies } from "better-auth/cookies";
 import { getSignedCookie } from "hono/cookie";
-import { withClient } from "../db/pool";
+import { createUploadSessionRepository } from "../persistence/factory";
 import { isBanned } from "../lib/auth-security";
 import type { AuthMethod } from "./auth";
 import { sessionMethod } from "./auth";
@@ -20,16 +20,10 @@ export const uploadSessionMethod: AuthMethod = async c => {
   // Hono and Better Auth both verify HMAC-SHA256 signed cookies with Web Crypto.
   const token = await getSignedCookie(c, secret, name);
   if (!token) return { kind: "invalid", message: "Invalid session" };
-  return withClient(c.env, async client => {
-    const { rows } = await client.query<{ id: string; banned: boolean | null; banExpires: Date | null }>(`
-      SELECT u.id, u.banned, u.ban_expires AS "banExpires"
-        FROM session s JOIN users u ON u.id = s.user_id
-       WHERE s.token = $1 AND s.expires_at > now()
-    `, [token]);
-    const user = rows[0];
-    if (!user || isBanned(user)) return { kind: "invalid", message: "Invalid session" };
-    return { kind: "ok", userId: user.id, via: "session" };
-  });
+  const repository = await createUploadSessionRepository(c.env);
+  const user = await repository.findUnexpiredUser(token);
+  if (!user || isBanned(user)) return { kind: "invalid", message: "Invalid session" };
+  return { kind: "ok", userId: user.id, via: "session" };
 };
 
 const uploadProcedures = new Set([

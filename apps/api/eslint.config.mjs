@@ -11,9 +11,13 @@ const databaseImportMessage = 'Shared business code must use persistence contrac
 export default [
   ...workspaceConfig({ react: false, tsconfigRootDir: import.meta.dirname }),
   {
-    files: ['src/features/**/*.ts', 'src/repositories/**/*.ts', 'src/persistence/contracts/**/*.ts'],
-    // This entrypoint provisions local PostgreSQL accounts using Better Auth.
-    ignores: ['src/features/admin/onprem-users.ts'],
+    files: [
+      'src/features/**/*.ts', 'src/repositories/**/*.ts', 'src/persistence/contracts/**/*.ts',
+      'src/lib/**/*.ts', 'src/middleware/**/*.ts', 'src/shared/**/*.ts', 'src/trpc/**/*.ts',
+    ],
+    // These compatibility entrypoints still construct the PostgreSQL auth adapter
+    // or provision local PostgreSQL users. All other shared code uses contracts.
+    ignores: ['src/features/admin/onprem-users.ts', 'src/lib/auth.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [{ group: databaseImports, message: databaseImportMessage }],
