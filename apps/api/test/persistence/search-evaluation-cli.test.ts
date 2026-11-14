@@ -19,6 +19,11 @@ describe('staging search evaluation preflight',()=>{
   expect(parseSearchEvaluationArguments(['--input','cases.json','--archive','source.ndjson','--output','report.json']).input).toMatch(/cases.json$/);
   for(const args of [[],['--input','cases'],['--config','production.json'],['--input','a','--input','b','--archive','c','--output','d']])expect(()=>parseSearchEvaluationArguments(args)).toThrow();
  });
+ it('accepts preservation evidence only as an explicit paired option',()=>{
+  const base=['--input','cases.json','--archive','source.ndjson','--output','report.json'];
+  expect(parseSearchEvaluationArguments([...base,'--preserved-policy','policy.json','--backup-dir','backup']).preservation).toEqual({backupDirectory:expect.stringMatching(/backup$/),policyPath:expect.stringMatching(/policy.json$/)});
+  for(const extra of [['--preserved-policy','policy.json'],['--backup-dir','backup']])expect(()=>parseSearchEvaluationArguments([...base,...extra])).toThrow();
+ });
  it('refuses existing output without modifying it or connecting',async()=>{
   const f=await fixture();await writeFile(f.output,'sentinel');
   await expect(main(f.args)).rejects.toThrow('already exists');

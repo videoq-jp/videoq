@@ -8,6 +8,7 @@ import {buildMigrationManifest} from '../../scripts/migrations/d1/manifest';
 import {fingerprintPreservedTable,loadPreservedTablePolicy,readPreservationEvidence,buildPreservedTablePolicy} from '../../scripts/migrations/d1/preserved-tables';
 import {exportPostgresArchive} from '../../scripts/migrations/d1/export';
 import {verifyPostgresArchive} from '../../scripts/migrations/d1/verify-archive';
+import {openVerifiedPostgresSource} from '../../scripts/migrations/d1/verified-postgres-source';
 const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
 const mapping=()=>buildMigrationManifest({dialect:'postgresql',tables:{app:{name:'app',columns:{id:{name:'id',type:'integer',notNull:true},data:{name:'data',type:'text',notNull:true}}}}},{dialect:'sqlite',tables:{app:{name:'app',columns:{id:{name:'id',type:'integer',notNull:true},data:{name:'data',type:'text',notNull:true}}}}});
 const sha=(data:string)=>createHash('sha256').update(data).digest('base64');
@@ -43,6 +44,14 @@ describe.skipIf(!url)('backup-bound explicit legacy table exclusion',()=>{
   expect(result.preserved_source_tables?.tables.map(table=>table.name)).toEqual(['retired']);expect(result.sequence_states).toEqual([]);
   expect(await readFile(output,'utf8')).toContain('current-canary');expect(await readFile(output,'utf8')).not.toContain('legacy-private-canary');
   expect((await fixture.pool.query('SELECT secret FROM retired')).rows[0].secret).toBe('legacy-private-canary');
+ });
+ it('verifies the same source snapshot only with the matching backup-bound policy',async()=>{
+  await run();
+  await expect(openVerifiedPostgresSource({connectionString:url!,archivePath:output,manifest:mapping(),sourceSchema:schema})).rejects.toThrow();
+  const source=await openVerifiedPostgresSource({connectionString:url!,archivePath:output,manifest:mapping(),sourceSchema:schema,preservation:{backupDirectory:directory,policyPath}});
+  try{expect(source.proof.source_snapshot_equality_verified).toBe(true);await source.assertLive();}finally{await source.dispose();}
+  await fixture.pool.query("UPDATE retired SET secret='same-count-change'");
+  await expect(openVerifiedPostgresSource({connectionString:url!,archivePath:output,manifest:mapping(),sourceSchema:schema,preservation:{backupDirectory:directory,policyPath}})).rejects.toThrow();
  });
  it.each(['changed-value','changed-structure','added-table','missing-table','current-dependency'] as const)('rejects %s before publishing any archive',async(kind)=>{
   if(kind==='changed-value')await fixture.pool.query("UPDATE retired SET secret='changed-private-canary'");

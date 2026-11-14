@@ -52,6 +52,9 @@ export async function loadPreservedTablePolicy(directory:string,path:string,mani
  * are hashed in memory and never returned as diagnostics or policy contents. */
 export async function fingerprintPreservedTable(client:pg.Client|pg.PoolClient,schema:string,name:string){
  const qualified=quote(schema)+'.'+quote(name);
+ const previous=(await client.query<{value:string}>("SELECT current_setting('search_path') AS value")).rows[0].value;
+ await client.query("SELECT set_config('search_path','pg_catalog',true)");
+ try{
  const columns=(await client.query(`SELECT a.attname,a.attnum,format_type(a.atttypid,a.atttypmod) AS type,a.attnotnull,a.attidentity,a.attgenerated,
   pg_get_expr(d.adbin,d.adrelid) AS expression FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace
   LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`,[schema,name])).rows;
@@ -65,6 +68,7 @@ export async function fingerprintPreservedTable(client:pg.Client|pg.PoolClient,s
  for(;;){const page=(await client.query<{data:string}>('FETCH FORWARD 100 FROM videoq_preserved_cursor')).rows;if(!page.length)break;for(const row of page){hash.update(row.data+'\n');rows++;}}
  await client.query('CLOSE videoq_preserved_cursor');
  return {name,structure_sha256:digest({relation,columns,constraints,indexes,triggers}),rows:rows.toString(),rows_sha256:hash.digest('hex')};
+ }finally{await client.query("SELECT set_config('search_path',$1,true)",[previous]);}
 }
 export async function verifyPreservedTables(client:pg.Client|pg.PoolClient,manifest:Manifest,schema:string,found:string[],policy:PreservedTablePolicy){
  if(!loaded.has(policy)||policy.source_schema!==schema||policy.mapping_sha256!==digest(manifest))fail();

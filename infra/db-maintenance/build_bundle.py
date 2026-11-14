@@ -38,7 +38,7 @@ def operator_files():
     for name in ["scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
                  "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
                  "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",
-                 "scripts/migrations/d1/verify-archive.ts", "scripts/migrations/d1/preserved-tables.ts", "scripts/migrations/d1/private-input.ts", "src/persistence/postgres/read-snapshot.ts"]:
+                 "scripts/migrations/d1/verify-archive.ts", "scripts/migrations/d1/preserved-tables.ts", "scripts/migrations/d1/verified-postgres-source.ts", "scripts/migrations/d1/private-input.ts", "src/persistence/postgres/read-snapshot.ts"]:
         operator.append((ROOT / "apps/api" / name, "apps/api/" + name))
     for dialect in ["drizzle", "drizzle-d1"]:
         meta = ROOT / "apps/api" / dialect / "meta"

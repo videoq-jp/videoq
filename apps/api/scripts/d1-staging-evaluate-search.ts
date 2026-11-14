@@ -19,11 +19,12 @@ import type {Bindings} from '../src/types/bindings';
 export function parseSearchEvaluationArguments(args: string[]) {
  const options=new Map<string,string>();
  for(let i=0;i<args.length;i+=2){
-  if(!['--input','--output','--archive'].includes(args[i])||!args[i+1]||args[i+1].startsWith('--')||options.has(args[i]))throw new Error('Invalid search evaluation arguments.');
+  if(!['--input','--output','--archive','--preserved-policy','--backup-dir'].includes(args[i])||!args[i+1]||args[i+1].startsWith('--')||options.has(args[i]))throw new Error('Invalid search evaluation arguments.');
   options.set(args[i],args[i+1]);
  }
- if(options.size!==3)throw new Error('Use --input <private cases.json> --archive <private corpus archive> --output <new private report.json>.');
- return {input:resolve(options.get('--input')!),output:resolve(options.get('--output')!),archive:resolve(options.get('--archive')!)};
+ if(options.has('--preserved-policy')!==options.has('--backup-dir'))throw new Error('Preserved policy and backup directory are required together.');
+ if(![3,5].includes(options.size)||!['--input','--output','--archive'].every(key=>options.has(key)))throw new Error('Use --input <private cases.json> --archive <private corpus archive> --output <new private report.json>.');
+ return {input:resolve(options.get('--input')!),output:resolve(options.get('--output')!),archive:resolve(options.get('--archive')!),...(options.has('--preserved-policy')?{preservation:{backupDirectory:resolve(options.get('--backup-dir')!),policyPath:resolve(options.get('--preserved-policy')!)}}:{})};
 }
 
 /** Read-only comparison against the fixed, offline migration staging target. */
@@ -49,7 +50,7 @@ export async function main(args=process.argv.slice(2)) {
  let directory: string|undefined;
  try{
   if(input.corpusSha256!==prepared.verified.archive_sha256)throw new Error('Evaluation corpus differs from the verified archive.');
-  const verifiedSource=await openVerifiedPostgresSource({connectionString:source.toString(),archivePath:join(prepared.directory,'source.videoq-export.ndjson'),manifest});
+  const verifiedSource=await openVerifiedPostgresSource({connectionString:source.toString(),archivePath:join(prepared.directory,'source.videoq-export.ndjson'),manifest,preservation:options.preservation});
   try{
    if(verifiedSource.archiveSha256!==input.corpusSha256)throw new Error('Frozen source archive changed during verification.');
    const proxy=await getPlatformProxy<StagingBindings>({configPath,envFiles:[],persist:false,remoteBindings:true});

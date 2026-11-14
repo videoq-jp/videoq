@@ -8,6 +8,7 @@ import type {buildMigrationManifest} from './manifest';
 import {exportPostgresArchive} from './export';
 import {verifyPostgresArchive} from './verify-archive';
 import {validateReadSnapshot} from '../../../src/persistence/postgres/read-snapshot';
+import {loadPreservedTablePolicy} from './preserved-tables';
 type Manifest=ReturnType<typeof buildMigrationManifest>;
 type Verified=Awaited<ReturnType<typeof verifyPostgresArchive>>;
 export class PostgresSourceVerificationError extends Error {readonly name='PostgresSourceVerificationError';}
@@ -29,7 +30,7 @@ function fingerprint(archive: Verified) {
 /** Keep the coordinator open until every evaluation consumer is closed. Its
  * exported snapshot is used for both verification export and PG search. No
  * source records/credentials are returned in the proof or error messages. */
-export async function openVerifiedPostgresSource(options:{connectionString:string;archivePath:string;manifest:Manifest;sourceSchema?:string}) {
+export async function openVerifiedPostgresSource(options:{connectionString:string;archivePath:string;manifest:Manifest;sourceSchema?:string;preservation?:{backupDirectory:string;policyPath:string}}) {
  let directory:string|undefined,coordinator:pg.Client|undefined,reader:pg.Client|undefined,closed=false,unavailable=false;
  const dispose=async()=>{
   if(closed)return;closed=true;
@@ -42,6 +43,8 @@ export async function openVerifiedPostgresSource(options:{connectionString:strin
   const expectedPath=join(directory,'expected.videoq-export.ndjson'),actualPath=join(directory,'actual.videoq-export.ndjson');
   await copyPrivateInput(options.archivePath,expectedPath);await chmod(expectedPath,0o400);
   const expected=await verifyPostgresArchive(expectedPath,options.manifest);
+  const preservedTables=options.preservation?await loadPreservedTablePolicy(options.preservation.backupDirectory,options.preservation.policyPath,options.manifest):undefined;
+  if(JSON.stringify(expected.preserved_source_tables)!==JSON.stringify(preservedTables))throw new PostgresSourceVerificationError('Source exclusion policy differs from the migration archive.');
   coordinator=new pg.Client({connectionString:options.connectionString,connectionTimeoutMillis:10000,statement_timeout:300000,application_name:'videoq-search-snapshot'});
   coordinator.on('error',()=>{unavailable=true;});
   await coordinator.connect();
@@ -52,7 +55,7 @@ export async function openVerifiedPostgresSource(options:{connectionString:strin
   reader=new pg.Client({connectionString:options.connectionString,connectionTimeoutMillis:10000,application_name:'videoq-search-source-verification'});
   reader.on('error',()=>undefined);
   await reader.connect();
-  await exportPostgresArchive(reader,options.manifest,actualPath,{schema:options.sourceSchema??'public',snapshot,statementTimeoutMs:300000});
+  await exportPostgresArchive(reader,options.manifest,actualPath,{schema:options.sourceSchema??'public',preservedTables,snapshot,statementTimeoutMs:300000});
   const actual=await verifyPostgresArchive(actualPath,options.manifest),expectedFingerprint=fingerprint(expected);
   if(fingerprint(actual)!==expectedFingerprint)throw new PostgresSourceVerificationError('Source snapshot rows or layouts differ from the migration archive.');
   await reader.end();reader=undefined;
