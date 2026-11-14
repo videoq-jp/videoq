@@ -2,6 +2,16 @@ import type { Bindings } from "../types/bindings";
 import type { UserSecretsRepository } from "./contracts/user-secrets";
 import { persistenceBackend } from "./backend";
 
+export async function createAnswerCostRepository(env: Bindings): Promise<import('./contracts/answer-cost-repository').AnswerCostRepository> {
+  if (persistenceBackend(env) === 'd1') {
+    if (!env.DB) throw new Error('D1 DB binding is required');
+    const {createD1AnswerCostRepository} = await import('./d1/answer-cost-repository');
+    return createD1AnswerCostRepository(env.DB);
+  }
+  const {createPostgresAnswerCostRepository} = await import('./postgres/answer-cost-repository');
+  return createPostgresAnswerCostRepository(env);
+}
+
 export async function createUserSecretsRepository(env: Bindings): Promise<UserSecretsRepository> {
   if (persistenceBackend(env) === "d1") {
     if (!env.DB) throw new Error("D1 DB binding is required");
