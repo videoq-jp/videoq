@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T10:39:08.793699+00:00",
+  "scope": "Preserved production-data rehearsal in nonpublic Cloudflare v3 resources; no production application cutover",
+  "source_evidence": "d1-preserved-production-data-local-rehearsal-2026-11-14.json",
+  "source_backup_maintenance_run_id": "fa64f739e2ac5538f889e9e06e584c69",
+  "target": {
+    "database_id": "373d6ca5-2796-460d-8ab1-e644de46bb3c",
+    "database_name": "videoq-d1-migration-staging-v3",
+    "region": "APAC",
+    "read_replication": "disabled",
+    "database_size_bytes_at_observation": 145178624,
+    "table_count_including_internal": 68,
+    "public_routes": false,
+    "workers_dev": false,
+    "preview_urls": false,
+    "application_secrets_attached": false,
+    "previous_v1_v2_resources_preserved": true
+  },
+  "schema": {
+    "migration_chain": "0000..0018",
+    "applied": true
+  },
+  "completed_d1_phases": {
+    "common_tables": 56,
+    "common_rows": 3956,
+    "checkpoints": 643,
+    "checkpoint_writes": 981,
+    "scenes": 2190,
+    "foreign_key_violations": 0,
+    "controlled_scene_resume_from_row": 1345,
+    "scene_resume_succeeded": true,
+    "completed_common_and_checkpoint_phases_reused": true
+  },
+  "visuals": {
+    "objects_copied_and_retrieved_with_matching_hashes": 10,
+    "runs_migrated": 5,
+    "source_status_counts": {
+      "error": 5
+    },
+    "source_existing_errors_preserved": true,
+    "source_objects_modified": false,
+    "destination_bucket": "videoq-media-migration-staging-v3",
+    "destination_r2_dev_public_access": false,
+    "destination_custom_domains": 0,
+    "initial_proxy_failure_code": 10002,
+    "initial_proxy_failed_before_object_reads": true,
+    "separate_visual_proxy_completed": true,
+    "ready_visual_application_e2e_proven": false
+  },
+  "vectorize": {
+    "indexes": {
+      "768": "videoq-scenes-migration-v3-768",
+      "1536": "videoq-scenes-migration-v3-1536"
+    },
+    "distance_metric": "cosine",
+    "metadata_indexes": {
+      "user_id": "String",
+      "video_id": "Number"
+    },
+    "input_existing_embeddings": 2190,
+    "real_corpus_dimensions": 1536,
+    "real_768_vectors": 0,
+    "embedding_model_changed": false,
+    "delivery_in_progress": true,
+    "outbox_progress_at_observation": {
+      "total": 2190,
+      "completed": 571,
+      "leased": 4,
+      "errors": 0
+    },
+    "stored_values_and_ownership_verified": false,
+    "query_visibility_verified": false
+  },
+  "focused_validation": {
+    "parallel_sync_and_target_tests_passed": 42,
+    "scene_group_and_delivery_tests_passed": 22,
+    "existing_full_import_tests_passed": 43,
+    "scene_resume_and_target_tests_passed": 33,
+    "visual_target_tests_passed": 9,
+    "typescript_and_eslint_passed": true
+  },
+  "remaining": {
+    "complete_vectorize_delivery_and_value_audit": true,
+    "real_data_recovery_rehearsal": true,
+    "representative_search_quality": true,
+    "authentication_and_worker_e2e": true,
+    "latency_and_cost_acceptance": true
+  },
+  "production_d1_cutover": false,
+  "migration_execution_complete": false
+}
