@@ -9,7 +9,7 @@ const buckets=z.tuple([
  * private rehearsal destination. There are no application routes or secrets. */
 export function validateVisualStagingTarget(text:string){
  const parsed=ts.parseConfigFileTextToJson('wrangler.d1-visual-staging.jsonc',text);
- const config=z.object({r2_buckets:buckets}).passthrough().safeParse(parsed.config as unknown);
+ const config=z.object({name:z.literal('videoq-db-visual-migration-staging-v3'),r2_buckets:buckets}).passthrough().safeParse(parsed.config as unknown);
  if(parsed.error||!config.success)throw new StagingTargetError('Dedicated visual source and private destination are required.');
- const {r2_buckets,...target}=config.data;return {...validateStagingTarget(JSON.stringify(target)),r2_buckets};
+ const {name,r2_buckets,...target}=config.data;return {...validateStagingTarget(JSON.stringify({...target,name:'videoq-db-migration-staging-v3'})),name,r2_buckets};
 }
