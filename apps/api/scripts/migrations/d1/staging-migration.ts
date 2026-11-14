@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {importSceneTables} from './import-scenes';
 import type {D1Database,Vectorize} from '@cloudflare/workers-types';
 import {join} from 'node:path';
 import type {buildMigrationManifest} from './manifest';
@@ -11,13 +13,13 @@ export function parseStagingMigrationArguments(args:string[]){
  const values=new Map<string,string>();let pendingVisuals=false;
  for(let index=0;index<args.length;index++){
   const key=args[index];if(key==='--allow-pending-visuals'){if(pendingVisuals)throw new StagingMigrationError('Duplicate staging migration option.');pendingVisuals=true;continue;}
-  if(!['--input','--mode','--max-tasks'].includes(key)||values.has(key)||!args[index+1]||args[index+1].startsWith('--'))throw new StagingMigrationError('Use --mode import|deliver|verify --input <private archive> [--max-tasks 1..10000] [--allow-pending-visuals].');
+  if(!['--input','--mode','--max-tasks'].includes(key)||values.has(key)||!args[index+1]||args[index+1].startsWith('--'))throw new StagingMigrationError('Use --mode import|resume-scenes|deliver|verify --input <private archive> [--max-tasks 1..10000] [--allow-pending-visuals].');
   values.set(key,args[++index]);
  }
  const mode=values.get('--mode'),input=values.get('--input'),rawLimit=values.get('--max-tasks')??'100';
- if(!input||!['import','deliver','verify'].includes(mode??'')||!/^\d+$/.test(rawLimit))throw new StagingMigrationError('Invalid staging migration arguments.');
+ if(!input||!['import','resume-scenes','deliver','verify'].includes(mode??'')||!/^\d+$/.test(rawLimit))throw new StagingMigrationError('Invalid staging migration arguments.');
  const maxTasks=Number(rawLimit);if(!Number.isSafeInteger(maxTasks)||maxTasks<1||maxTasks>10000||mode!=='deliver'&&values.has('--max-tasks')||mode!=='import'&&pendingVisuals)throw new StagingMigrationError('Invalid staging migration option for this phase.');
- return {mode:mode as 'import'|'deliver'|'verify',input,maxTasks,allowPendingVisuals:pendingVisuals};
+ return {mode:mode as 'import'|'resume-scenes'|'deliver'|'verify',input,maxTasks,allowPendingVisuals:pendingVisuals};
 }
 /** prepare/verify the frozen input before connecting to the remote target. */
 export async function runStagingMigration(options:ReturnType<typeof parseStagingMigrationArguments>,manifest:ReturnType<typeof buildMigrationManifest>,connect:()=>Promise<{env:StagingBindings;dispose:()=>Promise<void>}>){
@@ -28,6 +30,12 @@ export async function runStagingMigration(options:ReturnType<typeof parseStaging
   try{
    const {DB:db,SCENE_VECTORIZE_768:small,SCENE_VECTORIZE_1536:large}=proxy.env,indexes={768:small,1536:large},archive=prepared.verified.archive_sha256;
    if(options.mode==='import')return {phase:'import',...await importCommonTables(db,join(prepared.directory,'source.videoq-export.ndjson'),manifest,{offlineStaging:true})};
+   if(options.mode==='resume-scenes'){
+    const states=(await db.prepare("SELECT id,status,archive_sha256 FROM migration_imports WHERE id IN ('common','checkpoints')").all<{id:string;status:string;archive_sha256:string}>()).results;
+    if(!states.some(state=>state.id==='common'&&state.status==='common_imported'&&state.archive_sha256===archive)||prepared.checkpoints.tables.length>0&&!states.some(state=>state.id==='checkpoints'&&state.status==='checkpoints_imported'&&state.archive_sha256===archive))throw new StagingMigrationError('Completed common/checkpoint imports from this archive are required.');
+    const mapping=createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
+    return {phase:'resume-scenes',...await importSceneTables(db,prepared.scenes,archive,mapping)};
+   }
    const receipt=await db.prepare("SELECT imported_rows FROM migration_imports WHERE id='scenes' AND status='scenes_imported' AND archive_sha256=?").bind(archive).first<{imported_rows:number}>();
    if(!receipt||String(receipt.imported_rows)!==prepared.scenes.rows)throw new StagingMigrationError('The target has no completed scene import for this archive.');
    if(options.mode==='verify')return {phase:'verify',...await verifyMigratedSceneVectors(db,prepared.scenes,archive,indexes,{offlineStaging:true})};

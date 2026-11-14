@@ -1,4 +1,4 @@
-import type {D1Database} from '@cloudflare/workers-types';
+import type {D1Database,D1PreparedStatement} from '@cloudflare/workers-types';
 import {createHash} from 'node:crypto';
 import type {SceneEmbedding} from '../../../src/persistence/contracts/scene-index';
 import {readArchiveLines} from './verify-archive';
@@ -30,11 +30,13 @@ export async function importSceneTables(database:D1Database,prepared:PreparedSce
    const publicationCheck=database.prepare(`SELECT CASE WHEN EXISTS(SELECT 1 FROM video_index_versions v JOIN video_index_heads h ON h.video_id=v.video_id JOIN scene_index_runs r ON r.id=h.run_id JOIN videos video ON video.id=v.video_id WHERE v.video_id=? AND v.revision=? AND h.dimensions=? AND h.run_id=? AND r.video_id=v.video_id AND r.dimensions=h.dimensions AND r.source_revision=v.revision AND r.user_id=? AND video.user_id=r.user_id AND r.status='published') THEN 1 ELSE json('IMPORT_SCENE_PUBLICATION_MISMATCH') END`).bind(videoId,source,dimensions,revision,userId);
    return {values,taskValues,source,checks:[sceneCheck,taskCheck,publicationCheck]};
   };
-  let offset=0;
+  let offset=0,writeRows=0,writeBytes=0,writes:D1PreparedStatement[]=[];
+  const flushWrites=async()=>{if(writes.length){await database.batch(writes);writes=[];writeRows=0;writeBytes=0;}};
   for await(const line of readArchiveLines(prepared.path)){
    const row=JSON.parse(line.toString()) as Row;if(offset++<progress.row_index)continue;
+   if(writeRows&&(writeRows>=5||writeBytes+line.byteLength>512*1024))await flushWrites();
    const {values,taskValues,source,checks}=statements(row);
-   await database.batch([
+   writes.push(
     database.prepare(`SELECT CASE WHEN ${parent} AND EXISTS(SELECT 1 FROM migration_imports WHERE id='scenes' AND archive_sha256=? AND status='importing_scenes' AND row_index=?) THEN 1 ELSE json('IMPORT_SCENE_PROGRESS_CHANGED') END`).bind(archive,archive,offset-1),
     database.prepare('INSERT INTO video_index_versions(video_id,revision) VALUES(?,?) ON CONFLICT DO NOTHING').bind(row.videoId,source),
     database.prepare("INSERT INTO scene_index_runs(id,video_id,user_id,source_revision,dimensions,expected_scenes,status) VALUES(?,?,?,?,?,0,'published') ON CONFLICT DO NOTHING").bind(row.revision,row.videoId,row.userId,source,row.dimensions),
@@ -43,10 +45,17 @@ export async function importSceneTables(database:D1Database,prepared:PreparedSce
     database.prepare("INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions,embedding) VALUES(?,'upsert',?,?,?,?,?,?,?) ON CONFLICT DO NOTHING").bind(...taskValues),
     ...checks,
     database.prepare("UPDATE migration_imports SET row_index=?,imported_rows=imported_rows+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='scenes'").bind(offset),
-   ]);
+   );writeRows++;writeBytes+=line.byteLength;
   }
+  await flushWrites();
   // Re-read every prepared value even on completed retries; never trust only a marker.
-  for await(const line of readArchiveLines(prepared.path)){const row=JSON.parse(line.toString()) as Row;await database.batch(statements(row).checks);}
+  let checks:D1PreparedStatement[]=[],checkBytes=0;
+  const flushChecks=async()=>{if(checks.length){await database.batch(checks);checks=[];checkBytes=0;}};
+  for await(const line of readArchiveLines(prepared.path)){
+   if(checks.length&&(checks.length>=75||checkBytes+line.byteLength>512*1024))await flushChecks();
+   const row=JSON.parse(line.toString()) as Row;checks.push(...statements(row).checks);checkBytes+=line.byteLength;
+  }
+  await flushChecks();
   if((await database.prepare('PRAGMA foreign_key_check').all()).results.length)throw new SceneImportError('Scene foreign-key reconciliation failed.');
   const result=await database.batch([
    database.prepare(`SELECT CASE WHEN (SELECT count(*) FROM scenes)=? AND (SELECT count(*) FROM scene_index_tasks)=? AND NOT EXISTS(SELECT 1 FROM scene_staging) AND (SELECT count(*) FROM scene_index_runs)=(SELECT count(*) FROM (SELECT DISTINCT video_id,dimensions FROM scenes)) AND (SELECT count(*) FROM video_index_heads)=(SELECT count(*) FROM scene_index_runs) AND (SELECT count(*) FROM video_index_versions)=(SELECT count(DISTINCT video_id) FROM scenes) THEN 1 ELSE json('IMPORT_SCENE_COUNT_MISMATCH') END`).bind(Number(prepared.rows),Number(prepared.rows)),
