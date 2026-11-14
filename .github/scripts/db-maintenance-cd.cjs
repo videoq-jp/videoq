@@ -12,7 +12,8 @@ function relevant(path) {
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
   if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
-  if (['scripts/d1-migration-manifest.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
+  if (['scripts/d1-migration-manifest.ts','scripts/d1-export.ts','scripts/d1-preserve-legacy.ts',
+    'scripts/migrations/d1/preserved-tables.ts','scripts/migrations/d1/verified-postgres-source.ts','scripts/migrations/d1/private-input.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
     'scripts/migrations/d1/archive-format.ts','scripts/migrations/d1/sequence-format.ts','scripts/migrations/d1/verify-archive.ts',
     'src/persistence/postgres/read-snapshot.ts'].some(name=>path==='apps/api/'+name)) return true;
   if (/^apps\/api\/drizzle(?:-d1)?\/meta\/(?:_journal|\d{4}_snapshot)\.json$/.test(path)) return true;
