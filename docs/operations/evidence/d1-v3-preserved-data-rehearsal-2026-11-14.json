@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "observed_at": "2026-11-14T11:07:40.493410+00:00",
+  "observed_at": "2026-11-14T11:37:10.234542+00:00",
   "scope": "Preserved production-data rehearsal in nonpublic Cloudflare v3 resources; no production application cutover",
   "source_evidence": "d1-preserved-production-data-local-rehearsal-2026-11-14.json",
   "source_backup_maintenance_run_id": "fa64f739e2ac5538f889e9e06e584c69",
@@ -70,7 +70,7 @@
       "errors": 0
     },
     "stored_values_and_ownership_verified": true,
-    "query_visibility_verified": false,
+    "query_visibility_verified": true,
     "missing_vectors": 0,
     "mismatched_vectors": 0,
     "pending_tasks": 0
@@ -109,5 +109,75 @@
     "probe_absent_after_restore": true,
     "source_neon_or_r2_modified": false,
     "private_bookmarks_and_sql_not_published": true
+  },
+  "query_visibility": {
+    "query_visibility_verified": true,
+    "cohort": "source-derived-existing-vectors",
+    "model_changed": false,
+    "known_vector_cases": 40,
+    "exact_scene_visible": 40,
+    "nonowner_cases": 40,
+    "nonowner_cases_empty": 40,
+    "scope_violations": 0,
+    "representative_search_quality_verified": false,
+    "execution_complete": false
+  },
+  "paired_repository_search": {
+    "query_provenance": "Existing corpus vectors, not representative human questions",
+    "source": "Read-only local PostgreSQL freshly restored from retained immutable dump",
+    "target": "Actual v3 D1 and Vectorize via development binding proxy",
+    "source_snapshot_equality_verified": true,
+    "target_archive_vectors_verified": true,
+    "cases": 80,
+    "samples_per_case": 3,
+    "paired_searches": 240,
+    "agreement": {
+      "reference_nonempty_pairs": 120,
+      "reference_empty_pairs": 120,
+      "both_empty_pairs": 120,
+      "candidate_empty_pairs": 120,
+      "candidate_nonempty_when_reference_empty": 0,
+      "mean_reference_top_k_overlap": 1,
+      "exact_rank_order_pairs": 237,
+      "reference_hits": 2283,
+      "candidate_hits": 2283,
+      "overlapping_hits": 2283
+    },
+    "latency": {
+      "measurement": "repository-call-only",
+      "postgres": {
+        "samples": 240,
+        "p50_ms": 4.846333000023151,
+        "p95_ms": 15.331583999999566,
+        "p99_ms": 26.34754200000316
+      },
+      "d1": {
+        "samples": 240,
+        "p50_ms": 262.1217920000199,
+        "p95_ms": 528.5593329999829,
+        "p99_ms": 573.7827080000134
+      }
+    },
+    "latency_applicability": "Local PostgreSQL versus a remote development binding proxy; this is not a production before/after API benchmark",
+    "representative_search_quality_verified": false,
+    "acceptance_criteria_applied": false
+  },
+  "existing_session_reads": {
+    "existing_session_read_compatibility_verified": true,
+    "active_source_sessions_available": 19,
+    "active_source_sessions_checked": 19,
+    "all_active_source_sessions_checked": true,
+    "distinct_existing_users_checked": 2,
+    "identical_full_session_and_user_outputs": 19,
+    "unknown_sessions_rejected": true,
+    "wrong_signatures_rejected": true,
+    "session_refresh_disabled": true,
+    "d1_non_select_attempts": 0,
+    "postgres_readonly_enforced": true,
+    "shared_test_cookie_secret": true,
+    "production_cookie_or_secret_compatibility_proven": false,
+    "oauth_live_flow_verified": false,
+    "execution_complete": false,
+    "onprem_auth_cloudflare_bindings_supplied": false
   }
 }
