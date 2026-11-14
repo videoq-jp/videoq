@@ -552,3 +552,9 @@ main由来の独立worktreeでも関連5ファイル123試験が成功し、評�
 2026-11-14、[CI #43600462435](https://github.com/videoq-jp/videoq/actions/runs/43600462435)はWhisper用zlibの固定SHA-256照合で停止した。Honoを含む他の選択された試験は成功した。CIが受け取った不一致の実体は保存されておらず、根本原因は特定できていない。[公式サイト](https://zlib.net/)の掲載値と、通常URL・fossils URLからの独立取得は現在のpinと一致したため、期待値やバージョンは変更していない。
 
 取得・SHA照合を最大3回まで行い、正しいpinに一致した候補だけを展開用パスへ公開するhelperを追加した。ネットワーク失敗と不正な本文からの再取得、継続不一致の失敗・既存ファイル保護、未検証一時ファイルの削除等7試験と、実公式配布物の取得が成功した。[集約証跡](evidence/d1-onprem-source-download-2026-11-14.json)を参照する。完全なWhisperイメージ再buildとオンプレライフサイクルの合格は、最新headのCIで確認する。
+
+### 私有起動クライアント（実起動は未実施）
+
+2026-11-14、評価専用Lambdaの数値version・image digest・role・モデル構成を照合する起動クライアントを追加した。私有manifestから質問を初出順に重複排除し、16件ずつ同期invokeする。応答のExecutedVersion、入力ハッシュ、case ID、検索範囲、ベクトルを検証し、全件成功時だけ元の全ケース・sample数を持つ私有ファイルへまとめる。SDKの暗黙的なrole/web identity/processによる資格情報取得経路を除去し、固定endpoint・1試行で実行する。
+
+関連5ファイル128試験（新client 29試験）が成功した。transportは合成mockであり、実AWS・モデル呼び出しは行っていない。[実行手順](d1-remote-query-preparation.md)と[集約証跡](evidence/d1-remote-evaluation-client-2026-11-14.json)を参照する。PR #1444の承認待ちは維持し、そのレビュー対象のheadや既存本番関数を変更していない。専用関数の作成・実接続・検索品質評価・D1切り替えは引き続き未実施である。
