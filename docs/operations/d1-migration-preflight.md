@@ -1,6 +1,34 @@
 # D1移行前の計測と設定確認
 
-この手順は移行計画のPhase 0と設定準備を扱う。データコピー・リソース作成・デプロイ・本番切替は実行しない。
+この文書の前半は移行計画のPhase 0と設定準備の手順、後半は日付付きの実施履歴を扱う。手順中のローカル設定チェックだけではリソース作成・本番切替を行わない。現在の到達点は次表を参照し、過去の日付の「未実施」を現在の状態として読み替えない。
+
+## 現在の到達点（2026-11-15 JST）
+
+本番は引き続きNeonであり、PR #1434は統合レビュー用draftのまま。本番D1切替とNeon廃止は行っていない。旧Django/OAuthの27テーブルは完全バックアップへ保管し、現行アプリだけをD1へ移す決定を維持する。
+
+- 完全バックアップの私有S3保存・固定版取得・独立PostgreSQL 17.12への再復元は成功。全91テーブルの件数と制約を照合し、新規保存を停止して既存版を保持した。[保全証跡](evidence/backup-preservation-recovery-2026-11-14.json)。
+- 実データv3へのD1/Vectorize/R2取り込み、値・所有権・参照・配信の照合、再投入とD1 Time Travel復旧を実施した。[v3リハーサル](evidence/d1-v3-preserved-data-rehearsal-2026-11-14.json)。これは最終書込停止後の差分移行ではない。
+- PR #1444はmainへマージ・通常CD済み。隔離Lambdaで既存OpenRouter/federation経路を使い、合成接続1件と代表40質問のEmbedding生成を実施した。現在はreserved concurrency 0で停止。運用者の本番role assumeやtrust変更は行っていない。[実行記録](search-evaluation-runtime.md)。
+- 代表40質問・40所有者負例の自動比較は完了し、通常のtop-k集合は全件一致、負例hitは0。AIによる非網羅candidate評価を人手の正解・一般Recallとは扱わない。人手レビューを利用者の必須作業にはしていない。[自動評価](d1-automatic-query-evaluation.md)。
+- `@langchain/cloudflare@1.1.0`の実検索・登録・削除を確認し、実D1/Vectorizeの768/1536双方で偽metadata・physical ID・revision・別owner・owner失効を検証した。fixture削除も確認済み。[セキュリティ検証](d1-langchain-security-review.md)。
+- 同一Workerからの実シーン検索ではD1＋Vectorizeのp50が全8バッチで遅く、性能改善の条件は未達。段階別診断でもVectorizeとD1の直列I/O待機を確認した。認可の再照合を削除したり、read replicaへ無条件に変更したりしていない。[性能記録](d1-same-worker-scene-performance.md)。
+- 実装`8f16b666`の全CIは成功。`f60049ba`のCIは証跡更新pushでsuperseded/cancelledとなり、成功とは扱わない。証跡head`7b63a454`の[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43619852759)は成功、[CI](https://github.com/videoq-jp/videoq/actions/runs/43619852843)は照合時点で実行中。後続のローカル証跡commitは実装変更を含まない。
+
+### 計画書の本番切替受入条件との対応
+
+| 条件 | 現時点の判定 | 残る検証 |
+|---|---|---|
+| 1. 両環境の重要E2E | 一部実証 | 最新CI完了、配備済みcloud動画処理から回答までの一連の動作、対象profileの現行GPU証跡 |
+| 2. 移行データ件数・参照整合性 | リハーサル実証済み | 最終snapshot・書込停止後の差分と再照合 |
+| 3. 認証・課金・利用枠・ジョブ回帰なし | 契約/統合試験で実証、実運用は未完 | 実OAuth、本番cookie継承、実課金経路、配備済みqueue/worker |
+| 4. RAG品質維持 | 自動candidate比較で相対合格 | モデル回答全体・利用文脈を含む品質。非網羅AI候補を完全正解とは扱わない |
+| 5. 同時更新・再試行の整合性 | DB/内部API試験で実証 | 配備済みcloudパイプラインの重複・再配送・部分失敗 |
+| 6. 性能改善 | **未達** | 実検索の遅延診断、主要APIの配置・cold・同時負荷比較 |
+| 7. 制限・予算 | 容量は適合、予算未確定 | 通常/ピーク量、増加率、アカウント全体の料金と予算判定 |
+| 8. 復旧演習 | バックアップ/D1 Time Travelは実証 | D1書込後のNeon側再適用を含む切戻し演習 |
+| 9. オンプレでCloudflare不要 | 既存CIで実証、最新CI確認中 | 最新headのオンプレライフサイクル完了 |
+
+この表は未達条件を消すための範囲変更ではない。下記の古い手順や部分試験が成功していても、未検証の配備経路を合格とは扱わず、本番切替の許可に読み替えない。
 
 ## PostgreSQLのベースライン
 
@@ -75,7 +103,7 @@ npm run db:d1:cutover-check --workspace @videoq/api -- \
 このチェックはリモートのschema履歴、indexの実次元・metric・metadata filter、秘密値の存在、AWS設定、データ整合性、認証互換性、検索品質、性能、予算を検証しない。
 本番切替には計画書の全受け入れ基準と復旧演習の証跡が必要である。
 
-## 現在の確認結果
+## 初期確認結果（2026-11-13の履歴）
 
 2026-11-13時点のリポジトリの`env.production`にはD1/Vectorize設定と明示的なcloud editionがなく、このチェックは失敗する。既存Neon設定は維持している。
 今回、本番接続情報を使用したベースライン取得やCloudflareリソース操作は行っていない。
@@ -495,7 +523,7 @@ PythonはWorkerの要件に合わせ3.12以降を必須とし、ローカルの`
 
 この例にWorkersの契約・request・CPU、R2、AWS、LLM、S3保全、移行中のNeon併存費用は含めていない。[Workers料金](https://developers.cloudflare.com/workers/platform/pricing/)とVectorize個別料金ページには利用可能プランの記述に差があるため、実アカウントの契約・課金対象は別途確認する。プラン変更は実施していない。実トラフィック、増加率、現在のNeon費用、月額上限が未確定であり、費用の受け入れは未完了とする。[計算条件と集約証跡](evidence/d1-v3-capacity-cost-assessment-2026-11-14.json)を参照する。
 
-### 代表質問評価の認証経路（未実行）
+### 代表質問評価の認証経路（2026-11-14時点の未実行案）
 
 2026-11-14、利用者から「検証環境はないかもしれない。本番はフェデレーション認証で接続している」と確認した。接続済み検証環境の存在は未確認であり、運用者IDの交換失敗から本番ワークロードの認証失敗を推定しない。
 
@@ -533,7 +561,7 @@ D1アダプターへ`OAuthGrantRepository`を追加し、対象の所有者・cl
 
 固定の合成検証用v2 D1では既存認証試験を含む3試験が成功した。新しい原子性試験はlate failureで全件不変、他人による解除の拒否、成功後の同一アプリ全削除と再実行を確認した。テスト用のUUID名前空間だけを操作し、最後にユーザー・client・トークン・同意・障害トリガーの残数0を再照合した。v3の実データや本番には変更していない。[集約証跡](evidence/d1-oauth-grant-atomicity-2026-11-14.json)を参照する。既発行JWTの有効期間や、代表質問による品質評価、本番切り替えの条件は変更しない。
 
-### 代表質問Embeddingの準備ツール（モデル通信は未実行）
+### 代表質問Embeddingの準備ツール（2026-11-14時点）
 
 2026-11-14、既存のPython query Embedding関数を使い、モデル・profile・次元数・接続先・認証方式を固定manifestと照合する私有入力生成ツールを追加した。既定のpreflightは通信を行わず、`--execute`で明示した場合だけ既存ワークロード認証で生成する。質問ごとに一度だけ生成した同じベクトルを、所有者・動画選択・性能反復を変えたケースでも再利用し、既存のPG/D1検索評価入力へ接続する。モデル設定の自動変更や、新たな認証権限の付与は行わない。
 
@@ -553,7 +581,7 @@ main由来の独立worktreeでも関連5ファイル123試験が成功し、評�
 
 取得・SHA照合を最大3回まで行い、正しいpinに一致した候補だけを展開用パスへ公開するhelperを追加した。ネットワーク失敗と不正な本文からの再取得、継続不一致の失敗・既存ファイル保護、未検証一時ファイルの削除等7試験と、実公式配布物の取得が成功した。[集約証跡](evidence/d1-onprem-source-download-2026-11-14.json)を参照する。完全なWhisperイメージ再buildとオンプレライフサイクルの合格は、最新headのCIで確認する。
 
-### 私有起動クライアント（実起動は未実施）
+### 私有起動クライアント（2026-11-14時点の準備）
 
 2026-11-14、評価専用Lambdaの数値version・image digest・role・モデル構成を照合する起動クライアントを追加した。私有manifestから質問を初出順に重複排除し、16件ずつ同期invokeする。応答のExecutedVersion、入力ハッシュ、case ID、検索範囲、ベクトルを検証し、全件成功時だけ元の全ケース・sample数を持つ私有ファイルへまとめる。SDKの暗黙的なrole/web identity/processによる資格情報取得経路を除去し、固定endpoint・1試行で実行する。
 
@@ -562,3 +590,16 @@ main由来の独立worktreeでも関連5ファイル123試験が成功し、評�
 ### native HTTPS試験のTLS最低バージョン
 
 2026-11-14、CodeQLの`py/insecure-protocol`指摘 #75は、本番APIではなくnative試験のPython接続確認に対するものだった。試験用SSLContextへ`minimum_version=TLSv1_2`を明示し、同じcontextでCAを確認して接続する。実接続でTLS 1.2または1.3が選択されたことも検査する。証明書・hostnameの検証は維持し、alert抑制や検証無効化は行っていない。変更後のPython署名付きHTTPS→workerd Hono→D1試験は成功した。CodeQL上の解消は、新しいheadの解析結果で確認する。
+
+
+## Python署名から実D1・Vectorizeまでの接続試験（2026-11-15）
+
+[集約証跡](evidence/d1-python-remote-store-integration-2026-11-15.json)。合成v2固定guardの下で、実Python内部APIクライアントを検証有効なloopback HTTPS経由でローカルNode Honoへ接続し、実D1/Vectorizeへ永続化した。これは先のnative workerd試験に実クラウドstore接続を加える補完試験であり、Hono自体を配備したcloud WorkerやLambda/SQSの全体E2Eではない。
+
+固有の合成ユーザー/動画/jobを用意し、重複claim・payload競合・無効署名・旧lease拒否・再試行、20秒の利用枠の二重確保防止、日本語/絵文字字幕と重複finishの上書き防止、別ownerのstage拒否、scene公開とoutbox登録をPython経路から検証した。同期前の動画は`indexing`、finishは`pending`だった。
+
+私有driverから本番と同じ`synchronizeD1SceneIndex`を呼び、実LangChain `addVectors`で1件を同期した。直前に未完了タスクが試験所有者の1件だけであることを確認し、他のタスクを消費しない条件で実行した。D1タスク完了とembedding payload消去を確認後、Pythonのfinishが`completed`となり、再実行も成功した。実インデックスの反映を待ち、同じLangChain検索アダプターからD1の正規字幕が1件返ることと、別ownerでは空であることを確認した。
+
+最後に動画の可視性を先に落としてvectorを削除し、固有のfixtureと内部jobを削除した。physical IDの不存在とowner filterのANN空結果を確認した。HTTPSサーバーを停止し、試験用TLS鍵/証明書も削除した。SQS外部taskは作成されるが、キューへdispatchせず、動画IDで限定して削除した。
+
+固定の合成字幕・vectorを使用し、動画upload・音声認識・Embedding生成・LLM回答・外部queue配送・本番OAuthは行っていない。これらの未検証条件を、今回の成功で合格へ変更しない。
