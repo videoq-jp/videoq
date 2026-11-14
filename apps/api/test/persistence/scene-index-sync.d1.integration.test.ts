@@ -62,6 +62,43 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     expect(await search()).toMatchObject([{ content: "Authoritative D1 content", videoTitle: "Lesson" }]);
     expect(await fixture.database.prepare("SELECT embedding FROM scene_index_tasks WHERE operation='upsert'").first("embedding")).toBeNull();
   });
+  it("bounds parallel workers, preserves the total claim limit and completes each immutable vector once", async () => {
+    expect(await writer.start({ runId: "parallel", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: 8 })).toBe(true);
+    expect(await writer.stage("parallel", "owner", Array.from({ length: 8 }, (_, i) => ({ ...scene(), id: "scene-" + i })))).toBe(true);
+    expect(await writer.publish("parallel", "owner")).toBe(true);
+    let active = 0, peak = 0;
+    upsertHook = async () => { active++; peak = Math.max(peak, active); await new Promise(resolve => setTimeout(resolve, 30)); active--; };
+    expect(await synchronizeD1SceneIndex(fixture.database, {1536:index}, 6, {concurrency:3})).toEqual({claimed:6,completed:6,failed:0,leaseLost:0});
+    expect(peak).toBeGreaterThan(1); expect(peak).toBeLessThanOrEqual(3); expect(active).toBe(0); expect(vectors.size).toBe(6);
+    expect(await synchronizeD1SceneIndex(fixture.database, {1536:index}, 10, {concurrency:4})).toEqual({claimed:2,completed:2,failed:0,leaseLost:0});
+    expect(vectors.size).toBe(8);
+    expect(await fixture.database.prepare("SELECT count(*) FROM scene_index_tasks WHERE attempts<>1 OR completed_at IS NULL OR lease_token IS NOT NULL").first("count(*)")).toBe(0);
+  });
+  it("waits for an already started provider write when a parallel DB claim fails", async () => {
+    await publish("parallel-failure");
+    let release!: () => void, entered!: () => void, settled = false, calls = 0;
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    upsertHook = async () => { entered(); await waiting; };
+    const database = new Proxy(fixture.database, {get(target,key) {
+      if (key === "prepare") return (sql: string) => {
+        if (sql.startsWith("UPDATE scene_index_tasks SET lease_token") && ++calls === 2) throw new Error("synthetic-claim-failure");
+        return target.prepare(sql);
+      };
+      const value: unknown = Reflect.get(target,key); return typeof value === "function" ? value.bind(target) : value;
+    }});
+    const outcome = synchronizeD1SceneIndex(database,{1536:index},3,{concurrency:3}).then(
+      value => { settled = true; return {value,error:undefined}; },
+      (error: unknown) => { settled = true; return {value:undefined,error}; },
+    );
+    await started; expect(settled).toBe(false); release();
+    expect((await outcome).error).toMatchObject({message:"synthetic-claim-failure"});
+    expect(vectors.size).toBe(1);
+    expect(await fixture.database.prepare("SELECT count(*) FROM scene_index_tasks WHERE completed_at IS NULL OR lease_token IS NOT NULL").first("count(*)")).toBe(0);
+  });
+  it("rejects invalid parallelism before claiming tasks", async () => {
+    for (const concurrency of [0,-1,1.5,9,NaN]) await expect(synchronizeD1SceneIndex(fixture.database, {}, 10, {concurrency})).rejects.toThrow("concurrency");
+  });
   it("persists safe retry state after provider failure and succeeds on replay", async () => {
     await publish("run");
     upsertHook = () => Promise.reject(new Error("test-secret-provider-diagnostic"));

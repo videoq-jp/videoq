@@ -32,7 +32,7 @@ export async function runStagingMigration(options:ReturnType<typeof parseStaging
    if(!receipt||String(receipt.imported_rows)!==prepared.scenes.rows)throw new StagingMigrationError('The target has no completed scene import for this archive.');
    if(options.mode==='verify')return {phase:'verify',...await verifyMigratedSceneVectors(db,prepared.scenes,archive,indexes,{offlineStaging:true})};
    const result={claimed:0,completed:0,failed:0,leaseLost:0};
-   while(result.claimed<options.maxTasks){const batch=await synchronizeD1SceneIndex(db,indexes,Math.min(100,options.maxTasks-result.claimed));for(const field of ['claimed','completed','failed','leaseLost'] as const)result[field]+=batch[field];if(!batch.claimed||batch.failed||batch.leaseLost)break;}
+   while(result.claimed<options.maxTasks){const batch=await synchronizeD1SceneIndex(db,indexes,Math.min(100,options.maxTasks-result.claimed),{concurrency:4});for(const field of ['claimed','completed','failed','leaseLost'] as const)result[field]+=batch[field];if(!batch.claimed||batch.failed||batch.leaseLost)break;}
    const pending=await db.prepare('SELECT count(*) AS count FROM scene_index_tasks WHERE completed_at IS NULL').first<{count:number}>();
    return {phase:'deliver',...result,pending_tasks:pending?.count??0,vectorize_delivery_complete:false,search_quality_verified:false,execution_complete:false};
   }finally{await proxy.dispose();}
