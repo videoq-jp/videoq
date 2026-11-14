@@ -83,3 +83,6 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 候補は正規scene、別所有者のsceneを要求者所有と偽装したmetadata、正規IDをmetadataへ写した偽physical ID、古いrevision、SQL構文に見えるscene ID。実際のLangChain検索からD1再照合を通すと、正規sceneのD1本文1件だけが返った。indexの偽本文は返らず、実在する他方の所有者での検索とSQL風owner文字列は0件、owner無効化後も0件だった。
 
 最後に試験所有者/sceneを削除し、投入したphysical vector ID全件の不存在と、試験ownerをfilterしたANN検索の空結果を確認した。この結果は実サービスの検索認可境界を補強するが、768次元の同一攻撃試験、公開API認証、モデル回答全体のE2Eを実施した意味ではない。768/1536双方の通常同期・検索は別の既存staging smoke証跡に記録している。
+
+
+同じ実サービス攻撃試験を768次元indexでも実行した。合成v2の固定guardを維持し、別の所有者・scene・physical vector IDを新規に生成した。実LangChain経由の5候補すべての検索反映を待ってから、別owner偽装、physical ID偽装、古いrevision、SQL風ID、SQL風owner、owner無効化を検証し、正規sceneのD1本文だけが返ることを確認した。model呼出しは0回で、最後に全fixtureのDB不存在とvector ID不存在・owner ANN空結果を確認した。[768次元の集約証跡](evidence/d1-langchain-live-security-768-2026-11-15.json)。これでこの合成攻撃ケースは768/1536の両indexで実施済みとなった。公開API認証や全モデル回答のE2Eまでの証明範囲は拡大しない。

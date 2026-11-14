@@ -36,3 +36,30 @@ Workerは公開route・workers.dev・preview URLなし、ランダムな専用�
 初回deployはJSTの日付をcompatibility dateへ使い、UTCでは未来の日付だったためAPIが拒否した。Worker不存在をAPIで確認後、既存設定と同じ2026-11-14へ訂正して実施した。失敗したdeployを実測へ含めていない。
 
 これは直列の繰返し試験であり、同時負荷・制御されたcold start・本番全API・動画処理から回答までのE2E・月額予算の合格証跡ではない。性能改善の受入条件は未達のまま保持する。本番D1切替は行っていない。
+
+
+## 実検索の段階別診断
+
+同じ40質問・40負例を各3回、同じsource fingerprintとread-only snapshot条件で再測定した。実アダプターの検索ロジックは変えず、LangChainが呼ぶVectorize bindingの`query`とDrizzleが実行するD1 statementを透過wrapperで計時した。終了後に専用Workerを削除した。[段階別証跡](evidence/d1-scene-search-stage-timings-2026-11-15.json)。前節の非instrumented試験とは別の診断試行として扱う。
+
+| 通常検索120回 | p50 (ms) | p95 (ms) | p99 (ms) |
+|---|---:|---:|---:|
+| PostgreSQL repository全体 | 131 | 260 | 308 |
+| D1＋Vectorize repository全体 | 235 | 268 | 332 |
+| Vectorize binding待機 | 128 | 137 | 217 |
+| D1 statement待機 | 108 | 121 | 166 |
+
+今回は480件の個別時間を私有領域へ保存したため、この表は各時間分布から直接percentileを計算した。別分布の段階別percentileを加算して全体percentileを求めない。通常検索では全120回がVectorize query 1回とD1 statement 1回、負例では全120回がVectorize query 1回・D1 statement 0回だった。上位集合は引き続き一致し、負例のhitは0件だった。D1管理情報もread replication無効、primaryの大区分はAPACと確認した。APACから特定都市までを推定しない。
+
+VectorizeとD1の2回のI/O待機が確認されたが、binding時間にはサービスと通信の待ち時間が含まれ、SQL engineだけ・ANN計算だけの時間ではない。また[Cloudflareのtimer仕様](https://developers.cloudflare.com/workers/runtime-apis/performance/)により、配備済みWorkerの時計はI/O後に進む。残差が0msであっても、LangChainやJavaScriptのCPU負荷が0という証明にはならない。
+
+診断用の初回呼出しは空応答に対するクライアントJSON parseで失敗し、HTTP状態を記録できなかったため原因不明の不成立試行として除外した。Workerの削除成功を確認後、応答status/bodyを私有ファイルに先に記録するクライアントへ直して改めて実行した。後者の8バッチはすべてHTTP 200であり、失敗試行を合格扱いしていない。
+
+次の性能診断は、D1のengine時間とbinding待機の比較、配置ごとの違い、全API経路の計測が対象になる。検索metadataのみを認可根拠にしたり、D1の最終再照合を削除したりする変更は行っていない。
+
+
+## D1単純クエリの追加比較
+
+別の専用Workerで同じread-only source照合を通した後、`SELECT 1 AS value`を10回直列に実行した。全件の結果が1であることを確認し、D1のmetaも記録した。配置レスポンスは`remote-NRT`、全件`served_by_region=APAC`・`served_by_primary=true`だった。D1が返したSQL実行時間は0.0924〜0.146msに対し、Workerが観測したI/O待機は76〜87msだった。[単純クエリ証跡](evidence/d1-constant-query-baseline-2026-11-15.json)。このWorkerも試験後に削除した。
+
+単純クエリではSQL計算以外の待機が大きいことを確認できた。ただし、これは実際のscene/動画/userのjoin queryではなく、実検索のSQL engine時間を測った結果ではない。通信・queue・serviceのどれが何msを占めるかも未分離である。認可の再照合削除やread replicaへの無条件切替を正当化する証拠にはしない。
