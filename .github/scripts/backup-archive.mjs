@@ -214,10 +214,40 @@ export const RESTORE_SQLSTATE_CATEGORIES = Object.freeze({
 });
 export function restoreArchiveFailureStage(error, serverLog='') {
   if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return 'restore-archive-apply-output-limit';
-  const sqlstate = typeof serverLog === 'string' ? /(?:ERROR|FATAL|PANIC):\s+([A-Z0-9]{5}):/.exec(serverLog.slice(0,4_000_000))?.[1] : null;
+  const sqlstate = typeof serverLog === 'string' ? [...serverLog.slice(0,4_000_000).matchAll(/(?:ERROR|FATAL|PANIC):\s+([A-Z0-9]{5}):/g)].at(-1)?.[1] : null;
   if (sqlstate && RESTORE_SQLSTATE_CATEGORIES[sqlstate]) return 'restore-archive-apply-' + RESTORE_SQLSTATE_CATEGORIES[sqlstate];
   const stderr = typeof error?.stderr === 'string' ? error.stderr.slice(0,4_000_000)
     : Buffer.isBuffer(error?.stderr) ? error.stderr.subarray(0,4_000_000).toString('utf8') : '';
   const category = RESTORE_FAILURE_CATEGORIES.find(([,pattern]) => pattern.test(stderr))?.[0];
   return 'restore-archive-apply' + (category ? '-' + category : '');
+}
+
+const RESTORE_SETTINGS = Object.freeze(['statement_timeout','lock_timeout','idle_in_transaction_session_timeout','transaction_timeout','client_encoding','standard_conforming_strings','check_function_bodies','xmloption','client_min_messages','row_security','default_tablespace','default_table_access_method','search_path']);
+export const RESTORE_OPERATIONS = Object.freeze([...RESTORE_SETTINGS.map(name=>'SET_'+name.toUpperCase()),'COPY','SET','SEQUENCE_SETVAL','SELECT','CREATE_COLLATION','CREATE_INDEX','CREATE_FUNCTION','CREATE_TABLE','CREATE_VIEW','CREATE_TYPE','CREATE_SCHEMA','CREATE_TRIGGER','ALTER_TABLE','ALTER_FUNCTION','OTHER']);
+export function restoreArchiveFailureDetails(error, serverLog='') {
+ const log=typeof serverLog==='string'?serverLog.slice(0,4_000_000):'';
+ const candidate=[...log.matchAll(/(?:ERROR|FATAL|PANIC):\s+([A-Z0-9]{5}):/g)].at(-1)?.[1];
+ const sqlstate=candidate&&Object.hasOwn(RESTORE_SQLSTATE_CATEGORIES,candidate)?candidate:undefined;
+ const statement=[...log.matchAll(/STATEMENT:\s+([^\n]+)/g)].at(-1)?.[1]??'';
+ let operation='OTHER';
+ const setting=/^SET\s+([a-z_]+)\s*=/i.exec(statement)?.[1]?.toLowerCase();
+ if(RESTORE_SETTINGS.includes(setting))operation='SET_'+setting.toUpperCase();
+ else if(/^SELECT\s+pg_catalog\.setval\s*\(/i.test(statement))operation='SEQUENCE_SETVAL';
+ else {
+  const found=/^(COPY|SET|SELECT|CREATE\s+(?:COLLATION|(?:UNIQUE\s+)?INDEX|FUNCTION|TABLE|VIEW|TYPE|SCHEMA|TRIGGER)|ALTER\s+(?:TABLE|FUNCTION))\b/i.exec(statement)?.[1]?.toUpperCase().replace(/\s+UNIQUE\s+/, ' ').replaceAll(/\s+/g,'_');
+  if(RESTORE_OPERATIONS.includes(found))operation=found;
+ }
+ return {stage:restoreArchiveFailureStage(error,log),...(sqlstate?{sqlstate}:{}),operation};
+}
+
+export function sameBackupInventory(expected,actual) {
+ if(!expected||!actual||typeof expected!=='object'||typeof actual!=='object'||Array.isArray(expected)||Array.isArray(actual))return false;
+ const keys=Object.keys(expected).sort(),others=Object.keys(actual).sort();
+ return keys.length===others.length&&keys.length>0&&keys.every((key,index)=>key===others[index]&&typeof expected[key]==='string'&&/^(0|[1-9][0-9]*)$/.test(expected[key])&&expected[key]===actual[key]);
+}
+
+export function assertBackupClientVersion(sourceVersion,clientVersion) {
+ const match=typeof clientVersion==='string'?/^pg_dump \(PostgreSQL\) 17\.(\d+)(?:\s|$)/.exec(clientVersion.trim()):null;
+ if(!Number.isInteger(sourceVersion)||sourceVersion<170000||sourceVersion>=180000||!match)throw new Error('INVALID_BACKUP_POSTGRES_VERSION');
+ if(sourceVersion>170000+Number(match[1]))throw new Error('BACKUP_RESTORE_IMAGE_TOO_OLD');
 }

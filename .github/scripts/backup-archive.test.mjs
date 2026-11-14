@@ -276,3 +276,34 @@ test('SQLSTATE and client failure diagnostics never expose database log contents
  }
  assert.equal(restoreArchiveFailureStage({},'ERROR:  ZZZZZ: synthetic-secret'),'restore-archive-apply');
 });
+
+test('restore details expose only known SQLSTATE and statement kinds',async()=>{
+ const {restoreArchiveFailureDetails}=await import('./backup-archive.mjs');
+ assert.deepEqual(restoreArchiveFailureDetails({},'ERROR:  22023: synthetic-secret\nSTATEMENT:  SET synthetic_secret = synthetic_secret;'),{stage:'restore-archive-apply-invalid-value',sqlstate:'22023',operation:'SET'});
+ for(const [sql,operation] of [['COPY secret FROM stdin','COPY'],['SELECT pg_catalog.setval(\'secret\', 3)','SEQUENCE_SETVAL'],['CREATE UNIQUE INDEX secret ON secret(secret)','CREATE_INDEX'],['ALTER TABLE secret ADD secret','ALTER_TABLE']]) assert.equal(restoreArchiveFailureDetails({},'ERROR:  22023: secret\nSTATEMENT: '+sql).operation,operation);
+ assert.deepEqual(restoreArchiveFailureDetails({},'ERROR:  ZZZZZ: secret\nSTATEMENT: secret'),{stage:'restore-archive-apply',operation:'OTHER'});
+});
+
+test('latest restore error supersedes normal startup errors and recognizes fixed settings',async()=>{
+ const {restoreArchiveFailureDetails}=await import('./backup-archive.mjs');
+ assert.deepEqual(restoreArchiveFailureDetails({},'FATAL:  57P03: startup\nERROR:  22023: synthetic-secret\nSTATEMENT: SET transaction_timeout = synthetic_secret;'),{stage:'restore-archive-apply-invalid-value',sqlstate:'22023',operation:'SET_TRANSACTION_TIMEOUT'});
+});
+
+test('restored inventory comparison is independent of database collation order',async()=>{
+ const {sameBackupInventory}=await import('./backup-archive.mjs');
+ const source={'"public"."app_user_groups"':'0','"public"."app_userapikey"':'2'};
+ const restored={'"public"."app_userapikey"':'2','"public"."app_user_groups"':'0'};
+ assert.equal(sameBackupInventory(source,restored),true);
+ assert.equal(sameBackupInventory(source,{...restored,'"public"."app_userapikey"':'3'}),false);
+ assert.equal(sameBackupInventory(source,{'"public"."app_userapikey"':'2'}),false);
+ assert.equal(sameBackupInventory(source,{...restored,'extra':'0'}),false);
+ assert.equal(sameBackupInventory(source,{...restored,'"public"."app_userapikey"':2}),false);
+ for(const invalid of [null,{},[],{table:'-1'}])assert.equal(sameBackupInventory(invalid,invalid),false);
+});
+
+test('source minor versions newer than the pinned dump client fail before export',async()=>{
+ const {assertBackupClientVersion}=await import('./backup-archive.mjs');
+ for(const source of [170000,170011,170012])assert.doesNotThrow(()=>assertBackupClientVersion(source,'pg_dump (PostgreSQL) 17.12 (Debian package)'));
+ assert.throws(()=>assertBackupClientVersion(170013,'pg_dump (PostgreSQL) 17.12'),/BACKUP_RESTORE_IMAGE_TOO_OLD/);
+ for(const [source,client] of [[180000,'pg_dump (PostgreSQL) 17.12'],[170012,'pg_dump (PostgreSQL) 18.7'],[170012,'synthetic-private-value'],[170012.5,'pg_dump (PostgreSQL) 17.12']])assert.throws(()=>assertBackupClientVersion(source,client),/INVALID_BACKUP_POSTGRES_VERSION/);
+});
