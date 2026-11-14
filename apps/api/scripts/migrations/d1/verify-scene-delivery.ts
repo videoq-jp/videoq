@@ -20,26 +20,29 @@ export async function verifyMigratedSceneVectors(database:D1Database,prepared:{p
   const receipt=await database.prepare("SELECT status,imported_rows FROM migration_imports WHERE id='scenes' AND archive_sha256=?").bind(archive).first<{status:string;imported_rows:number}>();
   if(!receipt||receipt.status!=='scenes_imported'||String(receipt.imported_rows)!==prepared.rows)throw new SceneDeliveryVerificationError('Scene import receipt is missing or incomplete.');
   let checked=0n,verified=0n,missing=0n,mismatched=0n,pending=0n;const dimensions=new Set<number>(),described=new Set<number>();
-  const checkD1=async(row:SceneRow)=>{
-   const match=await database.prepare(`SELECT t.completed_at,t.lease_token,t.embedding FROM scenes s JOIN videos v ON v.id=s.video_id
+  const checkD1=async(rows:SceneRow[])=>{
+   const statements=rows.map(row=>database.prepare(`SELECT t.completed_at,t.lease_token,t.embedding FROM scenes s JOIN videos v ON v.id=s.video_id
     JOIN scene_index_tasks t ON t.id=? AND t.operation='upsert' AND t.scene_id=s.id AND t.dimensions=s.dimensions
       AND t.video_id=s.video_id AND t.user_id=v.user_id AND t.revision=s.revision AND t.vector_id=s.vector_id
     WHERE s.id=? AND s.video_id=? AND s.dimensions=? AND v.user_id=? AND s.content=? COLLATE BINARY
       AND s.start_time=? AND s.end_time=? AND s.evidence_type=? AND s.revision=? AND s.vector_id=?`)
-    .bind(`u:${row.dimensions}:${row.vectorId}`,row.scene.id,row.videoId,row.dimensions,row.userId,row.scene.content,row.scene.startTime,row.scene.endTime,row.scene.evidenceType??'transcript',row.revision,row.vectorId)
-    .first<{completed_at:string|null;lease_token:string|null;embedding:string|null}>();
-   if(!match)throw new SceneDeliveryVerificationError('D1 scene or ownership changed after import.');
-   return match.completed_at!==null&&match.lease_token===null&&match.embedding===null;
+    .bind(`u:${row.dimensions}:${row.vectorId}`,row.scene.id,row.videoId,row.dimensions,row.userId,row.scene.content,row.scene.startTime,row.scene.endTime,row.scene.evidenceType??'transcript',row.revision,row.vectorId));
+   const results=await database.batch<{completed_at:string|null;lease_token:string|null;embedding:string|null}>(statements);
+   return results.map(result=>{
+    const match=result.results[0];if(result.results.length!==1||!match)throw new SceneDeliveryVerificationError('D1 scene or ownership changed after import.');
+    return match.completed_at!==null&&match.lease_token===null&&match.embedding===null;
+   });
   };
-  let batch:SceneRow[]=[];
+  let batch:SceneRow[]=[],batchBytes=0;
   const flush=async()=>{
    if(!batch.length)return;const dimension=batch[0].dimensions,index=indexes[dimension];
    if(!index)throw new SceneDeliveryVerificationError('Required Vectorize binding is missing.');
    if(!described.has(dimension)){if((await index.describe()).dimensions!==dimension)throw new SceneDeliveryVerificationError('Vectorize index dimensions mismatch.');described.add(dimension);}
    const returned=await index.getByIds(batch.map(row=>row.vectorId)),found=new Map<string,VectorizeVector>();
    for(const vector of returned){if(found.has(vector.id)||!batch.some(row=>row.vectorId===vector.id))throw new SceneDeliveryVerificationError('Unexpected or duplicate Vectorize result.');found.set(vector.id,vector);}
-   for(const row of batch){
-    const delivered=await checkD1(row);if(!delivered)pending++;
+   const delivered=await checkD1(batch);
+   for(const [position,row] of batch.entries()){
+    if(!delivered[position])pending++;
     const vector=found.get(row.vectorId);checked++;
     if(!vector){missing++;continue;}
     const metadata=vector.metadata,values=vector.values;
@@ -47,17 +50,23 @@ export async function verifyMigratedSceneVectors(database:D1Database,prepared:{p
       values.length===row.dimensions&&row.scene.embedding.every((value,index)=>Number.isFinite(values[index])&&Math.fround(values[index])===Math.fround(value));
     if(same)verified++;else mismatched++;
    }
-   batch=[];
+   batch=[];batchBytes=0;
   };
   for await(const line of readArchiveLines(frozen)){
    const row=JSON.parse(line.toString()) as SceneRow;
    if(![768,1536].includes(row.dimensions)||!Array.isArray(row.scene.embedding)||row.scene.embedding.length!==row.dimensions)throw new SceneDeliveryVerificationError('Invalid prepared scene vector.');
-   if(batch.length&&(batch[0].dimensions!==row.dimensions||batch.length===20))await flush();batch.push(row);dimensions.add(row.dimensions);
+   if(batch.length&&(batch[0].dimensions!==row.dimensions||batch.length===20||batchBytes+line.byteLength>512*1024))await flush();batch.push(row);batchBytes+=line.byteLength;dimensions.add(row.dimensions);
   }
   await flush();
   // Source ownership is checked again after all provider calls, since provider
   // callbacks may be delayed. Offline staging must hold throughout the audit.
-  let finalPending=0n;for await(const line of readArchiveLines(frozen)){if(!await checkD1(JSON.parse(line.toString()) as SceneRow))finalPending++;}
+  let finalPending=0n,finalRows:SceneRow[]=[],finalBytes=0;
+  const finalCheck=async()=>{if(finalRows.length){for(const complete of await checkD1(finalRows))if(!complete)finalPending++;finalRows=[];finalBytes=0;}};
+  for await(const line of readArchiveLines(frozen)){
+   if(finalRows.length&&(finalRows.length===20||finalBytes+line.byteLength>512*1024))await finalCheck();
+   finalRows.push(JSON.parse(line.toString()) as SceneRow);finalBytes+=line.byteLength;
+  }
+  await finalCheck();
   if(finalPending!==pending)throw new SceneDeliveryVerificationError('Scene delivery state changed during verification.');
   const counts=await database.prepare("SELECT (SELECT count(*) FROM scenes) AS scenes,(SELECT count(*) FROM scene_index_tasks) AS tasks,EXISTS(SELECT 1 FROM migration_imports WHERE id='scenes' AND archive_sha256=? AND status='scenes_imported' AND imported_rows=?) AS receipt").bind(archive,Number(prepared.rows)).first<{scenes:number;tasks:number;receipt:number}>();
   if(!counts?.receipt||checked.toString()!==prepared.rows||String(counts?.scenes)!==prepared.rows||String(counts?.tasks)!==prepared.rows)throw new SceneDeliveryVerificationError('Scene vector inventory mismatch.');

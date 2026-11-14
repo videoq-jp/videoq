@@ -2,7 +2,7 @@ import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {beforeEach,afterEach,describe,it,expect} from 'vitest';
-import type {Vectorize,VectorizeVector} from '@cloudflare/workers-types';
+import type {D1PreparedStatement,Vectorize,VectorizeVector} from '@cloudflare/workers-types';
 import {createD1Fixture} from './d1-fixture';
 import {importSceneTables} from '../../scripts/migrations/d1/import-scenes';
 import {verifyMigratedSceneVectors} from '../../scripts/migrations/d1/verify-scene-delivery';
@@ -21,6 +21,26 @@ describe('offline migrated Vectorize delivery verification',()=>{
  afterEach(async()=>{await fixture?.dispose();await rm(directory,{recursive:true,force:true});});
  const verify=(bindings=indexes)=>verifyMigratedSceneVectors(fixture.database,{path,rows:'2'},'archive',bindings,{offlineStaging:true});
  const deliver=()=>synchronizeD1SceneIndex(fixture.database,indexes);
+ const prepareMany=async()=>{
+  for(const table of ['scene_index_tasks','scenes','video_index_heads','scene_index_runs','video_index_versions'])await fixture.database.prepare('DELETE FROM '+table).run();
+  await fixture.database.prepare("DELETE FROM migration_imports WHERE id='scenes'").run();
+  const rows=[];for(let i=0;i<32;i++){
+   const scene={id:'many-'+i,content:'Synthetic scene '+i,startTime:'00:01',endTime:'00:02',embedding:Array(1536).fill(.02)},revision='many';
+   rows.push({scene,videoId:1,userId:'owner',dimensions:1536,revision,vectorId:await sceneVectorId(revision,scene)});
+  }
+  await writeFile(path,rows.map(row=>JSON.stringify(row)+'\n').join(''));await importSceneTables(fixture.database,{path,rows:'32'},'archive','mapping');
+  await synchronizeD1SceneIndex(fixture.database,indexes,100,{concurrency:4});
+ };
+ it('checks every row across bounded D1 batches with fewer binding round trips',async()=>{
+  await prepareMany();let batches=0;
+  const db=new Proxy(fixture.database,{get(target,key){if(key==='batch')return async(statements:D1PreparedStatement[])=>{batches++;expect(statements.length).toBeLessThanOrEqual(20);return target.batch(statements);};const value:unknown=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
+  expect(await verifyMigratedSceneVectors(db,{path,rows:'32'},'archive',indexes,{offlineStaging:true})).toMatchObject({vectorize_delivery_complete:true,checked:'32',verified:'32'});
+  expect(batches).toBeGreaterThan(0);expect(batches).toBeLessThan(32);
+ });
+ it('rechecks earlier batches after later provider callbacks change an owned scene',async()=>{
+  await prepareMany();let calls=0;hook=async items=>{if(++calls===2)await fixture.database.prepare("UPDATE scenes SET content='changed in later callback' WHERE id='many-0'").run();return items;};
+  await expect(verifyMigratedSceneVectors(fixture.database,{path,rows:'32'},'archive',indexes,{offlineStaging:true})).rejects.toThrow('changed');
+ });
  it('checks original float32 values and ownership after LangChain delivery without claiming search quality',async()=>{expect(await deliver()).toMatchObject({completed:2});expect(await verify()).toMatchObject({vectorize_delivery_complete:true,verified:'2',checked:'2',missing:'0',mismatched:'0',pending_tasks:'0',dimensions:[768,1536],search_quality_verified:false,execution_complete:false});});
  it('distinguishes accepted writes from objects not yet visible by ID',async()=>{await deliver();hook=async()=>[];expect(await verify()).toMatchObject({vectorize_delivery_complete:false,missing:'2',verified:'0'});hook=undefined;expect((await verify()).vectorize_delivery_complete).toBe(true);});
  it('reports uncompleted D1 outbox delivery instead of treating present vectors as complete',async()=>{expect(await verify()).toMatchObject({vectorize_delivery_complete:false,missing:'2',pending_tasks:'2'});});
