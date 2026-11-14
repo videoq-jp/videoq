@@ -54,5 +54,17 @@
     "performance_and_cost_acceptance_verified": false,
     "production_d1_cutover": false,
     "migration_execution_complete": false
-  }
+  },
+  "source_snapshot_comparison": {
+    "tool_commit": "45e7c7dcf3e9d9589230ea641fb8a667af5b6753",
+    "new_restore_from_same_immutable_dump": true,
+    "source_snapshot_equality_verified": true,
+    "tables_verified": 62,
+    "rows_verified": "9854",
+    "mapping_rows_columns_primary_keys_and_migration_history_match": true,
+    "excluded_table_structure_and_full_row_hashes_rechecked": true,
+    "source_sequence_state_verified": false,
+    "other_catalog_constraints_compared_to_archive": false
+  },
+  "focused_regression_tests_passed": 51
 }

@@ -408,3 +408,5 @@ archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus h
 2026-11-14の実バックアップで、この手順による62テーブル・9,854行のarchive生成と全体検証に成功した。ローカルworkerd D1へ56共通テーブル、2,190シーン、643 checkpointと関連blob/write、13採番状態を取り込み、同じarchiveの再投入も成功した。外部キー違反は0件だった。[集約証跡](evidence/d1-preserved-production-data-local-rehearsal-2026-11-14.json)を参照する。5件のvisual run、2,190ベクトルの実Vectorize配信、実認証・品質・性能・料金の確認は残る。
 
 検索評価CLIでも同じ`--preserved-policy`と`--backup-dir`を対で指定する。archive headerと異なるポリシーや、除外した行が変化したsource copyは、リモートtargetへの接続前に拒否する。
+
+更新後のツールでも同じ不変dumpから新しく復元し、除外ポリシーとarchiveを再生成した。62テーブル・9,854行について、archiveとPostgreSQLの同一read-only snapshotが正規化後の全行・列・主キー構成・Drizzle履歴で一致し、除外27テーブルの構造・全行ハッシュの再照合も成功した。これはsource側の対応確認であり、リモートD1・Vectorizeやvisualオブジェクトの検証を代替しない。
