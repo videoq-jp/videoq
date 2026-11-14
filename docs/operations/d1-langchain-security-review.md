@@ -99,6 +99,14 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 
 ## OAuth永続化と最新オンプレCIの補完
 
+追加で、配備済み私有Hono/Better Auth、合成v2の実D1、実RateLimiter Durable Objectを使った共通OAuth契約5件がすべて成功した。memory認証・rate-limit adapterは使用していない。[配備OAuth証跡](evidence/d1-oauth-cloud-provider-2026-11-15.json)。PKCE交換、refresh rotation/reuse、コード再使用、同時refresh、ban後の拒否を含む。
+
+開発用接続によるOrigin/fetch metadataの変更を避け、私有RPCで元の要求をWorker内に再構成し、実際のアプリ応答status・headers・cookie・bodyを測定した。共通契約のauthorize要求にはnavigationを明示した。JSON redirectを302と推定した試験ではない。41応答すべてがWorker内の処理結果であり、cookie付き不正Originは403、ブラウザ単純formは415だった。cookieなしの正規JSONログインが200となる仕様も別途確認し、拒否成功には数えていない。
+
+所有fixtureの独立再照合で9種類の残存行は0、一時Worker・秘密ファイルも削除済み。失敗した先行試行を含む4つの所有scriptは、namespace一覧の完全走査でも残存DO namespaceが0だった。本番と実データv3は変更していない。これはprovider境界の補完証拠であり、公開API全middleware/CORS、実ブラウザ、外部Google認証、本番cookie継承の証明ではない。
+
+head `31b66b3c`の[全CI](https://github.com/videoq-jp/videoq/actions/runs/43625437992)と[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43625437968)も成功した。今回のnavigation指定・記録更新は後続headで確認する。アプリ本体の認証実装はこの追加試験では変更していない。
+
 既存のOAuth security suiteはmemory adapterを使うため、新たに実D1/実PostgreSQLで同じtoken契約を実行した。5件ずつ計10件が成功し、関連4ファイル52件・型検査・変更TS Lintも成功した。[共通OAuth契約](evidence/d1-oauth-token-contract-2026-11-15.json)。コード交換とrefreshの競合を含むが、外部Google loginや本番cookieの実証へは読み替えない。
 
 [CI #43619852843](https://github.com/videoq-jp/videoq/actions/runs/43619852843)も成功し、実CPU/通信遮断の成果物14124732928を取得した。動画upload→ASR→index→QA、再生、object/DB復元、upgrade/rollback、Helm test/retentionが成功。公開日本語fixtureのCERは0、再生errorはnullだった。[CI証跡](evidence/d1-ci-real-cpu-2026-11-15.json)。これはsource buildのオンプレCPU検証であり、cloud D1の全体E2E、署名済みrelease、NVIDIA GPUの新規実証ではない。後続のローカルguard/契約追加は新headで別にCI確認する。

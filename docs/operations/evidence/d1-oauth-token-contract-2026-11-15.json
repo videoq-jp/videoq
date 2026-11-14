@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "checkedAt": "2026-11-14T18:13:38.409852+00:00",
+  "checkedAt": "2026-11-14T19:19:01.356564+00:00",
   "baseCommit": "c4255dbb62eced50475fd552fdf29748fa2a22f5",
   "scope": "Same HTTP OAuth contract against real Drizzle adapters on local workerd D1 and isolated PostgreSQL; no memory persistence adapter",
   "oauthProviderVersion": "1.7.15",
@@ -22,7 +22,7 @@
   ],
   "postgresContainerRemoved": true,
   "sourceSha256": {
-    "apps/api/test/persistence/contracts/oauth-token.contract.ts": "98d868c6c42da6c51ca47e1b3aed9446a9fa4cd2555690db73d7825e8d9b71c1",
+    "apps/api/test/persistence/contracts/oauth-token.contract.ts": "6f7758dfd40f20c9c86bf1e016001ab25cf4cbcf9db5e96f21a99136fc818b8a",
     "apps/api/test/persistence/oauth-token.d1.integration.test.ts": "ad60c2ecf61972ede51447b66514da3b2480727a5827423cecaa08fd2e881a08",
     "apps/api/test/persistence/oauth-token.postgres.integration.test.ts": "f21b3c3b4fc05c5b3e4e416da0dae90656d5c78ed2a3aa6d6dfc41af63717a38"
   },

@@ -25,7 +25,7 @@ export function oauthTokenContract(name:string,create:()=>Promise<OAuthTokenFixt
   const registered=await post('/oauth2/register',{client_name:'Database contract',application_type:'native',token_endpoint_auth_method:'none',redirect_uris:['http://127.0.0.1:54321/callback'],grant_types:['authorization_code','refresh_token']});expect(registered.status,await registered.clone().text()).toBe(201);
   const {client_id:clientId}=await registered.json<{client_id:string}>();
   const query=new URLSearchParams({client_id:clientId,redirect_uri:'http://127.0.0.1:54321/callback',response_type:'code',scope:'openid profile email offline_access videoq.read',...(withResource?{resource}:{}),code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256',state:'isolated-state'});
-  const authorized=await f.auth.handler(new Request(base+'/api/auth/oauth2/authorize?'+query.toString(),{headers:{cookie,'cf-connecting-ip':'192.0.2.12'}}));expect(authorized.status,await authorized.clone().text()).toBe(302);
+  const authorized=await f.auth.handler(new Request(base+'/api/auth/oauth2/authorize?'+query.toString(),{headers:{cookie,'cf-connecting-ip':'192.0.2.12',accept:'text/html','sec-fetch-mode':'navigate'}}));expect(authorized.status,await authorized.clone().text()).toBe(302);
   let redirect=new URL(authorized.headers.get('location')!,base);
   if(redirect.pathname==='/consent'){const consent=await post('/oauth2/consent',{accept:true,oauth_query:redirect.search.slice(1)},cookie);expect(consent.status,await consent.clone().text()).toBe(200);redirect=new URL((await consent.json<{url:string}>()).url);}
   const code=redirect.searchParams.get('code');expect(code).toBeTruthy();
