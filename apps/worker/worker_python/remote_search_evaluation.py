@@ -167,6 +167,9 @@ def prepare_remote(input_path: Path, output_path: Path, target_path: Path, *, ex
     try:
         try:
             metadata = client.get_function(FunctionName=target["functionArn"], Qualifier=target["functionVersion"])
+            # Qualified GetFunction does not return function-level concurrency.
+            # Read the authoritative setting separately; never infer a default.
+            metadata = {**metadata, "Concurrency": client.get_function_concurrency(FunctionName=target["functionArn"])}
         except Exception:
             _fail("runtime_inspection_failed")
         verify_function(metadata, target, manifest["embedding"])

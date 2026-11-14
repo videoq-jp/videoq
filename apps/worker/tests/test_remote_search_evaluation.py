@@ -43,6 +43,7 @@ def setup(tmp_path, monkeypatch):
                                   'Environment': {'Variables': values.copy()}, 'ImageConfigResponse': {'ImageConfig': {'Command': ['worker_python.search_evaluation_lambda.handler']}}}}
     client = Mock()
     client.get_function.return_value = metadata
+    client.get_function_concurrency.side_effect = lambda **_: metadata['Concurrency']
     bodies = []
     def invoke(**kwargs):
         event = json.loads(kwargs['Payload'])
@@ -70,6 +71,7 @@ def test_pinned_runtime_batches_and_merges_exact_scopes_without_regenerating_dup
     f = setup
     assert run(f)['status'] == 'written'
     f['client'].get_function.assert_called_once_with(FunctionName=f['target']['functionArn'], Qualifier='7')
+    f['client'].get_function_concurrency.assert_called_once_with(FunctionName=f['target']['functionArn'])
     assert [len(json.loads(call.kwargs['Payload'])['manifest']['cases']) for call in f['client'].invoke.call_args_list] == [16, 1]
     assert all(call.kwargs['Qualifier'] == '7' and call.kwargs['LogType'] == 'None' and call.kwargs['InvocationType'] == 'RequestResponse' for call in f['client'].invoke.call_args_list)
     data = json.loads(f['destination'].read_text())
@@ -81,6 +83,29 @@ def test_pinned_runtime_batches_and_merges_exact_scopes_without_regenerating_dup
     assert f['destination'].stat().st_mode & 0o777 == 0o600
     assert all(body.closed for body in f['bodies'])
     assert not list(f['destination'].parent.glob('.*.lock'))
+
+
+def test_qualified_metadata_without_concurrency_uses_function_level_api(setup):
+    setup['metadata'].pop('Concurrency')
+    setup['client'].get_function_concurrency.side_effect = None
+    setup['client'].get_function_concurrency.return_value = {'ReservedConcurrentExecutions': 1}
+    assert run(setup)['status'] == 'written'
+
+
+@pytest.mark.parametrize('setting', [{}, {'ReservedConcurrentExecutions': 0}, {'ReservedConcurrentExecutions': True}])
+def test_missing_or_disabled_authoritative_concurrency_refuses_invocation(setup, setting):
+    setup['client'].get_function_concurrency.side_effect = None
+    setup['client'].get_function_concurrency.return_value = setting
+    with pytest.raises(remote.EvaluationError, match='runtime_mismatch'):
+        run(setup)
+    setup['client'].invoke.assert_not_called()
+
+
+def test_failed_concurrency_inspection_refuses_invocation(setup):
+    setup['client'].get_function_concurrency.side_effect = RuntimeError('private SDK details')
+    with pytest.raises(remote.EvaluationError, match='runtime_inspection_failed'):
+        run(setup)
+    setup['client'].invoke.assert_not_called()
 
 
 @pytest.mark.parametrize('change', [

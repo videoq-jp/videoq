@@ -1,0 +1,63 @@
+# D1・LangChain Cloudflare連携のセキュリティ確認
+
+2026-11-15。確認対象は現在の移行ブランチ。クラウド本番へのDB切替や、新たな認証/モデル/権限の変更は行っていない。
+
+## 実際に使用しているライブラリと境界
+
+解決済み依存は`@langchain/cloudflare@1.1.0`と`@langchain/core@1.3.2`。検索アダプターは`CloudflareVectorizeStore.similaritySearchVectorWithScore`、同期アダプターは`addVectors`/`delete`を実際に呼び出す。実装を独自HTTPクライアントへ置き換えたものでも、試験時にLangChain自体をmockしたものでもない。
+
+参照元は[公式Vectorize連携資料](https://docs.langchain.com/oss/javascript/integrations/vectorstores/cloudflare_vectorize)とインストール済みの同バージョン実装。公式サンプルには旧beta型が残るため、`langchain-vectorize.ts`で現在のbindingへの差分だけを変換する。最新公開Workers型`5.20261114.1`も別の一時領域で取得し、V2 APIのmetadata modeを確認した。既存依存の更新は行っていない。
+
+| 経路 | 確認した性質 |
+|---|---|
+| 類似検索 | Vectorize bindingへのquery。owner/video IDのfilterをJSON値として渡す |
+| Vectorize応答 | physical vector IDをbridgeで固定し、metadataの自己申告IDを採用しない |
+| D1本文取得 | Drizzleのパラメーター化クエリでowner、動画状態、アカウント可視性、次元数を再照合 |
+| 返却直前 | 選択動画、scene revision、immutable vector IDを再確認。本文・タイトルはD1から取得 |
+| インデックス更新 | 既存vectorをaddVectorsへ渡す。本文は空文字、metadataは必要な識別/フィルタ項目のみ |
+| 削除・再試行 | D1 outboxとleaseで管理。遅延upsertを補償削除し、古いdeleteが新versionを削除しない |
+| Embedding | 共通の既存生成処理を使用。vector storeへ渡すembedding stubは再生成要求を拒否 |
+
+D1の業務SQL・認証・課金等はDrizzleアダプターで実装する。LangChainの汎用SQL agentや、モデルが生成したSQLを実行する経路としてD1を公開していない。LangChainのキャッシュ/メッセージ履歴のクラスを使うことは、業務データの認可・原子性を代替する条件ではない。
+
+## 認可と入力
+
+共有/LTIの場合は、courseのshare tokenまたはgrantを検証してownerと許可動画を決めてからRAGへ渡す。通常経路では認証したactorがcourseを取得できる必要がある。モデルがツール引数の動画選択を変えた場合も、`openSceneSearch`でcourse内の非空subsetに限定する。
+
+Vectorizeのmetadata filterは最終認可ではない。検索providerが他人のsceneを返したり、metadataのownerを偽装した場合でもD1 joinのowner条件で拒否する。選択動画、revision、存在しないscene、動画処理中、ban/deactivationでも結果を返さない。
+
+SQLとfilterに見える文字列は値として扱う。[D1のprepared statements仕様](https://developers.cloudflare.com/d1/worker-api/prepared-statements/)に沿って、利用者値をSQL構文として連結しない。数値の動画ID、Embedding次元/有限値/非ゼロ、limitを検証する。filterはUTF-8で2048 bytes未満に分割し、D1 bind数もchunkで制限する。
+
+HTTPのPOSTというだけでは権限保証にならない。内部worker APIはtimestamp、method、origin、path、bodyを含む署名と操作スキーマを検証する。外部サービスとD1/Vectorizeの更新を1つのtransactionとして扱わず、冪等性・条件付き更新・outboxを使う。
+
+## 実行した試験
+
+ローカルworkerd D1の実マイグレーション、実際のLangChain実装、悪意ある応答を返すテスト用Vectorize bindingを使用した。追加4件:
+
+1. SQL/filter構文に見えるowner/scene IDを渡しても、他人の取得やテーブル変更が起きない。
+2. **実在する別所有者**に対し、metadataのownerが偽装されても別所有者のsceneだけを返す。
+3. metadataの`vector_id`を正規IDに偽装しても、physical vector IDが違えば返さない。
+4. Vectorize queryの処理中にアカウントを無効化した場合、応答後のD1確認で拒否する。
+
+以下の5ファイル、**112 tests passed**:
+
+```sh
+cd apps/api
+npx vitest run \
+  test/persistence/scene-search.d1.integration.test.ts \
+  test/persistence/scene-index-sync.d1.integration.test.ts \
+  test/persistence/worker-internal.d1.integration.test.ts \
+  test/auth-security.test.ts test/security-primitives.test.ts
+```
+
+同期試験には、削除後に到着するupsert、古いdelete、lease喪失、次元の誤fallback拒否、providerエラーの秘密値を再試行記録に残さないケースも含む。`npm run typecheck --workspace @videoq/api`も成功した。
+
+実リモートv3 Vectorizeでの[40質問の比較](d1-automatic-query-evaluation.md)も、LangChain経由で動作した証拠となる。ただし、そちらの負例は存在しないownerであり、実在ownerの偽装は今回のローカル試験で別途確認した。
+
+## 依存監査と限界
+
+`npm audit --omit=dev --json`ではcritical/high/moderateは0、lowが5件。LangChain/LangSmithへの指摘は0。lowはDocusaurus→SVGR→deepmergeの同一アドバイザリ経路で、[GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)は修正版未公開である。registryのlatestも4.3.1だった。`npm ls deepmerge --workspace @videoq/api --omit=dev --json`ではAPI依存への包含なしを確認した。監査が提示するDocusaurusの大きなversion変更を自動適用せず、ドキュメントbuild側の既知残項として記録する。
+
+監査で未検出であることは脆弱性の不存在を保証しない。本試験は全体E2E、実OAuth、production session継承、実配置での性能、productionのsecret設定を一括して証明するものではない。特にread replicaを認可読取りへ導入する場合は、失効直後の可視性について別の検証が必要。今回の検証用D1でread replicationは無効のままである。
+
+POSTやDB製品名だけを安全性の根拠とせず、境界ごとの検証結果として扱う。現時点でこのLangChain接続境界に越境取得を示す失敗は検出されていないが、本番移行全体の完了はまだ宣言しない。

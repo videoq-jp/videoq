@@ -64,4 +64,40 @@ describe("D1 + LangChain Vectorize scene search", () => {
     expect(await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: [], limit: 20 })).toEqual([]);
     expect(query).not.toHaveBeenCalled();
   });
+  it("treats SQL/filter-looking owner and scene IDs as literal data", async () => {
+    query.mockClear();
+    query.mockResolvedValue({ matches: [
+      match("scene-1'), ('scene-2"), match("scene-1' OR 1=1 --"), match("scene-1"), match("scene-2"),
+    ] });
+    const injection = "owner' OR 1=1 --";
+    expect(await repository().search({ queryEmbedding: embedding, userId: injection, videoIds: [1, 2], limit: 20 })).toEqual([]);
+    expect(query.mock.calls[0][1].filter).toEqual({ user_id: injection, video_id: { $in: [1, 2] } });
+    expect(await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: [1, 2], limit: 20 }))
+      .toMatchObject([{ videoId: 1, content: "D1 authoritative content 1" }]);
+    expect(await fixture.database.prepare("SELECT count(*) FROM scenes").first("count(*)")).toBe(5);
+  });
+  it("rejects foreign-owner hits even when their forged metadata claims the requesting owner", async () => {
+    query.mockResolvedValue({ matches: [match("scene-1"), match("scene-2")] });
+    const hits = await repository().search({ queryEmbedding: embedding, userId: "other", videoIds: [1, 2], limit: 20 });
+    expect(hits).toEqual([{
+      content: "D1 authoritative content 2", videoId: 2, videoTitle: "Title 2", startTime: "00:01", endTime: "00:02", evidenceType: "transcript",
+    }]);
+  });
+  it("does not accept a physical vector ID forged through metadata", async () => {
+    query.mockResolvedValue({ matches: [{
+      ...match("forged-physical-vector"), metadata: { ...match("scene-1").metadata, vector_id: "scene-1" },
+    }] });
+    expect(await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: [1], limit: 20 })).toEqual([]);
+  });
+  it("checks account visibility after the vector provider responds", async () => {
+    query.mockImplementationOnce(async () => {
+      await fixture.database.prepare("UPDATE users SET deactivated_at=? WHERE id=?").bind("2026-11-15T00:00:00.000Z", "owner").run();
+      return { matches: [match("scene-1")] };
+    });
+    try {
+      expect(await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: [1], limit: 20 })).toEqual([]);
+    } finally {
+      await fixture.database.prepare("UPDATE users SET deactivated_at=NULL WHERE id=?").bind("owner").run();
+    }
+  });
 });

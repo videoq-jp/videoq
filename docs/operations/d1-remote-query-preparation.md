@@ -1,6 +1,6 @@
 # 評価専用Lambdaの私有起動クライアント
 
-`python -m worker_python.remote_search_evaluation`は、レビュー後に作成する評価専用関数へ質問を送り、返却されたベクトルを既存のPG/D1比較入力へまとめる。現時点では実関数への接続・モデル呼び出しを行っていない。PR #1444のマージ承認、専用関数の作成、起動権限の設定は別途必要になる。
+`python -m worker_python.remote_search_evaluation`は、評価専用関数へ質問を送り、返却されたベクトルを既存のPG/D1比較入力へまとめる。2026-11-15にユーザー承認の下で合成質問1件の実接続を確認し、関数を停止した。[実行結果と次段階](search-evaluation-deployment-plan.md)を参照する。実質問40件の送信は未実施である。
 
 ## 固定するtarget
 
@@ -35,7 +35,7 @@ python -m worker_python.remote_search_evaluation \
 実行前に、指定した数値versionのGetFunction応答を照合する。
 
 - function ARN/version、role、解決済みimage digest、Active/更新成功状態。
-- 専用handler、ARM64、512 MiB、timeout 300秒、予約同時実行数1。
+- 専用handler、ARM64、512 MiB、timeout 300秒、予約同時実行数1（GetFunctionConcurrencyを別取得して確認）。
 - 有効化フラグ、モデル・profile・次元数・endpoint、OpenRouter policy/audience。
 - 環境変数は評価用allowlistのみ。DB/APP parameter名、DB URL、APIキー等がある構成は拒否する。
 

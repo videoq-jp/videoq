@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "review_mode": "fully_automatic",
+  "human_reviewed": false,
+  "questions": 40,
+  "ai_quality_questions": 30,
+  "diagnostic_questions": 10,
+  "wrong_owner_questions": 40,
+  "samples_per_case": 3,
+  "paired_searches": 240,
+  "normal_exact_rank_pairs": 105,
+  "normal_pairs": 120,
+  "different_rank_questions": 5,
+  "retrieval_agreement": {
+    "reference_nonempty_pairs": 120,
+    "reference_empty_pairs": 120,
+    "both_empty_pairs": 120,
+    "candidate_empty_pairs": 120,
+    "candidate_nonempty_when_reference_empty": 0,
+    "mean_reference_top_k_overlap": 1,
+    "exact_rank_order_pairs": 225,
+    "reference_hits": 2220,
+    "candidate_hits": 2220,
+    "overlapping_hits": 2220
+  },
+  "ai_candidate_metrics": {
+    "postgres": {
+      "candidate_recall_at_20": 0.9177777777777778,
+      "candidate_ndcg_at_20": 0.6000424247839351,
+      "candidate_hit_at_20": 1.0,
+      "judged_fraction_at_20": 0.12000000000000001
+    },
+    "d1": {
+      "candidate_recall_at_20": 0.9177777777777778,
+      "candidate_ndcg_at_20": 0.5966542178004436,
+      "candidate_hit_at_20": 1.0,
+      "judged_fraction_at_20": 0.12000000000000001
+    }
+  },
+  "ai_metric_delta_d1_minus_postgres": {
+    "candidate_recall_at_20": 0.0,
+    "candidate_ndcg_at_20": -0.003388206983491515,
+    "candidate_hit_at_20": 0.0,
+    "judged_fraction_at_20": 0.0
+  },
+  "negative_owner_hit_count": 0,
+  "negative_owner_backend_searches": 240,
+  "relative_regression_gates": {
+    "reference_top20_overlap": true,
+    "ai_candidate_recall_delta": true,
+    "ai_candidate_ndcg_delta": true,
+    "negative_owner_leaks": true
+  },
+  "relative_regression_passed": true,
+  "latency": {
+    "measurement": "repository-call-only",
+    "postgres": {
+      "samples": 240,
+      "p50_ms": 21.740124999982072,
+      "p95_ms": 46.28262499999255,
+      "p99_ms": 64.77758300001733
+    },
+    "d1": {
+      "samples": 240,
+      "p50_ms": 294.19229100001394,
+      "p95_ms": 643.3115000000107,
+      "p99_ms": 796.8842090000107
+    }
+  },
+  "gold_labels_exhaustive": false,
+  "source_snapshot_equality_verified": true,
+  "target_archive_vectors_verified": true,
+  "evaluator_stopped": true,
+  "evaluation_container_removed": true,
+  "production_cutover_approved": false,
+  "limitations": [
+    "AI judged frozen historical candidate evidence, not independent exhaustive human gold.",
+    "Unjudged retrieved scenes count as zero relevance for candidate nDCG only; they may actually be relevant.",
+    "Four courses and overlapping question topics do not establish general representativeness.",
+    "Transcript/visual/context limitations are separated as diagnostic cases; diagnostic retrieval agreement is not answer correctness.",
+    "Repository timings exclude embedding, network placement controls, API and answer generation."
+  ]
+}
