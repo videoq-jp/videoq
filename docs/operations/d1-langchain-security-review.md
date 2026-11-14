@@ -97,19 +97,29 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 修正後は設定・backendの2ファイル42試験、API/移行ツール型検査、変更TSのLintが成功した。[修正証跡](evidence/d1-cutover-secret-guard-2026-11-15.json)。現在の本番Wrangler設定に対するCLIは、既存Neon設定にD1/Vectorize切替用bindingがないため、従来通り終了1で拒否した。本番設定・secrets・デプロイは変更していない。このローカル修正は、先行するremote headのCI成功で検証済みと読み替えず、後続CIの対象とする。
 
 
-## OAuth永続化と最新オンプレCIの補完
+## 検索反映の確認と完了処理
 
-768次元の専用indexでも同じ実サービス確認を実行した。受付は約1.06秒、受付後の最初の認可済みhitは約130.00秒で、直前の約126.81秒時点まで59回は空結果だった。可視化後のowner無効化は拒否され、所有DB行・physical ID・owner ANNの残存0も確認した。[768次元の反映証跡](evidence/d1-vector-visibility-768-2026-11-15.json)。各indexで1回ずつの観測であり、次元数による性能差や一定の反映時間を結論しない。固定sleepを検索readinessの根拠にせず、動画完了と検索準備状態の契約・実証を移行前の未達条件に保持する。
+### 修正前の観測
 
-### Vectorizeの非同期反映と認可の区別
-
-[公式API仕様](https://developers.cloudflare.com/vectorize/reference/client-api/)では、V2のupsert/削除は非同期のmutation受付である。現在の同期処理の`completed`はprovider受付後のタスク完了を表し、ANN検索反映の完了を表さない。既存の実サービス試験も、候補の検索反映を待ってから認可を判定している。動画完了直後の検索readinessや反映遅延のSLOは、別の受入条件として検証が必要である。
+[公式API仕様](https://developers.cloudflare.com/vectorize/reference/client-api/)では、V2のupsert/削除は非同期のmutation受付である。修正前のhead `9bf35300`では、同期処理の`completed`はprovider受付後のタスク完了を表し、ANN検索反映の完了を表さない。既存の実サービス試験も、候補の検索反映を待ってから認可を判定している。動画完了直後の検索readinessや反映遅延のSLOは、別の受入条件として検証が必要である。
 
 受付後・検索反映前に所有者が無効化されるケースを追加した。合成providerで受付と可視化を分離し、受付後は空結果、無効化後に候補が可視化されても空結果となることを検証する。候補の実在を確認し、同じ候補が再有効化後にはD1本文を返すことも対照とする。この試験はD1による最終認可の検証であり、実Vectorizeの反映時間の計測ではない。
 
-追加後の`scene-index-sync.d1.integration.test.ts`は14件成功、API/移行ツールの型検査と変更TSのLintも成功した。アプリ実装と本番設定は変更していない。
+追加後の`scene-index-sync.d1.integration.test.ts`は14件成功、API/移行ツールの型検査と変更TSのLintも成功した。この先行試験の時点ではアプリ実装と本番設定は変更していない。
 
 合成v2の実D1/Vectorizeでも追加計測した。実LangChainのupsert受付は約1.07秒、受付後の最初の認可済み検索hitは約23.15秒だった。約20.07秒時点までの10回は空結果で、次の観測で1件を返した。これは約2秒間隔の単一観測であり、正確な反映時刻やSLOを証明しない。候補が実在する状態で所有者無効化後は0件となり、最後に所有DB行・physical ID・owner ANNの残存0を確認した。モデル呼び出し0、本番変更なし。[反映遅延の証跡](evidence/d1-vector-visibility-2026-11-15.json)。動画完了直後の検索可能性を、provider受付だけで合格と扱わない。
+
+768次元の専用indexでも同じ実サービス確認を実行した。受付は約1.06秒、受付後の最初の認可済みhitは約130.00秒で、直前の約126.81秒時点まで59回は空結果だった。可視化後のowner無効化は拒否され、所有DB行・physical ID・owner ANNの残存0も確認した。[768次元の反映証跡](evidence/d1-vector-visibility-768-2026-11-15.json)。各indexで1回ずつの観測であり、次元数による性能差や一定の反映時間を結論しない。固定sleepを検索readinessの根拠にせず、動画完了と検索準備状態の契約・実証を移行前の未達条件に保持する。
+
+### 受付と検索反映を分ける追加実装
+
+上記で見つかった完了判定の差を修正した。upsert受付時は`accepted_at`だけを記録してEmbedding payloadを消し、同じ受付済みvectorを待機中に再投入しない。別の`queryById`確認でphysical ID・owner/video・scene/revisionが一致した場合にだけタスクを完了させる。検索本文の取得・最終認可は従来通りD1で行う。
+
+新しい`vector_id:string` metadata indexは投入前に必要である。旧タスクは`0019`で反映確認へ戻し、保存済みvectorが一致する場合はモデルを呼ばず再upsertする。保存vectorの欠損・metadata不整合は完了させず、元データからの再構築へ渡す。runの未反映数の更新、leaseによる完了、最後の完了ジョブは同じD1バッチに含める。動画完了時にはsource/file/headと全タスクも再検査する。
+
+専用の実D1・両次元Vectorizeで実際のLangChain同期・検索と完了処理を実行し、4シーンの反映待ちと再試行、旧payload再開、float32値保持、完了ジョブ各動画1件、別owner拒否を確認した。Embedding/LLM呼び出し0。本番と既存v2/v3は変更していない。一時D1と両インデックスは削除し、一覧からの不存在も確認した。[証跡](evidence/d1-scene-readiness-adapter-2026-11-15.json)と[適用手順](d1-scene-readiness.md)を参照する。配備済みpublic API・Lambda/SQS・LLMの全体E2Eはこの結果の範囲外であり、新HEADのCIも別途確認する。
+
+## OAuth永続化と最新オンプレCIの補完
 
 追加で、配備済み私有Hono/Better Auth、合成v2の実D1、実RateLimiter Durable Objectを使った共通OAuth契約5件がすべて成功した。memory認証・rate-limit adapterは使用していない。[配備OAuth証跡](evidence/d1-oauth-cloud-provider-2026-11-15.json)。PKCE交換、refresh rotation/reuse、コード再使用、同時refresh、ban後の拒否を含む。
 

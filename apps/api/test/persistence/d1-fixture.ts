@@ -4,6 +4,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 /** Local workerd D1 binding, with the actual independent migration chain. */
 type FixtureOptions = {
   r2?: boolean;
+  beforeMigration?: string;
   worker?: {
     script: string;
     bindings: Record<string, string>;
@@ -33,7 +34,9 @@ export async function createD1Fixture(options: FixtureOptions = {}) {
   try {
     const database = await runtime.getD1Database("DB");
     const directory = new URL("../../drizzle-d1/", import.meta.url);
-    for (const filename of readdirSync(directory).filter(name => name.endsWith(".sql")).sort()) {
+    const migrations = readdirSync(directory).filter(name => name.endsWith(".sql")).sort();
+    if (options.beforeMigration && !migrations.includes(options.beforeMigration)) throw new Error("Unknown fixture migration boundary");
+    for (const filename of migrations.filter(name => !options.beforeMigration || name < options.beforeMigration)) {
       const migration = readFileSync(new URL(filename, directory), "utf8");
       const statements = migration.split("--> statement-breakpoint").map(value => value.trim()).filter(Boolean);
       for (let offset = 0; offset < statements.length; offset += 25) {

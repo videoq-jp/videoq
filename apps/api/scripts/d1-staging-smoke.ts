@@ -54,9 +54,10 @@ async function main(){
    }
   }
   for(const dimensions of [768,1536] as const){const rows=await db.prepare('SELECT vector_id FROM scenes WHERE video_id IN (?,?) AND dimensions=?').bind(...videos,dimensions).all<{vector_id:string}>();vectorIds.set(dimensions,rows.results.map(row=>row.vector_id));}
-  phase='synchronize';const delivery=await synchronizeD1SceneIndex(db,indexes,10);if(delivery.completed!==4||delivery.failed)throw new Error('Synthetic vector delivery failed');
+  phase='synchronize';const delivery=await synchronizeD1SceneIndex(db,indexes,10);if(delivery.completed+delivery.pending!==4||delivery.failed||delivery.leaseLost)throw new Error('Synthetic vector delivery failed');
   phase='verify_remote';const verificationStarted=Date.now();let observed=0,queries=0,success=false;
   for(let attempt=0;attempt<90;attempt++){
+   const retry=await synchronizeD1SceneIndex(db,indexes,10);if(retry.failed||retry.leaseLost)throw new Error('Synthetic vector readiness failed');
    observed=0;queries=0;
    for(const dimensions of [768,1536] as const){
     const binding=indexes[dimensions],items=await binding.getByIds(vectorIds.get(dimensions)!);observed+=items.length;
@@ -66,7 +67,8 @@ async function main(){
     if((await search.search({userId:owners[1],videoIds:[videos[0]],queryEmbedding,limit:10})).length)throw new Error('Remote scope verification failed');
    }
    process.stdout.write(JSON.stringify({synthetic_verification_attempt:attempt+1,vectors_observed:observed,owned_queries_passed:queries})+'\n');
-   if(observed===4&&queries===2){success=true;break;}if(Date.now()-verificationStarted>180000)break;await pause();
+   const pending=await db.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE user_id IN (?,?) AND (accepted_at IS NULL OR completed_at IS NULL)").bind(...owners).first<number>('n');
+   if(observed===4&&queries===2&&pending===0){success=true;break;}if(Date.now()-verificationStarted>180000)break;await pause();
   }
   if(!success)throw new Error('Remote vectors did not become queryable within the bounded probe');
   process.stdout.write(JSON.stringify({remote_synthetic_smoke_passed:true,dimensions:[768,1536],vectors_observed:observed,owned_queries_passed:queries,cross_owner_queries_denied:2,elapsed_ms:Date.now()-started,production_modified:false})+'\n');

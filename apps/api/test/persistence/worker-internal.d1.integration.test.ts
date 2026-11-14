@@ -107,7 +107,7 @@ describe("signed scene ingestion with D1", () => {
     expect(await fixture.database.prepare("SELECT status FROM videos WHERE id=2").first("status")).toBe("indexing");
     expect(await call("finish", { ...input, fileKey: "old.mp4" })).toEqual({ status: "stale" });
     expect(await call("finish", { ...input, dimensions: 768 })).toEqual({ status: "missing" });
-    await fixture.database.prepare("UPDATE scene_index_tasks SET completed_at='2026-11-13T00:00:00.000Z' WHERE video_id=2 AND operation='upsert'").run();
+    await fixture.database.prepare("UPDATE scene_index_tasks SET accepted_at='2026-11-13T00:00:00.000Z',completed_at='2026-11-13T00:00:00.000Z' WHERE video_id=2 AND operation='upsert'").run();
     expect(await call("finish", { ...input, sourceRevision: crypto.randomUUID() })).toEqual({ status: "stale" });
     expect(await call("finish", input)).toEqual({ status: "completed" });
     expect(await call("finish", input)).toEqual({ status: "completed" });

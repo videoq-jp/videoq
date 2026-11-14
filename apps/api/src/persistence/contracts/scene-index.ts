@@ -39,13 +39,15 @@ export type SceneIndexTask = {
   userId: string;
   dimensions: 768 | 1536;
   embedding: number[] | null;
+  acceptedAt: string | null;
   leaseToken: string;
 };
 export interface SceneIndexTaskRepository {
   claim(): Promise<SceneIndexTask | null>;
   isDesired(taskId: string): Promise<boolean>;
+  accept(task: SceneIndexTask): Promise<boolean>;
   complete(task: SceneIndexTask): Promise<boolean>;
-  retry(task: SceneIndexTask, code: "VECTORIZE_BINDING_MISSING" | "VECTORIZE_WRITE_FAILED"): Promise<boolean>;
+  retry(task: SceneIndexTask, code: "VECTORIZE_BINDING_MISSING" | "VECTORIZE_WRITE_FAILED" | "VECTORIZE_NOT_READY"): Promise<boolean>;
   reconcileObsolete(limit?: number): Promise<number>;
 }
 

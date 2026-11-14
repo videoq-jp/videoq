@@ -59,7 +59,9 @@ export async function importSceneTables(database:D1Database,prepared:PreparedSce
   if((await database.prepare('PRAGMA foreign_key_check').all()).results.length)throw new SceneImportError('Scene foreign-key reconciliation failed.');
   const result=await database.batch([
    database.prepare(`SELECT CASE WHEN (SELECT count(*) FROM scenes)=? AND (SELECT count(*) FROM scene_index_tasks)=? AND NOT EXISTS(SELECT 1 FROM scene_staging) AND (SELECT count(*) FROM scene_index_runs)=(SELECT count(*) FROM (SELECT DISTINCT video_id,dimensions FROM scenes)) AND (SELECT count(*) FROM video_index_heads)=(SELECT count(*) FROM scene_index_runs) AND (SELECT count(*) FROM video_index_versions)=(SELECT count(DISTINCT video_id) FROM scenes) THEN 1 ELSE json('IMPORT_SCENE_COUNT_MISMATCH') END`).bind(Number(prepared.rows),Number(prepared.rows)),
-   database.prepare('UPDATE scene_index_runs SET expected_scenes=(SELECT count(*) FROM scenes s WHERE s.revision=scene_index_runs.id AND s.video_id=scene_index_runs.video_id AND s.dimensions=scene_index_runs.dimensions)'),
+   database.prepare(`UPDATE scene_index_runs SET expected_scenes=(SELECT count(*) FROM scenes s WHERE s.revision=scene_index_runs.id AND s.video_id=scene_index_runs.video_id AND s.dimensions=scene_index_runs.dimensions),
+     pending_vectors=(SELECT count(*) FROM scene_index_tasks t WHERE t.operation='upsert' AND t.revision=scene_index_runs.id
+       AND t.video_id=scene_index_runs.video_id AND t.dimensions=scene_index_runs.dimensions AND (t.accepted_at IS NULL OR t.completed_at IS NULL))`),
    database.prepare(`SELECT CASE WHEN ${parent} AND EXISTS(SELECT 1 FROM migration_imports WHERE id='scenes' AND archive_sha256=? AND status='importing_scenes' AND row_index=?) THEN 1 ELSE json('IMPORT_SCENE_COMPLETION_CHANGED') END`).bind(archive,archive,Number(prepared.rows)),
    database.prepare("UPDATE migration_imports SET status='scenes_imported',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='scenes' RETURNING id"),
   ]);

@@ -21,16 +21,16 @@ export async function verifyMigratedSceneVectors(database:D1Database,prepared:{p
   if(!receipt||receipt.status!=='scenes_imported'||String(receipt.imported_rows)!==prepared.rows)throw new SceneDeliveryVerificationError('Scene import receipt is missing or incomplete.');
   let checked=0n,verified=0n,missing=0n,mismatched=0n,pending=0n;const dimensions=new Set<number>(),described=new Set<number>();
   const checkD1=async(rows:SceneRow[])=>{
-   const statements=rows.map(row=>database.prepare(`SELECT t.completed_at,t.lease_token,t.embedding FROM scenes s JOIN videos v ON v.id=s.video_id
+   const statements=rows.map(row=>database.prepare(`SELECT t.accepted_at,t.completed_at,t.lease_token,t.embedding FROM scenes s JOIN videos v ON v.id=s.video_id
     JOIN scene_index_tasks t ON t.id=? AND t.operation='upsert' AND t.scene_id=s.id AND t.dimensions=s.dimensions
       AND t.video_id=s.video_id AND t.user_id=v.user_id AND t.revision=s.revision AND t.vector_id=s.vector_id
     WHERE s.id=? AND s.video_id=? AND s.dimensions=? AND v.user_id=? AND s.content=? COLLATE BINARY
       AND s.start_time=? AND s.end_time=? AND s.evidence_type=? AND s.revision=? AND s.vector_id=?`)
     .bind(`u:${row.dimensions}:${row.vectorId}`,row.scene.id,row.videoId,row.dimensions,row.userId,row.scene.content,row.scene.startTime,row.scene.endTime,row.scene.evidenceType??'transcript',row.revision,row.vectorId));
-   const results=await database.batch<{completed_at:string|null;lease_token:string|null;embedding:string|null}>(statements);
+   const results=await database.batch<{accepted_at:string|null;completed_at:string|null;lease_token:string|null;embedding:string|null}>(statements);
    return results.map(result=>{
     const match=result.results[0];if(result.results.length!==1||!match)throw new SceneDeliveryVerificationError('D1 scene or ownership changed after import.');
-    return match.completed_at!==null&&match.lease_token===null&&match.embedding===null;
+    return match.accepted_at!==null&&match.completed_at!==null&&match.lease_token===null&&match.embedding===null;
    });
   };
   let batch:SceneRow[]=[],batchBytes=0;

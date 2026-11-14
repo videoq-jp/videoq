@@ -1,5 +1,6 @@
 import type {D1Database} from "@cloudflare/workers-types";
 import type { SceneIndexTask, SceneIndexTaskRepository } from "../contracts/scene-index";
+import { buildJobMessage } from "../../lib/job-message";
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 // A vector ID is immutable for a run/scene/content triple. Superseded runs can
@@ -24,25 +25,52 @@ export function createD1SceneIndexTaskRepository(database: D1Database): SceneInd
           AND julianday(available_at)<=julianday('now') AND (lease_token IS NULL OR julianday(lease_until)<=julianday('now'))
           ORDER BY available_at,created_at,id LIMIT 1) RETURNING *`).bind(crypto.randomUUID()).first<{
           id: string; operation: "upsert" | "delete"; vector_id: string; scene_id: string; revision: string;
-          video_id: number; user_id: string; dimensions: 768 | 1536; embedding: string | null; lease_token: string;
+          video_id: number; user_id: string; dimensions: 768 | 1536; embedding: string | null; accepted_at: string | null; lease_token: string;
         }>();
       return row ? { id: row.id, operation: row.operation, vectorId: row.vector_id, sceneId: row.scene_id, revision: row.revision,
         videoId: row.video_id, userId: row.user_id, dimensions: row.dimensions,
-        embedding: row.embedding === null ? null : JSON.parse(row.embedding) as number[], leaseToken: row.lease_token } : null;
+        embedding: row.embedding === null ? null : JSON.parse(row.embedding) as number[], acceptedAt: row.accepted_at, leaseToken: row.lease_token } : null;
     },
     async isDesired(taskId) {
       return Boolean((await database.prepare(`SELECT (${DESIRED}) AS desired FROM scene_index_tasks t WHERE t.id=?`)
         .bind(taskId).first<{ desired: number }>())?.desired);
     },
-    async complete(task: SceneIndexTask) {
-      const rows = await database.prepare(`UPDATE scene_index_tasks SET completed_at=${NOW},embedding=NULL,
-        lease_token=NULL,lease_until=NULL,last_error_code='' WHERE ${OWNS} RETURNING id`).bind(task.id, task.leaseToken).all();
+    async accept(task) {
+      const rows = await database.prepare(`UPDATE scene_index_tasks SET accepted_at=${NOW},embedding=NULL,last_error_code=''
+        WHERE ${OWNS} RETURNING id`).bind(task.id, task.leaseToken).all();
       return rows.results.length > 0;
+    },
+    async complete(task: SceneIndexTask) {
+      const token = crypto.randomUUID();
+      const message = buildJobMessage("index_video_transcript", { video_id: task.videoId });
+      const rows = await database.batch([
+        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id)
+          SELECT ?,'scene_ready',video_id FROM scene_index_tasks WHERE ${OWNS}`).bind(token, task.id, task.leaseToken),
+        database.prepare(`UPDATE scene_index_tasks SET completed_at=${NOW},embedding=NULL,
+          lease_token=NULL,lease_until=NULL,last_error_code='' WHERE ${OWNS} RETURNING id`).bind(task.id, task.leaseToken),
+        database.prepare(`UPDATE scene_index_runs SET pending_vectors=pending_vectors-1
+          WHERE id=? AND video_id=? AND user_id=? AND dimensions=? AND status='published' AND pending_vectors>0
+            AND ?='upsert' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
+          .bind(task.revision, task.videoId, task.userId, task.dimensions, task.operation, token),
+        database.prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key)
+          SELECT 'sqs_job',?,? WHERE ?='upsert' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
+            AND EXISTS(SELECT 1 FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
+              JOIN video_index_heads heads ON heads.video_id=v.id AND heads.dimensions=?
+              JOIN scene_index_runs r ON r.id=heads.run_id WHERE v.id=? AND v.user_id=? AND v.status='indexing'
+                AND r.id=? AND r.status='published' AND r.pending_vectors=0 AND r.source_revision=versions.revision)
+          ON CONFLICT(dedupe_key) DO NOTHING`).bind(JSON.stringify({ message }),
+            `scene-ready:${task.dimensions}:${task.videoId}:${task.revision}`, task.operation, token,
+            task.dimensions, task.videoId, task.userId, task.revision),
+        database.prepare("DELETE FROM mutation_receipts WHERE token=?").bind(token),
+      ]);
+      return rows[1].results.length > 0;
     },
     async retry(task, code) {
       const rows = await database.prepare(`UPDATE scene_index_tasks SET lease_token=NULL,lease_until=NULL,last_error_code=?,
-        available_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+'||min(3600,5*(1 << min(attempts,10)))||' seconds')
-        WHERE ${OWNS} RETURNING id`).bind(code, task.id, task.leaseToken).all();
+        available_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+'||
+          CASE WHEN ?='VECTORIZE_NOT_READY' THEN min(60,5*(1 << min(attempts,4)))
+            ELSE min(3600,5*(1 << min(attempts,10))) END||' seconds')
+        WHERE ${OWNS} RETURNING id`).bind(code, code, task.id, task.leaseToken).all();
       return rows.results.length > 0;
     },
     async reconcileObsolete(limit = 100) {

@@ -138,7 +138,10 @@ export function createD1SceneIndexWriter(database: D1Database): SceneIndexWriter
           SELECT s.scene_id,r.video_id,s.content,s.start_time,s.end_time,s.evidence_type,r.dimensions,r.id,s.vector_id
           FROM scene_staging s JOIN scene_index_runs r ON r.id=s.run_id WHERE r.id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
           .bind(runId, token),
-        database.prepare("UPDATE scene_index_runs SET status='published' WHERE id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)")
+        database.prepare(`UPDATE scene_index_runs SET status='published',pending_vectors=(SELECT count(*) FROM scene_index_tasks t
+          WHERE t.operation='upsert' AND t.revision=scene_index_runs.id AND t.video_id=scene_index_runs.video_id
+            AND t.dimensions=scene_index_runs.dimensions AND (t.accepted_at IS NULL OR t.completed_at IS NULL))
+          WHERE id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
           .bind(runId, token),
         database.prepare("DELETE FROM scene_staging WHERE run_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)").bind(runId, token),
         database.prepare(`SELECT r.id FROM ${RUN_JOINS} WHERE r.id=? AND ${RUN_IS_CURRENT} AND r.status='published'`).bind(runId, userId),
@@ -155,7 +158,7 @@ export async function readD1WorkerSceneSource(database: D1Database, videoId: num
   return row ? createD1SceneIndexWriter(database).readSource(videoId, row.user_id) : null;
 }
 
-/** Completion waits for durable Vectorize delivery. A retry can finish the same
+/** Completion waits for verified Vectorize ANN visibility. A retry can finish the same
  * published run without regenerating embeddings or replacing its head. */
 export async function finishD1WorkerSceneIndex(
   database: D1Database, input: import("../contracts/scene-index").FinishSceneIndexInput,
@@ -168,7 +171,7 @@ export async function finishD1WorkerSceneIndex(
       WHERE v.status='indexing' AND EXISTS(SELECT 1 FROM video_index_versions versions
         WHERE versions.video_id=v.id AND ${current} AND ${published})
       AND NOT EXISTS(SELECT 1 FROM scenes s LEFT JOIN scene_index_tasks t ON t.id='u:'||s.dimensions||':'||s.vector_id
-        WHERE s.video_id=v.id AND s.dimensions=? AND (t.id IS NULL OR t.completed_at IS NULL))`)
+        WHERE s.video_id=v.id AND s.dimensions=? AND (t.id IS NULL OR t.accepted_at IS NULL OR t.completed_at IS NULL))`)
       .bind(input.videoId, input.userId, input.sourceRevision, input.fileKey, input.dimensions, input.dimensions),
     database.prepare(`SELECT v.status,${published} AS published FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
       WHERE ${current}`).bind(input.dimensions, input.videoId, input.userId, input.sourceRevision, input.fileKey),

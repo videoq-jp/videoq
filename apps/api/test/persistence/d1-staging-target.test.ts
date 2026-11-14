@@ -23,6 +23,7 @@ describe('staging migration phase arguments',()=>{
 describe('staging migration exit gates',()=>{
  it('does not treat pending/mismatched vector verification as a successful gate',()=>{expect(stagingMigrationExitCode({phase:'verify',vectorize_delivery_complete:false})).toBe(2);expect(stagingMigrationExitCode({phase:'verify',vectorize_delivery_complete:true})).toBe(0);});
  it('reports delivery failure or lease loss as retryable',()=>{expect(stagingMigrationExitCode({phase:'deliver',failed:1,leaseLost:0})).toBe(2);expect(stagingMigrationExitCode({phase:'deliver',failed:0,leaseLost:1})).toBe(2);expect(stagingMigrationExitCode({phase:'deliver',failed:0,leaseLost:0})).toBe(0);});
+ it('keeps accepted but not queryable delivery retryable',()=>{expect(stagingMigrationExitCode({phase:'deliver',failed:0,leaseLost:0,pending_tasks:1})).toBe(2);expect(stagingMigrationExitCode({phase:'deliver',failed:0,leaseLost:0,pending_tasks:0})).toBe(0);});
 });
 
 it('rejects the archived v1 target so old import receipts and recovery bookmarks cannot select the new rehearsal',()=>{

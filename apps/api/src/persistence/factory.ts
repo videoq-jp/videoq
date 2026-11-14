@@ -151,7 +151,7 @@ export async function createVideoMutationRepository(env: Bindings): Promise<impo
 }
 
 export async function maintainSceneIndex(env: Bindings) {
-  if (persistenceBackend(env) !== "d1") return { claimed: 0, completed: 0, failed: 0, leaseLost: 0, reconciled: 0, verified: 0, repairQueued: 0 };
+  if (persistenceBackend(env) !== "d1") return { claimed: 0, completed: 0, pending: 0, failed: 0, leaseLost: 0, reconciled: 0, verified: 0, repairQueued: 0 };
   if (!env.DB) throw new Error("D1 DB binding is required");
   const [{ maintainD1SceneIndex }, embedding] = await Promise.all([
     import("./d1/scene-index-maintenance"), import("../lib/embedding-contract"),

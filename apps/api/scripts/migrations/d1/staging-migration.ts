@@ -39,8 +39,8 @@ export async function runStagingMigration(options:ReturnType<typeof parseStaging
    const receipt=await db.prepare("SELECT imported_rows FROM migration_imports WHERE id='scenes' AND status='scenes_imported' AND archive_sha256=?").bind(archive).first<{imported_rows:number}>();
    if(!receipt||String(receipt.imported_rows)!==prepared.scenes.rows)throw new StagingMigrationError('The target has no completed scene import for this archive.');
    if(options.mode==='verify')return {phase:'verify',...await verifyMigratedSceneVectors(db,prepared.scenes,archive,indexes,{offlineStaging:true})};
-   const result={claimed:0,completed:0,failed:0,leaseLost:0};
-   while(result.claimed<options.maxTasks){const batch=await synchronizeD1SceneIndex(db,indexes,Math.min(100,options.maxTasks-result.claimed),{concurrency:4});for(const field of ['claimed','completed','failed','leaseLost'] as const)result[field]+=batch[field];if(!batch.claimed||batch.failed||batch.leaseLost)break;}
+   const result={claimed:0,completed:0,pending:0,failed:0,leaseLost:0};
+   while(result.claimed<options.maxTasks){const batch=await synchronizeD1SceneIndex(db,indexes,Math.min(100,options.maxTasks-result.claimed),{concurrency:4});for(const field of ['claimed','completed','pending','failed','leaseLost'] as const)result[field]+=batch[field];if(!batch.claimed||batch.failed||batch.leaseLost)break;}
    const pending=await db.prepare('SELECT count(*) AS count FROM scene_index_tasks WHERE completed_at IS NULL').first<{count:number}>();
    return {phase:'deliver',...result,pending_tasks:pending?.count??0,vectorize_delivery_complete:false,search_quality_verified:false,execution_complete:false};
   }finally{await proxy.dispose();}
@@ -48,8 +48,8 @@ export async function runStagingMigration(options:ReturnType<typeof parseStaging
 }
 
 /** Exit 2 means a retryable verification/delivery gate is not satisfied. */
-export function stagingMigrationExitCode(result:{phase?:unknown;vectorize_delivery_complete?:unknown;failed?:unknown;leaseLost?:unknown}){
+export function stagingMigrationExitCode(result:{phase?:unknown;vectorize_delivery_complete?:unknown;failed?:unknown;leaseLost?:unknown;pending_tasks?:unknown}){
  if(result.phase==='verify'&&result.vectorize_delivery_complete!==true)return 2;
- if(result.phase==='deliver'&&(typeof result.failed==='number'&&result.failed>0||typeof result.leaseLost==='number'&&result.leaseLost>0))return 2;
+ if(result.phase==='deliver'&&(typeof result.failed==='number'&&result.failed>0||typeof result.leaseLost==='number'&&result.leaseLost>0||typeof result.pending_tasks==='number'&&result.pending_tasks>0))return 2;
  return 0;
 }

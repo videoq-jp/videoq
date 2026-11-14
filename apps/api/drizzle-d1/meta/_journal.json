@@ -134,6 +134,13 @@
       "when": 1794572381054,
       "tag": "0018_unusual_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794692648616,
+      "tag": "0019_scene_search_readiness",
+      "breakpoints": true
     }
   ]
 }
