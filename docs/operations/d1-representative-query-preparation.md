@@ -62,7 +62,7 @@ python -m worker_python.search_evaluation \
 
 出力は既存の`SearchEvaluationInput`形式で、元の質問本文を含めない。case IDの順序、入力manifestの正規化ハッシュ、モデル構成を`generation`へ記録する。出力も所有者・動画・ベクトルを含む私有データとして保管する。
 
-検証済みのoffline PostgreSQLコピーの接続と同じEmbedding構成を事前設定した評価環境では、既存コマンドへ渡せる。
+検証済みのoffline PostgreSQLコピーの接続と同じEmbedding構成を事前設定した評価環境では、移行PR #1434の検索評価コマンドを備えた環境で渡せる。
 
 ```sh
 PERSISTENCE_EVALUATION_SOURCE_OFFLINE=1 \

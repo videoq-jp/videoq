@@ -538,3 +538,11 @@ D1アダプターへ`OAuthGrantRepository`を追加し、対象の所有者・cl
 2026-11-14、既存のPython query Embedding関数を使い、モデル・profile・次元数・接続先・認証方式を固定manifestと照合する私有入力生成ツールを追加した。既定のpreflightは通信を行わず、`--execute`で明示した場合だけ既存ワークロード認証で生成する。質問ごとに一度だけ生成した同じベクトルを、所有者・動画選択・性能反復を変えたケースでも再利用し、既存のPG/D1検索評価入力へ接続する。モデル設定の自動変更や、新たな認証権限の付与は行わない。
 
 関連Python 3ファイル81試験とAPI 3ファイル13試験が成功した。生成試験のモデル応答は合成stubであり、実OpenRouter接続や品質の証拠には使わない。出力の実TypeScript validator互換性、768次元の既存オンプレ構成、入力・出力の私有権限、途中失敗、競合と上書き拒否、秘密値のログ非出力を確認した。[実行手順](d1-representative-query-preparation.md)と[集約証跡](evidence/d1-query-preparation-tooling-2026-11-14.json)を参照する。配布・実行経路のレビュー、接続済みワークロードの確保、代表質問・正解ラベルと閾値の確定、実モデル評価は残る。
+
+### 既存フェデレーション主体での隔離評価エントリーポイント
+
+2026-11-14、通常のSSM/DB bootstrapを通らない専用`search_evaluation_lambda.handler`を追加した。既定では無効で、専用関数でのhandler選択と明示的な有効化を要求する。既存のモデルとworkload federation設定を照合し、最大16ケースのEmbedding生成だけを行う。既存SQS handlerやroutingは変更しない。質問・生成物は私有の一時領域で扱い、応答とログから質問本文・SDK例外詳細を除外する。
+
+main由来の独立worktreeでも関連5ファイル123試験が成功し、評価コードを先行レビューする[ドラフトPR #1444](https://github.com/videoq-jp/videoq/pull/1444)を作成した。DB、秘密情報bootstrap、queueモジュールのimportを拒否した条件でも、有効化した合成処理が成功した。実モデル応答はstubであり、接続証明には使わない。[実行境界](search-evaluation-runtime.md)と[集約証跡](evidence/d1-evaluation-runtime-preparation-2026-11-14.json)を参照する。
+
+専用関数の作成・数値versionとimage digestの確定・私有invoke client・実接続は未実施である。既存worker用ロールはDB用SSM/SQSの権限も持つため、mainコードレビューとoperator管理の境界を維持する。ローカル運用者による本番roleのassumeや、フェデレーション信頼設定の変更は行っていない。

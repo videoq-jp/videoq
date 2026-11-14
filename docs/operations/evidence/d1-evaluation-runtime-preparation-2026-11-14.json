@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T13:52:31.222057+00:00",
+  "scope": "Disabled isolated Lambda entrypoint for existing-workload query embedding preparation; local synthetic tests only",
+  "entrypoint": "worker_python.search_evaluation_lambda.handler",
+  "default_enabled": false,
+  "bridge_pr": "https://github.com/videoq-jp/videoq/pull/1444",
+  "bridge_base_main": "31a25ea496f2393bb113858e41ab32bf43604401",
+  "bridge_head": "7f019db9",
+  "related_test_files_passed": 5,
+  "related_tests_passed": 123,
+  "main_based_independent_worktree_verified": true,
+  "checks": {
+    "default_disabled_without_explicit_operator_flag": true,
+    "strict_request_schema_and_no_command_role_environment_overrides": true,
+    "max_cases": 16,
+    "max_request_bytes": 1048576,
+    "max_response_bytes": 4194304,
+    "requires_existing_workload_federation_configuration": true,
+    "current_model_and_endpoint_mismatch_rejected_before_calls": true,
+    "enabled_synthetic_execution_succeeds_with_db_ssm_bootstrap_and_queue_imports_blocked": true,
+    "question_and_temporary_output_files_cleaned_after_success_and_failure": true,
+    "unexpected_sdk_errors_are_not_logged_or_returned": true
+  },
+  "model_provider_stubbed": true,
+  "real_federation_exchange_performed": false,
+  "real_model_invoked": false,
+  "aws_resources_created": false,
+  "iam_or_federation_policy_changed": false,
+  "existing_sqs_handler_or_routing_changed": false,
+  "production_modified": false,
+  "execution_complete": false,
+  "limitations": [
+    "Dedicated function deployment, immutable image/version selection and private invocation client remain pending.",
+    "This code does not grant the local operator the production workload identity.",
+    "The existing worker role has SSM/SQS privileges; code deployment and new resource activation need the normal review/operator boundary.",
+    "Representative labels, approved thresholds, actual model connectivity, deployed E2E and production D1 cutover remain unverified."
+  ]
+}
