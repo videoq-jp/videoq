@@ -189,3 +189,18 @@ export function restoreArchiveFailureStage(error, serverLog='') {
   const category = RESTORE_FAILURE_CATEGORIES.find(([,pattern]) => pattern.test(stderr))?.[0];
   return 'restore-archive-apply' + (category ? '-' + category : '');
 }
+
+export const RESTORE_OPERATIONS = Object.freeze(['COPY','SET','SEQUENCE_SETVAL','SELECT','CREATE_COLLATION','CREATE_INDEX','CREATE_FUNCTION','CREATE_TABLE','CREATE_VIEW','CREATE_TYPE','CREATE_SCHEMA','CREATE_TRIGGER','ALTER_TABLE','ALTER_FUNCTION','OTHER']);
+export function restoreArchiveFailureDetails(error, serverLog='') {
+ const log=typeof serverLog==='string'?serverLog.slice(0,4_000_000):'';
+ const candidate=/(?:ERROR|FATAL|PANIC):\s+([A-Z0-9]{5}):/.exec(log)?.[1];
+ const sqlstate=candidate&&Object.hasOwn(RESTORE_SQLSTATE_CATEGORIES,candidate)?candidate:undefined;
+ const statement=/STATEMENT:\s+([^\n]+)/.exec(log)?.[1]??'';
+ let operation='OTHER';
+ if(/^SELECT\s+pg_catalog\.setval\s*\(/i.test(statement))operation='SEQUENCE_SETVAL';
+ else {
+  const found=/^(COPY|SET|SELECT|CREATE\s+(?:COLLATION|(?:UNIQUE\s+)?INDEX|FUNCTION|TABLE|VIEW|TYPE|SCHEMA|TRIGGER)|ALTER\s+(?:TABLE|FUNCTION))\b/i.exec(statement)?.[1]?.toUpperCase().replace(/\s+UNIQUE\s+/, ' ').replaceAll(/\s+/g,'_');
+  if(RESTORE_OPERATIONS.includes(found))operation=found;
+ }
+ return {stage:restoreArchiveFailureStage(error,log),...(sqlstate?{sqlstate}:{}),operation};
+}

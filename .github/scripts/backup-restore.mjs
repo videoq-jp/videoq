@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureStage } from './backup-archive.mjs';
+import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureDetails } from './backup-archive.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
@@ -122,7 +122,10 @@ try {
       const log = await docker(['logs', '--tail', '200', name]);
       serverLog = log.stdout + log.stderr;
     } catch { /* Never print database logs or fall back to raw exception text. */ }
-    stage = restoreArchiveFailureStage(error, serverLog);
+    const failure = restoreArchiveFailureDetails(error, serverLog);
+    stage = failure.stage;
+    if (failure.sqlstate) report.failure_sqlstate = failure.sqlstate;
+    report.failure_operation = failure.operation;
   }
   // This exact public fixture URL contains no production data or credentials.
   if (process.env.DATABASE_URL === 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres') {

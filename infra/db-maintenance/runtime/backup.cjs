@@ -25,7 +25,9 @@ async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
       const match = Array.isArray(report.details) && report.details.length === 1 && typeof report.details[0] === 'string'
         ? /^- 失敗した段階: `([a-z-]+)`。DB接続情報・レコード・バックアップは出力していません。$/.exec(report.details[0]) : null;
       const stage = match && stages.has(match[1]) ? match[1].replaceAll('-', '_').toUpperCase() : null;
-      throw new Error(stage ? 'BACKUP_VERIFICATION_FAILED_' + stage : 'PRODUCTION_VERIFICATION_FAILED');
+      const state = typeof report.failure_sqlstate === 'string' && Object.hasOwn(archive.RESTORE_SQLSTATE_CATEGORIES,report.failure_sqlstate) ? '_SQLSTATE_' + report.failure_sqlstate : '';
+      const operation = archive.RESTORE_OPERATIONS.includes(report.failure_operation) ? '_OPERATION_' + report.failure_operation : '';
+      throw new Error(stage ? 'BACKUP_VERIFICATION_FAILED_' + stage + state + operation : 'PRODUCTION_VERIFICATION_FAILED');
     }
     if (context) {
       if (!await (retain ?? archive.retainStagedBackup)(directory,context)) throw new Error('BACKUP_RETENTION_NOT_CONFIRMED');
@@ -35,6 +37,8 @@ async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
     }
   } catch (error) {
     if (report) {
+      if (typeof report.failure_sqlstate !== 'string' || !Object.hasOwn(archive.RESTORE_SQLSTATE_CATEGORIES,report.failure_sqlstate)) delete report.failure_sqlstate;
+      if (!archive.RESTORE_OPERATIONS.includes(report.failure_operation)) delete report.failure_operation;
       report.status = 'error';
       if (context) report.backup_retention = 'failed';
       report.details = ['- AWSバックアップ検証または永続保存に失敗しました。完了済みの保全コピーとは扱わないでください。'];
