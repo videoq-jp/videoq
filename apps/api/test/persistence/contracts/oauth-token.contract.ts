@@ -50,6 +50,7 @@ export function oauthTokenContract(name:string,create:()=>Promise<OAuthTokenFixt
  it('allows at most one winner for concurrent refresh of the same token',async()=>{
   const issued=await connect();const request={grant_type:'refresh_token',refresh_token:issued.refresh_token};
   const responses=await Promise.all([token(issued.clientId,request),token(issued.clientId,request)]);expect(responses.map(r=>r.status).sort()).toEqual([200,400]);
+  expect(await responses.find(r=>r.status===400)!.json()).toMatchObject({error:'invalid_grant'});
   expect((await f.refreshTokens()).length).toBeLessThanOrEqual(2);
   expect((await token(issued.clientId,request)).status).toBe(400);
  },30000);
