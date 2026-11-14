@@ -2,7 +2,7 @@
 
 ## 現在の状態
 
-`worker_python.search_evaluation_lambda.handler`は、既存のワークロード用フェデレーション認証でEmbeddingだけを生成する専用エントリーポイントである。通常の`handler.handler`やSQSジョブには接続していない。関数作成、IAM変更、認証policy変更、実モデル呼び出しはまだ行っていない。
+`worker_python.search_evaluation_lambda.handler`は、既存のワークロード用フェデレーション認証でEmbeddingだけを生成する専用エントリーポイントである。通常の`handler.handler`やSQSジョブには接続していない。PR #1444はmainへ取り込み済み。2026-11-15にユーザー承認の下で専用関数を作成し、合成質問1件、その後の全自動指定に基づく40質問の接続・比較を実行した。現在は実行フラグfalse・予約同時実行数0で停止している。IAM権限・認証policyは変更していない。[実行計画と接続結果](search-evaluation-deployment-plan.md)、[全自動比較結果](d1-automatic-query-evaluation.md)を参照する。
 
 このコードをmainへ取り込む場合、通常のCDでworkerイメージへ同梱されるが、既定のhandler・既存関数設定・SQS配送先は変更しない。実行には、レビュー済みイメージの不変digestと、このエントリーポイントを選択した隔離関数が必要になる。
 
@@ -43,7 +43,7 @@
 これは形式説明用の合成例である。source archiveの照合、代表質問・正解ラベル・閾値の確定は別途必要になる。
 
 - 有効化フラグの既定値は無効。環境変数・command・role・SQS Records等の追加引数は拒否する。
-- 1回最大16ケース、manifest最大1 MiB。case/scope等は既存の私有入力validatorで検証する。大きな質問セットを使うclient側の分割・結果照合はまだ未接続である。
+- 1回最大16ケース、manifest最大1 MiB。case/scope等は既存の私有入力validatorで検証する。大きな質問セットを使うclient側の分割・結果照合は[私有起動クライアント](d1-remote-query-preparation.md)で実装し、実関数で40質問を3回の同期invokeへ分割して検証済みである。
 - `authentication`は`workload-federation`に限定する。入力に書いたモデルやendpointへ設定を切り替えることはなく、現在の環境と違えば通信前に拒否する。
 - 実行残時間が240秒未満なら通信前に拒否する。モデル障害やtimeoutでは、成功した部分結果を公開せず、呼び出し元が状態を確認する。モデル呼び出し後の失敗には費用が発生し得る。
 - 質問・中間生成物は実行ごとの0700ディレクトリと0600ファイルへ置き、通常の成功・失敗時に削除する。DB秘密情報のbootstrap、DB接続、SQS操作は呼び出さない。

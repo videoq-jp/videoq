@@ -29,7 +29,7 @@ function objectPayload(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-async function runTask(env: Bindings, task: ClaimedExternalTask): Promise<void> {
+async function runTask(env: Bindings, task: ClaimedExternalTask): Promise<void|'deferred'> {
   if (task.kind === "sqs_job") {
     const message = objectPayload(task.payload.message);
     // Retire already-persisted evaluation deliveries without contacting SQS.
@@ -48,7 +48,7 @@ async function runTask(env: Bindings, task: ClaimedExternalTask): Promise<void> 
     return;
   }
 
-  if (task.kind === "storage_cleanup") {
+  if (task.kind === "storage_cleanup" || task.kind === "multipart_abort" || task.kind === "multipart_cleanup") {
     const fileKey = task.payload.file_key;
     const userId = task.payload.user_id;
     const bytes = task.payload.bytes;
@@ -61,17 +61,34 @@ async function runTask(env: Bindings, task: ClaimedExternalTask): Promise<void> 
     if (bytes !== null && (typeof bytes !== "number" || !Number.isSafeInteger(bytes))) {
       throw new Error("Storage cleanup bytes is invalid.");
     }
+    const abortOnly=task.kind==='multipart_abort';
+    const orphanOnly=task.kind==='multipart_cleanup';
+    if(abortOnly||orphanOnly){
+      const uploadId=task.payload.multipart_upload_id;
+      if(!fileKey||typeof uploadId!=='string'||!uploadId||bytes!==0)throw new Error('Conditional multipart cleanup payload is invalid.');
+      const {createMultipartUploadRepository}=await import('../persistence/factory');
+      const repository=await createMultipartUploadRepository(env);
+      if(orphanOnly&&await repository.hasUploadingFile(fileKey)){
+        const {createExternalTaskRepository}=await import('../persistence/factory');
+        await (await createExternalTaskRepository(env)).defer(task,2*3600000);return 'deferred';
+      }
+      if(await repository.referencesFile(fileKey,abortOnly?uploadId:undefined)){
+        await completeStorageCleanupTask(env,{lease:task,userId,bytes:0});return;
+      }
+    }
     if (fileKey) {
       const uploadId = task.payload.multipart_upload_id;
       if (uploadId !== undefined) {
         if (typeof uploadId !== "string" || !uploadId) throw new Error("Storage cleanup multipart upload ID is invalid.");
         await abortR2MultipartUpload(env, fileKey, uploadId);
       }
-      await deleteR2Object(env, fileKey);
-      await deleteR2Object(env, frameCacheKey(fileKey));
-      await deleteR2Object(env, focusCacheKey(fileKey));
-      await deleteR2Object(env, `${fileKey}.focus-v2.json`);
-      await deleteVisualChunks(env, fileKey);
+      if(!abortOnly){
+        await deleteR2Object(env, fileKey);
+        await deleteR2Object(env, frameCacheKey(fileKey));
+        await deleteR2Object(env, focusCacheKey(fileKey));
+        await deleteR2Object(env, `${fileKey}.focus-v2.json`);
+        await deleteVisualChunks(env, fileKey);
+      }
     }
     await completeStorageCleanupTask(env, {
       lease: task,
@@ -132,8 +149,8 @@ export async function processExternalTasks(
     attemptedIds.push(task.id);
     result.claimed += 1;
     try {
-      await runTask(env, task);
-      result.completed += 1;
+      const outcome=await runTask(env, task);
+      if(outcome!=='deferred')result.completed += 1;
     } catch (error) {
       result.failed += 1;
       const message = error instanceof Error ? error.message : String(error);

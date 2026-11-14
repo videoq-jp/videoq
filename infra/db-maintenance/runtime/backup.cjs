@@ -9,6 +9,7 @@ const path = require('node:path');
 async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
   const archive = await import('../../../.github/scripts/backup-archive.mjs');
   const context = archive.backupArchiveContext(env);
+  const exportD1 = archive.backupD1ExportRequested(env);
   let directory, report;
   try {
     if (context) {
@@ -29,9 +30,13 @@ async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
       const operation = archive.RESTORE_OPERATIONS.includes(report.failure_operation) ? '_OPERATION_' + report.failure_operation : '';
       throw new Error(stage ? 'BACKUP_VERIFICATION_FAILED_' + stage + state + operation : 'PRODUCTION_VERIFICATION_FAILED');
     }
+    if ((report.d1_archive??'not_requested') !== (exportD1?'staged':'not_requested')) throw new Error('D1_BACKUP_EXPORT_NOT_CONFIRMED');
     if (context) {
-      if (!await (retain ?? archive.retainStagedBackup)(directory,context)) throw new Error('BACKUP_RETENTION_NOT_CONFIRMED');
+      const retained=retain?await retain(directory,context,{requireD1Export:exportD1}):
+        await archive.retainStagedBackup(directory,context,undefined,{requireD1Export:exportD1});
+      if (!retained) throw new Error('BACKUP_RETENTION_NOT_CONFIRMED');
       report.backup_retention = 'retained';
+      report.d1_archive = exportD1?'retained':'not_requested';
       report.details.push('- 親AWSジョブが専用S3への保存を行い、version・checksum・size・暗号化を照合しました。');
       await fs.writeFile('operations-report.json',JSON.stringify(report));
     }
@@ -41,6 +46,7 @@ async function runBackup({env=process.env,execute=execFileSync,retain}={}) {
       if (!archive.RESTORE_OPERATIONS.includes(report.failure_operation)) delete report.failure_operation;
       report.status = 'error';
       if (context) report.backup_retention = 'failed';
+      if (exportD1) report.d1_archive = 'failed';
       report.details = ['- AWSバックアップ検証または永続保存に失敗しました。完了済みの保全コピーとは扱わないでください。'];
       await fs.writeFile('operations-report.json',JSON.stringify(report));
     }

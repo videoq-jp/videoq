@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { schema } from "../src/db/schema";
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { deleteOAuthGrant, hasOAuthConsent } from "../src/lib/auth-security";
 import type { Bindings } from "../src/types/bindings";
 

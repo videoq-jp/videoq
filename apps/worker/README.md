@@ -287,3 +287,46 @@ OpenAI-compatible embeddings can use `EMBEDDING_BASE_URL` and a separate
 `EMBEDDING_API_KEY`. Unset values retain the shared provider base URL/key; `OPENROUTER_API_KEY` selects OpenRouter when no base URL is specified. Use the
 same model and embedding endpoint in the API and worker. Local llama.cpp/vLLM
 recipes and their common acceptance commands are in `charts/videoq-inference/README.md`.
+
+### D1移行中の内部永続化API
+
+`DEPLOYMENT_EDITION=cloud` または `PERSISTENCE_BACKEND=d1` の場合、
+WorkerはHonoの署名付き業務APIを使います。
+`WORKER_INTERNAL_API_ORIGIN` にAPIのHTTPS origin（パスなし）、
+`WORKER_INTERNAL_API_SECRET` にAPI側と同じ32バイト以上のランダムな秘密値を設定してください。
+Lambdaでは秘密値をAPP_PARAM_NAMEのJSONへ保存できます。
+署名は60秒間有効で、操作・宛先・本文を含み、リダイレクトへ転送しません。
+例外本文は送信せず、失敗コードだけを保存します。
+D1設定時の旧PostgreSQL直接接続は明示的に拒否します。
+
+接続済みの操作は次のとおりです。
+
+- ジョブ台帳のclaim・heartbeat・完了・失敗
+- アカウント削除（リース/削除依頼/無期限banを照合し、動画と所有レコードを段階削除）
+- 動画の文字起こし開始・字幕保存・索引Outbox登録
+- 処理時間の利用枠予約（月替わり・並行予約・重複加算をDB側で制御）
+- 分割文字起こしの計画・チャンク保存・再開・音声なしの停止・最終確定
+- 視覚解析の計画・チャンク保存・ready状態と版別manifest公開
+- 全件再索引のIDページ取得・25件単位のSQS配送
+- 初回索引と字幕編集後の再索引（共有の分割・Embedding生成、20件ずつの保存）
+
+字幕の最終確定と索引Outboxは一緒に保存し、ユーザーが処理中に編集した字幕は保持します。
+初回索引の配送待ちはEmbeddingを再生成せずに再試行します。
+実動画アップロードの分割処理と、その後の視覚解析もD1へ接続済みです。
+視覚チャンクは書き込みごとの不変キーへ保存し、DBが採用した版だけを公開します。
+PUT前にattemptをD1へ登録し、未公開のまま期限切れになった版を定期回収します。
+manifestも書き込みごとのキーを使い、古い回収が新しい採用版を削除しないようにします。
+既存バケットの未登録オブジェクト照合、実R2障害試験、その他の業務操作・移行検証は未完了です。
+本番切替は引き続き未実施です。
+
+クラウドのアカウント削除は専用の軽量タスクを選び、PostgreSQLや動画処理モジュールを読み込まずに内部APIへ接続します。
+各段階の前にジョブのheartbeatを更新し、1配送で最大500段階を実行します。失敗・予算超過時は残りのDB行から再開します。
+動画はストレージ/Vectorize削除Outboxを同時に記録してから非表示にし、APIキー・LTI資格情報と所有データを処理した後でユーザー行を削除します。
+物理ファイル/ベクトルの回収はAPI側のメンテナンスが再試行するため、SQSジョブ完了時点で全オブジェクトの削除完了を意味しません。
+大量の関連行を含む外部キーCASCADEや、登録されていない古いR2/Vectorizeオブジェクトの照合は別途本番相当データで検証が必要です。
+
+オンプレミスは `DEPLOYMENT_EDITION=onprem`、`PERSISTENCE_BACKEND=postgres` を使用します。
+移行期間中のクラウドPostgreSQL継続は、さらに `MIGRATION_ALLOW_CLOUD_POSTGRES=true` が必要です。
+
+D1の全件再索引はSQS search queueを必要とし、`SQS_SEARCH_QUEUE_URL` または共通の
+`SQS_QUEUE_URL` を設定します。候補ページごとにAPIとWorkerのEmbedding設定・Vectorize次元を照合します。

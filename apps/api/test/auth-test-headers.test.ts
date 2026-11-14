@@ -8,10 +8,8 @@ const pool = vi.hoisted(() => ({
   withClient: vi.fn(),
 }));
 vi.mock("../src/db/pool", () => pool);
-vi.mock("../src/lib/auth", () => ({
+vi.mock("../src/persistence/postgres/auth", () => ({
   createAuth: vi.fn(),
-  authBaseURL: () => "http://localhost",
-  oauthResourceAudience: () => "http://localhost/api/mcp",
 }));
 
 import { Hono } from "hono";

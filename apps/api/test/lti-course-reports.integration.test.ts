@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { withDb } from '../src/db/pool';
 import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixture';
-import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import { resolvedLtiConfig } from '../src/features/lti/registrations';
 import { courseReport, type CourseReportScope } from '../src/features/lti/course-reports';
 import { mountLtiReports } from '../src/features/lti/report-routes';

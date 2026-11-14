@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T12:01:46.792955+00:00",
+  "scope": "Retained synthetic v2 verification target only; real-data v3 and production refused",
+  "database_id": "8e84cb18-4712-48cf-b528-e880188b045f",
+  "config": "wrangler.d1-staging.v2.jsonc",
+  "independent_strict_target_validator": true,
+  "real_v3_rejected": true,
+  "arbitrary_targets_rejected": true,
+  "imported_credential_login_and_ownership_tests_passed": 2,
+  "vector_smoke": {
+    "remote_synthetic_smoke_passed": true,
+    "dimensions": [
+      768,
+      1536
+    ],
+    "vectors_observed": 4,
+    "owned_queries_passed": 2,
+    "cross_owner_queries_denied": 2,
+    "production_modified": false
+  },
+  "synthetic_cleanup_verified": true,
+  "recovery_prepare_and_independent_verify_succeeded": true,
+  "new_time_travel_restore_performed": false,
+  "real_v3_modified": false,
+  "production_modified": false,
+  "execution_complete": false
+}

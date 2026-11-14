@@ -1,11 +1,8 @@
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  reserveStorageInTransaction,
-  releaseAiAnswerReservation,
-  reserveAiAnswerUsage,
-} from "../src/repositories/quota-repository";
+import {releaseAiAnswerReservation, reserveAiAnswerUsage} from "../src/repositories/quota-repository";
+import {reserveStorageInTransaction} from "../src/persistence/postgres/storage-quota";
 import { reserveAndCreatePendingVideo } from "../src/repositories/video-repository";
 import { withDb } from "../src/db/pool";
 

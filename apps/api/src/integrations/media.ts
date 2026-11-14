@@ -252,8 +252,8 @@ export async function completeR2MultipartUpload(
     await videoBucket(env).resumeMultipartUpload(r2ObjectKey(fileKey), uploadId).complete(parts);
     return;
   }
-  // ETags are validated as hexadecimal before reaching this integration.
-  const xml = `<CompleteMultipartUpload>${parts.map(part => `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>"${part.etag}"</ETag></Part>`).join("")}</CompleteMultipartUpload>`;
+  // Preserve opaque ETags and escape them when embedding in S3 XML.
+  const xml = `<CompleteMultipartUpload>${parts.map(part => `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>"${part.etag.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")}"</ETag></Part>`).join("")}</CompleteMultipartUpload>`;
   const response = await multipartS3Request(env, fileKey, { uploadId }, {
     method: "POST", headers: { "content-type": "application/xml" }, body: xml,
   });

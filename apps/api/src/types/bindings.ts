@@ -8,6 +8,7 @@ import type { RateLimitBackend } from "../lib/rate-limit";
 import type { LearningAuthorization } from "../features/lti/session-authorization";
 
 type SecretBindings = {
+  WORKER_INTERNAL_API_SECRET?: string;
   BETTER_AUTH_SECRET?: string;
   AUTH_JWT_SECRET?: string;
   USER_SECRET_ENCRYPTION_KEY: string;
@@ -45,6 +46,11 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     DEFAULT_MONTHLY_UPLOAD_LIMIT_GB?: string;
     DEPLOYMENT_EDITION?: "cloud" | "onprem";
     DATABASE_URL?: string;
+    DB?: D1Database;
+    SCENE_VECTORIZE_1536?: import("@cloudflare/workers-types").Vectorize;
+    SCENE_VECTORIZE_768?: import("@cloudflare/workers-types").Vectorize;
+    PERSISTENCE_BACKEND?: "d1" | "postgres";
+    MIGRATION_ALLOW_CLOUD_POSTGRES?: "true";
     /** Only the long-lived Node runtime supplies a shared pool. */
     DATABASE_POOL?: pg.Pool;
     RATE_LIMIT_BACKEND?: RateLimitBackend;

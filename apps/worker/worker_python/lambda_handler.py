@@ -17,12 +17,13 @@ import json
 import logging
 import os
 
-from worker_python.contracts import JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, validate_job_payload
+from worker_python.contracts import JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, JOB_DELETE_ACCOUNT_DATA, validate_job_payload
 from worker_python.job_execution import (
     claim_job_execution,
     complete_job_execution,
     fail_job_execution,
 )
+from worker_python.internal_api import uses_internal_persistence
 from worker_python.secrets_bootstrap import ensure_secrets_loaded
 from worker_python.tasks.registry import get_task
 from worker_python.job_routing import job_group
@@ -90,6 +91,8 @@ def _execute_task(raw_body: str) -> None:
         task_fn = get_task(job_type)
         if job_type in {JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS}:
             task_fn(**body, job_id=job_id)
+        elif job_type == JOB_DELETE_ACCOUNT_DATA and uses_internal_persistence():
+            task_fn(**body, job_id=job_id, lease_token=lease_token)
         else:
             task_fn(**body)
         complete_job_execution(job_id, lease_token)

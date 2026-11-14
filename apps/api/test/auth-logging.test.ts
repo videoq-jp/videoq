@@ -7,7 +7,7 @@ vi.mock("@better-auth/drizzle-adapter", async () => {
   return { drizzleAdapter: () => memoryAdapter(store.data) };
 });
 
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import type { Bindings } from "../src/types/bindings";
 import type { Db } from "../src/db/pool";
 

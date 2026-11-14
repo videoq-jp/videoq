@@ -19,6 +19,20 @@ export function backupArchiveContext(env = process.env) {
   return {runId: env.MAINTENANCE_RUN_ID, buildArn: env.CODEBUILD_BUILD_ARN, sourceVersion: env.CODEBUILD_SOURCE_VERSION};
 }
 
+export function backupD1ExportRequested(env=process.env) {
+  if(env.VIDEOQ_EXPORT_D1_FROM_BACKUP===undefined||env.VIDEOQ_EXPORT_D1_FROM_BACKUP==='false')return false;
+  if(env.VIDEOQ_EXPORT_D1_FROM_BACKUP!=='true'||!backupArchiveContext(env))throw new Error('INVALID_D1_BACKUP_EXPORT_CONTEXT');
+  return true;
+}
+
+function validD1Proof(proof) {
+  return proof?.version===3&&Number.isSafeInteger(proof.tables)&&proof.tables>0&&typeof proof.rows==='string'&&
+    /^(0|[1-9][0-9]*)$/.test(proof.rows)&&/^[0-9a-f]{64}$/.test(proof.archive_sha256)&&
+    Number.isSafeInteger(proof.file_bytes)&&proof.file_bytes>0&&/^[A-Za-z0-9+/]{43}=$/.test(proof.file_sha256_base64);
+}
+
+function sameFile(expected,actual) {return expected?.bytes===actual.bytes&&expected?.sha256_base64===actual.sha256_base64;}
+
 async function privateFile(file,maxBytes=5*1024**3,text=false) {
   let handle;
   try {
@@ -42,11 +56,18 @@ async function privateFile(file,maxBytes=5*1024**3,text=false) {
  * manifest is the commit marker; an orphan dump never implies a complete backup.
  * No credentials, records, counts or storage receipts are printed by this module.
  */
-export async function retainVerifiedBackup({directory, inventory, schemas, image, context, expectedDump}, run = execute) {
+export async function retainVerifiedBackup({directory, inventory, schemas, image, context, expectedDump,d1Export}, run = execute) {
   if (!context) return false;
   // Revalidate even for programmatic callers. No caller-selected bucket or key.
   backupArchiveContext({VIDEOQ_RETAIN_BACKUP: 'true', MAINTENANCE_STAGE: 'backup',
     MAINTENANCE_RUN_ID: context.runId, CODEBUILD_BUILD_ARN: context.buildArn, CODEBUILD_SOURCE_VERSION: context.sourceVersion});
+  // Check the complete artifact set before any upload, then recheck immediately
+  // before each PUT. Failed later uploads leave no completion manifest.
+  if(d1Export){
+    if(!validD1Proof(d1Export)||d1Export.file_bytes!==d1Export.bytes||d1Export.file_sha256_base64!==d1Export.sha256_base64||
+      !sameFile(d1Export,await privateFile(join(directory,'d1-source.videoq-export.ndjson'))))throw new Error('BACKUP_HANDOFF_INTEGRITY_FAILED');
+    if(expectedDump&&!sameFile(expectedDump,await privateFile(join(directory,'database.dump'))))throw new Error('BACKUP_HANDOFF_INTEGRITY_FAILED');
+  }
   const call = async args => {
     const {stdout} = await run('aws', ['s3api', ...args, '--region', region, '--expected-bucket-owner', '257240362763', '--output', 'json', '--no-cli-pager'],
       {timeout: 900000, maxBuffer: 1000000, env: {...process.env, AWS_PAGER: '', AWS_IGNORE_CONFIGURED_ENDPOINT_URLS: 'true'}});
@@ -66,11 +87,14 @@ export async function retainVerifiedBackup({directory, inventory, schemas, image
   };
   const prefix = 'verified/' + context.runId + '/';
   const dump = await upload(join(directory, 'database.dump'), prefix + 'database.dump',expectedDump);
-  const manifest = {version: 1, status: 'restored-and-retained', created_at: new Date().toISOString(),
+  const d1Archive=d1Export?await upload(join(directory,'d1-source.videoq-export.ndjson'),prefix+'d1-source.videoq-export.ndjson',d1Export):undefined;
+  const manifest = {version: d1Export?2:1, status: 'restored-and-retained', created_at: new Date().toISOString(),
     source: {build_arn: context.buildArn, operator_source_version: context.sourceVersion, snapshot: 'repeatable-read/read-only'},
     schemas, inventory, restore_image: image, dump,
+    ...(d1Export?{d1_export:{format_version:3,archive_sha256:d1Export.archive_sha256,tables:d1Export.tables,rows:d1Export.rows,
+      source:'isolated restored database from this dump',artifact:d1Archive},execution_complete:false}:{}),
     limitations: ['Logical database contents only; roles, ownership, grants, R2, Vectorize and Neon PITR are not included.',
-      'This preservation copy is not a D1 import archive or proof of a completed migration.']};
+      d1Export?'The dump is a PostgreSQL preservation copy; the separate D1 input still requires import and cutover validation.':'This preservation copy is not a D1 import archive or proof of a completed migration.']};
   const path = join(directory, 'verified-backup.json');
   await writeFile(path, JSON.stringify(manifest) + '\n', {mode: 0o600, flag: 'wx'});
   await upload(path, prefix + 'verified-backup.json');
@@ -87,22 +111,32 @@ async function privateHandoffDirectory(directory) {
 
 /** The DB child has NO AWS credentials. Publish a private completion marker only
  * after the exact isolated dump has passed restoration and inventory checks. */
-export async function stageVerifiedBackup({directory, destination, inventory, schemas, image, context}) {
+export async function stageVerifiedBackup({directory, destination, inventory, schemas, image, context,d1Export}) {
   if (!context) return false;
   backupArchiveContext({VIDEOQ_RETAIN_BACKUP:'true', MAINTENANCE_STAGE:'backup', MAINTENANCE_RUN_ID:context.runId,
     CODEBUILD_BUILD_ARN:context.buildArn, CODEBUILD_SOURCE_VERSION:context.sourceVersion});
   await privateHandoffDirectory(destination);
   const {readdir} = await import('node:fs/promises');
   if ((await readdir(destination)).length) throw new Error('BACKUP_HANDOFF_NOT_EMPTY');
+  if(d1Export&&!validD1Proof(d1Export))throw new Error('D1_BACKUP_EXPORT_NOT_VERIFIED');
+  const dump=await copyPrivateFile(join(directory,'database.dump'),join(destination,'database.dump'));
+  const d1=d1Export?{...d1Export,...await copyPrivateFile(join(directory,'d1-source.videoq-export.ndjson'),join(destination,'d1-source.videoq-export.ndjson'))}:undefined;
+  if(d1&&(d1.bytes!==d1.file_bytes||d1.sha256_base64!==d1.file_sha256_base64))throw new Error('D1_BACKUP_EXPORT_CHANGED');
+  const metadata = {version:d1Export?2:1,status:'restore-verified',context,inventory,schemas,image,dump,...(d1?{d1_export:d1}:{})};
+  await writeFile(join(destination,'verified-backup-input.json'),JSON.stringify(metadata)+'\n',{mode:0o600,flag:'wx'});
+  return true;
+}
+
+async function copyPrivateFile(from,to) {
   // Validate and read the same opened inode; do not lstat then copy by pathname.
   // O_NOFOLLOW also refuses a symlink swapped in before the open itself.
-  const source = await open(join(directory,'database.dump'),constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  const source = await open(from,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   let target,bytes=0;
   const hash=createHash('sha256');
   try {
     const info=await source.stat();
     if (!info.isFile() || (info.mode & 0o077) || info.uid!==process.getuid() || info.size<=0) throw new Error('INVALID_PRIVATE_BACKUP_FILE');
-    target=await open(join(destination,'database.dump'),constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|constants.O_NOFOLLOW,0o600);
+    target=await open(to,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|constants.O_NOFOLLOW,0o600);
     const buffer=Buffer.alloc(64*1024);
     for (;;) {
       const {bytesRead}=await source.read(buffer,0,buffer.length,null);
@@ -115,29 +149,27 @@ export async function stageVerifiedBackup({directory, destination, inventory, sc
   } finally {
     try {await target?.close();}finally{await source.close();}
   }
-  const metadata = {version:1,status:'restore-verified',context,inventory,schemas,image,
-    dump:{bytes,sha256_base64:hash.digest('base64')}};
-  await writeFile(join(destination,'verified-backup-input.json'),JSON.stringify(metadata)+'\n',{mode:0o600,flag:'wx'});
-  return true;
+  return {bytes,sha256_base64:hash.digest('base64')};
 }
 
 /** Only the AWS parent invokes this, after the DB child has exited successfully.
  * The fixed parent-owned directory and run-bound marker prevent caller-selected
  * output paths or a stale/partial child result from authorizing an upload. */
-export async function retainStagedBackup(directory,context,run = execute) {
+export async function retainStagedBackup(directory,context,run = execute,{requireD1Export=false}={}) {
   await privateHandoffDirectory(directory);
   const {readFile,readdir} = await import('node:fs/promises');
-  if (JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(['database.dump','verified-backup-input.json'])) throw new Error('INCOMPLETE_BACKUP_HANDOFF');
+  const expectedFiles=['database.dump','verified-backup-input.json',...(requireD1Export?['d1-source.videoq-export.ndjson']:[])].sort();
+  if (JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(expectedFiles)) throw new Error('INCOMPLETE_BACKUP_HANDOFF');
   let metadata;
   try{metadata=JSON.parse((await privateFile(join(directory,'verified-backup-input.json'),4*1024*1024,true)).text);}
   catch{throw new Error('INVALID_BACKUP_HANDOFF_MARKER');}
   const image = (await readFile(new URL('../operations-tools/Dockerfile',import.meta.url),'utf8')).trim().replace(/^FROM /,'');
-  if (metadata.version !== 1 || metadata.status !== 'restore-verified' || JSON.stringify(metadata.context) !== JSON.stringify(context) ||
+  if (metadata.version !== (requireD1Export?2:1) || Boolean(metadata.d1_export)!==requireD1Export || metadata.status !== 'restore-verified' || JSON.stringify(metadata.context) !== JSON.stringify(context) ||
       JSON.stringify(metadata.schemas) !== JSON.stringify(BACKUP_SCHEMAS) || metadata.image !== image ||
       !metadata.inventory || typeof metadata.inventory !== 'object' || Array.isArray(metadata.inventory) ||
       !Object.keys(metadata.inventory).length || Object.values(metadata.inventory).some(count=>typeof count !== 'string' || !/^(0|[1-9][0-9]*)$/.test(count))) throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
   if(!Number.isSafeInteger(metadata.dump?.bytes)||metadata.dump.bytes<=0||typeof metadata.dump?.sha256_base64!=='string')throw new Error('INVALID_BACKUP_HANDOFF_MARKER');
-  return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context,expectedDump:metadata.dump},run);
+  return retainVerifiedBackup({directory,inventory:metadata.inventory,schemas:metadata.schemas,image:metadata.image,context,expectedDump:metadata.dump,d1Export:metadata.d1_export},run);
 }
 
 // Shared descriptor-based inspection for the private, version-pinned downloader.

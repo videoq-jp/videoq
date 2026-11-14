@@ -1,0 +1,1 @@
+ALTER TABLE `video_visual_runs` ADD `publication_version` text;

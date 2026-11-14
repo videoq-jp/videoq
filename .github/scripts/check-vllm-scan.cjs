@@ -44,15 +44,16 @@ function inspectAudio(report, manifestBytes, receipt, reference, directory) {
   return {lockSha256: receipt.lockSha256, packages: expected, blocking};
 }
 if (require.main === module) {
-  const [raw, reference, output, audioRaw, lock, directory, nativeFile] = process.argv.slice(2);
-  assert.ok(raw && reference && output && audioRaw && lock && directory && nativeFile,
-    'Usage: check-vllm-scan.cjs IMAGE_REPORT IMAGE OUTPUT AUDIO_REPORT LOCK AUDIO_DIRECTORY NATIVE_INVENTORY');
+  const [raw, reference, output, audioRaw, lock, directory, nativeFile, runtimeFile] = process.argv.slice(2);
+  assert.ok(raw && reference && output && audioRaw && lock && directory && nativeFile && runtimeFile,
+    'Usage: check-vllm-scan.cjs IMAGE_REPORT IMAGE OUTPUT AUDIO_REPORT LOCK AUDIO_DIRECTORY NATIVE_INVENTORY RUNTIME_PROBE');
   const report = JSON.parse(readFileSync(raw, 'utf8'));
   const result = inspect(report, reference);
   const root = resolve(__dirname, '../..');
   const policy = JSON.parse(readFileSync(resolve(root, 'apps/inference/vllm/security/runtime-assessment.json'), 'utf8'));
   assert.equal(policy.image, reference);
   assert.equal(createHash('sha256').update(readFileSync(resolve(root, '.github/scripts/check-vllm-inventory.py'))).digest('hex'), policy.inventoryProbeSourceSha256);
+  assert.equal(createHash('sha256').update(readFileSync(resolve(root, '.github/scripts/check-vllm-runtime.py'))).digest('hex'), policy.runtimeProbeSourceSha256);
   const {execFileSync} = require('node:child_process');
   const {parseAllDocuments} = require('yaml');
   const profiles = ['gpt-oss-embeddinggemma', 'vllm-nvidia', 'whisper-nvidia', 'rtx4090', 'rtx4090-gpt-oss-embeddinggemma'].flatMap(profile =>
@@ -61,7 +62,7 @@ if (require.main === module) {
         '-f', `charts/videoq-inference/examples/${profile}.yaml`, ...extra], {cwd: root, encoding: 'utf8'}))
         .map(document => { assert.equal(document.errors.length, 0); return document.toJSON(); }).filter(Boolean)));
   Object.assign(result, require('./check-vllm-applicability.cjs').assess(report, policy,
-    JSON.parse(readFileSync(nativeFile, 'utf8')), profiles));
+    JSON.parse(readFileSync(nativeFile, 'utf8')), profiles, new Date(), JSON.parse(readFileSync(runtimeFile, 'utf8'))));
   result.audio = inspectAudio(JSON.parse(readFileSync(audioRaw, 'utf8')), readFileSync(lock),
     JSON.parse(readFileSync(resolve(directory, '.videoq-audio.json'), 'utf8')), reference, directory);
   writeFileSync(output, JSON.stringify(result, null, 2) + '\n');

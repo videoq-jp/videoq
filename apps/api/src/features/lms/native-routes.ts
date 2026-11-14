@@ -1,8 +1,7 @@
 import { classroomPlaybackVideo } from '../classroom/repository';
 import { resolveFileUrl } from '../../integrations/media';
 import { z } from 'zod';
-import { withDb } from '../../db/pool';
-import { ltiCredentials } from '../../db/schema';
+import {createTeachingRepository} from '../../persistence/factory';
 import { MaterialsClient } from './connector-client';
 import { issueTeachingTicket } from '../teaching/service';
 import { Hono, type Context, type MiddlewareHandler } from "hono";
@@ -49,9 +48,8 @@ nativeLearningRoutes.use("*", async (c: Context<AppEnv, string>, next) => {
       .access(claims.contextId, claims.resourceLinkId, claims.subject);
     if (!access.permissions?.manageContent) return refuse(c, 403);
     const nonce = await digest(JSON.stringify(['teaching-link', reg.id, claims.jti]));
-    const accepted = await withDb(c.env, db => db.insert(ltiCredentials).values({ id: nonce, kind: 'teaching-link-nonce',
-      payload: {}, expiresAt: new Date((claims.exp + 60) * 1000) }).onConflictDoNothing().returning({ id: ltiCredentials.id }));
-    if (!accepted.length) return refuse(c, 403);
+    const accepted=await (await createTeachingRepository(c.env)).consumeBootstrapNonce(nonce,new Date((claims.exp+60)*1000));
+    if(!accepted)return refuse(c,403);
     return c.json(await issueTeachingTicket(c.env, { provider: 'moodle', installationId: reg.id.slice(3),
       contextId: claims.contextId, teacherSubject: claims.subject, teacherName: claims.author?.name || 'Moodle user ' + claims.subject,
       title: input.data.title || 'Moodle ' + claims.contextId, resourceLinkId: claims.resourceLinkId,

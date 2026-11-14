@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T13:56:21.196653+00:00",
+  "scope": "On-prem CI zlib source download integrity and bounded retry; complete image rebuild remains a CI gate",
+  "failed_ci": "https://github.com/videoq-jp/videoq/actions/runs/43600462435",
+  "failed_step": "On-prem Validation / Lifecycle rehearsal: Validate the private Whisper API with locked dependencies",
+  "observed_failure": "pinned zlib source SHA-256 check failed before extraction",
+  "root_cause_of_bad_ci_bytes_established": false,
+  "failed_response_bytes_retained_by_ci": false,
+  "expected_sha256_unchanged": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+  "official_reference": "https://zlib.net/",
+  "independently_matching_sources": [
+    "https://zlib.net/zlib-1.4.tar.gz",
+    "https://zlib.net/fossils/zlib-1.4.tar.gz"
+  ],
+  "official_source_bytes_observed": 1507140,
+  "maximum_fetch_attempts": 3,
+  "checksum_verified_on_every_attempt": true,
+  "only_verified_bytes_published_for_extraction": true,
+  "persistent_mismatch_fails_closed": true,
+  "unit_tests_passed": 7,
+  "shell_syntax_checks_passed": true,
+  "real_official_download_through_new_helper_passed": true,
+  "temporary_download_files_remaining": 0,
+  "production_modified": false,
+  "complete_onprem_image_rebuild_verified": false,
+  "execution_complete": false
+}

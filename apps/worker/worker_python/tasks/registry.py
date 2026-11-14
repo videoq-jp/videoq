@@ -40,6 +40,11 @@ def get_task(name: str) -> TaskFn:
     except KeyError as exc:
         raise KeyError(f"Task not registered: {name}") from exc
 
+    if name == JOB_DELETE_ACCOUNT_DATA:
+        from worker_python.internal_api import uses_internal_persistence
+        if uses_internal_persistence():
+            return getattr(import_module("worker_python.tasks.cloud_account_deletion"), "delete_account_data")
+
     # Import only the selected task: media dependency failures must not prevent
     # account/search consumers from starting. The deployment image stays shared.
     return getattr(import_module(f"worker_python.tasks.{module}"), function)

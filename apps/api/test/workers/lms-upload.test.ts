@@ -9,7 +9,7 @@ const source = (bytes: number[]) => new ReadableStream<Uint8Array>({
 it("streams a bounded Moodle video into real R2 without buffering or losing its known length", async () => {
   const key = "lms-sync/" + crypto.randomUUID();
   try {
-    await env.VIDEO_BUCKET.put(key, lmsUploadStream(source([1, 2, 3]), 3));
+    await env.VIDEO_BUCKET.put(key, lmsUploadStream(source([1, 2, 3]), 3, new AbortController().signal));
     const stored = await env.VIDEO_BUCKET.get(key);
     expect(Array.from(new Uint8Array(await stored!.arrayBuffer()))).toEqual([1, 2, 3]);
   } finally { await env.VIDEO_BUCKET.delete(key); }
@@ -17,4 +17,12 @@ it("streams a bounded Moodle video into real R2 without buffering or losing its 
 
 it.each([{ bytes: [1, 2] }, { bytes: [1, 2, 3, 4] }])("rejects a Moodle stream whose length differs from its reservation ($bytes)", async ({ bytes }) => {
   await expect(new Response(lmsUploadStream(source(bytes), 3)).arrayBuffer()).rejects.toThrow();
+});
+
+it("cancels an interrupted Moodle stream before it can be adopted", async () => {
+  const controller = new AbortController();
+  const body = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array([1])); } });
+  const result = new Response(lmsUploadStream(body, 3, controller.signal)).arrayBuffer();
+  controller.abort();
+  await expect(result).rejects.toThrow();
 });

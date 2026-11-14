@@ -2,7 +2,7 @@
 const {execFileSync} = require('node:child_process');
 function relevant(path) {
   if (path.startsWith('infra/db-maintenance/runtime/')) return !path.endsWith('.md');
-  if (['build_bundle.py','deploy.py','fetch_migration.py','state-machine.cjs']
+  if (['build_bundle.py','deploy.py','fetch_migration.py','state-machine.cjs','operator-package.json']
     .some(name => path === 'infra/db-maintenance/' + name)) return true;
   // Infrastructure plans/tests do not change the versioned operator bundle.
   // Keep artifact inputs explicit, matching build_bundle.py's public allowlist.
@@ -11,6 +11,12 @@ function relevant(path) {
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
   if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
+  if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
+  if (['scripts/d1-migration-manifest.ts','scripts/d1-export.ts','scripts/d1-preserve-legacy.ts',
+    'scripts/migrations/d1/preserved-tables.ts','scripts/migrations/d1/verified-postgres-source.ts','scripts/migrations/d1/private-input.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
+    'scripts/migrations/d1/archive-format.ts','scripts/migrations/d1/sequence-format.ts','scripts/migrations/d1/verify-archive.ts',
+    'src/persistence/postgres/read-snapshot.ts'].some(name=>path==='apps/api/'+name)) return true;
+  if (/^apps\/api\/drizzle(?:-d1)?\/meta\/(?:_journal|\d{4}_snapshot)\.json$/.test(path)) return true;
   if (['.github/workflows/db-maintenance-cd.yml', '.github/actions/aws-db-invocation/action.yml',
     '.github/scripts/run-aws-db.py', '.github/scripts/db-maintenance-cd.cjs'].includes(path)) return true;
   return /^\.github\/scripts\/(neon-(admin|policy)\.cjs|neon-profiles\.json|with-neon-credentials\.py|production-(smoke\.mjs|smoke-policy\.cjs|stream-proof\.cjs)|backup-restore\.mjs|provision-public-demo\.mjs|public-demo-policy\.cjs)$/.test(path);

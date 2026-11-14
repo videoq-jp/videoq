@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T14:08:12.859442+00:00",
+  "scope": "Private version-pinned Lambda client, local synthetic transport only",
+  "module": "apps/worker/worker_python/remote_search_evaluation.py",
+  "related_test_files_passed": 5,
+  "related_tests_passed": 128,
+  "remote_client_tests_passed": 29,
+  "checks": {
+    "preflight_makes_no_aws_calls_or_sdk_import": true,
+    "published_numeric_version_and_exact_immutable_image_required": true,
+    "normal_worker_function_and_aliases_refused": true,
+    "dedicated_runtime_configuration_model_and_role_verified_before_invoke": true,
+    "db_or_secret_environment_rejected": true,
+    "global_question_deduplication_and_16_question_chunking": true,
+    "executed_version_request_hash_case_order_scope_and_vectors_verified": true,
+    "original_case_order_scopes_and_samples_preserved": true,
+    "partial_failures_not_published_or_automatically_retried": true,
+    "response_streams_closed": true,
+    "private_output_permissions_and_no_overwrite": true,
+    "sdk_fixed_endpoint_and_single_attempt": true,
+    "implicit_role_web_identity_and_credential_process_providers_removed": true
+  },
+  "lambda_transport_mocked": true,
+  "real_aws_calls_made": false,
+  "real_model_invoked": false,
+  "new_resources_created": false,
+  "bridge_pr_1444_modified_or_merged": false,
+  "production_modified": false,
+  "execution_complete": false
+}

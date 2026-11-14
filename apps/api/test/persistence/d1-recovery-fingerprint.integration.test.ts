@@ -1,0 +1,15 @@
+import {beforeEach,afterEach,describe,it,expect} from 'vitest';
+import {createD1Fixture} from './d1-fixture';
+import {fingerprintRecoveryStaging} from '../../scripts/migrations/d1/recovery-fingerprint';
+describe('synthetic recovery fingerprint gate',()=>{
+ let fixture:Awaited<ReturnType<typeof createD1Fixture>>;
+ beforeEach(async()=>{fixture=await createD1Fixture();for(const user of ['learner','owner'])await fixture.database.prepare("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES(?,?,?,0,0,0,0)").bind('migration-rehearsal-'+user,user,user+'@example.invalid').run();await fixture.database.prepare("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(1,'migration-rehearsal-owner','Original','synthetic.mp4','completed','','','2026-01-01','','uploaded','','')").run();});
+ afterEach(async()=>{await fixture?.dispose();});
+ const snapshot=()=>fingerprintRecoveryStaging(fixture.database);
+ it('is deterministic and never includes source values',async()=>{await fixture.database.prepare("UPDATE videos SET description='private-recovery-canary'").run();const first=await snapshot();expect(await snapshot()).toEqual(first);expect(first.tables.length).toBeGreaterThan(60);expect(JSON.stringify(first)).not.toContain('private-recovery-canary');expect(first.tables.find(table=>table.name==='users')?.rows).toBe(2);});
+ it('detects a row change and recognizes exact data restoration',async()=>{const first=await snapshot();await fixture.database.prepare("UPDATE videos SET title='Changed'").run();expect((await snapshot()).sha256).not.toBe(first.sha256);await fixture.database.prepare("UPDATE videos SET title='Original'").run();expect((await snapshot()).sha256).toBe(first.sha256);});
+ it('detects schema changes even on empty tables',async()=>{const first=await snapshot();await fixture.database.prepare('ALTER TABLE mutation_receipts ADD COLUMN recovery_probe TEXT').run();const changed=await snapshot();expect(changed.sha256).not.toBe(first.sha256);expect(changed.tables.find(table=>table.name==='mutation_receipts')?.rows).toBe(0);});
+ it('includes SQLite high-water marks',async()=>{const first=await snapshot();await fixture.database.prepare("UPDATE sqlite_sequence SET seq=100 WHERE name='videos'").run();expect((await snapshot()).sha256).not.toBe(first.sha256);});
+ it('rejects other users rather than operating on a general database',async()=>{await fixture.database.prepare("UPDATE users SET id='other-user' WHERE id='migration-rehearsal-learner'").run();await expect(snapshot()).rejects.toThrow('isolated synthetic');});
+ it('refuses a larger dataset instead of producing a truncated successful fingerprint',async()=>{await fixture.database.prepare("INSERT INTO mutation_receipts(token,kind,resource_id) SELECT 'recovery-'||value,'recovery',0 FROM json_each(?)").bind(JSON.stringify(Array.from({length:1001},(_,index)=>index))).run();await expect(snapshot()).rejects.toThrow('budget');});
+});
