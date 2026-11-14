@@ -16,6 +16,8 @@
 
 ### 計画書の本番切替受入条件との対応
 
+追記：head `31b66b3c`の[全CI](https://github.com/videoq-jp/videoq/actions/runs/43625437992)と[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43625437968)は成功した。上記の先行CIとは別に、切替設定guardと実DB OAuth契約の追加を含めて確認済みである。さらに[配備OAuth試験](evidence/d1-oauth-cloud-provider-2026-11-15.json)では、私有Hono/Better Auth・合成v2の実D1・実RateLimiter DOで共通契約5件が成功し、一時データと所有namespaceの削除も確認した。これは外部Google認証、本番cookie継承、公開API全middlewareの完了を意味しない。後続head `45837a5a`のCIは別途確認する。
+
 | 条件 | 現時点の判定 | 残る検証 |
 |---|---|---|
 | 1. 両環境の重要E2E | 一部実証 | 最新CI完了、配備済みcloud動画処理から回答までの一連の動作、対象profileの現行GPU証跡 |

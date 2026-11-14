@@ -99,6 +99,14 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 
 ## OAuth永続化と最新オンプレCIの補完
 
+### Vectorizeの非同期反映と認可の区別
+
+[公式API仕様](https://developers.cloudflare.com/vectorize/reference/client-api/)では、V2のupsert/削除は非同期のmutation受付である。現在の同期処理の`completed`はprovider受付後のタスク完了を表し、ANN検索反映の完了を表さない。既存の実サービス試験も、候補の検索反映を待ってから認可を判定している。動画完了直後の検索readinessや反映遅延のSLOは、別の受入条件として検証が必要である。
+
+受付後・検索反映前に所有者が無効化されるケースを追加した。合成providerで受付と可視化を分離し、受付後は空結果、無効化後に候補が可視化されても空結果となることを検証する。候補の実在を確認し、同じ候補が再有効化後にはD1本文を返すことも対照とする。この試験はD1による最終認可の検証であり、実Vectorizeの反映時間の計測ではない。
+
+追加後の`scene-index-sync.d1.integration.test.ts`は14件成功、API/移行ツールの型検査と変更TSのLintも成功した。アプリ実装と本番設定は変更していない。
+
 追加で、配備済み私有Hono/Better Auth、合成v2の実D1、実RateLimiter Durable Objectを使った共通OAuth契約5件がすべて成功した。memory認証・rate-limit adapterは使用していない。[配備OAuth証跡](evidence/d1-oauth-cloud-provider-2026-11-15.json)。PKCE交換、refresh rotation/reuse、コード再使用、同時refresh、ban後の拒否を含む。
 
 開発用接続によるOrigin/fetch metadataの変更を避け、私有RPCで元の要求をWorker内に再構成し、実際のアプリ応答status・headers・cookie・bodyを測定した。共通契約のauthorize要求にはnavigationを明示した。JSON redirectを302と推定した試験ではない。41応答すべてがWorker内の処理結果であり、cookie付き不正Originは403、ブラウザ単純formは415だった。cookieなしの正規JSONログインが200となる仕様も別途確認し、拒否成功には数えていない。

@@ -51,6 +51,26 @@ afterEach(async () => { await fixture?.dispose(); });
 const search = () => createD1SceneSearchRepository(fixture.database, index, 1536).search({ queryEmbedding: embedding, userId: "owner", videoIds: [1], limit: 20 });
 
 describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
+  it("rechecks D1 authorization when an accepted mutation becomes queryable after account deactivation", async () => {
+    await publish("delayed-visibility");
+    const accepted: Vector[] = [];
+    upsert.mockImplementationOnce(async values => {
+      accepted.push(...values);
+      return { mutationId: "accepted-not-queryable" };
+    });
+    expect(await sync()).toMatchObject({ completed: 1, failed: 0 });
+    expect(accepted).toHaveLength(1);
+    expect(vectors.size).toBe(0);
+    // A successful V2 mutation receipt does not imply ANN visibility.
+    expect(await search()).toEqual([]);
+    await fixture.database.prepare("UPDATE users SET deactivated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='owner'").run();
+    accepted.forEach(value => vectors.set(value.id, value));
+    expect(await index.getByIds(accepted.map(value => value.id))).toHaveLength(1);
+    expect(await search()).toEqual([]);
+    // Prove the empty result came from the D1 gate, rather than a missing candidate.
+    await fixture.database.prepare("UPDATE users SET deactivated_at=NULL WHERE id='owner'").run();
+    expect(await search()).toMatchObject([{ content: "Authoritative D1 content" }]);
+  });
   it("writes supplied embeddings and minimal metadata, then hydrates text from D1", async () => {
     await publish("run");
     expect(await sync()).toMatchObject({ claimed: 1, completed: 1, failed: 0 });
