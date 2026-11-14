@@ -15,6 +15,7 @@ import { MCP_OAUTH_SCOPES } from "./mcp-auth";
 import { resolveSignupQuotaDefaults } from "../shared/signup-quota";
 import { videoqAuthSecurity, videoqOAuthAccountPolicy } from "./auth-security";
 import { videoqResourceAccess } from "./auth-access";
+import type { OAuthGrantRepository } from "../persistence/contracts/oauth-grant-repository";
 
 function trustedOrigins(env: Bindings): string[] {
   return (env.CORS_ALLOW_ORIGIN ?? "")
@@ -169,6 +170,8 @@ export function durableRateLimitStorage(env: Bindings): AuthRateLimitStorage {
 export type AuthPersistence = {
   adapter: DBAdapterInstance;
   usernameExists: (candidate: string) => Promise<boolean>;
+  /** Atomic override for adapters without interactive transactions. */
+  oauthGrants?: OAuthGrantRepository;
 };
 
 export function createAuthWithPersistence(env: Bindings, persistence: AuthPersistence, profile: "full" | "browser" = "full", delivery?: { passwordReset: (link: { url: string; token: string }) => Promise<void> }) {
@@ -178,7 +181,7 @@ export function createAuthWithPersistence(env: Bindings, persistence: AuthPersis
   const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
   const googleEnabled = features(env).googleLogin && Boolean(googleClientId && googleClientSecret);
   const oauthConfig = oauthProviderConfig(env);
-  const security = videoqAuthSecurity(oauthConfig);
+  const security = videoqAuthSecurity(oauthConfig, persistence.oauthGrants);
 
   return betterAuth({
     database: persistence.adapter,

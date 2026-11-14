@@ -1,6 +1,7 @@
 import type { AuthContext, BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import {
   APIError,
+  isAPIError,
   createAuthMiddleware,
   getSessionFromCtx,
   sensitiveSessionMiddleware,
@@ -12,6 +13,7 @@ import {
   type OAuthRefreshToken,
 } from "@better-auth/oauth-provider";
 import { z } from "zod";
+import type { OAuthGrantRepository } from "../persistence/contracts/oauth-grant-repository";
 
 type OAuthConsentGrant = {
   id: string;
@@ -108,7 +110,7 @@ export const videoqOAuthAccountPolicy: OAuthProviderExtension = {
 type TokenResponseFields = NonNullable<OAuthOptions<string[]>["customTokenResponseFields"]>;
 
 /** Application policy only; the provider owns code storage, PKCE and rotation. */
-export function videoqAuthSecurity(options: OAuthOptions<string[]>): BetterAuthPlugin & {
+export function videoqAuthSecurity(options: OAuthOptions<string[]>, grants?: OAuthGrantRepository): BetterAuthPlugin & {
   tokenResponseFields: TokenResponseFields;
 } {
   // Per-auth-instance state: createAuth is request-scoped, never a module singleton.
@@ -189,7 +191,22 @@ export function videoqAuthSecurity(options: OAuthOptions<string[]>): BetterAuthP
         handler: createAuthMiddleware({ use: [sensitiveSessionMiddleware] }, async (ctx) => {
           const body = z.object({ id: z.string().min(1) }).safeParse(ctx.body);
           if (!body.success) throw new APIError("BAD_REQUEST", { message: "Invalid consent id" });
-          await deleteOAuthGrant(ctx.context.adapter, ctx.context.session.user.id, body.data.id);
+          try {
+            if (grants) {
+              if (!await grants.revoke(ctx.context.session.user.id, body.data.id)) {
+                throw new APIError("NOT_FOUND", { message: "Authorization not found" });
+              }
+            } else {
+              // PostgreSQL's adapter transaction remains the native mechanism.
+              await deleteOAuthGrant(ctx.context.adapter, ctx.context.session.user.id, body.data.id);
+            }
+          } catch (error) {
+            if (isAPIError(error)) throw error;
+            // Better Auth also logs uncaught server errors outside our logger.
+            // Drop SQL parameters/causes before crossing that boundary.
+            // eslint-disable-next-line preserve-caught-error -- A driver cause can expose credential-bearing SQL in Better Auth's server logger.
+            throw new Error("OAuth grant revocation failed.");
+          }
           return ctx.json({ success: true });
         }),
       }],

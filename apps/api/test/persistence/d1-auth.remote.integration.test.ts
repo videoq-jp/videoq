@@ -6,6 +6,7 @@ import {afterAll,beforeAll,describe,it,expect} from 'vitest';
 import {validateSyntheticStagingTarget} from '../../scripts/migrations/d1/synthetic-staging-target';
 import type {StagingBindings} from '../../scripts/migrations/d1/staging-migration';
 import {createD1Auth} from '../../src/persistence/d1/auth';
+import {createD1OAuthGrantRepository} from '../../src/persistence/d1/oauth-grant-repository';
 import type {Bindings} from '../../src/types/bindings';
 /** Opt-in only, after the synthetic PostgreSQL rehearsal archive was imported. */
 describe.skipIf(process.env.PERSISTENCE_REMOTE_REHEARSAL_TEST!=='1')('synthetic PostgreSQL credentials on remote D1',()=>{
@@ -34,4 +35,45 @@ describe.skipIf(process.env.PERSISTENCE_REMOTE_REHEARSAL_TEST!=='1')('synthetic 
   expect(await media.playback('migration-rehearsal-learner',1)).toBeNull();
  },60000);
 
+ it('atomically revokes synthetic OAuth grants on remote D1 and rolls back a late failure',async()=>{
+  const db=proxy.env.DB,prefix='grant-'+crypto.randomUUID(),owner=prefix+'-owner',peer=prefix+'-peer',client=prefix+'-client',other=prefix+'-other';
+  const trigger='grant_failure_'+crypto.randomUUID().replaceAll('-','');
+  const grants=[[prefix,owner,client],[prefix+'-resource',owner,client],[prefix+'-other',owner,other],[prefix+'-peer',peer,client]];
+  const snapshot=async()=>{
+   const tables=['oauth_consent','oauth_refresh_token','oauth_access_token'];
+   return Promise.all(tables.map(async table=>(await db.prepare(`SELECT id FROM ${table} WHERE user_id IN (?,?) ORDER BY id`).bind(owner,peer).all<{id:string}>()).results.map(row=>row.id)));
+  };
+  try{
+   await db.batch([
+    ...[owner,peer].map(id=>db.prepare('INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES(?,?,?,0,0,0,0)').bind(id,id,id+'@example.invalid')),
+    ...[client,other].map(id=>db.prepare("INSERT INTO oauth_client(id,client_id,redirect_uris) VALUES(?,?,'[]')").bind(id,id)),
+    ...grants.flatMap(([id,user,app])=>[
+     db.prepare("INSERT INTO oauth_consent(id,user_id,client_id,scopes) VALUES(?,?,?,'[]')").bind(id,user,app),
+     db.prepare("INSERT INTO oauth_refresh_token(id,user_id,client_id,token,scopes,rotation_replay_response) VALUES(?,?,?,?,'[]','synthetic rotation replay')").bind('refresh-'+id,user,app,'synthetic-refresh-'+id),
+     db.prepare("INSERT INTO oauth_access_token(id,user_id,client_id,token,refresh_id,scopes) VALUES(?,?,?,?,?,'[]')").bind('access-'+id,user,app,'synthetic-access-'+id,'refresh-'+id),
+    ]),
+   ]);
+   const before=await snapshot(),repository=createD1OAuthGrantRepository(db);
+   // UUID-derived identifiers only; this fault trigger cannot affect other users.
+   await db.prepare(`CREATE TRIGGER ${trigger} BEFORE DELETE ON oauth_consent WHEN OLD.user_id='${owner}' AND OLD.client_id='${client}' BEGIN SELECT RAISE(ABORT,'synthetic revocation failure'); END`).run();
+   await expect(repository.revoke(owner,prefix)).rejects.toThrow('OAuth grant revocation persistence failed.');
+   expect(await snapshot()).toEqual(before);
+   await db.prepare(`DROP TRIGGER ${trigger}`).run();
+   expect(await repository.revoke(peer,prefix)).toBe(false);expect(await snapshot()).toEqual(before);
+   expect(await repository.revoke(owner,prefix)).toBe(true);
+   expect(await snapshot()).toEqual(['','refresh-','access-'].map(kind=>[kind+prefix+'-other',kind+prefix+'-peer'].sort()));
+   expect(await repository.revoke(owner,prefix)).toBe(false);
+  }finally{
+   await db.prepare(`DROP TRIGGER IF EXISTS ${trigger}`).run();
+   await db.batch([
+    ...['oauth_access_token','oauth_refresh_token','oauth_consent'].map(table=>db.prepare(`DELETE FROM ${table} WHERE user_id IN (?,?)`).bind(owner,peer)),
+    db.prepare('DELETE FROM oauth_client WHERE client_id IN (?,?)').bind(client,other),
+    db.prepare('DELETE FROM users WHERE id IN (?,?)').bind(owner,peer),
+   ]);
+  }
+  expect(await snapshot()).toEqual([[],[],[]]);
+  expect(await db.prepare('SELECT count(*) AS n FROM users WHERE id IN (?,?)').bind(owner,peer).first('n')).toBe(0);
+  expect(await db.prepare('SELECT count(*) AS n FROM oauth_client WHERE client_id IN (?,?)').bind(client,other).first('n')).toBe(0);
+  expect(await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='trigger' AND name=?").bind(trigger).first('n')).toBe(0);
+ },180000);
 });

@@ -4,10 +4,12 @@ import { createD1Connection } from "../../db/d1/connection";
 import * as schema from "../../db/schema/sqlite";
 import { createAuthWithPersistence } from "../../lib/auth";
 import type { Bindings } from "../../types/bindings";
+import { createD1OAuthGrantRepository } from "./oauth-grant-repository";
 
 export function createD1Auth(env: Bindings, database: D1Database, profile: "full" | "browser" = "full") {
   const db = createD1Connection(database);
   return createAuthWithPersistence(env, {
+    oauthGrants: createD1OAuthGrantRepository(database),
     // D1 does not support interactive SQL transactions. Its batch mechanism is
     // used by business repositories; Better Auth must not issue BEGIN here.
     adapter: drizzleAdapter(db, {

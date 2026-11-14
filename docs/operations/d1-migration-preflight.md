@@ -522,3 +522,13 @@ DB SDK・スキーマ・具体アダプターの直接参照を禁止する既�
 2026-11-14、共有`lib/auth.ts`にあったPostgreSQLのDrizzle接続型・schema・username検索・アダプター生成を`persistence/postgres/auth.ts`へ移した。共有の認証設定はBetter Authの汎用`DBAdapterInstance`とusername存在確認操作を受け取り、具体的なSQL方言・Drizzle型を参照しない。`withAuth`は選択したバックエンドのモジュールを必要な場合だけ読み込む。PostgreSQL側の呼び出し元と既存試験を新しいアダプターのパスへ更新し、接続・transactionの寿命は維持した。
 
 共有認証ファイルのLint例外を撤去し、静的・動的なDB/schema/Drizzleアダプター参照が拒否されることを確認した。オンプレ専用ユーザー管理の例外は継続する。D1の実ログイン・セッション取得・ログアウト試験は、PostgreSQL接続モジュールを読み込むと必ず失敗する条件で実行し、成功した。関連単体・D1試験14ファイル225件と、隔離PostgreSQLを含む移行・復旧・OAuth・管理者操作・QA等8ファイル132件が成功した。[集約証跡](evidence/d1-auth-core-isolation-2026-11-14.json)を参照する。本番認証や外部OAuthの実ログイン、D1切り替えの受け入れを示すものではない。
+
+### OAuth連携解除の原子性
+
+2026-11-14、D1の`transaction: false`設定下で既存のOAuth連携解除が複数の独立DELETEになっていることを障害注入で再現した。リフレッシュトークン削除で失敗するとアクセストークンだけが削除され、同意情報削除で失敗すると両トークンだけが削除された。ローカルworkerdの2障害試験が修正前に失敗し、不整合を検出した。
+
+D1アダプターへ`OAuthGrantRepository`を追加し、対象の所有者・clientをバッチ内で解決した上で、アクセストークン、回転再送記録を含むリフレッシュトークン、同一アプリへの全resource同意情報を一つのprepared-statement batchで削除する。最後の同意削除はtargetをmaterializeし、選択した行の削除によって同じアプリの別同意を見落とさない。[D1の公式仕様](https://developers.cloudflare.com/d1/worker-api/d1-database/)ではbatchの途中失敗は全体のロールバックとなる。PostgreSQLは既存のnative adapter transactionを維持する。署名・セッション・CSRFの判定は従来の共通Better Auth middlewareが担当する。
+
+両DBで同じHTTP契約を実行し、他アプリ・他人の保護、セッション・origin必須、2段階の部分失敗、再試行、同時解除を確認した。関連5ファイル97試験と、ログ・Python native HTTPSの2ファイル6試験が成功した。SQL例外は共通hookを出る前に原因情報を落とし、Better Auth側の追加server loggerにもSQLや秘密値を渡さない。障害メッセージに含めた合成canaryがHTTP応答とログへ出ないことも確認した。
+
+固定の合成検証用v2 D1では既存認証試験を含む3試験が成功した。新しい原子性試験はlate failureで全件不変、他人による解除の拒否、成功後の同一アプリ全削除と再実行を確認した。テスト用のUUID名前空間だけを操作し、最後にユーザー・client・トークン・同意・障害トリガーの残数0を再照合した。v3の実データや本番には変更していない。[集約証跡](evidence/d1-oauth-grant-atomicity-2026-11-14.json)を参照する。既発行JWTの有効期間や、代表質問による品質評価、本番切り替えの条件は変更しない。
