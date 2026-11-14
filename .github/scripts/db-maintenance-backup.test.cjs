@@ -77,3 +77,12 @@ test('propagates an allowlisted restore category without its original stderr',as
  await fixture(t);
  await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details:['- 失敗した段階: `restore-archive-apply-missing-role`。DB接続情報・レコード・バックアップは出力していません。']}))}),/BACKUP_VERIFICATION_FAILED_RESTORE_ARCHIVE_APPLY_MISSING_ROLE/);
 });
+
+test('failure metadata contains only approved SQLSTATE and operation codes',async t=>{
+ await fixture(t);
+ const details=['- 失敗した段階: `restore-archive-apply-invalid-value`。DB接続情報・レコード・バックアップは出力していません。'];
+ for(const [failure_sqlstate,failure_operation,suffix] of [['22023','COPY','_SQLSTATE_22023_OPERATION_COPY'],['synthetic-secret','synthetic-secret','']]) {
+  await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify({status:'error',details,failure_sqlstate,failure_operation}))}),error=>{assert.equal(error.message,'BACKUP_VERIFICATION_FAILED_RESTORE_ARCHIVE_APPLY_INVALID_VALUE'+suffix);return true;});
+  assert.ok(!(await fs.readFile('operations-report.json','utf8')).includes('synthetic-secret'));
+ }
+});

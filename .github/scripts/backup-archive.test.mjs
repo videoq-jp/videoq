@@ -223,3 +223,15 @@ test('SQLSTATE and client failure diagnostics never expose database log contents
  }
  assert.equal(restoreArchiveFailureStage({},'ERROR:  ZZZZZ: synthetic-secret'),'restore-archive-apply');
 });
+
+test('restore details expose only known SQLSTATE and statement kinds',async()=>{
+ const {restoreArchiveFailureDetails}=await import('./backup-archive.mjs');
+ assert.deepEqual(restoreArchiveFailureDetails({},'ERROR:  22023: synthetic-secret\nSTATEMENT:  SET synthetic_secret = synthetic_secret;'),{stage:'restore-archive-apply-invalid-value',sqlstate:'22023',operation:'SET'});
+ for(const [sql,operation] of [['COPY secret FROM stdin','COPY'],['SELECT pg_catalog.setval(\'secret\', 3)','SEQUENCE_SETVAL'],['CREATE UNIQUE INDEX secret ON secret(secret)','CREATE_INDEX'],['ALTER TABLE secret ADD secret','ALTER_TABLE']]) assert.equal(restoreArchiveFailureDetails({},'ERROR:  22023: secret\nSTATEMENT: '+sql).operation,operation);
+ assert.deepEqual(restoreArchiveFailureDetails({},'ERROR:  ZZZZZ: secret\nSTATEMENT: secret'),{stage:'restore-archive-apply',operation:'OTHER'});
+});
+
+test('latest restore error supersedes normal startup errors and recognizes fixed settings',async()=>{
+ const {restoreArchiveFailureDetails}=await import('./backup-archive.mjs');
+ assert.deepEqual(restoreArchiveFailureDetails({},'FATAL:  57P03: startup\nERROR:  22023: synthetic-secret\nSTATEMENT: SET transaction_timeout = synthetic_secret;'),{stage:'restore-archive-apply-invalid-value',sqlstate:'22023',operation:'SET_TRANSACTION_TIMEOUT'});
+});
