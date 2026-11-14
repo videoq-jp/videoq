@@ -434,3 +434,7 @@ Vectorize配信を含むすべてのimporter・writerの終了を確認してか
 `mutate`は顧客データを変更せず、`mutation_receipts`に専用nonceを持つ1レコードだけを作る。`restore`は、それ以外の全データ・スキーマ・採番がbaselineと一致し、検証レコードがこのstateに属することを確かめてから、固定DBを保存bookmarkへTime Travelで戻す。戻した後も全ハッシュと検証レコード消失を確認する。`verify`で独立に再照合できる。応答喪失後にすでにbaselineへ戻っている場合は、破壊的なrestoreを再発行せず、API応答確認の有無を区別して返す。
 
 SQL exportは認証情報を含むため私有のまま扱い、内容や署名付きdownload URLをログへ出さない。元のNeon・R2や本番D1への操作は行わない。演習失敗時もtargetを公開せず、私有stateと作業ファイルを保って原因を調べる。Time TravelはDBをその場で上書きするため、Vectorize・R2への処理を同時に動かさない。仕様は[Cloudflare公式Time Travelドキュメント](https://developers.cloudflare.com/d1/reference/time-travel/)を参照する。
+
+2026-11-14、v3のVectorizeで2,190件すべての書き込み受付とD1 outbox確定が成功した。続けて全件を取得し、元のfloat32ベクトル値、所有者・動画・シーン・revision・vector ID、および対応するD1本文・所有関係を照合した。欠損・不一致・未完了タスクは0件だった。これは格納値の一致であり、ANN検索の可視化や代表質問での検索品質は別途確認する。
+
+同じ実データのD1でも、68テーブルの復旧演習が成功した。元データのSQL export（180,665,549 bytes）のハッシュを2回照合した後、専用metadataレコードだけを作成し、保存bookmarkへのTime Travelが成功した。復旧後のSQL export・スキーマ・採番の一致とmarker消失を確認し、独立したverifyでも再確認した。顧客レコード、元のNeonとR2は変更していない。[v3実データ証跡](evidence/d1-v3-preserved-data-rehearsal-2026-11-14.json)を参照する。本番アプリの切り替え、実認証/E2E、代表検索品質、性能・費用の受け入れは未完了である。

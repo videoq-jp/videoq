@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "observed_at": "2026-11-14T10:39:08.793699+00:00",
+  "observed_at": "2026-11-14T11:07:40.493410+00:00",
   "scope": "Preserved production-data rehearsal in nonpublic Cloudflare v3 resources; no production application cutover",
   "source_evidence": "d1-preserved-production-data-local-rehearsal-2026-11-14.json",
   "source_backup_maintenance_run_id": "fa64f739e2ac5538f889e9e06e584c69",
@@ -62,15 +62,18 @@
     "real_corpus_dimensions": 1536,
     "real_768_vectors": 0,
     "embedding_model_changed": false,
-    "delivery_in_progress": true,
+    "delivery_in_progress": false,
     "outbox_progress_at_observation": {
       "total": 2190,
-      "completed": 571,
-      "leased": 4,
+      "completed": 2190,
+      "leased": 0,
       "errors": 0
     },
-    "stored_values_and_ownership_verified": false,
-    "query_visibility_verified": false
+    "stored_values_and_ownership_verified": true,
+    "query_visibility_verified": false,
+    "missing_vectors": 0,
+    "mismatched_vectors": 0,
+    "pending_tasks": 0
   },
   "focused_validation": {
     "parallel_sync_and_target_tests_passed": 42,
@@ -78,15 +81,33 @@
     "existing_full_import_tests_passed": 43,
     "scene_resume_and_target_tests_passed": 33,
     "visual_target_tests_passed": 9,
-    "typescript_and_eslint_passed": true
+    "typescript_and_eslint_passed": true,
+    "full_vector_audit_tests_passed": 21,
+    "real_recovery_tests_passed": 10,
+    "maintenance_deployment_and_ci_input_guard_tests_passed": 57
   },
   "remaining": {
-    "complete_vectorize_delivery_and_value_audit": true,
-    "real_data_recovery_rehearsal": true,
+    "complete_vectorize_delivery_and_value_audit": false,
+    "real_data_recovery_rehearsal": false,
     "representative_search_quality": true,
     "authentication_and_worker_e2e": true,
     "latency_and_cost_acceptance": true
   },
   "production_d1_cutover": false,
-  "migration_execution_complete": false
+  "migration_execution_complete": false,
+  "real_data_recovery": {
+    "tool_commit": "b68cf966",
+    "target_database_id": "373d6ca5-2796-460d-8ab1-e644de46bb3c",
+    "baseline_sql_export_stability_verified": true,
+    "original_tables_verified": 68,
+    "sql_export_bytes_verified": 180665549,
+    "schema_and_sequence_hashes_match": true,
+    "only_owned_metadata_probe_modified": true,
+    "customer_records_modified": false,
+    "provider_restore_acknowledged": true,
+    "independent_verification_succeeded": true,
+    "probe_absent_after_restore": true,
+    "source_neon_or_r2_modified": false,
+    "private_bookmarks_and_sql_not_published": true
+  }
 }
