@@ -61,7 +61,7 @@ test('rejects invalid build context before reading any source credential',async(
 
 test('exposes only allowlisted failure stages and never source errors or details',async t=>{
  await fixture(t);
- for (const stage of ['database-connect','read-only-snapshot','logical-backup','isolated-restore','restore-server-readiness','restore-server-oom','restore-server-exited','restore-vector-extension','restore-archive-list','restore-list-file','restore-archive-apply','restore-loopback-port','restore-client-connect','row-count-and-constraint-verification','verified-backup-handoff','secret-database-url']) {
+ for (const stage of ['database-connect','restore-image-version','read-only-snapshot','logical-backup','isolated-restore','restore-server-readiness','restore-server-oom','restore-server-exited','restore-vector-extension','restore-archive-list','restore-list-file','restore-archive-apply','restore-loopback-port','restore-client-connect','row-count-and-constraint-verification','verified-backup-handoff','secret-database-url']) {
   const failed={status:'error',details:['- 失敗した段階: `'+stage+'`。DB接続情報・レコード・バックアップは出力していません。']};
   await assert.rejects(runBackup({env,execute:()=>require('node:fs').writeFileSync('operations-report.json',JSON.stringify(failed)),retain:()=>assert.fail('No upload after failure')}),error=>{
    assert.equal(error.message,stage==='secret-database-url'?'PRODUCTION_VERIFICATION_FAILED':'BACKUP_VERIFICATION_FAILED_'+stage.replaceAll('-','_').toUpperCase());return true;
