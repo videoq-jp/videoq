@@ -36,5 +36,8 @@
   "api_typecheck_passed": true,
   "changed_typescript_lint_passed": true,
   "production_modified": false,
-  "execution_complete": false
+  "execution_complete": false,
+  "explicit_test_tls_minimum": "TLSv1.2",
+  "negotiated_test_tls_version_checked": true,
+  "tls_minimum_change_native_integration_passed": true
 }

@@ -558,3 +558,7 @@ main由来の独立worktreeでも関連5ファイル123試験が成功し、評�
 2026-11-14、評価専用Lambdaの数値version・image digest・role・モデル構成を照合する起動クライアントを追加した。私有manifestから質問を初出順に重複排除し、16件ずつ同期invokeする。応答のExecutedVersion、入力ハッシュ、case ID、検索範囲、ベクトルを検証し、全件成功時だけ元の全ケース・sample数を持つ私有ファイルへまとめる。SDKの暗黙的なrole/web identity/processによる資格情報取得経路を除去し、固定endpoint・1試行で実行する。
 
 関連5ファイル128試験（新client 29試験）が成功した。transportは合成mockであり、実AWS・モデル呼び出しは行っていない。[実行手順](d1-remote-query-preparation.md)と[集約証跡](evidence/d1-remote-evaluation-client-2026-11-14.json)を参照する。PR #1444の承認待ちは維持し、そのレビュー対象のheadや既存本番関数を変更していない。専用関数の作成・実接続・検索品質評価・D1切り替えは引き続き未実施である。
+
+### native HTTPS試験のTLS最低バージョン
+
+2026-11-14、CodeQLの`py/insecure-protocol`指摘 #75は、本番APIではなくnative試験のPython接続確認に対するものだった。試験用SSLContextへ`minimum_version=TLSv1_2`を明示し、同じcontextでCAを確認して接続する。実接続でTLS 1.2または1.3が選択されたことも検査する。証明書・hostnameの検証は維持し、alert抑制や検証無効化は行っていない。変更後のPython署名付きHTTPS→workerd Hono→D1試験は成功した。CodeQL上の解消は、新しいheadの解析結果で確認する。

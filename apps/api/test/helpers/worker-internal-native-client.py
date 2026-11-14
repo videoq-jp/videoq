@@ -13,11 +13,13 @@ from worker_python.internal_api import call_internal_api, uses_internal_persiste
 assert uses_internal_persistence()
 assert sys.version_info >= (3, 12), "Use the supported Worker Python runtime (3.12+)"
 authority = ssl.PEM_cert_to_DER_cert(Path(os.environ["SSL_CERT_FILE"]).read_text())
-assert authority in ssl.create_default_context().get_ca_certs(binary_form=True), "Test CA was not loaded"
+tls_context = ssl.create_default_context()
+tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
+assert authority in tls_context.get_ca_certs(binary_form=True), "Test CA was not loaded"
 address = urlsplit(os.environ["WORKER_INTERNAL_API_ORIGIN"])
 with socket.create_connection((address.hostname, address.port), timeout=5) as connection:
-    with ssl.create_default_context().wrap_socket(connection, server_hostname=address.hostname):
-        pass
+    with tls_context.wrap_socket(connection, server_hostname=address.hostname) as secured:
+        assert secured.version() in {"TLSv1.2", "TLSv1.3"}
 identity = {"jobId": "native-job", "jobType": "native_persistence_probe",
             "payloadSha256": hashlib.sha256(b"native synthetic fixture").hexdigest()}
 claim = call_internal_api("claim", identity)
