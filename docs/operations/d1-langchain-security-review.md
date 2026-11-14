@@ -107,6 +107,8 @@ mainの上流vLLM検査で追加検出された180件も追跡した。179件は
 
 追加後の`scene-index-sync.d1.integration.test.ts`は14件成功、API/移行ツールの型検査と変更TSのLintも成功した。アプリ実装と本番設定は変更していない。
 
+合成v2の実D1/Vectorizeでも追加計測した。実LangChainのupsert受付は約1.07秒、受付後の最初の認可済み検索hitは約23.15秒だった。約20.07秒時点までの10回は空結果で、次の観測で1件を返した。これは約2秒間隔の単一観測であり、正確な反映時刻やSLOを証明しない。候補が実在する状態で所有者無効化後は0件となり、最後に所有DB行・physical ID・owner ANNの残存0を確認した。モデル呼び出し0、本番変更なし。[反映遅延の証跡](evidence/d1-vector-visibility-2026-11-15.json)。動画完了直後の検索可能性を、provider受付だけで合格と扱わない。
+
 追加で、配備済み私有Hono/Better Auth、合成v2の実D1、実RateLimiter Durable Objectを使った共通OAuth契約5件がすべて成功した。memory認証・rate-limit adapterは使用していない。[配備OAuth証跡](evidence/d1-oauth-cloud-provider-2026-11-15.json)。PKCE交換、refresh rotation/reuse、コード再使用、同時refresh、ban後の拒否を含む。
 
 開発用接続によるOrigin/fetch metadataの変更を避け、私有RPCで元の要求をWorker内に再構成し、実際のアプリ応答status・headers・cookie・bodyを測定した。共通契約のauthorize要求にはnavigationを明示した。JSON redirectを302と推定した試験ではない。41応答すべてがWorker内の処理結果であり、cookie付き不正Originは403、ブラウザ単純formは415だった。cookieなしの正規JSONログインが200となる仕様も別途確認し、拒否成功には数えていない。
