@@ -457,4 +457,18 @@ repository-call-onlyのp95は、ローカルPostgreSQLで15.33 ms、開発用rem
 
 Freeプランでは`limits.cpu_ms`を指定できず最初のデプロイが拒否されたため、指定を除去し、プラン変更せず測定した。測定後は一時Workerを削除し、既存Hyperdrive、稼働アプリ、D1のデータは保持する。
 
+地域条件も追加確認した。[Placementの仕様](https://developers.cloudflare.com/workers/configuration/placement/)ではRPC・named entrypointに配置設定が適用されないため、追加測定には`wrangler.d1-edge-benchmark-tokyo.jsonc`の専用HTTPサービスを使用した。公開routeは持たず、毎回新しく作る256-bitの一時capabilityも要求する。認証前は本文・DBへアクセスせず、本文16 KiB・最大25組の制限と固定SQLを維持する。capabilityは本番の認証鍵とは別で、私有stdinから専用Workerだけに設定し、測定後はWorkerごと削除した。
+
+`placement.region=aws:ap-northeast-1`を指定し、3回すべての応答で`cf-placement=remote-NRT`を確認した。75組のp95はNeon 84 ms、D1 89 ms、PostgreSQLの接続・READ ONLY設定は別途225〜250 msだった。この主キー検索でもD1のread-call単独の改善は実証されていない。接続開始時間を含む主要API、同時負荷、cold状態、レプリカ利用時の整合性・性能は別に評価する。[東京近傍の測定証跡](evidence/d1-v3-tokyo-edge-read-benchmark-2026-11-14.json)を参照する。最初のupload後にCloudflareのWorker取得APIが10007を返したが、versions一覧でupload済みを確認し、同じ設定の再デプロイが成功してから測定した。
+
 代表質問での既存Embeddingモデル評価については、現在の運用者のAWS認証でSTSの短命workload IDを発行できることを確認したが、設定済みOpenRouter federation policyとの交換は`400 invalid_grant`だった。長期APIキー、DB秘密情報、別roleの取得や、信頼設定の変更は行っていない。トークンはメモリ内だけで扱い、私有receiptにも保存しない。[公式仕様](https://openrouter.ai/docs/guides/overview/auth/workload-identity-federation)上、このエラーだけではポリシーの有効状態、subject等の不一致、署名や期限のどれが原因かは特定できない。代表質問によるモデル評価は未実行として扱い、既存ベクトル由来の比較を代わりの合格証拠にはしない。
+
+## 実データ容量と料金条件の再確認
+
+2026-11-14のv3再取得値はD1 109,314,048 bytes、1536次元2,190ベクトル、768次元0件だった。以前のDB物理サイズの観測値とは別時点の値として記録する。ベクトルの保存次元数は3,363,840である。[D1制限](https://developers.cloudflare.com/d1/platform/limits/)の単一DB上限はFree 500 MB、Paid 10 GBで、現時点のv3 DBは収まる。[Vectorize料金](https://developers.cloudflare.com/vectorize/platform/pricing/)の保存次元枠はFree 500万、Paidの内包分1,000万であり、このコーパス単独では内包範囲に収まる。枠は他環境と共有されるため、アカウント全体の余裕を保証するものではない。
+
+同日のv3の24時間値は641,509行read、42,683行writeで、[D1 Freeの日次枠](https://developers.cloudflare.com/d1/platform/pricing/)である500万read、10万writeより少ない。ただし移行・照合・復旧演習のアクセスであり、通常運用量やピーク負荷の予測には使わない。
+
+現在の2,190件を固定し、1536次元の検索呼び出しだけを月10万回行う例では、Vectorize公式式によるquery次元は156,963,840となる。Paidの月5,000万次元内包分を差し引いた超過料金は約1.07 USD、保存次元超過は0 USDである。同じ固定コーパスだけで他の利用がなければ、Freeの月3,000万query次元に収まる呼び出しは17,341回、Paid内包分では30,362回が計算上の目安となる。実際のアプリ要求から複数回検索する場合は、その呼び出し回数で計算する。
+
+この例にWorkersの契約・request・CPU、R2、AWS、LLM、S3保全、移行中のNeon併存費用は含めていない。[Workers料金](https://developers.cloudflare.com/workers/platform/pricing/)とVectorize個別料金ページには利用可能プランの記述に差があるため、実アカウントの契約・課金対象は別途確認する。プラン変更は実施していない。実トラフィック、増加率、現在のNeon費用、月額上限が未確定であり、費用の受け入れは未完了とする。[計算条件と集約証跡](evidence/d1-v3-capacity-cost-assessment-2026-11-14.json)を参照する。

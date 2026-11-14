@@ -188,5 +188,26 @@
     "performance_improvement_demonstrated": false,
     "api_e2e_measured": false,
     "performance_acceptance_complete": false
+  },
+  "tokyo_native_http_read_benchmark": {
+    "evidence": "d1-v3-tokyo-edge-read-benchmark-2026-11-14.json",
+    "paired_reads": 75,
+    "placement_response_headers": [
+      "remote-NRT",
+      "remote-NRT",
+      "remote-NRT"
+    ],
+    "postgres_p95_ms": 84,
+    "d1_p95_ms": 89,
+    "performance_improvement_demonstrated": false,
+    "api_e2e_measured": false,
+    "performance_acceptance_complete": false
+  },
+  "capacity_cost_assessment": {
+    "evidence": "d1-v3-capacity-cost-assessment-2026-11-14.json",
+    "observed_database_size_bytes": 109314048,
+    "stored_vector_dimensions": 3363840,
+    "account_wide_entitlements_and_utilization_verified": false,
+    "cost_acceptance_complete": false
   }
 }
