@@ -392,3 +392,14 @@ archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus h
 検証後は新規保存フラグと保存権限を無効にし、保存済み2オブジェクトの版、S3、定期保守の有効状態、レビュー済みコード版を維持した。[保全・復元の集約証跡](evidence/backup-preservation-recovery-2026-11-14.json)には秘密値・レコード・私有receiptを含めない。
 
 完全バックアップの保全と復旧確認は完了したが、明示的な除外一覧はまだ実装していないため、エクスポーターは未対応テーブルを引き続き拒否する。現行アプリのD1 exportや本番切り替えは未実施であり、受け入れ基準の完了は意味しない。
+
+
+## 保全済み旧テーブルの明示的な除外
+
+`apps/api/scripts/migrations/d1/legacy-source-tables.json`は、保全バックアップで観測した旧27テーブルの名前だけを列挙する。件数や接頭辞で未知テーブルを自動承認しない。実行時にはこの一覧を0600の私有ファイルへコピーする。
+
+復元済みのローカルPostgreSQLのwriterを停止し、`DATABASE_URL`を環境で渡す。元の本番DB認証情報を取得しない。まず`d1-preserve-legacy.ts --backup-dir <private-retrieved-backup> --tables <private-explicit-list.json> --output <private-policy.json>`でポリシーを作る。取得時のmanifest・receipt・dumpのハッシュと復元結果、全4スキーマのテーブル集合と件数を照合し、旧テーブルの列・制約・索引・トリガー・全行のハッシュを私有ポリシーへ記録する。receiptは承認済み運用経路が作成した証跡であり、暗号署名による第三者の証明ではない。
+
+次に`d1-export.ts --output <private-source.videoq-export.ndjson> --preserved-policy <private-policy.json> --backup-dir <private-retrieved-backup>`を実行する。指定したポリシーは毎回保全ファイルと照合し、exportのread-only snapshot内で除外対象を再ハッシュする。追加・欠落・構造変更・同件数の行変更、現行アプリやcheckpointテーブルから旧テーブルへの外部キーがあれば停止する。旧テーブル本体とその所有シーケンスはD1 archiveへ含めず、保全との対応情報をheaderへ残す。現行アプリの未知テーブル・列・型変更の拒否、archive全体の検証と本番切り替えの受け入れ条件は維持する。
+
+このポリシーは、その保全バックアップから復元したコピーに対して作成する。最終移行では新しい完全バックアップと取得・復元検証に対してポリシーを作り直す。以前のポリシーを別のスナップショットへ流用しない。旧テーブルの削除や、稼働中のDBへ変更する処理はない。

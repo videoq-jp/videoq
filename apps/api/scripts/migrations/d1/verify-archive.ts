@@ -5,12 +5,13 @@ import {z} from 'zod';
 import {sequenceStateSchema} from './sequence-format';
 import {ARCHIVE_VERSION} from './archive-format';
 import {buildMigrationManifest,convertMigrationValue,type Conversion} from './manifest';
+import {preservedTablePolicySchema} from './preserved-tables';
 type Manifest=ReturnType<typeof buildMigrationManifest>;
 export class ArchiveVerificationError extends Error {readonly name='ArchiveVerificationError';}
 const sha=z.string().regex(/^[0-9a-f]{64}$/),count=z.string().regex(/^(?:0|[1-9]\d*)$/);
 const identifier=z.string().min(1).refine(value=>!value.includes('\0'));
 const tableSummary=z.object({schema:identifier,table:identifier,rows:count,sha256:sha}).strict();
-const startSchema=z.object({kind:z.literal('archive_start'),version:z.literal(ARCHIVE_VERSION),source_schema:identifier,created_at:z.iso.datetime(),snapshot:z.literal('repeatable-read/read-only'),mapping_sha256:sha,execution_complete:z.literal(false),sequences:z.array(sequenceStateSchema),migration_history:z.array(z.object({id:z.number().int(),hash:z.string(),created_at:z.string().regex(/^-?\d+$/)}).strict()).nullable(),auxiliary_sources:z.array(z.object({schema:identifier,tables:z.array(identifier),policy:z.string()}).strict()),auxiliary_inventory:z.array(z.object({schema:identifier,tables:z.array(identifier)}).strict())}).passthrough();
+const startSchema=z.object({kind:z.literal('archive_start'),version:z.literal(ARCHIVE_VERSION),source_schema:identifier,created_at:z.iso.datetime(),snapshot:z.literal('repeatable-read/read-only'),mapping_sha256:sha,execution_complete:z.literal(false),sequences:z.array(sequenceStateSchema),preserved_source_tables:preservedTablePolicySchema.optional(),migration_history:z.array(z.object({id:z.number().int(),hash:z.string(),created_at:z.string().regex(/^-?\d+$/)}).strict()).nullable(),auxiliary_sources:z.array(z.object({schema:identifier,tables:z.array(identifier),policy:z.string()}).strict()),auxiliary_inventory:z.array(z.object({schema:identifier,tables:z.array(identifier)}).strict())}).passthrough();
 const tableSchema=z.object({kind:z.literal('table_start'),schema:identifier,table:identifier,mode:z.enum(['converted','raw-special']),columns:z.array(z.object({name:identifier,type:z.string().min(1),encoding:z.string().min(1)}).strict()).min(1),primary_key:z.array(identifier)}).strict();
 const rowSchema=z.object({kind:z.literal('row'),values:z.array(z.union([z.string(),z.number(),z.null()]))}).strict();
 const endSchema=z.object({kind:z.literal('archive_end'),tables:z.array(tableSummary),sha256:sha,execution_complete:z.literal(false)}).strict();
@@ -41,6 +42,8 @@ export async function verifyPostgresArchive(path:string,manifest:Manifest,option
   const kind=typeof raw==='object'&&raw!==null&&'kind'in raw?raw.kind:undefined;
   if(!header){
    header=parse(startSchema,raw);if(header.mapping_sha256!==expectedHash)throw new ArchiveVerificationError('Archive migration mapping does not match.');
+   const preserved=header.preserved_source_tables;
+   if(preserved&&(preserved.source_schema!==header.source_schema||preserved.mapping_sha256!==expectedHash||new Set(preserved.tables.map(table=>table.name)).size!==preserved.tables.length||preserved.tables.some(table=>manifest.tables.some(mapped=>mapped.source===table.name))||header.sequences.some(sequence=>preserved.tables.some(table=>sequence.owner_schema===header!.source_schema&&sequence.owner_table===table.name))))throw new ArchiveVerificationError('Invalid preserved legacy-table policy.');
    for(const table of manifest.tables)expected.add(key(header.source_schema,table.source));
    if(JSON.stringify(header.auxiliary_sources)!==JSON.stringify(manifest.auxiliary_sources))throw new ArchiveVerificationError('Auxiliary source mapping mismatch.');
    const sequenceKeys=new Set<string>();for(const sequence of header.sequences){const id=key(sequence.schema,sequence.name);if(sequence.schema!==header.source_schema||sequenceKeys.has(id))throw new ArchiveVerificationError('Invalid sequence inventory.');sequenceKeys.add(id);}
@@ -72,7 +75,7 @@ export async function verifyPostgresArchive(path:string,manifest:Manifest,option
  };
  for await(const line of readArchiveLines(path,limit))processLine(line);
  if(!header||!ended||current)throw new ArchiveVerificationError('Truncated or incomplete archive.');
- return {source_schema:header.source_schema,migration_history:header.migration_history,table_layouts:layouts,sequence_states:header.sequences,archive_sha256:archiveSha256!,table_summaries:summaries,verified:true,version:ARCHIVE_VERSION,tables:summaries.length,rows:summaries.reduce((sum,table)=>sum+BigInt(table.rows),0n).toString(),execution_complete:false};
+ return {source_schema:header.source_schema,...(header.preserved_source_tables?{preserved_source_tables:header.preserved_source_tables}:{}),migration_history:header.migration_history,table_layouts:layouts,sequence_states:header.sequences,archive_sha256:archiveSha256!,table_summaries:summaries,verified:true,version:ARCHIVE_VERSION,tables:summaries.length,rows:summaries.reduce((sum,table)=>sum+BigInt(table.rows),0n).toString(),execution_complete:false};
 }
 
 /** Internal bounded line reader; callers must verify the complete private file

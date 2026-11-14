@@ -6,6 +6,7 @@ import {open,mkdtemp,link,rm,lstat} from 'node:fs/promises';
 import {dirname,join} from 'node:path';
 import {importReadSnapshot} from '../../../src/persistence/postgres/read-snapshot';
 import {buildMigrationManifest,convertMigrationValue,migrationSelectExpression,quoteMigrationIdentifier as quote} from './manifest';
+import {verifyPreservedTables,type PreservedTablePolicy} from './preserved-tables';
 type Manifest=ReturnType<typeof buildMigrationManifest>;
 type Column={name:string;type:string};
 type Table={schema:string;name:string;columns:Column[];mode:'converted'|'raw-special'};
@@ -13,7 +14,7 @@ const canonical=(type:string)=>type.replace(/^character varying/,'varchar').repl
 /** Archive data, not SQL. No target writes and no source row data in diagnostics.
  * The private archive includes credentials and must be handled like a DB backup.
  */
-export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manifest:Manifest,output:string,options:{schema?:string;fetchRows?:number;statementTimeoutMs?:number;snapshot?:string}={}){
+export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manifest:Manifest,output:string,options:{schema?:string;fetchRows?:number;statementTimeoutMs?:number;snapshot?:string;preservedTables?:PreservedTablePolicy}={}){
  const schema=options.schema??'public',fetchRows=options.fetchRows??10,timeout=options.statementTimeoutMs??60000;
  if(!manifest.mapping_complete)throw new Error('Migration mapping is incomplete.');
  if(!output.endsWith('.videoq-export.ndjson'))throw new Error('Archive filename must end in .videoq-export.ndjson.');
@@ -31,11 +32,13 @@ export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manif
   for(const sourceSchema of [schema,...manifest.auxiliary_sources.map(source=>source.schema)]){
    const found=(await client.query<{name:string}>("SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relkind IN('r','p','f','m') ORDER BY c.relname",[sourceSchema])).rows;
    const expected=sourceSchema===schema?manifest.tables.map(table=>table.source):manifest.auxiliary_sources.find(source=>source.schema===sourceSchema)!.tables;
-   if(sourceSchema===schema&&(found.length!==expected.length||found.some(table=>!expected.includes(table.name))))throw new Error('Live source table coverage differs from migration manifest.');
+   const preserved=sourceSchema===schema&&options.preservedTables?await verifyPreservedTables(client,manifest,schema,found.map(table=>table.name),options.preservedTables):new Set<string>();
+   const included=found.filter(table=>!preserved.has(table.name));
+   if(sourceSchema===schema&&(included.length!==expected.length||included.some(table=>!expected.includes(table.name))))throw new Error('Live source table coverage differs from migration manifest.');
    if(sourceSchema!==schema&&found.some(table=>!expected.includes(table.name)))throw new Error('Unknown auxiliary source table.');
    if(sourceSchema!==schema&&found.length!==0&&found.length!==expected.length)throw new Error('Incomplete auxiliary source schema.');
    if(sourceSchema!==schema)auxiliaryInventory.push({schema:sourceSchema,tables:found.map(table=>table.name)});
-   for(const table of found){
+   for(const table of included){
     const columns=(await client.query<Column>("SELECT a.attname AS name,format_type(a.atttypid,a.atttypmod) AS type FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",[sourceSchema,table.name])).rows;
     const plan=sourceSchema===schema?manifest.tables.find(entry=>entry.source===table.name):undefined;
     if(plan?.policy==='convert_rows'&&(columns.length!==plan.columns.length||columns.some(column=>!plan.columns.some(planned=>planned.name===column.name&&canonical(planned.source_type)===canonical(column.type)))))throw new Error('Live source column coverage differs from migration manifest.');
@@ -54,13 +57,13 @@ export async function exportPostgresArchive(client:pg.Client|pg.PoolClient,manif
    LEFT JOIN pg_depend d ON d.classid='pg_class'::regclass AND d.objid=sc.oid AND d.refclassid='pg_class'::regclass AND d.refobjsubid>0 AND d.deptype IN('a','i')
    LEFT JOIN pg_class t ON t.oid=d.refobjid LEFT JOIN pg_namespace tn ON tn.oid=t.relnamespace LEFT JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=d.refobjsubid
    WHERE s.schemaname=$1 ORDER BY s.sequencename`,[schema])).rows;
-  for(const sequence of names){const row=(await client.query<{last_value:string;is_called:boolean}>(`SELECT last_value::text AS last_value,is_called FROM ${quote(schema)}.${quote(sequence.name)}`)).rows[0];sequences.push({schema,...sequence,...row});}
+  for(const sequence of names){if(options.preservedTables?.tables.some(table=>table.name===sequence.owner_table&&sequence.owner_schema===schema))continue;const row=(await client.query<{last_value:string;is_called:boolean}>(`SELECT last_value::text AS last_value,is_called FROM ${quote(schema)}.${quote(sequence.name)}`)).rows[0];sequences.push({schema,...sequence,...row});}
 
   stage=await mkdtemp(join(dirname(output),'.videoq-d1-export-'));const file=await open(join(stage,'archive'),'wx',0o600);
   const hash=createHash('sha256'),counts=[];
   const write=async(record:unknown)=>{const line=JSON.stringify(record)+'\n';await file.writeFile(line);hash.update(line);};
   try{
-   await write({kind:'archive_start',version:ARCHIVE_VERSION,source_schema:schema,created_at:new Date().toISOString(),snapshot:'repeatable-read/read-only',mapping_sha256:createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),execution_complete:false,sequences,migration_history:migrationHistory,auxiliary_inventory:auxiliaryInventory,auxiliary_sources:manifest.auxiliary_sources,limitations:['Sequence state is observational and is not MVCC-isolated; final cutover requires stopped/drained writers.','Raw special tables require explicit Vectorize/checkpoint/visual conversion before import.','This artifact is not a completed migration or a restorable PostgreSQL backup.']});
+   await write({kind:'archive_start',version:ARCHIVE_VERSION,source_schema:schema,created_at:new Date().toISOString(),snapshot:'repeatable-read/read-only',mapping_sha256:createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),execution_complete:false,sequences,migration_history:migrationHistory,auxiliary_inventory:auxiliaryInventory,auxiliary_sources:manifest.auxiliary_sources,...(options.preservedTables?{preserved_source_tables:options.preservedTables}:{}),limitations:['Sequence state is observational and is not MVCC-isolated; final cutover requires stopped/drained writers.','Raw special tables require explicit Vectorize/checkpoint/visual conversion before import.','This artifact is not a completed migration or a restorable PostgreSQL backup.']});
    for(const table of tables){
     const plan=table.mode==='converted'?manifest.tables.find(entry=>entry.source===table.name)!:undefined;
     const keys=(await client.query<{name:string}>("SELECT a.attname AS name FROM pg_index i JOIN pg_class c ON c.oid=i.indrelid JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=ANY(i.indkey) WHERE n.nspname=$1 AND c.relname=$2 AND i.indisprimary ORDER BY array_position(i.indkey,a.attnum)",[table.schema,table.name])).rows.map(row=>row.name);
