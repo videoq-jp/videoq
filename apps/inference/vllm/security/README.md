@@ -18,6 +18,14 @@ rejects the upstream bounded WKS reproducer. Missing, stale or failed runtime
 evidence does not pass. The previous four-wheel runtime proof is historical and
 does not prove the new five-wheel configuration.
 
+The current five-wheel image probe passed in
+[CI run 43615358433](https://github.com/videoq-jp/videoq/actions/runs/43615358433),
+artifact 14121732864, source commit `8f16b6664a5e6118b733782a98aa4800385df375`.
+Its JSON confirms dnspython 2.9.2 at `/opt/videoq-audio/dns/__init__.py`, rejection
+of the bounded out-of-range WKS input, all five locked distributions, and no
+unassessed image or blocking overlay findings. This is actual-image CPU/import
+verification; the earlier GPU inference evidence remains historical.
+
 A passing applicability
 check is not a claim that the upstream packages are patched or that the raw scan
 is empty. `runtime-assessment.json` permits only the exact listed CVE/package/PURL

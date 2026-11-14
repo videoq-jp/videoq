@@ -238,8 +238,7 @@ async function releaseReservedUsage(env: Bindings, setup: ChatSetup): Promise<vo
       JSON.stringify({
         level: "error",
         event: "ai_answer_quota_release_failed",
-        ownerUserId: setup.ownerUserId,
-        message: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.name : "unknown",
       }),
     );
   }

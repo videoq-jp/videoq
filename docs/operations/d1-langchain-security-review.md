@@ -61,3 +61,15 @@ npx vitest run \
 監査で未検出であることは脆弱性の不存在を保証しない。本試験は全体E2E、実OAuth、production session継承、実配置での性能、productionのsecret設定を一括して証明するものではない。特にread replicaを認可読取りへ導入する場合は、失効直後の可視性について別の検証が必要。今回の検証用D1でread replicationは無効のままである。
 
 POSTやDB製品名だけを安全性の根拠とせず、境界ごとの検証結果として扱う。現時点でこのLangChain接続境界に越境取得を示す失敗は検出されていないが、本番移行全体の完了はまだ宣言しない。
+
+## 関連するオンプレ実行環境の追跡
+
+mainの上流vLLM検査で追加検出された180件も追跡した。179件はLinux CNAの一次記録・正確なheader inventory・10種類のrender済みworkload条件を照合してカーネル実装由来の適用評価を追加した。残るdnspythonの実行時依存は2.9.2をハッシュ固定のread-only volumeに追加し、実イメージで読込先/バージョンと安全な再現入力の拒否を検査した。
+
+[実イメージ検査](https://github.com/videoq-jp/videoq/actions/runs/43615358433)の該当jobは成功し、取得したartifact 14121732864のJSONでも修正版の読込・5依存の完全一致・未評価0件を確認した。rawの640件は削除/抑制していない。[検証記録](../verification/upstream-vllm-inspection.json)に現在のCPU/import検証と過去のGPU推論検証を分けて保管した。これはD1の全体E2Eや本番移行条件を代替しない。
+
+## チャット障害ログの追加修正
+
+境界の追加監査で、利用枠返却失敗とSSE transport失敗のcatchが例外の`message`をログへ出していた。DBドライバーのmessageにはSQL引数が含まれ得るため、通常応答/SSEのquota cleanupとSSE writerに合成の私有診断値を注入した回帰試験3件を追加し、修正前はいずれもログへ本文が出ることを再現した。実秘密値や本番レコードを使った試験ではない。
+
+`message-service.ts`と`routes.ts`の該当ログは固定eventと`errorType`だけにし、quota cleanupログのowner IDも除いた。HTTP/SSEへの一般化済みエラー応答は維持した。修正後は`chat-send.test.ts`、`auth-security.test.ts`、`security-primitives.test.ts`の**150件成功**、API/移行ツールの型検査成功を確認した。LangChain/Drizzle経由の処理でも、providerまたはSQL例外の本文をこのcatchからログへコピーしない。

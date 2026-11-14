@@ -141,6 +141,41 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("chat failure log confidentiality", () => {
+  it.each([false, true])("does not log DB details or owner identity on quota cleanup failure (stream=%s)", async stream => {
+    const privateDiagnostic = "synthetic-private-sql-params-and-token";
+    rowsFor = (sql, args) => {
+      if (sql.includes("GREATEST")) throw new Error(privateDiagnostic);
+      return defaultRows(sql, args);
+    };
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await post(stream ? "/messages/stream" : "/messages", {
+        messages: [{ role: "user", content: "synthetic question" }],
+      }, { userId: TEST_USER_ID });
+      expect(await response.text()).not.toContain(privateDiagnostic);
+      const event = log.mock.calls.map(args => args.join(" ")).find(value => value.includes("ai_answer_quota_release_failed"));
+      expect(event).toBeDefined();
+      expect(event).not.toContain(privateDiagnostic);
+      expect(event).not.toContain(TEST_USER_ID);
+      expect(JSON.parse(event!)).toEqual({ level: "error", event: "ai_answer_quota_release_failed", errorType: "Error" });
+    } finally { log.mockRestore(); }
+  });
+  it("does not log transport exception messages from the SSE writer", async () => {
+    const privateDiagnostic = "synthetic-private-stream-body-and-credentials";
+    const service = vi.spyOn(messageService, "streamChatMessage").mockResolvedValue({
+      write: async () => { throw new Error(privateDiagnostic); },
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await post("/messages/stream", { messages: [{ role: "user", content: "synthetic question" }] }, { userId: TEST_USER_ID });
+      expect(await response.text()).not.toContain(privateDiagnostic);
+      expect(log).toHaveBeenCalledWith(JSON.stringify({ level: "error", event: "chat_stream_failed", errorType: "Error" }));
+      expect(JSON.stringify(log.mock.calls)).not.toContain(privateDiagnostic);
+    } finally { log.mockRestore(); service.mockRestore(); }
+  });
+});
+
 async function post(
   path: string,
   body: unknown,
