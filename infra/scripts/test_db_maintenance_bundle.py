@@ -1,4 +1,6 @@
 """Check the produced operator archive against file reads in its real entrypoints."""
+import ast
+import fnmatch
 import importlib.util
 import posixpath
 import re
@@ -44,6 +46,17 @@ class BundleTest(unittest.TestCase):
                                           "Runtime asset referenced by " + script + " is absent")
                 image = archive.read(".github/operations-tools/Dockerfile").decode().strip()
                 self.assertRegex(image, r"^FROM pgvector/pgvector:pg17@sha256:[a-f0-9]{64}$")
+
+    def test_every_operator_input_triggers_its_runtime_fixture_ci(self):
+        workflow = (bundle.ROOT / '.github/workflows/ci.yml').read_text()
+        match = re.search(r"(?m)^            operations:\n((?:              .*\n)*)", workflow)
+        self.assertIsNotNone(match)
+        patterns = [ast.literal_eval(line.strip()[2:]) for line in match.group(1).splitlines()
+                    if line.strip().startswith('- ')]
+        missing = [source.relative_to(bundle.ROOT).as_posix() for source, _ in bundle.operator_files()
+                   if source.suffix != '.md' and not any(fnmatch.fnmatchcase(source.relative_to(bundle.ROOT).as_posix(), pattern)
+                                                        for pattern in patterns)]
+        self.assertEqual(missing, [], 'An operator input can change without running its isolated runtime fixture')
 
     def test_every_runtime_operator_input_triggers_canonical_maintenance_deployment(self):
         inputs = [source.relative_to(bundle.ROOT).as_posix() for source, _ in bundle.operator_files()
