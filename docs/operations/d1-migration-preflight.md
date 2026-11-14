@@ -410,3 +410,16 @@ archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus h
 検索評価CLIでも同じ`--preserved-policy`と`--backup-dir`を対で指定する。archive headerと異なるポリシーや、除外した行が変化したsource copyは、リモートtargetへの接続前に拒否する。
 
 更新後のツールでも同じ不変dumpから新しく復元し、除外ポリシーとarchiveを再生成した。62テーブル・9,854行について、archiveとPostgreSQLの同一read-only snapshotが正規化後の全行・列・主キー構成・Drizzle履歴で一致し、除外27テーブルの構造・全行ハッシュの再照合も成功した。これはsource側の対応確認であり、リモートD1・Vectorizeやvisualオブジェクトの検証を代替しない。
+
+
+## 実データ用のv3リハーサル
+
+`wrangler.d1-staging.jsonc`は実バックアップ用のv3 DB（`373d6ca5-2796-460d-8ab1-e644de46bb3c`）と`videoq-scenes-migration-v3-{768,1536}`を固定する。v2の合成検証設定は`wrangler.d1-staging.v2.jsonc`に保持する。旧DB・index・receiptや復旧bookmarkをv3の証拠として流用しない。公開route、workers.dev、preview URL、アプリのsecretsは設定しない。
+
+初期取り込みは`db:d1:staging:migrate -- --mode import --input <private archive> --allow-pending-visuals`で行う。writerを停止した専用環境でのみ実行し、配信は取り込み完了後に開始する。シーンは最大5行かつ入力512 KiB程度の小さな単位で、各行の進捗チェック・参照・outbox更新を同じ原子的batchへまとめる。応答喪失時も確定済み進捗から再開でき、全行の値チェックは省略しない。
+
+完了済みの共通データや会話履歴を再投入せずシーンだけを再開する場合は、元の処理の終了を確認してから`--mode resume-scenes --input <同じprivate archive>`を使う。この経路は、同一archiveに対応する共通データ・会話履歴の完了記録を確認し、保存されたシーン行位置から続ける。同時に複数のimporterを起動しない。取り込み完了後のVectorize配信では4件までの並列処理を使い、リース・immutable ID・所有権の再確認を維持する。通常の同期処理は既定の並列数1を維持する。
+
+visualは`db:d1:staging:migrate-visuals -- --input <同じprivate archive>`で別フェーズとして実行する。`wrangler.d1-visual-staging.jsonc`は、読み取り元の`videoq-media-prod`と、書き込み先の私有`videoq-media-migration-staging-v3`を明示する。sourceへはreadだけを公開し、既存オブジェクトを書き換えない。コピーはcreate-onlyで行い、再取得した内容をハッシュ照合してからD1の参照とcleanup台帳を確定する。visual用のremote proxy名はDB用と分離する。
+
+2026-11-14、実バックアップの5 visual runに対応する10オブジェクトのコピーとD1参照移行が成功した。これら5件は移行元ですでに`error`状態であり、その状態と存在する部分成果物を保持した。移行によってreadyへ変更したり、既存の処理失敗を解消したことにはしない。コピー先のr2.dev公開は無効で、カスタムドメインは未設定である。
