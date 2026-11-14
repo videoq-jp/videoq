@@ -16,7 +16,7 @@ try {
   await docker('docker', ['run', '--detach', '--name', name, '-e', 'POSTGRES_PASSWORD=fixture-only',
     '-p', '127.0.0.1:54320:5432', image]);
   for (let attempt = 0; attempt < 60; attempt++) {
-    try { await docker('docker', ['exec', name, 'pg_isready', '-U', 'postgres']); break; }
+    try { await docker('docker', ['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres']); break; }
     catch { await delay(1000); }
   }
   await client.connect();
@@ -51,6 +51,13 @@ try {
       VALUES('synthetic-thread','messages','1','msgpack',decode('00ff225c80','hex'),1);
     INSERT INTO chat_memory.checkpoint_writes(thread_id,checkpoint_id,task_id,idx,channel,type,blob,task_path)
       VALUES('synthetic-thread','checkpoint','task',0,'messages','msgpack',decode('ff000a','hex'),'synthetic/task');`);
+  // PostgreSQL 17.12 adds an internal column version that older pg_dump clients
+  // incorrectly export as a user-settable column option (SQLSTATE 22023).
+  await client.query('ALTER TABLE restore_parent ALTER COLUMN id SET (pg_attver=570218872)');
+  const attribute = await client.query(`SELECT attoptions FROM pg_attribute
+    WHERE attrelid='restore_parent'::regclass AND attname='id'`);
+  assert.ok(attribute.rows[0].attoptions.some(option => option.startsWith('pg_attver=')),
+    'The regression must exercise the internal column attribute, not only basic CRUD.');
   process.env.DATABASE_URL = 'postgresql://postgres:fixture-only@127.0.0.1:54320/postgres';
   await import('./backup-restore.mjs');
   const report = JSON.parse(await fs.readFile('operations-report.json', 'utf8'));

@@ -314,3 +314,19 @@ The operator ZIP object is bootstrapped by Terraform, then managed by maintenanc
 CD. Terraform ignores later source/path-hash changes for that object, as it does
 for pinned job sources and live Lambda code. Provisioning or pausing archive
 storage must not upload a different operator ZIP as an infrastructure side effect.
+
+
+## PostgreSQL minor-version compatibility
+
+The immutable backup/restore image must contain PostgreSQL clients at least as new
+as the source server's PostgreSQL 17 minor version. The backup fails before taking
+its snapshot when this condition is not met. Refresh the reviewed digest through
+normal CI and maintenance CD rather than rewriting a dump or ignoring restore
+errors. PostgreSQL 17.12 introduced internal composite-attribute versioning; the
+17.11 dump client exports `pg_attver` as a column option that its restore server
+rejects. See the [PostgreSQL 17.12 release notes](https://www.postgresql.org/docs/release/17.12/)
+and [upstream pg_dump handling](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/bin/pg_dump/pg_dump.c).
+The synthetic restore fixture includes this attribute and verifies the complete
+four-schema restore. Readiness probes use TCP so they cannot accidentally accept
+the temporary Unix-socket-only initialization server. Inventory equality compares
+qualified table names and row counts independently of database collation order.

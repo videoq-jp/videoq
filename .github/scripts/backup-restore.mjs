@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureDetails } from './backup-archive.mjs';
+import { backupArchiveContext, stageVerifiedBackup, BACKUP_SCHEMAS, restoreArchiveFailureDetails, sameBackupInventory, assertBackupClientVersion } from './backup-archive.mjs';
 const require = createRequire(new URL('../operations-tools/package.json', import.meta.url));
 const { Client } = require('pg');
 const exec = promisify(callbackExec);
@@ -50,6 +50,9 @@ try {
   const version = Number((await source.query('SHOW server_version_num')).rows[0].server_version_num);
   if (Math.floor(version / 10000) !== 17) throw new Error('Review matching PostgreSQL client before restoring');
   await docker(['pull', IMAGE]);
+  stage = 'restore-image-version';
+  const {stdout: clientVersion} = await docker(['run', '--rm', IMAGE, 'pg_dump', '--version']);
+  assertBackupClientVersion(version, clientVersion);
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'videoq-restore-'));
   await fs.chmod(temporary, 0o700);
   // Copy the host trust bundle into the shared private directory so Docker
@@ -80,7 +83,7 @@ try {
   started = true;
   stage = 'restore-server-readiness';
   for (let attempt = 0; attempt < 60; attempt++) {
-    try { await docker(['exec', name, 'pg_isready', '-U', 'postgres']); break; }
+    try { await docker(['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres']); break; }
     catch { if (attempt === 59) throw new Error('Restore server unavailable'); await delay(1000); }
   }
   stage = 'restore-vector-extension';
@@ -104,7 +107,7 @@ try {
   await restored.connect();
   stage = 'row-count-and-constraint-verification';
   const actual = await inventory(restored);
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Restored counts differ from the exported snapshot');
+  if (!sameBackupInventory(expected, actual)) throw new Error('Restored counts differ from the exported snapshot');
   const invalid = await restored.query(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = ANY($1::text[]) AND NOT c.convalidated`, [BACKUP_SCHEMAS]);
   if (Number(invalid.rows[0].count)) throw new Error('Unvalidated restored constraints');

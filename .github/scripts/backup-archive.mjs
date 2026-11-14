@@ -207,3 +207,15 @@ export function restoreArchiveFailureDetails(error, serverLog='') {
  }
  return {stage:restoreArchiveFailureStage(error,log),...(sqlstate?{sqlstate}:{}),operation};
 }
+
+export function sameBackupInventory(expected,actual) {
+ if(!expected||!actual||typeof expected!=='object'||typeof actual!=='object'||Array.isArray(expected)||Array.isArray(actual))return false;
+ const keys=Object.keys(expected).sort(),others=Object.keys(actual).sort();
+ return keys.length===others.length&&keys.length>0&&keys.every((key,index)=>key===others[index]&&typeof expected[key]==='string'&&/^(0|[1-9][0-9]*)$/.test(expected[key])&&expected[key]===actual[key]);
+}
+
+export function assertBackupClientVersion(sourceVersion,clientVersion) {
+ const match=typeof clientVersion==='string'?/^pg_dump \(PostgreSQL\) 17\.(\d+)(?:\s|$)/.exec(clientVersion.trim()):null;
+ if(!Number.isInteger(sourceVersion)||sourceVersion<170000||sourceVersion>=180000||!match)throw new Error('INVALID_BACKUP_POSTGRES_VERSION');
+ if(sourceVersion>170000+Number(match[1]))throw new Error('BACKUP_RESTORE_IMAGE_TOO_OLD');
+}
