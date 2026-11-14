@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "date": "2026-11-14",
+  "scope": "Initial complete PostgreSQL backup preservation, version-pinned retrieval and independent recovery verification",
+  "reviewed_main_commit": "31a25ea496f2393bb113858e41ab32bf43604401",
+  "compatibility_fix_pr": 1443,
+  "compatibility": {
+    "source_postgres": "17.12",
+    "previous_restore_postgres": "17.11",
+    "failure_cause": "Older pg_dump exported internal pg_attver column attributes rejected with SQLSTATE 22023",
+    "old_image_reproduction_sqlstate": "22023",
+    "new_image_reproduction_succeeded": true,
+    "restore_image": "pgvector/pgvector:pg17@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd",
+    "unit_tests_passed": 36,
+    "synthetic_four_schema_tables_restored": 9
+  },
+  "validation": {
+    "pull_request_ci_run": 43580271151,
+    "codeql_run": 43580271034,
+    "merge_queue_ci_run": 43580477550,
+    "main_ci_run": 43580635519,
+    "maintenance_cd_run": 43580741470,
+    "all_conclusions": "success"
+  },
+  "preservation": {
+    "github_run_id": 43581386624,
+    "maintenance_run_id": "fa64f739e2ac5538f889e9e06e584c69",
+    "aws_build_id": "videoq-db-backup-prod:83fb90bb-42ec-4856-b0dc-e515a0d2a4a6",
+    "status": "SUCCEEDED",
+    "snapshot": "repeatable-read/read-only",
+    "schemas": [
+      "public",
+      "drizzle",
+      "videoq_security",
+      "chat_memory"
+    ],
+    "complete_source_table_inventory_retained": true,
+    "objects": 2,
+    "versioned_manifest_and_dump": true,
+    "sha256_and_bytes_verified": true,
+    "dump_bytes": 45969211,
+    "manifest_version_ids_and_private_receipts_published": false
+  },
+  "retrieved_backup_recovery": {
+    "retrieved_backup_restore_verified": true,
+    "table_count": 91,
+    "row_counts_match": true,
+    "constraints_validated": true,
+    "network": "none",
+    "source_run_id": "fa64f739e2ac5538f889e9e06e584c69",
+    "production_d1_cutover": false
+  },
+  "infrastructure": {
+    "enable_updates": 2,
+    "pause_updates": 2,
+    "creates": 0,
+    "deletes": 0,
+    "archive_public_access_blocked": true,
+    "archive_versioning_enabled": true,
+    "archive_encryption": "AES256"
+  },
+  "final_state": {
+    "new_uploads_enabled": false,
+    "archive_objects_preserved": 2,
+    "archive_versions_unchanged": true,
+    "archive_write_permissions_removed": true,
+    "schedule": "ENABLED",
+    "reviewed_code_preserved": true,
+    "production_d1_cutover": false,
+    "verified_at_utc": "2026-11-14T09:41:02.987716+00:00"
+  },
+  "limitations": {
+    "legacy_exclusion_policy_implemented": false,
+    "d1_export_created": false,
+    "production_d1_cutover": false,
+    "migration_execution_complete": false,
+    "neon_pitr_or_r2_recovery_verified": false
+  },
+  "next_step": "Validate an explicit legacy-table exclusion inventory tied to this retained backup and recovery proof; export current-application data from the restored copy. Continue data, authentication, search-quality, performance and cost rehearsals before any separate production cutover."
+}
