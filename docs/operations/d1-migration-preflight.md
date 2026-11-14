@@ -22,7 +22,7 @@
 | 2. 移行データ件数・参照整合性 | リハーサル実証済み | 最終snapshot・書込停止後の差分と再照合 |
 | 3. 認証・課金・利用枠・ジョブ回帰なし | 契約/統合試験で実証、実運用は未完 | 実OAuth、本番cookie継承、実課金経路、配備済みqueue/worker |
 | 4. RAG品質維持 | 自動candidate比較で相対合格 | モデル回答全体・利用文脈を含む品質。非網羅AI候補を完全正解とは扱わない |
-| 5. 同時更新・再試行の整合性 | DB/内部API試験で実証 | 配備済みcloudパイプラインの重複・再配送・部分失敗 |
+| 5. 同時更新・再試行の整合性 | DB/配備内部API試験で実証 | 配備済みcloudパイプラインの重複・再配送・部分失敗 |
 | 6. 性能改善 | **未達** | 実検索の遅延診断、主要APIの配置・cold・同時負荷比較 |
 | 7. 制限・予算 | 容量は適合、予算未確定 | 通常/ピーク量、増加率、アカウント全体の料金と予算判定 |
 | 8. 復旧演習 | バックアップ/D1 Time Travelは実証 | D1書込後のNeon側再適用を含む切戻し演習 |
@@ -603,3 +603,15 @@ main由来の独立worktreeでも関連5ファイル123試験が成功し、評�
 最後に動画の可視性を先に落としてvectorを削除し、固有のfixtureと内部jobを削除した。physical IDの不存在とowner filterのANN空結果を確認した。HTTPSサーバーを停止し、試験用TLS鍵/証明書も削除した。SQS外部taskは作成されるが、キューへdispatchせず、動画IDで限定して削除した。
 
 固定の合成字幕・vectorを使用し、動画upload・音声認識・Embedding生成・LLM回答・外部queue配送・本番OAuthは行っていない。これらの未検証条件を、今回の成功で合格へ変更しない。
+
+## 配備したCloudflare内部APIでの補完試験（2026-11-15）
+
+[配備済み内部APIの集約証跡](evidence/d1-python-cloud-internal-integration-2026-11-15.json)。前節のローカルNode Honoに加え、同じ`workerInternalRoutes`を専用の非公開Cloudflare Workerへ配備して、実Pythonクライアントから同じ操作を実行した。合成v2の既存guardを通した設定から、D1/Vectorize bindingを固定した専用構成を作成し、公開route・workers.dev・preview URLを無効化した。production、v3、Hyperdrive、AWSロールは接続していない。期限付きのWorkerに専用HMAC secretを設定し、コードやvarsへ秘密値を埋め込まなかった。
+
+PythonはTLS検証を有効にしたloopback HTTPS bridgeへ接続し、bridgeが私有service binding経由で実Cloudflare Workerへリクエストを転送した。署名のmethod/origin/path/bodyは転送前後で保持し、Honoの署名検証と業務処理自体は配備済みWorker上で動作した。ローカルNodeがHono処理を代行した試験ではない。
+
+重複claim、payload競合、不正署名、heartbeat、失敗後の再claim、旧lease拒否、20秒の利用枠の二重確保防止、UTF-8字幕の保存と上書き防止、別ownerのstage拒否を確認した。同期前の`indexing`/`pending`、実LangChain outbox同期後のembedding消去、Pythonによる`completed`への遷移と再実行、実Vectorize反映後の正規本文1件と別owner空結果も成功した。
+
+最後に非表示化→vector削除→固有fixture削除を行い、別の読取り接続でusers/videos/scenes/runs/staging/tasks/jobs/external tasks/versions/headsがすべて0件であることを再照合した。physical vector IDの不存在とowner ANN空結果も確認した。専用Workerの削除はAPIで成功し、TLS鍵/証明書・内部HMAC secretの私有ファイルも削除した。
+
+これは配備済み**内部API経路**の補完証拠であり、本番public API、全middleware/DO、動画upload、音声認識、LLM回答、外部OAuth、実Lambda/SQS/scheduler配送の全体E2Eを意味しない。同期処理の起動は私有driverから行った。これらの残る受入条件や性能未達は維持する。
