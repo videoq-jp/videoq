@@ -133,13 +133,16 @@ three model services. The VideoQ gateway only preprocesses audio and provisions
 models; it no longer contains an embedding server. API and worker add the pinned
 model's `SearchQuery` / `Document` prefixes to OpenAI-compatible embedding input.
 
-Whisper's missing optional dependencies are supplied by four upstream binary
-wheels in `files/vllm-audio-wheels.json`. Each URL, version, size and SHA-256 is
+Whisper's four optional audio wheels and patched dnspython 2.9.2 are supplied
+through `files/vllm-audio-wheels.json`. Each URL, version, size and SHA-256 is
 fixed. A gateway init container verifies/caches them on each model PVC, then
 extracts them into a separate `vllm-audio` volume. The unmodified upstream vLLM
 container mounts that volume read-only at `/opt/videoq-audio` and imports it via
-`PYTHONPATH`. Neither vLLM, PyTorch nor the base image's dependencies are rebuilt
-or replaced. The supported target is Linux amd64 / Python 3.12.
+`PYTHONPATH`. Neither vLLM nor PyTorch is rebuilt, and the base image remains
+unchanged. The locked DNS wheel takes precedence over the vulnerable base-image
+copy; inspection must verify its actual import path/version and reject the
+upstream bounded WKS parser reproducer. The supported target is Linux amd64 /
+Python 3.12.
 
 With `downloadModels=false`, this init container remains but never downloads:
 it verifies the cached wheels and populates a fresh runtime volume. Pre-populated

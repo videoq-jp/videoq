@@ -30,6 +30,29 @@ function fixture() {
   return {policy, native, profiles: Array.from({length: 10}, () => structuredClone(documents)), report};
 }
 const run = f => assess(f.report, f.policy, f.native, f.profiles, now);
+test('base DNS finding requires the actual patched overlay, bounded parser check and matching lock', () => {
+  const f = fixture();
+  const replacement = {name: 'dnspython', version: '2.9.2', modulePath: '/opt/videoq-audio/dns/__init__.py', check: 'security.dnspython'};
+  f.policy.groups.push({type: 'python-pkg', origin: 'runtime-overlay', status: 'not_affected', impactStatement: 'Pinned patched import required',
+    references: ['https://github.com/rthalley/dnspython/security/advisories/GHSA-vvf4-9x63-8xvv'], vulnerabilities: ['CVE-2026-128089'],
+    packages: {dnspython: {version: '2.9.1', purl: 'pkg:pypi/dnspython@2.9.1'}}, replacement});
+  f.report.Results.push({Type: 'python-pkg', Vulnerabilities: [{PkgName: 'dnspython', InstalledVersion: '2.9.1', Severity: 'HIGH',
+    VulnerabilityID: 'CVE-2026-128089', PkgIdentifier: {PURL: 'pkg:pypi/dnspython@2.9.1'}}]});
+  const runtime = {status: 'passed', checks: {audioLock: {status: 'passed', details: f.policy.audioLockSha256},
+    'security.dnspython': {status: 'passed', details: {version: '2.9.2', modulePath: replacement.modulePath, oversizedWksRejected: true}}}};
+  const evaluate = proof => assess(f.report, f.policy, f.native, f.profiles, now, proof);
+  assert.equal(evaluate(runtime).accepted.length, 2);
+  assert.throws(() => evaluate(undefined));
+  for (const mutate of [r => r.status = 'failed', r => r.checks.audioLock.details = 'old-lock',
+    r => r.checks['security.dnspython'].status = 'failed', r => r.checks['security.dnspython'].details.version = '2.9.1',
+    r => r.checks['security.dnspython'].details.modulePath = '/usr/local/lib/python3.12/dist-packages/dns/__init__.py',
+    r => r.checks['security.dnspython'].details.oversizedWksRejected = false]) {
+    const copy = structuredClone(runtime); mutate(copy); assert.throws(() => evaluate(copy));
+  }
+  // Another finding in the same base package remains unassessed.
+  f.report.Results[1].Vulnerabilities[0].VulnerabilityID = 'CVE-new';
+  assert.equal(evaluate(runtime).blocking.length, 1);
+});
 test('keeps exact reviewed findings visible while new CVEs, versions and identities block', () => {
   const f = fixture(); const result = run(f);
   assert.equal(result.accepted.length, 1); assert.equal(result.blocking.length, 0);

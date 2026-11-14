@@ -1,5 +1,5 @@
 {
-  "status": "passed_for_reviewed_workloads",
+  "status": "pending_refreshed_actual_image_probe_for_dns_patch",
   "inspectedAt": "2026-11-11T21:57:10.814576+00:00",
   "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
   "upstreamVersion": "0.33.0",
@@ -206,7 +206,7 @@
           "transcript": {
             "duration": 10.44,
             "language": "ja",
-            "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
+            "text": "\u30a4\u30f3\u30bf\u30fc\u30cd\u30c3\u30c8\u3067\u6575\u5bfe\u7684\u74b0\u5883\u30b3\u30fc\u30b9\u306b\u3064\u3044\u3066\u691c\u7d22\u3059\u308b\u3068\u3001\u304a\u305d\u3089\u304f\u73fe\u5730\u4f01\u696d\u306e\u4f4f\u6240\u304c\u51fa\u3066\u304f\u308b\u3067\u3057\u3087\u3046",
             "segments": [
               {
                 "id": 0,
@@ -217,7 +217,7 @@
                 "seek": 0,
                 "start": 0.0,
                 "temperature": 0.0,
-                "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
+                "text": "\u30a4\u30f3\u30bf\u30fc\u30cd\u30c3\u30c8\u3067\u6575\u5bfe\u7684\u74b0\u5883\u30b3\u30fc\u30b9\u306b\u3064\u3044\u3066\u691c\u7d22\u3059\u308b\u3068\u3001\u304a\u305d\u3089\u304f\u73fe\u5730\u4f01\u696d\u306e\u4f4f\u6240\u304c\u51fa\u3066\u304f\u308b\u3067\u3057\u3087\u3046",
                 "tokens": [
                   8040,
                   34337,
@@ -314,7 +314,7 @@
           "mode": "embedding",
           "checks": [
             {
-              "query": "バックアップは何日間保存されますか？",
+              "query": "\u30d0\u30c3\u30af\u30a2\u30c3\u30d7\u306f\u4f55\u65e5\u9593\u4fdd\u5b58\u3055\u308c\u307e\u3059\u304b\uff1f",
               "dimensions": 768,
               "norm": 0.999999986563796,
               "similarity": [
@@ -366,5 +366,18 @@
   "references": [
     "https://docs.vllm.ai/en/stable/deployment/docker/",
     "https://github.com/vllm-project/vllm/blob/v0.33.0/setup.py"
-  ]
+  ],
+  "previousVerifiedStatus": "passed_for_reviewed_workloads",
+  "pendingReview": {
+    "date": "2026-11-15",
+    "reason": "New base-image findings and a fifth locked runtime wheel require fresh actual-image evidence. Prior scan/runtime/GPU fields below remain historical, not proof for the new configuration.",
+    "newRawHighCriticalFindings": 640,
+    "newKernelCnaRecords": 179,
+    "kernelCnaRecordsTotal": 233,
+    "baseDnsFinding": "CVE-2026-128089",
+    "patchedRuntimeDnsVersion": "2.9.2",
+    "currentLockSha256": "938683b76e957d9fb3c484844684c085f66bc090d6affb4a8c65ef8cdc01c324",
+    "actualPatchedWheelBoundedProbePassedLocally": true,
+    "actualUpstreamImageProbePending": true
+  }
 }

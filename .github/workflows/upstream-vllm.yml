@@ -92,7 +92,7 @@ jobs:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
           node .github/scripts/check-vllm-scan.cjs vllm-security-raw.json "$VLLM_IMAGE" vllm-security-assessed.json \
-            vllm-audio-security-raw.json charts/videoq-inference/files/vllm-audio-wheels.json audio-runtime vllm-native-inventory.json
+            vllm-audio-security-raw.json charts/videoq-inference/files/vllm-audio-wheels.json audio-runtime vllm-native-inventory.json vllm-runtime.json
       - name: Retain upstream inspection evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
