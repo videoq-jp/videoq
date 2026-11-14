@@ -423,3 +423,14 @@ archiveを全件検証・private copyへ固定し、そのhashとcaseのcorpus h
 visualは`db:d1:staging:migrate-visuals -- --input <同じprivate archive>`で別フェーズとして実行する。`wrangler.d1-visual-staging.jsonc`は、読み取り元の`videoq-media-prod`と、書き込み先の私有`videoq-media-migration-staging-v3`を明示する。sourceへはreadだけを公開し、既存オブジェクトを書き換えない。コピーはcreate-onlyで行い、再取得した内容をハッシュ照合してからD1の参照とcleanup台帳を確定する。visual用のremote proxy名はDB用と分離する。
 
 2026-11-14、実バックアップの5 visual runに対応する10オブジェクトのコピーとD1参照移行が成功した。これら5件は移行元ですでに`error`状態であり、その状態と存在する部分成果物を保持した。移行によってreadyへ変更したり、既存の処理失敗を解消したことにはしない。コピー先のr2.dev公開は無効で、カスタムドメインは未設定である。
+
+
+## 実データ用D1の復旧演習
+
+既存の`db:d1:staging:recovery`は小さな合成データ専用である。v3の実データには`db:d1:staging:recovery-real`を使う。引数は`--mode prepare|mutate|restore|verify --state <private state.json> --archive <同じprivate archive>`で、`PERSISTENCE_RECOVERY_TARGET_OFFLINE=1`を明示する。接続先はv3の固定DBだけであり、任意のconfigやDB IDを渡せない。
+
+Vectorize配信を含むすべてのimporter・writerの終了を確認してから実施する。ツールも、同一archiveの各フェーズ完了記録、未完了のoutbox・リースがないことを確認する。`prepare`は、全元テーブルのSQL exportを私有ディレクトリで2回取得・ハッシュ照合し、スキーマ・採番値・bookmarkを私有stateへ記録する。export対象外にする`mutation_receipts`は、スキーマを照合し、空であることを別途確認する。内部`_cf_*`表やSQLiteのプランナー統計は比較対象に含めない。
+
+`mutate`は顧客データを変更せず、`mutation_receipts`に専用nonceを持つ1レコードだけを作る。`restore`は、それ以外の全データ・スキーマ・採番がbaselineと一致し、検証レコードがこのstateに属することを確かめてから、固定DBを保存bookmarkへTime Travelで戻す。戻した後も全ハッシュと検証レコード消失を確認する。`verify`で独立に再照合できる。応答喪失後にすでにbaselineへ戻っている場合は、破壊的なrestoreを再発行せず、API応答確認の有無を区別して返す。
+
+SQL exportは認証情報を含むため私有のまま扱い、内容や署名付きdownload URLをログへ出さない。元のNeon・R2や本番D1への操作は行わない。演習失敗時もtargetを公開せず、私有stateと作業ファイルを保って原因を調べる。Time TravelはDBをその場で上書きするため、Vectorize・R2への処理を同時に動かさない。仕様は[Cloudflare公式Time Travelドキュメント](https://developers.cloudflare.com/d1/reference/time-travel/)を参照する。
