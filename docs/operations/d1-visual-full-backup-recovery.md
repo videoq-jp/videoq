@@ -47,3 +47,5 @@ npx --no-install vitest run test/persistence/d1-recovery-identity.integration.te
 初回の全量チェックポイント読取は一括取得によりworkerdがメモリ不足となり、16行単位の取得とBLOBのhex表現へ変更した。ローカルランタイムの対応日を超えたcompatibility dateも修正した。実データから公開run IDとsource revisionの違いを確認し、検索世代の照合を修正した。PGへの初回反映はID列の制約で失敗してロールバックし、原因を修正して成功した。検証用ストレージの永続化オプションが新Miniflareで無効だったため、読取専用ソースから再構築し、対応する`resourcePersistencePath`で再試行した。これらを最初から成功した検証として扱わない。
 
 残る本番受け入れ条件は、外部ライターの停止と整合した全量取得、実OAuth・Cookie、キュー／外部副作用を含む再開、RTO/RPO、性能・検索品質・費用の最終評価である。本結果だけで本番切り替えの停止条件は解除しない。
+
+認証Cookie・暗号化token更新と、完了／失敗ジョブの継続は[追加の実DB往復検証](d1-auth-queue-recovery.md)で確認した。実Google、ブラウザーCookie、外部キュー再開の停止条件は継続する。
