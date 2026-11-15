@@ -272,3 +272,20 @@ test('managed-login audit uses only the fixed rotation project and releases only
  assert.equal(calls.length,2);assert.deepEqual(calls[0],['npm',['ci','--ignore-scripts','--prefix','.github/operations-tools']]);
  assert.deepEqual(calls[1],['npm',['audit','signatures','--prefix','.github/operations-tools']]);
 });
+
+test('cutover controls are explicitly enabled and cannot carry data-plane overrides',()=>{
+ const kinds=['cutover-hold'];
+ assert.equal(input({action:'start',kind:'cutover-hold',source_sha:SHA},kinds).source_sha,SHA);
+ for(const action of ['release-cutover-hold','recover-cutover-hold']){
+  assert.throws(()=>input({action,run_id:RUN},['rotate','audit']),/OPERATION_NOT_ALLOWED/);
+  assert.deepEqual(input({action,run_id:RUN},kinds),{action,run_id:RUN});
+  assert.throws(()=>input({action,run_id:RUN,cutover_phase:'holding'},kinds),/UNEXPECTED_INPUT/);
+ }
+ assert.throws(()=>input({action:'start',kind:'cutover-hold',source_sha:SHA,writers_stopped:true},kinds),/INVALID_DEPLOYMENT_SOURCE/);
+ const spec=definition({table:'metadata',projects:{}}),read=spec.States.ReadCutoverHold;
+ assert.equal(read.Parameters.ProjectionExpression,'cutover_phase,release_requested');
+ assert.equal(spec.States.WaitCutoverHold.Next,'ReadCutoverHold');
+ assert.equal(spec.States.InvalidCutoverHoldPhase.Type,'Fail');
+ assert.equal(spec.States.ReleaseCutoverHold.Parameters.TransactItems[1].Delete.ConditionExpression,'execution_arn = :execution');
+ assert.equal(spec.States.ReleaseCutoverHold.Parameters.TransactItems[0].ConditionCheck.ExpressionAttributeValues[':phase'].S,'holding');
+});

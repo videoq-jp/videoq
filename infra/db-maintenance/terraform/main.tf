@@ -11,6 +11,11 @@ variable "source_commit" {
     error_message = "Use the reviewed operator bundle commit."
   }
 }
+variable "enable_cutover_hold" {
+  type        = bool
+  default     = false
+  description = "Enable the reviewed pre-mutation maintenance hold only after all live broker aliases and the state machine have been verified. This does not enable a database write fence."
+}
 variable "schedule_enabled" {
   type    = bool
   default = false # Enable only after successful production verification/cutover.
@@ -45,7 +50,7 @@ locals {
   name     = "videoq-db-maintenance-prod"
   projects = { for purpose in ["rotation", "migration", "backup", "smoke", "audit"] : purpose => "videoq-db-${purpose}-prod" }
   brokers = {
-    maintenance = "rotate,rollback,audit"
+    maintenance = var.enable_cutover_hold ? "rotate,rollback,audit,cutover-hold" : "rotate,rollback,audit"
     migration   = "migration"
     backup      = "backup"
     smoke       = "smoke"
@@ -241,12 +246,15 @@ resource "aws_iam_role" "state_machine" {
 resource "aws_iam_role_policy" "state_machine" {
   name = "fixed-project-orchestration"
   role = aws_iam_role.state_machine.id
-  policy = jsonencode({ Version = "2012-10-17", Statement = [
+  policy = jsonencode({ Version = "2012-10-17", Statement = concat([
     { Effect = "Allow", Action = ["codebuild:StartBuild"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["codebuild:BatchGetBuilds", "codebuild:StopBuild"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["events:PutTargets", "events:PutRule", "events:DescribeRule"], Resource = "arn:aws:events:${local.region}:${local.account}:rule/StepFunctionsGetEventForCodeBuildStartBuildRule" },
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn }
-  ] })
+    ], var.enable_cutover_hold ? [{
+      Effect    = "Allow", Action = ["dynamodb:ConditionCheckItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } }
+  }] : []) })
 }
 resource "aws_sfn_state_machine" "maintenance" {
   lifecycle {

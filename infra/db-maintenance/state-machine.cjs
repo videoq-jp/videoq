@@ -14,11 +14,31 @@ function definition({table, projects}) {
   const states = {
     Operation: {Type: 'Choice', Choices: [
       {And: [{Variable:'$.kind',StringEquals:'audit'}, {Variable:'$.inspection',IsPresent:true}, {Variable:'$.inspection',StringEquals:'postgres-login-fence'}], Next:'LoginFenceAudit'},
+      {Variable: '$.kind', StringEquals: 'cutover-hold', Next: 'ReadCutoverHold'},
       {Variable: '$.kind', StringEquals: 'migration', Next: 'Migrate'},
       {Variable: '$.kind', StringEquals: 'backup', Next: 'BackupStandalone'},
       {Variable: '$.kind', StringEquals: 'smoke', Next: 'SmokeStandalone'},
       {Variable: '$.kind', StringEquals: 'deploy', Next: 'Deploy'},
     ], Default: 'Prepare'},
+    ReadCutoverHold: {Type:'Task',Resource:'arn:aws:states:::dynamodb:getItem',Parameters:{
+      TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},ConsistentRead:true,
+      ProjectionExpression:'cutover_phase,release_requested',
+    },ResultPath:'$.hold',Next:'CutoverHoldPhase'},
+    CutoverHoldPhase: {Type:'Choice',Choices:[
+      {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'holding'},
+        {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:true}],Next:'ReleaseCutoverHold'},
+      {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'holding'},
+        {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'WaitCutoverHold'},
+    ],Default:'InvalidCutoverHoldPhase'},
+    WaitCutoverHold: {Type:'Wait',Seconds:10,Next:'ReadCutoverHold'},
+    ReleaseCutoverHold: {Type:'Task',Resource:'arn:aws:states:::aws-sdk:dynamodb:transactWriteItems',Parameters:{TransactItems:[
+      {ConditionCheck:{TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},
+        ConditionExpression:'#phase = :phase AND release_requested = :requested',
+        ExpressionAttributeNames:{'#phase':'cutover_phase'},ExpressionAttributeValues:{':phase':{S:'holding'},':requested':{Bool:true}}}},
+      {Delete:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution',
+        ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'}}}},
+    ]},ResultPath:null,Next:'Success'},
+    InvalidCutoverHoldPhase: {Type:'Fail',Error:'INVALID_CUTOVER_HOLD_PHASE'},
     LoginFenceAudit: job('rotation', 'login-fence-audit', 'Release'),
     Migrate: job('migration', 'migration', 'Release', [
       variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),

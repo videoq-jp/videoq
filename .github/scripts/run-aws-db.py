@@ -11,6 +11,8 @@ from pathlib import Path
 
 FUNCTIONS = {kind: "maintenance" for kind in ["rotate", "rollback", "audit"]}
 FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke", "deploy"]})
+FUNCTIONS["cutover-hold"] = "maintenance"
+CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold"}
 
 
 def invocation(function, payload):
@@ -56,10 +58,16 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
                 raise RuntimeError("AWS_EXECUTION_CHANGED")
             run_id = result["run_id"]
         if state != previous:
-            if state not in {"RUNNING", "BUSY", "SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE", "REJECTED"}:
+            if state not in {"RUNNING", "BUSY", "SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE", "REJECTED", "RECOVERED"}:
                 raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
             print("AWS database " + kind + ": " + state + (" (" + run_id + ")" if run_id else ""), flush=True)
             previous = state
+        if kind == "cutover-hold" and state in {"SUCCEEDED", "RECOVERED"}:
+            raise RuntimeError("CUTOVER_HOLD_ALREADY_RELEASED")
+        if kind == "cutover-hold" and state == "RUNNING":
+            if not run_id:
+                raise RuntimeError("MISSING_AWS_RUN_ID")
+            return run_id
         if state == "SUCCEEDED":
             if not run_id:
                 raise RuntimeError("MISSING_AWS_RUN_ID")
@@ -68,22 +76,68 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
             reason = result.get("reason", "AWS_REQUEST_REJECTED")
             raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
         if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
-            raise RuntimeError("AWS_DATABASE_OPERATION_FAILED")
+            raise RuntimeError("CUTOVER_RECOVERY_REQUIRED" if kind == "cutover-hold" else "AWS_DATABASE_OPERATION_FAILED")
+        sleep(15)
+    raise RuntimeError("AWS_EXECUTION_OBSERVATION_TIMEOUT")
+
+
+def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=time.monotonic):
+    if action not in CUTOVER_ACTIONS or not re.fullmatch(r"[a-f0-9]{32}", run_id or ""):
+        raise RuntimeError("INVALID_CUTOVER_CONTROL")
+    function = "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-db-start-maintenance-prod:live"
+    payload = {"action": action, "run_id": run_id}
+    deadline, errors, previous = now() + 115 * 60, 0, None
+    while now() < deadline:
+        try:
+            result = invoke(function, payload)
+        except (RuntimeError, ValueError, OSError):
+            errors += 1
+            if errors >= 5:
+                raise RuntimeError("AWS_EXECUTION_OBSERVATION_FAILED") from None
+            sleep(15)
+            continue
+        errors = 0
+        state = result.get("status")
+        if state != "REJECTED" and result.get("run_id") != run_id:
+            raise RuntimeError("AWS_EXECUTION_CHANGED")
+        if state == "REJECTED":
+            reason = result.get("reason", "AWS_REQUEST_REJECTED")
+            raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
+        if state not in {"RUNNING", "SUCCEEDED", "RECOVERED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE"}:
+            raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
+        if state != previous:
+            print("AWS cutover hold: " + state + " (" + run_id + ")", flush=True)
+            previous = state
+        if state == "RECOVERED" or state == "SUCCEEDED" and action == "release-cutover-hold":
+            return run_id
+        if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
+            raise RuntimeError("CUTOVER_RECOVERY_REQUIRED")
+        if state != "RUNNING" or action == "recover-cutover-hold":
+            raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
+        payload = {"action": "status", "run_id": run_id}
         sleep(15)
     raise RuntimeError("AWS_EXECUTION_OBSERVATION_TIMEOUT")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=FUNCTIONS)
+    parser.add_argument("kind", choices=[*FUNCTIONS, *sorted(CUTOVER_ACTIONS)])
+    parser.add_argument("--run-id")
     parser.add_argument("--inspection", choices=["postgres-login-fence"])
     args = parser.parse_args()
     if os.environ.get("GITHUB_REPOSITORY") != "videoq-jp/videoq" or os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise RuntimeError("PRODUCTION_MAIN_ONLY")
+    if args.kind in CUTOVER_ACTIONS:
+        if args.inspection:
+            raise RuntimeError("INVALID_AUDIT_INSPECTION")
+        control_cutover(args.kind, args.run_id)
+        return
+    if args.run_id:
+        raise RuntimeError("UNEXPECTED_RUN_ID")
     if args.inspection and args.kind != "audit":
         raise RuntimeError("INVALID_AUDIT_INSPECTION")
     request = {"inspection": args.inspection} if args.inspection else {}
-    if args.kind in {"migration", "deploy"}:
+    if args.kind in {"migration", "deploy", "cutover-hold"}:
         sha = os.environ.get("GITHUB_SHA", "")
         if not re.fullmatch(r"[a-f0-9]{40}", sha):
             raise RuntimeError("INVALID_MIGRATION_SOURCE")

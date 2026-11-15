@@ -212,3 +212,43 @@ run "pause_uploads_without_destroying_archives" {
     error_message = "Paused retention must remove archive permissions from DB jobs while preserving stored backups."
   }
 }
+
+run "cutover_hold_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = !contains(split(",", aws_lambda_function.broker["maintenance"].environment[0].variables.ALLOWED_KINDS), "cutover-hold")
+    error_message = "Cutover control must remain disabled until the deployed aliases and definition are verified."
+  }
+  assert {
+    condition     = alltrue([for statement in jsondecode(aws_iam_role_policy.state_machine.policy).Statement : !contains(statement.Action, "dynamodb:ConditionCheckItem")])
+    error_message = "The extra transactional predicate must remain disabled by default."
+  }
+}
+
+run "cutover_hold_opt_in_is_narrow" {
+  command = plan
+  variables {
+    enable_cutover_hold      = true
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = contains(split(",", aws_lambda_function.broker["maintenance"].environment[0].variables.ALLOWED_KINDS), "cutover-hold")
+    error_message = "Explicit opt-in must enable only the maintenance invoker."
+  }
+  assert {
+    condition     = alltrue([for key, function in aws_lambda_function.broker : key == "maintenance" || !contains(split(",", function.environment[0].variables.ALLOWED_KINDS), "cutover-hold")])
+    error_message = "Migration, backup, smoke and deploy invokers cannot release a cutover hold."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.state_machine.policy).Statement : statement
+      if statement.Action == ["dynamodb:ConditionCheckItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn &&
+      statement.Condition["ForAllValues:StringLike"]["dynamodb:LeadingKeys"] == ["run#*"]
+    ]) == 1
+    error_message = "Opt-in adds only the run-record transaction predicate; no DB or credential grants."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-16",
+  "scope": "maintenance exclusion only; production hold disabled",
+  "dynamodbIntegration": {
+    "passed": 6,
+    "database": "actual DynamoDB Local",
+    "stepFunctionsAndCodeBuild": "mocked"
+  },
+  "nodeTests": {
+    "passed": 390,
+    "node": "24.12.0"
+  },
+  "pythonTests": {
+    "total": 158,
+    "skipped": 7,
+    "failures": 0
+  },
+  "terraformTests": {
+    "passed": 8,
+    "failures": 0
+  },
+  "productionHoldInvoked": false,
+  "infrastructureApplied": false,
+  "awsStateMachineValidation": {
+    "result": "OK",
+    "diagnostics": []
+  }
+}
