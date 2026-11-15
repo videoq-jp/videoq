@@ -1,0 +1,17 @@
+{
+  "candidateCommit": "12be21d03e454ca54279c7d14d062f0b83d06b68",
+  "recoveryTestExitCode": 0,
+  "dedicatedPgvector": true,
+  "loopbackOnly": true,
+  "productionAccess": false,
+  "ownedContainerAndAnonymousVolumesRemoved": true,
+  "credentialCopyRemoved": true,
+  "date": "2026-11-16",
+  "localRecoveryTestFiles": 3,
+  "localRecoveryTestsPassed": 28,
+  "localPythonTestsPassed": 83,
+  "localPythonVersion": "3.12",
+  "productionCutover": false,
+  "latestMainIntegrated": "b01b41b422",
+  "rootIntegrationCommit": "e0cb0a7a26e21949837c922c250614dd1cea070c"
+}
