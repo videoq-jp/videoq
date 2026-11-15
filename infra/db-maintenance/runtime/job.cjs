@@ -85,6 +85,10 @@ async function main() {
     await require('../../../.github/scripts/cutover-consumer-prepare.cjs').prepareConsumers();
     console.log('Read-only cutover consumer plan persisted inside AWS'); return;
   }
+  if(stage==='cutover-activity-audit'){
+    execFileSync('node',['--import','./.github/operations-tools/node_modules/tsx/dist/loader.mjs','.github/scripts/cutover-postgres-activity.mjs'],{stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:240000});
+    console.log('Read-only cutover activity recorded inside the owned hold; drain is not asserted');return;
+  }
   if (stage === 'login-fence-audit') {
     execFileSync('node', ['--import', './.github/operations-tools/node_modules/tsx/dist/loader.mjs', '.github/scripts/neon-fence-audit.mjs'],
       {stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:180000});

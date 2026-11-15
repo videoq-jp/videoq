@@ -31,8 +31,12 @@ export async function readPostgresCutoverActivity(client:pg.Client):Promise<Post
 }
 /** Absence of live leases is one prerequisite, never a global drain proof.
  * Expired leases and unfinished answer attempts still require reconciliation. */
-export function assertNoActivePostgresLeases(value:unknown):void{
+export function validatePostgresCutoverActivity(value:unknown):PostgresCutoverActivity{
  const report=postgresCutoverActivitySchema.parse(value),c=report.counts;
  if(report.activeLeasesObserved!==active(c)||report.requiresReconciliation!==reconcile(c))throw Error('Inconsistent PostgreSQL activity report.');
+ return report;
+}
+export function assertNoActivePostgresLeases(value:unknown):void{
+ const report=validatePostgresCutoverActivity(value),c=report.counts;
  if(active(c)||c.jobLeasesInvalid>0||c.chatLeasesInvalid>0)throw Error('Active or malformed PostgreSQL execution leases remain.');
 }

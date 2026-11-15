@@ -13,7 +13,7 @@ function setup(env = process.env, run = (command, args) => execFileSync(command,
   const purpose = env.CODEBUILD_BUILD_ARN.match(/build\/videoq-db-([a-z]+)-prod:/)[1];
   const stage = env.MAINTENANCE_STAGE;
   const stages = {
-    rotation: ['cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'login-fence-audit', 'prepare', 'retire', 'complete', 'retire-rollback', 'complete-rollback'],
+    rotation: ['cutover-activity-audit','cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'login-fence-audit', 'prepare', 'retire', 'complete', 'retire-rollback', 'complete-rollback'],
     migration: ['migration'], backup: ['backup'], smoke: ['smoke'], audit: ['audit'],
   };
   if (!stages[purpose]?.includes(stage)) throw new Error('INVALID_SETUP_STAGE');

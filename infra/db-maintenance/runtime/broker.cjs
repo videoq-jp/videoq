@@ -56,8 +56,13 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
         const {Item: owner} = await get('maintenance');
         if (owner?.execution_arn?.S !== Item.execution_arn.S || owner.kind?.S !== HOLD_KIND || Item.database_mutations_started?.BOOL !== false || Item.consumer_admission_restored?.BOOL !== false || !consumerPlanPrepared(Item)) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
       }
+      let activityObserved=false;
+      if(paused&&Item.activity_observed?.BOOL===true){
+        if(!/^[a-f0-9]{32}$/.test(Item.activity_action_id?.S??'')||typeof Item.activity_report?.S!=='string'||Item.activity_report.S.length>32768||createHash('sha256').update(Item.activity_report.S).digest('hex')!==Item.activity_report_sha256?.S)throw new Error('INVALID_ACTIVITY_REPORT_RECORD');
+        const report=JSON.parse(Item.activity_report.S);if(report.version!==1||report.readOnly!==true||report.inFlightDrainProven!==false)throw new Error('INVALID_ACTIVITY_REPORT_RECORD');activityObserved=true;
+      }
       const restored = prepared && Item.consumer_admission_restored?.BOOL === true;
-      return {run_id: request.run_id, status: state.status, ...(prepared ? {consumer_prepared:true} : {}), ...(paused ? {consumers_paused:true} : {}), ...(restored ? {consumers_restored:true} : {})};
+      return {run_id: request.run_id, status: state.status, ...(prepared ? {consumer_prepared:true} : {}), ...(paused ? {consumers_paused:true} : {}), ...(restored ? {consumers_restored:true} : {}),...(activityObserved?{activity_observed:true}:{})};
     }
     const run_id = request.client_token
       ? createHash('sha256').update(request.kind + ':' + (request.inspection ? request.inspection + ':' : '') + request.client_token).digest('hex').slice(0, 32)

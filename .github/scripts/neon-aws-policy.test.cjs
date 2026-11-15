@@ -283,7 +283,7 @@ test('cutover controls are explicitly enabled and cannot carry data-plane overri
  }
  assert.throws(()=>input({action:'start',kind:'cutover-hold',source_sha:SHA,writers_stopped:true},kinds),/INVALID_DEPLOYMENT_SOURCE/);
  const spec=definition({table:'metadata',projects:{}}),read=spec.States.ReadCutoverHold;
- assert.equal(read.Parameters.ProjectionExpression,'cutover_phase,release_requested,consumer_action_id');
+ assert.equal(read.Parameters.ProjectionExpression,'cutover_phase,release_requested,consumer_action_id,activity_action_id');
  assert.equal(spec.States.WaitCutoverHold.Next,'ReadCutoverHold');
  assert.equal(spec.States.InvalidCutoverHoldPhase.Type,'Fail');
  assert.equal(spec.States.ReleaseCutoverHold.Parameters.TransactItems[1].Delete.ConditionExpression,'execution_arn = :execution');
@@ -296,6 +296,6 @@ test('consumer preparation is a fixed maintenance-only action and does not discl
  assert.throws(()=>input({action:'prepare-cutover-consumers',run_id:'a'.repeat(32),stage:'pause'},[HOLD_KIND]));
  const spec=require('../../infra/db-maintenance/state-machine.cjs').definition({table:'test',projects:{rotation:'rotation'}});
  assert.equal(spec.States.PrepareCutoverConsumers.Parameters.ProjectName,'rotation');
- assert.equal(spec.States.ReadCutoverHold.Parameters.ProjectionExpression,'cutover_phase,release_requested,consumer_action_id');
+ assert.equal(spec.States.ReadCutoverHold.Parameters.ProjectionExpression,'cutover_phase,release_requested,consumer_action_id,activity_action_id');
  assert.equal(spec.States.PrepareCutoverConsumers.Parameters.EnvironmentVariablesOverride.find(v=>v.Name==='MAINTENANCE_STAGE').Value,'cutover-consumer-prepare');
 });

@@ -22,9 +22,10 @@ function definition({table, projects}) {
     ], Default: 'Prepare'},
     ReadCutoverHold: {Type:'Task',Resource:'arn:aws:states:::dynamodb:getItem',Parameters:{
       TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},ConsistentRead:true,
-      ProjectionExpression:'cutover_phase,release_requested,consumer_action_id',
+      ProjectionExpression:'cutover_phase,release_requested,consumer_action_id,activity_action_id',
     },ResultPath:'$.hold',Next:'CutoverHoldPhase'},
     CutoverHoldPhase: {Type:'Choice',Choices:[
+      {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'activity-auditing'},{Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'InspectCutoverActivity'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumers-pausing'}, {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'PauseCutoverConsumers'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumers-resuming'}, {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'ResumeCutoverConsumers'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumers-paused'}, {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'WaitCutoverHold'},
@@ -35,6 +36,7 @@ function definition({table, projects}) {
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'holding'},
         {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'WaitCutoverHold'},
     ],Default:'InvalidCutoverHoldPhase'},
+    InspectCutoverActivity: job('rotation','cutover-activity-audit','ReadCutoverHold',[variable('MAINTENANCE_SOURCE_SHA','$.source_sha'),variable('MAINTENANCE_ACTIVITY_ACTION_ID','$.hold.Item.activity_action_id.S')]),
     PauseCutoverConsumers: job('rotation', 'cutover-consumer-pause', 'ReadCutoverHold', [variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),variable('MAINTENANCE_CONSUMER_ACTION_ID','$.hold.Item.consumer_action_id.S')]),
     ResumeCutoverConsumers: job('rotation', 'cutover-consumer-resume', 'ReadCutoverHold', [variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),variable('MAINTENANCE_CONSUMER_ACTION_ID','$.hold.Item.consumer_action_id.S')]),
     PrepareCutoverConsumers: job('rotation', 'cutover-consumer-prepare', 'ReadCutoverHold', [variable('MAINTENANCE_SOURCE_SHA', '$.source_sha')]),

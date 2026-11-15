@@ -143,6 +143,19 @@ class RequestTest(unittest.TestCase):
         with patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(db.control_cutover("retry-cutover-consumers", RUN, lambda *args: {"status": "RUNNING", "run_id": RUN, "consumer_retry_accepted": True}, lambda _: None, lambda: 0), RUN)
 
+    def test_activity_controls_wait_for_observation_or_same_execution_retry_receipts(self):
+        for action, flag in [("inspect-cutover-activity", "activity_observed"), ("retry-cutover-activity", "activity_retry_accepted")]:
+            calls = []
+            replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, flag: True}])
+            def invoke(function, payload):
+                calls.append(payload)
+                return next(replies)
+            with patch("sys.stdout", new_callable=io.StringIO):
+                self.assertEqual(db.control_cutover(action, RUN, invoke, lambda _: None, lambda: 0), RUN)
+            self.assertEqual(calls, [{"action": action, "run_id": RUN}, {"action": "status", "run_id": RUN}])
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover(action, RUN, lambda *args: {"status": "RECOVERED", "run_id": RUN}, lambda _: None, lambda: 0)
+
 
 if __name__ == "__main__":
     unittest.main()

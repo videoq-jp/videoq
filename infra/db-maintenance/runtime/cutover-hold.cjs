@@ -17,7 +17,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
   function checked(row, run) {
     const arn = executionArn(machine, 'db-' + run);
     if (row?.pk?.S !== 'run#'+run || row?.kind?.S !== HOLD_KIND || row.execution_arn?.S !== arn || !/^[a-f0-9]{40}$/.test(row.source_sha?.S || '')
-      || !['holding','consumer-preparing','consumers-pausing','consumers-paused','consumers-resuming','recovering','recovered'].includes(row.cutover_phase?.S)
+      || !['holding','consumer-preparing','consumers-pausing','consumers-paused','consumers-resuming','activity-auditing','recovering','recovered'].includes(row.cutover_phase?.S)
       || !/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N || '')
       || !Number.isSafeInteger(Number(row.cutover_revision.N)) || Number(row.cutover_revision.N) >= Number.MAX_SAFE_INTEGER
       || typeof row.release_requested?.BOOL !== 'boolean') throw new Error('INVALID_CUTOVER_HOLD_RECORD');
@@ -48,7 +48,8 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
     catch (error) { if (error.name === 'TransactionCanceledException') throw new Error('CUTOVER_HOLD_STATE_CHANGED'); throw error; }
   }
   return async request => {
-    const mutationAction = ['pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers'].includes(request.action);
+    const activityAction=['inspect-cutover-activity','retry-cutover-activity'].includes(request.action);
+    const mutationAction = activityAction||['pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers'].includes(request.action);
     if (mutationAction && !consumerControlEnabled) throw new Error('CUTOVER_CONSUMER_CONTROL_DISABLED');
     const run = request.run_id;
     let row = (await get('run#'+run)).Item;
@@ -65,23 +66,31 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       const bound=await aws('sfn','DescribeStateMachineForExecution',{executionArn:arn});
       if(typeof bound.definition!=='string'||definitionHash(JSON.parse(bound.definition))!==expected)throw new Error('CUTOVER_EXECUTION_DEFINITION_MISMATCH');
       if (owner?.execution_arn?.S !== arn || owner.kind?.S !== HOLD_KIND || row.release_requested.BOOL || row.database_mutations_started?.BOOL !== false || !consumerPlanPrepared(row)) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
-      if (request.action === 'retry-cutover-consumers') {
-        if (!['consumers-pausing','consumers-paused','consumers-resuming'].includes(row.cutover_phase.S) || !/^[a-f0-9]{32}$/.test(row.consumer_action_id?.S ?? '')) throw new Error('INVALID_CONSUMER_RETRY_PHASE');
-        if (status === 'RUNNING' || status === 'PENDING_REDRIVE') return {run_id:run,status:'RUNNING',consumer_retry_accepted:true};
+      if(activityAction&&(row.deployment_admission_restored?.BOOL!==false||row.api_admission_restored?.BOOL!==false||row.api_pause_verified?.BOOL!==true||row.consumer_admission_restored?.BOOL!==false||!row.api_traffic_plan))throw new Error('VERIFIED_CUTOVER_PAUSE_REQUIRED');
+      if (request.action === 'retry-cutover-consumers'||request.action==='retry-cutover-activity') {
+        const idField=activityAction?'activity_action_id':'consumer_action_id',tokenField=activityAction?'activity_redrive_token':'consumer_redrive_token';
+        if (!(activityAction?['activity-auditing','consumers-paused']:['consumers-pausing','consumers-paused','consumers-resuming']).includes(row.cutover_phase.S) || !/^[a-f0-9]{32}$/.test(row[idField]?.S ?? '')) throw new Error('INVALID_CONSUMER_RETRY_PHASE');
+        if (status === 'RUNNING' || status === 'PENDING_REDRIVE') return {run_id:run,status:'RUNNING',...(activityAction?{activity_retry_accepted:true}:{consumer_retry_accepted:true})};
         if (!['FAILED','TIMED_OUT','ABORTED'].includes(status)) throw new Error('CUTOVER_EXECUTION_NOT_REDRIVABLE');
         await noActiveBuilds();
         const details = await aws('sfn','DescribeExecution',{executionArn:arn});
         const count = details.redriveCount ?? 0;
         if (!['FAILED','TIMED_OUT','ABORTED'].includes(details.status) || details.redriveStatus !== 'REDRIVABLE' || !Number.isSafeInteger(count) || count < 0) throw new Error('CUTOVER_EXECUTION_NOT_REDRIVABLE');
         const [{Item: current},{Item: currentOwner}] = await Promise.all([get('run#'+run),get('maintenance')]);
-        if (current?.execution_arn?.S !== arn || current.cutover_phase?.S !== row.cutover_phase.S || current.cutover_revision?.N !== row.cutover_revision.N || current.consumer_action_id?.S !== row.consumer_action_id.S || currentOwner?.execution_arn?.S !== arn || currentOwner.kind?.S !== HOLD_KIND || current.source_sha?.S !== row.source_sha.S || current.consumer_plan_sha256?.S !== row.consumer_plan_sha256.S || current.database_mutations_started?.BOOL !== false || current.release_requested?.BOOL !== false) throw new Error('CUTOVER_HOLD_STATE_CHANGED');
-        const token = createHash('sha256').update('consumer-redrive:'+arn+':'+row.cutover_phase.S+':'+row.consumer_action_id.S+':'+count).digest('hex');
-        if (row.consumer_redrive_token?.S !== token) await replace(run,row,{...updated(row,row.cutover_phase.S),consumer_redrive_token:{S:token}},owner);
+        if (current?.execution_arn?.S !== arn || current.cutover_phase?.S !== row.cutover_phase.S || current.cutover_revision?.N !== row.cutover_revision.N || current[idField]?.S !== row[idField].S || currentOwner?.execution_arn?.S !== arn || currentOwner.kind?.S !== HOLD_KIND || current.source_sha?.S !== row.source_sha.S || current.consumer_plan_sha256?.S !== row.consumer_plan_sha256.S || current.database_mutations_started?.BOOL !== false || current.release_requested?.BOOL !== false) throw new Error('CUTOVER_HOLD_STATE_CHANGED');
+        const token = createHash('sha256').update((activityAction?'activity-redrive:':'consumer-redrive:')+arn+':'+row.cutover_phase.S+':'+row[idField].S+':'+count).digest('hex');
+        if (row[tokenField]?.S !== token) await replace(run,row,{...updated(row,row.cutover_phase.S),[tokenField]:{S:token}},owner);
         try { await aws('sfn','RedriveExecution',{executionArn:arn,clientToken:token}); }
         catch(error) { const after=await describe(arn);if(!['RUNNING','PENDING_REDRIVE'].includes(after))throw error; }
-        return {run_id:run,status:'RUNNING',consumer_retry_accepted:true};
+        return {run_id:run,status:'RUNNING',...(activityAction?{activity_retry_accepted:true}:{consumer_retry_accepted:true})};
       }
       if (status !== 'RUNNING') throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
+      if(activityAction){
+        if(row.cutover_phase.S==='activity-auditing')return{run_id:run,status:'RUNNING'};
+        if(row.cutover_phase.S!=='consumers-paused')throw new Error('INVALID_ACTIVITY_AUDIT_PHASE');
+        const next={...updated(row,'activity-auditing'),activity_action_id:{S:randomBytes(16).toString('hex')},activity_observed:{BOOL:false}};
+        delete next.activity_report;delete next.activity_report_sha256;await replace(run,row,next,owner);return{run_id:run,status:'RUNNING'};
+      }
       const pause = request.action === 'pause-cutover-consumers';
       if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw new Error('VERIFIED_API_TRAFFIC_REQUIRED');
       if (row.cutover_phase.S === (pause?'consumers-pausing':'consumers-resuming')) return {run_id:run,status:'RUNNING'};
