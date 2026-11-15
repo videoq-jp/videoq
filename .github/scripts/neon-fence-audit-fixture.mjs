@@ -42,7 +42,17 @@ try{
  const readOnlyCode="const {Client}=require('pg');(async()=>{const c=new Client({connectionString:process.env.VIDEOQ_FENCE_ADMIN_DATABASE_URL});try{await c.connect();try{await c.query('INSERT INTO public.fence_probe VALUES(1)');throw Error('WRITE_WAS_ALLOWED');}catch(e){if(e.code!=='25006')throw e;console.log('READ_ONLY_VERIFIED');}}finally{await c.end();}})().catch(()=>{process.exitCode=1});";
  assert.equal((await execute(process.execPath,['-e',readOnlyCode],{cwd:bundle,env,timeout:30000,maxBuffer:65536})).stdout.trim(),'READ_ONLY_VERIFIED');
  assert.equal((await client.query('SELECT count(*)::int n FROM public.fence_probe')).rows[0].n,0);
- console.log(JSON.stringify({actualOperatorZip:true,realLoopbackPostgres:true,planPrepared:true,rolesUnchanged:true,readOnlyEnforced:true,existingPlanNotOverwritten:true,awsAccess:false,productionAccess:false}));
+ // Exercise the new read-only child mode through the minimal packaged graph.
+ // Full application-schema coverage lives in the PG persistence integration.
+ await client.query(`CREATE TABLE public.job_executions(job_id text,status text,lease_token uuid,lease_until timestamptz);
+ CREATE TABLE public.chat_conversations(lease_id uuid,leased_until timestamptz);
+ CREATE TABLE public.ai_answer_attempts(status text); CREATE TABLE public.videos(status text);
+ CREATE TABLE public.video_transcription_runs(completed_at timestamptz); CREATE TABLE public.video_visual_runs(status text);
+ INSERT INTO public.job_executions VALUES('private-fixture-job','running',gen_random_uuid(),now()+interval '1 hour')`);
+ const activityResult=await execute(process.execPath,['--import',loader,join(bundle,'apps/api/scripts/d1-postgres-login-fence.ts'),'--mode','activity','--state',output],{cwd:bundle,env,timeout:30000,maxBuffer:65536});
+ const activity=JSON.parse(activityResult.stdout).activity;assert.equal(activity.readOnly,true);assert.equal(activity.counts.jobLeasesActive,1);assert.equal(activity.inFlightDrainProven,false);assert.equal(activityResult.stdout.includes('private-fixture-job'),false);assert.equal(activityResult.stdout.includes(password),false);
+ assert.deepEqual((await client.query('SELECT oid::int,rolname,rolcanlogin FROM pg_roles WHERE left(rolname,length($1))=$1 ORDER BY rolname',[prefix])).rows,before);
+ console.log(JSON.stringify({actualOperatorZip:true,realLoopbackPostgres:true,activityModeVerified:true,activityUsesOnlyOperatorDependencies:true,planPrepared:true,rolesUnchanged:true,readOnlyEnforced:true,existingPlanNotOverwritten:true,awsAccess:false,productionAccess:false}));
 }finally{
  await client?.end().catch(()=>{});
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],'neon-fence-audit-fixture');await docker(['rm','--force','--volumes',name]);}catch(error){if(!String(error.stderr||'').includes('No such object'))throw error;}
