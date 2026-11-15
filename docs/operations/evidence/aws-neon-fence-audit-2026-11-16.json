@@ -73,5 +73,13 @@
     "Parent AWS behavior uses mock transports; ASL syntax was independently checked by the real AWS validation API.",
     "The administrator default read-only PG option is an accidental-write guard, not a sandbox against malicious approved admin code.",
     "Install/inspect/release, upstream drain, production inverse restore and remaining cutover gates are still required."
-  ]
+  ],
+  "cleanBundleBuild": {
+    "source_commit": "4bbe0e3a3415481901f9aeb29f6e50f0938fcc0c",
+    "dirty": false,
+    "operator_sha256": "a613f980861ef423e6e614996ce0453573a926d061d60e8f2266b2ffe2b1c4a4",
+    "broker_sha256": "6291fe9e44deb1c1ea36f7c683afa0e9e61b8e99cf1efb50664658a63c865c9e",
+    "state_machine_sha256": "c7a8c7d08b0e0fe29a10bde0f8f39760355e06b3831c7c5e7bf6614893914dbc",
+    "deployed": false
+  }
 }
