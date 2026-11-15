@@ -1,11 +1,12 @@
 import {randomUUID} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdtemp,writeFile,readFile,stat,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {describe,it,expect} from 'vitest';
 import pg from 'pg';
+import {openPrivateInput} from '../../scripts/migrations/d1/private-input';
 import {preparePostgresLoginFence,inspectPostgresLoginFence,installPostgresLoginFence,releasePostgresLoginFence,type PostgresLoginFenceTarget} from '../../scripts/migrations/d1/postgres-login-fence';
 const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
 const quote=(s:string)=>'"'+s.replaceAll('"','""')+'"';
@@ -35,7 +36,7 @@ describe.skipIf(!url)('PostgreSQL managed-login fence',()=>{
    const env={...process.env};for(const key of Object.keys(env))if(!['PATH','HOME','TMPDIR','LANG'].includes(key))delete env[key];env.VIDEOQ_FENCE_ADMIN_DATABASE_URL=f.connectionString;env.VIDEOQ_MIGRATION_UPSTREAM_STOPPED='1';
    const command=(args:string[],vars=env)=>promisify(execFile)(process.execPath,['--import','tsx',resolve('scripts/d1-postgres-login-fence.ts'),...args],{env:vars,timeout:20000,maxBuffer:1024**2,encoding:'utf8'});
    expect(JSON.parse((await command(['--mode','prepare','--target',target,'--state',state])).stdout).prepared).toBe(true);
-   expect((await stat(state)).mode&0o077).toBe(0);expect(await readFile(state,'utf8')).not.toContain(f.password);
+   const input=await openPrivateInput(state,1024**2);try{expect(input.info.mode&0o077).toBe(0);expect(await input.file.readFile('utf8')).not.toContain(f.password);}finally{await input.file.close();}
    await expect(command(['--mode','install','--state',state,'--confirm-database','wrong_database'])).rejects.toMatchObject({code:1});
    expect((await f.client.query('SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',[f.roles.api])).rows[0].rolcanlogin).toBe(true);
    expect(JSON.parse((await command(['--mode','install','--state',state,'--confirm-database',f.target.databaseName])).stdout).state).toBe('fenced');

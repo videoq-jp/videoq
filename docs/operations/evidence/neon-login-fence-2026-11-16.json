@@ -27,7 +27,8 @@
   "sourceFilesSha256": {
     "apps/api/scripts/d1-postgres-login-fence.ts": "a9355600d6abf056cdd089d9008ab45ffb8ab456a9c751cec7688c1d4cdba50d",
     "apps/api/scripts/migrations/d1/postgres-login-fence.ts": "97c2cf27d09ea8e9672862d05746816a56fd77ed20c437b181782482578f5437",
-    "apps/api/test/persistence/postgres-login-fence.integration.test.ts": "34ceb7298fc10cdce1c2e3e0e0e0e637f5728a4d4651c6dad74b62a227a0f0bb"
+    "apps/api/test/persistence/postgres-login-fence.integration.test.ts": "ac50b24bc813b84311f3a965394fa804af2207bdcfe846489ad45552c7f9678e"
   },
-  "initialFailure": "Privilege scan was evaluated against non-sequence objects; corrected with CASE guards, then reran successfully."
+  "initialFailure": "Privilege scan was evaluated against non-sequence objects; corrected with CASE guards, then reran successfully.",
+  "privatePlanPermissionAndReadUseSameFileHandle": true
 }
