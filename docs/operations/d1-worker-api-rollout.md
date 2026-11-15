@@ -37,7 +37,8 @@
 ## 配布と検証
 
 1. Worker変更をmainでレビューし、通常CI/CDで生成した不変image digestを確定する。
-   [既存の実行境界](search-evaluation-deployment-plan.md)にあるとおり、worker roleはDB用SSM/KMS・SQSの権限も持つ。
+   [既存の保守運用の信頼境界](../../infra/db-maintenance/README.md)と同様に、配布コードのレビューを実行権限の境界とする。
+   worker roleはDB用SSM/KMS・SQSの権限も持つ。
    環境変数を省略しても権限は剥奪されない。未レビューのブランチコードをこのroleで実行しない。
 2. main配布時は既存のbackend設定を維持する。既存3関数やprod queueをD1試験用へ流用しない。
 3. 別途照合した計画で、試験専用のD1/API・ストレージ・キュー・関数を用意する。
@@ -66,3 +67,7 @@ Workerの既存PostgreSQL試験と、内部API署名・backend拒否・lease・q
 763 passed / 1 skippedとなった。署名・設定・ジョブなどの対象79テストも成功した。
 試験用DB containerは削除後の独立した読取りでも残存しないことを確認した。
 CIの別Python版、実Lambda/SQS/モデルの動作をこの結果だけで保証するものではない。
+
+既存CDは `apps/api/**` の試験変更でもAPI配布を選択し、`docs/**` の変更で
+ドキュメント配布も選択する。このPRの通常CD対象はWorker 3関数・API・ドキュメントである。
+API本体と本番wrangler設定は比較元mainと一致する。DB migrationやD1有効化は含まない。
