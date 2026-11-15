@@ -208,6 +208,8 @@ jobs:
               - 'infra/db-maintenance/**'
               - 'infra/sql/neon-security.sql'
               - 'apps/demo-video/**'
+              - 'apps/api/scripts/d1-postgres-login-fence.ts'
+              - 'apps/api/scripts/migrations/d1/postgres-login-fence.ts'
               - 'apps/api/scripts/d1-migration-manifest.ts'
               - 'apps/api/scripts/d1-export.ts'
               - 'apps/api/scripts/d1-preserve-legacy.ts'
@@ -849,6 +851,10 @@ jobs:
       - run: node --test .github/scripts/production-stream-proof.integration.cjs
       - name: Verify private backup retention and failure handling
         run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-d1-run.test.mjs .github/scripts/backup-download.test.mjs
+      - name: Verify AWS login-fence audit boundaries without production access
+        run: |
+          node --import ./.github/operations-tools/node_modules/tsx/dist/loader.mjs --test .github/scripts/neon-fence-audit.test.mjs
+          node .github/scripts/neon-fence-audit-fixture.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'

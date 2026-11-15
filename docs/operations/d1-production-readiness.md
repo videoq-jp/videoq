@@ -55,3 +55,7 @@ PR #1434はmain `6882f06f`へマージされ、main CI・通常CD・DB Maintenan
 ## 公開基盤版のオンプレ受け入れ完了（2026-11-16）
 
 main `6882f06f`の[On-prem Release実行](https://github.com/videoq-jp/videoq/actions/runs/43747462122)も全jobが成功した。成果物のsource SHAを照合し、署名・chart・image indexの検証後、実CPUのASR/embedding/chatと公開日本語fixtureによるアップロード→検索→出典付き回答、streaming、動画再生、object/DB復旧、upgrade/rollback、Helm、保持処理の成功を確認した。runtimeの外向きIPv4/IPv6通信と外部DNSは遮断され、worker Podのprobeも成功している。これは専用nodeのfirewall境界であり、CNIの検証ではない。[集計証跡](evidence/onprem-foundation-release-2026-11-16.json)。cloudのOpenRouter試験や、最終D1候補の受け入れを代替する結果とはしない。
+
+## AWS側の停止計画準備経路（2026-11-16）
+
+[読み取り専用のAWS監査](neon-login-fence.md#aws内の読み取り専用準備経路2026-11-16)を既存broker・global lock・固定rotation job・versioned bundleへ接続した。実ZIP/PGとAWS親の資格情報分離、条件付き保存・読み戻し、応答喪失を検証し、ASLはAWS検証APIでOKとなった。本番未実行。これは準備経路であり、停止維持のdurable lease、install/release、上流停止、最終snapshot/本番逆移行、RAG性能等の受け入れ残件は維持する。

@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
-    "neon-admin.cjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
+    "neon-admin.cjs", "neon-fence-audit.mjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-stream-proof.cjs",
     "backup-restore.mjs", "backup-archive.mjs", "backup-download.mjs", "backup-d1-run.mjs", "backup-d1-export.mts", "provision-public-demo.mjs", "public-demo-policy.cjs",
 ]
@@ -33,9 +33,9 @@ def operator_files():
     for name in ["runtime/job.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
-    # Minimal read-only D1 export graph, not the application's dependency tree.
+    # Minimal read-only export/fence-audit graph, not the application dependency tree.
     operator.append((ROOT / "infra/db-maintenance/operator-package.json", "package.json"))
-    for name in ["scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
+    for name in ["scripts/d1-postgres-login-fence.ts", "scripts/migrations/d1/postgres-login-fence.ts", "scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
                  "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
                  "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",
                  "scripts/migrations/d1/verify-archive.ts", "scripts/migrations/d1/preserved-tables.ts", "scripts/migrations/d1/verified-postgres-source.ts", "scripts/migrations/d1/private-input.ts", "src/persistence/postgres/read-snapshot.ts"]:

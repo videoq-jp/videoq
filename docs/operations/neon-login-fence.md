@@ -87,3 +87,13 @@ role変更の最終確認にはRead Committedを使用する。同じ古いsnaps
 専用PG/pgvectorとローカルD1の4ファイル14テスト、既存の復旧単体21テスト、型検査・lintが成功した。14件には同時解除・再停止・二重復旧の拒否、失敗rollback、role drift、実D1行の復元、D1で削除済みIDの採番床、復旧途中のUNIQUE違反による既存行保持、認証継続・fingerprintの回帰確認を含む。専用コンテナ・匿名volume・credential fileは撤去した。[集計証跡](evidence/neon-fenced-transaction-2026-11-16.json)。
 
 本番Neonでは未実行。AWSの固定bundle・global lock・管理者credential wrapperへの統合、本番の最終snapshot/逆移行CLI、外部状態の照合は依然として残件である。
+
+## AWS内の読み取り専用準備経路（2026-11-16）
+
+既存maintenance brokerへ`audit`の固定`inspection: postgres-login-fence`を追加した。通常auditの意味は変えず、global lock内の固定rotation jobで、immutable operator ZIPに含まれるprepareコマンドだけを実行する。[AWS保守の説明](https://github.com/videoq-jp/videoq/blob/main/infra/db-maintenance/README.md#read-only-managed-login-fence-preparation)を参照。
+
+DB-admin SecureStringはAWS親だけが取得し、子へ渡すのは固定target用のDB接続と許可した環境だけとした。AWS/OIDCや既存のNode/PG設定は継承せず、読み取り専用のPGOPTIONSを明示する。管理者自身による任意SQLを隔離するsandboxではなく、mainレビュー境界は維持する。計画は子のprivate fileから同じschemaで検証し、AWSのrun recordへ条件付きで保存・hash照合する。応答喪失・既存計画の再利用・破損では、計画を上書きしない。
+
+配布ZIP＋実PGの隔離試験、AWS親の境界4テスト、Nodeのデプロイポリシー389テスト、Python 156テスト（7 skip）、infra 57テストが成功した。Step Functions定義はAWSの検証APIで`OK`、diagnostics 0。専用コンテナと資格情報ファイルは撤去した。[集計証拠](evidence/aws-neon-fence-audit-2026-11-16.json)。本番の監査・NOLOGIN操作・復旧・切り替えはまだ実行していない。
+
+この準備の成功後もglobal lockを保持し続けるわけではなく、active fenceの永続leaseでもない。本番の停止・drain、固定sourceによるinstall/inspect/release、逆移行と外部状態の照合を一連の保守経路へ結合する作業は残る。

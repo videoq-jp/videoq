@@ -244,3 +244,31 @@ test('deployment requires canonical main and failed deployments block database j
   const lock = {...terminal(),kind:{S:'deploy'}};
   await assert.rejects(fixture({lock,status:'FAILED'}).broker({action:'start',kind:'migration',source_sha:SHA,writers_stopped:false}), /DEPLOYMENT_RECOVERY_REQUIRED/);
 });
+
+test('managed-login inspection is an explicit read-only audit request with distinct idempotency', async()=>{
+  const request={action:'start',kind:'audit',inspection:'postgres-login-fence',client_token:'a'.repeat(32)};
+  assert.equal(input(request,['audit']).inspection,'postgres-login-fence');
+  for(const event of [{...request,kind:'rotate'},{...request,inspection:'install'},{...request,inspection:{mode:'release'}},{...request,inspection:''}]){
+    assert.throws(()=>input(event,['audit','rotate']),/INVALID_AUDIT_INSPECTION/);
+  }
+  const normal=fixture(),audit=fixture();
+  const a=await normal.broker({action:'start',kind:'audit',client_token:request.client_token}),b=await audit.broker(request);
+  assert.notEqual(a.run_id,b.run_id);
+  const put=audit.calls.find(c=>c.command==='TransactWriteItems').value.TransactItems;
+  assert.equal(put[0].Put.Item.inspection.S,'postgres-login-fence');assert.equal(put[1].Put.Item.inspection.S,'postgres-login-fence');
+  assert.equal(JSON.parse(audit.calls.find(c=>c.command==='StartExecution').value.input).inspection,'postgres-login-fence');
+  const busy=fixture({lock:terminal('RUNNING')});assert.equal((await busy.broker({action:'start',kind:'audit',inspection:'postgres-login-fence'})).status,'BUSY');
+  assert.equal(busy.calls.some(c=>c.command==='StartExecution'),false);
+});
+test('managed-login audit uses only the fixed rotation project and releases only through the existing lock owner check',()=>{
+ const spec=definition({table:'metadata',projects:{rotation:'admin',migration:'migrate',backup:'backup',smoke:'smoke',audit:'audit',deploy:'deploy'}});
+ const choice=spec.States.Operation.Choices.find(c=>c.Next==='LoginFenceAudit');
+ assert.ok(choice.And.some(c=>c.Variable==='$.kind'&&c.StringEquals==='audit'));
+ assert.ok(choice.And.some(c=>c.Variable==='$.inspection'&&c.IsPresent===true));
+ const job=spec.States.LoginFenceAudit;assert.equal(job.Parameters.ProjectName,'admin');assert.equal(job.Next,'Release');assert.equal(job.ResultPath,null);
+ assert.equal(job.Parameters.EnvironmentVariablesOverride.find(v=>v.Name==='MAINTENANCE_STAGE').Value,'login-fence-audit');
+ assert.equal(spec.States.Release.Parameters.ConditionExpression,'execution_arn = :execution');
+ const calls=[];setup({CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:01234567-89ab-cdef-0123-456789abcdef',MAINTENANCE_STAGE:'login-fence-audit',MAINTENANCE_KIND:'audit'},(command,args)=>calls.push([command,args]));
+ assert.equal(calls.length,2);assert.deepEqual(calls[0],['npm',['ci','--ignore-scripts','--prefix','.github/operations-tools']]);
+ assert.deepEqual(calls[1],['npm',['audit','signatures','--prefix','.github/operations-tools']]);
+});

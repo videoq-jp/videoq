@@ -76,10 +76,13 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("kind", choices=FUNCTIONS)
+    parser.add_argument("--inspection", choices=["postgres-login-fence"])
     args = parser.parse_args()
     if os.environ.get("GITHUB_REPOSITORY") != "videoq-jp/videoq" or os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise RuntimeError("PRODUCTION_MAIN_ONLY")
-    request = {}
+    if args.inspection and args.kind != "audit":
+        raise RuntimeError("INVALID_AUDIT_INSPECTION")
+    request = {"inspection": args.inspection} if args.inspection else {}
     if args.kind in {"migration", "deploy"}:
         sha = os.environ.get("GITHUB_SHA", "")
         if not re.fullmatch(r"[a-f0-9]{40}", sha):
