@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-16",
+  "testedBaseCommit": "516fe59bdaf2b5a21316e4297a045f78ab6991ed",
+  "sourceFilesSha256": {
+    ".github/scripts/neon-fence-audit.mjs": "065c418175b2bc5a1827dfbe1e0b590701b364677a72b51228fef4d67b553ba7",
+    ".github/scripts/neon-fence-audit.test.mjs": "a5fd948d9ec83178987aabc0b1e1318e9d1a4a1efc906be07dacb9c33087fbc2",
+    ".github/scripts/neon-fence-audit-fixture.mjs": "f030b8866613e2bee569af6474ac4c903fde4bac5f577243cffa67d0a5418594",
+    ".github/scripts/run-aws-db.py": "845604f31b8bd29ca26af43055ac26aafa2b4e73a804f347d1c3f15b887a816e",
+    ".github/scripts/test_aws_db_request.py": "29d1ee51774b5435c1344b3d1a7b232547c1dacffdeadf31198c759d18594985",
+    ".github/scripts/db-maintenance-cd.cjs": "8c67c322abdae31a2d4728a69b9ea8be82a81c9eb6953edfee2391bf2ef48c72",
+    ".github/workflows/ci.yml": "c94bd6c8250cf1c405e0f5759b71eac36521505dfec858650c593f801b04a684",
+    "infra/db-maintenance/build_bundle.py": "4fb9e7e6ac2b1e443d898c6477edc8d0b2fa87a142fb449c54c9245548f30bd1",
+    "infra/db-maintenance/runtime/policy.cjs": "dee1c0cf7d78c4ade91d98fbcf989c59fb7d7e64798089562ae0b5e612e1ce01",
+    "infra/db-maintenance/runtime/broker.cjs": "df1844af4c40716b01929e261ed2b249a39735c0c7a7afd8148409d3bb10844f",
+    "infra/db-maintenance/runtime/job.cjs": "e0637639bed1456dfa4356c7ade9046c7063d991b15f7efbd639adc8e0fc4d3a",
+    "infra/db-maintenance/runtime/setup-job.cjs": "6e68bcb4bfcecbbb906aa6dabb4943496c672833401e0d2b730ef6e4ac254a0b",
+    "infra/db-maintenance/state-machine.cjs": "c1a8bbaeef6a0e575384ccea5c7f70f6426ee45489a321f1a0062acc541c3fd4",
+    "infra/db-maintenance/state-machine.asl.json.tftpl": "7938306204c8c7b57138b226c05e782db458fa8375b5abe1c61094eda645962e",
+    "apps/api/scripts/d1-postgres-login-fence.ts": "a9355600d6abf056cdd089d9008ab45ffb8ab456a9c751cec7688c1d4cdba50d",
+    "apps/api/scripts/migrations/d1/postgres-login-fence.ts": "0b1b09c01721949faa3802be9b541762cde53271846042e72df18fc2a88fee4c",
+    "apps/api/scripts/migrations/d1/private-input.ts": "8baefa5ad5b5fa99c5ebba3805223416e9e420c6d8898a1bbf01f5552f5a8cdf"
+  },
+  "nodeVersion": "v24.12.0",
+  "awsParentUnitTests": {
+    "passed": 4,
+    "failed": 0,
+    "scope": "Mock AWS transports; real private files and shared plan schema."
+  },
+  "actualOperatorZipFixture": {
+    "actualOperatorZip": true,
+    "realLoopbackPostgres": true,
+    "planPrepared": true,
+    "rolesUnchanged": true,
+    "readOnlyEnforced": true,
+    "existingPlanNotOverwritten": true,
+    "awsAccess": false,
+    "productionAccess": false
+  },
+  "securityNodeTests": {
+    "passed": 389,
+    "failed": 0
+  },
+  "securityPythonTests": {
+    "total": 156,
+    "passed": 149,
+    "skipped": 7,
+    "failed": 0
+  },
+  "infraPythonTests": {
+    "passed": 57,
+    "failed": 0
+  },
+  "javascriptSyntaxCheckedFiles": 10,
+  "awsStateMachineDefinitionValidation": {
+    "result": "OK",
+    "diagnostics": [],
+    "truncated": false
+  },
+  "validatedDefinitionSha256": "c7a8c7d08b0e0fe29a10bde0f8f39760355e06b3831c7c5e7bf6614893914dbc",
+  "cleanup": {
+    "ownedDockerContainersAndVolumesRemoved": true,
+    "temporaryCredentialAndPlanFilesRemovedByFixture": true
+  },
+  "productionAuditExecuted": false,
+  "databaseFenceInstalled": false,
+  "backendSwitched": false,
+  "iamChanges": false,
+  "resourceProvisioning": false,
+  "scheduleChanges": false,
+  "limits": [
+    "Production audit requires reviewed canonical-main maintenance deployment; no unreviewed operator was deployed.",
+    "The registered operation is read-only preparation and does not hold a durable active-fence lease after success.",
+    "Parent AWS behavior uses mock transports; ASL syntax was independently checked by the real AWS validation API.",
+    "The administrator default read-only PG option is an accidental-write guard, not a sandbox against malicious approved admin code.",
+    "Install/inspect/release, upstream drain, production inverse restore and remaining cutover gates are still required."
+  ],
+  "cleanBundleBuild": {
+    "source_commit": "4bbe0e3a3415481901f9aeb29f6e50f0938fcc0c",
+    "dirty": false,
+    "operator_sha256": "a613f980861ef423e6e614996ce0453573a926d061d60e8f2266b2ffe2b1c4a4",
+    "broker_sha256": "6291fe9e44deb1c1ea36f7c683afa0e9e61b8e99cf1efb50664658a63c865c9e",
+    "state_machine_sha256": "c7a8c7d08b0e0fe29a10bde0f8f39760355e06b3831c7c5e7bf6614893914dbc",
+    "deployed": false
+  },
+  "cleanAuditUnitEnvironment": {
+    "applicationNodeModulesAbsentBeforeAndAfter": true,
+    "isolatedOperationsDependenciesOnly": true,
+    "passed": 4,
+    "scope": "Parent and shared schema are loaded from private isolated copies, not application checkout modules."
+  }
+}

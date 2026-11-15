@@ -13,11 +13,13 @@ function definition({table, projects}) {
   const variable = (Name, path) => ({Name, 'Value.$': path, Type: 'PLAINTEXT'});
   const states = {
     Operation: {Type: 'Choice', Choices: [
+      {And: [{Variable:'$.kind',StringEquals:'audit'}, {Variable:'$.inspection',IsPresent:true}, {Variable:'$.inspection',StringEquals:'postgres-login-fence'}], Next:'LoginFenceAudit'},
       {Variable: '$.kind', StringEquals: 'migration', Next: 'Migrate'},
       {Variable: '$.kind', StringEquals: 'backup', Next: 'BackupStandalone'},
       {Variable: '$.kind', StringEquals: 'smoke', Next: 'SmokeStandalone'},
       {Variable: '$.kind', StringEquals: 'deploy', Next: 'Deploy'},
     ], Default: 'Prepare'},
+    LoginFenceAudit: job('rotation', 'login-fence-audit', 'Release'),
     Migrate: job('migration', 'migration', 'Release', [
       variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),
       variable('MAINTENANCE_WRITERS_STOPPED', "States.Format('{}', $.writers_stopped)"),

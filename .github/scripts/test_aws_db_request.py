@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import os
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -60,6 +61,20 @@ class RequestTest(unittest.TestCase):
             db.run("audit", {}, invoke, lambda _: None, lambda: 0)
         self.assertEqual(len(requests), 5)
         self.assertTrue(all(value == requests[0] for value in requests))
+
+    def test_explicit_login_fence_audit_only_adds_fixed_metadata_to_the_request(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "videoq-jp/videoq", "GITHUB_REF": "refs/heads/main"}), patch.object(db, "run", return_value=RUN) as run:
+            with patch("sys.argv", ["request", "audit", "--inspection", "postgres-login-fence"]):
+                db.main()
+            run.assert_called_once_with("audit", {"inspection": "postgres-login-fence"})
+            run.reset_mock()
+            with patch("sys.argv", ["request", "audit"]):
+                db.main()
+            run.assert_called_once_with("audit", {})
+            run.reset_mock()
+            with patch("sys.argv", ["request", "rotate", "--inspection", "postgres-login-fence"]), self.assertRaisesRegex(RuntimeError, "INVALID_AUDIT_INSPECTION"):
+                db.main()
+            run.assert_not_called()
 
 
 if __name__ == "__main__":

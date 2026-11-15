@@ -34,12 +34,12 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       return {run_id: request.run_id, status: state.status};
     }
     const run_id = request.client_token
-      ? createHash('sha256').update(request.kind + ':' + request.client_token).digest('hex').slice(0, 32)
+      ? createHash('sha256').update(request.kind + ':' + (request.inspection ? request.inspection + ':' : '') + request.client_token).digest('hex').slice(0, 32)
       : randomBytes(16).toString('hex');
     if (request.client_token) {
       const {Item: existing} = await get('run#' + run_id);
       if (existing) {
-        if (existing.kind.S !== request.kind) throw new Error('RUN_KIND_MISMATCH');
+        if (existing.kind.S !== request.kind || (existing.inspection?.S || '') !== (request.inspection || '')) throw new Error('RUN_KIND_MISMATCH');
         try {
           const state = await aws('sfn', 'DescribeExecution', {executionArn: existing.execution_arn.S});
           return {run_id, status: state.status};
@@ -67,7 +67,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     const name = 'db-' + run_id;
     const arn = executionArn(machine, name);
     const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, ...request, run_id});
-    const item = {kind: {S: request.kind}, execution_arn: {S: arn}};
+    const item = {kind: {S: request.kind}, execution_arn: {S: arn}, ...(request.inspection ? {inspection: {S: request.inspection}} : {})};
     try {
       await aws('ddb', 'TransactWriteItems', {TransactItems: [
         {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}, created_at: {S: new Date().toISOString()}}, ConditionExpression: 'attribute_not_exists(pk)'}},

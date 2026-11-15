@@ -421,3 +421,52 @@ The synthetic restore fixture includes this attribute and verifies the complete
 four-schema restore. Readiness probes use TCP so they cannot accidentally accept
 the temporary Unix-socket-only initialization server. Inventory equality compares
 qualified table names and row counts independently of database collation order.
+
+## Read-only managed-login fence preparation
+
+After the reviewed operator has reached canonical main and maintenance CD has
+promoted its immutable bundles, the existing maintenance starter also accepts:
+
+```json
+{"action":"start","kind":"audit","inspection":"postgres-login-fence","client_token":"<32 lowercase hex characters>"}
+```
+
+The operator request CLI exposes this as `audit --inspection postgres-login-fence`;
+its main/repository and AWS invocation checks remain in place. Ordinary age audits
+and their schedule keep their existing behavior. Inspection tokens have a separate
+idempotency namespace, so an ordinary audit cannot be mistaken for this result.
+
+Step Functions takes the existing global maintenance lock and runs only the fixed
+rotation project/stage `login-fence-audit`. No caller supplies SQL, a DB endpoint,
+an environment override, an output path or a source bundle. This operation does
+**not** install or release a database fence, stop producers, restore rows or switch
+the application backend. The workflow releases its maintenance lock on success;
+it does not claim that writers remain stopped afterwards.
+
+Only the AWS parent retrieves the existing DB-admin SecureString. It fixes the
+production host/database, tightens TLS to `verify-full`, rejects role/options
+injection and launches only the packaged CLI's `prepare` mode. The DB child receives
+an allowlisted environment and the database credential, but no AWS/OIDC credentials,
+metadata endpoint variables, inherited `NODE_OPTIONS` or inherited PG settings.
+Fixed `PGOPTIONS` enable the default read-only transaction setting and a catalog
+search path. This catches accidental writes; it is **not** a capability sandbox
+against malicious approved administrator code that could change that setting.
+Main review remains the administrative trust boundary described above.
+
+The parent validates the child's private plan with the shared schema and persists
+it in the matching private DynamoDB run record with a conditional first-write,
+SHA-256 readback and the producing CodeBuild ARN. The plan contains role/catalog
+metadata, not passwords or DB URLs. It never enters Step Functions input/output,
+GitHub output or application logs. Lost write responses are reconciled by exact
+readback, and an existing plan is never overwritten. Temporary handoff files are
+removed on success and failure. The status endpoint still returns execution status
+only. The existing run-record TTL applies to this read-only preparation record;
+**this is not a durable active-fence lease**.
+
+Local verification uses the actual operator ZIP and an isolated PostgreSQL server,
+plus mock AWS transports for the parent. It proves dependency coverage, read-only
+execution, unchanged role attributes, environment stripping, immutable storage and
+lost-response recovery. The ASL definition also passes the AWS validation API.
+These checks do not constitute a live production audit or complete the writer-stop
+and production inverse-restore operations. No new IAM grants, resources or schedule
+changes are needed for this preparation route.

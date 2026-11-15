@@ -77,6 +77,11 @@ async function main() {
   assertBuildArn(process.env.CODEBUILD_BUILD_ARN);
   if (process.env.GITHUB_ACTIONS) throw new Error('GITHUB_MASK_COMMANDS_NOT_SUPPORTED_IN_AWS_LOGS');
   const stage = process.env.MAINTENANCE_STAGE;
+  if (stage === 'login-fence-audit') {
+    execFileSync('node', ['--import', './.github/operations-tools/node_modules/tsx/dist/loader.mjs', '.github/scripts/neon-fence-audit.mjs'],
+      {stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:180000});
+    console.log('Read-only managed-login fence plan persisted inside AWS'); return;
+  }
   if (stage === 'prepare') return prepare();
   if (stage === 'retire') return m.retire(journal());
   if (stage === 'complete') return m.complete(journal());
