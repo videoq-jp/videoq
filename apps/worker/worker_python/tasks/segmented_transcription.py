@@ -11,6 +11,7 @@ from worker_python.contracts import (
     JOB_INDEX_VIDEO_TRANSCRIPT,
 )
 from worker_python.db import db_connection
+from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.env import env_flag
 from worker_python.pipeline.srt import create_srt_from_whisper_segments
 from worker_python.pipeline.storage import resolve_media_input
@@ -104,6 +105,9 @@ def finish_video_transcription(video_id: int, run_id: str) -> None:
     run = checkpoints.load_run(video_id, run_id)
     if not run:
         return
+    if uses_internal_persistence():
+        _finish_cloud_run(run)
+        return
     empty = False
     with db_connection() as conn:
         if not run.completed:
@@ -145,3 +149,40 @@ def build_video_visuals(video_id: int, run_id: str, cache_kind: str) -> None:
         raise ValueError("Unknown visual cache kind")
     from worker_python.tasks.segmented_visuals import start_visuals
     start_visuals(video_id, run.file_key, run.duration_ms / 1000)
+
+
+def _finish_cloud_run(run: checkpoints.TranscriptionRun) -> None:
+    transcript = None
+    if not run.completed:
+        segments = []
+        after = -1
+        while True:
+            page = call_internal_api("checkpoints/segments", {"videoId": run.video_id, "runId": run.run_id, "afterIndex": after})
+            if page.get("active") is not True:
+                return
+            rows = page["rows"]
+            for row in rows:
+                if row["segments"] is None:
+                    raise RuntimeError("Transcription chunks are still incomplete")
+                if row["index"] != after + 1:
+                    raise RuntimeError("Transcription checkpoint sequence is incomplete")
+                segments.extend(row["segments"])
+                after = row["index"]
+            if page.get("done") is True:
+                break
+            if not rows:
+                raise RuntimeError("Transcription checkpoint page did not advance")
+        if after + 1 != run.chunk_count:
+            raise RuntimeError("Transcription checkpoint count is incomplete")
+        transcript = create_srt_from_whisper_segments(segments)
+        if not transcript.strip():
+            transcript = None
+    result = call_internal_api("checkpoints/finish", {"videoId": run.video_id, "runId": run.run_id, "transcript": transcript})
+    if result.get("stale") is True:
+        return
+    if result.get("completed") is not True:
+        raise RuntimeError("Transcription finalization is still pending")
+    # Indexing handoff is already in the same D1 batch as transcript completion.
+    if result.get("status") in {"indexing", "completed"} and env_flag("VIDEO_VISUAL_ENABLED", True):
+        from worker_python.tasks.segmented_visuals import start_visuals
+        start_visuals(run.video_id, run.file_key, run.duration_ms / 1000)

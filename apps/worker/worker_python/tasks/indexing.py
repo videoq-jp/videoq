@@ -6,6 +6,7 @@ import logging
 
 from worker_python.advisory_locks import video_vector_write_lock
 from worker_python.db import db_connection
+from worker_python.internal_api import uses_internal_persistence
 from worker_python.pipeline import vector_index
 from worker_python.video_sql import finish_video_indexing, get_video_for_task
 from worker_python.video_status import VideoStatus
@@ -20,6 +21,14 @@ class IndexingExecutionFailedError(Exception):
 def index_video_transcript(video_id: int, allow_empty: bool = False) -> None:
     """Index a video transcript and transition INDEXING → COMPLETED."""
     logger.info("Indexing task started for video ID: %d", video_id)
+
+    if uses_internal_persistence():
+        from worker_python.pipeline.cloud_scene_index import reindex_cloud_video
+        try:
+            reindex_cloud_video(video_id, finish_indexing=True, allow_empty=allow_empty is True)
+        except Exception as exc:
+            raise IndexingExecutionFailedError(f"Cloud indexing failed for video {video_id}") from exc
+        return
 
     with video_vector_write_lock(video_id):
         with db_connection() as conn:

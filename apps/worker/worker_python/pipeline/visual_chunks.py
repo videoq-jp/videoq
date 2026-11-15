@@ -22,8 +22,9 @@ def visual_prefix(file_key: str) -> str:
     return f"{file_key}.visual-v2/"
 
 
-def chunk_key(file_key: str, run_id: str, index: int, extension: str = "bin") -> str:
-    return f"{visual_prefix(file_key)}{run_id}/{index}.{extension}"
+def chunk_key(file_key: str, run_id: str, index: int, extension: str = "bin", *, object_version: str | None = None) -> str:
+    suffix = f"{index}/{object_version}" if object_version else str(index)
+    return f"{visual_prefix(file_key)}{run_id}/{suffix}.{extension}"
 
 
 def manifest_key(file_key: str) -> str:
