@@ -85,7 +85,8 @@ async function alterLogins(client:pg.Client,p:PostgresLoginFencePlan,enable:bool
  await client.query('BEGIN');
  try{
   await client.query("SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='30s'");
-  await client.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))',['videoq-login-fence',p.target.rolePrefix]);
+  const locked=(await client.query<{locked:boolean}>('SELECT pg_try_advisory_xact_lock(hashtext($1),hashtext($2)) AS locked',['videoq-login-fence',p.target.rolePrefix])).rows[0].locked;
+  if(!locked)fail('Another fenced operation holds the PostgreSQL fence lock.');
   const observed=await inspectPostgresLoginFence(client,p);
   if(observed.otherDatabaseSessions||observed.preparedTransactions)fail('Cross-database sessions or prepared transactions require reconciliation.');
   for(const login of writerNames(p))await client.query('ALTER ROLE '+quote(login)+(enable?' LOGIN':' NOLOGIN'));

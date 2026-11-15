@@ -47,3 +47,7 @@ CI成功や一つの復旧試験だけで全条件を満たしたと判断しな
 PR #1434はmain `6882f06f`へマージされ、main CI・通常CD・DB Maintenance CDが成功した。配備後のhealth/readyは200、3 LambdaはActive/Successful。D1 bindingと切り替え変数は未設定で、本番はPostgreSQLを継続する。
 
 [認証付きの参照API比較](d1-authenticated-api-performance.md)では、同一ownerの6 scenario・240リクエストで応答を照合し、NRTのHono p95はPG 519ms、D1 43msだった。migration後のindexing状態へPGコピーを揃え、D1のreadinessは緩めていない。これはwarm・逐次・参照APIに限定した進展であり、RAG回帰、cold/同時負荷、本番runtime/config、その他の受け入れ残件を解決したとは扱わない。
+
+## 復旧transactionと停止ロックの結合（2026-11-16）
+
+[Neon停止の復旧transaction](neon-login-fence.md#復旧トランザクション中の停止維持2026-11-16)を追加し、実D1行の復元を保持中のlogin fence transactionへ接続した。競合解除・二重実行・失敗rollback・role drift・採番維持を含む4ファイル14テストと既存単体21テストが成功した。隔離DB限定は維持し、本番向けAWS operation/逆移行CLIが完成したとは扱わない。

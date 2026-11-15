@@ -1,0 +1,38 @@
+{
+  "recoveryTestExitCode": 0,
+  "dedicatedPgvector": true,
+  "loopbackOnly": true,
+  "productionAccess": false,
+  "sourceFilesSha256": {
+    "apps/api/scripts/migrations/d1/fenced-postgres-transaction.ts": "7327a73498af3241ecfc1380846ad6ad0b0b3756d504690097fae8367f751749",
+    "apps/api/scripts/migrations/d1/postgres-login-fence.ts": "0b1b09c01721949faa3802be9b541762cde53271846042e72df18fc2a88fee4c",
+    "apps/api/scripts/migrations/d1/postwrite-recovery.ts": "03380db6aabbf1b12374fc58dc562b80c094dd01b98fca58dff3371f1e68e24c",
+    "apps/api/test/persistence/postgres-login-fence.integration.test.ts": "b09975706f0f8520dacd49d6b10a7432b74158152211601d32ee82c179bbbf98"
+  },
+  "nodeVersion": "v24.12.0",
+  "date": "2026-11-16",
+  "testedBaseCommit": "3859d96a8ea6190615f1586f65230bbc613e9734",
+  "integrationFiles": 4,
+  "integrationTests": 14,
+  "unitTests": 21,
+  "typecheck": "passed",
+  "eslint": "passed",
+  "cleanup": {
+    "ownedContainerAndAnonymousVolumesRemoved": true,
+    "credentialCopyRemoved": true
+  },
+  "productionExecuted": false,
+  "awsGlobalLockIntegrationComplete": false,
+  "checks": [
+    "concurrent release/install/second recovery rejected while transaction holds shared advisory key",
+    "successful operation commits and retains NOLOGIN until explicit release",
+    "failed operation rolls back without restoring LOGIN",
+    "external managed-role drift is seen before commit and rolls back data",
+    "wrong target and unstopped upstream rejected before callback",
+    "actual D1 snapshot restored through the held-fence transaction",
+    "deleted D1 identity 500 retained; next PG identity 501",
+    "partial replacement failure preserves previous rows and sequence 502",
+    "existing auth, identity, and fingerprint integrations pass"
+  ],
+  "scope": "Trusted operator transaction and isolated recovery composition. No production restore CLI or AWS broker operation is enabled."
+}
