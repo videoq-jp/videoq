@@ -76,6 +76,45 @@ class RequestTest(unittest.TestCase):
                 db.main()
             run.assert_not_called()
 
+    def test_cutover_acquire_returns_the_owned_running_handle_without_waiting_or_restarting(self):
+        calls, waits = [], []
+        def invoke(function, request):
+            calls.append((function, request))
+            return {"status": "RUNNING", "run_id": RUN}
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.run("cutover-hold", {"source_sha": "b" * 40}, invoke, waits.append, lambda: 0), RUN)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(waits, [])
+        self.assertTrue(calls[0][0].endswith(":videoq-db-start-maintenance-prod:live"))
+        for state in ["SUCCEEDED", "RECOVERED"]:
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "ALREADY_RELEASED"):
+                db.run("cutover-hold", {"source_sha": "b" * 40}, lambda *args: {"status": state, "run_id": RUN}, waits.append, lambda: 0)
+
+    def test_cutover_release_observes_the_same_execution_and_never_turns_failure_into_recovery(self):
+        calls, waits = [], []
+        replies = iter([{"status": "RUNNING", "run_id": RUN}, RuntimeError("observation lost"), {"status": "SUCCEEDED", "run_id": RUN}])
+        def invoke(function, payload):
+            calls.append(payload)
+            result = next(replies)
+            if isinstance(result, Exception):
+                raise result
+            return result
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("release-cutover-hold", RUN, invoke, waits.append, lambda: 0), RUN)
+        self.assertEqual(calls, [{"action": "release-cutover-hold", "run_id": RUN}, {"action": "status", "run_id": RUN}, {"action": "status", "run_id": RUN}])
+        self.assertEqual(waits, [15, 15])
+        calls.clear()
+        def failed(function, payload):
+            calls.append(payload)
+            return {"status": "FAILED", "run_id": RUN}
+        with patch("sys.stdout", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "CUTOVER_RECOVERY_REQUIRED"):
+            db.control_cutover("release-cutover-hold", RUN, failed, waits.append, lambda: 0)
+        self.assertEqual(len(calls), 1)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("recover-cutover-hold", RUN, lambda *args: {"status": "RECOVERED", "run_id": RUN}, waits.append, lambda: 0), RUN)
+        with self.assertRaisesRegex(RuntimeError, "AWS_EXECUTION_CHANGED"):
+            db.control_cutover("recover-cutover-hold", RUN, lambda *args: {"status": "RECOVERED"}, waits.append, lambda: 0)
+
 
 if __name__ == "__main__":
     unittest.main()

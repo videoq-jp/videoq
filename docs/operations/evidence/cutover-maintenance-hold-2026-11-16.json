@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-16",
+  "scope": "maintenance exclusion only; production hold disabled",
+  "dynamodbIntegration": {
+    "passed": 6,
+    "database": "actual DynamoDB Local",
+    "stepFunctionsAndCodeBuild": "mocked"
+  },
+  "nodeTests": {
+    "passed": 390,
+    "node": "24.12.0"
+  },
+  "pythonTests": {
+    "total": 158,
+    "skipped": 7,
+    "failures": 0
+  },
+  "terraformTests": {
+    "passed": 8,
+    "failures": 0
+  },
+  "productionHoldInvoked": false,
+  "infrastructureApplied": false,
+  "awsStateMachineValidation": {
+    "result": "OK",
+    "diagnostics": []
+  },
+  "infraPythonTests": {
+    "passed": 57,
+    "failures": 0
+  },
+  "cleanBundle": {
+    "source_commit": "de73c94b1fc1ba5d340ac70c64c6a489d98a23bb",
+    "dirty": false,
+    "operator_sha256": "b49f3d4b6f476b7ce316839bcc0388e8826b13ff18fb2bb3e14a84820aa8ab7e",
+    "broker_sha256": "f39fe2f45b4f4745dc28cf04bd86f4a7654a6cf1af70cc4e4b77afbdbdff7678",
+    "state_machine_sha256": "877e117455c2e0e376120c1f6f48a031ad70d7d4284b7444b643d31a56b38d32"
+  },
+  "packagedBroker": {
+    "brokerLoads": true,
+    "holdControlLoads": true
+  }
+}

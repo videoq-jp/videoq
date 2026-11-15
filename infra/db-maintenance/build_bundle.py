@@ -67,7 +67,7 @@ def main():
     runtime = ROOT / "infra/db-maintenance/runtime"
     if not (runtime / "node_modules/@aws-sdk/client-sfn/package.json").is_file():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
-    broker = [(runtime / name, name) for name in ["broker.cjs", "policy.cjs", "package.json", "package-lock.json"]]
+    broker = [(runtime / name, name) for name in ["broker.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
     operator_hash = archive(directory / "operator.zip", operator_files())
     broker_hash = archive(directory / "broker.zip", broker)

@@ -201,6 +201,7 @@ jobs:
               - '.github/operations-tools/**'
               - '.github/scripts/backup-*'
               - '.github/scripts/neon-*'
+              - '.github/scripts/cutover-hold*'
               - '.github/scripts/with-neon-credentials.py'
               - '.github/scripts/provision-public-demo.mjs'
               - '.github/scripts/public-demo-policy.cjs'
@@ -855,6 +856,11 @@ jobs:
         run: |
           node --import ./.github/operations-tools/node_modules/tsx/dist/loader.mjs --test .github/scripts/neon-fence-audit.test.mjs
           node .github/scripts/neon-fence-audit-fixture.mjs
+      - name: Verify maintenance hold races against DynamoDB Local
+        run: |
+          npm ci --ignore-scripts --prefix infra/db-maintenance/runtime
+          npm audit signatures --prefix infra/db-maintenance/runtime
+          node --test .github/scripts/cutover-hold.integration.cjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'
