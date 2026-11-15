@@ -1,0 +1,32 @@
+{
+  "actualLambdaFunctions": 3,
+  "actualSqsMappings": 3,
+  "originallyEnabled": 2,
+  "originallyDisabled": 1,
+  "pauseVerified": true,
+  "queuedMessagesRetainedWhilePaused": 2,
+  "isolatedQuietPeriodSeconds": 40,
+  "deliveriesObservedAfterResume": 2,
+  "originalAdmissionRestored": true,
+  "ownershipVerifier": "isolated operation record; no production coordinator integration",
+  "productionModified": false,
+  "date": "2026-11-16",
+  "nodeVersion": "24.12.0",
+  "unitTests": 7,
+  "securityTests": 411,
+  "infraTests": 57,
+  "productionReadOnlyInventory": {
+    "consumers": 3,
+    "enabled": 3
+  },
+  "cleanup": {
+    "mappingAbsence": 3,
+    "functionAbsence": 3,
+    "queueAbsence": 3,
+    "logGroupAbsence": 3,
+    "roleAbsence": true
+  },
+  "firstAttempt": "single SQS read returned empty; fixture added bounded retrieval and isolated quiet period, then passed; first attempt cleanup also verified",
+  "productionDrainCriterionEstablished": false,
+  "sourceSha256": "a6c5ec77318d3fb18eb7618c4e39845bee6f70b53960d18a069ab43e19832955"
+}

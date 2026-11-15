@@ -196,6 +196,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/workflows/terraform-apply.yml'
             operations:
+              - '.github/scripts/cutover-sqs-consumers.cjs'
               - '.github/scripts/aws-canonical-migration.cjs'
               - '.github/scripts/migration-backend.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
