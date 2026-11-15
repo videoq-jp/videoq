@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-16",
+  "sourceMainSha": "6882f06fb0c8bb9d3a55fee33e5946c8ac5f70a0",
+  "sourceTreeIdenticalTo": "e0cb0a7a26e21949837c922c250614dd1cea070c",
+  "placementHint": "aws:ap-northeast-1",
+  "placements": {
+    "remote-NRT": 240
+  },
+  "requests": 240,
+  "warmRounds": 20,
+  "testOwnerVideos": 73,
+  "cloneRows": 10228,
+  "cloneTablesIncludingSequence": 69,
+  "cloneForeignKeyViolations": 0,
+  "realPasswordLoginBoth": true,
+  "unauthenticatedDeniedBoth": true,
+  "semanticResponsesVerified": 252,
+  "ignoredResponseFields": [
+    "X-Amz-Date",
+    "X-Amz-Signature (nonfunctional isolated media signing credentials)"
+  ],
+  "stateAlignment": {
+    "changedCopyRows": 73,
+    "direction": "postgres_copy_to_d1_migration_state",
+    "migration": "0019_scene_search_readiness",
+    "d1ReadinessBypassed": false,
+    "productionChanged": false
+  },
+  "scenarios": [
+    {
+      "name": "statusCounts",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 404,
+          "p95Ms": 415,
+          "p99Ms": 418
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 649.01,
+          "p95Ms": 754.47,
+          "p99Ms": 759.44
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 36,
+          "p95Ms": 42,
+          "p99Ms": 44
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 283.23,
+          "p95Ms": 325.68,
+          "p99Ms": 362.17
+        }
+      }
+    },
+    {
+      "name": "list",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 473,
+          "p95Ms": 494,
+          "p99Ms": 513
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 724.25,
+          "p95Ms": 759.61,
+          "p99Ms": 768.48
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 32,
+          "p95Ms": 42,
+          "p99Ms": 43
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 289.29,
+          "p95Ms": 359.61,
+          "p99Ms": 716.78
+        }
+      }
+    },
+    {
+      "name": "listPage2",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 469,
+          "p95Ms": 567,
+          "p99Ms": 569
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 722.29,
+          "p95Ms": 1151.79,
+          "p99Ms": 1313.09
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 37,
+          "p95Ms": 40,
+          "p99Ms": 52
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 293.75,
+          "p95Ms": 393.91,
+          "p99Ms": 1120.64
+        }
+      }
+    },
+    {
+      "name": "listTitle",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 470,
+          "p95Ms": 524,
+          "p99Ms": 628
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 727.02,
+          "p95Ms": 813.5,
+          "p99Ms": 1871.19
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 33,
+          "p95Ms": 39,
+          "p99Ms": 40
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 299.05,
+          "p95Ms": 339.5,
+          "p99Ms": 359.16
+        }
+      }
+    },
+    {
+      "name": "listKeyword",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 475,
+          "p95Ms": 531,
+          "p99Ms": 543
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 732.23,
+          "p95Ms": 856.64,
+          "p99Ms": 1177.77
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 35,
+          "p95Ms": 44,
+          "p99Ms": 45
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 285.89,
+          "p95Ms": 347.51,
+          "p99Ms": 369.95
+        }
+      }
+    },
+    {
+      "name": "detail",
+      "allResponsesMatch": true,
+      "postgres": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 411,
+          "p95Ms": 431,
+          "p99Ms": 443
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 665.08,
+          "p95Ms": 736.25,
+          "p99Ms": 765.87
+        }
+      },
+      "d1": {
+        "hono": {
+          "n": 20,
+          "p50Ms": 35,
+          "p95Ms": 43,
+          "p99Ms": 45
+        },
+        "remoteClient": {
+          "n": 20,
+          "p50Ms": 298.73,
+          "p95Ms": 356.27,
+          "p99Ms": 714.93
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "postgres": {
+      "hono": {
+        "n": 120,
+        "p50Ms": 459,
+        "p95Ms": 519,
+        "p99Ms": 569
+      },
+      "remoteClient": {
+        "n": 120,
+        "p50Ms": 715.01,
+        "p95Ms": 852.69,
+        "p99Ms": 1313.09
+      }
+    },
+    "d1": {
+      "hono": {
+        "n": 120,
+        "p50Ms": 35,
+        "p95Ms": 43,
+        "p99Ms": 45
+      },
+      "remoteClient": {
+        "n": 120,
+        "p50Ms": 292.62,
+        "p95Ms": 362.17,
+        "p99Ms": 716.78
+      }
+    }
+  },
+  "limits": [
+    "Single owner, six read scenarios, sequential workload, twenty samples per backend per scenario.",
+    "Nearest-rank observed quantiles; p99 is the sample maximum, not a production SLO estimate.",
+    "Client measurements include Wrangler remote service transport; Hono duration covers actual app authentication and handler.",
+    "Real LLM, Vectorize synchronization, media object access, OAuth external login, cold and concurrent loads were not included.",
+    "Migration 0019 correctly resets readiness; PostgreSQL copy status was aligned to D1 indexing state. No readiness bypass.",
+    "Existing RAG latency regression and other cutover gates remain open."
+  ],
+  "compatibilityDate": "2026-11-15",
+  "hyperdriveQueryCaching": false,
+  "postgresCopyRlsTables": 0,
+  "cloudflareCleanup": {
+    "postgresWorkerDeleted": true,
+    "d1WorkerDeleted": true,
+    "ownedDurableObjectsAbsent": true,
+    "hyperdriveDeleted": true,
+    "d1Deleted": true,
+    "hyperdriveAbsent": true,
+    "d1Absent": true,
+    "originalD1Retained": true,
+    "originalHyperdriveRetained": true
+  },
+  "productionAfterFoundationCd": {
+    "mainSha": "6882f06fb0c8bb9d3a55fee33e5946c8ac5f70a0",
+    "cdRun": 43747462158,
+    "dbMaintenanceCdRun": 43747462152,
+    "postgresRetained": true,
+    "healthStatus": 200,
+    "readyStatus": 200,
+    "lambdaActiveAndUpdated": 3
+  },
+  "harnessSha256": {
+    "worker.ts": "92a468d99752332f99e00085e0905163ab43d310194a0e8c9522bfaac96a6689",
+    "measure.mts": "177cd6a72c4031ecc155ea5e04516969b26f0a8e28e6fa3a75b86c67696be1da",
+    "parameter-import.py": "345b2fe1113d3f4923ce2e4cb3fe1a996c36baf2f7008f3e1e266b18a4a98a4f",
+    "summarize.py": "119bdf848e50456677029f0f2ba4c4332b8a3bd827881a893bde34528b5b4b9a"
+  }
+}
