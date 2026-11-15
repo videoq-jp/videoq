@@ -1,0 +1,32 @@
+import pg from 'pg';
+import {generateDrizzleJson,generateMigration} from 'drizzle-kit/api';
+import {hashPassword} from 'better-auth/crypto';
+import {dirname,resolve} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import * as schema from '../src/db/schema';
+import {loadMigrationSnapshot} from './d1-migration-manifest';
+import {buildMigrationManifest} from './migrations/d1/manifest';
+import {exportPostgresArchive} from './migrations/d1/export';
+let phase='arguments';
+/** Creates only an isolated synthetic schema on an explicitly local test PG. */
+export async function main(args=process.argv.slice(2)){
+ if(args.length!==2||args[0]!=='--output'||!args[1])throw new Error('Use --output <private archive>.');
+ const connection=process.env.PERSISTENCE_TEST_DATABASE_URL;if(!connection)throw new Error('A local test PostgreSQL connection is required.');
+ const url=new URL(connection);if(!['postgres:','postgresql:'].includes(url.protocol)||!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw new Error('Only a local test PostgreSQL connection is allowed.');
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),manifest=buildMigrationManifest(await loadMigrationSnapshot(resolve(root,'drizzle')),await loadMigrationSnapshot(resolve(root,'drizzle-d1'))),name='rehearsal_'+crypto.randomUUID().replaceAll('-',''),client=new pg.Client({connectionString:connection,application_name:'videoq-synthetic-rehearsal'});let created=false;
+ try{
+  phase='connect';await client.connect();await client.query('CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public');await client.query(`CREATE SCHEMA "${name}"`);created=true;await client.query(`SET search_path TO "${name}",public`);
+  phase='schema';await client.query((await generateMigration(generateDrizzleJson({}),generateDrizzleJson(schema))).map(sql=>sql.replaceAll('"public".','')).join('\n'));
+  phase='users';for(const user of ['owner','learner'])await client.query("INSERT INTO users(id,username,email,email_verified,password_reset_required,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,used_upload_bytes) VALUES($1,$2,$3,true,false,false,0,0,0,0)",['migration-rehearsal-'+user,'migration-rehearsal-'+user,'rehearsal-'+user+'@example.invalid']);
+  phase='auth';await client.query("INSERT INTO account(id,account_id,user_id,provider_id,password) VALUES('rehearsal-account','migration-rehearsal-owner','migration-rehearsal-owner','credential',$1)",[await hashPassword('Synthetic-rehearsal-password-2026')]);
+  await client.query("INSERT INTO session(id,user_id,token,expires_at) VALUES('rehearsal-session','migration-rehearsal-owner','synthetic-rehearsal-session-token','2099-01-01')");
+  phase='business';await client.query("INSERT INTO videos(id,file,title,description,uploaded_at,transcript,status,error_message,user_id,source_type,source_url,youtube_video_id) VALUES(1,'synthetic-rehearsal.mp4','Synthetic rehearsal','合成データ','2026-01-01','Synthetic transcript','completed','','migration-rehearsal-owner','uploaded','',''); INSERT INTO video_courses(id,user_id,name,description,created_at,updated_at,display_order) VALUES(1,'migration-rehearsal-owner','Synthetic course','','2026-01-01','2026-01-01',0); INSERT INTO video_course_members(course_id,video_id,added_at,\"order\") VALUES(1,1,'2026-01-01',0); INSERT INTO course_questions(id,course_id,video_id,source_video_id,author_id,title,body) VALUES('00000000-0000-4000-8000-000000000001',1,1,1,'migration-rehearsal-learner','Synthetic question','字幕'); INSERT INTO course_question_replies(id,question_id,author_id,body) VALUES('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000001','migration-rehearsal-owner','Synthetic reply')");
+  phase='teaching';await client.query("INSERT INTO lms_installations(id,owner_user_id,name,issuer,client_id,deployment_id,authorization_url,jwks_url,materials_service) VALUES('rehearsal-school','migration-rehearsal-learner','Synthetic LMS','https://rehearsal.example.invalid','rehearsal-client','rehearsal-deployment','https://rehearsal.example.invalid/auth','https://rehearsal.example.invalid/jwks',$1)",[JSON.stringify({tokenEndpoint:'https://rehearsal.example.invalid/token',endpoint:'https://rehearsal.example.invalid/materials'})]);
+  await client.query("INSERT INTO teaching_connections(id,provider,installation_id,context_id,teacher_subject,owner_user_id,course_id,resource_link_id) VALUES('00000000-0000-4000-8000-000000000004','moodle','rehearsal-school','rehearsal-context','synthetic-teacher','migration-rehearsal-owner',1,'rehearsal-entry')");
+  phase='attribution';await client.query("INSERT INTO chat_logs(id,user_id,course_id,question,response,retrieved_contexts,is_shared_origin,created_at) VALUES(1,'migration-rehearsal-owner',1,'Synthetic attributed question',$1,'[]',true,'2026-01-01')",[JSON.stringify({segments:[{text:'Synthetic attributed answer',sourceIds:[]}],sources:[]})]);
+  await client.query("INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id,classroom_author) VALUES(1,$1,'[1]','db:rehearsal-school','rehearsal-context',$2)",['a'.repeat(64),JSON.stringify({user_id:'synthetic-learner',username:'Synthetic learner',email:'rehearsal-learner@example.invalid'})]);
+  phase='vectors';for(const dimensions of [768,1536]){const table=dimensions===768?'scene_embeddings_768':'scene_embeddings';await client.query(`INSERT INTO ${table}(langchain_id,content,embedding,user_id,video_id,langchain_metadata) VALUES('00000000-0000-4000-8000-000000000003','Synthetic rehearsal evidence',$1,'migration-rehearsal-owner',1,$2)`,[JSON.stringify(Array.from({length:dimensions},(_,index)=>index===0?1:.01)),JSON.stringify({video_id:1,user_id:'migration-rehearsal-owner',start_time:'00:00:01,000',end_time:'00:00:02,000'})]);}
+  phase='export';const result=await exportPostgresArchive(client,manifest,resolve(args[1]),{schema:name});console.info(JSON.stringify({synthetic_fixture:true,...result,execution_complete:false}));
+ }finally{try{if(created)await client.query(`DROP SCHEMA "${name}" CASCADE`);}finally{await client.end();}}
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){try{await main();}catch(error){const message=error instanceof Error?error.message:'';console.error(JSON.stringify({event:'synthetic_rehearsal_creation_failed',phase,diagnostic:message.replace(/https?:\/\/\S+/g,'[URL]').replace(/(['"]).*?\1/g,'[quoted]').replace(/[A-Za-z0-9_-]{32,}/g,'[redacted]').slice(0,400)}));process.exitCode=1;}}

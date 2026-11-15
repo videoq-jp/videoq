@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "date": "2026-11-13",
+  "cohort": "synthetic",
+  "target": "videoq-d1-migration-staging-v2",
+  "source": "isolated local PostgreSQL 17 with pgvector; synthetic search tables only",
+  "production_modified": false,
+  "target_modified": false,
+  "embedding_or_llm_api_called": false,
+  "runs": [
+    {"dimensions": 768, "indexed_scenes_in_profile": 1, "cases": 2, "samples_per_case": 3, "paired_searches": 6, "reference_nonempty_pairs": 3, "both_empty_pairs": 3, "mean_reference_top_k_overlap": 1, "exact_rank_order_pairs": 6, "target_archive_vectors_verified": true},
+    {"dimensions": 1536, "indexed_scenes_in_profile": 1, "cases": 2, "samples_per_case": 3, "paired_searches": 6, "reference_nonempty_pairs": 3, "both_empty_pairs": 3, "mean_reference_top_k_overlap": 1, "exact_rank_order_pairs": 6, "target_archive_vectors_verified": true}
+  ],
+  "source_snapshot_equality_verified": false,
+  "acceptance_criteria_applied": false,
+  "production_search_quality_verified": false,
+  "production_performance_verified": false,
+  "execution_complete": false,
+  "limitations": [
+    "One searchable synthetic vector per profile cannot establish representative ANN quality or relevance recall.",
+    "The source contains synthetic search tables only, not a complete restored application snapshot.",
+    "The timings mix a local source with a remote binding proxy; no production latency improvement is claimed.",
+    "These are repository-call comparisons, not end-to-end authentication, upload, worker or RAG answer tests."
+  ]
+}

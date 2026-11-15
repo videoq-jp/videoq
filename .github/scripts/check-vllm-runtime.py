@@ -10,6 +10,21 @@ from pathlib import Path
 import sys
 
 
+def inspect_patched_dns(audio_root):
+    import dns
+    import dns.exception
+    import dns.rdata
+    path = Path(dns.__file__).resolve()
+    if importlib.metadata.version("dnspython") != "2.9.2" or path != audio_root / "dns/__init__.py":
+        raise ValueError("The pinned patched DNS package must resolve from the read-only runtime volume")
+    # Bounded upstream reproducer; do not request a DoS-sized allocation.
+    try:
+        dns.rdata.from_text("IN", "WKS", "10.0.0.1 udp 65536")
+    except dns.exception.SyntaxError:
+        return {"version": "2.9.2", "modulePath": str(path), "oversizedWksRejected": True}
+    raise ValueError("Patched DNS parser did not reject an out-of-range service")
+
+
 def inspect_runtime():
     checks = {}
 
@@ -42,6 +57,7 @@ def inspect_runtime():
         return receipt["lockSha256"]
 
     check("audioLock", audio_lock)
+    check("security.dnspython", lambda: inspect_patched_dns(audio_root))
     for module in ("av", "soxr", "soundfile", "scipy"):
         def audio_import(module=module):
             loaded = importlib.import_module(module)

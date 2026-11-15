@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T13:02:34.962705+00:00",
+  "scope": "Synthetic production-mode upload-session middleware with actual migrated local D1 and isolated PostgreSQL 17; not live browser acceptance",
+  "shared_contract": "apps/api/test/persistence/contracts/upload-session.contract.ts",
+  "backends": [
+    "local workerd D1 with full migration chain",
+    "isolated PostgreSQL 17 using actual Drizzle users/session schemas"
+  ],
+  "backend_contract_tests_each": 6,
+  "native_better_auth_cookie_unit_tests": 5,
+  "related_test_files_passed": 3,
+  "related_tests_passed": 17,
+  "checks": {
+    "repeated_authorization_without_user_or_session_changes": true,
+    "no_cookie_refresh": true,
+    "revocation_observed_on_next_request": true,
+    "expiry_checked_on_each_request": true,
+    "permanent_and_temporary_bans_enforced": true,
+    "expired_ban_permitted": true,
+    "deleted_owner_denied": true,
+    "identity_selected_by_session_token": true,
+    "unknown_and_sql_injection_tokens_denied": true,
+    "native_better_auth_issued_cookie_accepted": true,
+    "forged_and_wrong_secret_cookies_rejected_before_repository": true,
+    "production_test_headers_refused": true,
+    "mixed_trpc_batches_remain_on_native_auth_path": true
+  },
+  "postgres_cloudflare_bindings_supplied": false,
+  "real_model_invoked": false,
+  "production_modified": false,
+  "api_typecheck_passed": true,
+  "changed_and_expanded_shared_code_lint_passed": true,
+  "execution_complete": false,
+  "limitations": [
+    "Synthetic cookies and users; no actual production cookie secret used.",
+    "Local workerd D1 is not a deployed D1 route test.",
+    "This exercises authorization, not multipart R2 transfer or end-to-end video processing.",
+    "Representative-question model evaluation and production cutover remain unverified."
+  ],
+  "expanded_lint_guard_rejected_static_and_dynamic_db_imports": true
+}

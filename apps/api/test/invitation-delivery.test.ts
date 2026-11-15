@@ -61,11 +61,30 @@ describe("deliverInvitationEmail", () => {
     mail.sendMail.mockRejectedValue(new Error("provider unavailable"));
 
     await expect(deliverInvitationEmail(ENV, 10, LEASE, NOW)).rejects.toThrow(
-      "provider unavailable",
+      "INVITATION_EMAIL_DELIVERY_FAILED",
     );
     expect(repo.recordInvitationDeliveryOutcomes).toHaveBeenCalledWith(ENV, [
       expect.objectContaining({ invitationId: 10, status: "failed" }),
     ], { lease: LEASE });
+  });
+
+  it("does not retain a generated invitation link echoed by a failing mail transport", async () => {
+    repo.rotateInvitationTokenForDelivery.mockResolvedValue({ email: "a@example.com", courseName: "Physics", inviterName: "Teacher" });
+    let privateMessage = "";
+    mail.sendMail.mockImplementationOnce((_env, _email, _subject, lines: string[]) => {
+      privateMessage = lines.join("\n");
+      return Promise.reject(new Error(privateMessage));
+    });
+    const failure = await deliverInvitationEmail(ENV, 10, LEASE, NOW).catch(error => error);
+    const link = privateMessage.split("\n").find(line => line.includes("/course-invitations/"));
+    expect(link).toBeTruthy();
+    expect(repo.recordInvitationDeliveryOutcomes).toHaveBeenCalledWith(ENV, [
+      expect.objectContaining({ invitationId: 10, status: "failed", error: "INVITATION_EMAIL_DELIVERY_FAILED" }),
+    ], { lease: LEASE });
+    expect(JSON.stringify(repo.recordInvitationDeliveryOutcomes.mock.calls)).not.toContain(link);
+    expect(failure).toBeInstanceOf(Error);
+    expect(String(failure)).not.toContain(link);
+    expect((failure as Error).cause).toBeUndefined();
   });
 
   it("取り消された招待にはメールを送らない", async () => {
@@ -117,7 +136,7 @@ describe("配送タスクの完了", () => {
 
     await expect(
       deliverInvitationEmail(ENV, 10, LEASE, NOW),
-    ).rejects.toThrow("provider unavailable");
+    ).rejects.toThrow("INVITATION_EMAIL_DELIVERY_FAILED");
 
     const call = repo.recordInvitationDeliveryOutcomes.mock.calls[0];
     expect(call[2]).toEqual({ lease: LEASE });

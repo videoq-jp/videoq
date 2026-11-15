@@ -10,6 +10,12 @@ const env = { RUNTIME: "node", ENVIRONMENT: "production", USE_S3_STORAGE: "true"
 afterEach(() => vi.unstubAllGlobals());
 
 describe("production Node storage without an R2 binding", () => {
+  it("escapes opaque part ETags without inserting XML elements",async()=>{
+    const tag="part<&>opaque";let body="";
+    vi.stubGlobal("fetch",async(request:Request)=>{body=await request.text();return new Response("<CompleteMultipartUploadResult></CompleteMultipartUploadResult>");});
+    await completeR2MultipartUpload(env,"video.mp4","upload",[{partNumber:1,etag:tag}]);
+    expect(body).toContain('<ETag>"part&lt;&amp;&gt;opaque"</ETag>');expect(body).not.toContain(tag);
+  });
   it("uses the internal S3 endpoint for object control and bounded reads", async () => {
     const requests: Request[] = [];
     vi.stubGlobal("fetch", async (request: Request) => {

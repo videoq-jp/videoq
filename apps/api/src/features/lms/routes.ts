@@ -3,20 +3,16 @@ import { moodlePairingRoutes } from "./providers/moodle/routes";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { MAX_SINGLE_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
 import type { AppEnv } from "../../types/bindings";
-import { withDb } from "../../db/pool";
-import { lmsResources, videos } from "../../db/schema";
 import { authenticateLmsInstallation } from "../../repositories/lms-installation-repository";
-import { getLmsResource, lockLmsGrant, syncLmsResource } from "../../repositories/lms-resource-repository";
-import { isS3Storage, presignR2Put, putMediaObject } from "../../integrations/media";
-import { confirmVideoUpload } from "../videos/service";
+import { getLmsResource, syncLmsResource } from "../../repositories/lms-resource-repository";
+import { isS3Storage, presignR2Put } from "../../integrations/media";
 import { ltiConfig } from "../lti/config";
 import { LmsSyncError, resourceManifestSchema } from "./resource";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { ABANDONED_UPLOAD_MS } from "../../lib/upload-reconcile";
-import { lmsUploadStream } from "./upload";
+import {lmsUploadSnapshot,uploadLmsContent,confirmLmsUpload} from './content-upload';
 import { lmsPrivacyRoutes } from './privacy-routes';
 import { nativeLearningRoutes } from './native-routes';
 import { features } from '../../lib/deployment';
@@ -99,16 +95,8 @@ lmsRoutes.put("/resources/:externalId/content", async c => {
   const expected = data.resource.fileSize!;
   if (c.req.header("Content-Length") !== String(expected) || c.req.header("Content-Type") !== data.resource.contentType) throw new LmsSyncError(400, "INVALID_UPLOAD_HEADERS");
   if (!c.req.raw.body) throw new LmsSyncError(400, "EMPTY_UPLOAD");
-  // Fetch request bodies contain byte chunks; the Workers declaration uses
-  // ReadableStream<any> rather than expressing that platform guarantee.
-  const stream = lmsUploadStream(c.req.raw.body as ReadableStream<Uint8Array>, expected);
-  await withDb(c.env, db => db.transaction(async tx => {
-    await lockLmsGrant(tx, { id: grant.id, ownerUserId: data.ownerUserId });
-    const [resource] = await tx.select().from(lmsResources).where(eq(lmsResources.id, data.resource.id)).for("update");
-    const [video] = await tx.select().from(videos).where(eq(videos.id, data.video!.id)).for("update");
-    if (!resource?.enabled || resource.generation !== generation || resource.videoId !== video?.id || video.status !== "uploading") throw new LmsSyncError(409, "STALE_GENERATION");
-    await putMediaObject(c.env, video.file, stream, resource.contentType!);
-  }));
+  const snapshot=lmsUploadSnapshot(data,c.req.param('externalId'),generation);
+  await uploadLmsContent(c.env,{...grant,ownerUserId:data.ownerUserId},snapshot,c.req.raw.body as ReadableStream<Uint8Array>,c.req.raw.signal);
   return c.json({ uploaded: true });
 });
 
@@ -118,7 +106,6 @@ lmsRoutes.post("/resources/:externalId/confirm", bodyLimit({ maxSize: 1024 }), a
   if (!input.success) throw new LmsSyncError(400, "INVALID_GENERATION");
   const data = await getLmsResource(c.env, grant, c.req.param("externalId"));
   if (!data?.resource.enabled || data.resource.kind !== 'video' || data.resource.generation !== input.data.generation || !data.video || !data.ownerUserId) throw new LmsSyncError(409, "STALE_GENERATION");
-  const result = await confirmVideoUpload(c.env, data.video.id, data.ownerUserId);
-  if (!("video" in result)) throw new LmsSyncError(409, "UPLOAD_NOT_CONFIRMED");
+  await confirmLmsUpload(c.env,{...grant,ownerUserId:data.ownerUserId},lmsUploadSnapshot(data,c.req.param('externalId'),input.data.generation),data.video.status);
   return c.json(await resourceResponse(c, grant));
 });

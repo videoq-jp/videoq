@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T12:11:30.822353+00:00",
+  "scope": "Native same-Worker private HTTP read-only comparison; isolated v3 D1 versus existing live Neon Hyperdrive binding",
+  "worker": "videoq-db-migration-benchmark-tokyo-v3",
+  "code_upload_version_before_capability_configuration": "d00bcea5-0092-4223-8f1a-8aa735ad376a",
+  "public_routes": false,
+  "workers_dev": false,
+  "preview_urls": false,
+  "random_ephemeral_capability_required": true,
+  "unauthorized_request_rejected": true,
+  "placement_region_requested": "aws:ap-northeast-1",
+  "placement_response_headers": [
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT"
+  ],
+  "invocations": 3,
+  "source_derived_owned_videos": 5,
+  "paired_reads": 75,
+  "all_owned_rows_found": true,
+  "postgres_readonly_verified": true,
+  "backend_order_alternated": true,
+  "workload": "owned-video-identifier-lookup",
+  "quantile_method": "nearest rank, pooled 75 reads per backend",
+  "durations_ms": {
+    "postgres": {
+      "samples": 75,
+      "p50": 75,
+      "p95": 84,
+      "p99": 91,
+      "min": 71,
+      "max": 91
+    },
+    "d1": {
+      "samples": 75,
+      "p50": 82,
+      "p95": 89,
+      "p99": 155,
+      "min": 72,
+      "max": 155
+    }
+  },
+  "postgres_connection_and_readonly_setup_ms": [
+    250,
+    243,
+    225
+  ],
+  "source_modified": false,
+  "production_application_changed": false,
+  "plan_upgrade_performed": false,
+  "hyperdrive_cache_configuration_controlled": false,
+  "cold_start_controlled": false,
+  "api_e2e_measured": false,
+  "performance_improvement_demonstrated": false,
+  "acceptance_criteria_applied": false,
+  "temporary_worker_and_capability_deleted_after_measurement": true,
+  "execution_complete": false
+}

@@ -27,7 +27,7 @@ def validate_manifest(manifest):
         raise ValueError('Unsupported wheel manifest')
     if not re.fullmatch(r'vllm/vllm-openai@sha256:[a-f0-9]{64}', manifest.get('image', '')):
         raise ValueError('An exact upstream vLLM image is required')
-    if {p['name'] for p in manifest['packages']} != {'av', 'scipy', 'soundfile', 'soxr'} or len(manifest['packages']) != 4:
+    if {p['name'] for p in manifest['packages']} != {'av', 'scipy', 'soundfile', 'soxr', 'dnspython'} or len(manifest['packages']) != 5:
         raise ValueError('Only the reviewed Whisper audio additions are permitted')
     for package in manifest['packages']:
         url = urllib.parse.urlsplit(package['url'])

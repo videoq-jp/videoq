@@ -14,7 +14,7 @@ import { resolvedLtiConfig } from '../src/features/lti/registrations';
 import { putCredential, readCredential } from '../src/features/lti/store';
 import { toolJwks } from '../src/features/lti/tool-keys';
 import { withDb } from '../src/db/pool';
-import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import { privacySubject } from '../src/features/lms/privacy-data';
 import { courseReport } from '../src/features/lti/course-reports';
 import { issueMoodlePairing } from '../src/features/lms/pairing';
@@ -111,7 +111,7 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
   });
 
   it('creates and retires isolated YouTube source jobs through the restricted API role',async()=>{
-    const cloud:Bindings={...env,DEPLOYMENT_EDITION:'cloud'};
+    const cloud:Bindings={...env,DEPLOYMENT_EDITION:'cloud',PERSISTENCE_BACKEND:'postgres',MIGRATION_ALLOW_CLOUD_POSTGRES:'true'};
     await provisionLmsInstallation(cloud,{id:'youtube-school',ownerUserId:'owner',name:'Synthetic YouTube Moodle',
       issuer:'https://youtube-moodle.example',clientId:'youtube-client',deploymentId:'youtube-deployment',
       authorizationUrl:'https://youtube-moodle.example/auth',jwksUrl:'https://youtube-moodle.example/keys'});

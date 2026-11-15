@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { hashPassword } from "better-auth/crypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { patchFlags } from "../src/features/admin/service";
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { schema, account, session, users } from "../src/db/schema";
 import type { Db } from "../src/db/pool";
 import type { Bindings } from "../src/types/bindings";

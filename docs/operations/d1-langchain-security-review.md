@@ -1,0 +1,151 @@
+# D1・LangChain Cloudflare連携のセキュリティ確認
+
+2026-11-15。確認対象は現在の移行ブランチ。クラウド本番へのDB切替や、新たな認証/モデル/権限の変更は行っていない。
+
+## 実際に使用しているライブラリと境界
+
+解決済み依存は`@langchain/cloudflare@1.1.0`と`@langchain/core@1.3.2`。検索アダプターは`CloudflareVectorizeStore.similaritySearchVectorWithScore`、同期アダプターは`addVectors`/`delete`を実際に呼び出す。実装を独自HTTPクライアントへ置き換えたものでも、試験時にLangChain自体をmockしたものでもない。
+
+参照元は[公式Vectorize連携資料](https://docs.langchain.com/oss/javascript/integrations/vectorstores/cloudflare_vectorize)とインストール済みの同バージョン実装。公式サンプルには旧beta型が残るため、`langchain-vectorize.ts`で現在のbindingへの差分だけを変換する。最新公開Workers型`5.20261114.1`も別の一時領域で取得し、V2 APIのmetadata modeを確認した。既存依存の更新は行っていない。
+
+| 経路 | 確認した性質 |
+|---|---|
+| 類似検索 | Vectorize bindingへのquery。owner/video IDのfilterをJSON値として渡す |
+| Vectorize応答 | physical vector IDをbridgeで固定し、metadataの自己申告IDを採用しない |
+| D1本文取得 | Drizzleのパラメーター化クエリでowner、動画状態、アカウント可視性、次元数を再照合 |
+| 返却直前 | 選択動画、scene revision、immutable vector IDを再確認。本文・タイトルはD1から取得 |
+| インデックス更新 | 既存vectorをaddVectorsへ渡す。本文は空文字、metadataは必要な識別/フィルタ項目のみ |
+| 削除・再試行 | D1 outboxとleaseで管理。遅延upsertを補償削除し、古いdeleteが新versionを削除しない |
+| Embedding | 共通の既存生成処理を使用。vector storeへ渡すembedding stubは再生成要求を拒否 |
+
+D1の業務SQL・認証・課金等はDrizzleアダプターで実装する。LangChainの汎用SQL agentや、モデルが生成したSQLを実行する経路としてD1を公開していない。LangChainのキャッシュ/メッセージ履歴のクラスを使うことは、業務データの認可・原子性を代替する条件ではない。
+
+## 認可と入力
+
+共有/LTIの場合は、courseのshare tokenまたはgrantを検証してownerと許可動画を決めてからRAGへ渡す。通常経路では認証したactorがcourseを取得できる必要がある。モデルがツール引数の動画選択を変えた場合も、`openSceneSearch`でcourse内の非空subsetに限定する。
+
+Vectorizeのmetadata filterは最終認可ではない。検索providerが他人のsceneを返したり、metadataのownerを偽装した場合でもD1 joinのowner条件で拒否する。選択動画、revision、存在しないscene、動画処理中、ban/deactivationでも結果を返さない。
+
+SQLとfilterに見える文字列は値として扱う。[D1のprepared statements仕様](https://developers.cloudflare.com/d1/worker-api/prepared-statements/)に沿って、利用者値をSQL構文として連結しない。数値の動画ID、Embedding次元/有限値/非ゼロ、limitを検証する。filterはUTF-8で2048 bytes未満に分割し、D1 bind数もchunkで制限する。
+
+HTTPのPOSTというだけでは権限保証にならない。内部worker APIはtimestamp、method、origin、path、bodyを含む署名と操作スキーマを検証する。外部サービスとD1/Vectorizeの更新を1つのtransactionとして扱わず、冪等性・条件付き更新・outboxを使う。
+
+## 実行した試験
+
+ローカルworkerd D1の実マイグレーション、実際のLangChain実装、悪意ある応答を返すテスト用Vectorize bindingを使用した。追加4件:
+
+1. SQL/filter構文に見えるowner/scene IDを渡しても、他人の取得やテーブル変更が起きない。
+2. **実在する別所有者**に対し、metadataのownerが偽装されても別所有者のsceneだけを返す。
+3. metadataの`vector_id`を正規IDに偽装しても、physical vector IDが違えば返さない。
+4. Vectorize queryの処理中にアカウントを無効化した場合、応答後のD1確認で拒否する。
+
+以下の5ファイル、**112 tests passed**:
+
+```sh
+cd apps/api
+npx vitest run \
+  test/persistence/scene-search.d1.integration.test.ts \
+  test/persistence/scene-index-sync.d1.integration.test.ts \
+  test/persistence/worker-internal.d1.integration.test.ts \
+  test/auth-security.test.ts test/security-primitives.test.ts
+```
+
+同期試験には、削除後に到着するupsert、古いdelete、lease喪失、次元の誤fallback拒否、providerエラーの秘密値を再試行記録に残さないケースも含む。`npm run typecheck --workspace @videoq/api`も成功した。
+
+実リモートv3 Vectorizeでの[40質問の比較](d1-automatic-query-evaluation.md)も、LangChain経由で動作した証拠となる。ただし、そちらの負例は存在しないownerであり、実在ownerの偽装は今回のローカル試験で別途確認した。
+
+## 依存監査と限界
+
+`npm audit --omit=dev --json`ではcritical/high/moderateは0、lowが5件。LangChain/LangSmithへの指摘は0。lowはDocusaurus→SVGR→deepmergeの同一アドバイザリ経路で、[GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)は修正版未公開である。registryのlatestも4.3.1だった。`npm ls deepmerge --workspace @videoq/api --omit=dev --json`ではAPI依存への包含なしを確認した。監査が提示するDocusaurusの大きなversion変更を自動適用せず、ドキュメントbuild側の既知残項として記録する。
+
+監査で未検出であることは脆弱性の不存在を保証しない。本試験は全体E2E、実OAuth、production session継承、実配置での性能、productionのsecret設定を一括して証明するものではない。特にread replicaを認可読取りへ導入する場合は、失効直後の可視性について別の検証が必要。今回の検証用D1でread replicationは無効のままである。
+
+POSTやDB製品名だけを安全性の根拠とせず、境界ごとの検証結果として扱う。現時点でこのLangChain接続境界に越境取得を示す失敗は検出されていないが、本番移行全体の完了はまだ宣言しない。
+
+## 関連するオンプレ実行環境の追跡
+
+mainの上流vLLM検査で追加検出された180件も追跡した。179件はLinux CNAの一次記録・正確なheader inventory・10種類のrender済みworkload条件を照合してカーネル実装由来の適用評価を追加した。残るdnspythonの実行時依存は2.9.2をハッシュ固定のread-only volumeに追加し、実イメージで読込先/バージョンと安全な再現入力の拒否を検査した。
+
+[実イメージ検査](https://github.com/videoq-jp/videoq/actions/runs/43615358433)の該当jobは成功し、取得したartifact 14121732864のJSONでも修正版の読込・5依存の完全一致・未評価0件を確認した。rawの640件は削除/抑制していない。[検証記録](../verification/upstream-vllm-inspection.json)に現在のCPU/import検証と過去のGPU推論検証を分けて保管した。これはD1の全体E2Eや本番移行条件を代替しない。
+
+## チャット障害ログの追加修正
+
+境界の追加監査で、利用枠返却失敗とSSE transport失敗のcatchが例外の`message`をログへ出していた。DBドライバーのmessageにはSQL引数が含まれ得るため、通常応答/SSEのquota cleanupとSSE writerに合成の私有診断値を注入した回帰試験3件を追加し、修正前はいずれもログへ本文が出ることを再現した。実秘密値や本番レコードを使った試験ではない。
+
+`message-service.ts`と`routes.ts`の該当ログは固定eventと`errorType`だけにし、quota cleanupログのowner IDも除いた。HTTP/SSEへの一般化済みエラー応答は維持した。修正後は`chat-send.test.ts`、`auth-security.test.ts`、`security-primitives.test.ts`の**150件成功**、API/移行ツールの型検査成功を確認した。LangChain/Drizzle経由の処理でも、providerまたはSQL例外の本文をこのcatchからログへコピーしない。
+
+## 実D1・Vectorize上での攻撃ケース
+
+コミット`f60049ba255bf9e5df487808fda63ded9c89245d`の実装を使い、固定guardで合成v2だけを許可する追加試験を実行した。実データ用v3と本番は操作していない。[集約証跡](evidence/d1-langchain-live-security-2026-11-15.json)には個人情報・vector・credentialsを含めない。再現用probeと詳細診断はローカル私有領域`/tmp/videoq-retention-plan.ZLDiCA/langchain-live-security-v1/`に保管した。
+
+合成の実在所有者2人と動画・sceneを作成し、1536次元の既定vectorを用いて、実際の`CloudflareVectorizeStore.addVectors`で5件を投入した。model呼び出しは0回。5件すべてが実インデックスから検索可能になったことを確認してから判定したため、反映前の空結果を拒否成功とは数えていない。
+
+候補は正規scene、別所有者のsceneを要求者所有と偽装したmetadata、正規IDをmetadataへ写した偽physical ID、古いrevision、SQL構文に見えるscene ID。実際のLangChain検索からD1再照合を通すと、正規sceneのD1本文1件だけが返った。indexの偽本文は返らず、実在する他方の所有者での検索とSQL風owner文字列は0件、owner無効化後も0件だった。
+
+最後に試験所有者/sceneを削除し、投入したphysical vector ID全件の不存在と、試験ownerをfilterしたANN検索の空結果を確認した。この結果は実サービスの検索認可境界を補強するが、768次元の同一攻撃試験、公開API認証、モデル回答全体のE2Eを実施した意味ではない。768/1536双方の通常同期・検索は別の既存staging smoke証跡に記録している。
+
+
+同じ実サービス攻撃試験を768次元indexでも実行した。合成v2の固定guardを維持し、別の所有者・scene・physical vector IDを新規に生成した。実LangChain経由の5候補すべての検索反映を待ってから、別owner偽装、physical ID偽装、古いrevision、SQL風ID、SQL風owner、owner無効化を検証し、正規sceneのD1本文だけが返ることを確認した。model呼出しは0回で、最後に全fixtureのDB不存在とvector ID不存在・owner ANN空結果を確認した。[768次元の集約証跡](evidence/d1-langchain-live-security-768-2026-11-15.json)。これでこの合成攻撃ケースは768/1536の両indexで実施済みとなった。公開API認証や全モデル回答のE2Eまでの証明範囲は拡大しない。
+
+
+## 切替設定の秘密値検査の修正
+
+移行前チェックの追加監査で、`inspectCloudCutoverConfig`が通常の`vars`への秘密値記載を拒否する対象は4項目だけで、APIが実際に読む暗号化キー、旧JWT署名キー、OAuth client secret、OpenRouter/LLM/Embeddingキー、Stripe、R2/AWS secret/session token、LTI private key-ringが漏れていた。合成canaryを使った回帰試験を先に実行し、14件の誤受入を再現した。実秘密値の漏えいを検出したという意味ではない。
+
+[Workersのsecrets管理](https://developers.cloudflare.com/workers/configuration/secrets/)に従い、対象環境の既知18項目を通常varsへ記載すると設定チェックが失敗するよう修正した。公開OAuth client ID、federation policy ID/audienceは許可する。出力は固定の設定名と診断だけで、値を含まない。任意の未知名や、別の値に埋め込まれた秘密まで検出する汎用スキャナーとは扱わない。
+
+修正後は設定・backendの2ファイル42試験、API/移行ツール型検査、変更TSのLintが成功した。[修正証跡](evidence/d1-cutover-secret-guard-2026-11-15.json)。現在の本番Wrangler設定に対するCLIは、既存Neon設定にD1/Vectorize切替用bindingがないため、従来通り終了1で拒否した。本番設定・secrets・デプロイは変更していない。このローカル修正は、先行するremote headのCI成功で検証済みと読み替えず、後続CIの対象とする。
+
+
+## 検索反映の確認と完了処理
+
+### 修正前の観測
+
+[公式API仕様](https://developers.cloudflare.com/vectorize/reference/client-api/)では、V2のupsert/削除は非同期のmutation受付である。修正前のhead `9bf35300`では、同期処理の`completed`はprovider受付後のタスク完了を表し、ANN検索反映の完了を表さない。既存の実サービス試験も、候補の検索反映を待ってから認可を判定している。動画完了直後の検索readinessや反映遅延のSLOは、別の受入条件として検証が必要である。
+
+受付後・検索反映前に所有者が無効化されるケースを追加した。合成providerで受付と可視化を分離し、受付後は空結果、無効化後に候補が可視化されても空結果となることを検証する。候補の実在を確認し、同じ候補が再有効化後にはD1本文を返すことも対照とする。この試験はD1による最終認可の検証であり、実Vectorizeの反映時間の計測ではない。
+
+追加後の`scene-index-sync.d1.integration.test.ts`は14件成功、API/移行ツールの型検査と変更TSのLintも成功した。この先行試験の時点ではアプリ実装と本番設定は変更していない。
+
+合成v2の実D1/Vectorizeでも追加計測した。実LangChainのupsert受付は約1.07秒、受付後の最初の認可済み検索hitは約23.15秒だった。約20.07秒時点までの10回は空結果で、次の観測で1件を返した。これは約2秒間隔の単一観測であり、正確な反映時刻やSLOを証明しない。候補が実在する状態で所有者無効化後は0件となり、最後に所有DB行・physical ID・owner ANNの残存0を確認した。モデル呼び出し0、本番変更なし。[反映遅延の証跡](evidence/d1-vector-visibility-2026-11-15.json)。動画完了直後の検索可能性を、provider受付だけで合格と扱わない。
+
+768次元の専用indexでも同じ実サービス確認を実行した。受付は約1.06秒、受付後の最初の認可済みhitは約130.00秒で、直前の約126.81秒時点まで59回は空結果だった。可視化後のowner無効化は拒否され、所有DB行・physical ID・owner ANNの残存0も確認した。[768次元の反映証跡](evidence/d1-vector-visibility-768-2026-11-15.json)。各indexで1回ずつの観測であり、次元数による性能差や一定の反映時間を結論しない。固定sleepを検索readinessの根拠にせず、動画完了と検索準備状態の契約・実証を移行前の未達条件に保持する。
+
+### 受付と検索反映を分ける追加実装
+
+上記で見つかった完了判定の差を修正した。upsert受付時は`accepted_at`だけを記録してEmbedding payloadを消し、同じ受付済みvectorを待機中に再投入しない。別の`queryById`確認でphysical ID・owner/video・scene/revisionが一致した場合にだけタスクを完了させる。検索本文の取得・最終認可は従来通りD1で行う。
+
+新しい`vector_id:string` metadata indexは投入前に必要である。旧タスクは`0019`で反映確認へ戻し、保存済みvectorが一致する場合はモデルを呼ばず再upsertする。保存vectorの欠損・metadata不整合は完了させず、元データからの再構築へ渡す。runの未反映数の更新、leaseによる完了、最後の完了ジョブは同じD1バッチに含める。動画完了時にはsource/file/headと全タスクも再検査する。
+
+専用の実D1・両次元Vectorizeで実際のLangChain同期・検索と完了処理を実行し、4シーンの反映待ちと再試行、旧payload再開、float32値保持、完了ジョブ各動画1件、別owner拒否を確認した。Embedding/LLM呼び出し0。本番と既存v2/v3は変更していない。一時D1と両インデックスは削除し、一覧からの不存在も確認した。[証跡](evidence/d1-scene-readiness-adapter-2026-11-15.json)と[適用手順](d1-scene-readiness.md)を参照する。配備済みpublic API・Lambda/SQS・LLMの全体E2Eはこの結果の範囲外であり、新HEADのCIも別途確認する。
+
+## OAuth永続化と最新オンプレCIの補完
+
+追加で、配備済み私有Hono/Better Auth、合成v2の実D1、実RateLimiter Durable Objectを使った共通OAuth契約5件がすべて成功した。memory認証・rate-limit adapterは使用していない。[配備OAuth証跡](evidence/d1-oauth-cloud-provider-2026-11-15.json)。PKCE交換、refresh rotation/reuse、コード再使用、同時refresh、ban後の拒否を含む。
+
+開発用接続によるOrigin/fetch metadataの変更を避け、私有RPCで元の要求をWorker内に再構成し、実際のアプリ応答status・headers・cookie・bodyを測定した。共通契約のauthorize要求にはnavigationを明示した。JSON redirectを302と推定した試験ではない。41応答すべてがWorker内の処理結果であり、cookie付き不正Originは403、ブラウザ単純formは415だった。cookieなしの正規JSONログインが200となる仕様も別途確認し、拒否成功には数えていない。
+
+所有fixtureの独立再照合で9種類の残存行は0、一時Worker・秘密ファイルも削除済み。失敗した先行試行を含む4つの所有scriptは、namespace一覧の完全走査でも残存DO namespaceが0だった。本番と実データv3は変更していない。これはprovider境界の補完証拠であり、公開API全middleware/CORS、実ブラウザ、外部Google認証、本番cookie継承の証明ではない。
+
+head `31b66b3c`の[全CI](https://github.com/videoq-jp/videoq/actions/runs/43625437992)と[CodeQL](https://github.com/videoq-jp/videoq/actions/runs/43625437968)も成功した。今回のnavigation指定・記録更新は後続headで確認する。アプリ本体の認証実装はこの追加試験では変更していない。
+
+既存のOAuth security suiteはmemory adapterを使うため、新たに実D1/実PostgreSQLで同じtoken契約を実行した。5件ずつ計10件が成功し、関連4ファイル52件・型検査・変更TS Lintも成功した。[共通OAuth契約](evidence/d1-oauth-token-contract-2026-11-15.json)。コード交換とrefreshの競合を含むが、外部Google loginや本番cookieの実証へは読み替えない。
+
+[CI #43619852843](https://github.com/videoq-jp/videoq/actions/runs/43619852843)も成功し、実CPU/通信遮断の成果物14124732928を取得した。動画upload→ASR→index→QA、再生、object/DB復元、upgrade/rollback、Helm test/retentionが成功。公開日本語fixtureのCERは0、再生errorはnullだった。[CI証跡](evidence/d1-ci-real-cpu-2026-11-15.json)。これはsource buildのオンプレCPU検証であり、cloud D1の全体E2E、署名済みrelease、NVIDIA GPUの新規実証ではない。後続のローカルguard/契約追加は新headで別にCI確認する。
+
+
+## 非同期保守・配送の診断情報の追加修正
+
+検索反映待ちを追加した後、保守処理からログ・再送出例外までを追跡した。`settleAndReport`がD1/ドライバーの`message`をそのまま記録し、元の例外を`AggregateError.errors`にも保持していた。合成canaryを使い、scene同期のError/文字列reject、schedule refresh、配送の記録失敗、DO alarm、Node background rejectionで再現した。実秘密値の漏えいを確認したという意味ではない。
+
+保守ログは固定診断と操作名だけにし、再送出するAggregateErrorにも元のmessage/causeを入れない。外部タスクの再試行記録は`EXTERNAL_TASK_EXECUTION_FAILED`に統一した。招待配送では、失敗したtransportが生成済み招待URLをechoする試験も追加した。保存・再送出とも`INVITATION_EMAIL_DELIVERY_FAILED`だけになり、平文リンクをエラー経由でDBへ保存しない。成功時の配送結果と完了の原子性、失敗時の再試行、全保守処理のsettleと次回alarmは維持する。
+
+DOへのarm/reschedule、即時配送、招待flush、Node waitUntil/DB poolのcatchも、元のmessageをログへコピーしない。cloud/onprem共通の処理に適用し、既存DBの診断履歴や保全済みバックアップの削除は行わない。SQS HTTPエラー本文は読み取って記録せずcancelし、HTTP statusだけを残す。SQS transport例外、media署名失敗、動画uploadの補償cleanup失敗も本文をログへコピーしない。この変更によるモデル・メールの実送信、本番DB更新は0。[追加証跡](evidence/d1-async-diagnostic-security-2026-11-15.json)に合成試験と検証範囲を記録する。過去のCI成功を変更後HEADの検証へ流用しない。
+
+### CIの取得アーカイブ不一致
+
+readiness実装head `7d69b6a6`のCodeQLは成功したが、[CI](https://github.com/videoq-jp/videoq/actions/runs/43649212984)のオンプレlifecycle jobはzlib取得ファイルのSHA-256不一致で停止した。検査を省略せず、固定値も変更しない。同じURLを独立に取得すると、[公式公開値](https://zlib.net/)・既存pinの`02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584`に一致し、既存`fetch-verified.sh`でも成功した。失敗したCIを成功と扱わず、後続の同一検査を確認する。この独立取得はイメージ全体のbuild/CPU lifecycleの代替ではない。
+
+追加修正の対象14ファイル209試験、実D1と隔離PostgreSQL 17.11の共通配送3ファイル52試験、API/移行ツール型検査、変更TSのLintが成功した。旧エラー本文を期待した実D1契約は固定codeの保存確認へ更新し、再試行とtoken再発行・成功時の原子的完了は維持した。先行head `7d69b6a6`のHono CIは3765試験成功・77 skip、native Workerは59試験成功だが、この後続の診断修正を検証済みとは扱わない。
+
+変更後の全API試験も`--maxWorkers=2`で221ファイル・2417試験成功、115ファイル・1441試験skipとなった。skipされたDB/ブラウザ試験は成功件数へ含めない。変更後HEADのremote CIは別途確認する。

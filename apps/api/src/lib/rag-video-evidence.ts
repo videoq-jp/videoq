@@ -76,7 +76,7 @@ export function videoEvidenceTools(
     try {
       signal.throwIfAborted();
       const visualQuery = originalQuestion ? `Original user question: ${originalQuestion}\nSpecific inspection task: ${query}` : query;
-      const result = await inspectVideoClip(env, { id: video.id, fileKey: video.fileKey }, start, end, visualQuery, signal, { mode, maxFrames }, ...(costLedger ? [costLedger] : []));
+      const result = await inspectVideoClip(env, { id: video.id, fileKey: video.fileKey, ...(video.visualRunId !== undefined ? { visualRunId: video.visualRunId,visualManifestVersion:video.visualManifestVersion } : {}) }, start, end, visualQuery, signal, { mode, maxFrames }, ...(costLedger ? [costLedger] : []));
       const actualFrames = "unavailable" in result ? 0 : result.sampled_timestamps.length;
       visualFrames -= maxFrames - actualFrames;
       if ("unavailable" in result) return { ...result, status: "unavailable" };

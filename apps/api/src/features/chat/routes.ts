@@ -124,7 +124,7 @@ chatRoutes.post(
           JSON.stringify({
             level: "error",
             event: "chat_stream_failed",
-            message: error instanceof Error ? error.message : String(error),
+            errorType: error instanceof Error ? error.name : "unknown",
           }),
         );
       }

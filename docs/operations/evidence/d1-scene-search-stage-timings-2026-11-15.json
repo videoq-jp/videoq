@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T17:16:58.625149+00:00",
+  "sourceCommit": "7b63a4545283887eeab71976fdd6bf447755da50",
+  "scope": "Read-only same-Worker diagnostic repeat with transparent timing wrappers around actual Vectorize query and D1 statement execution",
+  "cases": 80,
+  "unique_normal_queries": 40,
+  "samples_per_case": 3,
+  "paired_searches": 240,
+  "model_calls": 0,
+  "raw_timing_samples": 480,
+  "summary": {
+    "postgres": {
+      "normal": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 131,
+          "p95": 260,
+          "p99": 308
+        },
+        "vector_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      },
+      "negative": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 91,
+          "p95": 98,
+          "p99": 102
+        },
+        "vector_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      }
+    },
+    "d1": {
+      "normal": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 235,
+          "p95": 268,
+          "p99": 332
+        },
+        "vector_ms": {
+          "p50": 128,
+          "p95": 137,
+          "p99": 217
+        },
+        "sql_ms": {
+          "p50": 108,
+          "p95": 121,
+          "p99": 166
+        },
+        "residual_ms": {
+          "p50": 0,
+          "p95": 0
+        }
+      },
+      "negative": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 112,
+          "p95": 116,
+          "p99": 120
+        },
+        "vector_ms": {
+          "p50": 112,
+          "p95": 116,
+          "p99": 120
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "residual_ms": {
+          "p50": 0,
+          "p95": 0
+        }
+      }
+    }
+  },
+  "agreement": {
+    "reference_nonempty_pairs": 120,
+    "reference_empty_pairs": 120,
+    "both_empty_pairs": 120,
+    "candidate_empty_pairs": 120,
+    "candidate_nonempty_when_reference_empty": 0,
+    "exact_rank_order_pairs": 225,
+    "reference_hits": 2220,
+    "candidate_hits": 2220,
+    "overlapping_hits": 2220
+  },
+  "normal_top_k_overlap": 1,
+  "source_readonly_and_fingerprint_verified_each_batch": true,
+  "placement_response_headers": [
+    "remote-NRT"
+  ],
+  "d1_primary_region": "APAC",
+  "d1_read_replication": "disabled",
+  "temporary_worker_deleted": true,
+  "worker_source_sha256": "7bd76213a56fdb267c15e0b4d7acf54165020a29b5c5ecb395af4746b2194b9a",
+  "initial_attempt": {
+    "status": "unusable_response",
+    "reason": "client JSON parse failed on empty response; HTTP status not captured",
+    "included_in_results": false,
+    "temporary_worker_deleted": true
+  },
+  "limitations": [
+    "Pooled percentiles here derive from individual timing samples; this diagnostic repeat does not replace the prior uninstrumented benchmark.",
+    "Vector and SQL stage medians are separate distributions and must not be summed to derive total percentiles.",
+    "Stage timings include binding/service wait, not only SQL engine or ANN computation; no network-versus-server causal split is proven.",
+    "PostgreSQL is timed only at repository boundary; its internal stages are not instrumented.",
+    "No controlled cold start, concurrency, full API, production OAuth or end-to-end LLM answer acceptance is implied.",
+    "Deployed Workers timer APIs advance after I/O; a zero residual is not proof of zero JavaScript or LangChain CPU cost."
+  ]
+}

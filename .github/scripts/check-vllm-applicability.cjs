@@ -48,7 +48,7 @@ function verifyWorkload(documents, policy) {
   assert.ok(servers > 0, 'No assessed vLLM servers rendered');
 }
 
-function assess(report, policy, native, profiles, now = new Date()) {
+function assess(report, policy, native, profiles, now = new Date(), runtime) {
   assert.equal(policy.status, 'not_affected');
   assert.ok(policy.owner && policy.scope && policy.references.length);
   const reviewed = Date.parse(policy.reviewedAt), expires = Date.parse(policy.expiresAt);
@@ -84,11 +84,26 @@ function assess(report, policy, native, profiles, now = new Date()) {
       if (group) {
         assert.equal(group.status, 'not_affected');
         assert.ok(group.impactStatement && group.references.length);
-        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor'].includes(group.origin));
+        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor', 'runtime-overlay'].includes(group.origin));
       }
       if (group?.origin === 'pip-vendor') {
         const packages = (result.Packages || []).filter(p => p.Identifier?.PURL === finding.PkgIdentifier.PURL);
         assert.ok(packages.length && packages.every(p => p.AnalyzedBy === 'sbom'), 'A reviewed pip-vendor finding also matches installed runtime metadata');
+      }
+      if (group?.origin === 'runtime-overlay') {
+        // Retain the vulnerable base-image finding. Accept only when the actual
+        // image + locked read-only overlay probe proves the patched import path.
+        assert.equal(runtime?.status, 'passed', 'Missing successful actual-image runtime probe');
+        assert.equal(runtime.checks?.audioLock?.status, 'passed');
+        assert.equal(runtime.checks.audioLock.details, policy.audioLockSha256);
+        const replacement = group.replacement;
+        assert.equal(replacement?.name, finding.PkgName);
+        const proof = runtime.checks?.[replacement.check];
+        assert.equal(proof?.status, 'passed');
+        assert.equal(proof.details.version, replacement.version);
+        assert.equal(proof.details.modulePath, replacement.modulePath);
+        assert.ok(replacement.modulePath.startsWith('/opt/videoq-audio/') && !replacement.modulePath.includes('..'));
+        assert.equal(proof.details.oversizedWksRejected, true);
       }
       (group ? accepted : blocking).push(finding);
     }

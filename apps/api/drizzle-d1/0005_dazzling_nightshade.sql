@@ -1,0 +1,1 @@
+ALTER TABLE `video_visual_chunks` ADD `object_version` text;

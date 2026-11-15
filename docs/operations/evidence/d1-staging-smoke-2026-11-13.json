@@ -1,0 +1,44 @@
+{
+  "observed_on": "2026-11-13",
+  "scope": "synthetic remote staging only",
+  "d1": {
+    "name": "videoq-d1-migration-staging",
+    "id": "538bebc4-9485-4e91-8799-c236eeed1dd2",
+    "migrations_applied": 18,
+    "served_by_colo_observed": "NRT"
+  },
+  "vectorize": {
+    "videoq-scenes-migration-1536": {
+      "dimensions": 1536,
+      "metric": "cosine",
+      "metadata_indexes": {
+        "user_id": "string",
+        "video_id": "number"
+      }
+    },
+    "videoq-scenes-migration-768": {
+      "dimensions": 768,
+      "metric": "cosine",
+      "metadata_indexes": {
+        "user_id": "string",
+        "video_id": "number"
+      }
+    }
+  },
+  "result": {
+    "remote_synthetic_smoke_passed": true,
+    "vectors_observed": 4,
+    "owned_queries_passed": 2,
+    "cross_owner_queries_denied": 2,
+    "elapsed_ms": 97575,
+    "synthetic_cleanup_verified": true,
+    "production_modified": false
+  },
+  "not_verified": [
+    "production data migration",
+    "retrieval recall and ranking quality",
+    "API latency percentiles and load",
+    "full authentication and upload-to-answer E2E",
+    "production cutover and rollback"
+  ]
+}

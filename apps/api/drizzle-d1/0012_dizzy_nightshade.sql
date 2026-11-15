@@ -1,0 +1,1 @@
+CREATE INDEX `video_course_invitations_creation_nonce_idx` ON `video_course_invitations` (`creation_nonce`) WHERE creation_nonce IS NOT NULL;

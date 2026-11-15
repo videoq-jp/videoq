@@ -1,18 +1,7 @@
-import { withClient } from "../db/pool";
+import { createAnswerCostRepository } from "../persistence/factory";
 import type { Bindings } from "../types/bindings";
-
-export type ProviderCallKind = "answer_model" | "conversation_summary" | "visual_inspection" | "query_embedding";
-export type ProviderCallStatus = "completed" | "failed" | "interrupted";
-export type AnswerAttemptStatus = "completed" | "failed" | "interrupted";
-
-export type ProviderCallRecord = {
-  kind: ProviderCallKind;
-  model: string;
-  startedAt: string;
-  finishedAt: string | null;
-  status: ProviderCallStatus | "started";
-  usage: Record<string, unknown> | null;
-};
+import type {ProviderCallKind,ProviderCallStatus,AnswerAttemptStatus,ProviderCallRecord} from '../persistence/contracts/answer-cost-repository';
+export type {ProviderCallKind,ProviderCallStatus,AnswerAttemptStatus,ProviderCallRecord} from '../persistence/contracts/answer-cost-repository';
 
 /** Keep numeric billing counters only; never persist prompts, responses, or request headers. */
 function numericUsage(value: unknown, depth = 0): Record<string, unknown> | null {
@@ -60,12 +49,8 @@ export async function startAnswerCostLedger(
   env: Bindings, ledger: AnswerCostLedger,
   scope: { planCode: string; quotaSource: string; hasCourse: boolean; streamed: boolean },
 ): Promise<void> {
-  await withClient(env, client => client.query(
-    `INSERT INTO ai_answer_attempts
-      (id, plan_code, quota_source, has_course, streamed, status)
-     VALUES ($1, $2, $3, $4, $5, 'started')`,
-    [ledger.id, scope.planCode, scope.quotaSource, scope.hasCourse, scope.streamed],
-  ));
+  const repository = await createAnswerCostRepository(env);
+  await repository.start({id:ledger.id,...scope});
 }
 
 export async function finishAnswerCostLedger(
@@ -80,11 +65,6 @@ export async function finishAnswerCostLedger(
       call.finishedAt = new Date().toISOString();
     }
   }
-  await withClient(env, client => client.query(
-    `UPDATE ai_answer_attempts
-        SET finished_at = clock_timestamp(), status = $2,
-            quota_consumed = $3, provider_calls = $4::jsonb
-      WHERE id = $1 AND status = 'started'`,
-    [ledger.id, outcome.status, outcome.quotaConsumed, JSON.stringify(ledger.calls)],
-  ));
+  const repository = await createAnswerCostRepository(env);
+  await repository.finish(ledger.id,{...outcome,providerCalls:ledger.calls});
 }

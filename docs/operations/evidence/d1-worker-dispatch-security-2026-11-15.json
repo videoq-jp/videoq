@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-15",
+  "scope": "Python worker dispatcher and internal API configuration; no production execution or cutover",
+  "changes": [
+    "Reject invalid D1 origin/secret after bootstrap before accepting any batch, including an empty batch",
+    "Remove job payload and raw task/bookkeeping exception tracebacks from dispatcher logging",
+    "Persist WORKER_EXECUTION_FAILED instead of raw exception text for both PostgreSQL and D1",
+    "Observe fixture task error type/SQLSTATE directly without requiring production traceback logs",
+    "Keep one stable native session lifetime across independently signed test requests",
+    "Remove payload from SQS sender success and no-queue diagnostic logs while retaining exact message payload",
+    "Remove raw Embedding exception from scene-splitting fallback logs; return original SRT on the same non-contract failures"
+  ],
+  "verification": {
+    "integrationTreePythonTargeted": {
+      "passed": 36,
+      "python": "3.12.12"
+    },
+    "integrationTreeRestrictedPostgresAndNativeSession": {
+      "files": 2,
+      "passed": 14,
+      "postgres": "17.11",
+      "containerRemoved": true,
+      "removalIndependentlyConfirmed": true
+    },
+    "workerOnlyReviewPR": 1445,
+    "workerOnlyHead": "1c3ea2de4b9a1a540f1429d4da49153e97054d26",
+    "workerOnlyLocalFullAPI": {
+      "passed": 2105,
+      "skipped": 154
+    },
+    "signatureInteroperability": {
+      "validAccepted": 8,
+      "tamperedRejected": 56,
+      "syntheticOnly": true
+    },
+    "secondaryLoggingRegression": {
+      "before": {
+        "failed": 2,
+        "passed": 45
+      },
+      "afterTargeted": {
+        "passed": 83
+      },
+      "afterFullIntegrationWorker": {
+        "passed": 798,
+        "skipped": 1,
+        "python": "3.12.12",
+        "postgres": "17.11",
+        "containerRemoved": true,
+        "removalIndependentlyConfirmed": true
+      },
+      "syntheticCanariesOnly": true
+    }
+  },
+  "sourceSha256": {
+    "apps/worker/worker_python/internal_api.py": "0cd939a26c1502666899d592d0a4a570a751443af48b7142cb8c8ea147b46697",
+    "apps/worker/worker_python/lambda_handler.py": "6a8342526e8ffebe7ca7214517c4967dbe7b4fafd6867149da6550a98e62039d",
+    "apps/worker/worker_python/sqs_enqueue.py": "db266b1abc79d87875f928951b0fa7da491125cf5880159f59ae6599b11dd048",
+    "apps/worker/worker_python/pipeline/scene_otsu/__init__.py": "bbfda829932e146184f28c067334c0e29db7fdb1de8e09d8f1a5812bb9f59236"
+  },
+  "limitations": [
+    "CI for this new integration revision has not yet completed",
+    "Earlier dc2572df CI and on-prem CPU lifecycle evidence does not prove this new revision",
+    "Not a full deployed Lambda/SQS/ASR/Embedding/LLM E2E",
+    "Existing logs and backups are not modified or purged",
+    "Existing worker IAM policy and boundary restrict SQS to production queues; isolated queue access requires a separately reviewed plan, not reuse of production queues",
+    "No IAM, federation trust, runtime setting, model call, production write or cutover performed"
+  ]
+}

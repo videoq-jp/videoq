@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "date": "2026-11-13",
+  "cohort": "synthetic",
+  "target": "videoq-d1-migration-staging-v2",
+  "source": "isolated local PostgreSQL 17 restored from the verified synthetic archive using the current PostgreSQL schema",
+  "production_modified": false,
+  "target_data_modified": false,
+  "source_tables": 58,
+  "source_rows": "15",
+  "source_fixture_foreign_keys_validated_after_loading": 75,
+  "source_snapshot_equality_verified": true,
+  "source_verification_scope": "Mapped tables, auxiliary rows, normalized row bytes, columns, primary-key layouts and Drizzle migration history; same exported read-only repeatable-read snapshot imported into search.",
+  "source_sequence_state_verified": false,
+  "source_catalog_constraints_verified_by_evaluator": false,
+  "runs": [
+    {"dimensions": 768, "paired_searches": 6, "reference_nonempty_pairs": 3, "both_empty_pairs": 3, "mean_reference_top_k_overlap": 1, "exact_rank_order_pairs": 6, "target_archive_vectors_verified": true},
+    {"dimensions": 1536, "paired_searches": 6, "reference_nonempty_pairs": 3, "both_empty_pairs": 3, "mean_reference_top_k_overlap": 1, "exact_rank_order_pairs": 6, "target_archive_vectors_verified": true}
+  ],
+  "negative_cli_probe": {
+    "same_count_source_value_drift_refused": true,
+    "remote_connection_not_started": true,
+    "report_not_published": true,
+    "source_records_not_logged": true
+  },
+  "acceptance_criteria_applied": false,
+  "production_search_quality_verified": false,
+  "production_performance_verified": false,
+  "execution_complete": false,
+  "limitations": [
+    "Each profile contains one searchable synthetic scene; results do not establish representative ANN quality or human-labelled relevance recall.",
+    "The restored normalized rows are not evidence of a production PostgreSQL logical-backup recovery rehearsal.",
+    "Source sequences, grants, non-primary-key catalog constraints and external storage require separate checks.",
+    "Timings mix local PostgreSQL with a remote binding proxy and exclude source verification, setup, embedding, API and LLM execution.",
+    "The earlier search-only source reports remain unverified historical probes and are not upgraded by this result."
+  ]
+}

@@ -2,7 +2,7 @@ FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b98
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS sqlite
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev make curl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY security/build-sqlite.sh /tmp/build-sqlite.sh
-COPY security/build-zlib.sh security/zlib-write-error.c /tmp/
+COPY security/build-zlib.sh security/fetch-verified.sh security/zlib-write-error.c /tmp/
 RUN sh /tmp/build-sqlite.sh
 RUN sh /tmp/build-zlib.sh
 

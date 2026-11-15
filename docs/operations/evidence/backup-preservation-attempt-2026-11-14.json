@@ -38,5 +38,6 @@
     "production_d1_cutover": false,
     "legacy_tables_excluded_from_export": false
   },
-  "next_step": "Review and deploy allowlisted child failure-stage diagnostics, resolve the observed failure, then repeat the approved preservation and retrieval/recovery rehearsal. Do not treat this attempt as a valid backup."
+  "next_step": "Review and deploy allowlisted child failure-stage diagnostics, resolve the observed failure, then repeat the approved preservation and retrieval/recovery rehearsal. Do not treat this attempt as a valid backup.",
+  "superseded_by": "backup-preservation-recovery-2026-11-14.json"
 }

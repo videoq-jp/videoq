@@ -1,0 +1,5 @@
+{
+  "name": "videoq-private-maintenance-operator",
+  "private": true,
+  "type": "module"
+}

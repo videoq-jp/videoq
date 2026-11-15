@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T22:59:27.983587+00:00",
+  "baseCommit": "7d69b6a6df6c7cbef6c611a5bceb3b3da965737b",
+  "workingTreeImplementationUnderTest": true,
+  "scope": "Synthetic asynchronous error-path confidentiality checks; actual D1 and isolated PostgreSQL delivery contracts.",
+  "runtimeSourceSha256": {
+    "apps/api/src/features/videos/service.ts": "d14d3f2f65478fba066cb4c2858e92ccfa3ce5a27a9be4f9fffb9177690dba8d",
+    "apps/api/src/integrations/media.ts": "bd9d1bedb04a2a545f3505590876c7edba02267b449870c155fefebefbdb2512",
+    "apps/api/src/lib/external-tasks.ts": "2c247bee4de7b8d5ec1177a7c5bc1b676c3540e321635584e86683168abe2161",
+    "apps/api/src/lib/invitation-delivery.ts": "011cddfbf24ff182d59cf5bdca550c79d03b2e466e9d93f26f105c8dc245c307",
+    "apps/api/src/lib/scheduled-maintenance.ts": "099ca49e5254433f22f8c5cf8acb1bf4d1ff49364dcdad6542139a249952aaa0",
+    "apps/api/src/lib/sqs.ts": "f8faef28ff7fc0e86ed0eb74a9b9ad93381c67e2cefdc992202dc1dd74fc4a99",
+    "apps/api/src/lib/task-scheduler.ts": "4678724f565913675f37010f6d52e9332624a10bdd66e5459d5ea3d5ecbfb80d",
+    "apps/api/src/runtime/node-app.ts": "a48b39cba36aa2ffe6387ff7d8ad9dfd438b5f5e41eb2712d081a5281ef98d63",
+    "apps/api/src/runtime/node.ts": "cac75eae2e5ccd6079e65ade72f259ada0fefb84e1783aff0a7227b7dceefbc9",
+    "apps/api/src/trpc/handlers/courses.ts": "3df7dfe8a1a37b02fabccb009c8bcd4a86e5b5c6c5556662725d947a20cd3778"
+  },
+  "syntheticOnly": true,
+  "modelCalls": 0,
+  "realMailSent": false,
+  "productionChanged": false,
+  "customerRecordsUsed": false,
+  "targetedValidation": {
+    "filesPassed": 14,
+    "testsPassed": 209,
+    "exitCode": 0
+  },
+  "dualDatabaseValidation": {
+    "filesPassed": 3,
+    "testsPassed": 52,
+    "postgresVersion": "17.11",
+    "isolatedContainerRemoved": true
+  },
+  "apiAndToolsTypecheckPassed": true,
+  "changedTypescriptLintPassed": true,
+  "fixedErrorCodes": [
+    "EXTERNAL_TASK_EXECUTION_FAILED",
+    "INVITATION_EMAIL_DELIVERY_FAILED"
+  ],
+  "preservedBehavior": [
+    "All independent maintenance work settles before failure is reported.",
+    "Failed retention/recovery still refreshes maintenance scheduling.",
+    "Delivery failures remain retryable; completed work is not rolled back.",
+    "Fresh delivery lease/token and atomic successful completion remain covered.",
+    "SQS request signing, routing, single-attempt dispatch and deadline remain covered."
+  ],
+  "limitations": [
+    "No assertion that historical logs or archived diagnostics are scrubbed; no such data was deleted.",
+    "No full deployed cloud upload/Lambda/SQS/LLM E2E or production configuration verification in this test.",
+    "Node pool and invitation-flush logging changes have static/typecheck and surrounding suite coverage; their callbacks are not individually fault-injected.",
+    "These synthetic checks do not demonstrate that production secrets were previously exposed."
+  ],
+  "previousFullApiAttempt": {
+    "testsPassed": 2412,
+    "testsFailed": 1,
+    "filesPassed": 219,
+    "filesFailed": 1,
+    "testsSkipped": 1441,
+    "failure": "Existing D1 invitation-delivery expectation still required raw provider message; updated to fixed code and explicit persisted-code assertion."
+  },
+  "newHeadCiPending": true,
+  "earlierReadinessCi": {
+    "head": "7d69b6a6df6c7cbef6c611a5bceb3b3da965737b",
+    "runId": 43649212984,
+    "honoJobId": 132613760187,
+    "honoConclusion": "success",
+    "apiTestsPassed": 3765,
+    "apiTestsSkipped": 77,
+    "nativeWorkerTestsPassed": 59,
+    "codeqlRunId": 43649212902,
+    "codeqlConclusion": "success",
+    "wholeRunConclusion": "failure",
+    "failure": "Whisper zlib download failed the existing fixed SHA-256 check; latest diagnostic patch not included."
+  },
+  "upstreamDownloadRecheck": {
+    "url": "https://zlib.net/zlib-1.4.tar.gz",
+    "officialReference": "https://zlib.net/",
+    "bytes": 1507140,
+    "sha256": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+    "existingFetchVerifierPassed": true,
+    "checksumPinChanged": false,
+    "buildSucceededClaimed": false
+  },
+  "fullApiFinalValidation": {
+    "maxWorkers": 2,
+    "filesPassed": 221,
+    "filesSkipped": 115,
+    "testsPassed": 2417,
+    "testsSkipped": 1441,
+    "exitCode": 0
+  }
+}

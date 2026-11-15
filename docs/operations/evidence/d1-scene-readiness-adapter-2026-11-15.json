@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "scope": "Fresh owned real D1 plus both real Vectorize indexes; actual LangChain sync/finish/search adapters; no public API, Lambda/SQS or model invocation",
+  "dimensions": [
+    768,
+    1536
+  ],
+  "scenes": 4,
+  "identicalEmbeddingsPerVideo": 2,
+  "firstPendingObserved": true,
+  "phases": [
+    {
+      "label": "initial",
+      "rounds": 22,
+      "elapsedMs": 81532.8095
+    },
+    {
+      "label": "legacy-replay",
+      "rounds": 1,
+      "elapsedMs": 5754.427042000025
+    }
+  ],
+  "writes": {
+    "768": 4,
+    "1536": 4
+  },
+  "acceptedWritesNotResubmittedWhileWaiting": true,
+  "allScenesRequiredBeforeCompletion": true,
+  "legacyReplayPreservedStoredFloat32Vectors": true,
+  "completionJobsDeduplicated": true,
+  "wrongOwnerRejected": true,
+  "metadataProcessedBeforeIngestion": true,
+  "primaryReadsVerified": true,
+  "modelCalls": 0,
+  "productionChanged": false,
+  "passed": true,
+  "checkedAt": "2026-11-14T22:32:08.602916+00:00",
+  "baseCommit": "9bf353006132d3f0de7906dc595397d35896014d",
+  "workingTreeImplementationUnderTest": true,
+  "runtimeSourceSha256": {
+    "apps/api/src/persistence/d1/scene-index-sync.ts": "56117945ef12395a8918ee759d5c17055198513bc4a68206457773ea4de8967d",
+    "apps/api/src/persistence/d1/scene-index-tasks.ts": "ce0056d383648bc71026153961bdfffe12c00afa6c8df2e96da3641e8ed20ede",
+    "apps/api/src/persistence/d1/scene-index-readiness.ts": "ab57c104108ccfa2c22960076644f2a0bc5617bd913d277d5cc9dac7b2829d95",
+    "apps/api/src/persistence/d1/scene-index-writer.ts": "67487290b56802f4034f7981082aaf03961698c1fd1c4ee60f04e290d4c09ed8",
+    "apps/api/src/persistence/d1/scene-index-reconciliation.ts": "a639755480607a0df1d11b82d723485328d4733db613218acb760c49058065f4",
+    "apps/api/drizzle-d1/0019_scene_search_readiness.sql": "23800584d0ce4196b99f164db62139ba765d8ff570abaa7a9cbb67ff4356a61a"
+  },
+  "temporaryDatabaseDeleted": true,
+  "temporaryIndexesDeleted": true,
+  "independentResourceAbsenceVerified": true,
+  "existingV2V3ResourcesStillPresent": true,
+  "customerDataCopied": false,
+  "limitations": [
+    "Actual persistence adapters over remote bindings, not deployed full public Hono/Lambda/SQS/LLM E2E.",
+    "Four synthetic scenes and two videos; not capacity, search-latency or propagation-SLO acceptance.",
+    "Legacy replay exercised on owned fixture state; no production D1 migration was run."
+  ],
+  "privateProbeSourceSha256": {
+    "probe.mts": "19a5ecc30a59e429da24f85a1eb4c8a9c17248c00442c89fa5547ba9399ef68e",
+    "control.py": "d9fe2369f86eeeffa9c58cca06eb774265316ddc0d292bc7e9c890c8947b88a0"
+  },
+  "localValidation": {
+    "targetedLeaseAndUpgradeRun": {
+      "files": 4,
+      "passed": 37
+    },
+    "postgresAndMigrationRun": {
+      "files": 4,
+      "passed": 90,
+      "postgresVersion": "17.11",
+      "isolatedContainerRemoved": true
+    },
+    "defaultParallelApiRun": {
+      "filesPassed": 216,
+      "filesFailed": 3,
+      "testsPassed": 2398,
+      "testsFailed": 3,
+      "failureReason": "Two 5s test timeouts and one 10s hook timeout; retained, not represented as passing."
+    },
+    "timeoutRecheck": {
+      "files": 3,
+      "passed": 28
+    },
+    "populatedPre0019UpgradePassed": true,
+    "apiAndToolsTypecheckPassed": true,
+    "changedTypescriptLintPassed": true,
+    "drizzleHistoryCheckPassed": true,
+    "migrationManifestComplete": true,
+    "latestCommitCiPending": true,
+    "boundedParallelApiRun": {
+      "maxWorkers": 2,
+      "filesPassed": 219,
+      "filesSkipped": 115,
+      "testsPassed": 2401,
+      "testsSkipped": 1441,
+      "exitCode": 0
+    }
+  }
+}

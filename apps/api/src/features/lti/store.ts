@@ -1,10 +1,8 @@
-import { and, eq, gt, lte, sql } from "drizzle-orm";
-import { withDb } from "../../db/pool";
-import { ltiCredentials, videoCourses } from "../../db/schema";
-import { ApiError } from '../../shared/errors';
-import { sessionRecord } from './protocol';
-import { ltiSessionProof, lockLtiDataSessionWithDb } from './data-lock';
-import type { Bindings } from "../../types/bindings";
+import {createCredentialRepository} from '../../persistence/factory';
+import {ApiError} from '../../shared/errors';
+import {ltiSessionProof} from '../../shared/lti-session-proof';
+import {sessionRecord} from './protocol';
+import type {Bindings} from '../../types/bindings';
 
 export async function digest(value: string): Promise<string> {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -13,63 +11,23 @@ export async function digest(value: string): Promise<string> {
 export function randomSecret(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
 }
-export async function putCredential(env: Bindings, secret: string, kind: string, payload: Record<string, unknown>, seconds: number) {
-  await withDb(env, db => db.insert(ltiCredentials).values({
-    id: secret, kind, payload, expiresAt: new Date(Date.now() + seconds * 1000),
-  }));
+
+
+export async function putCredential(env:Bindings,id:string,kind:string,payload:Record<string,unknown>,seconds:number){
+  await (await createCredentialRepository(env)).put(id,kind,payload,Date.now()+seconds*1000);
 }
-export async function readCredential(env: Bindings, id: string, kind: string) {
-  return withDb(env, async db => (await db.select().from(ltiCredentials).where(and(
-    eq(ltiCredentials.id, id), eq(ltiCredentials.kind, kind), gt(ltiCredentials.expiresAt, new Date()),
-  )).limit(1))[0]?.payload ?? null);
-}
-/** Replace an existing live credential without extending retention or reviving deletion. */
-export async function replaceCredentialPayload(env: Bindings, id: string, kind: string, payload: Record<string, unknown>): Promise<boolean> {
-  return withDb(env, async db => (await db.update(ltiCredentials).set({ payload }).where(and(
-    eq(ltiCredentials.id, id), eq(ltiCredentials.kind, kind), gt(ltiCredentials.expiresAt, new Date()),
-  )).returning({ id: ltiCredentials.id })).length === 1);
-}
-/** Remember every scope used by this session, without extending its expiry.
- * Atomic union prevents concurrent questions from forgetting a previously allowed video.
- */
-export async function recordScopeVideos(env: Bindings, id: string, videoIds: number[]): Promise<number[] | null> {
-  return withDb(env, async db => {
-    const [row] = await db.update(ltiCredentials).set({
-      payload: sql`jsonb_set(${ltiCredentials.payload}, '{scopeVideoIds}', (
-        SELECT coalesce(jsonb_agg(DISTINCT item), '[]'::jsonb)
-        FROM jsonb_array_elements(coalesce(${ltiCredentials.payload}->'scopeVideoIds', '[]'::jsonb) || ${JSON.stringify(videoIds)}::jsonb) AS item
-      ))`,
-    }).where(and(eq(ltiCredentials.id, id), eq(ltiCredentials.kind, "session"), gt(ltiCredentials.expiresAt, new Date())))
-      .returning({ payload: ltiCredentials.payload });
-    const ids = row?.payload.scopeVideoIds;
-    return Array.isArray(ids) && ids.every(Number.isSafeInteger) ? ids as number[] : null;
-  });
+export async function readCredential(env:Bindings,id:string,kind:string){return (await createCredentialRepository(env)).read(id,kind);}
+export async function recordScopeVideos(env:Bindings,id:string,videoIds:number[]):Promise<number[]|null>{return (await createCredentialRepository(env)).recordScopeVideos(id,videoIds);}
+export async function consumeLogin(env:Bindings,id:string):Promise<boolean>{return consumeCredential(env,id,'login');}
+export async function consumeCredential(env:Bindings,id:string,kind:string):Promise<boolean>{return (await createCredentialRepository(env)).consume(id,kind);}
+export async function pruneLtiCredentials(env:Bindings){await (await createCredentialRepository(env)).prune();}
+export async function putLtiFeedback(env:Bindings,id:string,sessionHash:string,courseId:number,logId:number){
+  const session=sessionRecord.safeParse(await readCredential(env,sessionHash,'session'));
+  if(!session.success)throw new ApiError(403,'FORBIDDEN','The Moodle session is unavailable.');
+  await (await createCredentialRepository(env)).putFeedback(id,ltiSessionProof(session.data,sessionHash),courseId,logId,Date.now()+3600_000);
 }
 
-/** DELETE ... RETURNING ensures one concurrent exchange can consume a login. */
-export async function consumeLogin(env: Bindings, id: string): Promise<boolean> {
-  return consumeCredential(env, id, "login");
-}
-
-/** Atomically consume an expiring protocol credential, including Classroom OAuth state. */
-export async function consumeCredential(env: Bindings, id: string, kind: string): Promise<boolean> {
-  return withDb(env, async db => (await db.delete(ltiCredentials).where(and(
-    eq(ltiCredentials.id, id), eq(ltiCredentials.kind, kind), gt(ltiCredentials.expiresAt, new Date()),
-  )).returning({ id: ltiCredentials.id })).length === 1);
-}
-export async function pruneLtiCredentials(env: Bindings) {
-  await withDb(env, db => db.delete(ltiCredentials).where(lte(ltiCredentials.expiresAt, new Date())));
-}
-
-/** Prevents a late answer from recreating a feedback reference after erasure. */
-export async function putLtiFeedback(env: Bindings, id: string, sessionHash: string, courseId: number, logId: number) {
-  const session = sessionRecord.safeParse(await readCredential(env, sessionHash, 'session'));
-  if (!session.success) throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
-  await withDb(env, db => db.transaction(async tx => {
-    const [course] = await tx.select({ owner: videoCourses.userId }).from(videoCourses).where(eq(videoCourses.id, courseId));
-    if (!course) throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
-    await lockLtiDataSessionWithDb(tx, course.owner, ltiSessionProof(session.data, sessionHash));
-    await tx.insert(ltiCredentials).values({ id, kind: 'lti-feedback',
-      payload: { sessionHash, courseId, logId }, expiresAt: new Date(Date.now() + 3600_000) });
-  }));
+/** Replace a live credential without extending retention or reviving deletion. */
+export async function replaceCredentialPayload(env:Bindings,id:string,kind:string,payload:Record<string,unknown>):Promise<boolean>{
+  return (await createCredentialRepository(env)).replacePayload(id,kind,payload);
 }

@@ -199,7 +199,7 @@ export const externalTasks = pgTable(
 			.where(sql`completed_at IS NOT NULL`),
 		check(
 			"external_tasks_kind_check",
-			sql`kind IN ('sqs_job', 'storage_cleanup', 'invitation_email')`,
+			sql`kind IN ('sqs_job', 'storage_cleanup', 'invitation_email', 'multipart_abort', 'multipart_cleanup')`,
 		),
 		check("external_tasks_attempts_check", sql`attempts >= 0`),
 	],

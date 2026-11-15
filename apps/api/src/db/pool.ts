@@ -1,5 +1,6 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { persistenceBackend } from "../persistence/backend";
 import type { Bindings } from "../types/bindings";
 
 export type Db = NodePgDatabase;
@@ -21,6 +22,9 @@ export async function withClient<T>(
   env: Bindings,
   fn: (client: pg.Client) => Promise<T>,
 ): Promise<T> {
+  if (persistenceBackend(env) !== "postgres") {
+    throw new Error("This operation still requires PostgreSQL and cannot run against D1");
+  }
   if (env.DATABASE_POOL) {
     const client = await env.DATABASE_POOL.connect();
     let failed = false;

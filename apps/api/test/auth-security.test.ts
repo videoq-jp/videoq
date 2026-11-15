@@ -19,7 +19,7 @@ vi.mock("../src/db/pool", () => ({
   withDb: (_env: unknown, fn: (db: object) => unknown) => fn({}),
 }));
 
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { createApp } from "../src/app";
 import type { AppEnv, Bindings } from "../src/types/bindings";
 import type { Db } from "../src/db/pool";

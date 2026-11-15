@@ -18,8 +18,8 @@ const ratePool = new pg.Pool({
   max: integerSetting(process.env, "RATE_LIMIT_POOL_MAX", 2, 1, 20),
   connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000,
 });
-pool.on("error", error => console.error(JSON.stringify({ event: "database_pool_error", error: error.message })));
-ratePool.on("error", error => console.error(JSON.stringify({ event: "rate_limit_pool_error", error: error.message })));
+pool.on("error", () => console.error(JSON.stringify({ event: "database_pool_error" })));
+ratePool.on("error", () => console.error(JSON.stringify({ event: "rate_limit_pool_error" })));
 env.DATABASE_POOL = pool;
 env.RATE_LIMIT_BACKEND = postgresRateLimitBackend(ratePool);
 const closePools = () => Promise.all([pool.end(), ratePool.end()]);

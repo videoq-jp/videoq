@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { schema } from "../src/db/schema";
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { createDpopReplayStore } from "better-auth/oauth2";
 import type { Bindings } from "../src/types/bindings";
 

@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T11:37:10.234542+00:00",
+  "scope": "Preserved production-data rehearsal in nonpublic Cloudflare v3 resources; no production application cutover",
+  "source_evidence": "d1-preserved-production-data-local-rehearsal-2026-11-14.json",
+  "source_backup_maintenance_run_id": "fa64f739e2ac5538f889e9e06e584c69",
+  "target": {
+    "database_id": "373d6ca5-2796-460d-8ab1-e644de46bb3c",
+    "database_name": "videoq-d1-migration-staging-v3",
+    "region": "APAC",
+    "read_replication": "disabled",
+    "database_size_bytes_at_observation": 145178624,
+    "table_count_including_internal": 68,
+    "public_routes": false,
+    "workers_dev": false,
+    "preview_urls": false,
+    "application_secrets_attached": false,
+    "previous_v1_v2_resources_preserved": true
+  },
+  "schema": {
+    "migration_chain": "0000..0018",
+    "applied": true
+  },
+  "completed_d1_phases": {
+    "common_tables": 56,
+    "common_rows": 3956,
+    "checkpoints": 643,
+    "checkpoint_writes": 981,
+    "scenes": 2190,
+    "foreign_key_violations": 0,
+    "controlled_scene_resume_from_row": 1345,
+    "scene_resume_succeeded": true,
+    "completed_common_and_checkpoint_phases_reused": true
+  },
+  "visuals": {
+    "objects_copied_and_retrieved_with_matching_hashes": 10,
+    "runs_migrated": 5,
+    "source_status_counts": {
+      "error": 5
+    },
+    "source_existing_errors_preserved": true,
+    "source_objects_modified": false,
+    "destination_bucket": "videoq-media-migration-staging-v3",
+    "destination_r2_dev_public_access": false,
+    "destination_custom_domains": 0,
+    "initial_proxy_failure_code": 10002,
+    "initial_proxy_failed_before_object_reads": true,
+    "separate_visual_proxy_completed": true,
+    "ready_visual_application_e2e_proven": false
+  },
+  "vectorize": {
+    "indexes": {
+      "768": "videoq-scenes-migration-v3-768",
+      "1536": "videoq-scenes-migration-v3-1536"
+    },
+    "distance_metric": "cosine",
+    "metadata_indexes": {
+      "user_id": "String",
+      "video_id": "Number"
+    },
+    "input_existing_embeddings": 2190,
+    "real_corpus_dimensions": 1536,
+    "real_768_vectors": 0,
+    "embedding_model_changed": false,
+    "delivery_in_progress": false,
+    "outbox_progress_at_observation": {
+      "total": 2190,
+      "completed": 2190,
+      "leased": 0,
+      "errors": 0
+    },
+    "stored_values_and_ownership_verified": true,
+    "query_visibility_verified": true,
+    "missing_vectors": 0,
+    "mismatched_vectors": 0,
+    "pending_tasks": 0
+  },
+  "focused_validation": {
+    "parallel_sync_and_target_tests_passed": 42,
+    "scene_group_and_delivery_tests_passed": 22,
+    "existing_full_import_tests_passed": 43,
+    "scene_resume_and_target_tests_passed": 33,
+    "visual_target_tests_passed": 9,
+    "typescript_and_eslint_passed": true,
+    "full_vector_audit_tests_passed": 21,
+    "real_recovery_tests_passed": 10,
+    "maintenance_deployment_and_ci_input_guard_tests_passed": 57
+  },
+  "remaining": {
+    "complete_vectorize_delivery_and_value_audit": false,
+    "real_data_recovery_rehearsal": false,
+    "representative_search_quality": true,
+    "authentication_and_worker_e2e": true,
+    "latency_and_cost_acceptance": true
+  },
+  "production_d1_cutover": false,
+  "migration_execution_complete": false,
+  "real_data_recovery": {
+    "tool_commit": "b68cf966",
+    "target_database_id": "373d6ca5-2796-460d-8ab1-e644de46bb3c",
+    "baseline_sql_export_stability_verified": true,
+    "original_tables_verified": 68,
+    "sql_export_bytes_verified": 180665549,
+    "schema_and_sequence_hashes_match": true,
+    "only_owned_metadata_probe_modified": true,
+    "customer_records_modified": false,
+    "provider_restore_acknowledged": true,
+    "independent_verification_succeeded": true,
+    "probe_absent_after_restore": true,
+    "source_neon_or_r2_modified": false,
+    "private_bookmarks_and_sql_not_published": true
+  },
+  "query_visibility": {
+    "query_visibility_verified": true,
+    "cohort": "source-derived-existing-vectors",
+    "model_changed": false,
+    "known_vector_cases": 40,
+    "exact_scene_visible": 40,
+    "nonowner_cases": 40,
+    "nonowner_cases_empty": 40,
+    "scope_violations": 0,
+    "representative_search_quality_verified": false,
+    "execution_complete": false
+  },
+  "paired_repository_search": {
+    "query_provenance": "Existing corpus vectors, not representative human questions",
+    "source": "Read-only local PostgreSQL freshly restored from retained immutable dump",
+    "target": "Actual v3 D1 and Vectorize via development binding proxy",
+    "source_snapshot_equality_verified": true,
+    "target_archive_vectors_verified": true,
+    "cases": 80,
+    "samples_per_case": 3,
+    "paired_searches": 240,
+    "agreement": {
+      "reference_nonempty_pairs": 120,
+      "reference_empty_pairs": 120,
+      "both_empty_pairs": 120,
+      "candidate_empty_pairs": 120,
+      "candidate_nonempty_when_reference_empty": 0,
+      "mean_reference_top_k_overlap": 1,
+      "exact_rank_order_pairs": 237,
+      "reference_hits": 2283,
+      "candidate_hits": 2283,
+      "overlapping_hits": 2283
+    },
+    "latency": {
+      "measurement": "repository-call-only",
+      "postgres": {
+        "samples": 240,
+        "p50_ms": 4.846333000023151,
+        "p95_ms": 15.331583999999566,
+        "p99_ms": 26.34754200000316
+      },
+      "d1": {
+        "samples": 240,
+        "p50_ms": 262.1217920000199,
+        "p95_ms": 528.5593329999829,
+        "p99_ms": 573.7827080000134
+      }
+    },
+    "latency_applicability": "Local PostgreSQL versus a remote development binding proxy; this is not a production before/after API benchmark",
+    "representative_search_quality_verified": false,
+    "acceptance_criteria_applied": false
+  },
+  "existing_session_reads": {
+    "existing_session_read_compatibility_verified": true,
+    "active_source_sessions_available": 19,
+    "active_source_sessions_checked": 19,
+    "all_active_source_sessions_checked": true,
+    "distinct_existing_users_checked": 2,
+    "identical_full_session_and_user_outputs": 19,
+    "unknown_sessions_rejected": true,
+    "wrong_signatures_rejected": true,
+    "session_refresh_disabled": true,
+    "d1_non_select_attempts": 0,
+    "postgres_readonly_enforced": true,
+    "shared_test_cookie_secret": true,
+    "production_cookie_or_secret_compatibility_proven": false,
+    "oauth_live_flow_verified": false,
+    "execution_complete": false,
+    "onprem_auth_cloudflare_bindings_supplied": false
+  },
+  "native_edge_read_benchmark": {
+    "evidence": "d1-v3-native-edge-read-benchmark-2026-11-14.json",
+    "paired_reads": 75,
+    "postgres_p95_ms": 192,
+    "d1_p95_ms": 210,
+    "performance_improvement_demonstrated": false,
+    "api_e2e_measured": false,
+    "performance_acceptance_complete": false
+  },
+  "tokyo_native_http_read_benchmark": {
+    "evidence": "d1-v3-tokyo-edge-read-benchmark-2026-11-14.json",
+    "paired_reads": 75,
+    "placement_response_headers": [
+      "remote-NRT",
+      "remote-NRT",
+      "remote-NRT"
+    ],
+    "postgres_p95_ms": 84,
+    "d1_p95_ms": 89,
+    "performance_improvement_demonstrated": false,
+    "api_e2e_measured": false,
+    "performance_acceptance_complete": false
+  },
+  "capacity_cost_assessment": {
+    "evidence": "d1-v3-capacity-cost-assessment-2026-11-14.json",
+    "observed_database_size_bytes": 109314048,
+    "stored_vector_dimensions": 3363840,
+    "account_wide_entitlements_and_utilization_verified": false,
+    "cost_acceptance_complete": false
+  },
+  "bookmarked_replica_evaluation": {
+    "evidence": "d1-v3-bookmarked-replica-benchmark-2026-11-14.json",
+    "additional_trial_total_pairs": 300,
+    "prespecified_warmup_pairs": 75,
+    "measured_after_warmup_pairs": 225,
+    "postgres_warm_p95_ms": 90,
+    "d1_warm_p95_ms": 31,
+    "primary_ownership_check_cost_separate": true,
+    "production_replica_adoption": false,
+    "production_performance_acceptance_complete": false,
+    "read_replication_restored_disabled": true,
+    "original_data_schema_sequences_reverified": true
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T19:19:01.354087+00:00",
+  "applicationCommit": "31b66b3ccae3455cb6bdf6e86e1b83d004eae567",
+  "applicationSourcesUnchanged": true,
+  "sharedContractSha256": "6f7758dfd40f20c9c86bf1e016001ab25cf4cbcf9db5e96f21a99136fc818b8a",
+  "scope": "Five shared OAuth contracts in deployed private Cloudflare Hono/Better Auth, real synthetic v2 D1 and real RateLimiter DO; private RPC carries original HTTP request/response metadata",
+  "contractTestsPassed": 5,
+  "contractTestsFailed": 0,
+  "applicationRequests": 41,
+  "allApplicationResponsesObservedInWorker": true,
+  "realRateLimiterDo": true,
+  "memoryAuthOrRateLimitAdapterUsedInWorker": false,
+  "cookieBadOriginStatus": 403,
+  "browserSimpleFormStatus": 415,
+  "localOriginPolicy": {
+    "browserForm": {
+      "status": 415,
+      "sessionCookieIssued": false
+    },
+    "cookieBadOrigin": {
+      "status": 403,
+      "sessionCookieIssued": false
+    },
+    "validJson": {
+      "status": 200,
+      "sessionCookieIssued": true
+    }
+  },
+  "syntheticCleanupVerified": true,
+  "independentFixtureRowRecheck": {
+    "jwks": 0,
+    "users": 0,
+    "clients": 0,
+    "resources": 0,
+    "sessions": 0,
+    "accounts": 0,
+    "refresh": 0,
+    "access": 0,
+    "consents": 0
+  },
+  "temporaryWorkerDeleted": true,
+  "workerDeleteApi": "Wrangler DELETE workers/services with force; owned class lifecycle only",
+  "ephemeralSecretFileRemoved": true,
+  "modelCalls": 0,
+  "productionChanged": false,
+  "productionCredentialsUsed": false,
+  "privateSourceSha256": {
+    "worker.ts": "106a3990bbc7afe1053ec3e0f195456769e4f0ff01094d83ce97261088385d0e",
+    "contract.test.ts": "f0c2f9afce4681a5d0a1f479a6992ef0851d62b50deb32feec88f7ba8db3453f",
+    "control.py": "245a81201d8ab332f9d563bf1a353125bae462dd78ab4a475e1d5de4533ac138"
+  },
+  "priorAttempts": [
+    {
+      "id": 1,
+      "accepted": false,
+      "reason": "Origin-bearing development transport returned 403; fixture cleanup referenced a nonexistent client_id column in the assertion table. Worker removed and owned rows independently cleared afterward."
+    },
+    {
+      "id": 2,
+      "accepted": false,
+      "reason": "A cookie-less valid JSON username login was incorrectly expected to fail origin validation. Local policy check confirmed browser-simple form rejection and cookie-bound origin rejection. All owned data cleared."
+    },
+    {
+      "id": 3,
+      "accepted": false,
+      "reason": "Fetch-mode authorization correctly returned a JSON redirect rather than a navigation 302. Final harness preserves explicit navigation metadata and exact app responses over private RPC. All owned data cleared."
+    }
+  ],
+  "limitations": [
+    "OAuth provider HTTP behavior under a private RPC transport; not the public full Hono middleware/CORS stack, a physical browser or external Google OAuth.",
+    "Same shared contract code with explicit navigation metadata; app HTTP status/headers/cookies are measured, not inferred from JSON redirect responses.",
+    "No production session-cookie inheritance or live production secret compatibility was tested.",
+    "D1 key-ring preflight required an empty synthetic JWKS table; only generated fixture keys were removed.",
+    "No Lambda/SQS, media processing or LLM answer pipeline was invoked."
+  ],
+  "durableObjectNamespaceCleanup": {
+    "readOnly": true,
+    "probeScriptsChecked": 4,
+    "pagesScanned": 1,
+    "completeEnumeration": true,
+    "matchedNamespaces": 0,
+    "ownedNamespaceAbsenceVerified": true
+  }
+}

@@ -5,16 +5,15 @@ import type { Db } from "../src/db/pool";
 import type { AppEnv, Bindings } from "../src/types/bindings";
 
 const store = vi.hoisted(() => ({ data: {} }));
-const query = vi.hoisted(() => vi.fn());
+const findUnexpiredUser = vi.hoisted(() => vi.fn());
 vi.mock("@better-auth/drizzle-adapter", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(store.data) };
 });
-vi.mock("../src/db/pool", () => ({
-  withClient: (_env: unknown, fn: (client: object) => unknown) => fn({ query }),
-  withDb: (_env: unknown, fn: (db: object) => unknown) => fn({}),
+vi.mock("../src/persistence/factory", () => ({
+  createUploadSessionRepository: () => ({ findUnexpiredUser }),
 }));
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { uploadSessionMethod, isUploadControlRequest } from "../src/middleware/upload-session-auth";
 import { requireAuth } from "../src/middleware/auth";
 
@@ -39,14 +38,14 @@ beforeEach(async () => {
   }));
   expect(login.status).toBe(200);
   cookie = login.headers.getSetCookie().map(c => c.split(";")[0]).join("; ");
-  query.mockReset().mockResolvedValue({ rows: [{ id: "owner", banned: false, banExpires: null }] });
+  findUnexpiredUser.mockReset().mockResolvedValue({ id: "owner", banned: false, banExpires: null });
 });
 
 describe("bounded upload session authorization", () => {
   it("accepts a cookie issued by native Better Auth and checks current DB state", async () => {
     expect((await request()).status).toBe(200);
-    expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("s.expires_at > now()"), [store.data.session[0].token]);
-    query.mockResolvedValue({ rows: [] });
+    expect(findUnexpiredUser).toHaveBeenCalledExactlyOnceWith(store.data.session[0].token);
+    findUnexpiredUser.mockResolvedValue(null);
     expect((await request()).status).toBe(401); // revoked, expired or deleted owner
   });
   it("rejects forged signatures, wrong secrets, insecure cookies and absent credentials before DB access", async () => {
@@ -54,20 +53,20 @@ describe("bounded upload session authorization", () => {
       expect((await request(value)).status).toBe(401);
     }
     expect((await request(cookie, { ...env, BETTER_AUTH_SECRET: "a-different-secret" })).status).toBe(401);
-    expect(query).not.toHaveBeenCalled();
+    expect(findUnexpiredUser).not.toHaveBeenCalled();
   });
   it("enforces permanent and temporary bans without caching an earlier decision", async () => {
     expect((await request()).status).toBe(200);
     for (const banExpires of [null, new Date(Date.now() + 60000)]) {
-      query.mockResolvedValue({ rows: [{ id: "owner", banned: true, banExpires }] });
+      findUnexpiredUser.mockResolvedValue({ id: "owner", banned: true, banExpires: banExpires?.toISOString() ?? null });
       expect((await request()).status).toBe(401);
     }
-    query.mockResolvedValue({ rows: [{ id: "owner", banned: true, banExpires: new Date(Date.now() - 60000) }] });
+    findUnexpiredUser.mockResolvedValue({ id: "owner", banned: true, banExpires: new Date(Date.now() - 60000).toISOString() });
     expect((await request()).status).toBe(200);
   });
   it("does not accept test auth headers in production", async () => {
     expect((await app.request(`${base}/who`, { headers: { "X-VideoQ-Test-User-Id": "owner" } }, env)).status).toBe(401);
-    expect(query).not.toHaveBeenCalled();
+    expect(findUnexpiredUser).not.toHaveBeenCalled();
   });
   it("keeps non-upload and mixed batches on the native auth path", () => {
     expect(isUploadControlRequest("/api/trpc/videos.uploadPartUrl,videos.uploadPartUrl")).toBe(true);

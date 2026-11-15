@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "date": "2026-11-14",
+  "cohort": "synthetic",
+  "runtime_node": "26.12.0",
+  "actual_operator_zip_used": true,
+  "actual_postgres_dump_restore_export_and_handoff": true,
+  "source_tables": 58,
+  "source_rows": 4,
+  "format_v3_archive_verified": true,
+  "archive_copy_bound_to_exporter_whole_file_hash": true,
+  "parent_only_retention_protocol_verified": true,
+  "fake_s3_objects_uploaded_and_version_readback_verified": 3,
+  "version_2_completion_manifest_binds_dump_and_d1_archive": true,
+  "negative_checks": {
+    "missing_d1_result_cannot_downgrade_to_dump_only": true,
+    "changed_d1_artifact_prevents_any_upload": true,
+    "unmapped_source_table_fails_combined_operation_without_upload": true,
+    "private_handoff_removed_on_success_and_failure": true,
+    "source_db_pg_aws_and_oidc_values_not_inherited_by_export_subprocess": true,
+    "terraform_refuses_d1_export_without_private_backup_retention": true,
+    "other_job_projects_cannot_enable_d1_export": true
+  },
+  "automatic_backup_job_integration_implemented": true,
+  "production_flag_enabled": false,
+  "ssm_retrieval_simulated": true,
+  "aws_network_call_made": false,
+  "production_export_executed": false,
+  "production_modified": false,
+  "d1_import_executed": false,
+  "auth_quality_performance_verified": false,
+  "execution_complete": false
+}

@@ -1,0 +1,1 @@
+CREATE INDEX `lms_resources_video_idx` ON `lms_resources` (`video_id`);

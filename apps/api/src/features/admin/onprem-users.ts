@@ -1,5 +1,6 @@
 import { withDb } from "../../db/pool";
-import { createAuth, authBaseURL } from "../../lib/auth";
+import { createAuth } from "../../persistence/postgres/auth";
+import { authBaseURL } from "../../lib/auth";
 import { features } from "../../lib/deployment";
 import { apiNotFound } from "../../shared/errors";
 import type { Bindings } from "../../types/bindings";

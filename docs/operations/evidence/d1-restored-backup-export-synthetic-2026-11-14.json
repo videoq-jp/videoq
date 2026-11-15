@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "date": "2026-11-14",
+  "cohort": "synthetic",
+  "runtime_node": "26.12.0",
+  "operator_zip_built_and_extracted": true,
+  "isolated_operations_dependencies_used": true,
+  "operations_registry_signature_check_passed": true,
+  "actual_postgres_dump_and_restore": true,
+  "source_schema_scope": "Current columns, primary/unique keys and foreign keys reconstructed from the reviewed PostgreSQL snapshot; not all defaults/check constraints or application behavior.",
+  "tables_exported_and_verified": 58,
+  "rows_exported_and_verified": 4,
+  "checks": {
+    "output_mode_0600": true,
+    "existing_output_unchanged": true,
+    "foreign_application_dependencies_refused_before_canary_module_execution": true,
+    "non_loopback_database_refused": true,
+    "connection_query_override_refused": true,
+    "unmapped_legacy_table_refused_without_published_archive": true
+  },
+  "automatic_backup_job_integration_complete": false,
+  "aws_network_call_made": false,
+  "production_export_executed": false,
+  "production_modified": false,
+  "d1_import_executed": false,
+  "auth_quality_performance_verified": false,
+  "execution_complete": false
+}

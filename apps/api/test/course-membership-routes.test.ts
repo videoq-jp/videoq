@@ -18,7 +18,7 @@ vi.mock("../src/features/course-memberships/service", () => service);
 vi.mock("../src/db/pool", () => ({
   withDb: vi.fn(async (_env, callback) => callback({})),
 }));
-vi.mock("../src/lib/auth", () => ({
+vi.mock("../src/persistence/postgres/auth", () => ({
   createAuth: vi.fn(() => ({
     api: { getSession: vi.fn(async () => null) },
   })),

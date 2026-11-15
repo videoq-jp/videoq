@@ -1,4 +1,4 @@
-import { pingDb } from "../../db/pool";
+import { pingPersistence } from "../../persistence/factory";
 import { toErrorBody } from "../../shared/errors";
 import { Hono } from "hono";
 import type { AppEnv } from "../../types/bindings";
@@ -11,7 +11,7 @@ healthRoutes.get("/health", (c) =>
 
 healthRoutes.get("/ready", async (c) => {
   try {
-    const dbOk = await pingDb(c.env);
+    const dbOk = await pingPersistence(c.env);
     if (!dbOk) {
       return c.json(toErrorBody("DB_UNREADY", "Database check failed"), 503);
     }

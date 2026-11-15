@@ -11,7 +11,7 @@ vi.mock("@better-auth/drizzle-adapter", async () => {
 });
 vi.mock("../src/lib/mail", () => ({ sendMail: vi.fn().mockResolvedValue(undefined) }));
 
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { sendMail } from "../src/lib/mail";
 import type { Bindings } from "../src/types/bindings";
 import type { Db } from "../src/db/pool";

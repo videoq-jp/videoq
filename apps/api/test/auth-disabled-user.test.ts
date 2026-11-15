@@ -5,10 +5,8 @@ const getSession = vi.hoisted(() => vi.fn());
 vi.mock("../src/db/pool", () => ({
   withDb: (_env: unknown, fn: (db: object) => unknown) => fn({}),
 }));
-vi.mock("../src/lib/auth", () => ({
+vi.mock("../src/persistence/postgres/auth", () => ({
   createAuth: () => ({ api: { getSession, verifyVideoqApiKey } }),
-  authBaseURL: () => "http://localhost",
-  oauthResourceAudience: () => "http://localhost/api/mcp",
 }));
 
 import { Hono } from "hono";

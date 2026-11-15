@@ -1,0 +1,355 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T17:11:48.973775+00:00",
+  "sourceCommit": "f60049ba255bf9e5df487808fda63ded9c89245d",
+  "scope": "Same private Worker invocation runs actual PostgreSQL and D1/Vectorize repositories, alternating backend order; Tokyo placement hint",
+  "dimensions": 1536,
+  "unique_normal_queries": 40,
+  "negative_owner_cases": 40,
+  "samples_per_case": 3,
+  "paired_searches": 240,
+  "model_calls": 0,
+  "source_readonly_and_fingerprint_verified_in_each_batch": true,
+  "d1_read_replication_enabled": false,
+  "totals": {
+    "reference_nonempty_pairs": 120,
+    "reference_empty_pairs": 120,
+    "both_empty_pairs": 120,
+    "candidate_nonempty_when_reference_empty": 0,
+    "exact_rank_order_pairs": 225,
+    "reference_hits": 2220,
+    "candidate_hits": 2220,
+    "overlapping_hits": 2220
+  },
+  "batches": [
+    {
+      "batch": 1,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 112,
+            "p95_ms": 272,
+            "p99_ms": 272
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 74,
+            "p95_ms": 76,
+            "p99_ms": 76
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 237,
+            "p95_ms": 1907,
+            "p99_ms": 1907
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 112,
+            "p95_ms": 114,
+            "p99_ms": 114
+          }
+        }
+      },
+      "setup_and_proof_ms": 1001,
+      "request_total_ms": 10928
+    },
+    {
+      "batch": 2,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 102,
+            "p95_ms": 122,
+            "p99_ms": 122
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 83,
+            "p95_ms": 86,
+            "p99_ms": 86
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 250,
+            "p95_ms": 305,
+            "p99_ms": 305
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 116,
+            "p95_ms": 121,
+            "p99_ms": 121
+          }
+        }
+      },
+      "setup_and_proof_ms": 1040,
+      "request_total_ms": 9579
+    },
+    {
+      "batch": 3,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 139,
+            "p95_ms": 305,
+            "p99_ms": 305
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 98,
+            "p95_ms": 102,
+            "p99_ms": 102
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 229,
+            "p95_ms": 258,
+            "p99_ms": 258
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 121,
+            "p95_ms": 127,
+            "p99_ms": 127
+          }
+        }
+      },
+      "setup_and_proof_ms": 1090,
+      "request_total_ms": 10227
+    },
+    {
+      "batch": 4,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 137,
+            "p95_ms": 228,
+            "p99_ms": 228
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 93,
+            "p95_ms": 103,
+            "p99_ms": 103
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 239,
+            "p95_ms": 262,
+            "p99_ms": 262
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 112,
+            "p95_ms": 113,
+            "p99_ms": 113
+          }
+        }
+      },
+      "setup_and_proof_ms": 998,
+      "request_total_ms": 9991
+    },
+    {
+      "batch": 5,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 137,
+            "p95_ms": 314,
+            "p99_ms": 314
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 93,
+            "p95_ms": 96,
+            "p99_ms": 96
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 235,
+            "p95_ms": 297,
+            "p99_ms": 297
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 112,
+            "p95_ms": 115,
+            "p99_ms": 115
+          }
+        }
+      },
+      "setup_and_proof_ms": 1041,
+      "request_total_ms": 10164
+    },
+    {
+      "batch": 6,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 125,
+            "p95_ms": 206,
+            "p99_ms": 206
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 85,
+            "p95_ms": 88,
+            "p99_ms": 88
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 239,
+            "p95_ms": 291,
+            "p99_ms": 291
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 113,
+            "p95_ms": 114,
+            "p99_ms": 114
+          }
+        }
+      },
+      "setup_and_proof_ms": 999,
+      "request_total_ms": 9728
+    },
+    {
+      "batch": 7,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 132,
+            "p95_ms": 226,
+            "p99_ms": 226
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 91,
+            "p95_ms": 93,
+            "p99_ms": 93
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 230,
+            "p95_ms": 239,
+            "p99_ms": 239
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 112,
+            "p95_ms": 114,
+            "p99_ms": 114
+          }
+        }
+      },
+      "setup_and_proof_ms": 995,
+      "request_total_ms": 9797
+    },
+    {
+      "batch": 8,
+      "paired_searches": 30,
+      "placement_response_header": "remote-NRT",
+      "ingress_colo": "SEA",
+      "source_scope_scenes": 2187,
+      "mean_reference_top_k_overlap": 1,
+      "latency_by_kind": {
+        "postgres": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 120,
+            "p95_ms": 284,
+            "p99_ms": 284
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 83,
+            "p95_ms": 85,
+            "p99_ms": 85
+          }
+        },
+        "d1": {
+          "normal": {
+            "samples": 15,
+            "p50_ms": 239,
+            "p95_ms": 331,
+            "p99_ms": 331
+          },
+          "negative": {
+            "samples": 15,
+            "p50_ms": 113,
+            "p95_ms": 116,
+            "p99_ms": 116
+          }
+        }
+      },
+      "setup_and_proof_ms": 1004,
+      "request_total_ms": 9938
+    }
+  ],
+  "temporary_worker_deleted": true,
+  "worker_source_sha256": "383448a4c0ed8075f97b4546f7dcf17e291baffc2ed93e4cebe6fb3db8b52162",
+  "limitations": [
+    "Repository-only timings exclude setup, embedding, HTTP API and LLM answer generation.",
+    "Per-batch percentiles are retained; no pooled percentile is inferred from percentile summaries.",
+    "This is serial warm/repeated traffic with fresh per-request connections, not controlled cold-start or concurrency evidence.",
+    "Placement response header and ingress colo are reported separately; a region hint alone is not a placement guarantee.",
+    "No production D1 cutover or write to source PostgreSQL occurred."
+  ]
+}

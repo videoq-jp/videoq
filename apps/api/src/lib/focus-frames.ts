@@ -2,7 +2,7 @@ import { z } from "zod";
 import { readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
 import { focusCacheKey, MAX_FOCUS_FRAMES } from "./video-evidence";
-import { readVisualManifest, visualChunkKey } from "./visual-manifest";
+import { readVisualManifest, visualChunkKey, type VisualVideo } from "./visual-manifest";
 
 // Wire format written atomically by worker_python/pipeline/focus_frames.py.
 const HEADER_BYTES = 12;
@@ -35,7 +35,7 @@ function base64(bytes: Uint8Array): string {
 }
 
 export async function readFocusFrames(
-  env: Bindings, video: { id: number; fileKey: string },
+  env: Bindings, video: VisualVideo,
   start: number, end: number, signal: AbortSignal, maxFrames = MAX_FOCUS_FRAMES,
 ): Promise<FrameSelection> {
   if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > 16) {
@@ -48,7 +48,7 @@ export async function readFocusFrames(
     // immutable for a generation, and every individual read is ETag-pinned.
     for (let index = Math.floor(start / 60); index < plan.chunk_count && index * 60 < end; index++) {
       const result = await readFocusPack(env, video, start, end, signal, maxFrames - frames.length,
-        visualChunkKey(video.fileKey, plan.run_id, index),
+        visualChunkKey(video.fileKey, plan.run_id, index, plan.chunk_versions?.[index]),
         { start: index * 60, end: Math.min((index + 1) * 60, plan.duration_seconds), duration: plan.duration_seconds });
       if ("unavailable" in result) return result;
       frames.push(...result.frames);
@@ -56,11 +56,12 @@ export async function readFocusFrames(
     return frames.length ? { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: 1 }
       : { unavailable: "No dense frames fall in this interval; the source may have a gap or the interval may be outside the video.", sampling_interval_seconds: 1 };
   }
+  if (video.visualRunId !== undefined) return { unavailable: "Visual evidence is not available for this video yet." };
   return readFocusPack(env, video, start, end, signal, maxFrames, focusCacheKey(video.fileKey));
 }
 
 async function readFocusPack(
-  env: Bindings, video: { id: number; fileKey: string }, start: number, end: number,
+  env: Bindings, video: VisualVideo, start: number, end: number,
   signal: AbortSignal, maxFrames: number, key: string,
   chunk?: { start: number; end: number; duration: number },
 ): Promise<FrameSelection> {

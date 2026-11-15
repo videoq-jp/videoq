@@ -42,6 +42,14 @@
       "url": "https://files.pythonhosted.org/packages/5c/f1/0e55195893228609c9a08c3b13b7a83a46c3a992cd00d3304f0f320cfb07/soxr-1.1.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "3b033078e86f3c4a658e5697fac8995764fad9e799563616b630136b613167f1",
       "size": 240413
+    },
+    {
+      "name": "dnspython",
+      "version": "2.9.2",
+      "filename": "dnspython-2.9.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/1e/0c/5346358b3a20275d256978c35203ddc2c8617f78c1b23795b79ba22ced6d/dnspython-2.9.2-py3-none-any.whl",
+      "sha256": "af15f7d385a6ae2fb35a796fde2138004c8c42c7389090e2addc83e3b3340fd8",
+      "size": 360455
     }
   ]
 }

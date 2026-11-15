@@ -3,8 +3,8 @@ set -eu
 
 # Debian trixie has no fixed zlib package for CVE-2026-76844 yet.
 # Use the complete upstream release, retaining package/source/license records.
-curl -fsSL https://zlib.net/zlib-1.4.tar.gz -o /tmp/zlib.tar.gz
-echo '02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584  /tmp/zlib.tar.gz' | sha256sum -c -
+sh "$(dirname "$0")/fetch-verified.sh" https://zlib.net/zlib-1.4.tar.gz \
+  02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584 /tmp/zlib.tar.gz
 tar -xzf /tmp/zlib.tar.gz -C /tmp
 cd /tmp/zlib-1.4
 CFLAGS='-O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2' LDFLAGS='-Wl,-z,relro,-z,now' ./configure --shared

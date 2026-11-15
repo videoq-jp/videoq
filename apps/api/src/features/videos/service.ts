@@ -66,13 +66,12 @@ type YoutubeCreateRequest = {
 
 const CONFIRMED_UPLOAD_STATUSES = new Set(["pending", "processing", "indexing", "completed", "error"]);
 
-const reportBestEffortFailure = (operation: string, error: unknown) => {
+const reportBestEffortFailure = (operation: string) => {
   console.error(
     JSON.stringify({
       level: "error",
       event: "best_effort_failed",
       operation,
-      message: error instanceof Error ? error.message : String(error),
     }),
   );
 };
@@ -236,8 +235,8 @@ export async function requestPresignedUpload(
         fallbackStorageBytes: body.file_size,
       });
       await dispatchCleanupTask(env, deleted.cleanupTaskId);
-    } catch (cleanupError) {
-      reportBestEffortFailure("presigned_upload_cleanup", cleanupError);
+    } catch {
+      reportBestEffortFailure("presigned_upload_cleanup");
     }
     throw error;
   }

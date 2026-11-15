@@ -1,0 +1,54 @@
+{
+  "observed_on": "2026-11-13",
+  "scope": "synthetic local PostgreSQL to remote staging D1/Vectorize",
+  "source": {
+    "engine": "PostgreSQL 17 with pgvector",
+    "tables": 57,
+    "rows": 11,
+    "production_data": false
+  },
+  "target": {
+    "d1_name": "videoq-d1-migration-staging",
+    "d1_id": "538bebc4-9485-4e91-8799-c236eeed1dd2",
+    "common_tables_imported_and_reconciled": 55,
+    "sequence_states_restored": 13,
+    "scene_rows_imported": 2,
+    "same_archive_import_retry_passed": true
+  },
+  "delivery": {
+    "claimed": 2,
+    "completed": 2,
+    "failed": 0,
+    "lease_lost": 0,
+    "pending_tasks": 0
+  },
+  "verification": {
+    "checked": 2,
+    "verified": 2,
+    "missing": 0,
+    "mismatched": 0,
+    "pending_tasks": 0,
+    "dimensions": [
+      768,
+      1536
+    ],
+    "vectorize_delivery_complete": true,
+    "search_quality_verified": false
+  },
+  "authentication": {
+    "imported_password_sign_in_passed": true,
+    "issued_session_read_from_d1_passed": true,
+    "original_synthetic_session_row_retained": true,
+    "test_created_session_removed": true,
+    "original_browser_cookie_compatibility_verified": false
+  },
+  "limitations": [
+    "synthetic records only; most tables are empty",
+    "no visual objects or LangGraph checkpoints in this rehearsal",
+    "no real-user snapshot or production cutover",
+    "no retrieval recall/ranking or performance acceptance result",
+    "no rollback recovery result"
+  ],
+  "production_modified": false,
+  "execution_complete": false
+}

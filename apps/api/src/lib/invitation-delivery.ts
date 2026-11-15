@@ -76,15 +76,17 @@ export async function deliverInvitationEmail(
         invitationUrl(env, token),
       ),
     );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+  } catch {
+    // A transport can echo the message, including the plaintext invitation
+    // token. Keep only a fixed failure code in the DB and propagated error.
+    const message = "INVITATION_EMAIL_DELIVERY_FAILED";
     // 失敗も記録してからthrowする。task 側のバックオフで再試行される。
     await recordInvitationDeliveryOutcomes(
       env,
       [{ invitationId, status: "failed", attemptedAt: now, error: message }],
       { lease },
     );
-    throw error;
+    throw new Error(message);
   }
 
   // 成功時は配信結果とタスク完了を1トランザクションにまとめる。

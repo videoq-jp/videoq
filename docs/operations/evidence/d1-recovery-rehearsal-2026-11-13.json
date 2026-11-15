@@ -1,0 +1,43 @@
+{
+  "observed_on": "2026-11-13",
+  "scope": "synthetic dedicated D1 Time Travel rehearsal",
+  "database_id": "538bebc4-9485-4e91-8799-c236eeed1dd2",
+  "baseline": {
+    "tables": 68,
+    "rows": 52,
+    "sha256": "b5998fc2955720f63b578d1826e226a39ce0ec058ee4e4812151815841d9bb62",
+    "captures": [
+      "table DDL and column metadata",
+      "ordered row values",
+      "sqlite_sequence",
+      "D1 migration history"
+    ]
+  },
+  "probe": {
+    "changed_row": "synthetic rehearsal video title only",
+    "mutation_observed": true,
+    "pre_restore_verification_rejected_changed_state": true
+  },
+  "restore": {
+    "cloudflare_time_travel_completed": true,
+    "full_captured_fingerprint_matched": true,
+    "comparison_sha256": "b5998fc2955720f63b578d1826e226a39ce0ec058ee4e4812151815841d9bb62"
+  },
+  "post_restore": {
+    "vectors_checked": 2,
+    "vectors_verified": 2,
+    "missing": 0,
+    "mismatched": 0,
+    "pending_tasks": 0,
+    "remote_auth_test_passed": true
+  },
+  "limitations": [
+    "synthetic-only database",
+    "standalone index/trigger definitions are not in the fingerprint",
+    "no mutations or restore of Vectorize/R2 during this exercise",
+    "no in-flight external jobs or distributed recovery",
+    "not a production restore, Neon reverse migration or RTO measurement"
+  ],
+  "production_modified": false,
+  "execution_complete": false
+}

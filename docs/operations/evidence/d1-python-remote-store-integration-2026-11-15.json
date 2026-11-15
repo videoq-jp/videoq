@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "sourceCommit": "39069443e1fbd4ad4b9c8af7ece6e95c16cdb500",
+  "runtime": "Python HTTPS client to local Node Hono; remote synthetic v2 D1 and Vectorize",
+  "realPythonSigner": true,
+  "tlsVerificationEnabled": true,
+  "pythonPendingBeforeSync": true,
+  "realLangchainOutboxSync": true,
+  "embeddingPayloadClearedAfterDelivery": true,
+  "pythonFinishIdempotent": true,
+  "realSearchObserved": true,
+  "wrongOwnerRejected": true,
+  "syntheticCleanupVerified": true,
+  "modelCalls": 0,
+  "sqsOrLambdaInvoked": false,
+  "cloudWorkerDeployed": false,
+  "productionTouched": false,
+  "passed": true,
+  "checkedAt": "2026-11-14T17:27:25.893202+00:00",
+  "privateProbeSourceSha256": "114b95eca28bad96bf8dcdb120acc7f55aecc7ef73b824c4c6651d5f7bdf7afa",
+  "temporaryTlsKeyAndCertificateRemoved": true,
+  "limitations": [
+    "Hono runs in local Node over verified loopback HTTPS; stores are actual remote synthetic v2 services. This is not a deployed Workers/Lambda/SQS full E2E.",
+    "Transcript and embeddings are synthetic; no media upload, speech recognition, federation or LLM generation is performed.",
+    "The production synchronizer is invoked by the private test driver after signed ingestion; no production scheduler is armed.",
+    "Vectorize physical and ANN visibility are observed before asserting search success; fixture rows and physical/ANN entries are checked absent after cleanup."
+  ],
+  "independentFixtureRowRecheck": {
+    "users": 0,
+    "videos": 0,
+    "scenes": 0,
+    "runs": 0,
+    "staging": 0,
+    "tasks": 0,
+    "jobs": 0
+  },
+  "externalTaskCleanupScope": "Exact synthetic video ID DELETE awaited; no external queue dispatcher invoked"
+}

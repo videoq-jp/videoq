@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T17:34:31.053603+00:00",
+  "sourceCommit": "00634d69",
+  "scope": "Same implementation/corpus and read-only snapshots, Singapore-hinted Worker, diagnostic staged repeat",
+  "placement_hint": "aws:ap-southeast-1",
+  "placement_response_headers": [
+    "remote-SIN"
+  ],
+  "unique_normal_queries": 40,
+  "negative_owner_cases": 40,
+  "samples_per_case": 3,
+  "paired_searches": 240,
+  "model_calls": 0,
+  "raw_timing_samples": 480,
+  "summary": {
+    "postgres": {
+      "normal": {
+        "elapsed_ms": {
+          "p50": 18,
+          "p95": 28,
+          "p99": 32
+        },
+        "vector_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      },
+      "negative": {
+        "elapsed_ms": {
+          "p50": 10,
+          "p95": 14,
+          "p99": 43
+        },
+        "vector_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      }
+    },
+    "d1": {
+      "normal": {
+        "elapsed_ms": {
+          "p50": 255,
+          "p95": 281,
+          "p99": 1007
+        },
+        "vector_ms": {
+          "p50": 234,
+          "p95": 257,
+          "p99": 989
+        },
+        "sql_ms": {
+          "p50": 19,
+          "p95": 33,
+          "p99": 43
+        }
+      },
+      "negative": {
+        "elapsed_ms": {
+          "p50": 206,
+          "p95": 220,
+          "p99": 223
+        },
+        "vector_ms": {
+          "p50": 206,
+          "p95": 220,
+          "p99": 223
+        },
+        "sql_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      }
+    }
+  },
+  "agreement": {
+    "reference_nonempty_pairs": 120,
+    "reference_empty_pairs": 120,
+    "both_empty_pairs": 120,
+    "candidate_empty_pairs": 120,
+    "candidate_nonempty_when_reference_empty": 0,
+    "exact_rank_order_pairs": 225,
+    "reference_hits": 2220,
+    "candidate_hits": 2220,
+    "overlapping_hits": 2220
+  },
+  "normal_top_k_overlap": 1,
+  "source_readonly_and_fingerprint_verified_each_batch": true,
+  "d1_constant_select_baseline": {
+    "samples": 40,
+    "elapsed_ms": {
+      "p50": 10,
+      "p95": 16
+    },
+    "sql_duration_ms": {
+      "min": 0.0665,
+      "max": 0.2141
+    },
+    "all_served_by_primary": true,
+    "served_by_regions": [
+      "APAC"
+    ]
+  },
+  "temporary_worker_deleted": true,
+  "worker_source_sha256": "704807ccbbb02c9168ab8137b5ebed6f27e32fdddd0d5c0e6113113d1cfc5306",
+  "limitations": [
+    "Different placement runs occur at different times; this is not randomized simultaneous A/B or full user HTTP E2E.",
+    "Repository timers exclude embedding and API/LLM work, and deployed Worker clocks do not measure pure CPU.",
+    "Stage timers include communication and service wait; database/index physical city is not inferred from APAC alone.",
+    "No read replication, production binding, source write or migration cutover changes were made.",
+    "This result does not establish a performance improvement."
+  ]
+}

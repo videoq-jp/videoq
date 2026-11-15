@@ -6,7 +6,7 @@ import { syncTeacherFixture as syncLmsResource } from './helpers/teaching-fixtur
 import { courseTags, type CourseTagScope } from '../src/features/lti/course-tags';
 import { manageLtiMaterial, type ManagedMaterialScope } from '../src/features/lti/material-management';
 import { pruneLtiAudit } from '../src/features/lti/audit-retention';
-import { operationReservationKey, reserveLtiOperation } from '../src/features/lti/operation-reservations';
+import { operationReservationKey, reserveLtiOperation } from '../src/persistence/postgres/operation-reservations';
 import { privacySubject, type PrivacyInstallation } from '../src/features/lms/privacy-data';
 import { executePrivacyRequest } from '../src/features/lms/privacy-routes';
 import type { Bindings } from '../src/types/bindings';

@@ -114,6 +114,55 @@ The protocol follows the AWS references for [conditional writes](https://docs.aw
 [PutObject checksums and encryption](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html)
 and [CodeBuild source versions](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html).
 
+## Version-pinned private backup download
+
+`.github/scripts/backup-download.mjs` retrieves a selected completed backup into a
+new private directory. Supply the exact maintenance run ID and the completion
+manifest's S3 VersionId, obtained through a separately reviewed operator inventory
+for that run. The tool does not discover/list versions, select latest, assume a
+role, fetch SSM parameters or broaden IAM. Use an approved operator session with
+`s3:GetObjectVersion` on the required `verified/<run-id>/*` objects; routine GitHub
+invocation roles still have no archive read grants. No DB credential is needed.
+
+```sh
+node .github/scripts/backup-download.mjs \
+  --run-id <exact-maintenance-run-id> \
+  --manifest-version <exact-S3-VersionId> \
+  --output-dir /private/rehearsal/new-download \
+  --require-d1
+```
+
+The bucket, owner and region are fixed. Every HEAD and GET specifies a version and
+requests its checksum; HEAD checks encryption, version, size and checksum before
+any body download. Referenced object keys must belong to that same run and use the
+fixed dump/archive names. Local descriptor-based SHA-256 and byte counts must then
+match both the manifest and S3 response. Credentials for DBs, PG settings and OIDC
+are not forwarded to the AWS CLI; configured endpoint overrides are ignored.
+
+The output directory must not exist; exclusive creation preserves existing files.
+It is 0700 and downloaded files are precreated as 0600. Success writes a private
+`download-verified.json` receipt; failure removes only the directory created by
+that attempt, including previously downloaded partial files. No receipt, object
+version or record content is printed. Version-1 dump-only manifests are supported
+without `--require-d1`; requesting D1 refuses them instead of falling back.
+
+Download verification proves transport integrity, not the D1 format, source data
+provenance outside the selected trusted manifest, or cutover readiness. The local
+receipt leaves `d1_archive_format_verified=false` and `execution_complete=false`.
+Run the existing migration archive verifier against the intended reviewed mapping
+before import, and independently restore the exact downloaded dump and compare its
+inventory. Do not execute unreviewed repository code/dependencies against private
+archives. R2/Vectorize state, credentials/grants, production auth, search quality
+and performance require their separate checks.
+
+The synthetic operator-ZIP fixture now transfers the actual generated dump,
+manifest and D1 archive through fake versioned S3, downloads them using this tool,
+verifies the retrieved archive against the packaged mapping, and restores the
+retrieved dump into another PostgreSQL database with 58 tables/four rows checked.
+This closes the local preservation/retrieval/recovery loop; actual AWS read
+permissions, real storage and production recovery remain unproven.
+The version-read/checksum behavior follows the [AWS GetObject reference](https://docs.aws.amazon.com/cli/latest/reference/s3api/get-object.html).
+
 ## Provision and cut over
 
 1. Review/commit the code and install the runtime lockfile:
@@ -243,53 +292,95 @@ successful automatic run, including the AWS smoke stage. Subsequent relevant mai
 merges deploy automatically; `workflow_dispatch` retries the current verified main.
 Infrastructure/IAM changes still require the independent Terraform procedure.
 
-## Version-pinned private backup download
+## Isolated restored-backup D1 export tool
 
-`.github/scripts/backup-download.mjs` retrieves a selected completed backup into a
-new private directory. Supply the exact maintenance run ID and the completion
-manifest's S3 VersionId, obtained through a separately reviewed operator inventory
-for that run. The tool does not discover/list versions, select latest, assume a
-role, fetch SSM parameters or broaden IAM. Use an approved operator session with
-`s3:GetObjectVersion` on the required `verified/<run-id>/*` objects; routine GitHub
-invocation roles still have no archive read grants. No DB credential is needed.
+The operator allowlist now packages `.github/scripts/backup-d1-export.mts`, the
+minimal read-only exporter/verifier graph and the latest reviewed PostgreSQL/D1
+snapshots. `tsx` and `zod` are pinned in the isolated operations lockfile, installed
+without scripts and signature-checked with the existing setup. A tiny operator
+`package.json` selects ESM; application package metadata, application dependencies
+and API/Worker entrypoints are not copied into this runtime.
+
+The backup job now has an opt-in bridge, controlled by the operator-managed
+`export_d1_from_verified_backup` Terraform setting (default `false`). It requires
+`retain_verified_backups=true`; only the backup project receives
+`VIDEOQ_EXPORT_D1_FROM_BACKUP=true`. This source change has not enabled it in
+production, and no production D1 export has been performed. Deploy reviewed
+canonical-main code, including the updated isolated lockfile and snapshot assets,
+before enabling the infrastructure setting. Do not fetch a production DB parameter
+locally to exercise this entrypoint.
+
+After the exact dump passes isolated restore, row-count and constraint checks,
+the DB child invokes the exporter while that restored instance is still alive.
+Only a temporary loopback credential and a minimal environment are forwarded;
+the original DB URL, PG settings, AWS credentials and OIDC values are not inherited.
+The exporter verifies the complete format-v3 archive and records both its archive
+content hash and its whole-file size/SHA-256. The child copies both dump and archive
+through no-follow descriptors into the parent-owned handoff directory and verifies
+the copied archive against that export proof before writing a version-2 marker.
+
+The parent requires both artifacts when export was requested; a dump-only child
+result cannot downgrade the operation. It checks the entire artifact set before
+uploading and checks each upload's bytes again against the child record. It stores
+the dump, `d1-source.videoq-export.ndjson`, and only then the version-2
+`verified-backup.json` completion manifest. Each object gets conditional creation,
+SSE-S3, checksum validation and versioned HEAD readback. The private manifest binds
+the D1 archive's format/content hash and its S3 object version to the same dump and
+operator run, with `execution_complete=false`. Export, copy or upload failure fails
+the requested operation; partial uploads never receive a completion manifest, and
+local handoff files are removed. Default dump-only retention keeps version 1.
+
+First preserve and rehearse recovery of a PostgreSQL dump with D1 export disabled.
+Resolve the live legacy-table policy before enabling export. An unmapped table
+fails the combined operation; it does not trigger a partial D1 export or delete
+earlier preserved backup versions. Source roles/grants, sequence restoration,
+external objects, auth, search quality, performance and cutover still require
+their separate migration checks.
+
+Inside a clean operator bundle, with `DATABASE_URL` already supplied for the
+private restored PostgreSQL instance only:
 
 ```sh
-node .github/scripts/backup-download.mjs \
-  --run-id <exact-maintenance-run-id> \
-  --manifest-version <exact-S3-VersionId> \
-  --output-dir /private/rehearsal/new-download \
-  --require-d1
+VIDEOQ_BACKUP_ISOLATED_EXPORT=true \
+  .github/operations-tools/node_modules/.bin/tsx \
+  .github/scripts/backup-d1-export.mts \
+  --output /private/restore-run/d1-source.videoq-export.ndjson
 ```
 
-The bucket, owner and region are fixed. Every HEAD and GET specifies a version and
-requests its checksum; HEAD checks encryption, version, size and checksum before
-any body download. Referenced object keys must belong to that same run and use the
-fixed dump/archive names. Local descriptor-based SHA-256 and byte counts must then
-match both the manifest and S3 response. Credentials for DBs, PG settings and OIDC
-are not forwarded to the AWS CLI; configured endpoint overrides are ignored.
+The connection must explicitly select `127.0.0.1`, a port, database `postgres` and
+its temporary `postgres` credential. Other hosts/users/databases, URL query
+parameters and fragments are refused before importing DB/export dependencies.
+The tool supplies its own read-only session option and a bounded query timeout.
+Its output parent must be private and owned by the current user; output is 0600,
+atomically published and never overwritten. The `node_modules` link may point
+only at the independently installed operations dependencies. An existing
+application dependency directory is refused before any application-installed
+module can execute. Secrets and source records are never written to diagnostics.
 
-The output directory must not exist; exclusive creation preserves existing files.
-It is 0700 and downloaded files are precreated as 0600. Success writes a private
-`download-verified.json` receipt; failure removes only the directory created by
-that attempt, including previously downloaded partial files. No receipt, object
-version or record content is printed. Version-1 dump-only manifests are supported
-without `--require-d1`; requesting D1 refuses them instead of falling back.
+The normal archive contracts remain unchanged: full mapped schema coverage,
+normalized row conversion and complete archive verification are mandatory.
+Unmapped legacy tables stop the export; the preserved PostgreSQL dump is not a
+permission to silently omit them. The output still contains sensitive auth and
+application data and must remain in the private backup lifecycle. It is a D1
+import input, not a completed migration or a PostgreSQL recovery artifact.
 
-Download verification proves transport integrity, not the D1 format, source data
-provenance outside the selected trusted manifest, or cutover readiness. The local
-receipt leaves `d1_archive_format_verified=false` and `execution_complete=false`.
-Run the existing migration archive verifier against the intended reviewed mapping
-before import, and independently restore the exact downloaded dump and compare its
-inventory. Do not execute unreviewed repository code/dependencies against private
-archives. R2/Vectorize state, credentials/grants, production auth, search quality
-and performance require their separate checks.
-
-Unit tests simulate versioned S3 responses, corrupt payloads, mismatched object
-references, permission/transport failures and cleanup. Actual AWS read permissions,
-real storage and production recovery remain unproven. This PR does not add the D1
-export producer or migration archive verifier; version-2 manifests are supported
-as an explicit forward-compatible transport contract only.
-The version-read/checksum behavior follows the [AWS GetObject reference](https://docs.aws.amazon.com/cli/latest/reference/s3api/get-object.html).
+`backup-d1-export-fixture.mjs` builds/extracts the actual allowlisted ZIP, uses the
+signature-checked operations dependencies and performs real PostgreSQL
+`pg_dump`/`pg_restore` before running the packaged tool. Its synthetic schema
+contains current columns, primary/unique keys and foreign keys; it is not a full
+application/default/check-constraint or authentication rehearsal. The fixture
+checks export/verification of 58 tables and four synthetic rows, overwrite
+refusal, rejection of foreign application dependencies before a canary module
+executes, URL override refusal and refusal of an extra legacy table. It makes no
+AWS call. The archive's source/module assets and schema snapshots are also
+covered by maintenance-CD selection tests so future changes cannot silently
+leave stale privileged operator code deployed. It also runs the packaged backup
+child, exporter, handoff and parent retention together with simulated SSM retrieval
+and fake S3. That complete path verifies three object uploads and the version-2
+completion manifest. An extra source table is then introduced to confirm that the
+combined operation fails without uploading or falling back to dump-only success.
+These simulations do not prove production AWS credential retrieval, storage or
+recovery; those remain required before any production cutover.
 
 ## Pause backup uploads while preserving archives
 

@@ -42,7 +42,7 @@ def test_offline_restart_uses_hash_verified_cache_without_network(tmp_path, monk
     assert (destination / 'av/__init__.py').read_text() == '# fixture'
     receipt = json.loads((destination / '.videoq-audio.json').read_text())
     assert receipt['lockSha256'] == hashlib.sha256(manifest.read_bytes()).hexdigest()
-    assert len(list(destination.glob('*.dist-info'))) == 4
+    assert len(list(destination.glob('*.dist-info'))) == 5
     with pytest.raises(ValueError, match='must be empty'):
         audio.provision(manifest, cache, destination)
 

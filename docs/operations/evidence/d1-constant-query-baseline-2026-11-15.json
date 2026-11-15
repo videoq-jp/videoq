@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "checkedAt": "2026-11-14T17:19:38.865255+00:00",
+  "sourceCommit": "7b63a4545283887eeab71976fdd6bf447755da50",
+  "query": "SELECT 1 AS value",
+  "samples": 10,
+  "placement_response_header": "remote-NRT",
+  "d1_read_replication_enabled": false,
+  "results": [
+    {
+      "elapsed_ms": 76,
+      "duration_ms": 0.0991,
+      "sql_duration_ms": 0.0991,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 76,
+      "duration_ms": 0.0924,
+      "sql_duration_ms": 0.0924,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 84,
+      "duration_ms": 0.1186,
+      "sql_duration_ms": 0.1186,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 87,
+      "duration_ms": 0.1267,
+      "sql_duration_ms": 0.1267,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 85,
+      "duration_ms": 0.1213,
+      "sql_duration_ms": 0.1213,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 78,
+      "duration_ms": 0.1401,
+      "sql_duration_ms": 0.1401,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 76,
+      "duration_ms": 0.1434,
+      "sql_duration_ms": 0.1434,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 78,
+      "duration_ms": 0.146,
+      "sql_duration_ms": 0.146,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 83,
+      "duration_ms": 0.1057,
+      "sql_duration_ms": 0.1057,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "elapsed_ms": 79,
+      "duration_ms": 0.0991,
+      "sql_duration_ms": 0.0991,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    }
+  ],
+  "source_readonly_and_fingerprint_verified": true,
+  "model_calls": 0,
+  "temporary_worker_deleted": true,
+  "worker_source_sha256": "bd6706896f0a9077c35185338badedc336df6be3e30c669d7ea0afcda2448662",
+  "limitations": [
+    "Constant-query baseline, not the actual authorized scene-hydration SQL.",
+    "SQL duration is D1-reported; elapsed is the Worker I/O clock. This does not isolate network, queue or service overhead from each other.",
+    "A single batch of existing searches followed the baseline; it is not a new 40-query quality acceptance run.",
+    "This does not justify removing final ownership, visibility or revision checks."
+  ]
+}

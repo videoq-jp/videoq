@@ -1,4 +1,6 @@
+import { inspect } from "node:util";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as persistence from "../src/persistence/factory";
 
 const tasks = vi.hoisted(() => ({ processExternalTasks: vi.fn() }));
 const uploads = vi.hoisted(() => ({
@@ -69,6 +71,21 @@ beforeEach(() => {
 });
 
 describe("maintenance sweep", () => {
+  it.each(["error", "string"])("redacts rejected scene-index diagnostics from logs and propagated errors (%s)", async kind => {
+    const canary = "synthetic-private-scene-token-and-SQL-parameters";
+    const reason = kind === "error" ? new Error(canary, { cause: new Error(canary) }) : canary;
+    const maintain = vi.spyOn(persistence, "maintainSceneIndex").mockRejectedValueOnce(reason);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const failure = await runMaintenanceSweep(env).catch(error => error);
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect(log).toHaveBeenCalled();
+      expect(JSON.stringify(log.mock.calls)).not.toContain(canary);
+      expect(inspect(failure, { depth: 10 })).not.toContain(canary);
+      expect(uploads.reconcileAbandonedUploads).toHaveBeenCalledOnce();
+    } finally { maintain.mockRestore(); log.mockRestore(); }
+  });
+
   it("片方が失敗しても全ての回復処理がsettleするまで待つ", async () => {
     tasks.processExternalTasks.mockRejectedValue(new Error("db unavailable"));
 
@@ -146,6 +163,29 @@ describe("maintenance windows", () => {
 });
 
 describe("scheduled maintenance", () => {
+  it("redacts retention failures through the outer aggregate and still refreshes the alarm", async () => {
+    const canary = "synthetic-private-retention-SQL-token";
+    repository.pruneDeliveryHistory.mockRejectedValueOnce(new Error(canary, { cause: new Error(canary) }));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const failure = await runScheduledMaintenance(env, RETENTION_CRON).catch(error => error);
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect(JSON.stringify(log.mock.calls)).not.toContain(canary);
+      expect(inspect(failure, { depth: 10 })).not.toContain(canary);
+      expect(scheduler.refreshMaintenanceSchedule).toHaveBeenCalledWith(env, false);
+    } finally { log.mockRestore(); }
+  });
+
+  it("does not propagate alarm-refresh driver details", async () => {
+    const canary = "synthetic-private-alarm-SQL-token";
+    scheduler.refreshMaintenanceSchedule.mockRejectedValueOnce(new Error(canary, { cause: new Error(canary) }));
+    const failure = await runScheduledMaintenance(env, RETENTION_CRON).catch(error => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect(inspect(failure, { depth: 10 })).not.toContain(canary);
+    expect(repository.pruneDeliveryHistory).toHaveBeenCalledOnce();
+    expect(tasks.processExternalTasks).toHaveBeenCalledOnce();
+  });
+
   it("日次cronは掃除と回復のセーフティネットを両方走らせる", async () => {
     await runScheduledMaintenance(env, RETENTION_CRON);
 

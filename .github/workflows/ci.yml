@@ -199,7 +199,29 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-package-manager/**'
               - '.github/operations-tools/**'
-              - '.github/scripts/backup-restore*'
+              - '.github/scripts/backup-*'
+              - '.github/scripts/neon-*'
+              - '.github/scripts/with-neon-credentials.py'
+              - '.github/scripts/provision-public-demo.mjs'
+              - '.github/scripts/public-demo-policy.cjs'
+              - '.github/scripts/db-maintenance-cd.cjs'
+              - 'infra/db-maintenance/**'
+              - 'infra/sql/neon-security.sql'
+              - 'apps/demo-video/**'
+              - 'apps/api/scripts/d1-migration-manifest.ts'
+              - 'apps/api/scripts/d1-export.ts'
+              - 'apps/api/scripts/d1-preserve-legacy.ts'
+              - 'apps/api/scripts/migrations/d1/export.ts'
+              - 'apps/api/scripts/migrations/d1/manifest.ts'
+              - 'apps/api/scripts/migrations/d1/archive-format.ts'
+              - 'apps/api/scripts/migrations/d1/sequence-format.ts'
+              - 'apps/api/scripts/migrations/d1/verify-archive.ts'
+              - 'apps/api/scripts/migrations/d1/preserved-tables.ts'
+              - 'apps/api/scripts/migrations/d1/private-input.ts'
+              - 'apps/api/scripts/migrations/d1/verified-postgres-source.ts'
+              - 'apps/api/src/persistence/postgres/read-snapshot.ts'
+              - 'apps/api/drizzle/meta/*.json'
+              - 'apps/api/drizzle-d1/meta/*.json'
               - '.github/scripts/production-*'
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
@@ -412,6 +434,7 @@ jobs:
     if: needs.changes.outputs.hono == 'true'
     env:
       QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PERSISTENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       EMBEDDING_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       LMS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       LTI_BROWSER_TESTS: "1"
@@ -466,8 +489,11 @@ jobs:
           npm run typecheck --workspace @videoq/trpc
           npm run typecheck --workspace @videoq/api
           npm run db:check --workspace @videoq/api
+          npm run db:d1:check --workspace @videoq/api
+          npm run db:d1:manifest:check --workspace @videoq/api
           npm run db:verify --workspace @videoq/api
-          npm test --workspace @videoq/api
+          npm run test:unit --workspace @videoq/api -- --maxWorkers=2
+          npm run test:workers --workspace @videoq/api
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:
@@ -822,7 +848,7 @@ jobs:
       - uses: ./.github/actions/setup-operations-tools
       - run: node --test .github/scripts/production-stream-proof.integration.cjs
       - name: Verify private backup retention and failure handling
-        run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-download.test.mjs
+        run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-d1-run.test.mjs .github/scripts/backup-download.test.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'
@@ -836,3 +862,5 @@ jobs:
         run: node .github/scripts/backup-restore-fixture.mjs
       - name: Verify the credential-free DB handoff and parent retention with fake S3
         run: node .github/scripts/backup-preservation-fixture.mjs
+      - name: Export a restored synthetic database using the actual isolated operator ZIP
+        run: node .github/scripts/backup-d1-export-fixture.mjs

@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T12:24:02.779578+00:00",
+  "scope": "Private isolated v3 benchmark; no application replica adoption or production cutover",
+  "worker": "videoq-db-migration-benchmark-replica-v3",
+  "requested_placement_region": "aws:ap-northeast-1",
+  "placement_response_headers": [
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT",
+    "remote-NRT"
+  ],
+  "source_derived_owned_videos": 5,
+  "workload": "owned-video-identifier-lookup",
+  "initial_primary_ownership_batch_required": true,
+  "replica_session_seeded_from_primary_bookmark": true,
+  "bookmark_returned_or_published": false,
+  "quantile_method": "nearest rank pooled within the explicitly named cohort",
+  "initial_enablement_trial": {
+    "invocations": 3,
+    "paired_reads": 75,
+    "durations_ms": {
+      "postgres": {
+        "samples": 75,
+        "p50": 82,
+        "p95": 90,
+        "p99": 92,
+        "min": 76,
+        "max": 92
+      },
+      "d1": {
+        "samples": 75,
+        "p50": 23,
+        "p95": 116,
+        "p99": 230,
+        "min": 17,
+        "max": 230
+      }
+    },
+    "postgres_connection_and_readonly_setup_ms": [
+      273,
+      291,
+      247
+    ],
+    "d1_primary_authorization_ms": [
+      97,
+      79,
+      82
+    ],
+    "d1_serving": [
+      {
+        "region": "APAC",
+        "primary": true,
+        "reads": 6
+      },
+      {
+        "region": "APAC",
+        "primary": false,
+        "reads": 69
+      }
+    ]
+  },
+  "prespecified_warmup_invocations": 3,
+  "additional_trial_all_reads": {
+    "invocations": 12,
+    "paired_reads": 300,
+    "durations_ms": {
+      "postgres": {
+        "samples": 300,
+        "p50": 80,
+        "p95": 89,
+        "p99": 96,
+        "min": 72,
+        "max": 100
+      },
+      "d1": {
+        "samples": 300,
+        "p50": 21,
+        "p95": 34,
+        "p99": 124,
+        "min": 16,
+        "max": 219
+      }
+    },
+    "postgres_connection_and_readonly_setup_ms": [
+      251,
+      272,
+      240,
+      259,
+      290,
+      256,
+      266,
+      224,
+      232,
+      225,
+      270,
+      236
+    ],
+    "d1_primary_authorization_ms": [
+      83,
+      78,
+      87,
+      86,
+      76,
+      83,
+      92,
+      83,
+      87,
+      83,
+      86,
+      81
+    ],
+    "d1_serving": [
+      {
+        "region": "APAC",
+        "primary": true,
+        "reads": 6
+      },
+      {
+        "region": "APAC",
+        "primary": false,
+        "reads": 294
+      }
+    ]
+  },
+  "additional_trial_warmup": {
+    "invocations": 3,
+    "paired_reads": 75,
+    "durations_ms": {
+      "postgres": {
+        "samples": 75,
+        "p50": 79,
+        "p95": 87,
+        "p99": 90,
+        "min": 73,
+        "max": 90
+      },
+      "d1": {
+        "samples": 75,
+        "p50": 22,
+        "p95": 122,
+        "p99": 219,
+        "min": 17,
+        "max": 219
+      }
+    },
+    "postgres_connection_and_readonly_setup_ms": [
+      251,
+      272,
+      240
+    ],
+    "d1_primary_authorization_ms": [
+      83,
+      78,
+      87
+    ],
+    "d1_serving": [
+      {
+        "region": "APAC",
+        "primary": true,
+        "reads": 6
+      },
+      {
+        "region": "APAC",
+        "primary": false,
+        "reads": 69
+      }
+    ]
+  },
+  "additional_trial_after_warmup": {
+    "invocations": 9,
+    "paired_reads": 225,
+    "durations_ms": {
+      "postgres": {
+        "samples": 225,
+        "p50": 82,
+        "p95": 90,
+        "p99": 96,
+        "min": 72,
+        "max": 100
+      },
+      "d1": {
+        "samples": 225,
+        "p50": 21,
+        "p95": 31,
+        "p99": 51,
+        "min": 16,
+        "max": 152
+      }
+    },
+    "postgres_connection_and_readonly_setup_ms": [
+      259,
+      290,
+      256,
+      266,
+      224,
+      232,
+      225,
+      270,
+      236
+    ],
+    "d1_primary_authorization_ms": [
+      86,
+      76,
+      83,
+      92,
+      83,
+      87,
+      83,
+      86,
+      81
+    ],
+    "d1_serving": [
+      {
+        "region": "APAC",
+        "primary": false,
+        "reads": 225
+      }
+    ]
+  },
+  "warm_read_call_p95_improved": true,
+  "api_e2e_measured": false,
+  "cold_start_controlled": false,
+  "hyperdrive_cache_configuration_controlled": false,
+  "production_authentication_and_revocation_semantics_validated": false,
+  "acceptance_criteria_applied": false,
+  "source_modified": false,
+  "production_application_changed": false,
+  "read_replication_enabled_only_during_isolated_trials": true,
+  "read_replication_mode_restored": "disabled",
+  "temporary_worker_and_capability_deleted": true,
+  "execution_complete": false,
+  "post_evaluation_original_data_verification": {
+    "recovery_snapshot_verified": true,
+    "all_original_tables_verified": 68,
+    "sql_export_bytes_verified": 180665549,
+    "original_schema_and_sequences_verified": true,
+    "probe_absent": true
+  }
+}

@@ -25,10 +25,10 @@ test('refuses unrelated scans, incomplete inventories and suppressed findings', 
   }
 });
 
-test('audio scan must match the lock, receipt, directory and all four installed versions', () => {
+test('runtime volume scan must match the lock, receipt, directory and all five installed versions', () => {
   const {inspectAudio} = require('./check-vllm-scan.cjs');
   const {createHash} = require('node:crypto');
-  const manifest = {image: reference, packages: ['av', 'scipy', 'soundfile', 'soxr'].map(name => ({name, version: '1.0'}))};
+  const manifest = {image: reference, packages: ['av', 'scipy', 'soundfile', 'soxr', 'dnspython'].map(name => ({name, version: '1.0'}))};
   const bytes = Buffer.from(JSON.stringify(manifest));
   const receipt = {lockSha256: createHash('sha256').update(bytes).digest('hex'), manifest};
   const raw = {SchemaVersion: 2, ArtifactType: 'filesystem', ArtifactName: '/audio', Results: [{Type: 'python-pkg',

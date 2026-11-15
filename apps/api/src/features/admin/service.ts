@@ -5,9 +5,8 @@ import {
 import { processExternalTaskById } from "../../lib/external-tasks";
 import {
   lockUserForHardDelete,
-  updateAdminUser,
+  patchAdminUserFlags,
 } from "../../repositories/admin-repository";
-import { createAuth } from "../../lib/auth";
 import type { Bindings } from "../../types/bindings";
 
 export {
@@ -32,19 +31,7 @@ export async function patchFlags(
     return { selfLockout: true as const };
   }
 
-  const user = await updateAdminUser(env, targetUserId, async tx => {
-    const auth = createAuth(env, tx);
-    if (patch.is_active !== undefined) {
-      const input = { body: { userId: targetUserId }, headers };
-      if (patch.is_active) await auth.api.unbanUser(input);
-      else await auth.api.banUser(input);
-    }
-    if (patch.is_admin !== undefined) {
-      await auth.api.setRole({
-        body: { userId: targetUserId, role: patch.is_admin ? "admin" : "user" }, headers,
-      });
-    }
-  });
+  const user = await patchAdminUserFlags(env,actorUserId,targetUserId,patch,headers);
   return user ? { user } as const : { notFound: true as const };
 }
 

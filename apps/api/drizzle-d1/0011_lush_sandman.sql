@@ -1,0 +1,1 @@
+ALTER TABLE `video_course_invitations` ADD `creation_nonce` text;

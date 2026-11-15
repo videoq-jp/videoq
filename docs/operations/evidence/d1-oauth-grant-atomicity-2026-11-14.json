@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T13:21:07.867905+00:00",
+  "scope": "Atomic OAuth app disconnect via actual Better Auth HTTP endpoints on local D1/PostgreSQL, plus real remote synthetic D1 batch verification",
+  "base_commit_with_reproduced_failure": "b4020d22b9b1572e9d2d9514985d22c65f67f005",
+  "before_fix": {
+    "late_refresh_delete_failure_left_access_deletions_committed": true,
+    "late_consent_delete_failure_left_access_and_refresh_deletions_committed": true,
+    "local_fault_tests_failed": 2
+  },
+  "after_fix": {
+    "d1_mechanism": "single native prepared-statement batch with owned target lookup inside batch",
+    "postgres_mechanism": "existing native Drizzle adapter transaction",
+    "shared_http_contract_tests_each_backend": 6,
+    "related_local_test_files_passed": 5,
+    "related_local_tests_passed": 97,
+    "additional_logging_and_native_https_test_files_passed": 2,
+    "additional_logging_and_native_https_tests_passed": 6,
+    "remote_auth_test_files_passed": 1,
+    "remote_auth_tests_passed": 3,
+    "remote_atomic_test_repeated_after_cleanup_assertions": true
+  },
+  "checks": {
+    "owned_app_all_resource_grants_revoked": true,
+    "refresh_rotation_replay_records_removed": true,
+    "other_apps_and_users_unchanged": true,
+    "unknown_and_unowned_grants_refused_without_writes": true,
+    "current_session_and_origin_required": true,
+    "late_refresh_failure_rolls_back_every_deletion": true,
+    "late_consent_failure_rolls_back_every_deletion": true,
+    "clean_retry_after_failure": true,
+    "concurrent_disconnects_leave_no_partial_credentials": true,
+    "sql_and_secret_failure_canary_absent_from_http_response_and_server_logs": true,
+    "remote_late_failure_rolls_back_every_deletion": true,
+    "remote_created_users_clients_tokens_grants_and_fault_trigger_cleaned_up_and_verified": true
+  },
+  "remote_target": "fixed synthetic staging v2; v3 real-data rehearsal and production untouched",
+  "api_typecheck_passed": true,
+  "changed_typescript_lint_passed": true,
+  "production_modified": false,
+  "real_model_invoked": false,
+  "execution_complete": false,
+  "primary_reference": "https://developers.cloudflare.com/d1/worker-api/d1-database/",
+  "limitations": [
+    "Synthetic credentials only; no production authentication secret used.",
+    "Real remote verification exercises the D1 repository; native HTTP authorization wiring is covered by local shared endpoint tests.",
+    "Existing issued short-lived JWT lifetime is unchanged; immediate JWT invalidation is not introduced.",
+    "Representative-question model evaluation, full deployed video pipeline acceptance and production cutover remain unverified."
+  ]
+}

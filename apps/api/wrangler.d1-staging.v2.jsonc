@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // Isolated migration verification resources. Never deploy the application
+  // with this file and never attach production routes or production secrets.
+  "name": "videoq-db-migration-staging-v2",
+  "account_id": "12daec56fdba43f677f2766ee26a5a39",
+  "main": "scripts/migrations/d1/staging-proxy.ts",
+  "compatibility_date": "2026-11-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "videoq-d1-migration-staging-v2",
+    "database_id": "8e84cb18-4712-48cf-b528-e880188b045f",
+    "migrations_dir": "drizzle-d1",
+    "remote": true
+  }],
+  "vectorize": [
+    {"binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-scenes-migration-v2-1536", "remote": true},
+    {"binding": "SCENE_VECTORIZE_768", "index_name": "videoq-scenes-migration-v2-768", "remote": true}
+  ]
+}

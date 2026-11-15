@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "target": "synthetic-v2-only",
+  "dimensions": 1536,
+  "realLangchainAndD1Vectorize": true,
+  "upsertAckMs": 1069.4558750000006,
+  "firstAuthorizedHitAfterAckMs": 23145.547416999998,
+  "samples": [
+    {
+      "elapsedAfterAckMs": 147.77099999999882,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 2384.5544999999984,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 4670.701041999999,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 6812.985374999998,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 9004.705833,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 11149.66,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 13391.145499999999,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 15681.155332999999,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 17913.610624999998,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 20069.559042,
+      "hits": 0
+    },
+    {
+      "elapsedAfterAckMs": 23145.541957999998,
+      "hits": 1
+    }
+  ],
+  "visibleCandidateRejectedAfterDeactivation": true,
+  "syntheticCleanupVerified": true,
+  "modelCalls": 0,
+  "productionChanged": false,
+  "scope": "Single local remote-binding observation; not deployed-worker readiness SLO or full pipeline",
+  "passed": true,
+  "checkedAt": "2026-11-14T19:54:17.123458+00:00",
+  "applicationCommit": "a009e431",
+  "privateProbeSha256": "be094bf7279244df310c0cddb56e407fba91381bfa0601df218b8e6ef02a51e7",
+  "source": "https://developers.cloudflare.com/vectorize/reference/client-api/",
+  "sampleCount": 1,
+  "readinessSloProven": false
+}

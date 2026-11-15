@@ -11,9 +11,9 @@ import { privacyCollections, privacyRequest, privacySubject, type PrivacyInstall
 import { digest, putLtiFeedback } from '../src/features/lti/store';
 import { courseTags } from '../src/features/lti/course-tags';
 import { appendCourseHistory } from '../src/features/lti/history';
-import { lockLtiDataSession } from '../src/features/lti/data-lock';
+import { lockLtiDataSession } from '../src/persistence/postgres/lti-session-lock';
 import { withDb } from '../src/db/pool';
-import { createChatLogWithDb } from '../src/repositories/chat-repository';
+import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import type { Bindings } from '../src/types/bindings';
 
 const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;

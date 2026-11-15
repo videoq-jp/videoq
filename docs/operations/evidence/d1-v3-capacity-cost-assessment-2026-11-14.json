@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "observed_at": "2026-11-14T12:04:39.916016+00:00",
+  "scope": "Isolated v3 rehearsal; not account-wide billing or production traffic forecast",
+  "observed": {
+    "d1_database_size_bytes": 109314048,
+    "d1_running_in_region": "APAC",
+    "d1_read_replication": {
+      "mode": "disabled"
+    },
+    "d1_rows_read_24h": 641509,
+    "d1_rows_written_24h": 42683,
+    "d1_read_queries_24h": 47306,
+    "d1_write_queries_24h": 17661,
+    "traffic_is_migration_and_rehearsal_not_steady_state": true,
+    "vector_count_1536": 2190,
+    "vector_count_768": 0,
+    "stored_vector_dimensions": 3363840
+  },
+  "published_limits": {
+    "d1_free_database_size": "500 MB",
+    "d1_paid_database_size": "10 GB",
+    "d1_free_rows_read_per_day": 5000000,
+    "d1_free_rows_written_per_day": 100000,
+    "vectorize_free_stored_dimensions": 5000000,
+    "vectorize_paid_included_stored_dimensions": 10000000,
+    "vectorize_free_queried_dimensions_per_month": 30000000,
+    "vectorize_paid_included_queried_dimensions_per_month": 50000000
+  },
+  "projection_assumptions": {
+    "frozen_vector_corpus": true,
+    "other_account_workloads_included": false,
+    "query_dimensions": 1536,
+    "formula": "(stored vectors + monthly query calls) * dimensions",
+    "monthly_queries": 100000
+  },
+  "projection": {
+    "queried_dimensions_for_100000_calls": 156963840,
+    "paid_vectorize_queried_dimension_overage_usd": 1.0696383999999999,
+    "paid_vectorize_stored_dimension_overage_usd": 0.0,
+    "free_max_query_calls_for_frozen_corpus": 17341,
+    "paid_included_max_query_calls_for_frozen_corpus": 30362
+  },
+  "sources": [
+    "https://developers.cloudflare.com/d1/platform/limits/",
+    "https://developers.cloudflare.com/d1/platform/pricing/",
+    "https://developers.cloudflare.com/vectorize/platform/pricing/",
+    "https://developers.cloudflare.com/workers/platform/pricing/"
+  ],
+  "unknowns": [
+    "Account-wide plan entitlements and shared quota consumption",
+    "Steady-state and peak reads/writes/queries and growth",
+    "Workers requests and CPU billing",
+    "R2, AWS, LLM, archive and transition overlap costs",
+    "Current Neon spend and accepted monthly budget ceiling"
+  ],
+  "production_cost_acceptance_complete": false,
+  "plan_upgrade_performed": false,
+  "execution_complete": false
+}

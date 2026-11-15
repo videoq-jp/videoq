@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
 import { hashPassword } from "better-auth/crypto";
-import { createAuth } from "../src/lib/auth";
+import { createAuth } from "../src/persistence/postgres/auth";
 import { patchFlags } from "../src/features/admin/service";
 import { getAdminUser, isAdmin } from "../src/repositories/admin-repository";
 import { getCurrentUser } from "../src/repositories/user-repository";

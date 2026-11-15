@@ -6,7 +6,7 @@ import {
   EMPTY_NAME_MESSAGE,
   INVALID_COLOR_MESSAGE,
 } from "../../repositories/tag-repository";
-import { isUniqueViolation } from "../../db/errors";
+import { TagNameConflictError } from "../../persistence/contracts/tag-repository";
 import { apiConflict } from "../../shared/errors";
 import type { Bindings } from "../../types/bindings";
 
@@ -17,7 +17,7 @@ export {
 } from "../../repositories/tag-repository";
 
 function handleTagNameConflict(error: unknown): never {
-  if (isUniqueViolation(error, "tags_user_id_name_uniq")) {
+  if (error instanceof TagNameConflictError) {
     throw apiConflict("A tag with this name already exists.");
   }
   throw error;
