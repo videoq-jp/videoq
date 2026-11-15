@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "date": "2026-11-15",
+  "status": "passed",
+  "syntheticOnly": true,
+  "productionWritesPerformed": false,
+  "productionCutoverPerformed": false,
+  "databases": [
+    "isolated loopback PostgreSQL/pgvector",
+    "local workerd D1"
+  ],
+  "verification": {
+    "testFilesPassed": 7,
+    "testsPassed": 35,
+    "typecheck": "passed",
+    "targetedLint": "passed",
+    "pgCookieAcceptedOnD1AndRestoredPG": true,
+    "wrongSecretRejected": true,
+    "secureHttpOnlySameSiteCookieAttributesChecked": true,
+    "googleCallbackUsesRealVerifierAndDbAdapters": true,
+    "remoteGoogleTokenAndJwksResponses": "synthetic",
+    "providerTokenDecryptionAndRefreshAfterRestore": true,
+    "refreshedTokensEncrypted": true,
+    "signoutInvalidatesOnlyTargetSession": true,
+    "failedJobReclaimedWithFreshLease": true,
+    "staleLeaseRejected": true,
+    "completedJobReplaySuppressed": true,
+    "completedOutboxNotClaimed": true
+  },
+  "browserPreflight": {
+    "origin": "https://videoq.jp",
+    "loginPageVisible": true,
+    "googleSignInVisible": true,
+    "authenticatedSessionAvailable": false,
+    "externalSignInPerformed": false,
+    "productionWritesPerformed": false,
+    "isolatedProviderEnvironmentAvailable": false
+  },
+  "cleanup": {
+    "containerRemoved": true,
+    "anonymousVolumesRemoved": true,
+    "copiedDatabaseCredentialRemoved": true,
+    "browserTaskFinished": true,
+    "cloudResourcesCreated": 0,
+    "productionWritesPerformed": false
+  },
+  "limitations": [
+    "No external Google login or production cookie used",
+    "No browser cookie acceptance or cross-origin verification",
+    "No actual SQS/Lambda/Stripe replay",
+    "No RTO/RPO measurement",
+    "Performance improvement and overall budget remain unaccepted"
+  ],
+  "initialFailures": [
+    "onprem fixture disables Google; corrected to explicit cloud PostgreSQL rollback configuration",
+    "form body was incorrectly restricted to string; used existing request body helper"
+  ]
+}
