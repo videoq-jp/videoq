@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-16",
+  "localNodeVersion": "26.12.0",
+  "localPythonVersion": "3.12",
+  "dynamoDbTests": 19,
+  "integrationTransports": {
+    "dynamodb": "actual DynamoDB Local",
+    "sfn": "mocked",
+    "lambda": "mocked",
+    "workerSettingsAndReadiness": "mocked"
+  },
+  "nodeSecurityTests": {
+    "passed": 417,
+    "concurrency": 2,
+    "initialDefaultConcurrency": "one existing VM deadline exceeded; isolated and full lower-concurrency runs passed without assertion changes"
+  },
+  "pythonTests": {
+    "total": 160,
+    "skipped": 7
+  },
+  "infraTests": 57,
+  "terraformTests": 15,
+  "nativeRedrive": {
+    "nativeStandardWorkflowRedrive": "passed",
+    "sameExecutionArn": true,
+    "sameDefinition": true,
+    "idempotentAcceptedRequest": true,
+    "redriveCount": 1,
+    "newCallbackCredentialAfterRedrive": true,
+    "callbackCredentialsStoredOrPrinted": false,
+    "originalInputPreserved": true,
+    "scope": "native SFN retry contract only; no production consumer operation",
+    "productionModified": false,
+    "callbackCredentialsLocalPersistence": false,
+    "awsManagedHistoryRetained": true
+  },
+  "nativeCleanup": {
+    "stateMachineAbsent": true,
+    "functionAbsent": true,
+    "rolesAbsent": 2,
+    "unexpectedLogGroups": 0,
+    "executionHistory": "AWS managed retention; callback credentials never persisted locally"
+  },
+  "awsDefinitionValidation": {
+    "result": "OK",
+    "diagnostics": [],
+    "truncated": false
+  },
+  "productionConsumerChanged": false,
+  "terraformApplied": false,
+  "featureEnabled": false,
+  "productionCredentialProvisioned": false,
+  "changedDatabaseHandoffImplemented": false,
+  "sourceHashes": {
+    ".github/scripts/cutover-consumer-control.cjs": "60bded0a9b60312b7e735cc6074f6ce1dcd7dcac039e82a2e79010744b208684",
+    "infra/db-maintenance/runtime/cutover-hold.cjs": "53d94d3ac38e2a96682950d96f24b70aae004c13bcd2572d74a2f17317b5d3b4",
+    "infra/db-maintenance/runtime/broker.cjs": "c192af0d08b5638ed6d0d536018b405d40aa98e4a4df324a362b94a41b0658c3",
+    "infra/db-maintenance/state-machine.cjs": "7baae49a652dc80353d1b896fab53436f4421d362208fc171b015ae60695fc5e"
+  }
+}

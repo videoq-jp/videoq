@@ -12,7 +12,7 @@ from pathlib import Path
 FUNCTIONS = {kind: "maintenance" for kind in ["rotate", "rollback", "audit"]}
 FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke", "deploy"]})
 FUNCTIONS["cutover-hold"] = "maintenance"
-CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold", "prepare-cutover-consumers"}
+CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold", "prepare-cutover-consumers", "pause-cutover-consumers", "resume-cutover-consumers", "retry-cutover-consumers"}
 
 
 def invocation(function, payload):
@@ -108,9 +108,10 @@ def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=tim
         if state != previous:
             print("AWS cutover hold: " + state + " (" + run_id + ")", flush=True)
             previous = state
-        if action == "prepare-cutover-consumers" and state == "RUNNING" and result.get("consumer_prepared") is True:
+        ready_flag = {"prepare-cutover-consumers": "consumer_prepared", "pause-cutover-consumers": "consumers_paused", "resume-cutover-consumers": "consumers_restored", "retry-cutover-consumers": "consumer_retry_accepted"}.get(action)
+        if ready_flag and state == "RUNNING" and result.get(ready_flag) is True:
             return run_id
-        if (state == "RECOVERED" and action != "prepare-cutover-consumers") or (state == "SUCCEEDED" and action == "release-cutover-hold"):
+        if (state == "RECOVERED" and action in {"release-cutover-hold", "recover-cutover-hold"}) or (state == "SUCCEEDED" and action == "release-cutover-hold"):
             return run_id
         if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
             raise RuntimeError("CUTOVER_RECOVERY_REQUIRED")

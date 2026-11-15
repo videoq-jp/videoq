@@ -128,6 +128,21 @@ class RequestTest(unittest.TestCase):
             with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
                 db.control_cutover("prepare-cutover-consumers", RUN, lambda *args: {"status": state, "run_id": RUN}, lambda _: None, lambda: 0)
 
+    def test_consumer_controls_wait_for_their_own_receipts_and_never_infer_recovery(self):
+        for action, flag in [("pause-cutover-consumers", "consumers_paused"), ("resume-cutover-consumers", "consumers_restored")]:
+            calls = []
+            replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, flag: True}])
+            def invoke(function, payload):
+                calls.append(payload)
+                return next(replies)
+            with patch("sys.stdout", new_callable=io.StringIO):
+                self.assertEqual(db.control_cutover(action, RUN, invoke, lambda _: None, lambda: 0), RUN)
+            self.assertEqual(calls, [{"action": action, "run_id": RUN}, {"action": "status", "run_id": RUN}])
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover(action, RUN, lambda *args: {"status": "RECOVERED", "run_id": RUN}, lambda _: None, lambda: 0)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("retry-cutover-consumers", RUN, lambda *args: {"status": "RUNNING", "run_id": RUN, "consumer_retry_accepted": True}, lambda _: None, lambda: 0), RUN)
+
 
 if __name__ == "__main__":
     unittest.main()

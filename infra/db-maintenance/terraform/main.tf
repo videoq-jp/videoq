@@ -1,3 +1,13 @@
+variable "enable_cutover_consumer_control" {
+  type        = bool
+  default     = false
+  description = "Enable owned pre-DB-mutation SQS pause/resume and same-execution redrive."
+  validation {
+    condition     = !var.enable_cutover_consumer_control || var.enable_cutover_hold
+    error_message = "Consumer mutation control requires the reviewed maintenance hold."
+  }
+}
+
 variable "enable_d1_migrations" {
   type        = bool
   default     = false
@@ -193,6 +203,10 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringEquals" = { "dynamodb:LeadingKeys" = ["maintenance"] } } }
       ] : permission if each.key == "rotation" && var.enable_cutover_hold], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/cutover-control" },
+      { Effect = "Allow", Action = ["lambda:UpdateEventSourceMapping"], Resource = "arn:aws:lambda:${local.region}:${local.account}:event-source-mapping:*",
+      Condition = { ArnEquals = { "lambda:FunctionArn" = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:lambda:${local.region}:${local.account}:function:${name}"] } } }
+      ] : permission if each.key == "rotation" && var.enable_cutover_consumer_control], [for permission in [
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
@@ -217,6 +231,10 @@ resource "aws_codebuild_project" "job" {
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
     privileged_mode             = each.key == "backup"
+    environment_variable {
+      name  = "VIDEOQ_CUTOVER_CONSUMER_CONTROL"
+      value = each.key == "rotation" && var.enable_cutover_consumer_control ? "true" : "false"
+    }
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
@@ -301,14 +319,16 @@ resource "aws_iam_role_policy" "broker" {
   for_each = local.brokers
   name     = "start-and-observe-only"
   role     = aws_iam_role.broker[each.key].id
-  policy = jsonencode({ Version = "2012-10-17", Statement = [
+  policy = jsonencode({ Version = "2012-10-17", Statement = concat([
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.broker[each.key].arn}:*" },
     { Effect = "Allow", Action = ["states:StartExecution"], Resource = aws_sfn_state_machine.maintenance.arn },
     { Effect = "Allow", Action = ["states:DescribeExecution"], Resource = local.execution_arn },
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn },
     { Effect = "Allow", Action = ["codebuild:ListBuildsForProject"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["codebuild:BatchGetBuilds"], Resource = local.project_arns }
-  ] })
+    ], each.key == "maintenance" && var.enable_cutover_consumer_control ? [
+    { Effect = "Allow", Action = ["states:RedriveExecution"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" }
+  ] : []) })
 }
 resource "aws_lambda_function" "broker" {
   lifecycle {
@@ -326,10 +346,11 @@ resource "aws_lambda_function" "broker" {
   publish          = true
   environment {
     variables = {
-      MAINTENANCE_TABLE = aws_dynamodb_table.maintenance.name
-      STATE_MACHINE_ARN = aws_sfn_state_machine.maintenance.arn
-      BUILD_PROJECTS    = jsonencode(values(local.all_projects))
-      ALLOWED_KINDS     = each.value
+      MAINTENANCE_TABLE                = aws_dynamodb_table.maintenance.name
+      STATE_MACHINE_ARN                = aws_sfn_state_machine.maintenance.arn
+      BUILD_PROJECTS                   = jsonencode(values(local.all_projects))
+      ALLOWED_KINDS                    = each.value
+      CUTOVER_CONSUMER_CONTROL_ENABLED = each.key == "maintenance" && var.enable_cutover_consumer_control ? "true" : "false"
     }
   }
   depends_on = [aws_iam_role_policy.broker]

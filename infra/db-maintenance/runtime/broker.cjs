@@ -3,7 +3,7 @@ const {randomBytes, createHash} = require('node:crypto');
 const {REGION, REPOSITORY, HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
 const {createCutoverHoldControl,consumerPlanPrepared} = require('./cutover-hold.cjs');
 function createBroker(aws, configuration, fetchMain = currentMain) {
-  const {table, machine, projects, allowedKinds} = configuration;
+  const {table, machine, projects, allowedKinds, consumerControlEnabled=false} = configuration;
   const get = key => aws('ddb', 'GetItem', {TableName: table, Key: {pk: {S: key}}, ConsistentRead: true});
   async function execution(lock) {
     try { return await aws('sfn', 'DescribeExecution', {executionArn: lock.execution_arn.S}); }
@@ -19,10 +19,18 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
   }
   async function noActiveBuilds() {
     for (const projectName of projects) {
-      const listed = await aws('codebuild', 'ListBuildsForProject', {projectName, sortOrder: 'DESCENDING'});
-      if (listed.ids?.length) {
-        const {builds} = await aws('codebuild', 'BatchGetBuilds', {ids: listed.ids.slice(0, 100)});
-        if (!builds || builds.length !== listed.ids.slice(0, 100).length || builds.some(build => !build.buildComplete)) throw new Error('PREVIOUS_BUILD_STILL_RUNNING');
+      let nextToken;const tokens=new Set();
+      for (let page=0;page<25;page++) {
+        const listed = await aws('codebuild', 'ListBuildsForProject', {projectName, sortOrder:'DESCENDING', ...(nextToken?{nextToken}:{})});
+        const ids=listed.ids??[];
+        if(!Array.isArray(ids)||ids.length>100||ids.some(id=>typeof id!=='string'))throw new Error('BUILD_INVENTORY_INCOMPLETE');
+        if(ids.length){
+          const {builds}=await aws('codebuild','BatchGetBuilds',{ids});
+          if(!builds||builds.length!==ids.length||builds.some(build=>build.buildComplete!==true))throw new Error('PREVIOUS_BUILD_STILL_RUNNING');
+        }
+        if(!listed.nextToken)break;
+        if(typeof listed.nextToken!=='string'||tokens.has(listed.nextToken)||page===24)throw new Error('BUILD_INVENTORY_INCOMPLETE');
+        nextToken=listed.nextToken;tokens.add(nextToken);
       }
     }
   }
@@ -32,7 +40,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       || row.execution_arn?.S !== arn || row.source_sha?.S !== source || row.cutover_phase?.S !== 'holding') throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
     if (row.release_requested?.BOOL !== false) throw new Error('CUTOVER_HOLD_RELEASE_REQUESTED');
   }
-  const control = createCutoverHoldControl({aws, table, machine, get, noActiveBuilds});
+  const control = createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled});
   return async event => {
     const request = input(event, allowedKinds);
     if (request.action !== 'start' && request.action !== 'status') return control(request);
@@ -43,7 +51,13 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       const state = await aws('sfn', 'DescribeExecution', {executionArn: Item.execution_arn.S});
       const prepared = Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'holding' && Item.release_requested?.BOOL === false && consumerPlanPrepared(Item);
       if (prepared) await assertOwnedHold(request.run_id, Item.execution_arn.S, Item.source_sha.S);
-      return {run_id: request.run_id, status: state.status, ...(prepared ? {consumer_prepared:true} : {})};
+      const paused = Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'consumers-paused';
+      if (paused) {
+        const {Item: owner} = await get('maintenance');
+        if (owner?.execution_arn?.S !== Item.execution_arn.S || owner.kind?.S !== HOLD_KIND || Item.database_mutations_started?.BOOL !== false || Item.consumer_admission_restored?.BOOL !== false || !consumerPlanPrepared(Item)) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
+      }
+      const restored = prepared && Item.consumer_admission_restored?.BOOL === true;
+      return {run_id: request.run_id, status: state.status, ...(prepared ? {consumer_prepared:true} : {}), ...(paused ? {consumers_paused:true} : {}), ...(restored ? {consumers_restored:true} : {})};
     }
     const run_id = request.client_token
       ? createHash('sha256').update(request.kind + ':' + (request.inspection ? request.inspection + ':' : '') + request.client_token).digest('hex').slice(0, 32)
@@ -72,7 +86,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!KINDS.includes(lock.kind?.S)) throw new Error('UNKNOWN_MAINTENANCE_LOCK');
       const previous = await execution(lock);
       if (!['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'].includes(previous.status)) return {status: 'BUSY'};
-      if (lock.kind.S === HOLD_KIND && previous.status !== 'SUCCEEDED') throw new Error('CUTOVER_RECOVERY_REQUIRED');
+      if (lock.kind.S === HOLD_KIND) throw new Error('CUTOVER_RECOVERY_REQUIRED');
       const failedRotation = ['rotate', 'rollback'].includes(lock.kind.S) && previous.status !== 'SUCCEEDED';
       if (failedRotation && !['rotate', 'rollback'].includes(request.kind)) throw new Error('ROTATION_RECOVERY_REQUIRED');
       if (lock.kind.S === 'deploy' && previous.status !== 'SUCCEEDED' && request.kind !== 'deploy') throw new Error('DEPLOYMENT_RECOVERY_REQUIRED');
@@ -90,7 +104,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     try {
       await aws('ddb', 'TransactWriteItems', {TransactItems: [
         {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}, created_at: {S: new Date().toISOString()}}, ConditionExpression: 'attribute_not_exists(pk)'}},
-        {Put: {TableName: table, Item: {pk: {S: 'run#' + run_id}, ...item, ...(request.kind === HOLD_KIND ? {source_sha:{S:request.source_sha},cutover_phase:{S:'holding'},cutover_revision:{N:'0'},release_requested:{BOOL:false}} : {expires_at: {N: String(Math.floor(Date.now()/1000)+90*86400)}})}, ConditionExpression: 'attribute_not_exists(pk)'}},
+        {Put: {TableName: table, Item: {pk: {S: 'run#' + run_id}, ...item, ...(request.kind === HOLD_KIND ? {source_sha:{S:request.source_sha},cutover_phase:{S:'holding'},cutover_revision:{N:'0'},release_requested:{BOOL:false},database_mutations_started:{BOOL:false}} : {expires_at: {N: String(Math.floor(Date.now()/1000)+90*86400)}})}, ConditionExpression: 'attribute_not_exists(pk)'}},
       ]});
     } catch (error) {
       if (error.name === 'TransactionCanceledException') return {status: 'BUSY'};
@@ -122,7 +136,7 @@ exports.handler = async event => {
       const services = {ddb: [new ddb.DynamoDBClient({region: REGION}), ddb], sfn: [new sfn.SFNClient({region: REGION}), sfn], codebuild: [new cb.CodeBuildClient({region: REGION}), cb]};
       const aws = (service, command, value) => services[service][0].send(new services[service][1][command + 'Command'](value));
       broker = createBroker(aws, {table: process.env.MAINTENANCE_TABLE, machine: process.env.STATE_MACHINE_ARN,
-        projects: JSON.parse(process.env.BUILD_PROJECTS), allowedKinds: process.env.ALLOWED_KINDS.split(',')});
+        consumerControlEnabled: process.env.CUTOVER_CONSUMER_CONTROL_ENABLED === 'true', projects: JSON.parse(process.env.BUILD_PROJECTS), allowedKinds: process.env.ALLOWED_KINDS.split(',')});
     }
     return await broker(event);
   } catch (error) {

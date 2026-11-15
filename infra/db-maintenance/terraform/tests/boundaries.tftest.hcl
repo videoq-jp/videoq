@@ -318,3 +318,52 @@ run "consumer_preparation_opt_in_is_readonly" {
     error_message = "The added global-lock permission must be a readonly ownership predicate."
   }
 }
+
+run "consumer_control_requires_hold" {
+  command = plan
+  variables {
+    provision_backup_archive        = true
+    retain_verified_backups         = false
+    enable_cutover_hold             = false
+    enable_cutover_consumer_control = true
+  }
+  expect_failures = [var.enable_cutover_consumer_control]
+}
+
+run "consumer_control_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_cutover_hold      = true
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:UpdateEventSourceMapping")]) && alltrue([for policy in aws_iam_role_policy.broker : !strcontains(policy.policy, "states:RedriveExecution")])
+    error_message = "Hold opt-in alone must not enable consumer mutations or retry authority."
+  }
+}
+
+run "consumer_control_permissions_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive        = true
+    retain_verified_backups         = false
+    enable_cutover_hold             = true
+    enable_cutover_consumer_control = true
+  }
+  assert {
+    condition     = alltrue([for key, policy in aws_iam_role_policy.broker : (key == "maintenance") == strcontains(policy.policy, "states:RedriveExecution")]) && alltrue([for key, policy in aws_iam_role_policy.build : (key == "rotation") == strcontains(policy.policy, "/videoq/security/prod/cutover-control")])
+    error_message = "Only the maintenance invoker may redrive and only the fixed rotation job may read the API settings credential."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["lambda:UpdateEventSourceMapping"] && statement.Resource == "arn:aws:lambda:ap-northeast-1:257240362763:event-source-mapping:*" &&
+      statement.Condition.ArnEquals["lambda:FunctionArn"] == ["arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-prod", "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-search-prod", "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-account-prod"]
+    ]) == 1
+    error_message = "Mapping changes must be limited to the three existing worker functions."
+  }
+  assert {
+    condition     = alltrue([for key, function in aws_lambda_function.broker : (function.environment[0].variables.CUTOVER_CONSUMER_CONTROL_ENABLED == "true") == (key == "maintenance")])
+    error_message = "The consumer capability must be exposed only on the maintenance invoker."
+  }
+}

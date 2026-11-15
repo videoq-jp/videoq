@@ -29,22 +29,23 @@ after(async()=>{
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],'cutover-hold-ddb-fixture');await docker(['rm','--force','--volumes',name]);}
  catch(error){if(!String(error.stderr||'').includes('No such object'))throw error;}
 }, {timeout:30000});
-async function fixture(){
+async function fixture({consumerControlEnabled=false,listBuilds}={}){
  const table='videoq_hold_'+randomUUID().replaceAll('-','');
  await client.send(new sdk.CreateTableCommand({TableName:table,BillingMode:'PAY_PER_REQUEST',KeySchema:[{AttributeName:'pk',KeyType:'HASH'}],AttributeDefinitions:[{AttributeName:'pk',AttributeType:'S'}]}));
- const states=new Map(),calls=[];let active=false,describe;
+ const states=new Map(),calls=[],redrives=new Map();let active=false,describe;
  const aws=async(service,command,value)=>{
   calls.push({service,command,value});
   if(service==='ddb')return client.send(new sdk[command+'Command'](value));
-  if(service==='codebuild')return command==='ListBuildsForProject'?{ids:active?['owned-test-build']:[]}:{builds:[{buildComplete:!active}]};
+  if(service==='codebuild')return command==='ListBuildsForProject'?(listBuilds?listBuilds(value):{ids:active?['owned-test-build']:[]}):{builds:value.ids.map(id=>({buildComplete:!active&&id!=='active-late'}))};
+  if(service==='sfn'&&command==='RedriveExecution'){redrives.set(value.executionArn,(redrives.get(value.executionArn)??0)+1);states.set(value.executionArn,'RUNNING');return {}; }
   if(service==='sfn'&&command==='StartExecution'){states.set(executionArn(MACHINE,value.name),'RUNNING');return {};}
   if(service==='sfn'&&command==='DescribeExecution'){
    const status=describe?describe(value.executionArn):states.get(value.executionArn);
-   if(!status)throw Object.assign(Error('missing test execution'),{name:'ExecutionDoesNotExist'});return {status};
+   if(!status)throw Object.assign(Error('missing test execution'),{name:'ExecutionDoesNotExist'});return {status,redriveStatus:'REDRIVABLE',redriveCount:redrives.get(value.executionArn)??0};
   }
   throw Error('Unexpected test AWS operation');
  };
- const broker=createBroker(aws,{table,machine:MACHINE,projects:['rotation','migration'],allowedKinds:['rotate','rollback','audit','migration','backup','smoke','deploy',HOLD_KIND]},async()=>SHA);
+ const broker=createBroker(aws,{table,machine:MACHINE,projects:['rotation','migration'],consumerControlEnabled,allowedKinds:['rotate','rollback','audit','migration','backup','smoke','deploy',HOLD_KIND]},async()=>SHA);
  const get=async key=>(await client.send(new sdk.GetItemCommand({TableName:table,Key:{pk:{S:key}},ConsistentRead:true}))).Item;
  const put=Item=>client.send(new sdk.PutItemCommand({TableName:table,Item}));
  const start=()=>broker({action:'start',kind:HOLD_KIND,source_sha:SHA,client_token:'b'.repeat(32)});
@@ -114,7 +115,7 @@ test('recovery never clears another owner, and new holds reject active builds or
 });
 
 const {prepareConsumers}=require('./cutover-consumer-prepare.cjs');
-function preparation(f,run,{beforeCommit,loseResponse=false}={}){
+function preparation(f,run,{beforeCommit,loseResponse=false,disabledAccount=false}={}){
  const env={MAINTENANCE_KIND:HOLD_KIND,MAINTENANCE_STAGE:'cutover-consumer-prepare',MAINTENANCE_TABLE:'videoq-db-maintenance-prod',MAINTENANCE_RUN_ID:run,MAINTENANCE_SOURCE_SHA:SHA,CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:11111111-2222-4333-8444-555555555555'};
  let reads=0;
  const rename=value=>Array.isArray(value)?value.map(rename):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='TableName'?f.table:rename(v)])):value;
@@ -122,7 +123,7 @@ function preparation(f,run,{beforeCommit,loseResponse=false}={}){
   if(service==='lambda'){
    assert.equal(command,'list-event-source-mappings');reads++;
    const names=['videoq-worker-prod','videoq-worker-search-prod','videoq-worker-account-prod'],i=names.indexOf(value.FunctionName);assert.ok(i>=0);
-   return{EventSourceMappings:[{UUID:'11111111-2222-4333-8444-55555555555'+i,FunctionArn:'arn:aws:lambda:ap-northeast-1:257240362763:function:'+value.FunctionName,EventSourceArn:'arn:aws:sqs:ap-northeast-1:257240362763:'+value.FunctionName,State:'Enabled'}]};
+   return{EventSourceMappings:[{UUID:'11111111-2222-4333-8444-55555555555'+i,FunctionArn:'arn:aws:lambda:ap-northeast-1:257240362763:function:'+value.FunctionName,EventSourceArn:'arn:aws:sqs:ap-northeast-1:257240362763:'+value.FunctionName,State:disabledAccount&&i===2?'Disabled':'Enabled'}]};
   }
   assert.equal(service,'dynamodb');
   if(command==='get-item')return client.send(new sdk.GetItemCommand(rename(value)));
@@ -170,5 +171,75 @@ test('failed readonly preparation requires explicit terminal recovery and no act
   const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});f.states.set(executionArn(MACHINE,'db-'+run),'FAILED');f.active=true;
   await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/PREVIOUS_BUILD_STILL_RUNNING/);assert.ok(await f.get('maintenance'));
   f.active=false;assert.equal((await f.broker({action:'recover-cutover-hold',run_id:run})).status,'RECOVERED');assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});
+
+const {controlConsumers}=require('./cutover-consumer-control.cjs');
+async function consumerStage(f,run,stage,{rows,api,failAt=0,loseCompletion=false}={}){
+ const row=await f.get('run#'+run),plan=JSON.parse(row.consumer_plan.S);
+ rows??=plan.consumers.map(c=>({UUID:c.mappingUuid,FunctionArn:c.functionArn,EventSourceArn:c.queueArn,State:c.wasEnabled?'Enabled':'Disabled'}));
+ api??={traffic:'paused',hyperdrive:'a'.repeat(32),ready:true};let updates=0;
+ const env={VIDEOQ_CUTOVER_CONSUMER_CONTROL:'true',MAINTENANCE_KIND:HOLD_KIND,MAINTENANCE_STAGE:'cutover-consumer-'+stage,MAINTENANCE_RUN_ID:run,MAINTENANCE_SOURCE_SHA:SHA,MAINTENANCE_CONSUMER_ACTION_ID:row.consumer_action_id.S,MAINTENANCE_TABLE:'videoq-db-maintenance-prod',CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:11111111-2222-4333-8444-555555555555'};
+ const rename=value=>Array.isArray(value)?value.map(rename):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='TableName'?f.table:rename(v)])):value;
+ const aws=async(service,command,value)=>{
+  if(service==='lambda'){
+   if(command==='list-event-source-mappings')return{EventSourceMappings:rows.filter(r=>r.FunctionArn.endsWith(':'+value.FunctionName))};
+   assert.equal(command,'update-event-source-mapping');updates++;if(updates===failAt)throw Error('synthetic partial mutation failure');rows.find(r=>r.UUID===value.UUID).State=value.Enabled?'Enabled':'Disabled';return{};
+  }
+  assert.equal(service,'dynamodb');if(command==='get-item')return client.send(new sdk.GetItemCommand(rename(value)));
+  assert.equal(command,'transact-write-items');const result=await client.send(new sdk.TransactWriteItemsCommand(rename(value)));
+  if(loseCompletion&&value.TransactItems[0].Update.UpdateExpression.includes('consumer_admission_restored'))throw Error('lost completion response');return result;
+ };
+ const fetcher=async(url,options)=>{
+  if(url==='https://videoq.jp/ready'){assert.equal(options.headers,undefined);return Response.json({data:{status:api.ready?'ready':'unready',db:'ok'}},{status:api.ready?200:503});}
+  assert.equal(url,'https://api.cloudflare.com/client/v4/accounts/12daec56fdba43f677f2766ee26a5a39/workers/scripts/videoq-api/settings');
+  return Response.json({success:true,result:{bindings:[{name:'ENVIRONMENT',type:'plain_text',text:'production'},{name:'HYPERDRIVE',type:'hyperdrive',id:api.hyperdrive},...(api.traffic===undefined?[]:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:api.traffic}])]}});
+ };
+ return{env,rows,api,get updates(){return updates;},run:()=>controlConsumers({env,aws,fetcher,readParameter:name=>{assert.equal(name,'/videoq/security/prod/cutover-control');return{CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:'synthetic-cutover-token-0123456789'};}})};
+}
+async function preparedControl(){const f=await fixture({consumerControlEnabled:true});const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run,{disabledAccount:true}).run();return{f,run};}
+test('consumer pause/resume holds exclusion until original admission and API backend are verified',async()=>{
+ const {f,run}=await preparedControl();try{
+  await f.broker({action:'pause-cutover-consumers',run_id:run});const paused=await consumerStage(f,run,'pause');assert.equal((await paused.run()).consumers_paused,true);assert.equal(paused.updates,2);
+  assert.equal((await f.broker({action:'status',run_id:run})).consumers_paused,true);await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);
+  await f.broker({action:'resume-cutover-consumers',run_id:run});paused.api.traffic='running';const resumed=await consumerStage(f,run,'resume',{rows:paused.rows,api:paused.api});assert.equal((await resumed.run()).consumers_restored,true);assert.equal(resumed.updates,2);assert.equal(resumed.rows[2].State,'Disabled');
+  assert.equal((await f.get('run#'+run)).cutover_phase.S,'holding');assert.equal((await f.broker({action:'status',run_id:run})).consumers_restored,true);await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);
+ }finally{await f.close();}
+});
+test('partial pause failure cannot unlock and redrives the same execution with the same saved plan',async()=>{
+ const {f,run}=await preparedControl();try{
+  await f.broker({action:'pause-cutover-consumers',run_id:run});const failing=await consumerStage(f,run,'pause',{failAt:2});await assert.rejects(failing.run());assert.equal(failing.rows[0].State,'Disabled');assert.equal(failing.rows[1].State,'Enabled');const before=await f.get('run#'+run),arn=executionArn(MACHINE,'db-'+run);f.states.set(arn,'FAILED');
+  await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);await assert.rejects(f.broker({action:'start',kind:'backup'}),/RECOVERY_REQUIRED/);f.active=true;await assert.rejects(f.broker({action:'retry-cutover-consumers',run_id:run}),/PREVIOUS_BUILD_STILL_RUNNING/);f.active=false;
+  assert.equal((await f.broker({action:'retry-cutover-consumers',run_id:run})).consumer_retry_accepted,true);assert.equal(f.calls.filter(c=>c.command==='StartExecution').length,1);assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,1);
+  await f.broker({action:'retry-cutover-consumers',run_id:run});assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,1);
+  const retry=await consumerStage(f,run,'pause',{rows:failing.rows,api:failing.api});assert.equal((await retry.run()).consumers_paused,true);assert.equal(retry.updates,1);assert.equal((await f.get('run#'+run)).consumer_plan.S,before.consumer_plan.S);assert.ok(await f.get('maintenance'));
+ }finally{await f.close();}
+});
+test('resume refuses paused/unready API and backend replacement before enabling any consumer',async()=>{
+ const {f,run}=await preparedControl();try{
+  await f.broker({action:'pause-cutover-consumers',run_id:run});const paused=await consumerStage(f,run,'pause');await paused.run();await f.broker({action:'resume-cutover-consumers',run_id:run});const resumed=await consumerStage(f,run,'resume',{rows:paused.rows,api:paused.api});
+  await assert.rejects(resumed.run(),/TRAFFIC_STATE/);resumed.api.traffic='running';resumed.api.ready=false;await assert.rejects(resumed.run(),/NOT_READY/);resumed.api.ready=true;resumed.api.hyperdrive='other';await assert.rejects(resumed.run(),/HANDOFF_REQUIRED/);assert.equal(resumed.updates,0);
+ }finally{await f.close();}
+});
+test('DB mutation marker rejects consumer restore, generic recovery and redrive',async()=>{
+ const {f,run}=await preparedControl();try{
+  await f.broker({action:'pause-cutover-consumers',run_id:run});const row=await f.get('run#'+run);await f.put({...row,database_mutations_started:{BOOL:true}});f.states.set(executionArn(MACHINE,'db-'+run),'FAILED');
+  for(const action of ['resume-cutover-consumers','recover-cutover-hold','retry-cutover-consumers','release-cutover-hold'])await assert.rejects(f.broker({action,run_id:run}),/MUTATION_RECOVERY/);assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,0);assert.ok(await f.get('maintenance'));
+ }finally{await f.close();}
+});
+test('completion response loss and repeated stage execution do not change the original admission plan',async()=>{
+ const {f,run}=await preparedControl();try{
+  await f.broker({action:'pause-cutover-consumers',run_id:run});const stage=await consumerStage(f,run,'pause',{loseCompletion:true});assert.equal((await stage.run()).consumers_paused,true);const updates=stage.updates;assert.equal((await stage.run()).consumers_paused,true);assert.equal(stage.updates,updates);
+ }finally{await f.close();}
+});
+test('consumer mutation controls are disabled unless the separate capability is enabled',async()=>{
+ const f=await fixture();try{const {run_id:run}=await f.start();for(const action of ['pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers'])await assert.rejects(f.broker({action,run_id:run}),/CONTROL_DISABLED/);assert.equal((await f.get('run#'+run)).cutover_phase.S,'holding');}finally{await f.close();}
+});
+test('redrive checks older build pages before accepting that no build remains active',async()=>{
+ let includeOlder=false;
+ const f=await fixture({consumerControlEnabled:true,listBuilds:input=>!includeOlder?{ids:[]}:input.nextToken?{ids:['active-late']}:{ids:['finished'],nextToken:'older'}});
+ try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run).run();await f.broker({action:'pause-cutover-consumers',run_id:run});f.states.set(executionArn(MACHINE,'db-'+run),'FAILED');includeOlder=true;
+  await assert.rejects(f.broker({action:'retry-cutover-consumers',run_id:run}),/PREVIOUS_BUILD_STILL_RUNNING/);assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,0);assert.ok(f.calls.some(c=>c.command==='ListBuildsForProject'&&c.value.nextToken==='older'));assert.ok(await f.get('maintenance'));
  }finally{await f.close();}
 });
