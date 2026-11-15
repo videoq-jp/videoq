@@ -33,6 +33,7 @@ async function controlConsumers({env=process.env,aws=m.aws,readParameter=m.readP
     if(row?.kind?.S!=='cutover-hold'||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.consumer_action_id?.S!==action||row.database_mutations_started?.BOOL!==false||row.release_requested?.BOOL!==false
       ||owner?.kind?.S!=='cutover-hold'||owner.execution_arn?.S!==arn||!consumerPlanPrepared(row)||!BUILD.test(row.consumer_prepare_build_arn?.S??'')
       ||row.cutover_phase?.S!==active&&!(allowComplete&&row.cutover_phase?.S===complete)) throw Error('CONSUMER_CONTROL_OWNERSHIP_REQUIRED');
+    if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw Error('VERIFIED_API_TRAFFIC_REQUIRED');
     if(planSha&&row.consumer_plan_sha256.S!==planSha) throw Error('CONSUMER_CONTROL_PLAN_CHANGED');
     return row;
   }

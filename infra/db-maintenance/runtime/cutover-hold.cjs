@@ -21,7 +21,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       || !/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N || '')
       || !Number.isSafeInteger(Number(row.cutover_revision.N)) || Number(row.cutover_revision.N) >= Number.MAX_SAFE_INTEGER
       || typeof row.release_requested?.BOOL !== 'boolean') throw new Error('INVALID_CUTOVER_HOLD_RECORD');
-    for (const field of ['database_mutations_started','consumer_admission_restored','deployment_admission_restored']) {
+    for (const field of ['database_mutations_started','consumer_admission_restored','deployment_admission_restored','api_admission_restored','api_pause_verified']) {
       if (Object.hasOwn(row,field) && typeof row[field]?.BOOL !== 'boolean') throw new Error('INVALID_CUTOVER_HOLD_RECORD');
     }
     return arn;
@@ -83,6 +83,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       }
       if (status !== 'RUNNING') throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       const pause = request.action === 'pause-cutover-consumers';
+      if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw new Error('VERIFIED_API_TRAFFIC_REQUIRED');
       if (row.cutover_phase.S === (pause?'consumers-pausing':'consumers-resuming')) return {run_id:run,status:'RUNNING'};
       if (pause && row.cutover_phase.S === 'consumers-paused') return {run_id:run,status:'RUNNING',consumers_paused:true};
       if (!pause && row.cutover_phase.S === 'holding' && row.consumer_admission_restored?.BOOL === true) return {run_id:run,status:'RUNNING',consumers_restored:true};
@@ -99,7 +100,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       return {run_id:run,status:'RUNNING'};
     }
     if (request.action === 'release-cutover-hold') {
-      if (row.cutover_phase.S !== 'holding' || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
+      if (row.cutover_phase.S !== 'holding' || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false || row.api_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       if (status === 'SUCCEEDED') {
         if (!row.release_requested.BOOL || owner?.execution_arn?.S === arn) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
         return {run_id:run,status:'SUCCEEDED'};
@@ -111,7 +112,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       return {run_id:run,status:'RUNNING'};
     }
     if (request.action !== 'recover-cutover-hold') throw new Error('OPERATION_NOT_ALLOWED');
-    if (!['holding','consumer-preparing','recovering'].includes(row.cutover_phase.S) || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
+    if (!['holding','consumer-preparing','recovering'].includes(row.cutover_phase.S) || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false || row.api_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
     if (!TERMINAL.has(status)) throw new Error('CUTOVER_HOLD_EXECUTION_STILL_RUNNING');
     if (['holding','consumer-preparing'].includes(row.cutover_phase.S)) {
       // Claim the phase before checking absence again. A delayed named start can

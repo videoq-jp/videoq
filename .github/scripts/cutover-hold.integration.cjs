@@ -306,3 +306,40 @@ test('atomic SFN release independently refuses DB or consumer mutation markers',
   const f=await fixture();try{const {run_id:run}=await f.start(),row=await f.get('run#'+run);await f.put({...row,...marker,release_requested:{BOOL:true}});await assert.rejects(f.finish(run),/Transaction cancelled/);assert.ok(await f.get('maintenance'));}finally{await f.close();}
  }
 });
+
+const {createOwnedApiTraffic}=require('./cutover-owned-api-traffic.cjs');
+function ownedApiStage(f,run,deployment,{failProbe=false,loseIntent=false,loseCompletion=false}={}){
+ const api={traffic:undefined,hyperdrive:'a'.repeat(32),ready:true};let patchCount=0,probeFails=failProbe,safe=true,lostIntent=false,lostCompletion=false;
+ const request=async(method,path,body)=>{
+  const version='11111111-2222-4333-8444-555555555555';
+  if(method==='GET'){
+   if(path.endsWith('/deployments'))return{deployments:[{id:'11111111-2222-4333-8444-666666666666',versions:[{version_id:version,percentage:100}]}]};if(path.endsWith('/versions?per_page=1'))return{items:[{id:version}]};assert.ok(path.endsWith('/settings'));return{bindings:[{name:'ENVIRONMENT',type:'plain_text',text:'production'},{name:'HYPERDRIVE',type:'hyperdrive',id:api.hyperdrive},...(api.traffic===undefined?[]:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:api.traffic}])]};
+  }
+  assert.equal(method,'PATCH');patchCount++;api.traffic=body.bindings.find(b=>b.name==='MIGRATION_TRAFFIC_STATE')?.text;return{};
+ };
+ const aws=async(service,command,value)=>{const result=await f.aws(service,command,value),expression=value.TransactItems?.[0]?.Update?.UpdateExpression??'';
+  if(command==='TransactWriteItems'&&((loseIntent&&!lostIntent&&expression.includes('SET api_traffic_plan'))||(loseCompletion&&!lostCompletion&&expression.includes('SET api_admission_restored')))){if(expression.includes('SET api_traffic_plan'))lostIntent=true;else lostCompletion=true;throw Error('lost DDB response');}return result;};
+ const operate=createOwnedApiTraffic({aws,request,table:f.table,machine:MACHINE,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table:f.table,projects:{}})),enabled:true,assertDeploymentsFrozen:async()=>{if(deployment.rows.some(r=>r.state!=='disabled_manually'))throw Error('deployment admission reopened');},assertRestoreSafe:async()=>{if(!safe)throw Error('unverified API handoff');},verifyTraffic:async paused=>{if(probeFails)throw Error('application did not pause');assert.equal(api.traffic==='paused',paused);return paused?{applicationPauseVerified:true,inFlightDrainProven:false}:{applicationReadyVerified:true,inFlightDrainProven:false};}});
+ return{api,get patches(){return patchCount;},set probeFails(v){probeFails=v;},set safe(v){safe=v;},run:action=>operate({action,run,source:SHA})};
+}
+test('owned deployment freeze, API pause, consumer pause and pre-write abort compose without early release',async()=>{
+ const f=await fixture({consumerControlEnabled:true});try{
+  const{run_id:run}=await f.start(),deployment=deploymentStage(f,run);await deployment.run('freeze');const stage=ownedApiStage(f,run,deployment);await stage.run('pause');assert.equal((await f.get('run#'+run)).api_pause_verified.BOOL,true);
+  await assert.rejects(deployment.run('restore'),/API_RESTORATION/);await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);
+  await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run,{disabledAccount:true}).run();await f.broker({action:'pause-cutover-consumers',run_id:run});const paused=await consumerStage(f,run,'pause',{api:stage.api});await paused.run();
+  await stage.run('restore');await f.broker({action:'resume-cutover-consumers',run_id:run});const resumed=await consumerStage(f,run,'resume',{api:stage.api,rows:paused.rows});await resumed.run();await deployment.run('restore');await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);assert.equal(stage.patches,2);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});
+test('metadata pause without verified real application response cannot unlock or pause consumers',async()=>{
+ const f=await fixture({consumerControlEnabled:true});try{
+  const{run_id:run}=await f.start(),deployment=deploymentStage(f,run);await deployment.run('freeze');const stage=ownedApiStage(f,run,deployment,{failProbe:true});await assert.rejects(stage.run('pause'),/did not pause/);let row=await f.get('run#'+run);assert.equal(row.api_admission_restored.BOOL,false);assert.equal(row.api_pause_verified.BOOL,false);
+  await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run).run();await assert.rejects(f.broker({action:'pause-cutover-consumers',run_id:run}),/VERIFIED_API_TRAFFIC/);row=await f.get('run#'+run);assert.equal(row.cutover_phase.S,'holding');await f.put({...row,cutover_phase:{S:'consumers-pausing'},consumer_action_id:{S:'c'.repeat(32)}});const consumers=await consumerStage(f,run,'pause',{api:stage.api});await assert.rejects(consumers.run(),/VERIFIED_API_TRAFFIC/);assert.equal(consumers.updates,0);
+  row=await f.get('run#'+run);await f.put({...row,cutover_phase:{S:'holding'},release_requested:{BOOL:true},deployment_admission_restored:{BOOL:true},consumer_admission_restored:{BOOL:true}});await assert.rejects(f.finish(run),/Transaction cancelled/);assert.ok(await f.get('maintenance'));const isolated=await f.get('run#'+run);await f.put({...isolated,release_requested:{BOOL:false}});await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);f.states.set(isolated.execution_arn.S,'FAILED');await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);
+ }finally{await f.close();}
+});
+test('lost API intent and completion responses reuse the original plan and preserve exactly two metadata writes',async()=>{
+ const f=await fixture();try{const{run_id:run}=await f.start(),deployment=deploymentStage(f,run);await deployment.run('freeze');const stage=ownedApiStage(f,run,deployment,{loseIntent:true,loseCompletion:true});await stage.run('pause');const original=(await f.get('run#'+run)).api_traffic_plan.S;await stage.run('pause');stage.safe=false;await assert.rejects(stage.run('restore'),/unverified/);stage.safe=true;await stage.run('restore');await stage.run('restore');assert.equal(stage.patches,2);assert.equal((await f.get('run#'+run)).api_traffic_plan.S,original);await assert.rejects(stage.run('pause'),/ALREADY_RESTORED/);}finally{await f.close();}
+});
+test('reopened deployment admission and DB mutation refuse API operations while exclusion remains held',async()=>{
+ const f=await fixture();try{const{run_id:run}=await f.start(),deployment=deploymentStage(f,run);await deployment.run('freeze');const stage=ownedApiStage(f,run,deployment);deployment.rows[0].state='active';await assert.rejects(stage.run('pause'),/admission reopened/);assert.equal(stage.patches,0);deployment.rows[0].state='disabled_manually';await stage.run('pause');const row=await f.get('run#'+run);await f.put({...row,database_mutations_started:{BOOL:true}});await assert.rejects(stage.run('restore'),/OWNERSHIP/);assert.equal(stage.patches,1);await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);}finally{await f.close();}
+});

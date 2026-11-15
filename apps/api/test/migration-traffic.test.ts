@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createRequire } from "node:module";
 import { createApp } from "../src/app";
 import type { Bindings } from "../src/types/bindings";
 const base = { ENVIRONMENT: "test", CORS_ALLOW_ORIGIN: "https://app.example" } as Bindings;
@@ -17,4 +18,14 @@ describe("migration traffic pause", () => {
   it.each([undefined, "running"])("preserves ordinary dispatch for %j", async state => {
     expect((await createApp().request("/unknown", {}, { ...base, MIGRATION_TRAFFIC_STATE: state })).status).toBe(404);
   });
+});
+
+// Exercise the operator verifier against the actual Hono middleware, not a
+// hand-written copy of its status/body contract. No DB/credential is supplied.
+it("operator pause proof accepts the actual Hono pre-auth pause responses", async () => {
+  const { verifyProductionTraffic } = createRequire(import.meta.url)("../../../.github/scripts/cutover-owned-api-traffic.cjs");
+  const app = createApp();
+  const result = await verifyProductionTraffic(true, (url: string, options: RequestInit) =>
+    app.request(url, options, { ...base, MIGRATION_TRAFFIC_STATE: "paused" }));
+  expect(result).toEqual({ applicationPauseVerified: true, inFlightDrainProven: false });
 });

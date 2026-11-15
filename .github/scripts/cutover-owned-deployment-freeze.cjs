@@ -29,7 +29,7 @@ function createOwnedDeploymentFreeze({aws,request,table,machine,expectedDefiniti
   let row=await owned(),plan;
   const adapter=createDeploymentFreeze(request,{assertOwnership:async operation=>{
    const current=await owned();if(current.deployment_freeze_sha256?.S!==digest(JSON.stringify(plan))||current.deployment_admission_restored?.BOOL!==false)throw Error('DEPLOYMENT_FREEZE_PLAN_CHANGED');stored(current);
-   if(operation==='restore'){if(current.consumer_admission_restored?.BOOL===false)throw Error('CONSUMER_RESTORATION_REQUIRED');await assertRestoreSafe({run,source,executionArn:arn});}
+   if(operation==='restore'){if(current.api_admission_restored?.BOOL===false)throw Error('API_RESTORATION_REQUIRED');if(current.consumer_admission_restored?.BOOL===false)throw Error('CONSUMER_RESTORATION_REQUIRED');await assertRestoreSafe({run,source,executionArn:arn});}
   }});
   if(!row.deployment_freeze_plan){
    if(action!=='freeze')throw Error('DEPLOYMENT_FREEZE_PLAN_REQUIRED');
@@ -43,6 +43,7 @@ function createOwnedDeploymentFreeze({aws,request,table,machine,expectedDefiniti
   if(action==='freeze'){
    if(row.deployment_admission_restored.BOOL)throw Error('DEPLOYMENT_FREEZE_ALREADY_RESTORED');return adapter.freeze(plan);
   }
+  if(row.api_admission_restored?.BOOL===false)throw Error('API_RESTORATION_REQUIRED');
   if(row.consumer_admission_restored?.BOOL===false)throw Error('CONSUMER_RESTORATION_REQUIRED');
   await assertRestoreSafe({run,source,executionArn:arn});
   if(!row.deployment_admission_restored.BOOL){

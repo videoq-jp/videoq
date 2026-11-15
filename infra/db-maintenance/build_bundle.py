@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
+    "cutover-owned-api-traffic.cjs",
     "cutover-api-traffic.cjs",
     "cutover-deployment-freeze.cjs", "cutover-owned-deployment-freeze.cjs",
     "cutover-consumer-control.cjs",
