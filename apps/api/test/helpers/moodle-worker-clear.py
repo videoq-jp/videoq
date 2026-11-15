@@ -7,22 +7,28 @@ import sys
 errors = []
 
 
-class SafeErrors(logging.Handler):
-    def emit(self, record):
-        if record.exc_info:
-            error = record.exc_info[1]
+# Observe the fixture's task exception directly. Production logging deliberately
+# carries no exc_info; this probe must not require sensitive traceback emission.
+logging.root.handlers = [logging.NullHandler()]
+logging.root.setLevel(logging.ERROR)
+
+try:
+    from worker_python import lambda_handler
+
+    execute_task = lambda_handler._execute_task
+
+    def observe_task(raw_body):
+        try:
+            return execute_task(raw_body)
+        except Exception as error:
             seen = set()
             while error is not None and id(error) not in seen:
                 seen.add(id(error))
                 errors.append({"type": type(error).__name__, "sqlstate": getattr(error, "sqlstate", None)})
                 error = error.__cause__
+            raise
 
-
-logging.root.handlers = [SafeErrors()]
-logging.root.setLevel(logging.ERROR)
-
-try:
-    from worker_python.lambda_handler import handler
+    lambda_handler._execute_task = observe_task
     from worker_python.pipeline import vector_index
 
     embedding_calls = 0
@@ -36,7 +42,7 @@ try:
     message = json.load(sys.stdin)
     if message.get("type") != "index_video_transcript" or message.get("payload", {}).get("allow_empty") is not True:
         raise ValueError("Only the API-produced explicit-clear fixture is permitted")
-    result = handler({"Records": [{"messageId": "owned-clear-fixture", "body": json.dumps(message)}]}, None)
+    result = lambda_handler.handler({"Records": [{"messageId": "owned-clear-fixture", "body": json.dumps(message)}]}, None)
     print(json.dumps({**result, "embeddingCalls": embedding_calls, **({"errors": errors} if errors else {})}))
 except Exception as error:
     # Never print database URLs, passwords, environment values or raw diagnostics.
