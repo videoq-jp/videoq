@@ -51,7 +51,8 @@
     "db:d1:staging:evaluate-search": "tsx scripts/d1-staging-evaluate-search.ts",
     "db:d1:staging:migrate-visuals": "tsx scripts/d1-staging-migrate-visuals.ts",
     "db:d1:staging:recovery-real": "tsx scripts/d1-staging-recovery-real.ts",
-    "db:d1:write-fence": "tsx scripts/d1-write-fence.ts"
+    "db:d1:write-fence": "tsx scripts/d1-write-fence.ts",
+    "db:d1:postgres-login-fence": "tsx scripts/d1-postgres-login-fence.ts"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.7.15",

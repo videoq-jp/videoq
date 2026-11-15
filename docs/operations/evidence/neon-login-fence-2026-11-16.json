@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-16",
+  "baseCommit": "4fb66df4f394341620b16a4c84158b277b65a3d7",
+  "localPostgresIntegrationTestFiles": 1,
+  "localPostgresIntegrationTestsPassed": 3,
+  "administrationAndClientProcesses": "actual PostgreSQL/pgvector, loopback-only dedicated server and recovery databases; independent CLI processes",
+  "preparedTransactionGuardExercised": true,
+  "maxPreparedTransactionsForLocalRun": 8,
+  "newLoginDenied": true,
+  "existingWriterSessionsTerminated": true,
+  "uncommittedWriterTransactionRolledBack": true,
+  "securityDefinerCallerStopped": true,
+  "backupReadRemainedAvailable": true,
+  "backupWriteDeniedByAclWithReadOnlyOff": true,
+  "originalPasswordsRetained": true,
+  "retiredNoLoginPreserved": true,
+  "quotedRoleNamesExercised": true,
+  "wrongDestinationAndConfirmationRejected": true,
+  "managedRoleDriftAndUnmanagedWritersRejected": true,
+  "privilegedControlIdentitiesExcludedFromFence": true,
+  "productionNeonExecuted": false,
+  "awsMaintenanceBrokerIntegrated": false,
+  "cleanup": {
+    "ownedContainerAndAnonymousVolumesRemoved": true,
+    "credentialCopyRemoved": true
+  },
+  "sourceFilesSha256": {
+    "apps/api/scripts/d1-postgres-login-fence.ts": "a9355600d6abf056cdd089d9008ab45ffb8ab456a9c751cec7688c1d4cdba50d",
+    "apps/api/scripts/migrations/d1/postgres-login-fence.ts": "97c2cf27d09ea8e9672862d05746816a56fd77ed20c437b181782482578f5437",
+    "apps/api/test/persistence/postgres-login-fence.integration.test.ts": "34ceb7298fc10cdce1c2e3e0e0e0e637f5728a4d4651c6dad74b62a227a0f0bb"
+  },
+  "initialFailure": "Privilege scan was evaluated against non-sequence objects; corrected with CASE guards, then reran successfully."
+}
