@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-16",
+  "sourceCommit": "b2ff78ddadace6021b96c030f1ce99bfc6de16b9",
+  "scope": "Read-only PostgreSQL lease/business activity observation; not global drain or production cutover",
+  "integration": {
+    "exitCode": 0,
+    "image": "pgvector/pgvector@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d",
+    "nodeVersion": "v26.12.0",
+    "loopbackOnly": true,
+    "productionAccess": false
+  },
+  "actualApplicationSchemaTests": 9,
+  "newActivityCases": 3,
+  "nodeSecurityTests": 442,
+  "nodeTestConcurrency": 2,
+  "awsParentIsolationTests": 4,
+  "infraPythonTests": 57,
+  "apiTypecheck": "both configurations passed",
+  "apiTargetedLint": "passed",
+  "operatorZipFixture": {
+    "actualOperatorZip": true,
+    "realLoopbackPostgres": true,
+    "activityModeVerified": true,
+    "activityUsesOnlyOperatorDependencies": true,
+    "planPrepared": true,
+    "rolesUnchanged": true,
+    "readOnlyEnforced": true,
+    "existingPlanNotOverwritten": true,
+    "awsAccess": false,
+    "productionAccess": false
+  },
+  "cleanBundle": {
+    "dirty": false,
+    "operatorSha256": "bd2d36aba7fc9462f1ba170bf182420af8fa29a32bd752289faf931a09e50c90",
+    "brokerSha256": "9c47d99dea0f9bb2f9e28593aaa23b43ed4b14ba230d9a2aeb55cf01600711fd",
+    "stateMachineSha256": "c7168a04c55bfedd0faaf6b998766c2ebaa3f2c60f3132db33a53135fc107c5d"
+  },
+  "cleanup": {
+    "ownedContainerAndAnonymousVolumesRemoved": true,
+    "credentialCopyRemoved": true
+  },
+  "packagedFixtureOwnedResourcesRemoved": true,
+  "productionAccess": false,
+  "productionCallerActivated": false,
+  "awsIamChanged": false,
+  "fullInFlightDrainProven": false,
+  "productionD1CutoverComplete": false
+}
