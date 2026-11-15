@@ -71,7 +71,8 @@ def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     message = f"videoq-worker-v1\n{timestamp}\nPOST\n{origin}\n{path}\n".encode() + body
     signature = hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
     request = Request(origin + path, data=body, method="POST", headers={
-        "Content-Type": "application/json", "X-Videoq-Worker-Timestamp": timestamp,
+        "Content-Type": "application/json", "User-Agent": "VideoQ-Worker/1.0",
+        "X-Videoq-Worker-Timestamp": timestamp,
         "X-Videoq-Worker-Signature": signature,
     })
     # Never forward credentials across redirects or log provider response bodies.

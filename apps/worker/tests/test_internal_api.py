@@ -47,6 +47,7 @@ def test_request_signature_exact_bytes_and_bounded_response(monkeypatch, action,
                f"{path}\n").encode() + request.data
     assert request.get_header("X-videoq-worker-signature") == hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
     assert json.loads(request.data) == {"jobId": "日本語"}
+    assert request.get_header("User-agent") == "VideoQ-Worker/1.0"
     response.__enter__.return_value.read.assert_called_once_with(8193)
     response.__enter__.return_value.read.return_value = b"x" * 8193
     with pytest.raises(RuntimeError, match="API request failed"):
