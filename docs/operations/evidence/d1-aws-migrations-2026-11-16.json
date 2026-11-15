@@ -27,7 +27,7 @@
   "wrangler": "4.151.3",
   "date": "2026-11-16",
   "nodeVersion": "24.12.0",
-  "securityTests": 403,
+  "securityTests": 404,
   "parentTests": 6,
   "terraformTests": 10,
   "infraTests": 57,

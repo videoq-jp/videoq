@@ -147,6 +147,9 @@ jobs:
               # only fixes SQL, redeploy the worker too so production cannot
               # remain on the pre-migration schema contract.
               - 'apps/api/drizzle/**'
+              - 'apps/api/drizzle-d1/**'
+              - 'apps/api/drizzle.d1.config.ts'
+              - 'apps/api/wrangler.jsonc'
               - 'apps/api/src/db/**'
               - 'apps/api/drizzle.config.ts'
               - 'apps/api/scripts/db-migrate.sh'
@@ -158,6 +161,9 @@ jobs:
               - '.github/scripts/validate-deployment.cjs'
             migrate:
               - 'apps/api/drizzle/**'
+              - 'apps/api/drizzle-d1/**'
+              - 'apps/api/drizzle.d1.config.ts'
+              - 'apps/api/wrangler.jsonc'
               - 'apps/api/src/db/**'
               - 'apps/api/drizzle.config.ts'
               - 'apps/api/scripts/db-migrate.sh'
