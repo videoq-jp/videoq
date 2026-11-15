@@ -1,7 +1,7 @@
 // This Lambda holds no database credentials. It accepts operations, never build overrides.
 const {randomBytes, createHash} = require('node:crypto');
 const {REGION, REPOSITORY, HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
-const {createCutoverHoldControl} = require('./cutover-hold.cjs');
+const {createCutoverHoldControl,consumerPlanPrepared} = require('./cutover-hold.cjs');
 function createBroker(aws, configuration, fetchMain = currentMain) {
   const {table, machine, projects, allowedKinds} = configuration;
   const get = key => aws('ddb', 'GetItem', {TableName: table, Key: {pk: {S: key}}, ConsistentRead: true});
@@ -41,7 +41,9 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!Item || !allowedKinds.includes(Item.kind.S)) throw new Error('UNKNOWN_RUN');
       if (Item.kind.S === HOLD_KIND && Item.cutover_phase?.S === 'recovered') return {run_id:request.run_id,status:'RECOVERED'};
       const state = await aws('sfn', 'DescribeExecution', {executionArn: Item.execution_arn.S});
-      return {run_id: request.run_id, status: state.status};
+      const prepared = Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'holding' && Item.release_requested?.BOOL === false && consumerPlanPrepared(Item);
+      if (prepared) await assertOwnedHold(request.run_id, Item.execution_arn.S, Item.source_sha.S);
+      return {run_id: request.run_id, status: state.status, ...(prepared ? {consumer_prepared:true} : {})};
     }
     const run_id = request.client_token
       ? createHash('sha256').update(request.kind + ':' + (request.inspection ? request.inspection + ':' : '') + request.client_token).digest('hex').slice(0, 32)

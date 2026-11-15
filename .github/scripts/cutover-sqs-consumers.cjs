@@ -75,4 +75,4 @@ function createConsumerControl(aws,{assertOwnership=async()=>{throw Error('CONSU
     },
   };
 }
-module.exports={createConsumerControl};
+module.exports={createConsumerControl,validateConsumerPlan:checked};

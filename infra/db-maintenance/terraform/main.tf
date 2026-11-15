@@ -189,6 +189,10 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } } }
       ] : permission if each.key == "rotation"], [for permission in [
+      { Effect = "Allow", Action = ["lambda:ListEventSourceMappings"], Resource = "*" },
+      { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringEquals" = { "dynamodb:LeadingKeys" = ["maintenance"] } } }
+      ] : permission if each.key == "rotation" && var.enable_cutover_hold], [for permission in [
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }

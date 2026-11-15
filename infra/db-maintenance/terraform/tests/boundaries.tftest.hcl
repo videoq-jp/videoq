@@ -283,3 +283,38 @@ run "d1_migration_permissions_are_narrow" {
     error_message = "D1 migration can only read the existing lock/run records, never release or replace them."
   }
 }
+
+run "consumer_preparation_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:ListEventSourceMappings")])
+    error_message = "The readonly preparation permission must require explicit hold opt-in."
+  }
+}
+
+run "consumer_preparation_opt_in_is_readonly" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_cutover_hold      = true
+  }
+  assert {
+    condition     = alltrue([for purpose, policy in aws_iam_role_policy.build : (purpose == "rotation") == strcontains(policy.policy, "lambda:ListEventSourceMappings")])
+    error_message = "Only the fixed rotation project may inspect consumer metadata."
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:UpdateEventSourceMapping") && !strcontains(policy.policy, "lambda:PutFunctionConcurrency")])
+    error_message = "Preparing a plan must not grant consumer or concurrency mutation authority."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn && statement.Condition["ForAllValues:StringEquals"]["dynamodb:LeadingKeys"] == ["maintenance"]
+    ]) == 1
+    error_message = "The added global-lock permission must be a readonly ownership predicate."
+  }
+}

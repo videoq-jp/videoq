@@ -115,6 +115,19 @@ class RequestTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "AWS_EXECUTION_CHANGED"):
             db.control_cutover("recover-cutover-hold", RUN, lambda *args: {"status": "RECOVERED"}, waits.append, lambda: 0)
 
+    def test_consumer_preparation_waits_for_ready_on_the_same_hold(self):
+        replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, "consumer_prepared": True}])
+        calls = []
+        def invoke(function, payload):
+            calls.append(payload)
+            return next(replies)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("prepare-cutover-consumers", RUN, invoke, lambda _: None, lambda: 0), RUN)
+        self.assertEqual(calls, [{"action": "prepare-cutover-consumers", "run_id": RUN}, {"action": "status", "run_id": RUN}])
+        for state in ["SUCCEEDED", "RECOVERED"]:
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover("prepare-cutover-consumers", RUN, lambda *args: {"status": state, "run_id": RUN}, lambda _: None, lambda: 0)
+
 
 if __name__ == "__main__":
     unittest.main()

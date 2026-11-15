@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-16",
+  "localNodeVersion": "26.12.0",
+  "pythonVersion": "3.12",
+  "dynamoDbIntegrationTests": 12,
+  "integrationTransports": {
+    "dynamodb": "actual DynamoDB Local",
+    "stepFunctions": "mocked",
+    "codeBuild": "mocked",
+    "lambda": "mocked"
+  },
+  "securityTests": 414,
+  "pythonTests": {
+    "total": 159,
+    "skipped": 7
+  },
+  "infraTests": 57,
+  "terraformTests": 12,
+  "awsDefinitionValidation": {
+    "result": "OK",
+    "diagnostics": [],
+    "truncated": false
+  },
+  "packagedStage": {
+    "packagedStageLoads": true,
+    "noApplicationDependencies": true
+  },
+  "productionPreparationRun": false,
+  "productionConsumerConfigurationChanged": false,
+  "terraformApplied": false,
+  "holdEnabled": false,
+  "sourceHashes": {
+    ".github/scripts/cutover-consumer-prepare.cjs": "f6629ebe77dcc4dfc2b6e9636c855d7fb50631fed78875980310d32a99a70201",
+    "infra/db-maintenance/runtime/cutover-hold.cjs": "2673459479f43b1e953a9465f242f5c3ae340b3032c4893692a61c66f30c4425",
+    "infra/db-maintenance/runtime/broker.cjs": "4652e0418d5de926f7856317bec3319a1628a90df08319016a44ad17b2f28f65",
+    "infra/db-maintenance/state-machine.cjs": "63866432e4720ae8e4ccfd22ec95651ee6f951f96a9bcc4dd1ac6f7548bc4ab1"
+  }
+}

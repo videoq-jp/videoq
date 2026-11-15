@@ -77,6 +77,10 @@ async function main() {
   assertBuildArn(process.env.CODEBUILD_BUILD_ARN);
   if (process.env.GITHUB_ACTIONS) throw new Error('GITHUB_MASK_COMMANDS_NOT_SUPPORTED_IN_AWS_LOGS');
   const stage = process.env.MAINTENANCE_STAGE;
+  if (stage === 'cutover-consumer-prepare') {
+    await require('../../../.github/scripts/cutover-consumer-prepare.cjs').prepareConsumers();
+    console.log('Read-only cutover consumer plan persisted inside AWS'); return;
+  }
   if (stage === 'login-fence-audit') {
     execFileSync('node', ['--import', './.github/operations-tools/node_modules/tsx/dist/loader.mjs', '.github/scripts/neon-fence-audit.mjs'],
       {stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:180000});

@@ -25,11 +25,14 @@ function definition({table, projects}) {
       ProjectionExpression:'cutover_phase,release_requested',
     },ResultPath:'$.hold',Next:'CutoverHoldPhase'},
     CutoverHoldPhase: {Type:'Choice',Choices:[
+      {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumer-preparing'},
+        {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'PrepareCutoverConsumers'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'holding'},
         {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:true}],Next:'ReleaseCutoverHold'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'holding'},
         {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'WaitCutoverHold'},
     ],Default:'InvalidCutoverHoldPhase'},
+    PrepareCutoverConsumers: job('rotation', 'cutover-consumer-prepare', 'ReadCutoverHold', [variable('MAINTENANCE_SOURCE_SHA', '$.source_sha')]),
     WaitCutoverHold: {Type:'Wait',Seconds:10,Next:'ReadCutoverHold'},
     ReleaseCutoverHold: {Type:'Task',Resource:'arn:aws:states:::aws-sdk:dynamodb:transactWriteItems',Parameters:{TransactItems:[
       {ConditionCheck:{TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},

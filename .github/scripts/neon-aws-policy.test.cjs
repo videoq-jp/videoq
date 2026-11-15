@@ -289,3 +289,13 @@ test('cutover controls are explicitly enabled and cannot carry data-plane overri
  assert.equal(spec.States.ReleaseCutoverHold.Parameters.TransactItems[1].Delete.ConditionExpression,'execution_arn = :execution');
  assert.equal(spec.States.ReleaseCutoverHold.Parameters.TransactItems[0].ConditionCheck.ExpressionAttributeValues[':phase'].S,'holding');
 });
+test('consumer preparation is a fixed maintenance-only action and does not disclose plans in ASL',()=>{
+ const {input,HOLD_KIND}=require('../../infra/db-maintenance/runtime/policy.cjs');
+ assert.deepEqual(input({action:'prepare-cutover-consumers',run_id:'a'.repeat(32)},[HOLD_KIND]),{action:'prepare-cutover-consumers',run_id:'a'.repeat(32)});
+ assert.throws(()=>input({action:'prepare-cutover-consumers',run_id:'a'.repeat(32)},['audit']));
+ assert.throws(()=>input({action:'prepare-cutover-consumers',run_id:'a'.repeat(32),stage:'pause'},[HOLD_KIND]));
+ const spec=require('../../infra/db-maintenance/state-machine.cjs').definition({table:'test',projects:{rotation:'rotation'}});
+ assert.equal(spec.States.PrepareCutoverConsumers.Parameters.ProjectName,'rotation');
+ assert.equal(spec.States.ReadCutoverHold.Parameters.ProjectionExpression,'cutover_phase,release_requested');
+ assert.equal(spec.States.PrepareCutoverConsumers.Parameters.EnvironmentVariablesOverride.find(v=>v.Name==='MAINTENANCE_STAGE').Value,'cutover-consumer-prepare');
+});

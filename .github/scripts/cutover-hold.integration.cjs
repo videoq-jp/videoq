@@ -112,3 +112,63 @@ test('recovery never clears another owner, and new holds reject active builds or
   await f.broker({action:'recover-cutover-hold',run_id:run});assert.deepEqual(await f.get('maintenance'),other);
  }finally{await f.close();}
 });
+
+const {prepareConsumers}=require('./cutover-consumer-prepare.cjs');
+function preparation(f,run,{beforeCommit,loseResponse=false}={}){
+ const env={MAINTENANCE_KIND:HOLD_KIND,MAINTENANCE_STAGE:'cutover-consumer-prepare',MAINTENANCE_TABLE:'videoq-db-maintenance-prod',MAINTENANCE_RUN_ID:run,MAINTENANCE_SOURCE_SHA:SHA,CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:11111111-2222-4333-8444-555555555555'};
+ let reads=0;
+ const rename=value=>Array.isArray(value)?value.map(rename):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='TableName'?f.table:rename(v)])):value;
+ const aws=async(service,command,value)=>{
+  if(service==='lambda'){
+   assert.equal(command,'list-event-source-mappings');reads++;
+   const names=['videoq-worker-prod','videoq-worker-search-prod','videoq-worker-account-prod'],i=names.indexOf(value.FunctionName);assert.ok(i>=0);
+   return{EventSourceMappings:[{UUID:'11111111-2222-4333-8444-55555555555'+i,FunctionArn:'arn:aws:lambda:ap-northeast-1:257240362763:function:'+value.FunctionName,EventSourceArn:'arn:aws:sqs:ap-northeast-1:257240362763:'+value.FunctionName,State:'Enabled'}]};
+  }
+  assert.equal(service,'dynamodb');
+  if(command==='get-item')return client.send(new sdk.GetItemCommand(rename(value)));
+  assert.equal(command,'transact-write-items');if(beforeCommit)await beforeCommit();
+  const result=await client.send(new sdk.TransactWriteItemsCommand(rename(value)));if(loseResponse)throw Error('lost successful response');return result;
+ };
+ return{env,aws,get reads(){return reads;},run:()=>prepareConsumers({env,aws})};
+}
+test('consumer preparation persists one immutable plan while the hold retains ownership',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});assert.equal((await f.get('run#'+run)).cutover_phase.S,'consumer-preparing');
+  await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/RECOVERY/);await assert.rejects(f.finish(run));
+  const stage=preparation(f,run);assert.equal((await stage.run()).consumers,3);const first=await f.get('run#'+run);assert.equal(first.cutover_phase.S,'holding');assert.equal(stage.reads,3);assert.equal(first.expires_at,undefined);
+  await stage.run();assert.equal(stage.reads,3);assert.equal((await f.get('run#'+run)).consumer_plan.S,first.consumer_plan.S);
+  assert.equal((await f.broker({action:'prepare-cutover-consumers',run_id:run})).consumer_prepared,true);assert.equal((await f.broker({action:'status',run_id:run})).consumer_prepared,true);
+  await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});
+test('competing preparation requests cannot overwrite the phase or release the hold',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start(),request={action:'prepare-cutover-consumers',run_id:run};const results=await Promise.allSettled([f.broker(request),f.broker(request)]);assert.ok(results.some(r=>r.status==='fulfilled'));
+  assert.equal((await f.get('run#'+run)).cutover_phase.S,'consumer-preparing');assert.equal((await f.get('run#'+run)).release_requested.BOOL,false);
+ }finally{await f.close();}
+});
+test('a changed global owner blocks the real preparation transaction without writing a plan',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});const other='arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+'f'.repeat(32);
+  const stage=preparation(f,run,{beforeCommit:async()=>{const owner=await f.get('maintenance');await f.put({...owner,execution_arn:{S:other}});}});
+  await assert.rejects(stage.run());assert.equal((await f.get('run#'+run)).consumer_plan,undefined);assert.equal((await f.get('maintenance')).execution_arn.S,other);
+ }finally{await f.close();}
+});
+test('a lost successful preparation transaction response is reconciled by exact plan readback',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});const stage=preparation(f,run,{loseResponse:true});assert.equal((await stage.run()).consumer_prepared,true);assert.equal((await f.get('run#'+run)).cutover_phase.S,'holding');
+ }finally{await f.close();}
+});
+test('corrupt prepared records are rejected instead of being overwritten or reported ready',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});const stage=preparation(f,run);await stage.run();const row=await f.get('run#'+run);await f.put({...row,consumer_plan_sha256:{S:'f'.repeat(64)}});
+  await assert.rejects(stage.run(),/INVALID_CONSUMER_PLAN_RECORD/);await assert.rejects(f.broker({action:'status',run_id:run}),/INVALID_CONSUMER_PLAN_RECORD/);assert.equal((await f.get('run#'+run)).consumer_plan.S,row.consumer_plan.S);
+ }finally{await f.close();}
+});
+test('failed readonly preparation requires explicit terminal recovery and no active builds',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});f.states.set(executionArn(MACHINE,'db-'+run),'FAILED');f.active=true;
+  await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/PREVIOUS_BUILD_STILL_RUNNING/);assert.ok(await f.get('maintenance'));
+  f.active=false;assert.equal((await f.broker({action:'recover-cutover-hold',run_id:run})).status,'RECOVERED');assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});

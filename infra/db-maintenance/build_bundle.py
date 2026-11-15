@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
+    "cutover-consumer-prepare.cjs",
     "cutover-sqs-consumers.cjs",
     "aws-canonical-migration.cjs", "migration-backend.cjs", "protect-api-deployment.cjs",
     "neon-admin.cjs", "neon-fence-audit.mjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
@@ -32,7 +33,7 @@ def operator_files():
     operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
     for name in ["package.json", "package-lock.json", "Dockerfile", "fixtures/smoke.mp4", "fixtures/README.md"]:
         operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
-    for name in ["runtime/job.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
+    for name in ["runtime/job.cjs", "runtime/cutover-hold.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
     # Minimal read-only export/fence-audit graph, not the application dependency tree.
