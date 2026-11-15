@@ -4,7 +4,6 @@
   "productionWorkerImageDigest": "sha256:a364468490e0b5b7996f88f8069407d6c67d8df33f31889ef1c7cb4e088b24ea",
   "success": true,
   "scope": "actual pinned production Python image + dedicated Lambda SQS mapping + signed full Hono API + remote D1 Time Travel; zero-video synthetic account deletion",
-  "nativeMessagesAcknowledged": 4,
   "completedDuplicateSkipsAtLeast": 2,
   "baselineAttempts": 1,
   "retryAttempts": 2,
@@ -40,5 +39,7 @@
     "productionEcrPolicyUnchanged": true,
     "localSecretCopiesRemoved": true
   },
-  "initialSetupCorrection": "Bookmark lookup using Worker name failed; resumed with owned DB binding before any restore. No production resource changed."
+  "initialSetupCorrection": "Bookmark lookup using Worker name failed; resumed with owned DB binding before any restore. No production resource changed.",
+  "nativeMessagesWithCompletionLogs": 4,
+  "ackObservation": "Actual Lambda SQS mapping reported per-message completion and final source/DLQ long polls were empty; no direct DeleteMessage trace or final in-flight attribute assertion."
 }

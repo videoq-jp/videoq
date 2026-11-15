@@ -14,7 +14,7 @@
 4. 復旧bookmarkを取得し、停止中のキューに失敗ジョブと完了済みジョブの重複を残した。D1に復旧確認用マーカーを書き込み、専用D1だけをTime Travelで復元した。
 5. マーカーの消失、基準状態とのハッシュ一致、foreign_key_checkが空であることを確認した。
 6. concurrencyと実mappingを再開した。失敗ジョブはattempts 2で完了してユーザーを削除し、完了済みジョブは再実行しなかった。再試行済みジョブにも明示的な重複を追加した。
-7. CloudWatchで送信4 MessageIdの実Worker完了ログと2回以上のcompleted duplicate skipを照合した。最初のジョブはattempts 1、再試行ジョブはattempts 2を維持した。キューとDLQの最終long pollは空だった。
+7. CloudWatchで送信4 MessageIdの実Worker完了ログと2回以上のcompleted duplicate skipを照合した。最初のジョブはattempts 1、再試行ジョブはattempts 2を維持した。キューとDLQの最終long pollは空だった。これは取得結果の確認であり、全DeleteMessageの直接観測や最終in-flight件数0の照合は行っていない。
 8. mappingを停止し、専用Lambda、mapping、IAM role/boundary、2キュー、ログ、Worker、3 Durable Object namespace、D1を撤去し、管理APIで不存在を確認した。ローカルの検証用秘密値コピーも削除した。
 
 最初のbookmark取得ではWorker名とDB名を取り違え、コマンドが失敗した。DB bindingを指定して停止状態の同じ基準データから再開し、復旧試験を完了した。失敗を復旧成功として集計していない。
