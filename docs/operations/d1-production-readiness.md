@@ -51,3 +51,7 @@ PR #1434はmain `6882f06f`へマージされ、main CI・通常CD・DB Maintenan
 ## 復旧transactionと停止ロックの結合（2026-11-16）
 
 [Neon停止の復旧transaction](neon-login-fence.md#復旧トランザクション中の停止維持2026-11-16)を追加し、実D1行の復元を保持中のlogin fence transactionへ接続した。競合解除・二重実行・失敗rollback・role drift・採番維持を含む4ファイル14テストと既存単体21テストが成功した。隔離DB限定は維持し、本番向けAWS operation/逆移行CLIが完成したとは扱わない。
+
+## 公開基盤版のオンプレ受け入れ完了（2026-11-16）
+
+main `6882f06f`の[On-prem Release実行](https://github.com/videoq-jp/videoq/actions/runs/43747462122)も全jobが成功した。成果物のsource SHAを照合し、署名・chart・image indexの検証後、実CPUのASR/embedding/chatと公開日本語fixtureによるアップロード→検索→出典付き回答、streaming、動画再生、object/DB復旧、upgrade/rollback、Helm、保持処理の成功を確認した。runtimeの外向きIPv4/IPv6通信と外部DNSは遮断され、worker Podのprobeも成功している。これは専用nodeのfirewall境界であり、CNIの検証ではない。[集計証跡](evidence/onprem-foundation-release-2026-11-16.json)。cloudのOpenRouter試験や、最終D1候補の受け入れを代替する結果とはしない。

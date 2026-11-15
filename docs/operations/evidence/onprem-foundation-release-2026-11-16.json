@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-16",
+  "runId": 43747462122,
+  "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/43747462122",
+  "sourceSha": "6882f06fb0c8bb9d3a55fee33e5946c8ac5f70a0",
+  "cpuArtifactId": 14176326773,
+  "cpuResultSha256": "f8a248f04931dd34e1c4438a174c542a825733dd3b11ec6a80a7dfca60d99302",
+  "uploadTranscriptionIndexingAndQa": "passed",
+  "inference": "real CPU llama.cpp chat/embeddings and whisper.cpp ASR; public Japanese FLEURS fixture",
+  "playback": {
+    "status": "passed",
+    "requestedTime": 1.552,
+    "currentTime": 1.690626,
+    "readyState": 4
+  },
+  "transcriptionAssessment": {
+    "errors": [],
+    "reference_characters": 45,
+    "character_edits": 0,
+    "cer": 0.0,
+    "segment_count": 1,
+    "speech_regions": [],
+    "silence_hallucinated_characters": null
+  },
+  "answerWithOwnedCitations": true,
+  "streamedAnswer": true,
+  "publicEgress": "blocked by dedicated node IPv4/IPv6 firewall; public DNS forwarding disabled; worker Pod probe passed",
+  "networkBoundary": "Dedicated node OUTPUT/FORWARD IPv4/IPv6 firewall plus CoreDNS without external forwarding; not a CNI enforcement test",
+  "verification": "Signed release manifest, both charts and all five VideoQ image indexes verified before rehearsal",
+  "restorationAndLifecycle": {
+    "objectRestore": "passed; SHA256 identical",
+    "databaseRestore": "passed; restored to a separate database and app switched",
+    "upgrade": "passed; two API replicas and migration hook",
+    "rollback": "passed; one API replica, restored DB and data retained",
+    "helmTest": "passed",
+    "retention": "passed"
+  },
+  "scope": "Published foundation main commit. One public Japanese fixture with real CPU local models, not cloud OpenRouter acceptance or final D1 candidate approval."
+}
