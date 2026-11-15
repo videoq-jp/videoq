@@ -4,7 +4,8 @@ set -eu
 # Debian trixie has no fixed zlib package for CVE-2026-76844 yet.
 # Use the complete upstream release, retaining package/source/license records.
 sh "$(dirname "$0")/fetch-verified.sh" https://zlib.net/zlib-1.4.tar.gz \
-  02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584 /tmp/zlib.tar.gz
+  02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584 /tmp/zlib.tar.gz \
+  https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
 tar -xzf /tmp/zlib.tar.gz -C /tmp
 cd /tmp/zlib-1.4
 CFLAGS='-O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2' LDFLAGS='-Wl,-z,relro,-z,now' ./configure --shared
@@ -34,6 +35,7 @@ EOF
 cp LICENSE "$root/usr/share/doc/zlib1g/copyright"
 cat > "$root/usr/share/doc/zlib1g/source" <<'EOF'
 Source: https://zlib.net/zlib-1.4.tar.gz
+Mirror: https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
 SHA256: 02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584
 Build: apps/inference/whisper/security/build-zlib.sh
 EOF

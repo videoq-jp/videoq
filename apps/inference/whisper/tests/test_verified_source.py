@@ -19,7 +19,9 @@ n=0
 [ ! -f "$FETCH_STATE" ] || n=$(cat "$FETCH_STATE")
 n=$((n+1))
 printf '%s' "$n" > "$FETCH_STATE"
-while [ "$1" != '-o' ]; do shift; done
+url=
+while [ "$1" != '-o' ]; do url=$1; shift; done
+if [ "$FETCH_MODE" = mirror ] && [ "$url" != https://mirror.invalid/archive.tar.gz ]; then printf unverified > "$2"; exit 0; fi
 shift
 case "$FETCH_MODE:$n" in
   network:1) printf partial > "$1"; exit 22 ;;
@@ -31,8 +33,8 @@ esac
     state = tmp_path / "attempts"
     target = tmp_path / "archive.tar.gz"
     env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"], FETCH_STATE=str(state))
-    def run(mode, digest=hashlib.sha256(b"verified").hexdigest(), url="https://example.invalid/archive.tar.gz"):
-        return subprocess.run(["sh", str(SCRIPT), url, digest, str(target)], env=dict(env, FETCH_MODE=mode), capture_output=True, text=True)
+    def run(mode, digest=hashlib.sha256(b"verified").hexdigest(), url="https://example.invalid/archive.tar.gz", fallback=None):
+        return subprocess.run(["sh", str(SCRIPT), url, digest, str(target), *([fallback] if fallback is not None else [])], env=dict(env, FETCH_MODE=mode), capture_output=True, text=True)
     return run, state, target
 
 
@@ -68,3 +70,26 @@ def test_first_valid_response_does_not_retry(downloader):
     assert run("valid").returncode == 0
     assert state.read_text() == "1"
     assert target.read_bytes() == b"verified"
+
+
+def test_fallback_uses_the_same_pin_after_primary_validation_fails(downloader):
+    run, state, target = downloader
+    assert run("mirror", fallback="https://mirror.invalid/archive.tar.gz").returncode == 0
+    assert state.read_text() == "4"
+    assert target.read_bytes() == b"verified"
+    assert list(target.parent.glob("*.download.*")) == []
+
+
+def test_both_sources_must_match_the_original_pin(downloader):
+    run, state, target = downloader
+    target.write_bytes(b"previous artifact")
+    assert run("always_bad", fallback="https://mirror.invalid/archive.tar.gz").returncode != 0
+    assert state.read_text() == "6"
+    assert target.read_bytes() == b"previous artifact"
+
+
+def test_insecure_fallback_is_refused_even_when_primary_would_succeed(downloader):
+    run, state, target = downloader
+    assert run("valid", fallback="http://mirror.invalid/archive.tar.gz").returncode != 0
+    assert not state.exists()
+    assert not target.exists()
