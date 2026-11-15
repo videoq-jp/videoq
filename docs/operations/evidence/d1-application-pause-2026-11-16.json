@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-16",
+  "scope": "new application work admission, not drain or DB fence",
+  "nodeVersion": "24.12.0",
+  "unitTests": {
+    "files": 4,
+    "passed": 48
+  },
+  "localWorkersTests": {
+    "files": 3,
+    "passed": 10
+  },
+  "typecheck": "passed",
+  "lint": "passed",
+  "productionEnabled": false,
+  "sourceHashes": {
+    "apps/api/src/lib/migration-traffic.ts": "8e32e55b2a6b42ce9b3561d911a5668564e6062a26d1879ae699011a055ed027",
+    "apps/api/src/app.ts": "e297e229d019f976b1f9ce96bd6825ad78722af5abc717063040b0c110dbc798",
+    "apps/api/src/index.ts": "8ba663484fe4ba1908607b99d1a6c4ec17f7212d799491f283c81b903e440edd",
+    "apps/api/src/lib/scheduled-maintenance.ts": "e848c57d06566d8950ee93546b0748f72c03d90c2e413bc1f94a9db59fd8f4cf",
+    "apps/api/src/durable-objects/task-scheduler.ts": "cb7544ce059bc42d55067dfcf8bde8bb0d8b9ca43257bfae15c620433b76fc1b",
+    "apps/api/src/durable-objects/chat-execution.ts": "7e5d98596fbc4baf31155a9d17a8f88eff91f149f055b658a6280862fb49cb88",
+    "apps/api/src/runtime/node-config.ts": "ad56bfae2f39a28736f27c0a0d1b62465e1be77f1991d24713132ca98023a4c2"
+  }
+}

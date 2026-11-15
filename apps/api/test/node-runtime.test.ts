@@ -13,6 +13,11 @@ export const runtimeEnvironment = {
 };
 
 describe("Node runtime configuration and proxy boundary", () => {
+  it("passes the operator traffic state without silently treating an invalid value as running", () => {
+    for (const value of [undefined, "running", "paused", "typo", ""]) {
+      expect(nodeBindings({ ...runtimeEnvironment, MIGRATION_TRAFFIC_STATE: value }).MIGRATION_TRAFFIC_STATE).toBe(value);
+    }
+  });
   it("passes independent queue overrides and validates every configured endpoint", () => {
     const overrides = {
       SQS_MEDIA_QUEUE_URL: "https://queue.example.edu/media/",
