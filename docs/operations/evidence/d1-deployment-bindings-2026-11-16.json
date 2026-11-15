@@ -1,0 +1,14 @@
+{
+  "productionPostgresBindingRetained": true,
+  "productionHasNoD1OrVectorize": true,
+  "wranglerDryRuns": [
+    "postgres binding configuration (DO declarations omitted in fixture)",
+    "D1 and two Vectorize bindings"
+  ],
+  "productionDeployed": false,
+  "date": "2026-11-16",
+  "nodeVersion": "24.12.0",
+  "targetedTests": 33,
+  "securityTests": 392,
+  "sourceSha256": "8f52261a367c6789ef87afe311a6abca9ae9b03456e54ce2be34bc8a534ee39c"
+}
