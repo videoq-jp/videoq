@@ -199,6 +199,8 @@ jobs:
               - '.github/scripts/cutover-consumer-control.cjs'
               - '.github/scripts/cutover-consumer-prepare.cjs'
               - '.github/scripts/cutover-sqs-consumers.cjs'
+              - '.github/scripts/cutover-deployment-freeze.cjs'
+              - '.github/scripts/cutover-owned-deployment-freeze.cjs'
               - '.github/scripts/aws-canonical-migration.cjs'
               - '.github/scripts/migration-backend.cjs'
               - '.github/scripts/protect-api-deployment.cjs'

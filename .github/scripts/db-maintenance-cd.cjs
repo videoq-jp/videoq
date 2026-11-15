@@ -14,6 +14,7 @@ function relevant(path) {
   if (path === '.github/scripts/cutover-consumer-control.cjs') return true;
   if (path === '.github/scripts/cutover-consumer-prepare.cjs') return true;
   if (path === '.github/scripts/cutover-sqs-consumers.cjs') return true;
+  if (['.github/scripts/cutover-deployment-freeze.cjs','.github/scripts/cutover-owned-deployment-freeze.cjs'].includes(path)) return true;
   if (path === '.github/scripts/neon-fence-audit.mjs') return true;
   if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;

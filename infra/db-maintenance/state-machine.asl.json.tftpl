@@ -290,7 +290,7 @@
                   "S.$": "States.Format('run#{}', $.run_id)"
                 }
               },
-              "ConditionExpression": "#phase = :phase AND release_requested = :requested",
+              "ConditionExpression": "#phase = :phase AND release_requested = :requested AND database_mutations_started = :false AND (attribute_not_exists(consumer_admission_restored) OR consumer_admission_restored = :requested) AND (attribute_not_exists(deployment_admission_restored) OR deployment_admission_restored = :requested)",
               "ExpressionAttributeNames": {
                 "#phase": "cutover_phase"
               },
@@ -300,6 +300,9 @@
                 },
                 ":requested": {
                   "Bool": true
+                },
+                ":false": {
+                  "Bool": false
                 }
               }
             }

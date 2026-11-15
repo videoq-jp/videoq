@@ -60,7 +60,7 @@ async function fixture({consumerControlEnabled=false,listBuilds,boundDefinition}
    }));return value;
   };return visit(task.Parameters);
  }
- return {table,broker,get,put,start,calls,states,set active(v){active=v;},set describe(v){describe=v;},async finish(run){const arn=executionArn(MACHINE,'db-'+run);await client.send(new sdk.TransactWriteItemsCommand(taskParameters(run,arn)));states.set(arn,'SUCCEEDED');},async close(){await client.send(new sdk.DeleteTableCommand({TableName:table}));}};
+ return {table,broker,get,put,start,calls,states,aws,set active(v){active=v;},set describe(v){describe=v;},async finish(run){const arn=executionArn(MACHINE,'db-'+run);await client.send(new sdk.TransactWriteItemsCommand(taskParameters(run,arn)));states.set(arn,'SUCCEEDED');},async close(){await client.send(new sdk.DeleteTableCommand({TableName:table}));}};
 }
 test('holds maintenance without TTL and blocks normal operations until atomic explicit release',async()=>{
  const f=await fixture();try{
@@ -248,5 +248,61 @@ test('an old or different execution definition cannot enter consumer mutation ph
  for(const boundDefinition of [{StartAt:'Old',States:{Old:{Type:'Succeed'}}},table=>{const spec=definition({table,projects:{}});spec.States.ReleaseCutoverHold.Parameters.TransactItems[0].ConditionCheck.ConditionExpression='attribute_exists(pk)';return spec;}]){
   const f=await fixture({consumerControlEnabled:true,boundDefinition});
   try{const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run).run();await assert.rejects(f.broker({action:'pause-cutover-consumers',run_id:run}),/DEFINITION_MISMATCH/);assert.equal((await f.get('run#'+run)).cutover_phase.S,'holding');assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,0);}finally{await f.close();}
+ }
+});
+
+const {createOwnedDeploymentFreeze}=require('./cutover-owned-deployment-freeze.cjs');
+function deploymentStage(f,run,{failAt=Infinity,restoreSafe=true,loseIntent=false,loseCompletion=false}={}){
+ const rows=[{id:252628432,path:'.github/workflows/cd.yml',state:'active'},{id:403417588,path:'.github/workflows/db-maintenance-cd.yml',state:'disabled_manually'}],writes=[];let safety=restoreSafe,lostIntent=false,lostCompletion=false;
+ const request=async(method,path)=>{
+  const match=/workflows\/(\d+)(.*)$/.exec(path);assert.ok(match);const row=rows.find(r=>r.id===Number(match[1]));assert.ok(row);
+  if(method==='GET')return match[2]?{total_count:0,workflow_runs:[]}:{...row};
+  assert.equal(method,'PUT');writes.push(path);if(writes.length===failAt)throw Error('synthetic write failure');row.state=path.endsWith('/disable')?'disabled_manually':'active';return null;
+ };
+ const aws=async(service,command,value)=>{
+  const result=await f.aws(service,command,value);
+  const expression=value.TransactItems?.[0]?.Update?.UpdateExpression??'';
+  if(command==='TransactWriteItems'&&((loseIntent&&!lostIntent&&expression.includes('SET deployment_freeze_plan'))||(loseCompletion&&!lostCompletion&&expression.includes('SET deployment_admission_restored')))){if(expression.includes('SET deployment_freeze_plan'))lostIntent=true;else lostCompletion=true;throw Error('lost DDB response');}
+  return result;
+ };
+ const operate=createOwnedDeploymentFreeze({aws,request,table:f.table,machine:MACHINE,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table:f.table,projects:{}})),enabled:true,assertRestoreSafe:async()=>{if(!safety)throw Error('unverified handoff');}});
+ return{rows,writes,set safety(v){safety=v;},run:action=>operate({action,run,source:SHA})};
+}
+test('owned deployment freeze blocks release/recovery and the atomic SFN release until verified restore',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start(),stage=deploymentStage(f,run);assert.equal((await stage.run('freeze')).admissionFrozen,true);const row=await f.get('run#'+run);assert.equal(row.deployment_admission_restored.BOOL,false);
+  await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);
+  await f.put({...row,release_requested:{BOOL:true}});await assert.rejects(f.finish(run),/Transaction cancelled/);assert.ok(await f.get('maintenance'));await f.put(row);
+  f.states.set(row.execution_arn.S,'FAILED');await assert.rejects(f.broker({action:'recover-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);await assert.rejects(stage.run('restore'),/EXECUTION_REQUIRED/);f.states.set(row.execution_arn.S,'RUNNING');
+  assert.equal((await stage.run('restore')).originalAdmissionRestored,true);assert.equal((await stage.run('restore')).originalAdmissionRestored,true);assert.equal(stage.writes.length,2);assert.equal(stage.rows[1].state,'disabled_manually');
+  await assert.rejects(stage.run('freeze'),/ALREADY_RESTORED/);await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});
+test('unverified deployment handoff, paused consumers and database mutations cannot restore automation',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start(),stage=deploymentStage(f,run,{restoreSafe:false});await stage.run('freeze');await assert.rejects(stage.run('restore'),/unverified handoff/);assert.equal(stage.writes.length,1);stage.safety=true;
+  const row=await f.get('run#'+run);await f.put({...row,consumer_admission_restored:{BOOL:false}});await assert.rejects(stage.run('restore'),/CONSUMER_RESTORATION/);await f.put({...row,database_mutations_started:{BOOL:true}});await assert.rejects(stage.run('restore'),/OWNERSHIP/);assert.equal(stage.writes.length,1);assert.equal((await f.get('run#'+run)).deployment_admission_restored.BOOL,false);
+ }finally{await f.close();}
+});
+test('lost intent/completion responses preserve the immutable original plan and reconcile by readback',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start(),stage=deploymentStage(f,run,{loseIntent:true,loseCompletion:true});await stage.run('freeze');const before=await f.get('run#'+run);await stage.run('freeze');assert.equal((await f.get('run#'+run)).deployment_freeze_plan.S,before.deployment_freeze_plan.S);assert.equal(stage.writes.length,1);
+  await stage.run('restore');assert.equal((await f.get('run#'+run)).deployment_admission_restored.BOOL,true);assert.equal(stage.writes.length,2);
+ }finally{await f.close();}
+});
+test('failed workflow write retains the owned hold and refuses automatic release',async()=>{
+ const f=await fixture();try{
+  const {run_id:run}=await f.start(),stage=deploymentStage(f,run,{failAt:1});await assert.rejects(stage.run('freeze'),/synthetic write/);const row=await f.get('run#'+run);assert.equal(row.deployment_admission_restored.BOOL,false);assert.ok(await f.get('maintenance'));await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);
+ }finally{await f.close();}
+});
+test('old execution definition cannot persist an intent or disable workflows',async()=>{
+ const old=structuredClone(definition({table:'ignored',projects:{}}));old.States.ReleaseCutoverHold.Parameters.TransactItems[0].ConditionCheck.ConditionExpression='#phase = :phase AND release_requested = :requested';
+ const f=await fixture({boundDefinition:table=>({...old,States:{...old.States,ReadCutoverHold:{...old.States.ReadCutoverHold,Parameters:{...old.States.ReadCutoverHold.Parameters,TableName:table}}}})});try{
+  const {run_id:run}=await f.start(),stage=deploymentStage(f,run);await assert.rejects(stage.run('freeze'),/EXECUTION_REQUIRED/);assert.equal(stage.writes.length,0);assert.equal((await f.get('run#'+run)).deployment_freeze_plan,undefined);
+ }finally{await f.close();}
+});
+test('atomic SFN release independently refuses DB or consumer mutation markers',async()=>{
+ for(const marker of [{database_mutations_started:{BOOL:true}},{consumer_admission_restored:{BOOL:false}}]){
+  const f=await fixture();try{const {run_id:run}=await f.start(),row=await f.get('run#'+run);await f.put({...row,...marker,release_requested:{BOOL:true}});await assert.rejects(f.finish(run),/Transaction cancelled/);assert.ok(await f.get('maintenance'));}finally{await f.close();}
  }
 });
