@@ -34,5 +34,13 @@
     "infra/db-maintenance/runtime/cutover-hold.cjs": "2673459479f43b1e953a9465f242f5c3ae340b3032c4893692a61c66f30c4425",
     "infra/db-maintenance/runtime/broker.cjs": "4652e0418d5de926f7856317bec3319a1628a90df08319016a44ad17b2f28f65",
     "infra/db-maintenance/state-machine.cjs": "63866432e4720ae8e4ccfd22ec95651ee6f951f96a9bcc4dd1ac6f7548bc4ab1"
-  }
+  },
+  "cleanBundle": {
+    "source_commit": "0991d3b0636cfdfbe6203441dd56b3e12de34137",
+    "dirty": false,
+    "operator_sha256": "185e11df94231bf74bb589f111e5f57b4ed7f1d9d46dc159e3a8efb407a9777f",
+    "broker_sha256": "312fe597b6038c2975c2804f403f8824237d92b0644e616fe8a1701566648b61",
+    "state_machine_sha256": "d876d8a1288107083df88c61a642d7c7ab92f11c9651aaba5a0afe3bff9f1717"
+  },
+  "loadedOperatorMatchesCleanBundle": true
 }
