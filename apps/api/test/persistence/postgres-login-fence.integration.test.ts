@@ -1,4 +1,4 @@
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
@@ -16,6 +16,7 @@ import {restorePostwriteSnapshot,type RecoveryRows} from '../../scripts/migratio
 import {createD1Fixture} from './d1-fixture';
 import {openPrivateInput} from '../../scripts/migrations/d1/private-input';
 import {preparePostgresLoginFence,inspectPostgresLoginFence,installPostgresLoginFence,releasePostgresLoginFence,type PostgresLoginFenceTarget} from '../../scripts/migrations/d1/postgres-login-fence';
+import {readPostgresCutoverActivity,assertNoActivePostgresLeases} from '../../scripts/migrations/d1/postgres-cutover-activity';
 const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
 const quote=(s:string)=>'"'+s.replaceAll('"','""')+'"';
 async function fixture(){
@@ -166,4 +167,34 @@ describe.skipIf(!url)('PostgreSQL managed-login fence',()=>{
   }finally{await saver.end();await fixtureD1.dispose();await f.dispose();}
  },120000);
 
+});
+
+async function activityFixture(){
+ const f=await fixture();try{await f.client.query('CREATE EXTENSION vector WITH SCHEMA public');await f.client.query((await generateMigration(generateDrizzleJson({}),generateDrizzleJson(applicationSchema))).join('\n'));return{...f,audit:async()=>{await f.client.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');try{return await readPostgresCutoverActivity(f.client);}finally{await f.client.query('ROLLBACK');}}};}catch(error){await f.dispose();throw error;}
+}
+describe.skipIf(!url)('PostgreSQL cutover activity snapshot',()=>{
+ it('requires a fresh read-only statement and never calls an empty observation a complete drain',async()=>{
+  const f=await activityFixture();try{const r=await f.audit();expect(r.databaseName).toBe(f.target.databaseName);expect(Object.values(r.counts)).toEqual(Array(10).fill(0));expect(r.activeLeasesObserved).toBe(false);expect(r.requiresReconciliation).toBe(false);expect(r.inFlightDrainProven).toBe(false);expect(()=>assertNoActivePostgresLeases(r)).not.toThrow();await expect(readPostgresCutoverActivity(f.client)).rejects.toThrow('Read-only');await f.client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await expect(readPostgresCutoverActivity(f.client)).rejects.toThrow('Read-only');await f.client.query('ROLLBACK');}finally{await f.dispose();}
+ },60000);
+ it('distinguishes active, expired and malformed leases from unfinished business state without changing rows',async()=>{
+  const f=await activityFixture();try{
+   await f.client.query("INSERT INTO public.users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES('owner','owner','owner@example.invalid',false,0,0,0)");
+   await f.client.query("INSERT INTO public.videos(id,file,title,description,uploaded_at,transcript,status,error_message,user_id,source_type,source_url,youtube_video_id) VALUES(1,'private.mp4','private-title','',now(),'private transcript','processing','','owner','uploaded','','')");
+   await f.client.query("INSERT INTO public.job_executions(job_id,job_type,payload_sha256,status,lease_token,lease_until) VALUES('private-job','media',$1,'running',gen_random_uuid(),now()+interval '1 hour')",['a'.repeat(64)]);
+   await f.client.query("INSERT INTO public.chat_conversations(thread_id,owner_user_id,expires_at,lease_id,leased_until) VALUES('private-thread','owner',now()+interval '1 day',gen_random_uuid(),now()+interval '1 hour')");
+   await f.client.query("INSERT INTO public.ai_answer_attempts(id,plan_code,quota_source,has_course,streamed,status) VALUES(gen_random_uuid(),'free','included',false,false,'started')");
+   await f.client.query("INSERT INTO public.video_transcription_runs(video_id,run_id,file_key,transcript_hash,duration_ms,chunk_seconds,chunk_count) VALUES(1,gen_random_uuid(),'private.mp4',$1,1000,60,1)",['a'.repeat(32)]);
+   await f.client.query("INSERT INTO public.video_visual_runs(video_id,run_id,file_key,duration_ms,chunk_count,status) VALUES(1,gen_random_uuid(),'private.mp4',1000,1,'processing')");
+   const fingerprint=async()=>createHash('sha256').update(JSON.stringify((await f.client.query("SELECT (SELECT jsonb_agg(t) FROM public.job_executions t) jobs,(SELECT jsonb_agg(t) FROM public.chat_conversations t) chats,(SELECT jsonb_agg(t) FROM public.ai_answer_attempts t) attempts")).rows)).digest('hex');const before=await fingerprint(),active=await f.audit();expect(await fingerprint()).toBe(before);expect(active.counts).toMatchObject({jobLeasesActive:1,chatLeasesActive:1,answerAttemptsStarted:1,videosProcessing:1,transcriptionRunsIncomplete:1,visualRunsProcessing:1});expect(()=>assertNoActivePostgresLeases(active)).toThrow('Active or malformed');expect(JSON.stringify(active)).not.toContain('private-');
+   await f.client.query("UPDATE public.job_executions SET lease_until=now()-interval '1 hour'; UPDATE public.chat_conversations SET leased_until=now()-interval '1 hour'");const expired=await f.audit();expect(expired.counts).toMatchObject({jobLeasesActive:0,jobLeasesExpired:1,chatLeasesActive:0,chatLeasesExpired:1});expect(expired.requiresReconciliation).toBe(true);expect(()=>assertNoActivePostgresLeases(expired)).not.toThrow();expect((await f.client.query('SELECT status FROM public.job_executions')).rows[0].status).toBe('running');expect(expired.inFlightDrainProven).toBe(false);
+   await f.client.query('UPDATE public.job_executions SET lease_until=NULL,lease_token=NULL; UPDATE public.chat_conversations SET leased_until=NULL');const invalid=await f.audit();expect(invalid.counts).toMatchObject({jobLeasesInvalid:1,chatLeasesInvalid:1});expect(()=>assertNoActivePostgresLeases(invalid)).toThrow('Active or malformed');expect(()=>assertNoActivePostgresLeases({...invalid,requiresReconciliation:false})).toThrow('Inconsistent');
+  }finally{await f.dispose();}
+ },60000);
+ it('private-plan CLI returns only aggregate activity and preserves login admission',async()=>{
+  const f=await activityFixture(),directory=await mkdtemp(join(tmpdir(),'videoq-activity-'));try{
+   await f.client.query("INSERT INTO public.job_executions(job_id,job_type,payload_sha256,status,lease_token,lease_until) VALUES('private-cli-job','media',$1,'running',gen_random_uuid(),now()+interval '1 hour')",['a'.repeat(64)]);
+   const target=join(directory,'target.json'),state=join(directory,'plan.json');await writeFile(target,JSON.stringify(f.target),{mode:0o600});const env=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));env.VIDEOQ_FENCE_ADMIN_DATABASE_URL=f.connectionString;
+   const command=(args:string[])=>promisify(execFile)(process.execPath,['--import','tsx',resolve('scripts/d1-postgres-login-fence.ts'),...args],{env,timeout:20000,maxBuffer:65536});await command(['--mode','prepare','--target',target,'--state',state]);const {stdout}=await command(['--mode','activity','--state',state]),proof=JSON.parse(stdout),r=proof.activity;expect(r.readOnly).toBe(true);expect(r.counts.jobLeasesActive).toBe(1);expect(stdout).not.toContain('private-cli-job');expect(proof.upstreamStoppedByThisCommand).toBe(false);expect(r.inFlightDrainProven).toBe(false);expect(stdout).not.toContain(f.password);expect((await f.client.query('SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',[f.roles.api])).rows[0].rolcanlogin).toBe(true);
+  }finally{await rm(directory,{recursive:true,force:true});await f.dispose();}
+ },60000);
 });
