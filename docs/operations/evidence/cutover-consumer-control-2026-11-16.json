@@ -59,5 +59,18 @@
     "infra/db-maintenance/build_bundle.py": "40862aeee94d716de015ad0d789c7bc7ea606a9391c782217cc8b7ac402abe97",
     "infra/db-maintenance/terraform/main.tf": "e05707683f82932721a962be04f4170fcde235cc83dc67849cdb172dea868df9"
   },
-  "executionDefinitionGuard": "canonical full-definition hash; rejects old definition and altered release predicate"
+  "executionDefinitionGuard": "canonical full-definition hash; rejects old definition and altered release predicate",
+  "cleanBundle": {
+    "source_commit": "bf14c79a2b1068fdc460348ea775016b4e612e34",
+    "dirty": false,
+    "operator_sha256": "1b20ac579f0356d8d8a22ac0c22746e026d51757607e90da40b805550871b89f",
+    "broker_sha256": "1450afacdd723866d1dc24b12a9961237cfba83cd3c0b2e3f61657596eb9aeba",
+    "state_machine_sha256": "150f171c856c45e3122e7a425be89785cfb9cd98f69accd362646019908eaf39"
+  },
+  "packagedDefinitionPin": {
+    "packagedDefinitionPinMatches": true
+  },
+  "packagedOperator": {
+    "operatorLoadsWithoutApplicationDependencies": true
+  }
 }
