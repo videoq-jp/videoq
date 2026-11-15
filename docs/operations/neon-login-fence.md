@@ -73,3 +73,17 @@ npx --no-install vitest run test/persistence/postgres-login-fence.integration.te
 ```
 
 [PostgreSQL ALTER ROLE](https://www.postgresql.org/docs/17/sql-alterrole.html)、[接続終了関数](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-ADMIN-SIGNAL)を参照。`pg_terminate_backend(pid)`のsignal送信成功だけを、終了確認と読み替えない。
+
+## 復旧トランザクション中の停止維持（2026-11-16）
+
+`withPostgresLoginFenceTransaction`を追加した。専用の管理者connectionを作成し、targetをURL・DB・実接続で照合した上で、共通キーのtransaction-scoped advisory lockを保持する。既存のinstall/releaseも同じキーを非待機で取得し、別の復旧transactionが保持していれば、roleを変更せず拒否する。復旧処理後にwriterのLOGIN・接続・role/membershipを再検証してからcommitする。失敗時はDBのtransactionをrollbackし、LOGINは自動で戻さない。専用connectionは常に閉じる。
+
+role変更の最終確認にはRead Committedを使用する。同じ古いsnapshotに固定して最後の確認を済ませるのではなく、別管理者が途中でcommitしたrole変更を検出するためである。実PGで新しいroleを別connectionから作成し、復旧側の書き込みがrollbackされることを確認した。advisory lockはこの手順に従う操作間の排他であり、別管理者の任意SQLを禁止するものではない。[PostgreSQL advisory locks](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS)、[Read Committed](https://www.postgresql.org/docs/17/transaction-iso.html#XACT-READ-COMMITTED)を参照。
+
+この関数はレビュー済みの固定operator codeだけに使う。callbackは自身でBEGIN/COMMIT/ROLLBACKを実行せず、外部副作用も含めない。transaction IDの変化は失敗として検出するが、任意callbackや管理者SQLを隔離するsandboxではなく、先にcommitされた処理を取り消せるという保証でもない。AWSのglobal lockと上流停止は別に取得・検証・維持する必要がある。
+
+既存の`restorePostwriteSnapshot`へ`loginFence`を渡すと、この共通transaction内で実際の全テーブル復元・値照合・採番更新を行う。この接続は引き続きloopbackの`recovery_<32hex>`復旧DB、`public`/`chat_memory`、同じplanのhost/DBに限定し、戻り値も`productionSafe:false`のままとした。本番のガードを削除したり、上流停止のbooleanだけで本番を許可したりしていない。
+
+専用PG/pgvectorとローカルD1の4ファイル14テスト、既存の復旧単体21テスト、型検査・lintが成功した。14件には同時解除・再停止・二重復旧の拒否、失敗rollback、role drift、実D1行の復元、D1で削除済みIDの採番床、復旧途中のUNIQUE違反による既存行保持、認証継続・fingerprintの回帰確認を含む。専用コンテナ・匿名volume・credential fileは撤去した。[集計証跡](evidence/neon-fenced-transaction-2026-11-16.json)。
+
+本番Neonでは未実行。AWSの固定bundle・global lock・管理者credential wrapperへの統合、本番の最終snapshot/逆移行CLI、外部状態の照合は依然として残件である。

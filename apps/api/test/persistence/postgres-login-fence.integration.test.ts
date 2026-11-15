@@ -6,6 +6,14 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {describe,it,expect} from 'vitest';
 import pg from 'pg';
+import {withPostgresLoginFenceTransaction} from '../../scripts/migrations/d1/fenced-postgres-transaction';
+import {generateDrizzleJson,generateMigration} from 'drizzle-kit/api';
+import {PostgresSaver} from '@langchain/langgraph-checkpoint-postgres';
+import * as applicationSchema from '../../src/db/schema';
+import {loadMigrationSnapshot} from '../../scripts/d1-migration-manifest';
+import {buildMigrationManifest,quoteMigrationIdentifier as q} from '../../scripts/migrations/d1/manifest';
+import {restorePostwriteSnapshot,type RecoveryRows} from '../../scripts/migrations/d1/postwrite-recovery';
+import {createD1Fixture} from './d1-fixture';
 import {openPrivateInput} from '../../scripts/migrations/d1/private-input';
 import {preparePostgresLoginFence,inspectPostgresLoginFence,installPostgresLoginFence,releasePostgresLoginFence,type PostgresLoginFenceTarget} from '../../scripts/migrations/d1/postgres-login-fence';
 const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
@@ -84,4 +92,78 @@ describe.skipIf(!url)('PostgreSQL managed-login fence',()=>{
    expect((await installPostgresLoginFence(f.client,plan,true)).state).toBe('fenced');await f.client.query('CREATE ROLE '+quote(extra)+' LOGIN');created=true;await expect(releasePostgresLoginFence(f.client,plan,true)).rejects.toThrow('role or membership drift');expect((await f.client.query('SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',[f.roles.api])).rows[0].rolcanlogin).toBe(false);await f.client.query('DROP ROLE '+quote(extra));created=false;await releasePostgresLoginFence(f.client,plan,true);
   }finally{if(created)await f.client.query('DROP ROLE '+quote(extra));await f.dispose();}
  },60000);
+ it('holds the fence through commit and refuses concurrent release or a second recovery transaction',async()=>{
+  const f=await fixture(),entered=Promise.withResolvers<void>(),finish=Promise.withResolvers<void>();
+  let operation:Promise<string>|undefined;
+  try{
+   const plan=await preparePostgresLoginFence(f.client,f.target);await installPostgresLoginFence(f.client,plan,true);
+   operation=withPostgresLoginFenceTransaction({connectionString:f.connectionString,plan,upstreamStopped:true,operation:async client=>{
+    await client.query('INSERT INTO public.fence_probe VALUES (10)');entered.resolve();await finish.promise;return 'committed';
+   }});
+   await Promise.race([entered.promise,operation.then(()=>{throw new Error('Operation ended before barrier.');})]);
+   await expect(releasePostgresLoginFence(f.client,plan,true)).rejects.toThrow('Another fenced operation');
+   await expect(installPostgresLoginFence(f.client,plan,true)).rejects.toThrow('Another fenced operation');
+   await expect(withPostgresLoginFenceTransaction({connectionString:f.connectionString,plan,upstreamStopped:true,operation:async()=> 'unexpected'})).rejects.toThrow('Another fenced operation');
+   expect((await f.client.query('SELECT count(*)::int n FROM public.fence_probe')).rows[0].n).toBe(0);
+   await expect(f.connectAs(f.roles.api)).rejects.toMatchObject({code:'28000'});
+   finish.resolve();expect(await operation).toBe('committed');
+   expect((await f.client.query('SELECT count(*)::int n FROM public.fence_probe')).rows[0].n).toBe(1);
+   expect((await inspectPostgresLoginFence(f.client,plan)).state).toBe('fenced');
+   expect((await releasePostgresLoginFence(f.client,plan,true)).state).toBe('open');
+  }finally{finish.resolve();await operation?.catch(()=>{});await f.dispose();}
+ },60000);
+ it('rolls back failed recovery work and rechecks live role drift before committing, without reopening writer logins',async()=>{
+  const f=await fixture();const extra=f.target.rolePrefix+'external';let created=false;
+  try{
+   const plan=await preparePostgresLoginFence(f.client,f.target);
+   const execute=(operation:(client:pg.Client)=>Promise<void>,upstreamStopped=true,connectionString=f.connectionString)=>withPostgresLoginFenceTransaction({connectionString,plan,upstreamStopped,operation});
+   let called=false;
+   await expect(execute(async()=>{called=true;})).rejects.toThrow('Verified PostgreSQL login fence');expect(called).toBe(false);
+   await installPostgresLoginFence(f.client,plan,true);
+   await expect(execute(async()=>{called=true;},false)).rejects.toThrow('Externally stopped');expect(called).toBe(false);
+   const wrong=new URL(f.connectionString);wrong.hostname='attacker.invalid';await expect(execute(async()=>{called=true;},true,wrong.toString())).rejects.toThrow('fixed target');expect(called).toBe(false);
+   await expect(execute(async client=>{await client.query('INSERT INTO public.fence_probe VALUES (20)');throw new Error('synthetic recovery failure');})).rejects.toThrow('synthetic recovery failure');
+   expect((await f.client.query('SELECT count(*)::int n FROM public.fence_probe')).rows[0].n).toBe(0);
+   expect((await inspectPostgresLoginFence(f.client,plan)).state).toBe('fenced');
+   await expect(execute(async client=>{
+    await client.query('INSERT INTO public.fence_probe VALUES (30)');
+    await f.client.query('CREATE ROLE '+quote(extra)+' NOLOGIN');created=true;
+   })).rejects.toThrow('role or membership drift');
+   expect((await f.client.query('SELECT count(*)::int n FROM public.fence_probe')).rows[0].n).toBe(0);
+   expect((await f.client.query('SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',[f.roles.api])).rows[0].rolcanlogin).toBe(false);
+   await f.client.query('DROP ROLE '+quote(extra));created=false;
+   expect((await f.client.query("SELECT count(*)::int n FROM pg_stat_activity WHERE application_name='videoq-fenced-recovery' AND datname=current_database()")).rows[0].n).toBe(0);
+   expect((await releasePostgresLoginFence(f.client,plan,true)).state).toBe('open');
+  }finally{if(created)await f.client.query('DROP ROLE '+quote(extra));await f.dispose();}
+ },60000);
+
+ it('restores actual D1 rows and identity floors under the held login fence, rolling back partial replacement',async()=>{
+  const f=await fixture(),fixtureD1=await createD1Fixture(),saver=PostgresSaver.fromConnString(f.connectionString,{schema:'chat_memory'});
+  try{
+   await f.client.query('CREATE EXTENSION vector WITH SCHEMA public');
+   await f.client.query((await generateMigration(generateDrizzleJson({}),generateDrizzleJson(applicationSchema))).join('\n'));
+   await saver.setup();
+   const manifest=buildMigrationManifest(await loadMigrationSnapshot(resolve('drizzle')),await loadMigrationSnapshot(resolve('drizzle-d1'))),db=fixtureD1.database;
+   await db.prepare("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,used_upload_bytes) VALUES('owner','owner','owner@example.invalid',0,0,0,0,0)").run();
+   const insert=(id:number)=>db.prepare("INSERT INTO videos(id,file,title,description,uploaded_at,transcript,status,error_message,user_id,source_type,source_url,youtube_video_id) VALUES(?,'a.mp4','restored','','2026-11-16T00:00:00.000Z','','completed','','owner','uploaded','','')").bind(id).run();
+   await insert(1);await insert(500);await db.prepare('DELETE FROM videos WHERE id=500').run();
+   const rows=Object.fromEntries(await Promise.all(manifest.target_insert_order.map(async n=>[n,(await db.prepare('SELECT * FROM '+q(n)).all()).results]))) as RecoveryRows;
+   const states=(await db.prepare('SELECT name,CAST(seq AS TEXT) seq FROM sqlite_sequence').all<{name:string;seq:string}>()).results;
+   const sequenceHighWater=Object.fromEntries(manifest.target_insert_order.map(n=>[n,states.find(s=>s.name===n)?.seq??'0']));
+   const plan=await preparePostgresLoginFence(f.client,f.target);await installPostgresLoginFence(f.client,plan,true);
+   const restore=(snapshot:RecoveryRows)=>restorePostwriteSnapshot({client:f.client,schema:'public',checkpointSchema:'chat_memory',restoredDatabase:f.target.databaseName,manifest,rows:snapshot,vectors:[],writersFenced:true,sequenceHighWater,loginFence:{connectionString:f.connectionString,plan}});
+   const restored=await restore(rows);expect(restored.productionSafe).toBe(false);expect(restored.commonTables).toHaveLength(manifest.tables.filter(t=>t.target!==null).length);
+   expect((await f.client.query('SELECT title FROM public.videos WHERE id=1')).rows[0].title).toBe('restored');
+   const sequence=(await f.client.query("SELECT pg_get_serial_sequence('public.videos','id') n")).rows[0].n;
+   expect((await f.client.query('SELECT nextval($1)::text n',[sequence])).rows[0].n).toBe('501');
+   const bad=structuredClone(rows);bad.users.push({...bad.users[0],id:'duplicate-owner',username:'duplicate-owner'});
+   await expect(restore(bad)).rejects.toThrow('Recovery transaction failed');
+   expect((await f.client.query('SELECT count(*)::int n FROM public.users')).rows[0].n).toBe(1);
+   expect((await f.client.query('SELECT title FROM public.videos WHERE id=1')).rows[0].title).toBe('restored');
+   expect((await f.client.query('SELECT nextval($1)::text n',[sequence])).rows[0].n).toBe('502');
+   expect((await inspectPostgresLoginFence(f.client,plan)).state).toBe('fenced');
+   expect((await releasePostgresLoginFence(f.client,plan,true)).state).toBe('open');
+  }finally{await saver.end();await fixtureD1.dispose();await f.dispose();}
+ },120000);
+
 });

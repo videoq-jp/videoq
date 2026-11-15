@@ -1,3 +1,5 @@
+import {withPostgresLoginFenceTransaction} from './fenced-postgres-transaction';
+import type {PostgresLoginFencePlan} from './postgres-login-fence';
 import {assertRecoveredVisuals,type VisualRecoveryReceipt} from './recover-visual-artifacts';
 import {createHash} from 'node:crypto';
 import type pg from 'pg';
@@ -38,13 +40,14 @@ function normalized(v:unknown,rule:Conversion){if(v===null)return null;return ru
  * PG, active work, unknown coverage and unsupported visual refs. Public schemas
  * require an explicitly matched disposable full-backup database.
  * Writers must be externally fenced; two reads alone do not establish a fence. */
-export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean;visualRecovery?:VisualRecoveryReceipt;limits?:{rowsPerTable:number;bytes:number};restoredDatabase?:string;sequenceHighWater?:Record<string,string>}){
+export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean;visualRecovery?:VisualRecoveryReceipt;limits?:{rowsPerTable:number;bytes:number};restoredDatabase?:string;sequenceHighWater?:Record<string,string>;loginFence?:{connectionString:string;plan:PostgresLoginFencePlan}}){
  const {client,schema,checkpointSchema,manifest,rows}=o;
  const restored=o.restoredDatabase!==undefined;
  if(!o.writersFenced||(!restored&&(!/^recovery_[a-f0-9]{32}$/.test(schema)||checkpointSchema!==schema+'_chat'))||(restored&&(!/^recovery_[a-f0-9]{32}$/.test(o.restoredDatabase!)||schema!=='public'||checkpointSchema!=='chat_memory')))fail('Isolated recovery schemas and stopped writers required.');
  const host=(client as unknown as {connectionParameters:{host:string}}).connectionParameters.host;
  if(!['localhost','127.0.0.1','::1'].includes(host))fail('Only local rehearsal PostgreSQL is allowed.');
  if(restored&&(await client.query<{name:string}>('SELECT current_database() AS name')).rows[0].name!==o.restoredDatabase)fail('Restored database fence mismatch.');
+ if(o.loginFence&&(!restored||o.loginFence.plan.target.purpose!=='isolated-rehearsal'||o.loginFence.plan.target.databaseName!==o.restoredDatabase||o.loginFence.plan.target.host!==host))fail('Login-fenced restore requires the exact isolated full-backup target.');
  if(!manifest.mapping_complete)fail('Incomplete schema mapping.');
  const names=manifest.target_insert_order;
  if(Object.keys(rows).length!==names.length||names.some(n=>!Array.isArray(rows[n]))||Object.keys(rows).some(n=>!names.includes(n)))fail('Snapshot inventory mismatch.');
@@ -71,13 +74,12 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
  const serde=new JsonPlusSerializer();
  const binary=(value:unknown):Uint8Array=>{if(value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===1&&'hex' in value){const hex=text(value.hex);if(!/^(?:[a-f0-9]{2})*$/i.test(hex)||hex.length>8*1024*1024)fail('Invalid checkpoint hex bytes.');return Buffer.from(hex,'hex');}if(!Array.isArray(value)||value.some(x=>!Number.isInteger(x)||Number(x)<0||Number(x)>255))fail('Invalid checkpoint bytes.');return Uint8Array.from(value as number[]);};
  const decode=async(type:unknown,value:unknown)=>{if(type!=='json'&&type!=='bytes')fail('Unsupported checkpoint encoding.');return await serde.loadsTyped(text(type),binary(value)) as unknown;};
- const checkpoints=[];
+ const checkpoints:{row:Record<string,unknown>;cp:Record<string,unknown>;metadata:unknown}[]=[];
  for(const r of rows.conversation_checkpoints){const cp=await decode(r.checkpoint_type,r.checkpoint) as Record<string,unknown>,metadata=await decode(r.metadata_type,r.metadata);if(cp.id!==r.checkpoint_id||!rows.chat_conversations.some(c=>c.thread_id===r.thread_id))fail('Checkpoint ownership or identity mismatch.');checkpoints.push({row:r,cp,metadata});}
  for(const c of rows.chat_conversations)if(c.committed_checkpoint_id!==null&&!checkpoints.some(x=>x.row.thread_id===c.thread_id&&x.row.namespace===''&&x.cp.id===c.committed_checkpoint_id))fail('Committed checkpoint is missing.');
- const writes=[];for(const r of rows.conversation_checkpoint_writes){await decode(r.value_type,r.value);if(!checkpoints.some(c=>c.row.thread_id===r.thread_id&&c.row.namespace===r.namespace&&c.cp.id===r.checkpoint_id))fail('Pending write checkpoint missing.');writes.push(r);}
+ const writes:Record<string,unknown>[]=[];for(const r of rows.conversation_checkpoint_writes){await decode(r.value_type,r.value);if(!checkpoints.some(c=>c.row.thread_id===r.thread_id&&c.row.namespace===r.namespace&&c.cp.id===r.checkpoint_id))fail('Pending write checkpoint missing.');writes.push(r);}
  const qualified=(name:string)=>q(schema)+'.'+q(name),chat=(name:string)=>q(checkpointSchema)+'.'+q(name);
- await client.query('BEGIN');
- try{
+ const apply=async(client:pg.Client)=>{
   await client.query("SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='60s'");
   // No CASCADE: unknown references fail and roll back, preserving old rows.
   await client.query('LOCK TABLE '+[...order,'scene_embeddings','scene_embeddings_768'].map(qualified).join(',')+' IN ACCESS EXCLUSIVE MODE');
@@ -109,6 +111,12 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
   }
   // ALTER SEQUENCE RESTART participates in this transaction; setval would not.
   for(const p of plans)for(const c of p.columns){const sequence=(await client.query<{name:string|null}>('SELECT pg_get_serial_sequence($1,$2) AS name',[qualified(p.name),c.name])).rows[0].name;if(sequence){const maximum=(await client.query<{value:string|null}>('SELECT max('+q(c.name)+')::text AS value FROM '+qualified(p.name))).rows[0].value;const seq=(await client.query<{nspname:string;relname:string}>('SELECT n.nspname,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.oid=$1::regclass',[sequence])).rows[0];if(seq.nspname!==schema)fail('Sequence is outside the isolated schema.');const supplied=text(o.sequenceHighWater?.[p.name]);if(!/^(0|[1-9][0-9]*)$/.test(supplied)||BigInt(supplied)>=BigInt(Number.MAX_SAFE_INTEGER))fail('Observed D1 identity high-water state is required.');const prior=(await client.query<{value:string;called:boolean}>('SELECT last_value::text AS value,is_called AS called FROM '+q(seq.nspname)+'.'+q(seq.relname))).rows[0];const priorIssued=BigInt(prior.value)-(prior.called?0n:1n);const high=[BigInt(supplied),maximum===null?0n:BigInt(maximum),priorIssued].reduce((a,b)=>a>b?a:b);if(high>=BigInt(Number.MAX_SAFE_INTEGER))fail('Identity leaves no safe next integer.');await client.query('ALTER SEQUENCE '+q(seq.nspname)+'.'+q(seq.relname)+' RESTART WITH '+String(high+1n));}}
-  await client.query('COMMIT');return {commonTables:verified,scenes:scenes.length,checkpoints:checkpoints.length,pendingWrites:writes.length,sha256:recoveryHash(verified),productionSafe:false};
- }catch(error){await client.query('ROLLBACK');throw new PostwriteRecoveryError('Recovery transaction failed; isolated target must remain offline.',{cause:error});}
+  return {commonTables:verified,scenes:scenes.length,checkpoints:checkpoints.length,pendingWrites:writes.length,sha256:recoveryHash(verified),productionSafe:false};
+ };
+ try{
+  if(o.loginFence)return await withPostgresLoginFenceTransaction({connectionString:o.loginFence.connectionString,plan:o.loginFence.plan,upstreamStopped:o.writersFenced,operation:apply});
+  await client.query('BEGIN');
+  try{const result=await apply(client);await client.query('COMMIT');return result;}
+  catch(error){await client.query('ROLLBACK');throw error;}
+ }catch(error){throw new PostwriteRecoveryError('Recovery transaction failed; isolated target must remain offline.',{cause:error});}
 }
