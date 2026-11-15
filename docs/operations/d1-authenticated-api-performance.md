@@ -43,7 +43,7 @@ D1コピーは69テーブル（`sqlite_sequence`込み）・10,228行を投入�
 
 ## 後片付けと本番の状態
 
-今回のWorkers、Durable Objects、Hyperdrive、D1コピーを削除し、管理APIで不在を確認した。既存の本番Hyperdriveとstaging D1は保持した。Neon子branchと専用roleの撤去結果は同じ証拠ファイルへ記録する。
+今回のWorkers、Durable Objects、Hyperdrive、D1コピーを削除し、管理APIで不在を確認した。既存の本番Hyperdriveとstaging D1は保持した。Neon子branchと専用roleも削除し、Consoleがproduction Defaultの1 branchだけを表示することを確認した。
 
 基盤PR #1434はmainへマージされ、main CI、通常CD、DB Maintenance CDが成功した。API/Web/Lambdaの配備後に`/health`・`/ready`が200、3 LambdaのActive/Successful、APIのD1 bindingなし、切り替え用3変数が未設定であることを確認した。**本番はPostgreSQLのままである。**
 

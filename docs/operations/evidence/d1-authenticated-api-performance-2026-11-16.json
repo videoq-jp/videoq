@@ -287,5 +287,16 @@
     "measure.mts": "177cd6a72c4031ecc155ea5e04516969b26f0a8e28e6fa3a75b86c67696be1da",
     "parameter-import.py": "345b2fe1113d3f4923ce2e4cb3fe1a996c36baf2f7008f3e1e266b18a4a98a4f",
     "summarize.py": "119bdf848e50456677029f0f2ba4c4332b8a3bd827881a893bde34528b5b4b9a"
-  }
+  },
+  "neonCleanup": {
+    "deletedBranchId": "br-restless-thunder-a1lx7pq3",
+    "branchAbsentFromConsole": true,
+    "branchCountAfter": 1,
+    "remainingBranch": "production",
+    "remainingDefaultBranch": true,
+    "dedicatedRoleRemovedWithBranch": true,
+    "productionPasswordsChanged": false,
+    "observedAt": "2026-11-15T18:56:34.743610+00:00"
+  },
+  "testCredentialAndRawDataFilesRemoved": 13
 }
