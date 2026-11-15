@@ -3,7 +3,7 @@
   "testedBaseCommit": "516fe59bdaf2b5a21316e4297a045f78ab6991ed",
   "sourceFilesSha256": {
     ".github/scripts/neon-fence-audit.mjs": "065c418175b2bc5a1827dfbe1e0b590701b364677a72b51228fef4d67b553ba7",
-    ".github/scripts/neon-fence-audit.test.mjs": "4616eb16c6275de23f5de06f4c5ae5875219295b73165f738d8da67ce9a90946",
+    ".github/scripts/neon-fence-audit.test.mjs": "a5fd948d9ec83178987aabc0b1e1318e9d1a4a1efc906be07dacb9c33087fbc2",
     ".github/scripts/neon-fence-audit-fixture.mjs": "f030b8866613e2bee569af6474ac4c903fde4bac5f577243cffa67d0a5418594",
     ".github/scripts/run-aws-db.py": "845604f31b8bd29ca26af43055ac26aafa2b4e73a804f347d1c3f15b887a816e",
     ".github/scripts/test_aws_db_request.py": "29d1ee51774b5435c1344b3d1a7b232547c1dacffdeadf31198c759d18594985",
@@ -81,5 +81,11 @@
     "broker_sha256": "6291fe9e44deb1c1ea36f7c683afa0e9e61b8e99cf1efb50664658a63c865c9e",
     "state_machine_sha256": "c7a8c7d08b0e0fe29a10bde0f8f39760355e06b3831c7c5e7bf6614893914dbc",
     "deployed": false
+  },
+  "cleanAuditUnitEnvironment": {
+    "applicationNodeModulesAbsentBeforeAndAfter": true,
+    "isolatedOperationsDependenciesOnly": true,
+    "passed": 4,
+    "scope": "Parent and shared schema are loaded from private isolated copies, not application checkout modules."
   }
 }
