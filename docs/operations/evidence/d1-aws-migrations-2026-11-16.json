@@ -42,5 +42,13 @@
     ".github/scripts/migration-backend.cjs": "524bb290255bd827bf7f4b617506c767f1ec5adf1d32688b9cb9ad93758e3f43",
     ".github/scripts/protect-api-deployment.cjs": "8899b9e9965ed1962efeb17892f115e2a7bab0f416b7422382420adc2d05c438",
     "infra/db-maintenance/runtime/job.cjs": "97f0d5a39affa5f649bbb2040b518a7780d214e885e3d6a77ba2551b43ce800a"
-  }
+  },
+  "cleanBundle": {
+    "source_commit": "49422016bc573517410f193b6279539356866636",
+    "dirty": false,
+    "operator_sha256": "fa9bf0e14c31fbc64d6c51a55a74dd9e24a6d4fa189e7faed8d257d174d7089f",
+    "broker_sha256": "f39fe2f45b4f4745dc28cf04bd86f4a7654a6cf1af70cc4e4b77afbdbdff7678",
+    "state_machine_sha256": "877e117455c2e0e376120c1f6f48a031ad70d7d4284b7444b643d31a56b38d32"
+  },
+  "testedOperatorMatchesCleanBundle": true
 }
