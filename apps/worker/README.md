@@ -290,6 +290,10 @@ recipes and their common acceptance commands are in `charts/videoq-inference/REA
 
 ### D1移行中の内部永続化API
 
+この節はopt-inクライアントの契約です。対応するHono側APIとD1スキーマの配備が必要で、
+Workerコードの配布だけではD1を有効にしません。設定未指定時は既存のPostgreSQL動作を維持します。
+展開順序と検証の境界は[Worker API rollout](../../docs/operations/d1-worker-api-rollout.md)を参照してください。
+
 `DEPLOYMENT_EDITION=cloud` または `PERSISTENCE_BACKEND=d1` の場合、
 WorkerはHonoの署名付き業務APIを使います。
 `WORKER_INTERNAL_API_ORIGIN` にAPIのHTTPS origin（パスなし）、
@@ -312,7 +316,7 @@ D1設定時の旧PostgreSQL直接接続は明示的に拒否します。
 
 字幕の最終確定と索引Outboxは一緒に保存し、ユーザーが処理中に編集した字幕は保持します。
 初回索引の配送待ちはEmbeddingを再生成せずに再試行します。
-実動画アップロードの分割処理と、その後の視覚解析もD1へ接続済みです。
+実動画アップロードの分割処理と、その後の視覚解析にも同じ内部APIクライアントを用意しています。
 視覚チャンクは書き込みごとの不変キーへ保存し、DBが採用した版だけを公開します。
 PUT前にattemptをD1へ登録し、未公開のまま期限切れになった版を定期回収します。
 manifestも書き込みごとのキーを使い、古い回収が新しい採用版を削除しないようにします。
