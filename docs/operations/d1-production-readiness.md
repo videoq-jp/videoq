@@ -41,3 +41,9 @@ CI成功や一つの復旧試験だけで全条件を満たしたと判断しな
 [Neonログイン停止コマンド](neon-login-fence.md)を追加し、専用PGで既存接続の終了・NOLOGIN・readonly backup維持・明示解除・role drift/準備済みtransactionの拒否を検証した。AWSの管理operation/global lockへの統合は残っており、本番Neonでは未実行。
 
 [D1並行取得の試作](d1-parallel-prefetch-diagnostic.md)は通常検索p95が477msで、現行D1 305ms・PG 223msより悪化したため不採用。認可・品質を保った改善が未達であることを維持し、試作のp50だけで切り替え可とはしない。PR #1434の全CI（実CPU・外部通信遮断を含む）が成功し、Neonを継続する基盤リリースとしてmerge queueへ登録した。本番D1切り替えは未実施。
+
+## 基盤リリース完了と参照API性能（2026-11-16）
+
+PR #1434はmain `6882f06f`へマージされ、main CI・通常CD・DB Maintenance CDが成功した。配備後のhealth/readyは200、3 LambdaはActive/Successful。D1 bindingと切り替え変数は未設定で、本番はPostgreSQLを継続する。
+
+[認証付きの参照API比較](d1-authenticated-api-performance.md)では、同一ownerの6 scenario・240リクエストで応答を照合し、NRTのHono p95はPG 519ms、D1 43msだった。migration後のindexing状態へPGコピーを揃え、D1のreadinessは緩めていない。これはwarm・逐次・参照APIに限定した進展であり、RAG回帰、cold/同時負荷、本番runtime/config、その他の受け入れ残件を解決したとは扱わない。
