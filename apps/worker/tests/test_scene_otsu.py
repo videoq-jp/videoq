@@ -358,9 +358,9 @@ def test_long_cue_budget_counts_the_text_after_srt_whitespace_normalization(budg
     embedder.get_embeddings.assert_not_called()
 
 
-def test_apply_scene_splitting_degrades_on_failure(monkeypatch) -> None:
+def test_apply_scene_splitting_degrades_on_failure(monkeypatch, caplog) -> None:
     def boom(*_a, **_k):
-        raise RuntimeError("embed down")
+        raise RuntimeError("synthetic-private-embedding-provider-token")
 
     monkeypatch.setattr(
         "worker_python.pipeline.scene_otsu.SceneSplitter",
@@ -368,6 +368,8 @@ def test_apply_scene_splitting_degrades_on_failure(monkeypatch) -> None:
     )
     original = "1\n00:00:00,000 --> 00:00:01,000\nkeep me\n"
     assert apply_scene_splitting(original) == original
+    assert "synthetic-private-embedding-provider-token" not in caplog.text
+    assert "Scene splitting failed" in caplog.text
 
 
 @pytest.mark.parametrize("source", ["", " \r\n ", "not a subtitle"])

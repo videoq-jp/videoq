@@ -62,7 +62,7 @@ def enqueue_job(
     queue_url = queue_url_for_job(job_type)
     if not queue_url:
         logger.info(
-            "SQS_QUEUE_URL unset; skip enqueue for %s payload=%s", job_type, payload
+            "SQS_QUEUE_URL unset; skip enqueue for %s", job_type
         )
         return None
 
@@ -70,5 +70,5 @@ def enqueue_job(
     with closing(create_sqs_client()) as client:
         resp = client.send_message(QueueUrl=queue_url, MessageBody=body)
     message_id = resp.get("MessageId")
-    logger.info("Enqueued %s payload=%s messageId=%s", job_type, payload, message_id)
+    logger.info("Enqueued %s messageId=%s", job_type, message_id)
     return message_id

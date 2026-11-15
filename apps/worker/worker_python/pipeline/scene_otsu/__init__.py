@@ -36,6 +36,6 @@ def apply_scene_splitting(
         return splitter.process(srt_content, max_tokens=max_tokens)
     except EmbeddingContractError:
         raise
-    except Exception as exc:  # noqa: BLE001 — best-effort scene splitting
-        logger.warning("Scene splitting failed: %s. Using original SRT content.", exc)
+    except Exception:  # noqa: BLE001 — best-effort scene splitting
+        logger.warning("Scene splitting failed. Using original SRT content.")
         return srt_content
