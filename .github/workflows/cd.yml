@@ -116,6 +116,7 @@ jobs:
               - '.github/workflows/cd.yml'
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
+              - '.github/scripts/protect-api-deployment.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -131,6 +132,7 @@ jobs:
               - '.github/workflows/cd.yml'
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
+              - '.github/scripts/protect-api-deployment.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -182,6 +184,7 @@ jobs:
               - '.github/workflows/cd.yml'
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
+              - '.github/scripts/protect-api-deployment.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -381,6 +384,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node .github/scripts/protect-api-deployment.cjs deployment.json
           node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config deployment.json --no-bundle --no-autoconfig --env-file /dev/null
 
   db-migrate:

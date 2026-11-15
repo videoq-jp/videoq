@@ -1,0 +1,20 @@
+{
+  "sourceSha": "d3cc9fc3ef52c1e01575a015d7853b866153f65c",
+  "workflowRun": 43757429092,
+  "workflowConclusion": "success",
+  "cpuAcceptance": {
+    "uploadTranscriptionIndexingAndQa": "passed",
+    "objectRestore": "passed; SHA256 identical",
+    "databaseRestore": "passed; restored to a separate database and app switched",
+    "upgrade": "passed; two API replicas and migration hook",
+    "rollback": "passed; one API replica, restored DB and data retained",
+    "helmTest": "passed",
+    "retention": "passed"
+  },
+  "publicEgress": "blocked by dedicated node IPv4/IPv6 firewall; public DNS forwarding disabled; worker Pod probe passed",
+  "playback": "passed",
+  "transcriptionAssessmentErrors": [],
+  "signedArtifacts": "Signed release manifest, both charts and all five VideoQ image indexes verified before rehearsal",
+  "sourceArtifactSha256": "8f6a21b5f9ecc2d322f27cc052b56a62fe2081c56f556a7ba3b6ee87180e06cc",
+  "scope": "onprem published release; does not prove cloud D1 cutover"
+}

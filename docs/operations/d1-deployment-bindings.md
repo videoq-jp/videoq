@@ -6,4 +6,11 @@ The upload-only allowlist now preserves those two fields from the production env
 
 No production binding, backend flag, pause flag or resource is changed by this fix. The current production config continues to select its existing Hyperdrive and has no D1/Vectorize binding. Actual D1 selection must still pass the cutover configuration check, remote resource verification, migration/recovery and application acceptance gates.
 
-Verification: deployment config/order tests (33 passed), all deployment security Node tests (392 passed). Actual Wrangler dry-runs accepted the generated D1 configuration with separate 1536/768 index bindings and a PostgreSQL binding configuration. The dry-run fixture uses a minimal Worker, omits the PG config's DO declarations, and proves config/schema transport only; it is not a full API or live deployment test.
+Verification: deployment config/order tests (33 passed), all deployment security Node tests (397 passed). Actual Wrangler dry-runs accepted the generated D1 configuration with separate 1536/768 index bindings and a PostgreSQL binding configuration. The dry-run fixture uses a minimal Worker, omits the PG config's DO declarations, and proves config/schema transport only; it is not a full API or live deployment test.
+
+
+## Preserve deployed cutover state
+
+Immediately before the credentialed API upload, ordinary CD reads the fixed production API settings and checks only the pause/backend/database/index selectors. It refuses to clear a pause, change an active D1 backend back to PostgreSQL, replace its database, or replace either Vectorize index. Missing/ambiguous settings, a failed management read or an oversized response stop the upload. The credential and returned settings are not logged. Deliberate resume or inverse recovery must use the controlled cutover procedure rather than bypass this check.
+
+This is a preflight comparison, not an atomic cross-service deployment lock. For the cutover window, suspend ordinary deployment automation, wait for active deployment runs to finish, hold AWS maintenance exclusion and retain writer fences until final reconciliation. A concurrent privileged operator can still change Cloudflare configuration; main review and the operation window remain the trust boundary.
