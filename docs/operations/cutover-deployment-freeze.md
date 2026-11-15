@@ -1,0 +1,19 @@
+# Deployment automation admission during cutover
+
+`.github/scripts/cutover-deployment-freeze.cjs` controls the two existing deployment workflows in `videoq-jp/videoq`: application CD (`252628432`, `.github/workflows/cd.yml`) and DB Maintenance CD (`403417588`, `.github/workflows/db-maintenance-cd.yml`). IDs and paths must both match. Preparation records their original active/manually-disabled states without changing either workflow. Missing, replaced, deleted or inactivity-disabled workflows refuse the operation.
+
+The adapter requires an injected transport and an ownership verifier. Without the verifier it cannot mutate anything. The full coordinator must persist the plan immutably under its existing hold, verify that hold before each mutation, and authorize restoration only after its verified normal-backend or recovery handoff. This adapter alone does not establish any of those conditions and has no production CLI, automatic caller or newly granted token permission.
+
+`freeze(plan)` disables only active workflows and then reads their state back. It does not cancel running jobs. `inspect(plan)` separately scans all five nonterminal run statuses (queued, in_progress, waiting, pending and requested), follows pages, rejects invalid/foreign run records and refuses inventories at GitHub's 1,000-result search limit. A final workflow read detects admission being re-enabled during the scan. A frozen workflow with an existing run remains **not drained**; the caller must observe that same run until it is terminal. A read timeout is not a reason to restart or cancel it.
+
+`restore(plan)` enables only workflows that were originally active, preserving an originally manually-disabled workflow. Lost responses can be retried with the same plan; partial freezes remain stopped rather than automatically undoing exclusion. Ownership is checked before every mutation and after the sequence.
+
+This is GitHub Actions admission and run observation, not a cross-service deployment lock. An AWS CodeBuild execution already accepted by a workflow can outlive its GitHub run or cancellation. The full coordinator must also verify the owned AWS global hold, actual CodeBuild executions and immutable project/source artifacts, API pause, consumer admission and in-flight work, database fences, external side effects and final data/recovery gates. Administrator actions and direct Cloudflare/AWS deployments are outside this adapter's boundary. Two successful reads do not supply an atomic lock against an administrator re-enabling automation.
+
+GitHub documents the [workflow enable/disable APIs](https://docs.github.com/en/rest/actions/workflows) and [run statuses, pagination and search limit](https://docs.github.com/en/rest/actions/workflow-runs). The eventual operator transport requires the existing repository Actions write authority; no credential is embedded in or provisioned by this patch.
+
+## Verification on 2026-11-16 JST
+
+Eight focused tests cover original-state restoration, default rejection without ownership, invalid targets, lost successful responses, partial ownership loss, active runs on older pages, all nonterminal statuses, truncation, foreign records, workflow drift and re-enabling during observation. All **425** Node security tests passed with concurrency 2 (Node 26.12.0).
+
+The adapter also performed a production **GET-only** audit: 16 requests, both workflows originally active, no nonterminal workflow runs observed, admission correctly reported as not frozen. The transport explicitly rejected every non-GET method. No workflow was disabled/enabled, no run cancelled/restarted, and no production resource or DB was changed. This observation is point-in-time evidence, not cutover acceptance. [Machine-readable receipt](evidence/cutover-deployment-freeze-2026-11-16.json).
