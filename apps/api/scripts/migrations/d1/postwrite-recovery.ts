@@ -1,3 +1,4 @@
+import {assertRecoveredVisuals,type VisualRecoveryReceipt} from './recover-visual-artifacts';
 import {createHash} from 'node:crypto';
 import type pg from 'pg';
 import {JsonPlusSerializer} from '@langchain/langgraph-checkpoint';
@@ -34,21 +35,26 @@ export function canonicalRecoveryJson(source:string):unknown{
 function normalized(v:unknown,rule:Conversion){if(v===null)return null;return rule==='json_text'||rule==='text_array_json'?canonicalRecoveryJson(text(v)):v;}
 
 /** Bounded rehearsal primitive, NOT a production rollback CLI. It refuses remote
- * PG, public schemas, active work, unknown coverage and unsupported visual refs.
+ * PG, active work, unknown coverage and unsupported visual refs. Public schemas
+ * require an explicitly matched disposable full-backup database.
  * Writers must be externally fenced; two reads alone do not establish a fence. */
-export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean}){
+export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean;visualRecovery?:VisualRecoveryReceipt;limits?:{rowsPerTable:number;bytes:number};restoredDatabase?:string;sequenceHighWater?:Record<string,string>}){
  const {client,schema,checkpointSchema,manifest,rows}=o;
- if(!o.writersFenced||!/^recovery_[a-f0-9]{32}$/.test(schema)||!/^recovery_[a-f0-9]{32}_chat$/.test(checkpointSchema)||checkpointSchema!==schema+'_chat')fail('Isolated recovery schemas and stopped writers required.');
+ const restored=o.restoredDatabase!==undefined;
+ if(!o.writersFenced||(!restored&&(!/^recovery_[a-f0-9]{32}$/.test(schema)||checkpointSchema!==schema+'_chat'))||(restored&&(!/^recovery_[a-f0-9]{32}$/.test(o.restoredDatabase!)||schema!=='public'||checkpointSchema!=='chat_memory')))fail('Isolated recovery schemas and stopped writers required.');
  const host=(client as unknown as {connectionParameters:{host:string}}).connectionParameters.host;
  if(!['localhost','127.0.0.1','::1'].includes(host))fail('Only local rehearsal PostgreSQL is allowed.');
+ if(restored&&(await client.query<{name:string}>('SELECT current_database() AS name')).rows[0].name!==o.restoredDatabase)fail('Restored database fence mismatch.');
  if(!manifest.mapping_complete)fail('Incomplete schema mapping.');
  const names=manifest.target_insert_order;
  if(Object.keys(rows).length!==names.length||names.some(n=>!Array.isArray(rows[n]))||Object.keys(rows).some(n=>!names.includes(n)))fail('Snapshot inventory mismatch.');
- if(Object.values(rows).some(r=>r.length>1000)||Buffer.byteLength(JSON.stringify(rows))>16*1024*1024)fail('Synthetic rehearsal budget exceeded.');
- if(rows.mutation_receipts.length||rows.scene_staging.length||rows.scene_index_tasks.some(r=>!r.completed_at||r.lease_token)||rows.scene_index_runs.some(r=>r.status!=='published'||r.pending_vectors!==0)||rows.visual_object_attempts.length)fail('Index or transient work is not quiescent.');
+ const limits=o.limits??{rowsPerTable:1000,bytes:16*1024*1024};if(!Number.isSafeInteger(limits.rowsPerTable)||limits.rowsPerTable<1||limits.rowsPerTable>10000||!Number.isSafeInteger(limits.bytes)||limits.bytes<1||limits.bytes>512*1024*1024)fail('Invalid isolated recovery budget.');
+ if(Object.values(rows).some(r=>r.length>limits.rowsPerTable)||Buffer.byteLength(JSON.stringify(rows))>limits.bytes)fail('Synthetic rehearsal budget exceeded.');
+ if(rows.mutation_receipts.length||rows.scene_staging.length||rows.scene_index_tasks.some(r=>!r.completed_at||r.lease_token)||rows.scene_index_runs.some(r=>r.status!=='published'||r.pending_vectors!==0))fail('Index or transient work is not quiescent.');
  if(rows.ai_answer_attempts.some(r=>r.status==='started')||rows.job_executions.some(r=>r.status==='running'||r.lease_token!==null)||rows.external_tasks.some(r=>(!r.completed_at&&!r.dead_at)||r.locked_at!==null)||rows.chat_conversations.some(r=>r.lease_id!==null||r.leased_until!==null))fail('Business work is not quiescent.');
  if(rows.video_course_invitations.some(r=>r.creation_nonce!==null))fail('Invitation creation is not quiescent.');
- if(rows.video_visual_chunks.some(r=>r.object_version!==null)||rows.video_visual_runs.some(r=>r.publication_version!==null))fail('Versioned visual objects need a separately verified downgrade plan.');
+ if(rows.visual_object_attempts.length)assertRecoveredVisuals(rows,o.visualRecovery);
+ if(rows.video_visual_chunks.some(r=>r.object_version!==null)||rows.video_visual_runs.some(r=>r.publication_version!==null))assertRecoveredVisuals(rows,o.visualRecovery);
  const common=manifest.tables.filter(t=>t.target!==null),order=names.filter(n=>common.some(t=>t.source===n));
  const plans=order.map(name=>{const table=common.find(t=>t.source===name)!;return {name,columns:table.columns,values:rows[name].map(row=>table.columns.map(c=>reverseMigrationValue(row[c.name],c.conversion!,c.nullable)))};});
  const owner=new Map(rows.videos.map(r=>[integer(r.id),text(r.user_id)]));
@@ -56,14 +62,15 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
  const scenes=rows.scenes.map(s=>{
   const dimensions=integer(s.dimensions),user=owner.get(integer(s.video_id)),id=text(s.id),physical=s.vector_id===null?id:text(s.vector_id),v=vectors.get(physical);
   const head=rows.video_index_heads.find(h=>h.video_id===s.video_id&&h.dimensions===dimensions),run=rows.scene_index_runs.find(r=>r.id===head?.run_id),revision=rows.video_index_versions.find(r=>r.video_id===s.video_id)?.revision;
-  if(!user||![768,1536].includes(dimensions)||!run||run.source_revision!==s.revision||revision!==s.revision||run.user_id!==user||run.video_id!==s.video_id||run.dimensions!==dimensions)fail('Scene publication or ownership mismatch.');
+  if(!user||![768,1536].includes(dimensions)||!run||run.id!==s.revision||revision!==run.source_revision||run.user_id!==user||run.video_id!==s.video_id||run.dimensions!==dimensions)fail('Scene publication or ownership mismatch.');
   if(!v||v.values.length!==dimensions||!v.values.every(x=>Number.isFinite(x)&&Number.isFinite(Math.fround(x)))||!v.values.some(x=>Math.fround(x)!==0)||v.metadata.user_id!==user||v.metadata.video_id!==s.video_id||v.metadata.vector_id!==physical||v.metadata.revision!==s.revision)fail('Missing, invalid or unauthorized recovery vector.');
   convertMigrationValue(id,'uuid',false);
   return {table:dimensions===1536?'scene_embeddings':'scene_embeddings_768',values:[id,s.content,JSON.stringify(v!.values),user,s.video_id,JSON.stringify({user_id:user,video_id:s.video_id,start_time:s.start_time,end_time:s.end_time,evidence_type:s.evidence_type})]};
  });
  for(const r of rows.scene_index_runs){const h=rows.video_index_heads.find(h=>h.run_id===r.id);if(h&&rows.scenes.filter(s=>s.video_id===r.video_id&&s.dimensions===r.dimensions).length!==r.expected_scenes)fail('Published scene count mismatch.');}
  const serde=new JsonPlusSerializer();
- const decode=async(type:unknown,value:unknown)=>{if(type!=='json'&&type!=='bytes')fail('Unsupported checkpoint encoding.');if(!Array.isArray(value)||value.some(x=>!Number.isInteger(x)||Number(x)<0||Number(x)>255))fail('Invalid checkpoint bytes.');return await serde.loadsTyped(text(type),Uint8Array.from(value as number[])) as unknown;};
+ const binary=(value:unknown):Uint8Array=>{if(value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===1&&'hex' in value){const hex=text(value.hex);if(!/^(?:[a-f0-9]{2})*$/i.test(hex)||hex.length>8*1024*1024)fail('Invalid checkpoint hex bytes.');return Buffer.from(hex,'hex');}if(!Array.isArray(value)||value.some(x=>!Number.isInteger(x)||Number(x)<0||Number(x)>255))fail('Invalid checkpoint bytes.');return Uint8Array.from(value as number[]);};
+ const decode=async(type:unknown,value:unknown)=>{if(type!=='json'&&type!=='bytes')fail('Unsupported checkpoint encoding.');return await serde.loadsTyped(text(type),binary(value)) as unknown;};
  const checkpoints=[];
  for(const r of rows.conversation_checkpoints){const cp=await decode(r.checkpoint_type,r.checkpoint) as Record<string,unknown>,metadata=await decode(r.metadata_type,r.metadata);if(cp.id!==r.checkpoint_id||!rows.chat_conversations.some(c=>c.thread_id===r.thread_id))fail('Checkpoint ownership or identity mismatch.');checkpoints.push({row:r,cp,metadata});}
  for(const c of rows.chat_conversations)if(c.committed_checkpoint_id!==null&&!checkpoints.some(x=>x.row.thread_id===c.thread_id&&x.row.namespace===''&&x.cp.id===c.committed_checkpoint_id))fail('Committed checkpoint is missing.');
@@ -76,7 +83,7 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
   await client.query('LOCK TABLE '+[...order,'scene_embeddings','scene_embeddings_768'].map(qualified).join(',')+' IN ACCESS EXCLUSIVE MODE');
   for(const n of ['checkpoint_writes','checkpoint_blobs','checkpoints'])await client.query('DELETE FROM '+chat(n));
   for(const n of ['scene_embeddings','scene_embeddings_768',...order.toReversed()])await client.query('DELETE FROM '+qualified(n));
-  for(const p of plans)for(const values of p.values)await client.query('INSERT INTO '+qualified(p.name)+' ('+p.columns.map(c=>q(c.name)).join(',')+') VALUES ('+values.map((_,i)=>'$'+(i+1)).join(',')+')',values);
+  for(const p of plans)for(const values of p.values)await client.query('INSERT INTO '+qualified(p.name)+' ('+p.columns.map(c=>q(c.name)).join(',')+') OVERRIDING SYSTEM VALUE VALUES ('+values.map((_,i)=>'$'+(i+1)).join(',')+')',values);
   for(const s of scenes)await client.query('INSERT INTO '+qualified(s.table)+' (langchain_id,content,embedding,user_id,video_id,langchain_metadata) VALUES ($1,$2,$3,$4,$5,$6)',s.values);
   const blobIdentities=new Map<string,string>();
   for(const {row:r,cp,metadata} of checkpoints){
@@ -91,7 +98,7 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
    const payload={...cp};delete payload.channel_values;
    await client.query('INSERT INTO '+chat('checkpoints')+' (thread_id,checkpoint_ns,checkpoint_id,parent_checkpoint_id,checkpoint,metadata) VALUES ($1,$2,$3,$4,$5,$6)',[r.thread_id,r.namespace,r.checkpoint_id,r.parent_id,JSON.stringify(payload),JSON.stringify(metadata)]);
   }
-  for(const r of writes)await client.query('INSERT INTO '+chat('checkpoint_writes')+' (thread_id,checkpoint_ns,checkpoint_id,task_id,idx,task_path,channel,type,blob) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',[r.thread_id,r.namespace,r.checkpoint_id,r.task_id,r.idx,r.task_path,r.channel,r.value_type,Buffer.from(r.value as number[])]);
+  for(const r of writes)await client.query('INSERT INTO '+chat('checkpoint_writes')+' (thread_id,checkpoint_ns,checkpoint_id,task_id,idx,task_path,channel,type,blob) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',[r.thread_id,r.namespace,r.checkpoint_id,r.task_id,r.idx,r.task_path,r.channel,r.value_type,Buffer.from(binary(r.value))]);
   const verified=[];
   for(const p of plans){
    const table=common.find(t=>t.source===p.name)!;
@@ -101,7 +108,7 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
    const digest=(v:unknown[])=>recoveryHash(v.map(v=>JSON.stringify(stable(v))).sort());if(digest(actual)!==digest(expected))fail('Recovered table equality check failed.');verified.push({table:p.name,rows:actual.length,sha256:digest(actual)});
   }
   // ALTER SEQUENCE RESTART participates in this transaction; setval would not.
-  for(const p of plans)for(const c of p.columns){const sequence=(await client.query<{name:string|null}>('SELECT pg_get_serial_sequence($1,$2) AS name',[qualified(p.name),c.name])).rows[0].name;if(sequence){const maximum=(await client.query<{value:string|null}>('SELECT max('+q(c.name)+')::text AS value FROM '+qualified(p.name))).rows[0].value;const seq=(await client.query<{nspname:string;relname:string}>('SELECT n.nspname,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.oid=$1::regclass',[sequence])).rows[0];if(seq.nspname!==schema)fail('Sequence is outside the isolated schema.');await client.query('ALTER SEQUENCE '+q(seq.nspname)+'.'+q(seq.relname)+' RESTART WITH '+(maximum===null?'1':String(BigInt(maximum)+1n)));}}
+  for(const p of plans)for(const c of p.columns){const sequence=(await client.query<{name:string|null}>('SELECT pg_get_serial_sequence($1,$2) AS name',[qualified(p.name),c.name])).rows[0].name;if(sequence){const maximum=(await client.query<{value:string|null}>('SELECT max('+q(c.name)+')::text AS value FROM '+qualified(p.name))).rows[0].value;const seq=(await client.query<{nspname:string;relname:string}>('SELECT n.nspname,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.oid=$1::regclass',[sequence])).rows[0];if(seq.nspname!==schema)fail('Sequence is outside the isolated schema.');const supplied=text(o.sequenceHighWater?.[p.name]);if(!/^(0|[1-9][0-9]*)$/.test(supplied)||BigInt(supplied)>=BigInt(Number.MAX_SAFE_INTEGER))fail('Observed D1 identity high-water state is required.');const prior=(await client.query<{value:string;called:boolean}>('SELECT last_value::text AS value,is_called AS called FROM '+q(seq.nspname)+'.'+q(seq.relname))).rows[0];const priorIssued=BigInt(prior.value)-(prior.called?0n:1n);const high=[BigInt(supplied),maximum===null?0n:BigInt(maximum),priorIssued].reduce((a,b)=>a>b?a:b);if(high>=BigInt(Number.MAX_SAFE_INTEGER))fail('Identity leaves no safe next integer.');await client.query('ALTER SEQUENCE '+q(seq.nspname)+'.'+q(seq.relname)+' RESTART WITH '+String(high+1n));}}
   await client.query('COMMIT');return {commonTables:verified,scenes:scenes.length,checkpoints:checkpoints.length,pendingWrites:writes.length,sha256:recoveryHash(verified),productionSafe:false};
- }catch{await client.query('ROLLBACK');throw new PostwriteRecoveryError('Recovery transaction failed; isolated target must remain offline.');}
+ }catch(error){await client.query('ROLLBACK');throw new PostwriteRecoveryError('Recovery transaction failed; isolated target must remain offline.',{cause:error});}
 }

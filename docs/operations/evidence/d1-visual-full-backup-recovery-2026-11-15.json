@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "date": "2026-11-15",
+  "status": "passed",
+  "productionModified": false,
+  "productionCutoverPerformed": false,
+  "parentPr1448": {
+    "draft": true,
+    "ci": "SUCCESS",
+    "codeql": "SUCCESS"
+  },
+  "source": {
+    "verifiedFullBackup": true,
+    "restoredTables": 91,
+    "currentApplicationArchiveTables": 62,
+    "currentApplicationArchiveRows": 9854,
+    "preservedActualLegacyTables": 27
+  },
+  "execution": {
+    "database": "local workerd D1",
+    "objectStorage": "read-only production R2 source; local workerd R2 destinations",
+    "vectors": "deterministic in-memory simulator using normal index synchronizer"
+  },
+  "recovery": {
+    "commonTablesCompared": 56,
+    "scenes": 2165,
+    "checkpoints": 643,
+    "pendingWrites": 981,
+    "actualLegacy27Unchanged": true,
+    "constraintsValidated": true,
+    "repeatSameFingerprint": true,
+    "postgresOwnerAndImageReader": true,
+    "identitySequencesPreserved": 13,
+    "priorHeadsAboveExistingRows": 6,
+    "sequenceStateCaveat": "derived from verified archive floors and controlled writes; not exported from live D1"
+  },
+  "visual": {
+    "objects": 14,
+    "bytes": 9103830,
+    "sha256": "3241bd8a0b38cf5f88b447a08c4e88038191d2a6566e9876c1f033da531b3a0a",
+    "sourceErrorRuns": 5,
+    "syntheticReadyRuns": 1,
+    "browser": {
+      "syntheticImageOnly": true,
+      "loaded": true,
+      "naturalWidth": 64,
+      "naturalHeight": 64,
+      "visualInspectionPassed": true
+    }
+  },
+  "validation": {
+    "unitTestsPassed": 30,
+    "identityIntegrationTestsPassed": 1,
+    "typecheck": "passed",
+    "targetedLint": "passed",
+    "identityIntegrationReadsActualSqliteSequence": true
+  },
+  "cleanup": {
+    "containerRemoved": true,
+    "anonymousVolumesRemoved": true,
+    "copiedDatabaseCredentialRemoved": true,
+    "productionModified": false,
+    "cloudResourcesCreated": 0,
+    "browserWorkspaceFinished": true
+  },
+  "remainingGates": [
+    "consistent snapshot and external writer fence",
+    "real OAuth and cookies",
+    "queues and external side effects",
+    "RTO/RPO",
+    "performance, retrieval quality and budget"
+  ],
+  "failedAttempts": [
+    "unpaged checkpoint export exceeded workerd memory",
+    "unsupported compatibility date",
+    "scene source revision differs from publication ID",
+    "GENERATED ALWAYS identity insert rolled back",
+    "old Miniflare persistence option ignored; recopied readonly source",
+    "integration fixture mandatory columns corrected"
+  ]
+}
