@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "date": "2026-11-15",
+  "status": "passed",
+  "syntheticOnly": true,
+  "productionModified": false,
+  "productionCutoverPerformed": false,
+  "execution": {
+    "queue": "real AWS SQS Standard in ap-northeast-1",
+    "sourceDatabase": "local workerd D1",
+    "recoveryDatabase": "isolated loopback PostgreSQL/pgvector",
+    "consumer": "local test driver with real application JobRepositories",
+    "lambdaInvoked": false,
+    "modelCalls": 0
+  },
+  "checks": {
+    "sourceJobs": 2,
+    "commonTablesRestored": 56,
+    "uniqueSqsMessagesSentAndAcknowledged": 14,
+    "explicitDuplicateMessages": 12,
+    "lostAckRedeliveryReceiveCountAtLeast": 3,
+    "freshRecoveryClaims": 1,
+    "duplicateFreshClaims": 0,
+    "staleLeaseRejected": true,
+    "retryAttemptsAfterReplay": 2,
+    "completedAttemptsAfterReplay": 1,
+    "finalLongPollEmpty": true
+  },
+  "validation": {
+    "remoteTestFilesPassed": 1,
+    "remoteTestsPassed": 1,
+    "apiTypecheck": "passed",
+    "targetedLint": "passed",
+    "ordinaryCiWithoutOptIn": "skip; not counted as remote success"
+  },
+  "cleanup": {
+    "ownedQueueDeletedAndAbsent": true,
+    "containerAndVolumesDeleted": true,
+    "copiedDatabaseCredentialRemoved": true,
+    "productionModified": false
+  },
+  "limitations": [
+    "No Lambda event-source mapping stop/restart",
+    "No Python Worker or internal HTTP API",
+    "No ASR/embedding/model calls",
+    "No Stripe or other business side-effect replay",
+    "No production writer fence",
+    "No production RTO/RPO",
+    "No new latency or cost measurement"
+  ]
+}

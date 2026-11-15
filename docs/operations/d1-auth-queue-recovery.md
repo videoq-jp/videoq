@@ -46,3 +46,5 @@ npx --no-install vitest run test/persistence/d1-auth-queue-recovery.integration.
 | 費用 | [容量・料金試算](evidence/d1-v3-capacity-cost-assessment-2026-11-14.json)は既存条件の例。実トラフィック・全サービス費用・月額上限の受け入れは未完了 |
 
 性能・予算の停止条件を認証テストの成功で解除しない。旧27テーブルの保管方針、完全バックアップ、本番Neonの正本は維持する。
+
+後続の[実SQS再配送試験](d1-sqs-recovery-replay.md)で、キューのメッセージを残したDB復旧、ACK欠落、12件の重複配送を確認した。consumerはローカルの検証driverであり、Lambdaや外部副作用の再開条件は残る。
