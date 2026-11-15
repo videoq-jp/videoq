@@ -327,7 +327,7 @@ resource "aws_iam_role_policy" "broker" {
     { Effect = "Allow", Action = ["codebuild:ListBuildsForProject"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["codebuild:BatchGetBuilds"], Resource = local.project_arns }
     ], each.key == "maintenance" && var.enable_cutover_consumer_control ? [
-    { Effect = "Allow", Action = ["states:RedriveExecution"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" }
+    { Effect = "Allow", Action = ["states:RedriveExecution", "states:DescribeStateMachineForExecution"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" }
   ] : []) })
 }
 resource "aws_lambda_function" "broker" {

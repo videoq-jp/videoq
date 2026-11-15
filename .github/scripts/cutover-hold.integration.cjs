@@ -29,7 +29,7 @@ after(async()=>{
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],'cutover-hold-ddb-fixture');await docker(['rm','--force','--volumes',name]);}
  catch(error){if(!String(error.stderr||'').includes('No such object'))throw error;}
 }, {timeout:30000});
-async function fixture({consumerControlEnabled=false,listBuilds}={}){
+async function fixture({consumerControlEnabled=false,listBuilds,boundDefinition}={}){
  const table='videoq_hold_'+randomUUID().replaceAll('-','');
  await client.send(new sdk.CreateTableCommand({TableName:table,BillingMode:'PAY_PER_REQUEST',KeySchema:[{AttributeName:'pk',KeyType:'HASH'}],AttributeDefinitions:[{AttributeName:'pk',AttributeType:'S'}]}));
  const states=new Map(),calls=[],redrives=new Map();let active=false,describe;
@@ -37,6 +37,7 @@ async function fixture({consumerControlEnabled=false,listBuilds}={}){
   calls.push({service,command,value});
   if(service==='ddb')return client.send(new sdk[command+'Command'](value));
   if(service==='codebuild')return command==='ListBuildsForProject'?(listBuilds?listBuilds(value):{ids:active?['owned-test-build']:[]}):{builds:value.ids.map(id=>({buildComplete:!active&&id!=='active-late'}))};
+  if(service==='sfn'&&command==='DescribeStateMachineForExecution')return {definition:JSON.stringify(typeof boundDefinition==='function'?boundDefinition(table):boundDefinition??definition({table,projects:{}}))};
   if(service==='sfn'&&command==='RedriveExecution'){redrives.set(value.executionArn,(redrives.get(value.executionArn)??0)+1);states.set(value.executionArn,'RUNNING');return {}; }
   if(service==='sfn'&&command==='StartExecution'){states.set(executionArn(MACHINE,value.name),'RUNNING');return {};}
   if(service==='sfn'&&command==='DescribeExecution'){
@@ -45,7 +46,7 @@ async function fixture({consumerControlEnabled=false,listBuilds}={}){
   }
   throw Error('Unexpected test AWS operation');
  };
- const broker=createBroker(aws,{table,machine:MACHINE,projects:['rotation','migration'],consumerControlEnabled,allowedKinds:['rotate','rollback','audit','migration','backup','smoke','deploy',HOLD_KIND]},async()=>SHA);
+ const broker=createBroker(aws,{table,machine:MACHINE,projects:['rotation','migration'],consumerControlEnabled,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table,projects:{}})),allowedKinds:['rotate','rollback','audit','migration','backup','smoke','deploy',HOLD_KIND]},async()=>SHA);
  const get=async key=>(await client.send(new sdk.GetItemCommand({TableName:table,Key:{pk:{S:key}},ConsistentRead:true}))).Item;
  const put=Item=>client.send(new sdk.PutItemCommand({TableName:table,Item}));
  const start=()=>broker({action:'start',kind:HOLD_KIND,source_sha:SHA,client_token:'b'.repeat(32)});
@@ -242,4 +243,10 @@ test('redrive checks older build pages before accepting that no build remains ac
   const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run).run();await f.broker({action:'pause-cutover-consumers',run_id:run});f.states.set(executionArn(MACHINE,'db-'+run),'FAILED');includeOlder=true;
   await assert.rejects(f.broker({action:'retry-cutover-consumers',run_id:run}),/PREVIOUS_BUILD_STILL_RUNNING/);assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,0);assert.ok(f.calls.some(c=>c.command==='ListBuildsForProject'&&c.value.nextToken==='older'));assert.ok(await f.get('maintenance'));
  }finally{await f.close();}
+});
+test('an old or different execution definition cannot enter consumer mutation phases',async()=>{
+ for(const boundDefinition of [{StartAt:'Old',States:{Old:{Type:'Succeed'}}},table=>{const spec=definition({table,projects:{}});spec.States.ReleaseCutoverHold.Parameters.TransactItems[0].ConditionCheck.ConditionExpression='attribute_exists(pk)';return spec;}]){
+  const f=await fixture({consumerControlEnabled:true,boundDefinition});
+  try{const {run_id:run}=await f.start();await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run).run();await assert.rejects(f.broker({action:'pause-cutover-consumers',run_id:run}),/DEFINITION_MISMATCH/);assert.equal((await f.get('run#'+run)).cutover_phase.S,'holding');assert.equal(f.calls.filter(c=>c.command==='RedriveExecution').length,0);}finally{await f.close();}
+ }
 });

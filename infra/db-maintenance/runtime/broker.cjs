@@ -3,7 +3,7 @@ const {randomBytes, createHash} = require('node:crypto');
 const {REGION, REPOSITORY, HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
 const {createCutoverHoldControl,consumerPlanPrepared} = require('./cutover-hold.cjs');
 function createBroker(aws, configuration, fetchMain = currentMain) {
-  const {table, machine, projects, allowedKinds, consumerControlEnabled=false} = configuration;
+  const {table, machine, projects, allowedKinds, consumerControlEnabled=false, expectedDefinitionHash} = configuration;
   const get = key => aws('ddb', 'GetItem', {TableName: table, Key: {pk: {S: key}}, ConsistentRead: true});
   async function execution(lock) {
     try { return await aws('sfn', 'DescribeExecution', {executionArn: lock.execution_arn.S}); }
@@ -40,7 +40,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       || row.execution_arn?.S !== arn || row.source_sha?.S !== source || row.cutover_phase?.S !== 'holding') throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
     if (row.release_requested?.BOOL !== false) throw new Error('CUTOVER_HOLD_RELEASE_REQUESTED');
   }
-  const control = createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled});
+  const control = createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled, expectedDefinitionHash});
   return async event => {
     const request = input(event, allowedKinds);
     if (request.action !== 'start' && request.action !== 'status') return control(request);

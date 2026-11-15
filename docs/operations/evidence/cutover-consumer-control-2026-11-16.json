@@ -2,7 +2,7 @@
   "date": "2026-11-16",
   "localNodeVersion": "26.12.0",
   "localPythonVersion": "3.12",
-  "dynamoDbTests": 19,
+  "dynamoDbTests": 20,
   "integrationTransports": {
     "dynamodb": "actual DynamoDB Local",
     "sfn": "mocked",
@@ -53,8 +53,11 @@
   "changedDatabaseHandoffImplemented": false,
   "sourceHashes": {
     ".github/scripts/cutover-consumer-control.cjs": "60bded0a9b60312b7e735cc6074f6ce1dcd7dcac039e82a2e79010744b208684",
-    "infra/db-maintenance/runtime/cutover-hold.cjs": "53d94d3ac38e2a96682950d96f24b70aae004c13bcd2572d74a2f17317b5d3b4",
-    "infra/db-maintenance/runtime/broker.cjs": "c192af0d08b5638ed6d0d536018b405d40aa98e4a4df324a362b94a41b0658c3",
-    "infra/db-maintenance/state-machine.cjs": "7baae49a652dc80353d1b896fab53436f4421d362208fc171b015ae60695fc5e"
-  }
+    "infra/db-maintenance/runtime/cutover-hold.cjs": "435a2dd3eb8cbea464064af7c2d3d819ddbdffcf323991f65772db2b9c6a11a3",
+    "infra/db-maintenance/runtime/broker.cjs": "ce337061714951bb90d98dfd27bee3ecae36250f419a01091716909790b7a2a7",
+    "infra/db-maintenance/state-machine.cjs": "7baae49a652dc80353d1b896fab53436f4421d362208fc171b015ae60695fc5e",
+    "infra/db-maintenance/build_bundle.py": "40862aeee94d716de015ad0d789c7bc7ea606a9391c782217cc8b7ac402abe97",
+    "infra/db-maintenance/terraform/main.tf": "e05707683f82932721a962be04f4170fcde235cc83dc67849cdb172dea868df9"
+  },
+  "executionDefinitionGuard": "canonical full-definition hash; rejects old definition and altered release predicate"
 }

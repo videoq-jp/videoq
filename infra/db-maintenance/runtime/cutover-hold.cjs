@@ -9,7 +9,11 @@ function consumerPlanPrepared(row) {
     || createHash('sha256').update(row.consumer_plan.S).digest('hex') !== row.consumer_plan_sha256.S) throw new Error('INVALID_CONSUMER_PLAN_RECORD');
   return true;
 }
-function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled=false}) {
+function definitionHash(value) {
+  const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+  return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+}
+function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled=false, expectedDefinitionHash}) {
   function checked(row, run) {
     const arn = executionArn(machine, 'db-' + run);
     if (row?.pk?.S !== 'run#'+run || row?.kind?.S !== HOLD_KIND || row.execution_arn?.S !== arn || !/^[a-f0-9]{40}$/.test(row.source_sha?.S || '')
@@ -56,6 +60,10 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
     }
     let status = await describe(arn);
     if (mutationAction) {
+      const expected=expectedDefinitionHash??require('./cutover-definition.json').sha256;
+      if(!/^[a-f0-9]{64}$/.test(expected??''))throw new Error('INVALID_CUTOVER_DEFINITION_PIN');
+      const bound=await aws('sfn','DescribeStateMachineForExecution',{executionArn:arn});
+      if(typeof bound.definition!=='string'||definitionHash(JSON.parse(bound.definition))!==expected)throw new Error('CUTOVER_EXECUTION_DEFINITION_MISMATCH');
       if (owner?.execution_arn?.S !== arn || owner.kind?.S !== HOLD_KIND || row.release_requested.BOOL || row.database_mutations_started?.BOOL !== false || !consumerPlanPrepared(row)) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       if (request.action === 'retry-cutover-consumers') {
         if (!['consumers-pausing','consumers-paused','consumers-resuming'].includes(row.cutover_phase.S) || !/^[a-f0-9]{32}$/.test(row.consumer_action_id?.S ?? '')) throw new Error('INVALID_CONSUMER_RETRY_PHASE');
@@ -121,4 +129,4 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
     return {run_id:run,status:'RECOVERED',execution_status:status};
   };
 }
-module.exports = {createCutoverHoldControl,consumerPlanPrepared};
+module.exports = {createCutoverHoldControl,consumerPlanPrepared,definitionHash};

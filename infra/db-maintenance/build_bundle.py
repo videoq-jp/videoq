@@ -73,10 +73,14 @@ def main():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
     broker = [(runtime / name, name) for name in ["broker.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
+    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
+    canonical = json.dumps(json.loads(definition), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    pin = directory / "cutover-definition.json"
+    pin.write_text(json.dumps({"sha256": hashlib.sha256(canonical.encode()).hexdigest()}) + "\n")
+    broker.append((pin, "cutover-definition.json"))
     operator_hash = archive(directory / "operator.zip", operator_files())
     broker_hash = archive(directory / "broker.zip", broker)
     manifest = {"source_commit": source, "dirty": bool(dirty), "operator_sha256": operator_hash, "broker_sha256": broker_hash}
-    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
     (directory / "state-machine.json").write_text(definition)
     manifest["state_machine_sha256"] = hashlib.sha256(definition.encode()).hexdigest()
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
