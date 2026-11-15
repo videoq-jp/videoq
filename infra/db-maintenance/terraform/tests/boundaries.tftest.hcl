@@ -252,3 +252,34 @@ run "cutover_hold_opt_in_is_narrow" {
     error_message = "Opt-in adds only the run-record transaction predicate; no DB or credential grants."
   }
 }
+
+run "d1_migration_permissions_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "/videoq/security/prod/d1-migration")])
+    error_message = "The D1-only migration credential must remain unavailable by default."
+  }
+}
+
+run "d1_migration_permissions_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_d1_migrations     = true
+  }
+  assert {
+    condition     = alltrue([for purpose, policy in aws_iam_role_policy.build : (purpose == "migration") == strcontains(policy.policy, "/videoq/security/prod/d1-migration")])
+    error_message = "Only the fixed migration project may read its D1 credential."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["migration"].policy).Statement : statement
+      if statement.Action == ["dynamodb:GetItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn && statement.Condition["ForAllValues:StringLike"]["dynamodb:LeadingKeys"] == ["maintenance", "run#*"]
+    ]) == 1
+    error_message = "D1 migration can only read the existing lock/run records, never release or replace them."
+  }
+}

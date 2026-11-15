@@ -1,3 +1,9 @@
+variable "enable_d1_migrations" {
+  type        = bool
+  default     = false
+  description = "Allow the fixed migration job to read its D1-only credential and verify existing lock ownership."
+}
+
 variable "operator_zip" {
   type = string
 }
@@ -182,7 +188,11 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["lambda:GetFunctionConfiguration", "lambda:UpdateFunctionConfiguration"], Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:lambda:${local.region}:${local.account}:function:${name}"] },
       { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } } }
-    ] : permission if each.key == "rotation"], each.key == "backup" && var.retain_verified_backups ? [
+      ] : permission if each.key == "rotation"], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
+      { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
+    ] : permission if each.key == "migration" && var.enable_d1_migrations], each.key == "backup" && var.retain_verified_backups ? [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
   ] : []) })
 }

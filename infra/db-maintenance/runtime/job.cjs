@@ -110,10 +110,8 @@ async function main() {
     execFileSync('npm', ['ci', '--ignore-scripts', '--prefix', '.github/deploy-tools'], {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024});
     execFileSync('npm', ['audit', 'signatures', '--prefix', '.github/deploy-tools'], {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024});
     execFileSync('ln', ['-s', '.github/deploy-tools/node_modules', 'node_modules'], {cwd, stdio: ['ignore','pipe','pipe']});
-    execFileSync('python3', [resolve('.github/scripts/with-neon-credentials.py'), 'migration', 'sh', 'apps/api/scripts/db-migrate.sh'],
-      {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024, env: {...process.env,
-        STRUCTURED_ANSWER_WRITERS_STOPPED: process.env.MAINTENANCE_WRITERS_STOPPED === 'true' ? '1' : '0'}});
-    console.log('Canonical-main database migration succeeded: ' + source); return;
+    const result = await require('../../../.github/scripts/aws-canonical-migration.cjs').runCanonicalMigration({root:cwd});
+    console.log('Canonical-main database migration succeeded: ' + result.backend + ' ' + source); return;
   }
   throw new Error('UNKNOWN_AWS_JOB_STAGE');
 }
