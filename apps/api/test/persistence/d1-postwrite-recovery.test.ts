@@ -44,4 +44,10 @@ describe('bounded postwrite recovery',()=>{
   expect(canonicalRecoveryJson('null')).not.toEqual(canonicalRecoveryJson('"null"'));
  });
 
+ it('requires a matching disposable database before public-schema restoration',async()=>{
+  const query=vi.fn().mockResolvedValue({rows:[{name:'production'}]}),client={query,connectionParameters:{host:'127.0.0.1'}} as unknown as pg.Client;
+  const manifest=buildMigrationManifest({dialect:'postgresql',tables:{}},{dialect:'sqlite',tables:{}});
+  await expect(restorePostwriteSnapshot({client,schema:'public',checkpointSchema:'chat_memory',restoredDatabase:'recovery_'+'a'.repeat(32),manifest,rows:{},vectors:[],writersFenced:true})).rejects.toThrow('database fence');expect(query).toHaveBeenCalledExactlyOnceWith('SELECT current_database() AS name');
+ });
+
 });
