@@ -10,6 +10,8 @@ from worker_python.advisory_locks import full_vector_write_lock
 from worker_python.pipeline import vector_index
 from worker_python.video_sql import VideoRow, stream_completed_videos_with_transcript
 from worker_python.db import db_connection
+from worker_python.internal_api import call_internal_api, uses_internal_persistence
+from worker_python.pipeline.embedding_contract import resolve_embedding_config
 from worker_python.contracts import JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, JOB_REINDEX_VIDEO_TRANSCRIPT
 from worker_python.job_routing import queue_url_for_job
 from worker_python.sqs_enqueue import child_job_id, enqueue_job
@@ -27,7 +29,11 @@ def reindex_all_videos_embeddings(
     """Regenerate embedding vectors for all completed videos."""
     logger.info("Re-indexing task started")
 
-    if queue_url_for_job(JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS):
+    cloud = uses_internal_persistence()
+    queue = queue_url_for_job(JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS)
+    if cloud and not queue:
+        raise RuntimeError("Cloud full reindex requires a search queue")
+    if queue:
         if not job_id:
             raise ValueError("Queued full reindex requires a stable parent job_id")
         _dispatch_page(after_id, root_job_id or job_id)
@@ -42,19 +48,24 @@ def _dispatch_page(after_id: int, job_id: str) -> None:
     # Only IDs cross the dispatcher; transcripts and embedding API work belong
     # to individual jobs. Bound both DB reads and SQS sends per invocation.
     page_size = 25
-    with db_connection() as conn:
-        rows = conn.execute(
-            """SELECT id FROM videos
-                 WHERE id > %s AND status = 'completed'
-                   AND transcript IS NOT NULL AND transcript <> ''
-                 ORDER BY id LIMIT %s""",
-            (after_id, page_size + 1),
-        ).fetchall()
-
-    # Fail this page before publishing any children if every index operation
-    # would fail on the same storage contract. Recheck on continuation pages too.
-    if rows:
-        vector_index.check_embedding_storage()
+    if uses_internal_persistence():
+        config = resolve_embedding_config()
+        ids = call_internal_api("reindex/page", {"afterId":after_id,"dimensions":config.dimensions,
+            "profile":config.profile,"model":config.model}).get("ids")
+        if (not isinstance(ids,list) or len(ids)>page_size+1
+                or any(type(value) is not int or value<=after_id or value>2**53-1 for value in ids)
+                or ids != sorted(set(ids))):
+            raise RuntimeError("Invalid reindex page response")
+        rows = [{"id":value} for value in ids]
+    else:
+        with db_connection() as conn:
+            rows = conn.execute(
+                """SELECT id FROM videos WHERE id > %s AND status = 'completed'
+                       AND transcript IS NOT NULL AND transcript <> '' ORDER BY id LIMIT %s""",
+                (after_id,page_size+1),
+            ).fetchall()
+        if rows:
+            vector_index.check_embedding_storage()
 
     def send(kind: str, payload: dict) -> None:
         if not enqueue_job(kind, payload, job_id=child_job_id(job_id, kind, payload)):

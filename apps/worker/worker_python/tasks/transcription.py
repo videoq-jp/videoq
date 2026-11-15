@@ -9,6 +9,7 @@ from worker_python.contracts import JOB_INDEX_VIDEO_TRANSCRIPT
 from worker_python.db import db_connection
 from worker_python.env import heavy_pipeline_enabled
 from worker_python.pipeline.transcription import run_transcription
+from worker_python.internal_api import uses_internal_persistence
 from worker_python.pipeline.user_secret_envelope import try_decrypt
 from worker_python.sqs_enqueue import child_job_id, enqueue_job
 from worker_python.tasks.indexing import index_video_transcript
@@ -63,6 +64,11 @@ def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
     then enqueue (or inline-run) indexing.
     """
     logger.info("Transcription task started for video ID: %d", video_id)
+
+    if uses_internal_persistence():
+        from worker_python.tasks.cloud_transcription import transcribe_cloud_video
+        transcribe_cloud_video(video_id)
+        return
 
     with db_connection() as conn:
         video = get_video_for_task(conn, video_id, include_transcript=False)
@@ -119,12 +125,12 @@ def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
         def reserve_processing(seconds: int) -> None:
             with db_connection() as conn:
                 reservation = reserve_processing_seconds(conn, video_id, seconds)
-                if not reservation.allowed:
-                    limit = reservation.limit_seconds
-                    detail = "unlimited" if limit is None else f"{limit} seconds"
-                    raise ProcessingQuotaExceededError(
-                        f"Processing quota exceeded (limit: {detail})"
-                    )
+            if not reservation.allowed:
+                limit = reservation.limit_seconds
+                detail = "unlimited" if limit is None else f"{limit} seconds"
+                raise ProcessingQuotaExceededError(
+                    f"Processing quota exceeded (limit: {detail})"
+                )
 
         transcript = run_transcription(
             video,

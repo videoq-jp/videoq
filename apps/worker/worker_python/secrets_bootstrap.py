@@ -13,6 +13,7 @@ import os
 from contextlib import closing
 
 from worker_python.env import credential_pair
+from worker_python.internal_api import uses_internal_persistence
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ _LOADED = False
 
 # Canonical app-secret key → process env (skip if already set).
 _APP_ENV_MAP = {
+    "WORKER_INTERNAL_API_SECRET": "WORKER_INTERNAL_API_SECRET",
     "OPENAI_API_KEY": "OPENAI_API_KEY",
     "OPENROUTER_API_KEY": "OPENROUTER_API_KEY",
     "OPENROUTER_FEDERATION_POLICY_ID": "OPENROUTER_FEDERATION_POLICY_ID",
@@ -54,7 +56,7 @@ def ensure_secrets_loaded() -> None:
 
     db_param = (
         ""
-        if os.environ.get("DATABASE_URL", "").strip()
+        if uses_internal_persistence() or os.environ.get("DATABASE_URL", "").strip()
         else _param_ref("DB_PARAM_NAME", "DB_SECRET_ARN")
     )
     app_param = _param_ref("APP_PARAM_NAME", "APP_SECRET_ARN")

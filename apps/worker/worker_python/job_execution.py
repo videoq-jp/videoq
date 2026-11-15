@@ -8,6 +8,7 @@ import uuid
 from typing import Any
 
 from worker_python.db import db_connection
+from worker_python.internal_api import call_internal_api, uses_internal_persistence
 
 # Lambda is capped at 15 minutes; SQS visibility is at least six times as long.
 JOB_LEASE_SECONDS = 15 * 60
@@ -38,6 +39,21 @@ def claim_job_execution(
 ) -> str | None:
     """Claim new/failed/expired work; completed duplicates return None, active ones retry."""
     payload_hash = _payload_sha256(job_type, payload)
+    if uses_internal_persistence():
+        result = call_internal_api("claim", {
+            "jobId": job_id, "jobType": job_type, "payloadSha256": payload_hash,
+        })
+        status = result.get("status")
+        if status == "completed":
+            return None
+        if status == "busy":
+            raise JobExecutionBusyError(f"Job execution is still running: {job_id}")
+        if status == "conflict":
+            raise JobIdentityConflictError(f"Job identity conflict: {job_id}")
+        token = result.get("leaseToken")
+        if status != "claimed" or not isinstance(token, str) or not token:
+            raise RuntimeError("Invalid job claim response")
+        return token
     lease_token = str(uuid.uuid4())
 
     with db_connection() as conn:
@@ -97,6 +113,11 @@ def claim_job_execution(
 
 
 def complete_job_execution(job_id: str, lease_token: str) -> None:
+    if uses_internal_persistence():
+        result = call_internal_api("complete", {"jobId": job_id, "leaseToken": lease_token})
+        if result.get("updated") is not True:
+            raise RuntimeError(f"Job execution lease was lost: {job_id}")
+        return
     with db_connection() as conn:
         completed = conn.execute(
             """
@@ -119,6 +140,10 @@ def complete_job_execution(job_id: str, lease_token: str) -> None:
 
 
 def fail_job_execution(job_id: str, lease_token: str, error: str) -> None:
+    if uses_internal_persistence():
+        call_internal_api("fail", {"jobId": job_id, "leaseToken": lease_token,
+                                   "errorCode": "WORKER_EXECUTION_FAILED"})
+        return
     with db_connection() as conn:
         conn.execute(
             """

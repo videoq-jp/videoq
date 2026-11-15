@@ -6,6 +6,7 @@ import logging
 
 from worker_python.advisory_locks import video_vector_write_lock
 from worker_python.db import db_connection
+from worker_python.internal_api import uses_internal_persistence
 from worker_python.pipeline import vector_index
 from worker_python.video_sql import get_video_for_task
 
@@ -15,6 +16,11 @@ logger = logging.getLogger(__name__)
 def reindex_video_transcript(video_id: int) -> None:
     """Atomically replace this video's index, or remove it for a cleared transcript."""
     logger.info("Reindex transcript task started for video ID: %d", video_id)
+
+    if uses_internal_persistence():
+        from worker_python.pipeline.cloud_scene_index import reindex_cloud_video
+        reindex_cloud_video(video_id)
+        return
 
     with video_vector_write_lock(video_id):
         with db_connection() as conn:

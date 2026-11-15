@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +12,70 @@ import pytest
 
 from worker_python.contracts import JOB_DELETE_ACCOUNT_DATA, JOB_INDEX_VIDEO_TRANSCRIPT, JOB_TRANSCRIBE_VIDEO
 from worker_python.lambda_handler import _execute_task
+from worker_python.lambda_handler import handler
 from worker_python.tasks import indexing, transcription
+
+
+def test_failed_task_diagnostics_do_not_reach_logs_or_delivery_records(caplog) -> None:
+    canary = "synthetic-private-provider-token-and-SQL-parameters"
+    body = json.dumps({"type": JOB_TRANSCRIBE_VIDEO, "job_id": "redaction-failure", "payload": {"video_id": 42}})
+    with (
+        patch("worker_python.lambda_handler.ensure_secrets_loaded"),
+        patch("worker_python.lambda_handler.claim_job_execution", return_value="lease"),
+        patch("worker_python.lambda_handler.get_task") as task,
+        patch("worker_python.lambda_handler.fail_job_execution") as fail,
+        caplog.at_level(logging.INFO, logger="worker_python.lambda_handler"),
+    ):
+        task.return_value.side_effect = RuntimeError(canary)
+        result = handler({"Records": [{"messageId": "message-1", "body": body}]}, None)
+    assert result == {"batchItemFailures": [{"itemIdentifier": "message-1"}]}
+    fail.assert_called_once_with("redaction-failure", "lease", "WORKER_EXECUTION_FAILED")
+    assert canary not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+
+
+def test_bookkeeping_failures_are_redacted_and_other_deliveries_still_run(caplog) -> None:
+    canary = "synthetic-private-failure-record-SQL-token"
+    body = json.dumps({"type": JOB_INDEX_VIDEO_TRANSCRIPT, "job_id": "record-failure", "payload": {"video_id": 42}})
+    with (
+        patch("worker_python.lambda_handler.ensure_secrets_loaded"),
+        patch("worker_python.lambda_handler.claim_job_execution", side_effect=["lease", None]),
+        patch("worker_python.lambda_handler.get_task") as task,
+        patch("worker_python.lambda_handler.fail_job_execution", side_effect=RuntimeError(canary)),
+        caplog.at_level(logging.INFO, logger="worker_python.lambda_handler"),
+    ):
+        task.return_value.side_effect = RuntimeError(canary)
+        result = handler({"Records": [{"messageId": "failed", "body": body}, {"messageId": "duplicate", "body": body}]}, None)
+    assert result == {"batchItemFailures": [{"itemIdentifier": "failed"}]}
+    assert canary not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+
+
+def test_dispatch_logs_do_not_copy_job_payload(caplog) -> None:
+    canary = "synthetic-private-account-owner"
+    body = json.dumps({"type": JOB_DELETE_ACCOUNT_DATA, "job_id": "dispatch-redaction", "payload": {"user_id": canary}})
+    with (
+        patch("worker_python.lambda_handler.claim_job_execution", return_value=None),
+        caplog.at_level(logging.INFO, logger="worker_python.lambda_handler"),
+    ):
+        _execute_task(body)
+    assert "Dispatching task" in caplog.text
+    assert canary not in caplog.text
+
+
+@pytest.mark.parametrize("origin,secret", [("", "a" * 40), ("http://api.example.test", "a" * 40), ("https://api.example.test", "short")])
+def test_invalid_cloud_configuration_fails_before_accepting_even_an_empty_batch(monkeypatch, origin, secret) -> None:
+    monkeypatch.setenv("DEPLOYMENT_EDITION", "cloud")
+    monkeypatch.delenv("PERSISTENCE_BACKEND", raising=False)
+    monkeypatch.setenv("WORKER_INTERNAL_API_ORIGIN", origin)
+    monkeypatch.setenv("WORKER_INTERNAL_API_SECRET", secret)
+    with (
+        patch("worker_python.lambda_handler.ensure_secrets_loaded"),
+        patch("worker_python.lambda_handler.claim_job_execution") as claim,
+    ):
+        with pytest.raises(RuntimeError):
+            handler({"Records": []}, None)
+    claim.assert_not_called()
 
 
 @pytest.mark.parametrize("job_type", [JOB_TRANSCRIBE_VIDEO, JOB_INDEX_VIDEO_TRANSCRIPT])
@@ -180,7 +244,7 @@ def test_execute_task_releases_lease_for_sqs_retry_on_failure() -> None:
         with pytest.raises(RuntimeError, match="boom"):
             _execute_task(body)
 
-    fail.assert_called_once_with("job-failed", "lease-failed", "boom")
+    fail.assert_called_once_with("job-failed", "lease-failed", "WORKER_EXECUTION_FAILED")
 
 
 @pytest.mark.parametrize(
