@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-16",
+  "method": "Same private Worker, cyclic order of PG / current serial D1 / bounded parallel D1 prototype for each query; fixed precomputed vectors and scopes; readonly PG snapshot and corpus fingerprint verified per batch",
+  "normalQuestions": 40,
+  "ownerNegativeCases": 40,
+  "samplesPerCase": 3,
+  "totalRepositoryCalls": 720,
+  "modelCalls": 0,
+  "sourceReadonlyAndFingerprintVerifiedAllBatches": true,
+  "placementHeaders": [
+    "remote-NRT"
+  ],
+  "metrics": {
+    "postgres": {
+      "normal": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 130,
+          "p95": 223,
+          "p99": 299
+        },
+        "vector_wait_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "d1_wait_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      },
+      "negative": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 85,
+          "p95": 93,
+          "p99": 95
+        },
+        "vector_wait_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        },
+        "d1_wait_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      }
+    },
+    "serial": {
+      "normal": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 244,
+          "p95": 305,
+          "p99": 357
+        },
+        "vector_wait_ms": {
+          "p50": 147,
+          "p95": 185,
+          "p99": 269
+        },
+        "d1_wait_ms": {
+          "p50": 91,
+          "p95": 119,
+          "p99": 173
+        }
+      },
+      "negative": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 128,
+          "p95": 146,
+          "p99": 151
+        },
+        "vector_wait_ms": {
+          "p50": 128,
+          "p95": 146,
+          "p99": 151
+        },
+        "d1_wait_ms": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0
+        }
+      }
+    },
+    "d1": {
+      "normal": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 229,
+          "p95": 477,
+          "p99": 611
+        },
+        "vector_wait_ms": {
+          "p50": 146,
+          "p95": 172,
+          "p99": 237
+        },
+        "d1_wait_ms": {
+          "p50": 215,
+          "p95": 477,
+          "p99": 611
+        }
+      },
+      "negative": {
+        "samples": 120,
+        "elapsed_ms": {
+          "p50": 126,
+          "p95": 141,
+          "p99": 261
+        },
+        "vector_wait_ms": {
+          "p50": 126,
+          "p95": 141,
+          "p99": 261
+        },
+        "d1_wait_ms": {
+          "p50": 82,
+          "p95": 85,
+          "p99": 97
+        }
+      }
+    }
+  },
+  "agreement": {
+    "serial": {
+      "normal": 120,
+      "negative": 120,
+      "set_equal": 240,
+      "exact_order": 225
+    },
+    "d1": {
+      "normal": 120,
+      "negative": 120,
+      "set_equal": 240,
+      "exact_order": 225
+    }
+  },
+  "prefetchBudget": {
+    "maxRows": 2500,
+    "maxEstimatedBytes": 2097152,
+    "normalEstimatedBytes": {
+      "p50": 558888,
+      "p95": 1884846,
+      "p99": 1884846
+    },
+    "maxObservedRows": 1336,
+    "fallbacks": 0
+  },
+  "prototypeAdopted": false,
+  "productionModified": false,
+  "temporaryWorkerDeleteSucceeded": true,
+  "workerSourceSha256": "5b842480cc42d7e2f6f23e1906b80556b434cec77b92589b26373abb1d6a7d59",
+  "prototypeSourceSha256": "8d5bd730e6887fb02de0c6740976fdceabc5213c27c1ac7be2242370ac1e4848",
+  "limitations": [
+    "Repository-only, no HTTP auth/API/Embedding/LLM timing, concurrency or controlled cold-start acceptance.",
+    "Prototype scope read all authorized scene bodies within per-query budgets; it is not the production adapter.",
+    "Only paired ordinary scopes and owner-negative cases were compared; adversarial/concurrent mutation behavior of the prototype was not accepted.",
+    "Parallel D1 read checks ownership in its own primary statement snapshot; this is not a proof of return-time linearizable revocation.",
+    "SQL and Vectorize waits overlap in the prototype; do not add stage percentiles."
+  ],
+  "temporaryWorkerAbsenceVerified": true,
+  "localBearerTokenRemoved": true
+}
