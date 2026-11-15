@@ -36,3 +36,5 @@ consumerは検証スクリプトであり、Lambda、Python Worker、HTTP内部�
 合成ジョブ2件での試験時間を本番RTOとみなさない。キューを残して復旧した間の業務書き込み元は検証スクリプトだけであり、本番の全writer fenceの実証でもない。本番D1切替・マージの停止条件は維持する。
 
 性能については既存の[段階別診断](d1-same-worker-scene-performance.md)を再確認した。東京近傍の通常検索p95は全体268ms、Vectorize binding待機137ms、D1 statement待機121msで、シンガポール配置はD1待機が短くなってもVectorize待機が増えた。異なる分布のpercentileを加算しない。metadataの`all`→`indexed`変更も検索全体の改善を証明せず、必要なscene/revision検証を欠くため採用していない。今回、新たな性能計測や認可省略による高速化は行っていない。
+
+後続の[実Lambda・署名付きHono API・D1 Time Travel復旧](d1-lambda-time-travel-recovery.md)では、専用mappingの停止・再開を別途実証した。そちらはD1内の復旧であり、本試験のD1→PostgreSQL切り戻しとは検証範囲が異なる。
