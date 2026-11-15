@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "scope": "dedicated remote D1, complete current migrations, actual operator CLI; independent management-API writes",
+  "fencedTables": 68,
+  "verifiedTriggers": 204,
+  "independentWritesRejected": 4,
+  "snapshotWhileFenced": {
+    "tables": 69,
+    "rows": 23,
+    "sha256": "f4ae60a5629a1999db6bb39431f249e99b0b016cc842e12c326eaebe53ed74cb"
+  },
+  "foreignKeyViolations": 0,
+  "explicitReleaseVerified": true,
+  "postReleaseWriteVerified": true,
+  "apiQueueSchedulerFenceTested": false,
+  "ddlBlocked": false,
+  "productionModified": false,
+  "date": "2026-11-16",
+  "localTestsPassed": 7,
+  "localTestFiles": 2,
+  "cleanup": {
+    "ownedD1Absent": true,
+    "operatorPublicWorkerAbsent": true
+  },
+  "managementIdentityChecks": {
+    "incorrectDatabaseNameRejected": true,
+    "zeroFenceTriggersAfterRejectedPrepare": true,
+    "correctManagementUuidAndNameVerified": true
+  },
+  "installationAtomicAcrossBatches": false,
+  "automaticExpiryOrRelease": false
+}
