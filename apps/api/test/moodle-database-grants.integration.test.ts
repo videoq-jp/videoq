@@ -268,8 +268,8 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
       expect(failed.errors).toContainEqual({type:'InsufficientPrivilege',sqlstate:'42501'});
       expect(await counts()).toEqual({hosted:1,local:1});
       expect((await owner.query('SELECT status FROM videos WHERE id=$1',[scope.videoId])).rows[0].status).toBe('indexing');
-      expect((await owner.query('SELECT status,attempts FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
-        .toEqual({status:'failed',attempts:1});
+      expect((await owner.query('SELECT status,attempts,last_error FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
+        .toEqual({status:'failed',attempts:1,last_error:'WORKER_EXECUTION_FAILED'});
     }finally{await owner.query('GRANT DELETE ON scene_embeddings_768 TO videoq_worker_access');}
     expect(await execute()).toEqual({batchItemFailures:[],embeddingCalls:0});
     expect(await counts()).toEqual({hosted:0,local:0});

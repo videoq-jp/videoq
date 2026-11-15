@@ -30,6 +30,24 @@ def uses_internal_persistence() -> bool:
     return backend == "d1" or edition == "cloud"
 
 
+def _settings() -> tuple[str, str]:
+    origin = os.environ.get("WORKER_INTERNAL_API_ORIGIN", "").rstrip("/")
+    parsed = urlsplit(origin)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or parsed.path or parsed.query or parsed.fragment):
+        raise RuntimeError("WORKER_INTERNAL_API_ORIGIN must be an HTTPS origin")
+    secret = os.environ.get("WORKER_INTERNAL_API_SECRET", "")
+    if len(secret.encode("utf-8")) < 32:
+        raise RuntimeError("WORKER_INTERNAL_API_SECRET must contain at least 32 bytes")
+    return origin, secret
+
+
+def validate_internal_persistence() -> None:
+    """Validate after secret bootstrap, before accepting any delivery batch."""
+    if uses_internal_persistence():
+        _settings()
+
+
 def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     account_action = action == "account-delete/step"
     scene_action = action.startswith("scene-index/")
@@ -43,14 +61,7 @@ def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
                       "checkpoints/state", "checkpoints/save", "checkpoints/failure", "checkpoints/segments", "checkpoints/reject", "checkpoints/finish", "visual/load", "visual/initialize", "visual/pending", "visual/chunks",
                       "visual/publish", "visual/ready", "visual/failure", "visual/begin-object", "reindex/page"}:
         raise ValueError("Invalid internal operation")
-    origin = os.environ.get("WORKER_INTERNAL_API_ORIGIN", "").rstrip("/")
-    parsed = urlsplit(origin)
-    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
-            or parsed.path or parsed.query or parsed.fragment):
-        raise RuntimeError("WORKER_INTERNAL_API_ORIGIN must be an HTTPS origin")
-    secret = os.environ.get("WORKER_INTERNAL_API_SECRET", "")
-    if len(secret.encode("utf-8")) < 32:
-        raise RuntimeError("WORKER_INTERNAL_API_SECRET must contain at least 32 bytes")
+    origin, secret = _settings()
     path = f"/internal/worker/{action}" if scene_action or processing_action or transcription_action or checkpoint_action or visual_action or reindex_action or account_action else f"/internal/worker/jobs/{action}"
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     request_limit = 1_900_000 if transcription_action else (1_900_000 if checkpoint_action else (1_000_000 if scene_action else 8192))

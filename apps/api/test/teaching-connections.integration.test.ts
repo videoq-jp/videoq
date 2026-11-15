@@ -122,10 +122,13 @@ const url = process.env.QUOTA_TEST_DATABASE_URL;
     const pair = await generateKeyPair('RS256');
     vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({keys:[{...await exportJWK(pair.publicKey),kid:'playback-key'}]}));
     const app = new Hono<AppEnv>().route('/api/lms/native',nativeLearningRoutes);
+    // A session keeps its original lifetime across independently signed requests.
+    const sessionStartedAt = Math.floor(Date.now()/1000)-1;
+    const sessionExpiresAt = sessionStartedAt+3600;
     async function operation(operation: string, input: object, subject = 'student') {
       const body = JSON.stringify(input), now = Math.floor(Date.now()/1000);
       const assertion = await new SignJWT({deploymentId:'1',subject,author:{name:'Learner '+subject,email:subject+'@school.example'},contextId:'class-a',resourceLinkId:'entry',
-        sessionId:'a'.repeat(64),sessionStartedAt:now-1,sessionExpiresAt:now+3599,bodySha256:await digest(body),locale:'ja',version:1})
+        sessionId:'a'.repeat(64),sessionStartedAt,sessionExpiresAt,bodySha256:await digest(body),locale:'ja',version:1})
         .setProtectedHeader({alg:'RS256',kid:'playback-key',typ:'videoq-native+jwt'}).setIssuer(site.issuer).setSubject(site.clientId)
         .setAudience('https://api.example/api/lms/native/' + operation).setIssuedAt(now).setExpirationTime(now+60).setJti(crypto.randomUUID()).sign(pair.privateKey);
       return app.request('https://api.example/api/lms/native/' + operation,{method:'POST',headers:{Authorization:'Bearer '+assertion,'Content-Type':'application/json'},body},env);

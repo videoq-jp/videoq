@@ -23,7 +23,7 @@ from worker_python.job_execution import (
     complete_job_execution,
     fail_job_execution,
 )
-from worker_python.internal_api import uses_internal_persistence
+from worker_python.internal_api import uses_internal_persistence, validate_internal_persistence
 from worker_python.secrets_bootstrap import ensure_secrets_loaded
 from worker_python.tasks.registry import get_task
 from worker_python.job_routing import job_group
@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 def handler(event: dict, context: object) -> dict:
     ensure_secrets_loaded()
+    validate_internal_persistence()
     batch_item_failures = []
 
     for record in event.get("Records", []):
@@ -41,7 +42,9 @@ def handler(event: dict, context: object) -> dict:
             _execute_task(record["body"])
             logger.info("Task completed: messageId=%s", message_id)
         except Exception:
-            logger.exception("Task failed: messageId=%s", message_id)
+            # Provider/DB exception messages can contain signed URLs, tokens or
+            # private scene data. SQS needs the failed identifier, not a trace.
+            logger.error("Task failed: messageId=%s", message_id)
             batch_item_failures.append({"itemIdentifier": message_id})
 
     return {"batchItemFailures": batch_item_failures}
@@ -76,10 +79,9 @@ def _execute_task(raw_body: str) -> None:
         raise ValueError(f"Job {job_type} does not belong to worker group {group}")
 
     logger.info(
-        "Dispatching task: type=%s id=%s payload=%s",
+        "Dispatching task: type=%s id=%s",
         job_type,
         job_id,
-        body,
     )
 
     lease_token = claim_job_execution(job_id, job_type, body)
@@ -96,9 +98,9 @@ def _execute_task(raw_body: str) -> None:
         else:
             task_fn(**body)
         complete_job_execution(job_id, lease_token)
-    except Exception as exc:
+    except Exception:
         try:
-            fail_job_execution(job_id, lease_token, str(exc))
+            fail_job_execution(job_id, lease_token, "WORKER_EXECUTION_FAILED")
         except Exception:
-            logger.exception("Failed to release execution lease: jobId=%s", job_id)
+            logger.error("Failed to release execution lease: jobId=%s", job_id)
         raise
