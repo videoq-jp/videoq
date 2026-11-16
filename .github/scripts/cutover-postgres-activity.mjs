@@ -46,7 +46,7 @@ export async function runHeldPostgresActivity({env=process.env,aws=m.aws,readPar
  const catalogOf=plan=>JSON.stringify({target:plan.target,roles:plan.roles,memberships:plan.memberships,catalogSha256:plan.catalogSha256});
  const original=originalOf(row);
  const reportOf=value=>{if(typeof value.activity_fence_plan?.S!=='string'||hash(value.activity_fence_plan.S)!==value.activity_fence_plan_sha256?.S||!BUILD.test(value.activity_build_arn?.S??''))throw Error('INVALID_ACTIVITY_FENCE_RECORD');const fence=postgresLoginFencePlanSchema.parse(JSON.parse(value.activity_fence_plan.S));if(JSON.stringify(fence.target)!==JSON.stringify(TARGET))throw Error('INVALID_ACTIVITY_FENCE_RECORD');if(typeof value.activity_report?.S!=='string'||hash(value.activity_report.S)!==value.activity_report_sha256?.S||value.activity_observed?.BOOL!==true)throw Error('INVALID_ACTIVITY_REPORT_RECORD');return validatePostgresCutoverActivity(JSON.parse(value.activity_report.S));};
- if(row.cutover_phase.S==='consumers-paused'){if(!original)throw Error('ORIGINAL_POSTGRES_FENCE_PLAN_REQUIRED');reportOf(row);await acknowledgeReplay({aws:(_s,_c,v)=>aws('dynamodb','transact-write-items',v),get,table,row,build:env.CODEBUILD_BUILD_ARN});return{activity_observed:true,inFlightDrainProven:false,existing_observation_reused:true};}
+
  const plan=validateConsumerPlan(JSON.parse(row.consumer_plan.S));if(plan.scope.purpose!=='production')throw Error('INVALID_ACTIVITY_CONSUMER_PLAN');const planSha=row.consumer_plan_sha256.S;
  const secret=await readParameter('/videoq/security/prod/cutover-control');
  if(secret.CLOUDFLARE_ACCOUNT_ID!=='12daec56fdba43f677f2766ee26a5a39'||typeof secret.CLOUDFLARE_API_TOKEN!=='string'||secret.CLOUDFLARE_API_TOKEN.length<20||secret.CLOUDFLARE_API_TOKEN.length>4096||/[\r\n\0]/.test(secret.CLOUDFLARE_API_TOKEN))throw Error('INVALID_ACTIVITY_CONTROL_CREDENTIAL');
@@ -55,6 +55,13 @@ export async function runHeldPostgresActivity({env=process.env,aws=m.aws,readPar
   const current=await owned();if(current.consumer_plan_sha256.S!==planSha||typeof current.consumer_pause_api_state?.S!=='string'||hash(current.consumer_pause_api_state.S)!==current.consumer_pause_api_sha256?.S)throw Error('HELD_ACTIVITY_STOP_RECORD_CHANGED');
   const state=publicApiState(await readDeploymentSettings(secret,fetcher));if(state.traffic!=='paused'||state.serialized!==current.consumer_pause_api_state.S||!(await control.inspect(plan)).admissionPaused)throw Error('HELD_ACTIVITY_ADMISSION_NOT_PAUSED');await verifyProductionTraffic(true,fetcher);return current;
  }
+ const operation=row.activity_operation?.S??'observe';
+ if(!['observe','install','release'].includes(operation))throw Error('INVALID_POSTGRES_FENCE_OPERATION');
+ if(operation!=='observe'){
+  const {runHeldPostgresFence}=await import('./cutover-postgres-fence.mjs');
+  return runHeldPostgresFence({env,aws,readParameter,run,root,owned,stopped,original,validateReport:validatePostgresCutoverActivity});
+ }
+ if(row.cutover_phase.S==='consumers-paused'){if(!original)throw Error('ORIGINAL_POSTGRES_FENCE_PLAN_REQUIRED');reportOf(row);await acknowledgeReplay({aws:(_s,_c,v)=>aws('dynamodb','transact-write-items',v),get,table,row,build:env.CODEBUILD_BUILD_ARN});return{activity_observed:true,inFlightDrainProven:false,existing_observation_reused:true};}
  await stopped();let directory;
  try{
   directory=await mkdtemp(join(tmpdir(),'videoq-held-activity-'));await chmod(directory,0o700);const target=join(directory,'target.json'),state=join(directory,'plan.json');await writeFile(target,JSON.stringify(TARGET),{mode:0o600});

@@ -4,7 +4,7 @@ const {acknowledgeReplay}=require('../../infra/db-maintenance/runtime/stage-proo
 const {createHash}=require('node:crypto');
 const m=require('./neon-admin.cjs');
 const {createConsumerControl,validateConsumerPlan}=require('./cutover-sqs-consumers.cjs');
-const {consumerPlanPrepared}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
+const {consumerPlanPrepared,assertFenceReleased}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
 const {readDeploymentSettings}=require('./protect-api-deployment.cjs');
 const BUILD=/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-rotation-prod:[a-f0-9-]{36}$/;
 const hash=s=>createHash('sha256').update(s).digest('hex');
@@ -34,6 +34,7 @@ async function controlConsumers({env=process.env,aws=m.aws,readParameter=m.readP
     if(row?.kind?.S!=='cutover-hold'||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.consumer_action_id?.S!==action||row.database_mutations_started?.BOOL!==false||row.release_requested?.BOOL!==false
       ||owner?.kind?.S!=='cutover-hold'||owner.execution_arn?.S!==arn||!consumerPlanPrepared(row)||!BUILD.test(row.consumer_prepare_build_arn?.S??'')
       ||row.cutover_phase?.S!==active&&!(allowComplete&&row.cutover_phase?.S===complete)) throw Error('CONSUMER_CONTROL_OWNERSHIP_REQUIRED');
+    assertFenceReleased(row);
     if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw Error('VERIFIED_API_TRAFFIC_REQUIRED');
     if(planSha&&row.consumer_plan_sha256.S!==planSha) throw Error('CONSUMER_CONTROL_PLAN_CHANGED');
     return row;

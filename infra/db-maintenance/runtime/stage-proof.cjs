@@ -4,7 +4,7 @@ const EXEC=/^arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-main
 async function stageSucceeded(aws,row){
  const build=row.cutover_last_build_arn?.S;
  if(Object.hasOwn(row,'cutover_last_build_arn')&&(typeof build!=='string'||!BUILD.test(build)))throw Error('INVALID_CUTOVER_STAGE_PROOF');
- if(!build){if(['consumer_prepare_build_arn','consumer_control_build_arn','activity_build_arn'].some(k=>row[k]))throw Error('MISSING_CUTOVER_STAGE_PROOF');return true;}
+ if(!build){if(['consumer_prepare_build_arn','consumer_control_build_arn','activity_build_arn','postgres_fence_build_arn'].some(k=>row[k]))throw Error('MISSING_CUTOVER_STAGE_PROOF');return true;}
  if(!BUILD.test(build)||!EXEC.test(row.execution_arn?.S??''))throw Error('INVALID_CUTOVER_STAGE_PROOF');
  let token;const seen=new Set();
  for(let page=0;page<10;page++){

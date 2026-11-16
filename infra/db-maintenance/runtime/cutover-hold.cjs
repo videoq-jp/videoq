@@ -10,6 +10,19 @@ function consumerPlanPrepared(row) {
     || createHash('sha256').update(row.consumer_plan.S).digest('hex') !== row.consumer_plan_sha256.S) throw new Error('INVALID_CONSUMER_PLAN_RECORD');
   return true;
 }
+function assertFenceReceipt(row,state) {
+ const original=['postgres_fence_original_plan','postgres_fence_original_sha256','postgres_fence_original_build_arn','postgres_fence_original_action_id'];
+ const fields=['postgres_fence_state','postgres_fence_plan_sha256','postgres_fence_action_id','postgres_fence_build_arn','postgres_fence_receipt','postgres_fence_receipt_sha256'];
+ const keys=Object.keys(row).filter(k=>k.startsWith('postgres_fence_')&&!original.includes(k));
+ if(!keys.length){if(state)throw Error('POSTGRES_FENCE_RECEIPT_REQUIRED');return;}
+ if(keys.some(k=>!fields.includes(k))||row.postgres_fence_state?.S!==state||row.postgres_fence_plan_sha256?.S!==row.postgres_fence_original_sha256?.S||typeof row.postgres_fence_original_plan?.S!=='string'||createHash('sha256').update(row.postgres_fence_original_plan.S).digest('hex')!==row.postgres_fence_original_sha256?.S||!/^[a-f0-9]{64}$/.test(row.postgres_fence_plan_sha256?.S??'')||!/^[a-f0-9]{32}$/.test(row.postgres_fence_action_id?.S??'')||!/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-rotation-prod:[a-f0-9-]{36}$/.test(row.postgres_fence_build_arn?.S??'')||typeof row.postgres_fence_receipt?.S!=='string'||createHash('sha256').update(row.postgres_fence_receipt.S).digest('hex')!==row.postgres_fence_receipt_sha256?.S)throw Error('POSTGRES_FENCE_HANDOFF_REQUIRED');
+ const r=JSON.parse(row.postgres_fence_receipt.S);
+ if(r.state!==(state==='fenced'?'fenced':'open')||r.writerSessions!==0||r.otherDatabaseSessions!==0||r.unknownSessions!==0||r.preparedTransactions!==0||!Number.isSafeInteger(r.writerLogins)||r.writerLogins<1||r.enabledWriterLogins!==(state==='fenced'?0:r.writerLogins))throw Error('POSTGRES_FENCE_HANDOFF_REQUIRED');
+}
+function assertFenceReleased(row){
+ const baseline=['postgres_fence_original_plan','postgres_fence_original_sha256','postgres_fence_original_build_arn','postgres_fence_original_action_id'];
+ if(Object.keys(row).some(k=>k.startsWith('postgres_fence_')&&!baseline.includes(k)))assertFenceReceipt(row,'released');
+}
 function definitionHash(value) {
   const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
   return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
@@ -49,7 +62,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
     catch (error) { if (error.name === 'TransactionCanceledException') throw new Error('CUTOVER_HOLD_STATE_CHANGED'); throw error; }
   }
   return async request => {
-    const activityAction=['inspect-cutover-activity','retry-cutover-activity'].includes(request.action);
+    const activityAction=['inspect-cutover-activity','retry-cutover-activity','install-cutover-fence','release-cutover-fence'].includes(request.action);
     const mutationAction = activityAction||['pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers'].includes(request.action);
     if (mutationAction && !consumerControlEnabled) throw new Error('CUTOVER_CONSUMER_CONTROL_DISABLED');
     const run = request.run_id;
@@ -85,14 +98,30 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
         catch(error) { const after=await describe(arn);if(!['RUNNING','PENDING_REDRIVE'].includes(after))throw error; }
         return {run_id:run,status:'RUNNING',...(activityAction?{activity_retry_accepted:true}:{consumer_retry_accepted:true})};
       }
+      if(request.action==='release-cutover-fence'&&row.cutover_phase.S==='activity-auditing'&&row.activity_operation?.S==='install'&&row.postgres_fence_state?.S==='installing'&&['FAILED','TIMED_OUT','ABORTED'].includes(status)){
+        await noActiveBuilds();const detail=await aws('sfn','DescribeExecution',{executionArn:arn});
+        const count=detail.redriveCount??0;
+        if(!['FAILED','TIMED_OUT','ABORTED'].includes(detail.status)||detail.redriveStatus!=='REDRIVABLE'||!Number.isSafeInteger(count)||count<0)throw Error('CUTOVER_EXECUTION_NOT_REDRIVABLE');
+        const token=createHash('sha256').update('fence-release-redrive:'+arn+':'+row.activity_action_id.S+':'+count).digest('hex');
+        await replace(run,row,{...updated(row,'activity-auditing'),activity_operation:{S:'release'},activity_redrive_token:{S:token}},owner);
+        try{await aws('sfn','RedriveExecution',{executionArn:arn,clientToken:token});}catch(error){if(!['RUNNING','PENDING_REDRIVE'].includes(await describe(arn)))throw error;}
+        return{run_id:run,status:'RUNNING'};
+      }
       if (status !== 'RUNNING') throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       if(activityAction){
-        if(row.cutover_phase.S==='activity-auditing')return{run_id:run,status:'RUNNING'};
+        const operation=request.action==='install-cutover-fence'?'install':request.action==='release-cutover-fence'?'release':'observe';
+        if(row.cutover_phase.S==='activity-auditing'){if((row.activity_operation?.S??'observe')!==operation)throw Error('CUTOVER_ACTIVITY_OPERATION_CHANGED');return{run_id:run,status:'RUNNING'};}
+        if(operation==='observe'&&row.postgres_fence_state&&row.postgres_fence_state.S!=='released')throw Error('POSTGRES_FENCE_HANDOFF_REQUIRED');
+        if(operation==='install'&&row.postgres_fence_state?.S==='fenced'){assertFenceReceipt(row,'fenced');await requireStageSucceeded(aws,row);return{run_id:run,status:'RUNNING',fence_installed:true};}
+        if(operation==='release'&&row.postgres_fence_state?.S==='released'){assertFenceReleased(row);await requireStageSucceeded(aws,row);return{run_id:run,status:'RUNNING',fence_released:true};}
+        if(operation!=='observe'&&(!row.postgres_fence_original_plan||!row.postgres_fence_original_sha256))throw Error('ORIGINAL_POSTGRES_FENCE_PLAN_REQUIRED');
+        if(operation==='release'&&row.postgres_fence_state?.S!=='fenced')throw Error('POSTGRES_FENCE_INSTALLATION_REQUIRED');
         if(row.cutover_phase.S!=='consumers-paused')throw new Error('INVALID_ACTIVITY_AUDIT_PHASE');
         await requireStageSucceeded(aws,row);
-        const next={...updated(row,'activity-auditing'),activity_action_id:{S:randomBytes(16).toString('hex')},activity_observed:{BOOL:false}};
-        delete next.activity_report;delete next.activity_report_sha256;await replace(run,row,next,owner);return{run_id:run,status:'RUNNING'};
+        const next={...updated(row,'activity-auditing'),activity_action_id:{S:randomBytes(16).toString('hex')},activity_operation:{S:operation},activity_observed:{BOOL:false}};
+        delete next.activity_operation_outcome;if(operation==='observe'){delete next.activity_report;delete next.activity_report_sha256;}await replace(run,row,next,owner);return{run_id:run,status:'RUNNING'};
       }
+      assertFenceReleased(row);
       const pause = request.action === 'pause-cutover-consumers';
       if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw new Error('VERIFIED_API_TRAFFIC_REQUIRED');
       if (row.cutover_phase.S === (pause?'consumers-pausing':'consumers-resuming')) return {run_id:run,status:'RUNNING'};
@@ -113,6 +142,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       return {run_id:run,status:'RUNNING'};
     }
     if (request.action === 'release-cutover-hold') {
+      assertFenceReleased(row);
       await requireStageSucceeded(aws,row);
       if (row.cutover_phase.S !== 'holding' || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false || row.api_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       if (status === 'SUCCEEDED') {
@@ -125,6 +155,7 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       await replace(run,row,{...updated(row,'holding'),release_requested:{BOOL:true}},owner);
       return {run_id:run,status:'RUNNING'};
     }
+    assertFenceReleased(row);
     if (request.action !== 'recover-cutover-hold') throw new Error('OPERATION_NOT_ALLOWED');
     if (!['holding','consumer-preparing','recovering'].includes(row.cutover_phase.S) || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false || row.api_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
     if (!TERMINAL.has(status)) throw new Error('CUTOVER_HOLD_EXECUTION_STILL_RUNNING');
@@ -144,4 +175,4 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
     return {run_id:run,status:'RECOVERED',execution_status:status};
   };
 }
-module.exports = {createCutoverHoldControl,consumerPlanPrepared,definitionHash};
+module.exports = {assertFenceReceipt,assertFenceReleased,createCutoverHoldControl,consumerPlanPrepared,definitionHash};
