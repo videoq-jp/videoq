@@ -41,5 +41,43 @@
     "videoq-prod-scenes-1536",
     "videoq-prod-scenes-768"
   ],
-  "productionBindingsChanged": false
+  "productionBindingsChanged": false,
+  "candidateD1": {
+    "name": "videoq-prod-db",
+    "databaseId": "587bd210-6d9d-4f32-abb7-a490013e65d3",
+    "region": "APAC",
+    "empty": true,
+    "productionBindingChanged": false
+  },
+  "candidateCopy": {
+    "status": "candidate-copy-readback-matched",
+    "indexes": [
+      {
+        "dimensions": 1536,
+        "count": 2190,
+        "vectorsSha256": "57718be4aeedae4279a3050391c3c94c6b72dcd1c79a030f4e7b5cfb4d2dad56"
+      },
+      {
+        "dimensions": 768,
+        "count": 0,
+        "vectorsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "productionBindingsChanged": false,
+    "finalWriterFenceProven": false
+  },
+  "candidateQueries": {
+    "scope": "80 video scopes using stored scene vectors as queries; not human question or answer-generation evaluation",
+    "cases": 80,
+    "sameTop5SetCases": 80,
+    "sameTop5OrderCases": 80,
+    "meanTop5SourceOverlap": 1.0,
+    "wrongOwnerQueries": 160,
+    "wrongOwnerHits": 0,
+    "maxSharedScoreAbsoluteDelta": 0,
+    "modelCallsMade": false,
+    "productionBindingsChanged": false,
+    "sourceAndTargetInfoStable": true,
+    "casesSha256": "92693761068b294f9879b94540b35b5ee62bd0ab041a60819df9f5828bf434ac"
+  }
 }

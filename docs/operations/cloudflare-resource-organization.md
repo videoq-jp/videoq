@@ -88,3 +88,40 @@ under the reviewed maintenance hold, writer drain and deployment exclusion.
 records the read-only snapshot counts and hashes. All 2,190 current 1536d vectors
 were retrieved without model calls; the 768d index was empty. This is preparation,
 not proof of a final writer fence, target verification or completed cutover.
+
+
+## Replacement candidate validation
+
+The unbound D1 candidate `videoq-prod-db` has UUID
+`587bd210-6d9d-4f32-abb7-a490013e65d3`, APAC placement and disabled read replicas.
+It remains empty after synthetic compatibility checks. Production still uses
+its original D1 UUID and Vectorize bindings.
+
+The 2,190 stored 1536d vectors were copied to `videoq-prod-scenes-1536` and all
+values, metadata and normalized namespaces matched the source on readback.
+Both 768d indexes contain zero vectors. Queries using one stored scene vector
+per each of 80 video scopes returned identical top-five IDs, ordering and scores;
+160 wrong-owner queries across source and candidate returned no hits. This is a
+filtered self-query comparison, not a human question or generated-answer eval.
+No model calls were made. These candidates still require final synchronization
+under a proven write fence before production use.
+
+`infra/scripts/d1_resource_write_fence.py` plans owner-bound BEFORE INSERT,
+UPDATE and DELETE abort triggers for every inventoried application table. It
+preserves existing application triggers, refuses virtual tables and conflicting
+fences, and refuses removal if the schema or fence coverage changed. The module
+only returns SQL and verifies schema metadata; it never executes SQL or claims
+a maintenance lock. It does not provide deployment exclusion, admissions pause,
+consumer control, final transfer, binding promotion or post-write recovery.
+A production coordinator must supply those before this can be used on live D1.
+Cloudflare-reserved `_cf_` and SQLite-reserved `sqlite_` objects are excluded.
+An empty-table UPDATE/DELETE may succeed without invoking row triggers because
+it changes no rows; actual row mutations are rejected while fenced.
+
+
+[Real-D1 planner evidence](evidence/d1-resource-write-fence-2026-11-17.json): on
+an unbound candidate, two synthetic tables and an existing audit trigger were
+created. The exact planner's six triggers blocked six row mutations; removing
+only the owned fence triggers restored writes and the audit trigger still ran.
+Both tables were removed and the candidate's empty schema was rechecked. This
+proves the primitive on real D1, not a production-wide fence or final cutover.
