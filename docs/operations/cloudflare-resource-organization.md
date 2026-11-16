@@ -289,3 +289,15 @@ are refused. The bounded, no-redirect, no-retry HTTP transport is shared with
 fence control. The real source accepted the generated encoding SQL for 14
 `sqlite_sequence` metadata rows. This read made no mutations, read no customer
 rows, asserted no write fence and performed no full database comparison.
+
+`infra/scripts/d1_resource_transfer_api.py` supplies the fixed source export and
+fixed target import API operations, with ownership and source-fence/import-file
+safety dependencies. Each call is attempted once; an uncertain response is not
+replayed automatically. The coordinator must durably record intent and returned
+bookmarks before continuing. A lost initial export or ingest response requires
+reconciliation, not a new operation. Export polling keeps the same bookmark and
+checks ownership without querying the source while the provider blocks it.
+This module does not implement durable transfer substeps, signed-URL file
+transfer, file validation or recovery, and has no production caller/CLI.
+See the [export API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/)
+and [import API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/import/).

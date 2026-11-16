@@ -23,13 +23,14 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 97,
+    "passed": 102,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
     "database": "SQLite tests plus schema-only readback against actual source/candidate D1",
     "exactValueVerifier": 8,
-    "verificationTransport": 5
+    "verificationTransport": 5,
+    "transferApi": 5
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
