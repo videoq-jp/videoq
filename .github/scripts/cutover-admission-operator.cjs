@@ -1,5 +1,5 @@
 // Fixed, pre-write operator composition. No DB credential, SSM, IAM or SQL API.
-const {definitionHash}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
+const {definitionHash,assertFenceReleased}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
 const {requireStageSucceeded}=require('../../infra/db-maintenance/runtime/stage-proof.cjs');
 const {createHash}=require('node:crypto');
 const {createOwnedDeploymentFreeze}=require('./cutover-owned-deployment-freeze.cjs');
@@ -21,9 +21,7 @@ function createAdmissionOperator({aws,github,cloudflare,table,machine,expectedDe
    const[r,o,state,bound]=await Promise.all([get('run#'+run),get('maintenance'),aws('sfn','DescribeExecution',{executionArn:arn}),aws('sfn','DescribeStateMachineForExecution',{executionArn:arn})]);const row=r.Item;
    if(state.status!=='RUNNING'||typeof bound.definition!=='string'||definitionHash(JSON.parse(bound.definition))!==expectedDefinitionHash)throw Error('ADMISSION_EXECUTION_REQUIRED');
    if(row?.kind?.S!=='cutover-hold'||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.release_requested?.BOOL!==false||row.database_mutations_started?.BOOL!==false||!['holding','consumers-paused'].includes(row.cutover_phase?.S)||o.Item?.kind?.S!=='cutover-hold'||o.Item.execution_arn?.S!==arn)throw Error('ADMISSION_OPERATOR_OWNERSHIP_REQUIRED');
-   // Until the verified post-write handoff exists, even an unfinished fence
-   // intent blocks this pre-write-only tool. Never reset a DB mutation marker.
-   if(Object.keys(row).some(k=>k.startsWith('postgres_fence_')&&!['postgres_fence_original_plan','postgres_fence_original_sha256','postgres_fence_original_build_arn','postgres_fence_original_action_id'].includes(k)))throw Error('POSTGRES_FENCE_HANDOFF_REQUIRED');
+   assertFenceReleased(row);
    await requireStageSucceeded(aws,row);return row;
   }
   function baseline(row){

@@ -13,7 +13,7 @@ from pathlib import Path
 FUNCTIONS = {kind: "maintenance" for kind in ["rotate", "rollback", "audit"]}
 FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke", "deploy"]})
 FUNCTIONS["cutover-hold"] = "maintenance"
-CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold", "prepare-cutover-consumers", "pause-cutover-consumers", "resume-cutover-consumers", "retry-cutover-consumers", "inspect-cutover-activity", "retry-cutover-activity"}
+CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold", "prepare-cutover-consumers", "pause-cutover-consumers", "resume-cutover-consumers", "retry-cutover-consumers", "inspect-cutover-activity", "retry-cutover-activity", "install-cutover-fence", "release-cutover-fence"}
 
 
 def invocation(function, payload):
@@ -120,7 +120,9 @@ def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=tim
         if state != previous:
             print("AWS cutover hold: " + state + " (" + run_id + ")", flush=True)
             previous = state
-        ready_flag = {"prepare-cutover-consumers": "consumer_prepared", "pause-cutover-consumers": "consumers_paused", "resume-cutover-consumers": "consumers_restored", "retry-cutover-consumers": "consumer_retry_accepted", "inspect-cutover-activity": "activity_observed", "retry-cutover-activity": "activity_retry_accepted"}.get(action)
+        if action == "install-cutover-fence" and state == "RUNNING" and result.get("fence_install_refused") is True:
+            raise RuntimeError("POSTGRES_INFLIGHT_RECONCILIATION_REQUIRED")
+        ready_flag = {"prepare-cutover-consumers": "consumer_prepared", "pause-cutover-consumers": "consumers_paused", "resume-cutover-consumers": "consumers_restored", "retry-cutover-consumers": "consumer_retry_accepted", "inspect-cutover-activity": "activity_observed", "retry-cutover-activity": "activity_retry_accepted", "install-cutover-fence": "fence_installed", "release-cutover-fence": "fence_released"}.get(action)
         if ready_flag and state == "RUNNING" and result.get(ready_flag) is True:
             return run_id
         if (state == "RECOVERED" and action in {"release-cutover-hold", "recover-cutover-hold"}) or (state == "SUCCEEDED" and action == "release-cutover-hold"):

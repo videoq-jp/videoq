@@ -2,7 +2,7 @@
 const {requireStageSucceeded}=require('../../infra/db-maintenance/runtime/stage-proof.cjs');
 const {createHash}=require('node:crypto');
 const {createDeploymentFreeze,validateDeploymentFreezePlan}=require('./cutover-deployment-freeze.cjs');
-const {definitionHash}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
+const {definitionHash,assertFenceReleased}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
 const digest=s=>createHash('sha256').update(s).digest('hex');
 function createOwnedDeploymentFreeze({aws,request,table,machine,expectedDefinitionHash,enabled=false,assertRestoreSafe=async()=>{throw Error('VERIFIED_DEPLOYMENT_RESTORE_HANDOFF_REQUIRED');}}){
  return async({action,run,source})=>{
@@ -14,7 +14,7 @@ function createOwnedDeploymentFreeze({aws,request,table,machine,expectedDefiniti
    const [r,o,state,bound]=await Promise.all([get('run#'+run),get('maintenance'),aws('sfn','DescribeExecution',{executionArn:arn}),aws('sfn','DescribeStateMachineForExecution',{executionArn:arn})]);const row=r.Item,owner=o.Item;
    if(state.status!=='RUNNING'||typeof bound.definition!=='string'||definitionHash(JSON.parse(bound.definition))!==expectedDefinitionHash)throw Error('DEPLOYMENT_FREEZE_EXECUTION_REQUIRED');
    if(row?.kind?.S!=='cutover-hold'||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.cutover_phase?.S!=='holding'||row.release_requested?.BOOL!==false||row.database_mutations_started?.BOOL!==false||owner?.kind?.S!=='cutover-hold'||owner.execution_arn?.S!==arn||!/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N??'')||!Number.isSafeInteger(Number(row.cutover_revision.N))||Number(row.cutover_revision.N)>=Number.MAX_SAFE_INTEGER)throw Error('DEPLOYMENT_FREEZE_OWNERSHIP_REQUIRED');
-   if(row.deployment_admission_restored&&typeof row.deployment_admission_restored.BOOL!=='boolean')throw Error('INVALID_DEPLOYMENT_FREEZE_RECORD');await requireStageSucceeded(aws,row);return row;
+   if(row.deployment_admission_restored&&typeof row.deployment_admission_restored.BOOL!=='boolean')throw Error('INVALID_DEPLOYMENT_FREEZE_RECORD');if(action==='restore')assertFenceReleased(row);await requireStageSucceeded(aws,row);return row;
   }
   function stored(row){
    if(typeof row.deployment_freeze_plan?.S!=='string'||digest(row.deployment_freeze_plan.S)!==row.deployment_freeze_sha256?.S||typeof row.deployment_admission_restored?.BOOL!=='boolean')throw Error('INVALID_DEPLOYMENT_FREEZE_RECORD');

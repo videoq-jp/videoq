@@ -6,7 +6,7 @@ on:
       operation:
         description: Fixed hold control; start does not stop application writers
         type: choice
-        options: [status, start, prepare-consumers, pause-consumers, resume-consumers, inspect-activity, retry-consumers, retry-activity, release, recover]
+        options: [status, start, prepare-consumers, pause-consumers, resume-consumers, inspect-activity, install-fence, release-fence, retry-consumers, retry-activity, release, recover]
         default: status
       run_id:
         description: Existing 32-character AWS run ID (empty only for start)

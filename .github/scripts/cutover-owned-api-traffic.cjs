@@ -2,7 +2,7 @@
 const {requireStageSucceeded}=require('../../infra/db-maintenance/runtime/stage-proof.cjs');
 const {createHash}=require('node:crypto');
 const {createApiTrafficControl,validateApiTrafficPlan}=require('./cutover-api-traffic.cjs');
-const {definitionHash}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
+const {definitionHash,assertFenceReleased}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
 const digest=s=>createHash('sha256').update(s).digest('hex');
 async function verifyProductionTraffic(paused,fetcher=fetch){
  async function read(path){
@@ -29,6 +29,7 @@ function createOwnedApiTraffic({aws,request,table,machine,expectedDefinitionHash
    const[r,o,state,bound]=await Promise.all([get('run#'+run),get('maintenance'),aws('sfn','DescribeExecution',{executionArn:arn}),aws('sfn','DescribeStateMachineForExecution',{executionArn:arn})]);const row=r.Item;
    if(state.status!=='RUNNING'||typeof bound.definition!=='string'||definitionHash(JSON.parse(bound.definition))!==expectedDefinitionHash)throw Error('API_TRAFFIC_EXECUTION_REQUIRED');
    if(row?.kind?.S!=='cutover-hold'||row.execution_arn?.S!==arn||row.source_sha?.S!==source||!['holding','consumers-paused'].includes(row.cutover_phase?.S)||action==='pause'&&row.cutover_phase.S!=='holding'||row.release_requested?.BOOL!==false||row.database_mutations_started?.BOOL!==false||row.deployment_admission_restored?.BOOL!==false||o.Item?.kind?.S!=='cutover-hold'||o.Item.execution_arn?.S!==arn||!/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N??'')||!Number.isSafeInteger(Number(row.cutover_revision.N))||Number(row.cutover_revision.N)>=Number.MAX_SAFE_INTEGER)throw Error('API_TRAFFIC_OWNERSHIP_REQUIRED');
+   if(action==='restore')assertFenceReleased(row);
    await requireStageSucceeded(aws,row);return row;
   }
   function stored(row){if(typeof row.api_traffic_plan?.S!=='string'||digest(row.api_traffic_plan.S)!==row.api_traffic_sha256?.S||typeof row.api_admission_restored?.BOOL!=='boolean'||typeof row.api_pause_verified?.BOOL!=='boolean')throw Error('INVALID_API_TRAFFIC_RECORD');const plan=validateApiTrafficPlan(JSON.parse(row.api_traffic_plan.S));if(plan.scope.purpose!=='production')throw Error('INVALID_API_TRAFFIC_RECORD');return plan;}

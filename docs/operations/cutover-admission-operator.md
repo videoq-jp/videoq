@@ -30,7 +30,7 @@ node .github/scripts/run-cutover-admission.cjs \
 
 最初の原状記録は、AWS内の同じrunとglobal ownerを条件に原子的に保存する。CF事前読み取りに失敗すればworkflowを変更しない。最初のworkflow変更が失敗しても、元の接続先とworkflow計画が残り、明示的な書き込み前abortへ使える。応答喪失時には同じ記録を読み返す。別sourceや原状の置換は許可しない。
 
-API復帰時は、保存済みconsumer計画があれば実Lambda mappingも照合する。metadataの停止markerだけを最終根拠にしない。DB変更marker、未完了のwriter-fence変更/解除/状態marker、接続先の変化があれば、この書き込み前のツールで再開しない。将来のpost-write handoffを別に実装する。
+API復帰時は、保存済みconsumer計画があれば実Lambda mappingも照合する。metadataの停止markerだけを最終根拠にしない。DB変更marker、未完了のwriter-fence変更/解除、fenced状態、接続先の変化があれば、この書き込み前のツールで再開しない。将来のpost-write handoffを別に実装する。
 
 ## 権限と検証範囲
 
@@ -41,3 +41,5 @@ API復帰時は、保存済みconsumer計画があれば実Lambda mappingも照�
 実DynamoDB Localの46テスト、Node securityの458テスト、Python 68テストが成功した。追加の4統合ケースは全体の書き込み前pause/abort、原状保存応答喪失、CF事前失敗、接続先/fence drift、最初のworkflow変更失敗からのabortを検証する。GitHub/Cloudflare/Lambda/SFNはmockであり、本番での結合停止を実証したものではない。5つのCLI境界テストはソース由来、account、引数、権限、環境分離を検証する。[証跡](evidence/cutover-admission-operator-2026-11-16.json)。
 
 この入口は完全なmain checkout用で、immutable AWS operator ZIPへは追加しない。IAM変更・機能の有効化・本番停止・本番D1切り替えは行っていない。最終snapshot、writer fence/逆移行、外部副作用の照合、最終候補のE2Eと性能・予算の受け入れも残る。
+
+管理LOGINの停止を行った場合は、[AWS内の固定復帰処理](cutover-postgres-fence.md)によるoriginal plan一致・実open状態のreceiptとnative完了を確認してから、同じ接続先で停止前abortを続行する。アプリケーションデータ変更markerをリセットして再開することはない。

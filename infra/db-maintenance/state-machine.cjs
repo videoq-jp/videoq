@@ -43,8 +43,8 @@ function definition({table, projects}) {
     WaitCutoverHold: {Type:'Wait',Seconds:10,Next:'ReadCutoverHold'},
     ReleaseCutoverHold: {Type:'Task',Resource:'arn:aws:states:::aws-sdk:dynamodb:transactWriteItems',Parameters:{TransactItems:[
       {ConditionCheck:{TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},
-        ConditionExpression:'#phase = :phase AND release_requested = :requested AND database_mutations_started = :false AND (attribute_not_exists(consumer_admission_restored) OR consumer_admission_restored = :requested) AND (attribute_not_exists(deployment_admission_restored) OR deployment_admission_restored = :requested) AND (attribute_not_exists(api_admission_restored) OR api_admission_restored = :requested)',
-        ExpressionAttributeNames:{'#phase':'cutover_phase'},ExpressionAttributeValues:{':phase':{S:'holding'},':requested':{Bool:true},':false':{Bool:false}}}},
+        ConditionExpression:'#phase = :phase AND release_requested = :requested AND database_mutations_started = :false AND (attribute_not_exists(postgres_fence_state) OR postgres_fence_state = :fenceReleased) AND (attribute_not_exists(consumer_admission_restored) OR consumer_admission_restored = :requested) AND (attribute_not_exists(deployment_admission_restored) OR deployment_admission_restored = :requested) AND (attribute_not_exists(api_admission_restored) OR api_admission_restored = :requested)',
+        ExpressionAttributeNames:{'#phase':'cutover_phase'},ExpressionAttributeValues:{':phase':{S:'holding'},':fenceReleased':{S:'released'},':requested':{Bool:true},':false':{Bool:false}}}},
       {Delete:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution',
         ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'}}}},
     ]},ResultPath:null,Next:'Success'},

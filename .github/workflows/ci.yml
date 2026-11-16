@@ -203,6 +203,7 @@ jobs:
               - '.github/scripts/cutover-admission-operator*'
               - '.github/scripts/run-cutover-admission*'
               - '.github/scripts/cutover-postgres-activity.mjs'
+              - '.github/scripts/cutover-postgres-fence.mjs'
               - '.github/scripts/cutover-api-traffic.cjs'
               - '.github/scripts/cutover-owned-api-traffic.cjs'
               - '.github/scripts/cutover-consumer-control.cjs'

@@ -1,7 +1,7 @@
 // Fixed main-only request caller; never reads database credentials.
 const {execFileSync}=require('node:child_process');
 const {createHash}=require('node:crypto');
-const actions={status:'cutover-status',start:'cutover-hold',release:'release-cutover-hold',recover:'recover-cutover-hold','prepare-consumers':'prepare-cutover-consumers','pause-consumers':'pause-cutover-consumers','resume-consumers':'resume-cutover-consumers','retry-consumers':'retry-cutover-consumers','inspect-activity':'inspect-cutover-activity','retry-activity':'retry-cutover-activity'};
+const actions={'install-fence':'install-cutover-fence','release-fence':'release-cutover-fence',status:'cutover-status',start:'cutover-hold',release:'release-cutover-hold',recover:'recover-cutover-hold','prepare-consumers':'prepare-cutover-consumers','pause-consumers':'pause-cutover-consumers','resume-consumers':'resume-cutover-consumers','retry-consumers':'retry-cutover-consumers','inspect-activity':'inspect-cutover-activity','retry-activity':'retry-cutover-activity'};
 function request(env){
  if(env.GITHUB_REPOSITORY!=='videoq-jp/videoq'||env.GITHUB_REF!=='refs/heads/main')throw Error('PRODUCTION_MAIN_ONLY');
  if(!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??''))throw Error('INVALID_MIGRATION_SOURCE');

@@ -212,6 +212,19 @@ class RequestTest(unittest.TestCase):
                 db.publish_run(RUN + "\nsecret=value")
 
 
+    def test_fence_controls_wait_for_their_own_verified_receipts(self):
+        for action, flag in [("install-cutover-fence", "fence_installed"), ("release-cutover-fence", "fence_released")]:
+            calls = []
+            replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, flag: True}])
+            def invoke(function, payload):
+                calls.append(payload)
+                return next(replies)
+            with patch("sys.stdout", new_callable=io.StringIO):
+                self.assertEqual(db.control_cutover(action, RUN, invoke, lambda _: None, lambda: 0), RUN)
+            self.assertEqual(calls, [{"action": action, "run_id": RUN}, {"action": "status", "run_id": RUN}])
+        with patch("sys.stdout", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "POSTGRES_INFLIGHT_RECONCILIATION_REQUIRED"):
+            db.control_cutover("install-cutover-fence", RUN, lambda *a: {"status": "RUNNING", "run_id": RUN, "fence_install_refused": True}, lambda _: None, lambda: 0)
+
 
 if __name__ == "__main__":
     unittest.main()
