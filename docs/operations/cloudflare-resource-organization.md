@@ -415,3 +415,21 @@ The planner and SQL tests cover scope/version mismatches, current staging,
 invalid retained embeddings, orphan deletion, legacy IDs and missing vectors.
 Provider mutation, async processing/readback and runtime integration of the
 final vector sync remain required before switching resources.
+
+`d1_resource_vector_transport.py` limits reads to the two fixed source/candidate
+pairs and mutations to the candidates only. Writes default to disabled and
+require fresh ownership plus a D1/plan-safety callback. Upserts use the `vectors`
+NDJSON multipart field; deletes have bounded unique IDs. Unexpected paths,
+methods, queries, dimensions or payloads refuse execution. Responses are bounded,
+redirects refused, provider errors sanitized and uncertain requests never retried
+by the transport. `snapshot_index` can now read back either fixed member of a
+source/candidate pair using the same complete-inventory validation.
+
+`candidate_status` compares every stored value and metadata field against the
+planned payload and rejects completion while vectors differ or obsolete IDs
+remain. Deferred outbox work stays explicit in the receipt. Acceptance of a
+mutation ID is never treated as completion. Read-only service inspection found
+2,190 vectors in both 1536-dimensional indexes and zero in both 768-dimensional
+indexes. This unfenced count preview is not a final value or search-quality
+comparison. No vector mutation was made by this validation; mutation journal,
+async runtime and final owned synchronization remain to be connected.

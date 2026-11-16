@@ -129,3 +129,28 @@ def read_authority(query, assert_fenced):
     if len(rows) != total:
         raise ValueError('RESOURCE_VECTOR_AUTHORITY_COUNT_MISMATCH')
     return rows
+
+
+def candidate_status(plan, candidates):
+    """Mutation acknowledgement is never proof: compare every stored value."""
+    if (not isinstance(plan, dict) or plan.get('version') != 1 or not isinstance(plan.get('indexes'), list)
+            or [row.get('dimensions') for row in plan['indexes']] != list(DIMENSIONS)
+            or set(candidates) != set(DIMENSIONS)):
+        raise ValueError('RESOURCE_VECTOR_SYNC_PLAN_REQUIRED')
+    receipts, complete = [], True
+    for index in plan['indexes']:
+        expected = index['upsert']
+        if fingerprint(expected) != index['vectorsSha256']:
+            raise ValueError('RESOURCE_VECTOR_SYNC_PLAN_CHANGED')
+        actual = candidates[index['dimensions']]
+        if not isinstance(actual,list) or any(not isinstance(row,dict) or not isinstance(row.get('id'),str) for row in actual):
+            raise ValueError('RESOURCE_VECTOR_SYNC_READBACK_INVALID')
+        normalized = [{key:value for key,value in row.items() if key!='namespace'} if row.get('namespace') in (None,'') else row for row in actual]
+        if len({row['id'] for row in normalized}) != len(normalized):
+            raise ValueError('RESOURCE_VECTOR_SYNC_DUPLICATE_ID')
+        normalized.sort(key=lambda row:row['id'])
+        verified = fingerprint(normalized) == index['vectorsSha256']
+        complete = complete and verified
+        receipts.append({'dimensions':index['dimensions'],'count':len(normalized),'vectorsSha256':fingerprint(normalized),
+                         'verified':verified,'deferredPending':len(index['deferred'])})
+    return {'verified':complete,'indexes':receipts,'modelCallsMade':False}

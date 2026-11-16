@@ -1,5 +1,5 @@
 {
-  "scope": "Disabled metadata journal, private plans and coordinator engine; GitHub, SQS, API admission and fixed binding promotion adapters; no production execution",
+  "scope": "Disabled resource replacement coordinator, transfer runtime and vector sync components; no production cutover",
   "nodeTests": {
     "passed": 576,
     "failed": 0
@@ -23,7 +23,7 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 140,
+    "passed": 147,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
@@ -37,7 +37,8 @@
     "durableTransferControl": 6,
     "localExecutorLock": 3,
     "composedTransferRuntime": 3,
-    "vectorAuthorityAndPlan": 10
+    "vectorAuthorityAndPlan": 10,
+    "vectorTransportAndReadback": 7
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
@@ -70,5 +71,14 @@
     "writerFenceProven": false,
     "vectorWrites": false,
     "previewOnly": true
+  },
+  "vectorTransportPreview": {
+    "readOnly": true,
+    "writerFenceProven": false,
+    "source1536": 2190,
+    "source768": 0,
+    "candidate1536": 2190,
+    "candidate768": 0,
+    "vectorWrites": false
   }
 }

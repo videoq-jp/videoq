@@ -67,6 +67,28 @@ class VectorPlanTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'NAMESPACE_REVIEW'):
             self.plan(source=[row])
 
+class VectorReadbackTests(unittest.TestCase):
+    def test_accepted_mutation_and_correct_ids_are_insufficient_until_values_and_metadata_match(self):
+        from d1_resource_vector_plan import candidate_status
+        expected = vector()
+        plan = plan_vectors([authority()],{768:[expected],1536:[]},{768:[],1536:[]})
+        self.assertFalse(candidate_status(plan,{768:[],1536:[]})['verified'])
+        changed = vector()
+        changed['values'][0] = 0.25
+        self.assertFalse(candidate_status(plan,{768:[changed],1536:[]})['verified'])
+        changed = vector()
+        changed['metadata']['user_id'] = 'other'
+        self.assertFalse(candidate_status(plan,{768:[changed],1536:[]})['verified'])
+        self.assertTrue(candidate_status(plan,{768:[expected],1536:[]})['verified'])
+        self.assertFalse(candidate_status(plan,{768:[expected,vector('orphan')],1536:[]})['verified'])
+
+    def test_deferred_outbox_work_is_visible_in_verified_static_copy_receipt(self):
+        from d1_resource_vector_plan import candidate_status
+        plan = plan_vectors([authority(pending_payload=True)],{768:[],1536:[]},{768:[],1536:[]})
+        receipt = candidate_status(plan,{768:[],1536:[]})
+        self.assertTrue(receipt['verified'])
+        self.assertEqual(receipt['indexes'][0]['deferredPending'],1)
+
 
 if __name__ == '__main__':
     unittest.main()
