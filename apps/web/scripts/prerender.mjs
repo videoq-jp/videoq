@@ -43,6 +43,10 @@ for (const path of publicPaths()) {
   }
 }
 await writeFile(resolve(dist, 'sitemap.xml'), buildSitemap());
+// Only Vite's fingerprinted assets are immutable. Keep the shared security
+// source single-rule: the Worker and on-prem nginx also parse that source.
+const headers = await readFile(resolve(web, 'public/_headers'), 'utf8');
+await writeFile(resolve(dist, '_headers'), `${headers.trimEnd()}\n\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n`);
 await rm(bundle, { recursive: true, force: true });
 // React's stream and tRPC clients may hold handles that would delay a build exit.
 process.exit(0);
