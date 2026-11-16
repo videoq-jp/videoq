@@ -254,6 +254,17 @@ identity. Partial installation/removal can be reconciled after a lost response;
 unknown trigger definitions, missing original triggers or changed tables stop
 further writes. Target removal additionally requires a trusted target-safety
 verifier. Source removal is deliberately unavailable in this controller.
-The query transport and coordinator bridge are not implemented by this change.
+The coordinator bridge is not implemented by this change.
 SQLite tests prove trigger behavior and retry control, not the full live-D1
 schema, API transport or production ownership handoff.
+
+`infra/scripts/d1_resource_fence_transport.py` implements the fixed-account D1
+query transport for schema reads and exact owner-plan fence SQL only. Mutations
+are disabled by default; enabling them requires a valid fence plan. It permits
+source trigger creation and target trigger removal only, refuses redirects and
+unbounded responses, sanitizes provider errors and never retries a query after
+an uncertain response. Ownership remains the controller's responsibility.
+Actual schema-only readback found 68 application tables on the source, none on
+the candidate, and no resource fence triggers on either. No fence was installed.
+The query payload/result contract follows the
+[D1 query API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/).
