@@ -45,6 +45,7 @@ async function fixture({consumerControlEnabled=false,listBuilds,boundDefinition}
  const aws=async(service,command,value)=>{
   calls.push({service,command,value});
   if(service==='ddb')return client.send(new sdk[command+'Command'](value));
+  if(service==='codebuild'&&command==='ListBuildsForProject'&&value.nextToken&&Object.hasOwn(value,'sortOrder'))throw Object.assign(Error('sortOrder cannot accompany nextToken'),{name:'InvalidInputException'});
   if(service==='codebuild')return command==='ListBuildsForProject'?(listBuilds?listBuilds(value):{ids:active?['owned-test-build']:[]}):{builds:value.ids.map(id=>({buildComplete:!active&&id!=='active-late'}))};
   if(service==='sfn'&&command==='GetExecutionHistory'){const run=value.executionArn.split(':db-')[1],row=(await client.send(new sdk.GetItemCommand({TableName:table,Key:{pk:{S:'run#'+run}},ConsistentRead:true}))).Item,arn=row.cutover_last_build_arn?.S;return{events:!active&&arn?[{type:'TaskSucceeded',taskSucceededEventDetails:{resourceType:'codebuild',resource:'startBuild.sync',output:JSON.stringify({Build:{BuildStatus:'SUCCEEDED',Arn:arn,Id:arn.split(':build/')[1]}})}}]:[]};}
   if(service==='sfn'&&command==='DescribeStateMachineForExecution')return {definition:JSON.stringify(typeof boundDefinition==='function'?boundDefinition(table):boundDefinition??definition({table,projects:{}}))};

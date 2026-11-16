@@ -22,7 +22,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     for (const projectName of projects) {
       let nextToken;const tokens=new Set();
       for (let page=0;page<25;page++) {
-        const listed = await aws('codebuild', 'ListBuildsForProject', {projectName, sortOrder:'DESCENDING', ...(nextToken?{nextToken}:{})});
+        const listed = await aws('codebuild', 'ListBuildsForProject', {projectName, ...(nextToken?{nextToken}:{})});
         const ids=listed.ids??[];
         if(!Array.isArray(ids)||ids.length>100||ids.some(id=>typeof id!=='string'))throw new Error('BUILD_INVENTORY_INCOMPLETE');
         if(ids.length){
