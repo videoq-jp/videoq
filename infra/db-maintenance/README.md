@@ -6,8 +6,8 @@ Lambda consumers persist through the signed worker API; their environment and
 SSM policy must not reference the retired PostgreSQL worker credential.
 Non-production PostgreSQL bootstrapping and on-premises pgvector remain available.
 Database migration and production smoke run in AWS. The historical PostgreSQL
-rotation/backup tooling is retained for explicit recovery operations, and its
-daily rotation schedule stays disabled.
+rotation/backup source and restore documentation are retained as recovery
+material; the old production CodeBuild jobs and starters are retired.
 GitHub Actions invokes a fixed Lambda alias and observes execution status; its
 routine request roles have no SSM, CodeBuild-start, code-upload or IAM permissions.
 The former direct-SSM demo/audit jobs and Neon bootstrap entry point have been
@@ -49,9 +49,42 @@ The `Operations` workflow no longer schedules the legacy monthly PostgreSQL
 restore rehearsal or offers it through the `all`/`backup` selections. Daily
 service monitoring and post-deployment D1 smoke remain enabled. D1 Time Travel
 provides the live database's automatic recovery history; the private retirement
-export and scene-vector archive provide a separate retained copy. The native
-PostgreSQL restore tooling remains available to an explicit AWS recovery
-operator, rather than contacting the deleted source from routine monitoring.
+export and scene-vector archive provide a separate retained copy. Historical
+PostgreSQL restore source remains available for an explicitly provisioned,
+isolated recovery environment; its old production AWS execution roles are removed.
+
+## Retired Neon execution infrastructure
+
+Production maintenance now contains only `videoq-db-migration-prod`,
+`videoq-db-smoke-prod` and `videoq-db-deploy-prod`, with their three fixed starters.
+The D1-only state machine rejects every other operation; deployment promotes only
+these surviving targets. The obsolete rotation, backup and audit projects,
+maintenance/backup starters, their execution roles and the old rotation scheduler
+are removed. Migration and smoke no longer receive PostgreSQL SSM read grants.
+The worker permission boundary likewise allows only the current app parameter.
+
+Keep `retire_neon_maintenance=true` (the default), `provision_backup_archive=true`,
+`enable_d1_migrations=true` and `enable_d1_production_smoke=true`. Disable all old
+cutover, upload and schedule flags. `false` retirement mode exists only to test the
+historical infrastructure contracts; it is not a production rollback procedure.
+The private archive bucket, existing versions, encryption, public-access block,
+backup/restore source and historical log groups are intentionally retained.
+No archive expiration, deletion permission or new recurring backup is introduced.
+`setup_neon_access.py` provisions only the three surviving invoker roles and must
+not recreate legacy Neon direct-SSM or starter roles.
+
+For an existing installation, first review and merge the D1-only operator change,
+then apply the independent maintenance Terraform plan during an idle maintenance
+window. Confirm no running executions/builds and no global maintenance owner.
+Review the saved plan: archive resources, application Lambda code/environment and
+live D1/Vectorize resources must not be deleted or replaced. Allow the canonical
+maintenance CD to deploy the new D1-only graph and broker versions, then verify a
+native smoke execution and exact S3 backup versions. Do not run the old rotation
+or cutover tools against the deleted Neon project.
+
+The sections below document the historical PostgreSQL setup and recovery formats;
+they are retained for interpreting saved evidence, not instructions to recreate
+retired production jobs.
 
 EventBridge Scheduler starts daily age checks. Step Functions Standard orchestrates
 purpose-specific CodeBuild jobs and waits without keeping a build running during

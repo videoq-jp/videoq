@@ -83,7 +83,7 @@ def main():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
     broker = [(runtime / name, name) for name in ["broker.cjs", "stage-proof.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
-    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
+    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production", "--d1-only"], text=True)
     canonical = json.dumps(json.loads(definition), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     pin = directory / "cutover-definition.json"
     pin.write_text(json.dumps({"sha256": hashlib.sha256(canonical.encode()).hexdigest()}) + "\n")
@@ -94,7 +94,9 @@ def main():
     (directory / "state-machine.json").write_text(definition)
     manifest["state_machine_sha256"] = hashlib.sha256(definition.encode()).hexdigest()
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    variables = {"source_commit": source, "operator_zip": str(directory / "operator.zip"), "broker_zip": str(directory / "broker.zip")}
+    variables = {"source_commit": source, "operator_zip": str(directory / "operator.zip"), "broker_zip": str(directory / "broker.zip"),
+                 "retire_neon_maintenance": True, "provision_backup_archive": True,
+                 "enable_d1_migrations": True, "enable_d1_production_smoke": True}
     (directory / "terraform.tfvars.json").write_text(json.dumps(variables, indent=2) + "\n")
     print(json.dumps({"bundles": str(directory), **manifest}))
 

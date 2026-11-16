@@ -1,5 +1,5 @@
 // Only metadata enters Step Functions history. Credentials stay inside scoped jobs.
-function definition({table, projects}) {
+function definition({table, projects, neonRetired = false}) {
   function job(project, stage, next, overrides = []) {
     return {Type: 'Task', Resource: 'arn:aws:states:::codebuild:startBuild.sync', Parameters: {
       ProjectName: projects[project], EnvironmentVariablesOverride: [
@@ -97,6 +97,15 @@ function definition({table, projects}) {
     Success: {Type: 'Succeed'},
     InvalidPhase: {Type: 'Fail', Error: 'INVALID_DATABASE_MAINTENANCE_PHASE'},
   };
+  if (neonRetired) {
+    const keep = ['Operation', 'Migrate', 'SmokeStandalone', 'Deploy', 'Release', 'Success'];
+    const active = Object.fromEntries(keep.map(name => [name, states[name]]));
+    active.Operation = {Type: 'Choice', Choices: states.Operation.Choices.filter(choice =>
+      ['migration', 'smoke', 'deploy'].includes(choice.StringEquals)), Default: 'RetiredOperation'};
+    active.RetiredOperation = {Type: 'Fail', Error: 'RETIRED_NEON_OPERATION'};
+    return {Comment: 'AWS-only D1 maintenance; retained archives are outside the job lifecycle',
+      StartAt: 'Operation', TimeoutSeconds: 7200, States: active};
+  }
   // Do not retry credential mutations blindly. Existing journal phases provide
   // deliberate resume/rollback, and a failure retains the global rotation lock.
   return {Comment: 'AWS-only Neon maintenance; no credential material in execution data', StartAt: 'Operation', TimeoutSeconds: 7200, States: states};
@@ -104,6 +113,6 @@ function definition({table, projects}) {
 module.exports = {definition};
 if (require.main === module) {
   const production = process.argv.includes('--production');
-  console.log(JSON.stringify(definition({table: production ? 'videoq-db-maintenance-prod' : '${table}',
+  console.log(JSON.stringify(definition({neonRetired: process.argv.includes('--d1-only'), table: production ? 'videoq-db-maintenance-prod' : '${table}',
     projects: Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k => [k, production ? `videoq-db-${k}-prod` : '${project_' + k + '}']))}), null, 2));
 }

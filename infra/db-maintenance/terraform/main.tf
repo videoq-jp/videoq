@@ -1,3 +1,19 @@
+variable "retire_neon_maintenance" {
+  type        = bool
+  default     = true
+  description = "Remove retired production Neon jobs and invokers, preserving versioned archives and recovery evidence. False is for historical contract tests only."
+  validation {
+    condition = !var.retire_neon_maintenance || (
+      var.provision_backup_archive && !var.retain_verified_backups &&
+      !var.export_d1_from_verified_backup && !var.schedule_enabled &&
+      !var.enable_cutover_hold && !var.enable_cutover_consumer_control &&
+      !var.enable_cutover_postwrite_recovery && !var.enable_cutover_final_handoff &&
+      var.enable_d1_migrations && var.enable_d1_production_smoke
+    )
+    error_message = "Neon retirement requires preserved archives, enabled D1 jobs and all legacy mutation/upload/schedule capabilities disabled."
+  }
+}
+
 variable "enable_cutover_consumer_control" {
   type        = bool
   default     = false
@@ -87,17 +103,19 @@ variable "export_d1_from_verified_backup" {
 }
 
 locals {
-  account  = "257240362763"
-  region   = "ap-northeast-1"
-  name     = "videoq-db-maintenance-prod"
-  projects = { for purpose in ["rotation", "migration", "backup", "smoke", "audit"] : purpose => "videoq-db-${purpose}-prod" }
-  brokers = {
+  account             = "257240362763"
+  region              = "ap-northeast-1"
+  name                = "videoq-db-maintenance-prod"
+  historical_projects = { for purpose in ["rotation", "migration", "backup", "smoke", "audit"] : purpose => "videoq-db-${purpose}-prod" }
+  projects            = { for purpose, name in local.historical_projects : purpose => name if !var.retire_neon_maintenance || contains(["migration", "smoke"], purpose) }
+  historical_brokers = {
     maintenance = var.enable_cutover_hold ? "rotate,rollback,audit,cutover-hold" : "rotate,rollback,audit"
     migration   = "migration"
     backup      = "backup"
     smoke       = "smoke"
     deploy      = "deploy"
   }
+  brokers   = { for purpose, kinds in local.historical_brokers : purpose => kinds if !var.retire_neon_maintenance || contains(["migration", "smoke", "deploy"], purpose) }
   profiles  = jsondecode(file("${path.module}/../../../.github/scripts/neon-profiles.json"))
   parameter = { for name, profile in local.profiles : name => "arn:aws:ssm:${local.region}:${local.account}:parameter${profile.parameter}" }
   protected_parameters = [
@@ -179,7 +197,9 @@ resource "aws_dynamodb_table" "maintenance" {
 resource "aws_iam_policy" "worker_boundary" {
   name = "videoq-worker-runtime-boundary"
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters"], Resource = [
+    { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters"], Resource = var.retire_neon_maintenance ? [
+      "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
+      ] : [
       local.parameter["worker"], "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
     ] },
     { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"],
@@ -195,7 +215,7 @@ resource "aws_iam_policy" "worker_boundary" {
   ] })
 }
 resource "aws_cloudwatch_log_group" "build" {
-  for_each          = local.projects
+  for_each          = local.historical_projects
   name              = "/aws/codebuild/${each.value}"
   retention_in_days = 14
 }
@@ -217,6 +237,7 @@ resource "aws_iam_role_policy" "build" {
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.build[each.key].arn}:*" },
     { Effect = "Allow", Action = ["s3:GetObject", "s3:GetObjectVersion"], Resource = aws_s3_object.operator.arn },
     { Effect = "Allow", Action = ["s3:GetBucketLocation", "s3:GetBucketVersioning"], Resource = aws_s3_bucket.bundle.arn },
+    ], var.retire_neon_maintenance ? [] : [
     { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = each.key == "rotation" ? concat(values(local.parameter), local.protected_parameters) : [local.parameter[each.key]] }
     ], [for permission in [
       { Effect = "Allow", Action = ["ssm:PutParameter"], Resource = concat(values(local.parameter), [local.protected_parameters[1]]) },
@@ -350,7 +371,7 @@ resource "aws_sfn_state_machine" "maintenance" {
   name     = local.name
   type     = "STANDARD"
   role_arn = aws_iam_role.state_machine.arn
-  definition = templatefile("${path.module}/../state-machine.asl.json.tftpl", merge(
+  definition = templatefile(var.retire_neon_maintenance ? "${path.module}/../state-machine.d1.asl.json.tftpl" : "${path.module}/../state-machine.asl.json.tftpl", merge(
     { table = aws_dynamodb_table.maintenance.name },
     { for purpose, project in aws_codebuild_project.job : "project_${purpose}" => project.name },
     { project_deploy = aws_codebuild_project.deploy.name }
@@ -359,7 +380,7 @@ resource "aws_sfn_state_machine" "maintenance" {
 }
 
 resource "aws_cloudwatch_log_group" "broker" {
-  for_each          = local.brokers
+  for_each          = local.historical_brokers
   name              = "/aws/lambda/videoq-db-start-${each.key}-prod"
   retention_in_days = 14
 }
@@ -422,7 +443,8 @@ resource "aws_lambda_alias" "broker" {
   function_version = aws_lambda_function.broker[each.key].version
 }
 resource "aws_iam_role" "scheduler" {
-  name = "${local.name}-scheduler"
+  count = var.retire_neon_maintenance ? 0 : 1
+  name  = "${local.name}-scheduler"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{
     Effect = "Allow", Principal = { Service = "scheduler.amazonaws.com" }, Action = "sts:AssumeRole",
     Condition = { StringEquals = { "aws:SourceAccount" = local.account }, ArnEquals = {
@@ -431,13 +453,15 @@ resource "aws_iam_role" "scheduler" {
   }] })
 }
 resource "aws_iam_role_policy" "scheduler" {
-  name = "scheduled-maintenance-only"
-  role = aws_iam_role.scheduler.id
+  count = var.retire_neon_maintenance ? 0 : 1
+  name  = "scheduled-maintenance-only"
+  role  = aws_iam_role.scheduler[0].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [{
     Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_alias.broker["maintenance"].arn
   }] })
 }
 resource "aws_scheduler_schedule" "maintenance" {
+  count                        = var.retire_neon_maintenance ? 0 : 1
   name                         = local.name
   state                        = var.schedule_enabled ? "ENABLED" : "DISABLED"
   schedule_expression          = "cron(31 3 * * ? *)"
@@ -445,7 +469,7 @@ resource "aws_scheduler_schedule" "maintenance" {
   flexible_time_window { mode = "OFF" }
   target {
     arn      = aws_lambda_alias.broker["maintenance"].arn
-    role_arn = aws_iam_role.scheduler.arn
+    role_arn = aws_iam_role.scheduler[0].arn
     input    = jsonencode({ action = "start", kind = "rotate" })
     retry_policy {
       maximum_event_age_in_seconds = 3600
@@ -463,4 +487,18 @@ output "state_machine" {
 }
 output "worker_boundary" {
   value = aws_iam_policy.worker_boundary.arn
+}
+
+# Preserve state identity when the historical singleton is made optional.
+moved {
+  from = aws_iam_role.scheduler
+  to   = aws_iam_role.scheduler[0]
+}
+moved {
+  from = aws_iam_role_policy.scheduler
+  to   = aws_iam_role_policy.scheduler[0]
+}
+moved {
+  from = aws_scheduler_schedule.maintenance
+  to   = aws_scheduler_schedule.maintenance[0]
 }

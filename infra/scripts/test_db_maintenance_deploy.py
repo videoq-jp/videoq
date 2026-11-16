@@ -65,6 +65,15 @@ class DeploymentTest(unittest.TestCase):
         (self.path / "manifest.json").write_text(json.dumps(manifest))
         (self.path / "state-machine.json").write_text('{"new":true}')
 
+    def test_retired_projects_and_starters_are_not_required_or_promoted(self):
+        api = FakeAWS()
+        with patch("sys.stdout", new_callable=io.StringIO) as output:
+            deploy.promote(self.path, SHA, api)
+        self.assertEqual(set(api.projects), {"videoq-db-migration-prod", "videoq-db-smoke-prod"})
+        self.assertEqual(set(api.aliases), {"videoq-db-start-migration-prod", "videoq-db-start-smoke-prod", "videoq-db-start-deploy-prod"})
+        self.assertEqual(json.loads(output.getvalue())["projects"], 2)
+        self.assertFalse(any(word in json.dumps(api.calls) for word in ["videoq-db-rotation-prod", "videoq-db-backup-prod", "videoq-db-audit-prod"]))
+
     def test_streaming_invoke_sends_exact_bytes_without_cli_input_json(self):
         event = {"action": "start", "kind": "invalid"}
         def execute(args, **options):

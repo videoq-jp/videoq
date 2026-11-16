@@ -11,6 +11,7 @@ mock_provider "aws" {
 }
 
 variables {
+  retire_neon_maintenance = false # Historical contracts; production defaults to retired.
   # Mock providers hash these local files but never upload or execute them.
   operator_zip  = "versions.tf"
   broker_zip    = "versions.tf"
@@ -106,7 +107,7 @@ run "credential_and_control_boundaries" {
     error_message = "Only the isolated restore job needs Docker privilege, and each project must have bounded concurrency."
   }
   assert {
-    condition     = aws_scheduler_schedule.maintenance.state == "DISABLED"
+    condition     = aws_scheduler_schedule.maintenance[0].state == "DISABLED"
     error_message = "Do not enable the new scheduler before verified production cutover."
   }
   assert {
