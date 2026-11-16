@@ -1,0 +1,19 @@
+{
+  "scope": "Disabled trusted completion gate; no production release",
+  "nodeTests": {
+    "passed": 583,
+    "failed": 0
+  },
+  "dynamoDbLocalIntegration": {
+    "passed": 9,
+    "failed": 0,
+    "realConditionalTransactions": true,
+    "providerCurrentStateAndNativeE2E": "explicit test fixture"
+  },
+  "requiresAllTwelveStepsVerified": true,
+  "requiresClaimedExecutor": true,
+  "completionReceiptDurableBeforeStateMachineRelease": true,
+  "directLockDeletionPerformedByGate": false,
+  "productionHoldReleased": false,
+  "productionCurrentStateVerifierImplemented": false
+}

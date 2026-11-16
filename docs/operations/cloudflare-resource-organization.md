@@ -456,3 +456,29 @@ but unprocessed updates, lost acceptance reconciled without repost, fence loss
 and artifact corruption. These are not production mutations or Cloudflare
 rehearsal. Full environment/factory checks, final proof/release/recovery, native
 E2E and the live switch remain outstanding.
+
+
+## Completion gate
+
+`d1-resource-completion.cjs` requests release only after all twelve fixed steps
+are verified and the same executor still owns the running hold. A mandatory
+trusted verifier must freshly attest restored API/consumer/deployment admission,
+retained source fencing, removed target fencing, the exact account/D1/Vectorize
+targets, stable API version and the pinned native E2E result. The E2E proof must
+match the verified E2E step receipt. The gate itself validates the attestation's
+shape and identity; it does not implement those Cloudflare/AWS probes.
+
+The gate atomically saves the completion receipt/digest and restored-admission
+markers while requiring unchanged source, executor, revision, complete step
+journal and shared owner. A lost write response reconciles exact durable
+readback. Reentry validates the stored receipt and step chain; it reports a
+historical release request, not current production health. The gate never
+issues a lock delete. The existing state machine performs its own conditional
+release after the receipt is durable, retaining the run journal.
+
+The gate defaults to disabled and has no production caller. Pre-promotion abort,
+post-promotion forward recovery, fresh environment/native-E2E verification and
+final wiring remain necessary before enabling it.
+[Completion-gate evidence](evidence/d1-resource-completion-2026-11-17.json)
+records unit tests and actual DynamoDB Local conditional release with explicit
+provider/E2E fixtures; no production hold was released.

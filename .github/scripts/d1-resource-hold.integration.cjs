@@ -71,7 +71,12 @@ async function fixture(){
   if(command==='TransactWriteItems'&&loseResponse){loseResponse=false;throw Error('SYNTHETIC_LOST_RESPONSE');}
   return result;
  }});
- return{start,get,put,release,journal};
+ const completion=(run,executorToken,verifyCurrentState)=>require('./d1-resource-completion.cjs').createResourceCompletion({run,source:SHA,executorToken,journal:journal(run,{executorToken}),verifyCurrentState,enabled:true,aws:async(service,command,value)=>{
+  assert.equal(service,'ddb');const local=structuredClone(value),remap=op=>{assert.equal(op.TableName,'videoq-db-maintenance-prod');op.TableName=table;};
+  if(local.TransactItems){for(const item of local.TransactItems)for(const operation of Object.values(item))remap(operation);}else remap(local);
+  return aws(service,command,local);
+ }});
+ return{start,get,put,release,journal,completion};
 }
 function completed(row,phase='verified'){
  return{...row,resource_phase:{S:phase},release_requested:{BOOL:true},api_admission_restored:{BOOL:true},consumer_admission_restored:{BOOL:true},deployment_admission_restored:{BOOL:true},resource_completion_receipt:{S:'synthetic receipt'},resource_completion_receipt_sha256:{S:'c'.repeat(64)}};
@@ -144,4 +149,18 @@ test('real claimed journal and pending operation authorize the Python pipe worke
  assert.deepEqual(await bridge.call('ownership-check',{}),{owned:true});
  await j.verify({...pending,receiptSha256:'d'.repeat(64)});
  await assert.rejects(bridge.call('ownership-check',{}),/BRIDGE_OWNERSHIP_REQUIRED/);
+});
+
+test('completion gate preserves owner until durable proof and real conditional ASL release',async()=>{
+ const f=await fixture(),r=await f.start(),token='1'.repeat(64),j=f.journal(r.run_id,{executorToken:token}),proofSha='d'.repeat(64);
+ await j.claimExecutor();
+ const current={apiAdmissionRestored:true,consumerAdmissionRestored:true,deploymentAdmissionRestored:true,sourceFenced:true,targetUnfenced:true,
+  accountId:'12daec56fdba43f677f2766ee26a5a39',databaseId:'587bd210-6d9d-4f32-abb7-a490013e65d3',largeIndex:'videoq-prod-scenes-1536',smallIndex:'videoq-prod-scenes-768',apiVersion:'11111111-1111-1111-1111-111111111111',
+  smokeBuildArn:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-smoke-prod:22222222-2222-2222-2222-222222222222',smokeSourceSha:SHA,smokeCompletedAt:'2026-11-17T00:00:00.000Z',e2eStepReceiptSha256:proofSha};
+ const completion=f.completion(r.run_id,token,async()=>current);
+ await assert.rejects(completion.request(),/ALL_STEPS/);
+ for(const step of RESOURCE_STEPS){const value={step,planSha256:'c'.repeat(64)};await j.begin(value);await j.verify({...value,receiptSha256:proofSha});}
+ current.sourceFenced=false;await assert.rejects(completion.request(),/CURRENT_PROOF/);assert.equal((await f.get('run#'+r.run_id)).release_requested.BOOL,false);
+ current.sourceFenced=true;const receipt=await completion.request();assert.equal(receipt.releaseRequested,true);assert.ok(await f.get('maintenance'));
+ const owner=await f.get('maintenance');await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.deepEqual(await completion.request(),receipt);
 });
