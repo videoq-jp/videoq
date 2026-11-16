@@ -16,7 +16,7 @@ flowchart LR
   A -->|success| Q
   A -->|needs a fix| C[Isolated Claude Worker]
   C --> PR
-  T[Daily / monthly / manual] --> O
+  T[Daily / weekly / manual] --> O
 ```
 
 ## Entry points and components
@@ -38,7 +38,6 @@ flowchart LR
 | `openrouter-identity.yml` | Manual inspection and setup of OpenRouter workload identity; see [cloud AI](../docs/operations/openai-transcription.md) |
 | `ai-credential-audit.yml` | Manual inventory of remaining hosted AI credential copies, without printing values |
 | `retire-ai-credentials.yml` | Manual plan and guarded retirement of reviewed direct AI keys |
-| `public-demo-setup.yml` | Manual audit and provisioning of the `/try` sample course; see [public demo](../docs/operations/public-demo.md) |
 
 `container-validation.yml`, `terraform-plan.yml`, `onprem-validation.yml`, and
 `local-inference-basic.yml` are validation components called from CI and Operations.
@@ -163,3 +162,16 @@ Argo CD applies that repository. See [lab deployment](../docs/guides/lab-gitops.
 and [automatic updates](../docs/guides/lab-auto-update.md).
 The superseded RTX 4090 shell installer, Textual wizard and retired custom-vLLM
 Runpod probe were removed. Shared single-server/CPU lifecycle tools remain supported.
+
+## Retired PostgreSQL entry points
+
+After the verified D1/Vectorize handoff and Neon project retirement, the Neon
+bootstrap, credential maintenance, PostgreSQL public-demo preparation and D1
+cutover-control workflows were removed, along with their unused request clients
+and direct parameter-store authentication action. They are available in Git history.
+The existing public demo and its uploaded media are preserved.
+
+DB Maintenance CD and Operations remain: current D1 migration and smoke still run
+inside AWS. Native PostgreSQL recovery code and saved, versioned backup objects are
+retained through recovery review; their presence does not enable a scheduled Neon
+connection. On-premises PostgreSQL/pgvector is unaffected.

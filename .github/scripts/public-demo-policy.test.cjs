@@ -29,17 +29,8 @@ test('registration cannot send its cookie to storage or use another API/domain',
   assert.equal(calls.length,2);
  } finally {globalThis.fetch=original;}
 });
-test('only reviewed main can execute the gated operator after installing isolated tools',()=>{
- const workflow=readFileSync('.github/workflows/public-demo-setup.yml','utf8');
+test('the retained demo recovery operator preserves counters and redacts child output',()=>{
  const source=readFileSync('.github/scripts/provision-public-demo.mjs','utf8');
- assert.match(workflow,/default: audit/);
- assert.match(workflow,/github.ref == 'refs\/heads\/main'/);
- assert.match(workflow,/production-db-demo/);
- assert.match(workflow,/production-db-audit/);
- assert.ok(workflow.indexOf('setup-operations-tools')<workflow.indexOf('uses: ./.github/actions/neon-credentials'));
- assert.ok(workflow.indexOf('uses: ./.github/actions/neon-credentials')<workflow.indexOf('with-neon-credentials.py'));
- assert.doesNotMatch(workflow,/secrets\.DATABASE_URL/);
- assert.doesNotMatch(workflow,/upload-artifact|schedule:|pull_request_target/);
  assert.match(source,/Usage counters are deliberately preserved/);
  assert.doesNotMatch(source,/UPDATE users SET used_ai_answers|INSERT INTO (scene_embeddings|scenes)/);
  assert.match(source,/child\.stdout\.resume\(\); child\.stderr\.resume\(\)/);
