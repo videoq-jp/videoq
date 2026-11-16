@@ -32,6 +32,10 @@ try{
  const ops=join(root,'.github/operations-tools/node_modules');await symlink(ops,join(bundle,'.github/operations-tools/node_modules'),'dir');
  const {ensureOperatorDependencies}=await import(pathToFileURL(join(bundle,'.github/scripts/neon-fence-audit.mjs')).href);await ensureOperatorDependencies(bundle);
  assert.equal(typeof(await import(pathToFileURL(join(bundle,'.github/scripts/cutover-postgres-fence.mjs')).href)).runHeldPostgresFence,'function');
+ // The production recovery child must resolve only the ZIP's locked operations
+ // dependencies; importing it must not execute recovery or access credentials.
+ const recoveryImport="const m=await import("+JSON.stringify(pathToFileURL(join(bundle,'apps/api/scripts/d1-production-recovery.ts')).href)+");if(typeof m.main!=='function')throw Error('RECOVERY_CHILD_IMPORT_FAILED');console.log('RECOVERY_CHILD_IMPORT_VERIFIED');";
+ assert.equal((await execute(process.execPath,['--import',pathToFileURL(join(ops,'tsx/dist/loader.mjs')).href,'--input-type=module','-e',recoveryImport],{cwd:bundle,env:Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]])),timeout:30000,maxBuffer:65536})).stdout.trim(),'RECOVERY_CHILD_IMPORT_VERIFIED');
  const output=join(directory,'plan.json'),target=join(directory,'target.json');await writeFile(target,JSON.stringify({purpose:'isolated-rehearsal',host:'127.0.0.1',databaseName:database,rolePrefix:prefix}),{mode:0o600});
  const env=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));env.VIDEOQ_FENCE_ADMIN_DATABASE_URL=url.toString();env.PGOPTIONS='-c default_transaction_read_only=on -c search_path=pg_catalog';
  const loader=pathToFileURL(join(ops,'tsx/dist/loader.mjs')).href,args=['--import',loader,join(bundle,'apps/api/scripts/d1-postgres-login-fence.ts'),'--mode','prepare','--target',target,'--state',output];
