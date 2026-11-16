@@ -136,6 +136,7 @@
       },
       "routes": [
         { "pattern": "videoq.jp/api/*", "zone_name": "videoq.jp" },
+        { "pattern": "videoq.jp/internal/worker/*", "zone_name": "videoq.jp" },
         { "pattern": "videoq.jp/.well-known/*", "zone_name": "videoq.jp" },
         { "pattern": "videoq.jp/health", "zone_name": "videoq.jp" },
         { "pattern": "videoq.jp/ready", "zone_name": "videoq.jp" }
