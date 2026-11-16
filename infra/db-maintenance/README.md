@@ -492,6 +492,11 @@ It reads no DB credential or SSM value, executes no SQL, changes no consumer map
 
 Managed-login fence install/release now runs as fixed operations inside the same owned AWS activity stage; see [the execution and recovery contract](../../docs/operations/cutover-postgres-fence.md). This does not enable the infrastructure flags or implement post-data-write backend handoff.
 
+The [production recovery child](../../docs/operations/production-recovery-child.md)
+is packaged with the operator's locked dependencies. It requires a digest-bound
+parent grant before its fenced database transaction. Its AWS parent stage and
+post-write handoff are not yet enabled; packaging alone is not cutover readiness.
+
 
 ### Backend-aware production smoke
 
