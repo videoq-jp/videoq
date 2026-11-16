@@ -35,3 +35,8 @@ test('marker reset, owner loss, reopened API/consumers/deployments and changed p
 test('an active D1 backend cannot be imported through the forward offline-candidate path',async()=>{
  const f=fixture();f.settings.bindings.push({name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'DB',type:'d1',id:TARGET.databaseId},...[1536,768].map(n=>({name:'SCENE_VECTORIZE_'+n,type:'vectorize',index_name:'synthetic-'+n})));await assert.rejects(()=>assertTransferContext(f.args),/CUTOVER_API_BACKEND_OR_PAUSE_CHANGED/);
 });
+test('explicit postwrite observations verify running D1 and original admission while transfer defaults remain closed',async()=>{
+ const f=fixture();f.enableConsumer();f.enableWorkflow();f.settings.bindings.find(v=>v.name==='MIGRATION_TRAFFIC_STATE').text='running';f.settings.bindings.push({name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'PERSISTENCE_BACKEND',type:'plain_text',text:'d1'},{name:'DB',type:'d1',id:TARGET.databaseId},...[1536,768].map(n=>({name:'SCENE_VECTORIZE_'+n,type:'vectorize',index_name:'synthetic-'+n})));
+ f.args.fetcher=async()=>Response.json({data:{status:'ready',db:'ok'}});
+ await assert.rejects(()=>assertTransferContext(f.args));const result=await assertTransferContext({...f.args,expectedBackend:'d1',expectedTraffic:'running',expectedConsumers:'original',expectedDeployments:'original'});assert.equal(result.target.databaseId,TARGET.databaseId);
+});

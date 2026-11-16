@@ -197,6 +197,11 @@ jobs:
               - '.github/workflows/terraform-apply.yml'
             operations:
               - '.github/scripts/cutover-final-*'
+              - '.github/scripts/cutover-backend-*'
+              - '.github/scripts/run-cutover-backend*'
+              - '.github/scripts/cutover-finalize*'
+              - '.github/scripts/run-cutover-finalize*'
+              - '.github/scripts/cutover-handoff-aws*'
               - '.github/scripts/cutover-transfer*'
               - '.github/scripts/cutover-internal-auth*'
               - '.github/scripts/cutover-postwrite-recovery*'

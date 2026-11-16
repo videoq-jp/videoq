@@ -10,8 +10,8 @@ const TARGET=Object.freeze({accountId:'12daec56fdba43f677f2766ee26a5a39',databas
 const hash=value=>createHash('sha256').update(value).digest('hex'),hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const build=(value,kind)=>new RegExp('^arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-'+kind+'-prod:[a-f0-9-]{36}$').test(value??'');
 function boundJson(row,key,shaKey=key+'_sha256'){const text=row[key]?.S;if(typeof text!=='string'||hash(text)!==row[shaKey]?.S)throw Error('CUTOVER_PROOF_CHANGED');return JSON.parse(text);}
-async function assertTransferContext({run,source,aws,github,cloudflare,fetcher=fetch,expectedBackend='postgres'}){
- if(!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||!['postgres','d1'].includes(expectedBackend))throw Error('INVALID_TRANSFER_CONTEXT');
+async function assertTransferContext({run,source,aws,github,cloudflare,fetcher=fetch,expectedBackend='postgres',expectedTraffic='paused',expectedConsumers='paused',expectedDeployments='frozen'}){
+ if(!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||!['postgres','d1'].includes(expectedBackend)||!['paused','running'].includes(expectedTraffic)||!['paused','resuming','original'].includes(expectedConsumers)||!['frozen','restoring','original'].includes(expectedDeployments))throw Error('INVALID_TRANSFER_CONTEXT');
  const arn='arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run;
  const get=pk=>aws('ddb','GetItem',{TableName:TABLE,Key:{pk:{S:pk}},ConsistentRead:true});
  const [r,o]=await Promise.all([get('run#'+run),get('maintenance')]);const row=r.Item;
@@ -36,15 +36,16 @@ async function assertTransferContext({run,source,aws,github,cloudflare,fetcher=f
  if(Date.parse(capture.startTime)<Date.parse(installation.endTime)||Date.parse(capture.endTime)<Date.parse(capture.startTime))throw Error('BACKUP_MUST_FOLLOW_POSTGRES_FENCE');
  const deployment=validateDeploymentFreezePlan(boundJson(row,'deployment_freeze_plan','deployment_freeze_sha256')),consumer=validateConsumerPlan(JSON.parse(row.consumer_plan?.S??'null'));
  if(typeof row.consumer_plan?.S!=='string'||hash(row.consumer_plan.S)!==row.consumer_plan_sha256?.S||consumer.scope.purpose!=='production')throw Error('CUTOVER_CONSUMER_PLAN_CHANGED');
- const frozen=await createDeploymentFreeze(github).inspect(deployment);if(!frozen.admissionFrozen||!frozen.githubRunsDrained)throw Error('CUTOVER_DEPLOYMENT_FREEZE_REQUIRED');
- const stopped=await createConsumerControl((command,input)=>aws('lambda',command,input)).inspect(consumer);if(!stopped.admissionPaused)throw Error('CUTOVER_CONSUMERS_MUST_STAY_PAUSED');
+ const frozen=await createDeploymentFreeze(github).inspect(deployment);if(!frozen.githubRunsDrained||expectedDeployments==='frozen'&&!frozen.admissionFrozen)throw Error('CUTOVER_DEPLOYMENT_FREEZE_REQUIRED');
+ if(expectedDeployments==='original')for(const fixed of deployment.workflows){const current=await github('GET','repos/videoq-jp/videoq/actions/workflows/'+fixed.id);if((current.state==='active')!==fixed.wasActive)throw Error('ORIGINAL_DEPLOYMENT_ADMISSION_REQUIRED');}
+ const stopped=await createConsumerControl((command,input)=>aws('lambda',command,input)).inspect(consumer);if(expectedConsumers==='paused'&&!stopped.admissionPaused||expectedConsumers==='original'&&!stopped.originalAdmissionRestored||expectedConsumers==='resuming'&&stopped.states.some(value=>!['Enabled','Enabling','Disabled'].includes(value.state)||!consumer.consumers.find(v=>v.functionName===value.functionName)?.wasEnabled&&value.state!=='Disabled'))throw Error('CUTOVER_CONSUMERS_MUST_STAY_PAUSED');
  const settings=await cloudflare('GET','accounts/'+TARGET.accountId+'/workers/scripts/videoq-api/settings'),state=publicApiState(settings),backend=JSON.parse(state.serialized).vars;
  const selected=backend.PERSISTENCE_BACKEND??(backend.DEPLOYMENT_EDITION==='cloud'?'d1':'postgres');
- if(state.traffic!=='paused'||selected!==expectedBackend)throw Error('CUTOVER_API_BACKEND_OR_PAUSE_CHANGED');
+ if((expectedTraffic==='paused'?state.traffic!=='paused':![undefined,'running'].includes(state.traffic))||selected!==expectedBackend)throw Error('CUTOVER_API_BACKEND_OR_PAUSE_CHANGED');
  if(expectedBackend==='d1'){
   const database=settings.bindings.filter(v=>v.name==='DB');if(database.length!==1||database[0].type!=='d1'||database[0].id!==TARGET.databaseId)throw Error('CUTOVER_D1_TARGET_CHANGED');
  }
- await verifyProductionTraffic(true,fetcher);
+ await verifyProductionTraffic(expectedTraffic==='paused',fetcher);
  const [again,owner]=await Promise.all([get('run#'+run),get('maintenance')]);
  if(owner.Item?.execution_arn?.S!==arn||owner.Item?.kind?.S!=='cutover-hold'||again.Item?.source_sha?.S!==source||again.Item?.database_mutations_started?.BOOL!==true||again.Item?.cutover_revision?.N!==row.cutover_revision?.N||again.Item?.final_backup_receipt?.S!==row.final_backup_receipt.S)throw Error('CUTOVER_PROOF_CHANGED');
  return{row,backup,consumer,deployment,settings,executionArn:arn,target:TARGET};

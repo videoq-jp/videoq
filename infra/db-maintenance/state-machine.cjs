@@ -25,6 +25,7 @@ function definition({table, projects}) {
       ProjectionExpression:'cutover_phase,release_requested,consumer_action_id,activity_action_id',
     },ResultPath:'$.hold',Next:'CutoverHoldPhase'},
     CutoverHoldPhase: {Type:'Choice',Choices:[
+      {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'postwrite-complete'},{Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:true}],Next:'ReleasePostwriteHold'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'activity-auditing'},{Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'InspectCutoverActivity'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumers-pausing'}, {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'PauseCutoverConsumers'},
       {And:[{Variable:'$.hold.Item.cutover_phase.S',StringEquals:'consumers-resuming'}, {Variable:'$.hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'ResumeCutoverConsumers'},
@@ -47,6 +48,14 @@ function definition({table, projects}) {
         ExpressionAttributeNames:{'#phase':'cutover_phase'},ExpressionAttributeValues:{':phase':{S:'holding'},':fenceReleased':{S:'released'},':requested':{Bool:true},':false':{Bool:false}}}},
       {Delete:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution',
         ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'}}}},
+    ]},ResultPath:null,Next:'Success'},
+    // Only the trusted finalizer can publish this phase after real D1 E2E and
+    // restored admission. Never reuse the prewrite path or reset its marker.
+    ReleasePostwriteHold: {Type:'Task',Resource:'arn:aws:states:::aws-sdk:dynamodb:transactWriteItems',Parameters:{TransactItems:[
+      {ConditionCheck:{TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},
+        ConditionExpression:'execution_arn = :execution AND source_sha = :source AND cutover_phase = :phase AND release_requested = :true AND database_mutations_started = :true AND postgres_fence_state = :fenced AND api_admission_restored = :true AND consumer_admission_restored = :true AND deployment_admission_restored = :true AND api_pause_verified = :false AND attribute_exists(postwrite_completion_receipt) AND attribute_exists(postwrite_completion_receipt_sha256) AND attribute_exists(d1_e2e_receipt) AND attribute_exists(d1_e2e_receipt_sha256)',
+        ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'},':source':{'S.$':'$.source_sha'},':phase':{S:'postwrite-complete'},':fenced':{S:'fenced'},':true':{Bool:true},':false':{Bool:false}}}},
+      {Delete:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'},':kind':{S:'cutover-hold'}}}},
     ]},ResultPath:null,Next:'Success'},
     InvalidCutoverHoldPhase: {Type:'Fail',Error:'INVALID_CUTOVER_HOLD_PHASE'},
     LoginFenceAudit: job('rotation', 'login-fence-audit', 'Release'),
