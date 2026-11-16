@@ -24,6 +24,12 @@ variable "enable_cutover_postwrite_recovery" {
   }
 }
 
+variable "enable_d1_production_smoke" {
+  type        = bool
+  default     = false
+  description = "Allow only the fixed smoke job to select the actual production backend and read its D1 credential and synthetic-identity signing key."
+}
+
 variable "operator_zip" {
   type = string
 }
@@ -221,7 +227,12 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
-    ] : permission if each.key == "migration" && var.enable_d1_migrations], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
+      ] : permission if each.key == "migration" && var.enable_d1_migrations], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/smoke-identity"
+      ] }
+    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
     { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
@@ -259,6 +270,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"
       value = each.key == "rotation" && var.enable_cutover_postwrite_recovery ? "true" : "false"
+    }
+    environment_variable {
+      name  = "VIDEOQ_D1_PRODUCTION_SMOKE"
+      value = each.key == "smoke" && var.enable_d1_production_smoke ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_RETAIN_BACKUP"

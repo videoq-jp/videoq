@@ -109,7 +109,8 @@ async function main() {
   }
   if (['smoke', 'audit'].includes(stage)) {
     const script = {smoke: 'production-smoke.mjs', audit: 'provision-public-demo.mjs'}[stage];
-    execFileSync('python3', ['.github/scripts/with-neon-credentials.py', stage, 'node', '.github/scripts/' + script],
+    if(stage==='smoke') await require('../../../.github/scripts/aws-production-smoke.cjs').runProductionSmoke();
+    else execFileSync('python3', ['.github/scripts/with-neon-credentials.py', stage, 'node', '.github/scripts/' + script],
       {stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 8*1024*1024, env: {...process.env, OPERATION: 'audit',
         GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'videoq-jp/videoq', VIDEOQ_BUNDLED_CHROMIUM: 'true'}});
     const report = stage === 'audit' ? null : JSON.parse(readFileSync('operations-report.json', 'utf8'));

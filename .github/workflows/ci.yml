@@ -199,6 +199,9 @@ jobs:
               - '.github/scripts/cutover-postwrite-recovery*'
               - '.github/scripts/cutover-recovery-child*'
               - 'apps/api/scripts/migrations/d1/write-fence.ts'
+
+              - '.github/scripts/production-smoke*'
+              - '.github/scripts/aws-production-smoke*'
               - '.github/workflows/d1-cutover-control.yml'
               - '.github/scripts/cutover-maintenance-request*'
               - '.github/scripts/run-aws-db.py'

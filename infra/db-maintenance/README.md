@@ -503,3 +503,39 @@ connects the AWS parent and digest-authorized child. It verifies the versioned
 private input, frozen D1 rows, writer admission and durable grant, then records a
 strict receipt while retaining both fences and exclusion. It does not enable
 recovery, capture vectors, switch backends, resume traffic or release the hold.
+
+### Backend-aware production smoke
+
+`enable_d1_production_smoke` is disabled by default. When enabled, only the fixed
+smoke project can additionally read `/videoq/security/prod/d1-migration` and
+`/videoq/security/prod/smoke-identity`. The latter is a persistent random 32-byte
+HMAC key, encoded as 64 lowercase hex characters in a SecureString JSON `key`
+field. Keep the same key across deployments so incomplete synthetic checks can
+be cleaned up. It is independent of user authentication and encryption keys.
+Provision the key before enabling this flag. Code deployment preserves the flag;
+it does not switch the API backend.
+
+The AWS parent reads actual production Worker settings. PostgreSQL keeps its
+existing restricted credential wrapper and security-definer smoke functions.
+D1 receives only its metadata/D1 token and synthetic-identity key; no PostgreSQL,
+AWS role, GitHub or application secrets are forwarded. Failed or ambiguous D1
+detection fails closed rather than trying PostgreSQL. The child rechecks the
+actual backend, DB identity and unpaused API before each D1 statement.
+
+D1 smoke identities carry an HMAC of their immutable random UUID in a signed
+favicon URL in the existing image field. Display name, username and email alone
+never authorize cleanup. Every D1 mutation repeats the complete signed identity
+predicate. Mutations verify the returned identity, including when a cascading
+delete writes multiple related rows. A marker copied to a different UUID is invalid. An interrupted user/
+credential creation can be reconciled on the next check only for a proven smoke
+identity. Existing video/visual/storage-cleanup guards and the shared upload,
+processing, cited-answer and browser checks are retained. No new application
+table, public administrative API or user authentication mechanism is added.
+
+`production-smoke-store.test.cjs` uses all actual SQLite migrations, with mocked
+HTTP transport, to verify identity forgery rejection, changed-identity races,
+credential reconciliation and SQL behavior. The explicitly invoked
+`production-smoke-d1.remote.integration.cjs` additionally requires a real named
+disposable D1 database. Its Worker metadata transport is deliberately mocked;
+it proves the D1 storage contract, not a production backend switch or complete
+upload-to-answer E2E result. The harness must delete its database after testing.
