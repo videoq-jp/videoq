@@ -196,6 +196,8 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/workflows/terraform-apply.yml'
             operations:
+              - '.github/scripts/production-smoke*'
+              - '.github/scripts/aws-production-smoke*'
               - '.github/workflows/d1-cutover-control.yml'
               - '.github/scripts/cutover-maintenance-request*'
               - '.github/scripts/run-aws-db.py'

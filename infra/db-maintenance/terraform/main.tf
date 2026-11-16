@@ -14,6 +14,12 @@ variable "enable_d1_migrations" {
   description = "Allow the fixed migration job to read its D1-only credential and verify existing lock ownership."
 }
 
+variable "enable_d1_production_smoke" {
+  type        = bool
+  default     = false
+  description = "Allow only the fixed smoke job to select the actual production backend and read its D1 credential and synthetic-identity signing key."
+}
+
 variable "operator_zip" {
   type = string
 }
@@ -211,7 +217,12 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
-    ] : permission if each.key == "migration" && var.enable_d1_migrations], each.key == "backup" && var.retain_verified_backups ? [
+      ] : permission if each.key == "migration" && var.enable_d1_migrations], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/smoke-identity"
+      ] }
+    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], each.key == "backup" && var.retain_verified_backups ? [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
   ] : []) })
 }
@@ -239,6 +250,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_D1_PRODUCTION_SMOKE"
+      value = each.key == "smoke" && var.enable_d1_production_smoke ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_RETAIN_BACKUP"
