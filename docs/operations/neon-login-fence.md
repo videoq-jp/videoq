@@ -94,6 +94,13 @@ role変更の最終確認にはRead Committedを使用する。同じ古いsnaps
 
 DB-admin SecureStringはAWS親だけが取得し、子へ渡すのは固定target用のDB接続と許可した環境だけとした。AWS/OIDCや既存のNode/PG設定は継承せず、読み取り専用のPGOPTIONSを明示する。管理者自身による任意SQLを隔離するsandboxではなく、mainレビュー境界は維持する。計画は子のprivate fileから同じschemaで検証し、AWSのrun recordへ条件付きで保存・hash照合する。応答喪失・既存計画の再利用・破損では、計画を上書きしない。
 
-配布ZIP＋実PGの隔離試験、AWS親の境界4テスト、Nodeのデプロイポリシー389テスト、Python 156テスト（7 skip）、infra 57テストが成功した。Step Functions定義はAWSの検証APIで`OK`、diagnostics 0。専用コンテナと資格情報ファイルは撤去した。[集計証拠](evidence/aws-neon-fence-audit-2026-11-16.json)。本番の監査・NOLOGIN操作・復旧・切り替えはまだ実行していない。
+配布ZIP＋実PGの隔離試験、AWS親の境界4テスト、Nodeのデプロイポリシー389テスト、Python 156テスト（7 skip）、infra 57テストが成功した。Step Functions定義はAWSの検証APIで`OK`、diagnostics 0。専用コンテナと資格情報ファイルは撤去した。[集計証拠](evidence/aws-neon-fence-audit-2026-11-16.json)。この実装時点では本番操作は未実行だった。その後の読み取り専用監査は、下記のとおり成功した。NOLOGIN操作・復旧・切り替えは未実行である。
 
 この準備の成功後もglobal lockを保持し続けるわけではなく、active fenceの永続leaseでもない。本番の停止・drain、固定sourceによるinstall/inspect/release、逆移行と外部状態の照合を一連の保守経路へ結合する作業は残る。
+
+
+## 本番での読み取り専用監査と原状保存
+
+[本番のmainワークフロー 43779197615](https://github.com/videoq-jp/videoq/actions/runs/43779197615)で固定の読み取り専用監査が成功した。管理対象28 role、そのうち元のLOGIN有効7 roleの計画をAWS内へ保存し、対象・hash・配布コードを照合した。監査後の公開readinessも成功した。管理者資格情報はAWSから持ち出していない。[集計証拠](evidence/production-postgres-fence-audit-2026-11-16.json)。これはログイン停止ではなく、監査終了後もglobal lockを保持する処理ではない。
+
+保守hold内で最初に成功したactivity観測では、停止前の元のrole計画・hash・最初のbuild/actionを同じrunへ原子的に固定する。再観測で元のLOGIN状態を上書きせず、catalogが変われば拒否する。[詳細](postgres-cutover-activity.md#immutable-pre-fence-state)。この原状保存もinstall意図・drain・停止解除・本番逆移行の実装を代替しない。後続の変更処理は同じholdとこの原本へ結び付ける必要がある。

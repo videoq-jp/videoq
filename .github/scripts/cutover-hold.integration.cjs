@@ -14,8 +14,16 @@ const MACHINE='arn:aws:states:ap-northeast-1:257240362763:stateMachine:videoq-db
 const IMAGE='amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86';
 const name='videoq-hold-ddb-'+randomUUID().replaceAll('-',''),execute=promisify(execFile);
 const docker=args=>execute('docker',args,{timeout:120000,maxBuffer:1024*1024});
-let client;
+let client,operatorRoot;
 before(async()=>{
+ const fs=require('node:fs/promises'),path=require('node:path');
+ operatorRoot=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'videoq-held-operator-fixture-'));
+ await fs.chmod(operatorRoot,0o700);
+ await fs.mkdir(path.join(operatorRoot,'.github/operations-tools'),{recursive:true});
+ await fs.symlink(path.resolve('.github/operations-tools/node_modules'),path.join(operatorRoot,'.github/operations-tools/node_modules'),'dir');
+ await fs.writeFile(path.join(operatorRoot,'package.json'),JSON.stringify({type:'module',private:true}));
+ const schemas=path.join('apps/api/scripts/migrations/d1');await fs.mkdir(path.join(operatorRoot,schemas),{recursive:true});
+ for(const name of ['postgres-login-fence.ts','postgres-cutover-activity.ts','private-input.ts'])await fs.copyFile(path.join(schemas,name),path.join(operatorRoot,schemas,name));
  await docker(['run','--detach','--name',name,'--label','videoq-purpose=cutover-hold-ddb-fixture','--memory','512m','-p','127.0.0.1::8000','--entrypoint','java','--workdir','/home/dynamodblocal',IMAGE,'-Xmx256m','-Djava.library.path=./DynamoDBLocal_lib','-jar','DynamoDBLocal.jar','-inMemory','-sharedDb']);
  const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],'cutover-hold-ddb-fixture');
  const port=Number(info.NetworkSettings.Ports['8000/tcp'][0].HostPort);assert.ok(Number.isInteger(port)&&port>0&&port<65536);
@@ -26,6 +34,7 @@ before(async()=>{
 }, {timeout:90000});
 after(async()=>{
  client?.destroy();
+ if(operatorRoot)await require('node:fs/promises').rm(operatorRoot,{recursive:true,force:true});
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],'cutover-hold-ddb-fixture');await docker(['rm','--force','--volumes',name]);}
  catch(error){if(!String(error.stderr||'').includes('No such object'))throw error;}
 }, {timeout:30000});
@@ -348,10 +357,11 @@ test('reopened deployment admission and DB mutation refuse API operations while 
 async function pausedActivityFixture(){
  const f=await fixture({consumerControlEnabled:true});const{run_id:run}=await f.start(),deployment=deploymentStage(f,run);await deployment.run('freeze');const api=ownedApiStage(f,run,deployment);await api.run('pause');await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run,{disabledAccount:true}).run();await f.broker({action:'pause-cutover-consumers',run_id:run});const consumers=await consumerStage(f,run,'pause',{api:api.api});await consumers.run();return{f,run,deployment,api,consumers};
 }
-async function heldActivityStage(ctx,{failChild=false,loseCompletion=false,activeJobs=0,contradictory=false}={}){
+async function heldActivityStage(ctx,{failChild=false,loseCompletion=false,activeJobs=0,contradictory=false,mutatePlan=()=>{},beforeActivityReturn=async()=>{}}={}){
  const{f,run,api,consumers}=ctx,row=await f.get('run#'+run),{writeFile,access}=require('node:fs/promises');let fail=failChild,childCalls=0,lost=false,lastDirectory;
  const role={oid:42,name:'videoq_api_test',can_login:true,superuser:false,create_db:false,create_role:false,replication:false,bypass_rls:false,inherit:true,connection_limit:-1,valid_until:null};
  const plan={version:1,operationId:randomUUID(),target:{purpose:'production',host:'ep-old-truth-a1co51ud.ap-southeast-1.aws.neon.tech',databaseName:'neondb',rolePrefix:'videoq_'},roles:[role],memberships:[],catalogSha256:require('node:crypto').createHash('sha256').update(JSON.stringify({roles:[{...role,can_login:null}],memberships:[]})).digest('hex')};
+ mutatePlan(plan);
  const report={version:1,databaseName:'neondb',observedAt:new Date().toISOString(),readOnly:true,snapshotScope:'single-read-only-statement',counts:{jobLeasesActive:activeJobs,jobLeasesExpired:0,jobLeasesInvalid:0,chatLeasesActive:0,chatLeasesExpired:0,chatLeasesInvalid:0,answerAttemptsStarted:0,videosProcessing:0,transcriptionRunsIncomplete:0,visualRunsProcessing:0},activeLeasesObserved:activeJobs>0,requiresReconciliation:false,inFlightDrainProven:false};
  if(contradictory)report.activeLeasesObserved=!report.activeLeasesObserved;
  const rename=value=>Array.isArray(value)?value.map(rename):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='TableName'?f.table:rename(v)])):value;
@@ -359,8 +369,8 @@ async function heldActivityStage(ctx,{failChild=false,loseCompletion=false,activ
  const env={PATH:process.env.PATH,HOME:process.env.HOME,LANG:'C',VIDEOQ_CUTOVER_CONSUMER_CONTROL:'true',MAINTENANCE_RUN_ID:run,MAINTENANCE_SOURCE_SHA:SHA,MAINTENANCE_ACTIVITY_ACTION_ID:row.activity_action_id.S,MAINTENANCE_KIND:HOLD_KIND,MAINTENANCE_STAGE:'cutover-activity-audit',MAINTENANCE_TABLE:'videoq-db-maintenance-prod',CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-rotation-prod:11111111-2222-4333-8444-555555555555',AWS_ACCESS_KEY_ID:'parent-only',AWS_CONTAINER_CREDENTIALS_RELATIVE_URI:'/parent',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'parent-only',NODE_OPTIONS:'parent-only',PGPASSWORD:'parent-only'};
  const fetcher=async(url,options)=>{if(url.startsWith('https://api.cloudflare.com/'))return Response.json({success:true,result:{bindings:[{name:'ENVIRONMENT',type:'plain_text',text:'production'},{name:'HYPERDRIVE',type:'hyperdrive',id:api.api.hyperdrive},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:api.api.traffic}]}});assert.equal(options.headers,undefined);if(url.endsWith('/health'))return Response.json({data:{status:'ok'}});return Response.json({error:{code:'MIGRATION_PAUSED'}},{status:503,headers:{'retry-after':'60','cache-control':'no-store'}});};
  const readParameter=async name=>{if(name==='/videoq/security/prod/cutover-control')return{CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:'synthetic-cutover-token-0123456789'};assert.equal(name,'/videoq/security/prod/db-admin');return{DATABASE_URL:'postgresql://admin:synthetic-child-only@ep-old-truth-a1co51ud.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full'};};
- const child=async(command,args,options)=>{childCalls++;assert.equal(command,process.execPath);assert.equal(options.env.PGOPTIONS,'-c default_transaction_read_only=on -c search_path=pg_catalog');assert.ok(Object.keys(options.env).every(k=>['PATH','HOME','TMPDIR','LANG','VIDEOQ_FENCE_ADMIN_DATABASE_URL','PGOPTIONS'].includes(k)));assert.ok(options.env.VIDEOQ_FENCE_ADMIN_DATABASE_URL.includes('synthetic-child-only'));assert.equal(options.env.CLOUDFLARE_API_TOKEN,undefined);const state=args[args.indexOf('--state')+1];lastDirectory=require('node:path').dirname(state);if(fail)throw Error('synthetic child failure');if(args[args.indexOf('--mode')+1]==='prepare'){await writeFile(state,JSON.stringify(plan),{mode:0o600});return{stdout:JSON.stringify({prepared:true,purpose:'production',roles:1,writeFenceInstalled:false})};}return{stdout:JSON.stringify({activity:report,purpose:'production',upstreamStoppedByThisCommand:false})};};
- const {runHeldPostgresActivity}=await import('./cutover-postgres-activity.mjs');return{env,get childCalls(){return childCalls;},set fail(v){fail=v;},run:()=>runHeldPostgresActivity({env,aws,readParameter,fetcher,run:child,root:require('node:path').resolve('.'),ensureDependencies:async()=>{}}),async temporaryDirectoryRemoved(){await assert.rejects(access(lastDirectory));}};
+ const child=async(command,args,options)=>{childCalls++;assert.equal(command,process.execPath);assert.equal(options.env.PGOPTIONS,'-c default_transaction_read_only=on -c search_path=pg_catalog');assert.ok(Object.keys(options.env).every(k=>['PATH','HOME','TMPDIR','LANG','VIDEOQ_FENCE_ADMIN_DATABASE_URL','PGOPTIONS'].includes(k)));assert.ok(options.env.VIDEOQ_FENCE_ADMIN_DATABASE_URL.includes('synthetic-child-only'));assert.equal(options.env.CLOUDFLARE_API_TOKEN,undefined);const state=args[args.indexOf('--state')+1];lastDirectory=require('node:path').dirname(state);if(fail)throw Error('synthetic child failure');if(args[args.indexOf('--mode')+1]==='prepare'){await writeFile(state,JSON.stringify(plan),{mode:0o600});return{stdout:JSON.stringify({prepared:true,purpose:'production',roles:1,writeFenceInstalled:false})};}await beforeActivityReturn();return{stdout:JSON.stringify({activity:report,purpose:'production',upstreamStoppedByThisCommand:false})};};
+ const {runHeldPostgresActivity}=await import('./cutover-postgres-activity.mjs');return{env,get childCalls(){return childCalls;},set fail(v){fail=v;},run:()=>runHeldPostgresActivity({env,aws,readParameter,fetcher,run:child,root:operatorRoot}),async temporaryDirectoryRemoved(){await assert.rejects(access(lastDirectory));}};
 }
 test('owned held activity persists only validated observations and does not claim zero active work or release exclusion',async()=>{
  const ctx=await pausedActivityFixture(),{f,run}=ctx;try{await f.broker({action:'inspect-cutover-activity',run_id:run});const stage=await heldActivityStage(ctx,{activeJobs:1});await stage.run();await stage.temporaryDirectoryRemoved();const row=await f.get('run#'+run);assert.equal(row.cutover_phase.S,'consumers-paused');assert.equal(row.activity_observed.BOOL,true);const report=JSON.parse(row.activity_report.S);assert.equal(report.counts.jobLeasesActive,1);assert.equal(report.inFlightDrainProven,false);assert.equal((await f.broker({action:'status',run_id:run})).activity_observed,true);assert.ok(await f.get('maintenance'));await assert.rejects(f.broker({action:'release-cutover-hold',run_id:run}),/MUTATION_RECOVERY/);await stage.run();assert.equal(stage.childCalls,2);}finally{await f.close();}
@@ -388,4 +398,29 @@ test('published paused activity cannot restore API or advance another command be
 
 test('a redriven committed activity acknowledges a new build without regenerating its observation',async()=>{
  const ctx=await pausedActivityFixture(),{f,run}=ctx;try{await f.broker({action:'inspect-cutover-activity',run_id:run});const stage=await heldActivityStage(ctx);await stage.run();const before=await f.get('run#'+run);stage.env.CODEBUILD_BUILD_ARN=stage.env.CODEBUILD_BUILD_ARN.replace('555555555555','777777777777');await stage.run();const after=await f.get('run#'+run);assert.equal(after.cutover_last_build_arn.S,stage.env.CODEBUILD_BUILD_ARN);assert.equal(after.activity_report.S,before.activity_report.S);f.active=true;assert.equal((await f.broker({action:'status',run_id:run})).activity_observed,undefined);f.active=false;assert.equal((await f.broker({action:'status',run_id:run})).activity_observed,true);assert.equal(stage.childCalls,2);}finally{await f.close();}
+});
+
+
+test('fresh observations preserve the original pre-fence plan and its first build/action',async()=>{
+ const ctx=await pausedActivityFixture(),{f,run}=ctx;try{
+  await f.broker({action:'inspect-cutover-activity',run_id:run});const first=await heldActivityStage(ctx,{loseCompletion:true});await first.run();const original=await f.get('run#'+run);
+  await f.broker({action:'inspect-cutover-activity',run_id:run});const second=await heldActivityStage(ctx);second.env.CODEBUILD_BUILD_ARN=second.env.CODEBUILD_BUILD_ARN.replace('555555555555','888888888888');await second.run();const next=await f.get('run#'+run);
+  for(const key of ['postgres_fence_original_plan','postgres_fence_original_sha256','postgres_fence_original_build_arn','postgres_fence_original_action_id'])assert.deepEqual(next[key],original[key]);
+  assert.notEqual(JSON.parse(next.activity_fence_plan.S).operationId,JSON.parse(original.postgres_fence_original_plan.S).operationId);assert.notEqual(next.activity_action_id.S,next.postgres_fence_original_action_id.S);assert.equal(next.activity_build_arn.S,second.env.CODEBUILD_BUILD_ARN);assert.equal(next.database_mutations_started.BOOL,false);assert.ok(await f.get('maintenance'));
+ }finally{await f.close();}
+});
+test('catalog drift cannot replace the original recovery plan or publish a fresh observation',async()=>{
+ const ctx=await pausedActivityFixture(),{f,run}=ctx;try{
+  await f.broker({action:'inspect-cutover-activity',run_id:run});await(await heldActivityStage(ctx)).run();const original=await f.get('run#'+run);await f.broker({action:'inspect-cutover-activity',run_id:run});const changed=await heldActivityStage(ctx,{mutatePlan:plan=>{plan.roles[0].connection_limit=12;}});await assert.rejects(changed.run(),/ORIGINAL_POSTGRES_FENCE_CATALOG_CHANGED/);assert.equal(changed.childCalls,1);await changed.temporaryDirectoryRemoved();const after=await f.get('run#'+run);assert.equal(after.postgres_fence_original_plan.S,original.postgres_fence_original_plan.S);assert.equal(after.activity_observed.BOOL,false);assert.equal(after.cutover_phase.S,'activity-auditing');assert.ok(await f.get('maintenance'));
+ }finally{await f.close();}
+});
+test('partial or corrupt original-state records fail before any database child is run',async()=>{
+ for(const corrupt of [row=>{row.postgres_fence_original_sha256={S:'a'.repeat(64)};},row=>{row.postgres_fence_original_plan={S:'{}'};row.postgres_fence_original_sha256={S:'b'.repeat(64)};}]){
+  const ctx=await pausedActivityFixture(),{f,run}=ctx;try{await f.broker({action:'inspect-cutover-activity',run_id:run});const row=await f.get('run#'+run);corrupt(row);await f.put(row);const stage=await heldActivityStage(ctx);await assert.rejects(stage.run(),/INVALID_ORIGINAL_POSTGRES_FENCE_PLAN/);assert.equal(stage.childCalls,0);assert.ok(await f.get('maintenance'));}finally{await f.close();}
+ }
+});
+test('a concurrent partial original-state write prevents atomic completion without overwriting it',async()=>{
+ const ctx=await pausedActivityFixture(),{f,run}=ctx;try{
+  await f.broker({action:'inspect-cutover-activity',run_id:run});const stage=await heldActivityStage(ctx,{beforeActivityReturn:async()=>{const row=await f.get('run#'+run);await f.put({...row,postgres_fence_original_sha256:{S:'c'.repeat(64)}});}});await assert.rejects(stage.run(),/Transaction cancelled/);const after=await f.get('run#'+run);assert.equal(after.postgres_fence_original_sha256.S,'c'.repeat(64));assert.equal(after.postgres_fence_original_plan,undefined);assert.equal(after.activity_observed.BOOL,false);assert.ok(await f.get('maintenance'));await stage.temporaryDirectoryRemoved();
+ }finally{await f.close();}
 });

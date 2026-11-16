@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-16",
+  "scope": "Immutable original role-state baseline inside the existing owned readonly observation",
+  "dynamoDbLocalIntegrationTestsPassed": 42,
+  "externalTransports": "mocked",
+  "catalogDriftRejected": true,
+  "repeatedObservationPreservesOriginal": true,
+  "partialAndConcurrentRecordsRejected": true,
+  "lostCompletionReadbackVerified": true,
+  "originalPlanContainsPasswords": false,
+  "newPublicOperation": false,
+  "iamChanged": false,
+  "productionFenceInstalled": false,
+  "productionCutoverComplete": false,
+  "nodeSecurityTestsPassed": 448,
+  "pythonTestsPassed": 68,
+  "operatorDependencyIsolationVerified": true
+}
