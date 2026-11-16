@@ -398,3 +398,20 @@ marks, retained target fencing, refusal of populated targets and uncertain expor
 starts. This is not a real Cloudflare transfer rehearsal. The full production
 factory and environment checks, lost-start reconciliation, final vector sync,
 release/recovery and live E2E remain required before execution is enabled.
+
+`d1_resource_vector_plan.py` derives desired vectors from current D1 scenes and
+current staging heads using the application's authority rules. Pending deferral
+requires an unaccepted incomplete upsert with an exact scope and retained,
+valid, nonzero float32-compatible embedding payload. Cleared/accepted payloads
+cannot justify missing source vectors. The pure planner preserves exact source
+values/metadata, validates owner/video/scene/revision and legacy IDs, removes
+obsolete candidate IDs, and records deferred work without modifying the outbox
+or calling a model. Nondefault namespaces require explicit review.
+
+`d1_resource_vector_authority_transport.py` permits only the fixed source's
+count and bounded authority pages. The real source count query returned 2,190
+rows in an unfenced read-only preview. This is not final synchronization proof.
+The planner and SQL tests cover scope/version mismatches, current staging,
+invalid retained embeddings, orphan deletion, legacy IDs and missing vectors.
+Provider mutation, async processing/readback and runtime integration of the
+final vector sync remain required before switching resources.

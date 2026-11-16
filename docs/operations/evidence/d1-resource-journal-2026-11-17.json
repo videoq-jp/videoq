@@ -23,7 +23,7 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 130,
+    "passed": 140,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
@@ -36,7 +36,8 @@
     "privateTransferJournal": 5,
     "durableTransferControl": 6,
     "localExecutorLock": 3,
-    "composedTransferRuntime": 3
+    "composedTransferRuntime": 3,
+    "vectorAuthorityAndPlan": 10
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
@@ -63,5 +64,11 @@
     "localSqlRestoreAndValueComparison": true,
     "providerHttp": "explicit SQLite-backed fixture",
     "productionTransferPerformed": false
+  },
+  "vectorAuthorityPreview": {
+    "sourceAuthorityRows": 2190,
+    "writerFenceProven": false,
+    "vectorWrites": false,
+    "previewOnly": true
   }
 }
