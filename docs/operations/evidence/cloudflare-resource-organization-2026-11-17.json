@@ -1,0 +1,45 @@
+{
+  "accountId": "12daec56fdba43f677f2766ee26a5a39",
+  "indexes": [
+    {
+      "source": "videoq-scenes-migration-v3-1536",
+      "dimensions": 1536,
+      "count": 2190,
+      "vectorsSha256": "57718be4aeedae4279a3050391c3c94c6b72dcd1c79a030f4e7b5cfb4d2dad56",
+      "sourceInfo": {
+        "dimensions": 1536,
+        "vectorCount": 2190,
+        "processedUpToDatetime": "2026-11-16T20:53:28.343Z",
+        "processedUpToMutation": "42fb0631-ce01-4287-9258-38962b481be6"
+      },
+      "writerFenceProven": false
+    },
+    {
+      "source": "videoq-scenes-migration-v3-768",
+      "dimensions": 768,
+      "count": 0,
+      "vectorsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "sourceInfo": {
+        "dimensions": 768,
+        "vectorCount": 0,
+        "processedUpToDatetime": "2026-11-16T13:47:27.036Z",
+        "processedUpToMutation": "f403fc9b-5ace-405a-9681-3187aabe00e3"
+      },
+      "writerFenceProven": false
+    }
+  ],
+  "modelCallsMade": false,
+  "remoteMutations": false,
+  "writerFenceProven": false,
+  "scope": "Read-only naming-migration preparation, not final transfer or cutover",
+  "supportCase": {
+    "number": "02436355",
+    "submissionVerified": true,
+    "emptyAccountDeletionVerified": false
+  },
+  "candidateIndexes": [
+    "videoq-prod-scenes-1536",
+    "videoq-prod-scenes-768"
+  ],
+  "productionBindingsChanged": false
+}

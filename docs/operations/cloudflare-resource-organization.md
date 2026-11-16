@@ -28,8 +28,10 @@ resources. They must not be deleted as rehearsal artifacts.
 
 ## Naming work still required
 
-Tagging is complete for the table above. Physical D1 and Vectorize names have
-not changed. The documented APIs do not provide a direct rename operation for
+Tagging is complete for the table above. Replacement Vectorize indexes
+`videoq-prod-scenes-1536` and `videoq-prod-scenes-768` have been created in the
+existing account; they are candidates, not the live bindings. Existing live D1
+and Vectorize names have not changed. The documented APIs do not provide a direct rename operation for
 these resources. Editing the name in Wrangler alone does not rename a resource.
 
 A replacement must preserve data and authentication state, vector dimensions,
@@ -81,3 +83,8 @@ CI artifacts; delete it after migration verification. Aggregate receipts contain
 counts and hashes. Repeated reads are diagnostic consistency checks and do not
 prove writer quiescence or provide an atomic snapshot. Final transfer must run
 under the reviewed maintenance hold, writer drain and deployment exclusion.
+
+[Aggregate preparation evidence](evidence/cloudflare-resource-organization-2026-11-17.json)
+records the read-only snapshot counts and hashes. All 2,190 current 1536d vectors
+were retrieved without model calls; the 768d index was empty. This is preparation,
+not proof of a final writer fence, target verification or completed cutover.
