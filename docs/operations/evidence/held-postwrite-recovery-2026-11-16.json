@@ -3,14 +3,15 @@
   "date": "2026-11-16",
   "scope": "Disabled fixed AWS inverse restore; no production execution",
   "verification": {
-    "nodeSecurityTestsPassed": 474,
+    "nodeSecurityTestsPassed": 486,
     "realLocalDynamoDbCasesPassed": 9,
     "actualSQLiteSchemaAndFence": true,
     "realLocalPipeProtocol": true,
-    "terraformMockPlansPassed": 20,
+    "terraformMockPlansPassed": 22,
     "infrastructurePythonTestsPassed": 57,
     "actualOperatorZipDependenciesOnly": true,
-    "existingRealIsolatedPostgresFenceChecksPassed": true
+    "existingRealIsolatedPostgresFenceChecksPassed": true,
+    "recoveryChildRelatedVitestCasesPassed": 52
   },
   "remoteEffects": {
     "awsCloudflareGithubR2": "synthetic transports",
@@ -29,6 +30,7 @@
     "backendHandoffIncluded": false,
     "trafficResumeIncluded": false,
     "holdReleaseIncluded": false,
-    "enabledByDefault": false
+    "enabledByDefault": false,
+    "canonicalR2MediaNamespace": true
   }
 }
