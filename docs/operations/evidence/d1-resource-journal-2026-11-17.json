@@ -1,7 +1,7 @@
 {
-  "scope": "Disabled metadata journal, private plans and coordinator engine; GitHub, SQS and API admission adapters; no production execution",
+  "scope": "Disabled metadata journal, private plans and coordinator engine; GitHub, SQS, API admission and fixed binding promotion adapters; no production execution",
   "nodeTests": {
-    "passed": 560,
+    "passed": 566,
     "failed": 0
   },
   "dynamoDbLocalIntegration": {

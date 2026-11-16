@@ -229,3 +229,20 @@ handoff before each write and reconciles metadata readback; secrets are inherite
 by name. The handoff verifier is a mandatory trusted coordinator dependency;
 this change does not implement its production proof of database/vector transfer
 and target fence removal. API admission pause is not an in-flight write fence.
+
+`d1-resource-bindings.cjs` implements the fixed same-account binding promotion
+from the recorded live D1/Vectorize resources to the named candidates. It
+requires API pause, unchanged runtime and original binding hashes, a stable
+paused version, ownership and a trusted transfer-verification callback. Only
+`DB`, `SCENE_VECTORIZE_1536` and `SCENE_VECTORIZE_768` change; all other bindings,
+including traffic pause and secrets, inherit by name. Complete target readback
+can reconcile a lost response without another write. Partial or unrelated
+binding changes return unknown and cannot authorize another mutation. No
+rollback operation is supplied. This does not yet implement the production
+transfer verifier or activate any provider mutation.
+
+The settings PATCH contract is documented in the
+[Cloudflare API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/settings/methods/edit/).
+The D1 readback includes both `id` and `database_id`; the adapter checks both
+against the fixed source and computes the expected target readback shape.
+Unexpected extra DB/vector metadata fails closed for review.
