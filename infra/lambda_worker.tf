@@ -44,10 +44,11 @@ data "aws_iam_policy_document" "worker_permissions" {
       "ssm:GetParameter",
       "ssm:GetParameters",
     ]
-    resources = [
-      "${trimsuffix(aws_ssm_parameter.db.arn, "/db")}/worker-db",
+    resources = concat([
       aws_ssm_parameter.app.arn,
-    ]
+      ], var.env_name == "prod" ? [] : [
+      "${trimsuffix(aws_ssm_parameter.db.arn, "/db")}/worker-db",
+    ])
   }
 
   # Decrypt SecureString values encrypted with the default aws/ssm key.

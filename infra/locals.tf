@@ -13,9 +13,7 @@ locals {
 
   lambda_basic_execution_policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   common_lambda_environment = merge({
-    DB_PARAM_NAME                   = "/${local.name_prefix}/${var.env_name}/worker-db"
     APP_PARAM_NAME                  = aws_ssm_parameter.app.name
-    PGSSLROOTCERT                   = "/etc/pki/tls/certs/ca-bundle.crt"
     USE_S3_STORAGE                  = "true"
     SQS_QUEUE_NAME                  = aws_sqs_queue.main.name
     SQS_QUEUE_URL                   = aws_sqs_queue.main.id
@@ -30,13 +28,15 @@ locals {
     OPENROUTER_FEDERATION_AUDIENCE  = var.openrouter_federation_audience
     ENABLE_HEAVY_PIPELINE           = "true"
     }, var.env_name == "prod" ? {
-    # Keep future infra plans aligned with the controlled production handoff.
-    # The internal-persistence bootstrap retains the old DB reference for the
-    # recovery window but does not load it when D1 is selected.
+    # Production persists through the signed API and must not retain a Neon
+    # credential reference after the D1 handoff.
     DEPLOYMENT_EDITION         = "cloud"
     PERSISTENCE_BACKEND        = "d1"
     WORKER_INTERNAL_API_ORIGIN = "https://videoq.jp"
-  } : {})
+    } : {
+    DB_PARAM_NAME = "/${local.name_prefix}/${var.env_name}/worker-db"
+    PGSSLROOTCERT = "/etc/pki/tls/certs/ca-bundle.crt"
+  })
 
   ecr_lifecycle_policy = jsonencode({
     rules = [
