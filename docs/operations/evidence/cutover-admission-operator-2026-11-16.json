@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-16",
+  "scope": "Canonical-main local metadata-only admission entry point; not a distributed coordinator",
+  "nodeSecurityTestsPassed": 458,
+  "dynamoDbLocalIntegrationTestsPassed": 46,
+  "cliBoundaryTestsPassed": 5,
+  "pythonTestsPassed": 68,
+  "externalServiceTransports": "mocked",
+  "lostBaselineResponseRecovered": true,
+  "firstWorkflowWriteFailureAbortVerified": true,
+  "backendOrFenceDriftBlocksRestore": true,
+  "dbCredentialsRead": false,
+  "requestRolePermissionsChanged": false,
+  "productionAdmissionChanged": false,
+  "productionD1CutoverComplete": false,
+  "actualDirtyCheckoutRejectedByCli": true
+}

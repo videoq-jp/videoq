@@ -276,7 +276,7 @@ function deploymentStage(f,run,{failAt=Infinity,restoreSafe=true,loseIntent=fals
   return result;
  };
  const operate=createOwnedDeploymentFreeze({aws,request,table:f.table,machine:MACHINE,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table:f.table,projects:{}})),enabled:true,assertRestoreSafe:async()=>{if(!safety)throw Error('unverified handoff');}});
- return{rows,writes,set safety(v){safety=v;},run:action=>operate({action,run,source:SHA})};
+ return{rows,writes,request,set safety(v){safety=v;},run:action=>operate({action,run,source:SHA})};
 }
 test('owned deployment freeze blocks release/recovery and the atomic SFN release until verified restore',async()=>{
  const f=await fixture();try{
@@ -330,7 +330,7 @@ function ownedApiStage(f,run,deployment,{failProbe=false,loseIntent=false,loseCo
  const aws=async(service,command,value)=>{const result=await f.aws(service,command,value),expression=value.TransactItems?.[0]?.Update?.UpdateExpression??'';
   if(command==='TransactWriteItems'&&((loseIntent&&!lostIntent&&expression.includes('SET api_traffic_plan'))||(loseCompletion&&!lostCompletion&&expression.includes('SET api_admission_restored')))){if(expression.includes('SET api_traffic_plan'))lostIntent=true;else lostCompletion=true;throw Error('lost DDB response');}return result;};
  const operate=createOwnedApiTraffic({aws,request,table:f.table,machine:MACHINE,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table:f.table,projects:{}})),enabled:true,assertDeploymentsFrozen:async()=>{if(deployment.rows.some(r=>r.state!=='disabled_manually'))throw Error('deployment admission reopened');},assertRestoreSafe:async()=>{if(!safe)throw Error('unverified API handoff');},verifyTraffic:async paused=>{if(probeFails)throw Error('application did not pause');assert.equal(api.traffic==='paused',paused);return paused?{applicationPauseVerified:true,inFlightDrainProven:false}:{applicationReadyVerified:true,inFlightDrainProven:false};}});
- return{api,get patches(){return patchCount;},set probeFails(v){probeFails=v;},set safe(v){safe=v;},run:action=>operate({action,run,source:SHA})};
+ return{api,request,get patches(){return patchCount;},set probeFails(v){probeFails=v;},set safe(v){safe=v;},run:action=>operate({action,run,source:SHA})};
 }
 test('owned deployment freeze, API pause, consumer pause and pre-write abort compose without early release',async()=>{
  const f=await fixture({consumerControlEnabled:true});try{
@@ -423,4 +423,33 @@ test('a concurrent partial original-state write prevents atomic completion witho
  const ctx=await pausedActivityFixture(),{f,run}=ctx;try{
   await f.broker({action:'inspect-cutover-activity',run_id:run});const stage=await heldActivityStage(ctx,{beforeActivityReturn:async()=>{const row=await f.get('run#'+run);await f.put({...row,postgres_fence_original_sha256:{S:'c'.repeat(64)}});}});await assert.rejects(stage.run(),/Transaction cancelled/);const after=await f.get('run#'+run);assert.equal(after.postgres_fence_original_sha256.S,'c'.repeat(64));assert.equal(after.postgres_fence_original_plan,undefined);assert.equal(after.activity_observed.BOOL,false);assert.ok(await f.get('maintenance'));await stage.temporaryDirectoryRemoved();
  }finally{await f.close();}
+});
+
+
+function admissionOperator(f,run,deployment,api,{failProbe=false,cloudflare=api.request,loseBaselineResponse=false}={}){
+ const {createAdmissionOperator}=require('./cutover-admission-operator.cjs');let mappings,lost=false;
+ const aws=async(service,command,value)=>{if(service==='lambda'){assert.equal(command,'ListEventSourceMappings');return{EventSourceMappings:mappings.rows.filter(r=>r.FunctionArn.endsWith(':'+value.FunctionName))};}const result=await f.aws(service,command,value);if(loseBaselineResponse&&!lost&&command==='TransactWriteItems'&&value.TransactItems?.[0]?.Update?.UpdateExpression.includes('SET operator_admission_baseline')){lost=true;throw Error('lost baseline response');}return result;};
+ const operate=createAdmissionOperator({aws,github:deployment.request,cloudflare,table:f.table,machine:MACHINE,expectedDefinitionHash:require('../../infra/db-maintenance/runtime/cutover-hold.cjs').definitionHash(definition({table:f.table,projects:{}})),enabled:true,verifyTraffic:async paused=>{if(failProbe)throw Error('fixture readiness failed');assert.equal(api.api.traffic==='paused',paused);return paused?{applicationPauseVerified:true,inFlightDrainProven:false}:{applicationReadyVerified:true,inFlightDrainProven:false};}});
+ return{set mappings(value){mappings=value;},run:action=>operate({action,run,source:SHA})};
+}
+test('operator composes a verified pre-write pause and abort using actual owned DDB transactions',async()=>{
+ const f=await fixture({consumerControlEnabled:true});try{
+  const{run_id:run}=await f.start(),deployment=deploymentStage(f,run),api=ownedApiStage(f,run,deployment),operator=admissionOperator(f,run,deployment,api,{loseBaselineResponse:true});
+  assert.equal((await operator.run('freeze-deployments')).deploymentAdmissionFrozen,true);const original=(await f.get('run#'+run)).operator_admission_baseline.S;await operator.run('freeze-deployments');assert.equal((await operator.run('pause-api')).apiPauseVerified,true);
+  await f.broker({action:'prepare-cutover-consumers',run_id:run});await preparation(f,run,{disabledAccount:true}).run();await f.broker({action:'pause-cutover-consumers',run_id:run});const paused=await consumerStage(f,run,'pause',{api:api.api});await paused.run();operator.mappings=paused;
+  assert.equal((await operator.run('restore-api')).apiRestored,true);await f.broker({action:'resume-cutover-consumers',run_id:run});const resumed=await consumerStage(f,run,'resume',{api:api.api,rows:paused.rows});await resumed.run();operator.mappings=resumed;
+  assert.equal((await operator.run('restore-deployments')).deploymentAdmissionRestored,true);await operator.run('restore-deployments');assert.equal((await f.get('run#'+run)).operator_admission_baseline.S,original);assert.equal(api.patches,2);await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await f.close();}
+});
+test('operator credential/backend preflight failure disables no deployment workflow',async()=>{
+ const f=await fixture();try{const{run_id:run}=await f.start(),deployment=deploymentStage(f,run),api=ownedApiStage(f,run,deployment),operator=admissionOperator(f,run,deployment,api,{cloudflare:async()=>{throw Error('fixture cloud unavailable');}});await assert.rejects(operator.run('freeze-deployments'),/cloud unavailable/);assert.equal(deployment.writes.length,0);assert.equal((await f.get('run#'+run)).deployment_freeze_plan,undefined);}finally{await f.close();}
+});
+test('operator refuses backend drift or a fence intent without restoring API or deployment admission',async()=>{
+ const f=await fixture();try{
+  const{run_id:run}=await f.start(),deployment=deploymentStage(f,run),api=ownedApiStage(f,run,deployment),operator=admissionOperator(f,run,deployment,api);await operator.run('freeze-deployments');await operator.run('pause-api');const original=api.api.hyperdrive;api.api.hyperdrive='different-backend';await assert.rejects(operator.run('restore-api'),/BACKEND_CHANGED/);assert.equal(api.patches,1);api.api.hyperdrive=original;const row=await f.get('run#'+run);await f.put({...row,postgres_fence_install_intent:{S:'unfinished'}});await assert.rejects(operator.run('restore-api'),/FENCE_HANDOFF/);await assert.rejects(operator.run('restore-deployments'),/FENCE_HANDOFF/);assert.equal(api.patches,1);assert.ok(await f.get('maintenance'));
+ }finally{await f.close();}
+});
+
+test('failed first workflow write preserves the backend baseline for an explicit pre-write abort',async()=>{
+ const f=await fixture();try{const{run_id:run}=await f.start(),deployment=deploymentStage(f,run,{failAt:1}),api=ownedApiStage(f,run,deployment),operator=admissionOperator(f,run,deployment,api);await assert.rejects(operator.run('freeze-deployments'),/synthetic write failure/);assert.ok((await f.get('run#'+run)).operator_admission_baseline);assert.equal((await operator.run('restore-deployments')).deploymentAdmissionRestored,true);assert.equal(api.patches,0);await f.broker({action:'release-cutover-hold',run_id:run});await f.finish(run);assert.equal(await f.get('maintenance'),undefined);}finally{await f.close();}
 });
