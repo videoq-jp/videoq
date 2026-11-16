@@ -1,0 +1,25 @@
+{
+  "scope": "Disabled metadata journal, private plans and coordinator engine; no production adapters or execution",
+  "nodeTests": {
+    "passed": 545,
+    "failed": 0
+  },
+  "dynamoDbLocalIntegration": {
+    "passed": 6,
+    "failed": 0,
+    "realConditionalTransactions": true,
+    "stepFunctionsAndDataPlaneAdapters": "explicit test transports",
+    "containerRemoved": true
+  },
+  "plans": {
+    "directoryMode": "0700",
+    "fileMode": "0600",
+    "overwriteAllowed": false,
+    "maximumBytesPerPlan": 1048576
+  },
+  "productionHoldStarted": false,
+  "productionBindingsChanged": false,
+  "holdReleasedByEngine": false,
+  "customerDataOrCredentialsStoredInJournal": false,
+  "actualProductionAdapterValidation": false
+}

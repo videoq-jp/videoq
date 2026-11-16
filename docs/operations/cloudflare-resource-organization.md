@@ -159,3 +159,45 @@ production conditions.
 [Ownership-hold validation evidence](evidence/d1-resource-hold-2026-11-17.json)
 records local conditional-transaction tests, Terraform mock tests and AWS
 definition validation. It does not attest an actual production hold or cutover.
+
+## Replacement progress journal and execution engine
+
+`d1-resource-journal.cjs` binds the twelve fixed replacement steps to a running
+`d1-resource-hold`, its canonical source SHA, immutable execution-definition
+hash and shared maintenance owner. Each step stores an intent before mutation
+and a receipt digest after verification, using revision-conditional DynamoDB
+transactions. Completed steps and their plan/proof digests cannot be replaced.
+Lost transaction responses reconcile exact durable readback. A promotion intent
+blocks a simple pre-promotion abort even if the promotion response was lost.
+The journal stores only step names, operation IDs and digests; no customer data,
+SQL exports, vector values or credentials belong in it.
+
+`d1-resource-coordinator.cjs` advances one step at a time and requires explicit
+prepare/probe/apply adapters for every step plus environment/ownership checks.
+It probes before applying and after the single apply attempt. Unknown state
+stops for reconciliation; an applied result can reconcile a lost response
+without reapplying. A probe may authorize a retry only after authoritative
+readback establishes that applying the planned operation is safe. The engine
+never releases the hold, marks production safe or supplies placeholder adapters.
+Both journal and engine are disabled by default and have no production CLI.
+
+`d1-resource-plans.cjs` retains transient original operator metadata in a private
+mode-0700 directory with exclusive mode-0600 files, fsync and bounded readback.
+Only fixed step filenames are permitted. Symlink roots/files, changed directory
+identity, public files, overwrites and malformed/oversized data are rejected.
+Plans are limited to 1 MiB each. Losing an intent's original private plan stops
+the engine; it cannot infer the original state from an already changed service.
+Keep these working plans until verified completion/recovery, then remove them.
+Do not put tokens, application secrets, exports or customer rows in plans.
+This local store does not provide independent cross-host disaster recovery.
+
+The engine/journal were exercised against real DynamoDB Local conditional
+transactions with explicit test transports for Step Functions and data-plane
+adapters. Private-file tests cover durable reopening and permission checks.
+These tests prove control flow and metadata ownership, not actual deployment
+freeze, consumer drain, final database transfer, binding promotion or E2E.
+Concrete production adapters, final release and recovery remain required before
+`enable_d1_resource_hold` can be enabled.
+
+[Journal and execution-engine validation evidence](evidence/d1-resource-journal-2026-11-17.json)
+records the test scope and the production operations that remain unverified.
