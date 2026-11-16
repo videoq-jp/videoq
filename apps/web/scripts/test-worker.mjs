@@ -310,3 +310,22 @@ test('Worker CSP blocks injected JavaScript in Chromium', {
     await auditCsp(browser, `http://${worker.address}:${worker.port}/share/security-check`);
   } finally { await browser.close(); }
 });
+
+
+test('fingerprinted build assets can be reused without revalidation', async () => {
+  const html = await (await worker.fetch('/')).text();
+  const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"?]+\.(?:js|css))"/g)].map(match => match[1]);
+  assert.ok(assets.length > 0);
+  for (const path of new Set(assets)) {
+    for (const method of ['GET', 'HEAD']) {
+      const response = await worker.fetch(path, { method });
+      assert.equal(response.status, 200, path);
+      assert.equal(response.headers.get('cache-control'), 'public, max-age=31536000, immutable', path);
+      securityHeaders(response);
+    }
+  }
+  for (const path of ['/', '/pricing', '/videos', '/sitemap.xml', '/robots.txt', '/not-a-real-file.js']) {
+    const response = await worker.fetch(path);
+    assert.doesNotMatch(response.headers.get('cache-control') ?? '', /immutable/, path);
+  }
+});
