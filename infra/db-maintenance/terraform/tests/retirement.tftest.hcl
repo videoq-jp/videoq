@@ -54,3 +54,29 @@ run "retire_neon_preserves_archive_and_d1" {
     error_message = "The D1 state machine must fail closed on retired operations and the worker ceiling must drop PostgreSQL."
   }
 }
+run "d1_resource_hold_uses_existing_starter_and_no_new_builds" {
+  command = plan
+  variables { enable_d1_resource_hold = true }
+  assert {
+    condition = (toset(keys(aws_codebuild_project.job)) == toset(["migration", "smoke"]) &&
+      toset(keys(aws_lambda_function.broker)) == toset(["migration", "smoke", "deploy"]) &&
+      aws_lambda_function.broker["migration"].environment[0].variables.ALLOWED_KINDS == "migration,d1-resource-hold" &&
+      aws_lambda_function.broker["smoke"].environment[0].variables.ALLOWED_KINDS == "smoke" &&
+    aws_lambda_function.broker["deploy"].environment[0].variables.ALLOWED_KINDS == "deploy")
+    error_message = "The opt-in D1 hold must use only the existing migration starter and preserve the three maintenance jobs."
+  }
+  assert {
+    condition = (!strcontains(aws_iam_role_policy.broker["migration"].policy, "ssm:") &&
+      !strcontains(aws_iam_role_policy.broker["migration"].policy, "lambda:UpdateFunction") &&
+    !strcontains(aws_iam_role_policy.broker["migration"].policy, "iam:"))
+    error_message = "The ownership-only starter must gain no credential, function-update or IAM capability."
+  }
+}
+run "d1_resource_hold_cannot_enable_legacy_graph" {
+  command = plan
+  variables {
+    enable_d1_resource_hold = true
+    retire_neon_maintenance = false
+  }
+  expect_failures = [var.enable_d1_resource_hold]
+}

@@ -1,7 +1,7 @@
 // This Lambda holds no database credentials. It accepts operations, never build overrides.
 const {stageSucceeded}=require('./stage-proof.cjs');
 const {randomBytes, createHash} = require('node:crypto');
-const {REGION, REPOSITORY, HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
+const {REGION, REPOSITORY, HOLD_KIND, D1_HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
 const {createCutoverHoldControl,consumerPlanPrepared} = require('./cutover-hold.cjs');
 function createBroker(aws, configuration, fetchMain = currentMain) {
   const {table, machine, projects, allowedKinds, consumerControlEnabled=false, expectedDefinitionHash} = configuration;
@@ -41,6 +41,14 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       || row.execution_arn?.S !== arn || row.source_sha?.S !== source || row.cutover_phase?.S !== 'holding') throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
     if (row.release_requested?.BOOL !== false) throw new Error('CUTOVER_HOLD_RELEASE_REQUESTED');
   }
+  async function assertOwnedD1Hold(run, arn, source) {
+    const [{Item: owner},{Item: row}] = await Promise.all([get('maintenance'),get('run#'+run)]);
+    if (owner?.execution_arn?.S !== arn || owner.kind?.S !== D1_HOLD_KIND
+      || row?.kind?.S !== D1_HOLD_KIND || row.execution_arn?.S !== arn || row.source_sha?.S !== source
+      || !['holding','verified','aborted'].includes(row.resource_phase?.S)
+      || !/^[0-9]+$/.test(row.resource_revision?.N??'')
+      || (row.resource_phase.S==='holding' ? row.release_requested?.BOOL!==false : row.release_requested?.BOOL!==true)) throw new Error('D1_RESOURCE_HOLD_OWNERSHIP_LOST');
+  }
   const control = createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, consumerControlEnabled, expectedDefinitionHash});
   return async event => {
     const request = input(event, allowedKinds);
@@ -50,6 +58,10 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!Item || !allowedKinds.includes(Item.kind.S)) throw new Error('UNKNOWN_RUN');
       if (Item.kind.S === HOLD_KIND && Item.cutover_phase?.S === 'recovered') return {run_id:request.run_id,status:'RECOVERED'};
       const state = await aws('sfn', 'DescribeExecution', {executionArn: Item.execution_arn.S});
+      if (Item.kind.S === D1_HOLD_KIND) {
+        if (state.status === 'RUNNING') await assertOwnedD1Hold(request.run_id, Item.execution_arn.S, Item.source_sha.S);
+        return {run_id:request.run_id,status:state.status,...(state.status==='RUNNING'?{resource_hold:true}:state.status!=='SUCCEEDED'?{recovery_required:true}:{})};
+      }
       const settled=Item.kind.S!==HOLD_KIND||await stageSucceeded(aws,Item);
       const prepared = settled && Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'holding' && Item.release_requested?.BOOL === false && consumerPlanPrepared(Item);
       if (prepared) await assertOwnedHold(request.run_id, Item.execution_arn.S, Item.source_sha.S);
@@ -75,10 +87,11 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       const {Item: existing} = await get('run#' + run_id);
       if (existing) {
         if (existing.kind.S !== request.kind || (existing.inspection?.S || '') !== (request.inspection || '')) throw new Error('RUN_KIND_MISMATCH');
-        if (request.kind === HOLD_KIND && existing.source_sha?.S !== request.source_sha) throw new Error('CUTOVER_HOLD_SOURCE_CHANGED');
+        if ([HOLD_KIND,D1_HOLD_KIND].includes(request.kind) && existing.source_sha?.S !== request.source_sha) throw new Error(request.kind===D1_HOLD_KIND?'D1_RESOURCE_HOLD_SOURCE_CHANGED':'CUTOVER_HOLD_SOURCE_CHANGED');
         if (request.kind === HOLD_KIND && existing.cutover_phase?.S !== 'holding') throw new Error('CUTOVER_RECOVERY_REQUIRED');
         try {
           const state = await aws('sfn', 'DescribeExecution', {executionArn: existing.execution_arn.S});
+          if (request.kind === D1_HOLD_KIND && state.status === 'RUNNING') await assertOwnedD1Hold(run_id, existing.execution_arn.S, request.source_sha);
           if (request.kind === HOLD_KIND && state.status === 'RUNNING') await assertOwnedHold(run_id, existing.execution_arn.S, request.source_sha);
           return {run_id, status: state.status};
         } catch (error) {
@@ -95,6 +108,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!KINDS.includes(lock.kind?.S)) throw new Error('UNKNOWN_MAINTENANCE_LOCK');
       const previous = await execution(lock);
       if (!['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'].includes(previous.status)) return {status: 'BUSY'};
+      if (lock.kind.S === D1_HOLD_KIND) throw new Error('D1_RESOURCE_HOLD_RECOVERY_REQUIRED');
       if (lock.kind.S === HOLD_KIND) throw new Error('CUTOVER_RECOVERY_REQUIRED');
       const failedRotation = ['rotate', 'rollback'].includes(lock.kind.S) && previous.status !== 'SUCCEEDED';
       if (failedRotation && !['rotate', 'rollback'].includes(request.kind)) throw new Error('ROTATION_RECOVERY_REQUIRED');
@@ -103,9 +117,9 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       await aws('ddb', 'DeleteItem', {TableName: table, Key: {pk: {S: 'maintenance'}},
         ConditionExpression: 'execution_arn = :old', ExpressionAttributeValues: {':old': lock.execution_arn}});
     }
-    if (request.kind === HOLD_KIND && !buildsChecked) await noActiveBuilds();
+    if ([HOLD_KIND,D1_HOLD_KIND].includes(request.kind) && !buildsChecked) await noActiveBuilds();
     // Waiting requests must not spend GitHub's anonymous API quota.
-    if (['migration','deploy',HOLD_KIND].includes(request.kind) && await fetchMain() !== request.source_sha) throw new Error('SOURCE_MUST_MATCH_CURRENT_MAIN');
+    if (['migration','deploy',HOLD_KIND,D1_HOLD_KIND].includes(request.kind) && await fetchMain() !== request.source_sha) throw new Error('SOURCE_MUST_MATCH_CURRENT_MAIN');
     const name = 'db-' + run_id;
     const arn = executionArn(machine, name);
     const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, ...request, run_id});
@@ -113,7 +127,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     try {
       await aws('ddb', 'TransactWriteItems', {TransactItems: [
         {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}, created_at: {S: new Date().toISOString()}}, ConditionExpression: 'attribute_not_exists(pk)'}},
-        {Put: {TableName: table, Item: {pk: {S: 'run#' + run_id}, ...item, ...(request.kind === HOLD_KIND ? {source_sha:{S:request.source_sha},cutover_phase:{S:'holding'},cutover_revision:{N:'0'},release_requested:{BOOL:false},database_mutations_started:{BOOL:false}} : {expires_at: {N: String(Math.floor(Date.now()/1000)+90*86400)}})}, ConditionExpression: 'attribute_not_exists(pk)'}},
+        {Put: {TableName: table, Item: {pk: {S: 'run#' + run_id}, ...item, ...(request.kind === HOLD_KIND ? {source_sha:{S:request.source_sha},cutover_phase:{S:'holding'},cutover_revision:{N:'0'},release_requested:{BOOL:false},database_mutations_started:{BOOL:false}} : request.kind === D1_HOLD_KIND ? {source_sha:{S:request.source_sha},resource_phase:{S:'holding'},resource_revision:{N:'0'},release_requested:{BOOL:false}} : {expires_at: {N: String(Math.floor(Date.now()/1000)+90*86400)}})}, ConditionExpression: 'attribute_not_exists(pk)'}},
       ]});
     } catch (error) {
       if (error.name === 'TransactionCanceledException') return {status: 'BUSY'};
@@ -121,6 +135,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     }
     // A failed invocation retains the named lock; a retry recovers this exact execution.
     await aws('sfn', 'StartExecution', {stateMachineArn: machine, name, input: payload});
+    if (request.kind === D1_HOLD_KIND) await assertOwnedD1Hold(run_id, arn, request.source_sha);
     if (request.kind === HOLD_KIND) await assertOwnedHold(run_id, arn, request.source_sha);
     return {run_id, status: 'RUNNING'};
   };

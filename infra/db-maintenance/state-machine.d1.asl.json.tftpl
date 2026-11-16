@@ -3,6 +3,148 @@
   "StartAt": "Operation",
   "TimeoutSeconds": 7200,
   "States": {
+    "ReadD1ResourceHold": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${table}",
+        "Key": {
+          "pk": {
+            "S.$": "States.Format('run#{}', $.run_id)"
+          }
+        },
+        "ConsistentRead": true,
+        "ProjectionExpression": "resource_phase,release_requested"
+      },
+      "ResultPath": "$.resource_hold",
+      "Next": "D1ResourceHoldPhase"
+    },
+    "D1ResourceHoldPhase": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.resource_hold.Item.resource_phase.S",
+              "StringEquals": "holding"
+            },
+            {
+              "Variable": "$.resource_hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "WaitD1ResourceHold"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.resource_hold.Item.resource_phase.S",
+              "StringEquals": "verified"
+            },
+            {
+              "Variable": "$.resource_hold.Item.release_requested.BOOL",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "ReleaseD1ResourceHold"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.resource_hold.Item.resource_phase.S",
+              "StringEquals": "aborted"
+            },
+            {
+              "Variable": "$.resource_hold.Item.release_requested.BOOL",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "ReleaseD1ResourceHold"
+        }
+      ],
+      "Default": "InvalidD1ResourceHold"
+    },
+    "WaitD1ResourceHold": {
+      "Type": "Wait",
+      "Seconds": 10,
+      "Next": "ReadD1ResourceHold"
+    },
+    "ReleaseD1ResourceHold": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:dynamodb:transactWriteItems",
+      "Parameters": {
+        "TransactItems": [
+          {
+            "ConditionCheck": {
+              "TableName": "${table}",
+              "Key": {
+                "pk": {
+                  "S.$": "States.Format('run#{}', $.run_id)"
+                }
+              },
+              "ConditionExpression": "execution_arn = :execution AND #kind = :kind AND source_sha = :source AND resource_phase IN (:verified,:aborted) AND release_requested = :true AND api_admission_restored = :true AND consumer_admission_restored = :true AND deployment_admission_restored = :true AND attribute_exists(resource_completion_receipt) AND attribute_exists(resource_completion_receipt_sha256) AND size(resource_completion_receipt) > :zero AND size(resource_completion_receipt_sha256) = :hashSize",
+              "ExpressionAttributeNames": {
+                "#kind": "kind"
+              },
+              "ExpressionAttributeValues": {
+                ":execution": {
+                  "S.$": "$$.Execution.Id"
+                },
+                ":source": {
+                  "S.$": "$.source_sha"
+                },
+                ":zero": {
+                  "N": "0"
+                },
+                ":hashSize": {
+                  "N": "64"
+                },
+                ":kind": {
+                  "S": "d1-resource-hold"
+                },
+                ":verified": {
+                  "S": "verified"
+                },
+                ":aborted": {
+                  "S": "aborted"
+                },
+                ":true": {
+                  "Bool": true
+                }
+              }
+            }
+          },
+          {
+            "Delete": {
+              "TableName": "${table}",
+              "Key": {
+                "pk": {
+                  "S": "maintenance"
+                }
+              },
+              "ConditionExpression": "execution_arn = :execution AND #kind = :kind",
+              "ExpressionAttributeNames": {
+                "#kind": "kind"
+              },
+              "ExpressionAttributeValues": {
+                ":execution": {
+                  "S.$": "$$.Execution.Id"
+                },
+                ":kind": {
+                  "S": "d1-resource-hold"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ResultPath": null,
+      "Next": "Success"
+    },
+    "InvalidD1ResourceHold": {
+      "Type": "Fail",
+      "Error": "INVALID_D1_RESOURCE_HOLD"
+    },
     "Operation": {
       "Type": "Choice",
       "Choices": [
@@ -10,6 +152,11 @@
           "Variable": "$.kind",
           "StringEquals": "migration",
           "Next": "Migrate"
+        },
+        {
+          "Variable": "$.kind",
+          "StringEquals": "d1-resource-hold",
+          "Next": "ReadD1ResourceHold"
         },
         {
           "Variable": "$.kind",

@@ -102,6 +102,16 @@ variable "export_d1_from_verified_backup" {
   }
 }
 
+variable "enable_d1_resource_hold" {
+  type        = bool
+  default     = false
+  description = "Allow the existing migration starter to acquire a D1 resource-replacement hold. No database or consumer mutation capability is granted."
+  validation {
+    condition     = !var.enable_d1_resource_hold || var.retire_neon_maintenance
+    error_message = "The D1 resource hold requires the retired-Neon D1-only maintenance graph."
+  }
+}
+
 locals {
   account             = "257240362763"
   region              = "ap-northeast-1"
@@ -110,7 +120,7 @@ locals {
   projects            = { for purpose, name in local.historical_projects : purpose => name if !var.retire_neon_maintenance || contains(["migration", "smoke"], purpose) }
   historical_brokers = {
     maintenance = var.enable_cutover_hold ? "rotate,rollback,audit,cutover-hold" : "rotate,rollback,audit"
-    migration   = "migration"
+    migration   = var.enable_d1_resource_hold ? "migration,d1-resource-hold" : "migration"
     backup      = "backup"
     smoke       = "smoke"
     deploy      = "deploy"
@@ -359,7 +369,7 @@ resource "aws_iam_role_policy" "state_machine" {
     { Effect = "Allow", Action = ["codebuild:BatchGetBuilds", "codebuild:StopBuild"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["events:PutTargets", "events:PutRule", "events:DescribeRule"], Resource = "arn:aws:events:${local.region}:${local.account}:rule/StepFunctionsGetEventForCodeBuildStartBuildRule" },
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn }
-    ], var.enable_cutover_hold ? [{
+    ], var.enable_cutover_hold || var.enable_d1_resource_hold ? [{
       Effect    = "Allow", Action = ["dynamodb:ConditionCheckItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } }
   }] : []) })
