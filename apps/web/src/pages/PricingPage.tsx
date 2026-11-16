@@ -1,4 +1,4 @@
-import { startLandingVisit } from '@/lib/landingAnalytics';
+import { startLandingVisit, trackLandingEvent } from '@/lib/landingAnalytics';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -206,7 +206,7 @@ export default function PricingPage() {
           </div>
         ))}
         <div className="flex flex-wrap gap-x-6 gap-y-3">
-          <Link href="/try" className="site-inline-link">{t('pricing.selection.tryDemo')}</Link>
+          <Link href="/try" className="site-inline-link" onClick={() => trackLandingEvent('demo_open')}>{t('pricing.selection.tryDemo')}</Link>
           <Link href="/guides/online-course-questions" className="site-inline-link">{t('pricing.selection.readGuide')}</Link>
         </div>
       </section>
