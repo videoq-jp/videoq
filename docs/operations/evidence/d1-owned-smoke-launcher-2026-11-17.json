@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-17",
+  "scope": "disabled owned native CodeBuild launch and registration",
+  "nodeTests": {
+    "passed": 605,
+    "failed": 0
+  },
+  "checks": [
+    "intent before StartBuild",
+    "exact reviewed code/role/runtime/environment",
+    "lost start metadata reconciliation without retry",
+    "lost registration response exact readback",
+    "revoked ownership and changed registration refusal",
+    "bounded incomplete inventory refusal"
+  ],
+  "productionBuildStarted": false,
+  "productionIamApplied": false,
+  "productionFactoryWired": false,
+  "realProviderRehearsalExecuted": false
+}

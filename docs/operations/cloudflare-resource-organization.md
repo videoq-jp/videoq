@@ -524,8 +524,32 @@ resource scope follows the [AWS authorization reference](https://docs.aws.amazon
 
 Native proof now binds the action, complete E2E plan hash, executor hash and
 execution-definition hash to the exact build environment. The source/version,
-AI and stable-API checks remain required. The owned launcher/registration and
-reconciliation path still needs implementation before this mode can be used.
+AI and stable-API checks remain required. The disabled owned launcher below implements registration and ambiguous-start
+reconciliation; production factory and E2E adapter wiring are still required.
 [Guard evidence](evidence/d1-owned-smoke-guard-2026-11-17.json) records local unit,
 bundle-input and Terraform mock checks. No IAM configuration or AWS job was
 started by this validation.
+
+## Owned native build launch and reconciliation
+
+`d1-resource-smoke-launcher.cjs` uses the existing fixed smoke project under the
+claimed resource hold. Its default is disabled. It records action, full E2E plan
+hash and immutable source version in the owned run before one `StartBuild`
+attempt, then registers the exact build ARN after verifying reviewed code, role,
+runtime and the complete environment. Registration uses revision-checked
+transactions with a condition on the shared maintenance owner. Worker credential
+access waits for that registration through the guard above. No role, image,
+buildspec or credential override is accepted by the launch input.
+
+An ambiguous start is never automatically retried, even after the provider's
+idempotency window. Reentry scans bounded project metadata and registers only
+one exact matching action. Missing, duplicate or incomplete inventory stops for
+reconciliation. A crash between durable intent and dispatch can therefore need
+explicit recovery; it cannot silently create a second build. Lost DynamoDB
+responses reconcile only against the exact durable revision and fields.
+
+This module has no CLI or production caller yet. E2E adapter/factory wiring,
+real provider rehearsal and recovery remain prerequisites to enabling the hold.
+No AWS job, IAM apply or live cutover was performed by these tests.
+[Launcher evidence](evidence/d1-owned-smoke-launcher-2026-11-17.json) records
+the local checks and their limits.
