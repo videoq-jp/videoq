@@ -1,10 +1,44 @@
 # AWS database maintenance
 
-Cloudflare Workers → Hyperdrive → Neon stays unchanged, including the Neon Free
-plan. Database rotation, migration, backup/restore and production smoke run in AWS.
+Production uses Cloudflare D1 and Vectorize after the verified 2026-11-17
+handoff. The production API has no Hyperdrive binding. All three production
+Lambda consumers persist through the signed worker API; their environment and
+SSM policy must not reference the retired PostgreSQL worker credential.
+Non-production PostgreSQL bootstrapping and on-premises pgvector remain available.
+Database migration and production smoke run in AWS. The historical PostgreSQL
+rotation/backup tooling is retained for explicit recovery operations, and its
+daily rotation schedule stays disabled.
 GitHub Actions invokes a fixed Lambda alias and observes execution status; its
 routine request roles have no SSM, CodeBuild-start, code-upload or IAM permissions.
 The restricted demo audit/preparation readers remain separate GitHub jobs.
+
+## Retiring the production Neon project
+
+Retirement requires current evidence, independently of the earlier handoff:
+
+1. Check production readiness, API failures, SQS/DLQ backlog, outstanding index
+   tasks and referential integrity. A successful health response alone is not
+   evidence that video processing and cited answers work.
+2. Preserve the version-pinned, restore-verified full PostgreSQL archive,
+   including the 27 legacy tables. Keep the private archive bucket and its
+   existing object versions after new backup retention is disabled.
+3. Verify D1 Time Travel and retain a current private D1 export plus the matching
+   scene vectors before deleting the source project. Restore checks must use an
+   isolated target, never overwrite the live D1 database.
+4. Remove the obsolete production Lambda database references and SSM read grant,
+   then pass a fresh native AWS upload-to-answer smoke with AI answers enabled.
+   Preserve image versions, application secrets, queue mappings and the
+   PostgreSQL configuration used outside production.
+5. Delete only the previously identified VideoQ Neon project after the checks
+   pass, disable the obsolete credential-maintenance workflow, and verify D1
+   readiness and the full processing path again. Other Neon projects are outside
+   this operation's scope.
+
+Deleting the Neon project does not restore or synchronize D1, Vectorize, R2 or
+SQS. Recovery of the live service must start from D1's state, not from a simple
+PostgreSQL connection switch. Historical PostgreSQL credential parameters and
+the guarded recovery tooling are not runtime dependencies or proof of an active
+Neon database. Do not delete the archive infrastructure as part of retirement.
 
 EventBridge Scheduler starts daily age checks. Step Functions Standard orchestrates
 purpose-specific CodeBuild jobs and waits without keeping a build running during
