@@ -253,3 +253,15 @@ describe("scheduled maintenance", () => {
     expect(scheduler.refreshMaintenanceSchedule).not.toHaveBeenCalled();
   });
 });
+
+
+describe("migration pause", () => {
+  it("does not dispatch retention, recovery, observations or schedule queries", async () => {
+    const paused = { MIGRATION_TRAFFIC_STATE: "paused" } as never;
+    await expect(runMaintenanceSweep(paused)).resolves.toEqual({ progressed: false });
+    await runScheduledMaintenance(paused, RETENTION_CRON);
+    for (const group of [tasks, uploads, repository, invitations, mcpIdempotency, conversations, audit, lti, scheduler]) {
+      for (const value of Object.values(group)) if (vi.isMockFunction(value)) expect(value).not.toHaveBeenCalled();
+    }
+  });
+});

@@ -55,9 +55,9 @@
     "db:d1:postgres-login-fence": "tsx scripts/d1-postgres-login-fence.ts"
   },
   "dependencies": {
-    "@better-auth/api-key": "^1.7.15",
-    "@better-auth/drizzle-adapter": "^1.7.12",
-    "@better-auth/oauth-provider": "^1.7.15",
+    "@better-auth/api-key": "^1.7.18",
+    "@better-auth/drizzle-adapter": "^1.7.18",
+    "@better-auth/oauth-provider": "^1.7.18",
     "@hono/mcp": "^0.3.5",
     "@hono/node-server": "^2.1.6",
     "@hono/trpc-server": "^0.4.2",
@@ -68,7 +68,7 @@
     "@langchain/langgraph-checkpoint-postgres": "^1.1.2",
     "@langchain/openai": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@trpc/server": "^11.22.1",
+    "@trpc/server": "^11.25.2",
     "@videoq/trpc": "0.1.0",
     "@yukiharada1228/langchain-postgres": "^0.2.4",
     "aws4fetch": "^1.0.20",

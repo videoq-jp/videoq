@@ -58,6 +58,7 @@ export function nodeBindings(source: Environment): Bindings {
   return {
     RUNTIME: "node", DEPLOYMENT_EDITION: deploymentEdition(source.DEPLOYMENT_EDITION || "onprem"), ENVIRONMENT: "production", DATABASE_URL: databaseURL,
     BETTER_AUTH_SECRET: authSecret, BETTER_AUTH_URL: publicURL,
+    MIGRATION_TRAFFIC_STATE: source.MIGRATION_TRAFFIC_STATE,
     LTI_CONFIG: source.LTI_CONFIG,
     CLASSROOM_CONFIG: source.CLASSROOM_CONFIG,
     CLASSROOM_CLIENT_ID: source.CLASSROOM_CLIENT_ID,

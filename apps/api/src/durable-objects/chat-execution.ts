@@ -1,3 +1,4 @@
+import { applicationTrafficPaused, migrationPausedResponse } from "../lib/migration-traffic";
 import { DurableObject } from "cloudflare:workers";
 import type { Bindings } from "../types/bindings";
 import { isChatExecutionRequest } from "../lib/chat-execution";
@@ -10,6 +11,7 @@ import { isChatExecutionRequest } from "../lib/chat-execution";
  */
 export class ChatExecution extends DurableObject<Bindings> {
   async fetch(request: Request): Promise<Response> {
+    if (applicationTrafficPaused(this.env)) return migrationPausedResponse();
     if (!isChatExecutionRequest(request)) {
       return Response.json({ error: { code: "NOT_FOUND", message: "Not found" } }, { status: 404 });
     }

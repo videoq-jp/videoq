@@ -1,3 +1,4 @@
+import { applicationTrafficPaused } from "./migration-traffic";
 import { maintainSceneIndex, maintainVisualObjects } from "../persistence/factory";
 import { pruneLtiAudit } from '../features/lti/audit-retention';
 import { sweepMaterials } from "../features/lti/materials-sync";
@@ -112,6 +113,7 @@ export async function runMaintenanceSweep(
   env: Bindings,
   now = new Date(),
 ): Promise<MaintenanceSweepResult> {
+  if (applicationTrafficPaused(env)) return { progressed: false };
   const results = await settleAndReport("scheduled_delivery_recovery", {
     externalTasks: processExternalTasks(env, { limit: 50, arm: false }),
     sceneIndex: maintainSceneIndex(env),
@@ -137,6 +139,7 @@ export async function runScheduledMaintenance(
   cron: string,
   now = new Date(),
 ): Promise<void> {
+  if (applicationTrafficPaused(env)) return;
   if (cron !== RETENTION_CRON) {
     throw new Error(`Unknown scheduled maintenance cron: ${cron}`);
   }

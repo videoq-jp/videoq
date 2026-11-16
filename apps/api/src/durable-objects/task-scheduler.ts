@@ -1,3 +1,4 @@
+import { applicationTrafficPaused } from "../lib/migration-traffic";
 import { DurableObject } from "cloudflare:workers";
 import {
   ARM_FLOOR_MS,
@@ -44,6 +45,10 @@ export class TaskScheduler extends DurableObject<Bindings> {
   }
 
   async alarm(): Promise<void> {
+    if (applicationTrafficPaused(this.env)) {
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      return;
+    }
     const { runMaintenanceSweep } = await import("../lib/scheduled-maintenance");
     // 失敗時は DO のアラーム再試行に任せる。再試行が尽きても日次 cron が拾う。
     const sweep = await runMaintenanceSweep(this.env);
@@ -61,6 +66,10 @@ export class TaskScheduler extends DurableObject<Bindings> {
    * ことも消すこともしない。
    */
   private async settle(progressed: boolean): Promise<void> {
+    if (applicationTrafficPaused(this.env)) {
+      await this.armAt(Date.now() + 60_000);
+      return;
+    }
     const [{ MAINTENANCE_WINDOWS }, { getNextMaintenanceWakeup }] = await Promise.all([
       import("../lib/scheduled-maintenance"),
       import("../repositories/maintenance-schedule-repository"),

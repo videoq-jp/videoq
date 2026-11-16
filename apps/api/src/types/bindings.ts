@@ -51,6 +51,8 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     SCENE_VECTORIZE_768?: import("@cloudflare/workers-types").Vectorize;
     PERSISTENCE_BACKEND?: "d1" | "postgres";
     MIGRATION_ALLOW_CLOUD_POSTGRES?: "true";
+    /** Unset/running serves traffic; any other value pauses new application work. */
+    MIGRATION_TRAFFIC_STATE?: string;
     /** Only the long-lived Node runtime supplies a shared pool. */
     DATABASE_POOL?: pg.Pool;
     RATE_LIMIT_BACKEND?: RateLimitBackend;
