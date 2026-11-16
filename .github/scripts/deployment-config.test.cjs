@@ -69,3 +69,17 @@ test('omitted production bindings do not inherit development data stores or vari
   const result = deploymentConfig(original, 'api', '/artifacts');
   for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects']) assert.equal(result[key], undefined);
 });
+
+test('the production API exposes the signed worker persistence path through its narrowly scoped route', () => {
+  const source = require('node:fs').readFileSync('apps/api/wrangler.jsonc', 'utf8');
+  const production = source.slice(source.indexOf('"production": {'));
+  const routes = production.match(/"routes"\s*:\s*\[([\s\S]*?)\]/)?.[1];
+  assert.ok(routes);
+  assert.match(routes, /"pattern"\s*:\s*"videoq\.jp\/internal\/worker\/\*"/);
+  assert.doesNotMatch(routes, /"pattern"\s*:\s*"videoq\.jp\/internal\/\*"/);
+  assert.match(production, /"workers_dev"\s*:\s*false/);
+  const expected = [{ pattern: 'videoq.jp/internal/worker/*', zone_name: 'videoq.jp' }];
+  const result = deploymentConfig({ env: { production: { name: 'videoq-api', routes: expected, workers_dev: false } } }, 'api', '/artifacts');
+  assert.deepEqual(result.routes, expected);
+  assert.equal(result.workers_dev, false);
+});
