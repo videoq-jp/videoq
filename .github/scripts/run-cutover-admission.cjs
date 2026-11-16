@@ -24,12 +24,12 @@ async function verifyReviewedSource({source,root=ROOT,execute=execFileSync,env=p
  if(!/^[a-f0-9]{40}$/.test(source??''))throw Error('INVALID_ADMISSION_SOURCE');
  const git=args=>run(execute,'git',args,executionEnv(env,'git'),root).trim();
  if(git(['rev-parse','HEAD'])!==source||git(['status','--porcelain','--untracked-files=all'])||realpathSync(git(['rev-parse','--show-toplevel']))!==realpathSync(root)||!['https://github.com/videoq-jp/videoq.git','git@github.com:videoq-jp/videoq.git'].includes(git(['remote','get-url','origin'])))throw Error('CLEAN_CANONICAL_SOURCE_REQUIRED');
- const read=path=>JSON.parse(run(execute,'gh',['api','--hostname','github.com',path],executionEnv(env,'github'),root));
- const repository=read('repos/videoq-jp/videoq');
+ const read=(path,projection)=>JSON.parse(run(execute,'gh',['api','--hostname','github.com',path,'--jq',projection],executionEnv(env,'github'),root));
+ const repository=read('repos/videoq-jp/videoq','{id,owner:{id:.owner.id},full_name,default_branch,private}');
  if(repository.id!==1083911938||repository.owner?.id!==349188820||repository.full_name!=='videoq-jp/videoq'||repository.default_branch!=='main'||repository.private!==false)throw Error('CANONICAL_REPOSITORY_VERIFICATION_FAILED');
- const head=read('repos/videoq-jp/videoq/git/ref/heads/main').object?.sha;
+ const head=read('repos/videoq-jp/videoq/git/ref/heads/main','{object:{sha:.object.sha}}').object?.sha;
  if(!/^[a-f0-9]{40}$/.test(head??''))throw Error('INVALID_CANONICAL_MAIN');
- if(head!==source){const comparison=read(`repos/videoq-jp/videoq/compare/${source}...${head}?per_page=1`);if(comparison.status!=='ahead'||comparison.merge_base_commit?.sha!==source)throw Error('SOURCE_NOT_IN_REVIEWED_MAIN');}
+ if(head!==source){const comparison=read(`repos/videoq-jp/videoq/compare/${source}...${head}?per_page=1`,'{status,merge_base_commit:{sha:.merge_base_commit.sha}}');if(comparison.status!=='ahead'||comparison.merge_base_commit?.sha!==source)throw Error('SOURCE_NOT_IN_REVIEWED_MAIN');}
  return{reviewedSource:source,currentMain:head};
 }
 function createAwsTransport({execute=execFileSync,env=process.env,root=ROOT}={}){
