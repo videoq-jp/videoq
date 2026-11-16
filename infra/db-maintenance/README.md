@@ -74,12 +74,15 @@ No archive expiration, deletion permission or new recurring backup is introduced
 not recreate legacy Neon direct-SSM or starter roles.
 
 For an existing installation, first review and merge the D1-only operator change,
-then apply the independent maintenance Terraform plan during an idle maintenance
+let canonical maintenance CD deploy and verify the D1-only graph first, then
+apply the independent maintenance Terraform plan during an idle maintenance
 window. Confirm no running executions/builds and no global maintenance owner.
 Review the saved plan: archive resources, application Lambda code/environment and
-live D1/Vectorize resources must not be deleted or replaced. Allow the canonical
-maintenance CD to deploy the new D1-only graph and broker versions, then verify a
-native smoke execution and exact S3 backup versions. Do not run the old rotation
+live D1/Vectorize resources must not be deleted or replaced. Terraform publishes the narrowed broker environment without moving CD-owned
+aliases. Promote each resulting configuration-only version with revision checks,
+verifying unchanged broker code hashes and the reduced project allowlist, before
+requesting another job. Verify a native smoke execution and exact S3 backup
+versions. Do not run the old rotation
 or cutover tools against the deleted Neon project.
 
 The sections below document the historical PostgreSQL setup and recovery formats;
