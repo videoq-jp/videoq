@@ -196,6 +196,10 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/workflows/terraform-apply.yml'
             operations:
+              - '.github/scripts/cutover-postwrite-recovery*'
+              - '.github/scripts/cutover-recovery-child*'
+              - '.github/scripts/cutover-recovery-snapshot*'
+              - 'apps/api/scripts/migrations/d1/write-fence.ts'
               - '.github/scripts/production-smoke*'
               - '.github/scripts/aws-production-smoke*'
               - '.github/workflows/d1-cutover-control.yml'
@@ -889,6 +893,7 @@ jobs:
           npm ci --ignore-scripts --prefix infra/db-maintenance/runtime
           npm audit signatures --prefix infra/db-maintenance/runtime
           node --test .github/scripts/cutover-hold.integration.cjs
+          node --import ./.github/operations-tools/node_modules/tsx/dist/loader.mjs --test .github/scripts/cutover-postwrite-recovery.integration.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |
           node --input-type=module <<'JS'

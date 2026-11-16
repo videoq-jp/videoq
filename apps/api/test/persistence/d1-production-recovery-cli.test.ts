@@ -63,7 +63,7 @@ describe('fixed AWS recovery child protocol (mocked remote services)',()=>{
    await destination.create('uploads/synthetic.bin',Buffer.from('private bytes'));throw Error('STOP_AFTER_STORAGE_PROBE');
   });
   await expect(main(f.args,f.env)).rejects.toThrow('STOP_AFTER_STORAGE_PROBE');
-  expect(hooks.fetch).toHaveBeenCalledWith('https://12daec56fdba43f677f2766ee26a5a39.r2.cloudflarestorage.com/videoq-media-prod/uploads/synthetic.bin',expect.objectContaining({method:'PUT',headers:{'if-none-match':'*','content-type':'application/octet-stream'},redirect:'error'}));expect(hooks.restore).not.toHaveBeenCalled();
+  expect(hooks.fetch).toHaveBeenCalledWith('https://12daec56fdba43f677f2766ee26a5a39.r2.cloudflarestorage.com/videoq-media-prod/media/uploads/synthetic.bin',expect.objectContaining({method:'PUT',headers:{'if-none-match':'*','content-type':'application/octet-stream'},redirect:'error'}));expect(hooks.restore).not.toHaveBeenCalled();
  });
  it('rejects unsafe paths before sending any storage request',async()=>{
   const f=await fixture();hooks.visuals.mockImplementation(async(_rows,source)=>source.read('../another-bucket',100));

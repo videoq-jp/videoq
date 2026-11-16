@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "date": "2026-11-16",
+  "scope": "Disabled fixed AWS inverse restore; no production execution",
+  "verification": {
+    "nodeSecurityTestsPassed": 486,
+    "realLocalDynamoDbCasesPassed": 9,
+    "actualSQLiteSchemaAndFence": true,
+    "realLocalPipeProtocol": true,
+    "terraformMockPlansPassed": 22,
+    "infrastructurePythonTestsPassed": 57,
+    "actualOperatorZipDependenciesOnly": true,
+    "existingRealIsolatedPostgresFenceChecksPassed": true,
+    "recoveryChildRelatedVitestCasesPassed": 52
+  },
+  "remoteEffects": {
+    "awsCloudflareGithubR2": "synthetic transports",
+    "postgresChild": "synthetic transport; fenced restore primitive separately tested",
+    "productionAccess": false
+  },
+  "behavior": {
+    "businessWriteMarkerRetained": true,
+    "unknownCommitKeepsPreparedIntentAndOwner": true,
+    "sameInputReplaySupported": true,
+    "differentPreparedDigestRejected": true,
+    "unreviewedReceiptFieldsRejected": true,
+    "frozenD1RowsIndependentlyCompared": true,
+    "vectorValuesIndependentlyRefetchedByThisStage": false,
+    "requiresTrustedVectorCapture": true,
+    "backendHandoffIncluded": false,
+    "trafficResumeIncluded": false,
+    "holdReleaseIncluded": false,
+    "enabledByDefault": false,
+    "canonicalR2MediaNamespace": true
+  }
+}

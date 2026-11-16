@@ -77,6 +77,10 @@ async function main() {
   assertBuildArn(process.env.CODEBUILD_BUILD_ARN);
   if (process.env.GITHUB_ACTIONS) throw new Error('GITHUB_MASK_COMMANDS_NOT_SUPPORTED_IN_AWS_LOGS');
   const stage = process.env.MAINTENANCE_STAGE;
+  if(stage==='cutover-postwrite-recovery'){
+    execFileSync('node',['--import','./.github/operations-tools/node_modules/tsx/dist/loader.mjs','.github/scripts/cutover-postwrite-recovery.mjs'],{stdio:['ignore','pipe','pipe'],maxBuffer:65536,timeout:40*60*1000});
+    console.log('Held post-write restoration recorded; writers and exclusion remain stopped');return;
+  }
   if (['cutover-consumer-pause','cutover-consumer-resume'].includes(stage)) {
     await require('../../../.github/scripts/cutover-consumer-control.cjs').controlConsumers();
     console.log('Cutover consumer admission stage verified; in-flight drain is separate'); return;

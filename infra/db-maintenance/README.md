@@ -498,6 +498,12 @@ parent grant before its fenced database transaction. Its AWS parent stage and
 post-write handoff are not yet enabled; packaging alone is not cutover readiness.
 
 
+The disabled-by-default [held post-write restoration stage](../../docs/operations/held-postwrite-recovery.md)
+connects the AWS parent and digest-authorized child. It verifies the versioned
+private input, frozen D1 rows, writer admission and durable grant, then records a
+strict receipt while retaining both fences and exclusion. It does not enable
+recovery, capture vectors, switch backends, resume traffic or release the hold.
+
 ### Backend-aware production smoke
 
 `enable_d1_production_smoke` is disabled by default. When enabled, only the fixed

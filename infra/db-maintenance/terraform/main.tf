@@ -14,6 +14,16 @@ variable "enable_d1_migrations" {
   description = "Allow the fixed migration job to read its D1-only credential and verify existing lock ownership."
 }
 
+variable "enable_cutover_postwrite_recovery" {
+  type        = bool
+  default     = false
+  description = "Enable only the fixed root-operated AWS inverse restore, keeping the post-write hold and all writer admission closed."
+  validation {
+    condition     = !var.enable_cutover_postwrite_recovery || (var.enable_cutover_consumer_control && var.provision_backup_archive)
+    error_message = "Post-write recovery requires owned consumer control and preserved private archive infrastructure."
+  }
+}
+
 variable "enable_d1_production_smoke" {
   type        = bool
   default     = false
@@ -222,7 +232,13 @@ resource "aws_iam_role_policy" "build" {
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/smoke-identity"
       ] }
-    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], each.key == "backup" && var.retain_verified_backups ? [
+    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
+    { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
+      "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
+      "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
+    ] },
+    { Effect = "Allow", Action = ["s3:GetObjectVersion"], Resource = ["${aws_s3_bucket.archive[0].arn}/cutover-recovery/*"] }
+    ] : [], each.key == "backup" && var.retain_verified_backups ? [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
   ] : []) })
 }
@@ -238,7 +254,7 @@ resource "aws_codebuild_project" "job" {
   concurrent_build_limit = 1
   artifacts { type = "NO_ARTIFACTS" }
   environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
+    compute_type                = each.key == "rotation" && var.enable_cutover_postwrite_recovery ? "BUILD_GENERAL1_MEDIUM" : "BUILD_GENERAL1_SMALL"
     image                       = "aws/codebuild/standard:7.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
@@ -250,6 +266,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"
+      value = each.key == "rotation" && var.enable_cutover_postwrite_recovery ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_D1_PRODUCTION_SMOKE"
