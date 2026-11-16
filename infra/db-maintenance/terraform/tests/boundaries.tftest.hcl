@@ -372,7 +372,7 @@ run "stage_history_disabled_by_default" {
   command = plan
   variables {
     provision_backup_archive = true
-    retain_verified_backups = false
+    retain_verified_backups  = false
   }
   assert {
     condition     = alltrue([for policy in aws_iam_role_policy.broker : !strcontains(policy.policy, "states:GetExecutionHistory")]) && alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "states:GetExecutionHistory")])
@@ -383,8 +383,8 @@ run "stage_history_disabled_by_default" {
 run "stage_history_is_execution_scoped_metadata" {
   command = plan
   variables {
-    provision_backup_archive = true
-    retain_verified_backups = false
+    provision_backup_archive        = true
+    retain_verified_backups         = false
     enable_cutover_hold             = true
     enable_cutover_consumer_control = true
   }
