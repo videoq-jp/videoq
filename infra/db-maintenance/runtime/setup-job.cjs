@@ -13,7 +13,7 @@ function setup(env = process.env, run = (command, args) => execFileSync(command,
   const purpose = env.CODEBUILD_BUILD_ARN.match(/build\/videoq-db-([a-z]+)-prod:/)[1];
   const stage = env.MAINTENANCE_STAGE;
   const stages = {
-    rotation: ['cutover-postwrite-recovery','cutover-activity-audit','cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'login-fence-audit', 'prepare', 'retire', 'complete', 'retire-rollback', 'complete-rollback'],
+    rotation: ['cutover-internal-auth','cutover-postwrite-recovery','cutover-activity-audit','cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'login-fence-audit', 'prepare', 'retire', 'complete', 'retire-rollback', 'complete-rollback'],
     migration: ['migration'], backup: ['backup'], smoke: ['smoke'], audit: ['audit'],
   };
   if (!stages[purpose]?.includes(stage)) throw new Error('INVALID_SETUP_STAGE');
@@ -21,7 +21,7 @@ function setup(env = process.env, run = (command, args) => execFileSync(command,
   // audits and completion records only use built-in modules and the AWS CLI.
   // prepare lazily installs tools in job.cjs only when credentials are due.
   if (purpose === 'migration' || purpose === 'rotation' &&
-      ['cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'prepare', 'complete', 'complete-rollback'].includes(stage)) return;
+      ['cutover-internal-auth','cutover-consumer-pause','cutover-consumer-resume','cutover-consumer-prepare', 'prepare', 'complete', 'complete-rollback'].includes(stage)) return;
   installTools(run);
   if (purpose === 'smoke') {
     // production-smoke uses chromium.launch() without a channel in AWS.

@@ -29,6 +29,8 @@ try{
  const before=(await client.query('SELECT oid::int,rolname,rolcanlogin FROM pg_roles WHERE left(rolname,length($1))=$1 ORDER BY rolname',[prefix])).rows;
  const bundle=join(directory,'bundle');await mkdir(bundle,{mode:0o700});
  await execute('python3',['-c',"import importlib.util,sys,zipfile; from pathlib import Path; spec=importlib.util.spec_from_file_location('bundle','infra/db-maintenance/build_bundle.py'); b=importlib.util.module_from_spec(spec); spec.loader.exec_module(b); p=Path(sys.argv[1])/'operator.zip'; b.archive(p,b.operator_files()); zipfile.ZipFile(p).extractall(sys.argv[1])",bundle],{cwd:root,timeout:30000,maxBuffer:1024*1024});
+ const builtinAuth="const m=require("+JSON.stringify(join(bundle,'.github/scripts/cutover-internal-auth.cjs'))+");if(typeof m.provisionInternalAuth!=='function')throw Error('AUTH_IMPORT_FAILED');console.log('BUILTIN_AUTH_IMPORT_VERIFIED');";
+ assert.equal((await execute(process.execPath,['--input-type=commonjs','-e',builtinAuth],{cwd:bundle,env:Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]])),timeout:30000,maxBuffer:65536})).stdout.trim(),'BUILTIN_AUTH_IMPORT_VERIFIED');
  const ops=join(root,'.github/operations-tools/node_modules');await symlink(ops,join(bundle,'.github/operations-tools/node_modules'),'dir');
  const {ensureOperatorDependencies}=await import(pathToFileURL(join(bundle,'.github/scripts/neon-fence-audit.mjs')).href);await ensureOperatorDependencies(bundle);
  assert.equal(typeof(await import(pathToFileURL(join(bundle,'.github/scripts/cutover-postgres-fence.mjs')).href)).runHeldPostgresFence,'function');

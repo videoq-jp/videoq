@@ -17,16 +17,16 @@ async function frozenTableDigests(query,table,hash){
  const columns=(await query('PRAGMA table_info("'+table+'")')).results;
  if(!Array.isArray(columns)||!columns.length||columns.some(c=>!/^[A-Za-z_][A-Za-z0-9_]{0,100}$/.test(c.name)))throw Error('RECOVERY_TABLE_SCHEMA_CHANGED');
  const fields=columns.map(c=>binary[table]?.has(c.name)?'CASE WHEN "'+c.name+'" IS NULL THEN NULL ELSE lower(hex("'+c.name+'")) END AS "'+c.name+'"':'"'+c.name+'"').join(',');
- const digests=[];
- for(let offset=0;offset<=10000;offset+=25){
-  const rows=(await query('SELECT '+fields+' FROM "'+table+'" LIMIT 25 OFFSET '+offset)).results;
-  if(!Array.isArray(rows)||rows.length>25)throw Error('RECOVERY_TABLE_READ_INVALID');
+ const digests=[],pageSize=binary[table]?1:25;
+ for(let offset=0;offset<=10000;offset+=pageSize){
+  const rows=(await query('SELECT '+fields+' FROM "'+table+'" LIMIT '+pageSize+' OFFSET '+offset)).results;
+  if(!Array.isArray(rows)||rows.length>pageSize)throw Error('RECOVERY_TABLE_READ_INVALID');
   for(const row of rows){
    const normalized={...row};for(const column of binary[table]??[])if(normalized[column]!==null)normalized[column]={hex:normalized[column]};
    digests.push(hash(normalizeRecoveryRow(table,normalized)));
    if(digests.length>10000)throw Error('RECOVERY_TABLE_INVENTORY_CHANGED');
   }
-  if(rows.length<25)return digests.sort();
+  if(rows.length<pageSize)return digests.sort();
  }
  throw Error('RECOVERY_TABLE_INVENTORY_CHANGED');
 }

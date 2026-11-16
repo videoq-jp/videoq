@@ -36,6 +36,16 @@ describe('offline visual migration on workerd D1 and R2',()=>{
   await resetStaging();expect(await migrate()).toMatchObject({copied:'0',retained:'4',visual_objects_migrated:true});
  });
  it('uses an atomic R2 create-only condition',async()=>{await storage.create('immutable',Buffer.from('first'));await expect(storage.create('immutable',Buffer.from('other'))).rejects.toThrow('already exists');expect(Buffer.from((await storage.read('immutable',10))!).toString()).toBe('first');});
+ it('uses the held cutover destination in the same bucket while preserving every legacy source byte',async()=>{
+  const {immutableProductionVisualDestination}=await import('../../../../.github/scripts/cutover-transfer.mjs') as {immutableProductionVisualDestination:(storage:ReturnType<typeof r2VisualMigrationStorage>)=>ReturnType<typeof r2VisualMigrationStorage>};
+  const keys=[`file.mp4.visual-v2/${runId}/0.bin`,`file.mp4.visual-v2/${runId}/0.json`];
+  const original=await Promise.all(keys.map(async key=>Buffer.from((await storage.read(key,16*1024*1024))!)));
+  const destination=immutableProductionVisualDestination(storage);
+  expect(await migrate(destination)).toMatchObject({visual_objects_migrated:true,pending_visual_runs:'0'});
+  for(let index=0;index<keys.length;index++)expect(Buffer.from((await storage.read(keys[index],16*1024*1024))!)).toEqual(original[index]);
+  await expect(destination.create(keys[0],Buffer.from('must not overwrite'))).rejects.toThrow('ONLY_NEW_VERSIONED_VISUAL_KEYS_ALLOWED');
+  expect(await fixture.database.prepare('SELECT publication_version FROM video_visual_runs').first('publication_version')).toMatch(/^[a-f0-9-]{36}$/);
+ });
  it('bounds R2 bodies before materializing them',async()=>{await fixture.bucket!.put('media/large','12345');await expect(storage.read('large',4)).rejects.toThrow('budget');});
  it('records cleanup ownership before a failed object PUT and resumes without publishing incomplete refs',async()=>{
   let fail=true;const destination={read:storage.read,create:async(key:string,bytes:Uint8Array)=>{await storage.create(key,bytes);if(fail){fail=false;throw new Error('private-provider-canary');}}};

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "productionCutoverPerformed": false,
+  "nativeStateMachineValidation": {
+    "result": "OK",
+    "diagnostics": [],
+    "deployed": false
+  },
+  "localValidation": {
+    "nodeSecurityTests": 556,
+    "infraPythonTests": 57,
+    "terraformMockPlans": 25,
+    "realDynamoDBWithMigratedSQLiteCases": 9,
+    "actualOperatorZipAndIsolatedPostgresFence": true
+  },
+  "readonlyRemoteValidation": {
+    "d1SyntheticBlobBytes": 1800000,
+    "d1NativeBlobAndSqlHex": true,
+    "visualRuns": 5,
+    "visualChunks": 10,
+    "visualRecoveryCompatibility": true,
+    "r2Writes": 0,
+    "d1MigrationCredentialWorkerSettingsHTTP": 200
+  },
+  "limitations": [
+    "Unit remote-service transports are synthetic.",
+    "The source backup reference must come from the versioned verified-backup download manifest.",
+    "Native production upload-to-cited-answer smoke must succeed before final release.",
+    "Postwrite completion preserves the business-write marker and PostgreSQL writer NOLOGIN; it is not the prewrite release procedure."
+  ]
+}

@@ -30,6 +30,16 @@ variable "enable_d1_production_smoke" {
   description = "Allow only the fixed smoke job to select the actual production backend and read its D1 credential and synthetic-identity signing key."
 }
 
+variable "enable_cutover_final_handoff" {
+  type        = bool
+  default     = false
+  description = "Allow fixed AWS worker-auth preparation only after inverse recovery and D1 smoke capabilities are enabled."
+  validation {
+    condition     = !var.enable_cutover_final_handoff || (var.enable_cutover_postwrite_recovery && var.enable_d1_production_smoke)
+    error_message = "Final handoff preparation requires both inverse recovery and backend-aware production verification."
+  }
+}
+
 variable "operator_zip" {
   type = string
 }
@@ -238,7 +248,12 @@ resource "aws_iam_role_policy" "build" {
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
     ] },
     { Effect = "Allow", Action = ["s3:GetObjectVersion"], Resource = ["${aws_s3_bucket.archive[0].arn}/cutover-recovery/*"] }
-    ] : [], each.key == "backup" && var.retain_verified_backups ? [
+    ] : [], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:PutParameter"], Resource = [
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app",
+        "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/worker-internal-api"
+      ] }
+    ] : permission if each.key == "rotation" && var.enable_cutover_final_handoff], each.key == "backup" && var.retain_verified_backups ? [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
   ] : []) })
 }
@@ -266,6 +281,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_CUTOVER_FINAL_HANDOFF"
+      value = each.key == "rotation" && var.enable_cutover_final_handoff ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"

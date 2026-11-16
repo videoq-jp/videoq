@@ -514,3 +514,64 @@ run "d1_smoke_permissions_are_narrow" {
     error_message = "No other job receives the synthetic-identity signing key."
   }
 }
+
+run "final_handoff_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_CUTOVER_FINAL_HANDOFF"]) == "false"
+    ])
+    error_message = "Internal authentication provisioning must stay disabled until explicitly prepared."
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "/worker-internal-api")])
+    error_message = "No default job may allocate or read the internal producer key."
+  }
+}
+
+run "final_handoff_requires_inverse_and_smoke" {
+  command = plan
+  variables {
+    provision_backup_archive     = true
+    enable_cutover_final_handoff = true
+  }
+  expect_failures = [var.enable_cutover_final_handoff]
+}
+
+run "final_auth_preparation_has_fixed_parameter_writes" {
+  command = plan
+  variables {
+    provision_backup_archive          = true
+    retain_verified_backups           = false
+    enable_cutover_hold               = true
+    enable_cutover_consumer_control   = true
+    enable_cutover_postwrite_recovery = true
+    enable_d1_production_smoke        = true
+    enable_cutover_final_handoff      = true
+  }
+  assert {
+    condition = alltrue([for purpose, project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_CUTOVER_FINAL_HANDOFF"]) == (purpose == "rotation" ? "true" : "false")
+    ])
+    error_message = "Only the fixed rotation project may provision internal authentication."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["ssm:GetParameter", "ssm:PutParameter"] && statement.Resource == [
+        "arn:aws:ssm:ap-northeast-1:257240362763:parameter/videoq/prod/app",
+        "arn:aws:ssm:ap-northeast-1:257240362763:parameter/videoq/security/prod/worker-internal-api"
+      ]
+    ]) == 1
+    error_message = "The preparation stage may update only the existing app object and its independent producer-key escrow."
+  }
+  assert {
+    condition = alltrue([for purpose, policy in aws_iam_role_policy.build :
+      (purpose == "rotation") == strcontains(policy.policy, "/worker-internal-api")
+    ])
+    error_message = "No verification/migration/backup project receives the producer-key escrow."
+  }
+}
