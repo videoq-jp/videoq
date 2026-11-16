@@ -33,7 +33,7 @@ async function verifyReviewedSource({source,root=ROOT,execute=execFileSync,env=p
  return{reviewedSource:source,currentMain:head};
 }
 function createAwsTransport({execute=execFileSync,env=process.env,root=ROOT}={}){
- const allowed={ddb:{GetItem:'get-item',TransactWriteItems:'transact-write-items'},sfn:{DescribeExecution:'describe-execution',DescribeStateMachineForExecution:'describe-state-machine-for-execution',GetExecutionHistory:'get-execution-history'},lambda:{ListEventSourceMappings:'list-event-source-mappings'}};
+ const allowed={sts:{GetCallerIdentity:'get-caller-identity'},ddb:{GetItem:'get-item',TransactWriteItems:'transact-write-items'},sfn:{DescribeExecution:'describe-execution',DescribeStateMachineForExecution:'describe-state-machine-for-execution',GetExecutionHistory:'get-execution-history'},lambda:{ListEventSourceMappings:'list-event-source-mappings'},codebuild:{BatchGetBuilds:'batch-get-builds'}};
  return async(service,command,input)=>{
   if(!allowed[service]?.[command])throw Error('UNSUPPORTED_ADMISSION_AWS_OPERATION');
   const directory=mkdtempSync(join(tmpdir(),'videoq-admission-metadata-')),file=join(directory,'input.json');
