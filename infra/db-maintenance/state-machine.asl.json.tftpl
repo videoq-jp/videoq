@@ -62,7 +62,7 @@
           }
         },
         "ConsistentRead": true,
-        "ProjectionExpression": "cutover_phase,release_requested"
+        "ProjectionExpression": "cutover_phase,release_requested,consumer_action_id,activity_action_id"
       },
       "ResultPath": "$.hold",
       "Next": "CutoverHoldPhase"
@@ -70,6 +70,71 @@
     "CutoverHoldPhase": {
       "Type": "Choice",
       "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.hold.Item.cutover_phase.S",
+              "StringEquals": "activity-auditing"
+            },
+            {
+              "Variable": "$.hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "InspectCutoverActivity"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.hold.Item.cutover_phase.S",
+              "StringEquals": "consumers-pausing"
+            },
+            {
+              "Variable": "$.hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "PauseCutoverConsumers"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.hold.Item.cutover_phase.S",
+              "StringEquals": "consumers-resuming"
+            },
+            {
+              "Variable": "$.hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "ResumeCutoverConsumers"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.hold.Item.cutover_phase.S",
+              "StringEquals": "consumers-paused"
+            },
+            {
+              "Variable": "$.hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "WaitCutoverHold"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.hold.Item.cutover_phase.S",
+              "StringEquals": "consumer-preparing"
+            },
+            {
+              "Variable": "$.hold.Item.release_requested.BOOL",
+              "BooleanEquals": false
+            }
+          ],
+          "Next": "PrepareCutoverConsumers"
+        },
         {
           "And": [
             {
@@ -99,6 +164,169 @@
       ],
       "Default": "InvalidCutoverHoldPhase"
     },
+    "InspectCutoverActivity": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "cutover-activity-audit",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_ACTIVITY_ACTION_ID",
+            "Value.$": "$.hold.Item.activity_action_id.S",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "ReadCutoverHold"
+    },
+    "PauseCutoverConsumers": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "cutover-consumer-pause",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_CONSUMER_ACTION_ID",
+            "Value.$": "$.hold.Item.consumer_action_id.S",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "ReadCutoverHold"
+    },
+    "ResumeCutoverConsumers": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "cutover-consumer-resume",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_CONSUMER_ACTION_ID",
+            "Value.$": "$.hold.Item.consumer_action_id.S",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "ReadCutoverHold"
+    },
+    "PrepareCutoverConsumers": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+      "Parameters": {
+        "ProjectName": "${project_rotation}",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "MAINTENANCE_RUN_ID",
+            "Value.$": "$.run_id",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_STAGE",
+            "Value": "cutover-consumer-prepare",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_KIND",
+            "Value.$": "$.kind",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_FORCE",
+            "Value.$": "States.Format('{}', $.force)",
+            "Type": "PLAINTEXT"
+          },
+          {
+            "Name": "MAINTENANCE_SOURCE_SHA",
+            "Value.$": "$.source_sha",
+            "Type": "PLAINTEXT"
+          }
+        ]
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 2700,
+      "Next": "ReadCutoverHold"
+    },
     "WaitCutoverHold": {
       "Type": "Wait",
       "Seconds": 10,
@@ -117,7 +345,7 @@
                   "S.$": "States.Format('run#{}', $.run_id)"
                 }
               },
-              "ConditionExpression": "#phase = :phase AND release_requested = :requested",
+              "ConditionExpression": "#phase = :phase AND release_requested = :requested AND database_mutations_started = :false AND (attribute_not_exists(consumer_admission_restored) OR consumer_admission_restored = :requested) AND (attribute_not_exists(deployment_admission_restored) OR deployment_admission_restored = :requested) AND (attribute_not_exists(api_admission_restored) OR api_admission_restored = :requested)",
               "ExpressionAttributeNames": {
                 "#phase": "cutover_phase"
               },
@@ -127,6 +355,9 @@
                 },
                 ":requested": {
                   "Bool": true
+                },
+                ":false": {
+                  "Bool": false
                 }
               }
             }

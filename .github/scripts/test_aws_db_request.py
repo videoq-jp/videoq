@@ -115,6 +115,57 @@ class RequestTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "AWS_EXECUTION_CHANGED"):
             db.control_cutover("recover-cutover-hold", RUN, lambda *args: {"status": "RECOVERED"}, waits.append, lambda: 0)
 
+    def test_consumer_preparation_waits_for_ready_on_the_same_hold(self):
+        replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, "consumer_prepared": True}])
+        calls = []
+        def invoke(function, payload):
+            calls.append(payload)
+            return next(replies)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("prepare-cutover-consumers", RUN, invoke, lambda _: None, lambda: 0), RUN)
+        self.assertEqual(calls, [{"action": "prepare-cutover-consumers", "run_id": RUN}, {"action": "status", "run_id": RUN}])
+        for state in ["SUCCEEDED", "RECOVERED"]:
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover("prepare-cutover-consumers", RUN, lambda *args: {"status": state, "run_id": RUN}, lambda _: None, lambda: 0)
+
+    def test_consumer_controls_wait_for_their_own_receipts_and_never_infer_recovery(self):
+        for action, flag in [("pause-cutover-consumers", "consumers_paused"), ("resume-cutover-consumers", "consumers_restored")]:
+            calls = []
+            replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, flag: True}])
+            def invoke(function, payload):
+                calls.append(payload)
+                return next(replies)
+            with patch("sys.stdout", new_callable=io.StringIO):
+                self.assertEqual(db.control_cutover(action, RUN, invoke, lambda _: None, lambda: 0), RUN)
+            self.assertEqual(calls, [{"action": action, "run_id": RUN}, {"action": "status", "run_id": RUN}])
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover(action, RUN, lambda *args: {"status": "RECOVERED", "run_id": RUN}, lambda _: None, lambda: 0)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("retry-cutover-consumers", RUN, lambda *args: {"status": "RUNNING", "run_id": RUN, "consumer_retry_accepted": True}, lambda _: None, lambda: 0), RUN)
+
+    def test_activity_controls_wait_for_observation_or_same_execution_retry_receipts(self):
+        for action, flag in [("inspect-cutover-activity", "activity_observed"), ("retry-cutover-activity", "activity_retry_accepted")]:
+            calls = []
+            replies = iter([{"status": "RUNNING", "run_id": RUN}, {"status": "RUNNING", "run_id": RUN, flag: True}])
+            def invoke(function, payload):
+                calls.append(payload)
+                return next(replies)
+            with patch("sys.stdout", new_callable=io.StringIO):
+                self.assertEqual(db.control_cutover(action, RUN, invoke, lambda _: None, lambda: 0), RUN)
+            self.assertEqual(calls, [{"action": action, "run_id": RUN}, {"action": "status", "run_id": RUN}])
+            with patch("sys.stdout", new_callable=io.StringIO), self.assertRaises(RuntimeError):
+                db.control_cutover(action, RUN, lambda *args: {"status": "RECOVERED", "run_id": RUN}, lambda _: None, lambda: 0)
+
+    def test_pending_native_completion_retries_the_same_action_before_polling_status(self):
+        calls = []
+        replies = iter([{"status":"REJECTED","reason":"CUTOVER_STAGE_STILL_COMPLETING"}, {"status":"RUNNING","run_id":RUN}, {"status":"RUNNING","run_id":RUN,"activity_observed":True}])
+        def invoke(function, payload):
+            calls.append(payload)
+            return next(replies)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.control_cutover("inspect-cutover-activity", RUN, invoke, lambda _: None, lambda: 0), RUN)
+        self.assertEqual(calls, [{"action":"inspect-cutover-activity","run_id":RUN}, {"action":"inspect-cutover-activity","run_id":RUN}, {"action":"status","run_id":RUN}])
+
 
 if __name__ == "__main__":
     unittest.main()

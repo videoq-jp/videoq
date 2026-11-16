@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-16",
+  "sourceCommit": "3a47986b4caf8c8a9dca1a3634af81ab486f6eb7",
+  "scope": "Owned pre-write API stop/abort composition; full cutover orchestration remains incomplete",
+  "nodeVersion": "26.12.0",
+  "pythonVersion": "3.12",
+  "nodeSecurityTests": 442,
+  "dynamoDbLocalTests": 30,
+  "externalTransportsInDynamoDbTests": "mocked SFN/GitHub/Cloudflare and response verifier callbacks",
+  "honoTests": 8,
+  "actualHonoPauseVerifierWithoutDbCredentials": true,
+  "apiTypecheck": "passed",
+  "apiLint": "passed",
+  "infraPythonTests": 57,
+  "awsDefinitionValidation": {
+    "result": "OK",
+    "diagnostics": []
+  },
+  "cleanBundle": {
+    "dirty": false,
+    "operatorSha256": "54b33dd34f9cd4504f7fdb37e949e25da9dd934119a64b82b7dcf9ff11592a0e",
+    "brokerSha256": "9c47d99dea0f9bb2f9e28593aaa23b43ed4b14ba230d9a2aeb55cf01600711fd",
+    "stateMachineSha256": "c7168a04c55bfedd0faaf6b998766c2ebaa3f2c60f3132db33a53135fc107c5d"
+  },
+  "packagedModuleLoadsWithoutApplicationDependencies": true,
+  "packagedDefinitionPinMatches": true,
+  "ownedLocalContainersRemoved": true,
+  "productionReadOnlyReadyVerifier": {
+    "applicationReadyVerified": true,
+    "inFlightDrainProven": false
+  },
+  "productionAfterMainCd": {
+    "observedAt": "2026-11-15T22:59:07.160524+00:00",
+    "deployedMainSha": "498b1c8969928c8a062c36faab5defd6ab9460eb",
+    "cdRun": 43771375381,
+    "dbMaintenanceCdRun": 43771375377,
+    "cutoverSelectors": {
+      "DEPLOYMENT_EDITION": null,
+      "PERSISTENCE_BACKEND": null,
+      "MIGRATION_ALLOW_CLOUD_POSTGRES": null,
+      "MIGRATION_TRAFFIC_STATE": null
+    },
+    "d1Bindings": 0,
+    "healthStatus": 200,
+    "readyStatus": 200,
+    "lambdaStates": [
+      {
+        "function": "videoq-worker-prod",
+        "State": "Active",
+        "LastUpdateStatus": "Successful"
+      },
+      {
+        "function": "videoq-worker-search-prod",
+        "State": "Active",
+        "LastUpdateStatus": "Successful"
+      },
+      {
+        "function": "videoq-worker-account-prod",
+        "State": "Active",
+        "LastUpdateStatus": "Successful"
+      }
+    ],
+    "postgresRetained": true
+  },
+  "productionPauseApplied": false,
+  "tokenProvisioned": false,
+  "automaticProductionCallerActivated": false,
+  "postWriteRecoveryComplete": false,
+  "changedBackendHandoffComplete": false,
+  "fullCutoverCoordinatorComplete": false,
+  "productionD1CutoverComplete": false
+}

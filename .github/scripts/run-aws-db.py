@@ -12,7 +12,7 @@ from pathlib import Path
 FUNCTIONS = {kind: "maintenance" for kind in ["rotate", "rollback", "audit"]}
 FUNCTIONS.update({kind: kind for kind in ["migration", "backup", "smoke", "deploy"]})
 FUNCTIONS["cutover-hold"] = "maintenance"
-CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold"}
+CUTOVER_ACTIONS = {"release-cutover-hold", "recover-cutover-hold", "prepare-cutover-consumers", "pause-cutover-consumers", "resume-cutover-consumers", "retry-cutover-consumers", "inspect-cutover-activity", "retry-cutover-activity"}
 
 
 def invocation(function, payload):
@@ -74,6 +74,9 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
             return run_id
         if state == "REJECTED":
             reason = result.get("reason", "AWS_REQUEST_REJECTED")
+            if reason == "CUTOVER_STAGE_STILL_COMPLETING":
+                sleep(15)
+                continue
             raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
         if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
             raise RuntimeError("CUTOVER_RECOVERY_REQUIRED" if kind == "cutover-hold" else "AWS_DATABASE_OPERATION_FAILED")
@@ -102,13 +105,19 @@ def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=tim
             raise RuntimeError("AWS_EXECUTION_CHANGED")
         if state == "REJECTED":
             reason = result.get("reason", "AWS_REQUEST_REJECTED")
+            if reason == "CUTOVER_STAGE_STILL_COMPLETING":
+                sleep(15)
+                continue
             raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
         if state not in {"RUNNING", "SUCCEEDED", "RECOVERED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE"}:
             raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
         if state != previous:
             print("AWS cutover hold: " + state + " (" + run_id + ")", flush=True)
             previous = state
-        if state == "RECOVERED" or state == "SUCCEEDED" and action == "release-cutover-hold":
+        ready_flag = {"prepare-cutover-consumers": "consumer_prepared", "pause-cutover-consumers": "consumers_paused", "resume-cutover-consumers": "consumers_restored", "retry-cutover-consumers": "consumer_retry_accepted", "inspect-cutover-activity": "activity_observed", "retry-cutover-activity": "activity_retry_accepted"}.get(action)
+        if ready_flag and state == "RUNNING" and result.get(ready_flag) is True:
+            return run_id
+        if (state == "RECOVERED" and action in {"release-cutover-hold", "recover-cutover-hold"}) or (state == "SUCCEEDED" and action == "release-cutover-hold"):
             return run_id
         if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
             raise RuntimeError("CUTOVER_RECOVERY_REQUIRED")

@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-11-16T00:19:40.821474+00:00",
+  "workflowRun": 43779197615,
+  "workflowMainSha": "2f26e469a9c0f2dec5aafbfe0decc50fb882dc88",
+  "executionStatus": "SUCCEEDED",
+  "inspection": "postgres-login-fence",
+  "planSha256": "8b4ca144d422c2ebf489f32d138dac5751f572b93b42409ab43555812bd293b6",
+  "catalogSha256": "be3cb9fe0ced7d95f9fce00dfcbc2d884f26b80422844a952bdaa020754b9b0e",
+  "managedRoleCount": 28,
+  "rolesOriginallyLoginEnabled": 7,
+  "planTargetVerified": true,
+  "planHashVerified": true,
+  "buildStatus": "SUCCEEDED",
+  "fenceInstalledByInspection": false,
+  "applicationPauseApplied": false,
+  "productionD1Cutover": false,
+  "nativeTaskSuccessProofVerified": true,
+  "operatorAllFilesMatchReviewedCommit": "eb8c43f32aec9333ca77904dd2817b42d5f46511",
+  "operatorFilesVerified": 51,
+  "operatorZipSha256": "b49f3d4b6f476b7ce316839bcc0388e8826b13ff18fb2bb3e14a84820aa8ab7e",
+  "postAuditPublicReadiness": {
+    "applicationReadyVerified": true,
+    "inFlightDrainProven": false
+  }
+}

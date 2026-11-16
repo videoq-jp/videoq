@@ -26,7 +26,7 @@ function context(env){
   ||env.GITHUB_ACTIONS)throw Error('AWS_FENCE_AUDIT_CONTEXT_REQUIRED');
  return {run,table:env.MAINTENANCE_TABLE,execution:'arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run};
 }
-function adminUrl(value){
+export function adminUrl(value){
  if(typeof value!=='string'||[...value].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127))throw Error('INVALID_FENCE_ADMIN_CONNECTION');
  const u=new URL(value),user=decodeURIComponent(u.username);
  if(!['postgres:','postgresql:'].includes(u.protocol)||u.hostname!==TARGET.host||decodeURIComponent(u.pathname.slice(1))!==TARGET.databaseName

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-16",
+  "component": "GitHub deployment admission adapter",
+  "nodeVersion": "26.12.0",
+  "focusedTests": 8,
+  "allNodeSecurityTests": 425,
+  "testConcurrency": 2,
+  "failedTests": 0,
+  "productionReadOnlyAudit": {
+    "observedAt": "2026-11-15T22:30:21.500Z",
+    "transportRejectsNonGet": true,
+    "getRequests": 16,
+    "workflowIds": [
+      252628432,
+      403417588
+    ],
+    "bothOriginallyActive": true,
+    "admissionFrozen": false,
+    "githubRunsDrained": true,
+    "blockedRuns": []
+  },
+  "productionMutations": false,
+  "tokenProvisioned": false,
+  "fullCoordinatorIntegrated": false,
+  "awsBuildDrainProven": false,
+  "crossServiceDeploymentLock": false,
+  "productionCutoverComplete": false,
+  "sourceFilesSha256": {
+    ".github/scripts/cutover-deployment-freeze.cjs": "99dc6fd2a7b4ad602b916c54d753c7f91d423d2f245120629af1e60b4c2c8ae5",
+    ".github/scripts/cutover-deployment-freeze.test.cjs": "7d101c7bf0e741df34e20c488e4a5cfbba6b000b0dca9f558cd34d6cc3c48a25"
+  }
+}

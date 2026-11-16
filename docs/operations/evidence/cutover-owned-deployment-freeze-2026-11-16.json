@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-16",
+  "scope": "Owned deployment admission composition; production transports and full coordinator not activated",
+  "sourceCommit": "ae99643008ce10e493369aca7dbbdf3c91deca2f",
+  "nodeVersion": "26.12.0",
+  "pythonVersion": "3.12",
+  "nodeSecurityTests": 427,
+  "dynamoDbLocalIntegrationTests": 26,
+  "infraPythonTests": 57,
+  "sfnAndGithubTransports": "mocked in integration tests",
+  "awsStateMachineValidation": {
+    "result": "OK",
+    "diagnostics": []
+  },
+  "cleanBundle": {
+    "dirty": false,
+    "operatorSha256": "2abdee2d4126ec4c3d6fb97b37bc9daebbdd65c94b0537952dbf3222e4e55c81",
+    "brokerSha256": "d511bd06c8c0241c5c1c7c79cd4af6cbb5090708b307499f95e5bbc8ef86d4cc",
+    "stateMachineSha256": "073eff666e9e68664102c78e496d938e3727f729e5eec625f06ef9fdf5545304"
+  },
+  "packagedModuleLoadsWithoutApplicationDependencies": true,
+  "packagedBrokerPinMatchesDefinition": true,
+  "ownedLocalContainersRemoved": true,
+  "productionWorkflowMutation": false,
+  "tokenProvisioned": false,
+  "productionJobAutomaticallyInvokesComponent": false,
+  "fullCutoverCoordinatorComplete": false,
+  "productionCutoverComplete": false
+}

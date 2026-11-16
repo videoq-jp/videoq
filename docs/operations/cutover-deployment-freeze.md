@@ -1,0 +1,31 @@
+# Deployment automation admission during cutover
+
+`.github/scripts/cutover-deployment-freeze.cjs` controls the two existing deployment workflows in `videoq-jp/videoq`: application CD (`252628432`, `.github/workflows/cd.yml`) and DB Maintenance CD (`403417588`, `.github/workflows/db-maintenance-cd.yml`). IDs and paths must both match. Preparation records their original active/manually-disabled states without changing either workflow. Missing, replaced, deleted or inactivity-disabled workflows refuse the operation.
+
+The adapter requires an injected transport and an ownership verifier. Without the verifier it cannot mutate anything. The full coordinator must persist the plan immutably under its existing hold, verify that hold before each mutation, and authorize restoration only after its verified normal-backend or recovery handoff. This adapter alone does not establish any of those conditions and has no production CLI, automatic caller or newly granted token permission.
+
+`freeze(plan)` disables only active workflows and then reads their state back. It does not cancel running jobs. `inspect(plan)` separately scans all five nonterminal run statuses (queued, in_progress, waiting, pending and requested), follows pages, rejects invalid/foreign run records and refuses inventories at GitHub's 1,000-result search limit. A final workflow read detects admission being re-enabled during the scan. A frozen workflow with an existing run remains **not drained**; the caller must observe that same run until it is terminal. A read timeout is not a reason to restart or cancel it.
+
+`restore(plan)` enables only workflows that were originally active, preserving an originally manually-disabled workflow. Lost responses can be retried with the same plan; partial freezes remain stopped rather than automatically undoing exclusion. Ownership is checked before every mutation and after the sequence.
+
+This is GitHub Actions admission and run observation, not a cross-service deployment lock. An AWS CodeBuild execution already accepted by a workflow can outlive its GitHub run or cancellation. The full coordinator must also verify the owned AWS global hold, actual CodeBuild executions and immutable project/source artifacts, API pause, consumer admission and in-flight work, database fences, external side effects and final data/recovery gates. Administrator actions and direct Cloudflare/AWS deployments are outside this adapter's boundary. Two successful reads do not supply an atomic lock against an administrator re-enabling automation.
+
+GitHub documents the [workflow enable/disable APIs](https://docs.github.com/en/rest/actions/workflows) and [run statuses, pagination and search limit](https://docs.github.com/en/rest/actions/workflow-runs). The eventual operator transport requires the existing repository Actions write authority; no credential is embedded in or provisioned by this patch.
+
+## Verification on 2026-11-16 JST
+
+Eight focused tests cover original-state restoration, default rejection without ownership, invalid targets, lost successful responses, partial ownership loss, active runs on older pages, all nonterminal statuses, truncation, foreign records, workflow drift and re-enabling during observation. All **425** Node security tests passed with concurrency 2 (Node 26.12.0).
+
+The adapter also performed a production **GET-only** audit: 16 requests, both workflows originally active, no nonterminal workflow runs observed, admission correctly reported as not frozen. The transport explicitly rejected every non-GET method. No workflow was disabled/enabled, no run cancelled/restarted, and no production resource or DB was changed. This observation is point-in-time evidence, not cutover acceptance. [Machine-readable receipt](evidence/cutover-deployment-freeze-2026-11-16.json).
+
+## Binding the plan to the owned hold
+
+`cutover-owned-deployment-freeze.cjs` now composes the admission adapter with the existing DynamoDB run/global owner. Its explicit capability defaults to disabled. It requires a running execution with the exact reviewed definition hash, matching run/source/global ownership, the holding phase and no database mutation. Before the first workflow write it atomically persists the immutable original plan/hash, increments the revision and records `deployment_admission_restored=false`. Lost intent responses are reconciled from exact readback; retries cannot replace the original plan.
+
+The broker refuses both ordinary release and generic terminal recovery while that marker is false. The state machine's final atomic release independently verifies database, consumer and deployment completion markers in the same transaction that removes the global owner. An old execution definition is rejected before an intent or workflow mutation, rather than relying on the new broker to retrofit an old workflow.
+
+Restoration requires completed consumer admission and a mandatory verified-backend handoff callback, checked before enabling each workflow and on completion. The default callback refuses restoration. DB mutation, lost owner/source, a non-running execution or a changed plan refuse the operation. Completion is recorded only after workflow readback. Duplicate completion reads the real workflow states again; its DynamoDB marker alone is insufficient. A completed plan cannot be reused to start a second freeze.
+
+The components are included in the reviewed operator allowlist and CI/deployment selectors. This is a callable coordinator component, not yet a production command: no transport/token was provisioned, no AWS job invokes it automatically, and no production feature was activated. The final coordinator must supply the real GitHub transport, immutable definition pin and backend handoff, and integrate AWS-build draining and the remaining data/recovery gates before cutover.
+
+Verification: all 427 Node security tests, 26 actual DynamoDB Local integration tests (SFN/GitHub transports mocked), 57 infrastructure tests, and AWS state-machine validation succeeded. A clean-source operator ZIP loads the component without application dependencies; its broker pin matches the packaged production definition. Dedicated local test containers were removed. [Owned-hold evidence](evidence/cutover-owned-deployment-freeze-2026-11-16.json).

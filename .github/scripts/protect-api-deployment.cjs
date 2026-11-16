@@ -32,7 +32,7 @@ function assertDeploymentPreservesState(settings, target) {
   }
   return { deploymentStatePreserved: true };
 }
-async function protect(target, env = process.env, fetcher = fetch) {
+async function readDeploymentSettings(env = process.env, fetcher = fetch) {
   if (!/^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID ?? '') || !env.CLOUDFLARE_API_TOKEN) throw Error('DEPLOYMENT_STATE_CHECK_UNAVAILABLE');
   const response = await fetcher(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/videoq-api/settings`, {
     method: 'GET', redirect: 'error', signal: AbortSignal.timeout(20000),
@@ -47,9 +47,12 @@ async function protect(target, env = process.env, fetcher = fetch) {
   }
   const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   if (result.success !== true) throw Error('DEPLOYMENT_STATE_CHECK_UNAVAILABLE');
-  return assertDeploymentPreservesState(result.result, target);
+  return result.result;
 }
-module.exports = { assertDeploymentPreservesState, protect };
+async function protect(target, env = process.env, fetcher = fetch) {
+  return assertDeploymentPreservesState(await readDeploymentSettings(env, fetcher), target);
+}
+module.exports = { assertDeploymentPreservesState, protect, readDeploymentSettings };
 if (require.main === module) {
   const args = process.argv.slice(2);
   Promise.resolve().then(() => {

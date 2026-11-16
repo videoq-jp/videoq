@@ -2,6 +2,7 @@ import {lstat,open} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import pg from 'pg';
+import {readPostgresCutoverActivity} from './migrations/d1/postgres-cutover-activity';
 import {readPrivateInput} from './migrations/d1/private-input';
 import {postgresLoginFencePlanSchema,postgresLoginFenceTargetSchema,preparePostgresLoginFence,inspectPostgresLoginFence,installPostgresLoginFence,releasePostgresLoginFence} from './migrations/d1/postgres-login-fence';
 function fail(message:string):never{throw new Error(message);}
@@ -9,7 +10,7 @@ export async function main(args=process.argv.slice(2)){
  const options=new Map<string,string>();
  for(let i=0;i<args.length;i+=2){if(!['--mode','--target','--state','--confirm-database'].includes(args[i])||options.has(args[i])||!args[i+1]||args[i+1].startsWith('--'))fail('Invalid PostgreSQL fence arguments.');options.set(args[i],args[i+1]);}
  const mode=options.get('--mode'),prepare=mode==='prepare',mutate=mode==='install'||mode==='release';
- if(!['prepare','inspect','install','release'].includes(mode??'')||!options.has('--state')||options.size!==(prepare||mutate?3:2)||prepare&&!options.has('--target')||mutate&&!options.has('--confirm-database'))fail('Invalid PostgreSQL fence options.');
+ if(!['prepare','inspect','activity','install','release'].includes(mode??'')||!options.has('--state')||options.size!==(prepare||mutate?3:2)||prepare&&!options.has('--target')||mutate&&!options.has('--confirm-database'))fail('Invalid PostgreSQL fence options.');
  const statePath=resolve(options.get('--state')!),parent=await lstat(dirname(statePath));
  if(!parent.isDirectory()||parent.isSymbolicLink()||(parent.mode&0o077)||parent.uid!==process.getuid?.())fail('Private operator-owned state directory required.');
  const plan=prepare?undefined:postgresLoginFencePlanSchema.parse(JSON.parse((await readPrivateInput(statePath,1024**2)).toString()));
@@ -23,7 +24,10 @@ export async function main(args=process.argv.slice(2)){
  try{
   await client.connect();
   if(prepare){const prepared=await preparePostgresLoginFence(client,target);await output!.writeFile(JSON.stringify(prepared)+'\n');await output!.sync();console.info(JSON.stringify({prepared:true,purpose:target.purpose,roles:prepared.roles.length,writeFenceInstalled:false}));}
-  else{
+  else if(mode==='activity'){
+   await client.query('BEGIN READ ONLY');
+   try{console.info(JSON.stringify({activity:await readPostgresCutoverActivity(client),purpose:target.purpose,upstreamStoppedByThisCommand:false}));}finally{await client.query('ROLLBACK');}
+  }else{
    const result=mode==='install'?await installPostgresLoginFence(client,plan!,true):mode==='release'?await releasePostgresLoginFence(client,plan!,true):await inspectPostgresLoginFence(client,plan!);
    console.info(JSON.stringify({...result,purpose:target.purpose,upstreamStoppedByThisCommand:false}));
   }

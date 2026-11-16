@@ -8,6 +8,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
+    "cutover-postgres-activity.mjs",
+    "cutover-owned-api-traffic.cjs",
+    "cutover-api-traffic.cjs",
+    "cutover-deployment-freeze.cjs", "cutover-owned-deployment-freeze.cjs",
+    "cutover-consumer-control.cjs",
+    "cutover-consumer-prepare.cjs",
+    "cutover-sqs-consumers.cjs",
+    "aws-canonical-migration.cjs", "migration-backend.cjs", "protect-api-deployment.cjs",
     "neon-admin.cjs", "neon-fence-audit.mjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-stream-proof.cjs",
     "backup-restore.mjs", "backup-archive.mjs", "backup-download.mjs", "backup-d1-run.mjs", "backup-d1-export.mts", "provision-public-demo.mjs", "public-demo-policy.cjs",
@@ -30,12 +38,12 @@ def operator_files():
     operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
     for name in ["package.json", "package-lock.json", "Dockerfile", "fixtures/smoke.mp4", "fixtures/README.md"]:
         operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
-    for name in ["runtime/job.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
+    for name in ["runtime/job.cjs", "runtime/stage-proof.cjs", "runtime/cutover-hold.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
     # Minimal read-only export/fence-audit graph, not the application dependency tree.
     operator.append((ROOT / "infra/db-maintenance/operator-package.json", "package.json"))
-    for name in ["scripts/d1-postgres-login-fence.ts", "scripts/migrations/d1/postgres-login-fence.ts", "scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
+    for name in ["scripts/d1-postgres-login-fence.ts", "scripts/migrations/d1/postgres-login-fence.ts", "scripts/migrations/d1/postgres-cutover-activity.ts", "scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
                  "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
                  "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",
                  "scripts/migrations/d1/verify-archive.ts", "scripts/migrations/d1/preserved-tables.ts", "scripts/migrations/d1/verified-postgres-source.ts", "scripts/migrations/d1/private-input.ts", "src/persistence/postgres/read-snapshot.ts"]:
@@ -67,12 +75,16 @@ def main():
     runtime = ROOT / "infra/db-maintenance/runtime"
     if not (runtime / "node_modules/@aws-sdk/client-sfn/package.json").is_file():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
-    broker = [(runtime / name, name) for name in ["broker.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
+    broker = [(runtime / name, name) for name in ["broker.cjs", "stage-proof.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
+    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
+    canonical = json.dumps(json.loads(definition), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    pin = directory / "cutover-definition.json"
+    pin.write_text(json.dumps({"sha256": hashlib.sha256(canonical.encode()).hexdigest()}) + "\n")
+    broker.append((pin, "cutover-definition.json"))
     operator_hash = archive(directory / "operator.zip", operator_files())
     broker_hash = archive(directory / "broker.zip", broker)
     manifest = {"source_commit": source, "dirty": bool(dirty), "operator_sha256": operator_hash, "broker_sha256": broker_hash}
-    definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
     (directory / "state-machine.json").write_text(definition)
     manifest["state_machine_sha256"] = hashlib.sha256(definition.encode()).hexdigest()
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

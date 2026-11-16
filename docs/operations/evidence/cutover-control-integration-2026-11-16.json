@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-16",
+  "runtimeSourceCommit": "6e50b6f8154e52448467e4cf618fdda508b5bf00",
+  "mergedMainCommit": "161cf139d410a9d7c2e43b27a63e65570f8b131d",
+  "includedPullRequests": [
+    1458,
+    1459,
+    1460,
+    1461,
+    1462,
+    1463,
+    1464,
+    1465,
+    1479
+  ],
+  "nodeSecurityTestsPassed": 453,
+  "dynamoDbLocalTestsPassed": 42,
+  "readonlyAwsParentTestsPassed": 4,
+  "pythonTestsPassed": 68,
+  "terraformMockPlansPassed": 17,
+  "operatorDependenciesInstalledFromLockedManifest": true,
+  "actualCloudServicesMockedInDynamoDbSuite": true,
+  "allCutoverFeatureDefaultsRemainDisabled": true,
+  "productionDatabaseChanged": false,
+  "productionTrafficPaused": false,
+  "productionCutoverComplete": false
+}

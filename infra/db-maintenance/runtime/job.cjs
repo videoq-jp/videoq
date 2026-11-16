@@ -77,6 +77,18 @@ async function main() {
   assertBuildArn(process.env.CODEBUILD_BUILD_ARN);
   if (process.env.GITHUB_ACTIONS) throw new Error('GITHUB_MASK_COMMANDS_NOT_SUPPORTED_IN_AWS_LOGS');
   const stage = process.env.MAINTENANCE_STAGE;
+  if (['cutover-consumer-pause','cutover-consumer-resume'].includes(stage)) {
+    await require('../../../.github/scripts/cutover-consumer-control.cjs').controlConsumers();
+    console.log('Cutover consumer admission stage verified; in-flight drain is separate'); return;
+  }
+  if (stage === 'cutover-consumer-prepare') {
+    await require('../../../.github/scripts/cutover-consumer-prepare.cjs').prepareConsumers();
+    console.log('Read-only cutover consumer plan persisted inside AWS'); return;
+  }
+  if(stage==='cutover-activity-audit'){
+    execFileSync('node',['--import','./.github/operations-tools/node_modules/tsx/dist/loader.mjs','.github/scripts/cutover-postgres-activity.mjs'],{stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:240000});
+    console.log('Read-only cutover activity recorded inside the owned hold; drain is not asserted');return;
+  }
   if (stage === 'login-fence-audit') {
     execFileSync('node', ['--import', './.github/operations-tools/node_modules/tsx/dist/loader.mjs', '.github/scripts/neon-fence-audit.mjs'],
       {stdio:['ignore','pipe','pipe'],maxBuffer:1024*1024,timeout:180000});
@@ -110,10 +122,8 @@ async function main() {
     execFileSync('npm', ['ci', '--ignore-scripts', '--prefix', '.github/deploy-tools'], {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024});
     execFileSync('npm', ['audit', 'signatures', '--prefix', '.github/deploy-tools'], {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024});
     execFileSync('ln', ['-s', '.github/deploy-tools/node_modules', 'node_modules'], {cwd, stdio: ['ignore','pipe','pipe']});
-    execFileSync('python3', [resolve('.github/scripts/with-neon-credentials.py'), 'migration', 'sh', 'apps/api/scripts/db-migrate.sh'],
-      {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024, env: {...process.env,
-        STRUCTURED_ANSWER_WRITERS_STOPPED: process.env.MAINTENANCE_WRITERS_STOPPED === 'true' ? '1' : '0'}});
-    console.log('Canonical-main database migration succeeded: ' + source); return;
+    const result = await require('../../../.github/scripts/aws-canonical-migration.cjs').runCanonicalMigration({root:cwd});
+    console.log('Canonical-main database migration succeeded: ' + result.backend + ' ' + source); return;
   }
   throw new Error('UNKNOWN_AWS_JOB_STAGE');
 }

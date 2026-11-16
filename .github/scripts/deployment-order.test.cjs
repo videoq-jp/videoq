@@ -200,3 +200,13 @@ test('CD falls back to the repository root when all successful runs were skipped
   }, { timeout: 100 });
   assert.equal(outputs.sha, 'a'.repeat(40));
 });
+
+
+test('D1 SQL and target selection changes require coordinated migrations and worker rollout', () => {
+  const filters = workflow.split('          filters: |\n')[1].split('      - name: Resolve deploy flags')[0];
+  for (const name of ['worker','migrate']) {
+    const section = filters.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:|$(?![\\s\\S]))`, 'm'))?.[1];
+    assert.ok(section);
+    for (const path of ['apps/api/drizzle-d1/**','apps/api/drizzle.d1.config.ts','apps/api/wrangler.jsonc']) assert.ok(section.includes(path), `${name}: ${path}`);
+  }
+});

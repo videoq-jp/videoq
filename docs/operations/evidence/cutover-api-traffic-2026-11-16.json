@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-16",
+  "sourceCommit": "0abddd4c254607f2a72bb677b817c096dd13ec15",
+  "nodeVersion": "26.12.0",
+  "pythonVersion": "3.12",
+  "focusedTests": 11,
+  "nodeSecurityTests": 438,
+  "testConcurrency": 2,
+  "infraPythonTests": 57,
+  "actualIsolatedCloudflare": {
+    "before": {
+      "status": 200,
+      "secretPreserved": true,
+      "ordinaryPreserved": true,
+      "dbBound": true
+    },
+    "paused": {
+      "trafficPaused": true,
+      "originalTrafficRestored": false,
+      "inFlightDrainProven": false
+    },
+    "pausedProbe": {
+      "status": 503,
+      "secretPreserved": true,
+      "ordinaryPreserved": true,
+      "dbBound": true
+    },
+    "restored": {
+      "trafficPaused": false,
+      "originalTrafficRestored": true,
+      "inFlightDrainProven": false
+    },
+    "restoredProbe": {
+      "status": 200,
+      "secretPreserved": true,
+      "ordinaryPreserved": true,
+      "dbBound": true
+    },
+    "patchRequests": 2,
+    "secretOrTokenLogged": false,
+    "productionTargetChanged": false
+  },
+  "cleanup": {
+    "workerDeleted": true,
+    "workerAbsent": true,
+    "databaseDeleted": true,
+    "databaseAbsent": true
+  },
+  "attemptHistory": [
+    {
+      "attempt": 1,
+      "result": "failed with generic diagnostic; cause not proven",
+      "cleanupVerified": true
+    },
+    {
+      "attempt": 2,
+      "result": "passed after fixture startup retry/diagnostic improvement",
+      "cleanupVerified": true
+    },
+    {
+      "attempt": 3,
+      "result": "restore refused transient version/deployment inventory mismatch",
+      "cleanupVerified": true
+    },
+    {
+      "attempt": 4,
+      "result": "final source passed with bounded read-only metadata settling",
+      "cleanupVerified": true
+    }
+  ],
+  "cleanBundle": {
+    "dirty": false,
+    "operatorSha256": "d63f8ef959e0afddc664567ea4787e0e9e03ed1c8dd164d3d08a9eda366f2311",
+    "brokerSha256": "d511bd06c8c0241c5c1c7c79cd4af6cbb5090708b307499f95e5bbc8ef86d4cc",
+    "stateMachineSha256": "073eff666e9e68664102c78e496d938e3727f729e5eec625f06ef9fdf5545304"
+  },
+  "packagedModuleLoadedWithoutApplicationDependencies": true,
+  "productionPauseApplied": false,
+  "productionD1Cutover": false,
+  "tokenProvisioned": false,
+  "ownedHoldPersistenceIntegrated": false,
+  "fullCoordinatorComplete": false,
+  "fixtureIsVideoqE2e": false
+}

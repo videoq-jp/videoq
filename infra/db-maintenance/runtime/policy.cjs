@@ -5,7 +5,7 @@ const HOLD_KIND = 'cutover-hold';
 const KINDS = Object.freeze([HOLD_KIND, 'rotate', 'rollback', 'audit', 'migration', 'backup', 'smoke', 'deploy']);
 function input(event, allowedKinds) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) throw new Error('INVALID_REQUEST');
-  const control = ['release-cutover-hold','recover-cutover-hold'].includes(event.action);
+  const control = ['release-cutover-hold','recover-cutover-hold','prepare-cutover-consumers','pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers','inspect-cutover-activity','retry-cutover-activity'].includes(event.action);
   const permitted = event.action === 'status' || control ? ['action', 'run_id'] : ['action', 'kind', 'force', 'source_sha', 'writers_stopped', 'verify_ai_answers', 'client_token', 'inspection'];
   if (Object.keys(event).some(key => !permitted.includes(key))) throw new Error('UNEXPECTED_INPUT');
   if (event.action === 'status' || control) {

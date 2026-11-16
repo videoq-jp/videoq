@@ -252,3 +252,150 @@ run "cutover_hold_opt_in_is_narrow" {
     error_message = "Opt-in adds only the run-record transaction predicate; no DB or credential grants."
   }
 }
+
+run "d1_migration_permissions_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "/videoq/security/prod/d1-migration")])
+    error_message = "The D1-only migration credential must remain unavailable by default."
+  }
+}
+
+run "d1_migration_permissions_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_d1_migrations     = true
+  }
+  assert {
+    condition     = alltrue([for purpose, policy in aws_iam_role_policy.build : (purpose == "migration") == strcontains(policy.policy, "/videoq/security/prod/d1-migration")])
+    error_message = "Only the fixed migration project may read its D1 credential."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["migration"].policy).Statement : statement
+      if statement.Action == ["dynamodb:GetItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn && statement.Condition["ForAllValues:StringLike"]["dynamodb:LeadingKeys"] == ["maintenance", "run#*"]
+    ]) == 1
+    error_message = "D1 migration can only read the existing lock/run records, never release or replace them."
+  }
+}
+
+run "consumer_preparation_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:ListEventSourceMappings")])
+    error_message = "The readonly preparation permission must require explicit hold opt-in."
+  }
+}
+
+run "consumer_preparation_opt_in_is_readonly" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_cutover_hold      = true
+  }
+  assert {
+    condition     = alltrue([for purpose, policy in aws_iam_role_policy.build : (purpose == "rotation") == strcontains(policy.policy, "lambda:ListEventSourceMappings")])
+    error_message = "Only the fixed rotation project may inspect consumer metadata."
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:UpdateEventSourceMapping") && !strcontains(policy.policy, "lambda:PutFunctionConcurrency")])
+    error_message = "Preparing a plan must not grant consumer or concurrency mutation authority."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn && statement.Condition["ForAllValues:StringEquals"]["dynamodb:LeadingKeys"] == ["maintenance"]
+    ]) == 1
+    error_message = "The added global-lock permission must be a readonly ownership predicate."
+  }
+}
+
+run "consumer_control_requires_hold" {
+  command = plan
+  variables {
+    provision_backup_archive        = true
+    retain_verified_backups         = false
+    enable_cutover_hold             = false
+    enable_cutover_consumer_control = true
+  }
+  expect_failures = [var.enable_cutover_consumer_control]
+}
+
+run "consumer_control_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+    enable_cutover_hold      = true
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "lambda:UpdateEventSourceMapping")]) && alltrue([for policy in aws_iam_role_policy.broker : !strcontains(policy.policy, "states:RedriveExecution")])
+    error_message = "Hold opt-in alone must not enable consumer mutations or retry authority."
+  }
+}
+
+run "consumer_control_permissions_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive        = true
+    retain_verified_backups         = false
+    enable_cutover_hold             = true
+    enable_cutover_consumer_control = true
+  }
+  assert {
+    condition     = alltrue([for key, policy in aws_iam_role_policy.broker : (key == "maintenance") == strcontains(policy.policy, "states:RedriveExecution")]) && alltrue([for key, policy in aws_iam_role_policy.build : (key == "rotation") == strcontains(policy.policy, "/videoq/security/prod/cutover-control")])
+    error_message = "Only the maintenance invoker may redrive and only the fixed rotation job may read the API settings credential."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["lambda:UpdateEventSourceMapping"] && statement.Resource == "arn:aws:lambda:ap-northeast-1:257240362763:event-source-mapping:*" &&
+      statement.Condition.ArnEquals["lambda:FunctionArn"] == ["arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-prod", "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-search-prod", "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-worker-account-prod"]
+    ]) == 1
+    error_message = "Mapping changes must be limited to the three existing worker functions."
+  }
+  assert {
+    condition     = alltrue([for key, function in aws_lambda_function.broker : (function.environment[0].variables.CUTOVER_CONSUMER_CONTROL_ENABLED == "true") == (key == "maintenance")])
+    error_message = "The consumer capability must be exposed only on the maintenance invoker."
+  }
+}
+
+run "stage_history_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.broker : !strcontains(policy.policy, "states:GetExecutionHistory")]) && alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "states:GetExecutionHistory")])
+    error_message = "Native stage history must not be granted before explicit cutover opt-in."
+  }
+}
+
+run "stage_history_is_execution_scoped_metadata" {
+  command = plan
+  variables {
+    provision_backup_archive        = true
+    retain_verified_backups         = false
+    enable_cutover_hold             = true
+    enable_cutover_consumer_control = true
+  }
+  assert {
+    condition     = alltrue([for key, policy in aws_iam_role_policy.broker : (key == "maintenance") == strcontains(policy.policy, "states:GetExecutionHistory")]) && alltrue([for key, policy in aws_iam_role_policy.build : (key == "rotation") == strcontains(policy.policy, "states:GetExecutionHistory")])
+    error_message = "Only the maintenance broker and fixed rotation stage may read native stage history."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.broker["maintenance"].policy).Statement : statement
+      if statement.Action == ["states:GetExecutionHistory"] && statement.Resource == "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-*"
+    ]) == 1
+    error_message = "History access must stay on the fixed production maintenance execution prefix."
+  }
+}
