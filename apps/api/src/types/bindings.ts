@@ -40,13 +40,15 @@ type PlatformResources = {
   [K in keyof CloudflareBindings as NonNullable<CloudflareBindings[K]> extends string ? never : K]?: CloudflareBindings[K];
 };
 
-export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL"> & PlatformResources &
+export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL"> &
+  Omit<PlatformResources, "SCENE_VECTORIZE_1536" | "SCENE_VECTORIZE_768"> &
   SecretBindings & {
     RUNTIME?: "node";
     DEFAULT_MONTHLY_UPLOAD_LIMIT_GB?: string;
     DEPLOYMENT_EDITION?: "cloud" | "onprem";
     DATABASE_URL?: string;
     DB?: D1Database;
+    // Wrangler generates the beta VectorizeIndex type; these bindings use v2.
     SCENE_VECTORIZE_1536?: import("@cloudflare/workers-types").Vectorize;
     SCENE_VECTORIZE_768?: import("@cloudflare/workers-types").Vectorize;
     PERSISTENCE_BACKEND?: "d1" | "postgres";

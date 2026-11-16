@@ -3,7 +3,7 @@
  * Native API runtime:
  *   - Hono ルーター + 共通ミドルウェア（requestId / logger / CORS / error handler）
  *   - /health（liveness） /ready（DB 疎通）
- *   - Hyperdrive 経由の Neon 接続（per-request Client）
+ *   - クラウド本番は D1 / Vectorize、ローカルは PostgreSQL
  *   - R2 バインディング
  *   - 未定義パスは統一された 404
  *
@@ -105,6 +105,9 @@
       },
       "vars": {
         "ENVIRONMENT": "production",
+        "DEPLOYMENT_EDITION": "cloud",
+        "PERSISTENCE_BACKEND": "d1",
+        "MIGRATION_TRAFFIC_STATE": "running",
         "USE_S3_STORAGE": "true",
         "CORS_ALLOW_ORIGIN": "https://videoq.jp",
         "FRONTEND_URL": "https://videoq.jp",
@@ -137,11 +140,17 @@
         { "pattern": "videoq.jp/health", "zone_name": "videoq.jp" },
         { "pattern": "videoq.jp/ready", "zone_name": "videoq.jp" }
       ],
-      "hyperdrive": [
+      "d1_databases": [
         {
-          "binding": "HYPERDRIVE",
-          "id": "d69ecb01a493415197e52552db2990f8"
+          "binding": "DB",
+          "database_name": "videoq-d1-migration-staging-v4",
+          "database_id": "e57d0931-18cb-4f00-ae7f-b0068030fb04",
+          "migrations_dir": "drizzle-d1"
         }
+      ],
+      "vectorize": [
+        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-scenes-migration-v3-1536" },
+        { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-scenes-migration-v3-768" }
       ],
       "r2_buckets": [
         {
