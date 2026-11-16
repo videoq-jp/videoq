@@ -59,3 +59,12 @@ main `6882f06f`の[On-prem Release実行](https://github.com/videoq-jp/videoq/ac
 ## AWS側の停止計画準備経路（2026-11-16）
 
 [読み取り専用のAWS監査](neon-login-fence.md#aws内の読み取り専用準備経路2026-11-16)を既存broker・global lock・固定rotation job・versioned bundleへ接続した。実ZIP/PGとAWS親の資格情報分離、条件付き保存・読み戻し、応答喪失を検証し、ASLはAWS検証APIでOKとなった。本番未実行。これは準備経路であり、停止維持のdurable lease、install/release、上流停止、最終snapshot/本番逆移行、RAG性能等の受け入れ残件は維持する。
+
+
+## 停止制御・監査のmain統合候補（2026-11-16）
+
+個別PR #1458〜#1465と#1479の変更を、main `161cf139`を含む単一の候補へ統合した。元の個別PRと試験記録はレビュー用に残す。対象はD1配布bindingとDB選択の保護、SQS admission制御、所有者付きdeployment/API停止と書き込み前abort、AWS内の読み取り専用activity観測、native CodeBuild完了の確認、元のPostgreSQL role計画の不変保存である。
+
+統合した実コードでNode 453件、実DynamoDB Local 42件、AWS親の境界4件、Python 68件、Terraform模擬plan 17件が成功した。DynamoDB試験のAWS/Cloudflare/DB子処理はmockであり、結合した本番停止・drainの実証ではない。[統合証跡](evidence/cutover-control-integration-2026-11-16.json)。main向けのCI/CodeQL、オンプレrehearsalと配布物の確認を別途行う。
+
+各機能の既定値は無効のままで、本番の設定変更・API停止・DB停止・D1切り替えは行っていない。実行caller、writer fenceの変更意図と復旧、最終snapshot/逆移行、外部状態の照合、最終候補のE2E・検索品質・性能・契約/予算の残件は維持する。
