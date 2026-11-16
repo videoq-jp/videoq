@@ -66,7 +66,7 @@ test('job setup preserves verified dependencies for DB operations and installs o
 });
 const terminal = status => ({kind: {S: 'rotate'}, name: {S: 'db-' + RUN},
   execution_arn: {S: executionArn(MACHINE, 'db-' + RUN)}, input: {S: '{"kind":"rotate"}'}, created_at: {S: new Date().toISOString()}, status});
-function fixture({lock, status = 'RUNNING', active = false, missingBuild = false, missingExecution = false} = {}) {
+function fixture({lock, status = 'RUNNING', active = false, missingBuild = false, missingExecution = false, listBuilds} = {}) {
   const calls = [];
   const aws = async (service, command, value) => {
     calls.push({service, command, value});
@@ -75,7 +75,7 @@ function fixture({lock, status = 'RUNNING', active = false, missingBuild = false
       if (missingExecution) throw Object.assign(new Error(), {name: 'ExecutionDoesNotExist'});
       return {status};
     }
-    if (command === 'ListBuildsForProject') return {ids: ['known-build']};
+    if (command === 'ListBuildsForProject') {if(value.nextToken&&value.sortOrder)throw Object.assign(Error('Sort order cannot accompany nextToken'),{name:'InvalidInputException'});return listBuilds?listBuilds(value):{ids:['known-build']};}
     if (command === 'BatchGetBuilds') return {builds: missingBuild ? [] : [{buildComplete: !active}]};
     return {};
   };
@@ -298,4 +298,12 @@ test('consumer preparation is a fixed maintenance-only action and does not discl
  assert.equal(spec.States.PrepareCutoverConsumers.Parameters.ProjectName,'rotation');
  assert.equal(spec.States.ReadCutoverHold.Parameters.ProjectionExpression,'cutover_phase,release_requested,consumer_action_id,activity_action_id');
  assert.equal(spec.States.PrepareCutoverConsumers.Parameters.EnvironmentVariablesOverride.find(v=>v.Name==='MAINTENANCE_STAGE').Value,'cutover-consumer-prepare');
+});
+
+test('build completion inventory uses default descending order across every page without incompatible sort overrides',async()=>{
+ const {broker,calls}=fixture({lock:terminal(),status:'SUCCEEDED',listBuilds:value=>value.nextToken?{ids:['known-build']}:{ids:['known-build'],nextToken:'older'}});
+ assert.equal((await broker({action:'start',kind:'backup'})).status,'RUNNING');
+ const pages=calls.filter(c=>c.command==='ListBuildsForProject').map(c=>c.value);
+ assert.deepEqual(pages,[{projectName:'rotation'},{projectName:'rotation',nextToken:'older'},{projectName:'migration'},{projectName:'migration',nextToken:'older'}]);
+ assert.equal(calls.filter(c=>c.command==='BatchGetBuilds').length,4);
 });
