@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocale } from '@/lib/i18n';
 import { StructuredData } from '@/components/seo/StructuredData';
 import { homeStructuredData } from '@/lib/structuredData';
+import { GUIDE_CATALOG, guidePath } from '@/lib/guideCatalog';
 import { LandingDemoVideo } from '@/components/landing/LandingDemoVideo';
 import { LandingFreePlan } from '@/components/landing/LandingFreePlan';
 import { startLandingVisit, trackLandingEvent } from '@/lib/landingAnalytics';
@@ -24,9 +25,9 @@ const BENEFITS = [
 ] as const;
 const COMPARE_ROWS = ['basis', 'source', 'teacher'] as const;
 const USES = [
-  { key: 'courses', icon: MonitorPlay },
-  { key: 'schools', icon: School },
-  { key: 'training', icon: Briefcase },
+  { key: 'courses', icon: MonitorPlay, guide: 'online-course-questions' },
+  { key: 'schools', icon: School, guide: 'class-recordings-for-review' },
+  { key: 'training', icon: Briefcase, guide: 'training-video-questions' },
 ] as const;
 const STEPS = [
   { key: 'upload', icon: Upload },
@@ -146,6 +147,18 @@ export default function LandingPage() {
             <p><MessageCircle size={18} aria-hidden="true" />{t(`landing.uses.${activeUse}.question`)}</p>
           </div>
           <span className="lp-use-caption">{t('landing.uses.exampleNote')}</span>
+          <ul className="mt-6 space-y-2">
+            {USES.map(use => {
+              const guide = GUIDE_CATALOG.find(entry => entry.slug === use.guide)!;
+              return (
+                <li key={guide.slug}>
+                  <Link href={guidePath(guide.slug)} className="lp-text-link">
+                    {guide[locale].title}<ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
 
