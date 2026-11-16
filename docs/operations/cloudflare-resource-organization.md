@@ -219,3 +219,13 @@ replacement and unexpected states, and waits for asynchronous transitions by
 returning unknown. It reads no Lambda environment or application credentials.
 Disabled mappings prove admission pause only; they do not prove running or
 direct invocations have drained. The D1 source row-write fence remains required.
+
+`d1-resource-api.cjs` supplies API traffic pause/resume adapters. The original
+private pause plan remains immutable. After binding promotion, a new restore
+plan can be prepared only while paused, under ownership, with a verified
+backend-handoff binding hash and the unchanged runtime-settings hash. The
+original plan cannot silently accept a changed database. Resume rechecks the
+handoff before each write and reconciles metadata readback; secrets are inherited
+by name. The handoff verifier is a mandatory trusted coordinator dependency;
+this change does not implement its production proof of database/vector transfer
+and target fence removal. API admission pause is not an in-flight write fence.

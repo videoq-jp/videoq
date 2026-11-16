@@ -37,6 +37,15 @@ function createApiTrafficControl(request,{assertOwnership=async()=>{throw Error(
  function matches(plan,state){if(state.bindingsHash!==plan.bindingsHash||state.settingsHash!==plan.settingsHash)throw Error('API_TRAFFIC_CONFIGURATION_CHANGED');}
  return{
   async prepare(scope){const {state,version}=await stable(scope);if(![null,'running'].includes(state.traffic))throw Error('API_TRAFFIC_ALREADY_PAUSED');return checked({version:1,operationId:randomUUID(),account,worker:target(scope),scope,originalTraffic:state.traffic,originalVersion:version,bindingsHash:state.bindingsHash,settingsHash:state.settingsHash});},
+  async prepareRestore(plan,expectedBindingsHash){
+   checked(plan);if(!/^[a-f0-9]{64}$/.test(expectedBindingsHash??''))throw Error('INVALID_API_TRAFFIC_HANDOFF');
+   const proposed=checked({...plan,bindingsHash:expectedBindingsHash});
+   await assertOwnership('restore',proposed);await assertRestoreSafe(proposed);
+   const {state,version}=await stable(plan.scope);
+   if(state.traffic!=='paused'||state.settingsHash!==plan.settingsHash||state.bindingsHash!==expectedBindingsHash)throw Error('API_TRAFFIC_HANDOFF_MISMATCH');
+   await assertOwnership('restore',proposed);await assertRestoreSafe(proposed);
+   return checked({...proposed,originalVersion:version});
+  },
   async inspect(plan){checked(plan);const {state}=await stable(plan.scope);matches(plan,state);return{trafficPaused:state.traffic==='paused',originalTrafficRestored:state.traffic===plan.originalTraffic,inFlightDrainProven:false};},
   async change(plan,pause){
    checked(plan);if(typeof pause!=='boolean')throw Error('INVALID_API_TRAFFIC_OPERATION');await assertOwnership(pause?'pause':'restore',plan);
