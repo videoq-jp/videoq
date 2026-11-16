@@ -68,3 +68,28 @@ The first-party funnel also starts on guide articles, the guide index, and prici
 Confirm key URLs with URL Inspection, including Google's chosen canonical and latest crawl. Register `videoq.jp/sitemap.xml` and both docs locale sitemaps, `docs.videoq.jp/sitemap.xml` and `docs.videoq.jp/ja/sitemap.xml`, under the domain property. A submitted sitemap does not mean a page is indexed. The docs site advertises both locale sitemaps in its own `robots.txt` and publishes only the approved content manifest.
 
 Daily automated content changes are not configured. Prefer an evidence-based update to an existing useful page over creating pages for slight keyword variations.
+
+## November 17, 2026 follow-up
+
+The production audit checked all 24 sitemap URLs and reported zero issues
+(`/tmp/videoq-seo-production-20261117.json`, local evidence only). This covers
+served HTML and HTTP behavior, not ranking or conversions. Search Console's
+browser report for August 15–November 14 showed 21 clicks, 347 impressions,
+6.1% CTR and average position 13.7 for the domain property. This is a three-month
+snapshot, not an equal-window comparison or a post-release lift claim. Most
+visible clicks were branded; anonymized queries prevent a complete query split.
+
+All three submitted sitemaps showed success. The product sitemap listed 24 URLs
+and was last read November 12. URL Inspection confirmed that
+`/guides/online-course-questions` was indexed. This does not establish the status
+of the other guides or explain all 88 unindexed URLs in the domain summary.
+The Search Console connector returned `invalid_grant`; browser access worked.
+
+The training guide now explains search/FAQ/LMS selection and a manual pilot
+covering answer correctness, citations, search time and separately counted staff
+inquiries, in Japanese and English. Its actual content-update date is November
+17. The homepage also links directly to all three use-case guides from its use-case section, including the first HTML. Local build and prerender verification passed; Worker checks passed 17 with
+2 browser checks skipped. Publication and acquisition impact remain unverified.
+Next: inspect the remaining Japanese guides and page-level search report,
+publish the reviewed content, then collect finalized equal 28-day windows and
+registration outcomes. Do not treat this edit as proof of increased customers.

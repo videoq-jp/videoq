@@ -271,6 +271,13 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           ],
         },
         {
+          heading: '研修動画の検索、FAQ、LMSはどう使い分けるか',
+          paragraphs: [
+            '研修名や受講日が分かっている場合は、動画一覧や目次から探せます。一方、「申請を差し戻されたらどうする？」のように業務上の疑問から探す場合は、動画名と質問の言い方が一致しないことがあります。文字起こしのキーワード検索は用語の場所を探す用途に、動画を根拠にするAI回答は複数の説明から答えを確認する用途に使い分けます。',
+            'よく変わる申請期限や問い合わせ先は、更新担当を決めたFAQや社内規程で案内します。受講期限や修了状況の管理が目的なら、利用中のLMSで何を管理するかを先に整理してください。VideoQでは研修内容への質問と引用場面の確認を試し、受講管理とは別に導入する価値があるかを判断します。',
+          ],
+        },
+        {
           heading: '研修ごとに講座をつくる',
           paragraphs: [
             '新人研修、業務マニュアル、コンプライアンス研修など、質問の範囲がそろう単位で講座をつくります。AIが参照するのは講座に含まれる動画だけなので、動画で説明していない社内ルールや、その後に変更された内容には答えられません。',
@@ -296,6 +303,19 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           ],
         },
         {
+          heading: '導入前に試す質問と、効果の測り方',
+          paragraphs: [
+            '最初は新人研修など対象をひとつに絞り、担当者が実際に受けた質問を用意します。たとえば動画に経費精算の説明があるなら「領収書はどこから提出する？」を試します。答えが合っているだけでなく、引用先に提出手順が含まれているか、現在の規程と一致するかまで確認します。',
+            '動画内に答えがある質問、略語や別の言い方を使う質問、動画内に答えがない質問を混ぜて試してください。回答の正誤、引用の妥当性、探し終わるまでの時間、担当者への確認が必要だったかを手元の表に記録します。これは導入担当者が行う評価であり、VideoQが自動で効果を測定する機能ではありません。',
+            '同じ質問を動画一覧から探した場合とも比べます。検索時間が短くなっても誤った手順を案内するなら、動画の更新や対象範囲の見直しが先です。質問履歴だけから問い合わせ削減率を算出せず、試行期間の担当者への問い合わせ件数も別に記録して判断します。',
+          ],
+          steps: [
+            '対象研修と評価する質問を決め、正式な答えと動画の該当時間を担当者が確認します。',
+            '少人数で回答・引用・検索時間を確認し、動画で説明していない質問の案内先も決めます。',
+            '参加者の質問量とアカウント全体の利用枠を確認し、対象を広げるか判断します。',
+          ],
+        },
+        {
           heading: '社内で使い始める前に決めること',
           paragraphs: [
             '動画に機密情報が含まれる場合は、社内の規程に照らしてアップロードの可否を確認してください。AIの回答や文字起こしには誤りが含まれることがあるため、経理や労務など正確さが求められる手続きでは、引用された場面や正式な規程を確認する運用にしてください。また、AIの利用枠はアカウント全体で共有されるので、対象人数に合うプランを確認してください。',
@@ -310,6 +330,13 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           heading: 'Where people get stuck after training',
           paragraphs: [
             'When a task comes up, finding the right training and the right moment takes time, so people end up asking the person in charge. If they can ask the training videos directly, they can use their own words and then check the explanation.',
+          ],
+        },
+        {
+          heading: 'Choosing video search, FAQs and an LMS',
+          paragraphs: [
+            'A video list or chapter menu works when staff know the training name or date. A task question such as “What happens if my request is returned?” may use different words from the title. Transcript keyword search helps locate a term; video-grounded AI answers help readers check an answer against the relevant explanations.',
+            'Keep frequently changing deadlines and contact details in an FAQ or official policy with an assigned owner. If the goal is managing completion or due dates, first decide what your existing LMS should handle. Evaluate VideoQ for questions about training content and checking cited moments, separately from course administration.',
           ],
         },
         {
@@ -335,6 +362,19 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
           heading: 'What question history shows',
           paragraphs: [
             'The course owner can read question and answer history and export it as CSV. Questions from invited staff show a user ID, username and email address. Let staff know beforehand that questions are attributable to them.',
+          ],
+        },
+        {
+          heading: 'Questions to test and how to measure the value',
+          paragraphs: [
+            'Start with one program, such as onboarding, and questions your training owner has actually received. If a video explains expenses, try “Where do I submit receipts?” Check whether the cited moment explains submission and whether it agrees with the current policy, as well as whether the answer is correct.',
+            'Include questions answered in the video, questions using abbreviations or different wording, and questions the video does not answer. Record answer correctness, citation relevance, time to find the explanation and whether a person still needed to help. This is an evaluation you run yourself; VideoQ does not automatically measure these outcomes.',
+            'Compare with finding the same answers from the video list. Faster search is insufficient if it leads to an outdated procedure: update the source or narrow the scope first. Do not calculate a support reduction rate from question history alone. Separately record questions sent to the training owner during the trial.',
+          ],
+          steps: [
+            'Choose a training program and test questions, then have its owner verify the official answers and source timestamps.',
+            'Check answers, citations and search time with a small group, and provide a contact for questions outside the videos.',
+            'Review question volume and the shared account allowance before expanding access.',
           ],
         },
         {

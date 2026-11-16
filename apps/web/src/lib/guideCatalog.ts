@@ -38,10 +38,10 @@ export const GUIDE_CATALOG: readonly GuideEntry[] = [
   {
     slug: 'training-video-questions',
     published: '2026-10-31',
-    updated: '2026-10-31',
+    updated: '2026-11-17',
     ja: {
-      title: '社内研修の動画に質問できるようにする方法',
-      description: '研修動画の内容をあとから探す手間を減らす方法を解説。研修ごとの講座のつくり方、招待で閲覧者を限定する手順、質問者の確認範囲、社内で導入する前に決めておきたいことをまとめました。',
+      title: '研修動画をAIで検索・質問対応に活用する方法',
+      description: '研修動画から必要な説明を探す方法を解説。AI検索・FAQ・LMSの使い分け、招待による閲覧制限、回答と引用の検証、検索時間と問い合わせ件数を比べる導入評価の手順をまとめました。',
     },
     en: {
       title: 'How to let staff ask questions about training videos',
