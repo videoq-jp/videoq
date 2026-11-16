@@ -40,7 +40,7 @@ export async function main({args=process.argv.slice(2),env=process.env,operatorR
  if(env.GITHUB_ACTIONS||env.VIDEOQ_AWS_CLI||env.VIDEOQ_FENCE_ADMIN_DATABASE_URL)throw Error('LOCAL_REVIEWED_CUTOVER_OPERATOR_REQUIRED');
  await verifySource({source:operation.source,root:operatorRoot,env});
  if((await aws('sts','GetCallerIdentity',{})).Account!=='257240362763'||env.CLOUDFLARE_ACCOUNT_ID&&env.CLOUDFLARE_ACCOUNT_ID!==TARGET.accountId)throw Error('FIXED_CUTOVER_ACCOUNT_REQUIRED');
- const cloudflare=createCloudflareTrafficTransport(env.CLOUDFLARE_API_TOKEN,{fetcher});
+ const cloudflare=createCloudflareTrafficTransport(env.VIDEOQ_CUTOVER_CONTROL_TOKEN??env.CLOUDFLARE_API_TOKEN,{fetcher});
  const proof=()=>assertTransferContext({...operation,aws,github,cloudflare,fetcher});
  let context={...await proof(),run:operation.run};
  const [{loadMigrationSnapshot},{buildMigrationManifest},{prepareCommonImport},{openPrivateInput},{importCommonTables},{runStagingMigration},{r2VisualMigrationStorage}]=await Promise.all([
