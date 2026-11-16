@@ -376,3 +376,25 @@ executor claims and pending-operation checks. These tests prove protocol and
 ownership behavior; they perform no production D1 mutation. The full production
 factory, local-lock lifetime, transfer worker action, final vector sync and
 recovery/release are still required before enabling execution.
+
+`d1_resource_transfer_runtime.py` composes source snapshot verification, the local
+executor lock, private files and transfer journal, provider API operations, local
+dump restoration and final source/target comparison. Import initialization and
+ingest require parent safety approval, a still-fenced source, an empty target,
+and a matching validated file proof. It never merges into a populated target.
+Status queries revalidate a completed copy before returning its receipt digest.
+
+The pipe worker now supports copy prepare/advance/status actions and requests
+an additional import-safety authorization. `d1-resource-data.cjs` binds source
+fencing, database copy and target unfencing to the same persisted plans. A copy
+advances one durable stage per invocation. The coordinator reports explicit
+pending progress while keeping its intent unverified; unknown start outcomes
+still require reconciliation and cannot restart an operation.
+
+The runtime integration test uses actual private files, filesystem locks,
+append-only records, SQL restoration and SQLite source/target comparisons with
+HTTP-shaped provider responses. It checks exact int64 values, sequence high-water
+marks, retained target fencing, refusal of populated targets and uncertain export
+starts. This is not a real Cloudflare transfer rehearsal. The full production
+factory and environment checks, lost-start reconciliation, final vector sync,
+release/recovery and live E2E remain required before execution is enabled.

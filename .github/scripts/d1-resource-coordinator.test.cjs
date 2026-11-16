@@ -49,3 +49,7 @@ test('read-side provider errors and private file error bodies are sanitized',asy
  await assert.rejects(createResourceCoordinator(f.options).runNext(),{message:'RESOURCE_COORDINATOR_FAILED'});
  assert.ok(!f.calls.some(v=>v.startsWith('apply:')));
 });
+test('explicit bounded progress leaves intent pending without treating it as verification',async()=>{
+ const f=fixture();f.options.adapters[RESOURCE_STEPS[0]].apply=async()=>({pending:true});
+ assert.deepEqual(await f.coordinator.runNext(),{status:'pending',step:RESOURCE_STEPS[0],holdReleased:false});assert.equal(f.steps[0].state,'intent');
+});

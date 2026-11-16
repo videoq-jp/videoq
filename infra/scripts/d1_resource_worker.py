@@ -43,11 +43,18 @@ def main():
                 or request['version'] != 1 or request['enabled'] is not True or not isinstance(request['input'], dict)):
             raise ValueError('RESOURCE_WORKER_DISABLED')
         action, value = request['action'], request['input']
-        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence'):
+        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'prepare-copy', 'advance-copy', 'inspect-copy'):
             raise ValueError('RESOURCE_WORKER_ACTION_REQUIRED')
         check()
         if action == 'ownership-check':
             result = {'owned': True}
+        elif action in ('prepare-copy', 'advance-copy', 'inspect-copy'):
+            from d1_resource_transfer_runtime import prepare_source_snapshot, run_transfer
+            if action == 'prepare-copy':
+                result = prepare_source_snapshot(request['token'], value['plan'], check)
+            else:
+                result = run_transfer(request['token'], value, check,
+                                      lambda *_args: check('import-safe'), status_only=action == 'inspect-copy')
         elif action == 'prepare-fence':
             query = CloudflareFenceQuery(request['token'])
             result = plan_fence(query(SOURCE, SCHEMA_SQL), value.get('run'))

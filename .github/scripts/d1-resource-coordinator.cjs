@@ -29,13 +29,15 @@ function createResourceCoordinator({journal,adapters,plans,assertEnvironment,ena
    const owned=async()=>{await journal.assertPending(pending);await assertEnvironment({step,stage:'pending'});};
    await owned();let observed=probeResult(await adapter.probe(plan));
    if(observed.state==='unknown')throw Error('RESOURCE_STEP_RECONCILIATION_REQUIRED');
+   let advancing=false;
    if(observed.state==='not-applied'){
     await owned();
     // Never blindly repeat a mutation after losing its response. Exactly one
     // apply attempt per invocation; reconcile against authoritative readback.
-    try{await adapter.apply(plan,{operationId:intent.operationId,assertOwnership:owned});}catch{ /* Provider error bodies must not escape. */ }
+    try{advancing=(await adapter.apply(plan,{operationId:intent.operationId,assertOwnership:owned}))?.pending===true;}catch{ /* Provider error bodies must not escape. */ }
     await owned();observed=probeResult(await adapter.probe(plan));
    }
+   if(observed.state==='not-applied'&&advancing)return{status:'pending',step,holdReleased:false};
    if(observed.state!=='applied')throw Error(observed.state==='unknown'?'RESOURCE_STEP_RECONCILIATION_REQUIRED':'RESOURCE_STEP_NOT_APPLIED');
    await owned();await journal.verify({...pending,receiptSha256:observed.receiptSha256});
    return{status:'verified',step,holdReleased:false};

@@ -1,10 +1,10 @@
 // One-shot private pipes only. Credential/input data never enters argv or logs.
 const {spawn}=require('node:child_process');
 const path=require('node:path');
-const ACTIONS=new Set(['ownership-check','prepare-fence','inspect-source-fence','inspect-target-fence','install-source-fence','remove-target-fence']);
+const ACTIONS=new Set(['ownership-check','prepare-fence','inspect-source-fence','inspect-target-fence','install-source-fence','remove-target-fence','prepare-copy','advance-copy','inspect-copy']);
 const LIMIT=1024*1024;
-function createResourceBridge({assertExecutor,assertOperation,assertTargetSafe,python='python3',enabled=false}){
- if([assertExecutor,assertOperation,assertTargetSafe].some(value=>typeof value!=='function')||typeof python!=='string'||!python||python.includes('\0'))throw Error('RESOURCE_BRIDGE_CONTEXT_REQUIRED');
+function createResourceBridge({assertExecutor,assertOperation,assertTargetSafe,assertImportSafe=async()=>{throw Error('RESOURCE_IMPORT_SAFETY_REQUIRED');},python='python3',enabled=false}){
+ if([assertExecutor,assertOperation,assertTargetSafe,assertImportSafe].some(value=>typeof value!=='function')||typeof python!=='string'||!python||python.includes('\0'))throw Error('RESOURCE_BRIDGE_CONTEXT_REQUIRED');
  return{
   async call(action,input,token){
    if(!enabled)throw Error('RESOURCE_BRIDGE_DISABLED');
@@ -28,9 +28,9 @@ function createResourceBridge({assertExecutor,assertOperation,assertTargetSafe,p
       processing=processing.then(async()=>{
        if(failed)return;
        let message;try{message=JSON.parse(line.toString('utf8'));}catch{stop();return;}
-       if(message.event==='check'&&Object.keys(message).sort().join(',')==='event,kind,sequence'&&message.sequence===sequence+1&&sequence<20000&&['ownership','target-safe'].includes(message.kind)&&result===undefined){
+       if(message.event==='check'&&Object.keys(message).sort().join(',')==='event,kind,sequence'&&message.sequence===sequence+1&&sequence<20000&&['ownership','target-safe','import-safe'].includes(message.kind)&&result===undefined){
         sequence=message.sequence;let allowed=true;
-        try{await assertExecutor();await assertOperation(action,input);if(message.kind==='target-safe')await assertTargetSafe(input);}catch{allowed=false;}
+        try{await assertExecutor();await assertOperation(action,input);if(message.kind==='target-safe')await assertTargetSafe(input);if(message.kind==='import-safe')await assertImportSafe(input);}catch{allowed=false;}
         if(!allowed)failed=true;
         if(!child.stdin.destroyed)child.stdin.write(JSON.stringify({sequence,allowed})+'\n');
        }else if(message.event==='result'&&Object.keys(message).sort().join(',')==='event,value'&&result===undefined&&message.value&&typeof message.value==='object'&&!Array.isArray(message.value))result=message.value;
