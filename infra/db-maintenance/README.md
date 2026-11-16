@@ -14,12 +14,31 @@ The former direct-SSM demo/audit jobs and Neon bootstrap entry point have been
 retired. Their unused GitHub environment ARN references are removed; encrypted
 AWS recovery material remains separate from normal D1 operation.
 
+## Retired Neon backup disposal (2026-11-17)
+
+After successful D1/Vectorize cutover and Neon retirement, the owner explicitly
+confirmed that the 27 legacy Django/OAuth tables are no longer needed and
+requested deletion of the old Neon backups. Both PostgreSQL dump generations
+and their corresponding manifests were permanently deleted using exact S3
+VersionIds: four object versions, 93,033,148 bytes in total. No old Neon backup
+versions or delete markers remain in the archive bucket.
+
+The current D1 SQL export, matching scene-vector export and retirement manifest
+remain unchanged in the private versioned archive bucket. Restore source,
+documentation and verification history remain available. The immutable D1
+retirement manifest's `legacyPostgresBackup` field is historical provenance;
+its referenced PostgreSQL archive has been disposed of and is no longer a
+recovery source. Do not claim that the old 27 tables can still be restored.
+This disposal changes neither on-premises PostgreSQL support nor current D1
+recovery resources, credentials, CI/CD or application configuration.
+
 ## Production Neon retirement and retained recovery material
 
 The 2026-11-17 retirement passed fresh upload-to-cited-answer AI smoke before
 and after deletion, automatic verification of all 2,190 existing scene vectors,
 and version-pinned backup checks. Only the VideoQ project was deleted.
-The following gates document the completed operation:
+The following gates document the completed cutover operation, before the later
+owner-authorized disposal above:
 
 1. Check production readiness, API failures, SQS/DLQ backlog, outstanding index
    tasks and referential integrity. A successful health response alone is not
@@ -67,8 +86,9 @@ Keep `retire_neon_maintenance=true` (the default), `provision_backup_archive=tru
 `enable_d1_migrations=true` and `enable_d1_production_smoke=true`. Disable all old
 cutover, upload and schedule flags. `false` retirement mode exists only to test the
 historical infrastructure contracts; it is not a production rollback procedure.
-The private archive bucket, existing versions, encryption, public-access block,
-backup/restore source and historical log groups are intentionally retained.
+The private archive bucket, current D1/Vectorize backup versions, encryption,
+public-access block, backup/restore source and historical log groups are retained.
+The old Neon dump generations were disposed of as recorded above.
 No archive expiration, deletion permission or new recurring backup is introduced.
 `setup_neon_access.py` provisions only the three surviving invoker roles and must
 not recreate legacy Neon direct-SSM or starter roles.
