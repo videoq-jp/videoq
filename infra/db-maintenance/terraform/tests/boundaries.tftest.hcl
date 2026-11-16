@@ -399,3 +399,52 @@ run "stage_history_is_execution_scoped_metadata" {
     error_message = "History access must stay on the fixed production maintenance execution prefix."
   }
 }
+
+run "d1_smoke_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_D1_PRODUCTION_SMOKE"]) == "false"
+    ])
+    error_message = "D1 backend detection must stay disabled until its fixed credentials and reviewed code exist."
+  }
+  assert {
+    condition     = !strcontains(aws_iam_role_policy.build["smoke"].policy, "smoke-identity")
+    error_message = "The disabled smoke job must not read its future identity key."
+  }
+}
+
+run "d1_smoke_permissions_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive   = true
+    retain_verified_backups    = false
+    enable_d1_production_smoke = true
+  }
+  assert {
+    condition = one([for variable in aws_codebuild_project.job["smoke"].environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_D1_PRODUCTION_SMOKE"]) == "true" && alltrue([for purpose, project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_D1_PRODUCTION_SMOKE"]) == "false" if purpose != "smoke"
+    ])
+    error_message = "Only the smoke project may select D1 smoke mode."
+  }
+  assert {
+    condition = alltrue([for statement in jsondecode(aws_iam_role_policy.build["smoke"].policy).Statement :
+      !contains(statement.Action, "ssm:GetParameter") || alltrue([for resource in statement.Resource : contains([
+        "arn:aws:ssm:ap-northeast-1:257240362763:parameter/videoq/security/prod/db-smoke",
+        "arn:aws:ssm:ap-northeast-1:257240362763:parameter/videoq/security/prod/d1-migration",
+        "arn:aws:ssm:ap-northeast-1:257240362763:parameter/videoq/security/prod/smoke-identity"
+      ], resource)])
+    ])
+    error_message = "Smoke may read only its existing profile, D1 credential and identity key."
+  }
+  assert {
+    condition = alltrue([for purpose, policy in aws_iam_role_policy.build :
+      !strcontains(policy.policy, "smoke-identity") if purpose != "smoke"
+    ])
+    error_message = "No other job receives the synthetic-identity signing key."
+  }
+}
