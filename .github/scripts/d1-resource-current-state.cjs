@@ -26,7 +26,7 @@ function createResourceCurrentState({journal,plans,cloudflare,lambda,github,sour
   apiSafe(api);
   const [consumerState,deploymentState,sourceState,targetState,native]=await Promise.all([
    createConsumerControl(lambda).inspect(consumers),createDeploymentFreeze(github).inspectAdmission(deployments),sourceFence(fence),targetFence(fence),
-   Promise.resolve().then(()=>readSmokeBuild(e2e)).then(arn=>smokeProof.verify(e2e.nativePlan,arn)),
+   Promise.resolve().then(()=>readSmokeBuild(e2e)).then(arn=>smokeProof.verify(e2e.nativePlan,arn,resourceDigest(e2e))),
   ]);
   const expectedFences=Object.keys(fence.fenceTriggers??{}).sort();
   const validSource=expectedFences.length>0&&sourceState&&sourceState.total===expectedFences.length&&Array.isArray(sourceState.installed)&&resourceDigest([...sourceState.installed].sort())===resourceDigest(expectedFences);

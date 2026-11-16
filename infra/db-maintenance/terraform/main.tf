@@ -273,7 +273,12 @@ resource "aws_iam_role_policy" "build" {
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/smoke-identity"
       ] }
-    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
+      ] : permission if each.key == "smoke" && var.enable_d1_production_smoke], [for permission in [
+      { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } },
+      { Effect = "Allow", Action = ["states:DescribeExecution", "states:DescribeStateMachineForExecution"],
+      Resource = "arn:aws:states:${local.region}:${local.account}:execution:videoq-db-maintenance-prod:db-*" }
+    ] : permission if each.key == "smoke" && var.enable_d1_production_smoke && var.enable_d1_resource_hold], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
     { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"

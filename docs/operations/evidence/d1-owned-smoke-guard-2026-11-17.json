@@ -1,0 +1,22 @@
+{
+  "scope": "Disabled owned native smoke guard; no production job or IAM apply",
+  "nodeTests": {
+    "passed": 597,
+    "failed": 0
+  },
+  "pythonInfraTests": {
+    "passed": 154,
+    "failed": 0
+  },
+  "terraformMockTests": {
+    "passed": 31,
+    "failed": 0
+  },
+  "guardBeforeSecretReads": true,
+  "requiresLiveExecutionAndRegisteredBuild": true,
+  "extraPermissions": "conditional fixed DynamoDB and Step Functions reads only",
+  "newCodeBuildProjects": 0,
+  "productionBuildStarted": false,
+  "productionIamApplied": false,
+  "ownedLauncherImplemented": false
+}

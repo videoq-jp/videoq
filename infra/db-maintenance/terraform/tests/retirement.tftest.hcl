@@ -80,3 +80,23 @@ run "d1_resource_hold_cannot_enable_legacy_graph" {
   }
   expect_failures = [var.enable_d1_resource_hold]
 }
+run "resource_smoke_guard_reads_only_its_fixed_hold_metadata" {
+  command = plan
+  variables { enable_d1_resource_hold = true }
+  assert {
+    condition = (length([for statement in jsondecode(aws_iam_role_policy.build["smoke"].policy).Statement : statement
+      if statement.Action == ["dynamodb:GetItem"] && statement.Resource == aws_dynamodb_table.maintenance.arn &&
+      statement.Condition["ForAllValues:StringLike"]["dynamodb:LeadingKeys"] == ["maintenance", "run#*"]
+    ]) == 1)
+    error_message = "Owned native smoke must read only the maintenance owner and run records."
+  }
+  assert {
+    condition = (length([for statement in jsondecode(aws_iam_role_policy.build["smoke"].policy).Statement : statement
+      if statement.Action == ["states:DescribeExecution", "states:DescribeStateMachineForExecution"] &&
+      statement.Resource == "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-*"
+      ]) == 1 && !strcontains(aws_iam_role_policy.build["smoke"].policy, "dynamodb:UpdateItem") &&
+      !strcontains(aws_iam_role_policy.build["smoke"].policy, "states:StartExecution") &&
+    !strcontains(aws_iam_role_policy.build["smoke"].policy, "states:StopExecution"))
+    error_message = "Smoke must gain only fixed execution reads, never control or journal mutation."
+  }
+}
