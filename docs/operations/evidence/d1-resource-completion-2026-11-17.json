@@ -1,0 +1,29 @@
+{
+  "scope": "Disabled trusted completion gate; no production release",
+  "nodeTests": {
+    "passed": 591,
+    "failed": 0
+  },
+  "dynamoDbLocalIntegration": {
+    "passed": 9,
+    "failed": 0,
+    "realConditionalTransactions": true,
+    "providerCurrentStateAndNativeE2E": "explicit test fixture"
+  },
+  "requiresAllTwelveStepsVerified": true,
+  "requiresClaimedExecutor": true,
+  "completionReceiptDurableBeforeStateMachineRelease": true,
+  "directLockDeletionPerformedByGate": false,
+  "productionHoldReleased": false,
+  "productionCurrentStateVerifierImplemented": true,
+  "productionCurrentStateVerifierExecuted": false,
+  "nativeBuildProvenanceTests": 5,
+  "currentStateCompositionTests": 3,
+  "nativeProjectMetadataReadback": {
+    "project": "videoq-db-smoke-prod",
+    "sourceType": "S3",
+    "concurrentBuildLimit": 1,
+    "executionStarted": false,
+    "sourceReviewFreshnessNotAttested": true
+  }
+}

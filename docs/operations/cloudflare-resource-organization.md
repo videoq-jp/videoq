@@ -456,3 +456,49 @@ but unprocessed updates, lost acceptance reconciled without repost, fence loss
 and artifact corruption. These are not production mutations or Cloudflare
 rehearsal. Full environment/factory checks, final proof/release/recovery, native
 E2E and the live switch remain outstanding.
+
+
+## Completion gate
+
+`d1-resource-completion.cjs` requests release only after all twelve fixed steps
+are verified and the same executor still owns the running hold. A mandatory
+trusted verifier must freshly attest restored API/consumer/deployment admission,
+retained source fencing, removed target fencing, the exact account/D1/Vectorize
+targets, stable API version and the pinned native E2E result. The E2E proof must
+match the verified E2E step receipt. The gate itself validates the attestation's
+shape and identity; it does not implement those Cloudflare/AWS probes.
+
+The gate atomically saves the completion receipt/digest and restored-admission
+markers while requiring unchanged source, executor, revision, complete step
+journal and shared owner. A lost write response reconciles exact durable
+readback. Reentry validates the stored receipt and step chain; it reports a
+historical release request, not current production health. The gate never
+issues a lock delete. The existing state machine performs its own conditional
+release after the receipt is durable, retaining the run journal.
+
+The gate defaults to disabled and has no production caller. Pre-promotion abort,
+post-promotion forward recovery, fresh environment/native-E2E verification and
+final wiring remain necessary before enabling it.
+[Completion-gate evidence](evidence/d1-resource-completion-2026-11-17.json)
+records unit tests and actual DynamoDB Local conditional release with explicit
+provider/E2E fixtures; no production hold was released.
+
+
+`d1-resource-smoke-proof.cjs` verifies native E2E provenance using read-only
+CodeBuild project/build metadata. Preparation requires the fixed smoke project,
+S3 version pin, canonical reviewed-source tag, D1 mode and single-build limit.
+Verification checks unchanged project/source/buildspec/role/runtime, an exact
+execution environment with AI verification enabled, successful completion and
+start/end times after the recorded resume boundary. AWS SDK Date objects retain
+subsecond precision. No build is started and no logs or SSM values are read.
+The resource-owned launcher/worker guard still needs to be connected.
+
+`d1-resource-current-state.cjs` composes completion observations from the persisted
+plans and their verified journal hashes. It reads stable fixed API bindings,
+original consumer/deployment admission, exact source/target fence state and the
+native smoke proof. The native proof is tied to the E2E step's API version and
+binding hash; API/journal state is rechecked after the parallel probes. It returns
+only the fixed completion attestation. Tests use explicit provider fixtures;
+production probes have not been run and no production release is authorized by
+these test results. Pre-promotion abort, post-promotion recovery, owned native
+smoke execution and the full production factory remain outstanding.
