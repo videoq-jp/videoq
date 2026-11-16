@@ -19,8 +19,15 @@ function desiredBindings(settings){
  if(!Array.isArray(settings?.bindings)||new Set(settings.bindings.map(v=>v.name)).size!==settings.bindings.length||settings.bindings.find(v=>v.name==='MIGRATION_TRAFFIC_STATE')?.text!=='paused'||settings.bindings.filter(v=>v.name==='WORKER_INTERNAL_API_SECRET'&&v.type==='secret_text').length!==1)throw Error('PAUSED_AUTHENTICATED_API_REQUIRED');
  return [...settings.bindings.filter(v=>!replace.has(v.name)).map(v=>({name:v.name,type:'inherit'})),{name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'PERSISTENCE_BACKEND',type:'plain_text',text:'d1'},{name:'DB',type:'d1',id:TARGET.databaseId},{name:'SCENE_VECTORIZE_1536',type:'vectorize',index_name:TARGET.largeIndex},{name:'SCENE_VECTORIZE_768',type:'vectorize',index_name:TARGET.smallIndex}];
 }
-function apiFingerprint(settings){
+function rawApiFingerprint(settings){
  return hash(settings.bindings.map(v=>v.type.startsWith('secret_')?{name:v.name,type:v.type}:v).sort((a,b)=>a.name.localeCompare(b.name)));
+}
+function apiFingerprint(settings){
+ return rawApiFingerprint({...settings,bindings:settings.bindings.map(binding=>{
+  if(binding.type!=='d1'||!Object.hasOwn(binding,'database_id'))return binding;
+  if(typeof binding.id!=='string'||!binding.id||binding.database_id!==binding.id)throw Error('D1_BINDING_ID_ALIAS_MISMATCH');
+  const {database_id:_,...canonical}=binding;return canonical;
+ })});
 }
 async function handoffBackend({run,source,aws,github,cloudflare,fetcher=fetch,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),verifyContext=assertTransferContext}){
  const get=pk=>aws('ddb','GetItem',{TableName:TABLE,Key:{pk:{S:pk}},ConsistentRead:true});
@@ -87,4 +94,4 @@ async function handoffBackend({run,source,aws,github,cloudflare,fetcher=fetch,sl
  const receipt={version:1,runId:run,sourceSha:source,apiVersion:version,apiBindingsSha256:apiFingerprint(actual),target:TARGET,profiles:finalProfiles,admissionPaused:true,productionSafe:false};
  await save(final,'backend_handoff_receipt',receipt);return{backend:'d1',admissionPaused:true,productionSafe:false};
 }
-module.exports={desiredEnvironment,desiredBindings,apiFingerprint,handoffBackend};
+module.exports={desiredEnvironment,desiredBindings,apiFingerprint,rawApiFingerprint,handoffBackend};

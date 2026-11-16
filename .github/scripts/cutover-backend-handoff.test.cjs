@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash,randomUUID}=require('node:crypto');
-const {handoffBackend,desiredEnvironment,desiredBindings}=require('./cutover-backend-handoff.cjs');
+const {handoffBackend,desiredEnvironment,desiredBindings,apiFingerprint,rawApiFingerprint}=require('./cutover-backend-handoff.cjs');
 const {TARGET}=require('./cutover-final-context.cjs');
 const sha=v=>createHash('sha256').update(v).digest('hex');
 function fixture(options={}){
@@ -29,6 +29,8 @@ function fixture(options={}){
   if(path.includes('/versions?'))return{items:[{id:version}]};
   if(method==='GET')return structuredClone(settings);
   assert.equal(method,'PATCH');assert.equal(writes,3);assert.ok(row.backend_handoff_intent);const previous=settings.bindings;settings.bindings=input.bindings.map(v=>v.type==='inherit'?previous.find(b=>b.name===v.name):v);apiWrites++;
+  if(options.d1Alias)settings.bindings.find(v=>v.name==='DB').database_id=options.d1Alias==='mismatch'?'different':TARGET.databaseId;
+  if(options.extraD1Field)settings.bindings.find(v=>v.name==='DB').unexpected='outside';
   if(options.outsideApiChange)settings.bindings.find(v=>v.name==='UNCHANGED').text='outside';
   if(options.lostApiResponse)throw Error('SYNTHETIC_LOST_RESPONSE');return{};
  }};
@@ -57,4 +59,16 @@ test('extra handoff AWS transport scopes mutations to the fixed workers and keep
  const aws=createHandoffAwsTransport({env:{PATH:process.env.PATH,HOME:process.env.HOME,CLOUDFLARE_API_TOKEN:'must-not-forward',GH_TOKEN:'must-not-forward'},execute:(_command,_args,options)=>{calls++;assert.equal(options.env.CLOUDFLARE_API_TOKEN,undefined);assert.equal(options.env.GH_TOKEN,undefined);assert.equal(options.env.AWS_IGNORE_CONFIGURED_ENDPOINT_URLS,'true');return '{}';}});
  await assert.rejects(()=>aws('lambda','UpdateFunctionConfiguration',{FunctionName:'other-worker',RevisionId:'r',Environment:{Variables:{}}}));await assert.rejects(()=>aws('scheduler','GetSchedule',{Name:'other-schedule',GroupName:'default'}));await assert.rejects(()=>aws('lambda','UpdateEventSourceMapping',{UUID:randomUUID(),Enabled:true,FunctionName:'other'}));await assert.rejects(()=>aws('ssm','GetParameter',{Name:'/videoq/security/prod/db-admin'}));assert.equal(calls,0);
  await aws('lambda','UpdateFunctionConfiguration',{FunctionName:'videoq-worker-prod',RevisionId:'r',Environment:{Variables:{PERSISTENCE_BACKEND:'d1'}}});assert.equal(calls,1);
+});
+
+test('provider D1 alias is accepted only when both IDs agree and all other metadata is unchanged',async()=>{
+ const f=fixture({d1Alias:'same'});await handoffBackend(f.args);assert.ok(f.row.backend_handoff_receipt);
+ for(const options of [{d1Alias:'mismatch'},{d1Alias:'same',extraD1Field:true}]){const f=fixture(options);await assert.rejects(()=>handoffBackend(f.args));assert.equal(f.row.backend_handoff_receipt,undefined);}
+});
+test('D1 fingerprint normalization preserves unknown fields and rejects ambiguous identity',()=>{
+ const base={bindings:[{name:'DB',type:'d1',id:TARGET.databaseId}]},aliased=structuredClone(base);aliased.bindings[0].database_id=TARGET.databaseId;
+ assert.equal(apiFingerprint(base),apiFingerprint(aliased));assert.notEqual(rawApiFingerprint(base),rawApiFingerprint(aliased));
+ const extra=structuredClone(aliased);extra.bindings[0].unrelated='changed';assert.notEqual(apiFingerprint(base),apiFingerprint(extra));
+ const wrong=structuredClone(aliased);wrong.bindings[0].database_id='other';assert.throws(()=>apiFingerprint(wrong),/D1_BINDING_ID_ALIAS_MISMATCH/);
+ const absent=structuredClone(aliased);delete absent.bindings[0].id;assert.throws(()=>apiFingerprint(absent),/D1_BINDING_ID_ALIAS_MISMATCH/);
 });
