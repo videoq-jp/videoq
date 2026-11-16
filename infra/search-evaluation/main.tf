@@ -32,7 +32,7 @@ variable "execution_enabled" {
 
 locals {
   name      = "videoq-search-evaluation-prod"
-  image_uri = "257240362763.dkr.ecr.ap-northeast-1.amazonaws.com/videoq-worker-prod@sha256:58b667279155594a091141c2e689e3670ffaefd5c641840c44288f1b3f7355f0"
+  image_uri = "257240362763.dkr.ecr.ap-northeast-1.amazonaws.com/videoq-worker-prod@sha256:018bd5d6beebf21f0b19e3ac0689d2d6dc6074648635a2270626f33d2f405a3a"
 }
 
 resource "aws_cloudwatch_log_group" "evaluation" {

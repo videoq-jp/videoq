@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "date": "2026-11-17",
+  "databaseId": "e57d0931-18cb-4f00-ae7f-b0068030fb04",
+  "workersPaid": {
+    "completedAt": "2026-11-16T20:26:14.441586+00:00",
+    "accountId": "12daec56fdba43f677f2766ee26a5a39",
+    "workersPlan": "paid",
+    "baseMonthlyUSD": 5,
+    "usageOverages": true,
+    "purchaseCompletedInDashboard": true,
+    "d1ReadQuotaRecovered": true,
+    "nativeSmokeRunId": "83341ffdd9b0576d2a153a8ef03c9504",
+    "nativeSmokeStatus": "SUCCEEDED",
+    "verifyAiAnswers": false,
+    "zonePlanChanged": false
+  },
+  "source": {
+    "sourceRowsMatchFreshExport": true,
+    "scenes": 2190,
+    "corpusSha256": "5ebf2d5d9cf58a1f5c6dede671a7709762e111a1f6225fc31112cce4d0b523cb",
+    "d1ReadQuotaRecovered": true,
+    "workersPlan": "paid",
+    "baseMonthlyUSD": 5,
+    "timeTravel": {
+      "bookmark": "00000030-000000c2-00005125-7baf15e437d101c9587f800c9b4549f6"
+    }
+  },
+  "generation": {
+    "status": "generated",
+    "scenes": 2190,
+    "corpusSha256": "5ebf2d5d9cf58a1f5c6dede671a7709762e111a1f6225fc31112cce4d0b523cb",
+    "vectorsSha256": "26ec4b95582b8d368e9e62bf80e4518e784e7318ff7e9ebb6541818c97da744d",
+    "modelCallsMade": true,
+    "inputSource": "D1 scene content; no existing vectors",
+    "productionDatabaseMutations": false,
+    "productionIndexMutations": false
+  },
+  "reconstruction": {
+    "vectorsVerified": 2190,
+    "videosQueried": 80,
+    "dimensions": 1536,
+    "source": "fresh D1 scene content re-embedded with existing OpenRouter model",
+    "regeneratedVsLiveMinCosine": 0.9951646695141448,
+    "regeneratedVsLiveMeanCosine": 0.9999389042404732,
+    "isolatedReadbackMinCosine": 0.9999999999999996,
+    "meanTop5Overlap": 1.0,
+    "minTop5Overlap": 1.0,
+    "identicalTop5Ordering": 79,
+    "scopeChecksPassed": true,
+    "productionIndexMutated": false,
+    "humanQuestionQualityEvaluation": false,
+    "empty768Corpus": true,
+    "retrievalQualityGatePassed": true,
+    "bitwiseEmbeddingEqualityClaimed": false,
+    "initialPointwiseCosineDiagnosticThresholdMet": false,
+    "acceptanceBasis": "Full ID/metadata/readback coverage and prior frozen retrieval-quality gates; embeddings are not bitwise identical"
+  },
+  "questionComparison": {
+    "questions": 40,
+    "aiJudgedQuestions": 30,
+    "diagnosticQuestions": 10,
+    "wrongOwnerQuestions": 40,
+    "pairedQueries": 160,
+    "queryEmbeddingsReusedForControlledComparison": true,
+    "additionalModelCalls": false,
+    "meanReferenceTop20Overlap": 0.9975,
+    "minReferenceTop20Overlap": 0.95,
+    "aiCandidateMetrics": {
+      "live": {
+        "candidate_recall_at_20": 0.9177777777777778,
+        "candidate_ndcg_at_20": 0.5966542178004436,
+        "candidate_hit_at_20": 1.0,
+        "judged_fraction_at_20": 0.12000000000000001
+      },
+      "rebuilt": {
+        "candidate_recall_at_20": 0.9177777777777778,
+        "candidate_ndcg_at_20": 0.5968413844480229,
+        "candidate_hit_at_20": 1.0,
+        "judged_fraction_at_20": 0.12000000000000001
+      }
+    },
+    "rebuiltMinusLive": {
+      "candidate_recall_at_20": 0.0,
+      "candidate_ndcg_at_20": 0.00018716664757933987,
+      "candidate_hit_at_20": 0.0,
+      "judged_fraction_at_20": 0.0
+    },
+    "negativeOwnerHits": 0,
+    "humanReviewed": false,
+    "exhaustiveGold": false,
+    "gatesFrozenInPriorEvaluation": {
+      "overlap": 0.98,
+      "minRecallDelta": -0.02,
+      "minNdcgDelta": -0.02,
+      "negativeHits": 0
+    },
+    "gates": {
+      "referenceTop20Overlap": true,
+      "candidateRecallDelta": true,
+      "candidateNdcgDelta": true,
+      "negativeOwnerLeaks": true
+    },
+    "passed": true
+  },
+  "s3Disposal": {
+    "completedAt": "2026-11-16T20:30:34.079426+00:00",
+    "deletedObjectVersions": 3,
+    "deletedBytes": 246051498,
+    "remainingObjectVersions": 0,
+    "remainingDeleteMarkers": 0,
+    "bucketRetained": true,
+    "recoveryDocumentationRetained": true,
+    "d1TimeTravelRetained": true,
+    "vectorizeReconstructionVerified": true
+  },
+  "cloudCleanup": {
+    "isolatedIndexDeleted": true,
+    "evaluationConcurrency": 0,
+    "evaluationEnabled": false,
+    "production1536Vectors": 2190,
+    "production768Vectors": 0
+  },
+  "localCleanup": {
+    "rawSqlRemoved": true,
+    "rawSqliteRemoved": true,
+    "sceneContentInventoryRemoved": true,
+    "generatedVectorsAndLambdaResponsesRemoved": true,
+    "questionRankingIdsRemoved": true,
+    "signedExportUrlLogRemoved": true,
+    "cleanupCompletedAt": "2026-11-16T20:32:09.190426+00:00"
+  },
+  "tests": {
+    "infraPythonTests": 63,
+    "passed": true,
+    "terraformValidationPassed": true,
+    "dedicatedEvaluationStateMatchesConfiguration": true
+  },
+  "limitations": [
+    "No production Time Travel restore or binding switch performed.",
+    "Re-embedded values are not bitwise identical to historical embeddings.",
+    "Question relevance uses frozen non-exhaustive AI candidate labels, not human gold.",
+    "This smoke had AI answers disabled; previous AI E2E is separate evidence.",
+    "No independent S3 data backup is retained; Time Travel is bounded and index recovery needs the model."
+  ]
+}

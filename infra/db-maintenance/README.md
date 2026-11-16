@@ -23,14 +23,16 @@ and their corresponding manifests were permanently deleted using exact S3
 VersionIds: four object versions, 93,033,148 bytes in total. No old Neon backup
 versions or delete markers remain in the archive bucket.
 
-The current D1 SQL export, matching scene-vector export and retirement manifest
-remain unchanged in the private versioned archive bucket. Restore source,
-documentation and verification history remain available. The immutable D1
-retirement manifest's `legacyPostgresBackup` field is historical provenance;
-its referenced PostgreSQL archive has been disposed of and is no longer a
-recovery source. These S3 archives can no longer restore the old 27 tables.
-This disposal changes neither on-premises PostgreSQL support nor current D1
-recovery resources, credentials, CI/CD or application configuration.
+The three remaining D1 SQL/vector/retirement-manifest object versions were later
+permanently deleted at the owner's request, after fresh D1-content reconstruction
+and isolated Vectorize verification. The private versioned bucket is empty;
+no object versions or delete markers remain. D1 Time Travel is the database
+recovery mechanism, and Vectorize is regenerated from D1 using the existing
+embedding model. Keep [the current recovery runbook](../../docs/operations/d1-vectorize-recovery.md),
+restore source and aggregate verification history. Historical manifests are
+provenance only, not available archive recovery sources. Neither the old 27
+tables nor exact historical embedding bytes remain recoverable from S3.
+On-premises PostgreSQL support and the three D1 maintenance jobs are unchanged.
 
 ## Production Neon retirement and retained recovery material
 
@@ -67,8 +69,9 @@ Neon database. Do not delete the archive infrastructure as part of retirement.
 The `Operations` workflow no longer schedules the legacy monthly PostgreSQL
 restore rehearsal or offers it through the `all`/`backup` selections. Daily
 service monitoring and post-deployment D1 smoke remain enabled. D1 Time Travel
-provides the live database's automatic recovery history; the private retirement
-export and scene-vector archive provide a separate retained copy. Historical
+provides the live database's automatic recovery history. The one-time retirement
+SQL/vector copies have been disposed of after the reconstruction rehearsal;
+there is no retained independent S3 data copy. Historical
 PostgreSQL restore source remains available for an explicitly provisioned,
 isolated recovery environment; its old production AWS execution roles are removed.
 
@@ -86,9 +89,9 @@ Keep `retire_neon_maintenance=true` (the default), `provision_backup_archive=tru
 `enable_d1_migrations=true` and `enable_d1_production_smoke=true`. Disable all old
 cutover, upload and schedule flags. `false` retirement mode exists only to test the
 historical infrastructure contracts; it is not a production rollback procedure.
-The private archive bucket, current D1/Vectorize backup versions, encryption,
-public-access block, backup/restore source and historical log groups are retained.
-The old Neon dump generations were disposed of as recorded above.
+The empty private archive bucket, encryption, public-access block, backup/restore
+source and historical log groups are retained. All old Neon and one-time
+D1/Vectorize archive object versions were disposed of as recorded above.
 No archive expiration, deletion permission or new recurring backup is introduced.
 `setup_neon_access.py` provisions only the three surviving invoker roles and must
 not recreate legacy Neon direct-SSM or starter roles.
@@ -101,8 +104,8 @@ Review the saved plan: archive resources, application Lambda code/environment an
 live D1/Vectorize resources must not be deleted or replaced. Terraform publishes the narrowed broker environment without moving CD-owned
 aliases. Promote each resulting configuration-only version with revision checks,
 verifying unchanged broker code hashes and the reduced project allowlist, before
-requesting another job. Verify a native smoke execution and exact S3 backup
-versions. Do not run the old rotation
+requesting another job. Verify a native smoke execution and that the archive
+inventory remains empty. Do not run the old rotation
 or cutover tools against the deleted Neon project.
 
 The sections below document the historical PostgreSQL setup and recovery formats;
