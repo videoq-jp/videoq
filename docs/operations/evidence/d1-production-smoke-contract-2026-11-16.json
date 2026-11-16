@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "date": "2026-11-16",
+  "scope": "Fixed production smoke persistence operations; not a production backend switch",
+  "local": {
+    "nodeTestsPassed": 481,
+    "infrastructurePythonTestsPassed": 57,
+    "terraformMockPlansPassed": 19,
+    "actualSQLiteMigrations": true,
+    "forgedAndCopiedIdentityRejected": true,
+    "changedIdentityMutationRejected": true,
+    "interruptedCredentialCreationReconciled": true
+  },
+  "remote": {
+    "realDisposableD1": true,
+    "actualMigratedSchema": true,
+    "syntheticCreatePasswordExpiryCleanup": true,
+    "productionWorkerMetadataMocked": true,
+    "temporaryDatabaseDeleted": true,
+    "productionDatabaseChanged": false,
+    "uploadToAnswerE2E": false
+  },
+  "deployment": {
+    "featureDefault": false,
+    "newIamReadScope": [
+      "D1 migration credential",
+      "synthetic identity signing key"
+    ],
+    "backendSwitchIncluded": false
+  }
+}
