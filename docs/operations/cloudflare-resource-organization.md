@@ -482,3 +482,23 @@ final wiring remain necessary before enabling it.
 [Completion-gate evidence](evidence/d1-resource-completion-2026-11-17.json)
 records unit tests and actual DynamoDB Local conditional release with explicit
 provider/E2E fixtures; no production hold was released.
+
+
+`d1-resource-smoke-proof.cjs` verifies native E2E provenance using read-only
+CodeBuild project/build metadata. Preparation requires the fixed smoke project,
+S3 version pin, canonical reviewed-source tag, D1 mode and single-build limit.
+Verification checks unchanged project/source/buildspec/role/runtime, an exact
+execution environment with AI verification enabled, successful completion and
+start/end times after the recorded resume boundary. AWS SDK Date objects retain
+subsecond precision. No build is started and no logs or SSM values are read.
+The resource-owned launcher/worker guard still needs to be connected.
+
+`d1-resource-current-state.cjs` composes completion observations from the persisted
+plans and their verified journal hashes. It reads stable fixed API bindings,
+original consumer/deployment admission, exact source/target fence state and the
+native smoke proof. The native proof is tied to the E2E step's API version and
+binding hash; API/journal state is rechecked after the parallel probes. It returns
+only the fixed completion attestation. Tests use explicit provider fixtures;
+production probes have not been run and no production release is authorized by
+these test results. Pre-promotion abort, post-promotion recovery, owned native
+smoke execution and the full production factory remain outstanding.
