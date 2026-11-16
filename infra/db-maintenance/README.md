@@ -28,7 +28,7 @@ remain unchanged in the private versioned archive bucket. Restore source,
 documentation and verification history remain available. The immutable D1
 retirement manifest's `legacyPostgresBackup` field is historical provenance;
 its referenced PostgreSQL archive has been disposed of and is no longer a
-recovery source. Do not claim that the old 27 tables can still be restored.
+recovery source. These S3 archives can no longer restore the old 27 tables.
 This disposal changes neither on-premises PostgreSQL support nor current D1
 recovery resources, credentials, CI/CD or application configuration.
 
