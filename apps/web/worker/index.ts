@@ -44,6 +44,15 @@ async function serve(request: Request, env: WebEnv): Promise<Response> {
     return serveLandingVideo(request, env.ASSETS);
   }
 
+  // Search Console still discovers these old marketing URLs. Redirect only
+  // the two matching use cases, directly to their current localized guides.
+  const legacyUseCase = pathname.match(/^\/(?:(ja|en)\/)?use-cases\/(education|corporate-training)\/?$/);
+  if (legacyUseCase && (request.method === 'GET' || request.method === 'HEAD')) {
+    const guide = legacyUseCase[2] === 'education' ? 'class-recordings-for-review' : 'training-video-questions';
+    url.pathname = `${legacyUseCase[1] === 'en' ? '/en' : ''}/guides/${guide}`;
+    return Response.redirect(url.href, 301);
+  }
+
   if (pathname === '/ja' || pathname === '/ja/' || pathname.startsWith('/ja/')) {
     const rest = pathname === '/ja' || pathname === '/ja/' ? '/' : pathname.slice(3);
     // Assign the pathname so /ja//example.com cannot become an external redirect.

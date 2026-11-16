@@ -19,6 +19,15 @@ VideoQ serves real page content in the first HTML, with one page per search inte
 
 The plan cards on `/pricing` and the Free plan limits on the landing page still load in the browser, because prices come from Stripe at request time and must not go stale in a build.
 
+## Legacy marketing entry points
+
+Search Console still reports `/ja/use-cases/corporate-training` and
+`/use-cases/education`. The product Worker maps these two old use-case paths
+(including locale and trailing-slash variants) to the matching current training
+or class-recording guide with a permanent GET/HEAD redirect. Query strings stay
+on the same origin. Unknown use cases and retired API documentation keep their
+404 responses; this is not a catch-all redirect to the homepage.
+
 ## Search intents and pages
 
 Search Console supplies observed queries and positions, but not the search volume for candidate queries with no impressions. This table is a hypothesis to test, not a demand ranking.

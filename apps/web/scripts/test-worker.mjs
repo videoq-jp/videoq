@@ -329,3 +329,29 @@ test('fingerprinted build assets can be reused without revalidation', async () =
     assert.doesNotMatch(response.headers.get('cache-control') ?? '', /immutable/, path);
   }
 });
+
+
+test('known legacy use cases reach their matching guides in one redirect', async () => {
+  for (const [useCase, guide] of [['education', 'class-recordings-for-review'], ['corporate-training', 'training-video-questions']]) {
+    for (const prefix of ['', '/ja', '/en']) {
+      for (const suffix of ['', '/']) {
+        const path = `${prefix}/use-cases/${useCase}${suffix}?source=search&next=https://example.com`;
+        const targetPath = `${prefix === '/en' ? '/en' : ''}/guides/${guide}`;
+        for (const method of ['GET', 'HEAD']) {
+          const response = await worker.fetch(`https://videoq.jp${path}`, { method, redirect: 'manual' });
+          assert.equal(response.status, 301, path);
+          securityHeaders(response);
+          const target = new URL(response.headers.get('location'));
+          assert.equal(target.origin, 'https://videoq.jp');
+          assert.equal(target.pathname, targetPath);
+          assert.equal(target.search, '?source=search&next=https://example.com');
+          const destination = await worker.fetch(target.href, { method, redirect: 'manual' });
+          assert.equal(destination.status, 200, path);
+        }
+      }
+    }
+  }
+  for (const path of ['/use-cases/unknown', '/use-cases/education/details', '/use-cases/education.example.com', '/docs/videos']) {
+    assert.equal((await worker.fetch(path, { redirect: 'manual' })).status, 404, path);
+  }
+});
