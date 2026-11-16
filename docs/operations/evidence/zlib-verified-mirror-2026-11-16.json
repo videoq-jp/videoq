@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-16",
+  "failedMergeGroupRun": 43763331554,
+  "failedJob": 132962809783,
+  "failure": "received zlib archive bytes did not match the pin; original bad payload was not retained",
+  "sha256PinUnchanged": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+  "officialSources": [
+    "https://zlib.net/",
+    "https://github.com/madler/zlib/releases/tag/v1.4"
+  ],
+  "downloadedOfficialMirrorsByteIdentical": true,
+  "actualFallbackDownloadVerified": true,
+  "sourceFetchTests": 10,
+  "localPython": "3.12",
+  "localDockerArchitecture": "arm64",
+  "sqliteBuildStage": "passed, including zlib make check and write-error canary",
+  "packageAndCanaryRecheck": "passed",
+  "temporaryImageTagRemoved": true,
+  "validationNotWeakened": true,
+  "sourceHashes": {
+    "apps/inference/whisper/security/build-zlib.sh": "a10e40710c7f8e9a0abc2629cb69ed1452af587c8cb1e774e8b8419dd92fc7d1",
+    "apps/inference/whisper/security/fetch-verified.sh": "ee9525c7e38b122d59cab200ddea1d855e0f4631d896543a5775af813ede057c",
+    "apps/inference/whisper/tests/test_verified_source.py": "7b64c800cac3d9208552033c44e8df55c9889a5d0693d578711a31a9cd7c511a"
+  }
+}

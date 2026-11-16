@@ -470,3 +470,15 @@ lost-response recovery. The ASL definition also passes the AWS validation API.
 These checks do not constitute a live production audit or complete the writer-stop
 and production inverse-restore operations. No new IAM grants, resources or schedule
 changes are needed for this preparation route.
+
+## Requesting the read-only managed-login preparation
+
+`Maintain Neon Credentials` exposes `operation=audit` with the typed
+`audit_inspection=postgres-login-fence` selector. The default `none` preserves the
+existing age audit/rotation/recovery requests. The selector is rejected for rotate
+or rollback; it cannot supply SQL, targets or build overrides. The fixed Node
+selector calls the existing metadata-only Python client, and both retain the
+canonical main/repository checks. It uses the existing protected
+`production-db-maintenance` environment and invocation role. No new IAM grant or
+DB credential is given to GitHub. Dispatching this inspection prepares the private
+plan inside AWS; it does not install/release a fence or stop application traffic.
