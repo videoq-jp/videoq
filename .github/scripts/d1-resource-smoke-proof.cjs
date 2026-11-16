@@ -55,6 +55,13 @@ function createResourceSmokeProof({aws,assertExecutor,run,source,executorSha256,
    const variables={MAINTENANCE_RUN_ID:run,MAINTENANCE_SOURCE_SHA:source,MAINTENANCE_STAGE:'smoke',MAINTENANCE_KIND:'smoke',VERIFY_AI_ANSWERS:'true',VIDEOQ_D1_RESOURCE_SMOKE:'true',VIDEOQ_D1_RESOURCE_ACTION_ID:plan.actionId,VIDEOQ_D1_RESOURCE_PLAN_SHA256:stepPlanSha256,VIDEOQ_D1_RESOURCE_EXECUTOR_SHA256:executorSha256,VIDEOQ_D1_RESOURCE_DEFINITION_SHA256:definitionSha256};
    return{projectName:PROJECT,sourceVersion:plan.sourceVersion,idempotencyToken:plan.actionId,environmentVariablesOverride:Object.entries(variables).map(([name,value])=>({name,value,type:'PLAINTEXT'}))};
   },
+  async status(plan,buildArn,stepPlanSha256){
+   const build=await observedBuild(plan,buildArn,stepPlanSha256);
+   if(build.buildStatus==='IN_PROGRESS'&&build.buildComplete===false)return{state:'pending'};
+   if(build.buildStatus==='SUCCEEDED'&&build.buildComplete===true)return{state:'succeeded',proof:await this.verify(plan,buildArn,stepPlanSha256)};
+   if(['FAILED','FAULT','STOPPED','TIMED_OUT'].includes(build.buildStatus)&&build.buildComplete===true)return{state:'failed'};
+   throw Error('RESOURCE_NATIVE_BUILD_STATUS_REQUIRED');
+  },
   async matchesBuild(plan,buildArn,stepPlanSha256){
    try{await observedBuild(plan,buildArn,stepPlanSha256);return true;}catch(error){
     if(['RESOURCE_NATIVE_BUILD_REQUIRED','RESOURCE_NATIVE_SUCCESSFUL_BUILD_REQUIRED','RESOURCE_NATIVE_FIXED_EXECUTION_REQUIRED'].includes(error.message))return false;

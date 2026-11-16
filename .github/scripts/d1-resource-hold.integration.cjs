@@ -76,7 +76,12 @@ async function fixture(){
   if(local.TransactItems){for(const item of local.TransactItems)for(const operation of Object.values(item))remap(operation);}else remap(local);
   return aws(service,command,local);
  }});
- return{start,get,put,release,journal,completion};
+ const metadataAws=async(service,command,value)=>{
+  assert.equal(service,'ddb');const local=structuredClone(value),remap=op=>{assert.equal(op.TableName,'videoq-db-maintenance-prod');op.TableName=table;};
+  if(local.TransactItems){for(const item of local.TransactItems)for(const operation of Object.values(item))remap(operation);}else remap(local);
+  return aws(service,command,local);
+ };
+ return{start,get,put,release,journal,completion,metadataAws};
 }
 function completed(row,phase='verified'){
  return{...row,resource_phase:{S:phase},release_requested:{BOOL:true},api_admission_restored:{BOOL:true},consumer_admission_restored:{BOOL:true},deployment_admission_restored:{BOOL:true},resource_completion_receipt:{S:'synthetic receipt'},resource_completion_receipt_sha256:{S:'c'.repeat(64)}};
@@ -163,4 +168,20 @@ test('completion gate preserves owner until durable proof and real conditional A
  current.sourceFenced=false;await assert.rejects(completion.request(),/CURRENT_PROOF/);assert.equal((await f.get('run#'+r.run_id)).release_requested.BOOL,false);
  current.sourceFenced=true;const receipt=await completion.request();assert.equal(receipt.releaseRequested,true);assert.ok(await f.get('maintenance'));
  const owner=await f.get('maintenance');await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.deepEqual(await completion.request(),receipt);
+});
+
+test('native launch registration uses real revision-checked transactions before worker access',async()=>{
+ const f=await fixture(),r=await f.start('7'.repeat(32)),executorToken='8'.repeat(64),j=f.journal(r.run_id,{executorToken});await j.claimExecutor();
+ for(const step of RESOURCE_STEPS.slice(0,10)){const sha=resourceDigest({step});await j.begin({step,planSha256:sha});await j.verify({step,planSha256:sha,receiptSha256:resourceDigest({verified:step})});}
+ const plan={nativePlan:{actionId:'9'.repeat(32),sourceVersion:'immutable',notBefore:'2026-11-17T00:00:00Z'}};await j.begin({step:'verify-e2e',planSha256:resourceDigest(plan)});
+ const arn='arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-smoke-prod:11111111-1111-1111-1111-111111111111';let starts=0,loseWrite=true;
+ const launcher=require('./d1-resource-smoke-launcher.cjs').createResourceSmokeLauncher({run:r.run_id,source:SHA,executorSha256:resourceDigest({executorToken}),journal:j,enabled:true,
+  proof:{launchInput:async()=>({projectName:'videoq-db-smoke-prod',sourceVersion:'immutable',idempotencyToken:plan.nativePlan.actionId}),matchesBuild:async()=>true,status:async()=>({state:'pending'})},
+  aws:async(service,command,input)=>{
+   if(service==='ddb'){const result=await f.metadataAws(service,command,input);if(command==='TransactWriteItems'&&loseWrite){loseWrite=false;throw Error('SYNTHETIC_LOST_WRITE_RESPONSE');}return result;}
+   assert.equal(command,'StartBuild');starts++;const row=await f.get('run#'+r.run_id);assert.equal(row.resource_smoke_action_id.S,plan.nativePlan.actionId);assert.equal(row.resource_smoke_build_arn,undefined);return{build:{arn}};
+  }});
+ await launcher.advance(plan);assert.equal((await f.get('run#'+r.run_id)).resource_smoke_build_arn.S,arn);await launcher.advance(plan);assert.equal(starts,1);
+ await j.verify({step:'verify-e2e',planSha256:resourceDigest(plan),receiptSha256:'a'.repeat(64)});assert.equal(await launcher.readBuild(plan),arn);
+ const owner=await f.get('maintenance');await f.put({...owner,execution_arn:{S:owner.execution_arn.S+'changed'}});await assert.rejects(launcher.readBuild(plan),/OWNERSHIP/);
 });

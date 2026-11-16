@@ -4,12 +4,14 @@ const {resourceDigest}=require('./d1-resource-journal.cjs');
 const TABLE='videoq-db-maintenance-prod',PROJECT='videoq-db-smoke-prod';
 const ARN=/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-smoke-prod:[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
 function createResourceSmokeLauncher({aws,journal,proof,run,source,executorSha256,enabled=false}){
- if(typeof aws!=='function'||['assertExecutor','assertPending'].some(k=>typeof journal?.[k]!=='function')||typeof proof?.launchInput!=='function'||typeof proof?.matchesBuild!=='function'||!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||!/^[a-f0-9]{64}$/.test(executorSha256??''))throw Error('RESOURCE_SMOKE_LAUNCH_CONTEXT_REQUIRED');
+ if(typeof aws!=='function'||['assertExecutor','assertPending','inspect'].some(k=>typeof journal?.[k]!=='function')||typeof proof?.launchInput!=='function'||typeof proof?.matchesBuild!=='function'||!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||!/^[a-f0-9]{64}$/.test(executorSha256??''))throw Error('RESOURCE_SMOKE_LAUNCH_CONTEXT_REQUIRED');
  const key={pk:{S:'run#'+run}},execution='arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run;
  const read=async()=>(await aws('ddb','GetItem',{TableName:TABLE,Key:key,ConsistentRead:true})).Item;
- async function context(plan){
+ async function context(plan,pending=true){
   if(!enabled)throw Error('RESOURCE_SMOKE_LAUNCH_DISABLED');
-  const sha=resourceDigest(plan);await journal.assertExecutor();await journal.assertPending({step:'verify-e2e',planSha256:sha});
+  const sha=resourceDigest(plan);await journal.assertExecutor();
+  if(pending)await journal.assertPending({step:'verify-e2e',planSha256:sha});
+  else{const state=await journal.inspect(),step=state.steps?.find(v=>v.step==='verify-e2e');if(step?.planSha256!==sha||!['intent','verified'].includes(step.state))throw Error('RESOURCE_SMOKE_E2E_RECORD_REQUIRED');}
   const input=await proof.launchInput(plan.nativePlan,sha),row=await read();
   if(row?.execution_arn?.S!==execution||row.source_sha?.S!==source||row.kind?.S!=='d1-resource-hold'||row.resource_phase?.S!=='holding'||row.release_requested?.BOOL!==false||row.resource_executor_sha256?.S!==executorSha256||! /^(0|[1-9][0-9]*)$/.test(row.resource_revision?.N??'')||!Number.isSafeInteger(Number(row.resource_revision.N))||Number(row.resource_revision.N)>=Number.MAX_SAFE_INTEGER)throw Error('RESOURCE_SMOKE_LAUNCH_OWNERSHIP_REQUIRED');
   return{sha,input,row};
@@ -42,7 +44,22 @@ function createResourceSmokeLauncher({aws,journal,proof,run,source,executorSha25
   const latest=await context(plan);if(!matches(latest.row,plan,latest.sha)||latest.row.resource_smoke_build_arn)throw Error('RESOURCE_SMOKE_REGISTRATION_CHANGED');
   await persist(plan,latest.row,latest.sha,found[0]);return{buildArn:found[0],pending:true};
  }
- return{async advance(plan){
+ return{
+  async observe(plan){
+   const c=await context(plan);
+   if(!c.row.resource_smoke_action_id)return{state:'not-started'};
+   if(!matches(c.row,plan,c.sha))throw Error('RESOURCE_SMOKE_ACTION_CHANGED');
+   const arn=c.row.resource_smoke_build_arn?.S;
+   if(!arn)return{state:'unregistered'};
+   if(!ARN.test(arn)||typeof proof.status!=='function')throw Error('RESOURCE_SMOKE_REGISTERED_BUILD_CHANGED');
+   const status=await proof.status(plan.nativePlan,arn,c.sha);await journal.assertExecutor();return status;
+  },
+  async readBuild(plan){
+   const c=await context(plan,false),arn=c.row.resource_smoke_build_arn?.S;
+   if(!matches(c.row,plan,c.sha)||!await buildMatches(arn,c.input,plan))throw Error('RESOURCE_SMOKE_REGISTERED_BUILD_CHANGED');
+   await journal.assertExecutor();return arn;
+  },
+  async advance(plan){
   let c=await context(plan);
   if(c.row.resource_smoke_action_id){
    if(!matches(c.row,plan,c.sha))throw Error('RESOURCE_SMOKE_ACTION_CHANGED');

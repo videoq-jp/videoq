@@ -6,8 +6,8 @@ function fixture(options={}){
  const plan={nativePlan:{actionId:'c'.repeat(32),sourceVersion:'immutable',notBefore:'2026-11-17T00:00:00Z'}},calls=[],steps=[];
  let row={execution_arn:{S:'arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run},source_sha:{S:source},kind:{S:'d1-resource-hold'},resource_phase:{S:'holding'},release_requested:{BOOL:false},resource_executor_sha256:{S:executorSha256},resource_revision:{N:'1'}},build,owned=true;
  const input={projectName:'videoq-db-smoke-prod',sourceVersion:'immutable',idempotencyToken:plan.nativePlan.actionId,environmentVariablesOverride:[{name:'VIDEOQ_D1_RESOURCE_ACTION_ID',value:plan.nativePlan.actionId,type:'PLAINTEXT'},{name:'VIDEOQ_D1_RESOURCE_PLAN_SHA256',value:resourceDigest(plan),type:'PLAINTEXT'}]};
- const journal={assertExecutor:async()=>{if(!owned)throw Error('RESOURCE_EXECUTOR_LOST');},assertPending:async p=>assert.deepEqual(p,{step:'verify-e2e',planSha256:resourceDigest(plan)}),inspect:async()=>{}};
- const proof={launchInput:async()=>structuredClone(input),matchesBuild:async()=>build?.sourceVersion===input.sourceVersion&&input.environmentVariablesOverride.every(v=>build.environment.environmentVariables.some(w=>resourceDigest(v)===resourceDigest(w)))};
+ const journal={assertExecutor:async()=>{if(!owned)throw Error('RESOURCE_EXECUTOR_LOST');},assertPending:async p=>assert.deepEqual(p,{step:'verify-e2e',planSha256:resourceDigest(plan)}),inspect:async()=>({steps:[{step:'verify-e2e',state:'verified',planSha256:resourceDigest(plan)}]})};
+ const proof={launchInput:async()=>structuredClone(input),status:async()=>({state:'pending'}),matchesBuild:async()=>build?.sourceVersion===input.sourceVersion&&input.environmentVariablesOverride.every(v=>build.environment.environmentVariables.some(w=>resourceDigest(v)===resourceDigest(w)))};
  const aws=async(service,command,arg)=>{
   calls.push({service,command,arg});
   if(command==='GetItem')return{Item:structuredClone(row)};
@@ -49,4 +49,9 @@ test('disabled launcher and changed action refuse mutation; incomplete inventory
  const f=fixture({enabled:false});await assert.rejects(f.launcher.advance(f.plan),/DISABLED/);assert.equal(f.calls.length,0);
  const g=fixture();await g.launcher.advance(g.plan);g.row.resource_smoke_action_id.S='d'.repeat(32);await assert.rejects(g.launcher.advance(g.plan),/ACTION_CHANGED/);
  const h=fixture({lostStart:true,paginationLoop:true});await assert.rejects(h.launcher.advance(h.plan));await assert.rejects(h.launcher.advance(h.plan),/INVENTORY_INCOMPLETE/);assert.equal(h.row.resource_smoke_build_arn,undefined);
+});
+
+test('read-only observation waits for registration and completed journal can locate owned build',async()=>{
+ const f=fixture();assert.deepEqual(await f.launcher.observe(f.plan),{state:'not-started'});assert.equal(f.calls.filter(c=>c.command==='StartBuild').length,0);
+ await f.launcher.advance(f.plan);const count=f.calls.filter(c=>c.command==='TransactWriteItems').length;assert.deepEqual(await f.launcher.observe(f.plan),{state:'pending'});assert.equal(await f.launcher.readBuild(f.plan),arn);assert.equal(f.calls.filter(c=>c.command==='TransactWriteItems').length,count);
 });

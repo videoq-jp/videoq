@@ -2,7 +2,7 @@
   "date": "2026-11-17",
   "scope": "disabled owned native CodeBuild launch and registration",
   "nodeTests": {
-    "passed": 605,
+    "passed": 612,
     "failed": 0
   },
   "checks": [
@@ -11,10 +11,18 @@
     "lost start metadata reconciliation without retry",
     "lost registration response exact readback",
     "revoked ownership and changed registration refusal",
-    "bounded incomplete inventory refusal"
+    "bounded incomplete inventory refusal",
+    "stable fixed production Worker bindings before and after E2E",
+    "native pending/failed/successful distinction",
+    "real DynamoDB registration transactions and post-verification lookup"
   ],
   "productionBuildStarted": false,
   "productionIamApplied": false,
   "productionFactoryWired": false,
-  "realProviderRehearsalExecuted": false
+  "realProviderRehearsalExecuted": false,
+  "dynamoDbLocalTests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "e2eAdapterImplemented": true
 }

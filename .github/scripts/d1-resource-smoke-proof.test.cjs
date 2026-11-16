@@ -36,3 +36,8 @@ test('running build reconciliation requires exact reviewed role, runtime and com
  f.build.serviceRole='unreviewed-role';assert.equal(await f.proof.matchesBuild(plan,arn,'d'.repeat(64)),false);f.build.serviceRole=f.project.serviceRole;
  f.build.environment.environmentVariables.push({name:'UNREVIEWED',value:'yes',type:'PLAINTEXT'});assert.equal(await f.proof.matchesBuild(plan,arn,'d'.repeat(64)),false);
 });
+test('native build status distinguishes pending, failed and verified completion',async()=>{
+ const f=fixture(),plan=await f.proof.prepare('2026-11-17T00:00:00Z');f.build.buildStatus='IN_PROGRESS';f.build.buildComplete=false;delete f.build.endTime;
+ assert.deepEqual(await f.proof.status(plan,arn,'d'.repeat(64)),{state:'pending'});f.build.buildStatus='FAILED';f.build.buildComplete=true;f.build.endTime='2026-11-17T00:15:00Z';assert.deepEqual(await f.proof.status(plan,arn,'d'.repeat(64)),{state:'failed'});
+ f.build.buildStatus='SUCCEEDED';assert.equal((await f.proof.status(plan,arn,'d'.repeat(64))).state,'succeeded');
+});
