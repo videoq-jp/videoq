@@ -1,3 +1,4 @@
+import { applicationTrafficPaused, migrationPausedResponse } from "./lib/migration-traffic";
 import { createApp, type AppType } from "./app";
 import { runScheduledMaintenance } from "./lib/scheduled-maintenance";
 import type { Bindings } from "./types/bindings";
@@ -10,6 +11,7 @@ const app = createApp();
 
 export default {
   fetch(request, env, ctx) {
+    if (applicationTrafficPaused(env) && isChatExecutionRequest(request)) return migrationPausedResponse();
     if (isChatExecutionRequest(request)) return dispatchChatExecution(request, env);
     return app.fetch(request, env, ctx);
   },

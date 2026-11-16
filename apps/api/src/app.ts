@@ -1,3 +1,4 @@
+import { applicationTrafficPaused, migrationPausedResponse } from "./lib/migration-traffic";
 import { features } from "./lib/deployment";
 import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
@@ -46,6 +47,11 @@ export function createApp() {
   app.use("*", accessLogger);
   app.use("*", securityHeaders);
   app.use("*", corsMiddleware);
+  app.use("*", async (c, next) => {
+    const liveness = c.req.path === "/health" && ["GET", "HEAD"].includes(c.req.method);
+    if (!liveness && applicationTrafficPaused(c.env)) return migrationPausedResponse();
+    await next();
+  });
 
   // Bound protocol bodies before auth, JSON parsing or webhook signature checks.
   // Binary uploads use their separate upload route; chat keeps its stricter cap.
