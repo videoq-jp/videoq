@@ -313,3 +313,14 @@ Redirects and automatic retries are disabled. Files are limited to 1 GiB, and
 unexpected URL hosts are refused. Tests use private local files and fake HTTP;
 no signed production URL has been downloaded or uploaded. Durable transfer
 substeps, dump validation and full recovery remain required before live use.
+
+`infra/scripts/d1_resource_dump.py` validates the private source SQL before
+upload by restoring it to an isolated in-memory SQLite database. It checks the
+file proof before and after, retains transaction boundaries while reading
+complete SQL statements, denies database attachment/extensions/unsafe pragmas,
+and compares full schema/values/sequence plus exact owned fences against the
+frozen source snapshot. The SQL artifact is unchanged. An unexpected dump
+format or incomplete restore fails closed; the validator does not repair a dump
+or substitute maximum visible IDs for sequence high-water marks. Tests cover
+round-trip equality, corrupted values/sequence, missing fences/indexes and
+attempted filesystem access. No production export has been restored yet.

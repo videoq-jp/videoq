@@ -23,7 +23,7 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 108,
+    "passed": 113,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
@@ -31,7 +31,8 @@
     "exactValueVerifier": 8,
     "verificationTransport": 5,
     "transferApi": 5,
-    "privateSqlFiles": 6
+    "privateSqlFiles": 6,
+    "localDumpValidation": 5
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
