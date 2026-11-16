@@ -44,3 +44,28 @@ test('symlinked artifacts fail before credentials are used', () => {
     assert.throws(() => rejectSymlinks(directory), /symlink rejected/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('D1 cutover upload carries the exact production database and both vector indexes', () => {
+  const production = {
+    name: 'videoq-api', vars: { ENVIRONMENT: 'production', DEPLOYMENT_EDITION: 'cloud', PERSISTENCE_BACKEND: 'd1', MIGRATION_TRAFFIC_STATE: 'paused' },
+    d1_databases: [{ binding: 'DB', database_name: 'production-copy', database_id: '11111111-2222-4333-8444-555555555555', migrations_dir: 'drizzle-d1' }],
+    vectorize: [{ binding: 'SCENE_VECTORIZE_1536', index_name: 'production-1536' }, { binding: 'SCENE_VECTORIZE_768', index_name: 'production-768' }],
+  };
+  const result = deploymentConfig({ name: 'videoq-api-dev', env: { production } }, 'api', '/artifacts');
+  assert.deepEqual(result.d1_databases, production.d1_databases);
+  assert.deepEqual(result.vectorize, production.vectorize);
+  assert.equal(result.vars.MIGRATION_TRAFFIC_STATE, 'paused');
+  assert.equal(result.vars.PERSISTENCE_BACKEND, 'd1');
+  assert.equal(result.hyperdrive, undefined);
+});
+
+test('omitted production bindings do not inherit development data stores or variables', () => {
+  const original = { name: 'videoq-api-dev', vars: { ENVIRONMENT: 'development' },
+    d1_databases: [{ binding: 'DB', database_id: 'development' }], vectorize: [{ binding: 'SCENE_VECTORIZE_1536', index_name: 'development' }],
+    hyperdrive: [{ binding: 'HYPERDRIVE', id: 'development' }], r2_buckets: [{ binding: 'VIDEO_BUCKET', bucket_name: 'development' }],
+    durable_objects: { bindings: [{ name: 'TASK_SCHEDULER', class_name: 'DevOnly' }] },
+    env: { production: { name: 'videoq-api' } } };
+  const result = deploymentConfig(original, 'api', '/artifacts');
+  for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects']) assert.equal(result[key], undefined);
+});

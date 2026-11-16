@@ -5,12 +5,19 @@ const { resolve, join } = require('node:path');
 function deploymentConfig(original, component, artifactRoot) {
   if (!['api', 'web', 'docs'].includes(component)) throw new Error('Unknown component');
   const production = component === 'docs' ? original : { ...original, ...original.env?.production };
+  if (component !== 'docs') {
+    // Wrangler bindings are non-inheritable. A development database must never
+    // become the production target merely because env.production omits it.
+    for (const key of ['vars', 'hyperdrive', 'r2_buckets', 'durable_objects', 'd1_databases', 'vectorize']) {
+      if (!Object.hasOwn(original.env?.production ?? {}, key)) delete production[key];
+    }
+  }
   if (production.name !== `videoq-${component}`) throw new Error('Unexpected production Worker name');
   // Construct a new config instead of trusting a build-generated config. Do not
   // allow custom build hooks, containers, or programmatic configuration here.
   const keys = ['name', 'compatibility_date', 'compatibility_flags', 'workers_dev', 'preview_urls',
     'observability', 'vars', 'routes', 'hyperdrive', 'r2_buckets', 'durable_objects',
-    'migrations', 'triggers', 'rules'];
+    'migrations', 'triggers', 'rules', 'd1_databases', 'vectorize'];
   const config = Object.fromEntries(keys.filter(key => Object.hasOwn(production, key)).map(key => [key, production[key]]));
   if (component !== 'docs') config.main = join(artifactRoot, component, 'worker', 'index.js');
   if (component === 'web') {
