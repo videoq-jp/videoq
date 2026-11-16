@@ -28,7 +28,11 @@ const deleteByIds = vi.fn(async (ids: string[]) => {
   ids.forEach(id => vectors.delete(id));
   return { mutationId: "delete-fixture" };
 });
-const getByIds = vi.fn((ids: string[]) => Promise.resolve(ids.flatMap(id => vectors.has(id) ? [vectors.get(id)!] : [])));
+const readVectors = async (ids: string[]) => {
+  if (ids.length > 20) throw new Error("Vectorize getByIds accepts at most 20 IDs");
+  return ids.flatMap(id => vectors.has(id) ? [vectors.get(id)!] : []);
+};
+const getByIds = vi.fn(readVectors);
 const queryById = vi.fn(async (id: string) => ({ matches: vectors.has(id) ? [{ ...vectors.get(id)!, score: 1 }] : [] }));
 const index = { upsert, deleteByIds, getByIds, queryById, query: () => Promise.resolve({ matches: [...vectors.values()].map(value => ({ ...value, score: value.id === "forged-version" ? 0.99 : 0.9 })) }) } as unknown as Vectorize;
 const embedding = Array.from({ length: 1536 }, () => 0.25);
@@ -41,7 +45,8 @@ const publish = async (runId: string, content = "Authoritative D1 content", dime
 };
 beforeEach(async () => {
   fixture = await createD1Fixture(); vectors.clear(); upsertHook = undefined; deleteHook = undefined;
-  upsert.mockClear(); deleteByIds.mockClear(); getByIds.mockClear(); queryById.mockReset();
+  upsert.mockClear(); deleteByIds.mockClear(); getByIds.mockReset(); queryById.mockReset();
+  getByIds.mockImplementation(readVectors);
   queryById.mockImplementation(async id => ({ matches: vectors.has(id) ? [{ ...vectors.get(id)!, score: 1 }] : [] }));
   await fixture.database.prepare(`INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes)
     VALUES ('owner','owner','owner@example.test',0,0,0,0)`).run();
@@ -364,5 +369,40 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     expect(await fixture.database.prepare("SELECT verified_at FROM scene_index_tasks WHERE operation='upsert'").first("verified_at")).toBeNull();
     expect(await reconcileMissingSceneVectors(fixture.database, index, 1536)).toEqual({ verified: 1, repairQueued: 0 });
   });
+
+  it.each([21, 50, 100])("verifies all %i due scenes within Vectorize's request limit", async count => {
+    expect(await writer.start({ runId: "batch-verification", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: count })).toBe(true);
+    const scenes = Array.from({ length: count }, (_, i) => ({ ...scene(), id: "scene-" + i }));
+    for (let offset = 0; offset < scenes.length; offset += 20) {
+      expect(await writer.stage("batch-verification", "owner", scenes.slice(offset, offset + 20))).toBe(true);
+    }
+    expect(await writer.publish("batch-verification", "owner")).toBe(true);
+    expect(await sync(count)).toMatchObject({ completed: count, failed: 0 });
+    await fixture.database.prepare("UPDATE scene_index_tasks SET completed_at='2000-01-01T00:00:00.000Z' WHERE operation='upsert'").run();
+    getByIds.mockClear();
+    expect(await reconcileMissingSceneVectors(fixture.database, index, 1536, count)).toEqual({ verified: count, repairQueued: 0 });
+    const requested = getByIds.mock.calls.flatMap(([ids]) => ids);
+    expect(getByIds.mock.calls.every(([ids]) => ids.length <= 20)).toBe(true);
+    expect(new Set(requested)).toEqual(new Set(vectors.keys()));
+    expect(requested).toHaveLength(count);
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE verified_at IS NOT NULL").first("n")).toBe(count);
+  }, 30_000);
+
+  it("retries the whole verification page when a later Vectorize batch fails", async () => {
+    const count = 21;
+    expect(await writer.start({ runId: "batch-failure", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: count })).toBe(true);
+    const scenes = Array.from({ length: count }, (_, i) => ({ ...scene(), id: "scene-" + i }));
+    for (let offset = 0; offset < scenes.length; offset += 20) {
+      expect(await writer.stage("batch-failure", "owner", scenes.slice(offset, offset + 20))).toBe(true);
+    }
+    expect(await writer.publish("batch-failure", "owner")).toBe(true);
+    expect(await sync(count)).toMatchObject({ completed: count });
+    await fixture.database.prepare("UPDATE scene_index_tasks SET completed_at='2000-01-01T00:00:00.000Z' WHERE operation='upsert'").run();
+    getByIds.mockImplementationOnce(readVectors).mockRejectedValueOnce(new Error("test-provider-secret"));
+    await expect(reconcileMissingSceneVectors(fixture.database, index, 1536)).rejects.toThrow("Vectorize index verification failed");
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE verified_at IS NOT NULL").first("n")).toBe(0);
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM external_tasks").first("n")).toBe(0);
+    expect(await reconcileMissingSceneVectors(fixture.database, index, 1536)).toEqual({ verified: count, repairQueued: 0 });
+  }, 30_000);
 
 });
