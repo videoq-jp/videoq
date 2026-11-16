@@ -1,5 +1,5 @@
 import {withPostgresLoginFenceTransaction} from './fenced-postgres-transaction';
-import type {PostgresLoginFencePlan} from './postgres-login-fence';
+import {postgresLoginFencePlanSchema,type PostgresLoginFencePlan} from './postgres-login-fence';
 import {assertRecoveredVisuals,type VisualRecoveryReceipt} from './recover-visual-artifacts';
 import {createHash} from 'node:crypto';
 import type pg from 'pg';
@@ -40,14 +40,36 @@ function normalized(v:unknown,rule:Conversion){if(v===null)return null;return ru
  * PG, active work, unknown coverage and unsupported visual refs. Public schemas
  * require an explicitly matched disposable full-backup database.
  * Writers must be externally fenced; two reads alone do not establish a fence. */
-export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean;visualRecovery?:VisualRecoveryReceipt;limits?:{rowsPerTable:number;bytes:number};restoredDatabase?:string;sequenceHighWater?:Record<string,string>;loginFence?:{connectionString:string;plan:PostgresLoginFencePlan}}){
+export type PostwriteSnapshotOptions={client:pg.Client;schema:string;checkpointSchema:string;manifest:Manifest;rows:RecoveryRows;vectors:RecoveryVector[];writersFenced:boolean;visualRecovery?:VisualRecoveryReceipt;limits?:{rowsPerTable:number;bytes:number};restoredDatabase?:string;sequenceHighWater?:Record<string,string>;loginFence?:{connectionString:string;plan:PostgresLoginFencePlan}};
+/** Existing rehearsal entry remains loopback-only. */
+export async function restorePostwriteSnapshot(o:PostwriteSnapshotOptions){return restoreSnapshot(o,false);}
+
+/** Trusted AWS operator entry. The caller must hold global/admission/D1 fences
+ * and bind these hashes to its durable recovery intent. This function owns a
+ * verified direct-Neon transaction; no caller-supplied client or SQL callback. */
+export async function restoreProductionPostwriteSnapshot(o:Omit<PostwriteSnapshotOptions,'client'|'schema'|'checkpointSchema'|'restoredDatabase'|'loginFence'|'writersFenced'>&{
+ connectionString:string;plan:PostgresLoginFencePlan;upstreamStopped:boolean;
+ expectedSnapshotSha256:string;expectedManifestSha256:string;
+}){
+ const plan=postgresLoginFencePlanSchema.parse(o.plan);
+ const input={rows:structuredClone(o.rows),vectors:structuredClone(o.vectors),sequenceHighWater:structuredClone(o.sequenceHighWater),visualRecovery:o.visualRecovery??null};
+ const manifest=structuredClone(o.manifest),limits=o.limits?{...o.limits}:undefined;
+ if(plan.target.purpose!=='production'||!o.upstreamStopped)fail('Production original login fence and stopped upstream required.');
+ if(!/^[a-f0-9]{64}$/.test(o.expectedSnapshotSha256)||! /^[a-f0-9]{64}$/.test(o.expectedManifestSha256)||recoveryHash(input)!==o.expectedSnapshotSha256||recoveryHash(manifest)!==o.expectedManifestSha256)fail('Production recovery input differs from the pinned intent.');
+ return withPostgresLoginFenceTransaction({connectionString:o.connectionString,plan,upstreamStopped:true,operation:async client=>{
+  const restored=await restoreSnapshot({client,schema:'public',checkpointSchema:'chat_memory',manifest,rows:input.rows,vectors:input.vectors,writersFenced:true,visualRecovery:input.visualRecovery??undefined,limits,sequenceHighWater:input.sequenceHighWater},true);
+  return{...restored,postgresLoginFenceVerified:true};
+ }});
+}
+
+async function restoreSnapshot(o:PostwriteSnapshotOptions,production:boolean){
  const {client,schema,checkpointSchema,manifest,rows}=o;
  const restored=o.restoredDatabase!==undefined;
- if(!o.writersFenced||(!restored&&(!/^recovery_[a-f0-9]{32}$/.test(schema)||checkpointSchema!==schema+'_chat'))||(restored&&(!/^recovery_[a-f0-9]{32}$/.test(o.restoredDatabase!)||schema!=='public'||checkpointSchema!=='chat_memory')))fail('Isolated recovery schemas and stopped writers required.');
+ if(!production&&(!o.writersFenced||(!restored&&(!/^recovery_[a-f0-9]{32}$/.test(schema)||checkpointSchema!==schema+'_chat'))||(restored&&(!/^recovery_[a-f0-9]{32}$/.test(o.restoredDatabase!)||schema!=='public'||checkpointSchema!=='chat_memory'))))fail('Isolated recovery schemas and stopped writers required.');
  const host=(client as unknown as {connectionParameters:{host:string}}).connectionParameters.host;
- if(!['localhost','127.0.0.1','::1'].includes(host))fail('Only local rehearsal PostgreSQL is allowed.');
- if(restored&&(await client.query<{name:string}>('SELECT current_database() AS name')).rows[0].name!==o.restoredDatabase)fail('Restored database fence mismatch.');
- if(o.loginFence&&(!restored||o.loginFence.plan.target.purpose!=='isolated-rehearsal'||o.loginFence.plan.target.databaseName!==o.restoredDatabase||o.loginFence.plan.target.host!==host))fail('Login-fenced restore requires the exact isolated full-backup target.');
+ if(!production&&!['localhost','127.0.0.1','::1'].includes(host))fail('Only local rehearsal PostgreSQL is allowed.');
+ if(!production&&restored&&(await client.query<{name:string}>('SELECT current_database() AS name')).rows[0].name!==o.restoredDatabase)fail('Restored database fence mismatch.');
+ if(!production&&o.loginFence&&(!restored||o.loginFence.plan.target.purpose!=='isolated-rehearsal'||o.loginFence.plan.target.databaseName!==o.restoredDatabase||o.loginFence.plan.target.host!==host))fail('Login-fenced restore requires the exact isolated full-backup target.');
  if(!manifest.mapping_complete)fail('Incomplete schema mapping.');
  const names=manifest.target_insert_order;
  if(Object.keys(rows).length!==names.length||names.some(n=>!Array.isArray(rows[n]))||Object.keys(rows).some(n=>!names.includes(n)))fail('Snapshot inventory mismatch.');
@@ -114,6 +136,7 @@ export async function restorePostwriteSnapshot(o:{client:pg.Client;schema:string
   return {commonTables:verified,scenes:scenes.length,checkpoints:checkpoints.length,pendingWrites:writes.length,sha256:recoveryHash(verified),productionSafe:false};
  };
  try{
+  if(production)return await apply(client);
   if(o.loginFence)return await withPostgresLoginFenceTransaction({connectionString:o.loginFence.connectionString,plan:o.loginFence.plan,upstreamStopped:o.writersFenced,operation:apply});
   await client.query('BEGIN');
   try{const result=await apply(client);await client.query('COMMIT');return result;}
