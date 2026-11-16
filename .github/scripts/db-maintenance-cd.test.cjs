@@ -6,7 +6,10 @@ test('deployment includes runtime, locked dependencies, operations fixtures and 
     'infra/db-maintenance/state-machine.cjs','.github/scripts/neon-admin.cjs','.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs',
     'infra/db-maintenance/build_bundle.py','infra/db-maintenance/deploy.py','infra/db-maintenance/fetch_migration.py',
     '.github/operations-tools/package-lock.json','.github/operations-tools/Dockerfile',
-    '.github/scripts/cutover-postgres-fence.mjs','.github/operations-tools/fixtures/smoke.mp4','apps/demo-video/public/lessons/math.mp4']) assert.equal(relevant(path),true,path);
+    '.github/scripts/cutover-postgres-fence.mjs','.github/operations-tools/fixtures/smoke.mp4','apps/demo-video/public/lessons/math.mp4',
+    'apps/api/scripts/d1-production-recovery.ts','apps/api/scripts/migrations/d1/recovery-authorization.ts',
+    'apps/api/scripts/migrations/d1/postwrite-recovery.ts','apps/api/scripts/migrations/d1/fenced-postgres-transaction.ts',
+    'apps/api/scripts/migrations/d1/recover-visual-artifacts.ts','apps/api/scripts/migrations/d1/visual-artifacts.ts','apps/api/src/shared/media-path.ts']) assert.equal(relevant(path),true,path);
   for (const path of ['apps/web/src/App.tsx','infra/db-maintenance/README.md','docs/guides/testing.md',
     'infra/db-maintenance/terraform/main.tf','infra/db-maintenance/terraform/tests/boundaries.tftest.hcl',
     '.github/operations-tools/fixtures/README.md']) assert.equal(relevant(path),false,path);

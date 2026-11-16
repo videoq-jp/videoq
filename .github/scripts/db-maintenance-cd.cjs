@@ -21,6 +21,9 @@ function relevant(path) {
   if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
   if (['scripts/d1-postgres-login-fence.ts','scripts/migrations/d1/postgres-login-fence.ts','scripts/migrations/d1/postgres-cutover-activity.ts','scripts/d1-migration-manifest.ts','scripts/d1-export.ts','scripts/d1-preserve-legacy.ts',
+    'scripts/d1-production-recovery.ts','scripts/migrations/d1/recovery-authorization.ts',
+    'scripts/migrations/d1/postwrite-recovery.ts','scripts/migrations/d1/fenced-postgres-transaction.ts',
+    'scripts/migrations/d1/recover-visual-artifacts.ts','scripts/migrations/d1/visual-artifacts.ts','src/shared/media-path.ts',
     'scripts/migrations/d1/preserved-tables.ts','scripts/migrations/d1/verified-postgres-source.ts','scripts/migrations/d1/private-input.ts','scripts/migrations/d1/export.ts','scripts/migrations/d1/manifest.ts',
     'scripts/migrations/d1/archive-format.ts','scripts/migrations/d1/sequence-format.ts','scripts/migrations/d1/verify-archive.ts',
     'src/persistence/postgres/read-snapshot.ts'].some(name=>path==='apps/api/'+name)) return true;

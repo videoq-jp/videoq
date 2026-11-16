@@ -491,3 +491,8 @@ The optional [local admission entry point](../../docs/operations/cutover-admissi
 It reads no DB credential or SSM value, executes no SQL, changes no consumer mapping and starts/releases no hold. Its AWS/gh child environments are separate from the Cloudflare credential. The backend baseline is persisted before workflow admission changes, and pre-write restoration rejects a changed backend, inconsistent consumers or any fence-mutation marker. Run one operator serially and reconcile saved plans with actual state before retrying. This does not implement distributed command ownership or post-write handoff. No new capability is activated by adding this code.
 
 Managed-login fence install/release now runs as fixed operations inside the same owned AWS activity stage; see [the execution and recovery contract](../../docs/operations/cutover-postgres-fence.md). This does not enable the infrastructure flags or implement post-data-write backend handoff.
+
+The [production recovery child](../../docs/operations/production-recovery-child.md)
+is packaged with the operator's locked dependencies. It requires a digest-bound
+parent grant before its fenced database transaction. Its AWS parent stage and
+post-write handoff are not yet enabled; packaging alone is not cutover readiness.
