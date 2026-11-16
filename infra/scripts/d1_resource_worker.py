@@ -43,12 +43,16 @@ def main():
                 or request['version'] != 1 or request['enabled'] is not True or not isinstance(request['input'], dict)):
             raise ValueError('RESOURCE_WORKER_DISABLED')
         action, value = request['action'], request['input']
-        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'prepare-copy', 'advance-copy', 'inspect-copy'):
+        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
             raise ValueError('RESOURCE_WORKER_ACTION_REQUIRED')
         check()
         if action == 'ownership-check':
             result = {'owned': True}
-        elif action in ('prepare-copy', 'advance-copy', 'inspect-copy'):
+        elif action in ('prepare-vectors', 'advance-vectors', 'inspect-vectors'):
+            from d1_resource_vector_runtime import vector_sync
+            result = vector_sync(request['token'], value, check, lambda: check('vector-safe'),
+                                 prepare=action == 'prepare-vectors', status=action == 'inspect-vectors')
+        elif action in ('prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
             from d1_resource_transfer_runtime import prepare_source_snapshot, run_transfer
             if action == 'prepare-copy':
                 result = prepare_source_snapshot(request['token'], value['plan'], check)

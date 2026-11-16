@@ -1,7 +1,7 @@
 {
   "scope": "Disabled resource replacement coordinator, transfer runtime and vector sync components; no production cutover",
   "nodeTests": {
-    "passed": 576,
+    "passed": 578,
     "failed": 0
   },
   "dynamoDbLocalIntegration": {
@@ -23,7 +23,7 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 147,
+    "passed": 154,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
@@ -38,7 +38,8 @@
     "localExecutorLock": 3,
     "composedTransferRuntime": 3,
     "vectorAuthorityAndPlan": 10,
-    "vectorTransportAndReadback": 7
+    "vectorTransportAndReadback": 7,
+    "vectorBatchJournalAndRuntime": 7
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
@@ -80,5 +81,12 @@
     "candidate1536": 2190,
     "candidate768": 0,
     "vectorWrites": false
+  },
+  "vectorRuntimeIntegration": {
+    "realPrivatePayloadFilesAndLocks": true,
+    "realBatchJournals": true,
+    "providerHttp": "explicit async Vectorize and SQLite-backed D1 fixture",
+    "lostResponseReconciledWithoutRepost": true,
+    "productionVectorMutationPerformed": false
   }
 }

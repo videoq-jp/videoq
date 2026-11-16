@@ -433,3 +433,26 @@ mutation ID is never treated as completion. Read-only service inspection found
 indexes. This unfenced count preview is not a final value or search-quality
 comparison. No vector mutation was made by this validation; mutation journal,
 async runtime and final owned synchronization remain to be connected.
+
+`d1_resource_vector_batches.py` records per-batch intent, acceptance and verified
+readback using the same private hash-chained journal with a fixed three-phase
+profile. It never reposts an unmatched intent after a lost response. Matching
+readback can reconcile that response; accepted but unprocessed work remains
+pending. A verified batch that later differs refuses continued success.
+
+`d1_resource_vector_runtime.py` stores large payload batches in bounded private
+mode-0600 files, with an immutable manifest/digests in the Node plan. Under the
+local lock it rechecks source fencing and D1 authority, advances candidate-only
+batches, and performs final complete candidate inventory/value comparison.
+Existing matching batches become verified no-ops. Source authority, artifacts
+or scope changes stop writes. Deferred outbox work is reported explicitly.
+The worker now exposes prepare/advance/status vector actions, requires a separate
+parent vector-safety approval and connects them through `d1-resource-vectors.cjs`
+to the fixed synchronization step. No large vector values enter DynamoDB/argv.
+
+Async integration tests use real files, locks and journals, a SQLite-backed D1
+fixture and delayed Vectorize responses. They cover orphan removal, accepted
+but unprocessed updates, lost acceptance reconciled without repost, fence loss
+and artifact corruption. These are not production mutations or Cloudflare
+rehearsal. Full environment/factory checks, final proof/release/recovery, native
+E2E and the live switch remain outstanding.

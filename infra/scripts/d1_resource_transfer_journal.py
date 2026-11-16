@@ -17,11 +17,14 @@ LIMIT = 1024 * 1024
 
 
 class TransferJournal:
-    def __init__(self, directory, run, source, plan_sha256):
+    def __init__(self, directory, run, source, plan_sha256, phases=PHASES):
         if (not isinstance(run, str) or re.fullmatch('[a-f0-9]{32}', run) is None
                 or not isinstance(source, str) or re.fullmatch('[a-f0-9]{40}', source) is None
                 or not isinstance(plan_sha256, str) or re.fullmatch('[a-f0-9]{64}', plan_sha256) is None):
             raise ValueError('RESOURCE_TRANSFER_JOURNAL_CONTEXT_REQUIRED')
+        if phases not in (PHASES, ('intent','accepted','verified')):
+            raise ValueError('RESOURCE_TRANSFER_JOURNAL_PHASES_REQUIRED')
+        self.phases = phases
         root = Path(directory)
         if not root.is_absolute():
             raise ValueError('RESOURCE_TRANSFER_JOURNAL_DIRECTORY_REQUIRED')
@@ -37,14 +40,13 @@ class TransferJournal:
                 or info.st_uid != os.getuid() or (info.st_dev, info.st_ino) != self.identity):
             raise ValueError('RESOURCE_TRANSFER_JOURNAL_DIRECTORY_CHANGED')
 
-    @staticmethod
-    def filename(index):
-        return f'{index:02d}-{PHASES[index]}.json'
+    def filename(self, index):
+        return f'{index:02d}-{self.phases[index]}.json'
 
     def read(self):
         self.checked()
         names = sorted(path.name for path in self.root.iterdir())
-        if len(names) > len(PHASES) or names != [self.filename(i) for i in range(len(names))]:
+        if len(names) > len(self.phases) or names != [self.filename(i) for i in range(len(names))]:
             raise ValueError('RESOURCE_TRANSFER_JOURNAL_GAP')
         records, previous = [], None
         for i, name in enumerate(names):
@@ -63,7 +65,7 @@ class TransferJournal:
                 record = json.loads(raw)
                 body = {key: record[key] for key in ('version', 'context', 'phase', 'previousSha256', 'value')}
                 if (set(record) != set(body) | {'sha256'} or body['version'] != 1
-                        or body['context'] != self.context or body['phase'] != PHASES[i]
+                        or body['context'] != self.context or body['phase'] != self.phases[i]
                         or body['previousSha256'] != previous or not isinstance(body['value'], dict)
                         or record['sha256'] != fingerprint(body)):
                     raise ValueError('INVALID_RECORD')
@@ -75,9 +77,9 @@ class TransferJournal:
         return records
 
     def save(self, phase, value):
-        if phase not in PHASES or not isinstance(value, dict):
+        if phase not in self.phases or not isinstance(value, dict):
             raise ValueError('RESOURCE_TRANSFER_JOURNAL_VALUE_REQUIRED')
-        records, index = self.read(), PHASES.index(phase)
+        records, index = self.read(), self.phases.index(phase)
         if index < len(records):
             if records[index]['value'] != value:
                 raise ValueError('RESOURCE_TRANSFER_JOURNAL_PROOF_CHANGED')
