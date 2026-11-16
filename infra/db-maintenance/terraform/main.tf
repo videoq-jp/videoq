@@ -254,7 +254,7 @@ resource "aws_codebuild_project" "job" {
   concurrent_build_limit = 1
   artifacts { type = "NO_ARTIFACTS" }
   environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
+    compute_type                = each.key == "rotation" && var.enable_cutover_postwrite_recovery ? "BUILD_GENERAL1_MEDIUM" : "BUILD_GENERAL1_SMALL"
     image                       = "aws/codebuild/standard:7.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"

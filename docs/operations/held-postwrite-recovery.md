@@ -80,3 +80,7 @@ rejection. Separate bounded-pipe tests execute real local child processes.
 The immutable ZIP fixture resolves the parent/child with only locked operations
 dependencies and retains the existing isolated PostgreSQL fence checks. None of
 these tests claims to run this production-only parent against production.
+
+### 実データ量に対する入力上限
+
+チェックポイントBLOBは数値配列ではなく厳密な`{hex}`形式で取得する。D1照合は25行ずつ読み、行ハッシュだけを保持する。復旧入力全体の上限は512MiB、各テーブルは10,000行。上限超過時は書き込みを再開せず停止する。復旧機能を有効にしたrotationジョブだけMEDIUMを使用し、通常ジョブのサイズは維持する。

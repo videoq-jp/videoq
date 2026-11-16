@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
-    "cutover-postwrite-recovery.mjs", "cutover-recovery-child.cjs",
+    "cutover-postwrite-recovery.mjs", "cutover-recovery-child.cjs", "cutover-recovery-snapshot.cjs",
     "cutover-postgres-activity.mjs", "cutover-postgres-fence.mjs",
     "cutover-owned-api-traffic.cjs",
     "cutover-api-traffic.cjs",

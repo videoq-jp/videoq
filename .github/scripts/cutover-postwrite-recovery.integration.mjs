@@ -60,9 +60,9 @@ async function fixture(options={}){
  };
  const fetcher=async(url,opts)=>{
   if(url.startsWith('https://api.github.com/')){const workflow=deployment.workflows.find(w=>url.includes('/'+w.id));assert.ok(workflow);return Response.json(url.includes('/runs?')?{total_count:0,workflow_runs:[]}:{id:workflow.id,path:workflow.path,state:options.activeDeployment?'active':'disabled_manually'});}
-  if(url.startsWith('https://videoq.jp'))return url.endsWith('/health')?Response.json({data:{status:'ok'}}):Response.json({error:{code:'MIGRATION_PAUSED'}},{status:503,headers:{'retry-after':'60','cache-control':'no-store'}});
+  if(new URL(url).origin==='https://videoq.jp')return url.endsWith('/health')?Response.json({data:{status:'ok'}}):Response.json({error:{code:'MIGRATION_PAUSED'}},{status:503,headers:{'retry-after':'60','cache-control':'no-store'}});
   if(url.endsWith('/settings'))return Response.json({success:true,result:{bindings:[{name:'ENVIRONMENT',type:'plain_text',text:'production'},{name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:options.runningApi?'running':'paused'},{name:'DB',type:'d1',id:databaseId},...[1536,768].map(n=>({name:'SCENE_VECTORIZE_'+n,type:'vectorize',index_name:'synthetic-'+n}))]}});
-  if(url.endsWith('/query')){const {sql,params}=JSON.parse(opts.body);assert.deepEqual(params,[]);assert.match(sql,/^SELECT /);const results=db.prepare(sql).all();return Response.json({success:true,result:[{success:true,results}]});}
+  if(url.endsWith('/query')){const {sql,params}=JSON.parse(opts.body);assert.deepEqual(params,[]);assert.match(sql,/^(SELECT |PRAGMA table_info\()/);const results=db.prepare(sql).all();return Response.json({success:true,result:[{success:true,results}]});}
   assert.ok(url.endsWith('/d1/database/'+databaseId));return Response.json({success:true,result:{uuid:databaseId,name:ref.databaseName}});
  };
  const child=async args=>{

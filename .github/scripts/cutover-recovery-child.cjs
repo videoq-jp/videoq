@@ -1,7 +1,7 @@
 // Private, bounded pipe protocol. A prepared digest is never a database grant
 // until the parent has durably bound it to the owned recovery intent.
 const {spawn}=require('node:child_process');
-function runRecoveryChild({command,args,cwd,env,onPrepared,timeoutMs=900000,spawnChild=spawn}){
+function runRecoveryChild({command,args,cwd,env,onPrepared,timeoutMs=1800000,spawnChild=spawn}){
  return new Promise((resolve,reject)=>{
   const child=spawnChild(command,args,{cwd,env,stdio:['pipe','pipe','pipe']}),chunks=[];
   let buffered='',size=0,errors=0,prepared,committed=false,failed=false,closed=false,settled=false,chain=Promise.resolve();

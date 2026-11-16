@@ -438,6 +438,12 @@ run "postwrite_recovery_reads_are_narrow" {
   }
   assert {
     condition = alltrue([for purpose, project in aws_codebuild_project.job :
+      project.environment[0].compute_type == (purpose == "rotation" ? "BUILD_GENERAL1_MEDIUM" : "BUILD_GENERAL1_SMALL")
+    ])
+    error_message = "Only enabled recovery rotation receives additional bounded snapshot memory."
+  }
+  assert {
+    condition = alltrue([for purpose, project in aws_codebuild_project.job :
       one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"]) == (purpose == "rotation" ? "true" : "false")
     ])
     error_message = "Only the fixed rotation project may run held inverse recovery."

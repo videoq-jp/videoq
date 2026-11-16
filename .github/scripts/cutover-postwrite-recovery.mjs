@@ -13,6 +13,7 @@ import {z} from 'zod';
 import {ensureOperatorDependencies,adminUrl} from './neon-fence-audit.mjs';
 const require=createRequire(import.meta.url),m=require('./neon-admin.cjs');
 const {runRecoveryChild}=require('./cutover-recovery-child.cjs');
+const {normalizeRecoveryRow,frozenTableDigests}=require('./cutover-recovery-snapshot.cjs');
 const {readDeploymentSettings}=require('./protect-api-deployment.cjs');
 const {publicApiState}=require('./cutover-consumer-control.cjs');
 const {verifyProductionTraffic}=require('./cutover-owned-api-traffic.cjs');
@@ -22,7 +23,7 @@ const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'../..'),execute=prom
 const ACCOUNT='12daec56fdba43f677f2766ee26a5a39',BUCKET='videoq-db-archives-prod-257240362763';
 const BUILD=/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-rotation-prod:[a-f0-9-]{36}$/;
 const digest=s=>createHash('sha256').update(s).digest('hex'),hex=z.string().regex(/^[a-f0-9]{64}$/),id=z.string().regex(/^[a-f0-9]{32}$/);
-const reference=z.object({version:z.literal(1),runId:id,sourceSha:z.string().regex(/^[a-f0-9]{40}$/),operatorSourceVersion:z.string().min(1).max(1024),actionId:id,key:z.string(),versionId:z.string().min(1).max(1024).refine(v=>v!=='null'&&!/[\x00-\x20\x7f]/.test(v)),bytes:z.number().int().min(1).max(128*1024*1024),sha256Base64:z.string().regex(/^[A-Za-z0-9+/]{43}=$/),manifestSha256:hex,originalPlanSha256:hex,databaseId:z.uuid(),databaseName:z.string().regex(/^videoq-[a-z0-9-]{1,80}$/)}).strict();
+const reference=z.object({version:z.literal(1),runId:id,sourceSha:z.string().regex(/^[a-f0-9]{40}$/),operatorSourceVersion:z.string().min(1).max(1024),actionId:id,key:z.string(),versionId:z.string().min(1).max(1024).refine(v=>v!=='null'&&!/[\x00-\x20\x7f]/.test(v)),bytes:z.number().int().min(1).max(512*1024*1024),sha256Base64:z.string().regex(/^[A-Za-z0-9+/]{43}=$/),manifestSha256:hex,originalPlanSha256:hex,databaseId:z.uuid(),databaseName:z.string().regex(/^videoq-[a-z0-9-]{1,80}$/)}).strict();
 const fenceState=z.object({target:z.object({version:z.literal(1),accountId:z.literal(ACCOUNT),databaseId:z.uuid(),databaseName:z.string(),purpose:z.literal('production')}).strict(),manifestSha256:hex,plan:z.object({version:z.literal(1),databaseId:z.uuid(),operationId:id,tables:z.array(z.string()).min(1).max(200),schemaSha256:hex}).strict()}).strict();
 const childReceipt=z.object({version:z.literal(1),runId:id,sourceSha:z.string().regex(/^[a-f0-9]{40}$/),actionId:id,inputSha256:z.string().regex(/^[A-Za-z0-9+/]{43}=$/),snapshotSha256:hex,manifestSha256:hex,postgresLoginFenceVerified:z.literal(true),restoredSha256:hex,visualRecovery:z.object({objects:z.number().int().nonnegative().safe(),bytes:z.number().int().nonnegative().safe(),sha256:hex}).strict(),productionSafe:z.literal(false)}).strict();
 export async function runHeldPostwriteRecovery({env=process.env,aws=m.aws,readParameter=m.readParameter,run=execute,child=runRecoveryChild,root=ROOT,fetcher=fetch,ensureDependencies=ensureOperatorDependencies}={}){
@@ -89,9 +90,9 @@ export async function runHeldPostwriteRecovery({env=process.env,aws=m.aws,readPa
   const checkObject=value=>{if(value.VersionId!==ref.versionId||value.DeleteMarker||value.ServerSideEncryption!=='AES256'||value.ContentLength!==ref.bytes||value.ChecksumSHA256!==ref.sha256Base64)throw Error('PRIVATE_RECOVERY_INPUT_CHANGED');};
   checkObject(JSON.parse((await run('aws',['s3api','head-object',...s3args],{env:awsEnv,timeout:30000,maxBuffer:65536})).stdout));
   const fetched=JSON.parse((await run('aws',['s3api','get-object',...s3args,input],{env:awsEnv,timeout:120000,maxBuffer:65536})).stdout);checkObject(fetched);
-  const bytes=await readPrivateInput(input,128*1024*1024);
+  let bytes=await readPrivateInput(input,512*1024*1024);
   if(bytes.length!==ref.bytes||createHash('sha256').update(bytes).digest('base64')!==ref.sha256Base64)throw Error('PRIVATE_RECOVERY_INPUT_CHANGED');
-  const snapshot=JSON.parse(bytes.toString());if(snapshot.version!==1||snapshot.runId!==runId||snapshot.sourceSha!==source||snapshot.actionId!==action||snapshot.manifestSha256!==ref.manifestSha256)throw Error('RECOVERY_SNAPSHOT_OWNERSHIP_CHANGED');
+  let snapshot=JSON.parse(bytes.toString());bytes=null;if(snapshot.version!==1||snapshot.runId!==runId||snapshot.sourceSha!==source||snapshot.actionId!==action||snapshot.manifestSha256!==ref.manifestSha256)throw Error('RECOVERY_SNAPSHOT_OWNERSHIP_CHANGED');
   const fence=fenceState.parse(snapshot.d1Fence);
   if(fence.target.databaseId!==ref.databaseId||fence.target.databaseName!==ref.databaseName||fence.plan.databaseId!==ref.databaseId||fence.manifestSha256!==digest(JSON.stringify(manifest))||JSON.stringify([...fence.plan.tables].sort())!==JSON.stringify([...manifest.target_insert_order,'d1_migrations'].sort()))throw Error('RECOVERY_D1_FENCE_CHANGED');
   const metadataResponse=await fetcher('https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/d1/database/'+ref.databaseId,{method:'GET',redirect:'error',signal:AbortSignal.timeout(20000),headers:{authorization:'Bearer '+cf.CLOUDFLARE_API_TOKEN}}),metadata=await metadataResponse.json();
@@ -109,11 +110,12 @@ export async function runHeldPostwriteRecovery({env=process.env,aws=m.aws,readPa
   if(!snapshot.rows||Object.keys(snapshot.rows).length!==manifest.target_insert_order.length)throw Error('RECOVERY_TABLE_INVENTORY_CHANGED');
   for(const name of manifest.target_insert_order){
    if(!/^[a-z][a-z0-9_]{0,100}$/.test(name)||!Array.isArray(snapshot.rows[name])||snapshot.rows[name].length>10000)throw Error('RECOVERY_TABLE_INVENTORY_CHANGED');
-   const actual=(await d1query('SELECT * FROM "'+name+'" LIMIT 10001')).results;
-   if(actual.length>10000||recoveryHash(actual.map(recoveryHash).sort())!==recoveryHash(snapshot.rows[name].map(recoveryHash).sort()))throw Error('RECOVERY_FROZEN_ROWS_CHANGED');
+   const actual=await frozenTableDigests(d1query,name,recoveryHash);
+   if(recoveryHash(actual)!==recoveryHash(snapshot.rows[name].map(value=>recoveryHash(normalizeRecoveryRow(name,value))).sort()))throw Error('RECOVERY_FROZEN_ROWS_CHANGED');
   }
   const sequences=(await d1query('SELECT name,CAST(seq AS TEXT) AS seq FROM sqlite_sequence ORDER BY name')).results;
   if(recoveryHash(Object.fromEntries(sequences.map(value=>[value.name,value.seq])))!==recoveryHash(snapshot.sequenceHighWater))throw Error('RECOVERY_SEQUENCE_STATE_CHANGED');
+  snapshot=null;
   await fenced();row=(await stopped()).row;await writeFile(state,row.postgres_fence_original_plan.S,{mode:0o600});
   const app=await readParameter('/videoq/prod/app'),admin=adminUrl((await readParameter('/videoq/security/prod/db-admin')).DATABASE_URL);
   const childEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>env[k]).map(k=>[k,env[k]]));
