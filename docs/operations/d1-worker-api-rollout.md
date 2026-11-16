@@ -71,3 +71,37 @@ CIの別Python版、実Lambda/SQS/モデルの動作をこの結果だけで保�
 既存CDは `apps/api/**` の試験変更でもAPI配布を選択し、`docs/**` の変更で
 ドキュメント配布も選択する。このPRの通常CD対象はWorker 3関数・API・ドキュメントである。
 API本体と本番wrangler設定は比較元mainと一致する。DB migrationやD1有効化は含まない。
+
+### D1 ID aliases in Worker settings
+
+Cloudflare may return both `id` and `database_id` for a D1 binding. The handoff
+fingerprint removes only the redundant `database_id` field after requiring both
+nonempty IDs to agree. Conflicting IDs and every other changed nonsecret field
+still fail closed.
+
+For an already-applied handoff pinned to `c904d2b6c3a1d020272b8b2012ee1f75d5a4d34c`,
+keep the original clean operator checkout and its source pin. A separately
+reviewed, clean main checkout can run:
+
+```sh
+node .github/scripts/run-cutover-d1-alias-reconcile.cjs \
+  --run <owned-run-id> \
+  --hold-source c904d2b6c3a1d020272b8b2012ee1f75d5a4d34c \
+  --operator-source <reviewed-main-sha>
+```
+
+This local operator requires the new operator SHA to be in reviewed main and to
+descend from the original hold source. It rechecks the native backup and
+PostgreSQL fence, owned exclusion, disabled deployment/queue admission, paused
+D1 API, original transfer/authentication receipts, exact planned bindings and
+all three unchanged worker code hashes and desired environments. It cannot
+patch the Worker, change Lambda configuration, resume admission or release the
+hold. An owned revision-checked DynamoDB transaction records the observed result
+and a separate alias reconciliation audit record.
+
+The completion receipt deliberately retains the **original raw fingerprint
+format** so the original pinned finalizer can validate it. Continue resume,
+native E2E and completion using that original checkout/source; do not substitute
+the new canonical fingerprint format into an old receipt, rewrite the original
+intent or reset the database-write marker. The new operator accepts only this
+specific legacy source and this exact redundant-alias difference.
