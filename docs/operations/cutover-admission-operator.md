@@ -36,7 +36,7 @@ API復帰時は、保存済みconsumer計画があれば実Lambda mappingも照�
 
 外部プロセスへ渡す環境は用途別の許可listに限定する。Cloudflare tokenはAWS/ghへ、AWS credentialはghへ渡さない。AWS transportはDynamoDB metadataの読み取り/条件付き更新、execution metadata/history、Lambda mappingの読み取りだけを許可する。GitHub transportは固定2workflowの読み取り・enable/disableだけを受け付ける。[Workflow API](https://docs.github.com/en/rest/actions/workflows)。秘密値や原状の全内容を標準出力へ出さない。
 
-これは既存の権限を持つ信頼済みの単独operator向けの入口であり、同じrunへの複数operatorを分散直列化する仕組みではない。既存の所有権・revision・native完了のguardは維持するが、本番の自動coordinatorにはコマンド全体の排他と失敗時の実行状況確認も必要になる。単独のadminによる任意操作を隔離するsandboxとしても扱わない。
+これは既存の権限を持つ信頼済みの単独operator向けの入口であり、同じrunへの複数operatorを分散直列化する仕組みではない。既存の所有権・revision・native完了のguardは維持する。一連の操作は直列に実行し、失敗時には保存済み計画と実際の状態を照合してから同じsource/runで再試行する。単独のadminによる任意操作を隔離するsandboxとしても扱わない。
 
 実DynamoDB Localの46テスト、Node securityの458テスト、Python 68テストが成功した。追加の4統合ケースは全体の書き込み前pause/abort、原状保存応答喪失、CF事前失敗、接続先/fence drift、最初のworkflow変更失敗からのabortを検証する。GitHub/Cloudflare/Lambda/SFNはmockであり、本番での結合停止を実証したものではない。5つのCLI境界テストはソース由来、account、引数、権限、環境分離を検証する。[証跡](evidence/cutover-admission-operator-2026-11-16.json)。
 
