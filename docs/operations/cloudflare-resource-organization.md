@@ -360,3 +360,19 @@ exception. Never delete a lock file to bypass contention. This local lock and
 the AWS token must both guard the production executor; they do not by themselves
 connect the Node/Python adapters or provide lost-start reconciliation. Tests
 cover real DynamoDB Local competing claims and actual filesystem lock contention.
+
+`d1-resource-bridge.cjs` connects the claimed Node executor to the one-shot
+`infra/scripts/d1_resource_worker.py` over private stdin/stdout pipes. The worker
+requests fresh executor/operation authorization before and after work and at
+fence mutations; target removal additionally requests target-safety approval.
+Tokens and plans do not enter argv, inherited credentials or public errors.
+The protocol bounds messages, serializes checks and terminates failed/timed-out
+children. The worker supports fixed fence prepare/inspect/install/remove actions
+and an ownership-only diagnostic. It is disabled unless explicitly enabled.
+The parent is trusted reviewed code, not a credential security boundary.
+
+Tests launch real Python children and connect them to real DynamoDB Local
+executor claims and pending-operation checks. These tests prove protocol and
+ownership behavior; they perform no production D1 mutation. The full production
+factory, local-lock lifetime, transfer worker action, final vector sync and
+recovery/release are still required before enabling execution.

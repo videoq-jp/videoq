@@ -1,11 +1,11 @@
 {
   "scope": "Disabled metadata journal, private plans and coordinator engine; GitHub, SQS, API admission and fixed binding promotion adapters; no production execution",
   "nodeTests": {
-    "passed": 568,
+    "passed": 572,
     "failed": 0
   },
   "dynamoDbLocalIntegration": {
-    "passed": 7,
+    "passed": 8,
     "failed": 0,
     "realConditionalTransactions": true,
     "stepFunctionsAndDataPlaneAdapters": "explicit test transports",
@@ -50,5 +50,10 @@
     "remoteMutations": false,
     "writerFenceProven": false,
     "fullComparisonPerformed": false
+  },
+  "privatePipeWorker": {
+    "realChildProcessTested": true,
+    "claimedDynamoDbLocalJournalTested": true,
+    "productionD1MutationPerformed": false
   }
 }

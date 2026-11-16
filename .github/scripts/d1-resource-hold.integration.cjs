@@ -135,3 +135,13 @@ test('real executor CAS admits one token and rejects tokenless or replaced execu
  await winner.begin({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64)});
  const row=await f.get('run#'+r.run_id);await f.put({...row,resource_executor_sha256:{S:'f'.repeat(64)}});await assert.rejects(winner.assertExecutor(),/EXECUTOR_OWNERSHIP/);
 });
+
+test('real claimed journal and pending operation authorize the Python pipe worker',async()=>{
+ const {createResourceBridge}=require('./d1-resource-bridge.cjs');
+ const f=await fixture(),r=await f.start(),j=f.journal(r.run_id,{executorToken:'1'.repeat(64)});
+ await j.claimExecutor();const pending={step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64)};await j.begin(pending);
+ const bridge=createResourceBridge({assertExecutor:()=>j.assertExecutor(),assertOperation:()=>j.assertPending(pending),assertTargetSafe:async()=>{throw Error('TARGET_NOT_AUTHORIZED');},enabled:true});
+ assert.deepEqual(await bridge.call('ownership-check',{}),{owned:true});
+ await j.verify({...pending,receiptSha256:'d'.repeat(64)});
+ await assert.rejects(bridge.call('ownership-check',{}),/BRIDGE_OWNERSHIP_REQUIRED/);
+});
