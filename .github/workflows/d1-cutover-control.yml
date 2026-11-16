@@ -1,0 +1,47 @@
+name: Control D1 Cutover Hold
+run-name: D1 cutover ${{ inputs.operation }}
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Fixed hold control; start does not stop application writers
+        type: choice
+        options: [status, start, prepare-consumers, pause-consumers, resume-consumers, inspect-activity, retry-consumers, retry-activity, release, recover]
+        default: status
+      run_id:
+        description: Existing 32-character AWS run ID (empty only for start)
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: production-cutover-control
+  cancel-in-progress: false
+jobs:
+  control:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
+    environment: production-db-maintenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 125
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/aws-db-invocation
+      - name: Request the fixed hold operation
+        id: request
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CUTOVER_RUN_ID: ${{ inputs.run_id }}
+        run: node .github/scripts/cutover-maintenance-request.cjs
+      - name: Report the confirmed AWS run
+        env:
+          CONFIRMED_RUN: ${{ steps.request.outputs.run_id }}
+        run: |
+          node -e 'const fs=require("node:fs"),id=process.env.CONFIRMED_RUN;if(!/^[a-f0-9]{32}$/.test(id))throw Error("INVALID_AWS_RUN_ID");fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,"Confirmed AWS run: `"+id+"`\n")'

@@ -1,5 +1,6 @@
 """Request a fixed AWS database operation and observe metadata only; no DB credentials."""
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -35,6 +36,7 @@ def invocation(function, payload):
 
 
 def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
+    expected_run = hashlib.sha256(("cutover-hold:" + request["client_token"]).encode()).hexdigest()[:32] if kind == "cutover-hold" and "client_token" in request else None
     function = "arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-db-start-" + FUNCTIONS[kind] + "-prod:live"
     request = {"action": "start", "kind": kind, "client_token": secrets.token_hex(16), **request}
     deadline, previous, errors, run_id = now() + 115 * 60, None, 0, None
@@ -56,12 +58,16 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
                 raise RuntimeError("INVALID_AWS_RUN_ID")
             if run_id and run_id != result["run_id"]:
                 raise RuntimeError("AWS_EXECUTION_CHANGED")
+            if expected_run and expected_run != result["run_id"]:
+                raise RuntimeError("AWS_EXECUTION_CHANGED")
             run_id = result["run_id"]
         if state != previous:
             if state not in {"RUNNING", "BUSY", "SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE", "REJECTED", "RECOVERED"}:
                 raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
             print("AWS database " + kind + ": " + state + (" (" + run_id + ")" if run_id else ""), flush=True)
             previous = state
+        if kind == "cutover-hold" and state == "BUSY":
+            raise RuntimeError("CUTOVER_HOLD_ALREADY_OWNED")
         if kind == "cutover-hold" and state in {"SUCCEEDED", "RECOVERED"}:
             raise RuntimeError("CUTOVER_HOLD_ALREADY_RELEASED")
         if kind == "cutover-hold" and state == "RUNNING":
@@ -128,18 +134,45 @@ def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=tim
     raise RuntimeError("AWS_EXECUTION_OBSERVATION_TIMEOUT")
 
 
+def publish_run(run_id):
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        if not re.fullmatch(r"[a-f0-9]{32}", run_id or ""):
+            raise RuntimeError("INVALID_AWS_RUN_ID")
+        with open(output, "a") as stream:
+            stream.write("run_id=" + run_id + "\n")
+
+
+def cutover_status(run_id, invoke=invocation):
+    if not re.fullmatch(r"[a-f0-9]{32}", run_id or ""):
+        raise RuntimeError("INVALID_CUTOVER_CONTROL")
+    result = invoke("arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-db-start-maintenance-prod:live", {"action": "status", "run_id": run_id})
+    if result.get("run_id") != run_id:
+        raise RuntimeError("AWS_EXECUTION_CHANGED")
+    state = result.get("status")
+    if state not in {"RUNNING", "SUCCEEDED", "RECOVERED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE"}:
+        raise RuntimeError("INVALID_AWS_EXECUTION_STATE")
+    print("AWS cutover hold: " + state + " (" + run_id + ")", flush=True)
+    return run_id
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=[*FUNCTIONS, *sorted(CUTOVER_ACTIONS)])
+    parser.add_argument("kind", choices=[*FUNCTIONS, *sorted(CUTOVER_ACTIONS), "cutover-status"])
     parser.add_argument("--run-id")
     parser.add_argument("--inspection", choices=["postgres-login-fence"])
     args = parser.parse_args()
     if os.environ.get("GITHUB_REPOSITORY") != "videoq-jp/videoq" or os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise RuntimeError("PRODUCTION_MAIN_ONLY")
+    if args.kind == "cutover-status":
+        if args.inspection:
+            raise RuntimeError("INVALID_AUDIT_INSPECTION")
+        publish_run(cutover_status(args.run_id))
+        return
     if args.kind in CUTOVER_ACTIONS:
         if args.inspection:
             raise RuntimeError("INVALID_AUDIT_INSPECTION")
-        control_cutover(args.kind, args.run_id)
+        publish_run(control_cutover(args.kind, args.run_id))
         return
     if args.run_id:
         raise RuntimeError("UNEXPECTED_RUN_ID")
@@ -163,7 +196,13 @@ def main():
         request["force"] = value == "true"
     if args.kind == "smoke":
         request["verify_ai_answers"] = os.environ.get("VERIFY_AI_ANSWERS") == "true"
+    if args.kind == "cutover-hold":
+        token = os.environ.get("CUTOVER_HOLD_REQUEST_TOKEN", "")
+        if not re.fullmatch(r"[a-f0-9]{32}", token):
+            raise RuntimeError("INVALID_CUTOVER_REQUEST_TOKEN")
+        request["client_token"] = token
     run_id = run(args.kind, request)
+    publish_run(run_id)
     if args.kind in {"smoke", "backup"}:
         summary = {"smoke": "AWS内で本番の処理・ブラウザー確認が成功しました。", "backup": "AWS内で読み取り専用バックアップの復元確認が成功しました。"}[args.kind]
         Path("operations-report.json").write_text(json.dumps({"status": "ok", "summary": summary, "details": ["- AWS実行ID: `" + run_id + "`"]}, ensure_ascii=False))

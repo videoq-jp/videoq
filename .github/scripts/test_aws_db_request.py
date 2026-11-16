@@ -166,6 +166,52 @@ class RequestTest(unittest.TestCase):
             self.assertEqual(db.control_cutover("inspect-cutover-activity", RUN, invoke, lambda _: None, lambda: 0), RUN)
         self.assertEqual(calls, [{"action":"inspect-cutover-activity","run_id":RUN}, {"action":"inspect-cutover-activity","run_id":RUN}, {"action":"status","run_id":RUN}])
 
+    def test_hold_busy_fails_without_blocking_recovery_controls(self):
+        calls, waits = [], []
+        def invoke(function, payload):
+            calls.append(payload)
+            return {"status": "BUSY"}
+        with patch("sys.stdout", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "CUTOVER_HOLD_ALREADY_OWNED"):
+            db.run("cutover-hold", {}, invoke, waits.append, lambda: 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(waits, [])
+
+    def test_explicit_hold_token_pins_the_returned_execution(self):
+        token = "b" * 32
+        expected = db.hashlib.sha256(("cutover-hold:" + token).encode()).hexdigest()[:32]
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(db.run("cutover-hold", {"client_token": token}, lambda *a: {"status": "RUNNING", "run_id": expected}, lambda _: None, lambda: 0), expected)
+            with self.assertRaisesRegex(RuntimeError, "AWS_EXECUTION_CHANGED"):
+                db.run("cutover-hold", {"client_token": token}, lambda *a: {"status": "RUNNING", "run_id": RUN}, lambda _: None, lambda: 0)
+
+    def test_status_observes_failed_handle_without_restarting_or_leaking_body(self):
+        calls = []
+        def invoke(function, payload):
+            calls.append(payload)
+            return {"status": "FAILED", "run_id": RUN, "private": "must not print"}
+        with patch("sys.stdout", new_callable=io.StringIO) as output:
+            self.assertEqual(db.cutover_status(RUN, invoke), RUN)
+            self.assertNotIn("must not print", output.getvalue())
+        self.assertEqual(calls, [{"action": "status", "run_id": RUN}])
+        with self.assertRaisesRegex(RuntimeError, "AWS_EXECUTION_CHANGED"):
+            db.cutover_status(RUN, lambda *a: {"status": "RUNNING", "run_id": "c" * 32})
+
+    def test_main_requires_stable_token_and_publishes_only_confirmed_handle(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "output"
+            env = {"GITHUB_REPOSITORY": "videoq-jp/videoq", "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "c" * 40, "GITHUB_OUTPUT": str(output), "CUTOVER_HOLD_REQUEST_TOKEN": "b" * 32}
+            with patch.dict(os.environ, env), patch.object(db, "run", return_value=RUN) as run, patch("sys.argv", ["request", "cutover-hold"]):
+                db.main()
+                run.assert_called_once_with("cutover-hold", {"source_sha": "c" * 40, "client_token": "b" * 32})
+                self.assertEqual(output.read_text(), "run_id=" + RUN + "\n")
+            with patch.dict(os.environ, {**env, "CUTOVER_HOLD_REQUEST_TOKEN": "bad"}), patch.object(db, "run") as run, patch("sys.argv", ["request", "cutover-hold"]), self.assertRaisesRegex(RuntimeError, "INVALID_CUTOVER_REQUEST_TOKEN"):
+                db.main()
+            run.assert_not_called()
+            with patch.dict(os.environ, env), self.assertRaisesRegex(RuntimeError, "INVALID_AWS_RUN_ID"):
+                db.publish_run(RUN + "\nsecret=value")
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,3 +11,11 @@ For failed, timed-out, aborted or missing executions, explicit `recover-cutover-
 DynamoDB transaction actions use ordinary item permissions, with a separate `dynamodb:ConditionCheckItem` grant for the state-machine predicate ([AWS transaction IAM documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis-iam.html)). The opt-in grant is restricted to run-record keys in the existing table.
 
 Verification uses actual DynamoDB Local with the production broker and transaction parameters, and mocked Step Functions/CodeBuild states. Six cases cover concurrent release, changed phase, active builds, late execution visibility, explicit recovery and unrelated lock ownership. This is not evidence of live production writer fencing. Production inverse recovery, writer drain and final cutover reconciliation remain separate acceptance gates.
+
+## Protected workflow control
+
+`Control D1 Cutover Hold` is dispatched on canonical main in the existing protected `production-db-maintenance` environment. It uses the existing restricted request role and fixed maintenance Lambda; it never retrieves database credentials. `status` is the safe default and requires an existing 32-character run ID. `start` requires an empty run ID and only acquires exclusion; it does not stop application writers. Other choices select fixed consumer/activity/release/recovery operations for the same handle.
+
+The start token is derived from the GitHub workflow run ID, excluding attempt number, so rerunning the same workflow cannot create a second hold. The caller verifies the deterministic AWS handle. A competing hold fails immediately rather than occupying the serial control lane for two hours. Observation failures retain the same handle; they never imply cancellation, recovery or permission to start another hold. Confirmed handles alone enter the step output. `status` reports failed executions without claiming recovery.
+
+The dedicated `production-cutover-control` concurrency group serializes these requests independently of ordinary credential maintenance, whose BUSY polling must not block urgent recovery requests. Deployment/API admission remains the separate trusted local operator. This workflow does not grant SQL, SSM or administrative DB access, enable Terraform features, or complete writer fencing/post-write handoff.
