@@ -10,7 +10,9 @@ rotation/backup tooling is retained for explicit recovery operations, and its
 daily rotation schedule stays disabled.
 GitHub Actions invokes a fixed Lambda alias and observes execution status; its
 routine request roles have no SSM, CodeBuild-start, code-upload or IAM permissions.
-The restricted demo audit/preparation readers remain separate GitHub jobs.
+The former direct-SSM demo/audit jobs and Neon bootstrap entry point have been
+retired. Their unused GitHub environment ARN references are removed; encrypted
+AWS recovery material remains separate from normal D1 operation.
 
 ## Production Neon retirement and retained recovery material
 
