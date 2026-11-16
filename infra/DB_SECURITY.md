@@ -1,3 +1,9 @@
+> Production moved to D1/Vectorize and the VideoQ Neon project was retired on
+> 2026-11-17. The PostgreSQL credential design below is a historical recovery
+> reference. Neon GitHub workflow entry points were removed and the rotation
+> schedule is disabled. Current D1 operation is described in
+> [database maintenance](db-maintenance/README.md).
+
 # Production database access
 
 The service keeps Cloudflare Workers → Hyperdrive → Neon. PostgreSQL password
@@ -87,8 +93,8 @@ use an explicit search_path and qualified object names. These controls are in
 EventBridge Scheduler checks ages daily; credentials rotate at 90 days. Step
 Functions Standard sequences scoped CodeBuild jobs and waits without keeping a
 build running during the invocation grace period. Manual requests use
-[Maintain Neon Credentials](../.github/workflows/neon-credentials.yml), which
-invokes the fixed AWS starter and observes metadata. GitHub receives no DB URL,
+the historical Neon workflow (removed after retirement), which
+invoked the fixed AWS starter and observed metadata. GitHub receives no DB URL,
 DB administrator credential or Hyperdrive maintenance token from this flow.
 
 1. Persist encrypted recovery material before creating new purpose LOGIN roles.

@@ -12,9 +12,12 @@ GitHub Actions invokes a fixed Lambda alias and observes execution status; its
 routine request roles have no SSM, CodeBuild-start, code-upload or IAM permissions.
 The restricted demo audit/preparation readers remain separate GitHub jobs.
 
-## Retiring the production Neon project
+## Production Neon retirement and retained recovery material
 
-Retirement requires current evidence, independently of the earlier handoff:
+The 2026-11-17 retirement passed fresh upload-to-cited-answer AI smoke before
+and after deletion, automatic verification of all 2,190 existing scene vectors,
+and version-pinned backup checks. Only the VideoQ project was deleted.
+The following gates document the completed operation:
 
 1. Check production readiness, API failures, SQS/DLQ backlog, outstanding index
    tasks and referential integrity. A successful health response alone is not
@@ -299,8 +302,11 @@ time, and CodeBuild rounds each build separately.
 
 ## Recovery
 
-Manual operations remain available through `Maintain Neon Credentials`. It sends
-only `audit`, `rotate`, or `rollback` to the maintenance starter. Rotation resumes
+The retired Neon GitHub workflows and their unused request clients have been
+removed. Historical native AWS recovery tools remain available to an explicit
+recovery operator; routine GitHub workflows cannot request a Neon rotation or
+cutover. The following describes the retained historical protocol, not an active
+service schedule. Rotation resumes
 the encrypted SSM journal; rollback restores consumers, verifies production,
 waits out old invocations, retires abandoned candidates, and verifies again.
 Recovery secrets leave the current journal only after the final smoke succeeds.

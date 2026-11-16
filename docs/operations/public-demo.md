@@ -1,9 +1,14 @@
 # Public no-signup demo preparation
 
-Before deploying `/try`, register the five owned lessons behind
-`videoq-campus-basics-v1`. Run **Prepare Production Public Demo** on reviewed main
-first with `operation=audit`, then with `operation=provision`, through the normal
-`production-app` gate. The operation requires the existing database secret only.
+The original PostgreSQL preparation workflow was removed after the verified
+D1/Vectorize handoff and Neon retirement on 2026-11-17. Existing demo accounts,
+courses, videos and media remain in the current service. Do not run the historical
+Neon preparation flow against production. A future demo provisioning operation
+must use the current D1 API and its ownership/quota checks.
+
+The procedure below records the historical preparation of the five owned lessons
+behind `videoq-campus-basics-v1`; its guarded native recovery scripts remain
+archived with the database maintenance tools.
 
 The dedicated `videoq_public_demo` user has the approved ceiling of 100 answers
 per month, 20 processing minutes and 0.1 GiB storage/upload allowances. Existing

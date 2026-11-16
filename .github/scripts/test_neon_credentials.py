@@ -16,27 +16,18 @@ spec.loader.exec_module(neon)
 class CredentialsTest(unittest.TestCase):
     def test_database_jobs_use_oidc_before_fetch_without_static_url(self):
         root = Path(__file__).resolve().parents[2]
-        for filename, jobs in [("cd.yml", ["db-migrate"]), ("operations.yml", ["smoke"]),
-                               ("public-demo-setup.yml", ["setup"])]:
+        for filename, jobs in [("cd.yml", ["db-migrate"]), ("operations.yml", ["smoke"])]:
             text = (root / ".github/workflows" / filename).read_text()
             self.assertNotIn("secrets.DATABASE_URL", text)
             for name in jobs:
                 job = re.search(rf"^  {name}:\n([\s\S]*?)(?=^  [\w-]+:|\Z)", text, re.M).group(1)
-                if name == "setup":
-                    self.assertIn("production-db-demo", job)
-                    self.assertIn("production-db-audit", job)
-                else:
-                    self.assertIn("    environment: production-db-" + ("migration" if name == "db-migrate" else name) + "\n", job)
+                self.assertIn("    environment: production-db-" + ("migration" if name == "db-migrate" else name) + "\n", job)
                 self.assertRegex(job, r"    permissions:\n(?:      .+\n)*      id-token: write\n")
-                if name == "setup":
-                    auth = job.index("uses: ./.github/actions/neon-credentials")
-                    command = job.index("with-neon-credentials.py")
-                else:
-                    auth = job.index("uses: ./.github/actions/aws-db-invocation")
-                    command = job.index("run-aws-db.py")
-                    self.assertIn("AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN", job)
-                    self.assertNotIn("with-neon-credentials.py", job)
-                    self.assertNotIn("setup-operations-tools", job)
+                auth = job.index("uses: ./.github/actions/aws-db-invocation")
+                command = job.index("run-aws-db.py")
+                self.assertIn("AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN", job)
+                self.assertNotIn("with-neon-credentials.py", job)
+                self.assertNotIn("setup-operations-tools", job)
                 self.assertLess(auth, command)
 
     def test_routine_operations_cannot_request_a_retired_postgres_backup(self):
