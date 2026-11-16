@@ -23,17 +23,26 @@
   "customerDataOrCredentialsStoredInJournal": false,
   "actualProductionAdapterValidation": false,
   "pythonTests": {
-    "passed": 92,
+    "passed": 97,
     "failed": 0,
     "runtime": "Python 3.14",
     "fencePlannerAndController": 14,
     "database": "SQLite tests plus schema-only readback against actual source/candidate D1",
-    "exactValueVerifier": 8
+    "exactValueVerifier": 8,
+    "verificationTransport": 5
   },
   "d1FenceTransportReadback": {
     "sourceApplicationTables": 68,
     "candidateApplicationTables": 0,
     "resourceFenceTriggers": 0,
     "remoteMutations": false
+  },
+  "verificationTransportReadback": {
+    "queryEncodingSupported": true,
+    "metadataRowsRead": 14,
+    "customerRowsRead": 0,
+    "remoteMutations": false,
+    "writerFenceProven": false,
+    "fullComparisonPerformed": false
   }
 }

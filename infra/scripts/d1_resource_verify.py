@@ -11,6 +11,22 @@ from d1_resource_write_fence import quote, fingerprint
 SCHEMA = 'SELECT type,name,sql FROM sqlite_master ORDER BY type,name'
 
 
+def page_sql(table, names, page_size, offset):
+    if (not isinstance(table, str) or not table or not isinstance(names, list) or not names
+            or any(not isinstance(name, str) or not name for name in names)
+            or type(page_size) is not int or not 1 <= page_size <= 100
+            or type(offset) is not int or offset < 0):
+        raise ValueError('RESOURCE_VERIFY_PAGE_CONTEXT_REQUIRED')
+    cells = []
+    for name in names:
+        column = quote(name)
+        cells.append(f"typeof({column}) || ':' || CASE WHEN typeof({column})='real' "
+                     f"THEN printf('%!.26g',{column}) ELSE hex(CAST({column} AS BLOB)) END")
+    projection = ','.join(expr + ' AS ' + quote('c' + str(i)) for i, expr in enumerate(cells))
+    order = ','.join(str(i + 1) + ' COLLATE BINARY' for i in range(len(cells)))
+    return f'SELECT {projection} FROM {quote(table)} ORDER BY {order} LIMIT {page_size} OFFSET {offset}'
+
+
 def inspect_database(query, database, assert_fenced, page_size=32):
     if not callable(query) or not callable(assert_fenced) or type(page_size) is not int or not 1 <= page_size <= 100:
         raise ValueError('RESOURCE_VERIFY_CONTEXT_REQUIRED')
@@ -43,14 +59,6 @@ def inspect_database(query, database, assert_fenced, page_size=32):
         names = [c['name'] for c in columns]
         if len(set(names)) != len(names):
             raise ValueError('RESOURCE_VERIFY_COLUMNS_INVALID')
-        # Values are encoded by SQLite, never coerced through JS safe integers.
-        cells = []
-        for name in names:
-            column = quote(name)
-            cells.append(f"typeof({column}) || ':' || CASE WHEN typeof({column})='real' "
-                         f"THEN printf('%!.26g',{column}) ELSE hex(CAST({column} AS BLOB)) END")
-        projection = ','.join(expr + ' AS ' + quote('c' + str(i)) for i, expr in enumerate(cells))
-        order = ','.join(str(i + 1) + ' COLLATE BINARY' for i in range(len(cells)))
         count_rows = query(database, 'SELECT CAST(count(*) AS TEXT) AS row_count FROM ' + quote(table))
         if (not isinstance(count_rows, list) or len(count_rows) != 1
                 or set(count_rows[0]) != {'row_count'} or not isinstance(count_rows[0]['row_count'], str)
@@ -60,13 +68,13 @@ def inspect_database(query, database, assert_fenced, page_size=32):
         digest, offset = hashlib.sha256(), 0
         while True:
             assert_fenced()
-            rows = query(database, f'SELECT {projection} FROM {quote(table)} ORDER BY {order} LIMIT {page_size} OFFSET {offset}')
+            rows = query(database, page_sql(table, names, page_size, offset))
             if not isinstance(rows, list) or len(rows) > page_size:
                 raise ValueError('RESOURCE_VERIFY_PAGE_INVALID')
             for row in rows:
-                if set(row) != {'c' + str(i) for i in range(len(cells))} or any(not isinstance(v, str) for v in row.values()):
+                if set(row) != {'c' + str(i) for i in range(len(names))} or any(not isinstance(v, str) for v in row.values()):
                     raise ValueError('RESOURCE_VERIFY_VALUE_INVALID')
-                digest.update(json.dumps([row['c' + str(i)] for i in range(len(cells))], ensure_ascii=True, separators=(',', ':')).encode() + b'\n')
+                digest.update(json.dumps([row['c' + str(i)] for i in range(len(names))], ensure_ascii=True, separators=(',', ':')).encode() + b'\n')
             offset += len(rows)
             assert_fenced()
             if len(rows) < page_size:

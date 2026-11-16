@@ -278,5 +278,14 @@ bounded pages preserve duplicate rows and ignore physical insertion order;
 independent counts reject shortened/truncated reads. Only aggregate digests and
 counts are returned. SQLite tests cover changed integer/type/blob values,
 sequence-only differences, schema changes, lost fencing and missing rows.
-The production query adapter for these generated reads and full D1-to-D1
-comparison remain unimplemented; this module does not attest a live copy.
+The full D1-to-D1 comparison remains unperformed; this module does not attest a live copy.
+
+`infra/scripts/d1_resource_verify_transport.py` permits schema, column metadata,
+counts, foreign-key checks and exact generated value pages for the two fixed
+D1 databases. Tables come from the validated fence plan; each database's column
+identity must be observed before pages are allowed. Generic reads/writes,
+unknown tables, appended statements and oversized/negative paging parameters
+are refused. The bounded, no-redirect, no-retry HTTP transport is shared with
+fence control. The real source accepted the generated encoding SQL for 14
+`sqlite_sequence` metadata rows. This read made no mutations, read no customer
+rows, asserted no write fence and performed no full database comparison.

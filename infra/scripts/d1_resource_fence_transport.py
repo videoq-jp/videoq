@@ -34,6 +34,15 @@ class CloudflareFenceQuery:
     def __call__(self, database, sql):
         if not isinstance(database, str) or not isinstance(sql, str) or (database, sql) not in self.allowed:
             raise ValueError('RESOURCE_D1_QUERY_REFUSED')
+        rows = self._request(database, sql)
+        if sql == SCHEMA_SQL:
+            if any(not isinstance(row, dict) or set(row) != {'type', 'name', 'sql'} for row in rows):
+                raise ValueError('RESOURCE_D1_QUERY_FAILED')
+        elif rows:
+            raise ValueError('RESOURCE_D1_QUERY_FAILED')
+        return rows
+
+    def _request(self, database, sql):
         request = urllib.request.Request(
             f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{database}/query',
             data=json.dumps({'sql': sql}).encode(), method='POST',
@@ -54,11 +63,6 @@ class CloudflareFenceQuery:
             if not isinstance(query, dict) or query.get('success') is not True or not isinstance(query.get('results'), list):
                 raise ValueError('RESOURCE_D1_RESULT_INVALID')
             rows = query['results']
-            if sql == SCHEMA_SQL:
-                if any(not isinstance(row, dict) or set(row) != {'type', 'name', 'sql'} for row in rows):
-                    raise ValueError('RESOURCE_D1_SCHEMA_INVALID')
-            elif rows:
-                raise ValueError('RESOURCE_D1_MUTATION_RESULT_INVALID')
             return rows
         except Exception:
             # HTTP error bodies/URLs/SQL and application metadata stay private.
