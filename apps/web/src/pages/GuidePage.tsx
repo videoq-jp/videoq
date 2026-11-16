@@ -41,7 +41,7 @@ export default function GuidePage() {
         {t('guides.author')} · {t('guides.updated')} <time dateTime={guide.updated}>{guide.updated}</time>
       </p>
       <div className="mb-8">
-        <UtilityLink asChild><Link href="/try">{t('guides.tryDemo')}</Link></UtilityLink>
+        <UtilityLink asChild><Link href="/try" onClick={() => trackLandingEvent('demo_open', 'hero')}>{t('guides.tryDemo')}</Link></UtilityLink>
       </div>
       <nav aria-label={t('guides.toc')} className="mb-10 border border-solid-gray-420 p-6">
         <p className="mb-2 text-std-17B-170">{t('guides.toc')}</p>
@@ -70,7 +70,7 @@ export default function GuidePage() {
         <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-2"><HeadingTitle level="h2">{t('guides.ctaTitle')}</HeadingTitle></Heading>
         <p className="mb-4 text-std-17N-170 text-solid-gray-700">{t('guides.ctaBody')}</p>
         <div className="flex flex-wrap items-center gap-4">
-          <Button asChild><Link href="/try">{t('guides.tryDemo')}</Link></Button>
+          <Button asChild><Link href="/try" onClick={() => trackLandingEvent('demo_open', 'footer')}>{t('guides.tryDemo')}</Link></Button>
           <Button variant="outline" asChild><Link href="/signup" onClick={() => trackLandingEvent('signup_click', 'footer')}>{t('guides.cta')}</Link></Button>
           <UtilityLink asChild><Link href="/pricing">{t('guides.pricing')}</Link></UtilityLink>
         </div>
