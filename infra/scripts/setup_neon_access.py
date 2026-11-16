@@ -61,7 +61,7 @@ def main():
     account=aws("sts","get-caller-identity")["Account"]
     if account!="257240362763":
         raise SystemExit("Unexpected AWS account")
-    for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"]:
+    for purpose in ["migration", "smoke", "deploy"]:
         alias=aws("lambda","get-alias","--region",REGION,"--function-name",
             "videoq-db-start-"+purpose+"-prod","--name","live")
         if not alias.get("FunctionVersion", "").isdigit():
@@ -75,16 +75,7 @@ def main():
         if command=="put-role-policy":args.extend(["--policy-name","deny-protected-neon-credentials"])
         subprocess.run(args,check=True,capture_output=True)
     print("Production planning role restricted to main and denied protected DB secrets")
-    profiles=json.loads((ROOT/".github/scripts/neon-profiles.json").read_text())
-    parameter=lambda name:f"arn:aws:ssm:{REGION}:{account}:parameter{name}"
-    for purpose in ["audit","demo"]:
-        environment="production-db-"+purpose
-        ensure_environment(environment)
-        policy={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ssm:GetParameter",
-            "Resource":parameter(profiles[purpose]["parameter"])}]}
-        install(account,"videoq-github-actions-neon-"+purpose,environment,policy)
-        print("Scoped OIDC access configured: "+purpose)
-    for purpose in ["maintenance", "migration", "backup", "smoke", "deploy"]:
+    for purpose in ["migration", "smoke", "deploy"]:
         environment="production-db-"+purpose
         ensure_environment(environment)
         policy={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"lambda:InvokeFunction",
@@ -92,11 +83,7 @@ def main():
         install(account,"videoq-github-actions-db-start-"+purpose,environment,policy,7200,
             secret_name="AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN")
         print("AWS-only operation request access configured: "+purpose)
-    bootstrap={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ssm:PutParameter",
-        "Resource":parameter("/videoq/security/prod/hyperdrive-credentials")}]}
-    install(account,"videoq-github-actions-neon-bootstrap","production-infra",bootstrap,
-        secret_name="AWS_GITHUB_ACTIONS_NEON_BOOTSTRAP_ROLE_ARN")
-    print("Dedicated AWS invokers configured; retire legacy SSM reader roles only after successful main cutover")
+    print("D1 invokers configured; retired Neon roles and starters must not be recreated")
 
 
 if __name__=="__main__":

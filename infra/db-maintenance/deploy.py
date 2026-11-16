@@ -13,8 +13,8 @@ REGION = "ap-northeast-1"
 ACCOUNT = "257240362763"
 BUCKET = "videoq-db-maintenance-prod-257240362763"
 MACHINE = f"arn:aws:states:{REGION}:{ACCOUNT}:stateMachine:videoq-db-maintenance-prod"
-PURPOSES = ["rotation", "migration", "backup", "smoke", "audit"]
-STARTERS = ["maintenance", "migration", "backup", "smoke", "deploy"]
+PURPOSES = ["migration", "smoke"]
+STARTERS = ["migration", "smoke", "deploy"]
 
 
 def aws(service, command, **payload):
