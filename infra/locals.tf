@@ -12,7 +12,7 @@ locals {
   }
 
   lambda_basic_execution_policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  common_lambda_environment = {
+  common_lambda_environment = merge({
     DB_PARAM_NAME                   = "/${local.name_prefix}/${var.env_name}/worker-db"
     APP_PARAM_NAME                  = aws_ssm_parameter.app.name
     PGSSLROOTCERT                   = "/etc/pki/tls/certs/ca-bundle.crt"
@@ -29,7 +29,14 @@ locals {
     OPENROUTER_FEDERATION_POLICY_ID = var.openrouter_federation_policy_id
     OPENROUTER_FEDERATION_AUDIENCE  = var.openrouter_federation_audience
     ENABLE_HEAVY_PIPELINE           = "true"
-  }
+    }, var.env_name == "prod" ? {
+    # Keep future infra plans aligned with the controlled production handoff.
+    # The internal-persistence bootstrap retains the old DB reference for the
+    # recovery window but does not load it when D1 is selected.
+    DEPLOYMENT_EDITION         = "cloud"
+    PERSISTENCE_BACKEND        = "d1"
+    WORKER_INTERNAL_API_ORIGIN = "https://videoq.jp"
+  } : {})
 
   ecr_lifecycle_policy = jsonencode({
     rules = [
