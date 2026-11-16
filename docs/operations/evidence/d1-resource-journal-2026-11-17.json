@@ -21,5 +21,12 @@
   "productionBindingsChanged": false,
   "holdReleasedByEngine": false,
   "customerDataOrCredentialsStoredInJournal": false,
-  "actualProductionAdapterValidation": false
+  "actualProductionAdapterValidation": false,
+  "pythonTests": {
+    "passed": 79,
+    "failed": 0,
+    "runtime": "Python 3.14",
+    "fencePlannerAndController": 9,
+    "database": "SQLite in-memory; not production D1"
+  }
 }

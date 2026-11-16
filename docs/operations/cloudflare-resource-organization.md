@@ -246,3 +246,14 @@ The settings PATCH contract is documented in the
 The D1 readback includes both `id` and `database_id`; the adapter checks both
 against the fixed source and computes the expected target readback shape.
 Unexpected extra DB/vector metadata fails closed for review.
+
+`infra/scripts/d1_resource_fence_control.py` applies the existing owner-bound
+fence plan to the fixed source and removes only those exact triggers from the
+fixed target. Each mutation requires ownership and rechecks schema/trigger
+identity. Partial installation/removal can be reconciled after a lost response;
+unknown trigger definitions, missing original triggers or changed tables stop
+further writes. Target removal additionally requires a trusted target-safety
+verifier. Source removal is deliberately unavailable in this controller.
+The query transport and coordinator bridge are not implemented by this change.
+SQLite tests prove trigger behavior and retry control, not the full live-D1
+schema, API transport or production ownership handoff.
