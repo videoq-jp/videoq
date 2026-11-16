@@ -201,3 +201,12 @@ Concrete production adapters, final release and recovery remain required before
 
 [Journal and execution-engine validation evidence](evidence/d1-resource-journal-2026-11-17.json)
 records the test scope and the production operations that remain unverified.
+
+`d1-resource-deployments.cjs` supplies the GitHub admission freeze/restore
+adapters using the existing fixed workflow controller. Both operations require
+the saved original freeze plan and ownership before mutation. Frozen workflows
+with accepted runs still active return unknown and cannot advance the journal.
+Restore reuses the original plan, preserving workflows that were already
+disabled. Lost responses reconcile read-only admission state. This adapter
+covers GitHub workflow admission only, not AWS build drain or D1 writes; it has
+no production transport, credentials or caller enabled by this change.
