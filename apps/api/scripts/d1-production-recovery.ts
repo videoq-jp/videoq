@@ -20,10 +20,11 @@ const inputSchema=z.object({version:z.literal(1),runId:id,sourceSha:z.string().r
 const hash=(data:Uint8Array)=>createHash('sha256').update(data).digest('base64');
 export async function main(args=process.argv.slice(2),env=process.env,io:{input:Readable;output:Writable}={input:process.stdin,output:process.stdout}){
  if(args.length!==6||args[0]!=='--input'||args[2]!=='--state'||args[4]!=='--receipt'||env.VIDEOQ_CUTOVER_RECOVERY_CHILD!=='true'||!/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-rotation-prod:[a-f0-9-]{36}$/.test(env.CODEBUILD_BUILD_ARN??''))throw Error('FIXED_AWS_RECOVERY_CHILD_REQUIRED');
- let bytes:Uint8Array|null=await readPrivateInput(resolve(args[1]),512*1024*1024);
- const inputSha256=hash(bytes);
- if(inputSha256!==env.VIDEOQ_RECOVERY_INPUT_SHA256)throw Error('RECOVERY_INPUT_CHANGED');
- const input=inputSchema.parse(JSON.parse(Buffer.from(bytes).toString()));bytes=null;
+ const {input,inputSha256}=await (async()=>{
+  const bytes=await readPrivateInput(resolve(args[1]),512*1024*1024),inputSha256=hash(bytes);
+  if(inputSha256!==env.VIDEOQ_RECOVERY_INPUT_SHA256)throw Error('RECOVERY_INPUT_CHANGED');
+  return{input:inputSchema.parse(JSON.parse(bytes.toString())),inputSha256};
+ })();
  if(input.runId!==env.MAINTENANCE_RUN_ID||input.sourceSha!==env.MAINTENANCE_SOURCE_SHA||input.actionId!==env.MAINTENANCE_RECOVERY_ACTION_ID)throw Error('RECOVERY_INPUT_OWNERSHIP_MISMATCH');
  const plan=postgresLoginFencePlanSchema.parse(JSON.parse((await readPrivateInput(resolve(args[3]),128*1024)).toString()));
  if(plan.target.purpose!=='production')throw Error('PRODUCTION_ORIGINAL_PLAN_REQUIRED');
