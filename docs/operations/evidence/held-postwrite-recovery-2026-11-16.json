@@ -4,7 +4,7 @@
   "scope": "Disabled fixed AWS inverse restore; no production execution",
   "verification": {
     "nodeSecurityTestsPassed": 474,
-    "realLocalDynamoDbCasesPassed": 8,
+    "realLocalDynamoDbCasesPassed": 9,
     "actualSQLiteSchemaAndFence": true,
     "realLocalPipeProtocol": true,
     "terraformMockPlansPassed": 20,

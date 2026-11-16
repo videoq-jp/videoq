@@ -21,7 +21,8 @@ markers. The global owner must match the same execution. A recovery request uses
 `recovery_action_id`, `recovery_state=requested`, `recovery_input_ref` and its
 SHA-256. The strict reference binds version 1, run/source/action, the exact
 `cutover-recovery/<run>/<action>.json` key and S3 version, bytes and SHA-256,
-current manifest hash, original PostgreSQL plan hash and D1 identity. The trusted
+current manifest hash, original PostgreSQL plan hash, D1 identity and the
+immutable operator source version reported by CodeBuild. The trusted
 operator must create this intent conditionally; it must not replace an existing
 request or clear its prepared digest.
 
