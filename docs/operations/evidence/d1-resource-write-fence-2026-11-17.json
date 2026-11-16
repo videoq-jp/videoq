@@ -1,0 +1,14 @@
+{
+  "scope": "Exact planner on two synthetic tables in unbound real D1; not production coordinator or all live tables",
+  "databaseId": "587bd210-6d9d-4f32-abb7-a490013e65d3",
+  "verifiedPlan": {
+    "applicationTables": 2,
+    "fenceTriggers": 6,
+    "schemaSha256": "a5093343aa37e6262c323bffe833951d75e5c4f510cadfdd21fdc630e7d2a8bb"
+  },
+  "blockedMutations": 6,
+  "originalAppTriggerPreservedAndExecutedAfterRelease": true,
+  "fixtureRemoved": true,
+  "candidateEmptyAfterCleanup": true,
+  "productionMutations": false
+}
