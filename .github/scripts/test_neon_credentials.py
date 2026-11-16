@@ -16,7 +16,7 @@ spec.loader.exec_module(neon)
 class CredentialsTest(unittest.TestCase):
     def test_database_jobs_use_oidc_before_fetch_without_static_url(self):
         root = Path(__file__).resolve().parents[2]
-        for filename, jobs in [("cd.yml", ["db-migrate"]), ("operations.yml", ["smoke", "backup"]),
+        for filename, jobs in [("cd.yml", ["db-migrate"]), ("operations.yml", ["smoke"]),
                                ("public-demo-setup.yml", ["setup"])]:
             text = (root / ".github/workflows" / filename).read_text()
             self.assertNotIn("secrets.DATABASE_URL", text)
@@ -38,6 +38,13 @@ class CredentialsTest(unittest.TestCase):
                     self.assertNotIn("with-neon-credentials.py", job)
                     self.assertNotIn("setup-operations-tools", job)
                 self.assertLess(auth, command)
+
+    def test_routine_operations_cannot_request_a_retired_postgres_backup(self):
+        root = Path(__file__).resolve().parents[2]
+        text = (root / ".github/workflows/operations.yml").read_text()
+        self.assertNotIn("41 4 1 * *", text)
+        self.assertNotRegex(text, r"(?m)^  backup:")
+        self.assertNotIn("run-aws-db.py backup", text)
 
     def response(self, value=None, kind="SecureString", code=0):
         return subprocess.CompletedProcess([], code, json.dumps({"Parameter": {

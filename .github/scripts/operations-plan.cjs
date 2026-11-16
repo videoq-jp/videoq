@@ -1,5 +1,5 @@
 // Trusted main decides which monitors may access production credentials.
-const CHECKS = ['dependencies', 'containers', 'terraform', 'tokens', 'smoke', 'backup', 'onprem', 'inference'];
+const CHECKS = ['dependencies', 'containers', 'terraform', 'tokens', 'smoke', 'onprem', 'inference'];
 async function plan({ github, context, check = 'all' }) {
   if (`${context.repo.owner}/${context.repo.repo}` !== 'videoq-jp/videoq' || context.ref !== 'refs/heads/main') {
     throw new Error('Operations require canonical main.');
@@ -7,9 +7,8 @@ async function plan({ github, context, check = 'all' }) {
   let selected;
   switch (context.eventName) {
     case 'schedule':
-      if (context.payload.schedule === '17 0 * * *') selected = CHECKS.filter(name => !['backup', 'inference'].includes(name));
+      if (context.payload.schedule === '17 0 * * *') selected = CHECKS.filter(name => name !== 'inference');
       else if (context.payload.schedule === '17 2 * * 1') selected = ['inference'];
-      else if (context.payload.schedule === '41 4 1 * *') selected = ['backup'];
       else throw new Error('Unknown operations schedule.');
       break;
     case 'workflow_dispatch':

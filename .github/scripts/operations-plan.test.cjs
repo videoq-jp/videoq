@@ -3,17 +3,19 @@ const assert = require('node:assert/strict');
 const { plan } = require('./operations-plan.cjs');
 const context = { repo: { owner: 'videoq-jp', repo: 'videoq' }, ref: 'refs/heads/main', eventName: 'schedule', payload: { schedule: '17 0 * * *' } };
 const selected = result => Object.keys(result).filter(key => result[key]);
-test('daily monitoring excludes the monthly database restore', async () => {
+test('daily monitoring preserves the checks for the D1 production service', async () => {
   assert.deepEqual(selected(await plan({ context })), ['dependencies', 'containers', 'terraform', 'tokens', 'smoke', 'onprem']);
-  assert.deepEqual(selected(await plan({ context: { ...context, payload: { schedule: '41 4 1 * *' } } })), ['backup']);
+  await assert.rejects(plan({ context: { ...context, payload: { schedule: '41 4 1 * *' } } }), /Unknown operations schedule/);
 });
 test('configuration pushes run only the credential-free token monitor', async () => {
   assert.deepEqual(selected(await plan({ context: { ...context, eventName: 'push' } })), ['tokens']);
 });
-test('manual selection runs one check or all checks including backup', async () => {
+test('manual checks cannot start a backup against the retired PostgreSQL source', async () => {
   const manual = { ...context, eventName: 'workflow_dispatch' };
   assert.deepEqual(selected(await plan({ context: manual, check: 'tokens' })), ['tokens']);
-  assert.equal(selected(await plan({ context: manual })).length, 8);
+  assert.equal(selected(await plan({ context: manual })).length, 7);
+  assert.equal(Object.hasOwn(await plan({ context: manual }), 'backup'), false);
+  await assert.rejects(plan({ context: manual, check: 'backup' }), /Unknown operations check/);
   await assert.rejects(plan({ context: manual, check: 'arbitrary' }));
 });
 function cd() {
