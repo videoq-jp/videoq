@@ -74,6 +74,9 @@ def run(kind, request, invoke=invocation, sleep=time.sleep, now=time.monotonic):
             return run_id
         if state == "REJECTED":
             reason = result.get("reason", "AWS_REQUEST_REJECTED")
+            if reason == "CUTOVER_STAGE_STILL_COMPLETING":
+                sleep(15)
+                continue
             raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
         if state in {"FAILED", "TIMED_OUT", "ABORTED"}:
             raise RuntimeError("CUTOVER_RECOVERY_REQUIRED" if kind == "cutover-hold" else "AWS_DATABASE_OPERATION_FAILED")
@@ -102,6 +105,9 @@ def control_cutover(action, run_id, invoke=invocation, sleep=time.sleep, now=tim
             raise RuntimeError("AWS_EXECUTION_CHANGED")
         if state == "REJECTED":
             reason = result.get("reason", "AWS_REQUEST_REJECTED")
+            if reason == "CUTOVER_STAGE_STILL_COMPLETING":
+                sleep(15)
+                continue
             raise RuntimeError(reason if re.fullmatch(r"[A-Z][A-Z0-9_]+", reason) else "AWS_REQUEST_REJECTED")
         if state not in {"RUNNING", "SUCCEEDED", "RECOVERED", "FAILED", "TIMED_OUT", "ABORTED", "PENDING_REDRIVE"}:
             raise RuntimeError("INVALID_AWS_EXECUTION_STATE")

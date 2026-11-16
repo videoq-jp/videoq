@@ -1,5 +1,6 @@
 // Fixed pre-database-mutation admission stages. API configuration is read only;
 // resuming a different database requires the later verified-backend handoff.
+const {acknowledgeReplay}=require('../../infra/db-maintenance/runtime/stage-proof.cjs');
 const {createHash}=require('node:crypto');
 const m=require('./neon-admin.cjs');
 const {createConsumerControl,validateConsumerPlan}=require('./cutover-sqs-consumers.cjs');
@@ -64,7 +65,8 @@ async function controlConsumers({env=process.env,aws=m.aws,readParameter=m.readP
   if(row.cutover_phase.S===complete){
     const state=await control.inspect(plan);
     if(pause?!state.admissionPaused:!state.originalAdmissionRestored||row.consumer_admission_restored?.BOOL!==true) throw Error('CONSUMER_COMPLETION_DRIFT');
-    if(resume)await apiSafe(baseline(row));
+    await apiSafe(baseline(row));
+    await acknowledgeReplay({aws:(_s,_c,v)=>aws('dynamodb','transact-write-items',v),get,table,row,build:env.CODEBUILD_BUILD_ARN});
     return pause?{consumers_paused:true,drained:false}:{consumers_restored:true,drained:false};
   }
   const currentApi=await apiSafe(row.consumer_pause_api_state?baseline(row):undefined);
@@ -88,7 +90,7 @@ async function controlConsumers({env=process.env,aws=m.aws,readParameter=m.readP
   if(!/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N??'')||!Number.isSafeInteger(Number(row.cutover_revision.N))||Number(row.cutover_revision.N)>=Number.MAX_SAFE_INTEGER)throw Error('INVALID_CONSUMER_CONTROL_REVISION');
   try{
     await aws('dynamodb','transact-write-items',{TransactItems:[
-      {Update:{TableName:table,Key:{pk:{S:'run#'+run}},UpdateExpression:'SET #phase = :complete, #revision = :next, consumer_admission_restored = :restored, consumer_control_build_arn = :build',
+      {Update:{TableName:table,Key:{pk:{S:'run#'+run}},UpdateExpression:'SET #phase = :complete, #revision = :next, consumer_admission_restored = :restored, consumer_control_build_arn = :build, cutover_last_build_arn = :build',
         ConditionExpression:'execution_arn = :execution AND #phase = :active AND #revision = :previous AND consumer_action_id = :action AND consumer_plan_sha256 = :plan AND database_mutations_started = :false AND release_requested = :false',
         ExpressionAttributeNames:{'#phase':'cutover_phase','#revision':'cutover_revision'},ExpressionAttributeValues:{':complete':{S:complete},':next':{N:String(Number(row.cutover_revision.N)+1)},':restored':{BOOL:resume},':build':{S:env.CODEBUILD_BUILD_ARN},':execution':{S:arn},':active':{S:active},':previous':row.cutover_revision,':action':{S:action},':plan':{S:planSha},':false':{BOOL:false}}}},
       {ConditionCheck:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution',ExpressionAttributeValues:{':execution':{S:arn}}}},

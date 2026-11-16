@@ -1,4 +1,5 @@
 // This Lambda holds no database credentials. It accepts operations, never build overrides.
+const {stageSucceeded}=require('./stage-proof.cjs');
 const {randomBytes, createHash} = require('node:crypto');
 const {REGION, REPOSITORY, HOLD_KIND, KINDS, input, executionArn, safeError} = require('./policy.cjs');
 const {createCutoverHoldControl,consumerPlanPrepared} = require('./cutover-hold.cjs');
@@ -49,9 +50,10 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       if (!Item || !allowedKinds.includes(Item.kind.S)) throw new Error('UNKNOWN_RUN');
       if (Item.kind.S === HOLD_KIND && Item.cutover_phase?.S === 'recovered') return {run_id:request.run_id,status:'RECOVERED'};
       const state = await aws('sfn', 'DescribeExecution', {executionArn: Item.execution_arn.S});
-      const prepared = Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'holding' && Item.release_requested?.BOOL === false && consumerPlanPrepared(Item);
+      const settled=Item.kind.S!==HOLD_KIND||await stageSucceeded(aws,Item);
+      const prepared = settled && Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'holding' && Item.release_requested?.BOOL === false && consumerPlanPrepared(Item);
       if (prepared) await assertOwnedHold(request.run_id, Item.execution_arn.S, Item.source_sha.S);
-      const paused = Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'consumers-paused';
+      const paused = settled && Item.kind.S === HOLD_KIND && state.status === 'RUNNING' && Item.cutover_phase?.S === 'consumers-paused';
       if (paused) {
         const {Item: owner} = await get('maintenance');
         if (owner?.execution_arn?.S !== Item.execution_arn.S || owner.kind?.S !== HOLD_KIND || Item.database_mutations_started?.BOOL !== false || Item.consumer_admission_restored?.BOOL !== false || !consumerPlanPrepared(Item)) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');

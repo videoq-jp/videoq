@@ -38,7 +38,7 @@ def operator_files():
     operator = [(ROOT / ".github/scripts" / name, ".github/scripts/" + name) for name in SCRIPTS]
     for name in ["package.json", "package-lock.json", "Dockerfile", "fixtures/smoke.mp4", "fixtures/README.md"]:
         operator.append((ROOT / ".github/operations-tools" / name, ".github/operations-tools/" + name))
-    for name in ["runtime/job.cjs", "runtime/cutover-hold.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
+    for name in ["runtime/job.cjs", "runtime/stage-proof.cjs", "runtime/cutover-hold.cjs", "runtime/backup.cjs", "runtime/setup-job.cjs", "runtime/policy.cjs", "fetch_migration.py"]:
         operator.append((ROOT / "infra/db-maintenance" / name, "infra/db-maintenance/" + name))
     operator.append((ROOT / "infra/sql/neon-security.sql", "infra/sql/neon-security.sql"))
     # Minimal read-only export/fence-audit graph, not the application dependency tree.
@@ -75,7 +75,7 @@ def main():
     runtime = ROOT / "infra/db-maintenance/runtime"
     if not (runtime / "node_modules/@aws-sdk/client-sfn/package.json").is_file():
         raise SystemExit("Install locked runtime dependencies with npm ci --ignore-scripts first")
-    broker = [(runtime / name, name) for name in ["broker.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
+    broker = [(runtime / name, name) for name in ["broker.cjs", "stage-proof.cjs", "cutover-hold.cjs", "policy.cjs", "package.json", "package-lock.json"]]
     broker += [(p, p.relative_to(runtime).as_posix()) for p in (runtime / "node_modules").rglob("*") if p.is_file()]
     definition = subprocess.check_output(["node", str(ROOT / "infra/db-maintenance/state-machine.cjs"), "--production"], text=True)
     canonical = json.dumps(json.loads(definition), sort_keys=True, separators=(",", ":"), ensure_ascii=False)

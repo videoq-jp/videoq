@@ -204,6 +204,7 @@ resource "aws_iam_role_policy" "build" {
       Condition = { "ForAllValues:StringEquals" = { "dynamodb:LeadingKeys" = ["maintenance"] } } }
       ] : permission if each.key == "rotation" && var.enable_cutover_hold], [for permission in [
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/cutover-control" },
+      { Effect = "Allow", Action = ["states:GetExecutionHistory"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" },
       { Effect = "Allow", Action = ["lambda:UpdateEventSourceMapping"], Resource = "arn:aws:lambda:${local.region}:${local.account}:event-source-mapping:*",
       Condition = { ArnEquals = { "lambda:FunctionArn" = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:lambda:${local.region}:${local.account}:function:${name}"] } } }
       ] : permission if each.key == "rotation" && var.enable_cutover_consumer_control], [for permission in [
@@ -326,7 +327,9 @@ resource "aws_iam_role_policy" "broker" {
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.maintenance.arn },
     { Effect = "Allow", Action = ["codebuild:ListBuildsForProject"], Resource = local.project_arns },
     { Effect = "Allow", Action = ["codebuild:BatchGetBuilds"], Resource = local.project_arns }
-    ], each.key == "maintenance" && var.enable_cutover_consumer_control ? [
+    ], each.key == "maintenance" && var.enable_cutover_hold ? [
+    { Effect = "Allow", Action = ["states:GetExecutionHistory"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" }
+    ] : [], each.key == "maintenance" && var.enable_cutover_consumer_control ? [
     { Effect = "Allow", Action = ["states:RedriveExecution", "states:DescribeStateMachineForExecution"], Resource = "${trimsuffix(local.execution_arn, "*")}db-*" }
   ] : []) })
 }

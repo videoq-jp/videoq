@@ -1,5 +1,6 @@
 // Fixed read-only CodeBuild stage. Persist the original admission plan under the
 // same live hold before ANY consumer pause is permitted by a later operation.
+const {acknowledgeReplay}=require('../../infra/db-maintenance/runtime/stage-proof.cjs');
 const {createHash}=require('node:crypto');
 const m=require('./neon-admin.cjs');
 const {createConsumerControl,validateConsumerPlan}=require('./cutover-sqs-consumers.cjs');
@@ -21,7 +22,7 @@ async function prepareConsumers({env=process.env,aws=m.aws}={}) {
     const plan=validateConsumerPlan(JSON.parse(value.consumer_plan.S));if(plan.scope.purpose!=='production') throw Error('INVALID_CONSUMER_PLAN_RECORD');
     return {consumer_prepared:true,consumers:plan.consumers.length,consumer_configuration_changed:false};
   };
-  if(row.cutover_phase?.S==='holding'&&consumerPlanPrepared(row)) return completed(row);
+  if(row.cutover_phase?.S==='holding'&&consumerPlanPrepared(row)){const result=completed(row);await acknowledgeReplay({aws:(_s,_c,v)=>aws('dynamodb','transact-write-items',v),get,table,row,build:env.CODEBUILD_BUILD_ARN});return result;}
   if(row.cutover_phase?.S!=='consumer-preparing'||row.release_requested?.BOOL!==false||!/^(0|[1-9][0-9]*)$/.test(row.cutover_revision?.N??'')
     ||!Number.isSafeInteger(Number(row.cutover_revision.N))||Number(row.cutover_revision.N)>=Number.MAX_SAFE_INTEGER||consumerPlanPrepared(row)) throw Error('INVALID_CONSUMER_PREPARATION_PHASE');
   // This control instance has no mutation authority and calls prepare only.
@@ -33,7 +34,7 @@ async function prepareConsumers({env=process.env,aws=m.aws}={}) {
   const values={':execution':{S:arn},':kind':{S:'cutover-hold'},':phase':{S:'consumer-preparing'},':revision':row.cutover_revision,':source':{S:source},':false':{BOOL:false},':plan':{S:serialized},':sha':{S:sha},':build':{S:env.CODEBUILD_BUILD_ARN},':holding':{S:'holding'},':next':{N:String(Number(row.cutover_revision.N)+1)}};
   try {
     await aws('dynamodb','transact-write-items',{TransactItems:[
-      {Update:{TableName:table,Key:key,UpdateExpression:'SET consumer_plan = :plan, consumer_plan_sha256 = :sha, consumer_prepare_build_arn = :build, #phase = :holding, #revision = :next',
+      {Update:{TableName:table,Key:key,UpdateExpression:'SET consumer_plan = :plan, consumer_plan_sha256 = :sha, consumer_prepare_build_arn = :build, cutover_last_build_arn = :build, #phase = :holding, #revision = :next',
         ConditionExpression:'execution_arn = :execution AND #phase = :phase AND #revision = :revision AND source_sha = :source AND release_requested = :false AND attribute_not_exists(consumer_plan)',
         ExpressionAttributeNames:{'#phase':'cutover_phase','#revision':'cutover_revision'},ExpressionAttributeValues:Object.fromEntries(Object.entries(values).filter(([key])=>key!==':kind'))}},
       {ConditionCheck:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':values[':execution'],':kind':values[':kind']}}},

@@ -367,3 +367,35 @@ run "consumer_control_permissions_are_narrow" {
     error_message = "The consumer capability must be exposed only on the maintenance invoker."
   }
 }
+
+run "stage_history_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups = false
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.broker : !strcontains(policy.policy, "states:GetExecutionHistory")]) && alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "states:GetExecutionHistory")])
+    error_message = "Native stage history must not be granted before explicit cutover opt-in."
+  }
+}
+
+run "stage_history_is_execution_scoped_metadata" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups = false
+    enable_cutover_hold             = true
+    enable_cutover_consumer_control = true
+  }
+  assert {
+    condition     = alltrue([for key, policy in aws_iam_role_policy.broker : (key == "maintenance") == strcontains(policy.policy, "states:GetExecutionHistory")]) && alltrue([for key, policy in aws_iam_role_policy.build : (key == "rotation") == strcontains(policy.policy, "states:GetExecutionHistory")])
+    error_message = "Only the maintenance broker and fixed rotation stage may read native stage history."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.broker["maintenance"].policy).Statement : statement
+      if statement.Action == ["states:GetExecutionHistory"] && statement.Resource == "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-*"
+    ]) == 1
+    error_message = "History access must stay on the fixed production maintenance execution prefix."
+  }
+}

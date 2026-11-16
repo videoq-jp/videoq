@@ -1,3 +1,4 @@
+const {stageSucceeded,requireStageSucceeded}=require('./stage-proof.cjs');
 const {createHash,randomBytes}=require('node:crypto');
 // This is a maintenance hold, not a database write fence. Release is permitted
 // only in holding with no unfinished consumer/DB mutation. No credential or task token is stored.
@@ -88,15 +89,17 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       if(activityAction){
         if(row.cutover_phase.S==='activity-auditing')return{run_id:run,status:'RUNNING'};
         if(row.cutover_phase.S!=='consumers-paused')throw new Error('INVALID_ACTIVITY_AUDIT_PHASE');
+        await requireStageSucceeded(aws,row);
         const next={...updated(row,'activity-auditing'),activity_action_id:{S:randomBytes(16).toString('hex')},activity_observed:{BOOL:false}};
         delete next.activity_report;delete next.activity_report_sha256;await replace(run,row,next,owner);return{run_id:run,status:'RUNNING'};
       }
       const pause = request.action === 'pause-cutover-consumers';
       if(row.api_traffic_plan&&(pause?(row.api_pause_verified?.BOOL!==true||row.api_admission_restored?.BOOL!==false):(row.api_admission_restored?.BOOL!==true||row.api_pause_verified?.BOOL!==false)))throw new Error('VERIFIED_API_TRAFFIC_REQUIRED');
       if (row.cutover_phase.S === (pause?'consumers-pausing':'consumers-resuming')) return {run_id:run,status:'RUNNING'};
-      if (pause && row.cutover_phase.S === 'consumers-paused') return {run_id:run,status:'RUNNING',consumers_paused:true};
-      if (!pause && row.cutover_phase.S === 'holding' && row.consumer_admission_restored?.BOOL === true) return {run_id:run,status:'RUNNING',consumers_restored:true};
+      if (pause && row.cutover_phase.S === 'consumers-paused') return {run_id:run,status:'RUNNING',...(await stageSucceeded(aws,row)?{consumers_paused:true}:{})};
+      if (!pause && row.cutover_phase.S === 'holding' && row.consumer_admission_restored?.BOOL === true) return {run_id:run,status:'RUNNING',...(await stageSucceeded(aws,row)?{consumers_restored:true}:{})};
       if (row.cutover_phase.S !== (pause?'holding':'consumers-paused')) throw new Error('INVALID_CONSUMER_CONTROL_PHASE');
+      await requireStageSucceeded(aws,row);
       await replace(run,row,{...updated(row,pause?'consumers-pausing':'consumers-resuming'),consumer_action_id:{S:randomBytes(16).toString('hex')},consumer_admission_restored:{BOOL:false}},owner);
       return {run_id:run,status:'RUNNING'};
     }
@@ -104,11 +107,13 @@ function createCutoverHoldControl({aws, table, machine, get, noActiveBuilds, con
       if (status !== 'RUNNING' || owner?.execution_arn?.S !== arn || owner.kind?.S !== HOLD_KIND) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
       if (row.release_requested.BOOL || !['holding','consumer-preparing'].includes(row.cutover_phase.S)) throw new Error('CUTOVER_RECOVERY_REQUIRED');
       if (row.cutover_phase.S === 'consumer-preparing') return {run_id:run,status:'RUNNING'};
-      if (consumerPlanPrepared(row)) return {run_id:run,status:'RUNNING',consumer_prepared:true};
+      if (consumerPlanPrepared(row)) return {run_id:run,status:'RUNNING',...(await stageSucceeded(aws,row)?{consumer_prepared:true}:{})};
+      await requireStageSucceeded(aws,row);
       await replace(run,row,updated(row,'consumer-preparing'),owner);
       return {run_id:run,status:'RUNNING'};
     }
     if (request.action === 'release-cutover-hold') {
+      await requireStageSucceeded(aws,row);
       if (row.cutover_phase.S !== 'holding' || row.database_mutations_started?.BOOL === true || row.consumer_admission_restored?.BOOL === false || row.deployment_admission_restored?.BOOL === false || row.api_admission_restored?.BOOL === false) throw new Error('CUTOVER_MUTATION_RECOVERY_REQUIRED');
       if (status === 'SUCCEEDED') {
         if (!row.release_requested.BOOL || owner?.execution_arn?.S === arn) throw new Error('CUTOVER_HOLD_OWNERSHIP_LOST');
