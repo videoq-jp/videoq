@@ -324,3 +324,22 @@ format or incomplete restore fails closed; the validator does not repair a dump
 or substitute maximum visible IDs for sequence high-water marks. Tests cover
 round-trip equality, corrupted values/sequence, missing fences/indexes and
 attempted filesystem access. No production export has been restored yet.
+
+`d1_resource_transfer_journal.py` stores eleven fixed ordered transfer records in
+a dedicated owned mode-0700 directory, using exclusive mode-0600 files, file and
+directory fsync, pinned directory identity, run/source/plan context and a digest
+chain. Reopening preserves exact records; gaps, partial writes, altered proofs,
+unsafe files and context changes refuse recovery. Signed URLs remain private.
+This local working journal does not provide a distributed execution lease or
+independent disaster recovery; the owned coordinator must serialize callers.
+
+`d1_resource_transfer_control.py` connects the export, private download, dump
+verification, import initialization/upload/ingest/polling and final database
+comparison stages. Export/ingest intent is durable before the request; a lost
+start response stops for explicit reconciliation rather than issuing another
+start. Polling keeps the original bookmark. File proof drift and negative dump
+or database verification refuse advancement; reentry after verification checks
+the actual target again. The controller advances one stage per call and has no
+live caller. Tests use real private journal files with explicit provider/file
+and ownership fixtures. Integration with the AWS owner, an exclusive executor,
+full live data adapters and lost-start reconciliation remains required.
