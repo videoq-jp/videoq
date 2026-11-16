@@ -14,3 +14,9 @@ Verification: deployment config/order tests (33 passed), all deployment security
 Immediately before the credentialed API upload, ordinary CD reads the fixed production API settings and checks only the pause/backend/database/index selectors. It refuses to clear a pause, change an active D1 backend back to PostgreSQL, replace its database, or replace either Vectorize index. Missing/ambiguous settings, a failed management read or an oversized response stop the upload. The credential and returned settings are not logged. Deliberate resume or inverse recovery must use the controlled cutover procedure rather than bypass this check.
 
 This is a preflight comparison, not an atomic cross-service deployment lock. For the cutover window, suspend ordinary deployment automation, wait for active deployment runs to finish, hold AWS maintenance exclusion and retain writer fences until final reconciliation. A concurrent privileged operator can still change Cloudflare configuration; main review and the operation window remain the trust boundary.
+
+## Unchanged D1 schema during ordinary CD
+
+An already active D1 backend can complete the canonical migration job as a read-only no-op when the fixed database binding matches and every reviewed SQL filename exactly matches the applied ledger. The job still owns the maintenance lock and verifies its source and backend again. It does not invoke Wrangler, modify schema or infer stopped writers. Missing, duplicate, unknown or unreadable ledger entries fail closed. Pending migrations retain the explicit stopped-writer and paused-API requirements. PostgreSQL selection and its credential wrapper are unchanged.
+
+Validation: 468 Node security tests passed, including the original D1 write boundaries and new no-op, ledger-drift, target and ownership cases. No production migration was executed.
