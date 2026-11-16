@@ -32,6 +32,7 @@ try{
  const ops=join(root,'.github/operations-tools/node_modules');await symlink(ops,join(bundle,'.github/operations-tools/node_modules'),'dir');
  const {ensureOperatorDependencies}=await import(pathToFileURL(join(bundle,'.github/scripts/neon-fence-audit.mjs')).href);await ensureOperatorDependencies(bundle);
  assert.equal(typeof(await import(pathToFileURL(join(bundle,'.github/scripts/cutover-postgres-fence.mjs')).href)).runHeldPostgresFence,'function');
+ assert.equal(typeof(await import(pathToFileURL(join(bundle,'.github/scripts/cutover-postwrite-recovery.mjs')).href)).runHeldPostwriteRecovery,'function');
  // The production recovery child must resolve only the ZIP's locked operations
  // dependencies; importing it must not execute recovery or access credentials.
  const recoveryImport="const m=await import("+JSON.stringify(pathToFileURL(join(bundle,'apps/api/scripts/d1-production-recovery.ts')).href)+");if(typeof m.main!=='function')throw Error('RECOVERY_CHILD_IMPORT_FAILED');console.log('RECOVERY_CHILD_IMPORT_VERIFIED');";

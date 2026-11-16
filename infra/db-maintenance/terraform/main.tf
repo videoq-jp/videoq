@@ -14,6 +14,16 @@ variable "enable_d1_migrations" {
   description = "Allow the fixed migration job to read its D1-only credential and verify existing lock ownership."
 }
 
+variable "enable_cutover_postwrite_recovery" {
+  type        = bool
+  default     = false
+  description = "Enable only the fixed root-operated AWS inverse restore, keeping the post-write hold and all writer admission closed."
+  validation {
+    condition     = !var.enable_cutover_postwrite_recovery || (var.enable_cutover_consumer_control && var.provision_backup_archive)
+    error_message = "Post-write recovery requires owned consumer control and preserved private archive infrastructure."
+  }
+}
+
 variable "operator_zip" {
   type = string
 }
@@ -211,7 +221,13 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration" },
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
-    ] : permission if each.key == "migration" && var.enable_d1_migrations], each.key == "backup" && var.retain_verified_backups ? [
+    ] : permission if each.key == "migration" && var.enable_d1_migrations], each.key == "rotation" && var.enable_cutover_postwrite_recovery ? [
+    { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
+      "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
+      "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
+    ] },
+    { Effect = "Allow", Action = ["s3:GetObjectVersion"], Resource = ["${aws_s3_bucket.archive[0].arn}/cutover-recovery/*"] }
+    ] : [], each.key == "backup" && var.retain_verified_backups ? [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.archive[0].arn}/verified/*" }
   ] : []) })
 }
@@ -239,6 +255,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"
+      value = each.key == "rotation" && var.enable_cutover_postwrite_recovery ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_RETAIN_BACKUP"

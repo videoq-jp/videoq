@@ -1,6 +1,7 @@
 // Called only after successful push CI and current canonical-main validation.
 const {execFileSync} = require('node:child_process');
 function relevant(path) {
+  if (['.github/scripts/cutover-postwrite-recovery.mjs','.github/scripts/cutover-recovery-child.cjs','apps/api/scripts/migrations/d1/write-fence.ts'].includes(path)) return true;
   if (path.startsWith('infra/db-maintenance/runtime/')) return !path.endsWith('.md');
   if (['build_bundle.py','deploy.py','fetch_migration.py','state-machine.cjs','operator-package.json']
     .some(name => path === 'infra/db-maintenance/' + name)) return true;

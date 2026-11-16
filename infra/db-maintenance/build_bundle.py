@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = [
+    "cutover-postwrite-recovery.mjs", "cutover-recovery-child.cjs",
     "cutover-postgres-activity.mjs", "cutover-postgres-fence.mjs",
     "cutover-owned-api-traffic.cjs",
     "cutover-api-traffic.cjs",
@@ -47,6 +48,7 @@ def operator_files():
                  "scripts/d1-production-recovery.ts", "scripts/migrations/d1/recovery-authorization.ts",
                  "scripts/migrations/d1/postwrite-recovery.ts", "scripts/migrations/d1/fenced-postgres-transaction.ts",
                  "scripts/migrations/d1/recover-visual-artifacts.ts", "scripts/migrations/d1/visual-artifacts.ts", "src/shared/media-path.ts",
+                 "scripts/migrations/d1/write-fence.ts",
                  "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
                  "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",
                  "scripts/migrations/d1/verify-archive.ts", "scripts/migrations/d1/preserved-tables.ts", "scripts/migrations/d1/verified-postgres-source.ts", "scripts/migrations/d1/private-input.ts", "src/persistence/postgres/read-snapshot.ts"]:

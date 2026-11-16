@@ -399,3 +399,63 @@ run "stage_history_is_execution_scoped_metadata" {
     error_message = "History access must stay on the fixed production maintenance execution prefix."
   }
 }
+
+run "postwrite_recovery_disabled_by_default" {
+  command = plan
+  variables {
+    provision_backup_archive = true
+    retain_verified_backups  = false
+  }
+  assert {
+    condition = alltrue([for project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"]) == "false"
+    ])
+    error_message = "Post-write recovery must not activate merely by deploying code."
+  }
+  assert {
+    condition     = alltrue([for policy in aws_iam_role_policy.build : !strcontains(policy.policy, "cutover-recovery/")])
+    error_message = "The disabled recovery stage must not receive private snapshot reads."
+  }
+}
+
+run "postwrite_recovery_requires_owned_admission_control" {
+  command = plan
+  variables {
+    provision_backup_archive          = true
+    enable_cutover_postwrite_recovery = true
+  }
+  expect_failures = [var.enable_cutover_postwrite_recovery]
+}
+
+run "postwrite_recovery_reads_are_narrow" {
+  command = plan
+  variables {
+    provision_backup_archive          = true
+    retain_verified_backups           = false
+    enable_cutover_hold               = true
+    enable_cutover_consumer_control   = true
+    enable_cutover_postwrite_recovery = true
+  }
+  assert {
+    condition = alltrue([for purpose, project in aws_codebuild_project.job :
+      one([for variable in project.environment[0].environment_variable : variable.value if variable.name == "VIDEOQ_CUTOVER_POSTWRITE_RECOVERY"]) == (purpose == "rotation" ? "true" : "false")
+    ])
+    error_message = "Only the fixed rotation project may run held inverse recovery."
+  }
+  assert {
+    condition = alltrue([for purpose, policy in aws_iam_role_policy.build :
+      (purpose == "rotation") == strcontains(policy.policy, "cutover-recovery/*")
+    ])
+    error_message = "Recovery snapshot access must remain confined to the root-operated AWS stage."
+  }
+  assert {
+    condition = length([for statement in jsondecode(aws_iam_role_policy.build["rotation"].policy).Statement : statement
+      if statement.Action == ["s3:GetObjectVersion"] && statement.Resource == ["${aws_s3_bucket.archive[0].arn}/cutover-recovery/*"]
+    ]) == 1
+    error_message = "Only explicitly versioned recovery objects may be retrieved; no latest lookup or upload grant."
+  }
+  assert {
+    condition     = strcontains(aws_iam_role_policy.build["rotation"].policy, "/videoq/prod/app") && strcontains(aws_iam_role_policy.build["rotation"].policy, "/videoq/security/prod/d1-migration")
+    error_message = "Only the gated AWS parent may load the R2 and fixed D1 inspection credentials."
+  }
+}
