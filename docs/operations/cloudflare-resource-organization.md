@@ -301,3 +301,15 @@ This module does not implement durable transfer substeps, signed-URL file
 transfer, file validation or recovery, and has no production caller/CLI.
 See the [export API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/)
 and [import API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/import/).
+
+`infra/scripts/d1_resource_files.py` handles private SQL artifacts using
+provider-supplied HTTPS R2 signed URLs. No bearer token is accepted or forwarded.
+The existing owned mode-0700 directory is pinned, downloads use exclusive
+mode-0600 files, completion fsyncs the file and directory, and final promotion
+cannot overwrite an existing artifact. Interrupted downloads remain `.partial`
+and require explicit recovery. Uploads recheck SHA-256/size and the R2 MD5 ETag;
+MD5 is a provider-required transport checksum, not the integrity authority.
+Redirects and automatic retries are disabled. Files are limited to 1 GiB, and
+unexpected URL hosts are refused. Tests use private local files and fake HTTP;
+no signed production URL has been downloaded or uploaded. Durable transfer
+substeps, dump validation and full recovery remain required before live use.
