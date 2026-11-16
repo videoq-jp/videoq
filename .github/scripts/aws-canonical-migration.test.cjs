@@ -42,3 +42,18 @@ test('ownership and pause are checked again after child completion',async()=>{
   const f=fixture();f.options.execute=(...args)=>{f.calls.push(args);mutate(f);};await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,1);
  }
 });
+
+function noOpFixture(names=['0000_initial.sql']){
+ const f=fixture();f.env.MAINTENANCE_WRITERS_STOPPED='false';f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false});f.production.vars.MIGRATION_TRAFFIC_STATE='running';
+ f.settings.bindings=[{name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'PERSISTENCE_BACKEND',type:'plain_text',text:'d1'},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'running'},{name:'DB',type:'d1',id:f.production.d1_databases[0].database_id},...f.production.vectorize.map(v=>({name:v.binding,type:'vectorize',index_name:v.index_name}))];
+ f.options.readMigrations=()=>['0000_initial.sql'];f.options.fetcher=async(url,options)=>{if(url.endsWith('/query')){assert.equal(options.method,'POST');assert.deepEqual(JSON.parse(options.body),{sql:'SELECT name FROM d1_migrations ORDER BY name LIMIT 501',params:[]});return Response.json({success:true,result:[{success:true,results:names.map(name=>({name}))}]});}return Response.json({success:true,result:f.settings});};return f;
+}
+test('ordinary D1 code deployment with an exact applied ledger performs no schema write or forced pause',async()=>{
+ const f=noOpFixture(),r=await runCanonicalMigration(f.options);assert.equal(r.read_only,true);assert.equal(r.migrations_pending,false);assert.equal(f.calls.length,0);assert.equal(f.settings.bindings.find(b=>b.name==='MIGRATION_TRAFFIC_STATE').text,'running');
+});
+test('pending, duplicate or unknown migration ledgers cannot authorize an unpaused schema change',async()=>{
+ for(const names of [[],['0000_initial.sql','9999_future.sql'],['0000_initial.sql','0000_initial.sql']]){const f=noOpFixture(names);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,0);}
+});
+test('ledger errors, wrong active DB and ownership drift fail closed without a child or PostgreSQL fallback',async()=>{
+ for(const change of [f=>{f.settings.bindings.find(b=>b.name==='DB').id='other';},f=>{f.options.fetcher=async()=>new Response('',{status:403});},f=>{const old=f.options.fetcher;f.options.fetcher=async(...args)=>{const result=await old(...args);if(args[0].endsWith('/query'))f.state.lock.execution_arn.S='other';return result;};}]){const f=noOpFixture();change(f);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,0);}
+});
