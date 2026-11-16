@@ -4,7 +4,6 @@ on:
   schedule:
     - cron: '17 0 * * *' # Daily checks, 09:17 JST.
     - cron: '17 2 * * 1' # Weekly inference compatibility, Monday 11:17 JST.
-    - cron: '41 4 1 * *' # Monthly backup rehearsal, 13:41 JST.
   workflow_run:
     workflows: [CD]
     types: [completed]
@@ -21,10 +20,10 @@ on:
         description: Internal database rotation verification identifier
         type: string
       check:
-        description: Check to run (all includes the backup rehearsal)
+        description: Check to run for the D1 production service
         type: choice
         default: all
-        options: [all, dependencies, containers, terraform, tokens, smoke, backup, onprem, inference]
+        options: [all, dependencies, containers, terraform, tokens, smoke, onprem, inference]
       verify_ai_answers:
         description: Include paid cited Q&A and course/unscoped streaming in the production smoke check
         type: boolean
@@ -58,7 +57,6 @@ jobs:
       terraform: ${{ steps.plan.outputs.terraform }}
       tokens: ${{ steps.plan.outputs.tokens }}
       smoke: ${{ steps.plan.outputs.smoke }}
-      backup: ${{ steps.plan.outputs.backup }}
       onprem: ${{ steps.plan.outputs.onprem }}
       inference: ${{ steps.plan.outputs.inference }}
     steps:
@@ -264,35 +262,6 @@ jobs:
         with:
           kind: production-smoke
           title: 本番の動作確認
-
-  backup:
-    name: backup-restore
-    needs: source
-    if: needs.source.outputs.backup == 'true'
-    concurrency:
-      group: backup-restore
-      cancel-in-progress: false
-    environment: production-db-backup
-    runs-on: ubuntu-latest
-    timeout-minutes: 125
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          persist-credentials: false
-      - uses: ./.github/actions/aws-db-invocation
-      - name: Request the read-only backup and isolated restore in AWS
-        run: python3 .github/scripts/run-aws-db.py backup
-      - uses: ./.github/actions/report-operations
-        if: always()
-        with:
-          kind: backup-restore
-          title: バックアップの復元テスト
 
   onprem:
     name: On-prem image security checks

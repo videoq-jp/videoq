@@ -40,6 +40,14 @@ PostgreSQL connection switch. Historical PostgreSQL credential parameters and
 the guarded recovery tooling are not runtime dependencies or proof of an active
 Neon database. Do not delete the archive infrastructure as part of retirement.
 
+The `Operations` workflow no longer schedules the legacy monthly PostgreSQL
+restore rehearsal or offers it through the `all`/`backup` selections. Daily
+service monitoring and post-deployment D1 smoke remain enabled. D1 Time Travel
+provides the live database's automatic recovery history; the private retirement
+export and scene-vector archive provide a separate retained copy. The native
+PostgreSQL restore tooling remains available to an explicit AWS recovery
+operator, rather than contacting the deleted source from routine monitoring.
+
 EventBridge Scheduler starts daily age checks. Step Functions Standard orchestrates
 purpose-specific CodeBuild jobs and waits without keeping a build running during
 the 16-minute Lambda invocation grace period. Only the rotation project may read
