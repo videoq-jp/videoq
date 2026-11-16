@@ -8,11 +8,15 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {randomUUID,createHash} from 'node:crypto';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
-import {runHeldPostwriteRecovery} from './cutover-postwrite-recovery.mjs';
-import {loadMigrationSnapshot} from '../../apps/api/scripts/d1-migration-manifest.ts';
-import {buildMigrationManifest} from '../../apps/api/scripts/migrations/d1/manifest.ts';
-import {recoveryHash} from '../../apps/api/scripts/migrations/d1/postwrite-recovery.ts';
-import {prepareD1WriteFence,installD1WriteFence} from '../../apps/api/scripts/migrations/d1/write-fence.ts';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {ensureOperatorDependencies} from './neon-fence-audit.mjs';
+// Bootstrap the same minimal graph as the real job BEFORE ESM links any of the
+// TS/schema/parent modules. CI deliberately installs no application packages.
+await ensureOperatorDependencies(resolve(dirname(fileURLToPath(import.meta.url)),'../..'));
+const [{runHeldPostwriteRecovery},{loadMigrationSnapshot},{buildMigrationManifest},{recoveryHash},{prepareD1WriteFence,installD1WriteFence}]=await Promise.all([
+ import('./cutover-postwrite-recovery.mjs'),import('../../apps/api/scripts/d1-migration-manifest.ts'),import('../../apps/api/scripts/migrations/d1/manifest.ts'),import('../../apps/api/scripts/migrations/d1/postwrite-recovery.ts'),import('../../apps/api/scripts/migrations/d1/write-fence.ts'),
+]);
 const require=createRequire(import.meta.url),sdk=require('../../infra/db-maintenance/runtime/node_modules/@aws-sdk/client-dynamodb');
 const {NodeHttpHandler}=require('../../infra/db-maintenance/runtime/node_modules/@smithy/node-http-handler');
 const table='videoq-db-maintenance-prod',source='c'.repeat(40),databaseId='373d6ca5-2796-460d-8ab1-e644de46bb3c';
