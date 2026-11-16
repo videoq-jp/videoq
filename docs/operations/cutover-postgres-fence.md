@@ -13,3 +13,9 @@ API停止の実503応答、実Lambda mapping停止、同じglobal owner、元の
 `database_mutations_started` はアプリケーションデータ移行のguardとして維持し、リセットしない。LOGIN変更は独立した `postgres_fence_state` intent/receiptで追跡する。データ移行開始後の復帰はこの停止前ツールの対象外であり、検証済み逆移行/handoffが必要である。
 
 検証: 50件の実DynamoDB Local契約テスト（AWS/Cloudflare transportsはmock）、465件のNode security、16件のPython request client、実operator ZIPと専用loopback PostgreSQLでのinstall/releaseの反復、backup LOGINとretired NOLOGINの維持、秘密値非出力を確認した。AWSのstate-machine定義検証もOKだった。本番LOGIN変更・停止・D1切り替えの実績とは扱わない。
+
+## Production inverse-transaction primitive
+
+`restoreProductionPostwriteSnapshot` is a separate trusted-operator entry into the same recovery implementation. The rehearsal entry remains loopback-only. The new entry requires the fixed production original fence plan and pinned snapshot/mapping hashes, copies inputs before waiting, fixes schemas to public/chat_memory and owns a verified direct-Neon fenced transaction. It does not start a nested transaction or accept a caller-selected SQL callback. It leaves the global/application/D1 admission verification to its AWS parent and retains `productionSafe:false`; this primitive alone is not a production recovery CLI or complete handoff.
+
+Validation: API and D1-tools typechecks, focused lint and 35 tests across five files passed, including actual isolated PG/D1 recovery, authentication/job continuity, identity floors and fence transaction behavior. Three new entry-boundary cases mock the verified transaction to check target/input binding, fixed schemas and independent copies. They are not a real production TLS or Neon restore test.
