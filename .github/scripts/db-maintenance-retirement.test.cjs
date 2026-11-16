@@ -5,7 +5,7 @@ const {definition} = require('../../infra/db-maintenance/state-machine.cjs');
 test('retired production graph has only D1 jobs and rejects legacy operations', () => {
   const projects = {migration: 'migration', smoke: 'smoke', deploy: 'deploy'};
   const spec = definition({table:'maintenance', projects, neonRetired:true});
-  assert.deepEqual(spec.States.Operation.Choices.map(choice=>choice.StringEquals), ['migration','smoke','deploy']);
+  assert.deepEqual(spec.States.Operation.Choices.map(choice=>choice.StringEquals), ['migration','d1-resource-hold','smoke','deploy']);
   assert.equal(spec.States[spec.States.Operation.Default].Type, 'Fail');
   assert.equal(spec.States.Deploy.Next, 'SmokeStandalone');
   assert.equal(spec.States.Release.Parameters.ConditionExpression, 'execution_arn = :execution');

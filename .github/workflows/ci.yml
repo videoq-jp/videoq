@@ -902,6 +902,7 @@ jobs:
           npm ci --ignore-scripts --prefix infra/db-maintenance/runtime
           npm audit signatures --prefix infra/db-maintenance/runtime
           node --test .github/scripts/cutover-hold.integration.cjs
+          node --test .github/scripts/d1-resource-hold.integration.cjs
           node --import ./.github/operations-tools/node_modules/tsx/dist/loader.mjs --test .github/scripts/cutover-postwrite-recovery.integration.mjs
       - name: Verify the hosted Chrome channel without production access
         run: |

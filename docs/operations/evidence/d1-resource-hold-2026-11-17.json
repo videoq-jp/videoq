@@ -1,0 +1,30 @@
+{
+  "scope": "Disabled ownership-only D1 resource hold; not production cutover or full coordinator",
+  "nodeTests": {
+    "passed": 524,
+    "failed": 0
+  },
+  "dynamoDbLocalIntegration": {
+    "passed": 3,
+    "failed": 0,
+    "realConditionalTransactions": true,
+    "stepFunctionsAndCodeBuild": "explicit test transports",
+    "negativeCasesRequire": "TransactionCanceledException",
+    "ownedContainerRemoved": true
+  },
+  "terraformMockTests": {
+    "passed": 30,
+    "failed": 0
+  },
+  "awsStateMachineDefinitionValidation": {
+    "result": "OK",
+    "diagnostics": []
+  },
+  "enableD1ResourceHoldDefault": false,
+  "newCodeBuildProjects": 0,
+  "newStarters": 0,
+  "newStarterSecretPermissions": false,
+  "productionHoldStarted": false,
+  "productionAdmissionChanged": false,
+  "productionBindingsChanged": false
+}

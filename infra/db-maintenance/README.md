@@ -648,3 +648,15 @@ credential reconciliation and SQL behavior. The explicitly invoked
 disposable D1 database. Its Worker metadata transport is deliberately mocked;
 it proves the D1 storage contract, not a production backend switch or complete
 upload-to-answer E2E result. The harness must delete its database after testing.
+
+## Disabled D1 resource replacement hold
+
+`enable_d1_resource_hold=false` is the default. The optional
+`d1-resource-hold` request uses the existing migration starter and state machine
+as an ownership-only wait, without a new CodeBuild project or credential grant.
+It requires canonical main, excludes competing maintenance, keeps terminal locks
+for explicit recovery, and releases only against trusted completion/abort
+receipts with restored admission markers. It does not enable Cloudflare
+mutations, stop consumers or constitute a production writer fence. Keep it
+disabled until the full reviewed replacement/recovery coordinator is ready.
+See [resource organization](../../docs/operations/cloudflare-resource-organization.md).

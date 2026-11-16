@@ -16,10 +16,29 @@ function definition({table, projects, neonRetired = false}) {
       {And: [{Variable:'$.kind',StringEquals:'audit'}, {Variable:'$.inspection',IsPresent:true}, {Variable:'$.inspection',StringEquals:'postgres-login-fence'}], Next:'LoginFenceAudit'},
       {Variable: '$.kind', StringEquals: 'cutover-hold', Next: 'ReadCutoverHold'},
       {Variable: '$.kind', StringEquals: 'migration', Next: 'Migrate'},
+      {Variable: '$.kind', StringEquals: 'd1-resource-hold', Next: 'ReadD1ResourceHold'},
       {Variable: '$.kind', StringEquals: 'backup', Next: 'BackupStandalone'},
       {Variable: '$.kind', StringEquals: 'smoke', Next: 'SmokeStandalone'},
       {Variable: '$.kind', StringEquals: 'deploy', Next: 'Deploy'},
     ], Default: 'Prepare'},
+    // A dedicated D1-only ownership hold. It starts no build and carries no
+    // credential or application data. Trusted coordinator receipts gate release.
+    ReadD1ResourceHold: {Type:'Task',Resource:'arn:aws:states:::dynamodb:getItem',Parameters:{
+      TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},ConsistentRead:true,
+      ProjectionExpression:'resource_phase,release_requested',
+    },ResultPath:'$.resource_hold',Next:'D1ResourceHoldPhase'},
+    D1ResourceHoldPhase: {Type:'Choice',Choices:[
+      {And:[{Variable:'$.resource_hold.Item.resource_phase.S',StringEquals:'holding'},{Variable:'$.resource_hold.Item.release_requested.BOOL',BooleanEquals:false}],Next:'WaitD1ResourceHold'},
+      ...['verified','aborted'].map(phase=>({And:[{Variable:'$.resource_hold.Item.resource_phase.S',StringEquals:phase},{Variable:'$.resource_hold.Item.release_requested.BOOL',BooleanEquals:true}],Next:'ReleaseD1ResourceHold'})),
+    ],Default:'InvalidD1ResourceHold'},
+    WaitD1ResourceHold: {Type:'Wait',Seconds:10,Next:'ReadD1ResourceHold'},
+    ReleaseD1ResourceHold: {Type:'Task',Resource:'arn:aws:states:::aws-sdk:dynamodb:transactWriteItems',Parameters:{TransactItems:[
+      {ConditionCheck:{TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},
+        ConditionExpression:'execution_arn = :execution AND #kind = :kind AND source_sha = :source AND resource_phase IN (:verified,:aborted) AND release_requested = :true AND api_admission_restored = :true AND consumer_admission_restored = :true AND deployment_admission_restored = :true AND attribute_exists(resource_completion_receipt) AND attribute_exists(resource_completion_receipt_sha256) AND size(resource_completion_receipt) > :zero AND size(resource_completion_receipt_sha256) = :hashSize',
+        ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'},':source':{'S.$':'$.source_sha'},':zero':{N:'0'},':hashSize':{N:'64'},':kind':{S:'d1-resource-hold'},':verified':{S:'verified'},':aborted':{S:'aborted'},':true':{Bool:true}}}},
+      {Delete:{TableName:table,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{'S.$':'$$.Execution.Id'},':kind':{S:'d1-resource-hold'}}}},
+    ]},ResultPath:null,Next:'Success'},
+    InvalidD1ResourceHold: {Type:'Fail',Error:'INVALID_D1_RESOURCE_HOLD'},
     ReadCutoverHold: {Type:'Task',Resource:'arn:aws:states:::dynamodb:getItem',Parameters:{
       TableName:table,Key:{pk:{'S.$':"States.Format('run#{}', $.run_id)"}},ConsistentRead:true,
       ProjectionExpression:'cutover_phase,release_requested,consumer_action_id,activity_action_id',
@@ -98,14 +117,17 @@ function definition({table, projects, neonRetired = false}) {
     InvalidPhase: {Type: 'Fail', Error: 'INVALID_DATABASE_MAINTENANCE_PHASE'},
   };
   if (neonRetired) {
-    const keep = ['Operation', 'Migrate', 'SmokeStandalone', 'Deploy', 'Release', 'Success'];
+    const keep = ['ReadD1ResourceHold','D1ResourceHoldPhase','WaitD1ResourceHold','ReleaseD1ResourceHold','InvalidD1ResourceHold','Operation', 'Migrate', 'SmokeStandalone', 'Deploy', 'Release', 'Success'];
     const active = Object.fromEntries(keep.map(name => [name, states[name]]));
     active.Operation = {Type: 'Choice', Choices: states.Operation.Choices.filter(choice =>
-      ['migration', 'smoke', 'deploy'].includes(choice.StringEquals)), Default: 'RetiredOperation'};
+      ['migration', 'smoke', 'deploy', 'd1-resource-hold'].includes(choice.StringEquals)), Default: 'RetiredOperation'};
     active.RetiredOperation = {Type: 'Fail', Error: 'RETIRED_NEON_OPERATION'};
     return {Comment: 'AWS-only D1 maintenance; retained archives are outside the job lifecycle',
       StartAt: 'Operation', TimeoutSeconds: 7200, States: active};
   }
+  // The new hold is D1-only; leave the historical PostgreSQL graph unchanged.
+  states.Operation.Choices=states.Operation.Choices.filter(choice=>choice.StringEquals!=='d1-resource-hold');
+  for(const name of ['ReadD1ResourceHold','D1ResourceHoldPhase','WaitD1ResourceHold','ReleaseD1ResourceHold','InvalidD1ResourceHold'])delete states[name];
   // Do not retry credential mutations blindly. Existing journal phases provide
   // deliberate resume/rollback, and a failure retains the global rotation lock.
   return {Comment: 'AWS-only Neon maintenance; no credential material in execution data', StartAt: 'Operation', TimeoutSeconds: 7200, States: states};

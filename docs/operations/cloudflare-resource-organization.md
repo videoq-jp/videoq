@@ -125,3 +125,37 @@ created. The exact planner's six triggers blocked six row mutations; removing
 only the owned fence triggers restored writes and the audit trigger still ran.
 Both tables were removed and the candidate's empty schema was rechecked. This
 proves the primitive on real D1, not a production-wide fence or final cutover.
+
+## D1 resource-replacement ownership hold
+
+The opt-in `d1-resource-hold` operation uses the existing AWS migration starter
+and the existing maintenance state machine. `enable_d1_resource_hold` defaults
+to `false`; this change does not enable or start a production hold. It provisions
+no new CodeBuild job or starter and grants the starter no SSM, IAM or function
+update capability. It does not restore the retired Neon cutover operation.
+
+The starter requires the current canonical `main` SHA, rejects target/build/data
+plane overrides, checks existing builds and atomically creates the shared owner
+and non-expiring run journal before starting its named execution. Concurrent
+maintenance requests see the lock. A terminal hold retains ownership and refuses
+automatic replacement by an ordinary migration/deploy request.
+
+The state machine waits without running builds. Release requires the same
+execution, kind and pinned source; a `verified` or `aborted` phase; restored API,
+consumer and deployment admission markers; and a nonempty completion receipt
+with a SHA-256-length digest. These are trusted coordinator attestations, not
+independent Cloudflare probes or a cryptographic check performed by Step
+Functions. Only the reviewed administrative coordinator may write them after
+verifying the underlying state. Routine callers cannot supply these fields.
+
+Keep the feature disabled until the coordinator implements and rehearses
+ownership-bound deployment freeze, admissions/consumer stop, D1 row-write
+fencing, private final transfer and full validation, binding/config promotion,
+post-write recovery and actual end-to-end probes. A timed-out or failed hold
+must be recovered explicitly from its journal; do not manually remove its lock
+merely to unblock CI. The ownership primitive alone proves none of those
+production conditions.
+
+[Ownership-hold validation evidence](evidence/d1-resource-hold-2026-11-17.json)
+records local conditional-transaction tests, Terraform mock tests and AWS
+definition validation. It does not attest an actual production hold or cutover.
