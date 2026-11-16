@@ -210,3 +210,12 @@ Restore reuses the original plan, preserving workflows that were already
 disabled. Lost responses reconcile read-only admission state. This adapter
 covers GitHub workflow admission only, not AWS build drain or D1 writes; it has
 no production transport, credentials or caller enabled by this change.
+
+`d1-resource-consumers.cjs` supplies the SQS mapping pause/resume adapters for
+the three existing production Lambda consumers. Mapping identity and original
+enabled state are preserved in the private pause plan. The adapter requires
+ownership and a backend-safety verifier before every mutation, rejects mapping
+replacement and unexpected states, and waits for asynchronous transitions by
+returning unknown. It reads no Lambda environment or application credentials.
+Disabled mappings prove admission pause only; they do not prove running or
+direct invocations have drained. The D1 source row-write fence remains required.
