@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from d1_resource_executor_lock import ExecutorLock
 
 
@@ -38,9 +39,15 @@ class LockTests(unittest.TestCase):
             (self.root / 'executor.lock').touch(mode=0o600)
             with self.assertRaisesRegex(ValueError, 'REPLACED'):
                 lock.check()
-        os.chmod(self.root / 'executor.lock', 0o644)
-        with self.assertRaisesRegex(ValueError, 'UNSAFE'):
-            ExecutorLock(str(self.root)).__enter__()
+        original_fstat = os.fstat
+        def public_metadata(fd):
+            values = list(original_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o644
+            return os.stat_result(values)
+        with patch('d1_resource_executor_lock.os.fstat', side_effect=public_metadata):
+            with self.assertRaisesRegex(ValueError, 'UNSAFE'):
+                ExecutorLock(str(self.root)).__enter__()
+        self.assertEqual((self.root / 'executor.lock').stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == '__main__':

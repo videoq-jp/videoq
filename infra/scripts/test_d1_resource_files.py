@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from d1_resource_files import PrivateSqlFiles, signed_url
 
 URL = 'https://database.example.r2.cloudflarestorage.com/file.sql?signature=synthetic'
@@ -86,9 +87,16 @@ class FileTests(unittest.TestCase):
             self.files.inspect()
         (self.root / 'source.sql').unlink()
         self.files.download(URL, lambda: None)
-        os.chmod(self.root / 'source.sql', 0o644)
-        with self.assertRaisesRegex(ValueError, 'UNSAFE'):
-            self.files.inspect()
+        original_fstat = os.fstat
+        def public_metadata(fd):
+            values = list(original_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o644
+            return os.stat_result(values)
+        # Exercise rejection without making even a fixture SQL file public.
+        with patch('d1_resource_files.os.fstat', side_effect=public_metadata):
+            with self.assertRaisesRegex(ValueError, 'UNSAFE'):
+                self.files.inspect()
+        self.assertEqual((self.root / 'source.sql').stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == '__main__':

@@ -40,7 +40,7 @@ class RuntimeTests(unittest.TestCase):
         outer = self
         class Opener:
             def open(self, request, timeout):
-                if '.r2.cloudflarestorage.com' in request.full_url:
+                if request.full_url == URL:
                     outer.calls.append(('file', request.method))
                     if request.method == 'GET':
                         return Response(outer.dump, {'Content-Length': str(len(outer.dump))})
