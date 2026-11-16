@@ -35,7 +35,7 @@ export async function main(args=process.argv.slice(2),env=process.env,io:{input:
   const access=env.VIDEOQ_RECOVERY_R2_ACCESS_KEY_ID,secret=env.VIDEOQ_RECOVERY_R2_SECRET_ACCESS_KEY;
   if(!access||!secret||/[\r\n\0]/.test(access+secret)||access.length>1024||secret.length>4096)throw Error('SCOPED_RECOVERY_STORAGE_REQUIRED');
   const signer=new AwsClient({accessKeyId:access,secretAccessKey:secret,service:'s3',region:'auto'});
-  const uri=(key:string)=>{if(!isSafeMediaPath(key))throw Error('UNSAFE_RECOVERY_OBJECT');return 'https://12daec56fdba43f677f2766ee26a5a39.r2.cloudflarestorage.com/videoq-media-prod/'+key.split('/').map(encodeURIComponent).join('/');};
+  const uri=(key:string)=>{if(!isSafeMediaPath(key))throw Error('UNSAFE_RECOVERY_OBJECT');return 'https://12daec56fdba43f677f2766ee26a5a39.r2.cloudflarestorage.com/videoq-media-prod/media/'+key.split('/').map(encodeURIComponent).join('/');};
   const read=async(key:string,maximum:number)=>{
    if(!Number.isSafeInteger(maximum)||maximum<1||maximum>32*1024*1024)throw Error('RECOVERY_OBJECT_BUDGET_REQUIRED');
    const response=await signer.fetch(uri(key),{method:'GET',redirect:'error',signal:AbortSignal.timeout(30000)});
