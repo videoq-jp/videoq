@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "observedAt": "2026-11-16T00:57:27.905051+00:00",
+  "window": {
+    "fromInclusive": "2026-10-17",
+    "toInclusive": "2026-11-15",
+    "completeUtcDays": 30
+  },
+  "method": "Read-only Cloudflare GraphQL account aggregates and complete REST D1/Vectorize inventories; not an invoice",
+  "analyticsAreNotBillingInvoices": true,
+  "scopeIncludesOtherAccountWorkloads": true,
+  "d1": {
+    "daysWithReturnedGroups": 3,
+    "total": {
+      "readQueries": 64499,
+      "rowsRead": 4405664,
+      "rowsWritten": 93139,
+      "writeQueries": 32756
+    },
+    "peakDaily": {
+      "readQueries": 56222,
+      "rowsRead": 2613991,
+      "rowsWritten": 46266,
+      "writeQueries": 19080
+    },
+    "medianReturnedDay": {
+      "readQueries": 4852,
+      "rowsRead": 1750598,
+      "rowsWritten": 44720,
+      "writeQueries": 12729
+    }
+  },
+  "workers": {
+    "daysWithReturnedGroups": 30,
+    "total": {
+      "cpuTimeUs": 606648290,
+      "errors": 60,
+      "requests": 78830
+    },
+    "peakDaily": {
+      "cpuTimeUs": 87851340,
+      "errors": 20,
+      "requests": 20030
+    },
+    "medianReturnedDay": {
+      "cpuTimeUs": 14939725.0,
+      "errors": 0.0,
+      "requests": 1440.0
+    }
+  },
+  "vectorQueries": {
+    "daysWithReturnedGroups": 3,
+    "total": {
+      "queriedVectorDimensions": 6134784
+    },
+    "peakDaily": {
+      "queriedVectorDimensions": 4710912
+    },
+    "medianReturnedDay": {
+      "queriedVectorDimensions": 866304
+    }
+  },
+  "productionApi": {
+    "daysObserved": 30,
+    "totalRequests": 11790,
+    "peakDailyRequests": 1490,
+    "medianDailyRequests": 270.0,
+    "cpuTimeMs": 501316.73,
+    "httpRoutesOrBusinessMixMeasured": false
+  },
+  "d1Inventory": {
+    "databaseCount": 3,
+    "totalBytes": 111468544,
+    "largestDatabaseBytes": 109314048,
+    "paginationComplete": true
+  },
+  "vectorInventory": {
+    "indexCount": 6,
+    "vectorCount": 2194,
+    "storedDimensions": 3368448,
+    "paginationComplete": true
+  },
+  "scenario": {
+    "kind": "Hypothetical account-wide workload, not observed production forecast",
+    "monthly1536DimensionIndexQueryCalls": 100000,
+    "storedDimensionsFrozen": 3368448,
+    "queriedDimensionsFormula": "storedDimensions + indexQueryCalls * 1536",
+    "queriedDimensions": 156968448,
+    "paidQueriedOverageUsd": "1.06968448",
+    "paidStoredOverageUsd": "0",
+    "ragRequestsMayFanOutToMultipleIndexCalls": true,
+    "otherModelR2WorkersAwsCostsIncluded": false
+  },
+  "publishedReferenceLimits": {
+    "d1FreeRowsReadDaily": 5000000,
+    "d1FreeRowsWrittenDaily": 100000,
+    "d1PaidRowsReadMonthlyIncluded": 25000000000,
+    "d1PaidRowsWrittenMonthlyIncluded": 50000000,
+    "d1FreeMaxDatabaseSize": "500 MB",
+    "d1PaidMaxDatabaseSize": "10 GB",
+    "d1FreeAccountStorage": "5 GB",
+    "d1PaidIncludedAccountStorage": "5 GB",
+    "vectorFreeStoredDimensions": 5000000,
+    "vectorPaidIncludedStoredDimensions": 10000000,
+    "vectorFreeQueriedDimensionsMonthly": 30000000,
+    "vectorPaidIncludedQueriedDimensionsMonthly": 50000000
+  },
+  "privateFinancialEvidence": {
+    "awsCostExplorerAccountVerified": true,
+    "daysRetrieved": 30,
+    "nextPageAbsent": true,
+    "estimatedDays": 15,
+    "accountAmountsRetainedPrivately": true,
+    "awsBudgetResponseWasEmptyNotProofOfNoBudget": true,
+    "cloudflareSubscriptionsApiHttpStatus": 403,
+    "actualCloudflarePlanVerified": false
+  },
+  "sourceResponseSha256": {
+    "d1Inventory.json": "095be33645b400d5b04535296915110a0e5fc928557b516199dcd137ff1e617a",
+    "vectorStorage.json": "917ad4999f4a546ed8718c16b8696862317b4098a84fab4cf867939ac8a38a7a",
+    "vectorCurrentInfo.json": "9e3e3b85514ac39d36d51bf2390dbb66ded86753711668f830e3d96916f04d99",
+    "d1.json": "0c32944ab8f3723065c010e0d4148861bf02bb505e34521c9a3f34cd1afe8147",
+    "vectorInventory.json": "62b6d156ec3e422dbe4ab2785e2717bd71e417764f744ddf0657861481189370",
+    "workers.json": "374bd7b8a44882da920b9396db51267566a0fb025aeeccac500e1ea52e388948",
+    "workersByScript.json": "a26b5594dba3f632780e3318e1ed0dd22ef6b73dc892e68befda4f0671bd84f0",
+    "vectorQueries.json": "197b257501c3cc2b55523f26587762a0646fc8a5501751f5bdcf16698d77a946"
+  },
+  "productionForecastComplete": false,
+  "acceptedBudgetCeilingVerified": false,
+  "productionCostAcceptanceComplete": false,
+  "planChanged": false,
+  "productionCutoverComplete": false
+}
