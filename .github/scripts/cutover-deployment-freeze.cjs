@@ -42,6 +42,10 @@ function createDeploymentFreeze(request,{assertOwnership=async()=>{throw Error('
   }
   return{
     async prepare(){const rows=[];for(const fixed of workflows){const row=await workflow(fixed);rows.push({...fixed,wasActive:row.state==='active'});}return validate({version:1,operationId:randomUUID(),repository,workflows:rows});},
+    async inspectAdmission(plan){
+      const rows=await inventory(plan);
+      return {originalAdmissionRestored:rows.every((r,i)=>(r.state==='active')===plan.workflows[i].wasActive)};
+    },
     async inspect(plan){
       const rows=await inventory(plan),blocked=[];
       for(const fixed of plan.workflows)for(const id of await activeRuns(fixed))blocked.push({workflowId:fixed.id,runId:id});

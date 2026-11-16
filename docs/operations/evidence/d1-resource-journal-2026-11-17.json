@@ -1,0 +1,92 @@
+{
+  "scope": "Disabled resource replacement coordinator, transfer runtime and vector sync components; no production cutover",
+  "nodeTests": {
+    "passed": 578,
+    "failed": 0
+  },
+  "dynamoDbLocalIntegration": {
+    "passed": 8,
+    "failed": 0,
+    "realConditionalTransactions": true,
+    "stepFunctionsAndDataPlaneAdapters": "explicit test transports",
+    "containerRemoved": true
+  },
+  "plans": {
+    "directoryMode": "0700",
+    "fileMode": "0600",
+    "overwriteAllowed": false,
+    "maximumBytesPerPlan": 1048576
+  },
+  "productionHoldStarted": false,
+  "productionBindingsChanged": false,
+  "holdReleasedByEngine": false,
+  "customerDataOrCredentialsStoredInJournal": false,
+  "actualProductionAdapterValidation": false,
+  "pythonTests": {
+    "passed": 154,
+    "failed": 0,
+    "runtime": "Python 3.14",
+    "fencePlannerAndController": 14,
+    "database": "SQLite tests plus schema-only readback against actual source/candidate D1",
+    "exactValueVerifier": 8,
+    "verificationTransport": 5,
+    "transferApi": 5,
+    "privateSqlFiles": 6,
+    "localDumpValidation": 5,
+    "privateTransferJournal": 5,
+    "durableTransferControl": 6,
+    "localExecutorLock": 3,
+    "composedTransferRuntime": 3,
+    "vectorAuthorityAndPlan": 10,
+    "vectorTransportAndReadback": 7,
+    "vectorBatchJournalAndRuntime": 7
+  },
+  "d1FenceTransportReadback": {
+    "sourceApplicationTables": 68,
+    "candidateApplicationTables": 0,
+    "resourceFenceTriggers": 0,
+    "remoteMutations": false
+  },
+  "verificationTransportReadback": {
+    "queryEncodingSupported": true,
+    "metadataRowsRead": 14,
+    "customerRowsRead": 0,
+    "remoteMutations": false,
+    "writerFenceProven": false,
+    "fullComparisonPerformed": false
+  },
+  "privatePipeWorker": {
+    "realChildProcessTested": true,
+    "claimedDynamoDbLocalJournalTested": true,
+    "productionD1MutationPerformed": false
+  },
+  "transferRuntimeIntegration": {
+    "realPrivateFilesAndLocks": true,
+    "realAppendOnlyJournal": true,
+    "localSqlRestoreAndValueComparison": true,
+    "providerHttp": "explicit SQLite-backed fixture",
+    "productionTransferPerformed": false
+  },
+  "vectorAuthorityPreview": {
+    "sourceAuthorityRows": 2190,
+    "writerFenceProven": false,
+    "vectorWrites": false,
+    "previewOnly": true
+  },
+  "vectorTransportPreview": {
+    "readOnly": true,
+    "writerFenceProven": false,
+    "source1536": 2190,
+    "source768": 0,
+    "candidate1536": 2190,
+    "candidate768": 0,
+    "vectorWrites": false
+  },
+  "vectorRuntimeIntegration": {
+    "realPrivatePayloadFilesAndLocks": true,
+    "realBatchJournals": true,
+    "providerHttp": "explicit async Vectorize and SQLite-backed D1 fixture",
+    "lostResponseReconciledWithoutRepost": true,
+    "productionVectorMutationPerformed": false
+  }
+}

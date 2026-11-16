@@ -57,8 +57,11 @@ def inventory(call, base):
     return sorted(ids)
 
 
-def snapshot_index(call, dimensions):
-    base = f'accounts/{ACCOUNT}/vectorize/v2/indexes/{SOURCES[dimensions]}'
+def snapshot_index(call, dimensions, index_name=None):
+    selected = SOURCES[dimensions] if index_name is None else index_name
+    if selected not in (SOURCES[dimensions], f'videoq-prod-scenes-{dimensions}'):
+        raise ValueError('FIXED_VECTOR_SNAPSHOT_INDEX_REQUIRED')
+    base = f'accounts/{ACCOUNT}/vectorize/v2/indexes/{selected}'
     before = call('GET', base + '/info')
     if before.get('dimensions') != dimensions or type(before.get('vectorCount')) is not int:
         raise ValueError('INVALID_INDEX_INFO')
@@ -95,7 +98,7 @@ def snapshot_index(call, dimensions):
     if before != after or ids != inventory(call, base):
         raise ValueError('SOURCE_CHANGED_DURING_SNAPSHOT')
     vectors.sort(key=lambda row: row['id'])
-    return vectors, {'source': SOURCES[dimensions], 'dimensions': dimensions,
+    return vectors, {'source': selected, 'dimensions': dimensions,
                      'count': len(vectors), 'vectorsSha256': digest(vectors),
                      'sourceInfo': before, 'writerFenceProven': False}
 

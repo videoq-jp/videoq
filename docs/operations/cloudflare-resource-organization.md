@@ -159,3 +159,300 @@ production conditions.
 [Ownership-hold validation evidence](evidence/d1-resource-hold-2026-11-17.json)
 records local conditional-transaction tests, Terraform mock tests and AWS
 definition validation. It does not attest an actual production hold or cutover.
+
+## Replacement progress journal and execution engine
+
+`d1-resource-journal.cjs` binds the twelve fixed replacement steps to a running
+`d1-resource-hold`, its canonical source SHA, immutable execution-definition
+hash and shared maintenance owner. Each step stores an intent before mutation
+and a receipt digest after verification, using revision-conditional DynamoDB
+transactions. Completed steps and their plan/proof digests cannot be replaced.
+Lost transaction responses reconcile exact durable readback. A promotion intent
+blocks a simple pre-promotion abort even if the promotion response was lost.
+The journal stores only step names, operation IDs and digests; no customer data,
+SQL exports, vector values or credentials belong in it.
+
+`d1-resource-coordinator.cjs` advances one step at a time and requires explicit
+prepare/probe/apply adapters for every step plus environment/ownership checks.
+It probes before applying and after the single apply attempt. Unknown state
+stops for reconciliation; an applied result can reconcile a lost response
+without reapplying. A probe may authorize a retry only after authoritative
+readback establishes that applying the planned operation is safe. The engine
+never releases the hold, marks production safe or supplies placeholder adapters.
+Both journal and engine are disabled by default and have no production CLI.
+
+`d1-resource-plans.cjs` retains transient original operator metadata in a private
+mode-0700 directory with exclusive mode-0600 files, fsync and bounded readback.
+Only fixed step filenames are permitted. Symlink roots/files, changed directory
+identity, public files, overwrites and malformed/oversized data are rejected.
+Plans are limited to 1 MiB each. Losing an intent's original private plan stops
+the engine; it cannot infer the original state from an already changed service.
+Keep these working plans until verified completion/recovery, then remove them.
+Do not put tokens, application secrets, exports or customer rows in plans.
+This local store does not provide independent cross-host disaster recovery.
+
+The engine/journal were exercised against real DynamoDB Local conditional
+transactions with explicit test transports for Step Functions and data-plane
+adapters. Private-file tests cover durable reopening and permission checks.
+These tests prove control flow and metadata ownership, not actual deployment
+freeze, consumer drain, final database transfer, binding promotion or E2E.
+Concrete production adapters, final release and recovery remain required before
+`enable_d1_resource_hold` can be enabled.
+
+[Journal and execution-engine validation evidence](evidence/d1-resource-journal-2026-11-17.json)
+records the test scope and the production operations that remain unverified.
+
+`d1-resource-deployments.cjs` supplies the GitHub admission freeze/restore
+adapters using the existing fixed workflow controller. Both operations require
+the saved original freeze plan and ownership before mutation. Frozen workflows
+with accepted runs still active return unknown and cannot advance the journal.
+Restore reuses the original plan, preserving workflows that were already
+disabled. Lost responses reconcile read-only admission state. This adapter
+covers GitHub workflow admission only, not AWS build drain or D1 writes; it has
+no production transport, credentials or caller enabled by this change.
+
+`d1-resource-consumers.cjs` supplies the SQS mapping pause/resume adapters for
+the three existing production Lambda consumers. Mapping identity and original
+enabled state are preserved in the private pause plan. The adapter requires
+ownership and a backend-safety verifier before every mutation, rejects mapping
+replacement and unexpected states, and waits for asynchronous transitions by
+returning unknown. It reads no Lambda environment or application credentials.
+Disabled mappings prove admission pause only; they do not prove running or
+direct invocations have drained. The D1 source row-write fence remains required.
+
+`d1-resource-api.cjs` supplies API traffic pause/resume adapters. The original
+private pause plan remains immutable. After binding promotion, a new restore
+plan can be prepared only while paused, under ownership, with a verified
+backend-handoff binding hash and the unchanged runtime-settings hash. The
+original plan cannot silently accept a changed database. Resume rechecks the
+handoff before each write and reconciles metadata readback; secrets are inherited
+by name. The handoff verifier is a mandatory trusted coordinator dependency;
+this change does not implement its production proof of database/vector transfer
+and target fence removal. API admission pause is not an in-flight write fence.
+
+`d1-resource-bindings.cjs` implements the fixed same-account binding promotion
+from the recorded live D1/Vectorize resources to the named candidates. It
+requires API pause, unchanged runtime and original binding hashes, a stable
+paused version, ownership and a trusted transfer-verification callback. Only
+`DB`, `SCENE_VECTORIZE_1536` and `SCENE_VECTORIZE_768` change; all other bindings,
+including traffic pause and secrets, inherit by name. Complete target readback
+can reconcile a lost response without another write. Partial or unrelated
+binding changes return unknown and cannot authorize another mutation. No
+rollback operation is supplied. This does not yet implement the production
+transfer verifier or activate any provider mutation.
+
+The settings PATCH contract is documented in the
+[Cloudflare API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/settings/methods/edit/).
+The D1 readback includes both `id` and `database_id`; the adapter checks both
+against the fixed source and computes the expected target readback shape.
+Unexpected extra DB/vector metadata fails closed for review.
+
+`infra/scripts/d1_resource_fence_control.py` applies the existing owner-bound
+fence plan to the fixed source and removes only those exact triggers from the
+fixed target. Each mutation requires ownership and rechecks schema/trigger
+identity. Partial installation/removal can be reconciled after a lost response;
+unknown trigger definitions, missing original triggers or changed tables stop
+further writes. Target removal additionally requires a trusted target-safety
+verifier. Source removal is deliberately unavailable in this controller.
+The coordinator bridge is not implemented by this change.
+SQLite tests prove trigger behavior and retry control, not the full live-D1
+schema, API transport or production ownership handoff.
+
+`infra/scripts/d1_resource_fence_transport.py` implements the fixed-account D1
+query transport for schema reads and exact owner-plan fence SQL only. Mutations
+are disabled by default; enabling them requires a valid fence plan. It permits
+source trigger creation and target trigger removal only, refuses redirects and
+unbounded responses, sanitizes provider errors and never retries a query after
+an uncertain response. Ownership remains the controller's responsibility.
+Actual schema-only readback found 68 application tables on the source, none on
+the candidate, and no resource fence triggers on either. No fence was installed.
+The query payload/result contract follows the
+[D1 query API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/).
+
+`infra/scripts/d1_resource_verify.py` compares schema, columns, all row values,
+foreign-key integrity and `sqlite_sequence` high-water marks under a mandatory
+fence verifier. It includes application indexes, views and triggers, excluding
+provider-reserved schema. SQLite encodes type and value bytes before JSON
+transport so 64-bit integers are never rounded by a JavaScript number. Sorted,
+bounded pages preserve duplicate rows and ignore physical insertion order;
+independent counts reject shortened/truncated reads. Only aggregate digests and
+counts are returned. SQLite tests cover changed integer/type/blob values,
+sequence-only differences, schema changes, lost fencing and missing rows.
+The full D1-to-D1 comparison remains unperformed; this module does not attest a live copy.
+
+`infra/scripts/d1_resource_verify_transport.py` permits schema, column metadata,
+counts, foreign-key checks and exact generated value pages for the two fixed
+D1 databases. Tables come from the validated fence plan; each database's column
+identity must be observed before pages are allowed. Generic reads/writes,
+unknown tables, appended statements and oversized/negative paging parameters
+are refused. The bounded, no-redirect, no-retry HTTP transport is shared with
+fence control. The real source accepted the generated encoding SQL for 14
+`sqlite_sequence` metadata rows. This read made no mutations, read no customer
+rows, asserted no write fence and performed no full database comparison.
+
+`infra/scripts/d1_resource_transfer_api.py` supplies the fixed source export and
+fixed target import API operations, with ownership and source-fence/import-file
+safety dependencies. Each call is attempted once; an uncertain response is not
+replayed automatically. The coordinator must durably record intent and returned
+bookmarks before continuing. A lost initial export or ingest response requires
+reconciliation, not a new operation. Export polling keeps the same bookmark and
+checks ownership without querying the source while the provider blocks it.
+This module does not implement durable transfer substeps, signed-URL file
+transfer, file validation or recovery, and has no production caller/CLI.
+See the [export API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/)
+and [import API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/import/).
+
+`infra/scripts/d1_resource_files.py` handles private SQL artifacts using
+provider-supplied HTTPS R2 signed URLs. No bearer token is accepted or forwarded.
+The existing owned mode-0700 directory is pinned, downloads use exclusive
+mode-0600 files, completion fsyncs the file and directory, and final promotion
+cannot overwrite an existing artifact. Interrupted downloads remain `.partial`
+and require explicit recovery. Uploads recheck SHA-256/size and the R2 MD5 ETag;
+MD5 is a provider-required transport checksum, not the integrity authority.
+Redirects and automatic retries are disabled. Files are limited to 1 GiB, and
+unexpected URL hosts are refused. Tests use private local files and fake HTTP;
+no signed production URL has been downloaded or uploaded. Durable transfer
+substeps, dump validation and full recovery remain required before live use.
+
+`infra/scripts/d1_resource_dump.py` validates the private source SQL before
+upload by restoring it to an isolated in-memory SQLite database. It checks the
+file proof before and after, retains transaction boundaries while reading
+complete SQL statements, denies database attachment/extensions/unsafe pragmas,
+and compares full schema/values/sequence plus exact owned fences against the
+frozen source snapshot. The SQL artifact is unchanged. An unexpected dump
+format or incomplete restore fails closed; the validator does not repair a dump
+or substitute maximum visible IDs for sequence high-water marks. Tests cover
+round-trip equality, corrupted values/sequence, missing fences/indexes and
+attempted filesystem access. No production export has been restored yet.
+
+`d1_resource_transfer_journal.py` stores eleven fixed ordered transfer records in
+a dedicated owned mode-0700 directory, using exclusive mode-0600 files, file and
+directory fsync, pinned directory identity, run/source/plan context and a digest
+chain. Reopening preserves exact records; gaps, partial writes, altered proofs,
+unsafe files and context changes refuse recovery. Signed URLs remain private.
+This local working journal does not provide a distributed execution lease or
+independent disaster recovery; the owned coordinator must serialize callers.
+
+`d1_resource_transfer_control.py` connects the export, private download, dump
+verification, import initialization/upload/ingest/polling and final database
+comparison stages. Export/ingest intent is durable before the request; a lost
+start response stops for explicit reconciliation rather than issuing another
+start. Polling keeps the original bookmark. File proof drift and negative dump
+or database verification refuse advancement; reentry after verification checks
+the actual target again. The controller advances one stage per call and has no
+live caller. Tests use real private journal files with explicit provider/file
+and ownership fixtures. Integration with the AWS owner, an exclusive executor,
+full live data adapters and lost-start reconciliation remains required.
+
+The resource journal can claim a single executor token before any steps start.
+Only its SHA-256 digest is stored in DynamoDB; subsequent ownership checks and
+conditional journal writes require that exact executor. A competing token,
+tokenless journal or replaced digest refuses access. Claims have no automatic
+expiry or takeover. The production coordinator must persist its private token,
+claim it before steps and use `assertExecutor` for all data-plane callbacks.
+Unclaimed journal primitives remain available for metadata tests; they must not
+be used to run production transfer operations.
+
+`infra/scripts/d1_resource_executor_lock.py` supplies the additional local
+nonblocking kernel lock for the private artifact directory. It keeps the lock
+file inode, rejects replacement/unsafe permissions and releases descriptors on
+exception. Never delete a lock file to bypass contention. This local lock and
+the AWS token must both guard the production executor; they do not by themselves
+connect the Node/Python adapters or provide lost-start reconciliation. Tests
+cover real DynamoDB Local competing claims and actual filesystem lock contention.
+
+`d1-resource-bridge.cjs` connects the claimed Node executor to the one-shot
+`infra/scripts/d1_resource_worker.py` over private stdin/stdout pipes. The worker
+requests fresh executor/operation authorization before and after work and at
+fence mutations; target removal additionally requests target-safety approval.
+Tokens and plans do not enter argv, inherited credentials or public errors.
+The protocol bounds messages, serializes checks and terminates failed/timed-out
+children. The worker supports fixed fence prepare/inspect/install/remove actions
+and an ownership-only diagnostic. It is disabled unless explicitly enabled.
+The parent is trusted reviewed code, not a credential security boundary.
+
+Tests launch real Python children and connect them to real DynamoDB Local
+executor claims and pending-operation checks. These tests prove protocol and
+ownership behavior; they perform no production D1 mutation. The full production
+factory, local-lock lifetime, transfer worker action, final vector sync and
+recovery/release are still required before enabling execution.
+
+`d1_resource_transfer_runtime.py` composes source snapshot verification, the local
+executor lock, private files and transfer journal, provider API operations, local
+dump restoration and final source/target comparison. Import initialization and
+ingest require parent safety approval, a still-fenced source, an empty target,
+and a matching validated file proof. It never merges into a populated target.
+Status queries revalidate a completed copy before returning its receipt digest.
+
+The pipe worker now supports copy prepare/advance/status actions and requests
+an additional import-safety authorization. `d1-resource-data.cjs` binds source
+fencing, database copy and target unfencing to the same persisted plans. A copy
+advances one durable stage per invocation. The coordinator reports explicit
+pending progress while keeping its intent unverified; unknown start outcomes
+still require reconciliation and cannot restart an operation.
+
+The runtime integration test uses actual private files, filesystem locks,
+append-only records, SQL restoration and SQLite source/target comparisons with
+HTTP-shaped provider responses. It checks exact int64 values, sequence high-water
+marks, retained target fencing, refusal of populated targets and uncertain export
+starts. This is not a real Cloudflare transfer rehearsal. The full production
+factory and environment checks, lost-start reconciliation, final vector sync,
+release/recovery and live E2E remain required before execution is enabled.
+
+`d1_resource_vector_plan.py` derives desired vectors from current D1 scenes and
+current staging heads using the application's authority rules. Pending deferral
+requires an unaccepted incomplete upsert with an exact scope and retained,
+valid, nonzero float32-compatible embedding payload. Cleared/accepted payloads
+cannot justify missing source vectors. The pure planner preserves exact source
+values/metadata, validates owner/video/scene/revision and legacy IDs, removes
+obsolete candidate IDs, and records deferred work without modifying the outbox
+or calling a model. Nondefault namespaces require explicit review.
+
+`d1_resource_vector_authority_transport.py` permits only the fixed source's
+count and bounded authority pages. The real source count query returned 2,190
+rows in an unfenced read-only preview. This is not final synchronization proof.
+The planner and SQL tests cover scope/version mismatches, current staging,
+invalid retained embeddings, orphan deletion, legacy IDs and missing vectors.
+Provider mutation, async processing/readback and runtime integration of the
+final vector sync remain required before switching resources.
+
+`d1_resource_vector_transport.py` limits reads to the two fixed source/candidate
+pairs and mutations to the candidates only. Writes default to disabled and
+require fresh ownership plus a D1/plan-safety callback. Upserts use the `vectors`
+NDJSON multipart field; deletes have bounded unique IDs. Unexpected paths,
+methods, queries, dimensions or payloads refuse execution. Responses are bounded,
+redirects refused, provider errors sanitized and uncertain requests never retried
+by the transport. `snapshot_index` can now read back either fixed member of a
+source/candidate pair using the same complete-inventory validation.
+
+`candidate_status` compares every stored value and metadata field against the
+planned payload and rejects completion while vectors differ or obsolete IDs
+remain. Deferred outbox work stays explicit in the receipt. Acceptance of a
+mutation ID is never treated as completion. Read-only service inspection found
+2,190 vectors in both 1536-dimensional indexes and zero in both 768-dimensional
+indexes. This unfenced count preview is not a final value or search-quality
+comparison. No vector mutation was made by this validation; mutation journal,
+async runtime and final owned synchronization remain to be connected.
+
+`d1_resource_vector_batches.py` records per-batch intent, acceptance and verified
+readback using the same private hash-chained journal with a fixed three-phase
+profile. It never reposts an unmatched intent after a lost response. Matching
+readback can reconcile that response; accepted but unprocessed work remains
+pending. A verified batch that later differs refuses continued success.
+
+`d1_resource_vector_runtime.py` stores large payload batches in bounded private
+mode-0600 files, with an immutable manifest/digests in the Node plan. Under the
+local lock it rechecks source fencing and D1 authority, advances candidate-only
+batches, and performs final complete candidate inventory/value comparison.
+Existing matching batches become verified no-ops. Source authority, artifacts
+or scope changes stop writes. Deferred outbox work is reported explicitly.
+The worker now exposes prepare/advance/status vector actions, requires a separate
+parent vector-safety approval and connects them through `d1-resource-vectors.cjs`
+to the fixed synchronization step. No large vector values enter DynamoDB/argv.
+
+Async integration tests use real files, locks and journals, a SQLite-backed D1
+fixture and delayed Vectorize responses. They cover orphan removal, accepted
+but unprocessed updates, lost acceptance reconciled without repost, fence loss
+and artifact corruption. These are not production mutations or Cloudflare
+rehearsal. Full environment/factory checks, final proof/release/recovery, native
+E2E and the live switch remain outstanding.

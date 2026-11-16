@@ -41,3 +41,15 @@ test('Cloudflare errors are sanitized and oversized responses are rejected',asyn
 test('a different active code version after plan preparation cannot enter pause',async()=>{const f=fixture(),p=await f.control.prepare(f.scope);f.version='11111111-2222-4333-8444-777777777777';await assert.rejects(f.control.change(p,true),/CODE_VERSION_CHANGED/);assert.equal(f.writes.length,0);});
 
 test('metadata propagation is re-observed without any patch or bypass of version consistency',async()=>{const f=fixture();let reads=0;const control=createApiTrafficControl(async(...args)=>{const result=await f.request(...args);if(args[1].endsWith('/versions?per_page=1')&&++reads<3)return{items:[{id:'11111111-2222-4333-8444-999999999999'}]};return result;},{sleep:async()=>{}});await control.prepare(f.scope);assert.equal(reads,3);assert.equal(f.writes.length,0);});
+
+test('a verified paused-backend handoff prepares a new restore hash without weakening the original plan',async()=>{
+ const f=fixture(),p=await f.control.prepare(f.scope);await f.control.change(p,true);f.settings.bindings[2].id='verified-target';
+ const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+ const {createHash}=require('node:crypto'),bindings=f.settings.bindings.filter(b=>b.name!=='MIGRATION_TRAFFIC_STATE').map(b=>b.type.startsWith('secret_')?{name:b.name,type:b.type}:b).sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0),hash=createHash('sha256').update(JSON.stringify(canonical(bindings))).digest('hex');
+ await assert.rejects(f.control.inspect(p),/CONFIGURATION_CHANGED/);await assert.rejects(f.control.prepareRestore(p,'a'.repeat(64)),/HANDOFF_MISMATCH/);
+ const restored=await f.control.prepareRestore(p,hash);assert.equal(restored.bindingsHash,hash);assert.notEqual(p.bindingsHash,hash);assert.equal(f.writes.length,1);await f.control.change(restored,false);assert.equal(f.writes.length,2);
+});
+test('restore handoff needs ownership, verified proof and unchanged runtime while paused',async()=>{
+ const f=fixture(),p=await f.control.prepare(f.scope);await f.control.change(p,true);
+ await assert.rejects(createApiTrafficControl(f.request).prepareRestore(p,p.bindingsHash),/OWNERSHIP/);f.safe=false;await assert.rejects(f.control.prepareRestore(p,p.bindingsHash),/unverified/);f.safe=true;f.settings.compatibility_date='2026-11-17';await assert.rejects(f.control.prepareRestore(p,p.bindingsHash),/MISMATCH/);assert.equal(f.writes.length,1);
+});
