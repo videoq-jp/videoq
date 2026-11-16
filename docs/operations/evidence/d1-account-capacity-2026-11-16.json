@@ -89,7 +89,8 @@
     "paidQueriedOverageUsd": "1.06968448",
     "paidStoredOverageUsd": "0",
     "ragRequestsMayFanOutToMultipleIndexCalls": true,
-    "otherModelR2WorkersAwsCostsIncluded": false
+    "otherModelR2WorkersAwsCostsIncluded": false,
+    "fitsCurrentVectorizeFreeQueryAllowance": false
   },
   "publishedReferenceLimits": {
     "d1FreeRowsReadDaily": 5000000,
@@ -113,7 +114,7 @@
     "accountAmountsRetainedPrivately": true,
     "awsBudgetResponseWasEmptyNotProofOfNoBudget": true,
     "cloudflareSubscriptionsApiHttpStatus": 403,
-    "actualCloudflarePlanVerified": false
+    "actualCloudflarePlanVerified": true
   },
   "sourceResponseSha256": {
     "d1Inventory.json": "095be33645b400d5b04535296915110a0e5fc928557b516199dcd137ff1e617a",
@@ -129,5 +130,16 @@
   "acceptedBudgetCeilingVerified": false,
   "productionCostAcceptanceComplete": false,
   "planChanged": false,
-  "productionCutoverComplete": false
+  "productionCutoverComplete": false,
+  "cloudflarePlanObservation": {
+    "observedAt": "2026-11-16T05:30:18.413Z",
+    "method": "Read-only billing subscriptions dashboard; no payment details retained",
+    "workersPlan": "Free",
+    "workersStatus": "Active",
+    "workersPaidUpgradeOffered": true,
+    "r2Plan": "Paid",
+    "r2NextRenewalDate": "2026-11-20",
+    "freeAllowanceResetCycleVerified": false,
+    "subscriptionChanged": false
+  }
 }
