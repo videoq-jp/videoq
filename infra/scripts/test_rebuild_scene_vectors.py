@@ -37,4 +37,10 @@ class RecoveryTest(unittest.TestCase):
   self.assertEqual(vector['id'],'immutable-id');self.assertEqual(vector['metadata'],{'user_id':'owner','video_id':1,'scene_id':'scene','revision':'revision','vector_id':'immutable-id'})
   cache=self.base/'manifest-000000-vectors.json';value=json.loads(cache.read_text());value['generation']['runtime']['imageUri']='tampered';cache.write_text(json.dumps(value))
   with self.assertRaisesRegex(ValueError,'PROVENANCE'):m.prepare(self.source,self.base,path,True,object())
+ def test_rejects_cross_account_target_before_invocation(self):
+  target={'version':1,'functionArn':'arn:aws:lambda:ap-northeast-1:111111111111:function:videoq-search-evaluation-prod','functionVersion':'1','imageUri':'111111111111.dkr.ecr.ap-northeast-1.amazonaws.com/videoq-worker-prod@sha256:'+'a'*64,'roleArn':'arn:aws:iam::111111111111:role/videoq-worker-prod','federationPolicyId':'policy'}
+  path=self.base/'target.json';path.write_text(json.dumps(target));path.chmod(0o600)
+  with patch.object(m,'prepare_remote') as remote:
+   with self.assertRaisesRegex(ValueError,'VIDEOQ_EVALUATION_TARGET'):m.prepare(self.source,self.base,path,True,object())
+   remote.assert_not_called()
 if __name__=='__main__':unittest.main()

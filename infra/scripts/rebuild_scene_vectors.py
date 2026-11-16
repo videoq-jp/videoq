@@ -105,6 +105,8 @@ def prepare(source, output, target_path=None, execute=False, client=None):
         return {'status':'prepared','scenes':len(rows),'corpusSha256':corpus,'manifests':len(manifests),'modelCallsMade':False}
     if target_path is None: raise ValueError('PINNED_LAMBDA_TARGET_REQUIRED')
     private_file(target_path);target=validate_target(json.loads(target_path.read_text()))
+    if target['functionArn'] != 'arn:aws:lambda:ap-northeast-1:257240362763:function:videoq-search-evaluation-prod':
+        raise ValueError('VIDEOQ_EVALUATION_TARGET_REQUIRED')
     if client is None:
         identity=json.loads(subprocess.check_output(['aws','sts','get-caller-identity','--output','json','--no-cli-pager'],stderr=subprocess.PIPE))
         if identity['Account']!='257240362763' or ':assumed-role/videoq-worker-prod/' in identity['Arn']: raise ValueError('OPERATOR_IDENTITY_REQUIRED')

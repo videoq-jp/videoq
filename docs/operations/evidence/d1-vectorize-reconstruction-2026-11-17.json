@@ -131,7 +131,7 @@
     "cleanupCompletedAt": "2026-11-16T20:32:09.190426+00:00"
   },
   "tests": {
-    "infraPythonTests": 63,
+    "infraPythonTests": 64,
     "passed": true,
     "terraformValidationPassed": true,
     "dedicatedEvaluationStateMatchesConfiguration": true
