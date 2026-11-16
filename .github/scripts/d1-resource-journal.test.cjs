@@ -4,7 +4,7 @@ const {createResourceJournal,RESOURCE_STEPS,resourceDigest}=require('./d1-resour
 const RUN='a'.repeat(32),SOURCE='b'.repeat(40),SHA='c'.repeat(64),RECEIPT='d'.repeat(64);
 const ARN='arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+RUN;
 const SPEC={States:{wait:{Type:'Wait',Seconds:10}}};
-function fixture({enabled=true,lost=false}={}){
+function fixture({enabled=true,lost=false,executorToken}={}){
  const rows=new Map([['maintenance',{kind:{S:'d1-resource-hold'},execution_arn:{S:ARN}}],['run#'+RUN,{kind:{S:'d1-resource-hold'},execution_arn:{S:ARN},source_sha:{S:SOURCE},resource_phase:{S:'holding'},resource_revision:{N:'0'},release_requested:{BOOL:false}}]]);let writes=0,status='RUNNING',spec=SPEC;
  const aws=async(service,command,v)=>{
   if(command==='GetItem')return{Item:structuredClone(rows.get(v.Key.pk.S))};
@@ -13,12 +13,13 @@ function fixture({enabled=true,lost=false}={}){
   if(command==='TransactWriteItems'){
    const update=v.TransactItems[0].Update,vals=update.ExpressionAttributeValues,row=rows.get(update.Key.pk.S),owner=rows.get('maintenance');
    if(!owner||owner.execution_arn.S!==ARN||row.resource_revision.N!==vals[':previous'].N)throw Error('CAS_CONFLICT');
-   row.resource_steps=vals[':steps'];row.resource_steps_sha256=vals[':sha'];row.resource_revision=vals[':next'];writes++;
+   if(vals[':steps']){row.resource_steps=vals[':steps'];row.resource_steps_sha256=vals[':sha'];}else{if(row.resource_executor_sha256)throw Error('CAS_CONFLICT');row.resource_executor_sha256=vals[':executor'];}
+   row.resource_revision=vals[':next'];writes++;
    if(lost){lost=false;throw Error('LOST_RESPONSE');}return{};
   }
   throw Error('Unexpected operation');
  };
- return{rows,journal:createResourceJournal({aws,run:RUN,source:SOURCE,expectedDefinitionHash:resourceDigest(SPEC),enabled}),writes:()=>writes,setStatus:s=>{status=s;},setSpec:s=>{spec=s;}};
+ return{rows,journal:createResourceJournal({aws,run:RUN,source:SOURCE,expectedDefinitionHash:resourceDigest(SPEC),executorToken,enabled}),writes:()=>writes,setStatus:s=>{status=s;},setSpec:s=>{spec=s;}};
 }
 const plan=step=>({step,planSha256:SHA}),proof=step=>({...plan(step),receiptSha256:RECEIPT});
 test('journal is disabled by default before any AWS call',async()=>{
@@ -63,4 +64,15 @@ test('execution-definition hashes match the existing deployed bundle convention'
  const {definitionHash}=require('../../infra/db-maintenance/runtime/cutover-hold.cjs');
  const spec=definition({table:'videoq-db-maintenance-prod',projects:{migration:'migration',smoke:'smoke',deploy:'deploy'},neonRetired:true});
  assert.equal(resourceDigest(spec),definitionHash(spec));
+});
+test('executor is explicitly claimed before steps and survives lost claim response',async()=>{
+ const f=fixture({executorToken:'1'.repeat(64),lost:true}),j=f.journal;
+ await assert.rejects(j.inspect(),/EXECUTOR_OWNERSHIP/);await assert.rejects(j.assertExecutor(),/EXECUTOR_OWNERSHIP/);
+ assert.deepEqual(await j.claimExecutor(),{claimed:true});assert.deepEqual(await j.assertExecutor(),{owned:true});await j.claimExecutor();assert.equal(f.writes(),1);
+ await j.begin(plan(RESOURCE_STEPS[0]));assert.equal((await j.inspect()).steps.length,1);
+ f.rows.get('run#'+RUN).resource_executor_sha256={S:'f'.repeat(64)};await assert.rejects(j.assertExecutor(),/EXECUTOR_OWNERSHIP/);await assert.rejects(j.verify(proof(RESOURCE_STEPS[0])),/EXECUTOR_OWNERSHIP/);
+});
+test('executor callbacks cannot use an unbound journal and late claims refuse prior work',async()=>{
+ const f=fixture();await assert.rejects(f.journal.claimExecutor(),/TOKEN_REQUIRED/);await assert.rejects(f.journal.assertExecutor(),/TOKEN_REQUIRED/);
+ const g=fixture({executorToken:'1'.repeat(64)});g.rows.get('run#'+RUN).resource_steps={S:'[]'};g.rows.get('run#'+RUN).resource_steps_sha256={S:resourceDigest([])};await assert.rejects(g.journal.claimExecutor(),/BEFORE_STEPS/);
 });

@@ -21,24 +21,28 @@ function records(row){
  return steps;
 }
 function argumentsFor(value,keys){if(!value||Object.keys(value).sort().join(',')!==[...keys].sort().join(','))throw Error('INVALID_RESOURCE_JOURNAL_ARGUMENTS');}
-function createResourceJournal({aws,run,source,expectedDefinitionHash,enabled=false}){
+function createResourceJournal({aws,run,source,expectedDefinitionHash,executorToken,enabled=false}){
  if(!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||!hex(expectedDefinitionHash)||typeof aws!=='function')throw Error('INVALID_RESOURCE_JOURNAL_CONTEXT');
+ if(executorToken!==undefined&&!/^[a-f0-9]{64}$/.test(executorToken))throw Error('INVALID_RESOURCE_EXECUTOR_TOKEN');
+ const executorSha=executorToken===undefined?null:digest({executorToken});
  const arn=MACHINE.replace(':stateMachine:',':execution:')+':db-'+run,key={pk:{S:'run#'+run}};
  const read=async name=>(await aws('ddb','GetItem',{TableName:TABLE,Key:{pk:{S:name}},ConsistentRead:true})).Item;
- async function owned(){
+ async function owned(allowUnclaimed=false){
   if(!enabled)throw Error('RESOURCE_JOURNAL_DISABLED');
   const [row,owner,state,bound]=await Promise.all([read('run#'+run),read('maintenance'),aws('sfn','DescribeExecution',{executionArn:arn}),aws('sfn','DescribeStateMachineForExecution',{executionArn:arn})]);
   let spec;try{spec=JSON.parse(bound.definition);}catch{throw Error('RESOURCE_HOLD_DEFINITION_REQUIRED');}
   if(state.status!=='RUNNING'||digest(spec)!==expectedDefinitionHash)throw Error('RESOURCE_HOLD_EXECUTION_REQUIRED');
   const revision=row?.resource_revision?.N;
   if(row?.kind?.S!==KIND||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.resource_phase?.S!=='holding'||row.release_requested?.BOOL!==false||owner?.kind?.S!==KIND||owner.execution_arn?.S!==arn||!/^(0|[1-9][0-9]*)$/.test(revision??'')||!Number.isSafeInteger(Number(revision))||Number(revision)>=Number.MAX_SAFE_INTEGER)throw Error('RESOURCE_JOURNAL_OWNERSHIP_REQUIRED');
+  const claimed=row.resource_executor_sha256?.S;
+  if(claimed!==undefined&&(!hex(claimed)||claimed!==executorSha)||executorSha&&!claimed&&!allowUnclaimed)throw Error('RESOURCE_EXECUTOR_OWNERSHIP_REQUIRED');
   records(row);return row;
  }
  async function save(before,steps){
   const text=JSON.stringify(steps),sha=digest(steps),next={N:String(Number(before.resource_revision.N)+1)};
   const old=before.resource_steps? 'resource_steps = :oldSteps AND resource_steps_sha256 = :oldSha':'attribute_not_exists(resource_steps) AND attribute_not_exists(resource_steps_sha256)';
-  const values={':execution':{S:arn},':kind':{S:KIND},':source':{S:source},':holding':{S:'holding'},':false':{BOOL:false},':previous':before.resource_revision,':next':next,':steps':{S:text},':sha':{S:sha},...(before.resource_steps?{':oldSteps':before.resource_steps,':oldSha':before.resource_steps_sha256}:{})};
-  const input={TransactItems:[{Update:{TableName:TABLE,Key:key,UpdateExpression:'SET resource_steps = :steps, resource_steps_sha256 = :sha, resource_revision = :next',ConditionExpression:'execution_arn = :execution AND #kind = :kind AND source_sha = :source AND resource_phase = :holding AND release_requested = :false AND resource_revision = :previous AND '+old,ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:values}},{ConditionCheck:{TableName:TABLE,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND}}}}]};
+  const values={':execution':{S:arn},':kind':{S:KIND},':source':{S:source},':holding':{S:'holding'},':false':{BOOL:false},':previous':before.resource_revision,':next':next,':steps':{S:text},':sha':{S:sha},...(executorSha?{':executor':{S:executorSha}}:{}),...(before.resource_steps?{':oldSteps':before.resource_steps,':oldSha':before.resource_steps_sha256}:{})};
+  const input={TransactItems:[{Update:{TableName:TABLE,Key:key,UpdateExpression:'SET resource_steps = :steps, resource_steps_sha256 = :sha, resource_revision = :next',ConditionExpression:'execution_arn = :execution AND #kind = :kind AND source_sha = :source AND resource_phase = :holding AND release_requested = :false AND resource_revision = :previous AND '+(executorSha?'resource_executor_sha256 = :executor':'attribute_not_exists(resource_executor_sha256)')+' AND '+old,ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:values}},{ConditionCheck:{TableName:TABLE,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND}}}}]};
   const saved=async()=>{const found=await read('run#'+run);return found?.resource_revision?.N===next.N&&found.resource_steps?.S===text&&found.resource_steps_sha256?.S===sha;};
   await owned();
   try{await aws('ddb','TransactWriteItems',input);}catch(error){if(!await saved())throw error;}
@@ -50,6 +54,21 @@ function createResourceJournal({aws,run,source,expectedDefinitionHash,enabled=fa
   if(!STEPS.includes(value.step)||!hex(value.planSha256)||(receipt&&!hex(value.receiptSha256)))throw Error('INVALID_RESOURCE_STEP');
  }
  return{
+  async claimExecutor(){
+   if(!executorSha)throw Error('RESOURCE_EXECUTOR_TOKEN_REQUIRED');
+   const before=await owned(true);
+   if(before.resource_executor_sha256){await owned();return{claimed:true};}
+   if(before.resource_steps)throw Error('RESOURCE_EXECUTOR_CLAIM_BEFORE_STEPS_REQUIRED');
+   const next={N:String(Number(before.resource_revision.N)+1)};
+   const transaction={TransactItems:[{Update:{TableName:TABLE,Key:key,
+    UpdateExpression:'SET resource_executor_sha256 = :executor, resource_revision = :next',
+    ConditionExpression:'execution_arn = :execution AND #kind = :kind AND source_sha = :source AND resource_phase = :holding AND release_requested = :false AND resource_revision = :previous AND attribute_not_exists(resource_executor_sha256) AND attribute_not_exists(resource_steps)',
+    ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND},':source':{S:source},':holding':{S:'holding'},':false':{BOOL:false},':previous':before.resource_revision,':next':next,':executor':{S:executorSha}}}},
+    {ConditionCheck:{TableName:TABLE,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND}}}}]};
+   try{await aws('ddb','TransactWriteItems',transaction);}catch(error){const found=await read('run#'+run);if(found?.resource_executor_sha256?.S!==executorSha||found.resource_revision?.N!==next.N)throw error;}
+   await owned();return{claimed:true};
+  },
+  async assertExecutor(){if(!executorSha)throw Error('RESOURCE_EXECUTOR_TOKEN_REQUIRED');await owned();return{owned:true};},
   async inspect(){const row=await owned(),steps=records(row);return{run,source,revision:Number(row.resource_revision.N),steps,nextStep:steps.at(-1)?.state==='intent'?steps.at(-1).step:STEPS[steps.length]??null,promotionIntentRecorded:steps.some(r=>r.step==='promote-bindings')};},
   async begin(value){
    checkStep(value);const row=await owned(),steps=records(row),index=STEPS.indexOf(value.step),existing=steps[index];

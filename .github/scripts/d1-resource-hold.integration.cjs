@@ -61,7 +61,7 @@ async function fixture(){
   }
   return client.send(new sdk.TransactWriteItemsCommand(resolve(input)));
  };
- const journal=(run,{loseResponse=false,stealBeforeWrite=false}={})=>createResourceJournal({run,source:SHA,enabled:true,expectedDefinitionHash:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),aws:async(service,command,value)=>{
+ const journal=(run,{loseResponse=false,stealBeforeWrite=false,executorToken}={})=>createResourceJournal({run,source:SHA,executorToken,enabled:true,expectedDefinitionHash:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),aws:async(service,command,value)=>{
   if(service!=='ddb')return aws(service,command,value);
   const local=structuredClone(value),remap=op=>{assert.equal(op.TableName,'videoq-db-maintenance-prod');op.TableName=table;};
   if(local.TransactItems){for(const op of local.TransactItems)for(const data of Object.values(op))remap(data);}
@@ -126,4 +126,12 @@ test('full coordinator engine records ordered intent and proof through real DDB 
  assert.equal((await engine.runNext()).holdReleased,false);assert.equal(mutations,RESOURCE_STEPS.length);
  const recorded=await j.inspect();assert.equal(recorded.nextStep,null);assert.ok(recorded.steps.every(r=>r.state==='verified'));
  assert.ok(await f.get('maintenance'));await assert.rejects(j.assertPrePromotionAbort(),/FORWARD_RECOVERY/);
+});
+test('real executor CAS admits one token and rejects tokenless or replaced execution',async()=>{
+ const f=await fixture(),r=await f.start(),a=f.journal(r.run_id,{executorToken:'1'.repeat(64)}),b=f.journal(r.run_id,{executorToken:'2'.repeat(64)});
+ const attempts=await Promise.allSettled([a.claimExecutor(),b.claimExecutor()]);assert.equal(attempts.filter(v=>v.status==='fulfilled').length,1);
+ const winner=attempts[0].status==='fulfilled'?a:b,loser=winner===a?b:a;
+ await winner.assertExecutor();await assert.rejects(loser.assertExecutor(),/EXECUTOR_OWNERSHIP/);await assert.rejects(f.journal(r.run_id).inspect(),/EXECUTOR_OWNERSHIP/);
+ await winner.begin({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64)});
+ const row=await f.get('run#'+r.run_id);await f.put({...row,resource_executor_sha256:{S:'f'.repeat(64)}});await assert.rejects(winner.assertExecutor(),/EXECUTOR_OWNERSHIP/);
 });

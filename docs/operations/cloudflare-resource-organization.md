@@ -343,3 +343,20 @@ the actual target again. The controller advances one stage per call and has no
 live caller. Tests use real private journal files with explicit provider/file
 and ownership fixtures. Integration with the AWS owner, an exclusive executor,
 full live data adapters and lost-start reconciliation remains required.
+
+The resource journal can claim a single executor token before any steps start.
+Only its SHA-256 digest is stored in DynamoDB; subsequent ownership checks and
+conditional journal writes require that exact executor. A competing token,
+tokenless journal or replaced digest refuses access. Claims have no automatic
+expiry or takeover. The production coordinator must persist its private token,
+claim it before steps and use `assertExecutor` for all data-plane callbacks.
+Unclaimed journal primitives remain available for metadata tests; they must not
+be used to run production transfer operations.
+
+`infra/scripts/d1_resource_executor_lock.py` supplies the additional local
+nonblocking kernel lock for the private artifact directory. It keeps the lock
+file inode, rejects replacement/unsafe permissions and releases descriptors on
+exception. Never delete a lock file to bypass contention. This local lock and
+the AWS token must both guard the production executor; they do not by themselves
+connect the Node/Python adapters or provide lost-start reconciliation. Tests
+cover real DynamoDB Local competing claims and actual filesystem lock contention.
