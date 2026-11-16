@@ -268,3 +268,15 @@ Actual schema-only readback found 68 application tables on the source, none on
 the candidate, and no resource fence triggers on either. No fence was installed.
 The query payload/result contract follows the
 [D1 query API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/).
+
+`infra/scripts/d1_resource_verify.py` compares schema, columns, all row values,
+foreign-key integrity and `sqlite_sequence` high-water marks under a mandatory
+fence verifier. It includes application indexes, views and triggers, excluding
+provider-reserved schema. SQLite encodes type and value bytes before JSON
+transport so 64-bit integers are never rounded by a JavaScript number. Sorted,
+bounded pages preserve duplicate rows and ignore physical insertion order;
+independent counts reject shortened/truncated reads. Only aggregate digests and
+counts are returned. SQLite tests cover changed integer/type/blob values,
+sequence-only differences, schema changes, lost fencing and missing rows.
+The production query adapter for these generated reads and full D1-to-D1
+comparison remain unimplemented; this module does not attest a live copy.
