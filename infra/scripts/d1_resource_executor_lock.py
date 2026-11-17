@@ -11,7 +11,10 @@ from d1_resource_files import PrivateSqlFiles
 
 
 class ExecutorLock:
-    def __init__(self, directory):
+    def __init__(self, directory, filename='executor.lock'):
+        if filename not in ('executor.lock', 'coordinator.lock'):
+            raise ValueError('RESOURCE_EXECUTOR_LOCK_NAME_REQUIRED')
+        self.filename = filename
         self.files = PrivateSqlFiles(directory)
         self.fd = None
 
@@ -19,7 +22,7 @@ class ExecutorLock:
         if self.fd is not None:
             raise ValueError('RESOURCE_EXECUTOR_ALREADY_ENTERED')
         self.files.checked()
-        fd = os.open(self.files.root / 'executor.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        fd = os.open(self.files.root / self.filename, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
         try:
             info = os.fstat(fd)
             if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != os.getuid():
@@ -43,7 +46,7 @@ class ExecutorLock:
         if self.fd is None:
             raise ValueError('RESOURCE_EXECUTOR_LOCK_REQUIRED')
         self.files.checked()
-        current = os.stat(self.files.root / 'executor.lock', follow_symlinks=False)
+        current = os.stat(self.files.root / self.filename, follow_symlinks=False)
         held = os.fstat(self.fd)
         if (not stat.S_ISREG(current.st_mode) or stat.S_IMODE(current.st_mode) != 0o600
                 or (current.st_dev, current.st_ino) != (held.st_dev, held.st_ino)):

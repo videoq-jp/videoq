@@ -703,3 +703,37 @@ configuration handoff, post-promotion forward recovery and actual isolated
 provider rehearsal remain outstanding. The production hold remains disabled.
 [Composition evidence](evidence/d1-resource-runtime-2026-11-17.json) distinguishes
 implemented wiring from unexecuted production behavior.
+
+## Local coordinator lock lifetime
+
+`withLockedResourceRuntime` now wraps a runtime invocation in a real kernel lock
+held by a small Python keeper. Its `coordinator.lock` is separate from each SQL
+or vector worker's `executor.lock`, so a guarded transfer can still acquire its
+inner lock. The keeper receives only a private directory, parent PID and random
+owner nonce through stdin; cloud credentials are absent from its environment,
+arguments and protocol. Serialized checks cover service calls, plan access and
+runtime/drain assertions before and after execution.
+
+The lock inode and a private identity record are retained. A changed inode,
+unsafe directory/file or changed parent record refuses continuation. An abnormal
+keeper exit leaves its parent recorded as holding the lock; a replacement cannot
+enter while that parent remains alive. There is no timeout takeover or automatic
+keeper restart. Normal completion releases the kernel lock without unlinking it.
+The AWS executor claim is still required; this local lock does not replace it or
+provide cross-host exclusion for deliberately copied credentials/artifacts.
+
+The wrapper permits only one runtime action at a time. If its caller fails after
+starting an action, it waits for that action to settle before releasing the
+keeper; retained runtime handles cannot start work after the callback finishes.
+The keeper never changes any AWS hold or admission flag.
+
+Validation: 640 Node tests, 161 Python tests and 16 DynamoDB Local integration
+tests passed. Actual subprocess tests cover competing keepers, async checks,
+callback failure, inode replacement, abnormal EOF with a live parent, retained
+handle refusal and action draining. The composed real-DynamoDB scenario holds
+the real local lock through claim and early abort, then proves conditional ASL
+release. Cloud provider and model transports remain explicit fixtures in that
+scenario. Real canonical-source/runtime and in-flight Lambda/Worker drain checks
+and the reviewed operator entry point are still required; no production cutover
+was performed. [Lock evidence](evidence/d1-resource-executor-lock-2026-11-17.json)
+records the implementation and remaining limits.
