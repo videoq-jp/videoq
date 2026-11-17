@@ -79,6 +79,9 @@ runs:
         if [ "$DOCKERFILE" = apps/inference/whisper/Dockerfile ]; then
           printf 'RUN ["python", "-c", "import server, provision, silero_vad, torch"]\n' >> "$RUNNER_TEMP/image-check.Dockerfile"
         fi
+        if [ "$DOCKERFILE" = apps/worker/Dockerfile.onprem ]; then
+          printf 'RUN ["python", "-c", "from worker_python.runtime_security import verify_hashlib_runtime; verify_hashlib_runtime()"]\n' >> "$RUNNER_TEMP/image-check.Dockerfile"
+        fi
         printf 'FROM scratch\nCOPY --from=checked /usr/share/licenses/videoq/LICENSE /LICENSE\n' >> "$RUNNER_TEMP/image-check.Dockerfile"
         docker buildx build --provenance=false --platform "$PLATFORM" \
           --build-context "release-image=oci-layout://$RUNNER_TEMP/scan-image@$manifest" \

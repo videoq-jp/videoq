@@ -94,6 +94,12 @@ class GrypeScan(unittest.TestCase):
                 self.assertEqual(len(commands), 2)
                 self.assertIn('sbom:' + str(output) + '.syft.json', commands[1])
 
+    def test_upstream_hint_preserves_binary_identity_but_version_and_arch_still_differ(self):
+        original = 'pkg:deb/ubuntu/libapt-pkg6.0t64@2.8.3?arch=amd64&distro=ubuntu-24.04'
+        self.assertEqual(scan.policy_purl(original + '&upstream=apt'), original)
+        self.assertNotEqual(scan.policy_purl(original.replace('amd64', 'arm64')), original)
+        self.assertNotEqual(scan.policy_purl(original.replace('@2.8.3', '@2.8.4')), original)
+
     def test_scanner_failure_cannot_produce_success(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(scan.subprocess, 'run', side_effect=RuntimeError('scan failed')):
             with patch('sys.argv', ['scan', '--source', 'dir:/example', '--output', directory + '/report.json']):

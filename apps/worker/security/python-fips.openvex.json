@@ -1,0 +1,26 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/worker-python-fips-2026-11-17",
+  "author": "VideoQ maintainers",
+  "timestamp": "2026-11-17T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-119170"
+      },
+      "products": [
+        {
+          "@id": "pkg:generic/python@3.14.10"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Only FIPS enforcement in CPython 3.14.10 is affected. worker_python.runtime_security verifies the active OpenSSL FIPS mode at handler import and before every invocation and refuses this Python version in FIPS mode. CI verifies the guard in the built image. This is not a claim the Python binary is patched; remove this assessment when the base image has the upstream fix.",
+      "references": [
+        "https://mail.python.org/archives/list/security-announce%40python.org/message/PXVTTOBPUMFJSSUXN6XCS7FC5DZOSZXK/",
+        "https://explore.alas.aws.amazon.com/CVE-2026-119170.html"
+      ]
+    }
+  ]
+}

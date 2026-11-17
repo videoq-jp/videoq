@@ -6,10 +6,21 @@ Grype and Syft JSON remain authoritative and are never filtered or overwritten.
 """
 import argparse
 import base64
+from datetime import datetime, timezone
 import json
 import os
 import pathlib
 import subprocess
+from urllib.parse import parse_qsl, urlencode
+
+
+def policy_purl(value):
+    """Upstream source hints do not change binary package identity."""
+    if not value or '?' not in value:
+        return value
+    base, query = value.split('?', 1)
+    qualifiers = [(k, v) for k, v in parse_qsl(query) if k != 'upstream']
+    return base + ('?' + urlencode(qualifiers) if qualifiers else '')
 
 
 def normalize(sbom, raw, vex_paths=()):
@@ -35,7 +46,7 @@ def normalize(sbom, raw, vex_paths=()):
     artifacts = {a['id']: a for a in sbom['artifacts']}
     for a in artifacts.values():
         group(a)['Packages'].append({'Name': a['name'], 'Version': a['version'],
-            'Identifier': {'PURL': a.get('purl')},
+            'Identifier': {'PURL': policy_purl(a.get('purl'))},
             # Do not assert pip-vendor provenance without an actual SBOM cataloger.
             'AnalyzedBy': 'sbom' if 'sbom' in a.get('foundBy', '') else a.get('foundBy')})
     statements = [(path, statement) for path in vex_paths
@@ -50,13 +61,13 @@ def normalize(sbom, raw, vex_paths=()):
         if severity not in ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'UNKNOWN'):
             raise ValueError('Unrecognized vulnerability severity')
         finding = {'Severity': severity, 'PkgName': a['name'], 'InstalledVersion': a['version'],
-                   'VulnerabilityID': v['id'], 'PkgIdentifier': {'PURL': a.get('purl')},
+                   'VulnerabilityID': v['id'], 'PkgIdentifier': {'PURL': policy_purl(a.get('purl'))},
                    'FixedVersion': ', '.join(v.get('fix', {}).get('versions') or [])}
         result = group(a)
         assessment = next(((path, s) for path, s in statements
             if s['vulnerability']['name'] == v['id'] and (s['status'] == 'fixed' or (s['status'] == 'not_affected'
-            and s.get('justification') == 'vulnerable_code_not_present'))
-            and a.get('purl') and any(p['@id'] == a['purl'] for p in s['products'])), None)
+            and s.get('justification') in ('vulnerable_code_not_present', 'vulnerable_code_not_in_execute_path')))
+            and a.get('purl') and any(policy_purl(p['@id']) == policy_purl(a['purl']) for p in s['products'])), None)
         if assessment:
             path, s = assessment
             result.setdefault('ExperimentalModifiedFindings', []).append({'Finding': finding,
@@ -87,16 +98,22 @@ def main():
     env = dict(os.environ, SYFT_CHECK_FOR_APP_UPDATE='false', GRYPE_CHECK_FOR_APP_UPDATE='false')
     # Explicit empty configs prevent ambient ignores/exclusions from changing CI.
     config = output.parent / (output.name + '.scanner.yaml')
-    config.write_text('{}\n')
+    config.write_text('match-upstream-kernel-headers: true\nignore: []\n')
     command = ['syft', args.source, '--config', str(config), '-o', 'syft-json=' + inventory]
     if args.platform:
         command += ['--platform', args.platform]
     subprocess.run(command, check=True, env=env)
     subprocess.run(['grype', 'sbom:' + inventory, '--config', str(config), '-o', 'json', '--file', raw_path], check=True, env=env)
     policy = json.loads(pathlib.Path(args.policy).read_text()) if args.policy else {}
+    if policy.get('expiresAt') and datetime.now(timezone.utc) >= datetime.fromisoformat(policy['expiresAt'].replace('Z', '+00:00')):
+        raise ValueError('Scanner assessment expired')
     report = normalize(json.loads(pathlib.Path(inventory).read_text()), json.loads(pathlib.Path(raw_path).read_text()), policy.get('vex', []))
     output.write_text(json.dumps(report, indent=2) + '\n')
     if args.gate == 'strict' and any(v['Severity'] in ('HIGH', 'CRITICAL') for r in report['Results'] for v in r['Vulnerabilities']):
+        for result in report['Results']:
+            for finding in result['Vulnerabilities']:
+                if finding['Severity'] in ('HIGH', 'CRITICAL'):
+                    print(json.dumps(finding), flush=True)
         raise SystemExit('Unassessed HIGH/CRITICAL vulnerabilities (including unfixed)')
 
 

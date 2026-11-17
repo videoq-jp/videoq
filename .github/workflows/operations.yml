@@ -153,6 +153,7 @@ jobs:
         with:
           platform: linux/arm64
           source: registry:${{ steps.image.outputs.ref }}
+          security-config: apps/worker/security/grype.json
           output: grype.json
           gate: assess
       - name: Remove temporary registry credentials

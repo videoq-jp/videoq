@@ -146,6 +146,7 @@ jobs:
         timeout-minutes: 15
         uses: ./.github/actions/scan-image
         with:
+          security-config: apps/worker/security/grype.json
           source: docker:videoq-worker:onprem-ci
           output: worker-security.json
       - name: Scan the web image including unfixed vulnerabilities

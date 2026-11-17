@@ -180,7 +180,10 @@ The shared `.github/actions/scan-image` action installs Grype 0.122.0 and Syft 1
 from official releases using committed SHA-256 checksums. It writes `REPORT.grype.json`
 (raw, unsuppressed findings), `REPORT.syft.json` (complete package inventory), and
 `REPORT` (the existing runtime assessors' policy-view schema, marked `Scanner: Grype`).
-The policy view preserves exact CVE/package/PURL VEX assessments; it never changes
+The policy view ignores only the Syft `upstream` source hint when comparing binary
+package PURLs; version, architecture and distro still match exactly. Grype kernel
+header matching is explicitly enabled so the existing verified header assessment
+receives all findings. The policy view preserves exact CVE/package/PURL VEX assessments; it never changes
 raw scanner evidence. New or mismatched findings remain blocking. `gate: assess`
 requires the caller's existing runtime evaluator or Operations reporting step;
 application and release scans default to blocking HIGH/CRITICAL, including unfixed.
