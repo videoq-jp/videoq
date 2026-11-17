@@ -209,6 +209,7 @@ jobs:
               - '.github/scripts/cutover-recovery-snapshot*'
               - 'apps/api/scripts/migrations/d1/write-fence.ts'
               - '.github/scripts/production-smoke*'
+              - '.github/scripts/isolated-smoke*'
               - '.github/scripts/aws-production-smoke*'
               - '.github/scripts/d1-resource-smoke*'
               - '.github/scripts/d1-resource-e2e*'

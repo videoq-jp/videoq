@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-17",
+  "scope": "isolated E2E storage and origin guard only",
+  "nodeTests": {
+    "passed": 680,
+    "failed": 0
+  },
+  "newTests": 6,
+  "providerCallsInTests": "fixtures",
+  "productionSmokePolicyChanged": false,
+  "isolatedE2ERunnerConnected": false,
+  "realCloudE2EExecuted": false,
+  "providerMutationExecuted": false,
+  "remaining": [
+    "private manifest loader and synthetic identity/store wiring",
+    "AWS Lambda/SQS and credential isolation",
+    "actual provisioning, model-backed upload-to-answer run and teardown"
+  ]
+}

@@ -986,3 +986,31 @@ records both attempts, dimensions and cleanup. No production binding, customer
 data or model credential was used. These are native API checks with synthetic
 vectors; D1 final authorization, the production coordinator/bridge, embedding
 quality and upload-to-answer E2E remain separate, unproven release gates.
+
+## Isolated E2E storage and origin guard
+
+`isolated-smoke-target.cjs` is a read-only boundary component for the isolated
+E2E runner. A strict manifest contains version, a 16-hex nonce, a non-production
+D1 UUID, the Account's Workers subdomain, issuedAt and expiresAt (epoch ms).
+The lifetime cannot exceed two hours. Worker, D1 name, both Vectorize names and
+R2 bucket name are derived from that nonce; callers cannot supply arbitrary
+resource names or origins. Known production and migration D1 UUIDs are refused.
+
+Each proof reads six fixed metadata paths in the existing Account: its Workers
+subdomain, the nonce Worker settings, the D1 database, the two vector indexes
+and the bucket. It checks resource names, dimensions/cosine, exact bindings,
+cloud/D1/running flags, authentication/frontend/CORS origins and bucket config.
+Extra D1/Vectorize/R2 bindings and Hyperdrive are refused. Expiry is checked
+before and after the reads. Upload URLs must use the exact nonce bucket under
+the fixed Account's R2 S3 host. No mutation API, SQL, secret retrieval, provisioner
+or command-line entry is exposed by this module.
+
+The production smoke policy and store remain unchanged. This guard is not yet
+connected to an executable E2E runner. Private manifest loading, scoped synthetic
+identity/store integration, AWS Lambda/SQS/credential isolation, model access,
+environment provisioning and teardown remain required before an isolated video
+E2E can run. Six new unit tests use metadata fixtures; they do not certify a real
+cloud environment or AI answer. Node's full suite passed 680 tests.
+
+Provider metadata references: [Workers subdomain](https://developers.cloudflare.com/api/resources/workers/subresources/subdomains/methods/get/)
+and [R2 bucket](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/).
