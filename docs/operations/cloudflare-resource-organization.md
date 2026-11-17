@@ -502,3 +502,30 @@ only the fixed completion attestation. Tests use explicit provider fixtures;
 production probes have not been run and no production release is authorized by
 these test results. Pre-promotion abort, post-promotion recovery, owned native
 smoke execution and the full production factory remain outstanding.
+
+
+## Owned native smoke worker guard
+
+`d1-resource-smoke-guard.cjs` protects opt-in resource smoke jobs before their
+existing credential reads, before child launch and after child completion. It
+requires the live D1 resource hold, matching executor and definition hashes,
+verified preceding steps, pending E2E plan, action ID, immutable source version
+and registered exact CodeBuild ARN. A starting registration may settle for a
+bounded interval; a conflicting registration or terminal/lost hold refuses
+execution. Resource smoke mode cannot fall back to PostgreSQL. Ordinary smoke
+mode remains unchanged when the resource-specific flag is absent.
+
+The operator bundle includes the guard and digest dependency, and both runtime
+fixture CI and canonical maintenance deployment track these inputs. Optional
+IAM additions give only `GetItem` on owner/run records and the two describe APIs
+on the fixed maintenance execution ARN, gated by both existing opt-ins. There
+are no new jobs, starters, lock writes or control permissions. The execution
+resource scope follows the [AWS authorization reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_stepfunctions.html).
+
+Native proof now binds the action, complete E2E plan hash, executor hash and
+execution-definition hash to the exact build environment. The source/version,
+AI and stable-API checks remain required. The owned launcher/registration and
+reconciliation path still needs implementation before this mode can be used.
+[Guard evidence](evidence/d1-owned-smoke-guard-2026-11-17.json) records local unit,
+bundle-input and Terraform mock checks. No IAM configuration or AWS job was
+started by this validation.
