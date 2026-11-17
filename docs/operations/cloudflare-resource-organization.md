@@ -1042,3 +1042,40 @@ This is library wiring, not an executable isolated E2E runner. AWS/Lambda/SQS
 configuration, credential delivery, real model access, provisioning, execution
 and cleanup remain required. No cloud environment was changed or video E2E run
 by these fixture-based tests.
+
+## Isolated AWS configuration proof
+
+`isolated-smoke-aws.cjs` verifies three nonce-derived Lambda functions and their
+media/search/account queues and DLQs. Each function must use a pinned numeric
+version, ARM64, `handler.handler`, and the supplied worker image digest. Every
+queue ARN, tag, redrive target, event-source mapping and environment destination
+must belong to the isolated run. Queue visibility retains the production rule:
+max(six times Lambda timeout, 900-second job lease plus timeout plus 60 seconds).
+Queue policies require the TLS deny and, on source queues, exact queue-scoped
+actions for the existing worker role; wildcard Allow policies are rejected.
+
+The exact environment allowlist pins the isolated API origin, R2 bucket, all
+three queue URLs, existing federation policy/audience, endpoint and embedding
+model. It requires real heavy/visual processing and the configured media limits.
+SSM/DB references, direct AI API keys, unknown overrides and proxy endpoints are
+refused. Three newly provisioned isolated secrets must match caller-pinned
+SHA-256 digests; raw values are never returned in the proof.
+
+The read-only CLI transport permits only STS identity, these queue attributes/
+tags, and the three fixed function versions/mapping lists. It uses private
+request files, a filtered AWS environment, bounded execution and sanitized
+errors. It cannot read SSM, invoke/update Lambda, mutate IAM, or send/delete
+queue messages. The constructor does not execute any provider request.
+
+This design reuses `videoq-worker-prod` as the execution role for the existing
+federation identity. That role retains its production permissions. The proof
+explicitly reports `sharedProductionExecutionRole: true`: this is configuration
+validation, not IAM permission isolation. Reviewed image provenance, restricted
+credential provisioning, absence of public invocation endpoints, real model
+access and actual runtime behavior still require the runner/provisioner review.
+No existing IAM policy or cloud environment was modified here.
+
+Five new tests cover the complete proof through actual private-file transport
+serialization and provider fixtures, plus denial cases. The full Node suite
+passed 691 tests. No isolated Lambda was created, invoked or certified by these
+unit tests.
