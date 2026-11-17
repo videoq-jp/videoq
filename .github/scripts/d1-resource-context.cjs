@@ -21,8 +21,16 @@ async function createResourceContextStore({directory,aws}){
   await checked();let handle;try{handle=await fs.open(filename,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);}catch(error){if(error.code==='ENOENT')return null;throw Error('RESOURCE_CONTEXT_FILE_UNSAFE');}
   try{
    const before=await handle.stat({bigint:true});if(!before.isFile()||(before.mode&0o777n)!==0o600n||before.uid!==original.uid||before.size>BigInt(LIMIT))throw Error('RESOURCE_CONTEXT_FILE_UNSAFE');
-   const bytes=Buffer.alloc(LIMIT+1),{bytesRead}=await handle.read(bytes,0,bytes.length,0),after=await handle.stat({bigint:true});
-   if(BigInt(bytesRead)!==before.size||before.size!==after.size||before.mtimeNs!==after.mtimeNs||before.ctimeNs!==after.ctimeNs||before.ino!==after.ino||before.dev!==after.dev)throw Error('RESOURCE_CONTEXT_FILE_CHANGED');
+   const bytes=Buffer.alloc(LIMIT+1);let stable=false,bytesRead=0,previous=before;
+   for(let attempt=0;attempt<3;attempt++){
+    ({bytesRead}=await handle.read(bytes,0,bytes.length,0));const after=await handle.stat({bigint:true});
+    if(BigInt(bytesRead)!==previous.size||previous.size!==after.size||previous.mtimeNs!==after.mtimeNs||previous.ino!==after.ino||previous.dev!==after.dev||previous.mode!==after.mode||previous.uid!==after.uid)throw Error('RESOURCE_CONTEXT_FILE_CHANGED');
+    if(previous.ctimeNs===after.ctimeNs){stable=true;break;}
+    // Publishing/removing the temporary hard link changes ctime on this same
+    // inode. Never accept that read: require another full, stable observation.
+    previous=after;
+   }
+   if(!stable)throw Error('RESOURCE_CONTEXT_FILE_CHANGED');
    let value;try{value=JSON.parse(bytes.subarray(0,bytesRead).toString('utf8'));}catch{throw Error('RESOURCE_CONTEXT_RECORD_REQUIRED');}
    await checked();return validate(value);
   }finally{await handle.close();}

@@ -18,6 +18,18 @@ test('concurrent initializers publish exactly one immutable record without overw
  const f=await fixture(t),results=await Promise.all([f.store.initialize(f.expected),f.store.initialize(f.expected)]);assert.equal(results.filter(v=>v.created).length,1);assert.equal(resourceDigest(results[0].context),resourceDigest(results[1].context));assert.deepEqual(await fs.readdir(f.directory),['resource-context.json']);
  await assert.rejects(f.store.initialize({...f.expected,projectSha256:'e'.repeat(64)}),/PIN_MISMATCH/);
 });
+test('hard-link cleanup during a read requires a second stable read of the same private inode',async t=>{
+ const f=await fixture(t);await f.store.initialize(f.expected);
+ const filename=path.join(await fs.realpath(f.directory),'resource-context.json'),temporary=path.join(f.directory,'temporary-link'),open=fs.open;let reads=0;
+ fs.open=async function(file,...args){const handle=await open(file,...args);if(file!==filename)return handle;
+  return new Proxy(handle,{get(target,key){if(key==='read')return async(...input)=>{
+   const result=await target.read(...input);reads++;
+   if(reads===1){await fs.link(filename,temporary);await fs.unlink(temporary);}
+   return result;
+  };const value=target[key];return typeof value==='function'?value.bind(target):value;}});
+ };
+ try{assert.equal((await f.store.load()).run,f.expected.run);assert.equal(reads,2);}finally{fs.open=open;}
+});
 test('missing context for a remotely claimed run cannot generate a new executor capability',async t=>{
  const f=await fixture(t);f.row.resource_executor_sha256={S:'e'.repeat(64)};await assert.rejects(f.store.initialize(f.expected),/ALREADY_CLAIMED/);assert.deepEqual(await fs.readdir(f.directory),[]);await assert.rejects(f.store.loadRequired({run:f.expected.run,source:f.expected.source}),/FILE_REQUIRED/);
 });
