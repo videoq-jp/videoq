@@ -185,3 +185,20 @@ test('native launch registration uses real revision-checked transactions before 
  await j.verify({step:'verify-e2e',planSha256:resourceDigest(plan),receiptSha256:'a'.repeat(64)});assert.equal(await launcher.readBuild(plan),arn);
  const owner=await f.get('maintenance');await f.put({...owner,execution_arn:{S:owner.execution_arn.S+'changed'}});await assert.rejects(launcher.readBuild(plan),/OWNERSHIP/);
 });
+test('real abort request CAS excludes ordinary progress and cannot be requested after promotion intent',async()=>{
+ const f=await fixture(),r=await f.start('6'.repeat(32)),executorToken='7'.repeat(64),j=f.journal(r.run_id,{executorToken});await j.claimExecutor();
+ await j.begin({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64)});await j.requestAbort();await j.requestAbort();assert.equal((await j.assertAbortExecutor()).run,r.run_id);assert.ok(await f.get('maintenance'));
+ await assert.rejects(j.assertExecutor(),/ABORT_IN_PROGRESS/);await assert.rejects(j.verify({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64),receiptSha256:'d'.repeat(64)}),/ABORT_IN_PROGRESS/);
+ const g=await fixture(),s=await g.start('5'.repeat(32)),k=g.journal(s.run_id,{executorToken});await k.claimExecutor();
+ for(const step of RESOURCE_STEPS){await k.begin({step,planSha256:'c'.repeat(64)});if(step==='promote-bindings')break;await k.verify({step,planSha256:'c'.repeat(64),receiptSha256:'d'.repeat(64)});}
+ await assert.rejects(k.requestAbort(),/FORWARD_RECOVERY/);assert.equal((await g.get('run#'+s.run_id)).resource_abort_requested,undefined);
+});
+test('abort recovery durable receipt authorizes only the existing real conditional ASL release',async()=>{
+ const f=await fixture(),r=await f.start('4'.repeat(32)),executorToken='6'.repeat(64),j=f.journal(r.run_id,{executorToken});await j.claimExecutor();
+ const version='11111111-1111-1111-1111-111111111111',settings={compatibility_date:'2026-08-20',bindings:[{name:'DB',type:'d1',id:'e57d0931-18cb-4f00-ae7f-b0068030fb04'},{name:'SCENE_VECTORIZE_1536',type:'vectorize',index_name:'videoq-scenes-migration-v3-1536'},{name:'SCENE_VECTORIZE_768',type:'vectorize',index_name:'videoq-scenes-migration-v3-768'}]};
+ const cloudflare=async(method,path)=>{assert.equal(method,'GET');if(path.endsWith('/deployments'))return{deployments:[{id:version,versions:[{version_id:version,percentage:100}]}]};if(path.endsWith('/versions?per_page=1'))return{items:[{id:version}]};return structuredClone(settings);};
+ const fail=async()=>assert.fail('No admission mutation before original intent');let lose=true;
+ const recovery=require('./d1-resource-abort-recovery.cjs').createResourceAbortRecovery({run:r.run_id,source:SHA,executorToken,journal:j,plans:{load:fail},cloudflare,lambda:fail,github:fail,sourceFence:{inspect:fail,remove:fail,assertUnfenced:async()=>resourceDigest({unfenced:true})},enabled:true,aws:async(service,command,input)=>{const result=await f.metadataAws(service,command,input);if(command==='TransactWriteItems'&&lose){lose=false;throw Error('SYNTHETIC_LOST_ABORT_COMPLETION_RESPONSE');}return result;}});
+ const result=await recovery.advance();assert.equal(result.status,'abort-release-requested');const owner=await f.get('maintenance');assert.ok(owner);const row=await f.get('run#'+r.run_id);assert.equal(row.resource_phase.S,'aborted');assert.equal(row.resource_abort_requested.BOOL,true);assert.deepEqual(await recovery.advance(),result);
+ await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.equal((await f.get('run#'+r.run_id)).resource_completion_receipt_sha256.S,result.receiptSha256);
+});

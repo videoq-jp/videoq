@@ -43,7 +43,7 @@ def main():
                 or request['version'] != 1 or request['enabled'] is not True or not isinstance(request['input'], dict)):
             raise ValueError('RESOURCE_WORKER_DISABLED')
         action, value = request['action'], request['input']
-        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
+        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'remove-source-fence', 'prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
             raise ValueError('RESOURCE_WORKER_ACTION_REQUIRED')
         check()
         if action == 'ownership-check':
@@ -64,11 +64,13 @@ def main():
             result = plan_fence(query(SOURCE, SCHEMA_SQL), value.get('run'))
         else:
             plan = value['plan']
-            mutate = action in ('install-source-fence', 'remove-target-fence')
-            query = CloudflareFenceQuery(request['token'], plan, mutate)
-            control = FenceControl(query, check, lambda _plan: check('target-safe'))
+            mutate = action in ('install-source-fence', 'remove-target-fence', 'remove-source-fence')
+            query = CloudflareFenceQuery(request['token'], plan, mutate, allow_source_unfence=action == 'remove-source-fence')
+            control = FenceControl(query, check, lambda _plan: check('target-safe'), lambda _plan: check('source-safe'))
             if action == 'install-source-fence':
                 result = control.fence_source(plan)
+            elif action == 'remove-source-fence':
+                result = control.unfence_source(plan)
             elif action == 'remove-target-fence':
                 result = control.unfence_target(plan)
             else:

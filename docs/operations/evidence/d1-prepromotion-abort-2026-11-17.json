@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-17",
+  "scope": "pre-promotion recovery through durable conditional release request",
+  "nodeTests": {
+    "passed": 624,
+    "failed": 0
+  },
+  "pythonTests": {
+    "passed": 157,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 12,
+    "failed": 0
+  },
+  "checks": [
+    "durable abort request prevents ordinary step progress",
+    "promotion intent permanently refuses simple abort",
+    "real revision-checked DynamoDB request transaction",
+    "lost response exact readback",
+    "fixed original paused source bindings and stopped admission",
+    "required in-flight worker drain callback",
+    "default-denied source unfence",
+    "exact source-only trigger drops and original trigger preservation",
+    "safety revocation before each removal",
+    "source/API/consumer/deployment restoration order",
+    "original disabled admission preserved",
+    "conditional completion receipt followed by real ASL release transaction",
+    "historical receipt reentry and lost completion response",
+    "provider error sanitization"
+  ],
+  "productionMutationExecuted": false,
+  "recoveryCommandComplete": false,
+  "abortReleaseImplemented": true,
+  "realProviderRehearsalExecuted": false,
+  "abortRecoveryControllerImplemented": true,
+  "productionExecutorWired": false
+}

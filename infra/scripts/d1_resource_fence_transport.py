@@ -18,16 +18,19 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class CloudflareFenceQuery:
-    def __init__(self, token, plan=None, allow_mutations=False, opener=None):
+    def __init__(self, token, plan=None, allow_mutations=False, opener=None, *, allow_source_unfence=False):
         if not isinstance(token, str) or not 20 <= len(token) <= 4096 or any(c in token for c in '\r\n\0'):
             raise ValueError('RESOURCE_D1_TOKEN_REQUIRED')
-        if type(allow_mutations) is not bool:
+        if type(allow_mutations) is not bool or type(allow_source_unfence) is not bool or allow_source_unfence and not allow_mutations:
             raise ValueError('RESOURCE_D1_MUTATION_FLAG_REQUIRED')
         self.allowed = {(SOURCE, SCHEMA_SQL), (TARGET, SCHEMA_SQL)}
         if allow_mutations:
             validate_plan(plan)
-            self.allowed.update((SOURCE, sql) for sql in plan['fenceTriggers'].values())
-            self.allowed.update((TARGET, 'DROP TRIGGER ' + quote(name)) for name in plan['fenceTriggers'])
+            if allow_source_unfence:
+                self.allowed.update((SOURCE, 'DROP TRIGGER ' + quote(name)) for name in plan['fenceTriggers'])
+            else:
+                self.allowed.update((SOURCE, sql) for sql in plan['fenceTriggers'].values())
+                self.allowed.update((TARGET, 'DROP TRIGGER ' + quote(name)) for name in plan['fenceTriggers'])
         self.token = token
         self.opener = opener or urllib.request.build_opener(NoRedirect())
 

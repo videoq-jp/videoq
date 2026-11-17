@@ -77,6 +77,18 @@ class TransportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             CloudflareFenceQuery(TOKEN, allow_mutations=True)
 
+    def test_source_abort_transport_only_allows_exact_source_drops(self):
+        opener = Opener(payload())
+        recovery = CloudflareFenceQuery(TOKEN, PLAN, True, opener, allow_source_unfence=True)
+        name = next(iter(PLAN['fenceTriggers']))
+        drop = 'DROP TRIGGER ' + quote(name)
+        recovery(SOURCE, drop)
+        for database, sql in [(TARGET, drop), (SOURCE, PLAN['fenceTriggers'][name]), (SOURCE, 'DROP TRIGGER original')]:
+            with self.assertRaisesRegex(ValueError, 'REFUSED'):
+                recovery(database, sql)
+        with self.assertRaisesRegex(ValueError, 'FLAG_REQUIRED'):
+            CloudflareFenceQuery(TOKEN, PLAN, allow_source_unfence=True)
+
 
 if __name__ == '__main__':
     unittest.main()
