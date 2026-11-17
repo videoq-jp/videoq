@@ -25,3 +25,19 @@ test('changed project review or revoked executor refuses the proof',async()=>{
 test('AWS SDK Date timestamps keep subsecond freshness at the resume boundary',async()=>{
  const f=fixture(),plan=await f.proof.prepare('2026-11-17T00:10:00.250Z');f.build.startTime=new Date('2026-11-17T00:10:00.500Z');f.build.endTime=new Date('2026-11-17T00:15:00.750Z');const proof=await f.proof.verify(plan,arn,'d'.repeat(64));assert.equal(proof.receipt.startedAt,'2026-11-17T00:10:00.500Z');assert.equal(proof.receipt.completedAt,'2026-11-17T00:15:00.750Z');
 });
+test('owned launch input pins immutable source and only the fixed metadata overrides',async()=>{
+ const f=fixture(),plan=await f.proof.prepare('2026-11-17T00:00:00Z'),input=await f.proof.launchInput(plan,'d'.repeat(64));
+ assert.deepEqual(Object.keys(input).sort(),['environmentVariablesOverride','idempotencyToken','projectName','sourceVersion']);assert.equal(input.idempotencyToken,plan.actionId);assert.equal(input.sourceVersion,plan.sourceVersion);assert.equal(input.projectName,'videoq-db-smoke-prod');assert.equal(input.environmentVariablesOverride.length,10);assert.ok(input.environmentVariablesOverride.every(v=>v.type==='PLAINTEXT'));assert.equal(input.environmentVariablesOverride.find(v=>v.name==='VIDEOQ_D1_RESOURCE_PLAN_SHA256').value,'d'.repeat(64));
+ f.project.sourceVersion='new-version';await assert.rejects(f.proof.launchInput(plan,'d'.repeat(64)),/PROJECT_CHANGED/);
+});
+test('running build reconciliation requires exact reviewed role, runtime and complete environment',async()=>{
+ const f=fixture(),plan=await f.proof.prepare('2026-11-17T00:00:00Z');f.build.buildStatus='IN_PROGRESS';f.build.buildComplete=false;delete f.build.endTime;
+ assert.equal(await f.proof.matchesBuild(plan,arn,'d'.repeat(64)),true);await assert.rejects(f.proof.verify(plan,arn,'d'.repeat(64)),/SUCCESSFUL_BUILD/);
+ f.build.serviceRole='unreviewed-role';assert.equal(await f.proof.matchesBuild(plan,arn,'d'.repeat(64)),false);f.build.serviceRole=f.project.serviceRole;
+ f.build.environment.environmentVariables.push({name:'UNREVIEWED',value:'yes',type:'PLAINTEXT'});assert.equal(await f.proof.matchesBuild(plan,arn,'d'.repeat(64)),false);
+});
+test('native build status distinguishes pending, failed and verified completion',async()=>{
+ const f=fixture(),plan=await f.proof.prepare('2026-11-17T00:00:00Z');f.build.buildStatus='IN_PROGRESS';f.build.buildComplete=false;delete f.build.endTime;
+ assert.deepEqual(await f.proof.status(plan,arn,'d'.repeat(64)),{state:'pending'});f.build.buildStatus='FAILED';f.build.buildComplete=true;f.build.endTime='2026-11-17T00:15:00Z';assert.deepEqual(await f.proof.status(plan,arn,'d'.repeat(64)),{state:'failed'});
+ f.build.buildStatus='SUCCEEDED';assert.equal((await f.proof.status(plan,arn,'d'.repeat(64))).state,'succeeded');
+});

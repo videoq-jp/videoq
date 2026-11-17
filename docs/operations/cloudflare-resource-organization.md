@@ -524,8 +524,65 @@ resource scope follows the [AWS authorization reference](https://docs.aws.amazon
 
 Native proof now binds the action, complete E2E plan hash, executor hash and
 execution-definition hash to the exact build environment. The source/version,
-AI and stable-API checks remain required. The owned launcher/registration and
-reconciliation path still needs implementation before this mode can be used.
+AI and stable-API checks remain required. The disabled owned launcher below implements registration and ambiguous-start
+reconciliation; production factory wiring is still required.
 [Guard evidence](evidence/d1-owned-smoke-guard-2026-11-17.json) records local unit,
 bundle-input and Terraform mock checks. No IAM configuration or AWS job was
 started by this validation.
+
+## Owned native build launch and reconciliation
+
+`d1-resource-smoke-launcher.cjs` uses the existing fixed smoke project under the
+claimed resource hold. Its default is disabled. It records action, full E2E plan
+hash and immutable source version in the owned run before one `StartBuild`
+attempt, then registers the exact build ARN after verifying reviewed code, role,
+runtime and the complete environment. Registration uses revision-checked
+transactions with a condition on the shared maintenance owner. Worker credential
+access waits for that registration through the guard above. No role, image,
+buildspec or credential override is accepted by the launch input.
+
+An ambiguous start is never automatically retried, even after the provider's
+idempotency window. Reentry scans bounded project metadata and registers only
+one exact matching action. Missing, duplicate or incomplete inventory stops for
+reconciliation. A crash between durable intent and dispatch can therefore need
+explicit recovery; it cannot silently create a second build. Lost DynamoDB
+responses reconcile only against the exact durable revision and fields.
+
+This module has no CLI or production caller yet. Production factory wiring,
+real provider rehearsal and recovery remain prerequisites to enabling the hold.
+No AWS job, IAM apply or live cutover was performed by these tests.
+[Launcher evidence](evidence/d1-owned-smoke-launcher-2026-11-17.json) records
+the local checks and their limits.
+
+## E2E coordinator adapter
+
+`d1-resource-e2e.cjs` connects the owned launcher to `verify-e2e`. It requires
+all ten preceding steps verified, matching saved resume/promotion plans and the
+actual stable production Worker with the fixed named D1/Vectorize targets. The
+private E2E plan pins the active Worker version and binding digest. Native start
+time must follow a fresh post-resume observation. Every probe and launch checks
+that the Worker still matches the plan.
+
+A running or unregistered build remains pending; the latter uses the launcher's
+metadata reconciliation. Failed builds cannot mark the step verified. Successful
+proof is hashed together with the exact API version and binding digest, matching
+the final current-state verifier. The registered build can be read after E2E is
+verified without requiring the step still pending. Application credentials stay
+inside the existing AWS smoke worker.
+
+Local validation: 612 Node tests and 10 DynamoDB Local integration tests passed.
+The latter exercises the real registration transactions, lost write response,
+reentry without restart, post-verification lookup and changed shared ownership.
+Cloudflare/CodeBuild transports in these checks are explicit fixtures. Production
+factory wiring, recovery and real provider rehearsal remain outstanding.
+
+### Native build inventory pagination
+
+Reconciliation omits `sortOrder` on every `ListBuildsForProject` request. AWS
+rejects an explicit order once a project has more than 100 builds; the default
+order is descending. The first read-only page of the actual smoke project on
+2026-11-17 contained 100 IDs and a continuation token, so this is a live
+compatibility requirement. A fixture locates the one matching owned build on
+the second page without starting another build. Full inventory is still bounded
+and incomplete or repeated pagination refuses registration. See the
+[AWS API reference](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ListBuildsForProject.html).
