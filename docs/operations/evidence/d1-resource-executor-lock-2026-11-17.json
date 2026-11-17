@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-17",
+  "scope": "real local coordinator lock and guarded resource runtime lifetime",
+  "nodeTests": {
+    "passed": 640,
+    "failed": 0
+  },
+  "pythonTests": {
+    "passed": 161,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 16,
+    "failed": 0
+  },
+  "checks": [
+    "actual competing Python keeper processes",
+    "retained lock inode and pinned identity",
+    "abnormal keeper refuses takeover while parent alive",
+    "separate inner transfer lock remains usable",
+    "serialized private-pipe liveness checks",
+    "cloud credentials absent from keeper input/environment",
+    "guarded provider and plan calls",
+    "single runtime action and pending action drain on callback failure",
+    "real local lock around composed DDB claim/abort and conditional release"
+  ],
+  "productionMutationExecuted": false,
+  "operatorEntryPointImplemented": false,
+  "canonicalRuntimeAssertionsImplemented": false,
+  "actualWorkerDrainImplemented": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "local kernel exclusion complements AWS executor claim",
+    "does not exclude copied artifacts on another host",
+    "provider/model transports in composed tests are fixtures"
+  ]
+}

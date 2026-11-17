@@ -274,3 +274,15 @@ test('composed runtime abort restores original backend and admissions without an
   const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.equal((await f.get('run#'+r.run_id)).resource_phase.S,'aborted');
  }finally{await rt.cleanup();}
 });
+test('real local keeper surrounds composed ownership and early abort, excluding overlap and retained runtime reuse',async()=>{
+ const f=await fixture(),r=await f.start('0'.repeat(32)),rt=await runtimeFixture(f,r),{withLockedResourceRuntime}=require('./d1-resource-operation.cjs');let retained;
+ try{
+  const receipt=await withLockedResourceRuntime(rt.options,async runtime=>{
+   retained=runtime;await runtime.claim();
+   await assert.rejects(withLockedResourceRuntime(rt.options,async()=>assert.fail('overlapping runtime ran')),/RESOURCE_EXECUTOR_BUSY/);
+   const abort=runtime.abort();await assert.rejects(runtime.abort(),/OPERATION_IN_PROGRESS/);return abort;
+  });
+  assert.equal(receipt.status,'abort-release-requested');await assert.rejects(retained.claim(),/KEEPER_LOST/);
+  const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await rt.cleanup();}
+});
