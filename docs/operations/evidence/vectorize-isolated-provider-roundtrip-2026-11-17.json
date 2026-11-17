@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-11-17T02:50:01.658Z",
+  "nonce": "fdd42b52586ea12f",
+  "accountId": "12daec56fdba43f677f2766ee26a5a39",
+  "scope": "synthetic isolated Vectorize copy/query/filter/delete",
+  "passed": true,
+  "dimensions": [
+    {
+      "dimensions": 1536,
+      "vectorsCopied": 4,
+      "float32ValuesMatched": true,
+      "metadataMatched": true,
+      "rankingMatched": true,
+      "multiVideoFilterMatched": true,
+      "wrongOwnerHits": 0,
+      "deletedVectorAbsent": true
+    },
+    {
+      "dimensions": 768,
+      "vectorsCopied": 4,
+      "float32ValuesMatched": true,
+      "metadataMatched": true,
+      "rankingMatched": true,
+      "multiVideoFilterMatched": true,
+      "wrongOwnerHits": 0,
+      "deletedVectorAbsent": true
+    }
+  ],
+  "cleanupVerified": true,
+  "indexes": [
+    {
+      "name": "vq-iso-vector-fdd42b52586ea12f-source-1536",
+      "dimensions": 1536,
+      "deleted": true,
+      "deletionHttpStatus": 410
+    },
+    {
+      "name": "vq-iso-vector-fdd42b52586ea12f-target-1536",
+      "dimensions": 1536,
+      "deleted": true,
+      "deletionHttpStatus": 410
+    },
+    {
+      "name": "vq-iso-vector-fdd42b52586ea12f-source-768",
+      "dimensions": 768,
+      "deleted": true,
+      "deletionHttpStatus": 410
+    },
+    {
+      "name": "vq-iso-vector-fdd42b52586ea12f-target-768",
+      "dimensions": 768,
+      "deleted": true,
+      "deletionHttpStatus": 410
+    }
+  ],
+  "finishedAt": "2026-11-17T02:59:12.194Z",
+  "initialAttempt": {
+    "passed": false,
+    "reason": "metadata type String differs from lowercase request enum; stopped before vector insertion",
+    "cleanupVerified": true,
+    "indexes": [
+      {
+        "name": "vq-iso-vector-0eb9c7bffd24bd4d-source-1536",
+        "dimensions": 1536,
+        "deleted": true,
+        "deletionHttpStatus": 410
+      }
+    ]
+  },
+  "productionBindingsChanged": false,
+  "customerDataUsed": false,
+  "modelInvoked": false,
+  "limits": [
+    "native API synthetic vectors; production coordinator and bridge not executed",
+    "metadata filters are not final authorization; D1 ownership check not exercised",
+    "does not establish RAG answer quality, embedding model behavior, production-scale transfer or upload-to-answer E2E"
+  ],
+  "documentation": [
+    "https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/create/",
+    "https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/query/",
+    "https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/subresources/metadata_index/methods/create/"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-17",
+  "scope": "read-only isolated AWS configuration proof and restricted metadata transport",
+  "nodeTests": {
+    "passed": 691,
+    "failed": 0
+  },
+  "newTests": 5,
+  "providerInTests": "fixtures through real CLI input serialization",
+  "sharedProductionExecutionRole": true,
+  "iamPermissionIsolationProven": false,
+  "imageProvenanceProven": false,
+  "realModelAccessProven": false,
+  "providerMutationExecuted": false,
+  "isolatedLambdaCreatedOrInvoked": false,
+  "remaining": [
+    "reviewed image provenance and scoped credential provisioning",
+    "public endpoint/invocation policy review",
+    "runner composition and real model-backed upload-to-answer E2E"
+  ]
+}

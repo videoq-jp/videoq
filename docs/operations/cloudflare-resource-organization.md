@@ -963,3 +963,214 @@ API roundtrip for this synthetic schema only. It does not prove that the
 production coordinator/bridge, large-copy behavior, Vectorize synchronization,
 upload-to-answer E2E or failure recovery has completed. Those release gates
 remain open.
+
+## Native Vectorize isolated roundtrip (2026-11-17)
+
+A real Vectorize API rehearsal used separate source/target index pairs for
+1536 and 768 dimensions, all cosine, unbound to any Worker. Each pair copied
+four synthetic vectors and compared float32 values and metadata on readback.
+Both pairs returned identical query rankings. Metadata filters correctly
+selected two video IDs for one owner, rejected a missing owner with zero hits,
+and excluded a deleted vector from direct retrieval and search.
+
+The initial attempt exposed provider response differences: metadata index
+listing returns `String`/`Number` while request enums are lowercase, and an
+index DELETE is confirmed by `410 vectorize.index.deleted`. The initial test
+was stopped and its sole index was removed. The successful retry waited for
+each metadata index to become visible before creating the next one. Its four
+indexes were also deleted with identity checks and confirmed 410 responses.
+All five temporary indexes are therefore removed.
+
+[Provider evidence](evidence/vectorize-isolated-provider-roundtrip-2026-11-17.json)
+records both attempts, dimensions and cleanup. No production binding, customer
+data or model credential was used. These are native API checks with synthetic
+vectors; D1 final authorization, the production coordinator/bridge, embedding
+quality and upload-to-answer E2E remain separate, unproven release gates.
+
+## Isolated E2E storage and origin guard
+
+`isolated-smoke-target.cjs` is a read-only boundary component for the isolated
+E2E runner. A strict manifest contains version, a 16-hex nonce, a non-production
+D1 UUID, the Account's Workers subdomain, issuedAt and expiresAt (epoch ms).
+The lifetime cannot exceed two hours. Worker, D1 name, both Vectorize names and
+R2 bucket name are derived from that nonce; callers cannot supply arbitrary
+resource names or origins. Known production and migration D1 UUIDs are refused.
+
+Each proof reads six fixed metadata paths in the existing Account: its Workers
+subdomain, the nonce Worker settings, the D1 database, the two vector indexes
+and the bucket. It checks resource names, dimensions/cosine, exact bindings,
+cloud/D1/running flags, authentication/frontend/CORS origins and bucket config.
+Extra D1/Vectorize/R2 bindings and Hyperdrive are refused. Expiry is checked
+before and after the reads. Upload URLs must use the exact nonce bucket under
+the fixed Account's R2 S3 host. No mutation API, SQL, secret retrieval, provisioner
+or command-line entry is exposed by this module.
+
+The production smoke policy and store remain unchanged. This guard is not yet
+connected to an executable E2E runner. Private manifest loading, scoped synthetic
+identity/store integration, AWS Lambda/SQS/credential isolation, model access,
+environment provisioning and teardown remain required before an isolated video
+E2E can run. Six new unit tests use metadata fixtures; they do not certify a real
+cloud environment or AI answer. Node's full suite passed 680 tests.
+
+Provider metadata references: [Workers subdomain](https://developers.cloudflare.com/api/resources/workers/subresources/subdomains/methods/get/)
+and [R2 bucket](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/).
+
+## Private isolated manifest and synthetic store
+
+`isolated-smoke-manifest.cjs` loads an existing manifest from an absolute path
+in an owner-only 0700 directory and an owner-only 0600 regular file. It refuses
+symlinks, hard links, oversized/changed/replaced files, invalid schemas and expired
+contexts. It neither creates nor repairs a manifest, stores credentials, nor
+contacts a provider. The returned manifest is frozen.
+
+`isolatedD1SmokeStore` is a separate factory in `production-smoke-store.cjs`.
+It requires the scoped target proof before every SQL operation and an exact
+match between the manifest's DB UUID and the store's configured UUID. Synthetic
+identity predicates, RETURNING checks and business operations are shared with
+the existing store. Its HMAC realm includes the isolated nonce and uses the
+isolated origin, so the same key and synthetic fields cannot authorize another
+isolated run or a production smoke identity. The production factory preserves
+its existing origin, realm and deployed-target checks.
+
+All SQLite migrations were applied in the new store tests. Synthetic creation,
+password changes, scoped reads, deletion and cascading account cleanup passed,
+as did cross-realm refusal and expiry/target-drift rejection before SQL. The
+complete Node suite passed 686 tests. Three archive tests confirm the new public
+helper dependencies are packaged and selected for reviewed bundle deployment.
+
+This is library wiring, not an executable isolated E2E runner. AWS/Lambda/SQS
+configuration, credential delivery, real model access, provisioning, execution
+and cleanup remain required. No cloud environment was changed or video E2E run
+by these fixture-based tests.
+
+## Isolated AWS configuration proof
+
+`isolated-smoke-aws.cjs` verifies three nonce-derived Lambda functions and their
+media/search/account queues and DLQs. Each function must use a pinned numeric
+version, ARM64, `handler.handler`, and the supplied worker image digest. Every
+queue ARN, tag, redrive target, event-source mapping and environment destination
+must belong to the isolated run. Queue visibility retains the production rule:
+max(six times Lambda timeout, 900-second job lease plus timeout plus 60 seconds).
+Queue policies require the TLS deny and, on source queues, exact queue-scoped
+actions for the existing worker role; wildcard Allow policies are rejected.
+
+The exact environment allowlist pins the isolated API origin, R2 bucket, all
+three queue URLs, existing federation policy/audience, endpoint and embedding
+model. It requires real heavy/visual processing and the configured media limits.
+SSM/DB references, direct AI API keys, unknown overrides and proxy endpoints are
+refused. Three newly provisioned isolated secrets must match caller-pinned
+SHA-256 digests; raw values are never returned in the proof.
+
+The read-only CLI transport permits only STS identity, these queue attributes/
+tags, and the three fixed function versions/mapping lists. It uses private
+request files, a filtered AWS environment, bounded execution and sanitized
+errors. It cannot read SSM, invoke/update Lambda, mutate IAM, or send/delete
+queue messages. The constructor does not execute any provider request.
+
+This design reuses `videoq-worker-prod` as the execution role for the existing
+federation identity. That role retains its production permissions. The proof
+explicitly reports `sharedProductionExecutionRole: true`: this is configuration
+validation, not IAM permission isolation. Reviewed image provenance, restricted
+credential provisioning, absence of public invocation endpoints, real model
+access and actual runtime behavior still require the runner/provisioner review.
+No existing IAM policy or cloud environment was modified here.
+
+Five new tests cover the complete proof through actual private-file transport
+serialization and provider fixtures, plus denial cases. The full Node suite
+passed 691 tests. No isolated Lambda was created, invoked or certified by these
+unit tests.
+
+## Isolated API smoke runner composition
+
+`isolated-smoke-runner.cjs` implements the synthetic API pipeline: health/ready,
+scoped account creation and sign-in, reviewed MP4 upload, confirmation, up to
+12 minutes of polling the same video, completed transcript and scene checks,
+a cited answer, and both course-scoped and unscoped complete SSE streams. A
+scoped streamed answer also requires a persisted chat log. It cannot disable
+AI answer verification or accept the production upload bucket.
+
+The composition uses the concrete storage/store/AWS guards and first verifies
+a clean canonical-main-history source checkout. Before consequential actions,
+it repeats the resource checks and compares the pinned image with safe metadata
+from all three existing production workers. `isolated-smoke-image.cjs` requests
+only name, role, state/update status, architecture/package and resolved image
+URI. It does not retrieve environment values or a code-download URL. An actual
+read-only preview on 2026-11-17 confirmed deployed image digest
+`018bd5d6beebf21f0b19e3ac0689d2d6dc6074648635a2270626f33d2f405a3a`
+on all three workers. This is a current deployment baseline, not a cryptographic
+source attestation.
+
+Synthetic cleanup preserves the existing signed-identity predicates. Processing
+videos are never force-deleted; a previous incomplete run blocks another upload.
+Mutations are not blindly retried. Reports contain fixed stage/check labels,
+not credentials, cookies, transcripts, provider bodies or answers. Stage callbacks
+receive labels only. `cleanupScope: synthetic-data` does not mean that cloud
+resources were removed; infrastructure teardown is a separate provisioner task.
+
+The full Node suite passed 700 tests, including nine new runner/image/composition
+tests. API, model, AWS and metadata responses in runner tests are fixtures; the
+MP4 and stream verifier are the reviewed real implementations, while the test
+SSE parser is a fixture. Production smoke/browser behavior is unchanged.
+
+This is a callable local library composition, not a provisioned or completed
+cloud E2E. A command-line caller/private AWS pin loader, actual resource and
+credential provisioning, model authorization, execution and infrastructure
+teardown remain outstanding. The existing production execution role remains
+shared as described above.
+
+## Integrated local isolated-smoke CLI (current candidate)
+
+The isolated-smoke components and pending evidence PRs #1526–#1530 are combined
+with the private CLI in one integration candidate based on main
+`27281184a0324fa0d56f56d4ae2f3ee7da3eed1f`. Their commits and tests are retained;
+this consolidation changes neither the production binding tuple nor the
+production resource-hold flag. Earlier sections describe development milestones.
+The current implementation has a callable composition and a CLI, but no
+provisioned isolated E2E environment yet.
+
+`run-isolated-smoke.cjs` accepts exactly `--source <40-hex-reviewed-sha>
+--manifest <absolute-private-file> --pins <absolute-private-file>` and requires
+`VIDEOQ_ISOLATED_SMOKE_ENABLED=true`. It refuses CI and PostgreSQL credential
+environments, proves the clean canonical source first, then reads the existing
+owner-only files. Runtime pins contain only version, nonce, source, canonical
+manifest SHA-256, image digest, three numeric Lambda versions, three isolated
+secret digests and synthetic-identity-key SHA-256. They cannot contain raw keys.
+The inherited `VIDEOQ_SMOKE_IDENTITY_KEY` must match; missing/mismatched files
+or keys are never regenerated. Both files retain the 0700 directory / 0600 file
+checks, no symlink/hard-link policy, bounded reads and expiry validation.
+
+The entry loads the locked operations Better Auth password hasher and SSE
+parser, verifies the reviewed fixture bytes, and only then captures the existing
+Cloudflare credential via the official Wrangler/token loader. No credential is
+placed in argv, a generated manifest, or stdout. The scoped composition supplies
+the concrete metadata checks and store. Progress logs contain fixed stage
+labels and the final report has synthetic-data cleanup scope. An error status
+or incomplete synthetic cleanup returns a nonzero exit. There is no install,
+resource-creation, automatic restart or infrastructure-deletion path in the CLI.
+
+Node's complete suite passed 707 tests, with seven new private-pin/CLI tests.
+Three archive/input-selection tests also passed. `npm ci --ignore-scripts` for
+the locked operations tools reported zero vulnerabilities; a real dependency
+check generated a valid password hash and parsed one SSE event without model
+or provider access. CLI successful-path wiring tests substitute dependencies
+and providers and therefore do not certify real video E2E.
+
+Remaining execution work is actual resource/credential provisioning, new Worker
+model authorization, running the pipeline and teardown. D1/Vectorize production
+replacement, the final checked-in target update and old-resource cleanup remain
+incomplete. The shared execution-role limitation remains explicit.
+
+### CodeQL-driven fixture hardening
+
+The integration candidate's first CodeQL run reported a check/read race in the
+AWS transport test and local-file content flowing to the upload request. The
+test now opens with O_NOFOLLOW and checks/reads the same descriptor. The CLI
+and pipeline tests obtain only `.github/operations-tools/fixtures/smoke.mp4`
+from the specified Git revision through `git show`, never an arbitrary local
+file path. Revision syntax is limited to a 40-hex SHA, child environment is
+filtered, output is bounded and the existing exact MP4 hash remains required.
+This also ties the upload fixture to the reviewed committed source rather than
+a later working-tree read. No CodeQL rule or gate was disabled or dismissed.
+
+After these changes Node's full suite passed 710 tests and the three bundle
+tests passed. A fresh CodeQL success on the updated head remains a merge gate.

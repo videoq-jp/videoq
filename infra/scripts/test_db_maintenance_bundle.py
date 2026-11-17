@@ -28,6 +28,8 @@ class BundleTest(unittest.TestCase):
                 self.assertIn('.github/scripts/backup-archive.mjs', names)
                 self.assertIn('.github/scripts/backup-download.mjs', names)
                 self.assertIn('.github/scripts/backup-d1-export.mts', names)
+                self.assertIn('.github/scripts/isolated-smoke-target.cjs', names)
+                self.assertIn('.github/scripts/isolated-smoke-manifest.cjs', names)
                 self.assertIn('apps/api/scripts/migrations/d1/export.ts', names)
                 self.assertIn('apps/api/scripts/migrations/d1/verify-archive.ts', names)
                 self.assertIn('apps/api/src/persistence/postgres/read-snapshot.ts', names)
