@@ -12,7 +12,7 @@ from d1_resource_files import PrivateSqlFiles
 
 class ExecutorLock:
     def __init__(self, directory, filename='executor.lock'):
-        if filename not in ('executor.lock', 'coordinator.lock'):
+        if filename not in ('executor.lock', 'coordinator.lock', 'resource-worker.lock'):
             raise ValueError('RESOURCE_EXECUTOR_LOCK_NAME_REQUIRED')
         self.filename = filename
         self.files = PrivateSqlFiles(directory)

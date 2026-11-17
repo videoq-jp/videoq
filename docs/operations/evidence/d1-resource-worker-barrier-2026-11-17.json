@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-17",
+  "scope": "resource-mutation worker exclusion and pre-promotion recovery barrier",
+  "nodeTests": {
+    "passed": 665,
+    "failed": 0
+  },
+  "pythonTests": {
+    "passed": 163,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "checks": [
+    "all fence/SQL/vector mutating child actions share actual kernel mutex",
+    "idle probe acquires same mutex after prior mutator stops",
+    "inode identity survives process exit and rejects replacement",
+    "durable abort mode plus live outer lease exclude new legal mutators",
+    "real Python idle probe in composed DDB recovery",
+    "source write fence and original/target binding authority remain mandatory"
+  ],
+  "productionMutationExecuted": false,
+  "resourceWorkerBarrierImplemented": true,
+  "allApplicationInvocationsDrainedClaimed": false,
+  "mutatingOperatorEntryPointImplemented": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "application database write safety relies on actual source fence and binding authority",
+    "cloud provider and model operations in composed tests remain fixtures"
+  ]
+}

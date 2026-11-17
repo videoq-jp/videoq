@@ -4,13 +4,13 @@ const {withResourceLock}=require('./d1-resource-lock.cjs');
 const {createResourceRuntime}=require('./d1-resource-runtime.cjs');
 async function withLockedResourceRuntime(options,work){
  if(!options||options.enabled!==true)throw Error('RESOURCE_RUNTIME_DISABLED');
- if(typeof work!=='function'||['aws','cloudflare','lambda','github','assertRuntime','assertWorkersStopped'].some(k=>typeof options[k]!=='function')||typeof options.plans?.load!=='function'||typeof options.plans?.save!=='function')throw Error('RESOURCE_RUNTIME_CONTEXT_REQUIRED');
+ if(typeof work!=='function'||['aws','cloudflare','lambda','github','assertRuntime'].some(k=>typeof options[k]!=='function')||typeof options.plans?.load!=='function'||typeof options.plans?.save!=='function'||options.assertRecoveryLease!==undefined&&typeof options.assertRecoveryLease!=='function')throw Error('RESOURCE_RUNTIME_CONTEXT_REQUIRED');
  return withResourceLock({directory:options.directory,python:options.python},async({assertLocked})=>{
   const guard=method=>async(...args)=>{await assertLocked();const value=await method(...args);await assertLocked();return value;};
   const runtime=createResourceRuntime({...options,
    aws:guard(options.aws),cloudflare:guard(options.cloudflare),lambda:guard(options.lambda),github:guard(options.github),
    plans:{load:guard(step=>options.plans.load(step)),save:guard((step,value)=>options.plans.save(step,value))},
-   assertRuntime:guard(options.assertRuntime),assertWorkersStopped:guard(options.assertWorkersStopped),
+   assertRuntime:guard(options.assertRuntime),assertRecoveryLease:async()=>{await assertLocked();if(options.assertRecoveryLease)await options.assertRecoveryLease();await assertLocked();},
   });
   const active=new Set();let closing=false;
   const facade=Object.fromEntries(['claim','advance','complete','abort'].map(name=>[name,(...args)=>{

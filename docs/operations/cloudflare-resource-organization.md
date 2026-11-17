@@ -35,8 +35,8 @@ and Vectorize names have not changed. The documented APIs do not provide a direc
 these resources. Editing the name in Wrangler alone does not rename a resource.
 
 A replacement must preserve data and authentication state, vector dimensions,
-metric and metadata indexes; verify ownership filters and search quality; drain
-writers; switch bindings and the reviewed AWS maintenance target configuration;
+metric and metadata indexes; verify ownership filters and search quality; fence database
+writes; switch bindings and the reviewed AWS maintenance target configuration;
 and verify production before retiring the previous resources. Keep the existing
 account, billing, R2 bucket, Worker identities, secrets and DNS while doing this.
 Use the existing migration and recovery runbooks for the data validation gates.
@@ -81,8 +81,8 @@ changed index-info or changed ID inventory. Output files are mode 0600 and a
 failed snapshot removes files it created. Keep the NDJSON out of Git, logs and
 CI artifacts; delete it after migration verification. Aggregate receipts contain
 counts and hashes. Repeated reads are diagnostic consistency checks and do not
-prove writer quiescence or provide an atomic snapshot. Final transfer must run
-under the reviewed maintenance hold, writer drain and deployment exclusion.
+prove write exclusion or provide an atomic snapshot. Final transfer must run
+under the reviewed maintenance hold, source write fence and deployment exclusion.
 
 [Aggregate preparation evidence](evidence/cloudflare-resource-organization-2026-11-17.json)
 records the read-only snapshot counts and hashes. All 2,190 current 1536d vectors
@@ -588,9 +588,10 @@ this abort path. The request retains the hold and does not authorize release.
 `d1-resource-abort-safety.cjs` requires the original private fence/pause/freeze
 plans to match the journal and freshly observes the old source D1 binding, paused
 API, disabled SQS admission, frozen deployment workflows and drained accepted
-runs. A mandatory runtime callback must also prove that in-flight workers have
-stopped; disabled admission alone is insufficient. The private Python bridge
-requires this separate source-safety approval throughout removal.
+runs. Recovery isolation additionally requires the real resource-worker mutex
+barrier and a continuously held coordinator lease; disabled admission alone is
+insufficient. The private Python bridge requires this separate source-safety
+approval throughout removal.
 
 Source removal uses an explicit transport mode permitting only exact owned
 source trigger drops. Ordinary transport still refuses source drops; abort
@@ -629,8 +630,8 @@ The real-DynamoDB recovery test demonstrates durable abort completion followed
 by the existing conditional ASL release and retention of the receipt. Separate
 fixtures cover ordered restoration, originally disabled admissions, early abort,
 changed plans/bindings/ownership and provider error sanitization. No production
-recovery or cutover was executed. Production source-fence bridge and in-flight
-worker-drain wiring still need to be supplied by the full executor.
+recovery or cutover was executed. The composed runtime and worker barrier below supply source-fence wiring and
+resource-mutation isolation; the mutating entry point remains outstanding.
 
 ### Native build inventory pagination
 
@@ -674,7 +675,7 @@ bridge, native AWS E2E proof, current-state completion and pre-promotion abort
 recovery. Construction contacts no provider and defaults to disabled. Claim,
 advance, completion and abort use the same pinned executor/ownership context.
 Enabled construction requires a bounded private Cloudflare token and explicit
-reviewed-runtime/exclusive-executor and in-flight-worker assertions; it does not
+reviewed-runtime and exclusive-executor assertions; it does not
 discover credentials or supply permissive production callbacks.
 
 Stage boundaries check complete maintenance build inventory and the appropriate
@@ -698,8 +699,8 @@ HTTP-shaped provider transport behavior. This is not provider rehearsal or RAG
 quality evidence.
 
 Local validation: 632 Node tests and 15 DynamoDB Local integration tests passed.
-Production operator entry point, real exclusive-lock/drain assertions, canonical
-configuration handoff, post-promotion forward recovery and actual isolated
+Production operator entry point, canonical configuration handoff,
+post-promotion forward recovery and actual isolated
 provider rehearsal remain outstanding. The production hold remains disabled.
 [Composition evidence](evidence/d1-resource-runtime-2026-11-17.json) distinguishes
 implemented wiring from unexecuted production behavior.
@@ -733,8 +734,9 @@ callback failure, inode replacement, abnormal EOF with a live parent, retained
 handle refusal and action draining. The composed real-DynamoDB scenario holds
 the real local lock through claim and early abort, then proves conditional ASL
 release. Cloud provider and model transports remain explicit fixtures in that
-scenario. Real canonical-source/runtime and in-flight Lambda/Worker drain checks
-and the reviewed operator entry point are still required; no production cutover
+scenario. The source preflight and resource-worker barrier below provide actual
+source/runtime and mutation-isolation checks. The mutating operator entry point
+and provider rehearsal are still required; no production cutover
 was performed. [Lock evidence](evidence/d1-resource-executor-lock-2026-11-17.json)
 records the implementation and remaining limits.
 
@@ -782,8 +784,8 @@ retrieval was checked without secret output. No DB data or bindings changed.
 
 Validation: 651 Node tests passed. [Preflight evidence](evidence/d1-resource-preflight-2026-11-17.json)
 separates actual metadata/authentication reads from fixture source/drift checks.
-The mutating operator entry point, actual worker-drain proof, canonical config
-handoff, forward recovery and isolated provider rehearsal remain outstanding.
+The mutating operator entry point, canonical config handoff, forward recovery
+and isolated provider rehearsal remain outstanding.
 
 ## Durable private run context
 
@@ -814,8 +816,8 @@ DynamoDB ownership is claimed with the stored capability in the new scenario;
 after simulated local file loss, initialization refuses replacement and preserves
 the original AWS owner and digest. Fixtures also verify atomic initialization,
 root-copy refusal, symlinks, malformed data and summary redaction. This does not
-activate the production hold. The mutating operator entry point, worker-quiescence
-proof, configuration handoff and real provider rehearsal remain outstanding.
+activate the production hold. The mutating operator entry point, configuration
+handoff and real provider rehearsal remain outstanding.
 [Context evidence](evidence/d1-resource-context-2026-11-17.json) records scope and
 limits.
 
@@ -848,6 +850,42 @@ full composed twelve-stage scenario and early abort use this transport's actual
 validation/file serialization with real DynamoDB Local transactions; other
 provider/model operations are explicit fixtures. No real AWS job, queue update
 or production hold mutation was executed. The mutating operator entry point,
-worker-quiescence proof and real provider rehearsal remain outstanding.
+real provider rehearsal remain outstanding.
 [Transport evidence](evidence/d1-resource-aws-transport-2026-11-17.json) records
 the scope and fixture limits.
+
+## Resource-worker quiescence and write authority
+
+Mutating fence/SQL/vector workers now acquire a shared `resource-worker.lock`
+before provider work and retain it through the private-pipe ownership checks.
+An immutable identity file pins its inode across process exits. SQL/vector
+artifact locks remain separate, and nested read-only schema probes do not take
+the mutation mutex. An idle probe acquires that same real kernel lock and
+finishes before the runtime records its barrier as proved. A busy or replaced
+lock refuses recovery before a source trigger is removed.
+
+Recovery first records durable abort mode, verifies no maintenance build is
+active, then runs the real worker probe. The continuously held outer coordinator
+lease and abort-mode ownership checks exclude a new legal mutator after the
+probe. `assertRecoveryIsolation` combines this proved barrier, live abort owner
+and `assertRecoveryLease`; the standard locked wrapper supplies the actual
+keeper check without requiring a caller's assertion that jobs have finished.
+
+The property needed for database transfer is write exclusion and one authoritative
+backend. The source SQL fence blocks late application writes after promotion;
+source remains fenced when target admission resumes. A pre-promotion abort keeps
+the old binding and restores writes only to that same source. These checks
+protect authority even when an application Lambda invocation is still completing.
+This barrier proves resource-mutation process quiescence; it is not a count of
+all application invocations and does not terminate them.
+
+Validation: 665 Node tests, 163 Python tests and 19 DynamoDB Local integration
+tests passed. An actual paused mutating child excludes a competing idle probe;
+after it stops, the probe succeeds. Kernel tests preserve inode identity and
+reject replacement. Composed recovery now uses the real Python idle probe with
+real DDB ownership, including the standard wrapper's actual lease check. SQLite
+fence tests separately verify rejected late source writes and restored original
+source writes on abort. Cloud provider/SQL-vector transport/model scenarios
+remain explicit fixtures; production hold activation and provider rehearsal have
+not occurred. [Barrier evidence](evidence/d1-resource-worker-barrier-2026-11-17.json)
+records these scopes and the remaining gates.

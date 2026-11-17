@@ -233,7 +233,8 @@ async function runtimeFixture(f,r){
  const fenceState=target=>({total:3,installed:[...(target?targetFences:sourceFences)].sort(),schemaSha256:resourceDigest({original:fence.original,fences:[...(target?targetFences:sourceFences)].sort()})});
  const bridgeFactory=options=>({call:async(action,input)=>{
   await options.assertExecutor();await options.assertOperation(action,input);let value;
-  if(action==='prepare-fence')value=structuredClone(fence);
+  if(action==='worker-lock-check')value=await require('./d1-resource-bridge.cjs').createResourceBridge(options).call(action,input);
+  else if(action==='prepare-fence')value=structuredClone(fence);
   else if(action==='inspect-source-fence')value=fenceState(false);
   else if(action==='inspect-target-fence')value=fenceState(true);
   else if(action==='install-source-fence'){sourceFences=Object.keys(fence.fenceTriggers);calls.push('fence-source');value=fenceState(false);}
@@ -248,7 +249,7 @@ async function runtimeFixture(f,r){
   else throw Error('Unexpected fixture bridge action');
   await options.assertExecutor();await options.assertOperation(action,input);return structuredClone(value);
  }});
- const options={aws,cloudflare,lambda,github,plans,run:r.run_id,source:SHA,executorToken:'9'.repeat(64),definitionSha256:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),directory,token:'SYNTHETIC_RESOURCE_TOKEN_0123456789',assertRuntime:async()=>{calls.push('runtime-check');},assertWorkersStopped:async()=>{},bridgeFactory,enabled:true};
+ const options={aws,cloudflare,lambda,github,plans,run:r.run_id,source:SHA,executorToken:'9'.repeat(64),definitionSha256:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),directory,token:'SYNTHETIC_RESOURCE_TOKEN_0123456789',assertRuntime:async()=>{calls.push('runtime-check');},assertRecoveryLease:async()=>{},bridgeFactory,enabled:true};
  const runtime=require('./d1-resource-runtime.cjs').createResourceRuntime(options);
  return{runtime,options,calls,plans,settings,cleanup:()=>fs.rm(directory,{recursive:true,force:true})};
 }
@@ -277,7 +278,8 @@ test('composed runtime abort restores original backend and admissions without an
 test('real local keeper surrounds composed ownership and early abort, excluding overlap and retained runtime reuse',async()=>{
  const f=await fixture(),r=await f.start('0'.repeat(32)),rt=await runtimeFixture(f,r),{withLockedResourceRuntime}=require('./d1-resource-operation.cjs');let retained;
  try{
-  const receipt=await withLockedResourceRuntime(rt.options,async runtime=>{
+  const {assertRecoveryLease:unusedDrain,...lockedOptions}=rt.options;
+  const receipt=await withLockedResourceRuntime(lockedOptions,async runtime=>{
    retained=runtime;await runtime.claim();
    await assert.rejects(withLockedResourceRuntime(rt.options,async()=>assert.fail('overlapping runtime ran')),/RESOURCE_EXECUTOR_BUSY/);
    const abort=runtime.abort();await assert.rejects(runtime.abort(),/OPERATION_IN_PROGRESS/);return abort;

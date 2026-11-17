@@ -14,7 +14,7 @@ async function fixture(){
  const fence={owner:run,fenceTriggers:{name:'sql'}},paused=await createApiTrafficControl(cloudflare).prepare({purpose:'production'}),consumers=await createConsumerControl(lambda).prepare({purpose:'production'}),deployments=await createDeploymentFreeze(github).prepare();
  settings.bindings[1].text='paused';consumerState='Disabled';workflowState='disabled_manually';
  const plans=new Map([['fence-source',fence],['pause-api',paused],['pause-consumers',consumers],['freeze-deployments',deployments]]),steps=[...plans].map(([step,value])=>({step,state:step==='fence-source'?'intent':'verified',planSha256:resourceDigest(value)}));
- const safe=createResourceAbortSourceSafety({journal:{assertAbortExecutor:async()=>{if(!owned)throw Error('RESOURCE_ABORT_OWNERSHIP_LOST');return{run,steps};}},plans:{load:async name=>structuredClone(plans.get(name))},cloudflare,lambda,github,assertWorkersStopped:async()=>{if(!workersStopped)throw Error('RESOURCE_ABORT_WORKERS_ACTIVE');}});
+ const safe=createResourceAbortSourceSafety({journal:{assertAbortExecutor:async()=>{if(!owned)throw Error('RESOURCE_ABORT_OWNERSHIP_LOST');return{run,steps};}},plans:{load:async name=>structuredClone(plans.get(name))},cloudflare,lambda,github,assertRecoveryIsolation:async()=>{if(!workersStopped)throw Error('RESOURCE_ABORT_WORKERS_ACTIVE');}});
  return{safe,fence,settings,plans,loseOwner:()=>owned=false,activateWorker:()=>workersStopped=false,enableConsumer:()=>consumerState='Enabled',enableWorkflow:()=>workflowState='active',startRun:()=>activeRuns=true};
 }
 test('abort source safety verifies original paused API, stopped consumers and drained frozen deployments',async()=>{const f=await fixture();await f.safe({plan:f.fence});});

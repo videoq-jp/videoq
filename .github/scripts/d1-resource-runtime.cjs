@@ -1,5 +1,6 @@
 // Trusted composition, disabled by default. The operator must supply actual
-// reviewed-source/exclusive-executor and in-flight-worker checks. No credentials
+// reviewed-source/exclusive-executor checks. Mutating workers share a kernel
+// mutex; abort mode probes it before source recovery. No credentials
 // are discovered here and no provider is contacted during construction.
 const {createResourceJournal,RESOURCE_STEPS,resourceDigest}=require('./d1-resource-journal.cjs');
 const {createResourceCoordinator}=require('./d1-resource-coordinator.cjs');
@@ -21,9 +22,9 @@ const {createResourceBuildGuard}=require('./d1-resource-builds.cjs');
 const {createApiTrafficControl}=require('./cutover-api-traffic.cjs');
 const {createConsumerControl}=require('./cutover-sqs-consumers.cjs');
 const {createDeploymentFreeze}=require('./cutover-deployment-freeze.cjs');
-function createResourceRuntime({aws,cloudflare,lambda,github,plans,run,source,executorToken,definitionSha256,directory,token,assertRuntime,assertWorkersStopped,bridgeFactory=createResourceBridge,python='python3',enabled=false}){
+function createResourceRuntime({aws,cloudflare,lambda,github,plans,run,source,executorToken,definitionSha256,directory,token,assertRuntime,assertRecoveryLease,bridgeFactory=createResourceBridge,python='python3',enabled=false}){
  if(typeof enabled!=='boolean'||!/^[a-f0-9]{64}$/.test(executorToken??'')||enabled&&(typeof token!=='string'||token.length<20||token.length>4096||/[\r\n\0]/.test(token)))throw Error('RESOURCE_RUNTIME_PRIVATE_CONTEXT_REQUIRED');
- if([aws,cloudflare,lambda,github,assertRuntime,assertWorkersStopped,bridgeFactory].some(v=>typeof v!=='function')||typeof plans?.load!=='function'||typeof plans?.save!=='function'||typeof directory!=='string'||!require('node:path').isAbsolute(directory))throw Error('RESOURCE_RUNTIME_CONTEXT_REQUIRED');
+ if([aws,cloudflare,lambda,github,assertRuntime,assertRecoveryLease,bridgeFactory].some(v=>typeof v!=='function')||typeof plans?.load!=='function'||typeof plans?.save!=='function'||typeof directory!=='string'||!require('node:path').isAbsolute(directory))throw Error('RESOURCE_RUNTIME_CONTEXT_REQUIRED');
  const journal=createResourceJournal({aws,run,source,executorToken,expectedDefinitionHash:definitionSha256,enabled});
  const executorSha256=resourceDigest({executorToken});
  const proof=createResourceSmokeProof({aws,assertExecutor:()=>journal.assertExecutor(),run,source,executorSha256,definitionSha256});
@@ -63,7 +64,7 @@ function createResourceRuntime({aws,cloudflare,lambda,github,plans,run,source,ex
   throw Error('RESOURCE_RUNTIME_OPERATION_REQUIRED');
  }
  let data,vector;
- const bridge=bridgeFactory({python,enabled,assertExecutor:()=>journal.assertExecutor(),assertOperation:normalOperation,
+ const bridge=bridgeFactory({python,enabled,directory,assertExecutor:()=>journal.assertExecutor(),assertOperation:normalOperation,
   assertTargetSafe:()=>targetSafe(),
   assertImportSafe:async()=>{await journal.assertPending({step:'copy-database',planSha256:resourceDigest((await saved('copy-database')).plan)});await closedAdmission();await api(false,'paused');await sourceFenced();},
   assertVectorSafe:async()=>{await journal.assertPending({step:'synchronize-vectors',planSha256:resourceDigest((await saved('synchronize-vectors')).plan)});await closedAdmission();await api(false,'paused');await sourceFenced();},
@@ -121,15 +122,20 @@ function createResourceRuntime({aws,cloudflare,lambda,github,plans,run,source,ex
  const coordinator=createResourceCoordinator({journal,adapters,plans,assertEnvironment:environment,enabled});
  const verifyCurrentState=createResourceCurrentState({journal,plans,cloudflare,lambda,github,sourceFence:()=>fenceState(),targetFence:()=>fenceState(true),smokeProof:proof,readSmokeBuild:plan=>launcher.readBuild(plan)});
  const completion=createResourceCompletion({aws,journal,run,source,executorToken,verifyCurrentState:async state=>{await assertRuntime({mode:'normal',step:'completion',stage:'before-proof'});await builds();return verifyCurrentState(state);},enabled});
- const abortSafety=createResourceAbortSourceSafety({journal,plans,cloudflare,lambda,github,assertWorkersStopped});
+ let recoveryBarrier=false;
+ const abortSafety=createResourceAbortSourceSafety({journal,plans,cloudflare,lambda,github,assertRecoveryIsolation:async()=>{
+  if(!recoveryBarrier)throw Error('RESOURCE_RUNTIME_WORKER_BARRIER_REQUIRED');
+  await journal.assertAbortExecutor();await assertRecoveryLease();
+ }});
  async function abortOperation(action,input){
   const state=await journal.assertAbortExecutor(),entry=state.steps.find(v=>v.step==='fence-source');
+  if(action==='worker-lock-check'&&equal(input,{}))return;
   if(action==='prepare-fence'&&!entry&&equal(input,{run}))return;
   if(!['inspect-source-fence','remove-source-fence'].includes(action)||!entry)throw Error('RESOURCE_RUNTIME_ABORT_OPERATION_REQUIRED');
   const plan=await plans.load('fence-source');if(!plan||entry.planSha256!==resourceDigest(plan)||!equal(input,{plan}))throw Error('RESOURCE_RUNTIME_ABORT_PLAN_REQUIRED');
  }
- const abortBridge=bridgeFactory({python,enabled,assertExecutor:()=>journal.assertAbortExecutor(),assertOperation:abortOperation,assertTargetSafe:async()=>{throw Error('RESOURCE_RUNTIME_ABORT_TARGET_REFUSED');},assertSourceSafe:abortSafety});
- const abort=createResourceAbortRecovery({aws,journal:{requestAbort:async()=>{await assertRuntime({mode:'abort',step:'recovery',stage:'before-progress'});await journal.requestAbort();await builds({abort:true});},assertAbortExecutor:()=>journal.assertAbortExecutor()},plans,cloudflare,lambda,github,run,source,executorToken,enabled,
+ const abortBridge=bridgeFactory({python,enabled,directory,assertExecutor:()=>journal.assertAbortExecutor(),assertOperation:abortOperation,assertTargetSafe:async()=>{throw Error('RESOURCE_RUNTIME_ABORT_TARGET_REFUSED');},assertSourceSafe:abortSafety});
+ const abort=createResourceAbortRecovery({aws,journal:{requestAbort:async()=>{await assertRuntime({mode:'abort',step:'recovery',stage:'before-progress'});await journal.requestAbort();await builds({abort:true});recoveryBarrier=false;const barrier=await abortBridge.call('worker-lock-check',{},null);if(barrier.owned!==true||barrier.exclusiveWorker!==true)throw Error('RESOURCE_RUNTIME_WORKER_BARRIER_REQUIRED');recoveryBarrier=true;},assertAbortExecutor:()=>journal.assertAbortExecutor()},plans,cloudflare,lambda,github,run,source,executorToken,enabled,
   sourceFence:{inspect:plan=>abortBridge.call('inspect-source-fence',{plan},token),remove:plan=>abortBridge.call('remove-source-fence',{plan},token),assertUnfenced:async plan=>{
    if(!plan){const prepared=await abortBridge.call('prepare-fence',{run},token);if(prepared.owner!==run||!prepared.original)throw Error('RESOURCE_RUNTIME_ABORT_SCHEMA_REQUIRED');return resourceDigest(prepared.original);}
    const value=await abortBridge.call('inspect-source-fence',{plan},token);if(!Array.isArray(value.installed)||value.installed.length||!/^[a-f0-9]{64}$/.test(value.schemaSha256??''))throw Error('RESOURCE_RUNTIME_ABORT_SOURCE_STILL_FENCED');return value.schemaSha256;
