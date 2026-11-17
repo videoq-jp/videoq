@@ -15,4 +15,6 @@ wav = subprocess.check_output(['ffmpeg', '-hide_banner', '-v', 'error', '-f', 'l
 assert wav[:4] == b'RIFF' and len(wav) > 44
 png = subprocess.check_output(['ffmpeg', '-hide_banner', '-v', 'error', '-f', 'lavfi', '-i', 'color=size=16x16', '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'])
 assert png.startswith(b'\x89PNG\r\n\x1a\n')
-print('FFmpeg source hash, file/pipe-only protocols, WAV and PNG generation verified')
+mp3 = subprocess.check_output(['ffmpeg', '-hide_banner', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=1000:duration=0.1', '-acodec', 'mp3', '-f', 'mp3', 'pipe:1'])
+assert len(mp3) > 100
+print('FFmpeg source hash, file/pipe-only protocols, WAV/MP3 and PNG generation verified')

@@ -1,5 +1,5 @@
 FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b AS ffmpeg-build
-RUN apk add --no-cache build-base nasm curl xz zlib-dev
+RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev
 ARG FFMPEG_VERSION=9.0.2
 ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
 RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o /tmp/ffmpeg.tar.xz \
@@ -8,7 +8,7 @@ RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o 
     && cd "/tmp/ffmpeg-${FFMPEG_VERSION}" \
     && ./configure --prefix=/opt/ffmpeg --disable-autodetect --disable-doc --disable-debug \
        --disable-ffplay --disable-network --disable-demuxer=rtsp --disable-protocols \
-       --enable-protocol=file,pipe --enable-zlib --disable-shared --enable-static --enable-small \
+       --enable-protocol=file,pipe --enable-libmp3lame --enable-zlib --disable-shared --enable-static --enable-small \
     && make -j2 && make install \
     && mkdir -p /opt/ffmpeg/share/doc \
     && cp COPYING.LGPLv2.1 /opt/ffmpeg/share/doc/LICENSE \
@@ -25,7 +25,7 @@ RUN uv sync --locked --no-dev && python -m pip uninstall --yes pip && rm /usr/lo
 RUN rm -f /usr/local/lib/python3.12/lib-dynload/readline*.so /usr/local/lib/python3.12/lib-dynload/_uuid*.so /usr/local/lib/python3.12/lib-dynload/_tkinter*.so
 
 FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b
-RUN apk add --no-cache python-3.12 zlib sqlite-libs libstdc++ libgomp \
+RUN apk add --no-cache python-3.12 zlib sqlite-libs libstdc++ libgomp lame-libs \
     && mkdir -p /usr/local/bin \
     && ln -s /usr/bin/python3.12 /usr/local/bin/python \
     && ln -s /usr/bin/python3.12 /usr/local/bin/python3 \
