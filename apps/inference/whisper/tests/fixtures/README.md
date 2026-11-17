@@ -39,3 +39,17 @@ cd apps/worker
 python scripts/whisper_runtime_validation.py --base-url http://127.0.0.1:8000 \
   --fixtures /tmp/whisper-fixtures --output /tmp/whisper-runtime-result.json
 ```
+
+`fleurs-ja-00.mp4` combines the Japanese MP3 above with a synthetic blue frame
+(H.264/yuv420p video and AAC audio) for offline CPU-model/browser acceptance.
+It carries the same Google FLEURS attribution and CC BY 4.0 license. SHA-256:
+`472a0eb5062a70bb65999190bac6ff13a8e3feef171800fa670ef8142f0a3cda`.
+The runtime worker only decodes this fixed input; fixture encoding uses a local
+FFmpeg installation during fixture preparation:
+
+```sh
+ffmpeg -nostdin -v error -f lavfi -i color=c=blue:s=160x120:d=10.44 \
+  -i apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp3 -shortest \
+  -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags frag_keyframe+empty_moov \
+  apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp4
+```

@@ -212,10 +212,17 @@ print('Private inference reachable; public IP and DNS blocked')'''
                 time.sleep(1)
             raise RuntimeError("API readiness timed out")
         ready()
-        audio = ROOT / "apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp3"
-        inputs = ["--mount","type=bind,src="+str(audio)+",dst=/fixture.mp3,readonly"] if args.real_models else []
-        sound = ["-i","/fixture.mp3"] if args.real_models else ["-f","lavfi","-i","sine=frequency=440:duration=2"]
-        video = run(["docker","run","--rm",*inputs,"--entrypoint","ffmpeg",images[1],"-v","error","-f","lavfi","-i","color=c=blue:s=160x120:d="+("10.44" if args.real_models else "2"),*sound,"-shortest","-c:v","libx264","-c:a","aac","-movflags","frag_keyframe+empty_moov","-f","mp4","pipe:1"],binary=True)
+        # Fixed H.264/AAC fixtures exercise browser playback without requiring
+        # a video encoder in the production worker's decode/extract runtime.
+        if args.real_models:
+            fixture = ROOT / "apps/inference/whisper/tests/fixtures/fleurs-ja-00.mp4"
+            expected = "472a0eb5062a70bb65999190bac6ff13a8e3feef171800fa670ef8142f0a3cda"
+        else:
+            fixture = ROOT / ".github/operations-tools/fixtures/smoke.mp4"
+            expected = "d58c4123ef33a36562a4382bb2a36bff00e3151fe05593e937b39368df023671"
+        video = fixture.read_bytes()
+        if hashlib.sha256(video).hexdigest() != expected:
+            raise ValueError("Reviewed acceptance video checksum mismatch")
         video_path = output / "video.mp4"
         video_path.write_bytes(video)
         state_path = output / "e2e-state.json"
