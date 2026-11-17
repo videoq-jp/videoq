@@ -941,3 +941,25 @@ until the real migration is verified. After successful production completion,
 it must be updated to the replacement tuple; the bridge supports that final
 config directly. Unit tests cover both sides and do not certify provider
 cutover or E2E success.
+
+## Native D1 isolated roundtrip (2026-11-17)
+
+A real Cloudflare D1 API rehearsal created two new, unbound databases named
+`videoq-isolated-d1-dbcd10c138d01f6b-source` and `...-target` in the existing
+Account. Only synthetic data was inserted. A native polling export produced
+1,163 bytes of SQL, which was uploaded to the signed import URL and ingested
+into the second database. Both provider operations completed successfully.
+
+All six comparisons matched: schema (three tables, an index, a view and a
+write-fence trigger), owner rows, video values including Japanese/JSON/timestamp/
+boolean, typed scene values including NULL/REAL/BLOB, foreign-key check, and
+auto-increment sequence state. Both databases were deleted after identity
+checks; subsequent GETs returned 404. Temporary signed-response files were
+removed. No production resource binding or customer row was changed.
+
+[Provider evidence](evidence/d1-isolated-provider-roundtrip-2026-11-17.json)
+records the exact ephemeral database IDs and cleanup. This validates the native
+API roundtrip for this synthetic schema only. It does not prove that the
+production coordinator/bridge, large-copy behavior, Vectorize synchronization,
+upload-to-answer E2E or failure recovery has completed. Those release gates
+remain open.

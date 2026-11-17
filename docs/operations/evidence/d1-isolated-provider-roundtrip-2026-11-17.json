@@ -1,0 +1,80 @@
+{
+  "startedAt": "2026-11-17T02:44:10.582Z",
+  "scope": "synthetic isolated D1 export/import; no production bindings or data",
+  "nonce": "dbcd10c138d01f6b",
+  "passed": true,
+  "checks": [
+    {
+      "index": 0,
+      "matched": true,
+      "sourceRows": 6,
+      "targetRows": 6
+    },
+    {
+      "index": 1,
+      "matched": true,
+      "sourceRows": 1,
+      "targetRows": 1
+    },
+    {
+      "index": 2,
+      "matched": true,
+      "sourceRows": 1,
+      "targetRows": 1
+    },
+    {
+      "index": 3,
+      "matched": true,
+      "sourceRows": 2,
+      "targetRows": 2
+    },
+    {
+      "index": 4,
+      "matched": true,
+      "sourceRows": 0,
+      "targetRows": 0
+    },
+    {
+      "index": 5,
+      "matched": true,
+      "sourceRows": 1,
+      "targetRows": 1
+    }
+  ],
+  "exportBytes": 1163,
+  "cleanupVerified": true,
+  "finishedAt": "2026-11-17T02:44:23.003Z",
+  "provider": "Cloudflare D1 REST API",
+  "accountId": "12daec56fdba43f677f2766ee26a5a39",
+  "databases": [
+    {
+      "name": "videoq-isolated-d1-dbcd10c138d01f6b-source",
+      "uuid": "66a12c3c-64d0-4ed5-a9bd-f8ac5876959b",
+      "deleted": true
+    },
+    {
+      "name": "videoq-isolated-d1-dbcd10c138d01f6b-target",
+      "uuid": "b059ecdf-9a43-46f8-9b00-ea901667555e",
+      "deleted": true
+    }
+  ],
+  "productionBindingsChanged": false,
+  "customerDataUsed": false,
+  "limits": [
+    "synthetic native API roundtrip; production coordinator, journal and bridge were not executed",
+    "does not establish Vectorize sync, production-sized copy, upload-to-answer E2E or failure recovery"
+  ],
+  "checksLegend": [
+    "sqlite_schema (tables, index, view, trigger)",
+    "owner rows",
+    "video rows (Unicode, JSON, integer timestamp, boolean)",
+    "scene rows (SQLite value types, NULL, REAL, BLOB)",
+    "foreign_key_check",
+    "sqlite_sequence"
+  ],
+  "documentation": [
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/create/",
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/",
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/import/"
+  ]
+}
