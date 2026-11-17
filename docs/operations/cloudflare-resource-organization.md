@@ -818,3 +818,36 @@ activate the production hold. The mutating operator entry point, worker-quiescen
 proof, configuration handoff and real provider rehearsal remain outstanding.
 [Context evidence](evidence/d1-resource-context-2026-11-17.json) records scope and
 limits.
+
+## Scoped AWS operation transport
+
+`d1-resource-aws.cjs` exposes only the fixed run/maintenance metadata, bound
+execution descriptions, three retained project inventories, the fixed smoke
+project and the three production queue mappings. Writes default to disabled.
+Enabled writes require executor/definition pins and the private plan store.
+The reviewed-source/account preflight remains mandatory before operational use.
+
+DynamoDB writes are exactly one allowlisted run update plus the matching shared
+owner condition. Update and condition expressions, table/key, source/executor
+pins, revision increment and hashed JSON metadata are checked. Direct row writes,
+owner deletion, arbitrary fields and weakened ownership/CAS expressions are
+refused. Completion requests only store proof; ASL still owns conditional release.
+
+Native build start accepts only the saved E2E action/source version and its ten
+fixed plaintext metadata overrides. There is no role, image, buildspec, arbitrary
+environment or project override. Queue updates require the original validated
+production mapping and cannot resume an originally disabled consumer. No SSM,
+IAM, log, SQL, function-code or execution-control operation is exposed.
+
+CLI requests use private temporary JSON files, fixed region, explicit manual
+pagination and an AWS-only environment. Provider failures are sanitized; request
+files are removed and calls are not retried.
+
+Validation: 663 Node tests and 19 DynamoDB Local integration tests passed. The
+full composed twelve-stage scenario and early abort use this transport's actual
+validation/file serialization with real DynamoDB Local transactions; other
+provider/model operations are explicit fixtures. No real AWS job, queue update
+or production hold mutation was executed. The mutating operator entry point,
+worker-quiescence proof and real provider rehearsal remain outstanding.
+[Transport evidence](evidence/d1-resource-aws-transport-2026-11-17.json) records
+the scope and fixture limits.

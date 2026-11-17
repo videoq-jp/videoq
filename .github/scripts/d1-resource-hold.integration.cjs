@@ -295,3 +295,23 @@ test('private context pins a real unclaimed hold and refuses capability regenera
   await fs.unlink(path.join(directory,'resource-context.json'));await assert.rejects(store.initialize(expected),/ALREADY_CLAIMED/);assert.equal((await f.get('run#'+r.run_id)).resource_executor_sha256.S,digest);assert.deepEqual(await fs.readdir(directory),[]);assert.ok(await f.get('maintenance'));
  }finally{await fs.rm(directory,{recursive:true,force:true});}
 });
+test('scoped AWS transport admits composed migration and conditional completion against real DDB',async()=>{
+ const f=await fixture(),r=await f.start('ac'.repeat(16)),rt=await runtimeFixture(f,r),fs=require('node:fs/promises');
+ const commands={'get-caller-identity':'GetCallerIdentity','get-item':'GetItem','transact-write-items':'TransactWriteItems','describe-execution':'DescribeExecution','describe-state-machine-for-execution':'DescribeStateMachineForExecution','batch-get-projects':'BatchGetProjects','list-builds-for-project':'ListBuildsForProject','batch-get-builds':'BatchGetBuilds','start-build':'StartBuild','list-event-source-mappings':'ListEventSourceMappings','update-event-source-mapping':'UpdateEventSourceMapping'};
+ const scoped=require('./d1-resource-aws.cjs').createResourceAwsTransport({run:r.run_id,source:SHA,executorSha256:resourceDigest({executorToken:rt.options.executorToken}),definitionSha256:rt.options.definitionSha256,plans:rt.plans,mutationsEnabled:true,execute:async(_program,args)=>{
+  const service=args[0]==='dynamodb'?'ddb':args[0]==='stepfunctions'?'sfn':args[0],command=commands[args[1]],input=JSON.parse(await fs.readFile(args.at(-1).slice(7),'utf8'));
+  const value=service==='lambda'?await rt.options.lambda(command,input):await rt.options.aws(service,command,input);return{stdout:JSON.stringify(value)};
+ }});
+ const runtime=require('./d1-resource-runtime.cjs').createResourceRuntime({...rt.options,aws:scoped,lambda:(command,input)=>scoped('lambda',command,input)});
+ try{
+  await runtime.claim();const verified=[];for(let i=0;i<20;i++){const result=await runtime.advance();if(result.status==='verified')verified.push(result.step);if(result.status==='steps-verified')break;}
+  assert.deepEqual(verified,RESOURCE_STEPS);const receipt=await runtime.complete();assert.equal(receipt.releaseRequested,true);const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);
+ }finally{await rt.cleanup();}
+});
+test('scoped AWS transport admits early abort proof but never deletes the maintenance owner',async()=>{
+ const f=await fixture(),r=await f.start('ad'.repeat(16)),rt=await runtimeFixture(f,r),fs=require('node:fs/promises'),commands={'get-item':'GetItem','transact-write-items':'TransactWriteItems','describe-execution':'DescribeExecution','describe-state-machine-for-execution':'DescribeStateMachineForExecution','list-builds-for-project':'ListBuildsForProject','batch-get-builds':'BatchGetBuilds'};
+ const scoped=require('./d1-resource-aws.cjs').createResourceAwsTransport({run:r.run_id,source:SHA,executorSha256:resourceDigest({executorToken:rt.options.executorToken}),definitionSha256:rt.options.definitionSha256,plans:rt.plans,mutationsEnabled:true,execute:async(_program,args)=>{
+  const service=args[0]==='dynamodb'?'ddb':args[0]==='stepfunctions'?'sfn':args[0],input=JSON.parse(await fs.readFile(args.at(-1).slice(7),'utf8'));return{stdout:JSON.stringify(await rt.options.aws(service,commands[args[1]],input))};
+ }});
+ try{const runtime=require('./d1-resource-runtime.cjs').createResourceRuntime({...rt.options,aws:scoped});await runtime.claim();assert.equal((await runtime.abort()).status,'abort-release-requested');assert.ok(await f.get('maintenance'));assert.equal((await f.get('run#'+r.run_id)).resource_phase.S,'aborted');await assert.rejects(scoped('ddb','DeleteItem',{TableName:'videoq-db-maintenance-prod',Key:{pk:{S:'maintenance'}}}),/OPERATION_REFUSED/);}finally{await rt.cleanup();}
+});

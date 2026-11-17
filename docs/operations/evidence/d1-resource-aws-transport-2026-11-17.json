@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-17",
+  "scope": "scoped AWS resource operation transport with mutations disabled by default",
+  "nodeTests": {
+    "passed": 663,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "checks": [
+    "exact run update plus shared-owner condition only",
+    "allowlisted expressions and pinned source/executor/revision",
+    "no owner deletion or direct arbitrary row writes",
+    "native start matches saved E2E action/source and exact metadata environment",
+    "queue changes restricted to original production mappings",
+    "original disabled queue cannot be enabled",
+    "isolated environment and private request cleanup",
+    "real DDB composed twelve-stage and early-abort paths"
+  ],
+  "productionMutationExecuted": false,
+  "realAwsJobStarted": false,
+  "realQueueChanged": false,
+  "operatorMutationEntryPointImplemented": false,
+  "actualWorkerQuiescenceImplemented": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "preflight must separately verify actual AWS identity and reviewed source",
+    "provider/model calls in composed tests are explicit fixtures"
+  ]
+}

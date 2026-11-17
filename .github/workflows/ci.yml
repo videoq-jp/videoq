@@ -219,6 +219,7 @@ jobs:
               - '.github/scripts/d1-resource-operation*'
               - '.github/scripts/d1-resource-preflight*'
               - '.github/scripts/d1-resource-context*'
+              - '.github/scripts/d1-resource-aws*'
               - '.github/scripts/run-d1-resource-preflight*'
               - 'infra/scripts/d1_resource*.py'
               - 'infra/scripts/test_d1_resource*.py'
