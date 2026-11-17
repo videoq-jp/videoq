@@ -631,3 +631,14 @@ fixtures cover ordered restoration, originally disabled admissions, early abort,
 changed plans/bindings/ownership and provider error sanitization. No production
 recovery or cutover was executed. Production source-fence bridge and in-flight
 worker-drain wiring still need to be supplied by the full executor.
+
+### Native build inventory pagination
+
+Reconciliation omits `sortOrder` on every `ListBuildsForProject` request. AWS
+rejects an explicit order once a project has more than 100 builds; the default
+order is descending. The first read-only page of the actual smoke project on
+2026-11-17 contained 100 IDs and a continuation token, so this is a live
+compatibility requirement. A fixture locates the one matching owned build on
+the second page without starting another build. Full inventory is still bounded
+and incomplete or repeated pagination refuses registration. See the
+[AWS API reference](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ListBuildsForProject.html).
