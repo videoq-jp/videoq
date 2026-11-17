@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-17",
+  "scope": "owner-only isolated manifest loader and synthetic D1 smoke store factory",
+  "nodeTests": {
+    "passed": 686,
+    "failed": 0
+  },
+  "bundleTests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "sqliteMigrations": "all current apps/api/drizzle-d1 SQL files applied in store tests",
+  "metadataProvider": "fixtures",
+  "productionFactoryBehaviorChanged": false,
+  "realCloudE2EExecuted": false,
+  "providerMutationExecuted": false,
+  "remaining": [
+    "executable runner and scoped AWS configuration",
+    "credential delivery and existing model access",
+    "real environment provisioning, upload-to-answer E2E and teardown"
+  ]
+}

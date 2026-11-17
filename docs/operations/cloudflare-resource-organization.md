@@ -1014,3 +1014,31 @@ cloud environment or AI answer. Node's full suite passed 680 tests.
 
 Provider metadata references: [Workers subdomain](https://developers.cloudflare.com/api/resources/workers/subresources/subdomains/methods/get/)
 and [R2 bucket](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/).
+
+## Private isolated manifest and synthetic store
+
+`isolated-smoke-manifest.cjs` loads an existing manifest from an absolute path
+in an owner-only 0700 directory and an owner-only 0600 regular file. It refuses
+symlinks, hard links, oversized/changed/replaced files, invalid schemas and expired
+contexts. It neither creates nor repairs a manifest, stores credentials, nor
+contacts a provider. The returned manifest is frozen.
+
+`isolatedD1SmokeStore` is a separate factory in `production-smoke-store.cjs`.
+It requires the scoped target proof before every SQL operation and an exact
+match between the manifest's DB UUID and the store's configured UUID. Synthetic
+identity predicates, RETURNING checks and business operations are shared with
+the existing store. Its HMAC realm includes the isolated nonce and uses the
+isolated origin, so the same key and synthetic fields cannot authorize another
+isolated run or a production smoke identity. The production factory preserves
+its existing origin, realm and deployed-target checks.
+
+All SQLite migrations were applied in the new store tests. Synthetic creation,
+password changes, scoped reads, deletion and cascading account cleanup passed,
+as did cross-realm refusal and expiry/target-drift rejection before SQL. The
+complete Node suite passed 686 tests. Three archive tests confirm the new public
+helper dependencies are packaged and selected for reviewed bundle deployment.
+
+This is library wiring, not an executable isolated E2E runner. AWS/Lambda/SQS
+configuration, credential delivery, real model access, provisioning, execution
+and cleanup remain required. No cloud environment was changed or video E2E run
+by these fixture-based tests.
