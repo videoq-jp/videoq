@@ -1,7 +1,7 @@
 import { createContext, useContext, memo, useId, useMemo, useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkCjkFriendly from 'remark-cjk-friendly';
+import remarkCjkFriendly from 'remark-cjk-friendly/parseOnly';
 import { useTranslation } from 'react-i18next';
 import katex from 'katex';
 import { parseMessageContent, type MessageContentNode } from '@/lib/chat/parseMessageContent';
