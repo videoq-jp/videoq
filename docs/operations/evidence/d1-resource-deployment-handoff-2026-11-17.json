@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-17",
+  "scope": "ordinary CD preserves already-live D1 and Vectorize replacement tuple",
+  "nodeTests": {
+    "passed": 674,
+    "failed": 0
+  },
+  "checks": [
+    "fixed account and videoq-api settings GET only",
+    "source remains source until complete live target tuple exists",
+    "mixed or unknown resource tuple refused",
+    "target-to-source configuration reversal refused",
+    "other config preserved",
+    "independent live-state guard runs immediately before Wrangler"
+  ],
+  "providerMutationExecuted": false,
+  "realProviderRehearsalExecuted": false,
+  "checkedInProductionBindingsChanged": false,
+  "limits": [
+    "provider settings in new tests are fixtures",
+    "final checked-in Wrangler tuple update remains after verified cutover"
+  ]
+}

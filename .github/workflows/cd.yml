@@ -390,6 +390,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node .github/scripts/d1-resource-deployment-config.cjs deployment.json
           node .github/scripts/protect-api-deployment.cjs deployment.json
           node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config deployment.json --no-bundle --no-autoconfig --env-file /dev/null
 
