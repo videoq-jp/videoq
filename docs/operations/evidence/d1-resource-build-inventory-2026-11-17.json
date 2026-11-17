@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-17",
+  "scope": "read-only fixed maintenance build inventory and owned runtime guard",
+  "nodeTests": {
+    "passed": 630,
+    "failed": 0
+  },
+  "providerPreview": {
+    "observedAt": "2026-11-17T00:16:56.176Z",
+    "readOnly": true,
+    "completeInventory": true,
+    "projects": [
+      {
+        "name": "videoq-db-migration-prod",
+        "buildCount": 45,
+        "activeBuildCount": 0
+      },
+      {
+        "name": "videoq-db-smoke-prod",
+        "buildCount": 151,
+        "activeBuildCount": 0
+      },
+      {
+        "name": "videoq-db-deploy-prod",
+        "buildCount": 28,
+        "activeBuildCount": 0
+      }
+    ]
+  },
+  "productionMutationExecuted": false,
+  "productionExecutorWired": false,
+  "checks": [
+    "complete bounded provider-compatible pagination",
+    "exact requested ID/ARN/project readback",
+    "missing or duplicate metadata refuses idle claim",
+    "only exact pending native smoke may be active",
+    "abort exempts no active builds"
+  ],
+  "limits": [
+    "does not prove Lambda invocation drain",
+    "preview is point-in-time metadata only",
+    "CodeBuild write/registration calls were not executed"
+  ]
+}

@@ -81,7 +81,7 @@ async function fixture(){
   if(local.TransactItems){for(const item of local.TransactItems)for(const operation of Object.values(item))remap(operation);}else remap(local);
   return aws(service,command,local);
  };
- return{start,get,put,release,journal,completion,metadataAws};
+ return{start,get,put,release,journal,completion,metadataAws,resourceAws:(service,command,value)=>service==='ddb'?metadataAws(service,command,value):aws(service,command,value)};
 }
 function completed(row,phase='verified'){
  return{...row,resource_phase:{S:phase},release_requested:{BOOL:true},api_admission_restored:{BOOL:true},consumer_admission_restored:{BOOL:true},deployment_admission_restored:{BOOL:true},resource_completion_receipt:{S:'synthetic receipt'},resource_completion_receipt_sha256:{S:'c'.repeat(64)}};
@@ -201,4 +201,76 @@ test('abort recovery durable receipt authorizes only the existing real condition
  const recovery=require('./d1-resource-abort-recovery.cjs').createResourceAbortRecovery({run:r.run_id,source:SHA,executorToken,journal:j,plans:{load:fail},cloudflare,lambda:fail,github:fail,sourceFence:{inspect:fail,remove:fail,assertUnfenced:async()=>resourceDigest({unfenced:true})},enabled:true,aws:async(service,command,input)=>{const result=await f.metadataAws(service,command,input);if(command==='TransactWriteItems'&&lose){lose=false;throw Error('SYNTHETIC_LOST_ABORT_COMPLETION_RESPONSE');}return result;}});
  const result=await recovery.advance();assert.equal(result.status,'abort-release-requested');const owner=await f.get('maintenance');assert.ok(owner);const row=await f.get('run#'+r.run_id);assert.equal(row.resource_phase.S,'aborted');assert.equal(row.resource_abort_requested.BOOL,true);assert.deepEqual(await recovery.advance(),result);
  await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.equal((await f.get('run#'+r.run_id)).resource_completion_receipt_sha256.S,result.receiptSha256);
+});
+async function runtimeFixture(f,r){
+ const fs=require('node:fs/promises'),path=require('node:path'),directory=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'videoq-resource-runtime-'));
+ const plans=await require('./d1-resource-plans.cjs').createPrivateResourcePlans(directory),calls=[];
+ let version=1,sourceFences=[],targetFences=[],copyReady=false,vectorReady=false,build=null;
+ const uuid=n=>'00000000-0000-0000-0000-'+String(n).padStart(12,'0');
+ const settings={compatibility_date:'2026-08-20',bindings:[{name:'DB',type:'d1',id:'e57d0931-18cb-4f00-ae7f-b0068030fb04',database_id:'e57d0931-18cb-4f00-ae7f-b0068030fb04'},{name:'SCENE_VECTORIZE_1536',type:'vectorize',index_name:'videoq-scenes-migration-v3-1536'},{name:'SCENE_VECTORIZE_768',type:'vectorize',index_name:'videoq-scenes-migration-v3-768'},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'running'},{name:'PRIVATE_SECRET',type:'secret_text'}]};
+ const cloudflare=async(method,url,input)=>{
+  if(method==='PATCH'){settings.bindings=input.bindings.map(row=>row.type==='inherit'?settings.bindings.find(old=>old.name===row.name):row.name==='DB'?{...row,database_id:row.id}:row);version++;calls.push('api-patch');return{};}
+  assert.equal(method,'GET');if(url.endsWith('/deployments'))return{deployments:[{id:uuid(version),versions:[{version_id:uuid(version),percentage:100}]}]};if(url.endsWith('/versions?per_page=1'))return{items:[{id:uuid(version)}]};return structuredClone(settings);
+ };
+ const functions=['videoq-worker-prod','videoq-worker-search-prod','videoq-worker-account-prod'],consumers=new Map(functions.map(v=>[v,true]));
+ const lambda=async(command,input)=>{
+  if(command==='UpdateEventSourceMapping'){consumers.set(functions[Number(input.UUID.slice(-1))],input.Enabled);calls.push('consumer-'+input.Enabled);return{};}
+  const i=functions.indexOf(input.FunctionName);assert.ok(i>=0);return{EventSourceMappings:[{FunctionArn:'arn:aws:lambda:ap-northeast-1:257240362763:function:'+functions[i],EventSourceArn:'arn:aws:sqs:ap-northeast-1:257240362763:'+functions[i],UUID:uuid(i),State:consumers.get(functions[i])?'Enabled':'Disabled'}]};
+ };
+ const workflows=new Map([[252628432,'active'],[403417588,'active']]);
+ const github=async(method,url)=>{const id=Number(url.split('/')[5]);if(url.includes('/runs?'))return{total_count:0,workflow_runs:[]};if(method==='PUT'){workflows.set(id,url.endsWith('/disable')?'disabled_manually':'active');calls.push('workflow-'+workflows.get(id));return{};}return{id,path:id===252628432?'.github/workflows/cd.yml':'.github/workflows/db-maintenance-cd.yml',state:workflows.get(id)};};
+ const flags={MAINTENANCE_TABLE:'videoq-db-maintenance-prod',VIDEOQ_D1_PRODUCTION_SMOKE:'true'},rows=value=>Object.entries(value).map(([name,value])=>({name,value,type:'PLAINTEXT'}));
+ const project={name:'videoq-db-smoke-prod',source:{type:'S3',location:'private/operator.zip',buildspec:'reviewed'},sourceVersion:'immutable-version',serviceRole:'reviewed-role',concurrentBuildLimit:1,tags:[{key:'ReviewedSource',value:SHA}],environment:{type:'LINUX_CONTAINER',image:'reviewed-image',environmentVariables:rows(flags)}};
+ const aws=async(service,command,input)=>{
+  if(service!=='codebuild')return f.resourceAws(service,command,input);
+  if(command==='ListBuildsForProject')return{ids:build&&input.projectName===project.name?[build.id]:[]};
+  if(command==='BatchGetProjects')return{projects:[structuredClone(project)]};
+  if(command==='BatchGetBuilds')return{builds:build?[structuredClone(build)]:[]};
+  assert.equal(command,'StartBuild');assert.equal((await f.get('run#'+r.run_id)).resource_smoke_action_id.S,input.idempotencyToken);
+  const id=project.name+':'+uuid(900),start=new Date();build={id,arn:'arn:aws:codebuild:ap-northeast-1:257240362763:build/'+id,projectName:project.name,source:project.source,sourceVersion:input.sourceVersion,serviceRole:project.serviceRole,environment:{...project.environment,environmentVariables:[...project.environment.environmentVariables,...input.environmentVariablesOverride]},buildComplete:true,buildStatus:'SUCCEEDED',startTime:start,endTime:new Date(start.getTime()+1)};calls.push('native-e2e');return{build:{arn:build.arn}};
+ };
+ const fence={owner:r.run_id,original:{tables:{users:'CREATE TABLE users(id INTEGER)'},triggers:{}},fenceTriggers:{one:'sql-one',two:'sql-two',three:'sql-three'}};
+ const fenceState=target=>({total:3,installed:[...(target?targetFences:sourceFences)].sort(),schemaSha256:resourceDigest({original:fence.original,fences:[...(target?targetFences:sourceFences)].sort()})});
+ const bridgeFactory=options=>({call:async(action,input)=>{
+  await options.assertExecutor();await options.assertOperation(action,input);let value;
+  if(action==='prepare-fence')value=structuredClone(fence);
+  else if(action==='inspect-source-fence')value=fenceState(false);
+  else if(action==='inspect-target-fence')value=fenceState(true);
+  else if(action==='install-source-fence'){sourceFences=Object.keys(fence.fenceTriggers);calls.push('fence-source');value=fenceState(false);}
+  else if(action==='prepare-copy')value={snapshotSha256:resourceDigest({fixture:'source-data'})};
+  else if(action==='advance-copy'){await options.assertImportSafe(input);copyReady=true;targetFences=[...sourceFences];calls.push('copy');value={pending:true};}
+  else if(action==='inspect-copy'){if(copyReady&&targetFences.length!==3)throw Error('RESOURCE_FIXTURE_COPY_PROBED_AFTER_UNFENCE');value={databaseVerified:copyReady,reconciliationRequired:false,...(copyReady?{receiptSha256:resourceDigest({copy:true})}:{})};}
+  else if(action==='prepare-vectors')value={manifestSha256:resourceDigest({vectors:'manifest'}),batches:1,vectors:2,deferredPending:0};
+  else if(action==='advance-vectors'){await options.assertVectorSafe(input);vectorReady=true;calls.push('vectors');value={pending:true};}
+  else if(action==='inspect-vectors')value={verified:vectorReady,reconciliationRequired:false,...(vectorReady?{receiptSha256:resourceDigest({vectors:true})}:{})};
+  else if(action==='remove-target-fence'){while(targetFences.length){await options.assertTargetSafe(input);targetFences.pop();}calls.push('unfence-target');value=fenceState(true);}
+  else if(action==='remove-source-fence'){while(sourceFences.length){await options.assertSourceSafe(input);sourceFences.pop();}calls.push('unfence-source');value=fenceState(false);}
+  else throw Error('Unexpected fixture bridge action');
+  await options.assertExecutor();await options.assertOperation(action,input);return structuredClone(value);
+ }});
+ const options={aws,cloudflare,lambda,github,plans,run:r.run_id,source:SHA,executorToken:'9'.repeat(64),definitionSha256:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),directory,token:'SYNTHETIC_RESOURCE_TOKEN_0123456789',assertRuntime:async()=>{calls.push('runtime-check');},assertWorkersStopped:async()=>{},bridgeFactory,enabled:true};
+ const runtime=require('./d1-resource-runtime.cjs').createResourceRuntime(options);
+ return{runtime,options,calls,plans,settings,cleanup:()=>fs.rm(directory,{recursive:true,force:true})};
+}
+test('composed resource runtime completes all twelve steps and conditional release with real DDB and private plans',async()=>{
+ const f=await fixture(),r=await f.start('3'.repeat(32)),rt=await runtimeFixture(f,r);
+ try{
+  await rt.runtime.claim();const steps=[];
+  for(let i=0;i<20;i++){const result=await rt.runtime.advance();if(result.status==='verified')steps.push(result.step);if(result.status==='steps-verified')break;}
+  assert.deepEqual(steps,RESOURCE_STEPS);assert.equal(rt.calls.filter(v=>v==='native-e2e').length,1);assert.equal(rt.settings.bindings.find(v=>v.name==='DB').id,'587bd210-6d9d-4f32-abb7-a490013e65d3');
+  const receipt=await rt.runtime.complete();assert.equal(receipt.releaseRequested,true);const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.equal((await f.get('run#'+r.run_id)).resource_completion_receipt_sha256.S,receipt.receiptSha256);
+ }finally{await rt.cleanup();}
+});
+test('composed runtime rejects wrong initial source before freezing or recording a mutation intent',async()=>{
+ const f=await fixture(),r=await f.start('2'.repeat(32)),rt=await runtimeFixture(f,r);
+ try{await rt.runtime.claim();rt.settings.bindings[0].id='587bd210-6d9d-4f32-abb7-a490013e65d3';await assert.rejects(rt.runtime.advance(),/API_BINDINGS_REQUIRED/);assert.equal(rt.calls.some(v=>v.startsWith('workflow-')),false);assert.equal((await f.get('run#'+r.run_id)).resource_steps,undefined);}finally{await rt.cleanup();}
+});
+test('composed runtime abort restores original backend and admissions without any target promotion',async()=>{
+ const f=await fixture(),r=await f.start('1'.repeat(32)),rt=await runtimeFixture(f,r);
+ try{
+  await rt.runtime.claim();for(let i=0;i<4;i++)assert.equal((await rt.runtime.advance()).status,'verified');
+  let result;for(let i=0;i<6;i++){result=await rt.runtime.abort();if(result.status==='abort-release-requested')break;}
+  assert.equal(result.status,'abort-release-requested');assert.equal(rt.calls.includes('unfence-source'),true);assert.equal(rt.calls.includes('copy'),false);assert.equal(rt.calls.includes('native-e2e'),false);assert.equal(rt.settings.bindings.find(v=>v.name==='DB').id,'e57d0931-18cb-4f00-ae7f-b0068030fb04');
+  const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);assert.equal((await f.get('run#'+r.run_id)).resource_phase.S,'aborted');
+ }finally{await rt.cleanup();}
 });
