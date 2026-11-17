@@ -598,9 +598,36 @@ transport refuses target drops and source trigger creation. The SQLite control
 rechecks ownership and safety before every removal, preserves original triggers,
 and reconciles a partial lost response without duplicating removals.
 
-These are abort primitives, not a completed recovery command. Admission restore,
-durable abort completion/release and production executor wiring still need to be
-connected and rehearsed before enabling the resource hold. No source fence or
+The abort recovery controller below connects admission restoration and durable
+abort completion. Production executor wiring and real provider rehearsal remain
+required before enabling the resource hold. No source fence or
 other production resource was changed during validation.
 [Abort evidence](evidence/d1-prepromotion-abort-2026-11-17.json) records the local
 fixture and real DynamoDB Local transaction checks.
+
+## Pre-promotion recovery and conditional release
+
+`d1-resource-abort-recovery.cjs` advances one restoration stage per call under the
+durable abort intent. It uses only original private plans whose hashes match
+recorded normal intents; absence of an intent cannot authorize an admission
+mutation. It reconciles source fence removal before restoring original API
+traffic, original SQS admission, then original deployment admission. Originally
+disabled entry points remain disabled. Changed bindings, private plans or
+ownership refuse further restoration.
+
+The final probe requires old source D1 and Vectorize bindings, a stable API, a
+fresh source-unfenced schema proof and restored planned admissions. Only then
+does a revision/owner-checked transaction store the hashed abort receipt, all
+three restore markers and the release request. The controller never deletes the
+maintenance lock. The existing state machine conditionally releases it after
+that durable proof. A lost completion write response is reconciled against the
+exact stored receipt; completed reentry reads retained historical proof rather
+than claiming current service health.
+
+Validation includes 624 Node tests and 12 DynamoDB Local integration tests.
+The real-DynamoDB recovery test demonstrates durable abort completion followed
+by the existing conditional ASL release and retention of the receipt. Separate
+fixtures cover ordered restoration, originally disabled admissions, early abort,
+changed plans/bindings/ownership and provider error sanitization. No production
+recovery or cutover was executed. Production source-fence bridge and in-flight
+worker-drain wiring still need to be supplied by the full executor.
