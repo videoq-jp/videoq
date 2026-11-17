@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-17",
+  "scope": "integrated local isolated API smoke CLI and immutable private runtime pins",
+  "nodeTests": {
+    "passed": 707,
+    "failed": 0
+  },
+  "bundleTests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "newTests": 7,
+  "actualLockedDependencyCheck": {
+    "hasherLoaded": true,
+    "parserLoaded": true,
+    "hashShapeValid": true,
+    "parserEvents": 1
+  },
+  "successfulCliWiringTest": "dependency/provider fixtures",
+  "supersededPrs": [
+    1526,
+    1527,
+    1528,
+    1529,
+    1530
+  ],
+  "baseMain": "27281184a0324fa0d56f56d4ae2f3ee7da3eed1f",
+  "realCloudE2EExecuted": false,
+  "provisioningImplemented": false,
+  "providerMutationExecuted": false,
+  "productionBindingsChanged": false,
+  "productionHoldEnabled": false
+}

@@ -1117,3 +1117,45 @@ cloud E2E. A command-line caller/private AWS pin loader, actual resource and
 credential provisioning, model authorization, execution and infrastructure
 teardown remain outstanding. The existing production execution role remains
 shared as described above.
+
+## Integrated local isolated-smoke CLI (current candidate)
+
+The isolated-smoke components and pending evidence PRs #1526–#1530 are combined
+with the private CLI in one integration candidate based on main
+`27281184a0324fa0d56f56d4ae2f3ee7da3eed1f`. Their commits and tests are retained;
+this consolidation changes neither the production binding tuple nor the
+production resource-hold flag. Earlier sections describe development milestones.
+The current implementation has a callable composition and a CLI, but no
+provisioned isolated E2E environment yet.
+
+`run-isolated-smoke.cjs` accepts exactly `--source <40-hex-reviewed-sha>
+--manifest <absolute-private-file> --pins <absolute-private-file>` and requires
+`VIDEOQ_ISOLATED_SMOKE_ENABLED=true`. It refuses CI and PostgreSQL credential
+environments, proves the clean canonical source first, then reads the existing
+owner-only files. Runtime pins contain only version, nonce, source, canonical
+manifest SHA-256, image digest, three numeric Lambda versions, three isolated
+secret digests and synthetic-identity-key SHA-256. They cannot contain raw keys.
+The inherited `VIDEOQ_SMOKE_IDENTITY_KEY` must match; missing/mismatched files
+or keys are never regenerated. Both files retain the 0700 directory / 0600 file
+checks, no symlink/hard-link policy, bounded reads and expiry validation.
+
+The entry loads the locked operations Better Auth password hasher and SSE
+parser, verifies the reviewed fixture bytes, and only then captures the existing
+Cloudflare credential via the official Wrangler/token loader. No credential is
+placed in argv, a generated manifest, or stdout. The scoped composition supplies
+the concrete metadata checks and store. Progress logs contain fixed stage
+labels and the final report has synthetic-data cleanup scope. An error status
+or incomplete synthetic cleanup returns a nonzero exit. There is no install,
+resource-creation, automatic restart or infrastructure-deletion path in the CLI.
+
+Node's complete suite passed 707 tests, with seven new private-pin/CLI tests.
+Three archive/input-selection tests also passed. `npm ci --ignore-scripts` for
+the locked operations tools reported zero vulnerabilities; a real dependency
+check generated a valid password hash and parsed one SSE event without model
+or provider access. CLI successful-path wiring tests substitute dependencies
+and providers and therefore do not certify real video E2E.
+
+Remaining execution work is actual resource/credential provisioning, new Worker
+model authorization, running the pipeline and teardown. D1/Vectorize production
+replacement, the final checked-in target update and old-resource cleanup remain
+incomplete. The shared execution-role limitation remains explicit.
