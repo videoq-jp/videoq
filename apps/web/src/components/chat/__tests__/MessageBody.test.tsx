@@ -95,6 +95,24 @@ describe('MessageBody', () => {
     fireEvent.click(screen.getByRole('button'))
     expect(navigate).toHaveBeenCalledWith(7, '00:00:10')
   })
+  it.each(['history', 'stream'])('renders Japanese emphasis next to punctuation and citations from %s', mode => {
+    const saved: ChatAnswer = { segments: [
+      { text: 'SIFTは回転・スケール変化に対応します。', sourceIds: [1] },
+      { text: '**ASIFT（講座内の表記ではA-SIFT）**は視点変化にも対応します。\n\n要するに、**「特徴点」**を照合します。`**括弧（例）**は`', sourceIds: [1] },
+    ], sources: [source] }
+    const streamed: ChatAnswer = { segments: [], sources: saved.sources }
+    for (const part of answerParts(saved)) applyChatPart(streamed, part)
+    const navigate = vi.fn()
+    const { container } = render(<MessageBody answer={mode === 'history' ? saved : streamed} onVideoNavigate={navigate} />)
+    expect(Array.from(container.querySelectorAll('strong'), node => node.textContent)).toEqual([
+      'ASIFT（講座内の表記ではA-SIFT）', '「特徴点」',
+    ])
+    expect(container.querySelectorAll('p')).toHaveLength(2)
+    expect(container.querySelector('code')).toHaveTextContent('**括弧（例）**は')
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button')[0])
+    expect(navigate).toHaveBeenCalledWith(7, '00:00:10')
+  })
   it('renders a matrix and normalizes millisecond timestamps', () => {
     const text = String.raw`回転行列: \[R = \begin{pmatrix}\cos\theta & -\sin\theta \\ \sin\theta & \cos\theta\end{pmatrix}\]`
     const { container } = render(<MessageBody answer={{ segments: [{ text, sourceIds: [1] }], sources: [{ ...source, start_time: '00:06:37,480', end_time: '00:07:47,900' }] }} onVideoNavigate={vi.fn()} />)
