@@ -1,7 +1,7 @@
-const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {test}=require('node:test'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
 const {runIsolatedVideoSmoke:run}=require('./isolated-smoke-runner.cjs');
 const {validateIsolatedSmokeManifest:validate}=require('./isolated-smoke-target.cjs');
-const fixtureBytes=fs.readFileSync('.github/operations-tools/fixtures/smoke.mp4');
+const fixtureBytes=require('./isolated-smoke-fixture.cjs').loadReviewedSmokeFixture({source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()});
 function parser({onEvent}){let buffer='';return{feed(text){buffer+=text;for(;;){const at=buffer.indexOf('\n\n');if(at<0)break;const event=buffer.slice(0,at);buffer=buffer.slice(at+2);if(event.startsWith('data: '))onEvent({data:event.slice(6)});}}};}
 function fixture(options={}){
  const manifest={version:1,nonce:'a'.repeat(16),databaseId:'11111111-2222-4333-8444-555555555555',workersSubdomain:'synthetic-account',issuedAt:1000,expiresAt:7200000},target=validate(manifest,2000),calls=[];

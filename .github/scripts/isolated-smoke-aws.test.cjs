@@ -55,8 +55,9 @@ test('scoped CLI read transport executes complete guard with private request fil
  const commands={'get-caller-identity':'GetCallerIdentity','get-queue-attributes':'GetQueueAttributes','list-queue-tags':'ListQueueTags','get-function':'GetFunction','list-event-source-mappings':'ListEventSourceMappings'};
  const transport=createIsolatedAwsTransport({...f,env:{PATH:'fixture',HOME:'fixture',AWS_PROFILE:'approved',CLOUDFLARE_API_TOKEN:'must-not-forward',NODE_OPTIONS:'must-not-forward'},execute:async(program,args,options)=>{
   assert.equal(program,'aws');assert.equal(options.env.AWS_PROFILE,'approved');assert.equal(options.env.CLOUDFLARE_API_TOKEN,undefined);assert.equal(options.env.NODE_OPTIONS,undefined);assert.ok(args.includes('--no-paginate'));
-  const file=args.at(-1).slice(7);files.push(file);assert.equal((await fs.stat(file)).mode&0o777,0o600);assert.equal((await fs.stat(path.dirname(file))).mode&0o777,0o700);
-  const input=JSON.parse(await fs.readFile(file,'utf8'));return{stdout:JSON.stringify(await f.aws(args[0],commands[args[1]],input))};
+  const file=args.at(-1).slice(7);files.push(file);const handle=await fs.open(file,require('node:fs').constants.O_RDONLY|require('node:fs').constants.O_NOFOLLOW);let input;
+  try{assert.equal((await handle.stat()).mode&0o777,0o600);assert.equal((await fs.stat(path.dirname(file))).mode&0o777,0o700);input=JSON.parse(await handle.readFile('utf8'));}finally{await handle.close();}
+  return{stdout:JSON.stringify(await f.aws(args[0],commands[args[1]],input))};
  }});
  assert.deepEqual(await createIsolatedAwsGuard({...f,aws:transport})(),{awsConfigurationVerified:true,sharedProductionExecutionRole:true});assert.equal(files.length,19);for(const file of files)await assert.rejects(fs.stat(file),{code:'ENOENT'});
 });

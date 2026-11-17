@@ -2,14 +2,14 @@
   "date": "2026-11-17",
   "scope": "integrated local isolated API smoke CLI and immutable private runtime pins",
   "nodeTests": {
-    "passed": 707,
+    "passed": 710,
     "failed": 0
   },
   "bundleTests": {
     "passed": 3,
     "failed": 0
   },
-  "newTests": 7,
+  "newTests": 10,
   "actualLockedDependencyCheck": {
     "hasherLoaded": true,
     "parserLoaded": true,
@@ -29,5 +29,10 @@
   "provisioningImplemented": false,
   "providerMutationExecuted": false,
   "productionBindingsChanged": false,
-  "productionHoldEnabled": false
+  "productionHoldEnabled": false,
+  "codeqlRemediation": {
+    "js/file-system-race": "check and read the same open descriptor in the transport fixture",
+    "js/file-access-to-http": "load only the fixed public MP4 Git blob at the reviewed SHA and retain exact hash validation",
+    "freshCodeqlSuccessRequired": true
+  }
 }

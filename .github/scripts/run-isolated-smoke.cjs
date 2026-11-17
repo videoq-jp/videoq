@@ -1,10 +1,10 @@
 // Explicit local entry for an already provisioned isolated environment. No
 // provisioning, credential regeneration, SSM, retry or infrastructure teardown.
-const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process');
+const path=require('node:path'),{execFileSync}=require('node:child_process');
 const {verifyReviewedSource}=require('./run-cutover-admission.cjs');
 const {cloudflareToken}=require('./run-d1-resource-preflight.cjs');
 const {loadIsolatedSmokeManifest,loadIsolatedSmokePins}=require('./isolated-smoke-manifest.cjs');
-const {fixtureValid}=require('./production-smoke-policy.cjs');
+const {loadReviewedSmokeFixture}=require('./isolated-smoke-fixture.cjs');
 const {runIsolatedSmoke}=require('./isolated-smoke-composition.cjs');
 const {loadIsolatedSmokeTools}=require('./isolated-smoke-tools.cjs');
 const ROOT=path.resolve(__dirname,'../..');
@@ -21,8 +21,7 @@ async function main({args=process.argv.slice(2),env=process.env,execute=execFile
  await verifyReviewedSource({source:requested.source,root:ROOT,env,execute});
  const manifest=loadIsolatedSmokeManifest(requested.manifestFile);
  const pins=loadIsolatedSmokePins(requested.pinsFile,{manifest,source:requested.source,identityKey:env.VIDEOQ_SMOKE_IDENTITY_KEY});
- const tools=await loadIsolatedSmokeTools(ROOT),fixtureBytes=fs.readFileSync(path.join(ROOT,'.github/operations-tools/fixtures/smoke.mp4'));
- if(!fixtureValid(fixtureBytes))throw Error('ISOLATED_SMOKE_FIXTURE_REQUIRED');
+ const tools=await loadIsolatedSmokeTools(ROOT),fixtureBytes=loadReviewedSmokeFixture({source:requested.source,root:ROOT,execute,env});
  const token=cloudflareToken({env,execute,root:ROOT});
  return runIsolatedSmoke({source:requested.source,manifest,versions:pins.versions,imageDigest:pins.imageDigest,secretSha256:pins.secretSha256,env:{...env,CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:token,VIDEOQ_SMOKE_D1_DATABASE_ID:manifest.databaseId},...tools,fixtureBytes,onStage});
 }

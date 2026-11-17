@@ -1159,3 +1159,18 @@ Remaining execution work is actual resource/credential provisioning, new Worker
 model authorization, running the pipeline and teardown. D1/Vectorize production
 replacement, the final checked-in target update and old-resource cleanup remain
 incomplete. The shared execution-role limitation remains explicit.
+
+### CodeQL-driven fixture hardening
+
+The integration candidate's first CodeQL run reported a check/read race in the
+AWS transport test and local-file content flowing to the upload request. The
+test now opens with O_NOFOLLOW and checks/reads the same descriptor. The CLI
+and pipeline tests obtain only `.github/operations-tools/fixtures/smoke.mp4`
+from the specified Git revision through `git show`, never an arbitrary local
+file path. Revision syntax is limited to a 40-hex SHA, child environment is
+filtered, output is bounded and the existing exact MP4 hash remains required.
+This also ties the upload fixture to the reviewed committed source rather than
+a later working-tree read. No CodeQL rule or gate was disabled or dismissed.
+
+After these changes Node's full suite passed 710 tests and the three bundle
+tests passed. A fresh CodeQL success on the updated head remains a merge gate.

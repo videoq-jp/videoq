@@ -19,10 +19,11 @@ test('CLI wiring loads private pins before authentication and passes only constr
   './run-cutover-admission.cjs':{verifyReviewedSource:async()=>{events.push('source');}},
   './isolated-smoke-manifest.cjs':{loadIsolatedSmokeManifest:()=>{events.push('manifest');return manifest;},loadIsolatedSmokePins:(_file,context)=>{events.push('pins');assert.equal(context.manifest,manifest);assert.equal(context.identityKey,identityKey);assert.equal(context.source,source);if(mismatch)throw Error('PINS_MISMATCH');return pins;}},
   './isolated-smoke-tools.cjs':{loadIsolatedSmokeTools:async()=>{events.push('tools');return{hashPassword:async()=>{},createParser:()=>{}};}},
+  './isolated-smoke-fixture.cjs':{loadReviewedSmokeFixture:input=>{events.push('fixture');assert.equal(input.source,source);return Buffer.alloc(1);}},
   './run-d1-resource-preflight.cjs':{cloudflareToken:()=>{events.push('auth');return token;}},
   './isolated-smoke-composition.cjs':{runIsolatedSmoke:async input=>{events.push('runner');assert.equal(input.source,source);assert.equal(input.manifest,manifest);assert.equal(input.env.CLOUDFLARE_ACCOUNT_ID,'12daec56fdba43f677f2766ee26a5a39');assert.equal(input.env.VIDEOQ_SMOKE_D1_DATABASE_ID,manifest.databaseId);assert.equal(input.env.CLOUDFLARE_API_TOKEN,token);assert.equal(input.env.VIDEOQ_SMOKE_IDENTITY_KEY,identityKey);assert.equal(input.versions,pins.versions);assert.equal(typeof input.hashPassword,'function');return report;}},
  };
  const module={exports:{}};vm.runInNewContext(fs.readFileSync('.github/scripts/run-isolated-smoke.cjs','utf8'),{module,exports:module.exports,__dirname,process,console,require:Object.assign(name=>mocks[name]??nativeRequire(name),{main:null})});
- assert.equal(await module.exports.main({args,env:{VIDEOQ_ISOLATED_SMOKE_ENABLED:'true',VIDEOQ_SMOKE_IDENTITY_KEY:identityKey}}),report);assert.deepEqual(events,['source','manifest','pins','tools','auth','runner']);events.length=0;mismatch=true;
+ assert.equal(await module.exports.main({args,env:{VIDEOQ_ISOLATED_SMOKE_ENABLED:'true',VIDEOQ_SMOKE_IDENTITY_KEY:identityKey}}),report);assert.deepEqual(events,['source','manifest','pins','tools','fixture','auth','runner']);events.length=0;mismatch=true;
  await assert.rejects(module.exports.main({args,env:{VIDEOQ_ISOLATED_SMOKE_ENABLED:'true',VIDEOQ_SMOKE_IDENTITY_KEY:identityKey}}),/PINS_MISMATCH/);assert.deepEqual(events,['source','manifest','pins']);
 });
