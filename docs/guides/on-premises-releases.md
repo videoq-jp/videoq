@@ -49,7 +49,7 @@ supported architectures and both charts' bytes. The inference chart separately
 pins the unmodified Linux amd64 upstream vLLM digest for chat, embeddings and
 speech. VideoQ does not build, publish or sign a replacement engine image.
 
-The mandatory upstream inspection retains unsuppressed Trivy scans of the image
+The mandatory upstream inspection retains unsuppressed Grype scans of the image
 and the separate installed audio wheels, verifies actual image files and runtime
 imports, and evaluates findings against the constrained chart workloads. Only
 exact, current, evidence-backed applicability assessments are accepted; new or

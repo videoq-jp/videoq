@@ -169,6 +169,7 @@ spec:
             {{- if $gpu }}
             - { name: shm, mountPath: /dev/shm }
             - { name: vllm-audio, mountPath: /opt/videoq-audio, readOnly: true }
+            {{- include "inference.vllmNativeMasks" . | nindent 12 }}
             {{- end }}
       volumes:
         - name: tmp

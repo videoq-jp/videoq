@@ -1,7 +1,0 @@
-# Only the exact reviewed whisper.cpp UAPI packages and explicit CVE IDs.
-# CI verifies each flattened image against header-image-inventory.json first.
-vulnerability:
-  vex:
-    - apps/inference/whispercpp/security/kernel-headers.openvex.json
-scan:
-  show-suppressed: true

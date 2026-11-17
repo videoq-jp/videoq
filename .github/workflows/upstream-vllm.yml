@@ -41,39 +41,27 @@ jobs:
       - name: Reserve disk for the upstream CUDA image
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/share/swift /usr/local/.ghcup
       - name: Scan upstream without suppressing findings
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          image-ref: ${{ env.VLLM_IMAGE }}
-          format: json
+          platform: linux/amd64
+          source: registry:${{ env.VLLM_IMAGE }}
           output: vllm-security-raw.json
-          scanners: vuln
-          severity: LOW,MEDIUM,HIGH,CRITICAL,UNKNOWN
-          ignore-unfixed: 'false'
-          exit-code: '0'
-          timeout: 25m
-        env:
-          TRIVY_IMAGE_SRC: remote
-          TRIVY_LIST_ALL_PKGS: true
+          gate: assess
       - name: Scan the exact installed audio dependencies
         if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: rootfs
-          scan-ref: audio-runtime
-          format: json
+          source: dir:audio-runtime
           output: vllm-audio-security-raw.json
-          scanners: vuln
-          severity: LOW,MEDIUM,HIGH,CRITICAL,UNKNOWN
-          ignore-unfixed: 'false'
-          exit-code: '0'
-          timeout: 10m
+          gate: assess
       - name: Verify upstream audio imports and model registration without rebuilding
         if: ${{ !cancelled() && env.VLLM_IMAGE != '' && steps.audio.outcome == 'success' }}
         run: |
           docker run --rm --platform linux/amd64 --network none --user 10001:10001 \
             -e HOME=/tmp -e HF_HUB_OFFLINE=1 -e VLLM_NO_USAGE_STATS=1 -e PYTHONPATH=/opt/videoq-audio \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/mooncake:ro,size=1m \
             -v "$PWD/audio-runtime:/opt/videoq-audio:ro" \
             -v "$PWD/.github/scripts/check-vllm-runtime.py:/probe.py:ro" \
             --entrypoint python3 "$VLLM_IMAGE" /probe.py > vllm-runtime.json
@@ -99,9 +87,9 @@ jobs:
         with:
           name: upstream-vllm-inspection-${{ github.sha }}-${{ github.run_attempt }}
           path: |
-            vllm-security-raw.json
+            vllm-security-raw.json*
             vllm-security-assessed.json
-            vllm-audio-security-raw.json
+            vllm-audio-security-raw.json*
             vllm-audio-receipt.json
             charts/videoq-inference/files/vllm-audio-wheels.json
             vllm-runtime.json

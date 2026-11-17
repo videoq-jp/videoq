@@ -61,6 +61,15 @@ test('keeps exact reviewed findings visible while new CVEs, versions and identit
     assert.equal(run(changed).blocking.length, 1);
   }
 });
+test('scanner aliases match an existing assessment without accepting unrelated IDs', () => {
+  const f = fixture();
+  const finding = f.report.Results[0].Vulnerabilities[0];
+  finding.VulnerabilityID = 'GHSA-equivalent';
+  finding.Aliases = ['GHSA-equivalent', 'CVE-reviewed'];
+  assert.equal(run(f).accepted.length, 1);
+  finding.Aliases = ['GHSA-equivalent', 'CVE-unreviewed'];
+  assert.equal(run(f).blocking.length, 1);
+});
 test('rejects expired reviews, changed image files, package managers and runtime paths', () => {
   for (const mutate of [f => f.policy.expiresAt = '2026-11-11T00:00:00Z', f => f.policy.expiresAt = '2027-01-01T00:00:00Z',
     f => f.native.status = 'failed', f => f.native.inventory.kernelHeaders.files[0].sha256 = 'modified',
@@ -78,4 +87,33 @@ test('startup shells, writable roots, changed models, hooks and injected code in
     const changed = fixture(); mutate(changed.profiles[0][1].spec.template.spec.containers[0]);
     assert.throws(() => run(changed));
   }
+});
+
+test('native findings require exact empty read-only masks and actual runtime proof', () => {
+  const f = fixture();
+  const directory = '/usr/local/lib/python3.12/dist-packages/mooncake';
+  const locations = [directory + '/libetcd_wrapper.so'];
+  f.policy.maskedNativeDirectories = [directory];
+  f.policy.groups.push({type: 'go-module', origin: 'masked-native', status: 'not_affected',
+    impactStatement: 'Native code is hidden by mandatory empty read-only mounts', references: ['review'],
+    vulnerabilities: ['GO-reviewed'], packages: {stdlib: {version: 'go1.25.10', purl: 'pkg:golang/stdlib@1.25.10', locations}}});
+  f.report.Results.push({Type: 'go-module', Vulnerabilities: [{PkgName: 'stdlib', InstalledVersion: 'go1.25.10',
+    Severity: 'HIGH', VulnerabilityID: 'GO-reviewed', PkgIdentifier: {PURL: 'pkg:golang/stdlib@1.25.10'}, Locations: locations}]});
+  for (const documents of f.profiles) {
+    const pod = documents[1].spec.template.spec;
+    pod.volumes.push({name: 'unused-native', emptyDir: {sizeLimit: '1Mi'}});
+    pod.containers[0].volumeMounts.push({name: 'unused-native', mountPath: directory, readOnly: true});
+  }
+  const runtime = {status: 'passed', checks: {'security.maskedNative': {status: 'passed', details: [directory]}}};
+  const evaluate = (value = f, proof = runtime) => assess(value.report, value.policy, value.native, value.profiles, now, proof);
+  assert.equal(evaluate().blocking.length, 0);
+  assert.throws(() => evaluate(f, null));
+  for (const mutate of [value => value.profiles[0][1].spec.template.spec.containers[0].volumeMounts.pop(),
+    value => value.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).readOnly = false,
+    value => value.profiles[0][1].spec.template.spec.containers.push({image: 'writer', volumeMounts: [{name: 'unused-native', mountPath: '/write'}]}),
+    value => value.report.Results[1].Vulnerabilities[0].Locations = ['/unmasked/library.so']]) {
+    const copy = structuredClone(f); mutate(copy); assert.throws(() => evaluate(copy));
+  }
+  const copy = structuredClone(f); copy.report.Results[1].Vulnerabilities[0].VulnerabilityID = 'GO-new';
+  assert.equal(evaluate(copy).blocking.length, 1);
 });

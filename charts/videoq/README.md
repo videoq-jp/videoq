@@ -241,7 +241,7 @@ is cancelled or is unexpectedly skipped prevents that gate from succeeding.
 It builds all three images and runs the production
 API image over HTTP against a disposable PostgreSQL database, including auth,
 chat access checks, shared rate limiting, maintenance and graceful shutdown.
-It scans every final image with pinned Trivy, blocks HIGH/CRITICAL findings
+It scans every final image with pinned Grype, blocks HIGH/CRITICAL findings
 including unfixed ones, and retains CycloneDX package inventories for 30 days.
 Image builds and scans receive no production credentials or write token.
 

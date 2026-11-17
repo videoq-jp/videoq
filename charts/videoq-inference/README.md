@@ -456,3 +456,15 @@ It does not certify the host kernel. See `apps/inference/whispercpp/security/`.
 AMD/ROCm configuration is a separate follow-up; no target GPU/OS has been selected
 and hardware execution remains unverified. GPU adoption requires physical
 acceptance and vulnerability evaluation.
+
+
+### Grype native-library controls
+
+The upstream NVIDIA image is scanned in full. Its unused PyNvVideoCodec,
+OpenCV native-library and Mooncake directories are hidden behind mandatory
+empty read-only mounts in supported profiles. Video input and Mooncake KV
+transfer are outside these profiles. The read-only audio overlay includes a
+manifest-hashed startup guard limiting PyAV to local MP3/WAV/FLAC and rejecting
+network input. CI verifies the actual runtime controls before accepting exact
+findings; changing/removing a control or adding a new CVE blocks promotion.
+See the [runtime assessment](../../apps/inference/vllm/security/README.md).

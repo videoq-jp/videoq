@@ -5,6 +5,7 @@ registry and Chromium. No production registry or AI credentials are used.
 """
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -126,10 +127,13 @@ class AcceptanceTest(unittest.TestCase):
                 videoq.write_private(root / "state.json", activation.stdout)
                 flow("activate")
                 fixture = root / "fixture.mp4"
-                with fixture.open("xb") as stream:
-                    engine("run", "--rm", "--entrypoint", "ffmpeg", sources["worker"], "-hide_banner", "-loglevel", "error",
-                           "-f", "lavfi", "-i", "color=c=black:s=160x120:r=10", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000",
-                           "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1", stdout=stream)
+                # Use the reviewed H.264/AAC clip shared with production smoke.
+                # The worker decodes uploaded video; it does not need an H.264
+                # encoder merely to manufacture this acceptance-test input.
+                clip = (videoq.ROOT / ".github/operations-tools/fixtures/smoke.mp4").read_bytes()
+                self.assertEqual(hashlib.sha256(clip).hexdigest(),
+                                 "d58c4123ef33a36562a4382bb2a36bff00e3151fe05593e937b39368df023671")
+                fixture.write_bytes(clip)
                 flow("upload", fixture)
                 build = root / "build"
                 build.mkdir()

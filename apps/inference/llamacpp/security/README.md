@@ -39,7 +39,7 @@ with a reachable acquisition path must not be labeled `not_affected`.
 
 ## Enforcement and evidence
 
-The llama.cpp Trivy scan retains all HIGH/CRITICAL/UNKNOWN findings, including unfixed ones,
+The llama.cpp Grype scan retains all HIGH/CRITICAL/UNKNOWN findings, including unfixed ones,
 without an ignore list or VEX suppression. Scanner errors still fail the job.
 The following assessment command is the promotion gate; a raw scan returning
 zero is **not** a successful security evaluation:

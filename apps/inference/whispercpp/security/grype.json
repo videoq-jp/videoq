@@ -1,0 +1,5 @@
+{
+  "vex": [
+    "apps/inference/whispercpp/security/kernel-headers.openvex.json"
+  ]
+}

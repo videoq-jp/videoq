@@ -1,0 +1,39 @@
+name: Scan with Grype
+description: Checksum-pinned Syft inventory and unsuppressed Grype scan, including unfixed findings
+inputs:
+  source:
+    description: Explicit Syft source (registry, docker, oci-dir or dir)
+    required: true
+  output:
+    description: Policy-view report path; raw Grype and Syft reports are saved beside it
+    required: true
+  platform:
+    description: Exact image platform
+    default: ''
+  security-config:
+    description: Optional exact package and CVE VEX policy
+    default: ''
+  gate:
+    description: strict blocks HIGH/CRITICAL; assess defers to the runtime evaluator
+    default: strict
+runs:
+  using: composite
+  steps:
+    - name: Install checksum-pinned scanners
+      shell: bash
+      env:
+        SECURITY_TOOLS_DIR: ${{ runner.temp }}/videoq-security-tools
+      run: |
+        python3 .github/scripts/install-security-tools.py
+        echo "$SECURITY_TOOLS_DIR" >> "$GITHUB_PATH"
+    - name: Catalog once and scan all packages
+      shell: bash
+      env:
+        SCAN_SOURCE: ${{ inputs.source }}
+        SCAN_OUTPUT: ${{ inputs.output }}
+        SCAN_PLATFORM: ${{ inputs.platform }}
+        SCAN_POLICY: ${{ inputs.security-config }}
+        SCAN_GATE: ${{ inputs.gate }}
+      run: |
+        python3 .github/scripts/grype-scan.py --source "$SCAN_SOURCE" --output "$SCAN_OUTPUT" \
+          --platform "$SCAN_PLATFORM" --policy "$SCAN_POLICY" --gate "$SCAN_GATE"

@@ -97,13 +97,17 @@ jobs:
       - name: Build the production target
         run: docker build --platform linux/arm64 --target production -t videoq-worker:ci apps/worker
       - name: Require no HIGH or CRITICAL vulnerabilities in the production filesystem
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-worker:ci
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 15m
+          platform: linux/arm64
+          source: docker:videoq-worker:ci
+          security-config: apps/worker/security/grype.json
+          output: worker-security.json
+      - name: Retain worker scan evidence on success or failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: worker-grype-security-${{ github.sha }}
+          path: worker-security.json*
+          if-no-files-found: warn
+          retention-days: 30

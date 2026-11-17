@@ -11,6 +11,16 @@ function verifyWorkload(documents, policy) {
   for (const deployment of documents.filter(d => d.kind === 'Deployment')) {
     const pod = deployment.spec.template.spec;
     for (const init of pod.initContainers || []) assert.notEqual(init.image, policy.image, 'Do not use the assessed engine for setup');
+    if (policy.maskedNativeDirectories) {
+      for (const participant of [...(pod.initContainers || []), ...pod.containers]) {
+        for (const mount of participant.volumeMounts || []) {
+          if (mount.name !== 'unused-native') continue;
+          assert.equal(participant.image, policy.image, 'Other containers cannot write native masks');
+          assert.equal(mount.readOnly, true);
+          assert.ok(policy.maskedNativeDirectories.includes(mount.mountPath));
+        }
+      }
+    }
     for (const container of pod.containers) {
       if (container.image !== policy.image) continue;
       servers++;
@@ -36,11 +46,15 @@ function verifyWorkload(documents, policy) {
       assert.equal(container.env.find(e => e.name === "TORCHDYNAMO_DISABLE")?.value,
         policy.runtimeEnv?.[alias]?.TORCHDYNAMO_DISABLE);
       assert.ok(!container.env.some(e => /^(LD_|BASH_ENV|ENV$|PYTHONSTARTUP)/.test(e.name)));
+      if (policy.maskedNativeDirectories) {
+        assert.deepEqual(pod.volumes.find(v => v.name === 'unused-native'), {name: 'unused-native', emptyDir: {sizeLimit: '1Mi'}});
+      }
       assert.deepEqual(container.volumeMounts, [
         {name: 'models', mountPath: '/models', readOnly: true},
         {name: 'tmp', mountPath: '/tmp'},
         {name: 'shm', mountPath: '/dev/shm'},
         {name: 'vllm-audio', mountPath: '/opt/videoq-audio', readOnly: true},
+        ...(policy.maskedNativeDirectories || []).map(mountPath => ({name: 'unused-native', mountPath, readOnly: true})),
       ]);
       assert.deepEqual(pod.volumes.find(v => v.name === 'tmp'), {name: 'tmp', emptyDir: {sizeLimit: '4Gi'}});
     }
@@ -78,13 +92,20 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
     assert.ok(!result.ModifiedFindings?.length && !result.ExperimentalModifiedFindings?.length, 'Use unsuppressed raw findings');
     for (const finding of result.Vulnerabilities || []) {
       if (!['HIGH', 'CRITICAL', 'UNKNOWN'].includes(finding.Severity)) continue;
-      const group = policy.groups.find(group => group.type === result.Type && group.vulnerabilities.includes(finding.VulnerabilityID)
+      const group = policy.groups.find(group => group.type === result.Type && group.vulnerabilities.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id))
         && group.packages[finding.PkgName]?.version === finding.InstalledVersion
         && group.packages[finding.PkgName]?.purl === finding.PkgIdentifier?.PURL);
       if (group) {
         assert.equal(group.status, 'not_affected');
         assert.ok(group.impactStatement && group.references.length);
-        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor', 'runtime-overlay'].includes(group.origin));
+        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor', 'runtime-overlay', 'masked-native'].includes(group.origin));
+      }
+      if (group?.origin === 'masked-native') {
+        assert.equal(runtime?.status, 'passed');
+        assert.equal(runtime.checks?.['security.maskedNative']?.status, 'passed');
+        assert.deepEqual(runtime.checks['security.maskedNative'].details, policy.maskedNativeDirectories);
+        assert.deepEqual([...finding.Locations].sort(), [...group.packages[finding.PkgName].locations].sort());
+        assert.ok(finding.Locations.length && finding.Locations.every(path => policy.maskedNativeDirectories.some(directory => path.startsWith(directory + '/'))));
       }
       if (group?.origin === 'pip-vendor') {
         const packages = (result.Packages || []).filter(p => p.Identifier?.PURL === finding.PkgIdentifier.PURL);

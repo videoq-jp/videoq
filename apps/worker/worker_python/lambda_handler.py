@@ -12,6 +12,10 @@ Native message shape (apps/api lib/jobs.ts):
 
 from __future__ import annotations
 
+from worker_python.runtime_security import verify_hashlib_runtime
+
+verify_hashlib_runtime()
+
 import base64
 import json
 import logging
@@ -32,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 def handler(event: dict, context: object) -> dict:
+    verify_hashlib_runtime()
     ensure_secrets_loaded()
     validate_internal_persistence()
     batch_item_failures = []

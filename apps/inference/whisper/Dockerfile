@@ -1,85 +1,52 @@
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b AS ffmpeg-build
+RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev
+ARG FFMPEG_VERSION=9.0.2
+ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o /tmp/ffmpeg.tar.xz \
+    && echo "$FFMPEG_SHA256  /tmp/ffmpeg.tar.xz" | sha256sum -c - \
+    && tar -xJf /tmp/ffmpeg.tar.xz -C /tmp \
+    && cd "/tmp/ffmpeg-${FFMPEG_VERSION}" \
+    && ./configure --prefix=/opt/ffmpeg --disable-autodetect --disable-doc --disable-debug \
+       --disable-ffplay --disable-network --disable-demuxer=rtsp --disable-protocols \
+       --enable-protocol=file,pipe --enable-libmp3lame --enable-zlib --disable-shared --enable-static --enable-small \
+    && make -j2 && make install \
+    && mkdir -p /opt/ffmpeg/share/doc \
+    && cp COPYING.LGPLv2.1 /opt/ffmpeg/share/doc/LICENSE \
+    && printf 'Source: https://ffmpeg.org/releases/ffmpeg-%s.tar.xz\nSHA256: %s\n' "$FFMPEG_VERSION" "$FFMPEG_SHA256" > /opt/ffmpeg/share/doc/source
+
+RUN test ! -e "/tmp/ffmpeg-${FFMPEG_VERSION}/libavformat/rtsp.o"
+
 FROM ghcr.io/astral-sh/uv:0.13.8@sha256:5cc1805e2426484abca4ad46ea783bab281fdb225fd82d8ce6d66a81254bac85 AS uv
-FROM python:3.12.16-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS sqlite
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev make curl ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY security/build-sqlite.sh /tmp/build-sqlite.sh
-COPY security/build-zlib.sh security/fetch-verified.sh security/zlib-write-error.c /tmp/
-RUN sh /tmp/build-sqlite.sh
-RUN sh /tmp/build-zlib.sh
-
-FROM python:3.12.16-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS native
-# Only VideoQ audio preprocessing lives here; whisper.cpp runs in its upstream image.
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates xz-utils && rm -rf /var/lib/apt/lists/*
-ARG TARGETARCH
-ARG FFMPEG_BUILD=autobuild-2026-09-30-13-08
-ARG FFMPEG_VERSION=n9.0.2-17-g2a571b6068
-RUN set -eu; \
-    case "$TARGETARCH" in \
-      amd64) archive_arch=linux64; archive_sha=2d41cbea0ca1a15029b638330740f78d6f5aeb062355bf425433fc938705350a ;; \
-      arm64) archive_arch=linuxarm64; archive_sha=b8cc09200780d37801179c803f597c22440b0b06c556addd2e6a07b27475ce37 ;; \
-      *) exit 1 ;; \
-    esac; \
-    asset_name="ffmpeg-${FFMPEG_VERSION}-${archive_arch}-lgpl-9.0.tar.xz"; \
-    if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 \
-      "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_BUILD}/${asset_name}" -o /tmp/ffmpeg.tar.xz; then \
-      asset_id="$(curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 --retry-max-time 30 \
-        "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_BUILD}" \
-        | python -c 'import json,sys; r=json.load(sys.stdin); a=[x for x in r.get("assets",[]) if x.get("name")==sys.argv[1]]; assert r.get("tag_name")==sys.argv[2] and len(a)==1 and type(a[0].get("id")) is int and a[0]["id"]>0, "Unexpected FFmpeg release asset"; print(a[0]["id"])' "$asset_name" "$FFMPEG_BUILD")"; \
-      curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 120 -H 'Accept: application/octet-stream' \
-        "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/${asset_id}" -o /tmp/ffmpeg.tar.xz; \
-    fi; \
-    echo "$archive_sha  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
-    mkdir /ffmpeg; tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /ffmpeg
-
 FROM python:3.12.16-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
-COPY --from=sqlite /tmp/libsqlite3.deb /tmp/libsqlite3.deb
-COPY --from=sqlite /tmp/zlib1g.deb /tmp/zlib1g.deb
-# The Python base excludes most /usr/share/doc files during package installation.
-RUN dpkg --path-include=/usr/share/doc/zlib1g/source -i /tmp/libsqlite3.deb /tmp/zlib1g.deb && rm /tmp/libsqlite3.deb /tmp/zlib1g.deb
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev && python -m pip uninstall --yes pip && rm /usr/local/bin/uv
-# Distroless already contains libc/libstdc++. Record every added native library.
-RUN python - <<'PY'
-import pathlib, shutil, sysconfig
-root = pathlib.Path('/extra')
-libraries, status, licenses = (root / name for name in ('lib', 'status.d', 'licenses'))
-for directory in (libraries, status, licenses): directory.mkdir(parents=True)
-packages = {'libbz2-1.0': 'libbz2.so.1.0', 'liblzma5': 'liblzma.so.5',
-            'libffi8': 'libffi.so.8', 'libsqlite3-0': 'libsqlite3.so.0',
-            'zlib1g': 'libz.so.1', 'libgomp1': 'libgomp.so.1'}
-records = pathlib.Path('/var/lib/dpkg/status').read_text().split('\n\n')
-libdir = pathlib.Path('/usr/lib') / sysconfig.get_config_var('MULTIARCH')
-for package, soname in packages.items():
-    shutil.copyfile(libdir / soname, libraries / soname)
-    record = next(record for record in records if f'Package: {package}\n' in record)
-    (status / package).write_text(record + '\n')
-    shutil.copyfile(f'/usr/share/doc/{package}/copyright', licenses / f'{package}.copyright')
-shutil.copyfile('/usr/share/doc/zlib1g/source', licenses / 'zlib1g.source')
-for pattern in ('readline*.so', '_uuid*.so', '_tkinter*.so'):
-    for module in pathlib.Path('/usr/local/lib/python3.12/lib-dynload').glob(pattern): module.unlink()
-PY
+RUN rm -f /usr/local/lib/python3.12/lib-dynload/readline*.so /usr/local/lib/python3.12/lib-dynload/_uuid*.so /usr/local/lib/python3.12/lib-dynload/_tkinter*.so
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2
-COPY --from=dependencies /usr/local /usr/local
-COPY --from=dependencies /extra/lib/ /usr/local/lib/
-COPY --from=dependencies /extra/status.d/ /var/lib/dpkg/status.d/
-COPY --from=dependencies /extra/licenses/ /usr/share/doc/videoq-native/
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b
+RUN apk add --no-cache python-3.12 zlib sqlite-libs libstdc++ libgomp lame-libs \
+    && mkdir -p /usr/local/bin \
+    && ln -s /usr/bin/python3.12 /usr/local/bin/python \
+    && ln -s /usr/bin/python3.12 /usr/local/bin/python3 \
+    && ln -s /usr/bin/python3.12 /usr/local/bin/python3.12 \
+    && rm -f /bin/busybox /usr/bin/busybox /sbin/apk /usr/bin/apk
 COPY --from=dependencies /app/.venv /app/.venv
-COPY --from=native /ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
-COPY --from=native /ffmpeg/doc/ /usr/share/doc/ffmpeg/
+COPY --from=ffmpeg-build /opt/ffmpeg/bin/ /usr/local/bin/
+COPY --from=ffmpeg-build /opt/ffmpeg/share/doc/ /usr/share/doc/videoq-ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-COPY server.py provision.py provision_audio.py ./
+COPY server.py provision.py provision_audio.py audio_guard.py ./
 COPY security/verify_sqlite.py /app/verify_sqlite.py
 COPY security/fts5-secure-delete.db /app/fts5-secure-delete.db
 COPY security/verify_zlib.py /app/verify_zlib.py
+COPY security/verify_ffmpeg.py /app/verify_ffmpeg.py
 USER 10001:10001
 ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
-    HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 LD_LIBRARY_PATH=/usr/local/lib
+    HOME=/tmp HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1
 RUN ["/usr/local/bin/python", "/app/verify_sqlite.py"]
 RUN ["/usr/local/bin/python", "/app/verify_zlib.py"]
+RUN ["/usr/local/bin/python", "/app/verify_ffmpeg.py"]
 ENTRYPOINT []
 EXPOSE 8080
 CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

@@ -1,0 +1,22 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/worker-ffmpeg-offline-2026-11-17",
+  "author": "VideoQ maintainers",
+  "timestamp": "2026-11-17T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-107696"
+      },
+      "products": [
+        {
+          "@id": "pkg:generic/ffmpeg@9.0.2"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "The checksum-pinned FFmpeg source is compiled with RTSP, SDP and RTP demuxers and RTSP/RTP muxers disabled, and only file/pipe/HTTP(S)/TCP/TLS protocols. The build requires libavformat/rtsp.o to be absent: the vulnerable ff_rtsp_connect implementation is not compiled or linked. verify_ffmpeg.py checks the actual final binary configuration, protocols/demuxers and WAV/MP3/PNG output. Other versions, packages and CVEs are not covered."
+    }
+  ]
+}

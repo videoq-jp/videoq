@@ -1,0 +1,7 @@
+{
+  "expiresAt": "2026-12-05T00:00:00Z",
+  "vex": [
+    "apps/worker/security/python-fips.openvex.json",
+    "apps/worker/security/ffmpeg.openvex.json"
+  ]
+}

@@ -115,9 +115,17 @@ capabilities:
 {{- end -}}
 
 {{- define "inference.vllmAudioVolumes" -}}
+- name: unused-native
+  emptyDir: { sizeLimit: 1Mi }
 - name: vllm-audio
   emptyDir: { sizeLimit: 1Gi }
 - name: vllm-audio-lock
   configMap:
     name: {{ include "inference.fullname" . }}-vllm-audio
+{{- end -}}
+
+{{- define "inference.vllmNativeMasks" -}}
+- { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec, readOnly: true }
+- { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs, readOnly: true }
+- { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/mooncake, readOnly: true }
 {{- end -}}

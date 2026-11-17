@@ -114,9 +114,9 @@ to GHCR and the publisher requires the registry digest to equal the scanned dige
 There is no intermediate tar/zstd conversion, Docker import, or image-store switch.
 The registry client action and binary checksum are pinned.
 
-Trivy scans once, including unfixed HIGH/CRITICAL findings and the complete package
-inventory. Release SBOMs are converted from that JSON report, without a second image
-scan. A failed build, license check or scan prevents archive handoff. Failure reports
+Syft catalogs the complete package inventory once and Grype scans that inventory,
+including unfixed HIGH/CRITICAL findings. Release CycloneDX SBOMs are converted from
+the retained Syft JSON without a second image scan. A failed build, license check or scan prevents archive handoff. Failure reports
 are retained. GPU runtime imports remain enforced as the serving user in both GPU
 Dockerfiles; the CPU gateway also has a container import smoke check.
 
@@ -175,3 +175,36 @@ DB Maintenance CD and Operations remain: current D1 migration and smoke still ru
 inside AWS. Native PostgreSQL recovery code and saved, versioned backup objects are
 retained through recovery review; their presence does not enable a scheduled Neon
 connection. On-premises PostgreSQL/pgvector is unaffected.
+
+The shared `.github/actions/scan-image` action installs Grype 0.122.0 and Syft 1.57.2
+from official releases using committed SHA-256 checksums. It writes `REPORT.grype.json`
+(raw, unsuppressed findings), `REPORT.syft.json` (complete package inventory), and
+`REPORT` (the existing runtime assessors' policy-view schema, marked `Scanner: Grype`).
+The policy view ignores only the Syft `upstream` source hint when comparing binary
+package PURLs; version, architecture and distro still match exactly. Grype kernel
+header matching is explicitly enabled so the existing verified header assessment
+receives all findings. The policy view preserves exact CVE/package/PURL VEX assessments; it never changes
+raw scanner evidence. New or mismatched findings remain blocking. `gate: assess`
+requires the caller's existing runtime evaluator or Operations reporting step;
+application and release scans default to blocking HIGH/CRITICAL, including unfixed.
+Upstream runtime evaluators also reject UNKNOWN. Historical verification evidence
+continues to identify the scanner used when it was collected.
+
+Scanner updates require reviewing both version and checksum pins in
+`.github/scripts/install-security-tools.py`. CLI usage and supported SBOM formats:
+https://oss.anchore.com/docs/reference/grype/cli/ and
+https://oss.anchore.com/docs/reference/syft/cli/.
+
+
+On-prem worker and audio-gateway serving layers use a digest-pinned Wolfi base
+with maintained Python/native packages; canonical Python build stages still
+prepare hash-locked wheels. FFmpeg is built from checksum-pinned 9.0.2 source.
+Worker HTTP(S) range reads and MP3 output remain enabled; RTSP/SDP/RTP are removed.
+The gateway permits file/pipe only. Final-image checks exercise audio and PNG
+output and verify the disabled vulnerable code is not linked. The exact FFmpeg
+CVE assessment does not remove its raw scan finding.
+
+Upstream NVIDIA inspection runs its real import/codec probe with the same empty
+read-only native-library mounts as the chart. The audio startup guard is hashed
+in the manifest and verified at runtime. Applicability requires all of these
+controls; new findings, changed locations or failed runtime proofs still block.

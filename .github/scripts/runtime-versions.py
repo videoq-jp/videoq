@@ -123,7 +123,7 @@ def latest(current, runtime, upgrade, releases):
 def python_images(python):
     return {
         "python_local": image_digest("python", python + "-slim-bookworm"),
-        "python_onprem": image_digest("python", python + "-alpine"),
+        "python_onprem": image_digest("python", python + "-slim-bookworm"),
         "python_lambda": image_digest("public.ecr.aws/lambda/python", ".".join(python.split(".")[:2])),
     }
 
@@ -169,7 +169,7 @@ def validate(data):
             "node_alpine": "node:" + data["node"] + "-alpine@",
             "node_onprem": "node:" + data["node"] + "-alpine@",
             "python_local": "python:" + data["python"] + "-slim-bookworm@",
-            "python_onprem": "python:" + data["python"] + "-alpine@",
+            "python_onprem": "python:" + data["python"] + "-slim-bookworm@",
             "python_lambda": "public.ecr.aws/lambda/python:" + ".".join(data["python"].split(".")[:2]) + "@",
             "uv": "ghcr.io/astral-sh/uv:" + data["uv"] + "@",
         }

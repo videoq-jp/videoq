@@ -138,20 +138,28 @@ jobs:
           digest="${image#"$prefix"}"
           [[ "$digest" =~ ^[a-f0-9]{64}$ ]]
           echo "ref=$image" >> "$GITHUB_OUTPUT"
+      - name: Authenticate the read-only production image scan
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+          DOCKER_CONFIG: ${{ runner.temp }}/ecr-scan-auth
+        run: |
+          registry="${IMAGE%%/*}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
       - name: Scan OS and application packages including unfixed vulnerabilities
         id: scan
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/ecr-scan-auth
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: ${{ steps.image.outputs.ref }}
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          format: json
-          output: trivy.json
-          exit-code: '0'
-          timeout: 15m
+          platform: linux/arm64
+          source: registry:${{ steps.image.outputs.ref }}
+          output: grype.json
+          gate: assess
+      - name: Remove temporary registry credentials
+        if: always()
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/ecr-scan-auth
+        run: rm -rf "$DOCKER_CONFIG"
       - name: Summarize vulnerability identifiers only
         run: python .github/scripts/container-security.py
       - uses: ./.github/actions/report-operations

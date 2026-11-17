@@ -51,5 +51,6 @@
       "sha256": "af15f7d385a6ae2fb35a796fde2138004c8c42c7389090e2addc83e3b3340fd8",
       "size": 360455
     }
-  ]
+  ],
+  "runtimeGuardSha256": "3c7956d948b53579ad7326d5dc76b67187c4c2862ad331ec4d0bdd9e1cf692fe"
 }
