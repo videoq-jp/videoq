@@ -662,7 +662,44 @@ shared maintenance hold; it does not prove Lambda invocations have drained.
 
 A complete read-only production preview observed 45 migration builds, 151 smoke
 builds and 28 deploy builds, with zero active at that observation. This is a
-point-in-time preview, not a cutover receipt. The full executor still needs to
-invoke this guard at its stage boundaries.
+point-in-time preview, not a cutover receipt. The composed runtime below invokes this guard at its stage boundaries; a
+reviewed operator entry point is still required.
 [Runtime inventory evidence](evidence/d1-resource-build-inventory-2026-11-17.json)
 records the aggregate preview and fixture limits.
+
+## Composed resource runtime
+
+`d1-resource-runtime.cjs` connects all twelve coordinator adapters, private Python
+bridge, native AWS E2E proof, current-state completion and pre-promotion abort
+recovery. Construction contacts no provider and defaults to disabled. Claim,
+advance, completion and abort use the same pinned executor/ownership context.
+Enabled construction requires a bounded private Cloudflare token and explicit
+reviewed-runtime/exclusive-executor and in-flight-worker assertions; it does not
+discover credentials or supply permissive production callbacks.
+
+Stage boundaries check complete maintenance build inventory and the appropriate
+deployment, queue, API and source/target fence state. Initial bindings must name
+the old source resources before even freezing deployment admission. The private
+bridge permits only the corresponding pending operation and exact saved input.
+Fresh full copy/vector readback is required before promotion. During incremental
+target-unfence, the runtime instead uses durable verified transfer receipts, the
+intact source fence, paused target API and closed admissions. After target writes
+are resumed it verifies target bindings and source/target fences, rather than
+trying to compare live target data to a frozen historical snapshot.
+
+The composed integration exercises real DynamoDB Local ownership transactions
+and real private plan files through all twelve stages, native build registration,
+completion receipt and conditional release. A second scenario aborts after source
+fencing and restores only the old backend/admissions; another refuses an
+unexpected initial DB before any mutation intent. Cloudflare, Lambda, GitHub,
+SQL/vector transfer and native model execution are explicit fixtures in these
+composition scenarios. Existing Python tests separately cover SQLite/files and
+HTTP-shaped provider transport behavior. This is not provider rehearsal or RAG
+quality evidence.
+
+Local validation: 632 Node tests and 15 DynamoDB Local integration tests passed.
+Production operator entry point, real exclusive-lock/drain assertions, canonical
+configuration handoff, post-promotion forward recovery and actual isolated
+provider rehearsal remain outstanding. The production hold remains disabled.
+[Composition evidence](evidence/d1-resource-runtime-2026-11-17.json) distinguishes
+implemented wiring from unexecuted production behavior.
