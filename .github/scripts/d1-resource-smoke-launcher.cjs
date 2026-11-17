@@ -35,9 +35,9 @@ function createResourceSmokeLauncher({aws,journal,proof,run,source,executorSha25
  async function reconcile(plan,c){
   const found=[];let token;const seen=new Set();
   for(let page=0;page<20;page++){
-   await journal.assertExecutor();const response=await aws('codebuild','ListBuildsForProject',{projectName:PROJECT,sortOrder:'DESCENDING',...(token?{nextToken:token}:{})});
+   await journal.assertExecutor();const response=await aws('codebuild','ListBuildsForProject',{projectName:PROJECT,...(token?{nextToken:token}:{})});
    if(!Array.isArray(response.ids)||response.ids.length>100)throw Error('RESOURCE_SMOKE_BUILD_INVENTORY_REQUIRED');
-   for(const id of response.ids){const arn=id.startsWith('arn:')?id:'arn:aws:codebuild:ap-northeast-1:257240362763:build/'+id;if(await buildMatches(arn,c.input,plan))found.push(arn);}
+   for(const id of response.ids){if(typeof id!=='string')throw Error('RESOURCE_SMOKE_BUILD_INVENTORY_REQUIRED');const arn=id.startsWith('arn:')?id:'arn:aws:codebuild:ap-northeast-1:257240362763:build/'+id;if(await buildMatches(arn,c.input,plan))found.push(arn);}
    token=response.nextToken;if(!token)break;if(typeof token!=='string'||seen.has(token)||page===19)throw Error('RESOURCE_SMOKE_BUILD_INVENTORY_INCOMPLETE');seen.add(token);
   }
   if(found.length!==1)throw Error('RESOURCE_SMOKE_START_RECONCILIATION_REQUIRED');

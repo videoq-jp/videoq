@@ -2,7 +2,7 @@
   "date": "2026-11-17",
   "scope": "disabled owned native CodeBuild launch and registration",
   "nodeTests": {
-    "passed": 612,
+    "passed": 613,
     "failed": 0
   },
   "checks": [
@@ -14,7 +14,8 @@
     "bounded incomplete inventory refusal",
     "stable fixed production Worker bindings before and after E2E",
     "native pending/failed/successful distinction",
-    "real DynamoDB registration transactions and post-verification lookup"
+    "real DynamoDB registration transactions and post-verification lookup",
+    "provider-compatible pagination beyond 100 builds"
   ],
   "productionBuildStarted": false,
   "productionIamApplied": false,
@@ -24,5 +25,11 @@
     "passed": 10,
     "failed": 0
   },
-  "e2eAdapterImplemented": true
+  "e2eAdapterImplemented": true,
+  "readOnlyProductionInventoryPreview": {
+    "project": "videoq-db-smoke-prod",
+    "firstPageCount": 100,
+    "hasContinuation": true,
+    "completeInventory": false
+  }
 }

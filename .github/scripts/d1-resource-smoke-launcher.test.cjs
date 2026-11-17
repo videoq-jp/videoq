@@ -7,7 +7,7 @@ function fixture(options={}){
  let row={execution_arn:{S:'arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run},source_sha:{S:source},kind:{S:'d1-resource-hold'},resource_phase:{S:'holding'},release_requested:{BOOL:false},resource_executor_sha256:{S:executorSha256},resource_revision:{N:'1'}},build,owned=true;
  const input={projectName:'videoq-db-smoke-prod',sourceVersion:'immutable',idempotencyToken:plan.nativePlan.actionId,environmentVariablesOverride:[{name:'VIDEOQ_D1_RESOURCE_ACTION_ID',value:plan.nativePlan.actionId,type:'PLAINTEXT'},{name:'VIDEOQ_D1_RESOURCE_PLAN_SHA256',value:resourceDigest(plan),type:'PLAINTEXT'}]};
  const journal={assertExecutor:async()=>{if(!owned)throw Error('RESOURCE_EXECUTOR_LOST');},assertPending:async p=>assert.deepEqual(p,{step:'verify-e2e',planSha256:resourceDigest(plan)}),inspect:async()=>({steps:[{step:'verify-e2e',state:'verified',planSha256:resourceDigest(plan)}]})};
- const proof={launchInput:async()=>structuredClone(input),status:async()=>({state:'pending'}),matchesBuild:async()=>build?.sourceVersion===input.sourceVersion&&input.environmentVariablesOverride.every(v=>build.environment.environmentVariables.some(w=>resourceDigest(v)===resourceDigest(w)))};
+ const proof={launchInput:async()=>structuredClone(input),status:async()=>({state:'pending'}),matchesBuild:async(_plan,buildArn)=>buildArn===arn&&build?.sourceVersion===input.sourceVersion&&input.environmentVariablesOverride.every(v=>build.environment.environmentVariables.some(w=>resourceDigest(v)===resourceDigest(w)))};
  const aws=async(service,command,arg)=>{
   calls.push({service,command,arg});
   if(command==='GetItem')return{Item:structuredClone(row)};
@@ -23,7 +23,11 @@ function fixture(options={}){
    if(options.lostStart)throw Error('sensitive start response');return{build:{arn}};
   }
   if(command==='BatchGetBuilds')return{builds:build?[structuredClone(build)]:[]};
-  if(command==='ListBuildsForProject')return{ids:build?[arn]:[],...(options.paginationLoop?{nextToken:'repeat'}:{})};
+  if(command==='ListBuildsForProject'){
+   assert.equal(Object.hasOwn(arg,'sortOrder'),false);
+   if(options.pages){if(!arg.nextToken)return{ids:Array.from({length:100},(_,i)=>'videoq-db-smoke-prod:00000000-0000-0000-0000-'+String(i).padStart(12,'0')),nextToken:'second'};assert.equal(arg.nextToken,'second');return{ids:[arn]};}
+   return{ids:build?[arn]:[],...(options.paginationLoop?{nextToken:'repeat'}:{})};
+  }
   throw Error('Unexpected '+command);
  };
  const launcher=createResourceSmokeLauncher({aws,journal,proof,run,source,executorSha256,enabled:options.enabled!==false});
@@ -54,4 +58,8 @@ test('disabled launcher and changed action refuse mutation; incomplete inventory
 test('read-only observation waits for registration and completed journal can locate owned build',async()=>{
  const f=fixture();assert.deepEqual(await f.launcher.observe(f.plan),{state:'not-started'});assert.equal(f.calls.filter(c=>c.command==='StartBuild').length,0);
  await f.launcher.advance(f.plan);const count=f.calls.filter(c=>c.command==='TransactWriteItems').length;assert.deepEqual(await f.launcher.observe(f.plan),{state:'pending'});assert.equal(await f.launcher.readBuild(f.plan),arn);assert.equal(f.calls.filter(c=>c.command==='TransactWriteItems').length,count);
+});
+
+test('ambiguous start is reconciled beyond 100 builds using provider-compatible un-sorted pagination',async()=>{
+ const f=fixture({lostStart:true,pages:true});await assert.rejects(f.launcher.advance(f.plan),/START_RECONCILIATION/);assert.equal((await f.launcher.advance(f.plan)).buildArn,arn);const pages=f.calls.filter(c=>c.command==='ListBuildsForProject');assert.equal(pages.length,2);assert.equal(pages[0].arg.nextToken,undefined);assert.equal(pages[1].arg.nextToken,'second');assert.equal(f.calls.filter(c=>c.command==='StartBuild').length,1);
 });

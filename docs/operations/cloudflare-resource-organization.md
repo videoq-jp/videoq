@@ -575,3 +575,14 @@ The latter exercises the real registration transactions, lost write response,
 reentry without restart, post-verification lookup and changed shared ownership.
 Cloudflare/CodeBuild transports in these checks are explicit fixtures. Production
 factory wiring, recovery and real provider rehearsal remain outstanding.
+
+### Native build inventory pagination
+
+Reconciliation omits `sortOrder` on every `ListBuildsForProject` request. AWS
+rejects an explicit order once a project has more than 100 builds; the default
+order is descending. The first read-only page of the actual smoke project on
+2026-11-17 contained 100 IDs and a continuation token, so this is a live
+compatibility requirement. A fixture locates the one matching owned build on
+the second page without starting another build. Full inventory is still bounded
+and incomplete or repeated pagination refuses registration. See the
+[AWS API reference](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ListBuildsForProject.html).
