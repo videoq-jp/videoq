@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-17",
+  "scope": "local operator composition and concurrent context publication",
+  "nodeTests": {
+    "passed": 671,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "entryPointImplemented": true,
+  "defaultEnabled": false,
+  "productionOperatorExecuted": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "operator composition test substitutes cloud, authentication and wrapper dependencies",
+    "existing DDB integration exercises real transactions and kernel keeper; cloud and model calls remain fixtures",
+    "canonical configuration handoff, forward recovery and real provider rehearsal remain required before enabling production hold"
+  ]
+}

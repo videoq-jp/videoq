@@ -889,3 +889,32 @@ source writes on abort. Cloud provider/SQL-vector transport/model scenarios
 remain explicit fixtures; production hold activation and provider rehearsal have
 not occurred. [Barrier evidence](evidence/d1-resource-worker-barrier-2026-11-17.json)
 records these scopes and the remaining gates.
+## Local resource operator entry
+
+`run-d1-resource-operation.cjs` composes the existing private context store,
+reviewed-source/platform preflight, scoped AWS transport, fixed GitHub workflow
+and Cloudflare Worker transports, and the kernel-lock runtime wrapper. It is
+disabled unless `VIDEOQ_D1_RESOURCE_OPERATOR=true`; it rejects GitHub Actions
+and PostgreSQL admin credential environments. This flag does not enable the
+AWS resource-hold feature, which remains disabled pending the release gates.
+
+The exact arguments are `--action <initialize|claim|advance|complete|abort>
+--run <32-hex-id> --source <40-hex-reviewed-sha> --directory <absolute-private-root>`.
+Each invocation performs one requested action. `initialize` only publishes the
+private capability after confirming a live, unclaimed, matching hold. Other
+actions require the original context before credential discovery; a missing
+context never generates a replacement capability. An `advance` may report
+pending progress and does not loop or automatically retry a failed mutation.
+
+The operator verifies the clean canonical checkout before authentication, pins
+the compiled execution definition and reviewed smoke bundle, and compares both
+project and platform hashes with the private context. Runtime preflight repeats
+the source/platform checks under the actual coordinator lock. Secrets remain
+in parent memory and the public result contains only run/source/action and
+bounded progress labels. It never dumps private plans or provider responses.
+
+This entry is not evidence of a provider rehearsal or production cutover.
+Canonical configuration handoff, post-promotion forward recovery, ambiguous
+export/import reconciliation, and isolated provider/E2E rehearsal remain
+release gates before enabling the production resource hold. Do not invoke a
+production action merely because local composition tests pass.
