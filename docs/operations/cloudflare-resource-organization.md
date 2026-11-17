@@ -1079,3 +1079,41 @@ Five new tests cover the complete proof through actual private-file transport
 serialization and provider fixtures, plus denial cases. The full Node suite
 passed 691 tests. No isolated Lambda was created, invoked or certified by these
 unit tests.
+
+## Isolated API smoke runner composition
+
+`isolated-smoke-runner.cjs` implements the synthetic API pipeline: health/ready,
+scoped account creation and sign-in, reviewed MP4 upload, confirmation, up to
+12 minutes of polling the same video, completed transcript and scene checks,
+a cited answer, and both course-scoped and unscoped complete SSE streams. A
+scoped streamed answer also requires a persisted chat log. It cannot disable
+AI answer verification or accept the production upload bucket.
+
+The composition uses the concrete storage/store/AWS guards and first verifies
+a clean canonical-main-history source checkout. Before consequential actions,
+it repeats the resource checks and compares the pinned image with safe metadata
+from all three existing production workers. `isolated-smoke-image.cjs` requests
+only name, role, state/update status, architecture/package and resolved image
+URI. It does not retrieve environment values or a code-download URL. An actual
+read-only preview on 2026-11-17 confirmed deployed image digest
+`018bd5d6beebf21f0b19e3ac0689d2d6dc6074648635a2270626f33d2f405a3a`
+on all three workers. This is a current deployment baseline, not a cryptographic
+source attestation.
+
+Synthetic cleanup preserves the existing signed-identity predicates. Processing
+videos are never force-deleted; a previous incomplete run blocks another upload.
+Mutations are not blindly retried. Reports contain fixed stage/check labels,
+not credentials, cookies, transcripts, provider bodies or answers. Stage callbacks
+receive labels only. `cleanupScope: synthetic-data` does not mean that cloud
+resources were removed; infrastructure teardown is a separate provisioner task.
+
+The full Node suite passed 700 tests, including nine new runner/image/composition
+tests. API, model, AWS and metadata responses in runner tests are fixtures; the
+MP4 and stream verifier are the reviewed real implementations, while the test
+SSE parser is a fixture. Production smoke/browser behavior is unchanged.
+
+This is a callable local library composition, not a provisioned or completed
+cloud E2E. A command-line caller/private AWS pin loader, actual resource and
+credential provisioning, model authorization, execution and infrastructure
+teardown remain outstanding. The existing production execution role remains
+shared as described above.

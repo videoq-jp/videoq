@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-17",
+  "scope": "callable isolated API pipeline composition and read-only deployed-image baseline",
+  "nodeTests": {
+    "passed": 700,
+    "failed": 0
+  },
+  "newTests": 9,
+  "deployedImageBaseline": {
+    "observedAt": "2026-11-17T03:34:26.800Z",
+    "scope": "deployed worker metadata only; not code provenance or E2E",
+    "imageDigest": "018bd5d6beebf21f0b19e3ac0689d2d6dc6074648635a2270626f33d2f405a3a",
+    "matchesDeployedWorkerImage": true
+  },
+  "runnerProviderResponses": "fixtures",
+  "runnerSseParser": "fixture",
+  "streamVerifier": "real production-stream-proof implementation",
+  "realCloudE2EExecuted": false,
+  "providerMutationExecuted": false,
+  "productionSmokeChanged": false,
+  "resourceTeardownImplemented": false,
+  "remaining": [
+    "CLI/private AWS pin loading",
+    "real environment and credential provisioning",
+    "model authorization, actual video pipeline execution and resource teardown"
+  ]
+}
