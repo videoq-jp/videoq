@@ -194,3 +194,17 @@ Scanner updates require reviewing both version and checksum pins in
 `.github/scripts/install-security-tools.py`. CLI usage and supported SBOM formats:
 https://oss.anchore.com/docs/reference/grype/cli/ and
 https://oss.anchore.com/docs/reference/syft/cli/.
+
+
+On-prem worker and audio-gateway serving layers use a digest-pinned Wolfi base
+with maintained Python/native packages; canonical Python build stages still
+prepare hash-locked wheels. FFmpeg is built from checksum-pinned 9.0.2 source.
+Worker HTTP(S) range reads and MP3 output remain enabled; RTSP/SDP/RTP are removed.
+The gateway permits file/pipe only. Final-image checks exercise audio and PNG
+output and verify the disabled vulnerable code is not linked. The exact FFmpeg
+CVE assessment does not remove its raw scan finding.
+
+Upstream NVIDIA inspection runs its real import/codec probe with the same empty
+read-only native-library mounts as the chart. The audio startup guard is hashed
+in the manifest and verified at runtime. Applicability requires all of these
+controls; new findings, changed locations or failed runtime proofs still block.

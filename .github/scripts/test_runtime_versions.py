@@ -24,7 +24,7 @@ class RuntimeTests(unittest.TestCase):
         self.python_data["python_minimum"] = "3.12"
         for key, repo, tag in [
             ("python_local", "python", "3.14.9-slim-bookworm"),
-            ("python_onprem", "python", "3.14.9-alpine"),
+            ("python_onprem", "python", "3.14.9-slim-bookworm"),
             ("python_lambda", "public.ecr.aws/lambda/python", "3.14"),
         ]:
             self.python_data["images"][key] = repo + ":" + tag + "@sha256:" + "0" * 64
@@ -51,13 +51,13 @@ class RuntimeTests(unittest.TestCase):
     def test_python_selects_latest_complete_image_set_not_latest_interpreter(self):
         previous = copy.deepcopy(self.python_data)
         def digest(repo, tag):
-            if tag == "3.14.11-alpine":
+            if tag == "3.14.11-slim-bookworm":
                 raise runtime.MissingImage("Not yet published")
             return self.pinned_image(repo, tag)
         with patch.object(runtime, "request", return_value=self.python_releases("3.14.11", "3.14.10")), patch.object(runtime, "image_digest", side_effect=digest):
             result = runtime.discover(runtime.ROOT, self.python_data, "python", False)
         self.assertEqual(result["python"], "3.14.10")
-        self.assertIn("3.14.10-alpine@sha256:", result["images"]["python_onprem"])
+        self.assertIn("3.14.10-slim-bookworm@sha256:", result["images"]["python_onprem"])
         self.assertEqual(self.python_data, previous)
 
     def test_python_pending_current_patch_still_refreshes_current_digests(self):

@@ -60,7 +60,7 @@ def test_corrupt_or_missing_cached_wheel_fails_before_install(tmp_path):
         audio.provision(manifest, cache, destination)
 
 
-@pytest.mark.parametrize('path', ['../escape.py', '/escape.py', 'av/../../escape.py', 'av\\escape.py', 'hook.pth', 'av.data/scripts/run'])
+@pytest.mark.parametrize('path', ['../escape.py', '/escape.py', 'av/../../escape.py', 'av\\escape.py', 'hook.pth', 'av.data/scripts/run', 'sitecustomize.py', 'usercustomize.py'])
 def test_rejects_wheel_traversal_startup_hooks_and_scripts(tmp_path, path):
     manifest, cache, destination, _ = fixture(tmp_path, (path, 'unsafe'))
     with pytest.raises(ValueError):
@@ -90,3 +90,21 @@ def test_manifest_cannot_replace_engine_or_use_unreviewed_sources(tmp_path):
         mutate(value)
         with pytest.raises(ValueError):
             audio.validate_manifest(value)
+
+
+def test_guard_change_reuses_identical_verified_wheels_from_previous_cache(tmp_path):
+    manifest, cache, destination, directory = fixture(tmp_path)
+    old = directory.with_name('previous-reviewed-lock')
+    directory.rename(old)
+    audio.provision(manifest, cache, destination, download=False)
+    assert (destination / 'sitecustomize.py').read_bytes() == Path(audio.__file__).with_name('audio_guard.py').read_bytes()
+
+
+def test_guard_hash_mismatch_fails_before_install(tmp_path):
+    manifest, cache, destination, _ = fixture(tmp_path)
+    value = json.loads(manifest.read_text())
+    value['runtimeGuardSha256'] = '0' * 64
+    manifest.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='guard'):
+        audio.provision(manifest, cache, destination)
+    assert not destination.exists()

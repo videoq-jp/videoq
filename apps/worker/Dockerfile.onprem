@@ -1,5 +1,21 @@
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b AS ffmpeg-build
+RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev openssl-4.0-dev pkgconf
+ARG FFMPEG_VERSION=9.0.2
+ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o /tmp/ffmpeg.tar.xz \
+    && echo "$FFMPEG_SHA256  /tmp/ffmpeg.tar.xz" | sha256sum -c - \
+    && tar -xJf /tmp/ffmpeg.tar.xz -C /tmp \
+    && cd "/tmp/ffmpeg-${FFMPEG_VERSION}" \
+    && ./configure --prefix=/opt/ffmpeg --disable-autodetect --disable-doc --disable-debug \
+       --disable-ffplay --disable-demuxer=rtsp,sdp,rtp --disable-muxer=rtsp,rtp,rtp_mpegts --disable-protocols \
+       --enable-protocol=file,pipe,http,https,tcp,tls --enable-openssl --enable-libmp3lame --enable-version3 --enable-zlib --disable-shared --enable-static --enable-small \
+    && make -j2 && test ! -e libavformat/rtsp.o && make install \
+    && mkdir -p /opt/ffmpeg/share/doc \
+    && cp COPYING.LGPLv3 /opt/ffmpeg/share/doc/LICENSE \
+    && printf 'Source: https://ffmpeg.org/releases/ffmpeg-%s.tar.xz\nSHA256: %s\n' "$FFMPEG_VERSION" "$FFMPEG_SHA256" > /opt/ffmpeg/share/doc/source
+
 FROM ghcr.io/astral-sh/uv:0.13.8@sha256:5cc1805e2426484abca4ad46ea783bab281fdb225fd82d8ce6d66a81254bac85 AS uv
-FROM python:3.14.10-alpine@sha256:5862d971d1f0ae26b258cefa4e893556b1d3aba81bd2ff30888704ad378bab67 AS base
+FROM python:3.14.10-slim-bookworm@sha256:3fe1a0b6c2d6b2ebb572906cdabeca75aeb558c0c17db5ffefbcf8094871c32b AS base
 
 # BEGIN managed pip
 ARG PIP_VERSION=26.2.2
@@ -10,28 +26,36 @@ RUN python -c 'import hashlib,os,pathlib,sys,urllib.request; b=urllib.request.ur
     && rm "/tmp/pip-${PIP_VERSION}-py3-none-any.whl" \
     && python -c 'import os,pip,sys; sys.exit(0 if pip.__version__==os.environ["PIP_VERSION"] else 1)'
 # END managed pip
-RUN apk upgrade --no-cache zlib && apk add --no-cache ffmpeg ca-certificates libstdc++
-
 FROM base AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 ENV UV_PYTHON_DOWNLOADS=never
-# Export reviewed wheels and install into a pip-free virtual environment.
 RUN uv export --quiet --locked --no-dev --no-emit-project --format requirements-txt --output-file /tmp/requirements.txt \
     && uv venv --python /usr/local/bin/python /opt/venv \
     && uv pip install --python /opt/venv/bin/python --require-hashes --only-binary=:all: -r /tmp/requirements.txt
 
-FROM base AS runtime
-# uv and pip are build tools and are not required by the poller.
-RUN python -m pip uninstall --yes pip \
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b AS runtime
+# Patched glibc, C++ runtime and SQLite come from one maintained distribution.
+ARG PYTHON_VERSION=3.14.10
+RUN apk add --no-cache python-3.14 zlib sqlite-libs libstdc++ lame-libs \
+    && mkdir -p /usr/local/bin \
+    && ln -s /usr/bin/python3.14 /usr/local/bin/python \
+    && ln -s /usr/bin/python3.14 /usr/local/bin/python3 \
+    && ln -s /usr/bin/python3.14 /usr/local/bin/python3.14 \
+    && python -c "import platform; assert platform.python_version() == '${PYTHON_VERSION}'" \
     && adduser -D -u 10001 worker
 COPY --from=dependencies /opt/venv /opt/venv
+COPY --from=ffmpeg-build /opt/ffmpeg/bin/ /usr/local/bin/
+COPY --from=ffmpeg-build /opt/ffmpeg/share/doc/ /usr/share/doc/videoq-ffmpeg/
 WORKDIR /app
 COPY worker_python ./worker_python
 COPY scripts/run_worker.py ./scripts/run_worker.py
+COPY security/verify_ffmpeg.py /app/verify_ffmpeg.py
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-USER worker
+USER 10001:10001
 ENV DEPLOYMENT_EDITION=onprem
 ENV PATH="/opt/venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+RUN ["python", "/app/verify_ffmpeg.py"]
+RUN ["python", "-c", "import ssl, sqlite3, worker_python.lambda_handler; assert sqlite3.sqlite_version == '3.54.1'"]
 CMD ["python", "scripts/run_worker.py"]

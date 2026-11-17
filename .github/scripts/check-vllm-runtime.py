@@ -3,9 +3,11 @@
 Always emit a machine-readable result, including when optional imports fail.
 """
 import contextlib
+import hashlib
 import importlib
 import importlib.metadata
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -90,6 +92,37 @@ def inspect_runtime():
         return {"decodedSamples": len(decoded), "rate": rate}
 
     check("audioDecodeAndResample", decode_audio)
+
+    def audio_security():
+        import av
+        import sitecustomize
+        guard = audio_root / 'sitecustomize.py'
+        receipt = json.loads((audio_root / '.videoq-audio.json').read_text())
+        if Path(sitecustomize.__file__).resolve() != guard or hashlib.sha256(guard.read_bytes()).hexdigest() != receipt['manifest']['runtimeGuardSha256']:
+            raise ValueError('Audio startup guard identity changed')
+        if getattr(av.open, '__videoq_audio_guard__', None) != 'local-audio-only-v1':
+            raise ValueError('PyAV must enforce the reviewed local-audio guard')
+        try:
+            av.open('rtsp://127.0.0.1/rejected')
+        except ValueError as error:
+            if 'network URLs' not in str(error):
+                raise
+        else:
+            raise ValueError('RTSP input was not rejected before network I/O')
+        return {'guardSha256': receipt['manifest']['runtimeGuardSha256'], 'rtspRejected': True}
+
+    check('security.audio', audio_security)
+
+    def native_masks():
+        paths = ['/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs', '/usr/local/lib/python3.12/dist-packages/mooncake']
+        for path in paths:
+            if not Path(path).is_dir() or list(Path(path).iterdir()):
+                raise ValueError(f'Unused native library directory is not masked: {path}')
+            if os.access(path, os.W_OK):
+                raise ValueError(f'Native mask must be read-only: {path}')
+        return paths
+
+    check('security.maskedNative', native_masks)
 
     def registry():
         from vllm.model_executor.models import ModelRegistry

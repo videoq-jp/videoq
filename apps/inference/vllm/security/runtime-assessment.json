@@ -2,10 +2,10 @@
   "status": "not_affected",
   "owner": "VideoQ maintainers",
   "reviewer": "Codex applicability review",
-  "reviewedAt": "2026-11-14T16:17:25.462898+00:00",
+  "reviewedAt": "2026-11-17T07:25:54.882956+00:00",
   "expiresAt": "2026-12-10T21:05:42.246607+00:00",
   "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
-  "scope": "Only the exact-image, numeric UID 10001, read-only VideoQ vLLM serving workloads rendered from the reviewed NVIDIA profiles; not a blanket upstream image approval. No image changes, installer operations, arbitrary hooks, downloaded Python model code or host-kernel claims. Includes the reviewed RTX 4090 profiles, their fixed memory fractions and eager configuration; site overrides still require review.",
+  "scope": "Only the exact-image, numeric UID 10001, read-only VideoQ vLLM serving workloads rendered from the reviewed NVIDIA profiles; not a blanket upstream image approval. No image changes, installer operations, arbitrary hooks, downloaded Python model code or host-kernel claims. Includes the reviewed RTX 4090 profiles, their fixed memory fractions and eager configuration; site overrides still require review. Native video/Mooncake directories are masked by verified empty read-only mounts; the audio overlay includes a manifest-hashed local-input startup guard.",
   "references": [
     "apps/inference/vllm/security/kernel-cve-review.json",
     "https://dev.gnupg.org/T7906.html",
@@ -39,7 +39,7 @@
     "setuptools": "80.10.2",
     "urllib3": "2.8.0"
   },
-  "audioLockSha256": "938683b76e957d9fb3c484844684c085f66bc090d6affb4a8c65ef8cdc01c324",
+  "audioLockSha256": "ef25496313304c32b8aec4a48caffd6720e32b1a0780dace6bf241ef54557069",
   "inventoryProbeSourceSha256": "67cbbc9c2dd2cf5ec225b073a24696e847e240f6337c3e3553c7fb8d9b0e7eb3",
   "nativeInventoryReferenceSha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
   "allowedArgs": [
@@ -1099,6 +1099,150 @@
         "modulePath": "/opt/videoq-audio/dns/__init__.py",
         "check": "security.dnspython"
       }
+    },
+    {
+      "type": "binary",
+      "origin": "masked-native",
+      "status": "not_affected",
+      "vulnerabilities": [
+        "CVE-2026-107695",
+        "CVE-2026-107696",
+        "CVE-2026-52296",
+        "CVE-2026-52297",
+        "CVE-2026-64830",
+        "CVE-2026-64831",
+        "CVE-2026-64832",
+        "CVE-2026-64833",
+        "CVE-2026-64834",
+        "CVE-2026-64835",
+        "CVE-2026-65703",
+        "CVE-2026-65704",
+        "CVE-2026-65705",
+        "CVE-2026-65706",
+        "CVE-2026-66036",
+        "CVE-2026-66039",
+        "CVE-2026-66040",
+        "CVE-2026-66041",
+        "CVE-2026-70628",
+        "CVE-2026-70632",
+        "CVE-2026-8461",
+        "CVE-2026-96611"
+      ],
+      "packages": {
+        "ffmpeg": {
+          "version": "8.1.1",
+          "purl": "pkg:generic/ffmpeg@8.1.1",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101"
+          ]
+        }
+      },
+      "impactStatement": "These exact native libraries remain visible in the upstream-image scan but are absent from the serving filesystem namespace: mandatory empty, read-only volume mounts mask their directories. The workload evaluator checks every mount and the actual-image runtime probe checks the directories are empty and read-only. Any changed location, removed/writable mask or different image invalidates the assessment. This is not an upstream patch claim.",
+      "references": [
+        "charts/videoq-inference/templates/_helpers.tpl",
+        ".github/scripts/check-vllm-runtime.py"
+      ]
+    },
+    {
+      "type": "go-module",
+      "origin": "masked-native",
+      "status": "not_affected",
+      "vulnerabilities": [
+        "GHSA-2v4p-qf9q-27wj",
+        "GHSA-vp52-pcj8-j9qc",
+        "GO-2026-4970",
+        "GO-2026-5026",
+        "GO-2026-5037",
+        "GO-2026-5038",
+        "GO-2026-5942",
+        "GO-2026-5970",
+        "GO-2026-5972",
+        "GO-2026-6088",
+        "GO-2026-6089",
+        "GO-2026-6090",
+        "GO-2026-6107",
+        "GO-2026-6603",
+        "GO-2026-6604",
+        "GO-2026-6605",
+        "GO-2026-6607",
+        "GO-2026-6608",
+        "GO-2026-6609",
+        "GO-2026-6610",
+        "GO-2026-6611",
+        "GO-2026-6612",
+        "GO-2026-6613",
+        "GO-2026-6617",
+        "GO-2026-6629",
+        "GO-2026-6859",
+        "GO-2026-6860"
+      ],
+      "packages": {
+        "go.etcd.io/etcd/client/pkg/v3": {
+          "version": "v3.5.21",
+          "purl": "pkg:golang/go.etcd.io/etcd/client/pkg/v3@v3.5.21",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/mooncake/libetcd_wrapper.so"
+          ]
+        },
+        "golang.org/x/net": {
+          "version": "v0.55.0",
+          "purl": "pkg:golang/golang.org/x/net@v0.55.0",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/mooncake/libetcd_wrapper.so"
+          ]
+        },
+        "golang.org/x/text": {
+          "version": "v0.37.0",
+          "purl": "pkg:golang/golang.org/x/text@v0.37.0",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/mooncake/libetcd_wrapper.so"
+          ]
+        },
+        "google.golang.org/grpc": {
+          "version": "v1.82.1",
+          "purl": "pkg:golang/google.golang.org/grpc@v1.82.1",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/mooncake/libetcd_wrapper.so"
+          ]
+        },
+        "stdlib": {
+          "version": "go1.25.10",
+          "purl": "pkg:golang/stdlib@1.25.10",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/mooncake/libetcd_wrapper.so"
+          ]
+        }
+      },
+      "impactStatement": "These exact native libraries remain visible in the upstream-image scan but are absent from the serving filesystem namespace: mandatory empty, read-only volume mounts mask their directories. The workload evaluator checks every mount and the actual-image runtime probe checks the directories are empty and read-only. Any changed location, removed/writable mask or different image invalidates the assessment. This is not an upstream patch claim.",
+      "references": [
+        "charts/videoq-inference/templates/_helpers.tpl",
+        ".github/scripts/check-vllm-runtime.py"
+      ]
     }
   ],
   "runtimeEnv": {
@@ -1106,5 +1250,32 @@
       "TORCHDYNAMO_DISABLE": "1"
     }
   },
-  "runtimeProbeSourceSha256": "a27f65b2029d19c79d90e96ad427ef69c1e7411cc1223125adbfde165810907b"
+  "runtimeProbeSourceSha256": "d99af71ba9d78201cde4cac183e902eae0e0c7e3e0e5b42ef833cf40028e6052",
+  "maskedNativeDirectories": [
+    "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec",
+    "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs",
+    "/usr/local/lib/python3.12/dist-packages/mooncake"
+  ],
+  "audioGuardSha256": "3c7956d948b53579ad7326d5dc76b67187c4c2862ad331ec4d0bdd9e1cf692fe",
+  "audioAssessments": [
+    {
+      "vulnerability": "CVE-2026-107696",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "The locked, read-only audio overlay installs a hash-verified startup guard that rejects network URLs and limits PyAV protocols and formats to local MP3/WAV/FLAC. The actual runtime probe verifies the loaded guard identity and rejection of RTSP before network I/O. This is a configuration mitigation, not an FFmpeg patch claim.",
+      "references": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-107696",
+        "apps/inference/whisper/audio_guard.py"
+      ]
+    }
+  ]
 }

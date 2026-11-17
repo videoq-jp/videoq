@@ -43,6 +43,25 @@ function inspectAudio(report, manifestBytes, receipt, reference, directory) {
   }
   return {lockSha256: receipt.lockSha256, packages: expected, blocking};
 }
+function assessAudioRuntime(result, policy, runtime) {
+  assert.equal(runtime?.status, 'passed');
+  const audioProof = runtime?.checks?.['security.audio'];
+  assert.equal(audioProof?.status, 'passed');
+  assert.equal(audioProof.details.guardSha256, policy.audioGuardSha256);
+  assert.equal(audioProof.details.rtspRejected, true);
+  result.accepted = [];
+  result.blocking = result.blocking.filter(finding => {
+    const assessment = policy.audioAssessments.find(a => a.vulnerability === finding.VulnerabilityID
+      && a.package === finding.PkgName && a.version === finding.InstalledVersion && a.purl === finding.PkgIdentifier?.PURL
+      && JSON.stringify(a.locations) === JSON.stringify(finding.Locations));
+    if (assessment) {
+      assert.ok(assessment.impactStatement && assessment.references.length);
+      result.accepted.push(finding);
+    }
+    return !assessment;
+  });
+  return result;
+}
 if (require.main === module) {
   const [raw, reference, output, audioRaw, lock, directory, nativeFile, runtimeFile] = process.argv.slice(2);
   assert.ok(raw && reference && output && audioRaw && lock && directory && nativeFile && runtimeFile,
@@ -65,7 +84,8 @@ if (require.main === module) {
     JSON.parse(readFileSync(nativeFile, 'utf8')), profiles, new Date(), JSON.parse(readFileSync(runtimeFile, 'utf8'))));
   result.audio = inspectAudio(JSON.parse(readFileSync(audioRaw, 'utf8')), readFileSync(lock),
     JSON.parse(readFileSync(resolve(directory, '.videoq-audio.json'), 'utf8')), reference, directory);
+  result.audio = assessAudioRuntime(result.audio, policy, JSON.parse(readFileSync(runtimeFile, 'utf8')));
   writeFileSync(output, JSON.stringify(result, null, 2) + '\n');
   assert.equal(result.blocking.length + result.audio.blocking.length, 0, 'Unassessed upstream vLLM or audio vulnerabilities');
 }
-module.exports = {inspect, inspectAudio};
+module.exports = {inspect, inspectAudio, assessAudioRuntime};

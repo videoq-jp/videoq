@@ -1,5 +1,27 @@
 # Upstream vLLM applicability review
 
+## Enforced native-library isolation and local audio
+
+Grype catalogs native FFmpeg libraries and Go components embedded in Mooncake
+that were not represented by the earlier scan. The chart now mounts empty,
+read-only directories over PyNvVideoCodec, OpenCV's bundled native libraries and
+Mooncake. Their code is absent from the serving filesystem namespace. These
+profiles do not support video inputs or Mooncake KV transfer. The assessment
+requires exact package/CVE/PURL/file locations, every mandatory mount, no other
+container that can write the mask volume, and an actual-image probe proving the
+directories are empty and read-only. Findings remain visible in the raw scan.
+
+The audio volume also contains a trusted `sitecustomize.py`, copied only from
+`audio_guard.py` after its hash is checked against the wheel manifest. It rejects
+network URLs and custom I/O callbacks and forces PyAV protocols/formats to local
+MP3/WAV/FLAC, covering the RTSP redirect path in CVE-2026-107696. A runtime proof
+must verify the loaded guard hash, rejection before network I/O and successful
+WAV decoding. A changed guard, writable/missing mount, library location, CVE or
+package version prevents the corresponding assessment. No upstream patch or
+zero-raw-findings claim is made. The existing short expiry still applies.
+
+Historical counts and verification records below describe their original scans.
+
 VideoQ uses the unmodified `vllm/vllm-openai` v0.33.0 Linux amd64 image, pinned
 by its platform digest in the inference chart. No VideoQ vLLM image is built or
 published. Four upstream audio wheels and patched dnspython 2.9.2 are locked by URL, version, size and SHA-256

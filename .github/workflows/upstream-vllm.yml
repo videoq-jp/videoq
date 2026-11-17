@@ -59,6 +59,9 @@ jobs:
         run: |
           docker run --rm --platform linux/amd64 --network none --user 10001:10001 \
             -e HOME=/tmp -e HF_HUB_OFFLINE=1 -e VLLM_NO_USAGE_STATS=1 -e PYTHONPATH=/opt/videoq-audio \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/mooncake:ro,size=1m \
             -v "$PWD/audio-runtime:/opt/videoq-audio:ro" \
             -v "$PWD/.github/scripts/check-vllm-runtime.py:/probe.py:ro" \
             --entrypoint python3 "$VLLM_IMAGE" /probe.py > vllm-runtime.json

@@ -43,3 +43,26 @@ test('runtime volume scan must match the lock, receipt, directory and all five i
   raw.Results[0].Vulnerabilities = [{Severity: 'HIGH'}];
   assert.equal(inspectAudio(raw, bytes, receipt, reference, '/audio').blocking.length, 1);
 });
+
+
+test('audio applicability requires the verified guard, exact library identity and locations', () => {
+  const {assessAudioRuntime} = require('./check-vllm-scan.cjs');
+  const finding = {VulnerabilityID: 'CVE-reviewed', PkgName: 'ffmpeg', InstalledVersion: '9.0.2',
+    PkgIdentifier: {PURL: 'pkg:generic/ffmpeg@9.0.2'}, Locations: ['/av.libs/libavformat-reviewed.so']};
+  const policy = {audioGuardSha256: 'reviewed-guard', audioAssessments: [{vulnerability: 'CVE-reviewed',
+    package: 'ffmpeg', version: '9.0.2', purl: 'pkg:generic/ffmpeg@9.0.2', locations: finding.Locations,
+    impactStatement: 'Verified startup guard rejects network inputs', references: ['review']}]};
+  const runtime = {status: 'passed', checks: {'security.audio': {status: 'passed',
+    details: {guardSha256: 'reviewed-guard', rtspRejected: true}}}};
+  const evaluate = (value = finding, proof = runtime) => assessAudioRuntime({blocking: [structuredClone(value)]}, policy, proof);
+  assert.equal(evaluate().accepted.length, 1);
+  for (const mutate of [value => value.VulnerabilityID = 'CVE-new', value => value.InstalledVersion = '8.1.1',
+    value => value.PkgIdentifier.PURL = 'unreviewed', value => value.Locations = ['/unreviewed/library.so']]) {
+    const copy = structuredClone(finding); mutate(copy); assert.equal(evaluate(copy).blocking.length, 1);
+  }
+  for (const mutate of [value => value.status = 'failed', value => value.checks['security.audio'].status = 'failed',
+    value => value.checks['security.audio'].details.guardSha256 = 'tampered',
+    value => value.checks['security.audio'].details.rtspRejected = false]) {
+    const copy = structuredClone(runtime); mutate(copy); assert.throws(() => evaluate(finding, copy));
+  }
+});

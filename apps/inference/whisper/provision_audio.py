@@ -1,4 +1,4 @@
-"""Place hash-locked upstream wheels on a separate runtime volume; never build code.
+"""Place hash-locked wheels and the reviewed local-audio guard on a runtime volume.
 
 Wheel archives are cached next to model weights for offline restarts. Only the
 runtime volume is extracted; the upstream vLLM image remains unchanged.
@@ -43,6 +43,10 @@ def cached_wheel(package, cache, download):
     path = cache / package['filename']
     if path.is_file() and path.stat().st_size == package['size'] and sha256(path) == package['sha256']:
         return path
+    # Reuse byte-identical wheels when only the trusted runtime guard changes.
+    for candidate in cache.parent.glob('*/' + package['filename']):
+        if candidate.is_file() and candidate.stat().st_size == package['size'] and sha256(candidate) == package['sha256']:
+            return candidate
     if not download:
         raise ValueError(f"Missing or corrupt cached wheel: {package['filename']}")
     cache.mkdir(parents=True, exist_ok=True)
@@ -82,7 +86,7 @@ def extract_wheel(path, package, destination):
                 raise ValueError('Unsafe wheel path')
             if not name.parts or entry.is_dir():
                 continue
-            if name.suffix == '.pth':
+            if name.suffix == '.pth' or name.parts[0] in {'sitecustomize.py', 'sitecustomize.pyc', 'usercustomize.py', 'usercustomize.pyc'}:
                 raise ValueError('Wheel startup hooks are not permitted')
             if name.parts[0].endswith('.data'):
                 if len(name.parts) < 3 or name.parts[1] not in {'purelib', 'platlib'}:
@@ -100,6 +104,9 @@ def provision(manifest_path, cache_root, destination, download=False):
     raw = manifest_path.read_bytes()
     manifest = json.loads(raw)
     validate_manifest(manifest)
+    guard = Path(__file__).with_name('audio_guard.py').read_bytes()
+    if hashlib.sha256(guard).hexdigest() != manifest.get('runtimeGuardSha256'):
+        raise ValueError('Audio guard does not match the reviewed manifest')
     lock = hashlib.sha256(raw).hexdigest()
     cache = cache_root / '.videoq-vllm-audio' / lock
     paths = [(p, cached_wheel(p, cache, download)) for p in manifest['packages']]
@@ -109,6 +116,9 @@ def provision(manifest_path, cache_root, destination, download=False):
         raise ValueError('Audio runtime destination must be empty')
     for package, path in paths:
         extract_wheel(path, package, destination)
+    if (destination / 'sitecustomize.py').exists():
+        raise ValueError('Wheel must not override the trusted audio guard')
+    (destination / 'sitecustomize.py').write_bytes(guard)
     (destination / '.videoq-audio.json').write_text(json.dumps({'lockSha256': lock, 'manifest': manifest}))
     return lock
 

@@ -1,6 +1,6 @@
 {
   "vex": [
-    "apps/inference/whisper/security/sqlite.openvex.json",
-    "apps/inference/whisper/security/zlib.openvex.json"
-  ]
+    "apps/inference/whisper/security/ffmpeg.openvex.json"
+  ],
+  "expiresAt": "2026-12-05T00:00:00Z"
 }
