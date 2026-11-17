@@ -918,3 +918,26 @@ Canonical configuration handoff, post-promotion forward recovery, ambiguous
 export/import reconciliation, and isolated provider/E2E rehearsal remain
 release gates before enabling the production resource hold. Do not invoke a
 production action merely because local composition tests pass.
+
+## Deployment configuration after binding promotion
+
+Ordinary CD now prepares its API upload configuration with
+`d1-resource-deployment-config.cjs`. It reads only the fixed production
+Worker settings in the existing Account and accepts exactly the original
+D1/Vectorize tuple or the three named replacement resources together. It
+cannot promote bindings: a source deployment remains on the source until
+the live Worker already uses the complete replacement tuple. Mixed targets,
+unknown resources, duplicate bindings, backend drift, and reopening a paused
+service are refused. A target configuration cannot follow a live source back.
+
+The preparation changes only the DB ID/name and the two Vectorize index
+names in the local generated upload file. Other settings and secrets remain
+under the existing deployment process. Immediately afterward, the independent
+`protect-api-deployment.cjs` reads deployed state again before Wrangler upload.
+No new AWS permission, provider write API, recurring task or backup is added.
+
+The checked-in Wrangler config deliberately keeps its current source tuple
+until the real migration is verified. After successful production completion,
+it must be updated to the replacement tuple; the bridge supports that final
+config directly. Unit tests cover both sides and do not certify provider
+cutover or E2E success.
