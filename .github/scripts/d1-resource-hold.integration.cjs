@@ -185,3 +185,11 @@ test('native launch registration uses real revision-checked transactions before 
  await j.verify({step:'verify-e2e',planSha256:resourceDigest(plan),receiptSha256:'a'.repeat(64)});assert.equal(await launcher.readBuild(plan),arn);
  const owner=await f.get('maintenance');await f.put({...owner,execution_arn:{S:owner.execution_arn.S+'changed'}});await assert.rejects(launcher.readBuild(plan),/OWNERSHIP/);
 });
+test('real abort request CAS excludes ordinary progress and cannot be requested after promotion intent',async()=>{
+ const f=await fixture(),r=await f.start('6'.repeat(32)),executorToken='7'.repeat(64),j=f.journal(r.run_id,{executorToken});await j.claimExecutor();
+ await j.begin({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64)});await j.requestAbort();await j.requestAbort();assert.equal((await j.assertAbortExecutor()).run,r.run_id);assert.ok(await f.get('maintenance'));
+ await assert.rejects(j.assertExecutor(),/ABORT_IN_PROGRESS/);await assert.rejects(j.verify({step:RESOURCE_STEPS[0],planSha256:'c'.repeat(64),receiptSha256:'d'.repeat(64)}),/ABORT_IN_PROGRESS/);
+ const g=await fixture(),s=await g.start('5'.repeat(32)),k=g.journal(s.run_id,{executorToken});await k.claimExecutor();
+ for(const step of RESOURCE_STEPS){await k.begin({step,planSha256:'c'.repeat(64)});if(step==='promote-bindings')break;await k.verify({step,planSha256:'c'.repeat(64),receiptSha256:'d'.repeat(64)});}
+ await assert.rejects(k.requestAbort(),/FORWARD_RECOVERY/);assert.equal((await g.get('run#'+s.run_id)).resource_abort_requested,undefined);
+});

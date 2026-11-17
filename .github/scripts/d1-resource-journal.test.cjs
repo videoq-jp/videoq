@@ -13,13 +13,13 @@ function fixture({enabled=true,lost=false,executorToken}={}){
   if(command==='TransactWriteItems'){
    const update=v.TransactItems[0].Update,vals=update.ExpressionAttributeValues,row=rows.get(update.Key.pk.S),owner=rows.get('maintenance');
    if(!owner||owner.execution_arn.S!==ARN||row.resource_revision.N!==vals[':previous'].N)throw Error('CAS_CONFLICT');
-   if(vals[':steps']){row.resource_steps=vals[':steps'];row.resource_steps_sha256=vals[':sha'];}else{if(row.resource_executor_sha256)throw Error('CAS_CONFLICT');row.resource_executor_sha256=vals[':executor'];}
+   if(update.UpdateExpression.includes('resource_abort_requested=:true')){row.resource_abort_requested={BOOL:true};}else if(vals[':steps']){row.resource_steps=vals[':steps'];row.resource_steps_sha256=vals[':sha'];}else{if(row.resource_executor_sha256)throw Error('CAS_CONFLICT');row.resource_executor_sha256=vals[':executor'];}
    row.resource_revision=vals[':next'];writes++;
    if(lost){lost=false;throw Error('LOST_RESPONSE');}return{};
   }
   throw Error('Unexpected operation');
  };
- return{rows,journal:createResourceJournal({aws,run:RUN,source:SOURCE,expectedDefinitionHash:resourceDigest(SPEC),executorToken,enabled}),writes:()=>writes,setStatus:s=>{status=s;},setSpec:s=>{spec=s;}};
+ return{rows,journal:createResourceJournal({aws,run:RUN,source:SOURCE,expectedDefinitionHash:resourceDigest(SPEC),executorToken,enabled}),writes:()=>writes,loseNext:()=>{lost=true;},setStatus:s=>{status=s;},setSpec:s=>{spec=s;}};
 }
 const plan=step=>({step,planSha256:SHA}),proof=step=>({...plan(step),receiptSha256:RECEIPT});
 test('journal is disabled by default before any AWS call',async()=>{
@@ -75,4 +75,19 @@ test('executor is explicitly claimed before steps and survives lost claim respon
 test('executor callbacks cannot use an unbound journal and late claims refuse prior work',async()=>{
  const f=fixture();await assert.rejects(f.journal.claimExecutor(),/TOKEN_REQUIRED/);await assert.rejects(f.journal.assertExecutor(),/TOKEN_REQUIRED/);
  const g=fixture({executorToken:'1'.repeat(64)});g.rows.get('run#'+RUN).resource_steps={S:'[]'};g.rows.get('run#'+RUN).resource_steps_sha256={S:resourceDigest([])};await assert.rejects(g.journal.claimExecutor(),/BEFORE_STEPS/);
+});
+
+test('durable pre-promotion abort blocks normal executor and step progress without releasing ownership',async()=>{
+ const f=fixture({executorToken:'1'.repeat(64)}),j=f.journal;await j.claimExecutor();await j.begin(plan(RESOURCE_STEPS[0]));await j.requestAbort();assert.deepEqual(await j.requestAbort(),{abortRequested:true});
+ assert.equal((await j.assertAbortExecutor()).sourceFenceMayExist,false);assert.ok(f.rows.get('maintenance'));await assert.rejects(j.assertExecutor(),/ABORT_IN_PROGRESS/);await assert.rejects(j.verify(proof(RESOURCE_STEPS[0])),/ABORT_IN_PROGRESS/);await assert.rejects(j.begin(plan(RESOURCE_STEPS[1])),/ABORT_IN_PROGRESS/);
+});
+test('abort requires claimed executor and retains sticky promotion restriction',async()=>{
+ const f=fixture();await assert.rejects(f.journal.requestAbort(),/TOKEN_REQUIRED/);
+ const g=fixture({executorToken:'1'.repeat(64)});await g.journal.claimExecutor();await assert.rejects(g.journal.assertAbortExecutor(),/REQUEST_REQUIRED/);
+ for(const step of RESOURCE_STEPS){await g.journal.begin(plan(step));if(step==='promote-bindings')break;await g.journal.verify(proof(step));}
+ await assert.rejects(g.journal.requestAbort(),/FORWARD_RECOVERY/);assert.equal(g.rows.get('run#'+RUN).resource_abort_requested,undefined);
+});
+
+test('lost abort request response reads back durable mode and retains original owner',async()=>{
+ const f=fixture({executorToken:'1'.repeat(64)});await f.journal.claimExecutor();f.loseNext();await f.journal.requestAbort();assert.equal((await f.journal.assertAbortExecutor()).run,RUN);assert.equal(f.writes(),2);
 });

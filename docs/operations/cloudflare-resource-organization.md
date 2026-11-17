@@ -575,3 +575,32 @@ The latter exercises the real registration transactions, lost write response,
 reentry without restart, post-verification lookup and changed shared ownership.
 Cloudflare/CodeBuild transports in these checks are explicit fixtures. Production
 factory wiring, recovery and real provider rehearsal remain outstanding.
+
+## Pre-promotion abort isolation
+
+`requestAbort()` in the owned resource journal conditionally records a durable
+abort request before any source-unfence action. The revision check serializes
+this decision against ordinary step progress. Normal executor/step operations
+then refuse to continue; `assertAbortExecutor()` requires the same live claimed
+executor and shared maintenance owner. Any recorded promotion intent prohibits
+this abort path. The request retains the hold and does not authorize release.
+
+`d1-resource-abort-safety.cjs` requires the original private fence/pause/freeze
+plans to match the journal and freshly observes the old source D1 binding, paused
+API, disabled SQS admission, frozen deployment workflows and drained accepted
+runs. A mandatory runtime callback must also prove that in-flight workers have
+stopped; disabled admission alone is insufficient. The private Python bridge
+requires this separate source-safety approval throughout removal.
+
+Source removal uses an explicit transport mode permitting only exact owned
+source trigger drops. Ordinary transport still refuses source drops; abort
+transport refuses target drops and source trigger creation. The SQLite control
+rechecks ownership and safety before every removal, preserves original triggers,
+and reconciles a partial lost response without duplicating removals.
+
+These are abort primitives, not a completed recovery command. Admission restore,
+durable abort completion/release and production executor wiring still need to be
+connected and rehearsed before enabling the resource hold. No source fence or
+other production resource was changed during validation.
+[Abort evidence](evidence/d1-prepromotion-abort-2026-11-17.json) records the local
+fixture and real DynamoDB Local transaction checks.

@@ -1,7 +1,7 @@
 """Fixed-resource D1 fence control; query/ownership are supplied by coordinator.
 
 No credentials, CLI or automatic rollback. Partial writes reconcile exact owned
-trigger definitions before retry. Source removal is deliberately unavailable.
+trigger definitions before retry. Source removal requires separate abort safety.
 """
 from d1_resource_write_fence import (
     plan_fence, validate_plan, schema_inventory, quote, fingerprint,
@@ -13,9 +13,12 @@ SCHEMA_SQL = 'SELECT type,name,sql FROM sqlite_master ORDER BY type,name'
 
 
 class FenceControl:
-    def __init__(self, query, assert_ownership, assert_target_safe):
+    def __init__(self, query, assert_ownership, assert_target_safe, assert_source_safe=None):
         if not all(callable(v) for v in (query, assert_ownership, assert_target_safe)):
             raise ValueError('RESOURCE_FENCE_CONTEXT_REQUIRED')
+        if assert_source_safe is not None and not callable(assert_source_safe):
+            raise ValueError('RESOURCE_FENCE_CONTEXT_REQUIRED')
+        self.assert_source_safe = assert_source_safe
         self.query = query
         self.assert_ownership = assert_ownership
         self.assert_target_safe = assert_target_safe
@@ -76,4 +79,25 @@ class FenceControl:
         state = self.observe(plan, target=True)
         if state['installed']:
             raise ValueError('RESOURCE_TARGET_STILL_FENCED')
+        return state
+
+    def unfence_source(self, plan):
+        # Only a parent with a durable pre-promotion abort and verified original
+        # paused bindings may approve. Default deny; no generic rollback mode.
+        if self.assert_source_safe is None:
+            raise ValueError('RESOURCE_SOURCE_ABORT_SAFETY_REQUIRED')
+        self.assert_ownership()
+        self.assert_source_safe(plan)
+        state = self.observe(plan)
+        for name in state['installed']:
+            self.assert_ownership()
+            self.assert_source_safe(plan)
+            current = self.observe(plan)
+            if name in current['installed']:
+                self.query(SOURCE, 'DROP TRIGGER ' + quote(name))
+        self.assert_ownership()
+        self.assert_source_safe(plan)
+        state = self.observe(plan)
+        if state['installed']:
+            raise ValueError('RESOURCE_SOURCE_STILL_FENCED')
         return state

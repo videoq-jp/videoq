@@ -102,6 +102,38 @@ class ControlTests(unittest.TestCase):
             self.control.fence_source(self.plan)
         self.assertEqual(self.writes, [])
 
+    def test_source_abort_unfence_is_default_denied_and_preserves_original_triggers(self):
+        self.control.fence_source(self.plan)
+        with self.assertRaisesRegex(ValueError, 'ABORT_SAFETY'):
+            self.control.unfence_source(self.plan)
+        recovery = FenceControl(self.query, self.ownership, self.target_safe, self.target_safe)
+        self.safe = False
+        with self.assertRaisesRegex(ValueError, 'NOT_VERIFIED'):
+            recovery.unfence_source(self.plan)
+        self.safe = True
+        self.lost = True
+        with self.assertRaises(RuntimeError):
+            recovery.unfence_source(self.plan)
+        self.assertEqual(len(recovery.observe(self.plan)['installed']), 5)
+        recovery.unfence_source(self.plan)
+        recovery.unfence_source(self.plan)
+        self.query(SOURCE, 'UPDATE users SET value=7')
+        self.assertEqual(self.query(SOURCE, 'SELECT * FROM audit'), [{'value': 0}, {'value': 7}])
+        self.assertEqual(len([row for row in self.writes if row[1].startswith('DROP TRIGGER')]), 6)
+
+    def test_source_abort_safety_is_rechecked_before_each_removal(self):
+        self.control.fence_source(self.plan)
+        checks = 0
+        def safe(_plan):
+            nonlocal checks
+            checks += 1
+            if checks >= 3:
+                raise ValueError('RESOURCE_ABORT_SAFETY_LOST')
+        recovery = FenceControl(self.query, self.ownership, self.target_safe, safe)
+        with self.assertRaisesRegex(ValueError, 'SAFETY_LOST'):
+            recovery.unfence_source(self.plan)
+        self.assertEqual(len(recovery.observe(self.plan)['installed']), 5)
+
 
 if __name__ == '__main__':
     unittest.main()

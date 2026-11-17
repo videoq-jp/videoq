@@ -27,7 +27,7 @@ function createResourceJournal({aws,run,source,expectedDefinitionHash,executorTo
  const executorSha=executorToken===undefined?null:digest({executorToken});
  const arn=MACHINE.replace(':stateMachine:',':execution:')+':db-'+run,key={pk:{S:'run#'+run}};
  const read=async name=>(await aws('ddb','GetItem',{TableName:TABLE,Key:{pk:{S:name}},ConsistentRead:true})).Item;
- async function owned(allowUnclaimed=false){
+ async function owned(allowUnclaimed=false,allowAbort=false){
   if(!enabled)throw Error('RESOURCE_JOURNAL_DISABLED');
   const [row,owner,state,bound]=await Promise.all([read('run#'+run),read('maintenance'),aws('sfn','DescribeExecution',{executionArn:arn}),aws('sfn','DescribeStateMachineForExecution',{executionArn:arn})]);
   let spec;try{spec=JSON.parse(bound.definition);}catch{throw Error('RESOURCE_HOLD_DEFINITION_REQUIRED');}
@@ -36,6 +36,7 @@ function createResourceJournal({aws,run,source,expectedDefinitionHash,executorTo
   if(row?.kind?.S!==KIND||row.execution_arn?.S!==arn||row.source_sha?.S!==source||row.resource_phase?.S!=='holding'||row.release_requested?.BOOL!==false||owner?.kind?.S!==KIND||owner.execution_arn?.S!==arn||!/^(0|[1-9][0-9]*)$/.test(revision??'')||!Number.isSafeInteger(Number(revision))||Number(revision)>=Number.MAX_SAFE_INTEGER)throw Error('RESOURCE_JOURNAL_OWNERSHIP_REQUIRED');
   const claimed=row.resource_executor_sha256?.S;
   if(claimed!==undefined&&(!hex(claimed)||claimed!==executorSha)||executorSha&&!claimed&&!allowUnclaimed)throw Error('RESOURCE_EXECUTOR_OWNERSHIP_REQUIRED');
+  if(row.resource_abort_requested!==undefined&&(!allowAbort||row.resource_abort_requested.BOOL!==true))throw Error('RESOURCE_ABORT_IN_PROGRESS');
   records(row);return row;
  }
  async function save(before,steps){
@@ -67,6 +68,24 @@ function createResourceJournal({aws,run,source,expectedDefinitionHash,executorTo
     {ConditionCheck:{TableName:TABLE,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn = :execution AND #kind = :kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND}}}}]};
    try{await aws('ddb','TransactWriteItems',transaction);}catch(error){const found=await read('run#'+run);if(found?.resource_executor_sha256?.S!==executorSha||found.resource_revision?.N!==next.N)throw error;}
    await owned();return{claimed:true};
+  },
+  async requestAbort(){
+   if(!executorSha)throw Error('RESOURCE_EXECUTOR_TOKEN_REQUIRED');
+   const before=await owned(false,true),steps=records(before);
+   if(steps.some(r=>r.step==='promote-bindings'))throw Error('RESOURCE_PROMOTION_REQUIRES_FORWARD_RECOVERY');
+   if(before.resource_abort_requested?.BOOL===true)return{abortRequested:true};
+   const next={N:String(Number(before.resource_revision.N)+1)},values={':execution':{S:arn},':kind':{S:KIND},':source':{S:source},':holding':{S:'holding'},':false':{BOOL:false},':true':{BOOL:true},':executor':{S:executorSha},':previous':before.resource_revision,':next':next};
+   const input={TransactItems:[{Update:{TableName:TABLE,Key:key,UpdateExpression:'SET resource_abort_requested=:true,resource_revision=:next',ConditionExpression:'execution_arn=:execution AND #kind=:kind AND source_sha=:source AND resource_phase=:holding AND release_requested=:false AND resource_executor_sha256=:executor AND resource_revision=:previous AND attribute_not_exists(resource_abort_requested)',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:values}},{ConditionCheck:{TableName:TABLE,Key:{pk:{S:'maintenance'}},ConditionExpression:'execution_arn=:execution AND #kind=:kind',ExpressionAttributeNames:{'#kind':'kind'},ExpressionAttributeValues:{':execution':{S:arn},':kind':{S:KIND}}}}]};
+   try{await aws('ddb','TransactWriteItems',input);}catch{const row=await read('run#'+run);if(row?.resource_revision?.N!==next.N||row.resource_abort_requested?.BOOL!==true)throw Error('RESOURCE_ABORT_REQUEST_UNCERTAIN');}
+   const row=await owned(false,true);if(row.resource_revision.N!==next.N||row.resource_abort_requested?.BOOL!==true)throw Error('RESOURCE_ABORT_REQUEST_NOT_DURABLE');
+   return{abortRequested:true};
+  },
+  async assertAbortExecutor(){
+   if(!executorSha)throw Error('RESOURCE_EXECUTOR_TOKEN_REQUIRED');
+   const row=await owned(false,true),steps=records(row);
+   if(row.resource_abort_requested?.BOOL!==true)throw Error('RESOURCE_ABORT_REQUEST_REQUIRED');
+   if(steps.some(r=>r.step==='promote-bindings'))throw Error('RESOURCE_PROMOTION_REQUIRES_FORWARD_RECOVERY');
+   return{run,source,revision:Number(row.resource_revision.N),steps,sourceFenceMayExist:steps.some(r=>r.step==='fence-source')};
   },
   async assertExecutor(){if(!executorSha)throw Error('RESOURCE_EXECUTOR_TOKEN_REQUIRED');await owned();return{owned:true};},
   async inspect(){const row=await owned(),steps=records(row);return{run,source,revision:Number(row.resource_revision.N),steps,nextStep:steps.at(-1)?.state==='intent'?steps.at(-1).step:STEPS[steps.length]??null,promotionIntentRecorded:steps.some(r=>r.step==='promote-bindings')};},
