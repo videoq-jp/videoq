@@ -44,7 +44,7 @@ describe('MessageBody', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(2)
     expect(buttons[0]).not.toHaveAttribute('aria-expanded')
-    expect(container.textContent).toBe('Meeting. (0:10)\n\nEarth. (0:55)')
+    expect(Array.from(container.querySelectorAll('p'), p => p.textContent)).toEqual(['Meeting. (0:10)', 'Earth. (0:55)'])
   })
   it('shows only the timestamp for visual evidence and seeks to the actual sampled frame', () => {
     const navigate = vi.fn()
@@ -69,12 +69,31 @@ describe('MessageBody', () => {
     expect(buttons).toHaveLength(2)
     fireEvent.click(buttons[1])
     expect(navigate).toHaveBeenCalledExactlyOnceWith(7, '00:00:10')
-    expect(container.textContent).toContain('const ticks = "```";\n[1]\n````')
+    expect(container.textContent).toContain('const ticks = "```";\n[1]\n')
   })
   it('treats all reference-like prose literally and drops unknown source links', () => {
     const { container } = render(<MessageBody answer={{ segments: [{ text: '[1] [99] [-1] [1.5] `a[1]` [1](url)', sourceIds: [1, 99] }], sources: [source] }} onVideoNavigate={vi.fn()} />)
     expect(screen.getAllByRole('button')).toHaveLength(1)
-    expect(container.textContent).toContain('[1] [99] [-1] [1.5] `a[1]` [1](url)')
+    expect(container.textContent).toContain('[1] [99] [-1] [1.5] a[1] 1')
+    expect(container.querySelector('code')).toHaveTextContent('a[1]')
+  })
+  it.each(['history', 'stream'])('renders Markdown with citations from %s', mode => {
+    const saved: ChatAnswer = { segments: [
+      { text: '## 比較\n\n**SIFT**は回転に対応。', sourceIds: [1] },
+      { text: '\n\n**ASIFT**は視点変化に対応。\n\n- *特徴点*\n- `x < y`\n\n|手法|変化|\n|---|---|\n|SIFT|回転|', sourceIds: [] },
+    ], sources: [source] }
+    const streamed: ChatAnswer = { segments: [], sources: [source] }
+    for (const part of answerParts(saved)) applyChatPart(streamed, part)
+    const navigate = vi.fn()
+    const { container } = render(<MessageBody answer={mode === 'history' ? saved : streamed} onVideoNavigate={navigate} />)
+    expect(screen.getByRole('heading', { name: '比較' })).toBeInTheDocument()
+    expect(Array.from(container.querySelectorAll('strong'), n => n.textContent)).toEqual(['SIFT', 'ASIFT'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(container.querySelector('code')).toHaveTextContent('x < y')
+    expect(container.querySelector('em')).toHaveTextContent('特徴点')
+    fireEvent.click(screen.getByRole('button'))
+    expect(navigate).toHaveBeenCalledWith(7, '00:00:10')
   })
   it('renders a matrix and normalizes millisecond timestamps', () => {
     const text = String.raw`回転行列: \[R = \begin{pmatrix}\cos\theta & -\sin\theta \\ \sin\theta & \cos\theta\end{pmatrix}\]`
@@ -134,7 +153,7 @@ describe('untrusted chat content', () => {
     const streamed: ChatAnswer = { segments: [], sources: answer.sources }
     for (const part of answerParts(answer)) applyChatPart(streamed, part)
     const { container } = render(<MessageBody answer={mode === 'history' ? answer : streamed} onVideoNavigate={vi.fn()} />)
-    expect(container.textContent).toContain(text)
+    expect(container.textContent).toContain(text.replace('[open](javascript:window.__xss=true)', 'open'))
     expect(screen.getByRole('button')).toHaveAttribute('title', `${xssPayloads[1]} 00:00:10`)
     expectInert(container)
   })

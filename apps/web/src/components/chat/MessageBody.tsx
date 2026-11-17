@@ -1,8 +1,10 @@
-import { Fragment, memo, useId, useMemo, useState } from 'react';
+import { createContext, useContext, memo, useId, useMemo, useState } from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import katex from 'katex';
-import { parseMessageContent } from '@/lib/chat/parseMessageContent';
-import type { ChatAnswer, ChatSource } from '@videoq/trpc/chat';
+import { parseMessageContent, type MessageContentNode } from '@/lib/chat/parseMessageContent';
+import { protectedTextRanges, type ChatAnswer, type ChatSource } from '@videoq/trpc/chat';
 import { linkVariants } from '@/components/ui/link';
 import { cn } from '@/lib/digital-agency/cn';
 import 'katex/dist/katex.min.css';
@@ -83,34 +85,57 @@ function CitationGroup({ sources, onVideoNavigate }: {
   );
 }
 
+const InlineContext = createContext<{
+  nodes: Map<string, Exclude<MessageContentNode, { type: 'text' }>>;
+  sources: Map<number, ChatSource>;
+  navigate: MessageBodyProps['onVideoNavigate'];
+} | null>(null);
+
+const markdownComponents = {
+  img: ({ alt }: { alt?: string }) => <span>{alt}</span>,
+  a: function InlineLink({ children, href }: { children?: React.ReactNode; href?: string }) {
+    const context = useContext(InlineContext)!;
+    const node = href?.startsWith('#') ? context.nodes.get(href.slice(1)) : undefined;
+    if (!node) return <span>{children}</span>;
+    if (node.type === 'math') return <MathExpression tex={node.value} display={node.display} />;
+    const citations = node.ids.map(id => context.sources.get(id))
+      .filter((source): source is ChatSource => Boolean(source && formatTimeRange(source.start_time, source.end_time)));
+    return <CitationGroup sources={citations} onVideoNavigate={context.navigate} />;
+  },
+};
+
+function escapeHtmlOutsideCode(text: string) {
+  let end = 0;
+  let result = '';
+  for (const range of protectedTextRanges(text)) {
+    result += text.slice(end, range.start).replace(/</g, '&lt;') + text.slice(range.start, range.end);
+    end = range.end;
+  }
+  return result + text.slice(end).replace(/</g, '&lt;');
+}
+
 export function MessageBody({ answer, onVideoNavigate }: MessageBodyProps) {
   const { segments, sources } = answer;
   const citationMap = useMemo(() => new Map(sources.map((citation) => [citation.id, citation])), [sources]);
   const nodes = useMemo(() => parseMessageContent(segments), [segments]);
 
+  // Keep structured citations and the existing TeX parser inside one Markdown
+  // document, so emphasis and lists can span answer segments.
+  let prefix = 'videoq-inline-';
+  const rawText = segments.map(segment => segment.text).join('');
+  while (rawText.includes(prefix)) prefix += '-';
+  const inlineNodes = new Map<string, Exclude<MessageContentNode, { type: 'text' }>>(nodes.flatMap((node, index) =>
+    node.type === 'text' ? [] : [[`${prefix}${index}`, node] as const]));
+  const markdown = nodes.map((node, index) => node.type === 'text'
+    ? escapeHtmlOutsideCode(node.value) : `[${prefix}${index}](#${prefix}${index})`).join('');
+
   return (
-    <div className="text-std-17N-170 text-solid-gray-800 whitespace-pre-wrap [overflow-wrap:anywhere]">
-      {nodes.map((node, i) => {
-        if (node.type === 'text') {
-          return <Fragment key={`text-${i}`}>{node.value}</Fragment>;
-        }
-
-        if (node.type === 'math') {
-          return (
-            <MathExpression
-              key={`math-${i}`}
-              tex={node.value}
-              display={node.display}
-            />
-          );
-        }
-
-        const citations = node.ids.map(id => citationMap.get(id))
-          .filter((source): source is ChatSource => Boolean(source && formatTimeRange(source.start_time, source.end_time)));
-        return (
-          <CitationGroup key={`refs-${i}`} sources={citations} onVideoNavigate={onVideoNavigate} />
-        );
-      })}
+    <div className="text-std-17N-170 text-solid-gray-800 [overflow-wrap:anywhere] [&_p]:my-2 [&_p]:whitespace-pre-wrap [&_h1]:my-3 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:my-2 [&_h3]:font-bold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-4 [&_blockquote]:border-solid-gray-200 [&_blockquote]:pl-4 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:bg-solid-gray-50 [&_pre]:p-3 [&_code]:whitespace-pre-wrap [&_code]:font-mono [&_table]:my-3 [&_table]:block [&_table]:overflow-x-auto [&_th]:border [&_th]:p-2 [&_td]:border [&_td]:p-2">
+      <InlineContext.Provider value={{ nodes: inlineNodes, sources: citationMap, navigate: onVideoNavigate }}>
+        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {markdown}
+        </Markdown>
+      </InlineContext.Provider>
     </div>
   );
 }
