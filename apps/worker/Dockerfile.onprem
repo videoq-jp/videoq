@@ -10,7 +10,7 @@ RUN python -c 'import hashlib,os,pathlib,sys,urllib.request; b=urllib.request.ur
     && rm "/tmp/pip-${PIP_VERSION}-py3-none-any.whl" \
     && python -c 'import os,pip,sys; sys.exit(0 if pip.__version__==os.environ["PIP_VERSION"] else 1)'
 # END managed pip
-RUN apk add --no-cache ffmpeg ca-certificates libstdc++
+RUN apk upgrade --no-cache zlib && apk add --no-cache ffmpeg ca-certificates libstdc++
 
 FROM base AS dependencies
 COPY --from=uv /uv /usr/local/bin/uv

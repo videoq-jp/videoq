@@ -61,6 +61,15 @@ test('keeps exact reviewed findings visible while new CVEs, versions and identit
     assert.equal(run(changed).blocking.length, 1);
   }
 });
+test('scanner aliases match an existing assessment without accepting unrelated IDs', () => {
+  const f = fixture();
+  const finding = f.report.Results[0].Vulnerabilities[0];
+  finding.VulnerabilityID = 'GHSA-equivalent';
+  finding.Aliases = ['GHSA-equivalent', 'CVE-reviewed'];
+  assert.equal(run(f).accepted.length, 1);
+  finding.Aliases = ['GHSA-equivalent', 'CVE-unreviewed'];
+  assert.equal(run(f).blocking.length, 1);
+});
 test('rejects expired reviews, changed image files, package managers and runtime paths', () => {
   for (const mutate of [f => f.policy.expiresAt = '2026-11-11T00:00:00Z', f => f.policy.expiresAt = '2027-01-01T00:00:00Z',
     f => f.native.status = 'failed', f => f.native.inventory.kernelHeaders.files[0].sha256 = 'modified',

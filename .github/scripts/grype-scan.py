@@ -48,6 +48,7 @@ def normalize(sbom, raw, vex_paths=()):
         group(a)['Packages'].append({'Name': a['name'], 'Version': a['version'],
             'Identifier': {'PURL': policy_purl(a.get('purl'))},
             # Do not assert pip-vendor provenance without an actual SBOM cataloger.
+            'Locations': sorted({loc['path'] for loc in a.get('locations', [])}),
             'AnalyzedBy': 'sbom' if 'sbom' in a.get('foundBy', '') else a.get('foundBy')})
     statements = [(path, statement) for path in vex_paths
                   for statement in json.loads(pathlib.Path(path).read_text())['statements']]
@@ -61,7 +62,9 @@ def normalize(sbom, raw, vex_paths=()):
         if severity not in ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'UNKNOWN'):
             raise ValueError('Unrecognized vulnerability severity')
         finding = {'Severity': severity, 'PkgName': a['name'], 'InstalledVersion': a['version'],
-                   'VulnerabilityID': v['id'], 'PkgIdentifier': {'PURL': policy_purl(a.get('purl'))},
+                   'VulnerabilityID': v['id'],
+                   'Aliases': sorted({v['id']} | {related['id'] for related in match.get('relatedVulnerabilities', [])}),
+                   'Locations': sorted({loc['path'] for loc in a.get('locations', [])}), 'PkgIdentifier': {'PURL': policy_purl(a.get('purl'))},
                    'FixedVersion': ', '.join(v.get('fix', {}).get('versions') or [])}
         result = group(a)
         assessment = next(((path, s) for path, s in statements

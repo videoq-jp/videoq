@@ -78,7 +78,7 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
     assert.ok(!result.ModifiedFindings?.length && !result.ExperimentalModifiedFindings?.length, 'Use unsuppressed raw findings');
     for (const finding of result.Vulnerabilities || []) {
       if (!['HIGH', 'CRITICAL', 'UNKNOWN'].includes(finding.Severity)) continue;
-      const group = policy.groups.find(group => group.type === result.Type && group.vulnerabilities.includes(finding.VulnerabilityID)
+      const group = policy.groups.find(group => group.type === result.Type && group.vulnerabilities.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id))
         && group.packages[finding.PkgName]?.version === finding.InstalledVersion
         && group.packages[finding.PkgName]?.purl === finding.PkgIdentifier?.PURL);
       if (group) {
