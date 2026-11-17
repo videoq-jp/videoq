@@ -213,6 +213,7 @@ jobs:
               - '.github/scripts/d1-resource-smoke*'
               - '.github/scripts/d1-resource-e2e*'
               - '.github/scripts/d1-resource-abort*'
+              - '.github/scripts/d1-resource-builds*'
               - '.github/scripts/d1-resource-journal*'
               - '.github/workflows/d1-cutover-control.yml'
               - '.github/scripts/cutover-maintenance-request*'

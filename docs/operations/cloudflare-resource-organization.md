@@ -642,3 +642,27 @@ compatibility requirement. A fixture locates the one matching owned build on
 the second page without starting another build. Full inventory is still bounded
 and incomplete or repeated pagination refuses registration. See the
 [AWS API reference](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ListBuildsForProject.html).
+
+## Maintenance build runtime guard
+
+`d1-resource-builds.cjs` inventories only the three retained maintenance projects,
+including all bounded pages and exact batch readback. Missing records, foreign
+project/ARN identities, duplicate IDs, malformed completion state or incomplete
+pagination refuse an idle claim. It returns only build counts and active build
+identity/status, without logs, credentials or application configuration.
+
+The owned guard normally requires all three projects idle. Only a pending E2E
+step may permit one active build on the existing smoke project, and only if the
+full private E2E plan hash matches the journal and native provenance matches
+reviewed source, role, runtime and environment. This also permits the exact
+unregistered build to reach reconciliation after a lost start response, while
+the credential guard continues to require registration. Abort mode exempts no
+active build. This read-only guard complements deployment admission and the
+shared maintenance hold; it does not prove Lambda invocations have drained.
+
+A complete read-only production preview observed 45 migration builds, 151 smoke
+builds and 28 deploy builds, with zero active at that observation. This is a
+point-in-time preview, not a cutover receipt. The full executor still needs to
+invoke this guard at its stage boundaries.
+[Runtime inventory evidence](evidence/d1-resource-build-inventory-2026-11-17.json)
+records the aggregate preview and fixture limits.
