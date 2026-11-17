@@ -217,6 +217,8 @@ jobs:
               - '.github/scripts/d1-resource-runtime*'
               - '.github/scripts/d1-resource-lock*'
               - '.github/scripts/d1-resource-operation*'
+              - '.github/scripts/d1-resource-preflight*'
+              - '.github/scripts/run-d1-resource-preflight*'
               - 'infra/scripts/d1_resource*.py'
               - 'infra/scripts/test_d1_resource*.py'
               - '.github/scripts/d1-resource-journal*'

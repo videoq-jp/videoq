@@ -737,3 +737,50 @@ scenario. Real canonical-source/runtime and in-flight Lambda/Worker drain checks
 and the reviewed operator entry point are still required; no production cutover
 was performed. [Lock evidence](evidence/d1-resource-executor-lock-2026-11-17.json)
 records the implementation and remaining limits.
+
+## Reviewed source and provider metadata preflight
+
+`d1-resource-preflight.cjs` checks the clean exact operator checkout against
+canonical main history, fixed AWS account and smoke role/source/runtime, the
+immutable operator version and reviewed-source tag, and all six D1/Vectorize
+resource identities/configurations. All legacy/backup flags must remain false,
+D1 smoke must be enabled, both D1 replication modes must remain disabled and
+each Vectorize index must retain its expected dimensions and cosine metric. A
+pinned project digest refuses configuration drift; advancing main does not
+prevent recovery from the clean reviewed held commit. D1 metadata table counts
+are not used as data or emptiness proof: Cloudflare deprecates that field.
+
+The dedicated AWS transport allows only caller identity and the fixed smoke
+project metadata. The Cloudflare transport allows only six fixed GET paths,
+refuses redirects and bounds/sanitizes responses. Neither transport reads logs,
+app/PG credentials or database rows. References: [D1 metadata](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/get/),
+[Vectorize configuration](https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/get/).
+
+`run-d1-resource-preflight.cjs --source <reviewed-sha>` is a read-only local
+entry point. An optional `--project-sha256 <digest>` rechecks an existing pin. It
+validates the checkout before acquiring credentials, then captures the installed
+Wrangler 4 `auth token --json` output in memory with an isolated child environment.
+It accepts only OAuth/API bearer tokens; it does not install/upgrade Wrangler,
+launch browser login or print authentication output. A trusted absolute
+`VIDEOQ_WRANGLER_BIN` can select an already installed executable. See
+[Wrangler authentication](https://developers.cloudflare.com/workers/wrangler/commands/general/).
+
+The smoke project's `ReviewedSource` must equal the held source; this is not
+weakened to accept stale code. Before starting a hold, let main CI succeed and
+run the existing **DB Maintenance CD** workflow through `workflow_dispatch` if a
+refresh is needed. That existing path forces an immutable bundle refresh even
+when main advanced only in files outside normal bundle selection. Wait for it
+and verify the resulting project/source digest before fixing the run context.
+Do not refresh the companion bundle during a held operation.
+
+A read-only actual provider preview verified both DB identities/disabled
+replication and all four index names/dimensions/cosine configurations. Its smoke
+project still reported reviewed source `1eb7ae145265dda7c22afaa39299bab2cb418031`;
+this preview therefore does not certify readiness for a later held source. An
+expired OAuth token was refreshed with the existing Wrangler, and official token
+retrieval was checked without secret output. No DB data or bindings changed.
+
+Validation: 651 Node tests passed. [Preflight evidence](evidence/d1-resource-preflight-2026-11-17.json)
+separates actual metadata/authentication reads from fixture source/drift checks.
+The mutating operator entry point, actual worker-drain proof, canonical config
+handoff, forward recovery and isolated provider rehearsal remain outstanding.

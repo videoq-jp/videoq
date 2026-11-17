@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-17",
+  "scope": "read-only reviewed checkout and fixed platform preflight",
+  "nodeTests": {
+    "passed": 651,
+    "failed": 0
+  },
+  "providerPreview": {
+    "observedAt": "2026-11-17T01:04:42.447Z",
+    "readOnly": true,
+    "resourcesVerified": true,
+    "accountId": "12daec56fdba43f677f2766ee26a5a39",
+    "databases": [
+      {
+        "uuid": "e57d0931-18cb-4f00-ae7f-b0068030fb04",
+        "name": "videoq-d1-migration-staging-v4",
+        "readReplication": "disabled"
+      },
+      {
+        "uuid": "587bd210-6d9d-4f32-abb7-a490013e65d3",
+        "name": "videoq-prod-db",
+        "readReplication": "disabled"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "videoq-scenes-migration-v3-1536",
+        "dimensions": 1536,
+        "metric": "cosine"
+      },
+      {
+        "name": "videoq-scenes-migration-v3-768",
+        "dimensions": 768,
+        "metric": "cosine"
+      },
+      {
+        "name": "videoq-prod-scenes-1536",
+        "dimensions": 1536,
+        "metric": "cosine"
+      },
+      {
+        "name": "videoq-prod-scenes-768",
+        "dimensions": 768,
+        "metric": "cosine"
+      }
+    ],
+    "reviewedSource": "1eb7ae145265dda7c22afaa39299bab2cb418031",
+    "projectSha256": "e0c94af0352220cf453b5c0fc70179ff5f36166a3f5c29b2ee5932aa5b8c565f",
+    "platformSha256": "fd0f9c561b8dfd68dcef3bb8af72721f60de67f6ea1a02e32501e6a7344ac981"
+  },
+  "actualOfficialWranglerAuthRetrieval": {
+    "succeeded": true,
+    "version": "4.156.1",
+    "secretOutput": false
+  },
+  "checks": [
+    "canonical clean source before credential/provider reads",
+    "canonical ancestor recovery allowed",
+    "fixed AWS identity and reviewed project/runtime flags",
+    "pinned project and source drift rejection",
+    "six fixed read-only Cloudflare metadata paths",
+    "bounded sanitized provider errors",
+    "isolated auth retrieval without install/login fallback"
+  ],
+  "productionMutationExecuted": false,
+  "holdStarted": false,
+  "sqlExecuted": false,
+  "mutatingOperatorEntryPointImplemented": false,
+  "readOnlyEntryPointImplemented": true,
+  "actualWorkerDrainImplemented": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "metadata does not prove row counts, target emptiness or RAG quality",
+    "current provider preview does not certify later held-source readiness",
+    "companion bundle refresh must precede starting a hold"
+  ]
+}
