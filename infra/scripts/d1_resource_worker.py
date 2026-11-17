@@ -5,12 +5,15 @@ write plans, provider responses or credentials to stderr/logs. This entry point
 is disabled unless explicitly enabled by its private initial protocol message.
 """
 import json
+from contextlib import nullcontext
 import sys
 from d1_resource_fence_control import FenceControl, SOURCE, SCHEMA_SQL
 from d1_resource_fence_transport import CloudflareFenceQuery
 from d1_resource_write_fence import plan_fence
 
 LIMIT = 1024 * 1024
+LOCKED_ACTIONS = ('install-source-fence', 'remove-source-fence', 'remove-target-fence',
+             'advance-copy', 'prepare-vectors', 'advance-vectors', 'worker-lock-check')
 
 
 def read_message():
@@ -29,8 +32,11 @@ def send(value):
 
 def main():
     sequence = 0
+    worker_lock = None
     def check(kind='ownership'):
         nonlocal sequence
+        if worker_lock is not None:
+            worker_lock.check()
         sequence += 1
         send({'event': 'check', 'sequence': sequence, 'kind': kind})
         answer = read_message()
@@ -39,44 +45,50 @@ def main():
 
     try:
         request = read_message()
-        if (not isinstance(request, dict) or set(request) != {'version', 'enabled', 'action', 'input', 'token'}
+        if (not isinstance(request, dict) or set(request) != {'version', 'enabled', 'action', 'input', 'token', 'directory'}
                 or request['version'] != 1 or request['enabled'] is not True or not isinstance(request['input'], dict)):
             raise ValueError('RESOURCE_WORKER_DISABLED')
         action, value = request['action'], request['input']
-        if action not in ('ownership-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'remove-source-fence', 'prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
+        if action not in ('ownership-check', 'worker-lock-check', 'prepare-fence', 'inspect-source-fence', 'inspect-target-fence', 'install-source-fence', 'remove-target-fence', 'remove-source-fence', 'prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
             raise ValueError('RESOURCE_WORKER_ACTION_REQUIRED')
-        check()
-        if action == 'ownership-check':
-            result = {'owned': True}
-        elif action in ('prepare-vectors', 'advance-vectors', 'inspect-vectors'):
-            from d1_resource_vector_runtime import vector_sync
-            result = vector_sync(request['token'], value, check, lambda: check('vector-safe'),
-                                 prepare=action == 'prepare-vectors', status=action == 'inspect-vectors')
-        elif action in ('prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
-            from d1_resource_transfer_runtime import prepare_source_snapshot, run_transfer
-            if action == 'prepare-copy':
-                result = prepare_source_snapshot(request['token'], value['plan'], check)
+        from d1_resource_worker_lock import ResourceWorkerLock
+        if action in LOCKED_ACTIONS:
+            worker_lock = ResourceWorkerLock(request['directory'])
+            if action in ('advance-copy', 'prepare-vectors', 'advance-vectors') and value.get('directory') != request['directory']:
+                raise ValueError('RESOURCE_WORKER_DIRECTORY_MISMATCH')
+        with worker_lock if worker_lock is not None else nullcontext():
+            check()
+            if action in ('ownership-check', 'worker-lock-check'):
+                result = {'owned': True, **({'exclusiveWorker': True} if action == 'worker-lock-check' else {})}
+            elif action in ('prepare-vectors', 'advance-vectors', 'inspect-vectors'):
+                from d1_resource_vector_runtime import vector_sync
+                result = vector_sync(request['token'], value, check, lambda: check('vector-safe'),
+                                     prepare=action == 'prepare-vectors', status=action == 'inspect-vectors')
+            elif action in ('prepare-copy', 'advance-copy', 'inspect-copy', 'prepare-vectors', 'advance-vectors', 'inspect-vectors'):
+                from d1_resource_transfer_runtime import prepare_source_snapshot, run_transfer
+                if action == 'prepare-copy':
+                    result = prepare_source_snapshot(request['token'], value['plan'], check)
+                else:
+                    result = run_transfer(request['token'], value, check,
+                                          lambda *_args: check('import-safe'), status_only=action == 'inspect-copy')
+            elif action == 'prepare-fence':
+                query = CloudflareFenceQuery(request['token'])
+                result = plan_fence(query(SOURCE, SCHEMA_SQL), value.get('run'))
             else:
-                result = run_transfer(request['token'], value, check,
-                                      lambda *_args: check('import-safe'), status_only=action == 'inspect-copy')
-        elif action == 'prepare-fence':
-            query = CloudflareFenceQuery(request['token'])
-            result = plan_fence(query(SOURCE, SCHEMA_SQL), value.get('run'))
-        else:
-            plan = value['plan']
-            mutate = action in ('install-source-fence', 'remove-target-fence', 'remove-source-fence')
-            query = CloudflareFenceQuery(request['token'], plan, mutate, allow_source_unfence=action == 'remove-source-fence')
-            control = FenceControl(query, check, lambda _plan: check('target-safe'), lambda _plan: check('source-safe'))
-            if action == 'install-source-fence':
-                result = control.fence_source(plan)
-            elif action == 'remove-source-fence':
-                result = control.unfence_source(plan)
-            elif action == 'remove-target-fence':
-                result = control.unfence_target(plan)
-            else:
-                result = control.observe(plan, target=action == 'inspect-target-fence')
-        check()
-        send({'event': 'result', 'value': result})
+                plan = value['plan']
+                mutate = action in ('install-source-fence', 'remove-target-fence', 'remove-source-fence')
+                query = CloudflareFenceQuery(request['token'], plan, mutate, allow_source_unfence=action == 'remove-source-fence')
+                control = FenceControl(query, check, lambda _plan: check('target-safe'), lambda _plan: check('source-safe'))
+                if action == 'install-source-fence':
+                    result = control.fence_source(plan)
+                elif action == 'remove-source-fence':
+                    result = control.unfence_source(plan)
+                elif action == 'remove-target-fence':
+                    result = control.unfence_target(plan)
+                else:
+                    result = control.observe(plan, target=action == 'inspect-target-fence')
+            check()
+            send({'event': 'result', 'value': result})
         return 0
     except Exception:
         send({'event': 'error', 'code': 'RESOURCE_WORKER_FAILED'})

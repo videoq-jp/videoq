@@ -16,3 +16,13 @@ test('ownership withdrawal during child handshake prevents successful result',as
 test('child errors and credentials remain outside public errors',async()=>{
  const bridge=createResourceBridge(options());await assert.rejects(bridge.call('prepare-fence',{run:'a'.repeat(32)},'PRIVATE_SHORT_TOKEN'),{message:'RESOURCE_BRIDGE_FAILED'});
 });
+test('real mutating child excludes a recovery idle probe until its guarded operation stops',async t=>{
+ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os');const directory=await fs.mkdtemp(path.join(os.tmpdir(),'videoq-worker-barrier-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ let entered,release,checks=0;const ready=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
+ const active=createResourceBridge({...options(),directory,assertOperation:async()=>{checks++;if(checks===2){entered();await gate;throw Error('RESOURCE_SYNTHETIC_STOP_BEFORE_PROVIDER');}}});
+ const operation=active.call('install-source-fence',{plan:{}},'SYNTHETIC_TOKEN');const failed=assert.rejects(operation,/RESOURCE_BRIDGE_FAILED/);await ready;
+ const probe=createResourceBridge({...options(),directory});await assert.rejects(probe.call('worker-lock-check',{}),/RESOURCE_BRIDGE_FAILED/);release();await failed;assert.deepEqual(await probe.call('worker-lock-check',{}),{owned:true,exclusiveWorker:true});
+});
+test('mutating child without a private worker directory cannot enter provider code',async()=>{
+ const bridge=createResourceBridge(options());await assert.rejects(bridge.call('install-source-fence',{plan:{}},'SYNTHETIC_TOKEN'),/RESOURCE_BRIDGE_FAILED/);
+});

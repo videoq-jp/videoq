@@ -1,16 +1,16 @@
 // One-shot private pipes only. Credential/input data never enters argv or logs.
 const {spawn}=require('node:child_process');
 const path=require('node:path');
-const ACTIONS=new Set(['ownership-check','prepare-fence','inspect-source-fence','inspect-target-fence','install-source-fence','remove-target-fence','remove-source-fence','prepare-copy','advance-copy','inspect-copy','prepare-vectors','advance-vectors','inspect-vectors']);
+const ACTIONS=new Set(['ownership-check','worker-lock-check','prepare-fence','inspect-source-fence','inspect-target-fence','install-source-fence','remove-target-fence','remove-source-fence','prepare-copy','advance-copy','inspect-copy','prepare-vectors','advance-vectors','inspect-vectors']);
 const LIMIT=1024*1024;
-function createResourceBridge({assertExecutor,assertOperation,assertTargetSafe,assertSourceSafe=async()=>{throw Error('RESOURCE_SOURCE_ABORT_SAFETY_REQUIRED');},assertImportSafe=async()=>{throw Error('RESOURCE_IMPORT_SAFETY_REQUIRED');},assertVectorSafe=async()=>{throw Error('RESOURCE_VECTOR_SAFETY_REQUIRED');},python='python3',enabled=false}){
+function createResourceBridge({assertExecutor,assertOperation,assertTargetSafe,assertSourceSafe=async()=>{throw Error('RESOURCE_SOURCE_ABORT_SAFETY_REQUIRED');},assertImportSafe=async()=>{throw Error('RESOURCE_IMPORT_SAFETY_REQUIRED');},assertVectorSafe=async()=>{throw Error('RESOURCE_VECTOR_SAFETY_REQUIRED');},python='python3',directory,enabled=false}){
  if([assertExecutor,assertOperation,assertTargetSafe,assertSourceSafe,assertImportSafe,assertVectorSafe].some(value=>typeof value!=='function')||typeof python!=='string'||!python||python.includes('\0'))throw Error('RESOURCE_BRIDGE_CONTEXT_REQUIRED');
  return{
   async call(action,input,token){
    if(!enabled)throw Error('RESOURCE_BRIDGE_DISABLED');
    if(!ACTIONS.has(action)||!input||typeof input!=='object'||Array.isArray(input))throw Error('RESOURCE_BRIDGE_ACTION_REQUIRED');
    try{await assertExecutor();await assertOperation(action,input);}catch{throw Error('RESOURCE_BRIDGE_OWNERSHIP_REQUIRED');}
-   const initial=JSON.stringify({version:1,enabled:true,action,input,token:token??null})+'\n';
+   const initial=JSON.stringify({version:1,enabled:true,action,input,token:token??null,directory:directory??null})+'\n';
    if(Buffer.byteLength(initial)>LIMIT)throw Error('RESOURCE_BRIDGE_INPUT_LIMIT');
    return new Promise((resolve,reject)=>{
     const child=spawn(python,[path.resolve(__dirname,'../../infra/scripts/d1_resource_worker.py')],{stdio:['pipe','pipe','ignore'],env:{PATH:process.env.PATH,LANG:'C.UTF-8',PYTHONIOENCODING:'utf-8',PYTHONDONTWRITEBYTECODE:'1'}});
