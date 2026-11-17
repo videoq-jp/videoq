@@ -23,7 +23,7 @@ def inspect(report):
 if __name__ == "__main__":
     report = {"status": "error", "summary": "本番コンテナの脆弱性検査を完了できませんでした。", "details": []}
     try:
-        report = inspect(json.loads(pathlib.Path("trivy.json").read_text()))
+        report = inspect(json.loads(pathlib.Path("grype.json").read_text()))
     except Exception:
         pass
     pathlib.Path("operations-report.json").write_text(json.dumps(report, ensure_ascii=False))

@@ -137,68 +137,32 @@ jobs:
       - name: Scan the API image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         timeout-minutes: 15
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-api:onprem-ci
-          format: json
+          source: docker:videoq-api:onprem-ci
           output: api-security.json
-          list-all-pkgs: 'true'
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 10m
       - name: Scan the worker image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         timeout-minutes: 15
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-worker:onprem-ci
-          format: json
+          source: docker:videoq-worker:onprem-ci
           output: worker-security.json
-          list-all-pkgs: 'true'
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 10m
       - name: Scan the web image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         timeout-minutes: 15
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-web:onprem-ci
-          format: json
+          source: docker:videoq-web:onprem-ci
           output: web-security.json
-          list-all-pkgs: 'true'
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 10m
       - name: Scan the local Whisper image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
         timeout-minutes: 15
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-local-whisper:onprem-ci
-          trivy-config: apps/inference/whisper/security/cpu-trivy.yaml
-          format: json
+          source: docker:videoq-local-whisper:onprem-ci
           output: local-whisper-security.json
-          list-all-pkgs: 'true'
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 10m
+          security-config: apps/inference/whisper/security/cpu-grype.json
       - name: Record package inventories for incident response
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         env:
@@ -208,7 +172,7 @@ jobs:
           components=(api worker web)
           if [ "$VALIDATE_LIFECYCLE" = true ]; then components+=(local-whisper); fi
           for component in "${components[@]}"; do
-            trivy convert --format cyclonedx --output "sbom/${component}.cdx.json" "${component}-security.json"
+            syft convert "${component}-security.json.syft.json" -o "cyclonedx-json=sbom/${component}.cdx.json"
           done
       - name: Retain the image inventories
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
@@ -217,7 +181,7 @@ jobs:
           name: onprem-sbom-${{ github.sha }}
           path: |
             sbom/*.cdx.json
-            *-security.json
+            *-security.json*
             apps/inference/whisper/security/sqlite.openvex.json
             apps/inference/whisper/security/zlib.openvex.json
           if-no-files-found: error
@@ -344,23 +308,13 @@ jobs:
       - name: Scan upstream CPU images including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
         timeout-minutes: 15
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
-        env:
-          TRIVY_PLATFORM: linux/${{ matrix.architecture }}
-          TRIVY_IMAGE_SRC: remote
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: ${{ env.UPSTREAM_CPU_IMAGE }}
-          trivy-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/trivy.yaml' || '' }}
-          format: json
+          source: registry:${{ env.UPSTREAM_CPU_IMAGE }}
           output: upstream-cpu-security.json
-          list-all-pkgs: 'true'
-          scanners: vuln
-          severity: HIGH,CRITICAL,UNKNOWN
-          ignore-unfixed: 'false'
-          exit-code: '0'
-          timeout: 15m
+          gate: assess
+          security-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/grype.json' || '' }}
+          platform: linux/${{ matrix.architecture }}
       - name: Install pinned Helm for the runtime assessment
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
         run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
@@ -385,14 +339,14 @@ jobs:
           }
           JS
       - name: Convert the scanned upstream inventory
-        run: trivy convert --format cyclonedx --output upstream-cpu.cdx.json upstream-cpu-security.json
+        run: syft convert upstream-cpu-security.json.syft.json -o cyclonedx-json=upstream-cpu.cdx.json
       - name: Retain architecture-specific findings
         if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: upstream-cpu-security-${{ matrix.engine }}-${{ matrix.architecture }}
           path: |
-            upstream-cpu-security.json
+            upstream-cpu-security.json*
             upstream-cpu.cdx.json
             upstream-cpu-assessed.json
             apps/inference/llamacpp/security/

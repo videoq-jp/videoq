@@ -21,8 +21,8 @@ The current Debian scanner metadata still reports the locally built 1.4 package
 as affected without a distribution `FixedVersion`. `zlib.openvex.json` records
 the upstream-confirmed fix for CVE-2026-76844 for only this exact source-built
 package, epoch, Debian version and amd64/arm64 architectures. It does not cover
-older or unknown versions, other packages or unknown CVEs. `cpu-trivy.yaml`
-retains the complete findings with `show-suppressed`; a passing assessed scan
+older or unknown versions, other packages or unknown CVEs. `cpu-grype.json`
+retains complete raw Grype findings and records assessed findings in the policy view; a passing assessed scan
 does not mean there are zero raw findings. Reassess on source/package changes.
 
 References:
@@ -49,7 +49,7 @@ is therefore absent.
 3.54.0) and the absent CLI code for CVE-2026-119586. It matches only the locally
 built package version on Debian 13.7 amd64/arm64. Other package versions and
 unknown vulnerabilities continue to fail. CI and release builds apply
-`cpu-trivy.yaml` only to the CPU image and retain its JSON report, including assessed findings,
+`cpu-grype.json` only to the CPU image and retain its JSON report, including assessed findings,
 alongside the SBOM and assessment. A passing assessed scan is not a claim of
 zero raw findings. Upstream NVIDIA inspection is described below.
 

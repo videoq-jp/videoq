@@ -42,16 +42,13 @@ test('the existing required CI gate includes on-prem validation', () => {
 });
 
 test('all on-prem images are scanned without hiding unfixed findings', () => {
-  const scans = onprem.split(/(?=      - name:)/).filter(step => step.includes('uses: aquasecurity/trivy-action@'));
+  const scans = onprem.split(/(?=      - name:)/).filter(step => step.includes('uses: ./.github/actions/scan-image'));
   assert.equal(scans.length, 5);
   for (const scan of scans) assert.match(scan, /timeout-minutes: 15/);
   for (const component of ['api', 'worker', 'web', 'local-whisper']) {
-    const scan = scans.find(step => step.includes(`image-ref: videoq-${component}:onprem-ci`));
+    const scan = scans.find(step => step.includes(`source: docker:videoq-${component}:onprem-ci`));
     assert.ok(scan, component);
-    assert.match(scan, /severity: HIGH,CRITICAL/);
-    assert.match(scan, /ignore-unfixed: 'false'/);
-    assert.match(scan, /exit-code: '1'/);
-    assert.match(scan, /list-all-pkgs: 'true'/);
+    assert.doesNotMatch(scan, /gate: assess/);
     assert.doesNotMatch(scan, /continue-on-error: true/);
   }
 });
@@ -60,14 +57,14 @@ test('upstream vLLM replaces the engine build and fails closed on raw findings',
   const upstream = readFileSync(join(__dirname, '../workflows/upstream-vllm.yml'), 'utf8');
   assert.match(onprem, /uses: \.\/\.github\/workflows\/upstream-vllm.yml/);
   assert.doesNotMatch(upstream, /docker build|trivy-config:|vex:/);
-  assert.match(upstream, /ignore-unfixed: 'false'/);
+  assert.match(upstream, /gate: assess/);
   assert.match(upstream, /check-vllm-scan.cjs/);
   assert.match(upstream, /check-vllm-runtime.py/);
 });
 
 test('untrusted image builds have no production access and retain inventories', () => {
   assert.doesNotMatch(onprem, /secrets\.|secrets: inherit|environment:|id-token: write|packages: write|contents: write/);
-  assert.match(onprem, /--format cyclonedx/);
+  assert.match(onprem, /syft convert/);
   assert.match(onprem, /components=\(api worker web\)/);
   assert.match(onprem, /if-no-files-found: error/);
   for (const checkout of onprem.split(/(?=      - uses: actions\/checkout@)/).slice(1)) {
@@ -109,8 +106,7 @@ test('upstream CPU images retain separate architecture scans and a verified asse
   assert.match(cpu, /architecture: \[amd64, arm64\]/);
   assert.match(cpu, /steps.header_inventory.outcome == 'success'/);
   assert.match(cpu, /apps\/inference\/whispercpp\/security\/header-image-inventory.json/);
-  assert.match(cpu, /ignore-unfixed: 'false'/);
-  assert.match(cpu, /exit-code: '0'/);
+  assert.match(cpu, /gate: assess/);
   assert.match(cpu, /onprem-upstream-security\.cjs upstream-cpu-security\.json/);
   assert.doesNotMatch(cpu, /continue-on-error: true/);
 });
@@ -127,7 +123,7 @@ test('CI scans pinned upstream images only when their pins change, while Operati
   const cpu = onprem.slice(onprem.indexOf('  upstream-cpu-images:'));
   assert.match(cpu, /^    if: inputs\.scan_upstream_images$/m);
   assert.doesNotMatch(onprem, /LLAMACPP_IMAGE|llamacpp-security-raw/);
-  assert.match(cpu, /trivy convert --format cyclonedx --output upstream-cpu.cdx.json upstream-cpu-security.json/);
+  assert.match(cpu, /syft convert upstream-cpu-security.json.syft.json -o cyclonedx-json=upstream-cpu.cdx.json/);
 
   const filter = ci.match(/^            upstream_images:\n([\s\S]*?)(?=^            \w+:)/m)[1];
   for (const pattern of ['charts/videoq-inference/values.yaml', 'apps/inference/whispercpp/security/**',

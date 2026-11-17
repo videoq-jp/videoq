@@ -77,7 +77,7 @@ jobs:
           dockerfile: ${{ matrix.dockerfile }}
           context: ${{ matrix.context }}
           platform: linux/${{ matrix.arch }}
-          security-config: ${{ matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-trivy.yaml' || '' }}
+          security-config: ${{ matrix.component == 'transcription-gateway' && 'apps/inference/whisper/security/cpu-grype.json' || '' }}
           evidence-name: security-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
           artifact-name: build-${{ matrix.component }}-${{ matrix.arch }}-${{ github.sha }}-attempt-${{ github.run_attempt }}
   chart:

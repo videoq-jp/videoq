@@ -114,9 +114,9 @@ to GHCR and the publisher requires the registry digest to equal the scanned dige
 There is no intermediate tar/zstd conversion, Docker import, or image-store switch.
 The registry client action and binary checksum are pinned.
 
-Trivy scans once, including unfixed HIGH/CRITICAL findings and the complete package
-inventory. Release SBOMs are converted from that JSON report, without a second image
-scan. A failed build, license check or scan prevents archive handoff. Failure reports
+Syft catalogs the complete package inventory once and Grype scans that inventory,
+including unfixed HIGH/CRITICAL findings. Release CycloneDX SBOMs are converted from
+the retained Syft JSON without a second image scan. A failed build, license check or scan prevents archive handoff. Failure reports
 are retained. GPU runtime imports remain enforced as the serving user in both GPU
 Dockerfiles; the CPU gateway also has a container import smoke check.
 
@@ -175,3 +175,19 @@ DB Maintenance CD and Operations remain: current D1 migration and smoke still ru
 inside AWS. Native PostgreSQL recovery code and saved, versioned backup objects are
 retained through recovery review; their presence does not enable a scheduled Neon
 connection. On-premises PostgreSQL/pgvector is unaffected.
+
+The shared `.github/actions/scan-image` action installs Grype 0.122.0 and Syft 1.57.2
+from official releases using committed SHA-256 checksums. It writes `REPORT.grype.json`
+(raw, unsuppressed findings), `REPORT.syft.json` (complete package inventory), and
+`REPORT` (the existing runtime assessors' policy-view schema, marked `Scanner: Grype`).
+The policy view preserves exact CVE/package/PURL VEX assessments; it never changes
+raw scanner evidence. New or mismatched findings remain blocking. `gate: assess`
+requires the caller's existing runtime evaluator or Operations reporting step;
+application and release scans default to blocking HIGH/CRITICAL, including unfixed.
+Upstream runtime evaluators also reject UNKNOWN. Historical verification evidence
+continues to identify the scanner used when it was collected.
+
+Scanner updates require reviewing both version and checksum pins in
+`.github/scripts/install-security-tools.py`. CLI usage and supported SBOM formats:
+https://oss.anchore.com/docs/reference/grype/cli/ and
+https://oss.anchore.com/docs/reference/syft/cli/.

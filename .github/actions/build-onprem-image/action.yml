@@ -14,7 +14,7 @@ inputs:
     description: Native target platform
     default: linux/amd64
   security-config:
-    description: Component-specific Trivy policy, empty for the default policy
+    description: Component-specific Grype policy, empty for the default policy
     default: ''
   cuda:
     description: Reclaim disposable runner toolchains for a CUDA image
@@ -91,27 +91,18 @@ runs:
         df -h /
     - name: Scan the complete image including unfixed vulnerabilities
       id: scan
-      uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+      uses: ./.github/actions/scan-image
       with:
-        version: v0.76.1
-        scan-type: image
-        input: ${{ runner.temp }}/scan-image
-        trivy-config: ${{ inputs.security-config }}
-        format: json
+        source: oci-dir:${{ runner.temp }}/scan-image
         output: artifact/security.json
-        list-all-pkgs: 'true'
-        scanners: vuln
-        severity: HIGH,CRITICAL
-        ignore-unfixed: 'false'
-        exit-code: '1'
-        timeout: 15m
+        security-config: ${{ inputs.security-config }}
     - name: Retain scan evidence on success or failure
       if: ${{ !cancelled() && (steps.scan.outcome == 'success' || steps.scan.outcome == 'failure') }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ inputs.evidence-name }}
         path: |
-          artifact/security.json
+          artifact/security.json*
           apps/inference/whisper/security/
         if-no-files-found: error
         retention-days: 90
@@ -120,7 +111,7 @@ runs:
       shell: bash
       run: |
         # Reuse the complete scan inventory instead of scanning the CUDA layers again.
-        trivy convert --format cyclonedx --output artifact/sbom.cdx.json artifact/security.json
+        syft convert artifact/security.json.syft.json -o cyclonedx-json=artifact/sbom.cdx.json
         mv "$RUNNER_TEMP/scan-image" artifact/image
     - name: Hand the scanned image to a separate publisher
       if: inputs.artifact-name != ''

@@ -53,13 +53,13 @@ test('a build failure prevents verification, and a license mismatch prevents suc
 });
 
 test('one complete strict scan supplies both the inventory and the separate publisher',()=>{
- assert.equal([...action.matchAll(/uses: aquasecurity\/trivy-action@/g)].length,1);
- for(const setting of ["ignore-unfixed: 'false'",'severity: HIGH,CRITICAL',"exit-code: '1'","list-all-pkgs: 'true'"])
+ assert.equal([...action.matchAll(/uses: \.\/\.github\/actions\/scan-image/g)].length,1);
+ for(const setting of ['source: oci-dir:${{ runner.temp }}/scan-image','output: artifact/security.json'])
   assert.ok(action.includes(setting),setting);
- assert.ok(action.includes('trivy convert --format cyclonedx --output artifact/sbom.cdx.json artifact/security.json'));
+ assert.ok(action.includes('syft convert artifact/security.json.syft.json -o cyclonedx-json=artifact/sbom.cdx.json'));
  assert.doesNotMatch(action,/trivy image |docker save|continue-on-error|secrets\./);
  assert.doesNotMatch(action,/docker (?:load|create|run|cp) /);
- assert.ok(action.indexOf('uses: aquasecurity/trivy-action@')<action.indexOf('mv "$RUNNER_TEMP/scan-image" artifact/image'));
+ assert.ok(action.indexOf('uses: ./.github/actions/scan-image')<action.indexOf('mv "$RUNNER_TEMP/scan-image" artifact/image'));
  assert.ok(action.includes("if: inputs.artifact-name != ''"));
  for(const name of ['onprem-release']){
   const workflow=readFileSync(join(__dirname,`../workflows/${name}.yml`),'utf8');

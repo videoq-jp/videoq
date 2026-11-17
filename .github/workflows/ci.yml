@@ -170,6 +170,9 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.python-version'
             containers:
+              - '.github/actions/scan-image/**'
+              - '.github/scripts/grype-scan.py'
+              - '.github/scripts/install-security-tools.py'
               - '.github/workflows/container-validation.yml'
               - 'apps/api/Dockerfile*'
               - 'apps/web/Dockerfile*'
@@ -285,6 +288,9 @@ jobs:
               - '.github/actions/setup-operations-tools/**'
               - '.github/workflows/operations.yml'
             whisper_gpu:
+              - '.github/actions/scan-image/**'
+              - '.github/scripts/grype-scan.py'
+              - '.github/scripts/install-security-tools.py'
               - 'charts/videoq-inference/**'
               - '.github/scripts/check-vllm-*'
               - 'apps/inference/vllm/security/**'
@@ -292,6 +298,9 @@ jobs:
               - '.github/scripts/vllm-*-smoke.*'
               - '.github/workflows/upstream-vllm.yml'
             upstream_images:
+              - '.github/actions/scan-image/**'
+              - '.github/scripts/grype-scan.py'
+              - '.github/scripts/install-security-tools.py'
               - '.github/workflows/onprem-validation.yml'
               - 'charts/videoq-inference/values.yaml'
               - 'apps/inference/whispercpp/security/**'
@@ -342,6 +351,9 @@ jobs:
               - '.github/scripts/install-helm.sh'
               - '.github/onprem-lab/**'
             onprem:
+              - '.github/actions/scan-image/**'
+              - '.github/scripts/grype-scan.py'
+              - '.github/scripts/install-security-tools.py'
               - '.github/actions/build-onprem-image/**'
               - 'apps/api/Dockerfile*'
               - 'apps/web/Dockerfile*'

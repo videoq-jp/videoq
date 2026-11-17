@@ -56,7 +56,7 @@ Actions from seven days before expiry.
 | VideoQ-specific monitor | When (JST) | What it does |
 | --- | --- | --- |
 | Production smoke test | After CD success; daily 09:17 | health/ready, login page, video upload with a dedicated user, processing, transcription, embeddings, and list pages. Manual runs can add paid cited Q&A with `verify_ai_answers=true` |
-| Production container scan | Daily 09:17 | Trivy scan of the ECR digest Lambda actually references: HIGH/CRITICAL, including unfixed |
+| Production container scan | Daily 09:17 | Grype scan of the ECR digest Lambda actually references: HIGH/CRITICAL, including unfixed |
 | Terraform drift check | Daily 09:17 | Plan only. Never applies and does not publish attribute values |
 | Logical backup restore test | 1st of each month 13:41 | Dumps from one read-only snapshot, restores to isolated PostgreSQL, and verifies all application table counts and constraints |
 

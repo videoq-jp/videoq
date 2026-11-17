@@ -97,13 +97,8 @@ jobs:
       - name: Build the production target
         run: docker build --platform linux/arm64 --target production -t videoq-worker:ci apps/worker
       - name: Require no HIGH or CRITICAL vulnerabilities in the production filesystem
-        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec # v0.35.0
+        uses: ./.github/actions/scan-image
         with:
-          version: v0.76.1
-          scan-type: image
-          image-ref: videoq-worker:ci
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: 'false'
-          exit-code: '1'
-          timeout: 15m
+          platform: linux/arm64
+          source: docker:videoq-worker:ci
+          output: worker-security.json

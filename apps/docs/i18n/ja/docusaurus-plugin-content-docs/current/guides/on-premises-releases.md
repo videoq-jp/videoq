@@ -54,7 +54,7 @@ helm test videoq -n videoq --timeout 2m
 
 Chart が強制するのはダイジェスト指定です。署名確認は導入側のスクリプトで行うため、クラスタ管理者による回避も防ぐ必要があれば、同じ署名者を条件とする admission policy を導入先で設定します。
 
-NVIDIA の上流イメージと別ボリュームの音声依存を Trivy で検査し、未加工の検出結果を保持します。実ファイル・起動引数・権限・期限に一致する[適用性評価](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md)のみを認め、未評価の HIGH・CRITICAL・UNKNOWN はリリースを止めます。`upstream-vllm-inspection-*` の artifact は、生の検査結果・実ファイル一覧・実行検証・依存ロック・評価を90日間保持します。
+NVIDIA の上流イメージと別ボリュームの音声依存を Grype で検査し、未加工の検出結果を保持します。実ファイル・起動引数・権限・期限に一致する[適用性評価](https://github.com/videoq-jp/videoq/blob/main/apps/inference/vllm/security/README.md)のみを認め、未評価の HIGH・CRITICAL・UNKNOWN はリリースを止めます。`upstream-vllm-inspection-*` の artifact は、生の検査結果・実ファイル一覧・実行検証・依存ロック・評価を90日間保持します。
 
 ## 検証環境から本番へ進める
 

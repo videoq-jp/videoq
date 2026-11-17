@@ -46,9 +46,8 @@ test('both modes retain application images, runtime smoke checks and strict vuln
     for (const component of ['API', 'worker', 'web']) {
       const name = `Scan the ${component} image including unfixed vulnerabilities`;
       assert.equal(enabled(name, lifecycle), true, name);
-      assert.match(step(name), /severity: HIGH,CRITICAL/);
-      assert.match(step(name), /ignore-unfixed: 'false'/);
-      assert.match(step(name), /exit-code: '1'/);
+      assert.match(step(name), /uses: \.\/\.github\/actions\/scan-image/);
+      assert.doesNotMatch(step(name), /gate: assess/);
     }
   }
 });
@@ -67,7 +66,7 @@ test('inventories reference only images built in the selected mode', () => {
   const directory = mkdtempSync(join(tmpdir(), 'onprem-inventory-'));
   try {
     for (const [lifecycle, upstream, expected] of [['false', 'false', 3], ['false', 'true', 3], ['true', 'false', 4]]) {
-      const run = spawnSync('bash', ['-eu', '-c', 'trivy() { printf "%s\\n" "$*"; }\n' + body], {
+      const run = spawnSync('bash', ['-eu', '-c', 'syft() { printf "%s\\n" "$*"; }\n' + body], {
         cwd: directory, encoding: 'utf8', env: {...process.env,
           VALIDATE_LIFECYCLE: lifecycle, SCAN_UPSTREAM_IMAGES: upstream},
       });
@@ -75,7 +74,7 @@ test('inventories reference only images built in the selected mode', () => {
       assert.equal(run.stdout.trim().split('\n').length, expected);
       for (const component of ['api', 'worker', 'web']) assert.ok(run.stdout.includes(`${component}-security.json`));
       assert.equal(run.stdout.includes('local-whisper-security.json'), lifecycle === 'true');
-      assert.ok(!run.stdout.includes('trivy image'));
+      assert.ok(!run.stdout.includes('syft docker:'));
       assert.ok(!run.stdout.includes('llamacpp'));
     }
   } finally { rmSync(directory, {recursive: true, force: true}); }

@@ -55,7 +55,7 @@ Primary references:
 
 `.github/workflows/upstream-vllm.yml` retains the unsuppressed image scan, installed
 audio-volume scan, exact-image inventory, runtime import/codec checks and evaluated
-findings. Trivy collects the report first; the following evaluator fails on any
+findings. Grype collects the report first; the following evaluator fails on any
 unreviewed HIGH/CRITICAL/UNKNOWN finding. Raw findings are never removed by VEX or
 an ignore file. Missing inventories, changed file hashes, changed runtime package
 versions, writable roots, altered commands/hooks, writable model/audio mounts and
