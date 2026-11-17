@@ -963,3 +963,26 @@ API roundtrip for this synthetic schema only. It does not prove that the
 production coordinator/bridge, large-copy behavior, Vectorize synchronization,
 upload-to-answer E2E or failure recovery has completed. Those release gates
 remain open.
+
+## Native Vectorize isolated roundtrip (2026-11-17)
+
+A real Vectorize API rehearsal used separate source/target index pairs for
+1536 and 768 dimensions, all cosine, unbound to any Worker. Each pair copied
+four synthetic vectors and compared float32 values and metadata on readback.
+Both pairs returned identical query rankings. Metadata filters correctly
+selected two video IDs for one owner, rejected a missing owner with zero hits,
+and excluded a deleted vector from direct retrieval and search.
+
+The initial attempt exposed provider response differences: metadata index
+listing returns `String`/`Number` while request enums are lowercase, and an
+index DELETE is confirmed by `410 vectorize.index.deleted`. The initial test
+was stopped and its sole index was removed. The successful retry waited for
+each metadata index to become visible before creating the next one. Its four
+indexes were also deleted with identity checks and confirmed 410 responses.
+All five temporary indexes are therefore removed.
+
+[Provider evidence](evidence/vectorize-isolated-provider-roundtrip-2026-11-17.json)
+records both attempts, dimensions and cleanup. No production binding, customer
+data or model credential was used. These are native API checks with synthetic
+vectors; D1 final authorization, the production coordinator/bridge, embedding
+quality and upload-to-answer E2E remain separate, unproven release gates.
