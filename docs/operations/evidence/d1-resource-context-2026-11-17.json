@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-17",
+  "scope": "private immutable resource execution context",
+  "nodeTests": {
+    "passed": 657,
+    "failed": 0
+  },
+  "dynamoDbLocalTests": {
+    "passed": 17,
+    "failed": 0
+  },
+  "checks": [
+    "private atomic publication without overwrite",
+    "concurrent initialization converges on one capability",
+    "exact live unclaimed hold and definition before generation",
+    "claimed run refuses regeneration after local file loss",
+    "private root path/device/inode pin prevents copying to another root",
+    "corrupt and symlink records refused and retained",
+    "summary excludes executor capability",
+    "real DynamoDB claim digest preserved after context loss"
+  ],
+  "productionMutationExecuted": false,
+  "productionRunContextCreated": false,
+  "operatorMutationEntryPointImplemented": false,
+  "actualWorkerQuiescenceProofImplemented": false,
+  "realProviderRehearsalExecuted": false,
+  "limits": [
+    "context store does not claim or release AWS ownership",
+    "provider configuration digests must first come from verified preflight"
+  ]
+}

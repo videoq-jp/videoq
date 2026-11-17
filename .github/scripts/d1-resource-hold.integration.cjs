@@ -286,3 +286,12 @@ test('real local keeper surrounds composed ownership and early abort, excluding 
   const owner=await f.get('maintenance');assert.ok(owner);await f.release(r.run_id,owner.execution_arn.S);assert.equal(await f.get('maintenance'),undefined);
  }finally{await rt.cleanup();}
 });
+test('private context pins a real unclaimed hold and refuses capability regeneration after claim and file loss',async()=>{
+ const f=await fixture(),r=await f.start('ab'.repeat(16)),fs=require('node:fs/promises'),path=require('node:path'),directory=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'videoq-real-run-context-'));
+ try{
+  const expected={run:r.run_id,source:SHA,definitionSha256:resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:{},neonRetired:true})),projectSha256:'c'.repeat(64),platformSha256:'d'.repeat(64)},store=await require('./d1-resource-context.cjs').createResourceContextStore({directory,aws:f.resourceAws});
+  const created=await store.initialize(expected),journal=f.journal(r.run_id,{executorToken:created.context.executorToken});await journal.claimExecutor();await journal.assertExecutor();assert.equal((await store.initialize(expected)).created,false);
+  const digest=resourceDigest({executorToken:created.context.executorToken});assert.equal((await f.get('run#'+r.run_id)).resource_executor_sha256.S,digest);
+  await fs.unlink(path.join(directory,'resource-context.json'));await assert.rejects(store.initialize(expected),/ALREADY_CLAIMED/);assert.equal((await f.get('run#'+r.run_id)).resource_executor_sha256.S,digest);assert.deepEqual(await fs.readdir(directory),[]);assert.ok(await f.get('maintenance'));
+ }finally{await fs.rm(directory,{recursive:true,force:true});}
+});

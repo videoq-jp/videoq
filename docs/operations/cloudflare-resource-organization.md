@@ -784,3 +784,37 @@ Validation: 651 Node tests passed. [Preflight evidence](evidence/d1-resource-pre
 separates actual metadata/authentication reads from fixture source/drift checks.
 The mutating operator entry point, actual worker-drain proof, canonical config
 handoff, forward recovery and isolated provider rehearsal remain outstanding.
+
+## Durable private run context
+
+`d1-resource-context.cjs` pins run/source, execution-definition digest, verified
+project/platform digests and a generated executor capability in one private
+`resource-context.json`. Its artifact root path/device/inode are immutable, so
+copying the file to another directory cannot retarget a run. Root ownership and
+0700 permissions, file ownership and 0600 permissions, no symlinks, bounded JSON
+and unchanged file metadata are checked on every read. There are no application,
+Cloudflare or model credentials, SQL rows or generic extra fields in this file.
+
+Initialization first proves the exact live unclaimed D1 hold and shared owner
+through consistent DynamoDB reads and the bound Step Functions definition. A run
+with an executor claim, prior step journal, abort request or noninitial revision
+cannot generate another capability when its context is missing. Required resume
+reads never silently initialize. Existing matching contexts are reused; changed
+pins or corrupt records are retained and refused.
+
+Publication writes/fsyncs a private temporary file, links it exclusively without
+overwriting an existing context, fsyncs the directory and verifies exact readback.
+Concurrent initializers converge on one record. The public summary contains only
+source/proof pins and the executor digest; the capability stays private and is
+never a command argument or log value. The store itself performs no AWS writes,
+claim, release, build start or provider configuration change.
+
+Validation: 657 Node tests and 17 DynamoDB Local integration tests passed. Actual
+DynamoDB ownership is claimed with the stored capability in the new scenario;
+after simulated local file loss, initialization refuses replacement and preserves
+the original AWS owner and digest. Fixtures also verify atomic initialization,
+root-copy refusal, symlinks, malformed data and summary redaction. This does not
+activate the production hold. The mutating operator entry point, worker-quiescence
+proof, configuration handoff and real provider rehearsal remain outstanding.
+[Context evidence](evidence/d1-resource-context-2026-11-17.json) records scope and
+limits.
