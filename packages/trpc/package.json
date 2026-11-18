@@ -54,7 +54,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@trpc/server": "^11.25.2",
+    "@trpc/server": "^11.28.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
