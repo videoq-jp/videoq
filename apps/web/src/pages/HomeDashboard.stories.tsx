@@ -3,7 +3,7 @@ import { expect } from 'storybook/test';
 import HomeDashboard from './HomeDashboard';
 import i18n from '@/i18n/config';
 import { authFixture, regularUser } from '../../.storybook/fixtures/auth';
-import { success, trpcQuery } from '../../.storybook/mocks/network';
+import { pending, success, trpcQuery } from '../../.storybook/mocks/network';
 import { uploadedVideo } from '../../.storybook/fixtures/videos';
 import type { VideoList } from '@/lib/api';
 import type { CourseListItem, VideoStatus } from '@videoq/trpc';
@@ -88,4 +88,20 @@ export const GettingStartedReadyToAsk: Story = {
 };
 export const GettingStartedEnglishMobile: Story = {
   ...GettingStartedNewUser, globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } },
+};
+
+export const CoursesLoading: Story = {
+  parameters: { api: { auth: authFixture(basic), trpc: [
+    trpcQuery('videos.list', success({ data: [uploadedVideo], meta: { total: 1, offset: 0, limit: 5 } })),
+    trpcQuery('courses.list', pending()),
+    trpcQuery('videos.statusCounts', success(statusCounts({ total: 1, completed: 1 }))),
+  ] } },
+  async play({ canvas }) {
+    await expect(await canvas.findByText(uploadedVideo.title)).toBeVisible();
+    await expect(canvas.getByText(i18n.t('home.usage.title'))).toBeVisible();
+    await expect(canvas.getAllByRole('progressbar')[0]).toBeVisible();
+  },
+};
+export const CoursesLoadingMobile: Story = {
+  ...CoursesLoading, globals: { locale: 'ja', viewport: { value: 'mobile', isRotated: false } },
 };

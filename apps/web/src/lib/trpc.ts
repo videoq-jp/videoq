@@ -1,4 +1,4 @@
-import { createTRPCClient, httpBatchLink, type TRPCClientError, type TRPCLink } from '@trpc/client'
+import { createTRPCClient, httpBatchLink, splitLink, type TRPCClientError, type TRPCLink } from '@trpc/client'
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { observable } from '@trpc/server/observable'
 import type { AppRouter } from '@videoq/trpc'
@@ -54,25 +54,31 @@ export function createAppTrpcClient(settings: AppTrpcClientOptions = {}) {
   const baseUrl = (settings.baseUrl ?? API_URL).replace(/\/+$/, '')
   const fetchFn = settings.fetchFn ?? fetch
   const notifyUnauthorized = createUnauthorizedHandler(settings.onUnauthorized)
+  const transportOptions: Parameters<typeof httpBatchLink<AppRouter>>[0] = {
+    url: `${baseUrl}/trpc`,
+    maxItems: TRPC_MAX_BATCH_SIZE,
+    headers: () => ({ 'Accept-Language': i18n.language }),
+    async fetch(url, requestInit) {
+      let response: Response
+      try {
+        response = await fetchJsonResponse(url, { ...requestInit, credentials: 'include' }, fetchFn)
+      } catch (error) {
+        if (error instanceof ApiResponseError && error.status === 401) await notifyUnauthorized(undefined)
+        throw error
+      }
+      // A proxy may return a 401 without a valid tRPC JSON body.
+      if (response.status === 401) await notifyUnauthorized(response)
+      return response
+    },
+  };
   return createTRPCClient<AppRouter>({
     links: [
       unauthorizedLink(notifyUnauthorized),
-      httpBatchLink({
-        url: `${baseUrl}/trpc`,
-        maxItems: TRPC_MAX_BATCH_SIZE,
-        headers: () => ({ 'Accept-Language': i18n.language }),
-        async fetch(url, requestInit) {
-          let response: Response
-          try {
-            response = await fetchJsonResponse(url, { ...requestInit, credentials: 'include' }, fetchFn)
-          } catch (error) {
-            if (error instanceof ApiResponseError && error.status === 401) await notifyUnauthorized(undefined)
-            throw error
-          }
-          // A proxy may return a 401 without a valid tRPC JSON body.
-          if (response.status === 401) await notifyUnauthorized(response)
-          return response
-        },
+      splitLink({
+        // Independent sections must not wait for the slowest procedure in a batch.
+        condition: op => op.context.independentLoading === true,
+        true: httpBatchLink({ ...transportOptions, maxItems: 1 }),
+        false: httpBatchLink(transportOptions),
       }),
     ],
   })

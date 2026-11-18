@@ -6,7 +6,7 @@ import {
 
 interface LoadingSpinnerProps {
   message?: string;
-  /** Use only when loading replaces the page content; section loading stays in its own layout. */
+  /** Reserve space within the page content; never covers navigation or other sections. */
   fullScreen?: boolean;
 }
 
@@ -15,7 +15,7 @@ export function LoadingSpinner({ message, fullScreen = false }: LoadingSpinnerPr
   const label = message ?? t('common.messages.loading');
   const spinner = (
     <div className={fullScreen
-      ? 'pointer-events-none fixed inset-0 z-10 flex items-center justify-center p-6'
+      ? 'flex min-h-[50dvh] items-center justify-center p-6'
       : 'flex items-center justify-center py-8'}>
       <ProgressIndicator type="stacked" aria-label={label}>
         <ProgressIndicatorSpinner />
@@ -26,6 +26,5 @@ export function LoadingSpinner({ message, fullScreen = false }: LoadingSpinnerPr
     </div>
   );
 
-  // Keep space in the page so short viewports do not pull the footer under the fixed indicator.
-  return fullScreen ? <div className="min-h-[50dvh]">{spinner}</div> : spinner;
+  return spinner;
 }

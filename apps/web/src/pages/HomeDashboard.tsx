@@ -48,7 +48,8 @@ export default function HomeDashboard() {
     ownedCourse,
     hasCourseQuestions,
     isCourseQuestionsLoading,
-    isLoading: isLoadingData,
+    isVideosLoading,
+    isCoursesLoading,
   } = useHomePageData({ userId: currentUser?.id });
   const { stats: videoStats, isLoading: isVideoStatsLoading } = useVideoStatusCounts(!!currentUser?.id);
 
@@ -110,7 +111,7 @@ export default function HomeDashboard() {
     t,
   ]);
 
-  if (isLoading || (currentUser && isLoadingData)) {
+  if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
 
@@ -121,10 +122,10 @@ export default function HomeDashboard() {
   const inProgressCount = videoStats.processing + videoStats.pending + videoStats.indexing + videoStats.uploading;
 
   const statsItems = [
-    { label: t('home.stats.totalVideos'), value: videoStats.total },
-    { label: t('home.stats.analysisCompleted'), value: videoStats.completed },
-    { label: t('home.stats.processing'), value: inProgressCount },
-    { label: t('home.stats.courses'), value: courseCount },
+    { label: t('home.stats.totalVideos'), value: videoStats.total, loading: isVideoStatsLoading },
+    { label: t('home.stats.analysisCompleted'), value: videoStats.completed, loading: isVideoStatsLoading },
+    { label: t('home.stats.processing'), value: inProgressCount, loading: isVideoStatsLoading },
+    { label: t('home.stats.courses'), value: courseCount, loading: isCoursesLoading },
   ];
 
   const actionItems = [
@@ -135,12 +136,12 @@ export default function HomeDashboard() {
     },
     {
       title: t('home.actions.library.title'),
-      description: t('home.actions.library.descriptionLong', { count: videoStats.total }),
+      description: isVideoStatsLoading ? t('common.messages.loading') : t('home.actions.library.descriptionLong', { count: videoStats.total }),
       onClick: () => navigate('/videos'),
     },
     {
       title: t('home.actions.courses.title'),
-      description: t('home.actions.courses.descriptionLong', { count: courseCount }),
+      description: isCoursesLoading ? t('common.messages.loading') : t('home.actions.courses.descriptionLong', { count: courseCount }),
       onClick: () => navigate('/videos/courses'),
     },
   ];
@@ -165,7 +166,7 @@ export default function HomeDashboard() {
       />
 
       {/* Wait for the counts and question history so the wrong step does not flash. */}
-      {!isVideoStatsLoading && !isCourseQuestionsLoading && (
+      {!isVideoStatsLoading && !isCoursesLoading && !isCourseQuestionsLoading && (
         <GettingStartedGuide
           userId={currentUser.id}
           progress={{
@@ -182,19 +183,21 @@ export default function HomeDashboard() {
       )}
 
       {/* All zeros tell a new user nothing; the guide above covers that case. */}
-      {videoStats.total > 0 && (
+      {(isVideoStatsLoading || videoStats.total > 0) && (
         <section className="mb-16 md:mb-24">
           <Heading size="32" className="text-std-24B-150 md:text-std-32B-150 mb-4">
             <HeadingTitle level="h2">{t('home.stats.summaryTitle')}</HeadingTitle>
           </Heading>
           <dl className="grid grid-cols-1 border-t border-solid-gray-420 sm:grid-cols-2 lg:grid-cols-4">
-            {statsItems.map(({ label, value }) => (
+            {statsItems.map(({ label, value, loading }) => (
               <div
                 key={label}
                 className="flex items-baseline justify-between gap-4 border-b border-solid-gray-200 py-4 sm:pr-6"
               >
                 <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
-                <dd className="text-std-20B-150 text-solid-gray-800">{value}</dd>
+                <dd className="text-std-20B-150 text-solid-gray-800">{loading ? (
+                  <span role="progressbar" aria-label={t('common.messages.loading')} className="inline-block h-7 w-12 rounded bg-solid-gray-100 motion-safe:animate-pulse" />
+                ) : value}</dd>
               </div>
             ))}
           </dl>
@@ -264,7 +267,7 @@ export default function HomeDashboard() {
         )}
       </section>
 
-      {recentVideos.length > 0 && (
+      {(isVideosLoading || recentVideos.length > 0) && (
         <section className="mb-8">
           <div className="mb-4 flex items-end justify-between gap-4">
             <Heading size="32" className="text-std-24B-150 md:text-std-32B-150">
@@ -274,7 +277,7 @@ export default function HomeDashboard() {
               <Link href="/videos">{t('home.recentVideos.viewAll')}</Link>
             </UtilityLink>
           </div>
-          <ul className="border-t border-solid-gray-420">
+          {isVideosLoading ? <LoadingSpinner /> : <ul className="border-t border-solid-gray-420">
             {recentVideos.map((video) => (
               <li key={video.id} className="border-b border-solid-gray-200">
                 <Link
@@ -299,7 +302,7 @@ export default function HomeDashboard() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ul>}
         </section>
       )}
     </>

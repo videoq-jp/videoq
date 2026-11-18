@@ -11,9 +11,11 @@ export function useHomePageData({ userId }: UseHomePageDataParams) {
     ordering: 'uploaded_at_desc',
   }, {
     enabled: !!userId,
+    trpc: { context: { independentLoading: true } },
   }));
   const coursesQuery = useQuery(trpc.courses.list.queryOptions({ limit: 1 }, {
     enabled: !!userId,
+    trpc: { context: { independentLoading: true } },
   }));
   // The list puts the user's own courses before joined ones, so the first
   // item is owned exactly when the user owns at least one course.
@@ -36,6 +38,8 @@ export function useHomePageData({ userId }: UseHomePageDataParams) {
     hasCourseQuestions: (historyQuery.data?.meta.total ?? 0) > 0,
     // Kept apart from isLoading so the rest of the page does not wait on it.
     isCourseQuestionsLoading: historyQuery.isLoading,
+    isVideosLoading: videosQuery.isLoading,
+    isCoursesLoading: coursesQuery.isLoading,
     isLoading: videosQuery.isLoading || coursesQuery.isLoading,
   };
 }
