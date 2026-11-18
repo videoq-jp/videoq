@@ -34,14 +34,14 @@ async function ownedCommits({ github, context, commits, bot, base }) {
   }
   return true;
 }
-function eligible(pr, files, comments, bot) {
+function eligible(pr, files, comments, bot, allowNext = false) {
   if (pr.state !== 'open' || pr.draft || pr.user?.login !== bot || pr.base?.ref !== 'main' ||
       pr.base.repo?.full_name !== 'videoq-jp/videoq' || pr.head.repo?.full_name !== 'videoq-jp/videoq' ||
       pr.labels.some(l => ['no-automerge', 'no-runtime-update'].includes(l.name)) || !sha(pr.head.sha) ||
       !files.length || files.length > FILES.size || files.some(f => f.status !== 'modified' || !FILES.has(f.filename))) return false;
   return receipts(comments, bot).some(r => r.sha === pr.head.sha && sha(r.base) &&
-    r.channel === 'current' && ['node', 'python', 'npm', 'pip', 'uv'].includes(r.runtime) &&
-    pr.head.ref === `runtime/${r.runtime}-current` && sameLine(r));
+    (r.channel === 'current' || (allowNext && r.channel === 'next')) && ['node', 'python', 'npm', 'pip', 'uv'].includes(r.runtime) &&
+    pr.head.ref === `runtime/${r.runtime}-${r.channel}` && (r.channel === 'next' ? /^\d+\.\d+\.\d+$/.test(r.version || '') : sameLine(r)));
 }
 
 async function scope({ context, runtime = 'all', channel = 'current' }) {
@@ -106,6 +106,8 @@ async function publish({ github, context, core, plan, bot, retireSuperseded = fa
     }
     const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: managed.number, per_page: 100 });
     const publication = receipts(comments, bot).find(r => r.kind !== 'superseded' && r.sha === old && r.runtime === plan.runtime && r.channel === plan.channel);
+    if (!publication && existing && require('./claude-dependency-repair.cjs').records(comments, 'published').some(r => r.sha === old) && await require('./runtime-repair-provenance.cjs').provenance({ github, context, pr: managed,
+      files: await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: managed.number, per_page: 100 }), comments, commits, bot })) return existing.number;
     if (!publication) {
       throw new Error('Runtime head has no trusted publication receipt; preserve it for review');
     }
@@ -155,8 +157,8 @@ async function publish({ github, context, core, plan, bot, retireSuperseded = fa
     await github.rest.git.createRef({ ...context.repo, ref: `refs/heads/${branch}`, sha: commit.sha });
   }
   const body = [
-    'Interpreter pins, CI version files, and applicable container images are updated together from the canonical runtime manifest.',
-    plan.channel === 'next' ? 'This proposes a new interpreter release line. Missing wheels, provider support, or compatibility failures must be resolved before merging. Current-line security updates have a separate PR.' : 'This tracks the current interpreter release line, including security fixes and rebuilt base-image digests.',
+    'Local/CI runtime pins, verified tool downloads and generated installation blocks are updated from the runtime manifest. Docker image tags and digests are managed separately by Dependabot.',
+    plan.channel === 'next' ? 'This proposes a new interpreter release line. Missing wheels, provider support, or compatibility failures must be resolved before merging. Current-line security updates have a separate PR.' : 'This tracks the current interpreter release line, including security fixes.',
     plan.channel === 'current' ? 'Normal CI and strict branch protection must pass before automatic merging. The canonical manifest and generated pins stay together.' : 'New release lines require human review; this workflow does not enable automatic merging for them.',
   ].join('\n\n');
   const result = existing

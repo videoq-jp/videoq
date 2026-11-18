@@ -1,18 +1,16 @@
-"""Coordinate interpreter versions without executing downloaded package code.
+"""Update non-image runtime pins without executing downloaded package code.
 
 The JSON manifest is authoritative. Generated pins are committed and checked in
 CI. Current-line proposals can be merged by the trusted runtime workflow after CI.
 """
 import argparse
 import copy
-import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import sys
-import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -23,12 +21,10 @@ PYTHON_INDEX = "https://www.python.org/api/v2/downloads/release/?is_published=tr
 _spec = importlib.util.spec_from_file_location("package_managers", Path(__file__).with_name("package-managers.py"))
 managers = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(managers)
-NODE_FILES = {
-    "apps/api/Dockerfile": "node_onprem",
-    "apps/api/Dockerfile.local": "node_bookworm",
-    "apps/web/Dockerfile.dev": "node_bookworm",
-    "apps/web/Dockerfile": "node_alpine",
-}
+NODE_FILES = (
+    "apps/api/Dockerfile", "apps/api/Dockerfile.local",
+    "apps/web/Dockerfile.dev", "apps/web/Dockerfile",
+)
 
 
 def version(value):
@@ -45,49 +41,6 @@ def request(url, headers=None, raw=False):
     with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=45) as response:
         body = response.read()
     return body if raw else json.loads(body)
-
-
-class MissingImage(ValueError):
-    """The registry confirms that an otherwise valid image tag is not published."""
-
-
-def image_digest(name, tag):
-    # Fixed registry/repository pairs prevent URL substrings from selecting a host.
-    locations = {
-        "node": ("registry-1.docker.io", "library/node"),
-        "python": ("registry-1.docker.io", "library/python"),
-        "public.ecr.aws/lambda/python": ("public.ecr.aws", "lambda/python"),
-        "ghcr.io/astral-sh/uv": ("ghcr.io", "astral-sh/uv"),
-    }
-    if name not in locations:
-        raise ValueError("Unsupported runtime image repository")
-    registry, repository = locations[name]
-    if registry == "public.ecr.aws":
-        token_url = "https://public.ecr.aws/token/?service=public.ecr.aws&scope=repository:lambda/python:pull"
-    elif registry == "ghcr.io":
-        token_url = "https://ghcr.io/token?service=ghcr.io&scope=repository:astral-sh/uv:pull"
-    else:
-        token_url = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:" + repository + ":pull"
-    token = request(token_url)["token"]
-    url = f"https://{registry}/v2/{repository}/manifests/{tag}"
-    try:
-        body = request(url, {
-            "Authorization": "Bearer " + token,
-            "Accept": "application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json",
-        }, raw=True)
-    except urllib.error.HTTPError as error:
-        if error.code == 404:
-            try:
-                errors = json.loads(error.read()).get("errors", [])
-            except (ValueError, AttributeError):
-                errors = []
-            if isinstance(errors, list) and errors and all(isinstance(item, dict) and item.get("code") == "MANIFEST_UNKNOWN" for item in errors):
-                raise MissingImage(f"Not yet published: {url}") from error
-        raise
-    platforms = {m.get("platform", {}).get("architecture") for m in json.loads(body).get("manifests", [])}
-    if not {"amd64", "arm64"}.issubset(platforms):
-        raise ValueError(f"{name}:{tag} must publish both amd64 and arm64 images")
-    return f"{name}:{tag}@sha256:{hashlib.sha256(body).hexdigest()}"
 
 
 def candidates(current, runtime, upgrade, releases):
@@ -120,61 +73,15 @@ def latest(current, runtime, upgrade, releases):
     return next(iter(candidates(current, runtime, upgrade, releases)), current)
 
 
-def python_images(python):
-    return {
-        "python_local": image_digest("python", python + "-slim-bookworm"),
-        "python_onprem": image_digest("python", python + "-slim-bookworm"),
-        "python_lambda": image_digest("public.ecr.aws/lambda/python", ".".join(python.split(".")[:2])),
-    }
-
-
-def discover_python(root, data, upgrade):
-    previous = data["python"]
-    releases = candidates(previous, "python", upgrade, request(PYTHON_INDEX))
-    needs_images = bool(data.get("images")) or (root / "apps/web/Dockerfile").exists()
-    for candidate in releases:
-        try:
-            images = python_images(candidate) if needs_images else {}
-        except MissingImage as error:
-            print(f"Deferring Python {candidate}: {error}", file=sys.stderr)
-            continue
-        data["python"] = candidate
-        if needs_images:
-            data.setdefault("images", {}).update(images)
-        validate(data)
-        return data
-    # Current-channel runs still refresh digests. A missing already-pinned image
-    # is a real failure, not publication lag for a proposed interpreter release.
-    if not upgrade and needs_images:
-        data.setdefault("images", {}).update(python_images(previous))
-    validate(data)
-    return data
-
-
 def validate(data):
     version(data["node"])
     version(data["python"])
-    if set(data) - {"node", "python", "python_minimum", "images", "npm", "pip", "uv", "tool_downloads"}:
+    if set(data) - {"node", "python", "python_minimum", "npm", "pip", "uv", "tool_downloads"}:
         raise ValueError("Unknown runtime manifest field")
     if not re.fullmatch(r"3\.\d+", data["python_minimum"]):
         raise ValueError("Invalid minimum Python series")
     if version(data["python"])[:2] < tuple(map(int, data["python_minimum"].split("."))):
         raise ValueError("Python cannot be older than the supported minimum")
-    for image in data.get("images", {}).values():
-        if not re.fullmatch(r"(?:node|python|public\.ecr\.aws/lambda/python|ghcr\.io/astral-sh/uv):[\w.-]+@sha256:[a-f0-9]{64}", image):
-            raise ValueError("Interpreter images must use an immutable digest")
-    if data.get("images"):
-        expected = {
-            "node_bookworm": "node:" + data["node"] + "-bookworm-slim@",
-            "node_alpine": "node:" + data["node"] + "-alpine@",
-            "node_onprem": "node:" + data["node"] + "-alpine@",
-            "python_local": "python:" + data["python"] + "-slim-bookworm@",
-            "python_onprem": "python:" + data["python"] + "-slim-bookworm@",
-            "python_lambda": "public.ecr.aws/lambda/python:" + ".".join(data["python"].split(".")[:2]) + "@",
-            "uv": "ghcr.io/astral-sh/uv:" + data["uv"] + "@",
-        }
-        if set(data["images"]) != set(expected) or any(not data["images"][key].startswith(prefix) for key, prefix in expected.items()):
-            raise ValueError("Container interpreters and tools must match the canonical version pins")
     managers.validate(data)
 
 
@@ -193,31 +100,22 @@ def rendered(root, data):
     package = json.loads((root / "package.json").read_text())
     package["packageManager"] = "npm@" + data["npm"]
     files["package.json"] = json.dumps(package, indent=2, ensure_ascii=False) + "\n"
-    images = data.get("images", {})
-    for path, key in NODE_FILES.items():
+    for path in NODE_FILES:
         if (root / path).exists():
             text = (root / path).read_text()
-            files[path], count = re.subn(r"(?m)^FROM node:\S+", "FROM " + images[key], text)
-            if count != 1:
-                raise ValueError(f"Expected one Node image in {path}")
+            files[path] = text
             files[path] = managed_block(files[path], managers.docker_block(data, "npm"), "npm", r"(?m)^FROM node:[^\n]+\n")
-    for path, key in [("apps/worker/Dockerfile", "python_lambda"), ("apps/worker/Dockerfile.local", "python_local"), ("apps/worker/Dockerfile.onprem", "python_onprem")]:
+    for path in ["apps/worker/Dockerfile", "apps/worker/Dockerfile.local", "apps/worker/Dockerfile.onprem"]:
         if (root / path).exists():
             text = (root / path).read_text()
-            files[path], count = re.subn(r"(?m)^FROM (?:public\.ecr\.aws/lambda/python|python):\S+", "FROM " + images[key], text)
-            if count != 1:
-                raise ValueError(f"Expected one Python image in {path}")
+            files[path] = text
             files[path] = re.sub(r"(?m)^ARG PYTHON_VERSION=\S+", "ARG PYTHON_VERSION=" + data["python"], files[path])
             files[path] = managed_block(files[path], managers.docker_block(data, "pip"), "pip", r"(?m)^FROM (?:public\.ecr\.aws/lambda/python|python):[^\n]+\n")
-            if path in {"apps/worker/Dockerfile", "apps/worker/Dockerfile.onprem"}:
-                files[path] = re.sub(r"(?m)^FROM ghcr.io/astral-sh/uv:\S+", "FROM " + images["uv"], files[path])
     return files
 
 
 def discover(root, data, runtime, upgrade):
     data = copy.deepcopy(data)
-    if runtime == "python":
-        return discover_python(root, data, upgrade)
     previous = data[runtime]
     if runtime in {"npm", "pip", "uv"}:
         data = managers.discover(data, runtime, upgrade, request)
@@ -225,14 +123,6 @@ def discover(root, data, runtime, upgrade):
         data[runtime] = latest(previous, runtime, upgrade, request(NODE_INDEX if runtime == "node" else PYTHON_INDEX))
     if upgrade and data[runtime] == previous:
         return data
-    if data.get("images") or (root / "apps/web/Dockerfile").exists():
-        images = data.setdefault("images", {})
-        if runtime == "node":
-            images["node_bookworm"] = image_digest("node", data["node"] + "-bookworm-slim")
-            images["node_alpine"] = image_digest("node", data["node"] + "-alpine")
-            images["node_onprem"] = image_digest("node", data["node"] + "-alpine")
-        elif runtime == "uv":
-            images["uv"] = image_digest("ghcr.io/astral-sh/uv", data["uv"])
     validate(data)
     return data
 

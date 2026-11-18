@@ -171,3 +171,20 @@ test('the controller announces an exhausted CI budget once without waking or dis
   assert.equal(f.repairs.length, 0); assert.equal(f.dispatches.length, 0);
   assert.equal(f.comments.filter(c => c.body.includes('"kind":"stopped"')).length, 1);
 });
+
+test('runtime CI and conflicts dispatch the same bounded worker while next-line success never queues', async () => {
+  for (const channel of ['current', 'next']) {
+    const f = fixture();
+    f.pr.user.login = 'videoq-dependency-bot[bot]'; f.pr.head.ref = `runtime/python-${channel}`;
+    const verify = async () => ({ pr: f.pr, kind: 'runtime', comments: f.comments, autoQueue: channel === 'current' });
+    f.outcome = 'failure';
+    await native.reconcile({ ...f.args, verify, repairEnabled: true, authorizeRepair: true });
+    assert.equal(f.repairs.length, 1);
+    f.pr.mergeable = false;
+    await native.reconcile({ ...f.args, verify, repairEnabled: true, authorizeRepair: true });
+    assert.equal(f.repairs[1].mode, 'conflict');
+    f.pr.mergeable = true; f.outcome = 'success';
+    await native.reconcile({ ...f.args, verify });
+    assert.equal(f.reserved.length, channel === 'current' ? 1 : 0);
+  }
+});

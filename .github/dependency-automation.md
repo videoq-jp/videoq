@@ -10,7 +10,7 @@ See [WORKFLOWS.md](WORKFLOWS.md) for the overall structure.
 | File | Responsibility |
 | --- | --- |
 | `runtime-updates.yml` | Daily discovery of official releases, or regeneration of a specified runtime. Creates consistent update PRs and published records |
-| `dependency-queue.yml` | Verifies Dependabot and current-line runtime PRs, checks CI results, permits repairs, and queues to the standard queue |
+| `dependency-queue.yml` | Verifies Dependabot and managed runtime PRs, checks CI results, permits repairs, and queues to the standard queue |
 | `claude-dependency-worker.yml` | Repairs permitted CI failures, verifies and applies patches on a separate runner, and handles manual authentication tests |
 
 ```mermaid
@@ -60,8 +60,9 @@ To stop a queued PR, remove it in GitHub's queue view.
 
 ## Verification and permissions
 
-- Targets are same-repository Dependabot major/minor/patch PRs to main, or the managed bot's current-line runtime PRs.
-  New runtime lines, forks, and unverified commits added by people do not automerge.
+- Claude repairs cover same-repository Dependabot major/minor/patch PRs and verified managed runtime PRs to main.
+  Both current and next runtime lines can receive CI repairs and conflict resolution. Only current lines can automerge; new runtime lines, forks and unverified commits added by people do not automerge.
+- Dependabot owns Docker image pins as well as supported package dependencies; runtime discovery owns only local/CI version files and verified tool-download metadata. See [RUNTIME-UPDATES.md](RUNTIME-UPDATES.md).
 - The original Dependabot signature, update type, and permitted changed files are verified through the API.
   Even when a GitHub rebase does not carry the signature, the original signed diff and follow-up record are compared every time.
   Terraform's automatic production apply uses the same verification, but production applies of provider major updates keep approval.

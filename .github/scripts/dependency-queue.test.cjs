@@ -4,11 +4,11 @@ const q = require('./dependency-queue.cjs');
 function pull(login = 'dependabot[bot]', ref = 'dependabot/npm_and_yarn/patch') {
   return { base: { ref: 'main' }, user: { login }, head: { ref, sha: 'a'.repeat(40), repo: { full_name: 'videoq-jp/videoq' } } };
 }
-test('managed scope excludes development, forks and next-line runtime updates', () => {
+test('managed scope excludes development and forks; both runtime channels can receive repairs', () => {
   assert.equal(q.managed(pull()), true);
   assert.equal(q.managed(pull('developer')), false);
   const fork = pull(); fork.head.repo.full_name = 'fork/videoq'; assert.equal(q.managed(fork), false);
-  assert.equal(q.managed(pull('videoq-dependency-bot[bot]', 'runtime/python-next')), false);
+  assert.equal(q.managed(pull('videoq-dependency-bot[bot]', 'runtime/python-next')), true);
   assert.equal(q.managed(pull('videoq-dependency-bot[bot]', 'runtime/python-current')), true);
 });
 test('all real validation workflows must complete; skipped or missing evidence cannot authorize a queue entry', () => {
