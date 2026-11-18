@@ -36,7 +36,8 @@ test('resume missing context stops before authentication and cannot regenerate e
 test('operator composition wires private pins and scoped transports to wrapper; returns only public progress',async()=>{
  const vm=require('node:vm'),{createRequire}=require('node:module'),nativeRequire=createRequire(__filename);
  const {resourceDigest}=nativeRequire('./d1-resource-journal.cjs');
- const spec=nativeRequire('../../infra/db-maintenance/state-machine.cjs').definition({table:'videoq-db-maintenance-prod',projects:Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k=>[k,'videoq-db-'+k+'-prod']))});
+ const spec=nativeRequire('../../infra/db-maintenance/state-machine.cjs').definition({neonRetired:true,table:'videoq-db-maintenance-prod',projects:Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k=>[k,'videoq-db-'+k+'-prod']))});
+ assert.deepEqual(spec.States.Operation.Choices.map(row=>row.StringEquals).sort(),['d1-resource-hold','deploy','migration','smoke']);
  const context={run,source,executorToken:'c'.repeat(64),definitionSha256:resourceDigest(spec),projectSha256:'d'.repeat(64),platformSha256:'e'.repeat(64)};
  let metadata=0,called=0,drift=false;
  const modules={

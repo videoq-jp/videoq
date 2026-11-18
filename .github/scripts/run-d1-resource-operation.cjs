@@ -34,7 +34,7 @@ async function main({args=process.argv.slice(2),env=process.env,root=ROOT,execut
  const metadataAws=createResourcePreflightAws({execute,env,root}),metadataCf=createResourceMetadataTransport(token,{fetcher});
  const actual=await readResourcePlatform({aws:metadataAws,cloudflare:metadataCf});
  if(actual.reviewedSource!==source)throw Error('RESOURCE_OPERATOR_REVIEWED_BUNDLE_REQUIRED');
- const definitionSha256=resourceDigest(definition({table:'videoq-db-maintenance-prod',projects:Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k=>[k,'videoq-db-'+k+'-prod']))}));
+ const definitionSha256=resourceDigest(definition({neonRetired:true,table:'videoq-db-maintenance-prod',projects:Object.fromEntries(['rotation','migration','backup','smoke','audit','deploy'].map(k=>[k,'videoq-db-'+k+'-prod']))}));
  if(action==='initialize'){
   const saved=await store.initialize({run,source,definitionSha256,projectSha256:actual.projectSha256,platformSha256:actual.platformSha256});
   return{action,run,source,initialized:true,created:saved.created,remoteMutation:false};
