@@ -657,6 +657,9 @@ as an ownership-only wait, without a new CodeBuild project or credential grant.
 It requires canonical main, excludes competing maintenance, keeps terminal locks
 for explicit recovery, and releases only against trusted completion/abort
 receipts with restored admission markers. It does not enable Cloudflare
-mutations, stop consumers or constitute a production writer fence. Keep it
-disabled until the full reviewed replacement/recovery coordinator is ready.
-See [resource organization](../../docs/operations/cloudflare-resource-organization.md).
+mutations, stop consumers or constitute a production writer fence. The reviewed
+production resource naming replacement completed on 2026-11-19, and this one-off
+hold capability is disabled again in the deployed starter. Keep it disabled
+during ordinary operations.
+See [current resource organization](../../docs/operations/cloudflare-resource-organization.md)
+and its linked preparation history for the completed cutover and recovery evidence.
