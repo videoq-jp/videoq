@@ -38,3 +38,17 @@ test('the credentialed API upload checks deployed state immediately before Wrang
  const api=source.slice(source.indexOf('  api-deploy:'),source.indexOf('  db-migrate:'));
  assert.match(api,/node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/deploy-tools\/node_modules\/wrangler\/bin\/wrangler\.js deploy/);
 });
+
+test('retired 768 binding may be absent on both sides without allowing additions or removal of active indexes',()=>{
+ const {settings,target}=fixture();
+ settings.bindings=settings.bindings.filter(b=>b.name!==vectors[1]);
+ const retired={...target,vectorize:target.vectorize.slice(0,1)};
+ assert.deepEqual(check(settings,retired),{deploymentStatePreserved:true});
+ assert.throws(()=>check(settings,target),/VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION/);
+ const active=fixture();
+ assert.throws(()=>check(active.settings,retired),/VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION/);
+ for(const bindings of [settings.bindings.filter(b=>b.name!==vectors[0]),[...settings.bindings,{name:vectors[1],type:'plain_text',text:'invalid'}],[...settings.bindings,settings.bindings.at(-1)]]) {
+  assert.throws(()=>check({...settings,bindings},retired));
+ }
+ assert.throws(()=>check(settings,{...retired,vectorize:[]}),/VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION/);
+});

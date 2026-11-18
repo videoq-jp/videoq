@@ -25,9 +25,12 @@ function assertDeploymentPreservesState(settings, target) {
     const next = (target.d1_databases ?? []).filter(binding => binding.binding === 'DB');
     if (db.length !== 1 || next.length !== 1 || !db[0].id || db[0].id !== next[0].database_id) throw Error('D1_TARGET_REQUIRES_CONTROLLED_MIGRATION');
     for (const name of ['SCENE_VECTORIZE_1536','SCENE_VECTORIZE_768']) {
-      const index = settings.bindings.filter(binding => binding.type === 'vectorize' && binding.name === name);
+      const index = settings.bindings.filter(binding => binding.name === name);
       const replacement = (target.vectorize ?? []).filter(binding => binding.binding === name);
-      if (index.length !== 1 || replacement.length !== 1 || !index[0].index_name || index[0].index_name !== replacement[0].index_name) throw Error('VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION');
+      // The optional 768-dimensional index may be retired out of band.
+      // Ordinary CD must still preserve every active binding and cannot add one.
+      if (name === 'SCENE_VECTORIZE_768' && index.length === 0 && replacement.length === 0) continue;
+      if (index.length !== 1 || replacement.length !== 1 || index[0].type !== 'vectorize' || !index[0].index_name || index[0].index_name !== replacement[0].index_name) throw Error('VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION');
     }
   }
   return { deploymentStatePreserved: true };
