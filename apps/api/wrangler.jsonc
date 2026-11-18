@@ -144,14 +144,14 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "videoq-d1-migration-staging-v4",
-          "database_id": "e57d0931-18cb-4f00-ae7f-b0068030fb04",
+          "database_name": "videoq-prod-db",
+          "database_id": "587bd210-6d9d-4f32-abb7-a490013e65d3",
           "migrations_dir": "drizzle-d1"
         }
       ],
       "vectorize": [
-        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-scenes-migration-v3-1536" },
-        { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-scenes-migration-v3-768" }
+        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" },
+        { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-prod-scenes-768" }
       ],
       "r2_buckets": [
         {
