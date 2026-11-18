@@ -73,6 +73,17 @@ class VerifyTransportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'REFUSED'):
             self.query(SOURCE, 'PRAGMA table_xinfo("other")')
 
+    def test_oversized_pages_split_without_losing_rows_or_order(self):
+        from unittest.mock import patch
+        self.dbs[SOURCE].execute('DELETE FROM users')
+        self.dbs[SOURCE].executemany('INSERT INTO users(value) VALUES(?)',[('x'*300,),('y'*300,)])
+        self.query(SOURCE,'PRAGMA table_xinfo("users")')
+        with patch('d1_resource_verify_transport.LIMIT',1000):
+            rows=self.query(SOURCE,page_sql('users',['id','value'],2,0))
+        self.assertEqual(rows,self.sql(SOURCE,page_sql('users',['id','value'],2,0)))
+        self.assertTrue(any('LIMIT 1 OFFSET 0' in sql for sql in self.calls))
+        self.assertTrue(any('LIMIT 1 OFFSET 1' in sql for sql in self.calls))
+
 
 if __name__ == '__main__':
     unittest.main()

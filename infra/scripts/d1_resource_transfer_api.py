@@ -42,7 +42,7 @@ class TransferApi:
             headers={'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'})
         try:
             with self.opener.open(req, timeout=30) as response:
-                if response.status != 200:
+                if response.status not in (200, 202):
                     raise ValueError('TRANSFER_HTTP_FAILED')
                 raw = response.read(1024 * 1024 + 1)
             if len(raw) > 1024 * 1024:
@@ -50,8 +50,12 @@ class TransferApi:
             value = json.loads(raw)
             result = value.get('result')
             if (value.get('success') is not True or value.get('errors') not in (None, [])
-                    or not isinstance(result, dict) or result.get('success') is not True
-                    or result.get('type') != operation or result.get('status') == 'error'):
+                    or not isinstance(result, dict) or result.get('status') == 'error'
+                    or (payload.get('action') != 'init' and
+                        (result.get('success') is not True or result.get('type') != operation))
+                    or (payload.get('action') == 'init' and
+                        (not isinstance(result.get('filename'), str) or not result['filename']
+                         or not isinstance(result.get('upload_url'), str)))):
                 raise ValueError('TRANSFER_RESULT_INVALID')
         except Exception:
             raise ValueError('RESOURCE_TRANSFER_REQUEST_UNCERTAIN') from None

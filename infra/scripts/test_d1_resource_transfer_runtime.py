@@ -47,6 +47,9 @@ class RuntimeTests(unittest.TestCase):
                     outer.uploaded = request.data.read()
                     return Response(b'', {'ETag': '"' + hashlib.md5(outer.uploaded).hexdigest() + '"'})
                 database = request.full_url.split('/database/')[1].split('/')[0]
+                if request.method == 'GET':
+                    bookmark = hashlib.sha256(outer.dbs[database].serialize()).hexdigest()
+                    return Response(json.dumps({'success': True, 'result': {'bookmark': bookmark}}).encode())
                 operation, body = request.full_url.rsplit('/', 1)[1], json.loads(request.data)
                 if operation == 'query':
                     result = [{'success': True, 'results': outer.sql(database, body['sql'])}]
@@ -97,7 +100,8 @@ class RuntimeTests(unittest.TestCase):
         proof = self.next(status=True)
         self.assertTrue(proof['databaseVerified'])
         self.assertEqual(len(proof['receiptSha256']), 64)
-        self.assertEqual(self.uploaded, self.dump)
+        self.assertEqual((Path(self.directory.name) / 'source-export.sql').read_bytes(), self.dump)
+        self.assertEqual(self.uploaded, (Path(self.directory.name) / 'source.sql').read_bytes())
         self.assertGreater(self.ownership_checks, 20)
         self.assertEqual(sum(call == ('import', 'ingest') for call in self.calls), 1)
         self.assertEqual(self.sql(TARGET, 'SELECT seq FROM sqlite_sequence'), [{'seq': 99}])

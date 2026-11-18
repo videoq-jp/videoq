@@ -8,11 +8,14 @@ import uuid
 
 
 class TransferControl:
-    def __init__(self, journal, api, files, validate_dump, verify_database, assert_owned):
+    def __init__(self, journal, api, files, validate_dump, verify_database, assert_owned, prepare_download=None):
         if not all(callable(value) for value in (validate_dump, verify_database, assert_owned)):
             raise ValueError('RESOURCE_TRANSFER_CONTROL_CONTEXT_REQUIRED')
         self.journal, self.api, self.files = journal, api, files
         self.validate_dump, self.verify_database, self.owned = validate_dump, verify_database, assert_owned
+        if prepare_download is not None and not callable(prepare_download):
+            raise ValueError('RESOURCE_TRANSFER_DOWNLOAD_PREPARATION_REQUIRED')
+        self.prepare_download = prepare_download
 
     def save(self, phase, value):
         self.owned()
@@ -21,7 +24,7 @@ class TransferControl:
         return {'phase': phase, 'databaseVerified': phase == 'database-verified'}
 
     def response(self, response, operation, bookmark=None):
-        if not isinstance(response, dict) or response.get('success') is not True or response.get('type') != operation or response.get('status') not in (None, 'complete'):
+        if not isinstance(response, dict) or response.get('success') is not True or response.get('type') != operation or response.get('status') not in (None, 'active', 'complete'):
             raise ValueError('RESOURCE_TRANSFER_RESPONSE_INVALID')
         found = self.api.bookmark(response.get('at_bookmark'))
         if bookmark is not None and found != bookmark:
@@ -44,7 +47,7 @@ class TransferControl:
         records = self.journal.read()
         values = {record['phase']: record['value'] for record in records}
         phase = records[-1]['phase'] if records else None
-        if phase in ('export-intent', 'ingest-intent'):
+        if phase in ('export-intent', 'import-init-intent', 'ingest-intent'):
             raise ValueError('RESOURCE_TRANSFER_START_RECONCILIATION_REQUIRED')
         if phase is None:
             self.save('export-intent', {'operationId': uuid.uuid4().hex})
@@ -57,6 +60,8 @@ class TransferControl:
                 proof = self.files.inspect()
             except FileNotFoundError:
                 proof = self.files.download(values[phase]['signedUrl'], self.owned)
+            if self.prepare_download is not None:
+                proof = self.prepare_download(proof)
             return self.save('downloaded', proof)
         if phase == 'downloaded':
             proof = self.validate_dump(values[phase])
@@ -69,6 +74,7 @@ class TransferControl:
         if self.files.inspect() != file_proof:
             raise ValueError('RESOURCE_TRANSFER_FILE_CHANGED')
         if phase == 'dump-verified':
+            self.save('import-init-intent', {'operationId': uuid.uuid4().hex, 'md5': file_proof['md5']})
             response = self.api.init_import(file_proof['md5'])
             if not isinstance(response.get('filename'), str) or not response['filename']:
                 raise ValueError('RESOURCE_TRANSFER_IMPORT_FILE_REQUIRED')

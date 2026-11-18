@@ -12,6 +12,8 @@ from d1_resource_write_fence import assert_fenced, validate_plan, fingerprint
 from d1_resource_verify import inspect_database, assert_identical
 from d1_resource_files import PrivateSqlFiles
 from d1_resource_dump import validate_sql_dump
+from d1_resource_normalize import normalize_import_file
+from d1_resource_snapshot_version import inspect_versioned
 from d1_resource_transfer_journal import TransferJournal
 from d1_resource_transfer_api import TransferApi
 from d1_resource_transfer_control import TransferControl
@@ -72,9 +74,10 @@ def run_transfer(token, config, assert_owned, assert_import_safe, status_only=Fa
                     or records['dump-verified'].get('verified') is not True or proof['md5'] != etag):
                 raise ValueError('RESOURCE_TRANSFER_FILE_NOT_VERIFIED')
         def verify_database():
-            source = inspect_database(query, SOURCE, source_fenced)
+            context = {key: config[key] for key in ('run', 'source', 'planSha256')}
+            source = inspect_versioned(query, SOURCE, source_fenced, files, context)
             assert_identical(config['sourceSnapshot'], source)
-            target = inspect_database(query, TARGET, target_fenced)
+            target = inspect_versioned(query, TARGET, target_fenced, files, context)
             return assert_identical(source, target)
         records = journal.read()
         if status_only:
@@ -84,11 +87,13 @@ def run_transfer(token, config, assert_owned, assert_import_safe, status_only=Fa
                 if records[-1]['value'] != proof:
                     raise ValueError('RESOURCE_TRANSFER_DATABASE_PROOF_CHANGED')
                 return {'phase': phase, 'databaseVerified': True, 'receiptSha256': fingerprint(proof), 'reconciliationRequired': False}
-            return {'phase': phase, 'databaseVerified': False, 'reconciliationRequired': phase in ('export-intent', 'ingest-intent')}
+            return {'phase': phase, 'databaseVerified': False, 'reconciliationRequired': phase in ('export-intent', 'import-init-intent', 'ingest-intent')}
         api = TransferApi(token, owned, source_fenced, import_safe, opener=opener)
         control = TransferControl(journal, api, files,
-                                  lambda proof: validate_sql_dump(files, proof, config['sourceSnapshot'], plan, owned),
-                                  verify_database, owned)
+                                  lambda proof: validate_sql_dump(files, proof, config['sourceSnapshot'], plan, owned,
+                                                                  source_query=lambda sql: query(SOURCE, sql),
+                                                                  assert_source_fenced=source_fenced),
+                                  verify_database, owned, prepare_download=lambda proof: normalize_import_file(files, proof, owned))
         result = control.run_next()
         owned()
         return result
