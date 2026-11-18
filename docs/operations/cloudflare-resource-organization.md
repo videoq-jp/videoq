@@ -12,17 +12,19 @@ billing or access-control boundary.
 | --- | --- | --- |
 | D1 | `videoq-prod-db` | `database` |
 | Vectorize | `videoq-prod-scenes-1536` | `scene-search-1536` |
-| Vectorize | `videoq-prod-scenes-768` | `scene-search-768` |
 | Worker | `videoq-api` | `api` |
 | Worker | `videoq-web` | `web` |
 | Worker | `videoq-docs` | `docs` |
 | R2 | `videoq-media-prod` | `media` |
 
 The production D1 UUID is `587bd210-6d9d-4f32-abb7-a490013e65d3`.
-The Vectorize suffixes identify embedding dimensions. Both configured dimensions
-retain their bindings, cosine metric and ownership-filter metadata indexes.
+The Vectorize suffix identifies embedding dimensions. Production uses the
+1536-dimensional `openai/text-embedding-3-small` model, cosine metric and
+ownership-filter metadata indexes. The unused 768-dimensional index has no
+vectors and is no longer configured for production. EmbeddingGemma deployments
+require an explicitly provisioned index and binding before selecting that profile.
 Worker identities, R2 media, application secrets, account and DNS are preserved.
-All seven resources use `project=videoq` and `environment=production`; replacement
+All six active resources use `project=videoq` and `environment=production`; replacement
 candidate lifecycle tags have been removed after the verified handoff.
 
 ## Completed naming replacement
