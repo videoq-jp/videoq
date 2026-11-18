@@ -16,11 +16,11 @@ const meta = {
     await expect(indicator).toBeVisible();
     if (args.fullScreen) {
       const bounds = indicator.getBoundingClientRect();
-      // The root content box excludes both visible scrollbars and a reserved
-      // scrollbar-gutter. clientWidth includes the latter in standards mode.
-      const viewport = document.documentElement;
-      await expect(Math.abs(bounds.x + bounds.width / 2 - viewport.getBoundingClientRect().width / 2)).toBeLessThan(1);
-      await expect(Math.abs(bounds.y + bounds.height / 2 - viewport.clientHeight / 2)).toBeLessThan(1);
+      const container = indicator.parentElement!;
+      const region = container.getBoundingClientRect();
+      await expect(getComputedStyle(container).position).not.toBe('fixed');
+      await expect(Math.abs(bounds.x + bounds.width / 2 - (region.x + region.width / 2))).toBeLessThan(1);
+      await expect(Math.abs(bounds.y + bounds.height / 2 - (region.y + region.height / 2))).toBeLessThan(1);
       const footer = canvas.queryByRole('contentinfo');
       if (footer) await expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(bounds.bottom);
     }

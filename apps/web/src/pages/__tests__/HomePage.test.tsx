@@ -358,6 +358,28 @@ describe('HomePage - Data Loading', () => {
     expect(screen.queryByText('landing.title')).not.toBeInTheDocument()
   })
 
+  it('keeps actions, usage and loaded videos available while courses are pending', async () => {
+    listCourses.mockImplementation(() => new Promise(() => {}))
+    render(<HomePage />)
+    await screen.findByText('Video 1')
+    expect(screen.getByText('home.usage.title')).toBeInTheDocument()
+    expect(screen.getByText('home.stats.totalVideos').parentElement).toHaveTextContent('5')
+    expect(within(screen.getByText('home.stats.courses').parentElement!).getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'home.gettingStarted.title' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('home.actions.library.title'))
+    expect(useI18nNavigate()).toHaveBeenCalledWith('/videos')
+  })
+
+  it('keeps the dashboard available while recent videos are pending', async () => {
+    listVideos.mockImplementation(() => new Promise(() => {}))
+    render(<HomePage />)
+    await screen.findByText('home.usage.title')
+    await waitFor(() => expect(screen.getByText('home.stats.courses').parentElement).toHaveTextContent('2'))
+    expect(screen.getByText('home.recentVideos.title')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.getByText('home.actions.upload.descriptionLong')).toBeInTheDocument()
+  })
+
   it('should handle API errors gracefully', async () => {
     listVideos.mockRejectedValue(new Error('Network error'))
     listCourses.mockRejectedValue(new Error('Network error'))

@@ -38,7 +38,7 @@ import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { DetailLoading } from '@/components/common/DetailLoading';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { Button } from '@/components/ui/button';
@@ -439,7 +439,7 @@ export function VideoCourseDetailView({
   return (
     <>
       {isLoading ? (
-        <LoadingSpinner fullScreen />
+        <DetailLoading backHref="/videos/courses" />
       ) : error && !course ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />

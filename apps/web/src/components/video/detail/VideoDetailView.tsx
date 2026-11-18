@@ -16,7 +16,7 @@ import { buildYoutubeEmbedSrc } from '@/lib/video/embed';
 import { formatDate, getVideoDisplayStatus } from '@/lib/utils/video';
 import type { TranscriptSegment } from '@/lib/transcript/srt';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { DetailLoading } from '@/components/common/DetailLoading';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { TagCreateDialog } from '@/components/video/TagCreateDialog';
@@ -252,7 +252,7 @@ export function VideoDetailView({
   return (
     <>
       {isLoading ? (
-        <LoadingSpinner fullScreen />
+        <DetailLoading backHref="/videos" />
       ) : error && !video ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />
