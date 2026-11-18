@@ -1,0 +1,102 @@
+{
+  "completedAt": "2026-11-18T23:10:44.230Z",
+  "production": {
+    "d1": {
+      "name": "videoq-prod-db",
+      "id": "587bd210-6d9d-4f32-abb7-a490013e65d3"
+    },
+    "vectorize": [
+      "videoq-prod-scenes-1536",
+      "videoq-prod-scenes-768"
+    ],
+    "readyStatus": 200,
+    "sourceReferences": 0
+  },
+  "replacement": {
+    "run": "9f7487fac116c04596c61e5292d9629a",
+    "source": "b7d6097b552544a9f1c966b619caf579a919235a",
+    "executionStatus": "SUCCEEDED",
+    "redriveCount": 1,
+    "maintenanceReleased": true,
+    "database": {
+      "tables": 69,
+      "rows": 11615,
+      "exactSchemaValuesAndSequencesVerified": true
+    },
+    "vectors": {
+      "1536": 2190,
+      "768": 0,
+      "exactValuesAndMetadataVerified": true
+    },
+    "e2e": {
+      "build": "videoq-db-smoke-prod:09346b73-a6d9-4d23-81fa-26db6ec0c312",
+      "status": "SUCCEEDED",
+      "checks": [
+        "upload",
+        "processing",
+        "search",
+        "cited-answer",
+        "SSE",
+        "fixture-cleanup"
+      ]
+    }
+  },
+  "canonicalConfiguration": {
+    "pullRequest": 1563,
+    "mergeCommit": "7459e5792080bf00e8e4477e1bfe9d439efcd595",
+    "ordinaryMaintenanceDeployment": {
+      "run": "1801217c505b861b5ff345185113ec2b",
+      "source": "7459e5792080bf00e8e4477e1bfe9d439efcd595",
+      "status": "SUCCEEDED"
+    }
+  },
+  "retiredResources": [
+    {
+      "type": "vectorize",
+      "id": "videoq-scenes-migration-v3-1536",
+      "name": "videoq-scenes-migration-v3-1536",
+      "deleted": true,
+      "absenceStatus": 410,
+      "confirmedAt": "2026-11-18T23:08:59.408Z"
+    },
+    {
+      "type": "vectorize",
+      "id": "videoq-scenes-migration-v3-768",
+      "name": "videoq-scenes-migration-v3-768",
+      "deleted": true,
+      "absenceStatus": 410,
+      "confirmedAt": "2026-11-18T23:09:06.514Z"
+    },
+    {
+      "type": "d1",
+      "id": "e57d0931-18cb-4f00-ae7f-b0068030fb04",
+      "name": "videoq-d1-migration-staging-v4",
+      "deleted": true,
+      "absenceStatus": 404,
+      "confirmedAt": "2026-11-18T23:10:40.926Z"
+    }
+  ],
+  "recovery": {
+    "encrypted": true,
+    "versioned": true,
+    "remoteChecksumsVerified": true,
+    "restoredSQLExactVerified": true,
+    "sourceDataArchivedBeforeDeletion": true
+  },
+  "resourceHoldEnabled": false,
+  "candidateLifecycleTagsRemoved": true,
+  "proofHashes": {
+    "archiveProofSha256": "59dbce2431bf162e99de1cb3505578cd27b9717f7a6942ce6b6283765611ac52",
+    "sqlProofSha256": "a9eaf247f60bf03f55477b1dce1b84a434813408456146b91a1b9cafe540eeca",
+    "databaseSnapshotSha256": "a861832edc228c7c147ef79c97980c6ecc4792d0c3794431a099f673040dfdb3",
+    "vectorProofSha256": "599fe8b593872444ab2f88454009775c4fb0be649ecf5f4e9a9d426ece3593d4",
+    "canonicalDeploymentSource": "7459e5792080bf00e8e4477e1bfe9d439efcd595"
+  },
+  "receiptFileSha256": {
+    "source-retirement-complete.json": "fe853111e1d8035f8c1d595324fc7f05d3aa9bed763a957fd375a4cc24598b0a",
+    "source-tags-removed.json": "e08e57ff9395d955d4f0f6dfaf0f781b504eac8d3197a72d4eeb2b3ce22cddcb",
+    "sql-archive-verified.json": "b1ce40681dfefe1dfd3ce7ae1c1e583eaf35da216d80b5cd42125578821b8092",
+    "transfer-journal/11-database-verified.json": "59ade5dee3b0901f8f30a26fe018216e4ddabb3b8e1544e511d855ee1b3b10bb",
+    "redrive-1-receipt.json": "a3089eb21b0c74e8e23626ebaa009f62541bf6b259e61691a496c2ae15eba98a"
+  }
+}
