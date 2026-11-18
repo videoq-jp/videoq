@@ -4,9 +4,9 @@ FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43dd
 RUN apk upgrade --no-cache zlib
 
 # BEGIN managed npm
-ARG NPM_VERSION=12.2.2
-ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.2.tgz
-ARG NPM_INTEGRITY=sha512-KglgbZyacf7jH+FHuNRqVuCzQi8VhI2a7J87Ix43FsPTuZoGWmIXXGdZtBUOA79vwL+IJREqURVzupA7PsQTcA==
+ARG NPM_VERSION=12.2.3
+ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz
+ARG NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q==
 RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import {writeFileSync} from "node:fs"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error("npm download failed"); const b=Buffer.from(await r.arrayBuffer()); if("sha512-"+createHash("sha512").update(b).digest("base64")!==process.env.NPM_INTEGRITY) throw new Error("npm integrity mismatch"); writeFileSync("/tmp/npm.tgz",b)' \
     && mkdir -p /opt/verified-npm \
     && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1 \
