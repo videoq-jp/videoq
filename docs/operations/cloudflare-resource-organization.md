@@ -1174,3 +1174,27 @@ a later working-tree read. No CodeQL rule or gate was disabled or dismissed.
 
 After these changes Node's full suite passed 710 tests and the three bundle
 tests passed. A fresh CodeQL success on the updated head remains a merge gate.
+
+### D1 import compatibility gates (2026-11-19)
+
+A D1 export is not sufficient evidence that its SQL can be imported unchanged.
+The naming-transfer attempt found forward foreign-key references and individual
+SQL statements exceeding D1's statement limit. The transfer was stopped before
+binding promotion; this section does not attest a completed production cutover.
+
+The SQL preparation now places table definitions and unique indexes before
+parent-ordered rows. Large literal values are assembled from bounded BLOB chunks
+in a transient table that is removed before the original triggers are installed.
+The original export remains private and unchanged. The normalized file receives
+its own hashes and must pass the complete schema, typed-value, sequence and fence
+comparison before upload. The actual D1 source/target comparison remains exact.
+A local full-data rehearsal restored all 69 tables and 11,567 rows with foreign
+keys enabled; its largest resulting statement was 79,888 bytes. Actual candidate
+import and final held-source comparison remain separate execution gates.
+
+Verification can reuse an exact full-scan receipt only while fresh provider
+Time Travel bookmarks identify the same database state before and after reuse,
+with fresh ownership and write-fence checks. A changed bookmark requires another
+full scan. Local/remote SQLite real-number formatting differences require a fresh
+fenced-source raw-hash match and identical IEEE-754 bits; other typed bytes must
+match exactly. This does not relax the final Cloudflare-to-Cloudflare raw hashes.

@@ -21,7 +21,8 @@ def authorize(action, first, second, _database, _trigger):
     return sqlite3.SQLITE_OK
 
 
-def validate_sql_dump(files, file_proof, source_snapshot, fence_plan, assert_owned):
+def validate_sql_dump(files, file_proof, source_snapshot, fence_plan, assert_owned,
+                      source_query=None, assert_source_fenced=None):
     validate_plan(fence_plan)
     if not callable(assert_owned) or files.inspect() != file_proof:
         raise ValueError('RESOURCE_DUMP_FILE_PROOF_REQUIRED')
@@ -60,7 +61,12 @@ def validate_sql_dump(files, file_proof, source_snapshot, fence_plan, assert_own
             assert_fenced(query(None, SCHEMA), fence_plan)
 
         restored = inspect_database(query, None, fenced)
-        proof = assert_identical(source_snapshot, restored)
+        if source_snapshot == restored or source_query is None or assert_source_fenced is None:
+            proof = assert_identical(source_snapshot, restored)
+        else:
+            from d1_resource_typed import compare_typed
+            proof = compare_typed(source_snapshot, restored, lambda sql: query(None, sql),
+                                  source_query, assert_source_fenced)
         assert_owned()
         if files.inspect() != file_proof:
             raise ValueError('RESOURCE_DUMP_FILE_CHANGED')

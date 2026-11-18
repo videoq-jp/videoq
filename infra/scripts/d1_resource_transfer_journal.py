@@ -12,7 +12,7 @@ import stat
 from d1_resource_write_fence import fingerprint
 
 PHASES = ('export-intent', 'export-handle', 'export-complete', 'downloaded', 'dump-verified',
-          'import-initialized', 'uploaded', 'ingest-intent', 'import-handle', 'import-complete', 'database-verified')
+          'import-init-intent', 'import-initialized', 'uploaded', 'ingest-intent', 'import-handle', 'import-complete', 'database-verified')
 LIMIT = 1024 * 1024
 
 

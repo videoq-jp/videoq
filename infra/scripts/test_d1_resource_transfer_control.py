@@ -105,6 +105,29 @@ class ControlTests(unittest.TestCase):
             self.control.run_next()
         self.assertEqual(self.journal.read()[-1]['phase'], 'export-handle')
 
+    def test_active_export_handle_is_durable_before_next_poll(self):
+        original=self.api.export
+        def export(bookmark=None):
+            result=original(bookmark)
+            if bookmark is None:result['status']='active'
+            return result
+        self.api.export=export
+        self.assertEqual(self.control.run_next()['phase'],'export-handle')
+        self.assertEqual(self.journal.read()[-1]['value'],{'bookmark':'export-1'})
+        self.assertEqual(self.control.run_next()['phase'],'export-complete')
+
+    def test_ambiguous_init_is_durable_and_never_repeated(self):
+        self.run_until('dump-verified')
+        calls=[]
+        def init(etag):
+            calls.append(etag)
+            raise OSError('PRIVATE_RESPONSE_LOST')
+        self.api.init_import=init
+        with self.assertRaises(OSError):self.control.run_next()
+        self.assertEqual(self.journal.read()[-1]['phase'],'import-init-intent')
+        with self.assertRaisesRegex(ValueError,'RECONCILIATION'):self.control.run_next()
+        self.assertEqual(len(calls),1)
+
 
 if __name__ == '__main__':
     unittest.main()

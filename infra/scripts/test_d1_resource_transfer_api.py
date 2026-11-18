@@ -20,6 +20,8 @@ class TransferTests(unittest.TestCase):
                 if outer.error:
                     raise OSError('PRIVATE_PROVIDER_BODY')
                 operation = request.full_url.rsplit('/', 1)[1]
+                if json.loads(request.data).get('action') == 'init':
+                    return Response(json.dumps({'success': True, 'result': {'filename': 'target-hash.sql', 'upload_url': 'https://upload.test'}}).encode())
                 return Response(json.dumps({'success': True, 'result': {'type': operation, 'success': True, 'at_bookmark': 'bookmark-1'}}).encode())
         def owned():
             if not self.allow:
@@ -65,6 +67,16 @@ class TransferTests(unittest.TestCase):
     def test_missing_ownership_or_safety_verifier_cannot_construct_transport(self):
         with self.assertRaises(ValueError):
             TransferApi('synthetic-token-0123456789', None, lambda: None, lambda *args: None)
+
+    def test_http_202_active_export_is_accepted_without_restarting(self):
+        class Accepted:
+            def open(inner,request,timeout):
+                response=Response(json.dumps({'success':True,'result':{'success':True,'type':'export','status':'active','at_bookmark':'export-active'}}).encode())
+                response.status=202
+                return response
+        self.api.opener=Accepted()
+        self.assertEqual(self.api.export()['at_bookmark'],'export-active')
+        self.assertEqual(self.guards,['fenced'])
 
 
 if __name__ == '__main__':

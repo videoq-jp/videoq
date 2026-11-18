@@ -27,7 +27,7 @@ def page_sql(table, names, page_size, offset):
     return f'SELECT {projection} FROM {quote(table)} ORDER BY {order} LIMIT {page_size} OFFSET {offset}'
 
 
-def inspect_database(query, database, assert_fenced, page_size=32):
+def inspect_database(query, database, assert_fenced, page_size=100):
     if not callable(query) or not callable(assert_fenced) or type(page_size) is not int or not 1 <= page_size <= 100:
         raise ValueError('RESOURCE_VERIFY_CONTEXT_REQUIRED')
     assert_fenced()
