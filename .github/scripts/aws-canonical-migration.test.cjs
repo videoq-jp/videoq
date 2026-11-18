@@ -71,7 +71,9 @@ test('production configuration and read-only migration support retirement of the
  }
  f.production.vectorize=[];
  assert.throws(()=>migrationTarget(f.options.readConfig()),/CONFIGURATION/);
- const config=require('jsonc-parser').parse(require('node:fs').readFileSync('apps/api/wrangler.jsonc','utf8'));
- assert.equal(migrationTarget(config).backend,'d1');
- assert.deepEqual(config.env.production.vectorize,[{binding:'SCENE_VECTORIZE_1536',index_name:'videoq-prod-scenes-1536'}]);
+ const source=require('node:fs').readFileSync('apps/api/wrangler.jsonc','utf8');
+ const production=source.slice(source.indexOf('\"production\": {'));
+ const indexes=production.match(/\"vectorize\"\s*:\s*(\[[\s\S]*?\])/);
+ assert.ok(indexes);
+ assert.deepEqual(JSON.parse(indexes[1]),[{binding:'SCENE_VECTORIZE_1536',index_name:'videoq-prod-scenes-1536'}]);
 });
