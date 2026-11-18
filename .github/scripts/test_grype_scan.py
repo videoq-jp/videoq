@@ -105,3 +105,25 @@ class GrypeScan(unittest.TestCase):
             with patch('sys.argv', ['scan', '--source', 'dir:/example', '--output', directory + '/report.json']):
                 with self.assertRaises(RuntimeError):
                     scan.main()
+
+    def test_alpine_openssl_backport_assessment_never_covers_old_or_unrelated_packages(self):
+        vex = pathlib.Path(__file__).resolve().parents[2] / 'apps/api/security/alpine-openssl.openvex.json'
+        policy = json.loads(vex.read_text())
+        self.assertTrue(all(s['status'] == 'fixed' and '5e6d18a5ba2eec060b34a671a43ee54a5e72714a' in s['action_statement'] for s in policy['statements']))
+        for version, cve, distro, assessed in [
+            ('3.5.9-r1', 'CVE-2026-95692', '3.24.4', True),
+            ('3.5.9-r1', 'CVE-2026-107496', '3.24.3', True),
+            ('3.5.9-r0', 'CVE-2026-95692', '3.24.4', False),
+            ('3.5.9-r1', 'CVE-2026-other', '3.24.4', False),
+            ('3.5.9-r1', 'CVE-2026-95692', '3.23.8', False),
+        ]:
+            with self.subTest(version=version, cve=cve, distro=distro):
+                sbom, raw = fixture()
+                artifact = sbom['artifacts'][0]
+                artifact.update(name='libssl3', type='apk', version=version,
+                    purl=f'pkg:apk/alpine/libssl3@{version}?arch=x86_64&distro=alpine-{distro}&upstream=openssl')
+                raw['matches'][0]['artifact'] = copy.deepcopy(artifact)
+                raw['matches'][0]['vulnerability']['id'] = cve
+                sbom['distro'] = {'id': 'alpine', 'versionID': distro}
+                result = scan.normalize(sbom, raw, [str(vex)])['Results'][0]
+                self.assertEqual(not result['Vulnerabilities'], assessed)

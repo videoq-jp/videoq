@@ -1,0 +1,141 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/alpine-openssl-backports-2026-11-18",
+  "author": "VideoQ maintainers",
+  "timestamp": "2026-11-18T15:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-88823"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "Install Alpine official OpenSSL 3.5.9-r1 from edge/main. Alpine aports commit 5e6d18a5ba2eec060b34a671a43ee54a5e72714a backports this CVE fix: https://github.com/alpinelinux/aports/blob/5e6d18a5ba2eec060b34a671a43ee54a5e72714a/main/openssl/APKBUILD . Stable-distro scanner data does not yet record the edge backport. Only the exact r1 binary packages and listed stable distro identities are covered; r0, other versions and all other vulnerabilities remain blocking."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95691"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "Install Alpine official OpenSSL 3.5.9-r1 from edge/main. Alpine aports commit 5e6d18a5ba2eec060b34a671a43ee54a5e72714a backports this CVE fix: https://github.com/alpinelinux/aports/blob/5e6d18a5ba2eec060b34a671a43ee54a5e72714a/main/openssl/APKBUILD . Stable-distro scanner data does not yet record the edge backport. Only the exact r1 binary packages and listed stable distro identities are covered; r0, other versions and all other vulnerabilities remain blocking."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95692"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "Install Alpine official OpenSSL 3.5.9-r1 from edge/main. Alpine aports commit 5e6d18a5ba2eec060b34a671a43ee54a5e72714a backports this CVE fix: https://github.com/alpinelinux/aports/blob/5e6d18a5ba2eec060b34a671a43ee54a5e72714a/main/openssl/APKBUILD . Stable-distro scanner data does not yet record the edge backport. Only the exact r1 binary packages and listed stable distro identities are covered; r0, other versions and all other vulnerabilities remain blocking."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-107496"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r1?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "Install Alpine official OpenSSL 3.5.9-r1 from edge/main. Alpine aports commit 5e6d18a5ba2eec060b34a671a43ee54a5e72714a backports this CVE fix: https://github.com/alpinelinux/aports/blob/5e6d18a5ba2eec060b34a671a43ee54a5e72714a/main/openssl/APKBUILD . Stable-distro scanner data does not yet record the edge backport. Only the exact r1 binary packages and listed stable distro identities are covered; r0, other versions and all other vulnerabilities remain blocking."
+    }
+  ]
+}

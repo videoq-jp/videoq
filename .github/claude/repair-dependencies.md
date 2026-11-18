@@ -1,6 +1,6 @@
 # Automatic dependency update resolution
 
-Resolve the requested Dependabot update, including major-version API migrations,
+Resolve the requested Dependabot or managed runtime update, including major-version API migrations,
 build configuration, generated declarations, tests and merge conflicts. Read failed
 CI jobs and previous worker logs, reproduce the affected command and make the
 smallest complete compatibility change. Use the trusted Node/Python versions in
@@ -8,7 +8,7 @@ smallest complete compatibility change. Use the trusted Node/Python versions in
 
 In `ci` mode, preserve dependency manifests and lockfiles. Application code,
 configuration, tests and generated types under apps/ and packages/trpc/ may change
-or be added (at most 32 files and 2000 changed lines). The trusted export step stages newly added files for the patch. Do not delete application files.
+or be added. Existing application Dockerfiles may receive compatibility changes, preserving every FROM/managed tool pin and complete managed installation block (at most 32 files and 2000 changed lines). The trusted export step stages newly added files for the patch. Do not delete application files.
 
 In `conflict` mode, the authorized main merge has already been prepared. Resolve
 all conflicts and remove their markers. Do not stage files or write Git metadata; the trusted export step handles the index. Reconcile manifests and regenerate
@@ -25,7 +25,7 @@ type generation and checks that need writable node_modules, copy the source to
 a disposable directory under $TMPDIR, run there, and bring back only the
 authorized edits using Edit/Write. The trusted exporter handles Git staging.
 
-Never edit .github/, infrastructure, credentials or secret/environment files.
+Never edit .github/, infrastructure, credentials or secret/environment files, except `.github/runtime-versions.json` when resolving an authorized runtime conflict. For runtime conflicts, preserve the requested pins and only combine existing main/publication download metadata and installation lines; do not invent URLs, hashes or commands. Docker image pins belong to Dependabot and must survive unrelated runtime changes.
 Never remove assertions to hide a regression, reduce test coverage, disable
 checks/typechecking, suppress security findings, swallow errors, remove features
 or revert the requested dependency upgrade to make CI green. Update tests only

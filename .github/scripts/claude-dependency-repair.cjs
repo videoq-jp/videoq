@@ -27,7 +27,46 @@ async function seed({ github, context, pr, metadata }) {
 function sourceFile(path) {
   return /^(?:apps\/(?:api|web|docs|demo-video|worker|inference)\/|packages\/trpc\/)[a-zA-Z0-9_./-]+\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|py|json|jsonc|toml|ya?ml|css|mdx)$/.test(path) &&
     !/(?:^|\/)(?:\.\.?|node_modules|vendor|dist|build)(?:\/|$)|(?:^|[./_-])(?:secrets?|credentials|env)(?:[./_-]|$)/.test(path) &&
+    !/(?:^|\/)security\//.test(path) && !path.endsWith('.openvex.json') &&
     !/(?:^|\/)(?:package(?:-lock)?\.json|pyproject\.toml|uv\.lock)$/.test(path);
+}
+// Container compatibility edits can accompany an image update, but the image
+// references and verified tool-installation blocks remain owned by their bots.
+function dockerFile(path) {
+  return /^(?:apps\/(?:api|web|worker|inference\/whisper))\/Dockerfile(?:\.(?:local|dev|onprem))?$/.test(path);
+}
+function compatibilityFile(path) { return sourceFile(path) || dockerFile(path); }
+function dockerPatch(file) {
+  if (!dockerFile(file.filename)) return true;
+  if (file.status !== 'modified' || !file.patch) return false;
+  // Reject visible protected changes early; full-file comparison below also
+  // checks blocks whose opening marker is outside the diff context.
+  let managed = false;
+  for (const line of file.patch.split('\n')) {
+    if (/^[ +\-]# BEGIN managed /.test(line)) managed = true;
+    if (/^[+\-]/.test(line) && (managed || /^\s*(?:FROM\s|ARG\s+(?:PYTHON|NPM|PIP|UV)_(?:VERSION|URL|SHA256|INTEGRITY)=)/i.test(line.slice(1)))) return false;
+    if (/^[ +\-]# END managed /.test(line)) managed = false;
+  }
+  return true;
+}
+function sameDockerPins(before, after) {
+  const protectedLines = text => text.match(/^(?:FROM .*|ARG (?:PYTHON|NPM|PIP|UV)_(?:VERSION|URL|SHA256|INTEGRITY)=.*)$/gm) || [];
+  const blocks = text => text.match(/^# BEGIN managed [\s\S]*?^# END managed .*$/gm) || [];
+  return JSON.stringify(protectedLines(before)) === JSON.stringify(protectedLines(after)) &&
+    JSON.stringify(blocks(before)) === JSON.stringify(blocks(after));
+}
+async function validRepairDiff({ github, context, parent, head, diff }) {
+  if (diff.total_commits !== 1 || !validRepairFiles(diff.files || [])) return false;
+  for (const file of diff.files.filter(file => dockerFile(file.filename))) {
+    const contents = [];
+    for (const ref of [parent, head]) {
+      const { data } = await github.rest.repos.getContent({ ...context.repo, path: file.filename, ref });
+      if (data.type !== 'file' || data.encoding !== 'base64') return false;
+      contents.push(Buffer.from(data.content, 'base64').toString('utf8'));
+    }
+    if (!sameDockerPins(...contents)) return false;
+  }
+  return true;
 }
 const POLICY_VERSION = 2;
 const MAX_ATTEMPTS = 8;
@@ -71,7 +110,7 @@ async function mayAttempt({ github, context, comments, head, mode = 'ci', base }
 }
 function validRepairFiles(files) {
   return files.length > 0 && files.length <= 32 &&
-    files.every(f => ['modified', 'added'].includes(f.status) && sourceFile(f.filename) && f.patch &&
+    files.every(f => ['modified', 'added'].includes(f.status) && compatibilityFile(f.filename) && dockerPatch(f) && f.patch &&
       Number.isInteger(f.changes) && f.changes > 0) &&
     files.reduce((sum, f) => sum + f.changes, 0) <= 2000;
 }
@@ -104,24 +143,32 @@ async function candidate({ github, context, runId, mode = 'ci', number, baseSha 
   if (pulls.length !== 1) return null;
   const { pr, files, comments } = await policy.getPull({ github, context, number: pulls[0].number });
   if (pr.head.sha !== run.head_sha || !sha(pr.head.sha) || pr.state !== 'open' || pr.draft ||
-    pr.user?.login !== 'dependabot[bot]' || pr.head.repo?.full_name !== REPO || pr.base.repo?.full_name !== REPO ||
-    pr.base.ref !== 'main' || !pr.head.ref.startsWith('dependabot/') ||
+    !['dependabot[bot]', process.env.DEPENDENCY_BOT_LOGIN || 'videoq-dependency-bot[bot]'].includes(pr.user?.login) || pr.head.repo?.full_name !== REPO || pr.base.repo?.full_name !== REPO ||
+    pr.base.ref !== 'main' ||
     pr.labels.some(l => ['no-automerge', 'no-claude', 'no-codex'].includes(l.name))) return null;
   const { data: runs } = await github.rest.actions.listWorkflowRuns({ ...context.repo, workflow_id: workflow.id, head_sha: run.head_sha, event: 'pull_request', per_page: 100 });
   const latest = runs.workflow_runs.sort((a, b) => b.id - a.id)[0];
   if (!latest || latest.id !== run.id || latest.run_attempt !== run.run_attempt) return null;
   const commits = await github.paginate(github.rest.pulls.listCommits, { ...context.repo, pull_number: pr.number, per_page: 100 });
   if (commits.at(-1)?.sha !== pr.head.sha) return null;
+  if (pr.user.login !== 'dependabot[bot]') {
+    const proof = await require('./runtime-repair-provenance.cjs').provenance({ github, context, pr, files, comments, commits });
+    if (!proof) return null;
+    return { pr, files, comments, run, origin: { sha: proof.originalHead, metadata: { ecosystem: 'runtime' } },
+      repairs: [], proof };
+  }
+  if (!pr.head.ref.startsWith('dependabot/')) return null;
   const expanded = await require('./dependency-rebase.cjs').expandHistory({ github, context, pr, files, comments, commits });
   const resolved = await require('./dependency-rebase.cjs').provenance({ github, context, pr, files, comments, commits });
-  const history = resolved ? { origin: { sha: resolved.originalHead, metadata: resolved.metadata }, repairs: [] } : chain(expanded.commits, comments, expanded.aliases);
+  const history = chain(expanded.commits, comments, expanded.aliases) ||
+    (resolved ? { origin: { sha: resolved.originalHead, metadata: resolved.metadata }, repairs: [] } : null);
   if (!history || !history.origin.metadata?.ecosystem) return null;
   // Verify the seed against the original dependency-only diff, even after source repairs.
   const { data: original } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${pr.base.sha}...${history.origin.sha}` });
   if (!policy.autoMergeMetadata(history.origin.metadata, original.files || [])) return null;
   for (const repair of history.repairs) {
     const { data: diff } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${repair.parent}...${repair.sha}` });
-    if (diff.total_commits !== 1 || !validRepairFiles(diff.files || [])) return null;
+    if (!await validRepairDiff({ github, context, parent: repair.parent, head: repair.sha, diff })) return null;
   }
   // Reject files outside the union of the verified original and repair diffs.
   if (files.length > 82) return null;
@@ -188,7 +235,12 @@ function applyPatch(cwd, patchPath) {
   for (let i = 0; i < entries.length - 1; i += 2) {
     const match = entries[i].match(/^:(?:100644 100644 [a-f0-9]{40} [a-f0-9]{40} M|000000 100644 0{40} [a-f0-9]{40} A)$/);
     const path = entries[i + 1];
-    if (!match || !sourceFile(path) || !lstatSync(resolve(cwd, path)).isFile()) throw new Error('Forbidden repair path or mode');
+    if (!match || !compatibilityFile(path) || !lstatSync(resolve(cwd, path)).isFile()) throw new Error('Forbidden repair path or mode');
+    if (dockerFile(path)) {
+      const before = git(cwd, 'show', `HEAD:${path}`);
+      const after = readFileSync(resolve(cwd, path), 'utf8');
+      if (!sameDockerPins(before, after)) throw new Error('Container repair changed protected pins or installation blocks');
+    }
     files.push(path);
   }
   const stats = git(cwd, 'diff', '--cached', '--numstat', '--no-renames').trim().split('\n');
@@ -219,4 +271,4 @@ async function publish(args) {
   if (current.head.sha !== expectedSha || current.labels.some(l => ['no-automerge', 'no-claude', 'no-codex'].includes(l.name))) throw new Error('PR changed during repair');
   await github.rest.git.updateRef({ ...context.repo, ref: `heads/${c.pr.head.ref}`, sha: commit.sha, force: false });
 }
-module.exports = { POLICY_VERSION, MAX_ATTEMPTS, attempts, stopIfExhausted, mayAttempt, record, records, seed, sourceFile, validRepairFiles, chain, candidate, scope, authorizedAttempt, claimWorker, applyPatch, publish };
+module.exports = { POLICY_VERSION, MAX_ATTEMPTS, attempts, stopIfExhausted, mayAttempt, record, records, seed, sourceFile, compatibilityFile, validRepairFiles, validRepairDiff, chain, candidate, scope, authorizedAttempt, claimWorker, applyPatch, publish };

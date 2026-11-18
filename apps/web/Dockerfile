@@ -54,6 +54,11 @@ FROM nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698
 
 # Refresh the pinned base's Brotli, curl, Expat and libxslt security fixes.
 RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0' 'libexpat>=2.10.0-r0' 'libxslt>=1.1.43-r4'
+# Alpine stable still ships OpenSSL 3.5.9-r0. The official r1 backports fix
+# CVE-2026-88823, CVE-2026-95691, CVE-2026-95692 and CVE-2026-107496.
+RUN apk add --no-cache --upgrade \
+    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
 
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template

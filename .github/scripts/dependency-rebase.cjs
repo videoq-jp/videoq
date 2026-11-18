@@ -53,10 +53,10 @@ async function snapshotMetadata(args, depth = 0) {
   if (!metadata) return null;
   for (const receipt of history.repairs) {
     const { data: diff } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${receipt.parent}...${receipt.sha}` });
-    if (diff.total_commits !== 1 || !repair.validRepairFiles(diff.files || [])) return null;
+    if (!await repair.validRepairDiff({ github, context, parent: receipt.parent, head: receipt.sha, diff })) return null;
   }
   const dependencyPaths = new Set(original.files.map(f => f.filename));
-  if (!files.every(f => dependencyPaths.has(f.filename) || (f.status === 'modified' && repair.sourceFile(f.filename)))) return null;
+  if (!files.every(f => dependencyPaths.has(f.filename) || (['modified', 'added'].includes(f.status) && repair.compatibilityFile(f.filename)))) return null;
   return metadata;
 }
 async function provenance(args, depth = 0) {

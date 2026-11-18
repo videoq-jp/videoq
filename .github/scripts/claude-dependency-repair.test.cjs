@@ -164,7 +164,7 @@ test('workflow keeps model access read-only and publishing isolated', () => {
   assert.match(worker, /group: dependency-automation-\$\{\{ inputs\.number \}\}/);
 });
 
-test('publication uses a separate writer, records exact parent, and never force pushes', async t => {
+for (const kind of ['dependabot', 'runtime']) test(`${kind} publication uses a separate writer, records exact parent, and never force pushes`, async t => {
   const cwd = mkdtempSync(join(tmpdir(), 'claude-publish-test-'));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
   const git = (...a) => execFileSync('git', a, { cwd, encoding: 'utf8' });
@@ -175,7 +175,7 @@ test('publication uses a separate writer, records exact parent, and never force 
   writeFileSync(path, 'export const player = 2;\n');
   const patchPath = join(cwd, 'repair.patch'); writeFileSync(patchPath, git('diff'));
   git('restore', 'apps/web/src/player.ts');
-  const f = fixture();
+  const f = kind === 'runtime' ? runtimeFixture() : fixture();
   f.comments.push(comment({ kind: 'attempt', sha: A, runId: '77' }));
   f.comments.push(comment({ kind: 'worker-start', sha: A, runId: '77', authorizationRun: '77' }));
   const calls = [];
@@ -286,4 +286,136 @@ test('unsupported infrastructure failures report once without spending Claude at
   assert.equal(await p.scope(f), null); assert.equal(await p.scope(f), null);
   assert.equal(p.records(f.comments, 'unsupported-stop').length, 1);
   assert.equal(p.records(f.comments, 'attempt').length, 0);
+});
+
+function runtimeFixture(repaired = false, channel = 'current') {
+  const f = fixture(repaired);
+  f.pr.user.login = 'videoq-dependency-bot[bot]';
+  f.pr.head.ref = `runtime/node-${channel}`;
+  f.run.head_branch = f.pr.head.ref;
+  f.commits[0].author.login = f.pr.user.login;
+  f.original = [{ filename: '.node-version', status: 'modified', patch: '-26.12.0\n+26.12.1', changes: 2 }];
+  f.comments = [{ user: { login: f.pr.user.login }, body: '<!-- videoq-runtime-update-v1 -->\n' + JSON.stringify({
+    kind: 'publication', sha: A, base: C, runtime: 'node', channel,
+    previous_version: '26.12.0', version: channel === 'current' ? '26.12.1' : '28.0.0',
+  }) }];
+  if (repaired) f.comments.push(comment({ kind: 'published', policy: 2, mode: 'ci', sha: B, parent: A, origin: A, originalBase: C, runId: '77' }));
+  f.github.rest.pulls.listFiles = async () => repaired ? [...f.original, ...f.diff] : f.original;
+  f.github.rest.repos.getBranch = async () => ({ data: { commit: { sha: C } } });
+  f.github.rest.repos.compareCommits = async () => ({ data: { merge_base_commit: { sha: C } } });
+  return f;
+}
+test('both runtime channels authorize Claude from a trusted publication without a Dependabot seed', async () => {
+  for (const channel of ['current', 'next']) {
+    const f = runtimeFixture(false, channel), dispatches = [];
+    f.github.rest.actions.createWorkflowDispatch = async args => dispatches.push(args);
+    assert.ok(await p.candidate(f));
+    await require('./dependency-queue.cjs').repairFailure(f);
+    assert.equal(dispatches.length, 1);
+    assert.equal(dispatches[0].inputs.sha, A);
+    assert.equal(p.records(f.comments, 'attempt').length, 1);
+    await p.claimWorker({ ...f, expectedSha: A, authorizationRun: '77', number: 1 });
+    await assert.rejects(p.claimWorker({ ...f, expectedSha: A, authorizationRun: '77', number: 1 }), /already claimed/);
+  }
+});
+test('runtime repairs retain provenance for retries and queue admission; next remains manual', async () => {
+  for (const channel of ['current', 'next']) {
+    const f = runtimeFixture(true, channel);
+    assert.ok(await p.candidate(f));
+    const c = await require('./dependency-queue.cjs').verified({ ...f, pr: f.pr });
+    assert.equal(c.kind, 'runtime');
+    assert.equal(c.autoQueue, channel === 'current');
+    assert.equal(c.proof.originalHead, A);
+    assert.equal(c.proof.originalBase, C);
+  }
+});
+for (const [name, mutate] of [
+  ['forged publication', f => { f.comments[0].user.login = 'human'; }],
+  ['fork', f => { f.pr.head.repo.full_name = 'fork/videoq'; }],
+  ['unknown branch', f => { f.pr.head.ref = 'runtime/unmanaged'; }],
+  ['human original', f => { f.commits[0].author.login = 'human'; }],
+  ['missing repair receipt', f => { f.comments.pop(); }],
+  ['forged repair receipt', f => { f.comments[1].user.login = 'human'; }],
+  ['wrong parent', f => { f.commits[1].parents = [{ sha: C }]; }],
+  ['forbidden repair', f => { f.diff = [source('.github/workflows/ci.yml')]; }],
+  ['changed origin base', f => { f.comments[1] = comment({ kind: 'published', policy: 2, mode: 'ci', sha: B, parent: A, origin: A, originalBase: B, runId: '77' }); }],
+  ['no-runtime-update', f => { f.pr.labels.push({ name: 'no-runtime-update' }); }],
+  ['no-claude', f => { f.pr.labels.push({ name: 'no-claude' }); }],
+]) test(`runtime repair rejects ${name}`, async () => {
+  const f = runtimeFixture(true); mutate(f); assert.equal(await p.candidate(f), null);
+});
+
+test('runtime conflicts retain exact main parents and verified requested pins across later CI repairs', async () => {
+  const resolution = require('./dependency-resolution.cjs'), D = 'd'.repeat(40);
+  const fresh = runtimeFixture(); fresh.pr.mergeable = false;
+  const args = { ...fresh, mode: 'conflict', number: 1, baseSha: C };
+  assert.ok(await resolution.candidate(args));
+  assert.equal((await resolution.scope(args)).baseSha, C);
+  const f = runtimeFixture(true);
+  f.commits[1].parents = [{ sha: A }, { sha: D }];
+  f.comments[1] = comment({ kind: 'published', policy: 2, mode: 'conflict', sha: B, parent: A, base: D, origin: A, originalBase: C, runId: '77' });
+  f.github.rest.repos.getBranch = async () => ({ data: { commit: { sha: D } } });
+  f.github.rest.repos.compareCommits = async () => ({ data: { merge_base_commit: { sha: D } } });
+  let proposed = '26.12.1\n';
+  f.github.rest.repos.getContent = async ({ ref }) => ({ data: { type: 'file', encoding: 'base64',
+    content: Buffer.from(ref === A ? '26.12.1\n' : ref === B ? proposed : '26.12.0\n').toString('base64') } });
+  assert.ok(await p.candidate(f));
+  proposed = '26.12.0\n'; assert.equal(await p.candidate(f), null);
+  proposed = '26.12.1\ninvented-command\n'; assert.equal(await p.candidate(f), null);
+  proposed = '26.12.1\n';
+  f.github.rest.repos.compareCommits = async () => ({ data: { merge_base_commit: { sha: C } } });
+  assert.equal(await p.candidate(f), null);
+});
+
+test('container compatibility repairs preserve image pins and entire verified installation blocks', async t => {
+  const cwd = mkdtempSync(join(tmpdir(), 'claude-container-test-'));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' });
+  git('init', '--quiet'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'Test');
+  mkdirSync(join(cwd, 'apps/worker'), { recursive: true });
+  const path = 'apps/worker/Dockerfile.onprem';
+  const original = 'FROM python:3.14@sha256:' + 'a'.repeat(64) + '\n# BEGIN managed pip\nRUN verify-the-download\n# END managed pip\nRUN python -m old-command\n';
+  writeFileSync(join(cwd, path), original); git('add', '.'); git('commit', '--quiet', '-m', 'initial');
+  const patchPath = join(cwd, 'repair.patch');
+  const publish = after => {
+    writeFileSync(join(cwd, path), after); writeFileSync(patchPath, git('diff'));
+    git('restore', '--', path); return p.applyPatch(cwd, patchPath);
+  };
+  assert.deepEqual(publish(original.replace('old-command', 'new-command')), [path]);
+  git('restore', '--staged', '--', path); git('restore', '--', path);
+  assert.throws(() => publish(original.replace('python:3.14', 'python:3.15')), /protected pins/);
+  git('restore', '--staged', '--', path); git('restore', '--', path);
+  assert.throws(() => publish(original.replace('verify-the-download', 'skip-verification')), /protected pins/);
+  const diff = { total_commits: 1, files: [source(path)] };
+  const github = { rest: { repos: { getContent: async ({ ref }) => ({ data: { type: 'file', encoding: 'base64',
+    content: Buffer.from(ref === A ? original : original.replace('verify-the-download', 'skip-verification')).toString('base64') } }) } } };
+  assert.equal(await p.validRepairDiff({ github, context: { repo: {} }, parent: A, head: B, diff }), false);
+  assert.equal(p.validRepairFiles([{ ...source(path), patch: '-FROM python:3.14\n+FROM python:3.15' }]), false);
+});
+
+test('scheduled runtime regeneration preserves verified Claude repairs instead of overwriting them', async () => {
+  const f = runtimeFixture(true);
+  f.commits[1].author = { login: f.pr.user.login };
+  f.github.rest.git = { getRef: async ({ ref }) => ({ data: { object: { sha: ref === 'heads/main' ? C : B } } }) };
+  const number = await require('./runtime-pull-request.cjs').publish({ github: f.github,
+    context: { ...f.context, sha: C, eventName: 'schedule' }, bot: f.pr.user.login,
+    core: { info() {} }, plan: { changed: true, runtime: 'node', channel: 'current', previous_version: '26.12.0', version: '26.12.1', files: { '.node-version': '26.12.1\n' } } });
+  assert.equal(number, 1);
+  assert.deepEqual(f.mutations, []);
+});
+
+test('a Dependabot package update retains provenance after a container compatibility repair', async () => {
+  const f = fixture(true);
+  f.commits[0].parents = [{ sha: C }];
+  f.commits[0].commit.message = 'update\n---\nupdated-dependencies:\n- dependency-name: example\n  update-type: version-update:semver-minor\n...\n';
+  f.original[0] = { ...f.original[0], patch: '-old\n+new', changes: 2 };
+  f.diff = [source('apps/worker/Dockerfile.onprem')];
+  const original = 'FROM python:3.14\nRUN old-command\n';
+  f.github.rest.repos.getContent = async ({ ref }) => ({ data: { type: 'file', encoding: 'base64',
+    content: Buffer.from(ref === A ? original : original.replace('old-command', 'new-command')).toString('base64') } });
+  const proof = await require('./dependency-rebase.cjs').provenance({ ...f,
+    files: [...f.original, ...f.diff] });
+  assert.equal(proof.metadata.ecosystem, 'npm_and_yarn');
+  assert.equal(proof.originalHead, B);
+  assert.ok(await p.candidate(f));
 });

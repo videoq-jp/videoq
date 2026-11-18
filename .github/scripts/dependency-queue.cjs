@@ -1,23 +1,23 @@
 // Trusted metadata and provenance helpers. Scheduling belongs to GitHub Merge Queue.
 const policy = require('./dependency-automation.cjs');
 const sync = require('./dependency-rebase.cjs');
-const runtime = require('./runtime-pull-request.cjs');
 const REPO = 'videoq-jp/videoq';
 const BOT = process.env.DEPENDENCY_BOT_LOGIN || 'videoq-dependency-bot[bot]';
 const REQUIRED = ['CI Success', 'Supply Chain Security', 'Container Validation', 'Terraform Plan'];
 const sha = s => /^[a-f0-9]{40}$/.test(s || '');
 function managed(pr) {
   return pr.base?.ref === 'main' && pr.head?.repo?.full_name === REPO &&
-    (pr.user?.login === 'dependabot[bot]' || (pr.user?.login === BOT && /^runtime\/(node|python|npm|pip|uv)-current$/.test(pr.head.ref)));
+    (pr.user?.login === 'dependabot[bot]' || (pr.user?.login === BOT && /^runtime\/(node|python|npm|pip|uv)-(current|next)$/.test(pr.head.ref)));
 }
 async function verified({ github, context, pr, base }) {
   const pull = await policy.getPull({ github, context, number: pr.number });
   const commits = await github.paginate(github.rest.pulls.listCommits, { ...context.repo, pull_number: pr.number, per_page: 100 });
   if (!commits.length || commits.at(-1).sha !== pull.pr.head.sha) return null;
   if (pr.user.login === BOT) {
-    if (process.env.RUNTIME_AUTOMERGE_ENABLED === 'false' || !runtime.eligible(pull.pr, pull.files, pull.comments, BOT) ||
-        !await runtime.ownedCommits({ github, context, commits, bot: BOT, base })) return null;
-    return { ...pull, kind: 'runtime', runtime: pr.head.ref.split('/')[1].replace('-current', '') };
+    const proof = await require('./runtime-repair-provenance.cjs').provenance({ github, context, ...pull, commits, bot: BOT, base });
+    if (!proof) return null;
+    return { ...pull, kind: 'runtime', runtime: proof.publication.runtime, proof,
+      autoQueue: proof.publication.channel === 'current' && process.env.RUNTIME_AUTOMERGE_ENABLED !== 'false' };
   }
   const sourceFile = require('./claude-dependency-repair.cjs').sourceFile;
   if (pull.pr.labels.some(l => l.name === 'no-rebase') || !policy.eligiblePull(pull.pr, pull.files.filter(f => !sourceFile(f.filename)), 'no-automerge', pull.comments)) return null;

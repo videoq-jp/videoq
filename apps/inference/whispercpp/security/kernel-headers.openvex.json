@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/yukiharada1228/videoq/security/vex/whispercpp-uapi-2026-10-30",
   "author": "VideoQ",
-  "timestamp": "2026-10-30T05:26:00.818278+00:00",
-  "version": 1,
+  "timestamp": "2026-11-18T00:00:00Z",
+  "version": 2,
   "statements": [
     {
       "vulnerability": {
@@ -8548,6 +8548,38 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "This CVE concerns Linux kernel implementation code. In the separately inventoried upstream whisper.cpp images this exact package contains only nonexecutable UAPI headers/documentation. The flattened image contains no kernel binaries/modules. CI verifies the image digest, architecture, package version and hash of every package-owned file before using this assessment. It does not assess the host kernel, other packages, architectures, versions or unknown CVEs."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-72463"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This CVE concerns Linux kernel implementation code (xfrm asynchronous resumption network-device reference counting); see https://ubuntu.com/security/CVE-2026-72463. The exact linux-libc-dev package in these digest-pinned whisper.cpp images contains only nonexecutable UAPI headers and documentation, not the affected kernel implementation. CI verifies each architecture, package version, every package-owned file hash, and absence of kernel binaries/modules before accepting this assessment. It does not assess the host kernel, other packages, versions, images or unknown CVEs."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74753"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "This CVE concerns Linux kernel implementation code (perf event group leader lifetime management); see https://ubuntu.com/security/CVE-2026-74753. The exact linux-libc-dev package in these digest-pinned whisper.cpp images contains only nonexecutable UAPI headers and documentation, not the affected kernel implementation. CI verifies each architecture, package version, every package-owned file hash, and absence of kernel binaries/modules before accepting this assessment. It does not assess the host kernel, other packages, versions, images or unknown CVEs."
     }
   ]
 }

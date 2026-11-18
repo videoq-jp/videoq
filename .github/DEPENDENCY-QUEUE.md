@@ -3,7 +3,7 @@
 GitHub's standard Merge Queue manages merge order into main and integration CI.
 Ordinary development PRs also use this queue when merging to main.
 Dependency Automation automatically queues only verified Dependabot major/minor/patch updates
-and managed-bot `runtime/*-current` PRs. People decide on new runtime lines and excluded PRs.
+and managed-bot `runtime/*-current` PRs. Both runtime channels can receive Claude repairs, but people still decide whether to merge new runtime lines and excluded PRs.
 The controller never removes a PR that a person queued, even if it is outside automatic processing.
 It removes only entries queued by the update bot itself, when origin verification fails or an exclusion applies.
 

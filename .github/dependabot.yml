@@ -99,16 +99,7 @@ updates:
       time: "09:00"
       timezone: Asia/Tokyo
     open-pull-requests-limit: 5
-    # Runtime Updates coordinates these images with CI and tool hashes.
-    # Keep one owner for interpreter pins; other images stay on Dependabot.
-    ignore:
-      - dependency-name: node
-      - dependency-name: python
-      - dependency-name: public.ecr.aws/lambda/python
-      - dependency-name: ghcr.io/astral-sh/uv
-      # Dependabot reports these registry images using normalized names.
-      - dependency-name: lambda/python
-      - dependency-name: astral-sh/uv
+    # Docker image tags and digests belong to Dependabot, independently of local/CI pins.
     groups:
       docker-minor-patch:
         patterns: ["*"]

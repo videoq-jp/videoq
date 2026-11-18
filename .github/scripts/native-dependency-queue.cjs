@@ -119,7 +119,7 @@ async function reconcile({ github, writerGithub, context, verify = queue.verifie
     }
     if (pr.mergeable === false) {
       await cancel(writerGithub, context, pr);
-      if (repairEnabled && candidate.kind === 'dependabot') {
+      if (repairEnabled && ['dependabot', 'runtime'].includes(candidate.kind)) {
         if (await repair.stopIfExhausted({ github, context, pr, comments: candidate.comments || [], mode: 'conflict' })) continue;
         if (authorizeRepair) await prepareRepair({ github, writerGithub, context, mode: 'conflict', number: pr.number, baseSha: main.commit.sha });
         else wake = true;
@@ -144,7 +144,7 @@ async function reconcile({ github, writerGithub, context, verify = queue.verifie
     if (outcome === 'failure') {
       await cancel(writerGithub, context, pr);
       const ci = rows.find(row => row.workflow_id === 'ci.yml');
-      if (!repairEnabled || candidate.kind !== 'dependabot' || !ci?.admitted || ci.run?.conclusion !== 'failure') continue;
+      if (!repairEnabled || !['dependabot', 'runtime'].includes(candidate.kind) || !ci?.admitted || ci.run?.conclusion !== 'failure') continue;
       const comments = candidate.comments || [];
       if (await repair.stopIfExhausted({ github, context, pr, comments })) continue;
       if (!await repair.mayAttempt({ github, context, comments, head: pr.head.sha })) continue;
@@ -153,6 +153,11 @@ async function reconcile({ github, writerGithub, context, verify = queue.verifie
       continue;
     }
     if (outcome !== 'success') continue;
+    if (candidate.autoQueue === false) {
+      await cancel(writerGithub, context, pr);
+      summary.push(`#${pr.number}: CI passed; manual runtime-line review required or runtime automerge disabled`);
+      continue;
+    }
     const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
     if (current.state !== 'open' || current.draft || current.head.sha !== pr.head.sha ||
         current.labels.some(label => ['no-automerge', 'no-runtime-update', 'no-rebase'].includes(label.name))) continue;

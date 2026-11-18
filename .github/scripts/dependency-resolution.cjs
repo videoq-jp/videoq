@@ -17,7 +17,9 @@ function allowedFiles(files, metadata) {
   const application = files.filter(file => repair().sourceFile(file.filename));
   const dependencies = files.filter(file => !repair().sourceFile(file.filename));
   return (!application.length || repair().validRepairFiles(application)) &&
-    (!dependencies.length || policy.autoMergeMetadata(metadata, dependencies));
+    (!dependencies.length || (metadata?.ecosystem === 'runtime'
+      ? dependencies.every(file => file.status === 'modified' && metadata.paths?.includes(file.filename) && require('./runtime-pull-request.cjs').FILES.has(file.filename))
+      : policy.autoMergeMetadata(metadata, dependencies)));
 }
 
 // Verify receipts recursively, exact Git parents and trusted main ancestry.
@@ -44,7 +46,7 @@ async function provenance(args, depth = 0) {
     const { data: delta } = await github.rest.repos.compareCommitsWithBasehead({
       ...context.repo, basehead: `${receipt.parent}...${receipt.sha}`,
     });
-    if (delta.total_commits !== 1 || !repair().validRepairFiles(delta.files || [])) return null;
+    if (!await repair().validRepairDiff({ github, context, parent: receipt.parent, head: receipt.sha, diff: delta })) return null;
   } else {
     if (!sha(receipt.base)) return null;
     const { data: main } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' });
@@ -67,10 +69,14 @@ async function candidate({ github, context, number, baseSha }) {
   if (pull.pr.mergeable !== false || pull.pr.labels.some(label =>
     ['no-automerge', 'no-claude', 'no-codex', 'no-rebase'].includes(label.name))) return null;
   const application = repair().sourceFile;
-  if (!policy.eligiblePull(pull.pr, pull.files.filter(file => !application(file.filename)), 'no-automerge', pull.comments)) return null;
+  const runtimeBot = process.env.DEPENDENCY_BOT_LOGIN || 'videoq-dependency-bot[bot]';
+  const isRuntime = pull.pr.user?.login === runtimeBot;
+  if (!isRuntime && !policy.eligiblePull(pull.pr, pull.files.filter(file => !application(file.filename)), 'no-automerge', pull.comments)) return null;
   const commits = await github.paginate(github.rest.pulls.listCommits, { ...context.repo, pull_number: number, per_page: 100 });
   if (commits.at(-1)?.sha !== pull.pr.head.sha) return null;
-  const proof = await sync().provenance({ github, context, ...pull, commits });
+  const proof = isRuntime
+    ? await require('./runtime-repair-provenance.cjs').provenance({ github, context, ...pull, commits, bot: runtimeBot })
+    : await sync().provenance({ github, context, ...pull, commits });
   if (!proof) return null;
   const { data: main } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' });
   if (main.commit.sha !== baseSha) return null;
@@ -121,6 +127,17 @@ async function preservedTargets({ github, context, proof, ref, cwd, base }) {
     const before = await content(github, context, proof.originalBase, file.filename);
     const requested = await content(github, context, proof.originalHead, file.filename);
     const proposed = cwd ? readFileSync(resolve(cwd, file.filename), 'utf8') : await content(github, context, ref, file.filename);
+    if (proof.metadata?.ecosystem === 'runtime') {
+      if (!base) return false;
+      const main = await content(github, context, base, file.filename);
+      // A runtime conflict can combine existing pins and verified download
+      // metadata, but cannot invent shell commands, URLs or hashes.
+      const allowed = new Set([...main.split('\n'), ...requested.split('\n')]);
+      if (proposed.split('\n').some(line => !allowed.has(line))) return false;
+      const oldLines = new Set(before.split('\n'));
+      const desired = requested.split('\n').filter(line => line.trim() && !oldLines.has(line));
+      if (desired.some(line => !proposed.split('\n').includes(line))) return false;
+    }
     const versions = lockVersions(file.filename, requested);
     if (versions) {
       const old = lockVersions(file.filename, before), result = lockVersions(file.filename, proposed);
@@ -130,6 +147,7 @@ async function preservedTargets({ github, context, proof, ref, cwd, base }) {
     } else if (file.filename.endsWith('package.json')) {
       const old = JSON.parse(before), next = JSON.parse(requested), result = JSON.parse(proposed);
       const main = base ? JSON.parse(await content(github, context, base, file.filename)) : null;
+      if (proof.metadata?.ecosystem === 'runtime' && old.packageManager !== next.packageManager && result.packageManager !== next.packageManager) return false;
       for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
         for (const [name, version] of Object.entries(next[section] || {})) {
           if (old[section]?.[name] !== version && result[section]?.[name] !== version) return false;
@@ -141,7 +159,7 @@ async function preservedTargets({ github, context, proof, ref, cwd, base }) {
     } else {
       // Preserve every newly requested pin/constraint, including Python strings.
       const added = requested.split('\n').filter(line => !before.split('\n').includes(line) && line.trim());
-      const constraints = file.filename.endsWith('pyproject.toml') ? added : targetLines(added.join('\n'));
+      const constraints = proof.metadata?.ecosystem === 'runtime' || file.filename.endsWith('pyproject.toml') ? added : targetLines(added.join('\n'));
       if (constraints.some(line => !proposed.split('\n').includes(line))) return false;
     }
   }

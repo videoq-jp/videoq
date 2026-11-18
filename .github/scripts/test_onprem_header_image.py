@@ -73,7 +73,8 @@ class HeaderImageTests(unittest.TestCase):
         expected = [{"@id": f"pkg:deb/ubuntu/linux-libc-dev@{approved[arch]['version']}?arch={arch}&distro=ubuntu-22.04"}
                     for arch in ("amd64", "arm64")]
         statements = json.loads((root / "kernel-headers.openvex.json").read_text())["statements"]
-        self.assertEqual(len(statements), 534)
+        self.assertEqual(len(statements), 536)
+        self.assertTrue({'CVE-2026-72463', 'CVE-2026-74753'}.issubset({s['vulnerability']['name'] for s in statements}))
         self.assertEqual(len({row["vulnerability"]["name"] for row in statements}), len(statements))
         for row in statements:
             self.assertRegex(row["vulnerability"]["name"], r"^CVE-\d{4}-\d+$")
