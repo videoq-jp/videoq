@@ -95,6 +95,10 @@ async function publish({ github, context, core, plan, bot, retireSuperseded = fa
         if (receipts(comments, bot).some(r => r.kind === 'superseded' && r.sha === old && r.runtime === plan.runtime && r.channel === plan.channel)) {
           managed = pr; break;
         }
+        // A maintainer-closed proposal is an intentional opt-out. Preserve its
+        // branch (including human follow-ups) without failing daily discovery.
+        core.info(`Runtime PR #${pr.number} was manually closed; preserving its branch without proposing again`);
+        return pr.number;
       }
     }
     if (!managed || managed.user.login !== bot || managed.head.sha !== old) {

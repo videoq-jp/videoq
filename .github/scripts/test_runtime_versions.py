@@ -111,10 +111,12 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(runtime.discover(runtime.ROOT, self.data, "node", False), self.data)
             self.assertEqual(runtime.discover(runtime.ROOT, self.data, "python", False), self.data)
         config = (runtime.ROOT / ".github/dependabot.yml").read_text()
-        for image in ["node", "python", "public.ecr.aws/lambda/python", "ghcr.io/astral-sh/uv", "astral-sh/uv", "lambda/python"]:
-            # The isolated whisper service keeps its deliberate minor-line policy.
-            main_docker = config.split("  - package-ecosystem: docker\n", 1)[1].split("  # This service", 1)[0]
+        main_docker = config.split("  - package-ecosystem: docker\n", 1)[1].split("  # This service", 1)[0]
+        for image in ["node", "ghcr.io/astral-sh/uv", "astral-sh/uv"]:
             self.assertNotIn("dependency-name: " + image, main_docker)
+        for image in ["python", "public.ecr.aws/lambda/python", "lambda/python"]:
+            self.assertIn('dependency-name: ' + image + '\n        update-types: ["version-update:semver-major", "version-update:semver-minor"]', main_docker)
+        self.assertNotIn('version-update:semver-patch', main_docker)
 
 
 if __name__ == "__main__":

@@ -100,6 +100,15 @@ updates:
       timezone: Asia/Tokyo
     open-pull-requests-limit: 5
     # Docker image tags and digests belong to Dependabot, independently of local/CI pins.
+    # Worker native wheels and the Wolfi runtime require a reviewed Python series.
+    # Keep automatic patch/digest fixes; review a minor/major interpreter move separately.
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: public.ecr.aws/lambda/python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: lambda/python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       docker-minor-patch:
         patterns: ["*"]

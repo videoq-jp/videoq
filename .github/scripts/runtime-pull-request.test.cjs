@@ -179,6 +179,13 @@ test('unchanged proposals are left for the controller; superseded proposals reti
   assert.ok(recovered.writes.some(([kind]) => kind === 'receipt'));
   const manuallyClosed = managedFixture();
   manuallyClosed.github.rest.pulls.list = async ({ state }) => ({ data: state === 'open' ? [] : [manuallyClosed.pr] });
-  await assert.rejects(publish(manuallyClosed.args), /unmanaged runtime branch/);
+  assert.equal(await publish(manuallyClosed.args), 123);
   assert.deepEqual(manuallyClosed.writes, []);
+  for (const mutate of [f => { f.pr.user.login = 'human'; }, f => { f.pr.head.sha = 'd'.repeat(40); }]) {
+    const unknown = managedFixture();
+    unknown.github.rest.pulls.list = async ({ state }) => ({ data: state === 'open' ? [] : [unknown.pr] });
+    mutate(unknown);
+    await assert.rejects(publish(unknown.args), /unmanaged runtime branch/);
+    assert.deepEqual(unknown.writes, []);
+  }
 });
