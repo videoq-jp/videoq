@@ -16,7 +16,7 @@ Update PRs edited by a person and unmanaged branches with the same name are not 
 
 To stop: `RUNTIME_AUTOMERGE_ENABLED=false` (`DEPENDENCY_AUTOMERGE_ENABLED=false` stops all dependency updates). Anything already queued must be removed separately. Per PR, `no-automerge` stops automerge and `no-runtime-update` also stops regeneration. Dependency Automation checks label changes.
 
-All supported Docker images use Dependabot. The separate whisper service retains its patch-only Python image policy. Claude CI repair and conflict resolution support both Dependabot and managed runtime PRs, including `next` runtime proposals. Successful `next` proposals still require human review. Security failures and changes outside the permitted application compatibility scope still require human intervention.
+All supported Docker images use Dependabot. Worker and whisper Python image updates stay within their reviewed minor series: Dependabot still updates patch versions and image digests, while a move to a new Python series requires compatible native wheels and review of both build and runtime interpreters. Claude CI repair and conflict resolution support both Dependabot and managed runtime PRs, including `next` runtime proposals. Successful `next` proposals still require human review. Security failures and changes outside the permitted application compatibility scope still require human intervention.
 
 ```sh
 python3 .github/scripts/runtime-versions.py check
