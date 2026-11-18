@@ -246,7 +246,8 @@ it('keeps the app navigation out of a pending course viewer', async () => {
   globalThis.__setTrpcHandler('courses.get', load);
   renderApp('/videos/courses/7');
   await waitFor(() => expect(load).toHaveBeenCalled());
-  expect(screen.getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(0);
+  expect(screen.getByRole('tab', { name: i18n.t('videos.shared.tabs.videos') })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 });
@@ -256,7 +257,7 @@ it('normalizes the matched locale without decoding the remaining path or losing 
   globalThis.__setTrpcHandler('videos.get', getVideo);
   const historyLength = window.history.length;
   renderApp('/%65%6e/%76ideos/%37?t=12&next=%2Fvideos#transcript');
-  await screen.findByText(i18n.t('common.messages.videoNotFound'));
+  await screen.findAllByText(i18n.t('common.messages.videoNotFound'));
   expect(window.location.pathname).toBe('/en/%76ideos/%37');
   expect(window.location.search).toBe('?t=12&next=%2Fvideos');
   expect(window.location.hash).toBe('#transcript');
