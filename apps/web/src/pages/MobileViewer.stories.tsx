@@ -3,7 +3,7 @@ import { expect, waitFor } from 'storybook/test';
 import App from '@/App';
 import i18n from '@/i18n/config';
 import { authFixtures } from '../../.storybook/fixtures/auth';
-import { course } from '../../.storybook/fixtures/detail';
+import { course, courseVideos } from '../../.storybook/fixtures/detail';
 import { landingCourse, landingDemoEvents } from '../../.storybook/fixtures/landing';
 import { createChatPanelMock } from '../../.storybook/mocks/chatPanel';
 import { success, trpcQuery } from '../../.storybook/mocks/network';
@@ -126,4 +126,27 @@ export const CompactEnglishPhone: Story = {
   ...Trial,
   parameters: { viewport: { options: { compactPhone: { name: 'Compact phone', styles: { width: '320px', height: '520px' }, type: 'mobile' } } } },
   globals: { locale: 'en', viewport: { value: 'compactPhone', isRotated: false } },
+};
+
+/** Browser chrome leaves a short viewport where the player height limit applies. */
+export const CompactCoursePlayer: Story = {
+  ...CourseOwner,
+  parameters: {
+    ...CourseOwner.parameters,
+    api: { auth: authFixtures.user, trpc: [trpcQuery('courses.get', success({ ...course, videos: [{ ...courseVideos[0], file: '/demo/explain-ja.mp4' }] }))] },
+    viewport: { options: { compactCourse: { name: 'Compact course viewport', styles: { width: '390px', height: '640px' }, type: 'mobile' } } },
+  },
+  globals: { locale: 'ja', viewport: { value: 'compactCourse', isRotated: false } },
+  async play({ canvasElement, canvas }) {
+    await canvas.findByRole('heading', { level: 1, name: course.name });
+    const frame = canvasElement.querySelector<HTMLElement>('[data-course-viewer] .aspect-video')!;
+    const rect = frame.getBoundingClientRect();
+    const parent = frame.parentElement!.getBoundingClientRect();
+    await expect(Math.abs(rect.width - parent.width)).toBeLessThan(1);
+    await expect(Math.abs(rect.left - parent.left)).toBeLessThan(1);
+    const video = frame.querySelector('video')!;
+    await expect(Math.abs(video.getBoundingClientRect().width - rect.width)).toBeLessThan(1);
+    await expect(rect.height).toBeGreaterThan(0);
+    await expect(rect.height).toBeLessThan(rect.width * 9 / 16);
+  },
 };
