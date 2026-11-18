@@ -143,3 +143,17 @@ test('normal on-prem validation reserves disk before building images or starting
   assert.match(reserve, /\/usr\/local\/lib\/android \/usr\/share\/dotnet \/opt\/ghc/);
   assert.ok(onprem.indexOf(reserve) < onprem.indexOf('      - uses: actions/setup-node@'));
 });
+
+test('API and web install the official patched OpenSSL and retain exact-version assessment in CI and releases', () => {
+  const release = readFileSync(join(__dirname, '../workflows/onprem-release.yml'), 'utf8');
+  const repair = require('./claude-dependency-repair.cjs');
+  for (const component of ['api', 'web']) {
+    const docker = readFileSync(join(__dirname, `../../apps/${component}/Dockerfile`), 'utf8');
+    assert.match(docker, /https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/main/);
+    assert.match(docker, /'libssl3>=3\.5\.9-r1' 'libcrypto3>=3\.5\.9-r1'/);
+    assert.ok(onprem.includes(`security-config: apps/${component}/security/grype.json`));
+    assert.ok(release.includes(`'apps/${component}/security/grype.json'`));
+    assert.equal(repair.sourceFile(`apps/${component}/security/grype.json`), false);
+  }
+  assert.equal(repair.sourceFile('apps/api/security/alpine-openssl.openvex.json'), false);
+});

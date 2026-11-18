@@ -2,6 +2,11 @@
 FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS base
 # The pinned base predates the Alpine zlib security update.
 RUN apk upgrade --no-cache zlib
+# Alpine stable still ships OpenSSL 3.5.9-r0. The official r1 backports fix
+# CVE-2026-88823, CVE-2026-95691, CVE-2026-95692 and CVE-2026-107496.
+RUN apk add --no-cache --upgrade \
+    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
 
 # BEGIN managed npm
 ARG NPM_VERSION=12.2.2

@@ -27,6 +27,7 @@ async function seed({ github, context, pr, metadata }) {
 function sourceFile(path) {
   return /^(?:apps\/(?:api|web|docs|demo-video|worker|inference)\/|packages\/trpc\/)[a-zA-Z0-9_./-]+\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|py|json|jsonc|toml|ya?ml|css|mdx)$/.test(path) &&
     !/(?:^|\/)(?:\.\.?|node_modules|vendor|dist|build)(?:\/|$)|(?:^|[./_-])(?:secrets?|credentials|env)(?:[./_-]|$)/.test(path) &&
+    !/(?:^|\/)security\/|\.openvex\.json$/.test(path) &&
     !/(?:^|\/)(?:package(?:-lock)?\.json|pyproject\.toml|uv\.lock)$/.test(path);
 }
 // Container compatibility edits can accompany an image update, but the image

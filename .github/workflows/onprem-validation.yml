@@ -141,6 +141,7 @@ jobs:
         with:
           source: docker:videoq-api:onprem-ci
           output: api-security.json
+          security-config: apps/api/security/grype.json
       - name: Scan the worker image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         timeout-minutes: 15
@@ -156,6 +157,7 @@ jobs:
         with:
           source: docker:videoq-web:onprem-ci
           output: web-security.json
+          security-config: apps/web/security/grype.json
       - name: Scan the local Whisper image including unfixed vulnerabilities
         if: ${{ !cancelled() && steps.images.outcome == 'success' && inputs.validate_lifecycle }}
         timeout-minutes: 15
