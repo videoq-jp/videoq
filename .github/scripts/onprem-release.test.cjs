@@ -37,13 +37,15 @@ test('the signed bundle includes the inference chart and NVIDIA assessment repor
   assert.match(job('staging'),/verified-inference.json/);
 });
 
-test('release assessments apply only to their matching inference component',()=>{
+test('release assessments apply only to their matching component',()=>{
   const expression=job('build').match(/security-config: \$\{\{ (.*?) \}\}/)[1];
   const policy=component=>runInNewContext(expression,{matrix:{component}},{timeout:100});
   assert.equal(policy('transcription-gateway'),'apps/inference/whisper/security/cpu-grype.json');
   assert.equal(policy('vllm-engine'),'');
   assert.equal(policy('worker'),'apps/worker/security/grype.json');
-  for(const component of ['api','web','unknown']) assert.equal(policy(component),'');
+  assert.equal(policy('api'),'apps/api/security/grype.json');
+  assert.equal(policy('web'),'apps/web/security/grype.json');
+  assert.equal(policy('unknown'),'');
 });
 
 test('privileged jobs do not build images or execute application dependencies',()=>{
