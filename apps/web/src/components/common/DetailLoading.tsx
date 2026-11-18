@@ -1,24 +1,23 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from '@/lib/i18n';
 import { UtilityLink } from '@/components/ui/utility-link';
+import { ViewerHeader } from '@/components/video/ViewerHeader';
+import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { LoadingSpinner } from './LoadingSpinner';
 
-/** Preserve the viewer's shape and an escape route while its data loads. */
+/** Keep an escape route available while showing the standard loading indicator. */
 export function DetailLoading({ backHref }: { backHref: string }) {
   const { t } = useTranslation();
+  const viewportHeight = useViewerViewport();
   return (
-    <div className="mx-auto w-full max-w-7xl p-6">
-      <UtilityLink asChild>
-        <Link href={backHref}>{t('common.actions.backToList')}</Link>
-      </UtilityLink>
-      <div aria-hidden="true" className="mt-6 motion-safe:animate-pulse">
-        <div className="mb-6 h-8 w-2/3 rounded bg-solid-gray-100" />
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="aspect-video rounded bg-solid-gray-100 lg:col-span-2" />
-          <div className="min-h-48 rounded bg-solid-gray-100" />
-        </div>
-      </div>
-      <LoadingSpinner />
+    <div style={{ height: viewportHeight }} className="flex h-dvh flex-col bg-white">
+      <ViewerHeader title="" backHref={backHref} />
+      <main className="flex-1 p-6">
+        <UtilityLink asChild>
+          <Link href={backHref}>{t('common.actions.backToList')}</Link>
+        </UtilityLink>
+        <LoadingSpinner />
+      </main>
     </div>
   );
 }

@@ -826,7 +826,10 @@ describe('VideoCourseDetailPage - Loading state', () => {
 
   it('should show loading content', async () => {
     render(<VideoCourseDetailPage />)
-    expect(screen.getByText('common.messages.loading')).toBeInTheDocument()
+    expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'VideoQ' })).toHaveAttribute('href', '/videos/courses')
+    expect(screen.getByRole('tab', { name: 'videos.shared.tabs.videos' })).toBeInTheDocument()
+    expect(screen.queryByText('videos.courseDetail.manage')).not.toBeInTheDocument()
   })
 })
 

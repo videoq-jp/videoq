@@ -251,7 +251,7 @@ export function VideoDetailView({
 
   return (
     <>
-      {isLoading ? (
+      {isLoading && !video ? (
         <DetailLoading backHref="/videos" />
       ) : error && !video ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
