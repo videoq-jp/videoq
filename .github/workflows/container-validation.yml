@@ -68,9 +68,11 @@ jobs:
           args=()
           if [ -n "$TARGET" ]; then args+=(--target "$TARGET"); fi
           docker build --pull "${args[@]}" -t videoq-node-runtime -f "$DOCKERFILE" .
-      - name: Require the reviewed Node and npm versions inside the image
+      - name: Require the Dockerfile Node version and reviewed npm version inside the image
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
         run: |
-          test "$(docker run --rm --entrypoint node videoq-node-runtime -p process.versions.node)" = "$(cat .node-version)"
+          test "$(docker run --rm --entrypoint node videoq-node-runtime -p process.versions.node)" = "$(node .github/scripts/container-runtime-pins.cjs "$DOCKERFILE")"
           expected=$(python3 -c 'import json; print(json.load(open(".github/runtime-versions.json"))["npm"])')
           test "$(docker run --rm --entrypoint npm videoq-node-runtime --version)" = "$expected"
       - name: Test application types and native Worker runtime
