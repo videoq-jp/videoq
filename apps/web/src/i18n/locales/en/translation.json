@@ -449,6 +449,7 @@
       }
     },
     "detail": {
+      "manage": "Manage video",
       "video": "Video",
       "editTitleLabel": "Title",
       "editDescriptionLabel": "Description",

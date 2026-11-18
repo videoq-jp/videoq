@@ -223,12 +223,12 @@ it.each([
   ['/%65n/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
   ['/ja/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
   ['/%6Aa/videos/7', 'videos.get', 'navigation.videoLibrary', 'common.messages.videoNotFound'],
-])('uses the matched page’s workspace layout at %s', async (path, procedure, activeLabel, message) => {
+])('uses the matched page’s viewer layout at %s', async (path, procedure, activeLabel, message) => {
   globalThis.__setTrpcHandler(procedure, () => null);
   renderApp(path);
   await screen.findByText(i18n.t(message));
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
-  expect(within(primaryNav()).getByRole('link', { name: i18n.t(activeLabel) })).toHaveAttribute('aria-current', 'page');
+  expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
 });
 
 it.each(['/en/%76ideos/courses/7', '/e%6e/videos/courses/7'])(
@@ -263,7 +263,7 @@ it('normalizes the matched locale without decoding the remaining path or losing 
   expect(window.history.length).toBe(historyLength);
   expect(getVideo).toHaveBeenCalledWith({ id: 7 });
   expect(i18n.language).toBe('en');
-  expect(homeLink()).toHaveAttribute('href', '/en/');
+  expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 });
 
@@ -278,28 +278,17 @@ it('normalizes the locale before rendering an authentication page', async () => 
   expect(screen.getAllByRole('main')).toHaveLength(1);
 });
 
-it.each([
-  ['/videos/7', 'videos.get', 'navigation.videoLibrary'],
-])('keeps the header when leaving a pending workspace at %s', async (path, procedure, activeLabel) => {
-  // Finish authentication before stalling the detail request; requests in the
-  // same tRPC batch share a response, which would also hold Home's account query.
+it('keeps app navigation out of a pending video viewer', async () => {
   const cache = renderHook(() => useQueryClient());
   await cache.result.current.ensureQueryData(trpc.account.me.queryOptions());
   cache.unmount();
   const load = vi.fn(() => new Promise(() => {}));
-  globalThis.__setTrpcHandler(procedure, load);
-  renderApp(path);
+  globalThis.__setTrpcHandler('videos.get', load);
+  renderApp('/videos/7');
   await waitFor(() => expect(load).toHaveBeenCalled());
-  const nav = primaryNav();
-  const main = screen.getByRole('main');
-  expect(within(nav).getByRole('link', { name: i18n.t(activeLabel) })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
-  expect(within(main).getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
-  fireEvent.click(homeLink());
-  await within(main).findByRole('heading', { name: i18n.t('home.welcome.greeting', { username: profile.username }), level: 1 });
-  expect(primaryNav()).toBe(nav);
-  expect(screen.getByRole('main')).toBe(main);
-  expect(screen.getByRole('contentinfo')).toBeInTheDocument();
 });
 
 it.each(['/no-such-page', '/en/no/such/page'])('shows the 404 page at %s without redirecting', async (path) => {

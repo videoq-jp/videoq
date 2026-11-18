@@ -566,8 +566,9 @@ function videoSaveStory(mode: 'metadata' | 'background' | 'transcript'): Story {
         await expect(header.getByRole('button', { name: i18n.t('videos.detail.editTranscriptButton') })).toHaveFocus();
         await expect(videoEditRequests.update).toHaveBeenCalledWith({ id: detailVideo.id, transcript: savedTranscript });
       } else {
-        const actions = within(canvas.getByRole('button', { name: i18n.t('videos.detail.deleteButton') }).parentElement!);
-        const edit = actions.getByRole('button', { name: i18n.t('videos.detail.editButton') });
+        const manage = canvas.getByRole('button', { name: i18n.t('videos.detail.manage') });
+        await userEvent.click(manage);
+        const edit = canvas.getByRole('button', { name: i18n.t('videos.detail.editButton') });
         await userEvent.click(edit);
         const dialog = within(canvas.getByRole('dialog'));
         const title = dialog.getByRole('textbox', { name: i18n.t('videos.detail.editTitleLabel') });
@@ -582,7 +583,7 @@ function videoSaveStory(mode: 'metadata' | 'background' | 'transcript'): Story {
         await waitFor(() => expect(canvas.queryByRole('dialog')).not.toBeInTheDocument());
         await expect(canvas.getByRole('heading', { level: 1, name: savedTitle })).toBeVisible();
         await expect(videoEditRequests.update).toHaveBeenCalledWith({ id: detailVideo.id, title: 'Client title' });
-        await expect(edit).toHaveFocus();
+        await expect(manage).toHaveFocus();
       }
       await expect(videoEditRequests.update).toHaveBeenCalledTimes(1);
       await expect(videoEditRequests.get).toHaveBeenCalledTimes(1);
@@ -852,15 +853,10 @@ export const PendingVideo: Story = {
     // Otherwise a warm route can batch account.me with the pending fixture.
     await appQueryClient.fetchQuery(trpc.account.me.queryOptions());
   },
-  async play({ canvasElement, userEvent }) {
+  async play({ canvasElement }) {
     const canvas = within(canvasElement);
-    const header = canvas.getByRole('link', { name: 'VideoQ' }).closest('header')!;
-    await within(canvas.getByRole('main')).findByText(i18n.t('common.messages.loading'));
+    await canvas.findByText(i18n.t('common.messages.loading'));
     await expect(canvas.queryByRole('contentinfo')).not.toBeInTheDocument();
-    await userEvent.click(within(header).getByRole('link', { name: i18n.t('navigation.home') }));
-    await canvas.findByRole('heading', { level: 1, name: i18n.t('home.welcome.greeting', { username: api.auth.profile!.username }) });
-    await expect(header).toBeVisible();
-    await expect(canvas.getByRole('contentinfo')).toBeInTheDocument();
   },
 };
 export const PendingCourse: Story = {
@@ -906,16 +902,9 @@ export const EncodedLocaleVideoMobile: Story = {
   async play(context) {
     await VideoMobileLayout.play!(context);
     const canvas = within(context.canvasElement);
-    const header = canvas.getByRole('link', { name: 'VideoQ' }).closest('header')!;
-    const main = canvas.getByRole('main');
     await expect(i18n.language).toBe('en');
-    await context.userEvent.click(within(header).getByRole('button', { name: i18n.t('navigation.menu') }));
-    await expect(within(header).getByRole('link', { name: i18n.t('navigation.videoLibrary') })).toHaveAttribute('aria-current', 'page');
-    await context.userEvent.click(within(header).getByRole('link', { name: i18n.t('navigation.home') }));
-    await canvas.findByRole('heading', { level: 1, name: i18n.t('home.welcome.greeting', { username: api.auth.profile!.username }) });
-    await expect(canvas.getByRole('link', { name: 'VideoQ' }).closest('header')).toBe(header);
-    await expect(canvas.getByRole('main')).toBe(main);
-    await expect(canvas.getByRole('contentinfo')).toBeInTheDocument();
+    await context.userEvent.click(canvas.getByRole('link', { name: 'VideoQ' }));
+    await canvas.findByRole('heading', { level: 1, name: i18n.t('navigation.videoLibrary') });
   },
 };
 

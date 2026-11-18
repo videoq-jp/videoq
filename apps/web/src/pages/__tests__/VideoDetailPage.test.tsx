@@ -73,21 +73,12 @@ describe('VideoDetailPage', () => {
     globalThis.__setMockLanguage('en')
   })
 
-  it.each(['processing', 'ready', 'error'] as const)('shows visual %s independently of completed transcription', status => {
-    mockUseVideoReturn.video = { ...mockVideo, visual_processing: { status, completed_chunks: status === 'ready' ? 155 : 24, total_chunks: 155 } }
+  it.each(['processing', 'ready', 'error'] as const)('keeps visual %s to a compact badge without pipeline explanations', status => {
+    mockUseVideoReturn.video = { ...mockVideo, visual_processing: { status, completed_chunks: 24, total_chunks: 155 } }
     render(<VideoDetailPage />)
-    if (status === 'processing') {
-      expect(screen.getByText('common.status.visual_processing')).toBeInTheDocument()
-      expect(screen.getByText(/videos.detail.visual.progress.*24.*155/)).toBeInTheDocument()
-      expect(screen.queryByText('common.status.completed')).not.toBeInTheDocument()
-    } else if (status === 'error') {
-      expect(screen.getByText('common.status.visual_error')).toBeInTheDocument()
-      expect(screen.getByText('videos.detail.visual.error')).toBeInTheDocument()
-      expect(screen.queryByText('common.status.completed')).not.toBeInTheDocument()
-    } else {
-      expect(screen.getByText('common.status.completed')).toBeInTheDocument()
-      expect(screen.getByText('videos.detail.visual.ready')).toBeInTheDocument()
-    }
+    expect(screen.queryByText('videos.detail.statusSection')).not.toBeInTheDocument()
+    expect(screen.queryByText(/videos.detail.visual.progress/)).not.toBeInTheDocument()
+    expect(screen.queryByText(`videos.detail.visual.${status}`)).not.toBeInTheDocument()
     expect(screen.getByText('Hello world')).toBeInTheDocument()
   })
 
@@ -106,7 +97,7 @@ describe('VideoDetailPage', () => {
   it('should render video status', () => {
     render(<VideoDetailPage />)
 
-    expect(screen.getByText('videos.detail.statusSection')).toBeInTheDocument()
+    expect(screen.queryByText('videos.detail.statusSection')).not.toBeInTheDocument()
     expect(screen.getByText('common.status.completed')).toBeInTheDocument()
   })
 
@@ -130,6 +121,7 @@ describe('VideoDetailPage', () => {
     const key = trpc.videos.get.queryKey({ id: 1 })
     result.current.setQueryData(key, mockVideo)
     const { unmount } = render(<VideoDetailPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByRole('button', { name: 'videos.detail.deleteButton' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'common.actions.delete' }))
@@ -157,6 +149,7 @@ describe('VideoDetailPage', () => {
   it('should open edit modal when edit button is clicked', () => {
     render(<VideoDetailPage />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -167,6 +160,7 @@ describe('VideoDetailPage', () => {
   it('should not replace info card with inline form when edit button is clicked', () => {
     render(<VideoDetailPage />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
 
     // Info card should still be visible (title appears in card + in modal dialog)
@@ -210,7 +204,8 @@ describe('VideoDetailPage - Edit modal', () => {
     try {
       render(<VideoDetailPage />)
       if (field === 'metadata') {
-        fireEvent.click(screen.getByText('videos.detail.editButton'))
+        fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
+    fireEvent.click(screen.getByText('videos.detail.editButton'))
         fireEvent.change(screen.getByDisplayValue('Test Video'), { target: { value: saved.title } })
         fireEvent.click(screen.getByText('common.actions.save'))
       } else {
@@ -238,6 +233,7 @@ describe('VideoDetailPage - Edit modal', () => {
 
     render(<VideoDetailPage />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
     fireEvent.change(screen.getByDisplayValue('Test Video'), { target: { value: 'Updated Video' } })
     fireEvent.click(screen.getByText('common.actions.save'))
@@ -254,6 +250,7 @@ describe('VideoDetailPage - Edit modal', () => {
 
     render(<VideoDetailPage />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
     fireEvent.change(screen.getByDisplayValue('Test Video'), { target: { value: 'Updated Video' } })
     fireEvent.click(screen.getByText('common.actions.save'))
@@ -275,6 +272,7 @@ describe('VideoDetailPage - Edit modal', () => {
     render(<VideoDetailPage />)
 
     // Open → save → error appears
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
     fireEvent.change(screen.getByDisplayValue('Test Video'), { target: { value: 'Updated Video' } })
     fireEvent.click(screen.getByText('common.actions.save'))
@@ -287,6 +285,7 @@ describe('VideoDetailPage - Edit modal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     // Reopen → error should NOT be visible
+    fireEvent.click(screen.getByRole('button', { name: 'videos.detail.manage' }))
     fireEvent.click(screen.getByText('videos.detail.editButton'))
     expect(screen.queryByText('Update failed')).not.toBeInTheDocument()
   })

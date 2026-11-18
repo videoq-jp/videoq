@@ -447,6 +447,7 @@
       }
     },
     "detail": {
+      "manage": "動画管理",
       "video": "動画",
       "editTitleLabel": "タイトル",
       "editDescriptionLabel": "説明",

@@ -14,11 +14,7 @@ interface UseVideoCourseDetailQueryResult {
 export function useVideoCourseDetailQuery(courseId: number | null): UseVideoCourseDetailQueryResult {
   const courseQuery = useQuery(trpc.courses.get.queryOptions({ id: courseId! }, {
     enabled: !!courseId,
-    refetchInterval: (query) => {
-      const videos = query.state.data?.videos ?? [];
-      if (videos.some(video => video.visual_processing?.status === 'processing')) return 3000;
-      return videos.some(video => video.visual_processing?.status === 'error') ? 30_000 : false;
-    },
+    refetchInterval: false,
   }));
 
   return {

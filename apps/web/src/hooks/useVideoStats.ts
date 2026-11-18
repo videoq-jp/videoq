@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoStatusCounts } from '@videoq/trpc';
 import { trpc } from '@/lib/trpc';
-import { IN_PROGRESS_STATUSES } from '@/hooks/useVideos';
 
 export const EMPTY_VIDEO_STATUS_COUNTS: VideoStatusCounts = {
   total: 0,
@@ -18,11 +17,7 @@ export function useVideoStatusCounts(enabled = true) {
     enabled,
     staleTime: 30_000,
     refetchOnWindowFocus: 'always',
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      const hasInProgress = !!data && IN_PROGRESS_STATUSES.some((status) => data[status] > 0);
-      return hasInProgress ? 3000 : 30_000;
-    },
+    refetchInterval: false,
   }));
 
   return {

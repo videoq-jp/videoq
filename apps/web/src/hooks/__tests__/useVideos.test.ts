@@ -29,36 +29,28 @@ const mockPaginatedResponse = (
   },
 })
 
-describe.each(['list', 'detail', 'course'] as const)('visual preparation polling in %s', surface => {
+describe.each(['list', 'detail', 'course'] as const)('video queries without polling in %s', surface => {
   beforeEach(() => {
     globalThis.__setMockPathname('/videos/1')
     window.history.pushState({}, '', '/videos/1')
   })
-  afterEach(() => {
-    vi.useRealTimers()
-    listVideos.mockReset()
-    getVideo.mockReset()
-  })
-  it.each(['processing', 'error'] as const)('keeps checking %s visuals, then returns to the normal refresh cadence', async status => {
+  afterEach(() => { vi.useRealTimers() })
+  it.each(['pending', 'uploading', 'processing', 'indexing', 'completed', 'error'] as const)('does not periodically fetch %s videos or visuals', async status => {
     vi.useFakeTimers()
-    const pending = { id: 1, title: 'Video', status: 'completed', visual_processing: { status, completed_chunks: 24, total_chunks: 155 } }
-    const ready = { ...pending, visual_processing: { status: 'ready', completed_chunks: 155, total_chunks: 155 } }
-    listVideos.mockResolvedValueOnce(mockPaginatedResponse([pending])).mockResolvedValue(mockPaginatedResponse([ready]))
-    getVideo.mockResolvedValueOnce(pending).mockResolvedValue(ready)
-    const getCourse = vi.fn().mockResolvedValueOnce({ id: 1, videos: [pending] }).mockResolvedValue({ id: 1, videos: [ready] })
+    const video = { id: 1, title: 'Video', status, visual_processing: { status: 'processing', completed_chunks: 24, total_chunks: 155 } }
+    listVideos.mockResolvedValue(mockPaginatedResponse([video]))
+    getVideo.mockResolvedValue(video)
+    const getCourse = vi.fn().mockResolvedValue({ id: 1, videos: [video] })
     globalThis.__setTrpcHandler('courses.get', getCourse)
-    function useSubject() {
+    renderHook(() => {
       useVideos({ enabled: surface === 'list' })
       useVideo(surface === 'detail' ? 1 : null)
       useVideoCourseDetailQuery(surface === 'course' ? 1 : null)
-    }
-    renderHook(useSubject)
+    })
     const request = surface === 'list' ? listVideos : surface === 'course' ? getCourse : getVideo
     await act(async () => { await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(1)) })
-    await act(async () => { await vi.advanceTimersByTimeAsync(status === 'error' ? 30_000 : 3000) })
-    await act(async () => { await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2)) })
-    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
-    expect(request).toHaveBeenCalledTimes(surface === 'list' ? 4 : 2)
+    await act(async () => { await vi.advanceTimersByTimeAsync(120_000) })
+    expect(request).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -79,7 +71,7 @@ describe('useVideos', () => {
     } finally { unmount(); focusManager.setFocused(undefined) }
   })
 
-  it('removes a completed video deleted externally without a manual reload', async () => {
+  it('reflects external deletion when explicitly refreshed', async () => {
     vi.useFakeTimers()
     try {
       let serverVideos = [{ id: 1, title: 'Moodle video', status: 'completed' }]
@@ -88,7 +80,10 @@ describe('useVideos', () => {
       await act(async () => { await vi.waitFor(() => expect(result.current.videos).toHaveLength(1)) })
       serverVideos = []
       await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
-      expect(result.current.videos).toEqual([])
+      expect(result.current.videos).toHaveLength(1)
+      vi.useRealTimers()
+      await act(async () => { await result.current.refetch() })
+      await waitFor(() => expect(result.current.videos).toEqual([]))
       expect(result.current.totalCount).toBe(0)
     } finally { vi.useRealTimers() }
   })
@@ -344,66 +339,6 @@ describe('useVideos', () => {
   })
 })
 
-describe('useVideos - polling', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it.each(['pending', 'processing', 'indexing', 'uploading'] as const)(
-    'should automatically refetch while a video has status %s',
-    async (status) => {
-      vi.useFakeTimers()
-      const inProgressVideo = { id: 1, title: 'Video 1', user: 1, file: '', uploaded_at: '', status }
-      const completedVideo = { ...inProgressVideo, status: 'completed' as const }
-
-      listVideos
-        .mockResolvedValueOnce(mockPaginatedResponse([inProgressVideo]))
-        .mockResolvedValueOnce(mockPaginatedResponse([completedVideo]))
-
-      renderHook(() => useVideos())
-
-      await act(async () => {
-        await vi.waitFor(() => expect(listVideos).toHaveBeenCalledTimes(1))
-      })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(3000)
-      })
-
-      await act(async () => {
-        await vi.waitFor(() => expect(listVideos).toHaveBeenCalledTimes(2))
-      })
-
-      // status is now completed — polling should stop
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(10000)
-      })
-      expect(listVideos).toHaveBeenCalledTimes(2)
-    },
-  )
-
-  it('should not poll when all videos are completed', async () => {
-    vi.useFakeTimers()
-    const completedVideo = { id: 1, title: 'Video 1', user: 1, file: '', uploaded_at: '', status: 'completed' as const }
-    listVideos.mockResolvedValue(mockPaginatedResponse([completedVideo]))
-
-    renderHook(() => useVideos())
-
-    await act(async () => {
-      await vi.waitFor(() => expect(listVideos).toHaveBeenCalledTimes(1))
-    })
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000)
-    })
-    expect(listVideos).toHaveBeenCalledTimes(1)
-  })
-})
-
 describe('useVideos - sentinelRef', () => {
   let capturedCallback: IntersectionObserverCallback | undefined
   const mockObserve = vi.fn()
@@ -620,85 +555,5 @@ describe('useVideo', () => {
       expect(result.current.error).toBe('Failed to load')
       expect(result.current.isLoading).toBe(false)
     })
-  })
-})
-
-describe('useVideo - polling', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    ;(globalThis as any).__setMockPathname?.('/videos/1')
-    window.history.pushState({}, '', '/videos/1')
-    getAccount.mockResolvedValue({ id: 1, username: 'testuser' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it.each(['pending', 'processing', 'indexing', 'uploading'] as const)(
-    'should automatically refetch while status is %s',
-    async (status) => {
-      vi.useFakeTimers()
-      const inProgressVideo = { id: 1, title: 'Test Video', user: 1, file: '', uploaded_at: '', status }
-      const completedVideo = { ...inProgressVideo, status: 'completed' as const }
-
-      getVideo
-        .mockResolvedValueOnce(inProgressVideo)
-        .mockResolvedValueOnce(completedVideo)
-
-      renderHook(() => useVideo(1))
-
-      await act(async () => {
-        await vi.waitFor(() => expect(getVideo).toHaveBeenCalledTimes(1))
-      })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(3000)
-      })
-
-      await act(async () => {
-        await vi.waitFor(() => expect(getVideo).toHaveBeenCalledTimes(2))
-      })
-
-      // status is now completed — polling should stop
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(10000)
-      })
-      expect(getVideo).toHaveBeenCalledTimes(2)
-    },
-  )
-
-  it('should not poll once the video is completed', async () => {
-    vi.useFakeTimers()
-    const completedVideo = { id: 1, title: 'Test Video', user: 1, file: '', uploaded_at: '', status: 'completed' as const }
-    getVideo.mockResolvedValue(completedVideo)
-
-    renderHook(() => useVideo(1))
-
-    await act(async () => {
-      await vi.waitFor(() => expect(getVideo).toHaveBeenCalledTimes(1))
-    })
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000)
-    })
-    expect(getVideo).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not poll once the video errors out', async () => {
-    vi.useFakeTimers()
-    const erroredVideo = { id: 1, title: 'Test Video', user: 1, file: '', uploaded_at: '', status: 'error' as const }
-    getVideo.mockResolvedValue(erroredVideo)
-
-    renderHook(() => useVideo(1))
-
-    await act(async () => {
-      await vi.waitFor(() => expect(getVideo).toHaveBeenCalledTimes(1))
-    })
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000)
-    })
-    expect(getVideo).toHaveBeenCalledTimes(1)
   })
 })

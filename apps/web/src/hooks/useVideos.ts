@@ -9,10 +9,6 @@ const PAGE_SIZE = 24;
 
 export const IN_PROGRESS_STATUSES: VideoStatus[] = ['pending', 'processing', 'indexing', 'uploading'];
 
-function isInProgressStatus(status: VideoStatus | undefined): boolean {
-  return !!status && IN_PROGRESS_STATUSES.includes(status);
-}
-
 export type VideosOrdering = 'uploaded_at_desc' | 'uploaded_at_asc' | 'title_asc' | 'title_desc';
 
 interface UseVideosParams {
@@ -61,15 +57,7 @@ export function useVideos(params?: UseVideosParams): UseVideosReturn {
       const nextOffset = lastPage.meta.offset + lastPage.data.length;
       return nextOffset < lastPage.meta.total ? nextOffset : undefined;
     },
-    refetchInterval: (query) => {
-      const pages = query.state.data?.pages ?? [];
-      const hasInProgress = pages.some((page) =>
-        page.data.some((video) => isInProgressStatus(video.status) || video.visual_processing?.status === 'processing'),
-      );
-      if (hasInProgress) return 3000;
-      // Moodle and other clients can add/remove settled videos externally.
-      return 30_000;
-    },
+    refetchInterval: false,
   }));
 
   const videos = useMemo(
@@ -111,11 +99,7 @@ export function useVideo(videoId: number | null): UseVideoReturn {
   const videoQuery = useQuery(trpc.videos.get.queryOptions({ id: videoId! }, {
     enabled: !!videoId && !!user,
     refetchOnWindowFocus: 'always',
-    refetchInterval: (query) => {
-      const video = query.state.data;
-      if (isInProgressStatus(video?.status) || video?.visual_processing?.status === 'processing') return 3000;
-      return video?.visual_processing?.status === 'error' ? 30_000 : false;
-    },
+    refetchInterval: false,
   }));
 
   return {
