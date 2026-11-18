@@ -322,7 +322,7 @@ function GroupPlayerPanel({
   return (
     <ViewerPlayerFrame title={selectedVideo?.title ?? t('videos.courseDetail.playerPlaceholder')} expanded={expanded} onExpandedChange={onExpandedChange}>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-        <div className="aspect-video max-h-[clamp(4rem,calc(100dvh-27rem),28dvh)] bg-black flex items-center justify-center lg:max-h-[72dvh]">
+        <div className="w-full aspect-video max-h-[clamp(4rem,calc(100dvh-27rem),28dvh)] bg-black flex items-center justify-center lg:max-h-[72dvh]">
           {selectedVideo ? (
             features.youtube && selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
               <iframe
