@@ -2,6 +2,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from d1_resource_dump import validate_sql_dump
 from d1_resource_files import PrivateSqlFiles
 from d1_resource_verify import inspect_database, SCHEMA
@@ -46,6 +47,31 @@ class DumpTests(unittest.TestCase):
         self.assertTrue(proof['ownerFenceVerified'])
         self.assertEqual(proof['sourceSnapshotSha256'], proof['restoredSnapshotSha256'])
         self.assertEqual(self.files.inspect(), self.proof)
+
+    def test_local_sql_volume_does_not_multiply_remote_ownership_checks(self):
+        self.write(self.dump + '\n' + 'SELECT 1;\n' * 1000)
+        calls = 0
+        def owned():
+            nonlocal calls
+            calls += 1
+        proof = validate_sql_dump(self.files, self.proof, self.snapshot, self.plan, owned)
+        self.assertTrue(proof['verified'])
+        self.assertEqual(calls, 2)
+
+    def test_ownership_lost_during_local_restore_cannot_return_a_proof(self):
+        owned = True
+        original_open = self.files.open_sql
+        def check():
+            if not owned:
+                raise ValueError('RESOURCE_OWNER_LOST')
+        def revoke_on_open():
+            nonlocal owned
+            handle = original_open()
+            owned = False
+            return handle
+        with patch.object(self.files, 'open_sql', side_effect=revoke_on_open):
+            with self.assertRaisesRegex(ValueError, 'OWNER_LOST'):
+                validate_sql_dump(self.files, self.proof, self.snapshot, self.plan, check)
 
     def test_sequence_only_loss_and_value_corruption_are_rejected(self):
         for sql in [self.dump.replace("'users',99", "'users',1"), self.dump.replace('9223372036854775807', '9223372036854775806')]:
