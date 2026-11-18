@@ -867,8 +867,9 @@ export const PendingCourse: Story = {
   },
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
-    await canvas.findByText(i18n.t('common.messages.loading'));
+    await canvas.findAllByText(i18n.t('common.messages.loading'));
     await expect(canvas.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
+    await expect(canvas.getByRole('tab', { name: i18n.t('videos.shared.tabs.videos') })).toBeInTheDocument();
     await expect(canvas.queryByRole('contentinfo')).not.toBeInTheDocument();
   },
 };

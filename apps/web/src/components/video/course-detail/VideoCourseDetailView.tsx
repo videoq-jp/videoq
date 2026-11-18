@@ -38,7 +38,7 @@ import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
-import { DetailLoading } from '@/components/common/DetailLoading';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { Button } from '@/components/ui/button';
@@ -425,7 +425,7 @@ export function VideoCourseDetailView({
     if (playerRef.current) playerRef.current.scrollTop = 0;
   };
 
-  const canManage = course?.access_role !== 'member';
+  const canManage = !!course && course.access_role !== 'member';
   const isMutationPending = isDeleting || isReordering || removingVideoId !== null;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -438,9 +438,7 @@ export function VideoCourseDetailView({
 
   return (
     <>
-      {isLoading ? (
-        <DetailLoading backHref="/videos/courses" />
-      ) : error && !course ? (
+      {error && !course && !isLoading ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />
           <UtilityLink asChild>
@@ -450,7 +448,7 @@ export function VideoCourseDetailView({
             </Link>
           </UtilityLink>
         </div>
-      ) : !course ? (
+      ) : !course && !isLoading ? (
         <div className="flex min-h-dvh items-center justify-center">
           <p className="text-solid-gray-700">{t('common.messages.courseNotFound')}</p>
         </div>
@@ -495,7 +493,7 @@ export function VideoCourseDetailView({
           {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
 
           <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
-            <ViewerHeader title={course.name} backHref="/videos/courses">
+            <ViewerHeader title={course?.name ?? ''} backHref="/videos/courses">
                 {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
                   <MenuList>
                     <MenuListItem>
@@ -533,7 +531,7 @@ export function VideoCourseDetailView({
                       </MenuListItemButton>
                     </MenuListItem>
                   </MenuList>
-                </ViewerActionsMenu> : (
+                </ViewerActionsMenu> : course ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -546,14 +544,14 @@ export function VideoCourseDetailView({
                     {isLeaving ? <InlineSpinner className="h-3.5 w-3.5" /> : <LogOut className="h-3.5 w-3.5" />}
                     <span className="inline">{t('videos.courseDetail.leave')}</span>
                   </Button>
-                )}
+                ) : null}
             </ViewerHeader>
 
             {deleteError ? <div className="shrink-0"><ErrorMessage message={deleteError} /></div> : null}
 
             <main className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
               <div ref={playerRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
-                <GroupPlayerPanel
+                {course ? <GroupPlayerPanel
                   selectedVideo={selectedVideo}
                   videoRef={videoRef}
                   youtubeStartSeconds={youtubeStartSeconds}
@@ -561,7 +559,7 @@ export function VideoCourseDetailView({
                   onVideoCanPlay={onVideoCanPlay}
                   expanded={playerExpanded}
                   onExpandedChange={setPlayerExpanded}
-                />
+                /> : <LoadingSpinner />}
 
                 {!isMobile && learningDetails}
               </div>
@@ -570,7 +568,7 @@ export function VideoCourseDetailView({
                 <div className="relative min-h-0 flex-1">
                   {isMobile && <div {...panelProps('details')}><div className="min-h-0 flex-1 overflow-y-auto">{learningDetails}</div></div>}
                   <div {...panelProps('videos')}>
-                    <GroupVideoList
+                    {course ? <GroupVideoList
                       course={course}
                       selectedVideo={selectedVideo}
                       isMobile={isMobile}
@@ -582,25 +580,25 @@ export function VideoCourseDetailView({
                       isMutationPending={isMutationPending}
                       onDragEnd={(event) => { void onDragEnd(event); }}
                       canManage={canManage}
-                    />
+                    /> : <LoadingSpinner />}
 
                   </div>
                   <div {...panelProps('assistant')}>
-                    <ChatPanel
+                    {course ? <ChatPanel
                 onComposerFocus={() => { if (isMobile) setPlayerExpanded(false); }}
                       courseId={courseId ?? undefined}
                       showHistory={canManage}
                       showTitle={false}
                       onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }}
                       className="min-h-0 flex-1 border-0"
-                    />
+                    /> : <LoadingSpinner />}
                   </div>
                 </div>
               </aside>
             </main>
           </div>
 
-          {canManage ? <PickFromLibraryDialog
+          {canManage && course ? <PickFromLibraryDialog
             isOpen={isAddModalOpen}
             onOpenChange={onOpenAddModalChange}
             courseId={courseId}
