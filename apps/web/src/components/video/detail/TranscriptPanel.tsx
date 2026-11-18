@@ -60,9 +60,9 @@ export function TranscriptPanel({
 
   return (
     <div
-      className={`min-w-0 lg:col-span-4 lg:relative ${isMobile && mobileTab !== 'transcript' ? 'hidden' : ''}`}
+      className={`min-w-0 min-h-0 flex-1 lg:relative ${isMobile && mobileTab !== 'transcript' ? 'hidden' : ''}`}
     >
-      <div className={`flex min-h-[31.25rem] flex-col border border-solid-gray-420 bg-white lg:absolute lg:inset-0 lg:min-h-0 ${isTranscriptEditing ? 'h-[70dvh] lg:h-auto' : ''}`}>
+      <div className={`flex h-full min-h-0 flex-col border-t border-solid-gray-420 bg-white lg:border-t-0 lg:border-l `}>
         <div className="p-4 border-b border-solid-gray-200 flex flex-col gap-3 shrink-0">
           <div className="flex justify-between items-center">
             <Heading size="18">

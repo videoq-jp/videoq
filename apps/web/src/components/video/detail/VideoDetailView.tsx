@@ -5,7 +5,6 @@ import {
   AlignLeft,
   ArrowLeft,
   Calendar,
-  CheckCircle,
   Pencil,
   Play,
   Trash2,
@@ -22,15 +21,10 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
 import { TagCreateDialog } from '@/components/video/TagCreateDialog';
 import { TagBadge } from '@/components/video/TagBadge';
-import { Button } from '@/components/ui/button';
-import {
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  Breadcrumbs,
-  BreadcrumbsLabel,
-} from '@/components/ui/breadcrumbs';
-import { Heading, HeadingTitle } from '@/components/ui/heading';
+import { ViewerHeader } from '@/components/video/ViewerHeader';
+import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
+import { MenuList, MenuListItem, MenuListItemButton } from '@/components/ui/menu-list';
+import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { UtilityLink } from '@/components/ui/utility-link';
 import { TranscriptPanel } from './TranscriptPanel';
 import { VideoDetailEditDialog } from './VideoDetailEditDialog';
@@ -97,6 +91,7 @@ function VideoDetailMobileTabs({
       <button
         type="button"
         onClick={() => onChange('video')}
+        aria-pressed={activeTab === 'video'}
         className={`flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
           activeTab === 'video'
             ? 'text-key-900 border-b-2 border-key-900'
@@ -109,6 +104,7 @@ function VideoDetailMobileTabs({
       <button
         type="button"
         onClick={() => onChange('transcript')}
+        aria-pressed={activeTab === 'transcript'}
         className={`flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
           activeTab === 'transcript'
             ? 'text-key-900 border-b-2 border-key-900'
@@ -138,7 +134,7 @@ function VideoPlayerPanel({
   const { t } = useTranslation();
 
   return (
-    <div className="w-full aspect-video overflow-hidden border border-solid-gray-420 bg-solid-gray-800">
+    <div className="w-full aspect-video overflow-hidden bg-black">
       {features.youtube && video.source_type === 'youtube' && video.youtube_embed_url ? (
         <iframe
           key={`${video.id}-${youtubeStartSeconds ?? 0}-${youtubeSeekId}`}
@@ -171,37 +167,17 @@ function VideoPlayerPanel({
 function VideoMetaPanel({
   video,
   deleteError,
-  isDeleting,
-  onEdit,
-  onDelete,
 }: {
   video: Video;
   deleteError: string | null;
-  isDeleting: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
 }) {
-  const { t } = useTranslation();
   const locale = useLocale();
-  const pipelineSteps = [
-    { key: 'upload', label: t('videos.detail.pipeline.upload'), doneStatuses: ['processing', 'indexing', 'completed', 'error'] },
-    { key: 'transcript', label: t('videos.detail.pipeline.transcript'), doneStatuses: ['indexing', 'completed'] },
-    { key: 'aiAnalysis', label: t('videos.detail.pipeline.aiAnalysis'), doneStatuses: ['completed'] },
-  ] as { key: string; label: string; doneStatuses: Video['status'][] }[];
-
   return (
-    <div className="flex flex-col gap-4 border border-solid-gray-420 bg-white p-6">
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <Heading size="32" className="mb-3 text-std-24B-150 md:text-std-32B-150">
-            <HeadingTitle level="h1">{video.title}</HeadingTitle>
-          </Heading>
-          <div className="flex items-center gap-2 text-std-17N-170 text-solid-gray-600">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span>{formatDate(video.uploaded_at, 'full', locale)}</span>
-          </div>
-        </div>
-        <StatusBadge status={getVideoDisplayStatus(video)} size="sm" className="ml-0 shrink-0" />
+    <div className="flex flex-col gap-4 px-4 py-5 lg:px-8 lg:py-6">
+      <div className="flex flex-wrap items-center gap-3 text-dns-14N-130 text-solid-gray-600">
+        <Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span>{formatDate(video.uploaded_at, 'full', locale)}</span>
+        <StatusBadge status={getVideoDisplayStatus(video)} size="sm" className="ml-0" />
       </div>
 
       {video.tags && video.tags.length > 0 && (
@@ -212,45 +188,7 @@ function VideoMetaPanel({
         </div>
       )}
 
-      <div className="border-t border-solid-gray-200 pt-4 flex items-center gap-3 flex-wrap">
-        <span className="text-dns-14B-120 text-solid-gray-600 uppercase tracking-widest shrink-0">
-          {t('videos.detail.statusSection')}
-        </span>
-        {pipelineSteps.map(({ key, label, doneStatuses }, index) => {
-          const done = doneStatuses.includes(video.status);
-          return (
-            <div key={key} className="flex items-center gap-2">
-              {index > 0 && <div className="w-6 h-px bg-solid-gray-300" />}
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    done ? 'bg-key-900' : 'bg-solid-gray-300'
-                  }`}
-                >
-                  {done ? (
-                    <CheckCircle className="w-3 h-3 text-white" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 rounded-full bg-solid-gray-420" />
-                  )}
-                </div>
-                <span className={`text-dns-14B-120 ${done ? 'text-solid-gray-800' : 'text-solid-gray-600'}`}>
-                  {label}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {video.error_message && <ErrorMessage message={video.error_message} />}
-      {video.visual_processing && (
-        <div role="status" className="border-t border-solid-gray-200 pt-4 text-std-17N-170">
-          <p>{t(`videos.detail.visual.${video.visual_processing.status}`)}</p>
-          {video.visual_processing.status !== 'ready' && (
-            <p>{t('videos.detail.visual.progress', { completed: video.visual_processing.completed_chunks, total: video.visual_processing.total_chunks })}</p>
-          )}
-        </div>
-      )}
 
       {video.description && (
         <div className="border-t border-solid-gray-200 pt-4">
@@ -259,24 +197,6 @@ function VideoMetaPanel({
       )}
 
       {deleteError && <ErrorMessage message={deleteError} />}
-
-      <div className="border-t border-solid-gray-200 pt-4 flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="w-3.5 h-3.5 mr-1.5" />
-          {t('videos.detail.editButton')}
-        </Button>
-        <Button
-          type="button"
-          variant="text"
-          size="sm"
-          onClick={onDelete}
-          disabled={isDeleting}
-          className="text-error-1 hover:bg-red-50"
-        >
-          {isDeleting ? <InlineSpinner className="w-3.5 h-3.5 mr-1.5" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
-          {isDeleting ? t('common.actions.deleting') : t('videos.detail.deleteButton')}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -327,13 +247,14 @@ export function VideoDetailView({
   isPlainTextTranscript,
 }: VideoDetailViewProps) {
   const { t } = useTranslation();
+  const viewportHeight = useViewerViewport();
 
   return (
     <>
       {isLoading ? (
         <LoadingSpinner fullScreen />
       ) : error && !video ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />
           <UtilityLink asChild>
             <Link href="/videos" className="inline-flex items-center gap-1">
@@ -343,8 +264,11 @@ export function VideoDetailView({
           </UtilityLink>
         </div>
       ) : !video ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <p className="text-solid-gray-700">{t('common.messages.videoNotFound')}</p>
+          <UtilityLink asChild>
+            <Link href="/videos">{t('common.actions.backToList')}</Link>
+          </UtilityLink>
         </div>
       ) : (
         <>
@@ -364,31 +288,28 @@ export function VideoDetailView({
             onSave={onUpdateVideo}
           />
 
-          {isMobile && (
-            <VideoDetailMobileTabs activeTab={mobileTab} onChange={onMobileTabChange} />
-          )}
-
-          <div className="mx-auto flex w-full max-w-[77.375rem] flex-grow flex-col gap-8 px-6 py-12 md:py-20">
-            <Breadcrumbs aria-label={t('common.actions.backToList')}>
-              <BreadcrumbsLabel className="sr-only">
-                {t('common.actions.backToList')}
-              </BreadcrumbsLabel>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href="/videos">{t('navigation.videoLibrary')}</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbItem isCurrent>{video.title}</BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumbs>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div
-                className={`lg:col-span-8 flex flex-col gap-4 ${
-                  isMobile && mobileTab !== 'video' ? 'hidden' : ''
-                }`}
-              >
+          <div data-video-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
+            <ViewerHeader title={video.title} backHref="/videos">
+              <ViewerActionsMenu label={t('videos.detail.manage')}>
+                <MenuList>
+                  <MenuListItem>
+                    <MenuListItemButton type="box" size="regular" onClick={onStartEditing}>
+                      <Pencil className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span>{t('videos.detail.editButton')}</span>
+                    </MenuListItemButton>
+                  </MenuListItem>
+                  <MenuListItem className="mt-1 border-t border-solid-gray-200 pt-1">
+                    <MenuListItemButton type="box" size="regular" onClick={onDeleteVideo} disabled={isDeleting} className="text-error-1 hover:bg-red-50">
+                      {isDeleting ? <InlineSpinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                      <span>{isDeleting ? t('common.actions.deleting') : t('videos.detail.deleteButton')}</span>
+                    </MenuListItemButton>
+                  </MenuListItem>
+                </MenuList>
+              </ViewerActionsMenu>
+            </ViewerHeader>
+            {isMobile && <VideoDetailMobileTabs activeTab={mobileTab} onChange={onMobileTabChange} />}
+            <main className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
+              <div className={`min-w-0 min-h-0 overflow-y-auto ${isMobile && mobileTab !== 'video' ? 'hidden' : ''}`}>
                 <VideoPlayerPanel
                   video={video}
                   videoRef={videoRef}
@@ -399,9 +320,6 @@ export function VideoDetailView({
                 <VideoMetaPanel
                   video={video}
                   deleteError={deleteError}
-                  isDeleting={isDeleting}
-                  onEdit={onStartEditing}
-                  onDelete={onDeleteVideo}
                 />
               </div>
 
@@ -424,8 +342,7 @@ export function VideoDetailView({
                 onSeek={onSeek}
                 isPlainTextTranscript={isPlainTextTranscript}
               />
-            </div>
-
+            </main>
           </div>
 
           <TagCreateDialog

@@ -51,7 +51,7 @@ export const EditingFullHeight: Story = {
   async play(context) {
     await Editing.play!(context);
     const textbox = context.canvas.getByRole<HTMLTextAreaElement>('textbox');
-    const panel = context.canvas.getByRole('heading').closest('div.flex.min-h-\\[31\\.25rem\\]')!;
+    const panel = context.canvas.getByTestId('transcript-frame');
     await expect(textbox.clientHeight).toBeGreaterThan(250);
     await expect(Math.abs(textbox.getBoundingClientRect().bottom - panel.getBoundingClientRect().bottom)).toBeLessThan(3);
     textbox.scrollTop = textbox.scrollHeight;

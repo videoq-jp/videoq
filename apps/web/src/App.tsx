@@ -84,7 +84,7 @@ function LocaleGate() {
 const appPageRoutes: AppPageRoute[] = [
   { index: true, element: <HomePage />, handle: { activePage: 'home' } },
   { path: 'videos', element: <VideoLibraryPage />, handle: { activePage: 'videoLibrary' } },
-  { path: 'videos/:id', element: <VideoDetailPage />, handle: { activePage: 'videoLibrary', variant: 'workspace' } },
+  { path: 'videos/:id', element: <VideoDetailPage />, handle: { activePage: 'videoLibrary', variant: 'viewer' } },
   { path: 'videos/courses', element: <VideoCoursesPage />, handle: { activePage: 'courses' } },
   { path: 'videos/courses/:id', element: <VideoCourseDetailPage />, handle: { activePage: 'courses', variant: 'viewer' } },
   { path: 'settings', element: <SettingsPage />, handle: { activePage: 'settings' } },

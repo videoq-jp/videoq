@@ -27,7 +27,7 @@ describe('useVideoStatusCounts', () => {
   })
 
   it.each(['pending', 'processing', 'indexing', 'uploading'] as const)(
-    'automatically refetches while the %s count is non-zero',
+    'does not periodically refetch while the %s count is non-zero',
     async (status) => {
       vi.useFakeTimers()
       try {
@@ -48,22 +48,15 @@ describe('useVideoStatusCounts', () => {
           await vi.advanceTimersByTimeAsync(3000)
         })
 
-        await act(async () => {
-          await vi.waitFor(() => expect(getCounts).toHaveBeenCalledTimes(2))
-        })
-
-        // settled counts return to the slower external-change refresh cadence
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(10000)
-        })
-        expect(getCounts).toHaveBeenCalledTimes(2)
+        await act(async () => { await vi.advanceTimersByTimeAsync(120_000) })
+        expect(getCounts).toHaveBeenCalledTimes(1)
       } finally {
         vi.useRealTimers()
       }
     },
   )
 
-  it('refreshes completed totals to reflect external deletion', async () => {
+  it('does not periodically refresh completed totals', async () => {
     vi.useFakeTimers()
     try {
       const settledStats: VideoStatusCounts = { ...EMPTY_VIDEO_STATUS_COUNTS, total: 1, completed: 1 }
@@ -79,8 +72,8 @@ describe('useVideoStatusCounts', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(30_000)
       })
-      expect(getCounts).toHaveBeenCalledTimes(2)
-      expect(result.current.stats.total).toBe(0)
+      expect(getCounts).toHaveBeenCalledTimes(1)
+      expect(result.current.stats.total).toBe(1)
     } finally {
       vi.useRealTimers()
     }
