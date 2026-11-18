@@ -150,8 +150,7 @@
         }
       ],
       "vectorize": [
-        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" },
-        { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-prod-scenes-768" }
+        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" }
       ],
       "r2_buckets": [
         {
