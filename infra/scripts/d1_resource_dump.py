@@ -34,8 +34,11 @@ def validate_sql_dump(files, file_proof, source_snapshot, fence_plan, assert_own
             handle, _before = files.open_sql()
             with handle, io.TextIOWrapper(handle, encoding='utf-8', errors='strict') as text:
                 statement = ''
+                # This restore and its verification touch only the isolated
+                # in-memory database. Recheck remote ownership before accepting
+                # the final proof, rather than making one remote round trip per
+                # SQL line. Provider mutations retain their own ownership gates.
                 for line in text:
-                    assert_owned()
                     statement += line
                     if sqlite3.complete_statement(statement):
                         db.execute(statement)
@@ -54,7 +57,6 @@ def validate_sql_dump(files, file_proof, source_snapshot, fence_plan, assert_own
             return [dict(zip([column[0] for column in result.description], row)) for row in result]
 
         def fenced():
-            assert_owned()
             assert_fenced(query(None, SCHEMA), fence_plan)
 
         restored = inspect_database(query, None, fenced)
