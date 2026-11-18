@@ -568,7 +568,7 @@ function videoSaveStory(mode: 'metadata' | 'background' | 'transcript'): Story {
       } else {
         const manage = canvas.getByRole('button', { name: i18n.t('videos.detail.manage') });
         await userEvent.click(manage);
-        const edit = canvas.getByRole('button', { name: i18n.t('videos.detail.editButton') });
+        const edit = within(manage.closest('header')!).getByRole('button', { name: i18n.t('videos.detail.editButton') });
         await userEvent.click(edit);
         const dialog = within(canvas.getByRole('dialog'));
         const title = dialog.getByRole('textbox', { name: i18n.t('videos.detail.editTitleLabel') });
