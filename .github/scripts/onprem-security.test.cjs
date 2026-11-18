@@ -149,7 +149,9 @@ test('API and web install the official patched OpenSSL and retain exact-version 
   const repair = require('./claude-dependency-repair.cjs');
   for (const component of ['api', 'web']) {
     const docker = readFileSync(join(__dirname, `../../apps/${component}/Dockerfile`), 'utf8');
-    assert.ok(docker.includes('https://dl-cdn.alpinelinux.org/alpine/edge/main'));
+    const repository = new URL(docker.match(/--repository ([^\s]+)/)[1]);
+    assert.equal(repository.origin, 'https://dl-cdn.alpinelinux.org');
+    assert.equal(repository.pathname, '/alpine/edge/main');
     assert.match(docker, /'libssl3>=3\.5\.9-r1' 'libcrypto3>=3\.5\.9-r1'/);
     assert.ok(onprem.includes(`security-config: apps/${component}/security/grype.json`));
     assert.ok(release.includes(`'apps/${component}/security/grype.json'`));
