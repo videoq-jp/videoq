@@ -1,28 +1,85 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:03.000
-The same questions keep coming in.
+00:00:00.400 --> 00:00:03.647
+An answer is more useful when you can check where it came from.
 
-00:00:03.000 --> 00:00:07.000
-Upload your lectures. Group them into a course.
+00:00:04.047 --> 00:00:10.518
+VideoQ can show the lecture video and time range behind an answer. Select the citation to jump to that explanation.
 
-00:00:07.000 --> 00:00:10.000
-Just send the link. No sign-up for students.
+00:00:10.918 --> 00:00:16.777
+Read, rewatch, and listen again at your own pace. Some answers may not include citations.
 
-00:00:10.000 --> 00:00:11.500
-Now, the student’s view.
+00:00:18.200 --> 00:00:21.146
+Invited students open the course with their own accounts.
 
-00:00:11.500 --> 00:00:15.000
-Students ask in their own words.
+00:00:21.546 --> 00:00:24.633
+They ask what they did not understand, in their own words.
 
-00:00:15.000 --> 00:00:19.000
-Answered from your lectures.
+00:00:25.033 --> 00:00:32.845
+The AI looks for relevant explanations across the course videos and answers from the lecture material. Answers use the course owner's allowance.
 
-00:00:19.000 --> 00:00:23.000
-Jump to the moment you explained it.
+00:00:34.267 --> 00:00:36.520
+First, upload a lecture recording.
 
-00:00:23.000 --> 00:00:27.000
-Review every question in the history.
+00:00:36.920 --> 00:00:42.619
+Choose the language spoken in the video. VideoQ transcribes the recording and prepares it for questions.
 
-00:00:27.000 --> 00:00:30.000
-Student questions? Let your lectures answer. Create a course for free.
+00:00:43.019 --> 00:00:47.015
+Once processing is complete, the video is ready to add to a course.
+
+00:00:48.433 --> 00:00:51.482
+Next, bring related videos together in a course.
+
+00:00:51.882 --> 00:00:57.639
+Create a course for each teaching unit or training topic. Add videos from the library and arrange their order.
+
+00:00:58.039 --> 00:01:01.592
+The course defines which learning materials students can ask about.
+
+00:01:03.000 --> 00:01:06.899
+Share a course with specific students by inviting their email addresses.
+
+00:01:07.299 --> 00:01:12.990
+Students sign in with the verified email address that received the invitation, then accept it to join.
+
+00:01:13.390 --> 00:01:21.045
+Members can watch and ask questions. They cannot edit the teaching materials. This screen is a demo; no invitation email was sent.
+
+00:01:22.467 --> 00:01:28.450
+Manage your recordings together in the video library. Use tags to organize them and find the videos you need.
+
+00:01:28.850 --> 00:01:31.734
+Open a video's details to review its transcript.
+
+00:01:32.134 --> 00:01:35.459
+You can also edit the subtitle text when a correction is needed.
+
+00:01:36.867 --> 00:01:41.380
+As the instructor, you can review saved questions and answers in the course history.
+
+00:01:41.780 --> 00:01:48.557
+Questions from invited students include their username and email address. The student identity shown here is demo data.
+
+00:01:48.957 --> 00:01:54.829
+Export the history as a CSV, or use the dashboard to review question trends and answer feedback.
+
+00:01:55.229 --> 00:02:00.492
+Use what students find difficult to guide your next explanation or improve your course materials.
+
+00:02:01.900 --> 00:02:06.444
+VideoQ also supports importing videos from YouTube URLs and connecting with Moodle.
+
+00:02:06.844 --> 00:02:12.873
+YouTube imports require your SearchAPI key. Moodle requires the dedicated plugin and connection settings.
+
+00:02:13.273 --> 00:02:18.081
+For access without student registration, you can also choose a shared course link.
+
+00:02:19.500 --> 00:02:23.129
+Upload, organize, share, answer, and reflect.
+
+00:02:23.529 --> 00:02:25.920
+Turn your lecture videos into a learning partner.
+
+00:02:26.320 --> 00:02:28.991
+Try VideoQ, starting with just one video.

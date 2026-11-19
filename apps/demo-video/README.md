@@ -1,7 +1,55 @@
 # VideoQ demo films
 
-Three Remotion films live here. The landing pages serve the instructor film; the student film and the sample course behind it remain for `/try`, older URLs and ads.
+This package contains the current English product overview and the legacy Remotion films. Landing pages serve language-specific instructor overviews; the student film and its sample course remain for `/try`, older URLs and ads.
 
+
+## Current English product overview (2026-11-20)
+
+The README and English landing page serve a 2 min 30 sec product overview,
+`provider-demo-en.mp4?v=5`. It follows the November 13 Japanese overview's nine
+chapters: sources, student questions, uploads, courses, email invitations,
+library/transcripts, history, integrations, and getting started. The English film
+uses still captures of the current app with synthesized English narration, music,
+and WebVTT captions. The Japanese film remains its separate 178-second edit.
+
+`content/product-film-en.json` owns the English script and chapter order.
+`public/product-film-en/screens/` holds reviewed English UI captures from
+`apps/web/src/pages/ProductFilm.stories.tsx`. Those stories render the actual app
+with local API fixtures, so no account, invitation delivery, or AI request is
+needed. The question, answer, lesson and 0:00–0:54 source are translations from
+the original captured demo. Student identities are fixtures. Only the math lesson
+is opened; the other subjects have no simulated playback. The transcript shown
+is a translated illustration of the same lesson, not a new transcription run.
+
+To refresh captures, start the web Storybook and open the **Films / English
+product walkthrough** stories in English. Capture these states after fonts and
+video buffering settle: `Member` before/after sending the supplied question and
+after selecting its citation (`question`, `answer`, `citation`); `Course` with
+Videos selected, question history open, and Manage members open with
+`learner@example.test` entered (`course`, `history`, `invite`); `Upload` with a
+selected file and then the YouTube URL tab (`upload`, `youtube`); `Library`
+(`library`); and `Video` before/after Edit (`transcript`, `transcript-edit`).
+Do not send invitations. The upload capture hides the browser's native file
+selector button so an OS-language label is not included; the selected filename
+is retained. Save captures as WebP in the screenshots directory above.
+
+```bash
+# macOS: requires Samantha voice, ffmpeg/ffprobe, and Python Pillow
+python3 apps/demo-video/scripts/render-product-film-en.py --prepare-only
+# Review the generated chapter slides in review/product-film-en/, then export
+python3 apps/demo-video/scripts/render-product-film-en.py
+```
+
+The renderer checks the 16 MiB serving limit, measured duration, every video
+frame (including flashes, header stability and fast start), and audio decoding before replacing the English MP4, poster, captions and metadata.
+Narration timing is measured from the generated audio; captions follow those
+measurements. Generated review slides, speech and intermediate files are ignored.
+Speech caches include the text, voice, and rate in their filenames, so script changes regenerate the affected narration.
+Update the README and English landing copy if the duration changes, and bump
+metadata / README / player test versions together for any published replacement.
+
+The Remotion provider renderer below reproduces the **legacy 30-second** film;
+it must not be used to overwrite either current provider film.
 
 ## X ad video (shared Japanese/English format, 2026-10-06)
 
@@ -30,12 +78,12 @@ node apps/demo-video/scripts/render-x-ad.mjs --locale ja --stills
 Finished MP4 and VTT files go to `output/x-demo/`; review images go to `review/x-ad/`.
 Rendering checks all 900 frames, flashes, the fixed header, ending, duration, frame
 rate, resolution, fast start, and file size. Only videos that pass are exported.
-X ads use the 15-second square version. Landing pages use the 30-second landscape
-version described below.
+X ads use the 15-second square version. Landing pages use the language-specific
+product overviews described above.
 
-## Instructor demo for Japanese and English landing pages (2026-10-30)
+## Legacy Remotion instructor demo (2026-10-30)
 
-The landing pages serve `ProviderDemo`, a 30-second, 1920×1080, 60 fps film for
+`ProviderDemo` is the original 30-second, 1920×1080, 60 fps film for
 course creators and instructors. It runs: an illustrative hook (incoming student
 questions, labelled as an illustration), the instructor uploading a lecture and
 sharing the course link, the student asking a question and jumping to the cited
