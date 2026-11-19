@@ -110,6 +110,8 @@ Existing uploads can be backfilled without Whisper or embedding calls. From
 python scripts/prepare_visual_frames.py --video-id 42
 ```
 
+For cloud/D1, run in the worker environment with `DEPLOYMENT_EDITION=cloud`, `PERSISTENCE_BACKEND=d1`, `WORKER_INTERNAL_API_ORIGIN`, and `WORKER_INTERNAL_API_SECRET`. Source identity and visual publication use the signed internal API; no PostgreSQL connection is used. Add `--dry-run` to inspect the source and chunk count without creating a run or queuing work. An already ready cache is reused.
+
 With SQS configured, the command queues the interval jobs. Local environments without
 SQS process the intervals in order.
 
@@ -192,3 +194,11 @@ Derived cache storage is bounded service overhead (up to 16 MiB coarse plus
 512 MiB dense per video); the
 existing user storage quota still counts the original upload, not this cache.
 Monitor aggregate cache storage, upload processing time and model usage.
+
+For an existing completed upload in a deployed media worker, the native
+`prepare_video_visuals` job accepts exactly `{ "video_id": 42 }`. Send it through
+the media queue with a new stable `job_id` and the normal native message envelope.
+It discovers the current source through the signed cloud API (or PostgreSQL on
+premises), probes duration, and dispatches only visual chunk jobs. It does not
+rerun transcription or scene embeddings. Repeated deliveries reuse the current
+run and completed chunks. A worker image with this job registered is required.

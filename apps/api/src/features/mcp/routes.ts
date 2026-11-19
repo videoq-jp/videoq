@@ -76,6 +76,9 @@ const mcpAuth = createMiddleware<AppEnv>(async (c, next) => {
       if (r.accessLevel) c.set("apiKeyAccessLevel", r.accessLevel);
       return next();
     }
+    if (r.kind === "rate_limited") {
+      return c.json(toErrorBody("RATE_LIMITED", r.message), 429, { "Retry-After": String(r.retryAfterSec) });
+    }
     if (r.kind === "invalid") {
       return c.json(toErrorBody("UNAUTHORIZED", r.message), 401, {
         "WWW-Authenticate": r.wwwAuthenticate ?? mcpWwwAuthenticate(c),
