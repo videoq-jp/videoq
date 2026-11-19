@@ -1,16 +1,14 @@
+import { nativeLearningService } from "../../integrations/native-learning";
+import { asApiError } from "../../shared/errors";
+import type { LearningAuthorization } from "../lti/session-authorization";
 import { hasCourseAuthority } from './authority';
 import { lmsIdentity } from './contracts';
 import { decodeJwt, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { z } from "zod";
 import type { Bindings } from "../../types/bindings";
 import { ApiError } from "../../shared/errors";
-import { getCourseWithMembers } from "../../repositories/chat-repository";
 import { resolvedLtiConfig } from "../lti/registrations";
 import { platformKeys } from "../lti/protocol";
-import { courseAccessContext } from "../lti/course-access";
-import { digest } from "../lti/store";
-import { registrationFingerprint, type LearningAuthorization } from "../lti/session-authorization";
-import { ensureNativeSession } from "./native-session";
 
 const text = lmsIdentity;
 export const nativeAssertionClaims = z.object({
@@ -62,34 +60,6 @@ export async function verifyNativeAssertion(env: Bindings, assertion: string, op
 export async function authorizeNativeRequest(env: Bindings, assertion: string, operation: string,
   bodySha256: string): Promise<LearningAuthorization> {
   const { reg, claims } = await verifyNativeAssertion(env, assertion, operation, bodySha256);
-  const binding = reg.resources.find(b => b.deploymentId === claims.deploymentId &&
-    b.contextId === claims.contextId && b.resourceLinkId === claims.resourceLinkId);
-  if (!binding || (!reg.materialsService && !claims.accessProof)) throw denied();
-  const subjectHash = await digest(JSON.stringify([reg.issuer, reg.clientId, claims.deploymentId, claims.subject]));
-  const grant: LearningAuthorization["grant"] = {
-    ...(claims.author ? { moodleAuthor: { user_id: "moodle:" + subjectHash, username: claims.author.name, email: claims.author.email } } : {}),
-    transport: "native", registrationId: reg.id, registrationHash: await registrationFingerprint(reg),
-    deploymentId: claims.deploymentId, contextId: claims.contextId, resourceLinkId: claims.resourceLinkId,
-    courseId: binding.courseId, subjectHash, roles: [], locale: claims.locale,
-    ...(binding.videoId !== undefined ? { videoId: binding.videoId } : {}),
-    ...(binding.generation !== undefined ? { resourceGeneration: binding.generation } : {}),
-    ...(reg.materialsService ? { serviceSubject: claims.subject } :
-      { accessProof: { token: claims.accessProof!, subject: claims.subject } }),
-  };
-  let current;
-  try { current = await courseAccessContext(reg, grant, env); } catch { throw denied(); }
-  if (!current) throw denied();
-  const course = current.course ?? await getCourseWithMembers(env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId,
-    ltiVideoGrant: [...current.videos, ...(current.managementVideos ?? [])].map(v => v.videoId) });
-  if (!course) throw denied();
-  grant.scopeVideoIds = current.videos.map(v => v.videoId).sort((a, b) => a - b);
-  const sessionHash = await digest(JSON.stringify(["moodle-native-session-v1", reg.id, subjectHash,
-    claims.contextId, claims.resourceLinkId, claims.sessionId]));
-  await ensureNativeSession(env, {
-    ownerUserId: course.userId, grant, sessionHash,
-    markerHash: await digest(JSON.stringify(["moodle-native-session-started-v1", sessionHash])),
-    nonceHash: await digest(JSON.stringify(["moodle-native-request-v1", reg.id, claims.jti])),
-    nonceExpiresAt: new Date((claims.exp + 60) * 1000), expiresAt: new Date(claims.sessionExpiresAt * 1000),
-  });
-  return { grant, reg, sessionHash, current, course };
+  try { return await nativeLearningService(env)(reg, claims); }
+  catch (error) { throw asApiError(error) ?? error; }
 }

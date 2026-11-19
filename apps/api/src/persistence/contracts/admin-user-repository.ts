@@ -21,8 +21,9 @@ export type AdminUser = {
 
 export type AdminQuotaPatch = Omit<RpcInputMap["admin.patchQuota"], "id">;
 export type AdminUsagePatch = Omit<RpcInputMap["admin.patchUsage"], "id">;
-export type AdminDeleteResult = {notFound:true}|{forbiddenAdmin:true}|{taskId:number;jobId:string};
-export type AdminFlagsPatch = Omit<RpcInputMap["admin.patchFlags"], "id">;
+export type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
+import type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
+
 export interface AdminUserRepository {
   patchFlags(actorId:string,targetId:string,patch:AdminFlagsPatch,headers:Headers):Promise<AdminUser|null>;
   lockForHardDelete(userId:string):Promise<AdminDeleteResult>;

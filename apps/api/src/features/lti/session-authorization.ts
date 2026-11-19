@@ -1,12 +1,11 @@
-import type { z } from "zod";
+import type { LearningGrant } from "../../application/native-learning";
 import type { LtiRegistration } from "./config";
 import type { CourseAccess } from "./course-access";
-import type { sessionRecord } from "./protocol";
 import { digest } from "./store";
 import type { getCourseWithMembers } from "../../repositories/chat-repository";
 
 export type LearningAuthorization = {
-  grant: z.infer<typeof sessionRecord>;
+  grant: LearningGrant;
   reg: LtiRegistration;
   sessionHash: string;
   current?: CourseAccess;

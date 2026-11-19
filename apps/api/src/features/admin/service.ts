@@ -1,13 +1,6 @@
-import type { RpcInputMap } from "@videoq/trpc";
-import {
-  enqueueReindexAllEmbeddings,
-} from "../../lib/jobs";
-import { processExternalTaskById } from "../../lib/external-tasks";
-import {
-  lockUserForHardDelete,
-  patchAdminUserFlags,
-} from "../../repositories/admin-repository";
-import type { Bindings } from "../../types/bindings";
+import type { AdminFlagsPatch } from '../../application/admin';
+import { adminService } from '../../integrations/admin';
+import type { Bindings } from '../../types/bindings';
 
 export {
   isAdmin,
@@ -15,41 +8,15 @@ export {
   getAdminUser as getUser,
   patchAdminUserQuota as patchQuota,
   patchAdminUserUsage as patchUsage,
-} from "../../repositories/admin-repository";
+} from '../../repositories/admin-repository';
 
-export async function patchFlags(
-  env: Bindings,
-  actorUserId: string,
-  targetUserId: string,
-  patch: Omit<RpcInputMap["admin.patchFlags"], "id">,
-  headers: Headers,
-) {
-  if (
-    actorUserId === targetUserId &&
-    (patch.is_active === false || patch.is_admin === false)
-  ) {
-    return { selfLockout: true as const };
-  }
-
-  const user = await patchAdminUserFlags(env,actorUserId,targetUserId,patch,headers);
-  return user ? { user } as const : { notFound: true as const };
+// Compatibility boundary for existing transports; decisions live in core.ts.
+export function patchFlags(env: Bindings, actorId: string, targetId: string, patch: AdminFlagsPatch, headers: Headers) {
+  return adminService(env, headers).patchFlags(actorId, targetId, patch);
 }
-
-export async function enqueueReindexAll(env: Bindings) {
-  const jobId = await enqueueReindexAllEmbeddings(env);
-  return { job_id: jobId } as const;
+export function enqueueReindexAll(env: Bindings) {
+  return adminService(env).enqueueReindexAll();
 }
-
-export async function deleteUser(
-  env: Bindings,
-  actorUserId: string,
-  targetUserId: string,
-) {
-  if (actorUserId === targetUserId) {
-    return { self: true } as const;
-  }
-  const locked = await lockUserForHardDelete(env, targetUserId);
-  if (!("taskId" in locked)) return locked;
-  await processExternalTaskById(env, locked.taskId);
-  return { job_id: locked.jobId } as const;
+export function deleteUser(env: Bindings, actorId: string, targetId: string) {
+  return adminService(env).deleteUser(actorId, targetId);
 }

@@ -54,6 +54,20 @@ Input validation and procedure names are centralized in `packages/trpc/src/route
 The API uses incremental separation rather than requiring every feature to follow
 an identical set of layers:
 
+- `features/admin/core.ts` owns self-lockout prevention, deletion dispatch and
+  reindex handoff. `integrations/admin.ts` captures runtime bindings and request
+  credentials; the use case accepts application commands without HTTP or RPC
+  types. The existing repository still checks live administrator authority and
+  commits account changes atomically. Deletion dispatch runs only after the
+  durable task has been committed, and failures propagate for retry.
+- `features/lms/native-learning-service.ts` builds a server-derived learning grant,
+  rechecks current course authority, limits learning scope and consumes the
+  request through an injected atomic session capability. `native-auth.ts` verifies
+  JWT signatures, endpoint/body binding and claim lifetimes before invoking it;
+  `integrations/native-learning.ts` supplies authority, hashing and persistence.
+  `application/native-learning.ts` owns grant/session models. Normal typechecking
+  checks their compatibility with the transport schemas. Management-only videos
+  never enter the learning scope, and a session rejection cannot return a grant.
 - `features/qa/policy.ts` owns the shared access and mutation rules. PostgreSQL
   evaluates these rules on transaction-scoped facts; D1 composes them into SQL
   predicates inside its atomic batch. Session validity, membership, current video
@@ -154,7 +168,7 @@ Run the focused policy and lifecycle checks with:
 ```bash
 npm run typecheck --workspace=@videoq/api
 npm run lint --workspace=@videoq/api
-npm exec --workspace @videoq/api -- vitest run test/chat-generation-service.test.ts test/extracted-management-services.test.ts test/chat-send.test.ts test/billing-account-deletion.test.ts test/membership-service.test.ts test/video-service-atomicity.test.ts test/application-services.test.ts test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/error-handler.test.ts test/trpc.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
+npm exec --workspace @videoq/api -- vitest run test/admin-core.test.ts test/native-learning-service.test.ts test/moodle-native-api.test.ts test/persistence/admin-flags.integration.test.ts test/chat-generation-service.test.ts test/extracted-management-services.test.ts test/chat-send.test.ts test/billing-account-deletion.test.ts test/membership-service.test.ts test/video-service-atomicity.test.ts test/application-services.test.ts test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/error-handler.test.ts test/trpc.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
 ```
 
 Set `PERSISTENCE_TEST_DATABASE_URL` to a disposable PostgreSQL database to run the
