@@ -5,4 +5,4 @@ export const ticketSchema = z.object({ provider: z.enum(['moodle', 'classroom'])
   title: z.string().max(255), returnUrl: z.url(),
   resourceLinkId: z.string().optional(),
   classroomProof: z.object({ accountEnvelope: z.string(), launch: launchSchema }).optional() }).strict();
-export type TeachingTicket = z.infer<typeof ticketSchema>;
+export type { TeachingTicket } from '../application/teaching';

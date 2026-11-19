@@ -69,8 +69,13 @@ it imports no database, queue, provider, task adapter or environment configurati
 `tasks/transcription.py` selects the cloud/PostgreSQL runtime and assembles those
 capabilities. PostgreSQL SQL, transactions, quota reservations, secret loading,
 provider calls and deterministic queue delivery remain in the adapter.
-The signed internal-API cloud workflow and segmented checkpoint implementation
-retain their existing persistence operations.
+`use_cases/segmented_transcription.py` owns plan reuse, bounded interval execution,
+checkpoint/retry decisions and completion handoff. The segmented task module
+supplies provider, queue and checkpoint capabilities. Local finalization retains
+its database transaction; cloud finalization retains the internal API's atomic
+outbox and does not send a second indexing job. Provider calls are skipped when
+retrying delivery of a saved checkpoint. Source probing is also skipped on that
+replay path. SQL and checkpoint paging remain adapter responsibilities.
 
 Keep conditional claims and writes atomic in persistence adapters. In particular,
 a completion must preserve concurrent edits/deletion, and a queue failure after
@@ -80,7 +85,7 @@ save must retry the indexing handoff without transcribing again.
 Run these with the existing resume, persistence, cloud and segmented checks:
 
 ```bash
-uv run --frozen --extra dev pytest -q tests/test_architecture_boundaries.py tests/test_transcription_use_case.py tests/test_transcription_resume.py tests/test_transcription_persistence.py tests/test_cloud_transcription.py tests/test_segmented_transcription.py
+uv run --frozen --extra dev pytest -q tests/test_architecture_boundaries.py tests/test_transcription_use_case.py tests/test_segmented_transcription_use_case.py tests/test_transcription_resume.py tests/test_transcription_persistence.py tests/test_cloud_transcription.py tests/test_segmented_transcription.py
 ```
 
 Set `DATABASE_URL` to a disposable PostgreSQL database for the persistence and

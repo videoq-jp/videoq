@@ -10,3 +10,8 @@ export type ChatAnswerCompatibility = Assert<Equal<ChatAnswer, RpcChatAnswer>>;
 export type ChatSourceCompatibility = Assert<Equal<ChatSource, RpcChatSource>>;
 export type VideoStatusCompatibility = Assert<Equal<VideoStatus, RpcVideoStatus>>;
 export type VideoSourceCompatibility = Assert<Equal<VideoSourceType, RpcVideoSourceType>>;
+
+import type { z } from 'zod';
+import type { TeachingTicket } from '../src/application/teaching';
+import type { ticketSchema } from '../src/shared/teaching';
+export type TeachingTicketCompatibility = Assert<Equal<TeachingTicket, z.infer<typeof ticketSchema>>>;
