@@ -117,7 +117,8 @@ export const CourseChatContinuity: Story = {
     const followup = english ? 'Explain with an example' : '具体例を教えてください';
     const reply = english ? 'Explain the relationship between input and output.' : '入力と出力の関係を説明してください。';
     const draft = english ? 'The length does not change.' : '長さは変わりません。';
-    const input = await canvas.findByRole('textbox', { name: i18n.t('chat.placeholder') });
+    await waitFor(() => expect(canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') })).toBeEnabled());
+    const input = canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') });
     // Include CSS-hidden panels: two separately mounted chats lose state on resize.
     await expect(canvas.getAllByRole('textbox', { hidden: true })).toHaveLength(1);
     const finish = async () => {
@@ -412,7 +413,8 @@ function youtubeReplayStory(scope: 'video' | 'course' | 'share'): Story {
         }
         replay = await canvas.findByRole('button', { name: /00:00:05/ });
       } else {
-        const input = await canvas.findByRole('textbox', { name: i18n.t('chat.placeholder') });
+        await waitFor(() => expect(canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') })).toBeEnabled());
+        const input = canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') });
         await userEvent.type(input, 'Replay');
         await userEvent.keyboard('{Enter}');
         replay = await canvas.findByRole('button', { name: `${video.title} 00:00:05` });
@@ -855,7 +857,7 @@ export const PendingVideo: Story = {
   },
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
-    await canvas.findByText(i18n.t('common.messages.loading'));
+    await canvas.findAllByRole('progressbar', { name: i18n.t('common.messages.loading') });
     await expect(canvas.queryByRole('contentinfo')).not.toBeInTheDocument();
   },
 };
