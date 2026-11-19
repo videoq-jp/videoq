@@ -155,6 +155,17 @@ rechecks; storage I/O happens outside those transactions. Application failures
 are translated at the compatibility boundary. The workflow is included in the
 same transitive import restrictions as the other extracted use cases.
 
+The Moodle pairing workflow in `features/lms/pairing-service.ts` accepts an atomic
+pairing repository, clock, secret/hash, code encoding, maintenance and settings
+capabilities. `integrations/moodle-pairing.ts` supplies runtime implementations;
+`features/lms/providers/moodle/pairing.ts` retains input validation and the existing
+connector error format. Application pairing data lives in
+`application/moodle-pairing.ts`, independent of Zod and connector schemas. Code
+consumption and installation provisioning remain one repository operation;
+maintenance and upload settings run only after it succeeds. Boundary checks cover
+the workflow and repository contract. `test/moodle-pairing-service.test.ts` covers
+issuance, proof rejection, expiry, exchange ordering and failure propagation.
+
 This is incremental separation. Several LMS services still combine orchestration
 with runtime adapters. Compatibility entrypoints may accept runtime bindings,
 but delegate business decisions to injected services. New business rules

@@ -15,7 +15,7 @@ it("prevents extracted use cases from acquiring runtime and implementation depen
     overrideConfig: [tseslint.configs.disableTypeChecked],
   });
   for (const relativePath of [
-    "src/features/admin/core.ts", "src/features/lms/native-learning-service.ts", "src/persistence/contracts/native-session-repository.ts",
+    "src/features/lms/pairing-service.ts", "src/persistence/contracts/moodle-pairing-repository.ts", "src/features/admin/core.ts", "src/features/lms/native-learning-service.ts", "src/persistence/contracts/native-session-repository.ts",
     "src/features/qa/policy.ts", "src/features/qa/core.ts", "src/features/teaching/core.ts", "src/features/lms/upload-service.ts", "src/features/videos/upload-service.ts",
     "src/features/courses/service.ts", "src/features/chat/service.ts", "src/features/chat/conversation-service.ts",
     "src/features/chat/generation-service.ts", "src/features/chat/generation-ports.ts",
@@ -66,7 +66,7 @@ it('checks real transitive dependencies of the extracted workflows, including ty
   const cwd = fileURLToPath(new URL('../', import.meta.url));
   const eslint = new ESLint({ cwd, overrideConfig: [tseslint.configs.disableTypeChecked] });
   const roots = [
-    'features/admin/core', 'features/lms/native-learning-service', 'persistence/contracts/native-session-repository',
+    'features/lms/pairing-service', 'persistence/contracts/moodle-pairing-repository', 'features/admin/core', 'features/lms/native-learning-service', 'persistence/contracts/native-session-repository',
     'features/lms/upload-service', 'features/teaching/core', 'features/qa/core', 'features/qa/service', 'features/qa/policy', 'features/videos/upload-service',
     'features/courses/service', 'features/chat/service', 'features/chat/conversation-service',
     'features/billing/service', 'features/chat/generation-service',
