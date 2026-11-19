@@ -1,4 +1,4 @@
-import { createAgent, createMiddleware, providerStrategy, tool, type ToolRuntime } from "langchain";
+import { createAgent, createMiddleware, providerStrategy } from "langchain";
 import { SystemMessage, HumanMessage, RemoveMessage } from "@langchain/core/messages";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { ChatModelStreamEvent } from "@langchain/core/language_models/event";
@@ -13,9 +13,11 @@ import { AnswerContentStream } from "./answer-content-stream";
 import { LlmProviderError } from "./openai";
 import { validateChatAnswer } from "./chat-citations";
 import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatAnswer, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
-import { courseInfoTool, MAX_COURSE_INFO_CALLS } from "./rag-course-info";
-import { videoEvidenceTools } from "./rag-video-evidence";
-import { transcriptQuality } from "./transcript-quality";
+import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from "../tools/contract";
+export { MAX_SCENE_SEARCHES } from "../tools/contract";
+import { loadRagMcpTools } from "./rag-mcp-tools";
+import { evidenceProgressSchema as searchProgressSchema } from "../tools/contract";
+import { connectEvidenceMcp } from "../integrations/evidence-mcp";
 import { MAX_WINDOW_READS, MAX_CLIP_INSPECTIONS, MAX_OVERVIEWS, MAX_SKIMS, MAX_FOCUS_CALLS } from "./video-evidence";
 import {
   llmTimeoutMs,
@@ -23,7 +25,7 @@ import {
   conversationMessages,
 } from "./llm";
 import { buildAgentSystemPrompt, buildNoCourseSystemPrompt } from "./prompts";
-import { openSceneSearch, type SceneHit, type SceneSearch } from "../repositories/vector-repository";
+import type { SceneHit } from "../repositories/vector-repository";
 import type { Bindings } from "../types/bindings";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 
@@ -43,18 +45,6 @@ export type RagResult = {
   checkpointId?: string;
   persistedTurn?: { chatLogId: number | null; feedback: string | null };
 };
-
-/** 1 回答あたりのベクトル検索回数の上限。検索ごとに埋め込みを生成する。 */
-export const MAX_SCENE_SEARCHES = 3;
-
-/** ヒット 0 件でも「検索したが無かった」と伝える。空文字だとモデルが再検索を繰り返す。 */
-const NO_HITS = "No subtitle scenes matched this query. Subtitle search does not inspect images and cannot establish that visible content is absent. Use video viewing tools for on-screen text, objects or changes.";
-
-/** 上限超過はツール結果として返す。エラーで打ち切ると回答本文が無いまま終わるため。 */
-const SEARCH_LIMIT_REACHED =
-  "Search limit reached: no more searches are available for this answer. " +
-  "Answer now using the scenes you already have, or state that the question is " +
-  "outside the scope of the video materials.";
 
 /**
  * 暴走時の保険。1 検索あたり model → tools の 2 ステップ進むので、
@@ -139,62 +129,6 @@ class SceneCollector {
   }
 }
 
-const formatHit = (hit: SceneHit, index: number) =>
-  JSON.stringify({ sourceId: index, videoId: hit.videoId, title: hit.videoTitle, startTime: hit.startTime, endTime: hit.endTime, text: hit.content, transcript_quality: transcriptQuality(hit) });
-
-function sceneSearchTool(
-  search: SceneSearch,
-  collector: SceneCollector,
-  videoIds: readonly number[],
-) {
-  let used = 0;
-  const allowedVideoIds = new Set(videoIds);
-  return tool(
-    async ({ query, video_ids }, runtime: ToolRuntime) => {
-      // 上限はツール側で数える。middleware で打ち切るとモデルが最終回答を
-      // 生成する前にグラフが終わってしまう。
-      if (used >= MAX_SCENE_SEARCHES) return SEARCH_LIMIT_REACHED;
-      if (video_ids?.some((id) => !allowedVideoIds.has(id))) {
-        return "Invalid video_ids: only videos in the current course may be searched. " +
-          "Use get_course_info to find valid IDs; this search was not executed.";
-      }
-      const searchId = ++used;
-      // custom stream は検索の完了や次のモデルの応答を待たずに UI へ届く。
-      runtime.writer?.({ searching: query, searchId } satisfies RagSearchProgress);
-      const hits = await search.search(query, video_ids ?? undefined);
-      runtime.writer?.({
-        searchCompleted: { id: searchId, query, count: hits.length },
-      } satisfies RagSearchProgress);
-      if (hits.length === 0) return NO_HITS;
-      return hits.map((hit) => formatHit(hit, collector.add(hit))).join("\n\n");
-    },
-    {
-      name: "search_scenes",
-      description:
-        "Search spoken subtitles of the user's video course by meaning, not images, and return the closest excerpts. " +
-        "The default way to ground definitions, explanations, comparisons, examples and calculations, " +
-        "including short terms and questions that do not explicitly mention the course. " +
-        "For highlights, first identify the video's genre; visual highlights need viewing tools and candidate before/after evidence, not only matching subtitles. " +
-        "For broad video navigation or visual topics without subtitle clues, overview_video/skim_video can retrieve evidence instead. " +
-        "For course-wide content, call directly with video_ids set to null. For a specific video or lecture, " +
-        "first identify it with get_course_info and include its ID in video_ids on every search. " +
-        "Pass a natural-language query describing what you need; it does not have to be the " +
-        "user's question verbatim. Optionally select video_ids from get_course_info; using " +
-        "null searches the whole current course. Each scene has a sourceId for the answer segments.",
-      schema: z.object({
-        query: z
-          .string()
-          .trim()
-          .min(1)
-          .max(2000)
-          .describe("What to look for, in the same language as the course material."),
-        video_ids: z.array(z.number().int().positive().safe()).min(1).max(50).nullable()
-          .describe("IDs of videos in the current course to search; null for the whole course."),
-      }).strict(),
-    },
-  );
-}
-
 /** Use Core's event assembler; the graph's custom channel only forwards events. */
 class ModelStreamHandler extends BaseCallbackHandler {
   name = "videoqModelStream";
@@ -209,10 +143,9 @@ class ModelStreamHandler extends BaseCallbackHandler {
 }
 
 /** 検索スコープを固定した ReAct エージェントを組み立てる。 */
-function prepareAgent(
+async function prepareAgent(
   env: Bindings,
   params: {
-    search: SceneSearch;
     queryText: string;
     timeoutMs: number;
     scope: RagParams;
@@ -232,53 +165,53 @@ function prepareAgent(
   // system は createAgent の systemPrompt ではなく messages で渡す。
   // systemPrompt はコンテンツブロック配列（[{type:"text"}]）で送信されるため、
   // 素の文字列しか受け付けない OpenAI 互換ゲートウェイでも動くようにする。
-  const agent = createAgent({
-    checkpointer: params.scope.memory?.saver ?? false,
-    model: createChatModel(env, { maxTokens: MAX_TOKENS, timeoutMs: params.timeoutMs, costLedger: params.scope.costLedger }),
-    responseFormat: providerStrategy(modelAnswerSchema),
-    tools: hasAgentContext(params.scope) ? [
-      sceneSearchTool(params.search, collector, params.scope.videoIds ?? []),
-      ...videoEvidenceTools(env, {
-        ownerUserId: params.scope.ownerUserId, videoIds: params.scope.videoIds ?? [],
-      }, hit => collector.add(hit), params.signal, params.queryText, params.scope.costLedger),
-      ...(params.scope.courseId != null ? [courseInfoTool(env, {
-        courseId: params.scope.courseId,
-        ownerUserId: params.scope.ownerUserId,
-      }, (context) => collector.courseContexts.add(context))] : []),
-    ] : [],
-    middleware: [
-      createMiddleware({
-        name: "citationRegistry",
-        stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]) }),
-        beforeAgent(state) { collector.restore(state.evidenceSources); },
-        afterAgent(state) {
-          assertCompletedAnswer(state.messages.at(-1));
-          completedResult = toResult(params.queryText, collector, state.structuredResponse);
-          // Keep citation identities alongside native agent history, including
-          // across summarization. Never reuse an old ID for a different scene.
-          return { evidenceSources: collector.savedSources };
-        },
-      }),
-      ...conversationCompaction(env, params.timeoutMs, params.scope.costLedger),
-      createMiddleware({
-        name: "propagateSearchErrors",
-        // wrapToolCall 経由の実行例外は、そのまま呼び出し元へ伝播する。
-        // DB / 埋め込み障害で次の LLM 呼び出しを始めず、利用枠を返却する。
-        // ツール引数の検証エラーは LangChain が従来どおりモデルへ返す。
-        wrapToolCall: async (request, handler) => {
-          const name = chatToolNameSchema.safeParse(request.toolCall.name);
-          if (!name.success) return handler(request);
-          // Request-local IDs also distinguish repeated and concurrent calls.
-          // Only public tool names/statuses are streamed, never arguments or results.
-          const callId = ++toolCalls;
-          const emit = (status: ChatToolProgressEvent["status"]) => request.runtime.writer?.({
-            toolProgress: { type: "tool_progress", call_id: callId, tool: name.data, status },
-          } satisfies RagToolProgress);
-          emit("running");
-          try {
-            const result = await handler(request);
-            emit("status" in result && result.status === "error" ? "error" : "complete");
-            return result;
+  const connection = hasAgentContext(params.scope) ? await connectEvidenceMcp(env, {
+    ownerUserId: params.scope.ownerUserId, videoIds: params.scope.videoIds ?? [], courseId: params.scope.courseId,
+  }, params.signal, {
+    question: params.queryText, usage: params.scope.costLedger,
+  }) : undefined;
+  try {
+    const tools = connection ? await loadRagMcpTools(connection.client, params.signal, {
+      addSource: hit => collector.add(hit), collectContext: text => collector.courseContexts.add(text),
+    }) : [];
+    const agent = createAgent({
+      checkpointer: params.scope.memory?.saver ?? false,
+      model: createChatModel(env, { maxTokens: MAX_TOKENS, timeoutMs: params.timeoutMs, costLedger: params.scope.costLedger }),
+      responseFormat: providerStrategy(modelAnswerSchema),
+      tools,
+      middleware: [
+        createMiddleware({
+          name: "citationRegistry",
+          stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]) }),
+          beforeAgent(state) { collector.restore(state.evidenceSources); },
+          afterAgent(state) {
+            assertCompletedAnswer(state.messages.at(-1));
+            completedResult = toResult(params.queryText, collector, state.structuredResponse);
+            // Keep citation identities alongside native agent history, including
+            // across summarization. Never reuse an old ID for a different scene.
+            return { evidenceSources: collector.savedSources };
+          },
+        }),
+        ...conversationCompaction(env, params.timeoutMs, params.scope.costLedger),
+        createMiddleware({
+          name: "propagateSearchErrors",
+          // wrapToolCall 経由の実行例外は、そのまま呼び出し元へ伝播する。
+          // DB / 埋め込み障害で次の LLM 呼び出しを始めず、利用枠を返却する。
+          // ツール引数の検証エラーは LangChain が従来どおりモデルへ返す。
+          wrapToolCall: async (request, handler) => {
+            const name = chatToolNameSchema.safeParse(request.toolCall.name);
+            if (!name.success) return handler(request);
+            // Request-local IDs also distinguish repeated and concurrent calls.
+            // Only public tool names/statuses are streamed, never arguments or results.
+            const callId = ++toolCalls;
+            const emit = (status: ChatToolProgressEvent["status"]) => request.runtime.writer?.({
+              toolProgress: { type: "tool_progress", call_id: callId, tool: name.data, status },
+            } satisfies RagToolProgress);
+            emit("running");
+            try {
+              const result = await handler(request);
+              emit("status" in result && result.status === "error" ? "error" : "complete");
+              return result;
           } catch (error) {
             emit("error");
             throw error;
@@ -299,6 +232,7 @@ function prepareAgent(
     ],
   });
   return {
+    close: async () => { await connection?.close(); },
     agent,
     input: {
       messages: params.scope.memory?.checkpointId === null ? [new RemoveMessage({ id: REMOVE_ALL_MESSAGES }), ...inputMessages] : inputMessages,
@@ -311,6 +245,10 @@ function prepareAgent(
     generated: () => completedResult !== undefined,
     sources: () => collector.sources,
   };
+  } catch (error) {
+    await connection?.close();
+    throw error;
+  }
 }
 
 function toResult(
@@ -333,35 +271,6 @@ function toResult(
 const hasAgentContext = (params: RagParams): boolean =>
   params.courseId != null || (params.videoIds !== null && params.videoIds.length > 0);
 
-/** 同時ツール呼び出しでも接続は1つ。検索を呼ぶまでDB・埋め込みに依存しない。 */
-function lazySceneSearch(env: Bindings, params: RagParams, signal: AbortSignal): SceneSearch {
-  let pending: Promise<SceneSearch> | undefined;
-  return {
-    async search(query, videoIds) {
-      signal.throwIfAborted();
-      if (!params.videoIds?.length) return [];
-      pending ??= openSceneSearch(env, {
-        userId: params.ownerUserId,
-        videoIds: params.videoIds,
-      }, signal, params.costLedger);
-      return (await pending).search(query, videoIds);
-    },
-    async close() {
-      // 初期化失敗時の close は openSceneSearch が行う。元の例外を上書きしない。
-      const search = await pending?.catch(() => undefined);
-      try {
-        await search?.close();
-      } catch (error) {
-        // 後始末の障害で元の例外や送信済みの回答を上書きしない。
-        console.error(JSON.stringify({
-          event: "rag_search_close_failed",
-          errorType: error instanceof Error ? error.name : "unknown",
-        }));
-      }
-    },
-  };
-}
-
 export async function runRag(
   env: Bindings,
   params: RagParams,
@@ -371,11 +280,9 @@ export async function runRag(
 
   const lifecycle = new AbortController();
   const requestSignal = deadlineSignal(llmTimeoutMs(env), lifecycle.signal);
-  const search = lazySceneSearch(env, params, requestSignal);
-  let prepared: ReturnType<typeof prepareAgent> | undefined;
+  let prepared: Awaited<ReturnType<typeof prepareAgent>> | undefined;
   try {
-    prepared = prepareAgent(env, {
-      search,
+    prepared = await prepareAgent(env, {
       queryText,
       timeoutMs: llmTimeoutMs(env),
       scope: params,
@@ -394,16 +301,10 @@ export async function runRag(
   } finally {
     // 並列ツールの一方が失敗しても、残りの検索をバックグラウンドに残さない。
     lifecycle.abort();
-    await search.close();
+    await prepared?.close();
   }
 }
 
-const searchProgressSchema = z.union([
-  z.object({ searching: z.string(), searchId: z.number().int().positive() }),
-  z.object({ searchCompleted: z.object({
-    id: z.number().int().positive(), query: z.string(), count: z.number().int().nonnegative(),
-  }) }),
-]);
 type RagSearchProgress = z.infer<typeof searchProgressSchema>;
 const toolProgressSchema = z.object({ toolProgress: chatToolProgressEventSchema });
 type RagToolProgress = z.infer<typeof toolProgressSchema>;
@@ -429,11 +330,10 @@ export async function* streamRag(
     deadlineSignal(llmTimeoutMs(env, true), signal),
     lifecycle.signal,
   ]);
-  const search = lazySceneSearch(env, params, requestSignal);
+  let prepared: Awaited<ReturnType<typeof prepareAgent>> | undefined;
   let stopStream: (() => Promise<unknown>) | undefined;
   try {
-    const prepared = prepareAgent(env, {
-      search, queryText, timeoutMs: llmTimeoutMs(env, true), scope: params,
+    prepared = await prepareAgent(env, { queryText, timeoutMs: llmTimeoutMs(env, true), scope: params,
       signal: requestSignal, streaming: true,
     });
     const events = await prepared.agent.stream(prepared.input, {
@@ -493,6 +393,6 @@ export async function* streamRag(
     // 送信失敗などで consumer が途中終了した場合も、検索の通信を止める。
     lifecycle.abort();
     await stopStream?.();
-    await search.close();
+    await prepared?.close();
   }
 }

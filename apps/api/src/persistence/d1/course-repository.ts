@@ -37,12 +37,14 @@ export function createD1CourseRepository(database:D1Database,env:Bindings):Cours
   return {
     async getInfo(courseId,ownerUserId,options){
       const where=owned(courseId,ownerUserId)!;
+      const videoFilter=options.videoIds===undefined?undefined:sql`${videos.id} IN (SELECT value FROM json_each(${JSON.stringify(options.videoIds)}))`;
+      const visibleCount=options.videoIds===undefined?count:sql<number>`(SELECT count(*) FROM video_course_members m WHERE m.course_id="video_courses"."id" AND m.video_id IN (SELECT value FROM json_each(${JSON.stringify(options.videoIds)})))`.as('video_count');
       const [courses,rows]=await db.batch([
-        db.select({name:videoCourses.name,description:sql<string>`substr(${videoCourses.description},1,${options.courseDescriptionLimit+1})`,video_count:count})
+        db.select({name:videoCourses.name,description:sql<string>`substr(${videoCourses.description},1,${options.courseDescriptionLimit+1})`,video_count:visibleCount})
           .from(videoCourses).where(where).limit(1),
         db.select({id:videos.id,title:videos.title,description:sql<string>`substr(${videos.description},1,${options.videoDescriptionLimit+1})`,status:videos.status,order:videoCourseMembers.order})
           .from(videoCourseMembers).innerJoin(videos,eq(videos.id,videoCourseMembers.videoId)).innerJoin(videoCourses,eq(videoCourses.id,videoCourseMembers.courseId))
-          .where(where).orderBy(asc(videoCourseMembers.order),asc(videoCourseMembers.addedAt),asc(videoCourseMembers.id)).limit(options.videoLimit).offset(options.videoOffset),
+          .where(and(where,videoFilter)).orderBy(asc(videoCourseMembers.order),asc(videoCourseMembers.addedAt),asc(videoCourseMembers.id)).limit(options.videoLimit).offset(options.videoOffset),
       ]);
       return courses[0]?{...courses[0],videos:rows.map(row=>({...row,status:videoStatusSchema.parse(row.status)}))}:null;
     },

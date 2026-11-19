@@ -40,6 +40,8 @@ export const THROTTLE_RATES = {
   // MCP は HTTP 200 内に tool error を返すため、transport の外ではなく
   // tool 実行直前に user 単位で消費する。書き込みは重く副作用もあるので厳しくする。
   mcp_read_user: { limit: 600, periodSec: 3600 },
+  // Weighted evidence allowance: reserve up to 16 units per visual call.
+  mcp_evidence_user: { limit: 240, periodSec: 3600 },
   mcp_write_user: { limit: 120, periodSec: 3600 },
 } as const;
 

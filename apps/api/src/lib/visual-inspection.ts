@@ -7,7 +7,7 @@ import { deadlineSignal } from "./request-timeout";
 import { frameCacheKey, MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, MAX_FRAME_CACHE_BYTES, sampleByTime } from "./video-evidence";
 import { readFocusFrames, type FrameSelection } from "./focus-frames";
 import { readVisualManifest, visualChunkKey, jpegBase64, type VisualVideo } from "./visual-manifest";
-import type { AnswerCostLedger } from "./answer-cost-ledger";
+import type { UsageRecorder } from "../tools/usage";
 
 const frameSchema = z.object({
   timestamp_seconds: z.number().finite().nonnegative(),
@@ -73,7 +73,7 @@ export async function inspectVideoClip(
   video: VisualVideo,
   start: number, end: number, query: string, signal: AbortSignal,
   options: { mode: VisualMode; maxFrames: number } = { mode: "inspect", maxFrames: MAX_CLIP_FRAMES },
-  costLedger?: AnswerCostLedger,
+  costLedger?: UsageRecorder,
 ) {
   const cache = options.mode === "focus"
     ? await readFocusFrames(env, video, start, end, signal, options.maxFrames)

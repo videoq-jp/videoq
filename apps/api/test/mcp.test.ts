@@ -280,12 +280,21 @@ describe("MCP JSON-RPC", () => {
     });
   });
 
+  it("validates and authorizes evidence tool calls through the authenticated HTTP transport", async () => {
+    const window = { video_id: 42, start_seconds: 0, end_seconds: 5, context_seconds: 0 };
+    const missingScope = await post(jsonrpc("tools/call", { name: "read_video_window", arguments: window }));
+    expect((await missingScope.json()).result.isError).toBe(true);
+    const denied = await post(jsonrpc("tools/call", { name: "read_video_window", arguments: { ...window, course_id: 3 } }));
+    expect((await denied.json()).result.structuredContent).toMatchObject({ result: { status: "unavailable" } });
+  });
+
   it("lists all tools", async () => {
     const res = await post(jsonrpc("tools/list"));
     const tools = (await res.json()).result.tools as Array<Record<string, unknown>>;
     const names = tools.map((tool) => tool.name);
     expect(names.sort()).toEqual(
       [
+        "search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info",
         "list_videos",
         "get_video",
         "request_video_upload",
@@ -332,7 +341,7 @@ describe("MCP JSON-RPC", () => {
         (tool) =>
           (tool.annotations as { readOnlyHint?: boolean }).readOnlyHint === true,
       ),
-    ).toHaveLength(7);
+    ).toHaveLength(14);
     expect(
       tools.filter(
         (tool) =>
