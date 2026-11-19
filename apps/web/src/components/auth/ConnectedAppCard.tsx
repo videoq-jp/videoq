@@ -40,7 +40,7 @@ export function ConnectedAppCard({ name, subtitle, headingLevel = 'h3', disabled
         </Button>
       </div>
       <details className="mt-3 text-solid-gray-600">
-        <summary className="w-fit cursor-pointer rounded-4 text-std-17N-170 underline underline-offset-4 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black">
+        <summary className="app-focus min-h-11 w-fit cursor-pointer rounded-4 py-2 text-std-17N-170 underline underline-offset-4">
           {t('settings.connectedApps.details')}
         </summary>
         <div className="mt-3 rounded-8 bg-solid-gray-50 p-4 text-dns-14N-130">{children}</div>

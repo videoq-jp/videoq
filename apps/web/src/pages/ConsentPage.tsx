@@ -55,7 +55,7 @@ export default function ConsentPage() {
         })}
       </p>
       {(canReadVideoq || canWriteVideoq) && (
-        <div className="mb-6 rounded-lg border border-solid-gray-300 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700">
+        <div className="mb-6 rounded-8 border border-solid-gray-300 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700">
           <p className="mb-2 font-bold">
             {t('auth.consent.permissions', { defaultValue: 'Requested permissions' })}
           </p>

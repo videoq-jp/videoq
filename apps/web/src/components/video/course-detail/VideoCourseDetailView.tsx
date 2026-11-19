@@ -516,8 +516,7 @@ export function VideoCourseDetailView({
                     </MenuListItem> : null}
                     <MenuListItem>
                       <MenuListItemButton type="box" size="regular" onClick={onStartEditing}
-                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}
-                        className="disabled:cursor-not-allowed disabled:opacity-50">
+                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}>
                         <Pencil className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>{t('videos.courseDetail.editTitle')}</span>
                       </MenuListItemButton>
@@ -525,7 +524,7 @@ export function VideoCourseDetailView({
                     <MenuListItem className="mt-1 border-t border-solid-gray-200 pt-1">
                       <MenuListItemButton type="box" size="regular" onClick={onDeleteCourse}
                         disabled={isMutationPending} title={t('videos.courseDetail.delete')}
-                        className="text-error-1 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        className="text-error-1 hover:bg-red-50">
                         {isDeleting ? <InlineSpinner className="h-4 w-4 shrink-0" /> : <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />}
                         <span>{t('videos.courseDetail.delete')}</span>
                       </MenuListItemButton>

@@ -32,7 +32,7 @@ export function SortableVideoItem({
   canManage,
 }: SortableVideoItemProps) {
   const { t } = useTranslation();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: video.id,
     disabled: isMobile || !canManage || isMutationPending,
   });
@@ -56,18 +56,19 @@ export function SortableVideoItem({
     >
       {!isMobile && canManage && (
         <button
+          ref={setActivatorNodeRef}
           type="button"
           aria-label={`${t('videos.courses.dragHandle')}: ${video.title}`}
-          disabled={isMutationPending}
           {...attributes}
           {...listeners}
+          aria-disabled={isMutationPending}
           onClick={(event) => event.stopPropagation()}
-          className="text-solid-gray-420 cursor-grab active:cursor-grabbing shrink-0 focus-visible:outline-4 focus-visible:outline-black"
+          className="app-focus inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center rounded-4 text-solid-gray-600 cursor-grab active:cursor-grabbing aria-disabled:cursor-wait aria-disabled:text-solid-gray-420"
         >
-          <GripVertical className="w-4 h-4" />
+          <GripVertical className="h-5 w-5" aria-hidden="true" />
         </button>
       )}
-      <button type="button" aria-pressed={isSelected} title={video.title} className="flex-1 min-w-0 text-left rounded-8 focus-visible:outline-4 focus-visible:outline-black">
+      <button type="button" aria-pressed={isSelected} title={video.title} className="flex-1 min-w-0 text-left rounded-8 app-focus">
         <span className={`block truncate text-std-17N-170 ${isSelected ? 'font-bold text-key-900' : 'text-solid-gray-800'}`}>
           {video.title}
         </span>

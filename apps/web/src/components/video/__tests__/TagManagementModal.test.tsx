@@ -158,7 +158,7 @@ describe('TagManagementModal', () => {
         expect(confirmButton).toBeDisabled()
         expect(confirmButton).toHaveAttribute('aria-busy', 'true')
         // aria-busy alone would still pass if the spinner itself were dropped.
-        expect(confirmButton.querySelector('.animate-spin')).toBeInTheDocument()
+        expect(confirmButton.querySelector('[data-slot=progress-indicator-spinner]')).toBeInTheDocument()
         // Cancelling mid-flight would swap the confirm UI back to the trash icon
         // and let the same tag be deleted twice.
         expect(screen.getByTestId('cancel-delete-1')).toBeDisabled()

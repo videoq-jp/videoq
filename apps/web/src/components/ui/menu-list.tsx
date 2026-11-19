@@ -67,6 +67,7 @@ const menuListItemVariants = cva(
   focus-visible:relative focus-visible:z-[1] focus-visible:bg-yellow-300
   data-[type=standard]:focus-visible:outline data-[type=standard]:focus-visible:outline-4 data-[type=standard]:focus-visible:outline-black data-[type=standard]:focus-visible:outline-offset-[calc(2/16*1rem)] data-[type=standard]:focus-visible:ring-[calc(2/16*1rem)] data-[type=standard]:focus-visible:ring-yellow-300
   data-[type=box]:focus-visible:outline data-[type=box]:focus-visible:outline-4 data-[type=box]:focus-visible:outline-black data-[type=box]:focus-visible:-outline-offset-4 data-[type=box]:focus-visible:ring-[calc(6/16*1rem)] data-[type=box]:focus-visible:ring-inset data-[type=box]:focus-visible:ring-yellow-300
+  disabled:cursor-not-allowed disabled:text-solid-gray-300 disabled:hover:bg-transparent disabled:hover:no-underline disabled:forced-colors:text-[GrayText]
   data-[current]:focus-visible:bg-key-100
   [&:has(+_*_[data-current]):focus-visible]:bg-key-50
 `

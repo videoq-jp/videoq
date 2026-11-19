@@ -258,7 +258,7 @@ describe('HomePage - getting started guide', () => {
     render(<HomePage />)
 
     const guide = await screen.findByRole('region', { name: 'home.gettingStarted.title' })
-    expect(within(guide).getByRole('status')).toHaveTextContent('home.gettingStarted.processing')
+    expect(within(guide).getByRole('progressbar', { name: 'home.gettingStarted.processing' })).toHaveTextContent('home.gettingStarted.processing')
     expect(within(guide).queryByRole('button', { name: 'home.gettingStarted.steps.upload.action' })).not.toBeInTheDocument()
   })
 

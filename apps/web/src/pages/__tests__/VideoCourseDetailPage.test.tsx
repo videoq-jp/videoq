@@ -443,6 +443,11 @@ describe('VideoCourseDetailPage', () => {
       screen.getByRole('button', { name: 'videos.courseDetail.delete' }),
     ]
     for (const control of controls) expect(control).toBeDisabled()
+    for (const title of ['Video 1', 'Video 2']) {
+      const handle = screen.getByRole('button', { name: `videos.courses.dragHandle: ${title}` })
+      expect(handle).toHaveAttribute('aria-disabled', 'true')
+      expect(handle).not.toBeDisabled()
+    }
 
     resolveRemove()
 
@@ -500,7 +505,6 @@ describe('VideoCourseDetailPage', () => {
     const handles = () => Array.from(container.querySelectorAll('[aria-roledescription="sortable"]'))
     await openCourseManagement()
     const editButtons = () => [
-      ...handles(),
       ...screen.getAllByRole('button', { name: 'videos.courseDetail.removeFromCourse' }),
       screen.getByRole('button', { name: 'videos.courseDetail.pickFromLibrary' }),
       screen.getByRole('button', { name: 'videos.courseDetail.editTitle' }),
@@ -509,7 +513,10 @@ describe('VideoCourseDetailPage', () => {
     act(() => { dragEvents.onDragEnd?.({ active: { id: 1 }, over: { id: 2 } } as DragEndEvent) })
     await waitFor(() => expect(courseTrpcMocks.reorderVideos).toHaveBeenCalledExactlyOnceWith({ courseId: 1, videoIds: [2, 1] }))
     for (const button of editButtons()) expect(button).toBeDisabled()
-    for (const handle of handles()) expect(handle).toHaveAttribute('aria-disabled', 'true')
+    for (const handle of handles()) {
+      expect(handle).toHaveAttribute('aria-disabled', 'true')
+      expect(handle).not.toBeDisabled()
+    }
     expect(handles().map((handle) => handle.getAttribute('aria-label'))).toEqual([
       'videos.courses.dragHandle: Video 2', 'videos.courses.dragHandle: Video 1',
     ])
@@ -520,6 +527,7 @@ describe('VideoCourseDetailPage', () => {
     expect(new URL(container.querySelector('video')!.src).pathname).toBe('/api/video2.mp4')
     act(() => { finishSave() })
     await waitFor(() => { for (const button of editButtons()) expect(button).toBeEnabled() })
+    for (const handle of handles()) expect(handle).toHaveAttribute('aria-disabled', 'false')
     expect(courseTrpcMocks.get).toHaveBeenCalledTimes(1)
   })
 
@@ -870,10 +878,13 @@ describe('VideoCourseDetailPage - Delete', () => {
       screen.getByRole('button', { name: 'videos.courseDetail.editTitle' }),
       screen.getByRole('button', { name: 'videos.courseDetail.delete' }),
       ...screen.getAllByRole('button', { name: 'videos.courseDetail.removeFromCourse' }),
-      screen.getByRole('button', { name: 'videos.courses.dragHandle: Video 1' }),
-      screen.getByRole('button', { name: 'videos.courses.dragHandle: Video 2' }),
     ]
     for (const control of controls) expect(control).toBeDisabled()
+    for (const title of ['Video 1', 'Video 2']) {
+      const handle = screen.getByRole('button', { name: `videos.courses.dragHandle: ${title}` })
+      expect(handle).toHaveAttribute('aria-disabled', 'true')
+      expect(handle).not.toBeDisabled()
+    }
     act(() => { dragEvents.onDragEnd?.({ active: { id: 1 }, over: { id: 2 } } as DragEndEvent) })
     expect(courseTrpcMocks.reorderVideos).not.toHaveBeenCalled()
     act(() => { finishDelete() })

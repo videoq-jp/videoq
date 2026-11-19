@@ -53,7 +53,12 @@ export const EditingFullHeight: Story = {
     const textbox = context.canvas.getByRole<HTMLTextAreaElement>('textbox');
     const panel = context.canvas.getByTestId('transcript-frame');
     await expect(textbox.clientHeight).toBeGreaterThan(250);
-    await expect(Math.abs(textbox.getBoundingClientRect().bottom - panel.getBoundingClientRect().bottom)).toBeLessThan(3);
+    // Reserve 8px so the 4px outline and yellow ring stay inside the panel.
+    const bottomGap = panel.getBoundingClientRect().bottom - textbox.getBoundingClientRect().bottom;
+    await expect(bottomGap).toBeGreaterThanOrEqual(8);
+    await expect(bottomGap).toBeLessThan(12);
+    textbox.focus();
+    await expect(getComputedStyle(textbox).outlineStyle).toBe('solid');
     textbox.scrollTop = textbox.scrollHeight;
     await expect(textbox.scrollTop).toBeGreaterThan(0);
     await expect(textbox.scrollTop + textbox.clientHeight).toBeGreaterThanOrEqual(textbox.scrollHeight - 1);

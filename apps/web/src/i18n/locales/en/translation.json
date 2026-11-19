@@ -72,7 +72,8 @@
       "nameLabel": "Tag Name",
       "colorLabel": "Tag Color",
       "preview": "Preview",
-      "previewPlaceholder": "Tag preview"
+      "previewPlaceholder": "Tag preview",
+      "failed": "Could not create the tag. Check your input and try again."
     }
   },
   "navigation": {

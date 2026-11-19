@@ -31,7 +31,7 @@ export function TagBadge({ tag, onRemove, size = 'md', className = '' }: TagBadg
             e.stopPropagation();
             onRemove(tag.id);
           }}
-          className="ml-1 transition-opacity hover:opacity-70"
+          className="app-focus ml-1 inline-flex min-h-6 min-w-6 items-center justify-center rounded-4 hover:bg-solid-gray-50"
           aria-label={t('tags.removeLabel', { name: tag.name })}
         >
           <X className="h-3 w-3" />

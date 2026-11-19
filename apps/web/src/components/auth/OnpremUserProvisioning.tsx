@@ -33,7 +33,7 @@ export function OnpremUserProvisioning() {
     await queryClient.invalidateQueries(trpc.admin.listUsers.pathFilter());
   } }));
   return <details className="mb-6 rounded-8 border border-solid-gray-420 p-4">
-    <summary className="cursor-pointer font-bold">{t('onprem.addUser')}</summary>
+    <summary className="app-focus min-h-11 cursor-pointer rounded-4 py-2 text-std-17B-170 text-solid-gray-800">{t('onprem.addUser')}</summary>
     <form className="mt-4 max-w-xl space-y-4" onSubmit={event => {
       event.preventDefault(); create.mutate({ email: email.trim(), username: username.trim() });
     }}>

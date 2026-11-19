@@ -16,7 +16,7 @@ it('directs new connections to Moodle without a VideoQ setup form or code reques
   fetchMock.mockResolvedValue(response({ connections: [] }));
   render(<MoodleConnectionSection />);
   expect(await screen.findByText('settings.moodle.empty')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'settings.moodle.setupGuide' })).toHaveAttribute('href', 'https://github.com/videoq-jp/videoq-moodle#installation');
+  expect(screen.getByRole('link', { name: /^settings.moodle.setupGuide/ })).toHaveAttribute('href', 'https://github.com/videoq-jp/videoq-moodle#installation');
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);

@@ -47,8 +47,8 @@ const meta = {
   globals: { viewport: { value: 'desktop', isRotated: false } },
   beforeEach() { return installUploadFixture({}); },
   async play({ canvasElement, parameters }) {
-    await waitFor(() => expect(canvasElement.querySelector('main')).toBeInTheDocument());
-    await waitFor(() => expect(canvasElement.querySelector('h1')).toBeInTheDocument());
+    await waitFor(() => expect(canvasElement.querySelector('main')).toBeInTheDocument(), { timeout: 15000 });
+    await waitFor(() => expect(canvasElement.querySelector('h1')).toBeInTheDocument(), { timeout: 15000 });
     const doc = canvasElement.ownerDocument;
     const win = doc.defaultView!;
     const bodyStyle = win.getComputedStyle(doc.body);

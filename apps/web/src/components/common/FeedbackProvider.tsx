@@ -182,17 +182,17 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               key={toastItem.id}
               role={toastItem.variant === 'error' ? 'alert' : 'status'}
               className={cn(
-                'flex items-start gap-3 border bg-white px-4 py-3 text-std-17N-170 font-medium',
+                'flex items-start gap-3 border bg-white px-4 py-3 text-std-17N-170',
                 toastItem.variant === 'error' && 'border-error-1 text-error-1',
                 toastItem.variant === 'success' && 'border-success-2 text-success-2',
                 toastItem.variant === 'info' && 'border-solid-gray-420 text-solid-gray-800',
               )}
             >
-              <span className="flex-1 leading-5">{toastItem.message}</span>
+              <span className="flex-1">{toastItem.message}</span>
               <button
                 type="button"
                 aria-label={t('common.actions.dismissNotification')}
-                className="rounded-full p-1 text-current opacity-70 transition-opacity hover:opacity-100"
+                className="app-focus inline-flex min-h-11 min-w-11 items-center justify-center rounded-4 text-current hover:bg-solid-gray-50"
                 onClick={() => dismissToast(toastItem.id)}
               >
                 <X className="h-4 w-4" />

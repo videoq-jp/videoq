@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { moodleManagementContext, parseMoodleManagementSearch } from '@videoq/trpc/moodle-management';
 import { AuthPageIntro } from '@/components/layout/AuthPageIntro';
+import { MessageAlert } from '@/components/common/MessageAlert';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { Button } from '@/components/ui/button';
 import { Link as DaLink } from '@/components/ui/link';
 import { API_URL } from '@/lib/apiConfig';
@@ -63,9 +65,9 @@ export default function MoodleManagementPage() {
   if (data?.permissions.systemAdmin) links.push({ href: '/admin', label: 'admin' });
   return <>
     <AuthPageIntro badge="Moodle" title={t('auth.moodleManagement.title')} />
-    {!request ? <p role="alert">{t('auth.moodleManagement.invalid')}</p>
-      : session.isPending ? <p role="status">{t('auth.moodleManagement.loading')}</p>
-      : sessionUnavailable ? <p role="alert">{t('auth.moodleManagement.error')}</p>
+    {!request ? <MessageAlert type="error" message={t('auth.moodleManagement.invalid')} />
+      : session.isPending ? <InlineLoading message={t('auth.moodleManagement.loading')} />
+      : sessionUnavailable ? <MessageAlert type="error" message={t('auth.moodleManagement.error')} />
       : !userId || authenticationError || (session.error && [401, 403].includes(session.error.status)) ? <>
         <p className="mb-4">{t('auth.moodleManagement.loginHelp')}</p>
         <Button onClick={signIn}>{t('auth.moodleConnect.login')}</Button>
@@ -73,20 +75,20 @@ export default function MoodleManagementPage() {
         <p className="mb-3 break-all">{request.issuer}</p>
         <p className="mb-4 break-all">{t('auth.moodleManagement.signedIn', { account: session.data?.user.email })}</p>
         <p className="mb-6">{t('auth.moodleManagement.authority')}</p>
-        {context.isPending || context.isFetching ? <p role="status">{t('auth.moodleManagement.loading')}</p>
-          : context.isError ? <div role="alert">
-            <p className="mb-3">{t('auth.moodleManagement.error')}</p>
+        {context.isPending || context.isFetching ? <InlineLoading message={t('auth.moodleManagement.loading')} />
+          : context.isError ? <div className="space-y-3">
+            <MessageAlert type="error" message={t('auth.moodleManagement.error')} />
             <Button variant="outline" onClick={() => void context.refetch()}>{t('auth.moodleManagement.retry')}</Button>
           </div> : data && <>
-            {!data.connection.owned ? <p role="alert" className="mb-4">{t('auth.moodleManagement.notOwner')}</p>
-              : !data.connection.active ? <p role="status" className="mb-4">{t('auth.moodleManagement.inactive')}</p> : null}
+            {!data.connection.owned ? <MessageAlert className="mb-4" type="warning" message={t('auth.moodleManagement.notOwner')} />
+              : !data.connection.active ? <MessageAlert className="mb-4" type="warning" role="status" message={t('auth.moodleManagement.inactive')} /> : null}
             {links.length > 0 && <nav aria-label={t('auth.moodleManagement.navigation')}>
               <ul className="mb-6 space-y-3">
                 {links.map(link => <li key={link.label}><DaLink asChild><Link href={link.href}>{t('auth.moodleManagement.' + link.label)}</Link></DaLink></li>)}
               </ul>
             </nav>}
           </>}
-        {switchFailed && <p role="alert" className="mb-3">{t('auth.moodleManagement.error')}</p>}
+        {switchFailed && <MessageAlert className="mb-3" type="error" message={t('auth.moodleManagement.error')} />}
         <Button variant="outline" disabled={switching} onClick={() => void switchAccount()}>{t('auth.moodleManagement.switchAccount')}</Button>
       </>}
   </>;

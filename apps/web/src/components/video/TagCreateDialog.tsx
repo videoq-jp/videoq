@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChipLabel } from '@/components/ui/chip-label';
+import { MessageAlert } from '@/components/common/MessageAlert';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import {
   Dialog,
@@ -32,11 +33,13 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
   const [name, setName] = useState('');
   const [color, setColor] = useState<TagChipColor>(DEFAULT_TAG_CHIP_COLOR);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState(false);
 
   const handleClose = () => {
     if (!isCreating) {
       // Restore native dialog focus before the parent can unmount it.
       dialog.dialogProps.ref.current?.close();
+      setCreateError(false);
       setName('');
       setColor(DEFAULT_TAG_CHIP_COLOR);
       onClose();
@@ -56,15 +59,17 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
   const handleCreate = async () => {
     if (!name.trim()) return;
 
+    setCreateError(false);
     setIsCreating(true);
     try {
       await onCreate(name.trim(), color);
+      setCreateError(false);
       setName('');
       setColor(DEFAULT_TAG_CHIP_COLOR);
       dialog.dialogProps.ref.current?.close();
       onClose();
-    } catch (error) {
-      console.error('Failed to create tag:', error);
+    } catch {
+      setCreateError(true);
     } finally {
       setIsCreating(false);
     }
@@ -85,6 +90,8 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
           <p className="mb-4 text-std-17N-170 text-solid-gray-700">
             {t('tags.create.description')}
           </p>
+
+          {createError && <MessageAlert type="error" className="mb-4" message={t('tags.create.failed')} />}
 
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
@@ -110,10 +117,10 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
                     onClick={() => setColor(paletteColor)}
                     disabled={isCreating}
                     className={cn(
-                      'rounded-8 transition-opacity disabled:cursor-not-allowed disabled:opacity-50',
+                      'app-focus inline-flex min-h-11 items-center rounded-8 disabled:cursor-not-allowed',
                       color === paletteColor
-                        ? 'opacity-100 ring-2 ring-key-900 ring-offset-2'
-                        : 'opacity-70 hover:opacity-100',
+                        ? (isCreating ? 'ring-2 ring-solid-gray-300 ring-offset-2' : 'ring-2 ring-key-900 ring-offset-2')
+                        : (isCreating ? '' : 'hover:bg-solid-gray-50'),
                     )}
                     aria-label={t('tags.create.selectColor', {
                       color: paletteColor,
@@ -124,7 +131,7 @@ export function TagCreateDialog({ isOpen, onClose, onCreate }: TagCreateDialogPr
                     <ChipLabel
                       variant="filled-1"
                       color={paletteColor}
-                      className="min-h-0 px-2.5 py-1 text-oln-14N-100"
+                      className={cn('min-h-0 px-2.5 py-1 text-oln-14N-100', isCreating && 'border-solid-gray-300 bg-solid-gray-50 text-solid-gray-420 forced-colors:border-[GrayText] forced-colors:text-[GrayText]')}
                     >
                       {paletteColor}
                     </ChipLabel>

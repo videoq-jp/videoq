@@ -72,7 +72,8 @@
       "nameLabel": "タグ名",
       "colorLabel": "タグの色",
       "preview": "プレビュー",
-      "previewPlaceholder": "タグプレビュー"
+      "previewPlaceholder": "タグプレビュー",
+      "failed": "タグを作成できませんでした。入力内容を確認して、もう一度お試しください。"
     }
   },
   "navigation": {

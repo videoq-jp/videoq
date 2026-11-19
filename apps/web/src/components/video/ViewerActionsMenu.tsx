@@ -53,7 +53,7 @@ export function ViewerActionsMenu({ label, children }: { label: string; children
         <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
       </Button>
       <div ref={panel} id={id} hidden={!open}
-        className="absolute right-0 top-full z-40 mt-2 w-64 border border-solid-gray-300 bg-white py-1 text-solid-gray-800 shadow-lg"
+        className="absolute right-0 top-full z-40 mt-2 w-64 border border-solid-gray-300 bg-white py-1 text-solid-gray-800 shadow-1"
         onClickCapture={event => {
           // Restore the trigger before opening a dialog, so closing that dialog
           // returns focus to a visible control rather than a hidden menu item.

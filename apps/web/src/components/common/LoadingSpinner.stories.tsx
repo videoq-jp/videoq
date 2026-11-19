@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import i18n from '@/i18n/config';
 import { LoadingSpinner } from './LoadingSpinner';
+import { DetailLoading } from './DetailLoading';
 import { AppPageShell } from '@/components/layout/AppPageShell';
 import { authFixtures } from '../../../.storybook/fixtures/auth';
 
@@ -31,6 +32,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Loading: Story = {};
 export const DefaultLoadingMessage: Story = { args: { message: undefined } };
+export const VideoDetailLoading: Story = {
+  args: { message: undefined, fullScreen: true },
+  parameters: { layout: 'fullscreen' },
+  render: () => <DetailLoading backHref="/videos" />,
+  async play({ canvas }) {
+    await expect(canvas.getByRole('progressbar')).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: i18n.t('common.actions.backToList') })).not.toBeInTheDocument();
+  },
+};
 export const EnglishMobile: Story = {
   args: { message: 'Loading your videos. This may take a moment…' },
   globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } },

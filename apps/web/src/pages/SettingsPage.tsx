@@ -612,16 +612,17 @@ export default function SettingsPage() {
                               ? 'border-key-900 bg-key-900 text-white'
                               : 'border-solid-gray-300 bg-white text-solid-gray-800 hover:border-solid-gray-420 hover:bg-solid-gray-50'
                           }`}
+                          aria-pressed={isSelected}
                           onClick={() => setApiKeyAccessLevel(option.value)}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="space-y-1">
                               <div className="text-std-17B-170">{option.title}</div>
-                              <div className={`text-std-17N-170 ${isSelected ? 'text-white/80' : 'text-solid-gray-600'}`}>
+                              <div className={`text-std-17N-170 ${isSelected ? 'text-white' : 'text-solid-gray-600'}`}>
                                 {option.description}
                               </div>
                             </div>
-                            <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold ${
+                            <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-oln-14B-100 ${
                               isSelected
                                 ? 'border-white bg-white text-key-900'
                                 : 'border-solid-gray-420 text-transparent'
