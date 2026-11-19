@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { callMcpTool } from "../src/lib/mcp-tools";
+import { callManagementTool } from "../src/tools/management";
 import { getVideoMetadata, listVideosPage } from "../src/repositories/video-repository";
 import { getCourseDetail, listCoursesPage } from "../src/repositories/course-repository";
 import { listTagsPage } from "../src/repositories/tag-repository";
@@ -39,7 +39,7 @@ describe("MCP numeric input boundaries", () => {
       ["request_video_upload", { ...upload, file_size: value }],
       ["list_videos", { limit: value }],
     ] as const) {
-      await expect(callMcpTool(name, args, context)).rejects.toMatchObject({
+      await expect(callManagementTool(name, args, context)).rejects.toMatchObject({
         data: { status: 400, code: "VALIDATION_ERROR" },
       });
     }
@@ -49,7 +49,7 @@ describe("MCP numeric input boundaries", () => {
   });
 
   it.each([true, false, null, [], ""])("rejects ambiguous pagination offset %j", async (offset) => {
-    await expect(callMcpTool("list_videos", { offset }, context)).rejects.toMatchObject({
+    await expect(callManagementTool("list_videos", { offset }, context)).rejects.toMatchObject({
       data: { status: 400, code: "VALIDATION_ERROR" },
     });
     expect(listVideosPage).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("MCP numeric input boundaries", () => {
 
   it.each([1, "42", "00042", Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)])(
     "preserves valid integer ID %j", async (videoId) => {
-      await expect(callMcpTool("get_video", { video_id: videoId }, context)).rejects.toMatchObject({
+      await expect(callManagementTool("get_video", { video_id: videoId }, context)).rejects.toMatchObject({
         data: { status: 404, code: "NOT_FOUND" },
       });
       expect(getVideoMetadata).toHaveBeenCalledWith(context.env, Number(videoId), context.userId);
@@ -66,7 +66,7 @@ describe("MCP numeric input boundaries", () => {
 
   it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "9007199254740993"])(
     "rejects out-of-range ID %j", async (videoId) => {
-      await expect(callMcpTool("get_video", { video_id: videoId }, context)).rejects.toMatchObject({
+      await expect(callManagementTool("get_video", { video_id: videoId }, context)).rejects.toMatchObject({
         data: { status: 400, code: "VALIDATION_ERROR" },
       });
       expect(getVideoMetadata).not.toHaveBeenCalled();
@@ -77,17 +77,17 @@ describe("MCP numeric input boundaries", () => {
     ["list_videos", {}, 20], ["list_courses", {}, 20], ["list_tags", {}, 20],
     ["get_chat_history", { course_id: 7 }, 10],
   ] as const)("uses schema pagination defaults for %s", async (name, args, limit) => {
-    expect(await callMcpTool(name, args, context)).toMatchObject({ meta: { limit, offset: 0 } });
+    expect(await callManagementTool(name, args, context)).toMatchObject({ meta: { limit, offset: 0 } });
   });
 
   it("passes numeric pagination strings as numbers without changing their values", async () => {
-    await callMcpTool("list_videos", { limit: "7", offset: "12" }, context);
+    await callManagementTool("list_videos", { limit: "7", offset: "12" }, context);
     expect(listVideosPage).toHaveBeenCalledWith(context.env, context.userId, expect.any(Object), 7, 12, { includeFileUrls: false });
   });
 
   it("preserves the defaults for course video pagination", async () => {
     vi.mocked(getCourseDetail).mockResolvedValue(null);
-    await expect(callMcpTool("get_course", { course_id: "7" }, context)).rejects.toMatchObject({
+    await expect(callManagementTool("get_course", { course_id: "7" }, context)).rejects.toMatchObject({
       data: { status: 404, code: "NOT_FOUND" },
     });
     expect(getCourseDetail).toHaveBeenCalledWith(context.env, 7, context.userId, {
@@ -96,8 +96,8 @@ describe("MCP numeric input boundaries", () => {
   });
 
   it.each(["toString", "__proto__", "no_such_tool"])("rejects unknown tool %s", async (name) => {
-    await expect(callMcpTool(name, {}, context)).rejects.toMatchObject({
-      name: "McpToolError", message: `Unknown tool: ${name}`,
+    await expect(callManagementTool(name, {}, context)).rejects.toMatchObject({
+      name: "ToolError", message: `Unknown tool: ${name}`,
     });
   });
 });

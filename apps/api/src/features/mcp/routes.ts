@@ -15,7 +15,7 @@ import {
   requireScope,
 } from "../../middleware/auth";
 import { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "../../lib/mcp-auth";
-import { MCP_WRITE_TOOLS, type McpToolName } from "../../lib/mcp-tools";
+import { MANAGEMENT_WRITE_TOOLS, type ManagementToolName } from "../../tools/management";
 import { toErrorBody } from "../../shared/errors";
 import type { AppEnv } from "../../types/bindings";
 import { createVideoqMcpServer } from "./server";
@@ -52,7 +52,7 @@ async function requestedMcpScopes(c: Context<AppEnv>): Promise<string[]> {
     const writes = messages.some((message) => {
       if (!isJSONRPCRequest(message)) return false;
       const request = CallToolRequestSchema.safeParse(message);
-      return request.success && MCP_WRITE_TOOLS.has(request.data.params.name as McpToolName);
+      return request.success && MANAGEMENT_WRITE_TOOLS.has(request.data.params.name as ManagementToolName);
     });
     if (writes) return [MCP_READ_SCOPE, MCP_WRITE_SCOPE];
   }

@@ -98,7 +98,7 @@ time limits still apply; the storage limit is not a processing-duration guarante
 
 ## MCP tool inputs
 
-`apps/api/src/lib/mcp-tools.ts` defines the strict input schemas shared by MCP
+`apps/api/src/tools/management.ts` defines the strict input schemas shared by MCP
 registration and tool execution. IDs, byte sizes, and pagination values accept
 integers or decimal digit strings such as `42` and `"42"`, within each field's
 limits. Booleans, arrays, hexadecimal/exponent strings, and undeclared fields

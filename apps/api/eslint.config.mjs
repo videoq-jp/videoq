@@ -16,7 +16,7 @@ export default [
       'no-restricted-imports': ['error', {
         patterns: [{
           group: ['langchain', 'langchain/**', '@langchain/*', '@langchain/**', '**/rag', '**/rag-*', '**/conversation', '**/conversation-*'],
-          message: 'Evidence tools must remain independent of agent frameworks and answer state. Adapt them on the consumer side.',
+          message: 'Tool definitions must remain independent of agent frameworks and answer state. Adapt them on the consumer side.',
         }],
       }],
     },

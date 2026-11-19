@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as courseService from "../src/features/courses/service";
 import * as membershipService from "../src/features/membership/service";
 import * as videoService from "../src/features/videos/service";
-import { callMcpTool, McpToolError } from "../src/lib/mcp-tools";
+import { callManagementTool, ToolError } from "../src/tools/management";
 
 vi.mock("../src/features/courses/service", () => ({
   createUserCourse: vi.fn(),
@@ -33,7 +33,7 @@ describe("MCP write tools", () => {
       already_confirmed: false,
     } as never);
 
-    const result = await callMcpTool(
+    const result = await callManagementTool(
       "request_video_upload",
       {
         idempotency_key: "upload-lecture-1",
@@ -89,7 +89,7 @@ describe("MCP write tools", () => {
     } as never);
 
     await expect(
-      callMcpTool(
+      callManagementTool(
         "request_video_upload",
         {
           idempotency_key: "upload-lecture-1",
@@ -121,7 +121,7 @@ describe("MCP write tools", () => {
     });
 
     await expect(
-      callMcpTool(
+      callManagementTool(
         "create_course",
         {
           idempotency_key: "course-physics-1",
@@ -136,7 +136,7 @@ describe("MCP write tools", () => {
     });
 
     await expect(
-      callMcpTool(
+      callManagementTool(
         "add_video_to_course",
         { course_id: 7, video_id: 42 },
         writableContext,
@@ -147,13 +147,13 @@ describe("MCP write tools", () => {
   });
 
   it("blocks writes before calling a service when permission is read-only", async () => {
-    const call = callMcpTool(
+    const call = callManagementTool(
       "create_course",
       { idempotency_key: "course-physics-1", name: "Physics" },
       { ...writableContext, canWrite: false },
     );
     await expect(call).rejects.toEqual(
-      expect.objectContaining<McpToolError>({
+      expect.objectContaining<ToolError>({
         message: "Write permission is required for this tool.",
       }),
     );
@@ -167,7 +167,7 @@ describe("MCP write tools", () => {
     } as never);
 
     await expect(
-      callMcpTool(
+      callManagementTool(
         "confirm_video_upload",
         { video_id: 42 },
         writableContext,
@@ -184,7 +184,7 @@ describe("MCP write tools", () => {
     } as never);
 
     await expect(
-      callMcpTool(
+      callManagementTool(
         "create_youtube_video",
         {
           idempotency_key: "youtube-lecture-1",
@@ -194,7 +194,7 @@ describe("MCP write tools", () => {
         writableContext,
       ),
     ).rejects.toEqual(
-      expect.objectContaining<McpToolError>({
+      expect.objectContaining<ToolError>({
         message:
           "The idempotency key was already used with different YouTube arguments.",
       }),

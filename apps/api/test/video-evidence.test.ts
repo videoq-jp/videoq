@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { transcriptWindow, transcriptTimeline, formatEvidenceTime, sampleByTime } from "../src/lib/video-evidence";
-import { videoEvidenceTools } from "../src/lib/rag-video-evidence";
+import { createVideoEvidenceTools } from "../src/tools/video-evidence";
+import { connectTestTools } from "./helpers/mcp-tools";
 import { getVideoEvidence } from "../src/repositories/video-evidence-repository";
 import { inspectVideoClip } from "../src/lib/visual-inspection";
 import type { SceneHit } from "../src/repositories/vector-repository";
@@ -9,6 +10,8 @@ import type { Bindings } from "../src/types/bindings";
 vi.mock("../src/repositories/video-evidence-repository", () => ({ getVideoEvidence: vi.fn() }));
 vi.mock("../src/lib/visual-inspection", () => ({ inspectVideoClip: vi.fn() }));
 const env = { VIDEO_VISUAL_ENABLED: "true" } as Bindings;
+const videoEvidenceTools = (bindings: Bindings, evidenceScope: typeof scope, addSource: (hit: SceneHit) => number, signal: AbortSignal, question?: string) =>
+  connectTestTools(createVideoEvidenceTools(bindings, evidenceScope, question), signal, { addSource, collectContext: () => {} });
 const scope = { ownerUserId: "owner", videoIds: [42] };
 const transcript = [
   "1\n00:00:00,000 --> 00:00:05,000\nBefore",
@@ -50,18 +53,18 @@ describe("subtitle windows", () => {
 describe("authorized evidence tools", () => {
   it("preserves the original question and returns actual numeric observation times", async () => {
     const question = "How many circles are in each row?";
-    const tools = videoEvidenceTools(env, scope, () => 1, new AbortController().signal, question);
+    const tools = (await videoEvidenceTools(env, scope, () => 1, new AbortController().signal, question));
     const result = JSON.parse(String(await tools.find(t => t.name === "inspect_clip")!.invoke(clipArgs)));
     expect(inspectVideoClip).toHaveBeenCalledWith(env, { id: 42, fileKey: video.fileKey }, 100, 110,
       `Original user question: ${question}\nSpecific inspection task: ${clipArgs.query}`, expect.any(AbortSignal), { mode: "inspect", maxFrames: 8 });
     expect(result.observations[0]).toMatchObject({ timestamp_seconds: 104.125, startTime: "00:01:44,125" });
   });
-  it("exposes visuals only when configured", () => {
-    const tools = videoEvidenceTools({ ...env, VIDEO_VISUAL_ENABLED: "false" }, scope, () => 1, new AbortController().signal);
+  it("exposes visuals only when configured", async () => {
+    const tools = (await videoEvidenceTools({ ...env, VIDEO_VISUAL_ENABLED: "false" }, scope, () => 1, new AbortController().signal));
     expect(tools.map(t => t.name)).toEqual(["read_video_window", "overview_video", "skim_video"]);
   });
   it.each(["read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip"])("%s refuses other videos before DB/storage/model access", async name => {
-    const tools = videoEvidenceTools(env, scope, () => 1, new AbortController().signal);
+    const tools = (await videoEvidenceTools(env, scope, () => 1, new AbortController().signal));
     const args = name === "overview_video" ? { video_id: 42, query: "graph", include_visuals: true }
       : name === "skim_video" ? { ...clipArgs, include_visuals: true }
       : name === "inspect_clip" || name === "focus_clip" ? clipArgs : windowArgs;
@@ -72,7 +75,7 @@ describe("authorized evidence tools", () => {
   });
   it("reads surrounding subtitles and registers sources without leaking media keys", async () => {
     const sources: SceneHit[] = [];
-    const [read] = videoEvidenceTools(env, scope, hit => sources.push(hit), new AbortController().signal);
+    const [read] = (await videoEvidenceTools(env, scope, hit => sources.push(hit), new AbortController().signal));
     const result = String(await read.invoke(windowArgs));
     expect(JSON.parse(result).scenes.map((s: { sourceId: number }) => s.sourceId)).toEqual([1, 2]);
     expect(result).not.toContain(video.fileKey);
@@ -80,7 +83,7 @@ describe("authorized evidence tools", () => {
     expect(getVideoEvidence).toHaveBeenCalledWith(env, scope, 42);
   });
   it("rejects reversed/oversized intervals and bounds repeated calls", async () => {
-    const [read] = videoEvidenceTools(env, scope, () => 1, new AbortController().signal);
+    const [read] = (await videoEvidenceTools(env, scope, () => 1, new AbortController().signal));
     expect(await read.invoke({ ...windowArgs, end_seconds: 99 })).toContain("positive interval");
     expect(await read.invoke({ ...windowArgs, end_seconds: 281 })).toContain("180 seconds");
     for (let i = 0; i < 3; i++) await read.invoke(windowArgs);
@@ -88,7 +91,7 @@ describe("authorized evidence tools", () => {
     expect(getVideoEvidence).toHaveBeenCalledTimes(3);
   });
   it("does not call vision for YouTube imports or missing videos", async () => {
-    const [, inspect] = videoEvidenceTools(env, scope, () => 1, new AbortController().signal);
+    const [, inspect] = (await videoEvidenceTools(env, scope, () => 1, new AbortController().signal));
     vi.mocked(getVideoEvidence).mockResolvedValueOnce({ ...video, sourceType: "youtube" });
     expect(await inspect.invoke(clipArgs)).toContain("YouTube");
     vi.mocked(getVideoEvidence).mockResolvedValueOnce(null);
@@ -97,7 +100,7 @@ describe("authorized evidence tools", () => {
   });
   it("uses actual frame timestamps and enforces the two-call budget", async () => {
     const sources: SceneHit[] = [];
-    const [, inspect] = videoEvidenceTools(env, scope, hit => sources.push(hit), new AbortController().signal);
+    const [, inspect] = (await videoEvidenceTools(env, scope, hit => sources.push(hit), new AbortController().signal));
     const result = String(await inspect.invoke(clipArgs));
     expect(JSON.parse(result).observations[0]).toMatchObject({ sourceId: 1, evidenceType: "visual", startTime: "00:01:44,125" });
     expect(sources[0].endTime).toBe("00:01:44,125");
@@ -109,7 +112,7 @@ describe("authorized evidence tools", () => {
   });
   it("stops before accessing private data after cancellation", async () => {
     const controller = new AbortController();
-    const [read] = videoEvidenceTools(env, scope, () => 1, controller.signal);
+    const [read] = (await videoEvidenceTools(env, scope, () => 1, controller.signal));
     controller.abort();
     await expect(read.invoke(windowArgs)).rejects.toThrow();
     expect(getVideoEvidence).not.toHaveBeenCalled();
@@ -117,10 +120,10 @@ describe("authorized evidence tools", () => {
 });
 
 describe("adaptive video navigation", () => {
-  const makeTools = (bindings = env) => videoEvidenceTools(bindings, scope, () => 1, new AbortController().signal);
+  const makeTools = async (bindings = env) => (await videoEvidenceTools(bindings, scope, () => 1, new AbortController().signal));
   const overviewArgs = { video_id: 42, query: "Find the diagram", include_visuals: true };
   const skimArgs = { ...clipArgs, include_visuals: true };
-  const get = (tools: ReturnType<typeof makeTools>, name: string) => tools.find(t => t.name === name)!;
+  const get = (tools: Awaited<ReturnType<typeof makeTools>>, name: string) => tools.find(t => t.name === name)!;
 
   it("leaves and reports enough budget after an overview to compare two dense candidates", async () => {
     vi.mocked(inspectVideoClip).mockImplementation(async (_env, _video, start, _end, _query, _signal, options) => ({
@@ -128,7 +131,7 @@ describe("adaptive video navigation", () => {
       sampled_timestamps: Array.from({ length: options!.maxFrames }, (_, i) => start + i),
       sampling_interval_seconds: 1, duration_seconds: 300,
     }));
-    const tools = makeTools();
+    const tools = (await makeTools());
     const overview = JSON.parse(String(await get(tools, "overview_video").invoke(overviewArgs)));
     expect(overview.visuals.status).toBe("observed");
     expect(overview.budget).toMatchObject({ remaining_images: 32, remaining_visual_calls: 3, remaining_focus_calls: 2 });
@@ -141,7 +144,7 @@ describe("adaptive video navigation", () => {
   });
 
   it("distinguishes missing caches, empty observations and skipped visuals, refunding unused images", async () => {
-    const tools = makeTools();
+    const tools = (await makeTools());
     vi.mocked(inspectVideoClip).mockResolvedValueOnce({ unavailable: "Dense cache missing" });
     const missing = JSON.parse(String(await get(tools, "focus_clip").invoke(clipArgs)));
     expect(missing).toMatchObject({ status: "unavailable", budget: { remaining_images: 48, remaining_visual_calls: 3, remaining_focus_calls: 1 } });
@@ -156,7 +159,7 @@ describe("adaptive video navigation", () => {
 
   it("exposes coarse transcript timing without inventing more precise cue boundaries", async () => {
     vi.mocked(getVideoEvidence).mockResolvedValue({ ...video, transcript: "1\n00:00:00,000 --> 00:04:56,000\nLong legacy scene" });
-    const tools = makeTools();
+    const tools = (await makeTools());
     const result = JSON.parse(String(await get(tools, "read_video_window").invoke(windowArgs)));
     expect(result.scenes[0]).toMatchObject({ startTime: "00:00:00,000", endTime: "00:04:56,000", transcript_quality: { flags: ["coarse_timing"] } });
   });
@@ -179,7 +182,7 @@ describe("adaptive video navigation", () => {
     expect(sparse.at(-1)).toBe(1000);
   });
   it("offers subtitle navigation with visuals disabled, without storage or model calls", async () => {
-    const tools = makeTools({ ...env, VIDEO_VISUAL_ENABLED: "false" });
+    const tools = (await makeTools({ ...env, VIDEO_VISUAL_ENABLED: "false" }));
     const result = JSON.parse(String(await get(tools, "overview_video").invoke(overviewArgs)));
     expect(result.subtitles.scenes).toHaveLength(4);
     expect(result.visuals.unavailable).toContain("disabled");
@@ -188,7 +191,7 @@ describe("adaptive video navigation", () => {
   });
   it("can scan without subtitle clues and lets the agent choose whether to view images", async () => {
     vi.mocked(getVideoEvidence).mockResolvedValue({ ...video, transcript: "" });
-    const tools = makeTools();
+    const tools = (await makeTools());
     const overview = JSON.parse(String(await get(tools, "overview_video").invoke(overviewArgs)));
     expect(overview.subtitles.scenes).toEqual([]);
     expect(overview.visuals.observations[0].evidenceType).toBe("visual");
@@ -197,7 +200,7 @@ describe("adaptive video navigation", () => {
     expect(inspectVideoClip).toHaveBeenCalledTimes(1);
   });
   it("keeps subtitle evidence when images are missing, unsupported or the transcript is oversized", async () => {
-    const tools = makeTools();
+    const tools = (await makeTools());
     vi.mocked(inspectVideoClip).mockResolvedValueOnce({ unavailable: "No cache" });
     const missing = JSON.parse(String(await get(tools, "overview_video").invoke(overviewArgs)));
     expect(missing.subtitles.scenes).toHaveLength(4);
@@ -212,7 +215,7 @@ describe("adaptive video navigation", () => {
     expect(large.visuals.observations).toHaveLength(1);
   });
   it("bounds coarse intervals and repeated overview/skim requests", async () => {
-    const tools = makeTools();
+    const tools = (await makeTools());
     const overview = get(tools, "overview_video");
     const skim = get(tools, "skim_video");
     expect(await skim.invoke({ ...skimArgs, start_seconds: 0, end_seconds: 901 })).toContain("900 seconds");
@@ -227,7 +230,7 @@ describe("adaptive video navigation", () => {
     expect(getVideoEvidence).toHaveBeenCalledTimes(4);
   });
   it("shares a four-call budget across overview, skim, detail and dense focus", async () => {
-    const tools = makeTools();
+    const tools = (await makeTools());
     await get(tools, "overview_video").invoke(overviewArgs);
     await get(tools, "skim_video").invoke(skimArgs);
     await get(tools, "inspect_clip").invoke(clipArgs);
@@ -249,7 +252,7 @@ describe("adaptive video navigation", () => {
       running--;
       return { observations: [], sampled_timestamps: Array.from({ length: options!.maxFrames }, (_, i) => i * 5), sampling_interval_seconds: 5, duration_seconds: 210 };
     });
-    const tools = makeTools();
+    const tools = (await makeTools());
     const a = get(tools, "overview_video").invoke(overviewArgs);
     await started.promise;
     const b = get(tools, "overview_video").invoke({ ...overviewArgs, query: "Other" });
@@ -261,13 +264,13 @@ describe("adaptive video navigation", () => {
     expect(inspectVideoClip).toHaveBeenCalledTimes(3);
     expect(peak).toBe(1);
   });
-  it("enables image tools by default and allows explicit opt-out", () => {
-    expect(get(makeTools({} as Bindings), "focus_clip").name).toBe("focus_clip");
-    expect(get(makeTools({} as Bindings), "inspect_clip").name).toBe("inspect_clip");
-    expect(makeTools({ ...env, VIDEO_VISUAL_ENABLED: "false" }).map(t => t.name)).not.toContain("focus_clip");
+  it("enables image tools by default and allows explicit opt-out", async () => {
+    expect(get((await makeTools({} as Bindings)), "focus_clip").name).toBe("focus_clip");
+    expect(get((await makeTools({} as Bindings)), "inspect_clip").name).toBe("inspect_clip");
+    expect((await makeTools({ ...env, VIDEO_VISUAL_ENABLED: "false" })).map(t => t.name)).not.toContain("focus_clip");
   });
   it("bounds focus to short clips, preserves timestamps, and refuses YouTube images", async () => {
-    const tools = makeTools();
+    const tools = (await makeTools());
     const focus = get(tools, "focus_clip");
     expect(await focus.invoke({ ...clipArgs, end_seconds: 117 })).toContain("16 seconds");
     const result = JSON.parse(String(await focus.invoke(clipArgs)));
@@ -282,7 +285,7 @@ describe("adaptive video navigation", () => {
   });
   it("cancels navigation before accessing evidence", async () => {
     const controller = new AbortController();
-    const tools = videoEvidenceTools(env, scope, () => 1, controller.signal);
+    const tools = (await videoEvidenceTools(env, scope, () => 1, controller.signal));
     controller.abort();
     await expect(get(tools, "overview_video").invoke(overviewArgs)).rejects.toThrow();
     await expect(get(tools, "skim_video").invoke(skimArgs)).rejects.toThrow();

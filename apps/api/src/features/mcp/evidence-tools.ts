@@ -1,17 +1,15 @@
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getCourseWithMembers } from "../../repositories/chat-repository";
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from "../../repositories/quota-repository";
 import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from "../../lib/answer-cost-ledger";
 import { enforceThrottles } from "../../lib/rate-limit";
 import { deadlineSignal } from "../../lib/request-timeout";
-import type { McpToolCallContext } from "../../lib/mcp-tools";
+import type { ToolActorContext } from "../../tools/management";
 import { createEvidenceSession } from "../../tools/session";
-import { registerEvidenceTools } from "../../tools/mcp";
 import type { ToolDefinition } from "../../tools/definition";
 
 /** External callers select a course; the server derives owner and allowed videos. */
-export function registerExternalEvidenceTools(server: McpServer, ctx: McpToolCallContext) {
+export function createExternalEvidenceTools(ctx: ToolActorContext) {
   const templates = createEvidenceSession(ctx.env, { ownerUserId: ctx.userId, videoIds: [], courseId: 1 }, new AbortController().signal);
   const definitions: ToolDefinition[] = templates.tools.map(template => {
     const schema = template.schema.extend({ course_id: z.number().int().positive().safe() }).strict();
@@ -74,5 +72,5 @@ export function registerExternalEvidenceTools(server: McpServer, ctx: McpToolCal
       },
     };
   });
-  registerEvidenceTools(server, definitions, ctx.signal);
+  return definitions;
 }
