@@ -13,6 +13,14 @@ function deploymentHandoff(settings,config){
  for(const [name,text] of [['DEPLOYMENT_EDITION','cloud'],['PERSISTENCE_BACKEND','d1']]){const row=one(settings.bindings,'name',name);if(row.type!=='plain_text'||row.text!==text)throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');}
  const db=one(settings.bindings,'name','DB'),configuredDb=one(config.d1_databases,'binding','DB');
  if(db.type!=='d1'||db.database_id!==undefined&&db.database_id!==db.id)throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');
+ // The 768 index was retired after the completed naming promotion. Only
+ // accept its absence when both sides already use the exact production target.
+ if(!settings.bindings.some(v=>v.name===NAMES[1])&&Array.isArray(config.vectorize)&&!config.vectorize.some(v=>v.binding===NAMES[1])){
+  const liveIndex=one(settings.bindings,'name',NAMES[0]),configuredIndex=one(config.vectorize,'binding',NAMES[0]);
+  if(db.id!==TARGET[0]||configuredDb.database_id!==TARGET[0]||configuredDb.database_name!=='videoq-prod-db'||liveIndex.type!=='vectorize'||liveIndex.index_name!==TARGET[1]||configuredIndex.index_name!==TARGET[1])throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');
+  assertDeploymentPreservesState(settings,config);
+  return structuredClone(config);
+ }
  const live=[db.id,...NAMES.map(name=>{const row=one(settings.bindings,'name',name);if(row.type!=='vectorize')throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');return row.index_name;})];
  const configured=[configuredDb.database_id,...NAMES.map(name=>one(config.vectorize,'binding',name).index_name)];
  const isSource=same(configured,SOURCE),isTarget=same(configured,TARGET);
