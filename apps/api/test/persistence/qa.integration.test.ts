@@ -8,7 +8,7 @@ import {createApp} from '../../src/app';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
 import {generateDrizzleJson,generateMigration} from 'drizzle-kit/api';
 import {qaInputSchemas,qaQuestionSchema} from '../../../../packages/trpc/src/qa';
-import {listQuestions,getQuestion,mutate,type LtiQaPrincipal} from '../../src/features/qa/service';
+import {listQuestions,getQuestion,mutate,type LtiQaPrincipal} from '../../src/integrations/qa';
 import type {Bindings} from '../../src/types/bindings';
 import {users,videos,videoCourses,videoCourseMembers,videoCourseInvitations,videoCourseMemberships,courseQuestions,courseQuestionReplies,courseQuestionVotes,courseQuestionLtiVotes,courseQaModeration,ltiCredentials} from '../../src/db/schema';
 import {createD1Fixture} from './d1-fixture';

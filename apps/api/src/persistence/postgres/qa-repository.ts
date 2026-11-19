@@ -1,7 +1,7 @@
 import { qaSqlLogic } from "../qa-policy-sql";
 import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import type pg from "pg";
-import type { QaQuestion, QaReply, RpcInputMap, RpcOutputMap } from "@videoq/trpc";
+import type { QaQuestion, QaReply, QaListInput, QaGetInput, QaListResult, QaGetResult } from "../contracts/qa-repository";
 import { withClient } from "../../db/pool";
 import { ApiError, apiNotFound } from "../../shared/errors";
 import { toUtcIso } from "../../shared/datetime";
@@ -115,7 +115,7 @@ async function selectQuestion(client: pg.Client, actor: Actor, courseId: number,
 }
 const abilities = (actor: Actor) => ({ canPost: actor.canPost, canVote: actor.canVote, canModerate: actor.canModerate });
 
-export function listQuestions(env: Bindings, principal: Principal, input: RpcInputMap["qa.list"]): Promise<RpcOutputMap["qa.list"]> {
+export function listQuestions(env: Bindings, principal: Principal, input: QaListInput): Promise<QaListResult> {
   return withCourse(env, input, principal, async (client, actor) => {
     const filter = (p: Parameters) => visibleQuestion(actor, p, input.courseId)
       + ` AND (${p.add(input.videoId ?? null)}::bigint IS NULL OR q.video_id=${p.add(input.videoId ?? null)})
@@ -131,7 +131,7 @@ export function listQuestions(env: Bindings, principal: Principal, input: RpcInp
     return { items: rows.rows.map(dates), total, ...abilities(actor) };
   });
 }
-export function getQuestion(env: Bindings, principal: Principal, input: RpcInputMap["qa.get"]): Promise<RpcOutputMap["qa.get"]> {
+export function getQuestion(env: Bindings, principal: Principal, input: QaGetInput): Promise<QaGetResult> {
   return withCourse(env, input, principal, async (client, actor) => {
     const question = await selectQuestion(client, actor, input.courseId, input.questionId);
     const p = new Parameters(), own = ownExpression("r", actor, p);

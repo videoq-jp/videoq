@@ -3,7 +3,7 @@ import { z } from "zod";
 import { qaInputSchemas, qaOutputSchemas } from "@videoq/trpc";
 import type { AppEnv } from "../../types/bindings";
 import { ApiError, toErrorBody } from "../../shared/errors";
-import { getQuestion, listQuestions, mutate, type LtiQaPrincipal } from "../qa/service";
+import { getQuestion, listQuestions, mutate, type LtiQaPrincipal } from "../../integrations/qa";
 import type { CourseAccess } from "./course-access";
 import type { sessionRecord } from "./protocol";
 import { digest } from "./store";

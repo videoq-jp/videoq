@@ -18,7 +18,7 @@ import {createChatLogWithDb} from '../src/persistence/postgres/chat-repository';
 import { privacySubject } from '../src/features/lms/privacy-data';
 import { courseReport } from '../src/features/lti/course-reports';
 import { issueMoodlePairing } from '../src/features/lms/pairing';
-import { listQuestions, mutate } from '../src/features/qa/service';
+import { listQuestions, mutate } from '../src/integrations/qa';
 import type { Bindings } from '../src/types/bindings';
 
 const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;

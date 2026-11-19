@@ -34,18 +34,32 @@ export type UploadRequest = {
   description: string;
 };
 
-export type MultipartVideoResult =
+export type DirectUploadFile = {
+  name: string; type: string; size: number; stream(): ReadableStream;
+};
+export type DirectUploadInput = {
+  file: DirectUploadFile; title: string; description: string; transcriptionLanguage?: string;
+};
+export type DirectUploadResult =
   | { ok: true; video: VideoDetail | null }
-  | { ok: false; status: number; body: unknown };
+  | { ok: false; error: { kind: 'validation' | 'unavailable' | 'storage' | 'finalization' | 'quota'; code: string; message: string; details?: Record<string, string[]> } };
 
-export function multipartUnavailableBody() {
-  return {
-    error: {
-      code: "VALIDATION_ERROR",
-      message:
-        "Direct multipart upload is unavailable in object-storage mode. Call the videos.requestUpload tRPC procedure, PUT the file to upload_url, then call videos.confirmUpload.",
-    },
-  } as const;
+const uploadFailure = (kind: Extract<DirectUploadResult, { ok: false }>['error']['kind'],
+  message: string, code = 'VALIDATION_ERROR', details?: Record<string, string[]>): Extract<DirectUploadResult, { ok: false }> =>
+  ({ ok: false, error: { kind, code, message, ...(details ? { details } : {}) } });
+
+/** Shared title validation preserves form error precedence without HTTP dependencies. */
+export function directUploadTitleFailure(rawTitle: string) {
+  const title = rawTitle.trim();
+  if (!title) {
+    const message = 'This field may not be blank.';
+    return uploadFailure('validation', message, 'VALIDATION_ERROR', { title: [message] });
+  }
+  if ([...title].length > 255) {
+    const message = 'Ensure this field has no more than 255 characters.';
+    return uploadFailure('validation', message, 'VALIDATION_ERROR', { title: [message] });
+  }
+  return null;
 }
 
 const CONFIRMED_UPLOAD_STATUSES = new Set(["pending", "processing", "indexing", "completed", "error"]);
@@ -236,144 +250,34 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     return video ? { video, alreadyConfirmed } as const : { notFound: true } as const;
   }
 
-  async function createVideoFromMultipart(
-    userId: string,
-    form: Record<string, string | File>,
-  ): Promise<MultipartVideoResult> {
-    if (storage.presigned) {
-      return {
-        ok: false,
-        status: 400,
-        body: multipartUnavailableBody(),
-      };
+  async function createDirectUpload(userId: string, input: DirectUploadInput): Promise<DirectUploadResult> {
+    if (storage.presigned) return uploadFailure('unavailable', 'Direct upload is unavailable in object-storage mode.');
+    const { file, description, transcriptionLanguage } = input;
+    const title = input.title.trim();
+    const titleFailure = directUploadTitleFailure(title);
+    if (titleFailure) return titleFailure;
+    if (transcriptionLanguage !== undefined && !Object.hasOwn(TRANSCRIPTION_LANGUAGES, transcriptionLanguage)) {
+      return uploadFailure('validation', 'Invalid transcription language.', 'VALIDATION_ERROR', { transcriptionLanguage: ['Invalid transcription language.'] });
     }
 
-    const file = form.file;
-    if (!(file instanceof File)) {
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "No file was submitted.",
-            details: { file: ["No file was submitted."] },
-          },
-        },
-      };
-    }
-
-    const titleRaw = typeof form.title === "string" ? form.title.trim() : "";
-    if (!titleRaw) {
-      const msg =
-        form.title === undefined || form.title === ""
-          ? form.title === ""
-            ? "This field may not be blank."
-            : "This field is required."
-          : "Not a valid string.";
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: msg,
-            details: { title: [msg] },
-          },
-        },
-      };
-    }
-    if ([...titleRaw].length > 255) {
-      const msg = "Ensure this field has no more than 255 characters.";
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: msg,
-            details: { title: [msg] },
-          },
-        },
-      };
-    }
-    const description =
-      typeof form.description === "string" ? form.description : "";
-    const transcriptionLanguage = form.transcriptionLanguage;
-    if (transcriptionLanguage !== undefined && (typeof transcriptionLanguage !== 'string' || !Object.hasOwn(TRANSCRIPTION_LANGUAGES, transcriptionLanguage))) {
-      return { ok: false, status: 400, body: { error: {
-        code: 'VALIDATION_ERROR', message: 'Invalid transcription language.',
-        details: { transcriptionLanguage: ['Invalid transcription language.'] },
-      } } };
-    }
-    const title = titleRaw;
-
-    const ext = fileExtension(file.name || "");
+    const ext = fileExtension(file.name || '');
     if (!isAllowedExtension(ext)) {
-      const msg = unsupportedTypeMessage(ext);
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: msg,
-            details: { file: [msg] },
-          },
-        },
-      };
+      const message = unsupportedTypeMessage(ext);
+      return uploadFailure('validation', message, 'VALIDATION_ERROR', { file: [message] });
     }
-    const contentType = file.type || "application/octet-stream";
+    const contentType = file.type || 'application/octet-stream';
     if (!isAllowedContentType(contentType)) {
-      const msg = invalidContentTypeMessage(contentType);
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: msg,
-            details: { file: [msg] },
-          },
-        },
-      };
+      const message = invalidContentTypeMessage(contentType);
+      return uploadFailure('validation', message, 'VALIDATION_ERROR', { file: [message] });
     }
 
     const fileSize = file.size;
     const fileKey = buildPendingUploadFileKey(userId, fileSize, ext);
     const pending = await videos.reserveUpload({ userId, storageBytes: fileSize, fileKey, title, description, transcriptionLanguage });
-    if ("monthlyUploadExceeded" in pending) {
-      return { ok: false, status: 400, body: { error: {
-        code: "MONTHLY_UPLOAD_LIMIT_EXCEEDED", message: "Monthly upload allowance exceeded.",
-      } } };
-    }
-    if ("idempotencyConflict" in pending) {
-      throw new Error("Unexpected idempotency conflict without an idempotency key.");
-    }
-    if ("overQuota" in pending) {
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "STORAGE_LIMIT_EXCEEDED",
-            message: "Storage limit exceeded: account is over quota.",
-          },
-        },
-      };
-    }
-    if ("exceeded" in pending) {
-      return {
-        ok: false,
-        status: 400,
-        body: {
-          error: {
-            code: "STORAGE_LIMIT_EXCEEDED",
-            message: `Storage limit exceeded. Limit: ${pending.limit} bytes.`,
-          },
-        },
-      };
-    }
+    if ('monthlyUploadExceeded' in pending) return uploadFailure('quota', 'Monthly upload allowance exceeded.', 'MONTHLY_UPLOAD_LIMIT_EXCEEDED');
+    if ('idempotencyConflict' in pending) throw new Error('Unexpected idempotency conflict without an idempotency key.');
+    if ('overQuota' in pending) return uploadFailure('quota', 'Storage limit exceeded: account is over quota.', 'STORAGE_LIMIT_EXCEEDED');
+    if ('exceeded' in pending) return uploadFailure('quota', `Storage limit exceeded. Limit: ${pending.limit} bytes.`, 'STORAGE_LIMIT_EXCEEDED');
 
     // 転送中に Worker が落ちれば uploading の行だけが残る。回収時刻を先に予約する。
     await tasks.scheduleRecovery();
@@ -391,32 +295,14 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
       } catch {
         /* cleanup task is persisted atomically with the video deletion */
       }
-      return {
-        ok: false,
-        status: 500,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "Failed to store uploaded file.",
-          },
-        },
-      };
+      return uploadFailure('storage', 'Failed to store uploaded file.');
     }
 
     let transitioned: false | { taskId: number };
     try {
       transitioned = await videos.confirmUpload({ videoId: pending.videoId, userId, fileKey });
     } catch {
-      return {
-        ok: false,
-        status: 500,
-        body: {
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "Failed to finalize uploaded video.",
-          },
-        },
-      };
+      return uploadFailure('finalization', 'Failed to finalize uploaded video.');
     }
     if (transitioned) await tasks.dispatch(transitioned.taskId);
 
@@ -424,5 +310,5 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     return { ok: true, video };
   }
 
-  return { requestPresignedUpload, finishMultipartVideoUpload, abortVideoUpload, confirmVideoUpload, createVideoFromMultipart };
+  return { requestPresignedUpload, finishMultipartVideoUpload, abortVideoUpload, confirmVideoUpload, createDirectUpload };
 }

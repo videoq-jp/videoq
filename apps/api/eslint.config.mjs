@@ -39,17 +39,30 @@ export default [
     },
   },
   {
-    files: ['src/features/qa/policy.ts', 'src/features/videos/upload-service.ts'],
+    files: ['src/features/qa/policy.ts', 'src/features/qa/core.ts', 'src/features/videos/upload-service.ts'],
     rules: {
       // These extracted rules/use cases accept capabilities rather than env or adapters.
       'no-restricted-imports': ['error', {
         patterns: [{
           regex: '^(?!(?:\\.\\./\\.\\./persistence/contracts/[^/]+|\\.\\./\\.\\./lib/upload|@videoq/trpc/video-upload)$)',
-          message: 'Policy and upload use cases may import contracts and pure upload helpers only; compose runtime adapters in integrations/video-upload.ts.',
+          message: 'Extracted use cases may import contracts and pure upload helpers only; compose runtime adapters in integrations.',
         }],
       }],
       'no-restricted-syntax': ['error',
         { selector: 'ImportExpression', message: 'Inject capabilities instead of loading implementations in a use case.' },
+        { selector: 'TSImportType', message: 'Use explicit contract imports so the dependency boundary is checked.' },
+      ],
+    },
+  },
+  {
+    files: ['src/features/qa/service.ts', 'src/persistence/contracts/qa-repository.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ regex: '^(?!(?:\\./core|\\.\\./\\.\\./persistence/contracts/qa-repository|\\.\\./\\.\\./shared/lti-session-proof)$)',
+          message: 'Q&A contracts and use cases must not depend on transport, runtime configuration or persistence implementations.' }],
+      }],
+      'no-restricted-syntax': ['error',
+        { selector: 'ImportExpression', message: 'Inject implementations outside Q&A contracts and use cases.' },
         { selector: 'TSImportType', message: 'Use explicit contract imports so the dependency boundary is checked.' },
       ],
     },

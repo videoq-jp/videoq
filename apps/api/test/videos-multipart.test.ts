@@ -152,6 +152,31 @@ describe("POST / — USE_S3_STORAGE=false（multipart）", () => {
     expect(res.status).toBe(401);
   });
 
+  it.each([
+    [undefined, 'This field is required.'],
+    ['', 'This field may not be blank.'],
+    [' ', 'Not a valid string.'],
+    ['x'.repeat(256), 'Ensure this field has no more than 255 characters.'],
+  ])('preserves title validation errors (%s)', async (title, message) => {
+    const form = new FormData();
+    form.append('file', new File(['x'], 'clip.mp4', { type: 'video/mp4' }));
+    if (title !== undefined) form.append('title', title);
+    const response = await videoRoutes.request('/', { method: 'POST', headers: testAuthHeaders(), body: form }, ENV);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: { code: 'VALIDATION_ERROR', message, details: { title: [message] } } });
+    expect(putMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves storage failure HTTP response and cleanup', async () => {
+    putMock.mockRejectedValueOnce(new Error('Storage unavailable'));
+    const form = new FormData();
+    form.append('file', new File(['x'], 'clip.mp4', { type: 'video/mp4' }));
+    form.append('title', 'Clip');
+    const response = await videoRoutes.request('/', { method: 'POST', headers: testAuthHeaders(), body: form }, ENV);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: { code: 'VALIDATION_ERROR', message: 'Failed to store uploaded file.' } });
+  });
+
   it("multipart で VIDEO_BUCKET に保存して 201", async () => {
     const form = new FormData();
     form.append("file", new File(["abcd"], "clip.mp4", { type: "video/mp4" }));

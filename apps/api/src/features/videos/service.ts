@@ -1,6 +1,5 @@
 import { videoUploadService } from "../../integrations/video-upload";
 import type { UploadRequest } from "./upload-service";
-export { multipartUnavailableBody, type MultipartVideoResult } from "./upload-service";
 import { requireFeature } from "../../lib/deployment";
 import {
   listVideosPage,
@@ -158,7 +157,4 @@ export function finishMultipartVideoUpload(env: Bindings, videoId: number, userI
 }
 export function abortVideoUpload(env: Bindings, videoId: number, userId: string) {
   return videoUploadService(env).abortVideoUpload(videoId, userId);
-}
-export function createVideoFromMultipart(env: Bindings, userId: string, form: Record<string, string | File>) {
-  return videoUploadService(env).createVideoFromMultipart(userId, form);
 }

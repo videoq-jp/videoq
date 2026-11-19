@@ -1,3 +1,4 @@
+import { createVideoFromMultipart } from "../src/features/videos/upload-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const videoRepository = vi.hoisted(() => ({
@@ -32,7 +33,6 @@ vi.mock("../src/repositories/membership-repository", () => ({
 import {
   patchUserVideo,
   confirmVideoUpload,
-  createVideoFromMultipart,
   deleteUserVideo,
   requestPresignedUpload,
 } from "../src/features/videos/service";

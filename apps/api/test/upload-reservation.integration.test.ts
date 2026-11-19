@@ -2,7 +2,8 @@ import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-
 import { visualSchema } from "./helpers/visual-schema";
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createVideoFromMultipart, requestPresignedUpload } from "../src/features/videos/service";
+import { requestPresignedUpload } from "../src/features/videos/service";
+import { createVideoFromMultipart } from "../src/features/videos/upload-http";
 import * as media from "../src/integrations/media";
 import * as externalTasks from "../src/lib/external-tasks";
 import { reserveAndCreatePendingVideo, deleteVideoCascade, listStaleUploadingVideos } from "../src/repositories/video-repository";

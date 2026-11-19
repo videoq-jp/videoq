@@ -55,21 +55,30 @@ an identical set of layers:
   predicates inside its atomic batch. Session validity, membership, current video
   scope, locking and audit writes remain in the persistence implementations.
   Displayed edit/delete capabilities use the same policy as mutations.
+  `features/qa/core.ts` accepts a `QaRepository`; `integrations/qa.ts` selects the
+  implementation for HTTP/tRPC callers. Q&A input, result and command types live
+  in `persistence/contracts/qa-repository.ts` without importing tRPC types.
+  Transport handlers connect the structurally compatible API schemas to these
+  internal types; API typechecking checks that connection.
 - `features/videos/upload-service.ts` owns the upload lifecycle and accepts
   `VideoUploadDependencies`, with no `Bindings` or concrete adapters. The
   request-local `integrations/video-upload.ts` assembles persistence, media,
-  multipart and task adapters. Existing service functions preserve HTTP, tRPC and
-  MCP callers. Reservation/confirmation/deletion and outbox creation remain atomic
+  multipart and task adapters. `features/videos/upload-http.ts` parses raw forms
+  and converts direct-upload failures into the existing HTTP status/error envelope.
+  The lifecycle accepts a streaming file capability rather than a `File`/form and
+  returns application outcomes without HTTP statuses. Existing service functions
+  preserve tRPC and MCP callers. Reservation/confirmation/deletion and outbox creation remain atomic
   persistence operations; task delivery follows the committed operation.
 - ESLint restricts these extracted modules to contracts and pure upload helpers.
   Other features can adopt this pattern when changed; a repository-wide rewrite
-  is not required. Transport response formatting still exists in the upload
-  lifecycle for compatibility and can be separated when the API changes.
+  is not required. The Q&A service and contracts also reject transport imports.
+  Other services still accept `Bindings`; convert each feature when its use cases
+  are extracted rather than treating every `service.ts` as an independent core.
 
 Run the focused policy and lifecycle checks with:
 
 ```bash
-npm exec --workspace @videoq/api -- vitest run test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts
+npm exec --workspace @videoq/api -- vitest run test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
 ```
 
 Set `PERSISTENCE_TEST_DATABASE_URL` to a disposable PostgreSQL database to run the

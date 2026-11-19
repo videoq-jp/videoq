@@ -60,6 +60,32 @@ a parallel rebuild does not provide an atomic collection-wide switch.
 
 For rollout and rollback ordering, see [deployment instructions](../../infra/DEPLOY.md#split-worker-rollout).
 
+## Transcription application boundary
+
+`worker_python/use_cases/transcription.py` owns the PostgreSQL transcription
+lifecycle: eligible states, claiming work, failure/retry decisions, segmented
+processing selection, and indexing handoff. It accepts metadata and capabilities;
+it imports no database, queue, provider, task adapter or environment configuration.
+`tasks/transcription.py` selects the cloud/PostgreSQL runtime and assembles those
+capabilities. PostgreSQL SQL, transactions, quota reservations, secret loading,
+provider calls and deterministic queue delivery remain in the adapter.
+The signed internal-API cloud workflow and segmented checkpoint implementation
+retain their existing persistence operations.
+
+Keep conditional claims and writes atomic in persistence adapters. In particular,
+a completion must preserve concurrent edits/deletion, and a queue failure after
+save must retry the indexing handoff without transcribing again.
+`tests/test_architecture_boundaries.py` enforces imports for extracted use cases;
+`tests/test_transcription_use_case.py` tests lifecycle decisions with plain metadata.
+Run these with the existing resume, persistence, cloud and segmented checks:
+
+```bash
+uv run --frozen --extra dev pytest -q tests/test_architecture_boundaries.py tests/test_transcription_use_case.py tests/test_transcription_resume.py tests/test_transcription_persistence.py tests/test_cloud_transcription.py tests/test_segmented_transcription.py
+```
+
+Set `DATABASE_URL` to a disposable PostgreSQL database for the persistence and
+segmented checks; otherwise those cases are skipped.
+
 ## Job contract
 
 The API sends the following native JSON to SQS:
