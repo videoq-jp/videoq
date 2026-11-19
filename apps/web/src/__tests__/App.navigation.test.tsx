@@ -123,7 +123,7 @@ it('keeps the same layout and intercepts navigation while the dashboard module l
   expect(fireEvent.click(homeLink())).toBe(false);
   await waitFor(() => expect(dashboardModule.requested).toBe(true));
   expect(window.location.pathname).toBe('/');
-  expect(within(screen.getByRole('main')).getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(within(screen.getByRole('main')).getAllByRole('progressbar', { name: i18n.t('common.messages.loading') }).length).toBeGreaterThan(0);
   expect(primaryNav()).toBe(nav);
   expect(homeLink()).toHaveAttribute('aria-current', 'page');
   const menuButton = within(header).getByRole('button', { name: i18n.t('navigation.menu') });
@@ -148,7 +148,7 @@ it.each(['account', 'videos', 'courses'] as const)(
     await waitFor(() => expect(handler).toHaveBeenCalled());
     const nav = primaryNav();
     const footer = screen.getByRole('contentinfo');
-    expect(within(screen.getByRole('main')).getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getAllByRole('progressbar', { name: i18n.t('common.messages.loading') }).length).toBeGreaterThan(0);
     const trigger = within(nav.closest('header')!).getByRole('button', { name: i18n.t('navigation.menu') });
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -287,7 +287,7 @@ it('keeps app navigation out of a pending video viewer', async () => {
   globalThis.__setTrpcHandler('videos.get', load);
   renderApp('/videos/7');
   await waitFor(() => expect(load).toHaveBeenCalled());
-  expect(screen.getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(screen.getAllByRole('progressbar', { name: i18n.t('common.messages.loading') })).toHaveLength(2);
   expect(screen.queryByRole('button', { name: i18n.t('navigation.menu') })).not.toBeInTheDocument();
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 });
@@ -305,7 +305,7 @@ it('keeps the admin layout visible during the authentication check', async () =>
   await waitFor(() => expect(getAccount).toHaveBeenCalled());
   const nav = primaryNav();
   expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-  expect(within(screen.getByRole('main')).getByText(i18n.t('common.messages.loading'))).toBeInTheDocument();
+  expect(within(screen.getByRole('main')).getAllByRole('progressbar', { name: i18n.t('common.messages.loading') }).length).toBeGreaterThan(0);
   fireEvent.click(homeLink());
   await waitFor(() => expect(window.location.pathname).toBe('/'));
   expect(primaryNav()).toBe(nav);

@@ -281,8 +281,9 @@ export default function VideoCoursesPage() {
           </div>
         )}
 
+        <div data-results-frame className="min-h-96">
         {isLoading ? (
-          <div className="flex justify-center py-24">
+          <div className="flex min-h-96 items-center justify-center">
             <LoadingSpinner />
           </div>
         ) : courses.length === 0 ? !loadError && (
@@ -378,6 +379,7 @@ export default function VideoCoursesPage() {
             )}
           </>
         )}
+        </div>
       </div>
 
       <VideoCourseCreateModal

@@ -280,8 +280,9 @@ export default function VideoLibraryPage() {
         </>
       )}
 
+      <div data-results-frame className="min-h-96">
       {isLoading ? (
-        <div className="flex justify-center py-24">
+        <div className="flex min-h-96 items-center justify-center">
           <LoadingSpinner />
         </div>
       ) : error ? (
@@ -334,6 +335,8 @@ export default function VideoLibraryPage() {
           )}
         </>
       )}
+
+      </div>
 
       <VideoUploadModal
         isOpen={shouldOpenModalFromQuery || isUploadModalOpen}

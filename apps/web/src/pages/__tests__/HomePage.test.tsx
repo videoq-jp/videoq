@@ -163,12 +163,14 @@ describe('HomePage - authenticated', () => {
     const transcriptionCard = screen.getByText('quota.usage.transcription').parentElement
     const aiAnswersCard = screen.getByText('quota.usage.aiAnswers').parentElement
 
-    expect(storageCard?.textContent).toContain('2.5')
-    expect(storageCard?.textContent).toContain('10')
-    expect(transcriptionCard?.textContent).toContain('65')
-    expect(transcriptionCard?.textContent).toContain('180')
-    expect(aiAnswersCard?.textContent).toContain('12')
-    expect(aiAnswersCard?.textContent).toContain('100')
+    await waitFor(() => {
+      expect(storageCard?.textContent).toContain('2.5')
+      expect(storageCard?.textContent).toContain('10')
+      expect(transcriptionCard?.textContent).toContain('65')
+      expect(transcriptionCard?.textContent).toContain('180')
+      expect(aiAnswersCard?.textContent).toContain('12')
+      expect(aiAnswersCard?.textContent).toContain('100')
+    })
   })
 
   it('should navigate to videos page with upload param when upload button is clicked', async () => {

@@ -252,7 +252,7 @@ export function VideoDetailView({
   return (
     <>
       {isLoading && !video ? (
-        <DetailLoading backHref="/videos" />
+        <DetailLoading backHref="/videos" isMobile={isMobile} mobileTab={mobileTab} mobileTabs={isMobile && <VideoDetailMobileTabs activeTab={mobileTab} onChange={onMobileTabChange} />} />
       ) : error && !video ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />

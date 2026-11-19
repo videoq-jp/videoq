@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 interface ChatComposerProps {
   input: string;
   isLoading: boolean;
+  disabled?: boolean;
   onInputChange: (input: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onSend: () => Promise<void>;
@@ -17,6 +18,7 @@ interface ChatComposerProps {
 export function ChatComposer({
   input,
   isLoading,
+  disabled = false,
   onInputChange,
   onKeyDown,
   onSend,
@@ -32,7 +34,7 @@ export function ChatComposer({
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
-          disabled={isLoading}
+          disabled={disabled || isLoading}
           blockSize="lg"
           className="w-full pr-16"
           aria-label={t('chat.placeholder')}
@@ -42,7 +44,7 @@ export function ChatComposer({
           variant="solid"
           size="xs"
           onClick={() => void onSend()}
-          disabled={isLoading || !input.trim()}
+          disabled={disabled || isLoading || !input.trim()}
           className="absolute right-2 top-1/2 h-11 min-w-0 w-11 -translate-y-1/2 px-0"
           aria-label={t('common.actions.send')}
         >

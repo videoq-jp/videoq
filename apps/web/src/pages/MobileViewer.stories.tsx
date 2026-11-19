@@ -41,7 +41,8 @@ const tabName = (tab: string) => i18n.t(`videos.shared.tabs.${tab}`);
 
 export const Trial: Story = {
   async play({ canvas, userEvent }) {
-    const input = await canvas.findByRole('textbox', { name: i18n.t('chat.placeholder') }, { timeout: 10000 });
+    await waitFor(() => expect(canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') })).toBeEnabled(), { timeout: 10000 });
+    const input = canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') });
     await expect(input).toBeVisible();
     const rect = input.getBoundingClientRect();
     await expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
@@ -77,7 +78,8 @@ export const SharedCourse: Story = { parameters: { pathname: '/share/sample' } }
 export const CourseOwner: Story = {
   parameters: { pathname: '/videos/courses/42', api: { auth: authFixtures.user, trpc: [trpcQuery('courses.get', success(course))] } },
   async play({ canvas, userEvent }) {
-    const input = await canvas.findByRole('textbox', { name: i18n.t('chat.placeholder') }, { timeout: 10000 });
+    await waitFor(() => expect(canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') })).toBeEnabled(), { timeout: 10000 });
+    const input = canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') });
     await expect(input.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
     await userEvent.type(input, 'この講義について');
     await userEvent.click(canvas.getByRole('tab', { name: tabName('videos') }));
@@ -93,7 +95,8 @@ export const CourseMember: Story = {
 /** A resize event models the VisualViewport API used by mobile keyboards. */
 export const KeyboardViewport: Story = {
   async play({ canvas, canvasElement, userEvent }) {
-    const input = await canvas.findByRole('textbox', { name: i18n.t('chat.placeholder') }, { timeout: 10000 });
+    await waitFor(() => expect(canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') })).toBeEnabled(), { timeout: 10000 });
+    const input = canvas.getByRole('textbox', { name: i18n.t('chat.placeholder') });
     await userEvent.type(input, '入力した質問を保持する');
     const viewport = window.visualViewport!;
     const originalHeight = Object.getOwnPropertyDescriptor(viewport, 'height');
