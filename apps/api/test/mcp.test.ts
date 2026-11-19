@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createApp } from "../src/app";
 import { mcpRoutes } from "../src/features/mcp/routes";
 import { setRateLimitBackendForTests } from "../src/lib/rate-limit";
-import { MCP_WRITE_TOOLS } from "../src/lib/mcp-tools";
+import { MANAGEMENT_WRITE_TOOLS } from "../src/tools/management";
 
 import {
   executeFakePgQuery,
@@ -145,7 +145,7 @@ describe("MCP auth", () => {
     expect(await res.json()).toEqual({ jsonrpc: "2.0", id: 1, result: {} });
   });
 
-  it.each([...MCP_WRITE_TOOLS])("challenges for videoq.write before executing %s", async (name) => {
+  it.each([...MANAGEMENT_WRITE_TOOLS])("challenges for videoq.write before executing %s", async (name) => {
     const res = await mcpRoutes.request(
       "/",
       {

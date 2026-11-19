@@ -3,7 +3,7 @@ import pg from "pg";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { listVideosPage, type VideoListCriteria } from "../src/repositories/video-repository";
 import { listUserVideos } from "../src/features/videos/service";
-import { callMcpTool } from "../src/lib/mcp-tools";
+import { callManagementTool } from "../src/tools/management";
 import type { Bindings } from "../src/types/bindings";
 
 const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
@@ -106,7 +106,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
     const connect = vi.spyOn(pg.Client.prototype, "connect");
     const end = vi.spyOn(pg.Client.prototype, "end");
 
-    const { video } = await callMcpTool("get_video", { video_id: 1 }, { env, userId: "owner", canWrite: false });
+    const { video } = await callManagementTool("get_video", { video_id: 1 }, { env, userId: "owner", canWrite: false });
 
     expect(video).toMatchObject({
       id: 1, title: "Same", tags: [{ id: 1, name: "Tag", color: "blue" }],
@@ -129,7 +129,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
     await admin.query("UPDATE videos SET transcript = $1 WHERE id = 1", [transcript]);
     const query = vi.spyOn(pg.Client.prototype, "query");
 
-    const { video } = await callMcpTool("get_video", { video_id: 1, include_transcript: false },
+    const { video } = await callManagementTool("get_video", { video_id: 1, include_transcript: false },
       { env, userId: "owner", canWrite: false });
 
     expect(video).toMatchObject({ transcript_available: true, transcript_total_chars: transcript.length });
@@ -138,7 +138,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
   });
 
   it.each([20, 9999])("MCP metadata retains ownership checks for video %i", async (videoId) => {
-    await expect(callMcpTool("get_video", { video_id: videoId }, { env, userId: "owner", canWrite: false }))
+    await expect(callManagementTool("get_video", { video_id: videoId }, { env, userId: "owner", canWrite: false }))
       .rejects.toMatchObject({ message: "Video not found", data: { status: 404, code: "NOT_FOUND" } });
   });
 
@@ -147,7 +147,7 @@ const criteria: VideoListCriteria = { keyword: "", statusFilter: "", sortKey: ""
       const transcript = "0😊𠮷e\u0301終";
       await admin.query("UPDATE videos SET transcript = $1 WHERE id = 1", [transcript]);
 
-      const { video } = await callMcpTool("get_video", {
+      const { video } = await callManagementTool("get_video", {
         video_id: 1, include_transcript: true, transcript_offset: offset, transcript_limit: limit,
       }, { env, userId: "owner", canWrite: false });
 

@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { defineTool, type ToolDefinition, type ToolMetadata } from "./definition";
+import { ToolError } from "./errors";
+export { ToolError } from "./errors";
 import { videoSourceTypeSchema, videoStatusSchema } from "@videoq/trpc";
 import { visualProcessingSchema } from "@videoq/trpc/schema";
 import type { Bindings } from "../types/bindings";
@@ -14,16 +17,6 @@ import * as courseService from "../integrations/courses";
 import * as membershipService from "../features/membership/service";
 import * as videoService from "../features/videos/service";
 import type { CreationIdempotency } from "../repositories/mcp-idempotency-repository";
-
-/** MCP tool レベルのエラー（`isError: true` としてクライアントへ返す）。 */
-export class McpToolError extends Error {
-  data: unknown;
-  constructor(message: string, data: unknown = undefined) {
-    super(message);
-    this.name = "McpToolError";
-    this.data = data;
-  }
-}
 
 type Json = Record<string, unknown>;
 
@@ -86,7 +79,7 @@ function envelope(
   };
 }
 
-export type McpToolCallContext = {
+export type ToolActorContext = {
   signal?: AbortSignal;
   env: Bindings;
   userId: string;
@@ -96,7 +89,7 @@ export type McpToolCallContext = {
 };
 
 /** Shared strict schemas for SDK registration and direct tool calls. */
-export const mcpToolSchemas = {
+export const managementToolSchemas = {
   list_videos: z.strictObject({
     q: z.string().max(255).optional(),
     status: videoStatusSchema.optional(),
@@ -164,7 +157,7 @@ export const mcpToolSchemas = {
   }),
 } as const;
 
-export type McpToolName = keyof typeof mcpToolSchemas;
+export type ManagementToolName = keyof typeof managementToolSchemas;
 
 const pageMeta = z.object({
   total: z.number().int().nonnegative(),
@@ -286,7 +279,7 @@ const chatAnalytics = z.object({
 });
 
 /** Successful structuredContent contracts. Tool errors use their own error envelope. */
-export const mcpToolOutputSchemas = {
+export const managementToolOutputSchemas = {
   list_videos: { meta: pageMeta, videos: z.array(compactVideoOutput) },
   get_video: { video: compactVideoOutput },
   request_video_upload: {
@@ -322,7 +315,7 @@ export const mcpToolOutputSchemas = {
   get_chat_analytics: { analytics: chatAnalytics },
 } as const;
 
-export const MCP_WRITE_TOOLS = new Set<McpToolName>([
+export const MANAGEMENT_WRITE_TOOLS = new Set<ManagementToolName>([
   "request_video_upload",
   "confirm_video_upload",
   "create_youtube_video",
@@ -330,7 +323,7 @@ export const MCP_WRITE_TOOLS = new Set<McpToolName>([
   "add_video_to_course",
 ]);
 
-export const MCP_TOOL_TITLES: Record<McpToolName, string> = {
+export const MANAGEMENT_TOOL_TITLES: Record<ManagementToolName, string> = {
   list_videos: "List videos",
   get_video: "Get video details",
   request_video_upload: "Prepare video upload",
@@ -345,7 +338,7 @@ export const MCP_TOOL_TITLES: Record<McpToolName, string> = {
   get_chat_analytics: "Get chat analytics",
 };
 
-export const MCP_TOOL_DESCRIPTIONS = {
+export const MANAGEMENT_TOOL_DESCRIPTIONS = {
   list_videos:
     "List your videos. Supports keyword, status, ordering, tag filters, " +
     "and bounded limit/offset pagination. Download URLs are omitted.",
@@ -377,9 +370,9 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "date range, daily time series, and feedback breakdown (good/bad/none).",
 } as const;
 
-function requireWrite(ctx: McpToolCallContext): void {
+function requireWrite(ctx: ToolActorContext): void {
   if (!ctx.canWrite) {
-    throw new McpToolError("Write permission is required for this tool.", {
+    throw new ToolError("Write permission is required for this tool.", {
       status: 403,
       code: "FORBIDDEN",
     });
@@ -388,24 +381,6 @@ function requireWrite(ctx: McpToolCallContext): void {
 
 function firstFieldError(fieldError: Record<string, readonly string[]> | undefined): string {
   return fieldError ? Object.values(fieldError)[0]?.[0] ?? "Invalid input" : "Invalid input";
-}
-
-type ValidatedToolCall = {
-  [Name in McpToolName]: { name: Name; args: z.output<(typeof mcpToolSchemas)[Name]> };
-}[McpToolName];
-
-function validateToolArguments(name: string, arguments_: Json): ValidatedToolCall {
-  if (!Object.hasOwn(mcpToolSchemas, name)) throw new McpToolError(`Unknown tool: ${name}`);
-  const parsed = mcpToolSchemas[name as McpToolName].safeParse(arguments_);
-  if (!parsed.success) {
-    throw new McpToolError(`Invalid arguments for ${name}.`, {
-      status: 400,
-      code: "VALIDATION_ERROR",
-      details: z.flattenError<unknown>(parsed.error).fieldErrors,
-    });
-  }
-  // This schema was selected by the same name; preserve their relationship.
-  return { name, args: parsed.data } as ValidatedToolCall;
 }
 
 async function creationIdempotency(
@@ -445,16 +420,58 @@ function compactCourse(value: unknown): Json {
   return { ...course, videos };
 }
 
-/** ツール呼び出し（未知ツール / ドメインエラーは McpToolError）。 */
-export async function callMcpTool(
-  name: string,
-  arguments_: Json,
-  ctx: McpToolCallContext,
-): Promise<Json> {
-  const tool = validateToolArguments(name, arguments_);
-  switch (tool.name) {
-    case "list_videos": {
-      const args = tool.args;
+const readOnly: NonNullable<ToolMetadata["annotations"]> = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const additiveIdempotent: NonNullable<ToolMetadata["annotations"]> = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const MANAGEMENT_TOOL_ANNOTATIONS: Record<ManagementToolName, NonNullable<ToolMetadata["annotations"]>> = {
+  list_videos: readOnly,
+  get_video: readOnly,
+  request_video_upload: {
+    ...additiveIdempotent,
+    openWorldHint: true,
+  },
+  confirm_video_upload: {
+    ...additiveIdempotent,
+    // A mismatched upload is removed while its storage reservation is released.
+    destructiveHint: true,
+    openWorldHint: true,
+  },
+  create_youtube_video: {
+    ...additiveIdempotent,
+    openWorldHint: true,
+  },
+  list_courses: readOnly,
+  get_course: readOnly,
+  create_course: additiveIdempotent,
+  add_video_to_course: additiveIdempotent,
+  list_tags: readOnly,
+  get_chat_history: readOnly,
+  get_chat_analytics: readOnly,
+};
+
+/** Actor-scoped definitions shared by every transport. */
+export function createManagementTools(ctx: ToolActorContext): ToolDefinition[] {
+  function define<Name extends ManagementToolName>(name: Name, execute: (args: z.output<(typeof managementToolSchemas)[Name]>) => Promise<Json>): ToolDefinition {
+    return defineTool(execute, {
+      name, title: MANAGEMENT_TOOL_TITLES[name], description: MANAGEMENT_TOOL_DESCRIPTIONS[name],
+      schema: managementToolSchemas[name], outputSchema: z.object(managementToolOutputSchemas[name]),
+      resultFormat: "flat", failureMode: "propagate", annotations: MANAGEMENT_TOOL_ANNOTATIONS[name],
+      access: MANAGEMENT_WRITE_TOOLS.has(name) ? "write" : "read",
+    });
+  }
+  return [
+    define("list_videos", async args => {
       const { limit, offset } = args;
       const page = await listVideosPage(
         ctx.env,
@@ -476,15 +493,14 @@ export async function callMcpTool(
         limit,
         offset,
       );
-    }
-    case "get_video": {
-      const args = tool.args;
+    }),
+    define("get_video", async args => {
       const videoId = args.video_id;
       const video = args.include_transcript === true
         ? await getVideoDetail(ctx.env, videoId, ctx.userId, { includeFileUrl: false })
         : await getVideoMetadata(ctx.env, videoId, ctx.userId);
       if (!video) {
-        throw new McpToolError("Video not found", {
+        throw new ToolError("Video not found", {
           status: 404,
           code: "NOT_FOUND",
         });
@@ -505,9 +521,8 @@ export async function callMcpTool(
         };
       }
       return { video: result };
-    }
-    case "request_video_upload": {
-      const args = tool.args;
+    }),
+    define("request_video_upload", async args => {
       requireWrite(ctx);
       const contentType = args.content_type;
       const fileSize = args.file_size;
@@ -529,20 +544,20 @@ export async function callMcpTool(
         ),
       );
       if ("idempotencyConflict" in result) {
-        throw new McpToolError(
+        throw new ToolError(
           "The idempotency key was already used with different upload arguments.",
           { status: 409, code: "IDEMPOTENCY_CONFLICT" },
         );
       }
       if ("fieldError" in result) {
-        throw new McpToolError(firstFieldError(result.fieldError), {
+        throw new ToolError(firstFieldError(result.fieldError), {
           status: 400,
           code: "VALIDATION_ERROR",
           details: result.fieldError,
         });
       }
       if ("badRequest" in result) {
-        throw new McpToolError(result.badRequest ?? "Invalid upload request.", {
+        throw new ToolError(result.badRequest ?? "Invalid upload request.", {
           status: 400,
           code: "code" in result ? result.code : "VALIDATION_ERROR",
         });
@@ -557,7 +572,7 @@ export async function callMcpTool(
             next_step: null,
           };
         }
-        throw new McpToolError("The upload could not be prepared.", {
+        throw new ToolError("The upload could not be prepared.", {
           status: 500,
           code: "INTERNAL_ERROR",
         });
@@ -580,9 +595,8 @@ export async function callMcpTool(
           arguments: { video_id: result.video.id },
         },
       };
-    }
-    case "confirm_video_upload": {
-      const args = tool.args;
+    }),
+    define("confirm_video_upload", async args => {
       requireWrite(ctx);
       const result = await videoService.confirmVideoUpload(
         ctx.env,
@@ -590,16 +604,16 @@ export async function callMcpTool(
         ctx.userId,
       );
       if ("notFound" in result) {
-        throw new McpToolError("Video not found", { status: 404, code: "NOT_FOUND" });
+        throw new ToolError("Video not found", { status: 404, code: "NOT_FOUND" });
       }
       if ("badState" in result) {
-        throw new McpToolError(result.message ?? "The video is not ready to confirm.", {
+        throw new ToolError(result.message ?? "The video is not ready to confirm.", {
           status: 400,
           code: "INVALID_STATE",
         });
       }
       if (!result.video) {
-        throw new McpToolError("The video upload could not be confirmed.", {
+        throw new ToolError("The video upload could not be confirmed.", {
           status: 500,
           code: "INTERNAL_ERROR",
         });
@@ -608,9 +622,8 @@ export async function callMcpTool(
         video: compactVideo(result.video),
         reused: result.alreadyConfirmed,
       };
-    }
-    case "create_youtube_video": {
-      const args = tool.args;
+    }),
+    define("create_youtube_video", async args => {
       requireWrite(ctx);
       const payload = {
         youtube_url: args.youtube_url,
@@ -628,34 +641,32 @@ export async function callMcpTool(
         ),
       );
       if ("idempotencyConflict" in result) {
-        throw new McpToolError(
+        throw new ToolError(
           "The idempotency key was already used with different YouTube arguments.",
           { status: 409, code: "IDEMPOTENCY_CONFLICT" },
         );
       }
       if ("fieldError" in result) {
-        throw new McpToolError(firstFieldError(result.fieldError), {
+        throw new ToolError(firstFieldError(result.fieldError), {
           status: 400,
           code: "VALIDATION_ERROR",
           details: result.fieldError,
         });
       }
       if (!result.video) {
-        throw new McpToolError("The YouTube video could not be created.", {
+        throw new ToolError("The YouTube video could not be created.", {
           status: 500,
           code: "INTERNAL_ERROR",
         });
       }
       return { video: compactVideo(result.video), reused: result.reused };
-    }
-    case "list_courses": {
-      const args = tool.args;
+    }),
+    define("list_courses", async args => {
       const { limit, offset } = args;
       const page = await listCoursesPage(ctx.env, ctx.userId, limit, offset);
       return envelope(page.results, page.count, "courses", limit, offset);
-    }
-    case "get_course": {
-      const args = tool.args;
+    }),
+    define("get_course", async args => {
       const videoLimit = args.video_limit;
       const videoOffset = args.video_offset;
       const course = await getCourseDetail(
@@ -669,7 +680,7 @@ export async function callMcpTool(
         },
       );
       if (!course) {
-        throw new McpToolError("Course not found", {
+        throw new ToolError("Course not found", {
           status: 404,
           code: "NOT_FOUND",
         });
@@ -689,9 +700,8 @@ export async function callMcpTool(
               : null,
         },
       };
-    }
-    case "create_course": {
-      const args = tool.args;
+    }),
+    define("create_course", async args => {
       requireWrite(ctx);
       const payload = {
         name: args.name,
@@ -709,21 +719,20 @@ export async function callMcpTool(
         ),
       );
       if ("idempotencyConflict" in result) {
-        throw new McpToolError(
+        throw new ToolError(
           "The idempotency key was already used with different course arguments.",
           { status: 409, code: "IDEMPOTENCY_CONFLICT" },
         );
       }
       if (!result.course) {
-        throw new McpToolError("The course could not be created.", {
+        throw new ToolError("The course could not be created.", {
           status: 500,
           code: "INTERNAL_ERROR",
         });
       }
       return { course: compactCourse(result.course), reused: result.reused };
-    }
-    case "add_video_to_course": {
-      const args = tool.args;
+    }),
+    define("add_video_to_course", async args => {
       requireWrite(ctx);
       const result = await membershipService.addVideoToCourseOne(
         ctx.env,
@@ -732,21 +741,19 @@ export async function callMcpTool(
         args.video_id,
       );
       if ("notFound" in result) {
-        throw new McpToolError(result.notFound ?? "Resource not found", {
+        throw new ToolError(result.notFound ?? "Resource not found", {
           status: 404,
           code: "NOT_FOUND",
         });
       }
       return { result };
-    }
-    case "list_tags": {
-      const args = tool.args;
+    }),
+    define("list_tags", async args => {
       const { limit, offset } = args;
       const page = await listTagsPage(ctx.env, ctx.userId, limit, offset);
       return envelope(page.results, page.count, "tags", limit, offset);
-    }
-    case "get_chat_history": {
-      const args = tool.args;
+    }),
+    define("get_chat_history", async args => {
       const { limit, offset } = args;
       const res = await getCourseChatHistory(
         ctx.env,
@@ -756,27 +763,33 @@ export async function callMcpTool(
         offset,
       );
       if ("notFound" in res) {
-        throw new McpToolError("Course not found", {
+        throw new ToolError("Course not found", {
           status: 404,
           code: "NOT_FOUND",
         });
       }
       return envelope(res.results, res.count, "history", limit, offset);
-    }
-    case "get_chat_analytics": {
-      const args = tool.args;
+    }),
+    define("get_chat_analytics", async args => {
       const res = await getCourseChatAnalytics(
         ctx.env,
         args.course_id,
         ctx.userId,
       );
       if ("notFound" in res) {
-        throw new McpToolError("Course not found", {
+        throw new ToolError("Course not found", {
           status: 404,
           code: "NOT_FOUND",
         });
       }
       return { analytics: res };
-    }
-  }
+    }),
+  ];
+}
+
+/** Direct callers use the same definitions and validation as MCP. */
+export async function callManagementTool(name: string, args: Json, ctx: ToolActorContext): Promise<Json> {
+  const definition = createManagementTools(ctx).find(tool => tool.name === name);
+  if (!definition) throw new ToolError(`Unknown tool: ${name}`);
+  return await definition.invoke(args, { signal: ctx.signal ?? new AbortController().signal }) as Json;
 }

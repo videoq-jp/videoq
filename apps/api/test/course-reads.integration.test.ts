@@ -6,8 +6,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import * as courses from "../src/integrations/courses";
 import { getCourseDetail, getCourseDetailByShareSlug, getCourseInfo, listCoursesPage } from "../src/repositories/course-repository";
 import { getTagDetail } from "../src/repositories/tag-repository";
-import { callMcpTool } from "../src/lib/mcp-tools";
-import { COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/lib/rag-course-info";
+import { callManagementTool } from "../src/tools/management";
+import { COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/tools/course-info";
 import * as media from "../src/integrations/media";
 import type { Bindings } from "../src/types/bindings";
 
@@ -195,13 +195,13 @@ describeWithPostgres("course reads on PostgreSQL", () => {
   it("preserves tags and stable member pagination in MCP without generating file URLs", async () => {
     const resolveFileUrl = vi.spyOn(media, "resolveFileUrl");
     const context = { env: { ...env, USE_S3_STORAGE: "true" }, userId: "member", canWrite: false };
-    expect(await callMcpTool("get_course", { course_id: 10, video_limit: 1 }, context)).toMatchObject({
+    expect(await callManagementTool("get_course", { course_id: 10, video_limit: 1 }, context)).toMatchObject({
       course: { access_role: "member", videos: [{ id: 1, tags: [
         { id: 2, name: "A tag", color: "red" }, { id: 1, name: "Z tag", color: "blue" },
       ] }] },
       videos_meta: { total: 2, next_offset: 1, has_more: true },
     });
-    expect(await callMcpTool("get_course", { course_id: 10, video_limit: 1, video_offset: 1 }, context))
+    expect(await callManagementTool("get_course", { course_id: 10, video_limit: 1, video_offset: 1 }, context))
       .toMatchObject({ course: { videos: [{ id: 2, tags: [{ id: 1 }] }] }, videos_meta: { has_more: false } });
     expect(resolveFileUrl).not.toHaveBeenCalled();
   });
@@ -210,11 +210,11 @@ describeWithPostgres("course reads on PostgreSQL", () => {
     const resolveFileUrl = vi.spyOn(media, "resolveFileUrl");
     const context = { env: { ...env, USE_S3_STORAGE: "true" }, userId: "creator", canWrite: true };
     const args = { name: "Created", idempotency_key: "create-once" };
-    const first = await callMcpTool("create_course", args, context);
+    const first = await callManagementTool("create_course", args, context);
     const courseId = (first.course as { id: number }).id;
     expect((await admin.query('SELECT managed_by_lms FROM video_courses WHERE id=$1', [courseId])).rows[0].managed_by_lms).toBe(false);
     await admin.query("INSERT INTO video_course_members (course_id, video_id) VALUES ($1, 4)", [courseId]);
-    const second = await callMcpTool("create_course", args, context);
+    const second = await callManagementTool("create_course", args, context);
     expect(second).toMatchObject({ reused: true, course: { id: courseId, videos: [{ id: 4, tags: [{ id: 4 }] }] } });
     expect(JSON.stringify(second)).not.toContain("example.mp4");
     expect(resolveFileUrl).not.toHaveBeenCalled();

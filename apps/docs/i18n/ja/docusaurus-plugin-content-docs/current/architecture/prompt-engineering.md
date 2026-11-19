@@ -138,7 +138,7 @@ Chat Completionsの互換処理として残すのは、ツール選択と回答�
 |---|---|
 | [prompts/](https://github.com/videoq-jp/videoq/tree/main/apps/api/src/lib/prompts) | 指示文と設定 |
 | [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag.ts) | Q&Aのツール呼び出し・回答生成 |
-| [rag-course-info.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag-course-info.ts) | 講座・動画の登録情報 |
+| [course-info.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/tools/course-info.ts) | 講座・動画の登録情報 |
 | [answer-content-stream.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/answer-content-stream.ts) / [chat-citations.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/chat-citations.ts) | 回答の逐次読み取りと引用の検証 |
 | [message-service.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/features/chat/message-service.ts) | 権限・利用枠・SSEイベント・保存 |
 | [chatStreamController.ts](https://github.com/videoq-jp/videoq/blob/main/apps/web/src/lib/chatStreamController.ts) | ブラウザーの描画キューと完了処理 |
