@@ -9,7 +9,8 @@ const databaseImports = [
 // The pure shared upload module has no router, schema or platform dependencies.
 const pureImports = [
   '../../persistence/contracts/*', '../../application/*',
-  '../../lib/upload', '../../lib/share-slug', '../../shared/csv',
+  '../../lib/upload', '../../lib/share-slug', '../../shared/csv', '../../lib/youtube',
+  './generation-ports', './management-ports',
   './catalog', './ports', './core', './creation-idempotency', './video-read-repository', './lti-subject',
   '../../features/billing/catalog', '../persistence/contracts/chat-repository',
   '@videoq/trpc/video-upload',
@@ -52,11 +53,14 @@ export default [
     files: [
       'src/application/**/*.ts',
       'src/features/qa/policy.ts', 'src/features/qa/core.ts',
+      'src/features/chat/generation-{service,ports}.ts',
+      'src/features/videos/management-{service,ports}.ts',
+      'src/features/membership/core.ts', 'src/features/billing/account-deletion-service.ts',
       'src/features/videos/upload-service.ts', 'src/features/courses/service.ts',
       'src/features/chat/service.ts', 'src/features/chat/conversation-service.ts',
       'src/features/billing/service.ts', 'src/features/billing/ports.ts', 'src/features/billing/catalog.ts',
-      'src/persistence/contracts/{qa-repository,billing-repository,course-repository,conversation-read,chat-repository,lti-subject,creation-idempotency,video-read-repository,video-upload-repository,video-mutation-repository,multipart-upload-repository}.ts',
-      'src/lib/upload.ts', 'src/lib/share-slug.ts', 'src/shared/csv.ts',
+      'src/persistence/contracts/{ai-quota,membership-repository,qa-repository,billing-repository,course-repository,conversation-read,chat-repository,lti-subject,creation-idempotency,video-read-repository,video-upload-repository,video-mutation-repository,multipart-upload-repository}.ts',
+      'src/lib/upload.ts', 'src/lib/share-slug.ts', 'src/shared/csv.ts', 'src/lib/youtube.ts',
     ],
     rules: {
       'no-restricted-imports': ['error', {
