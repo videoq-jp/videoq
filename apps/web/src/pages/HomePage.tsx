@@ -4,7 +4,9 @@ import { Navigate } from 'react-router-dom';
 import { isOnprem } from '@/lib/deployment';
 import LandingPage from '@/pages/LandingPage';
 
-import HomeDashboard from '@/pages/HomeDashboard';
+import { lazy, Suspense } from 'react';
+import { HomeDashboardPending } from '@/components/home/HomeDashboardLayout';
+const HomeDashboard = lazy(() => import('@/pages/HomeDashboard'));
 
 export default function HomePage() {
   const session = useAuthSession();
@@ -15,5 +17,5 @@ export default function HomePage() {
     return <LandingPage />;
   }
 
-  return <HomeDashboard />;
+  return <Suspense fallback={<HomeDashboardPending username={session.data.user.username ?? undefined} />}><HomeDashboard /></Suspense>;
 }
