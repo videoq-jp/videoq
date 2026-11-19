@@ -3,7 +3,7 @@ import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { qaInputSchemas, qaQuestionSchema } from '../../../packages/trpc/src/qa';
-import { listQuestions, getQuestion, mutate, type LtiQaPrincipal } from '../src/features/qa/service';
+import { listQuestions, getQuestion, mutate, type LtiQaPrincipal } from '../src/integrations/qa';
 import type { Bindings } from '../src/types/bindings';
 
 const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;

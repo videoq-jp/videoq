@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import type { AppEnv } from '../../types/bindings';
 import { clientIp, enforceThrottles } from '../../lib/rate-limit';
-import * as qa from '../../features/qa/service';
+import * as qa from '../../integrations/qa';
 import { requireUserId, rpcError, type HandlersFor } from './shared';
 
 export function qaHandlers(c: Context<AppEnv>, userId: string | null): HandlersFor<'qa'> {

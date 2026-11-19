@@ -1,6 +1,6 @@
 import { qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import { qaSqlLogic } from "../qa-policy-sql";
-import type {QaQuestion,QaReply} from '@videoq/trpc';
+import type {QaQuestion,QaReply} from '../contracts/qa-repository';
 import type {QaRepository,QaPrincipal,QaAccess,QaCommand} from '../contracts/qa-repository';
 import {ApiError,apiNotFound} from '../../shared/errors';
 import {ltiSessionProof} from '../../shared/lti-session-proof';

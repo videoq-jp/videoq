@@ -1,1 +1,2 @@
-export { listQuestions, getQuestion, mutate, type QaCommand, type LtiQaPrincipal } from "./core";
+export { createQaService } from './core';
+export type { QaCommand, LtiQaPrincipal } from '../../persistence/contracts/qa-repository';

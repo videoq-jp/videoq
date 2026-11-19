@@ -122,7 +122,7 @@ describe("upload lifecycle without a runtime environment", () => {
     const { deps, service } = fixture();
     deps.storage.presigned = false;
     const file = new File(["x"], "lesson.mp4", { type: "video/mp4" });
-    expect(await service.createVideoFromMultipart("owner", { file, title: "Lesson" })).toMatchObject({ ok: true });
+    expect(await service.createDirectUpload("owner", { file, title: "Lesson", description: "" })).toMatchObject({ ok: true });
     expect(deps.storage.put.mock.calls[0][1]).toBeInstanceOf(ReadableStream);
     expect(deps.tasks.dispatch).toHaveBeenCalledWith(8);
     deps.videos.delete.mockResolvedValue({ deleted: false, cleanupTaskId: null });
@@ -130,5 +130,39 @@ describe("upload lifecycle without a runtime environment", () => {
     await service.abortVideoUpload(7, "owner");
     expect(deps.videos.delete).toHaveBeenCalledWith(7, "owner", { expectedStatus: "uploading" });
     expect(deps.tasks.dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('direct upload application failures', () => {
+  const input = () => ({ file: { name: 'lesson.mp4', type: 'video/mp4', size: 1,
+    stream: () => new ReadableStream() }, title: 'Lesson', description: '' });
+
+  it('validates plain file metadata before reserving storage', async () => {
+    const { deps, service } = fixture();
+    deps.storage.presigned = false;
+    const invalid = { ...input(), title: ' ' };
+    expect(await service.createDirectUpload('owner', invalid)).toMatchObject({ ok: false, error: { kind: 'validation', details: { title: ['This field may not be blank.'] } } });
+    expect(deps.videos.reserveUpload).not.toHaveBeenCalled();
+  });
+
+  it('returns storage failure after attempting atomic cleanup and never confirms', async () => {
+    const { deps, service } = fixture();
+    deps.storage.presigned = false;
+    deps.storage.put.mockRejectedValue(new Error('Storage unavailable'));
+    expect(await service.createDirectUpload('owner', input())).toEqual({ ok: false, error: { kind: 'storage', code: 'VALIDATION_ERROR', message: 'Failed to store uploaded file.' } });
+    expect(deps.videos.delete).toHaveBeenCalledWith(7, 'owner', expect.objectContaining({ expectedStatus: 'uploading', fallbackStorageBytes: 1 }));
+    expect(deps.tasks.dispatch).toHaveBeenCalledWith(9);
+    expect(deps.videos.confirmUpload).not.toHaveBeenCalled();
+  });
+
+  it('leaves a stored upload recoverable when confirmation fails', async () => {
+    const { deps, service } = fixture();
+    deps.storage.presigned = false;
+    deps.videos.confirmUpload.mockRejectedValue(new Error('Database unavailable'));
+    expect(await service.createDirectUpload('owner', input())).toMatchObject({ ok: false, error: { kind: 'finalization' } });
+    expect(deps.storage.put).toHaveBeenCalledOnce();
+    expect(deps.tasks.scheduleRecovery).toHaveBeenCalledOnce();
+    expect(deps.tasks.dispatch).not.toHaveBeenCalled();
+    expect(deps.videos.delete).not.toHaveBeenCalled();
   });
 });

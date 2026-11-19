@@ -10,7 +10,7 @@ import { createPendingCourseInvitations, getCourseInvitationByTokenHash, acceptC
   rotatePendingCourseInvitation, revokePendingCourseInvitation } from '../src/repositories/course-invitation-repository';
 import { conversationScope } from '../src/features/chat/conversation-service';
 import { qaInputSchemas } from '../../../packages/trpc/src/qa';
-import { listQuestions } from '../src/features/qa/service';
+import { listQuestions } from '../src/integrations/qa';
 import { deliverInvitationEmail } from '../src/lib/invitation-delivery';
 import { getMediaPathAccess } from '../src/repositories/media-repository';
 import { mediaRoutes } from '../src/features/media/routes';
