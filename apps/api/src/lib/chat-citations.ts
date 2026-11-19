@@ -2,10 +2,13 @@ import {
   chatSourceSchema, modelAnswerSchema, protectedTextRanges,
   type ChatAnswer, type ChatSource,
 } from "@videoq/trpc/chat";
+import { normalizeAnswerTexts } from "./answer-normalization";
 
 /** Sources are retrieved inside an authorized scope; model metadata is never accepted. */
 export function validateChatAnswer(value: unknown, sources: readonly ChatSource[]): ChatAnswer {
   const answer = modelAnswerSchema.parse(value);
+  const texts = normalizeAnswerTexts(answer.segments.map(segment => segment.text));
+  answer.segments = answer.segments.map((segment, index) => ({ ...segment, text: texts[index] }));
   if (!answer.segments.some(segment => segment.text.trim())) throw new Error("Empty structured answer");
   const registry = new Set(sources.map(source => {
     chatSourceSchema.parse(source);

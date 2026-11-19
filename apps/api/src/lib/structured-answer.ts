@@ -3,6 +3,7 @@ import { parsePartialJson } from "@langchain/core/output_parsers";
 import { modelAnswerSchema, type ModelAnswer } from "@videoq/trpc/chat";
 import { isAIMessage, type BaseMessage } from "@langchain/core/messages";
 import { LlmProviderError } from "./openai";
+import { normalizeAnswerTexts } from "./answer-normalization";
 
 export const answerResponseFormat = {
   type: "json_schema" as const,
@@ -19,6 +20,8 @@ export function assertCompletedAnswer(message: BaseMessage | undefined): void {
 export function parseModelAnswer(text: string): ModelAnswer {
   try {
     const answer = modelAnswerSchema.parse(JSON.parse(text));
+    const texts = normalizeAnswerTexts(answer.segments.map(segment => segment.text));
+    answer.segments = answer.segments.map((segment, index) => ({ ...segment, text: texts[index] }));
     if (!answer.segments.some(s => s.text.trim())) throw new Error("Empty answer");
     return answer;
   } catch {
@@ -43,12 +46,15 @@ export class AnswerTextStream {
   private inString = false;
   private escaped = false;
   private closedPrefix = "";
+  private normalizedTexts: string[] = [];
 
   /** Only objects closed on the wire, never the SDK's repaired partial JSON. */
   completedSegments(): ModelAnswer["segments"] {
     if (!this.closedPrefix) return [];
     try {
-      return modelAnswerSchema.parse(JSON.parse(this.closedPrefix + "]}")).segments;
+      return modelAnswerSchema.parse(JSON.parse(this.closedPrefix + "]}")).segments
+        .slice(0, this.normalizedTexts.length)
+        .map((segment, index) => ({ ...segment, text: this.normalizedTexts[index] }));
     } catch {
       throw new LlmProviderError("Invalid structured answer segment.");
     }
@@ -80,11 +86,17 @@ export class AnswerTextStream {
     try { partial = parsePartialJson(stableJsonPrefix(this.raw)); } catch { return []; }
     const segments = (partial as { segments?: unknown[] } | null)?.segments;
     if (!Array.isArray(segments)) return [];
-    const out: Array<{ segmentIndex: number; text: string }> = [];
-    segments.forEach((segment, segmentIndex) => {
-      if (!segment || typeof segment !== "object" || !("text" in segment) || typeof segment.text !== "string") return;
+    const complete = this.depth === 0 && !this.inString;
+    const closed = this.closedPrefix ? modelAnswerSchema.parse(JSON.parse(this.closedPrefix + "]}")).segments.length : 0;
+    const rawTexts: string[] = [];
+    for (const segment of segments) {
+      if (!segment || typeof segment !== "object" || !("text" in segment) || typeof segment.text !== "string") break;
       // A split surrogate must not be painted as a replacement glyph.
-      const text = segment.text.replace(/[\uD800-\uDBFF]$/, "");
+      rawTexts.push(segment.text.replace(/[\uD800-\uDBFF]$/, ""));
+    }
+    this.normalizedTexts = normalizeAnswerTexts(rawTexts, complete ? rawTexts.length : closed);
+    const out: Array<{ segmentIndex: number; text: string }> = [];
+    this.normalizedTexts.forEach((text, segmentIndex) => {
       const previous = this.emitted[segmentIndex];
       if (!text.startsWith(previous ?? "")) throw new LlmProviderError("Structured answer changed an emitted prefix.");
       if (previous === undefined || text.length > previous.length) {

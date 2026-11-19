@@ -50,6 +50,11 @@ describe("generation-time text and citations", () => {
     ["\\[x", "+y\\]。"],
     ["{\"escaped\":\"\\\\\"}", "\n次の文。"],
     ["", "空segmentの後。"],
+    ["各点 \u001b[0m$(x_i,y_i)$を計算します。", "投票数が多い \u001b[0m$(\\rho,\\theta)$を選びます。"],
+    ["\u001b[31m赤い文字\u001b[0m。", "\u001b]8;;https://example.com\u0007リンク\u001b]8;;\u001b\\。"],
+    ["制御\u0000文字\u0007を除く。", "\n既存の改行を保つ。"],
+    ["第一段落。\n", "次の段落。"],
+    ["第一段落。", "\n\n次の段落。"],
   ])("keeps streamed and final citations identical across every JSON split: %j + %j", (first, second) => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
