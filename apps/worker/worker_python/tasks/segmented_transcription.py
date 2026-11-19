@@ -21,6 +21,11 @@ from worker_python.pipeline.transcription import (
 from worker_python.sqs_enqueue import child_job_id, enqueue_job
 from worker_python.video_sql import VideoRow, get_video_for_task, finish_transcription
 
+from worker_python.use_cases.segmented_transcription import (
+    ChunkDependencies, PlanDependencies, FinalizationDependencies,
+    execute_chunk, start_plan, finish_plan,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,61 +49,52 @@ def _dispatch_pending(run: checkpoints.TranscriptionRun, *, after_index: int | N
 
 
 def start_uploaded_transcription(video: VideoRow) -> None:
-    if not os.environ.get("SQS_QUEUE_URL", "").strip():
-        raise RuntimeError("SQS_QUEUE_URL is required for uploaded transcription jobs")
-    source = resolve_media_input(video.file_key)
-    try:
-        ensure_audio_stream(source)
-    except NoAudioStreamError as error:
-        checkpoints.reject_no_audio(video.id, video.file_key, video.transcript_hash, str(error))
-        logger.info("Skipping video without audio: video=%d", video.id)
-        return
-    existing = checkpoints.load_run(video.id)
-    if existing and existing.transcript_hash == video.transcript_hash:
-        duration = existing.duration_ms / 1000
-    else:
-        duration = _ffprobe_duration(source)
-    run = checkpoints.initialize_run(video, duration)
-    if run:
-        logger.info("Transcription plan ready: video=%d chunks=%d", run.video_id, run.chunk_count)
-        _dispatch_pending(run)
+    sources = {}
+
+    def source(current):
+        if current.file_key not in sources:
+            sources[current.file_key] = resolve_media_input(current.file_key)
+        return sources[current.file_key]
+
+    start_plan(video, PlanDependencies(
+        queue_available=bool(os.environ.get("SQS_QUEUE_URL", "").strip()),
+        check_audio=lambda current: ensure_audio_stream(source(current)),
+        reject_no_audio=lambda current, message: checkpoints.reject_no_audio(
+            current.id, current.file_key, current.transcript_hash, message),
+        load=checkpoints.load_run,
+        duration=lambda current: _ffprobe_duration(source(current)),
+        initialize=checkpoints.initialize_run,
+        dispatch=_dispatch_pending,
+        no_audio_error=NoAudioStreamError,
+    ))
 
 
 def transcribe_video_chunk(video_id: int, run_id: str, chunk_index: int) -> None:
-    run = checkpoints.load_run(video_id, run_id)
-    if not run or run.completed:
-        return
-    if not 0 <= chunk_index < run.chunk_count:
-        raise ValueError("Invalid transcription chunk index")
-    active, completed = checkpoints.chunk_state(run, chunk_index)
-    if not active:
-        return
-    source = resolve_media_input(run.file_key)
-    try:
-        if not completed:
-            start = chunk_index * run.chunk_seconds
-            duration = min(run.chunk_seconds, run.duration_ms / 1000 - start)
-            segments = transcribe_audio_interval(source, start, duration, **({"language": run.transcription_language} if run.transcription_language else {}))
-            if not checkpoints.save_chunk(run, chunk_index, segments):
-                return
-            logger.info("Transcription checkpoint saved: video=%d chunk=%d/%d", video_id, chunk_index + 1, run.chunk_count)
-        _dispatch_pending(run, after_index=chunk_index)
-    except NoAudioStreamError as error:
-        try:
-            ensure_audio_stream(source)
-        except NoAudioStreamError:
-            checkpoints.reject_no_audio(video_id, run.file_key, run.transcript_hash,
-                                        str(error), run_id=run.run_id, chunk_index=chunk_index)
-            logger.info("Stopped transcription without audio: video=%d", video_id)
-        else:
-            checkpoints.record_chunk_failure(run, chunk_index, str(error))
-            raise
-    except Exception as error:
-        try:
-            checkpoints.record_chunk_failure(run, chunk_index, str(error))
-        except Exception:
-            logger.exception("Could not record transcription failure: video=%d chunk=%d", video_id, chunk_index)
-        raise
+    # Resolve lazily: replaying a saved checkpoint only needs queue delivery.
+    sources = {}
+
+    def source(run):
+        if run.run_id not in sources:
+            sources[run.run_id] = resolve_media_input(run.file_key)
+        return sources[run.run_id]
+
+    def transcribe(run, _index, start, duration):
+        return transcribe_audio_interval(source(run), start, duration,
+            **({"language": run.transcription_language} if run.transcription_language else {}))
+
+    execute_chunk(video_id, run_id, chunk_index, ChunkDependencies(
+        load=checkpoints.load_run,
+        state=checkpoints.chunk_state,
+        transcribe=transcribe,
+        save=checkpoints.save_chunk,
+        dispatch=lambda run, index: _dispatch_pending(run, after_index=index),
+        reject_no_audio=lambda run, index, message: checkpoints.reject_no_audio(
+            run.video_id, run.file_key, run.transcript_hash, message,
+            run_id=run.run_id, chunk_index=index),
+        check_audio=lambda run: ensure_audio_stream(source(run)),
+        record_failure=checkpoints.record_chunk_failure,
+        no_audio_error=NoAudioStreamError,
+    ))
 
 
 def finish_video_transcription(video_id: int, run_id: str) -> None:
@@ -108,6 +104,25 @@ def finish_video_transcription(video_id: int, run_id: str) -> None:
     if uses_internal_persistence():
         _finish_cloud_run(run)
         return
+    _finish_run(run, cloud=False)
+
+
+def _start_visuals(run: checkpoints.TranscriptionRun) -> None:
+    from worker_python.tasks.segmented_visuals import start_visuals
+    start_visuals(run.video_id, run.file_key, run.duration_ms / 1000)
+
+
+def _finish_run(run: checkpoints.TranscriptionRun, *, cloud: bool) -> None:
+    finish_plan(run, FinalizationDependencies(
+        commit=_commit_cloud_run if cloud else _commit_local_run,
+        handoff=lambda current: _send(current, JOB_INDEX_VIDEO_TRANSCRIPT),
+        start_visuals=_start_visuals,
+        handoff_in_commit=cloud,
+        visuals_enabled=env_flag("VIDEO_VISUAL_ENABLED", True),
+    ))
+
+
+def _commit_local_run(run: checkpoints.TranscriptionRun) -> str | None:
     empty = False
     with db_connection() as conn:
         if not run.completed:
@@ -118,24 +133,17 @@ def finish_video_transcription(video_id: int, run_id: str) -> None:
                 raise RuntimeError("Transcription chunks are still incomplete")
             transcript = create_srt_from_whisper_segments(segments)
             empty = not transcript.strip()
-            conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (video_id,))
-            video = get_video_for_task(conn, video_id, include_transcript=False)
+            conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (run.video_id,))
+            video = get_video_for_task(conn, run.video_id, include_transcript=False)
             status = finish_transcription(conn, video, transcript=transcript if not empty else None,
                                           error_message="Whisper returned an empty transcript" if empty else "")
             # An all-silent plan is terminal too. An explicit user retry can
             # create a fresh plan instead of endlessly joining the same blanks.
-            conn.execute("UPDATE video_transcription_runs SET completed_at = now() WHERE run_id = %s", (run_id,))
+            conn.execute("UPDATE video_transcription_runs SET completed_at = now() WHERE run_id = %s", (run.run_id,))
         else:
-            row = conn.execute("SELECT status FROM videos WHERE id = %s", (video_id,)).fetchone()
+            row = conn.execute("SELECT status FROM videos WHERE id = %s", (run.video_id,)).fetchone()
             status = row["status"] if row else None
-    if empty:
-        return
-    if status not in {"indexing", "completed"}:
-        return
-    _send(run, JOB_INDEX_VIDEO_TRANSCRIPT)
-    if env_flag("VIDEO_VISUAL_ENABLED", True):
-        from worker_python.tasks.segmented_visuals import start_visuals
-        start_visuals(video_id, run.file_key, run.duration_ms / 1000)
+    return None if empty else status
 
 
 def build_video_visuals(video_id: int, run_id: str, cache_kind: str) -> None:
@@ -152,6 +160,10 @@ def build_video_visuals(video_id: int, run_id: str, cache_kind: str) -> None:
 
 
 def _finish_cloud_run(run: checkpoints.TranscriptionRun) -> None:
+    _finish_run(run, cloud=True)
+
+
+def _commit_cloud_run(run: checkpoints.TranscriptionRun) -> str | None:
     transcript = None
     if not run.completed:
         segments = []
@@ -183,6 +195,4 @@ def _finish_cloud_run(run: checkpoints.TranscriptionRun) -> None:
     if result.get("completed") is not True:
         raise RuntimeError("Transcription finalization is still pending")
     # Indexing handoff is already in the same D1 batch as transcript completion.
-    if result.get("status") in {"indexing", "completed"} and env_flag("VIDEO_VISUAL_ENABLED", True):
-        from worker_python.tasks.segmented_visuals import start_visuals
-        start_visuals(run.video_id, run.file_key, run.duration_ms / 1000)
+    return result.get("status")

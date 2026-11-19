@@ -124,6 +124,23 @@ an identical set of layers:
   shared `@videoq/trpc/video-upload` constants/helpers are an explicit exception;
   router and RPC schema imports are rejected.
 
+The teaching connection workflow in `features/teaching/core.ts` accepts ticket,
+provider-authority and atomic-commit capabilities. `integrations/teaching.ts`
+owns runtime configuration, credential validation and provider clients; the
+existing service module preserves caller compatibility. Authority is rechecked
+before the repository atomically consumes the ticket and connects the course.
+Application ticket types are checked against transport schemas by the normal
+typecheck, and the workflow is covered by the transitive dependency checks.
+
+The LMS upload workflow in `features/lms/upload-service.ts` owns generation
+snapshot validation, immutable-attempt sequencing, cleanup decisions and processing
+handoff. `integrations/lms-upload.ts` supplies streaming storage, deadlines,
+maintenance scheduling and persistence. Claims, adoption and confirmation keep
+the existing atomic repository operations, including generation and authority
+rechecks; storage I/O happens outside those transactions. Application failures
+are translated at the compatibility boundary. The workflow is included in the
+same transitive import restrictions as the other extracted use cases.
+
 This is incremental separation. Several LMS services still combine orchestration
 with runtime adapters. Compatibility entrypoints may accept runtime bindings,
 but delegate business decisions to injected services. New business rules

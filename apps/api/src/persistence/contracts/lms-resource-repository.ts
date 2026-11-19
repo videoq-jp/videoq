@@ -1,5 +1,5 @@
-export type LmsGrant={id:string;ownerUserId?:string;materialsLease?:{id:string;token:string}};
-export type OwnedLmsGrant=LmsGrant & {ownerUserId:string};
+import type { LmsGrant } from '../../application/lms-upload';
+export type { LmsGrant, OwnedLmsGrant } from '../../application/lms-upload';
 export type LmsResource={id:string;installationId:string;externalId:string;kind:string;contextId:string;resourceLinkId:string;generation:number;manifestHash:string;enabled:boolean;
  contentHash:string|null;contentType:string|null;fileSize:number|null;youtubeVideoId:string|null;courseId:number|null;videoId:number|null;syncError:string|null;updatedAt:string};
 /** Source metadata needed by authenticated connector/worker operations, not presigned URLs. */

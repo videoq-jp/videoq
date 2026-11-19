@@ -1,3 +1,4 @@
+import { ApplicationError } from '../../application/errors';
 import { lmsIdentity, sourceRevision } from './contracts';
 import { z } from "zod";
 import { fileExtension, isAllowedContentType, isAllowedExtension } from "../../lib/upload";
@@ -35,4 +36,13 @@ export class LmsSyncError extends Error {
   constructor(public readonly status: 400 | 401 | 403 | 404 | 409 | 413, public readonly code: string) {
     super(code);
   }
+}
+
+/** Preserve the connector transport's existing error class and flat error envelope. */
+export function asLmsSyncError(error: unknown): LmsSyncError | null {
+  if (error instanceof LmsSyncError) return error;
+  if (error instanceof ApplicationError && error.kind === 'conflict') {
+    return new LmsSyncError(409, error.code);
+  }
+  return null;
 }

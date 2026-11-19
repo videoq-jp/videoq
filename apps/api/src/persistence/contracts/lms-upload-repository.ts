@@ -1,7 +1,6 @@
-import type {OwnedLmsGrant} from './lms-resource-repository';
+import type { OwnedLmsGrant, LmsUploadSnapshot, LmsContentAttempt } from '../../application/lms-upload';
+export type { LmsUploadSnapshot, LmsContentAttempt } from '../../application/lms-upload';
 import type {OutboxedVideoJob} from './video-upload-repository';
-export type LmsUploadSnapshot={resourceId:string;externalId:string;generation:number;videoId:number;fileKey:string;size:number;contentType:string};
-export type LmsContentAttempt={id:string;grant:OwnedLmsGrant;snapshot:LmsUploadSnapshot;fileKey:string};
 export type LmsUploadConfirmation={status:'stale'}|{status:'already'}|{status:'queued';job:OutboxedVideoJob};
 export interface LmsUploadRepository{
  prepare(attempt:LmsContentAttempt):Promise<boolean>;
