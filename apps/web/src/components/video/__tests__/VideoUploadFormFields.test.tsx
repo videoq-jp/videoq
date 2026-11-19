@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event';
 import { VideoUploadFormFields } from '../VideoUploadFormFields'
 
 describe('VideoUploadFormFields', () => {
@@ -15,16 +16,22 @@ describe('VideoUploadFormFields', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    if (!Element.prototype.hasPointerCapture) Element.prototype.hasPointerCapture = () => false
+    if (!Element.prototype.releasePointerCapture) Element.prototype.releasePointerCapture = () => {}
+    if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {}
   })
 
-  it('shows the selected audio language and allows changing it', () => {
+  it('shows the selected audio language and allows changing it', async () => {
+    const user = userEvent.setup()
     const change = vi.fn()
     const { rerender } = render(<VideoUploadFormFields {...defaultProps} transcriptionLanguage="ja" setTranscriptionLanguage={change} />)
     const select = screen.getByRole('combobox')
-    expect(select).toHaveValue('ja')
-    fireEvent.change(select, { target: { value: 'en' } })
+    expect(select).toHaveTextContent('日本語')
+    await user.click(select)
+    await user.click(await screen.findByRole('option', { name: 'English' }))
     expect(change).toHaveBeenLastCalledWith('en')
-    fireEvent.change(select, { target: { value: 'auto' } })
+    await user.click(select)
+    await user.click(await screen.findByRole('option', { name: 'videos.upload.languageAuto' }))
     expect(change).toHaveBeenLastCalledWith('auto')
     rerender(<VideoUploadFormFields {...defaultProps} transcriptionLanguage="en" setTranscriptionLanguage={change} isUploading />)
     expect(screen.getByRole('combobox')).toBeDisabled()

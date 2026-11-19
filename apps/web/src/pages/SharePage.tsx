@@ -33,12 +33,12 @@ function VideoItem({ video, isSelected, onSelect }: VideoItemProps) {
       type="button"
       aria-pressed={isSelected}
       onClick={() => onSelect(video.id)}
-      className={`flex w-full items-center gap-2 p-3 text-left rounded-8 transition-colors focus-visible:outline-4 focus-visible:outline-black ${
+      className={`flex w-full items-center gap-2 p-3 text-left rounded-8 transition-colors app-focus ${
         isSelected ? 'border-l-4 border-key-900 bg-key-50' : 'hover:bg-solid-gray-50'
       }`}
     >
       <span className="flex-1 min-w-0">
-        <span className={`block text-std-17N-170 truncate leading-tight ${isSelected ? 'font-bold text-key-900' : 'font-medium text-solid-gray-800'}`}>
+        <span className={`block truncate ${isSelected ? 'text-std-17B-170 text-key-900' : 'text-std-17N-170 text-solid-gray-800'}`}>
           {video.title}
         </span>
         <StatusBadge status={video.status} size="xs" className="mt-1 ml-0" />

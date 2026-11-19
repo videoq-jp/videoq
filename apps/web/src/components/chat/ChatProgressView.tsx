@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
-import { ChevronDown, LoaderCircle, Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
+import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { useTranslation } from 'react-i18next';
 import type { ChatProgress } from '@/lib/chatProgress';
 
@@ -27,9 +28,8 @@ export function ChatProgressView({ progress, waitingForAnswer }: {
       : searches.length > 0 ? t('chat.progress.checkingVideos') : t('chat.progress.preparing')
     : phase === 'error' ? t('chat.progress.interrupted')
       : tools.length > 0 ? t('chat.progress.usedTools', { count: tools.length }) : t('chat.progress.searched');
-  const ActivityIcon = pending ? LoaderCircle : Search;
   const summary = <>
-    <ActivityIcon aria-hidden="true" className={`h-4 w-4 shrink-0 ${pending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+    {pending ? <InlineSpinner /> : <Search aria-hidden="true" className="h-6 w-6 shrink-0" />}
     <span className="min-w-0 line-clamp-2 text-left">{label}</span>
   </>;
 
@@ -46,7 +46,7 @@ export function ChatProgressView({ progress, waitingForAnswer }: {
         aria-expanded={expanded}
         aria-controls={detailsId}
         onClick={() => setExpanded((value) => !value)}
-        className="flex h-10 w-full items-center gap-2 rounded-4 enabled:hover:text-key-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-key-900"
+        className="flex h-10 w-full items-center gap-2 rounded-4 enabled:hover:text-key-900 app-focus"
       >
         {summary}
         <ChevronDown aria-hidden="true" className={`ml-auto h-4 w-4 shrink-0 ${hasActivity ? '' : 'invisible'} ${expanded ? 'rotate-180' : ''}`} />

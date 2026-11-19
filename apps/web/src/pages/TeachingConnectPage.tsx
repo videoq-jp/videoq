@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { AuthPageIntro } from '@/components/layout/AuthPageIntro';
+import { MessageAlert } from '@/components/common/MessageAlert';
+import { InlineLoading } from '@/components/common/InlineLoading';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { API_URL } from '@/lib/apiConfig';
 import { useAuthSession } from '@/lib/authSession';
@@ -27,20 +31,23 @@ function ConnectionReview({ ticket, userId, email }: { ticket: string; userId: s
       setDone(true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : '接続できません。'); } finally { setPending(false); }
   }
-  if (done) return <p role="status">接続しました。元の授業画面に戻って更新してください。</p>;
-  if (query.isPending) return <p role="status">確認しています…</p>;
-  if (query.error) return <p role="alert">{query.error.message}</p>;
+  if (done) return <MessageAlert role="status" type="success" message="接続しました。元の授業画面に戻って更新してください。" />;
+  if (query.isPending) return <InlineLoading message="確認しています…" />;
+  if (query.error) return <MessageAlert type="error" message={query.error.message} />;
   if (!review) return null;
   return <div className="space-y-5">
-    {error && <p role="alert">{error}</p>}
+    {error && <MessageAlert type="error" message={error} />}
     <p>{review.provider === 'moodle' ? 'Moodle' : 'Google Classroom'}：{review.title}</p>
     <p>授業側のアカウント：{review.teacherName}</p>
     <p>接続先のVideoQアカウント：{email}</p>
-    <label className="block">利用する講座
-      <select className="block w-full border rounded p-3 mt-2" value={courseId} onChange={event => setSelected(event.target.value)}>
-        {review.courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
-      </select>{!review.courses.length && <p>先にVideoQで講座を作成してください。</p>}
-    </label>
+    <div className="space-y-2">
+      <Label htmlFor="teaching-course">利用する講座</Label>
+      <Select value={courseId} onValueChange={setSelected} disabled={pending || !review.courses.length}>
+        <SelectTrigger id="teaching-course" blockSize="md" className="w-full"><SelectValue /></SelectTrigger>
+        <SelectContent>{review.courses.map(course => <SelectItem key={course.id} value={String(course.id)}>{course.name}</SelectItem>)}</SelectContent>
+      </Select>
+      {!review.courses.length && <p>先にVideoQで講座を作成してください。</p>}
+    </div>
     <p>教材と質問履歴はこのアカウントで管理し、AI・動画処理・保存容量もこのアカウントの利用枠を使用します。</p>
     <Button disabled={pending || !courseId} onClick={() => void connect()}>{pending ? '接続しています…' : 'このアカウントで接続'}</Button>
   </div>;
@@ -52,8 +59,8 @@ export default function TeachingConnectPage() {
   const user = session.data?.user;
   return <>
     <AuthPageIntro badge="VideoQ" title="担当クラスをVideoQに接続" />
-    {!valid ? <p role="alert">授業画面から接続を開始してください。</p>
-      : session.isPending ? <p role="status">確認しています…</p>
+    {!valid ? <MessageAlert type="error" message="授業画面から接続を開始してください。" />
+      : session.isPending ? <InlineLoading message="確認しています…" />
       : !user ? <Button onClick={() => navigate('/login?next=' + encodeURIComponent(location.pathname + location.search))}>VideoQにログイン</Button>
       : <ConnectionReview key={ticket + ':' + user.id} ticket={ticket} userId={user.id} email={user.email} />}
   </>;

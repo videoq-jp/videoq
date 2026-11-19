@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { AuthPageIntro } from '@/components/layout/AuthPageIntro';
+import { MessageAlert } from '@/components/common/MessageAlert';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { Button } from '@/components/ui/button';
 import { API_URL } from '@/lib/apiConfig';
 import { useAuthSession } from '@/lib/authSession';
@@ -34,9 +36,9 @@ export default function MoodleConnectPage() {
   }
   return <>
     <AuthPageIntro badge="Moodle" title={t('auth.moodleConnect.title')} />
-    {!request ? <p role="alert">{t('auth.moodleConnect.invalid')}</p>
-      : session.isPending ? <p role="status">{t('auth.moodleConnect.loading')}</p>
-      : session.error && session.error.status !== 401 ? <p role="alert">{t('auth.moodleConnect.error')}</p>
+    {!request ? <MessageAlert type="error" message={t('auth.moodleConnect.invalid')} />
+      : session.isPending ? <InlineLoading message={t('auth.moodleConnect.loading')} />
+      : session.error && session.error.status !== 401 ? <MessageAlert type="error" message={t('auth.moodleConnect.error')} />
       : !session.data?.user ? <>
         <p className="mb-4">{t('auth.moodleConnect.loginHelp')}</p>
         <p className="mb-6 break-all">{request.moodleUrl}</p>
@@ -45,7 +47,7 @@ export default function MoodleConnectPage() {
         <p className="mb-4">{t('auth.moodleConnect.account', { account: session.data.user.email })}</p>
         <p className="mb-4 break-all font-bold">{request.moodleUrl}</p>
         <p className="mb-6">{t('auth.moodleConnect.permissions')}</p>
-        {failed && <p role="alert" className="mb-4 text-error-1">{t('auth.moodleConnect.error')}</p>}
+        {failed && <MessageAlert className="mb-4" type="error" message={t('auth.moodleConnect.error')} />}
         <div className="flex flex-col gap-3">
           <Button disabled={pending} onClick={() => void approve()}>{t(pending ? 'auth.moodleConnect.connecting' : 'auth.moodleConnect.allow')}</Button>
           <Button variant="outline" disabled={pending} onClick={() => returnToMoodle(moodleConnectCallback(request, { error: 'access_denied' }))}>{t('auth.moodleConnect.cancel')}</Button>

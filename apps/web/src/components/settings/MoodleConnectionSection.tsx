@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link as DesignLink } from '@/components/ui/link';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '@/lib/apiConfig';
 import { ConnectedAppCard, DisconnectAppDialog } from '@/components/auth/ConnectedAppCard';
@@ -53,7 +54,7 @@ export function MoodleConnectionSection({ embedded = false, headingLevel = 'h2',
     finally { setDisconnectPending(false); setDisconnectTarget(null); }
   }
   const target = connections.find(connection => connection.id === disconnectTarget);
-  const setupGuide = <a className="text-key-900 underline underline-offset-4" href="https://github.com/videoq-jp/videoq-moodle#installation" target="_blank" rel="noopener noreferrer">{t('settings.moodle.setupGuide')}</a>;
+  const setupGuide = <DesignLink icon={{}} href="https://github.com/videoq-jp/videoq-moodle#installation" target="_blank" rel="noopener noreferrer">{t('settings.moodle.setupGuide')}</DesignLink>;
   return (
     <section id="moodle" aria-label={embedded ? t('settings.moodle.title') : undefined} aria-labelledby={embedded ? undefined : 'moodle-heading'} className={embedded ? 'mb-3 scroll-mt-24' : 'scroll-mt-24 pt-6'}>
       {!embedded && <Heading size="20" className="mb-2"><HeadingTitle id="moodle-heading" level={headingLevel}>{t('settings.moodle.title')}</HeadingTitle></Heading>}

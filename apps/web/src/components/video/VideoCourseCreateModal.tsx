@@ -1,3 +1,4 @@
+import { MessageAlert } from '@/components/common/MessageAlert';
 import { useId, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,9 +88,7 @@ export function VideoCourseCreateModal({ isOpen, onClose, onCreate }: VideoCours
 
           <div className="space-y-4">
             {formError && (
-              <div role="alert" className="rounded-8 border border-error-1 bg-red-50 p-3 text-std-17N-170 text-error-1">
-                {formError}
-              </div>
+              <MessageAlert type="error" message={formError} />
             )}
 
             <div className="space-y-1.5">

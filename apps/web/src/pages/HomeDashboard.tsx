@@ -7,6 +7,7 @@ import { useAuthSession } from '@/lib/authSession';
 import { trpc } from '@/lib/trpc';
 import { useHomePageData } from '@/hooks/useHomePageData';
 import { useVideoStatusCounts } from '@/hooks/useVideoStats';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { MessageAlert } from '@/components/common/MessageAlert';
 import { AppPageHeader } from '@/components/layout/AppPageHeader';
@@ -196,7 +197,7 @@ export default function HomeDashboard() {
               >
                 <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
                 <dd className="text-std-20B-150 text-solid-gray-800">{loading ? (
-                  <span role="progressbar" aria-label={t('common.messages.loading')} className="inline-block h-7 w-12 rounded bg-solid-gray-100 motion-safe:animate-pulse" />
+                  <InlineLoading className="min-w-28" />
                 ) : value}</dd>
               </div>
             ))}

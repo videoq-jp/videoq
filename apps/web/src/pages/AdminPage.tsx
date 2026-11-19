@@ -15,6 +15,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
 import { MessageAlert } from '@/components/common/MessageAlert';
 import { ErrorMessage } from '@/components/auth/ErrorMessage';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/auth/FormField';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -428,8 +429,8 @@ export default function AdminPage() {
                       <TableRow role="row" key={row.id} className="block rounded-8 border border-solid-gray-300 bg-white @min-[60rem]:table-row @min-[60rem]:rounded-none @min-[60rem]:border-x-0 @min-[60rem]:border-t-0 @min-[60rem]:last:border-b-0">
                         <TableHead role="rowheader" scope="row" className="block min-w-0 py-4 font-normal @min-[60rem]:table-cell">
                           <div id={`${identityId}-name`} className="text-std-17B-170 [overflow-wrap:anywhere]">{row.username}</div>
-                          <div id={`${identityId}-email`} className="text-dns-14N-130 leading-relaxed text-solid-gray-700 [overflow-wrap:anywhere]">{row.email}</div>
-                          <div className="mt-2 text-dns-14N-130 leading-relaxed text-solid-gray-600 [overflow-wrap:anywhere]">
+                          <div id={`${identityId}-email`} className="text-std-16N-170 text-solid-gray-700 [overflow-wrap:anywhere]">{row.email}</div>
+                          <div className="mt-2 text-std-16N-170 text-solid-gray-600 [overflow-wrap:anywhere]">
                             {t('admin.users.columns.id')}: <span className="font-mono">{row.id}</span>
                           </div>
                         </TableHead>
@@ -453,7 +454,7 @@ export default function AdminPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell role="cell" className="block py-3 text-dns-14N-130 leading-relaxed @min-[60rem]:table-cell @min-[60rem]:py-4">
+                        <TableCell role="cell" className="block py-3 text-std-16N-170 @min-[60rem]:table-cell @min-[60rem]:py-4">
                           <div className="mb-2 text-dns-14B-130 text-solid-gray-700 @min-[60rem]:hidden">{t('admin.users.columns.quota')}</div>
                           <dl className="space-y-2">
                             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
@@ -559,20 +560,18 @@ export default function AdminPage() {
                   {t('admin.users.columns.flags')}
                 </legend>
                 <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={isActive}
                     disabled={selectedUser?.id === user.id}
-                    onChange={(event) => setIsActive(event.target.checked)}
+                    onCheckedChange={(value) => setIsActive(value === true)}
                   />
                   {t('admin.users.fields.isActive')}
                 </label>
                 <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={isAdminFlag}
                     disabled={selectedUser?.id === user.id}
-                    onChange={(event) => setIsAdminFlag(event.target.checked)}
+                    onCheckedChange={(value) => setIsAdminFlag(value === true)}
                   />
                   {t('admin.users.fields.isAdmin')}
                 </label>
@@ -664,10 +663,9 @@ export default function AdminPage() {
                 />
               </div>
               <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isOverQuota}
-                  onChange={(event) => setIsOverQuota(event.target.checked)}
+                  onCheckedChange={(value) => setIsOverQuota(value === true)}
                 />
                 {t('admin.users.fields.isOverQuota')}
               </label>

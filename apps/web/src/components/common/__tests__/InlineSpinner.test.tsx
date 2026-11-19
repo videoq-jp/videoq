@@ -1,26 +1,15 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { InlineSpinner } from '../InlineSpinner'
 
 describe('InlineSpinner', () => {
-  it('should inherit the surrounding text color by default', () => {
-    const { container } = render(<InlineSpinner />)
-    
-    const spinner = container.firstElementChild
-    expect(spinner).toBeInTheDocument()
-    expect(spinner).toHaveClass('border-current/25', 'border-t-current')
-    expect(spinner).toHaveClass('animate-spin')
+  it('uses the shared spinner decoratively so the surrounding action supplies its name', () => {
+    const { container } = render(<button>保存中<InlineSpinner /></button>)
+    expect(screen.getByRole('button', { name: '保存中' })).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-slot="progress-indicator-spinner"]')).toBeInTheDocument()
   })
-
-  it('should render spinner with red color', () => {
-    const { container } = render(<InlineSpinner color="red" />)
-    
-    const spinner = container.querySelector('.border-red-200.border-t-error-1')
-    expect(spinner).toBeInTheDocument()
-  })
-  it('should apply custom className', () => {
-    const { container } = render(<InlineSpinner className="custom-class" />)
-    
-    const spinner = container.querySelector('.custom-class')
-    expect(spinner).toBeInTheDocument()
+  it('supports danger actions and custom sizing', () => {
+    const { container } = render(<InlineSpinner color="red" className="h-4 w-4" />)
+    expect(container.querySelector('[data-slot="progress-indicator"]')).toHaveClass('text-error-1', 'h-4', 'w-4')
   })
 })

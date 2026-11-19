@@ -144,7 +144,7 @@ export function VideoUploadModal({ isOpen, onClose, autoCloseDelayMs = 2000 }: V
                         disabled={isUploading}
                         aria-pressed={sourceMode === mode}
                         onClick={() => setSourceMode(mode)}
-                        className={`flex-1 px-3 py-2 text-std-17N-170 font-semibold transition-colors ${
+                        className={`app-focus min-h-12 flex-1 px-3 py-2 text-oln-16B-100 transition-colors disabled:text-solid-gray-420 ${
                           sourceMode === mode
                             ? 'border-b-2 border-key-900 text-key-900'
                             : 'text-solid-gray-700 hover:text-solid-gray-800'

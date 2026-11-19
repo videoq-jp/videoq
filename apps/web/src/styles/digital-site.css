@@ -107,3 +107,16 @@ button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: poi
   .site-header-item { padding-inline: 1rem; }
   .site-header-logo { padding-inline: 1rem; }
 }
+
+/* Shared interaction states for application-specific controls. */
+.app-focus:focus-visible { outline: 4px solid black; outline-offset: 2px; box-shadow: 0 0 0 2px var(--color-yellow-300); }
+.app-radio { appearance: none; width: 24px; height: 24px; flex-shrink: 0; border: 2px solid var(--color-solid-gray-600); border-radius: 50%; background: white; }
+.app-radio:checked { border: 7px solid var(--color-key-900); }
+.app-radio:hover:not(:disabled):not(:focus-visible) { outline: 4px solid var(--color-solid-gray-200); }
+.app-radio:disabled { border-color: var(--color-solid-gray-300); background: var(--color-solid-gray-50); }
+.app-radio:checked:disabled { border-width: 7px; }
+@media (forced-colors: active) {
+  .app-radio { border-color: ButtonText; background: Canvas; }
+  .app-radio:checked { border-color: Highlight; }
+  .app-radio:disabled { border-color: GrayText; }
+}
