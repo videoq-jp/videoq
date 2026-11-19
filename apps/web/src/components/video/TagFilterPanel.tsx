@@ -74,18 +74,18 @@ export function TagFilterPanel({
               disabled={disabled}
               className={cn(
                 'rounded-8 transition-opacity focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black focus-visible:ring-2 focus-visible:ring-yellow-300 disabled:cursor-not-allowed',
-                isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-80',
+                isSelected ? (disabled ? 'ring-2 ring-solid-gray-300 ring-offset-2' : 'ring-2 ring-key-900 ring-offset-2') : (disabled ? '' : 'hover:bg-solid-gray-50'),
               )}
               aria-pressed={isSelected}
             >
               <ChipLabel
                 variant={isSelected ? 'filled-1' : 'outlined'}
                 color={resolveTagChipColor(tag.color)}
-                className="min-h-0 text-oln-14N-100"
+                className={cn('min-h-0 text-oln-14N-100', disabled && 'border-solid-gray-300 bg-solid-gray-50 text-solid-gray-420 forced-colors:border-[GrayText] forced-colors:text-[GrayText]')}
               >
                 {tag.name}
                 {tag.video_count !== undefined && (
-                  <span className="ml-1.5 opacity-75">({tag.video_count})</span>
+                  <span className="ml-1.5">({tag.video_count})</span>
                 )}
               </ChipLabel>
             </button>

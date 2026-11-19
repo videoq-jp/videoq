@@ -1,4 +1,6 @@
 import { PUBLIC_DEMO_SHARE_SLUG } from '@videoq/trpc/public-demo';
+import { ViewerPlayerLoading } from '@/components/video/ViewerPlayerLoading';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
 import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
@@ -6,13 +8,13 @@ import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiClient, type VideoInCourse } from '@/lib/api';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { ChipLabel } from '@/components/ui/chip-label';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { ChatPanelLoading } from '@/components/chat/ChatPanelFrame';
 import { useVideoPlayback } from '@/hooks/useVideoPlayback';
 import { useMobileTab } from '@/hooks/useMobileTab';
 import { useSharedCourseQuery } from '@/hooks/useSharePageData';
@@ -33,12 +35,12 @@ function VideoItem({ video, isSelected, onSelect }: VideoItemProps) {
       type="button"
       aria-pressed={isSelected}
       onClick={() => onSelect(video.id)}
-      className={`flex w-full items-center gap-2 p-3 text-left rounded-8 transition-colors focus-visible:outline-4 focus-visible:outline-black ${
+      className={`flex w-full items-center gap-2 p-3 text-left rounded-8 transition-colors app-focus ${
         isSelected ? 'border-l-4 border-key-900 bg-key-50' : 'hover:bg-solid-gray-50'
       }`}
     >
       <span className="flex-1 min-w-0">
-        <span className={`block text-std-17N-170 truncate leading-tight ${isSelected ? 'font-bold text-key-900' : 'font-medium text-solid-gray-800'}`}>
+        <span className={`block truncate ${isSelected ? 'text-std-17B-170 text-key-900' : 'text-std-17N-170 text-solid-gray-800'}`}>
           {video.title}
         </span>
         <StatusBadge status={video.status} size="xs" className="mt-1 ml-0" />
@@ -57,10 +59,9 @@ interface SharedCourseViewProps {
   intro?: ReactNode;
   suggestedQuestions?: string[];
   onCitationPlay?: () => void;
-  loadingContent?: ReactNode;
 }
 
-export function SharedCourseView({ shareToken, headerAction, intro, suggestedQuestions, onCitationPlay, loadingContent }: SharedCourseViewProps) {
+export function SharedCourseView({ shareToken, headerAction, intro, suggestedQuestions, onCitationPlay }: SharedCourseViewProps) {
   const { t } = useTranslation();
   const navigate = useI18nNavigate();
   const viewportHeight = useViewerViewport();
@@ -108,19 +109,9 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     className: `absolute inset-0 flex min-h-0 flex-col ${activeTab === tab ? '' : 'invisible'}`,
   });
 
-  // ── Loading ────────────────────────────────────────────────────────────────
-
-  if (isLoading) {
-    return loadingContent ?? (
-      <div className="min-h-dvh bg-solid-gray-50">
-        <LoadingSpinner fullScreen />
-      </div>
-    );
-  }
-
   // ── Error ──────────────────────────────────────────────────────────────────
 
-  if (error || !course) {
+  if (!isLoading && (error || !course)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-solid-gray-50 gap-4">
         <p className="text-error-1">{error || t('common.messages.shareNotFound')}</p>
@@ -137,15 +128,15 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
     return description?.replace(/^\[videoq-campus-basics-v1\]\s*/, '')
       .replace(/^\S+ sha256:[a-f0-9]{64}$/, '');
   };
-  const learningDetails = <CourseLearningDetails key={JSON.stringify([course.id, shareToken])} courseId={course.id} shareSlug={shareToken}
-    videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={readableDescription(selectedVideo?.description)} courseDescription={readableDescription(course.description)}
+  const learningDetails = <CourseLearningDetails key={shareToken} loading={isLoading} courseId={course?.id} shareSlug={shareToken}
+    videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={readableDescription(selectedVideo?.description)} courseDescription={readableDescription(course?.description)}
     onVideoPlay={(id, time) => { onCitationPlay?.(); handleVideoPlayFromTime(id, time); revealPlayer(); }} />;
 
   // ── Main ───────────────────────────────────────────────────────────────────
 
   return (
     <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
-      <ViewerHeader title={course.name}>
+      <ViewerHeader title={course?.name ?? t(shareToken === PUBLIC_DEMO_SHARE_SLUG ? 'tryDemo.title' : 'navigation.coursesNav')}>
           {headerAction ?? (
             <ChipLabel variant="filled-1" color="blue" className="min-h-0 text-oln-14N-100">
               {t('videos.shared.publicBadge')}
@@ -158,7 +149,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
       <main className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(22rem,3fr)]">
         {/* LEFT: player, then details that scroll under it */}
         <section ref={contentRef} className="shrink-0 lg:min-h-0 lg:overflow-y-auto">
-          <ViewerPlayerFrame title={selectedVideo?.title ?? t('videos.shared.playerPlaceholder')} expanded={playerExpanded} onExpandedChange={setPlayerExpanded}>
+          {isLoading ? <ViewerPlayerLoading expanded={playerExpanded} onExpandedChange={setPlayerExpanded} /> : <ViewerPlayerFrame title={selectedVideo?.title ?? t('videos.shared.playerPlaceholder')} expanded={playerExpanded} onExpandedChange={setPlayerExpanded}>
           <div className="flex aspect-video max-h-[clamp(4rem,calc(100dvh-27rem),28dvh)] w-full items-center justify-center bg-black lg:max-h-[72dvh]">
             {selectedVideo ? (
               selectedVideo.source_type === 'youtube' && selectedVideo.youtube_embed_url ? (
@@ -188,7 +179,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
               <p className="text-solid-gray-200 text-std-17N-170 text-center px-4">{t('videos.shared.playerPlaceholder')}</p>
             )}
           </div>
-          </ViewerPlayerFrame>
+          </ViewerPlayerFrame>}
           {!isMobile && learningDetails}
         </section>
 
@@ -199,10 +190,10 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
             {isMobile && <div {...panelProps('details')}><div className="min-h-0 flex-1 overflow-y-auto">{learningDetails}</div></div>}
             <div {...panelProps('videos')}>
               <p className="shrink-0 px-4 pt-3 text-dns-14N-130 text-solid-gray-600">
-                {t('videos.courseDetail.videoCount', { count: course.videos?.length ?? 0 })}
+                {isLoading ? <InlineLoading /> : t('videos.courseDetail.videoCount', { count: course?.videos?.length ?? 0 })}
               </p>
               <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-                {course.videos && course.videos.length > 0 ? (
+                {isLoading ? <div className="flex h-full items-center justify-center"><InlineLoading /></div> : course?.videos && course.videos.length > 0 ? (
                   course.videos.map((video) => (
                     <VideoItem
                       key={video.id}
@@ -222,9 +213,9 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
               </div>
             </div>
             <div {...panelProps('assistant')}>
-              <ChatPanel
+              {isLoading ? <ChatPanelLoading suggestedQuestions={suggestedQuestions} shareToken={shareToken} showTitle={false} className="min-h-0 flex-1 border-0" /> : <ChatPanel
                 onComposerFocus={() => { if (isMobile) setPlayerExpanded(false); }}
-                courseId={course.id}
+                courseId={course?.id}
                 onVideoPlay={(videoId, startTime) => {
                   onCitationPlay?.();
                   handleVideoPlayFromTime(videoId, startTime);
@@ -235,7 +226,7 @@ export function SharedCourseView({ shareToken, headerAction, intro, suggestedQue
                 sendSuggestedQuestions={!!suggestedQuestions}
                 showTitle={false}
                 className="min-h-0 flex-1 border-0"
-              />
+              />}
             </div>
           </div>
         </aside>

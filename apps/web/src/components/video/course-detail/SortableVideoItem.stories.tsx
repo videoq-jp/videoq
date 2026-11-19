@@ -37,18 +37,21 @@ type Story = StoryObj<typeof meta>;
 type Context = Parameters<NonNullable<Story['play']>>[0];
 const row = (context: Context) => within(context.canvas.getByTestId(`course-video-${context.args.video.id}`));
 async function startDrag(context: Context) { row(context).getByRole('button', { name: dragLabel(context.args.video.title) }).focus(); await context.userEvent.keyboard(' '); await waitFor(() => expect(context.canvas.getByTestId(`course-video-${context.args.video.id}`).firstElementChild).toHaveStyle({ opacity: '0.5' })); }
-export const Unselected: Story = { async play(context) { await expect(row(context).getByRole('button', { pressed: false, name: new RegExp(context.args.video.title) })).toBeVisible(); } };
+export const Unselected: Story = { async play(context) { await expect(row(context).getByRole('button', { pressed: false, name: new RegExp(context.args.video.title) })).toBeVisible(); const handle = row(context).getByRole('button', { name: dragLabel(context.args.video.title) }); await expect(handle.getBoundingClientRect().width).toBeGreaterThanOrEqual(44); await expect(handle.getBoundingClientRect().height).toBeGreaterThanOrEqual(44); } };
 export const Selected: Story = { args: { isSelected: true }, async play(context) { await expect(row(context).getByRole('button', { pressed: true })).toBeVisible(); } };
 export const SelectVideo: Story = { async play(context) { await context.userEvent.click(row(context).getByRole('button', { pressed: false })); await expect(context.args.onSelect).toHaveBeenCalledWith(context.args.video.id); await expect(row(context).getByRole('button', { pressed: true })).toHaveFocus(); } };
 export const KeyboardSelect: Story = { async play(context) { row(context).getByRole('button', { name: dragLabel(context.args.video.title) }).focus(); await context.userEvent.tab(); await context.userEvent.keyboard('{Enter}'); await expect(context.args.onSelect).toHaveBeenCalledWith(context.args.video.id); await expect(row(context).getByRole('button', { pressed: true })).toHaveFocus(); } };
 export const RemoveVideo: Story = { async play(context) { await context.userEvent.click(row(context).getByRole('button', { name: removeLabel() })); await expect(context.args.onRemove).toHaveBeenCalledWith(context.args.video.id); await expect(context.args.onSelect).not.toHaveBeenCalled(); } };
-export const Removing: Story = { args: { isRemoving: true, isMutationPending: true }, async play(context) { const remove = row(context).getByRole('button', { name: removeLabel() }); await expect(remove).toHaveAttribute('aria-busy', 'true'); for (const button of context.canvas.getAllByRole('button', { name: removeLabel() })) await expect(button).toBeDisabled(); remove.parentElement!.click(); await expect(context.args.onSelect).not.toHaveBeenCalled(); await expect(row(context).getByRole('button', { name: dragLabel(context.args.video.title) })).toBeDisabled(); } };
+export const Removing: Story = { args: { isRemoving: true, isMutationPending: true }, async play(context) { const remove = row(context).getByRole('button', { name: removeLabel() }); await expect(remove).toHaveAttribute('aria-busy', 'true'); for (const button of context.canvas.getAllByRole('button', { name: removeLabel() })) await expect(button).toBeDisabled(); remove.parentElement!.click(); await expect(context.args.onSelect).not.toHaveBeenCalled(); await expect(row(context).getByRole('button', { name: dragLabel(context.args.video.title) })).toHaveAttribute('aria-disabled', 'true'); } };
 export const OtherVideoRemoving: Story = { args: { isMutationPending: true }, async play(context) { await expect(row(context).getByRole('button', { name: removeLabel() })).toHaveAttribute('aria-busy', 'false'); await expect(row(context).getByRole('button', { name: removeLabel() })).toBeDisabled(); } };
 export const SavingOrder: Story = {
   args: { isMutationPending: true },
   async play(context) {
     const handle = row(context).getByRole('button', { name: dragLabel(context.args.video.title) });
-    await expect(handle).toBeDisabled();
+    await expect(handle).not.toBeDisabled();
+    handle.focus();
+    await context.userEvent.keyboard(" {ArrowDown} ");
+    await expect(handle).toHaveFocus();
     await expect(handle).toHaveAttribute('aria-disabled', 'true');
     for (const button of context.canvas.getAllByRole('button', { name: removeLabel() })) {
       await expect(button).toBeDisabled();

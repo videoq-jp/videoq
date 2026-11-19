@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import TeachingConnectPage from './TeachingConnectPage';
 type Fixture = { user: { id: string; email: string } | null; navigate: ReturnType<typeof vi.fn> };
 const fixture = vi.hoisted<Fixture>(() => ({ user: { id: 'alice', email: 'alice@school.example' }, navigate: vi.fn() }));
@@ -9,7 +10,11 @@ vi.mock('@/lib/i18n', () => ({ useI18nNavigate: () => fixture.navigate }));
 vi.mock('react-router-dom', () => ({ useLocation: () => ({ pathname: '/ja/teaching/connect', search: '?ticket=' + 'a'.repeat(64) }) }));
 function mount() { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><TeachingConnectPage /></QueryClientProvider>); }
 const review = { provider: 'classroom', title: 'Math', teacherName: 'Teacher A', contextId: 'class-a', courses: [{ id: 12, name: 'Basic' }, { id: 13, name: 'Advanced' }] };
-beforeEach(() => { fixture.user = { id: 'alice', email: 'alice@school.example' };vi.clearAllMocks(); });
+beforeEach(() => {
+  if (!Element.prototype.hasPointerCapture) Element.prototype.hasPointerCapture = () => false;
+  if (!Element.prototype.releasePointerCapture) Element.prototype.releasePointerCapture = () => {};
+  if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {};
+  fixture.user = { id: 'alice', email: 'alice@school.example' };vi.clearAllMocks(); });
 afterEach(() => { cleanup();vi.unstubAllGlobals(); });
 it('requires independent VideoQ login before retrieving a connection request', () => {
   fixture.user = null;const fetch = vi.fn();vi.stubGlobal('fetch', fetch);mount();
@@ -18,7 +23,9 @@ it('requires independent VideoQ login before retrieving a connection request', (
 });
 it.each(['classroom', 'moodle'])('connects only the selected owned course for %s', async provider => {
   const fetch = vi.fn().mockResolvedValueOnce(Response.json({ ...review, provider })).mockResolvedValueOnce(Response.json({ courseId: 13 }));vi.stubGlobal('fetch', fetch);mount();
-  fireEvent.change(await screen.findByRole('combobox'), { target: { value: '13' } });
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('combobox'));
+  await user.click(await screen.findByRole('option', { name: 'Advanced' }));
   expect(screen.getByText(/alice@school.example/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'このアカウントで接続' }));
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('接続しました。'));

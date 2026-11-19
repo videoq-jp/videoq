@@ -1,7 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { timeStringToSeconds } from '@/lib/utils/video';
-import { cn } from '@/lib/digital-agency/cn';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { useChatConversations } from '@/hooks/useChatConversations';
 import { useAuthSession } from '@/lib/authSession';
@@ -10,10 +9,12 @@ import { useChatHistory } from '@/hooks/useChatHistory';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { ChatHistoryView } from '@/components/chat/ChatHistoryView';
 import { ChatMessagesView } from '@/components/chat/ChatMessagesView';
+import { MessageAlert } from '@/components/common/MessageAlert';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { Button } from '@/components/ui/button';
-import { Heading, HeadingTitle } from '@/components/ui/heading';
+import { ChatPanelFrame, ChatPanelLoading, ChatLoadingContent, ChatSuggestedQuestions } from './ChatPanelFrame';
 
-interface ChatPanelProps {
+export interface ChatPanelProps {
   courseId?: number;
   onVideoPlay?: (videoId: number, startTime: string) => void;
   shareToken?: string;
@@ -33,8 +34,7 @@ export function ChatPanel(props: ChatPanelProps) {
   // Cached route transitions can reuse this component. Keep all chat state and
   // pending requests inside the course/access-route boundary, not the parent.
   const session = useAuthSession();
-  const { t } = useTranslation();
-  if (session.isPending) return <p role="status">{t("chat.restoringConversation")}</p>;
+  if (session.isPending) return <ChatPanelLoading {...props} />;
   const identity = session.data?.user.id ?? 'visitor';
   const scope = JSON.stringify([identity, props.courseId, props.shareToken]);
   return <ChatPanelSession key={scope} {...props} storageKey={`videoq:conversations:${props.shareToken ? 'v2' : 'v1'}:${scope}`} />;
@@ -79,31 +79,8 @@ function ChatPanelSession({
     window.open(`/videos/${videoId}?t=${seconds}`, '_blank');
   };
 
-  const showTabs = !!courseId && !shareToken && showHistory;
-
-  const containerClass = cn(
-    'flex min-h-0 flex-col overflow-hidden border border-solid-gray-420 bg-white',
-    className ?? 'h-[500px] lg:h-[600px]',
-  );
-
   return (
-    <div className={containerClass}>
-      {(showTitle || showTabs) && <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
-        {showTitle && <Heading size="18" className="shrink-0">
-          <HeadingTitle level={shareToken ? 'h3' : 'h2'}>{t('chat.title')}</HeadingTitle>
-        </Heading>}
-        {showTabs && <div className="flex w-full flex-wrap gap-4 text-std-17N-170">
-          <button type="button" onClick={() => setTab('chat')} aria-pressed={tab === 'chat'}
-            className={tab === 'chat' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
-            {t('chat.currentConversation')}
-          </button>
-          <button type="button" onClick={() => setTab('history')} aria-pressed={tab === 'history'}
-            className={tab === 'history' ? 'font-bold text-key-900 underline underline-offset-4' : 'text-solid-gray-600'}>
-            {t('chat.history')}
-          </button>
-        </div>}
-      </div>}
-
+    <ChatPanelFrame courseId={courseId} shareToken={shareToken} showTitle={showTitle} showHistory={showHistory} className={className} tab={tab} onTabChange={setTab}>
       {tab === 'history' && (
         <ChatHistoryView
           history={history}
@@ -115,9 +92,9 @@ function ChatPanelSession({
         />
       )}
       <div className={tab === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-        {conversations.restoring ? <p role="status" className="p-4">{t('chat.restoringConversation')}</p>
-          : conversations.restoreError ? <div role="alert" className="p-4 space-y-3">
-            <p>{t('chat.restoreConversationError')}</p>
+        {conversations.restoring ? <ChatLoadingContent suggestedQuestions={suggestedQuestions} />
+          : conversations.restoreError ? <div className="p-4 space-y-3">
+            <MessageAlert type="error" message={t('chat.restoreConversationError')} />
             <Button onClick={() => void conversations.detail.refetch()}>{t('chat.retry')}</Button>
             <Button onClick={conversations.startNew}>{t('chat.continueChat')}</Button>
           </div> : <ActiveChat key={conversations.selected.id} visible={tab === 'chat'}
@@ -129,7 +106,7 @@ function ChatPanelSession({
             onLoadEarlier={() => conversations.detail.fetchNextPage({ throwOnError: true })}
             earlierError={conversations.detail.isFetchNextPageError} />}
       </div>
-    </div>
+    </ChatPanelFrame>
   );
 }
 
@@ -178,8 +155,8 @@ function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, sug
   if (!visible) return null;
   return <>
     {hasEarlier && <Button disabled={loadingEarlier || busy} onClick={loadEarlier}>{t('chat.loadEarlierMessages')}</Button>}
-    {earlierError && <p role="alert" className="px-4 py-2">{t("chat.loadEarlierError")}</p>}
-    {remoteBusy && <p role="status" className="px-4 py-2">{t('chat.answerInProgress')}</p>}
+    {earlierError && <MessageAlert className="mx-4 my-2" type="error" message={t("chat.loadEarlierError")} />}
+    {remoteBusy && <InlineLoading className="px-4 py-2" message={t('chat.answerInProgress')} />}
     <ChatMessagesView messages={chat.messages} isLoading={chat.isLoading}
       feedbackUpdatingIds={chat.feedbackUpdatingIds} messagesContainerRef={chat.messagesContainerRef}
       onScroll={chat.handleMessagesScroll} onVideoNavigate={onVideoNavigate} onFeedback={chat.handleFeedback} />
@@ -189,13 +166,11 @@ function ActiveChat({ initialMessages, remoteBusy, visible, onVideoNavigate, sug
         {t(suggestionsExpanded ? 'chat.hideSuggestions' : 'chat.showSuggestions')}
       </Button>}
       <div id={suggestionsId} hidden={hasQuestions && !suggestionsExpanded}>
-      <div className="flex max-h-[20dvh] gap-2 overflow-x-auto sm:flex-wrap sm:overflow-y-auto" role="group" aria-label={t('chat.suggestedQuestions')}>
-      {suggestedQuestions.map(question => <Button key={question} type="button" variant="outline" size="sm" disabled={busy}
-        className="h-auto min-h-11 max-w-[85%] shrink-0 whitespace-normal py-2 text-left leading-snug sm:max-w-full sm:shrink" onClick={() => {
-          setSuggestionsExpanded(false);
-          if (sendSuggestedQuestions) void chat.handleSend(question); else chat.setInput(question);
-        }}>{question}</Button>)}
-    </div></div></div>}
+      <ChatSuggestedQuestions questions={suggestedQuestions} disabled={busy} onSelect={question => {
+        setSuggestionsExpanded(false);
+        if (sendSuggestedQuestions) void chat.handleSend(question); else chat.setInput(question);
+      }} />
+    </div></div>}
     <ChatComposer onFocus={() => { setSuggestionsExpanded(false); onComposerFocus?.(); }} input={chat.input} isLoading={busy} onInputChange={chat.setInput} onKeyDown={event => { if (!remoteBusy) chat.handleKeyPress(event); }}
       onSend={() => remoteBusy ? Promise.resolve() : chat.handleSend()} />
   </>;

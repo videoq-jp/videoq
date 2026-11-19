@@ -7,7 +7,10 @@ import { trpc } from '@/lib/trpc';
 import { Link, useI18nLocation } from '@/lib/i18n';
 import { useAuthSession } from '@/lib/authSession';
 import { useConfirm } from '@/components/common/feedback';
+import { MessageAlert } from '@/components/common/MessageAlert';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { Button } from '@/components/ui/button';
+import { Link as DesignLink, linkVariants } from '@/components/ui/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +28,7 @@ interface Props {
 export function CourseQaPanel(props: Props) {
   const session = useAuthSession();
   const { t } = useTranslation();
-  if (session.isPending) return <p role="status">{t('qa.loading')}</p>;
+  if (session.isPending) return <InlineLoading message={t('qa.loading')} />;
   return <QaSession key={JSON.stringify([props.courseId, props.shareSlug, session.data?.user.id])} {...props} />;
 }
 
@@ -110,7 +113,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   };
   const back = () => { setSelected(null); setReplyPage(0); setEditingQuestion(false); setEditingReply(null); setError(false); };
   const open = (questionId: string) => { setSelected(questionId); setReplyPage(0); setAsking(false); setEditingQuestion(false); setEditingReply(null); setError(false); setAnswer(''); };
-  const login = <Link href={`/login?next=${encodeURIComponent(location.pathname)}`} className="text-key-900 underline">{t('qa.loginToPost')}</Link>;
+  const login = <DesignLink asChild><Link href={`/login?next=${encodeURIComponent(location.pathname)}`}>{t('qa.loginToPost')}</Link></DesignLink>;
   const voteButton = (question: QaQuestion) => <Button type="button" variant="text" size="sm" disabled={busy || !canVote}
     aria-pressed={question.voted} aria-label={t(question.voted ? 'qa.removeVote' : 'qa.vote')}
     onClick={() => void run(async () => { await vote.mutateAsync({ ...access, questionId: question.id, voted: !question.voted }); await refresh(); })}>
@@ -132,11 +135,11 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   </div>;
 
   return <div className="space-y-5 py-4 text-solid-gray-800">
-    {error && <p role="alert" className="text-error-1">{t('qa.operationError')}</p>}
+    {error && <MessageAlert type="error" message={t('qa.operationError')} />}
     {selected ? <>
       <Button type="button" variant="text" size="sm" disabled={busy} onClick={back}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t('qa.back')}</Button>
-      {detail.isPending ? <p role="status">{t('qa.loading')}</p> : detail.isError ? <div role="alert">
-        <p>{t('qa.loadError')}</p><Button type="button" variant="outline" size="sm" onClick={() => void detail.refetch()}>{t('chat.retry')}</Button>
+      {detail.isPending ? <InlineLoading message={t('qa.loading')} /> : detail.isError ? <div className="space-y-3">
+        <MessageAlert type="error" message={t('qa.loadError')} /><Button type="button" variant="outline" size="sm" onClick={() => void detail.refetch()}>{t('chat.retry')}</Button>
       </div> : detail.data && <>
         {editingQuestion ? <PostForm title={title} body={body} onTitleChange={setTitle} onBodyChange={setBody} busy={busy}
           onCancel={() => setEditingQuestion(false)} onSubmit={() => void run(async () => {
@@ -204,12 +207,12 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
             <SelectContent><SelectItem value="recent">{t('qa.recent')}</SelectItem><SelectItem value="votes">{t('qa.mostVotes')}</SelectItem></SelectContent>
           </Select>
         </div>
-        {list.isPending ? <p role="status">{t('qa.loading')}</p> : list.isError ? <div role="alert"><p>{t('qa.loadError')}</p><Button type="button" variant="outline" size="sm" onClick={() => void list.refetch()}>{t('chat.retry')}</Button></div> : <>
+        {list.isPending ? <InlineLoading message={t('qa.loading')} /> : list.isError ? <div className="space-y-3"><MessageAlert type="error" message={t('qa.loadError')} /><Button type="button" variant="outline" size="sm" onClick={() => void list.refetch()}>{t('chat.retry')}</Button></div> : <>
           {list.data.items.length === 0 && <p className="py-6 text-solid-gray-600">{t(search || currentLecture || unanswered ? 'qa.noMatches' : 'qa.empty')}</p>}
           <div className="divide-y divide-solid-gray-200">
             {list.data.items.map(question => <article key={question.id} className="space-y-2 py-4">
               {question.featured && <p className="flex items-center gap-1 text-dns-14B-130 text-key-900"><Pin className="h-4 w-4" aria-hidden="true" />{t('qa.featured')}</p>}
-              <h4><button type="button" onClick={() => open(question.id)} className="break-words text-left text-std-18B-160 text-key-900 underline focus-visible:outline-4 focus-visible:outline-black">{question.title}</button></h4>
+              <h4><button type="button" onClick={() => open(question.id)} className={`${linkVariants()} break-words text-left text-std-18B-160`}>{question.title}</button></h4>
               <p className="line-clamp-2 break-words text-std-17N-170 text-solid-gray-700">{question.body}</p>
               <Author author={question.author} date={question.createdAt} />
               <div className="flex flex-wrap items-center gap-2 text-dns-14N-130 text-solid-gray-600">{voteButton(question)}<MessageCircle className="h-4 w-4" aria-hidden="true" />{t('qa.answerCount', { count: question.replyCount })}{question.videoTitle && <span>· {question.videoTitle}</span>}</div>

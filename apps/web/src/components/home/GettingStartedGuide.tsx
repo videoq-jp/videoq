@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -144,9 +145,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
                 {isCurrent ? (
                   <div className="mt-4 pl-[calc(var(--step-number-size)+var(--step-number-margin)*2+1rem)]">
                     {isWaiting ? (
-                      <p role="status" className="text-std-17B-170 text-solid-gray-800">
-                        {t('home.gettingStarted.processing')}
-                      </p>
+                      <InlineLoading message={t('home.gettingStarted.processing')} />
                     ) : (
                       renderAction(key)
                     )}

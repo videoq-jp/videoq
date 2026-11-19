@@ -1,0 +1,99 @@
+{
+  "date": "2026-11-20",
+  "voice": "Samantha",
+  "rate": 155,
+  "provenance": "English counterpart to the November 13 Japanese product overview, captured from the current web app in Storybook. The derivative question, answer, source and lesson are translated from content/answer.json and content/x-ad-en.json. Other UI data and learner identities are fixtures. No invitation was sent. Screens are still captures, with edited pacing and synthesized English narration.",
+  "scenes": [
+    {
+      "title": "Answers with a source you can revisit",
+      "summary": "Read the answer. Rewatch the explanation.",
+      "shots": ["answer", "citation"],
+      "sentences": [
+        "An answer is more useful when you can check where it came from.",
+        "VideoQ can show the lecture video and time range behind an answer. Select the citation to jump to that explanation.",
+        "Read, rewatch, and listen again at your own pace. Some answers may not include citations."
+      ]
+    },
+    {
+      "title": "Students ask in their own words",
+      "summary": "Questions are answered from the videos in the course.",
+      "shots": ["question", "answer"],
+      "sentences": [
+        "Invited students open the course with their own accounts.",
+        "They ask what they did not understand, in their own words.",
+        "The AI looks for relevant explanations across the course videos and answers from the lecture material. Answers use the course owner's allowance."
+      ]
+    },
+    {
+      "title": "Start with a lecture video",
+      "summary": "Upload a recording and choose its spoken language.",
+      "shots": ["upload"],
+      "sentences": [
+        "First, upload a lecture recording.",
+        "Choose the language spoken in the video. VideoQ transcribes the recording and prepares it for questions.",
+        "Once processing is complete, the video is ready to add to a course."
+      ]
+    },
+    {
+      "title": "Bring related videos into one course",
+      "summary": "Organize the material students will ask about.",
+      "shots": ["course"],
+      "sentences": [
+        "Next, bring related videos together in a course.",
+        "Create a course for each teaching unit or training topic. Add videos from the library and arrange their order.",
+        "The course defines which learning materials students can ask about."
+      ]
+    },
+    {
+      "title": "Invite the students who need access",
+      "summary": "Sign in with the invited email, then accept the invitation.",
+      "shots": ["invite"],
+      "sentences": [
+        "Share a course with specific students by inviting their email addresses.",
+        "Students sign in with the verified email address that received the invitation, then accept it to join.",
+        "Members can watch and ask questions. They cannot edit the teaching materials. This screen is a demo; no invitation email was sent."
+      ]
+    },
+    {
+      "title": "Keep your teaching material organized",
+      "summary": "Find videos with tags. Review and edit transcripts.",
+      "shots": ["library", "transcript", "transcript-edit"],
+      "sentences": [
+        "Manage your recordings together in the video library. Use tags to organize them and find the videos you need.",
+        "Open a video's details to review its transcript.",
+        "You can also edit the subtitle text when a correction is needed."
+      ]
+    },
+    {
+      "title": "Use student questions to improve your course",
+      "summary": "Review saved answers and export the question history.",
+      "shots": ["history"],
+      "sentences": [
+        "As the instructor, you can review saved questions and answers in the course history.",
+        "Questions from invited students include their username and email address. The student identity shown here is demo data.",
+        "Export the history as a CSV, or use the dashboard to review question trends and answer feedback.",
+        "Use what students find difficult to guide your next explanation or improve your course materials."
+      ]
+    },
+    {
+      "title": "Connect the tools you already teach with",
+      "summary": "YouTube imports, Moodle integration, and shared links.",
+      "shots": ["youtube", "course"],
+      "sentences": [
+        "VideoQ also supports importing videos from YouTube URLs and connecting with Moodle.",
+        "YouTube imports require your SearchAPI key. Moodle requires the dedicated plugin and connection settings.",
+        "For access without student registration, you can also choose a shared course link."
+      ]
+    },
+    {
+      "title": "Let your lectures keep teaching",
+      "summary": "Start with one video at videoq.jp/en",
+      "shots": ["answer"],
+      "sentences": [
+        "Upload, organize, share, answer, and reflect.",
+        "Turn your lecture videos into a learning partner.",
+        "Try VideoQ, starting with just one video."
+      ]
+    }
+  ]
+}

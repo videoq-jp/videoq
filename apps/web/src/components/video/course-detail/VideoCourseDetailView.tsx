@@ -1,3 +1,4 @@
+import { ViewerPlayerLoading } from '@/components/video/ViewerPlayerLoading';
 import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
 import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
@@ -37,6 +38,7 @@ import { ViewerActionsMenu } from '@/components/video/ViewerActionsMenu';
 import { ViewerHeader } from '@/components/video/ViewerHeader';
 import { PanelTabs, type PanelTab } from '@/components/video/ViewerPanels';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { ChatPanelLoading } from '@/components/chat/ChatPanelFrame';
 import { DashboardDialog } from '@/components/dashboard/DashboardDialog';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { InlineSpinner } from '@/components/common/InlineSpinner';
@@ -432,7 +434,7 @@ export function VideoCourseDetailView({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const learningDetails = courseId ? <CourseLearningDetails key={courseId} courseId={courseId}
+  const learningDetails = courseId ? <CourseLearningDetails key={courseId} loading={!course} courseId={courseId}
     videoId={selectedVideo?.id} videoTitle={selectedVideo?.title} videoDescription={selectedVideo?.description} courseDescription={course?.description}
     onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }} /> : null;
 
@@ -493,7 +495,7 @@ export function VideoCourseDetailView({
           {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
 
           <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
-            <ViewerHeader title={course?.name ?? ''} backHref="/videos/courses">
+            <ViewerHeader title={course?.name ?? t('navigation.coursesNav')} backHref="/videos/courses">
                 {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
                   <MenuList>
                     <MenuListItem>
@@ -516,8 +518,7 @@ export function VideoCourseDetailView({
                     </MenuListItem> : null}
                     <MenuListItem>
                       <MenuListItemButton type="box" size="regular" onClick={onStartEditing}
-                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}
-                        className="disabled:cursor-not-allowed disabled:opacity-50">
+                        disabled={isMutationPending} title={t('videos.courseDetail.editTitle')}>
                         <Pencil className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>{t('videos.courseDetail.editTitle')}</span>
                       </MenuListItemButton>
@@ -525,7 +526,7 @@ export function VideoCourseDetailView({
                     <MenuListItem className="mt-1 border-t border-solid-gray-200 pt-1">
                       <MenuListItemButton type="box" size="regular" onClick={onDeleteCourse}
                         disabled={isMutationPending} title={t('videos.courseDetail.delete')}
-                        className="text-error-1 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        className="text-error-1 hover:bg-red-50">
                         {isDeleting ? <InlineSpinner className="h-4 w-4 shrink-0" /> : <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />}
                         <span>{t('videos.courseDetail.delete')}</span>
                       </MenuListItemButton>
@@ -559,7 +560,7 @@ export function VideoCourseDetailView({
                   onVideoCanPlay={onVideoCanPlay}
                   expanded={playerExpanded}
                   onExpandedChange={setPlayerExpanded}
-                /> : <LoadingSpinner />}
+                /> : <ViewerPlayerLoading expanded={playerExpanded} onExpandedChange={setPlayerExpanded} />}
 
                 {!isMobile && learningDetails}
               </div>
@@ -591,7 +592,7 @@ export function VideoCourseDetailView({
                       showTitle={false}
                       onVideoPlay={(id, time) => { onVideoPlayFromTime(id, time); revealPlayer(); }}
                       className="min-h-0 flex-1 border-0"
-                    /> : <LoadingSpinner />}
+                    /> : <ChatPanelLoading showTitle={false} showHistory={false} className="min-h-0 flex-1 border-0" />}
                   </div>
                 </div>
               </aside>

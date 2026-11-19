@@ -92,7 +92,7 @@ function VideoDetailMobileTabs({
         type="button"
         onClick={() => onChange('video')}
         aria-pressed={activeTab === 'video'}
-        className={`flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
+        className={`app-focus min-h-12 flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
           activeTab === 'video'
             ? 'text-key-900 border-b-2 border-key-900'
             : 'text-solid-gray-536 hover:text-solid-gray-800'
@@ -105,7 +105,7 @@ function VideoDetailMobileTabs({
         type="button"
         onClick={() => onChange('transcript')}
         aria-pressed={activeTab === 'transcript'}
-        className={`flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
+        className={`app-focus min-h-12 flex-1 flex items-center justify-center gap-2 py-3 text-oln-16B-100 transition-colors ${
           activeTab === 'transcript'
             ? 'text-key-900 border-b-2 border-key-900'
             : 'text-solid-gray-536 hover:text-solid-gray-800'
@@ -192,7 +192,7 @@ function VideoMetaPanel({
 
       {video.description && (
         <div className="border-t border-solid-gray-200 pt-4">
-          <p className="text-std-17N-170 text-solid-gray-700 leading-relaxed">{video.description}</p>
+          <p className="text-std-17N-170 text-solid-gray-700">{video.description}</p>
         </div>
       )}
 
@@ -252,7 +252,7 @@ export function VideoDetailView({
   return (
     <>
       {isLoading && !video ? (
-        <DetailLoading backHref="/videos" />
+        <DetailLoading backHref="/videos" isMobile={isMobile} mobileTab={mobileTab} mobileTabs={isMobile && <VideoDetailMobileTabs activeTab={mobileTab} onChange={onMobileTabChange} />} />
       ) : error && !video ? (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
           <ErrorMessage message={error} />

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import HomeDashboard from './HomeDashboard';
 import i18n from '@/i18n/config';
 import { authFixture, regularUser } from '../../.storybook/fixtures/auth';
@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 export const MonthlyAllowanceUsed: Story = {
   async play({ canvas, canvasElement }) {
     const monthly = await canvas.findByText(i18n.t('quota.usage.monthlyUpload'));
-    await expect(monthly.parentElement).toHaveTextContent('200GB/200GB');
+    await waitFor(() => expect(monthly.parentElement).toHaveTextContent('200GB/200GB'));
     await expect(canvas.getByText(i18n.t('quota.usage.storage')).parentElement).toHaveTextContent('10GB/20GB');
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
   },

@@ -41,6 +41,10 @@ export const Disabled: Story = {
   args: { ...MultipleSelected.args, disabled: true },
   play: async ({ canvas, userEvent, args }) => {
     for (const button of canvas.getAllByRole('button')) await expect(button).toBeDisabled();
+    for (const chip of canvas.getAllByRole('button').flatMap(button => Array.from(button.querySelectorAll('[data-slot=chip-label]')))) {
+      await expect(getComputedStyle(chip).color).toBe('rgb(148, 148, 148)');
+      await expect(getComputedStyle(chip).backgroundColor).toBe('rgb(242, 242, 242)');
+    }
     await userEvent.click(canvas.getByRole('button', { name: args.tags[0].name }));
     await userEvent.keyboard(' ');
     await expect(args.onToggle).not.toHaveBeenCalled();

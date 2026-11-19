@@ -1,23 +1,20 @@
+import { ProgressIndicator, ProgressIndicatorSpinner } from '@/components/ui/progress-indicator';
+import { cn } from '@/lib/digital-agency/cn';
+
 interface InlineSpinnerProps {
   className?: string;
   color?: 'current' | 'blue' | 'red';
 }
 
-/**
- * Small spinner used inline
- * Inherits button text colors, including danger and disabled states.
- */
+/** Decorative indicator; the surrounding button or status supplies its label. */
 export function InlineSpinner({ className, color = 'current' }: InlineSpinnerProps) {
-  const colorClasses = {
-    current: 'border-current/25 border-t-current',
-    blue: 'border-key-100 border-t-key-900',
-    red: 'border-red-200 border-t-error-1',
-  }[color];
-
-  // In forced colors, use a system-colored arc and keep the track transparent.
   return (
-    <div
-      className={`h-4 w-4 animate-spin rounded-full border-2 motion-reduce:animate-none forced-colors:forced-color-adjust-none forced-colors:border-transparent forced-colors:border-t-[CanvasText] ${colorClasses} ${className || ''}`}
-    />
+    <ProgressIndicator type="inlined" aria-hidden="true" className={cn(
+      'inline-flex h-6 w-6 shrink-0',
+      color === 'current' ? 'text-inherit' : color === 'red' ? 'text-error-1' : 'text-key-900',
+      className,
+    )}>
+      <ProgressIndicatorSpinner size="sm" inheritColor className="h-full w-full" />
+    </ProgressIndicator>
   );
 }

@@ -245,7 +245,7 @@ export default function VideoLibraryPage() {
                           onClick={() => handleTagToggle(tag.id)}
                           className={cn(
                             'rounded-8 transition-opacity focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-black focus-visible:ring-2 focus-visible:ring-yellow-300',
-                            isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-100',
+                            isSelected ? 'ring-2 ring-key-900 ring-offset-2' : 'hover:bg-solid-gray-50',
                           )}
                           aria-pressed={isSelected}
                         >
@@ -256,7 +256,7 @@ export default function VideoLibraryPage() {
                           >
                             {tag.name}
                             {tag.video_count !== undefined && (
-                              <span className="ml-1 opacity-70">({tag.video_count})</span>
+                              <span className="ml-1">({tag.video_count})</span>
                             )}
                           </ChipLabel>
                         </button>
@@ -280,8 +280,9 @@ export default function VideoLibraryPage() {
         </>
       )}
 
+      <div data-results-frame className="min-h-96">
       {isLoading ? (
-        <div className="flex justify-center py-24">
+        <div className="flex min-h-96 items-center justify-center">
           <LoadingSpinner />
         </div>
       ) : error ? (
@@ -334,6 +335,8 @@ export default function VideoLibraryPage() {
           )}
         </>
       )}
+
+      </div>
 
       <VideoUploadModal
         isOpen={shouldOpenModalFromQuery || isUploadModalOpen}

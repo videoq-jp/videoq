@@ -131,7 +131,7 @@ export function MessageBody({ answer, onVideoNavigate }: MessageBodyProps) {
     ? escapeHtmlOutsideCode(node.value) : `[${prefix}${index}](#${prefix}${index})`).join('');
 
   return (
-    <div className="text-std-17N-170 text-solid-gray-800 [overflow-wrap:anywhere] [&_p]:my-2 [&_p]:whitespace-pre-wrap [&_h1]:my-3 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:my-2 [&_h3]:font-bold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-4 [&_blockquote]:border-solid-gray-200 [&_blockquote]:pl-4 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:bg-solid-gray-50 [&_pre]:p-3 [&_code]:whitespace-pre-wrap [&_code]:font-mono [&_table]:my-3 [&_table]:block [&_table]:overflow-x-auto [&_th]:border [&_th]:p-2 [&_td]:border [&_td]:p-2">
+    <div className="text-std-17N-170 text-solid-gray-800 [overflow-wrap:anywhere] [&_p]:my-2 [&_p]:whitespace-pre-wrap [&_h1]:my-3 [&_h1]:text-std-24B-150 [&_h2]:my-3 [&_h2]:text-std-20B-150 [&_h3]:my-2 [&_h3]:text-std-18B-160 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-4 [&_blockquote]:border-solid-gray-200 [&_blockquote]:pl-4 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:bg-solid-gray-50 [&_pre]:p-3 [&_code]:whitespace-pre-wrap [&_code]:font-mono [&_table]:my-3 [&_table]:block [&_table]:overflow-x-auto [&_th]:border [&_th]:p-2 [&_td]:border [&_td]:p-2">
       <InlineContext.Provider value={{ nodes: inlineNodes, sources: citationMap, navigate: onVideoNavigate }}>
         <Markdown remarkPlugins={[remarkGfm, remarkCjkFriendly]} components={markdownComponents}>
           {markdown}

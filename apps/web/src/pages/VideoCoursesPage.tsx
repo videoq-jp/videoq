@@ -62,7 +62,7 @@ function SortableCourseRow({
   onMove,
 }: SortableCourseRowProps) {
   const { t } = useTranslation();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: course.id,
     disabled: isSortingDisabled,
   });
@@ -81,15 +81,18 @@ function SortableCourseRow({
     >
       <div className="flex w-full items-start gap-2 px-2 py-3 md:items-center md:gap-3 md:px-4">
         {canReorder && (
-          <span
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
             {...attributes}
             {...listeners}
             onClick={(event) => event.stopPropagation()}
-            className={`mt-1 shrink-0 text-solid-gray-420 md:mt-0 ${isSortingDisabled ? 'cursor-wait opacity-50' : 'cursor-grab active:cursor-grabbing'}`}
+            aria-disabled={isSortingDisabled}
+            className="app-focus inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center rounded-4 text-solid-gray-600 cursor-grab active:cursor-grabbing aria-disabled:cursor-wait aria-disabled:text-solid-gray-420"
             aria-label={t('videos.courses.dragHandle')}
           >
-            <GripVertical className="h-5 w-5" />
-          </span>
+            <GripVertical className="h-5 w-5" aria-hidden="true" />
+          </button>
         )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-3">
@@ -278,8 +281,9 @@ export default function VideoCoursesPage() {
           </div>
         )}
 
+        <div data-results-frame className="min-h-96">
         {isLoading ? (
-          <div className="flex justify-center py-24">
+          <div className="flex min-h-96 items-center justify-center">
             <LoadingSpinner />
           </div>
         ) : courses.length === 0 ? !loadError && (
@@ -375,6 +379,7 @@ export default function VideoCoursesPage() {
             )}
           </>
         )}
+        </div>
       </div>
 
       <VideoCourseCreateModal

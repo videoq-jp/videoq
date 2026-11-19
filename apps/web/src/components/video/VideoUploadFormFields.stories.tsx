@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
-import { expect, fn } from 'storybook/test';
+import { expect, within, fn } from 'storybook/test';
 import i18n from '@/i18n/config';
 import { VideoUploadFormFields } from './VideoUploadFormFields';
 
@@ -106,9 +106,11 @@ export const EnglishMobile: Story = {
 export const SelectAudioLanguage: Story = {
   async play({ canvas, userEvent }) {
     const language = canvas.getByRole('combobox', { name: i18n.t('videos.upload.languageLabel') });
-    await userEvent.selectOptions(language, 'ja');
-    await expect(language).toHaveValue('ja');
-    await userEvent.selectOptions(language, 'en');
-    await expect(language).toHaveValue('en');
+    await userEvent.click(language);
+    await userEvent.click(within(document.body).getByRole('option', { name: '日本語' }));
+    await expect(language).toHaveTextContent('日本語');
+    await userEvent.click(language);
+    await userEvent.click(within(document.body).getByRole('option', { name: 'English' }));
+    await expect(language).toHaveTextContent('English');
   },
 };

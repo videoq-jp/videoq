@@ -1,3 +1,4 @@
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,13 +89,13 @@ export function VideoUploadFormFields({
       {setTranscriptionLanguage && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="transcription-language">{t('videos.upload.languageLabel')}</Label>
-          <select id="transcription-language" value={transcriptionLanguage}
-            onChange={event => setTranscriptionLanguage(event.target.value as TranscriptionLanguage | 'auto')}
-            disabled={isUploading || disabled} aria-describedby="transcription-language-help"
-            className="h-12 rounded-8 border border-solid-gray-600 bg-white px-4 text-std-17N-170">
-            {Object.entries(TRANSCRIPTION_LANGUAGES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-            <option value="auto">{t('videos.upload.languageAuto')}</option>
-          </select>
+          <Select value={transcriptionLanguage} onValueChange={value => setTranscriptionLanguage(value as TranscriptionLanguage | 'auto')} disabled={isUploading || disabled}>
+            <SelectTrigger id="transcription-language" blockSize="md" className="w-full" aria-describedby="transcription-language-help"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(TRANSCRIPTION_LANGUAGES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}
+              <SelectItem value="auto">{t('videos.upload.languageAuto')}</SelectItem>
+            </SelectContent>
+          </Select>
           <p id="transcription-language-help" className="text-dns-14N-130 text-solid-gray-700">{t('videos.upload.languageHelp')}</p>
         </div>
       )}
@@ -103,11 +104,11 @@ export function VideoUploadFormFields({
         <fieldset className="space-y-2" disabled={isUploading || disabled}>
           <legend className="font-bold">{t('videos.upload.compression.label')}</legend>
           {(['1080p', '720p'] as const).map(preset => (
-            <label key={preset} className="flex items-start gap-2 text-std-17N-170">
+            <label key={preset} className="flex min-h-11 items-center gap-3 text-std-17N-170">
               <input type="radio" name="upload-compression" value={preset}
                 checked={compressionPreset === preset}
                 disabled={!compressionSupported}
-                onChange={() => setCompressionPreset(preset)} className="mt-1.5 accent-key-900" />
+                onChange={() => setCompressionPreset(preset)} className="app-radio app-focus" />
               <span>{t(`videos.upload.compression.presets.${preset}`)}</span>
             </label>
           ))}

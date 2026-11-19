@@ -127,7 +127,7 @@ export function TranscriptPanel({
                 <ErrorMessage message={transcriptSaveError} />
               </div>
             )}
-            <div className="min-h-0 flex-1 [&>span]:h-full">
+            <div className="min-h-0 flex-1 p-2 [&>span]:h-full">
               <Textarea
                 autoFocus
                 aria-label={t('videos.detail.transcriptSection')}
@@ -135,7 +135,7 @@ export function TranscriptPanel({
                 onChange={(event) => onEditedTranscriptChange(event.target.value)}
                 disabled={isTranscriptSaving}
                 spellCheck={false}
-                className="h-full min-h-0 resize-none rounded-none border-0 font-mono text-dns-14N-130 leading-relaxed focus:outline-none focus:ring-0"
+                className="h-full min-h-0 resize-none rounded-none border-0 font-mono text-std-16N-170"
               />
             </div>
           </div>
@@ -148,7 +148,7 @@ export function TranscriptPanel({
                   aria-current={activeSegmentIdx === index ? 'true' : undefined}
                   key={index}
                   onClick={() => onSeek(segment.seconds, index)}
-                  className={`text-left focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-[-4px] flex cursor-pointer gap-4 rounded-8 p-3 transition-colors group ${
+                  className={`text-left app-focus focus-visible:outline-offset-[-4px] flex cursor-pointer gap-4 rounded-8 p-3 transition-colors group ${
                     activeSegmentIdx === index
                       ? 'border-l-4 border-key-900 bg-blue-50'
                       : 'hover:bg-solid-gray-50'
@@ -158,10 +158,10 @@ export function TranscriptPanel({
                     {segment.timestamp}
                   </span>
                   <span
-                    className={`min-w-0 [overflow-wrap:anywhere] text-std-17N-170 leading-relaxed ${
+                    className={`min-w-0 [overflow-wrap:anywhere] ${
                       activeSegmentIdx === index
-                        ? 'text-solid-gray-800 font-medium'
-                        : 'text-solid-gray-700 group-hover:text-solid-gray-800'
+                        ? 'text-std-17B-170 text-solid-gray-800'
+                        : 'text-std-17N-170 text-solid-gray-700 group-hover:text-solid-gray-800'
                     }`}
                   >
                     {segment.text}
@@ -170,7 +170,7 @@ export function TranscriptPanel({
               ))
             ) : isPlainTextTranscript ? (
               <div className="p-4 bg-white rounded-8">
-                <p className="text-std-17N-170 text-solid-gray-700 [overflow-wrap:anywhere] whitespace-pre-wrap leading-relaxed">
+                <p className="text-std-17N-170 text-solid-gray-700 [overflow-wrap:anywhere] whitespace-pre-wrap">
                   {video.transcript}
                 </p>
               </div>
@@ -179,7 +179,7 @@ export function TranscriptPanel({
                 <div className="w-16 h-16 bg-solid-gray-50 border border-solid-gray-200 rounded-full flex items-center justify-center mb-4">
                   <Search className="w-8 h-8 text-solid-gray-420" />
                 </div>
-                <p className="text-std-17N-170 font-medium text-center px-4">
+                <p className="text-std-17N-170 text-center px-4">
                   {transcriptSearch
                     ? t('videos.detail.transcriptNotFound')
                     : (() => {

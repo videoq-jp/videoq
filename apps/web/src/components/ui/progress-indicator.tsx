@@ -129,12 +129,13 @@ type ProgressIndicatorSpinnerProps = Omit<
   "children"
 > & {
   size?: ProgressIndicatorSize
+  inheritColor?: boolean
 }
 
 const ProgressIndicatorSpinner = React.forwardRef<
   SVGSVGElement,
   ProgressIndicatorSpinnerProps
->(({ size = "lg", className, ...rest }, ref) => {
+>(({ size = "lg", inheritColor = false, className, ...rest }, ref) => {
   const isLg = size === "lg"
   const dimension = isLg ? 48 : 24
   const center = isLg ? 24 : 12
@@ -157,7 +158,7 @@ const ProgressIndicatorSpinner = React.forwardRef<
       {...rest}
     >
       <circle
-        className="stroke-current text-key-100 forced-colors:text-[Canvas]"
+        className={cn("stroke-current forced-colors:text-[Canvas]", inheritColor ? "opacity-25" : "text-key-100")}
         cx={center}
         cy={center}
         r={radius}
@@ -171,7 +172,7 @@ const ProgressIndicatorSpinner = React.forwardRef<
         >
           <circle
             className={`
-              text-key-1200 [stroke-dasharray:100] [transform:rotate(-90deg)] [transform-origin:center]
+              ${inheritColor ? "" : "text-key-1200"} [stroke-dasharray:100] [transform:rotate(-90deg)] [transform-origin:center]
               [stroke-dashoffset:calc(100-clamp(0,var(--value,35),100))]
               forced-colors:text-[CanvasText]
               ${spinnerBarAnimationClass}
@@ -185,7 +186,7 @@ const ProgressIndicatorSpinner = React.forwardRef<
         </g>
       </g>
       <circle
-        className="text-key-1200 forced-colors:text-[CanvasText]"
+        className={cn("forced-colors:text-[CanvasText]", !inheritColor && "text-key-1200")}
         cx={center}
         cy={center}
         r={outerRadius}
@@ -210,12 +211,13 @@ type ProgressIndicatorLinearProps = Omit<
   "children"
 > & {
   size?: ProgressIndicatorSize
+  inheritColor?: boolean
 }
 
 const ProgressIndicatorLinear = React.forwardRef<
   SVGSVGElement,
   ProgressIndicatorLinearProps
->(({ size = "lg", className, ...rest }, ref) => {
+>(({ size = "lg", inheritColor = false, className, ...rest }, ref) => {
   const width = size === "lg" ? 240 : 80
 
   return (
@@ -233,7 +235,7 @@ const ProgressIndicatorLinear = React.forwardRef<
       {...rest}
     >
       <line
-        className="stroke-current text-key-100 forced-colors:text-[Canvas]"
+        className={cn("stroke-current forced-colors:text-[Canvas]", inheritColor ? "opacity-25" : "text-key-100")}
         x1={0}
         y1={2}
         x2={width}
@@ -254,7 +256,7 @@ const ProgressIndicatorLinear = React.forwardRef<
         pathLength={100}
       />
       <line
-        className="text-key-1200 forced-colors:text-[CanvasText]"
+        className={cn("forced-colors:text-[CanvasText]", !inheritColor && "text-key-1200")}
         x1={0}
         y1={3.5}
         x2={width}

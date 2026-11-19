@@ -45,7 +45,7 @@ export function PanelTabs({ tabs, activeTab, idPrefix, onChange, label }: {
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab)}
             onKeyDown={handleKeyDown}
-            className={`flex min-h-12 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-oln-16N-100 transition-colors focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black ${
+            className={`flex min-h-12 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-oln-16N-100 transition-colors app-focus focus-visible:-outline-offset-4 ${
               isActive ? 'border-key-900 font-bold text-solid-gray-800' : 'border-transparent text-solid-gray-600 hover:text-solid-gray-800'
             }`}
           >
