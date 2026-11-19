@@ -1,7 +1,7 @@
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearShareLink, saveShareLink } from "../src/features/courses/service";
+import { clearShareLink, saveShareLink } from "../src/integrations/courses";
 import { INVALID_SLUG_MESSAGE, SLUG_ALREADY_EXISTS_MESSAGE } from "../src/lib/share-slug";
 import type { Bindings } from "../src/types/bindings";
 

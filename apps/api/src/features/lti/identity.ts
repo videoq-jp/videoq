@@ -1,8 +1,9 @@
 import { digest } from './store';
-import { ltiSessionProof, type LtiSessionProof } from '../../shared/lti-session-proof';
+import { ltiSessionProof } from '../../shared/lti-session-proof';
 
 /** Internal attribution only; never an authentication credential or browser input. */
-export type LtiDataSubject = { subjectKey: string; resourceVideoIds: number[]; sessionProof?: LtiSessionProof };
+export type { LtiDataSubject } from "../../persistence/contracts/lti-subject";
+import type { LtiDataSubject } from "../../persistence/contracts/lti-subject";
 export const ltiSubjectKey = (scope: { registrationId: string; subjectHash: string }) =>
   digest(JSON.stringify(['lti-data-subject-v1', scope.registrationId, scope.subjectHash]));
 

@@ -13,7 +13,7 @@ import {
   getCourseChatHistory,
   getCourseChatAnalytics,
 } from "../repositories/chat-repository";
-import * as courseService from "../features/courses/service";
+import * as courseService from "../integrations/courses";
 import * as membershipService from "../features/membership/service";
 import * as videoService from "../features/videos/service";
 import type { CreationIdempotency } from "../repositories/mcp-idempotency-repository";

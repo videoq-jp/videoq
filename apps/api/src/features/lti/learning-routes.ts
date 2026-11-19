@@ -1,4 +1,4 @@
-import { historyForCourse, exportHistoryCsv } from '../chat/service';
+import { historyForCourse, exportHistoryCsv } from '../../integrations/chat-history';
 import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";

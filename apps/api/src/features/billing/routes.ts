@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { apiBadRequest, apiServiceUnavailable } from "../../shared/errors";
 import type { AppEnv } from "../../types/bindings";
 import { onError } from "../../middleware/error-handler";
-import * as billingService from "./service";
+import * as billingService from "../../integrations/billing";
 import { requireStripeClient } from "./stripe";
 
 /** Stripe requires the untouched request body for signature verification. */

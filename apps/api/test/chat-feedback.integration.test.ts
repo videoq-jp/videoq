@@ -2,7 +2,7 @@ import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
-import { submitFeedback } from "../src/features/chat/service";
+import { submitFeedback } from "../src/integrations/chat-history";
 import { createChatFeedbackToken } from "../src/lib/chat-feedback-token";
 import * as authMiddleware from "../src/middleware/auth";
 import type { Bindings } from "../src/types/bindings";

@@ -8,7 +8,7 @@ import { getCourseWithMembers, shareSlugExists, updateChatLogFeedback } from '..
 import { addVideoToCourse, addVideosBulk, removeVideoFromCourse } from '../src/repositories/membership-repository';
 import { createPendingCourseInvitations, getCourseInvitationByTokenHash, acceptCourseInvitation,
   rotatePendingCourseInvitation, revokePendingCourseInvitation } from '../src/repositories/course-invitation-repository';
-import { conversationScope } from '../src/features/chat/conversation-service';
+import { conversationScope } from '../src/integrations/conversations';
 import { qaInputSchemas } from '../../../packages/trpc/src/qa';
 import { listQuestions } from '../src/integrations/qa';
 import { deliverInvitationEmail } from '../src/lib/invitation-delivery';
@@ -122,16 +122,16 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       expect(await getCourseDetail(env, id, 'member', read)).toBeNull();
       expect(await getCourseDetail(env, id, 'owner', read)).not.toBeNull();
       expect(await getCourseDetailByShareSlug(env, slug, read)).toBeNull();
-      await expect(conversationScope(env, 'member', { courseId: id })).rejects.toMatchObject({ status: 404 });
-      await expect(listQuestions(env, 'member', qaInputSchemas['qa.list'].parse({ courseId: id }))).rejects.toMatchObject({ status: 404 });
+      await expect(conversationScope(env, 'member', { courseId: id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(listQuestions(env, 'member', qaInputSchemas['qa.list'].parse({ courseId: id }))).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
   it('denies shared/member chat and saved-conversation entry while preserving checked LTI and owner access', async () => {
     for (const [id, slug] of [[10,'moodle-old-link'],[20,'mixed-old-link']] as const) {
       expect(await getCourseWithMembers(env, { courseId: id, userId: 'member' })).toBeNull();
       expect(await getCourseWithMembers(env, { courseId: id, shareToken: slug })).toBeNull();
       expect(await shareSlugExists(env, slug)).toBe(false);
-      await expect(conversationScope(env, 'member', { courseId: id })).rejects.toMatchObject({ status: 404 });
-      await expect(conversationScope(env, null, { courseId: id, shareSlug: slug }, 'visitor')).rejects.toMatchObject({ status: 404 });
+      await expect(conversationScope(env, 'member', { courseId: id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(conversationScope(env, null, { courseId: id, shareSlug: slug }, 'visitor')).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect(await getCourseWithMembers(env, { courseId: id, userId: 'owner' })).not.toBeNull();
     }
     expect(await getCourseWithMembers(env, { courseId: 10, ltiCourseGrant: 10, ltiVideoGrant: [100] })).toMatchObject({ memberVideoIds: [100] });
@@ -200,8 +200,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect(await getCourseDetailByShareSlug(env, 'mixed-old-link', read)).toBeNull();
     expect(await getCourseWithMembers(env, { courseId: 20, userId: 'member' })).toBeNull();
     for (const id of [10,20]) {
-      await expect(listQuestions(env, 'member', qaInputSchemas['qa.list'].parse({ courseId: id }))).rejects.toMatchObject({ status: 404 });
-      await expect(listQuestions(env, null, qaInputSchemas['qa.list'].parse({ courseId: id, shareSlug: id===10?'moodle-old-link':'mixed-old-link' }))).rejects.toMatchObject({ status: 404 });
+      await expect(listQuestions(env, 'member', qaInputSchemas['qa.list'].parse({ courseId: id }))).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(listQuestions(env, null, qaInputSchemas['qa.list'].parse({ courseId: id, shareSlug: id===10?'moodle-old-link':'mixed-old-link' }))).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect(await listQuestions(env, 'owner', qaInputSchemas['qa.list'].parse({ courseId: id }))).toMatchObject({ items: [] });
     }
     // The old mixed course is still independently owned, not a phantom LMS course.

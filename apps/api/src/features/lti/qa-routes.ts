@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { qaInputSchemas, qaOutputSchemas } from "@videoq/trpc";
 import type { AppEnv } from "../../types/bindings";
-import { ApiError, toErrorBody } from "../../shared/errors";
+import { asApiError, toErrorBody } from "../../shared/errors";
 import { getQuestion, listQuestions, mutate, type LtiQaPrincipal } from "../../integrations/qa";
 import type { CourseAccess } from "./course-access";
 import type { sessionRecord } from "./protocol";
@@ -63,7 +63,8 @@ export function mountLtiQa(routes: Hono<AppEnv>, authorize: AuthorizeCourse, ref
         case "feature": return result(await mutate(c.env, principal, { name: "qa.feature", input: { ...data, courseId } }), qaOutputSchemas["qa.feature"]);
       }
     } catch (error) {
-      if (error instanceof ApiError) return c.json(toErrorBody(error.code, error.expose ? error.message : "Course Q&A is unavailable."), error.status);
+      const failure = asApiError(error);
+      if (failure) return c.json(toErrorBody(failure.code, failure.expose ? failure.message : "Course Q&A is unavailable."), failure.status);
       console.error(JSON.stringify({ event: "lti_qa_failed", kind: error instanceof z.ZodError ? "response_validation" : "service" }));
       return c.json(toErrorBody("INTERNAL_ERROR", "Course Q&A is unavailable."), 500);
     }

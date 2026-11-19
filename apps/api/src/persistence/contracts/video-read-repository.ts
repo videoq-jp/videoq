@@ -1,4 +1,4 @@
-import type { VideoSourceType, VideoStatus } from "@videoq/trpc";
+import type { VideoSourceType, VideoStatus } from "../../application/models";
 
 export type VideoListItem = {
   id: number;
