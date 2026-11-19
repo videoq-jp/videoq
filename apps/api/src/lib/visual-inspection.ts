@@ -1,3 +1,4 @@
+import { unpreparedVisualEvidence } from "./visual-availability";
 import OpenAI from "openai";
 import { z } from "zod";
 import { readMediaBytes, readMediaRange } from "../integrations/media";
@@ -45,15 +46,15 @@ async function readSparseFrames(
     const frames: Frame[] = [];
     for (const [time, index, offset, length] of selected) {
       const image = await readMediaRange(env, visualChunkKey(video.fileKey, plan.run_id, index, plan.chunk_versions?.[index]), offset, length, signal);
-      if (!image) return { unavailable: "Visual evidence is not available for this video yet." };
+      if (!image) return unpreparedVisualEvidence();
       if (image.size > 60 * 256 * 1024 + 64 * 1024) throw new Error("Visual chunk exceeds size limit");
       frames.push({ timestamp_seconds: time / 1000, jpeg_base64: jpegBase64(image.bytes) });
     }
     return { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: Math.max(5, plan.duration_seconds / plan.overview.length) };
   }
-  if (video.visualRunId !== undefined) return { unavailable: "Visual evidence is not available for this video yet." };
+  if (video.visualRunId !== undefined) return unpreparedVisualEvidence();
   const bytes = await readMediaBytes(env, frameCacheKey(video.fileKey), MAX_FRAME_CACHE_BYTES, signal);
-  if (!bytes) return { unavailable: "Visual evidence is not available for this video yet." } as const;
+  if (!bytes) return unpreparedVisualEvidence();
   const cache = cacheSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
   if (cache.video_id !== video.id || cache.frames.some((frame, i) =>
     frame.timestamp_seconds > cache.duration_seconds ||

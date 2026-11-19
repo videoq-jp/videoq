@@ -120,3 +120,13 @@ it("cancels an in-flight model request", async () => {
   controller.abort();
   await expect(pending).rejects.toThrow();
 });
+
+it("explains missing visual preparation without calling the model or leaking storage identity", async () => {
+  vi.mocked(readMediaBytes).mockResolvedValue(null);
+  const provider = vi.fn();
+  vi.stubGlobal("fetch", provider);
+  const result = await inspect();
+  expect(result).toMatchObject({ reason: "VISUALS_NOT_PREPARED", next_action: expect.stringContaining("administrator") });
+  expect(provider).not.toHaveBeenCalled();
+  expect(JSON.stringify(result)).not.toContain("private/video.mp4");
+});

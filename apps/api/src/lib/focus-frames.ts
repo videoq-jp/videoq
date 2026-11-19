@@ -1,3 +1,4 @@
+import { unpreparedVisualEvidence } from "./visual-availability";
 import { z } from "zod";
 import { readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
@@ -24,7 +25,7 @@ export type FrameSelection = {
   frames: { timestamp_seconds: number; jpeg_base64: string }[];
   duration_seconds: number;
   sampling_interval_seconds: number;
-} | { unavailable: string; sampling_interval_seconds?: number };
+} | { unavailable: string; sampling_interval_seconds?: number; reason?: string; next_action?: string };
 
 function base64(bytes: Uint8Array): string {
   let binary = "";
@@ -56,7 +57,7 @@ export async function readFocusFrames(
     return frames.length ? { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: 1 }
       : { unavailable: "No dense frames fall in this interval; the source may have a gap or the interval may be outside the video.", sampling_interval_seconds: 1 };
   }
-  if (video.visualRunId !== undefined) return { unavailable: "Visual evidence is not available for this video yet." };
+  if (video.visualRunId !== undefined) return unpreparedVisualEvidence();
   return readFocusPack(env, video, start, end, signal, maxFrames, focusCacheKey(video.fileKey));
 }
 
@@ -65,7 +66,7 @@ async function readFocusPack(
   signal: AbortSignal, maxFrames: number, key: string,
   chunk?: { start: number; end: number; duration: number },
 ): Promise<FrameSelection> {
-  const unavailable = { unavailable: "Dense focus frames are not available for this video yet. Do not substitute sparse frames as dense evidence." } as const;
+  const unavailable = unpreparedVisualEvidence("Dense focus frames are not available for this video yet. Do not substitute sparse frames as dense evidence.");
   const header = await readMediaRange(env, key, 0, HEADER_BYTES, signal);
   if (!header) return unavailable;
   if (new TextDecoder().decode(header.bytes.subarray(0, 8)) !== "VQFOC001" || header.size > (chunk ? 60 * MAX_IMAGE_BYTES + 64 * 1024 : MAX_PACK_BYTES)) {

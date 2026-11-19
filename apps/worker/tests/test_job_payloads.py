@@ -14,6 +14,7 @@ from worker_python.contracts import (
     JOB_TRANSCRIBE_VIDEO_CHUNK,
     JOB_FINISH_VIDEO_TRANSCRIPTION,
     JOB_BUILD_VIDEO_VISUALS,
+    JOB_PREPARE_VIDEO_VISUALS,
 )
 from worker_python.tasks.registry import get_task
 
@@ -44,6 +45,7 @@ def message(job_type, payload):
     (JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, {"after_id": 25, "root_job_id": "root-job"}),
     (JOB_TRANSCRIBE_VIDEO_CHUNK, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc", "chunk_index": 30}),
     (JOB_FINISH_VIDEO_TRANSCRIPTION, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc"}),
+    (JOB_PREPARE_VIDEO_VISUALS, {"video_id": 42}),
     (JOB_BUILD_VIDEO_VISUALS, {"video_id": 42, "run_id": "12345678-1234-4234-8234-123456789abc", "cache_kind": "coarse"}),
 ])
 def test_all_job_types_preserve_arguments_from_producer_to_task(execution, job_type, payload):

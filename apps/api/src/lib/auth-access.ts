@@ -16,6 +16,7 @@ import { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "./mcp-auth";
 
 export type ResourceAccessResult =
   | { kind: "ok"; userId: string; via: "apikey" | "oauth"; accessLevel: string }
+  | { kind: "rate_limited"; message: string; retryAfterSec: number }
   | { kind: "invalid"; message: string; wwwAuthenticate?: string }
   | { kind: "forbidden"; message: string; requiredScope: string };
 
@@ -36,6 +37,13 @@ export function videoqResourceAccess(jwksCacheKey: object, audience: string) {
         const result = await plugin.endpoints.verifyApiKey({
           body: { ...ctx.body, permissions: { videoq: ["read"] } }, context: ctx.context,
         });
+        if (!result.valid && (result.error?.code === "RATE_LIMITED" || result.error?.code === "USAGE_EXCEEDED")) {
+          // Better Auth returns the retry delay in milliseconds. Never label an exhausted key invalid.
+          const details: unknown = result.error;
+          const parsed = z.object({ details: z.object({ tryAgainIn: z.number().nonnegative() }).optional() }).safeParse(details);
+          return { kind: "rate_limited", message: "API key request limit exceeded.",
+            retryAfterSec: Math.max(1, Math.ceil((parsed.success ? parsed.data.details?.tryAgainIn ?? 60_000 : 60_000) / 1000)) };
+        }
         if (!result.valid || !result.key) return { kind: "invalid", message: "Invalid API key" };
         const user = await ctx.context.internalAdapter.findUserById(result.key.referenceId);
         if (!user || isBanned(user)) {

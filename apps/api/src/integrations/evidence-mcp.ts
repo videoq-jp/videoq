@@ -1,3 +1,4 @@
+import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/cfworker";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -16,7 +17,7 @@ export async function connectEvidenceMcp(
   const session = createEvidenceSession(env, scope, sessionSignal, options);
   const server = new McpServer({ name: "videoq-evidence", version: "1.0.0" });
   registerTools(server, session.tools, sessionSignal);
-  const client = new Client({ name: "videoq-agent", version: "1.0.0" });
+  const client = new Client({ name: "videoq-agent", version: "1.0.0" }, { jsonSchemaValidator: new CfWorkerJsonSchemaValidator() });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const close = async () => {
     lifecycle.abort();
