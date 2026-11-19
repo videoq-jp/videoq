@@ -18,6 +18,7 @@ function migrationTarget(config) {
     || databases[0].migrations_dir !== 'drizzle-d1' || databases[0].migrations_pattern !== undefined) throw Error('INVALID_D1_MIGRATION_CONFIGURATION');
   const indexes = ['SCENE_VECTORIZE_1536','SCENE_VECTORIZE_768'].map(name => {
     const matches = (production.vectorize ?? []).filter(binding => binding.binding === name);
+    if (name === 'SCENE_VECTORIZE_768' && matches.length === 0) return undefined;
     if (matches.length !== 1 || typeof matches[0].index_name !== 'string' || !matches[0].index_name) throw Error('INVALID_D1_MIGRATION_CONFIGURATION');
     return matches[0].index_name;
   });

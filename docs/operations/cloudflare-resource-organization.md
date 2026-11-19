@@ -12,17 +12,18 @@ billing or access-control boundary.
 | --- | --- | --- |
 | D1 | `videoq-prod-db` | `database` |
 | Vectorize | `videoq-prod-scenes-1536` | `scene-search-1536` |
-| Vectorize | `videoq-prod-scenes-768` | `scene-search-768` |
 | Worker | `videoq-api` | `api` |
 | Worker | `videoq-web` | `web` |
 | Worker | `videoq-docs` | `docs` |
 | R2 | `videoq-media-prod` | `media` |
 
 The production D1 UUID is `587bd210-6d9d-4f32-abb7-a490013e65d3`.
-The Vectorize suffixes identify embedding dimensions. Both configured dimensions
-retain their bindings, cosine metric and ownership-filter metadata indexes.
+Production uses the 1536-dimensional Vectorize index.
+`videoq-prod-scenes-768` and its Worker binding were deleted after the naming
+replacement; ordinary production CD no longer configures or requires them.
+768-dimensional embedding support remains available in other deployment configurations.
 Worker identities, R2 media, application secrets, account and DNS are preserved.
-All seven resources use `project=videoq` and `environment=production`; replacement
+All six current resources use `project=videoq` and `environment=production`; replacement
 candidate lifecycle tags have been removed after the verified handoff.
 
 ## Completed naming replacement
@@ -48,6 +49,14 @@ its sealed source snapshot before it was accepted as a recovery artifact.
 [Aggregate naming-cutover evidence](evidence/cloudflare-production-names-2026-11-19.json)
 contains resource names, run and source references, counts and proof hashes only.
 The opt-in resource-hold capability is disabled after completion.
+
+## Deploying the index retirement fix
+
+The migration job loads its deployment guard and configuration validator from
+the immutable AWS operator bundle. After merging the retirement fix, wait for
+**DB Maintenance CD** to succeed before retrying the application CD. Retrying
+with the previous operator bundle still requires the removed binding. The fix
+does not recreate an index or change an active binding.
 
 ## Historical preparation and implementation notes
 

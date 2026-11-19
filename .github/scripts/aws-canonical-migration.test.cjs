@@ -57,3 +57,23 @@ test('pending, duplicate or unknown migration ledgers cannot authorize an unpaus
 test('ledger errors, wrong active DB and ownership drift fail closed without a child or PostgreSQL fallback',async()=>{
  for(const change of [f=>{f.settings.bindings.find(b=>b.name==='DB').id='other';},f=>{f.options.fetcher=async()=>new Response('',{status:403});},f=>{const old=f.options.fetcher;f.options.fetcher=async(...args)=>{const result=await old(...args);if(args[0].endsWith('/query'))f.state.lock.execution_arn.S='other';return result;};}]){const f=noOpFixture();change(f);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,0);}
 });
+
+test('production configuration and read-only migration support retirement of the optional 768 index',async()=>{
+ const f=noOpFixture();
+ f.production.vectorize=f.production.vectorize.filter(b=>b.binding!=='SCENE_VECTORIZE_768');
+ f.settings.bindings=f.settings.bindings.filter(b=>b.name!=='SCENE_VECTORIZE_768');
+ assert.equal(migrationTarget(f.options.readConfig()).backend,'d1');
+ assert.equal((await runCanonicalMigration(f.options)).read_only,true);
+ assert.equal(f.calls.length,0);
+ for(const index of [undefined,'']) {
+  const q=noOpFixture();q.production.vectorize[1].index_name=index;
+  assert.throws(()=>migrationTarget(q.options.readConfig()),/CONFIGURATION/);
+ }
+ f.production.vectorize=[];
+ assert.throws(()=>migrationTarget(f.options.readConfig()),/CONFIGURATION/);
+ const source=require('node:fs').readFileSync('apps/api/wrangler.jsonc','utf8');
+ const production=source.slice(source.indexOf('\"production\": {'));
+ const indexes=production.match(/\"vectorize\"\s*:\s*(\[[\s\S]*?\])/);
+ assert.ok(indexes);
+ assert.deepEqual(JSON.parse(indexes[1]),[{binding:'SCENE_VECTORIZE_1536',index_name:'videoq-prod-scenes-1536'}]);
+});
