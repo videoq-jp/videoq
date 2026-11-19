@@ -30,6 +30,9 @@ const optionalShareAuth = createMiddleware<AppEnv>(async (c, next) => {
   if (result.kind === "ok") {
     return next();
   }
+  if (result.kind === "rate_limited") {
+    return c.json(toErrorBody("RATE_LIMITED", result.message), 429, { "Retry-After": String(result.retryAfterSec) });
+  }
   if (result.kind === "invalid") {
     return c.json(toErrorBody("UNAUTHORIZED", result.message), 401);
   }

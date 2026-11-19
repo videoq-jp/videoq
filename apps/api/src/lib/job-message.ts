@@ -9,6 +9,7 @@ export type JobType =
   | typeof JOB_TRANSCRIBE_VIDEO
   | "transcribe_video_chunk"
   | "finish_video_transcription"
+  | "prepare_video_visuals"
   | "build_video_visuals"
   | "build_video_visual_chunk"
   | "finish_video_visuals"

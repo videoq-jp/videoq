@@ -305,7 +305,7 @@ provided. See [configuration, diagnostics, and migration constraints](../../docs
 By default, transcription of uploaded videos saves sparse representative images
 and dense images at approximately 1 FPS. Set `VIDEO_VISUAL_ENABLED=false` to disable
 this. The API's `focus_clip` reads dense images only for the requested interval.
-Prepare existing videos with `python scripts/prepare_visual_frames.py --video-id 42`.
+Prepare existing videos with `python scripts/prepare_visual_frames.py --video-id 42`. Add `--dry-run` to inspect the source and expected chunk count without writing caches or queuing work. In cloud/D1 mode, configure `DEPLOYMENT_EDITION=cloud`, `PERSISTENCE_BACKEND=d1`, `WORKER_INTERNAL_API_ORIGIN`, and `WORKER_INTERNAL_API_SECRET` with the worker’s media storage settings; the command uses the signed internal API and does not connect to PostgreSQL.
 See the [visual evidence guide](../../docs/guides/visual-evidence.md) for settings,
 storage usage, deletion, and accuracy comparisons.
 
@@ -360,3 +360,11 @@ manifestも書き込みごとのキーを使い、古い回収が新しい採用
 
 D1の全件再索引はSQS search queueを必要とし、`SQS_SEARCH_QUEUE_URL` または共通の
 `SQS_QUEUE_URL` を設定します。候補ページごとにAPIとWorkerのEmbedding設定・Vectorize次元を照合します。
+
+For an existing completed upload in a deployed media worker, the native
+`prepare_video_visuals` job accepts exactly `{ "video_id": 42 }`. Send it through
+the media queue with a new stable `job_id` and the normal native message envelope.
+It discovers the current source through the signed cloud API (or PostgreSQL on
+premises), probes duration, and dispatches only visual chunk jobs. It does not
+rerun transcription or scene embeddings. Repeated deliveries reuse the current
+run and completed chunks. A worker image with this job registered is required.

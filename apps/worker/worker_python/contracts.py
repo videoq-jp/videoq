@@ -9,12 +9,14 @@ JOB_INDEX_VIDEO_TRANSCRIPT = "index_video_transcript"
 JOB_REINDEX_VIDEO_TRANSCRIPT = "reindex_video_transcript"
 JOB_TRANSCRIBE_VIDEO_CHUNK = "transcribe_video_chunk"
 JOB_FINISH_VIDEO_TRANSCRIPTION = "finish_video_transcription"
+JOB_PREPARE_VIDEO_VISUALS = "prepare_video_visuals"
 JOB_BUILD_VIDEO_VISUALS = "build_video_visuals"
 JOB_BUILD_VIDEO_VISUAL_CHUNK = "build_video_visual_chunk"
 JOB_FINISH_VIDEO_VISUALS = "finish_video_visuals"
 
 _PAYLOAD_FIELDS = {
     JOB_TRANSCRIBE_VIDEO: "video_id",
+    JOB_PREPARE_VIDEO_VISUALS: "video_id",
     JOB_INDEX_VIDEO_TRANSCRIPT: "video_id",
     JOB_REINDEX_VIDEO_TRANSCRIPT: "video_id",
     JOB_DELETE_ACCOUNT_DATA: "user_id",

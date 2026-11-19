@@ -1,0 +1,91 @@
+{
+  "observed_at": "2026-11-19T20:23:06.894828+00:00",
+  "scope": "External MCP HTTP client, authorized production account, and internal chat request. No production code/configuration changes.",
+  "status": "verification_completed_with_findings",
+  "controlled_environment": {
+    "test": "apps/api/test/mcp-http.postgres.integration.test.ts",
+    "passed": 7,
+    "real_components": [
+      "HTTP sockets",
+      "Better Auth API-key verification",
+      "PostgreSQL migrations",
+      "pgvector search",
+      "persistent rate-limit backend",
+      "usage ledger"
+    ],
+    "fixtures": [
+      "deterministic OpenAI-compatible HTTP responses",
+      "deterministic object-storage responses"
+    ],
+    "verified": [
+      "tool discovery",
+      "search/subtitles/visual tool sequence",
+      "internal/external structured evidence equality",
+      "course/video scope and write denial",
+      "usage persistence",
+      "limits across clients",
+      "API-key limit observation"
+    ]
+  },
+  "production": {
+    "endpoint": "https://videoq.jp/api/mcp",
+    "client": "Independent @modelcontextprotocol/sdk HTTP client, without LangGraph",
+    "discovered_tools": 19,
+    "passed": [
+      "OAuth protected-resource discovery",
+      "unauthenticated requests receive 401 with resource metadata challenge",
+      "API-key authentication",
+      "course list/detail",
+      "authorized semantic scene search",
+      "subtitle-window retrieval",
+      "course metadata",
+      "out-of-course video denial",
+      "identity-field injection rejection",
+      "read-only key denies course creation"
+    ],
+    "search": {
+      "scenes_returned": 20,
+      "duration_ms": 8325
+    },
+    "subtitle_window": {
+      "scenes_returned": 2,
+      "duration_ms": 4083
+    },
+    "findings": [
+      {
+        "id": "internal-chat-500",
+        "severity": "high",
+        "observation": "The same question through the non-streaming /api/trpc/chat.send API returned HTTP 500 on three completed attempts. The Worker error log confirmed INTERNAL_SERVER_ERROR with error name Error. The browser UI streaming route was not tested.",
+        "cause": "Not established; MCP migration causality is not proven.",
+        "consequence": "The production equivalence check failed: the internal non-streaming API returned an error while external MCP returned evidence."
+      },
+      {
+        "id": "api-key-default-limit",
+        "severity": "high",
+        "observation": "New production default API keys have rateLimitMax=10 and rateLimitTimeWindow=86400000. Initialization/notification/GET/tool-list requests also consume the key budget.",
+        "additional_observation": "Controlled real-HTTP exhaustion returned 401 UNAUTHORIZED / Invalid API key, rather than an explicit rate-limit response."
+      },
+      {
+        "id": "sdk-structured-error-schema",
+        "severity": "medium",
+        "observation": "After tools/list, SDK callTool(create_course) with a read-only key threw -32602 output-schema mismatch. A direct HTTP call confirmed the server correctly returned isError=true and structuredContent {status:403,code:FORBIDDEN}.",
+        "consequence": "The SDK validates structured error content against the success schema and hides the intended public domain error."
+      },
+      {
+        "id": "visual-data-unavailable",
+        "severity": "verification-limitation",
+        "observation": "inspect_clip returned status unavailable / Visual evidence is not available for this video yet. The authorized account had 73 videos, including 16 uploaded videos; none had visual_processing ready or processing metadata.",
+        "consequence": "No successful real-provider visual recognition was verified in production. Controlled fixture-based visual execution passed."
+      }
+    ]
+  },
+  "cleanup": {
+    "temporary_keys_created": 2,
+    "temporary_keys_revoked": 2,
+    "revoked_key_rejected_with_401": true,
+    "local_credential_file_removed": true,
+    "existing_videos_courses_and_conversations_unchanged": true,
+    "tail_and_sdk_processes_stopped": true
+  },
+  "privacy": "No credentials, account identifiers, video identifiers, private titles, transcripts, or image payloads are included in this report."
+}

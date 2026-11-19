@@ -460,12 +460,16 @@ const MANAGEMENT_TOOL_ANNOTATIONS: Record<ManagementToolName, NonNullable<ToolMe
   get_chat_analytics: readOnly,
 };
 
+const managementOutputContracts: Record<string, z.ZodObject> = Object.fromEntries(
+  Object.entries(managementToolOutputSchemas).map(([name, shape]) => [name, z.object(shape)]),
+);
+
 /** Actor-scoped definitions shared by every transport. */
 export function createManagementTools(ctx: ToolActorContext): ToolDefinition[] {
   function define<Name extends ManagementToolName>(name: Name, execute: (args: z.output<(typeof managementToolSchemas)[Name]>) => Promise<Json>): ToolDefinition {
     return defineTool(execute, {
       name, title: MANAGEMENT_TOOL_TITLES[name], description: MANAGEMENT_TOOL_DESCRIPTIONS[name],
-      schema: managementToolSchemas[name], outputSchema: z.object(managementToolOutputSchemas[name]),
+      schema: managementToolSchemas[name], outputSchema: managementOutputContracts[name],
       resultFormat: "flat", failureMode: "propagate", annotations: MANAGEMENT_TOOL_ANNOTATIONS[name],
       access: MANAGEMENT_WRITE_TOOLS.has(name) ? "write" : "read",
     });

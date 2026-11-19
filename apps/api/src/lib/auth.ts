@@ -1,3 +1,4 @@
+import { API_KEY_RATE_LIMIT } from "./api-key-policy";
 import { features } from "./deployment";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
 import { apiKey } from "@better-auth/api-key";
@@ -473,6 +474,7 @@ export function createAuthWithPersistence(env: Bindings, persistence: AuthPersis
         apiKey(["default", "read-write"].map((configId) => ({
           configId,
           defaultPrefix: "vq_",
+          rateLimit: API_KEY_RATE_LIMIT,
           apiKeyHeaders: ["x-api-key"],
           permissions: {
             defaultPermissions: { videoq: configId === "read-write" ? ["read", "write"] : ["read"] },

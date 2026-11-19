@@ -19,6 +19,7 @@ import { createRpcCaller } from "./handlers/shared";
 export async function createTrpcContext(c: Context<AppEnv>): Promise<TrpcContext> {
   const auth = await resolveAuth(c, [isUploadControlRequest(c.req.path) ? uploadSessionMethod : sessionMethod]);
   // A rejected credential is not an anonymous request, even for public/share procedures.
+  if (auth.kind === "rate_limited") throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: auth.message });
   if (auth.kind === "invalid" || auth.kind === "forbidden") {
     throw new TRPCError({
       code: auth.kind === "invalid" ? "UNAUTHORIZED" : "FORBIDDEN",

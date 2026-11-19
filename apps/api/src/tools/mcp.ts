@@ -1,9 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { withPublicToolErrors } from "./output-schema";
 import { ToolError } from "./errors";
 import { toolResponseSchema } from "./contract";
 import type { ToolDefinition, ToolValue } from "./definition";
+
+const evidenceOutputSchema = z.object({ result: toolResponseSchema.shape.result.optional(), error: z.object({ code: z.string() }).optional() });
 
 export function toToolResult(result: ToolValue): CallToolResult {
   return { content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }], structuredContent: { result } };
@@ -16,7 +19,7 @@ export function registerTools(server: McpServer, tools: readonly ToolDefinition[
       title: definition.title ?? definition.name.replaceAll("_", " "),
       description: definition.description,
       inputSchema: definition.schema,
-      outputSchema: definition.outputSchema ?? z.object({ result: toolResponseSchema.shape.result.optional(), error: z.object({ code: z.string() }).optional() }),
+      outputSchema: withPublicToolErrors(definition.outputSchema ?? evidenceOutputSchema),
       annotations: definition.annotations ?? { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     }, async (input, extra) => {
       const callSignal = signal ? AbortSignal.any([signal, extra.signal]) : extra.signal;
