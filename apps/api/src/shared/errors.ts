@@ -1,5 +1,6 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
+import { ApplicationError, type FailureKind } from '../application/errors';
 
 /** 新 API 契約のエラー封筒。 */
 export const errorBodySchema = z
@@ -49,6 +50,20 @@ export class ApiError extends Error {
     this.expose = opts.expose ?? true;
     this.details = opts.details;
   }
+}
+
+const applicationStatuses = {
+  validation: 400, unauthorized: 401, forbidden: 403, not_found: 404,
+  conflict: 409, unavailable: 503,
+} as const satisfies Record<FailureKind, ContentfulStatusCode>;
+
+/** Translate at transport boundaries, keeping existing API error envelopes. */
+export function asApiError(error: unknown): ApiError | null {
+  if (error instanceof ApiError) return error;
+  if (!(error instanceof ApplicationError)) return null;
+  return new ApiError(applicationStatuses[error.kind], error.code, error.message, {
+    expose: error.expose, details: error.details,
+  });
 }
 
 export const apiBadRequest = (message: string, code = "VALIDATION_ERROR", details?: unknown) =>

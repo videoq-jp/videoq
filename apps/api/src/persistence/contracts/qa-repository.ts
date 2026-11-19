@@ -1,4 +1,4 @@
-import type {LtiSessionProof} from '../../shared/lti-session-proof';
+import type {LtiSessionProof} from '../../application/lti-session-proof';
 /** Internal grant, constructed only after a fresh LMS authorization check. */
 export type LtiQaPrincipal = {
   kind: "lti"; courseId: number; ownerUserId: string; authorId: string; videoIds: readonly number[];

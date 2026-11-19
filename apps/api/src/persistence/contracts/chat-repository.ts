@@ -1,5 +1,5 @@
-import type {ChatAnswer,ChatSource} from "@videoq/trpc/chat";
-import type {LtiDataSubject} from "../../features/lti/identity";
+import type {ChatAnswer,ChatSource} from "../../application/models";
+import type {LtiDataSubject} from "./lti-subject";
 export type ChatQuestionAuthor={user_id:string;username:string;email:string};
 export type ChatLogItem={id:number;course:number;asked_by:ChatQuestionAuthor|null;question:string;answer:ChatAnswer;is_shared_origin:boolean;feedback:"good"|"bad"|null;created_at:string};
 export type GroupChatContext={id:number;userId:string;memberVideoIds:number[]};

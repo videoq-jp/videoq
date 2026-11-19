@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { plainChatAnswer, chatAnswerText } from '@videoq/trpc/chat';
 import { openConversation, pruneConversations, ConversationBusyError, ConversationNotFoundError } from '../src/repositories/conversation-repository';
-import { listConversations, getConversation, deleteConversation, conversationScope } from '../src/features/chat/conversation-service';
+import { listConversations, getConversation, deleteConversation, conversationScope } from '../src/integrations/conversations';
 import { setupConversationCheckpoints } from '../scripts/migrations/conversation/setup';
 import { withDb } from '../src/db/pool';
 import { runRag, type RagResult } from '../src/lib/rag';
@@ -101,7 +101,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       expect((await listConversations(env, personal(), { limit: 20, offset: 0 })).items.map(item => item.id)).toEqual([id]);
       expect((await listConversations(env, personal('b'), { limit: 20, offset: 0 })).items).toEqual([]);
       for (const other of [personal('b'), { ...scope, actorUserId: 'owner' }, { ...scope, actorUserId: null }]) {
-        await expect(getConversation(env, other, { conversationId: id, limit: 50 })).rejects.toMatchObject({ status: 404 });
+        await expect(getConversation(env, other, { conversationId: id, limit: 50 })).rejects.toMatchObject({ code: "NOT_FOUND" });
       }
       const subjects = await pool.query('SELECT subject_key,resource_video_ids,registration_id,context_id FROM lti_chat_log_subjects');
       expect(subjects.rows).toEqual([{ subject_key: 'a'.repeat(64), resource_video_ids: [10,11], registration_id: null, context_id: null }]);
@@ -119,7 +119,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       await chat.commit(await invoke(chat, 'Question about a lesson that becomes hidden'), persist()); await chat.close();
       const restricted = personal('a', [10]);
       expect((await listConversations(env, restricted, { limit: 20, offset: 0 })).items).toEqual([]);
-      await expect(getConversation(env, restricted, { conversationId: id, limit: 50 })).rejects.toMatchObject({ status: 404 });
+      await expect(getConversation(env, restricted, { conversationId: id, limit: 50 })).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(openConversation(env, restricted, id, true)).rejects.toBeInstanceOf(ConversationNotFoundError);
       expect((await pool.query('SELECT lease_id FROM chat_conversations WHERE thread_id=$1', [chat.threadId])).rows[0].lease_id).toBeNull();
       expect((await getConversation(env, personal(), { conversationId: id, limit: 50 })).turns).toHaveLength(1);
@@ -143,7 +143,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       await chat.commit(await invoke(chat, 'Private lesson becomes hidden'), persist()); await chat.close();
       const empty = personal('a',[]);
       expect((await listConversations(env,empty,{limit:20,offset:0})).items).toEqual([]);
-      await expect(getConversation(env,empty,{conversationId:id,limit:50})).rejects.toMatchObject({status:404});
+      await expect(getConversation(env,empty,{conversationId:id,limit:50})).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(openConversation(env,empty,id,true)).rejects.toBeInstanceOf(ConversationNotFoundError);
       await expect(openConversation(env,empty,crypto.randomUUID())).rejects.toBeInstanceOf(ConversationNotFoundError);
       await deleteConversation(env,personal('b',[]),id);

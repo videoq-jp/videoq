@@ -11,7 +11,7 @@ import { getVideoEvidence } from "../src/repositories/video-evidence-repository"
 import { getCourseWithMembers, updateChatLogFeedback } from "../src/repositories/chat-repository";
 import { sendChatMessage, streamChatMessage } from "../src/features/chat/message-service";
 import { getQuestion, listQuestions, mutate } from "../src/integrations/qa";
-import { getConversation, listConversations, deleteConversation } from '../src/features/chat/conversation-service';
+import { getConversation, listConversations, deleteConversation } from '../src/integrations/conversations';
 import { ltiSubjectKey } from '../src/features/lti/identity';
 import { manageLtiMaterial } from '../src/features/lti/material-management';
 import { processExternalTaskById } from '../src/lib/external-tasks';
@@ -42,7 +42,7 @@ vi.mock("../src/repositories/video-evidence-repository", () => ({ getVideoEviden
 vi.mock("../src/repositories/chat-repository", () => ({ getCourseWithMembers: vi.fn(), updateChatLogFeedback: vi.fn() }));
 vi.mock("../src/features/chat/message-service", () => ({ sendChatMessage: vi.fn(), streamChatMessage: vi.fn() }));
 vi.mock("../src/integrations/qa", () => ({ getQuestion: vi.fn(), listQuestions: vi.fn(), mutate: vi.fn() }));
-vi.mock('../src/features/chat/conversation-service', () => ({ getConversation: vi.fn(), listConversations: vi.fn(), deleteConversation: vi.fn() }));
+vi.mock('../src/integrations/conversations', () => ({ getConversation: vi.fn(), listConversations: vi.fn(), deleteConversation: vi.fn() }));
 vi.mock('../src/features/lti/material-management', async importOriginal => ({
   ...await importOriginal<typeof import('../src/features/lti/material-management')>(), manageLtiMaterial: vi.fn(),
 }));

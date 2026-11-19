@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as courseService from "../src/features/courses/service";
+import * as courseService from "../src/integrations/courses";
 import * as membershipService from "../src/features/membership/service";
 import * as videoService from "../src/features/videos/service";
 import { callManagementTool, ToolError } from "../src/tools/management";
 
-vi.mock("../src/features/courses/service", () => ({
+vi.mock("../src/integrations/courses", () => ({
   createUserCourse: vi.fn(),
   createUserCourseIdempotent: vi.fn(),
 }));

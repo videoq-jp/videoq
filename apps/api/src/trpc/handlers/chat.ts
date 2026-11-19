@@ -1,7 +1,7 @@
 import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
-import * as conversations from "../../features/chat/conversation-service";
-import * as chatService from "../../features/chat/service";
+import * as conversations from "../../integrations/conversations";
+import * as chatService from "../../integrations/chat-history";
 import * as messageService from "../../features/chat/message-service";
 import { chatThrottleChecks, enforceThrottles } from "../../lib/rate-limit";
 import type { AppEnv } from "../../types/bindings";

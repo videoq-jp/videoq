@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TEST_USER_ID, testAuthHeaders } from "./helpers/auth";
 import { TAG_COLORS } from "@videoq/trpc/schema";
 import { apiConflict, apiServiceUnavailable } from "../src/shared/errors";
+import { ApplicationError } from '../src/application/errors';
 import * as auth from "../src/middleware/auth";
 import * as messageService from "../src/features/chat/message-service";
 
@@ -24,7 +25,7 @@ const videoService = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/features/tags/service", () => tagService);
-vi.mock("../src/features/courses/service", () => courseService);
+vi.mock("../src/integrations/courses", () => courseService);
 vi.mock("../src/features/videos/service", () => videoService);
 
 import { createApp } from "../src/app";
@@ -193,6 +194,25 @@ describe("tRPC Hono adapter", () => {
     const payload = await response.json();
     expect(payload).toMatchObject({ error: { data: { applicationCode: "SERVICE_UNAVAILABLE" } } });
     expect(JSON.stringify(payload)).not.toContain("private upstream detail");
+  });
+
+  it.each([
+    { kind: 'not_found', status: 404, code: 'NOT_FOUND' },
+    { kind: 'conflict', status: 409, code: 'CONFLICT' },
+    { kind: 'unavailable', status: 500, code: 'INTERNAL_SERVER_ERROR' },
+  ] as const)('translates a transport-independent $kind failure through tRPC', async ({ kind, status, code }) => {
+    courseService.listCourses.mockRejectedValueOnce(new ApplicationError(kind, 'COURSE_FAILURE', 'Course unavailable', { courseId: 7 }));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const input = encodeURIComponent(JSON.stringify({ limit: 24, cursor: 0 }));
+    const response = await createApp().request(`/api/trpc/courses.list?input=${input}`, { headers: testAuthHeaders() }, ENV);
+    expect(response.status).toBe(status);
+    const payload = await response.json();
+    expect(payload).toMatchObject({ error: { data: { code, applicationCode: 'COURSE_FAILURE' } } });
+    if (status < 500) expect(payload).toMatchObject({ error: { data: { details: { courseId: 7 } } } });
+    else {
+      expect(payload.error.data).not.toHaveProperty('details');
+      expect(JSON.stringify(payload)).not.toContain('Course unavailable');
+    }
   });
 
   it.each(["tags.create", "tags.update"])(

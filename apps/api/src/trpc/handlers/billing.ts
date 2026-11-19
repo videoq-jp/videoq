@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import * as billingService from "../../features/billing/service";
+import * as billingService from "../../integrations/billing";
 import type { AppEnv } from "../../types/bindings";
 import { requireUserId, type HandlersFor } from "./shared";
 

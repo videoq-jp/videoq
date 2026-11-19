@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createCheckoutSession, createPortalSession } from "../src/features/billing/service";
+import { createCheckoutSession, createPortalSession } from "../src/integrations/billing";
 import { getBillingUser } from "../src/repositories/billing-repository";
 import type { Bindings } from "../src/types/bindings";
 

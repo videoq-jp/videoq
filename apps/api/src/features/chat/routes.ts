@@ -15,7 +15,7 @@ import { chatThrottleChecks, enforceThrottles, throttledResponse } from "../../l
 import type { AppEnv } from "../../types/bindings";
 import { chatMessageBodySchema } from "./schemas";
 import { limitChatRequestBody } from "./body-limit";
-import * as chatService from "./service";
+import * as chatService from "../../integrations/chat-history";
 import * as messageService from "./message-service";
 
 /** Raw transports only: CSV download and SSE. JSON chat operations use tRPC. */

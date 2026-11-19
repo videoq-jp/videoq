@@ -6,6 +6,16 @@ const databaseImports = [
   '@yukiharada1228/langchain-postgres', '@yukiharada1228/langchain-postgres/**', 'pgvector', 'pgvector/**',
   '**/db/**', '**/persistence/d1/**', '**/persistence/postgres/**',
 ]
+// The pure shared upload module has no router, schema or platform dependencies.
+const pureImports = [
+  '../../persistence/contracts/*', '../../application/*',
+  '../../lib/upload', '../../lib/share-slug', '../../shared/csv',
+  './catalog', './ports', './core', './creation-idempotency', './video-read-repository', './lti-subject',
+  '../../features/billing/catalog', '../persistence/contracts/chat-repository',
+  '@videoq/trpc/video-upload',
+]
+const pureImportRestriction = `^(?!(?:${pureImports.map(path => path.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^/]+')).join('|')})$)`
+
 const databaseImportMessage = 'Shared business code must use persistence contracts and factories; database SDKs, schemas and adapters belong to persistence implementations.'
 
 export default [
@@ -39,18 +49,25 @@ export default [
     },
   },
   {
-    files: ['src/features/qa/policy.ts', 'src/features/qa/core.ts', 'src/features/videos/upload-service.ts'],
+    files: [
+      'src/application/**/*.ts',
+      'src/features/qa/policy.ts', 'src/features/qa/core.ts',
+      'src/features/videos/upload-service.ts', 'src/features/courses/service.ts',
+      'src/features/chat/service.ts', 'src/features/chat/conversation-service.ts',
+      'src/features/billing/service.ts', 'src/features/billing/ports.ts', 'src/features/billing/catalog.ts',
+      'src/persistence/contracts/{qa-repository,billing-repository,course-repository,conversation-read,chat-repository,lti-subject,creation-idempotency,video-read-repository,video-upload-repository,video-mutation-repository,multipart-upload-repository}.ts',
+      'src/lib/upload.ts', 'src/lib/share-slug.ts', 'src/shared/csv.ts',
+    ],
     rules: {
-      // These extracted rules/use cases accept capabilities rather than env or adapters.
       'no-restricted-imports': ['error', {
-        patterns: [{
-          regex: '^(?!(?:\\.\\./\\.\\./persistence/contracts/[^/]+|\\.\\./\\.\\./lib/upload|@videoq/trpc/video-upload)$)',
-          message: 'Extracted use cases may import contracts and pure upload helpers only; compose runtime adapters in integrations.',
-        }],
+        patterns: [{ regex: pureImportRestriction,
+          message: 'Application workflows and their contracts may depend only on pure contracts, policies and helpers; compose runtime adapters in integrations.' }],
       }],
       'no-restricted-syntax': ['error',
         { selector: 'ImportExpression', message: 'Inject capabilities instead of loading implementations in a use case.' },
         { selector: 'TSImportType', message: 'Use explicit contract imports so the dependency boundary is checked.' },
+        { selector: 'TSImportEqualsDeclaration', message: 'Use explicit contract imports so the dependency boundary is checked.' },
+        { selector: 'CallExpression[callee.name="require"]', message: 'Inject implementations instead of requiring them in application code.' },
       ],
     },
   },
@@ -58,7 +75,7 @@ export default [
     files: ['src/features/qa/service.ts', 'src/persistence/contracts/qa-repository.ts'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{ regex: '^(?!(?:\\./core|\\.\\./\\.\\./persistence/contracts/qa-repository|\\.\\./\\.\\./shared/lti-session-proof)$)',
+        patterns: [{ regex: '^(?!(?:\\./core|\\.\\./\\.\\./persistence/contracts/qa-repository|\\.\\./\\.\\./application/lti-session-proof)$)',
           message: 'Q&A contracts and use cases must not depend on transport, runtime configuration or persistence implementations.' }],
       }],
       'no-restricted-syntax': ['error',

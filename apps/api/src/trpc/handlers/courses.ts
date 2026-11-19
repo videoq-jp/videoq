@@ -1,6 +1,6 @@
 import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
-import * as courseService from "../../features/courses/service";
+import * as courseService from "../../integrations/courses";
 import * as courseMembershipService from "../../features/course-memberships/service";
 import * as membershipService from "../../features/membership/service";
 import { processExternalTasks } from "../../lib/external-tasks";

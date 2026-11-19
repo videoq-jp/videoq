@@ -1,8 +1,8 @@
-import { qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
+import { qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import { qaSqlLogic } from "../qa-policy-sql";
 import type {QaQuestion,QaReply} from '../contracts/qa-repository';
 import type {QaRepository,QaPrincipal,QaAccess,QaCommand} from '../contracts/qa-repository';
-import {ApiError,apiNotFound} from '../../shared/errors';
+import { forbidden as permissionDenied, notFound } from '../../application/errors';
 import {ltiSessionProof} from '../../shared/lti-session-proof';
 import {toUtcIso} from '../../shared/datetime';
 const NOW="strftime('%Y-%m-%dT%H:%M:%fZ','now')";
@@ -27,9 +27,15 @@ function actor(principal:QaPrincipal,access:QaAccess,p:Parameters){
  let guard:string;
  if(lti){
   const valid=validLtiQaScope(lti,access);
-  guard=`${p.add(valid)} AND EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND user_id=${p.add(lti.ownerUserId)}) AND (${p.add(lti.videoIds.length)}=0 OR EXISTS(${videos}))`;
+  guard=qaLtiAccessAllowed({validScope:p.add(valid),
+   ownerMatches:`EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND user_id=${p.add(lti.ownerUserId)})`,
+   emptyScope:`${p.add(lti.videoIds.length)}=0`,hasVisibleMember:`EXISTS(${videos})`,
+  },qaSqlLogic);
  }else{
-  const native=`EXISTS(SELECT 1 FROM video_courses c WHERE c.id=${course} AND NOT c.managed_by_lms AND NOT c.native_access_disabled AND NOT EXISTS(SELECT 1 FROM video_course_members m JOIN videos v ON v.id=m.video_id WHERE m.course_id=c.id AND v.managed_by_lms))`;
+  const participation=qaNativeParticipationAllowed({managedByLms:'c.managed_by_lms',nativeAccessDisabled:'c.native_access_disabled',
+   hasLmsVideo:'EXISTS(SELECT 1 FROM video_course_members m JOIN videos v ON v.id=m.video_id WHERE m.course_id=c.id AND v.managed_by_lms)',
+  },qaSqlLogic);
+  const native=`EXISTS(SELECT 1 FROM video_courses c WHERE c.id=${course} AND ${participation})`;
   guard=qaNativeAccessAllowed(access.shareSlug!==undefined,{
    owner:isOwner,nativeEnabled:native,
    member:`EXISTS(SELECT 1 FROM video_course_memberships WHERE course_id=${course} AND user_id=${user})`,
@@ -54,9 +60,9 @@ function decode(row:Record<string,unknown>){const author=JSON.parse(String(row.a
 const question=(row:Record<string,unknown>)=>({...decode(row),featured:Boolean(row.featured),voted:Boolean(row.voted)}) as QaQuestion;
 const reply=(row:Record<string,unknown>)=>decode(row) as QaReply;
 function check(code:number){
- if(code===4030)throw new ApiError(403,'FORBIDDEN','The Moodle session is unavailable.');
- if(code===4031)throw new ApiError(403,'FORBIDDEN','You cannot perform this Q&A operation.');
- if(code)throw apiNotFound(code===4041?'Question not found':code===4042?'Reply not found':code===4043?'Video not found in this course':'Course not found');
+ if(code===4030)throw permissionDenied('The Moodle session is unavailable.');
+ if(code===4031)throw permissionDenied('You cannot perform this Q&A operation.');
+ if(code)throw notFound(code===4041?'Question not found':code===4042?'Reply not found':code===4043?'Video not found in this course':'Course not found');
 }
 function accessStatement(database:D1Database,principal:QaPrincipal,input:QaAccess){const p=new Parameters(),a=actor(principal,input,p);return p.statement(database,`SELECT CASE WHEN NOT (${a.session}) THEN 4030 WHEN NOT (${a.guard}) THEN 4040 ELSE 0 END AS code,${a.canPost} AS canPost,${a.canVote} AS canVote,${a.canModerate} AS canModerate`);}
 function abilities(row:Record<string,unknown>){check(Number(row.code));return {canPost:Boolean(row.canPost),canVote:Boolean(row.canVote),canModerate:Boolean(row.canModerate)};}
@@ -74,7 +80,7 @@ export function createD1QaRepository(database:D1Database):QaRepository{return {
    return p.statement(database,replies?`SELECT r.id,r.body,${authorFields('r',a)},r.created_at AS createdAt,r.updated_at AS updatedAt,${abilities.canEdit} AS canEdit,${abilities.canDelete} AS canDelete FROM course_question_replies r LEFT JOIN users u ON u.id=r.author_id WHERE r.question_id IN(SELECT q.id FROM course_questions q WHERE ${visible}) ORDER BY r.created_at,r.id LIMIT ${p.add(input.limit)} OFFSET ${p.add(input.offset)}`:`SELECT ${questionFields(a)} ${FROM} WHERE ${visible}`);
   };
   const result=await database.batch<Record<string,unknown>>([accessStatement(database,principal,input),select(),select(true)]);
-  const permissions=abilities(result[0].results[0]),row=result[1].results[0];if(!row)throw apiNotFound('Question not found');
+  const permissions=abilities(result[0].results[0]),row=result[1].results[0];if(!row)throw notFound('Question not found');
   const q=question(row);return {question:q,replies:result[2].results.map(reply),replyTotal:q.replyCount,...permissions};
  },
  async mutate(principal,command){return mutate(database,principal,command);},

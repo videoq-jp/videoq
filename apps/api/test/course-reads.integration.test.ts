@@ -3,7 +3,7 @@ import { visualSchema } from "./helpers/visual-schema";
 import pg from "pg";
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import * as courses from "../src/features/courses/service";
+import * as courses from "../src/integrations/courses";
 import { getCourseDetail, getCourseDetailByShareSlug, getCourseInfo, listCoursesPage } from "../src/repositories/course-repository";
 import { getTagDetail } from "../src/repositories/tag-repository";
 import { callManagementTool } from "../src/tools/management";

@@ -19,6 +19,7 @@
   "include": [
     "worker-configuration.d.ts",
     "src/**/*.ts",
-    "src/**/*.json"
+    "src/**/*.json",
+    "type-tests/**/*.ts"
   ]
 }

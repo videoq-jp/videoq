@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope, type QaOperation } from "../src/features/qa/policy";
+import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaLtiAccessAllowed, validLtiQaScope, type QaOperation } from "../src/features/qa/policy";
 
 const operations: QaOperation[] = ["qa.ask", "qa.reply", "qa.vote", "qa.feature", "qa.updateQuestion", "qa.deleteQuestion", "qa.updateReply", "qa.deleteReply"];
 describe("Q&A business policy", () => {
@@ -40,5 +40,14 @@ describe("Q&A business policy", () => {
     expect(validLtiQaScope({ ...principal, authorId: "invalid" }, { courseId: 1 })).toBe(false);
     expect(validLtiQaScope({ ...principal, permissions: { view: false } }, { courseId: 1 })).toBe(false);
     expect(validLtiQaScope({ ...principal, videoIds: Array.from({ length: 1001 }, (_, i) => i) }, { courseId: 1 })).toBe(false);
+  });
+  it.each([
+    { label: 'valid course-level scope', validScope: true, ownerMatches: true, emptyScope: true, hasVisibleMember: false, allowed: true },
+    { label: 'valid video scope', validScope: true, ownerMatches: true, emptyScope: false, hasVisibleMember: true, allowed: true },
+    { label: 'detached videos', validScope: true, ownerMatches: true, emptyScope: false, hasVisibleMember: false, allowed: false },
+    { label: 'another owner with no videos', validScope: true, ownerMatches: false, emptyScope: true, hasVisibleMember: false, allowed: false },
+    { label: 'invalid grant with visible videos', validScope: false, ownerMatches: true, emptyScope: false, hasVisibleMember: true, allowed: false },
+  ])('enforces LMS authority for $label', ({ allowed, ...facts }) => {
+    expect(qaLtiAccessAllowed(facts, qaBooleanLogic)).toBe(allowed);
   });
 });
