@@ -10,13 +10,13 @@ Answers use the course owner's allowance. Owners can review question history and
 
 ## Watch the demo
 
-[![Play the 30-second English demo: an instructor shares a course, a student asks a question and jumps to the cited scene, and the instructor finds that question in the history](apps/web/public/demo/provider-demo-en-poster.webp)](https://videoq.jp/demo/provider-demo-en.mp4?v=4)
+[![Watch the English product overview: lecture citations, student questions, uploads, courses, email invitations, transcripts, and question history](apps/web/public/demo/provider-demo-en-poster.webp)](https://videoq.jp/demo/provider-demo-en.mp4?v=5)
 
-**[▶ Play the English demo (30 seconds)](https://videoq.jp/demo/provider-demo-en.mp4?v=4)** · [Watch on the website with captions](https://videoq.jp/en/#landing-demo)
+**[▶ Watch the English product overview (2 min 30 sec)](https://videoq.jp/demo/provider-demo-en.mp4?v=5)** · [Watch on the website with captions](https://videoq.jp/en/#landing-demo)
 
-An instructor uploads a lecture and shares the course, a student asks a question and plays the cited moment, and the instructor finds that question in the conversation history.
+See how students check cited lecture scenes and ask questions, then follow the instructor's workflow: upload recordings, organize courses, invite students by email, review transcripts, and learn from question history. The overview also covers YouTube imports, Moodle integration, and shared links.
 
-*Recreated walkthrough using real course data and a captured AI answer; the opening is an illustration, and the English edit translates the interface, question, and answer. Waiting times have been shortened.*
+*Updated November 20, 2026. Current English app screens with synthesized English narration and captions. Screens are captured walkthroughs; the recorded question, answer, and lesson are translated from the original real-data demo. Learner identities are demo data, no invitation email was sent, and pacing is edited.*
 
 ## Features
 
