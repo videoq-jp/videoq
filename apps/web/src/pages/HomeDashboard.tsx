@@ -51,8 +51,8 @@ export default function HomeDashboard() {
     isCourseQuestionsLoading,
     isVideosLoading,
     isCoursesLoading,
-  } = useHomePageData({ userId: currentUser?.id });
-  const { stats: videoStats, isLoading: isVideoStatsLoading } = useVideoStatusCounts(!!currentUser?.id);
+  } = useHomePageData({ userId: currentUser?.id ?? session.data?.user.id });
+  const { stats: videoStats, isLoading: isVideoStatsLoading } = useVideoStatusCounts(hasSession);
 
   const recentVideos = videos;
 
@@ -112,11 +112,7 @@ export default function HomeDashboard() {
     t,
   ]);
 
-  if (isLoading) {
-    return <LoadingSpinner fullScreen />;
-  }
-
-  if (!currentUser) {
+  if (!currentUser && !isLoading) {
     return <LandingPage />;
   }
 
@@ -151,7 +147,7 @@ export default function HomeDashboard() {
     <>
       <AppPageHeader
         badge={t('home.welcome.badge')}
-        title={t('home.welcome.greeting', { username: currentUser?.username })}
+        title={t('home.welcome.greeting', { username: currentUser?.username ?? session.data?.user.username })}
         description={t('home.welcome.dailyMotivation')}
         action={(
           <Button
@@ -167,7 +163,7 @@ export default function HomeDashboard() {
       />
 
       {/* Wait for the counts and question history so the wrong step does not flash. */}
-      {!isVideoStatsLoading && !isCoursesLoading && !isCourseQuestionsLoading && (
+      {currentUser && !isLoading && !isVideoStatsLoading && !isCoursesLoading && !isCourseQuestionsLoading && (
         <GettingStartedGuide
           userId={currentUser.id}
           progress={{
@@ -196,7 +192,7 @@ export default function HomeDashboard() {
                 className="flex items-baseline justify-between gap-4 border-b border-solid-gray-200 py-4 sm:pr-6"
               >
                 <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
-                <dd className="text-std-20B-150 text-solid-gray-800">{loading ? (
+                <dd className="inline-flex min-h-8 items-center text-std-20B-150 text-solid-gray-800">{loading ? (
                   <InlineLoading className="min-w-28" />
                 ) : value}</dd>
               </div>
@@ -242,7 +238,8 @@ export default function HomeDashboard() {
               className="flex flex-col gap-1 border-b border-solid-gray-200 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
             >
               <dt className="text-std-17N-170 text-solid-gray-700">{label}</dt>
-              <dd className="text-std-17B-170 text-solid-gray-800">
+              <dd className="inline-flex min-h-8 flex-wrap items-baseline text-std-17B-170 text-solid-gray-800">
+                {isLoading ? <InlineLoading /> : <>
                 {value}
                 {unit ? <span className="ml-1 font-normal text-solid-gray-700">{unit}</span> : null}
                 <span className="mx-2 text-solid-gray-420">/</span>
@@ -250,16 +247,17 @@ export default function HomeDashboard() {
                 {unit && limit !== null ? (
                   <span className="ml-1 font-normal text-solid-gray-700">{unit}</span>
                 ) : null}
+                </>}
               </dd>
             </div>
           ))}
         </dl>
-        {currentUser.is_over_quota && (
+        {currentUser?.is_over_quota && (
           <div className="mt-4">
             <MessageAlert type="error" message={t('quota.errors.overQuota')} />
           </div>
         )}
-        {features.billing && (currentUser.plan_code ?? 'free') === 'free' && (
+        {features.billing && currentUser && (currentUser.plan_code ?? 'free') === 'free' && (
           <div className="mt-4">
             <Button asChild variant="outline">
               <Link href="/pricing">{t('home.usage.upgrade')}</Link>

@@ -1,11 +1,10 @@
-import { lazy, Suspense } from 'react';
 import { useAuthSession } from '@/lib/authSession';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { Navigate } from 'react-router-dom';
 import { isOnprem } from '@/lib/deployment';
 import LandingPage from '@/pages/LandingPage';
 
-const HomeDashboard = lazy(() => import('@/pages/HomeDashboard'));
+import HomeDashboard from '@/pages/HomeDashboard';
 
 export default function HomePage() {
   const session = useAuthSession();
@@ -16,9 +15,5 @@ export default function HomePage() {
     return <LandingPage />;
   }
 
-  return (
-    <Suspense fallback={<LoadingSpinner fullScreen />}>
-      <HomeDashboard />
-    </Suspense>
-  );
+  return <HomeDashboard />;
 }

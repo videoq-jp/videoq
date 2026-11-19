@@ -531,7 +531,9 @@ describe('VideoDetailPage - Loading state', () => {
 
   it('should show loading content', () => {
     render(<VideoDetailPage />)
-    expect(screen.getByText('common.messages.loading')).toBeInTheDocument()
+    expect(screen.getAllByRole('progressbar', { name: 'common.messages.loading' })).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: 'videos.detail.transcriptSection' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeDisabled()
   })
 })
 
