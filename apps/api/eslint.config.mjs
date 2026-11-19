@@ -11,6 +11,17 @@ const databaseImportMessage = 'Shared business code must use persistence contrac
 export default [
   ...workspaceConfig({ react: false, tsconfigRootDir: import.meta.dirname }),
   {
+    files: ['src/tools/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['langchain', 'langchain/**', '@langchain/*', '@langchain/**', '**/rag', '**/rag-*', '**/conversation', '**/conversation-*'],
+          message: 'Evidence tools must remain independent of agent frameworks and answer state. Adapt them on the consumer side.',
+        }],
+      }],
+    },
+  },
+  {
     files: [
       'src/features/**/*.ts', 'src/repositories/**/*.ts', 'src/persistence/contracts/**/*.ts',
       'src/lib/**/*.ts', 'src/middleware/**/*.ts', 'src/shared/**/*.ts', 'src/trpc/**/*.ts',

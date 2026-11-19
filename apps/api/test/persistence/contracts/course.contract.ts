@@ -46,6 +46,13 @@ export function courseContract(name:string,setup:()=>Promise<Fixture>){
       expect((await f.repository.getInfo(10,'owner',{...options,videoOffset:2}))?.videos).toEqual([]);
       expect(await f.repository.getInfo(10,'learner',options)).toBeNull();
     });
+    it('filters metadata counts and pages to authorized videos, including an empty grant',async()=>{
+      const options={videoLimit:1,videoOffset:0,courseDescriptionLimit:100,videoDescriptionLimit:100,videoIds:[2]};
+      expect(await f.repository.getInfo(10,'owner',options)).toMatchObject({video_count:1,videos:[{id:2}]});
+      expect(await f.repository.getInfo(10,'owner',{...options,videoOffset:1})).toMatchObject({video_count:1,videos:[]});
+      expect(await f.repository.getInfo(10,'owner',{...options,videoIds:[]})).toMatchObject({video_count:0,videos:[]});
+      expect(await f.repository.getInfo(10,'owner',{...options,videoIds:[3]})).toMatchObject({video_count:0,videos:[]});
+    });
     it('creates concurrently with stable idempotency and per-user order allocation',async()=>{
       const key={action:'create_course' as const,key:'same',requestHash:'a'.repeat(64)};
       const results=await Promise.all([f.repository.create('owner','created','description',key),f.repository.create('owner','created','description',key)]);

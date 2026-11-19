@@ -7,7 +7,7 @@ import { embedQuery } from "../../lib/embeddings";
 import { embeddingDimensions, embeddingTable, resolveEmbeddingConfig } from "../../lib/embedding-contract";
 import { assertEmbeddingSchema } from "../../lib/embedding-schema";
 import type { Bindings } from "../../types/bindings";
-import type { AnswerCostLedger } from "../../lib/answer-cost-ledger";
+import type { UsageRecorder } from "../../tools/usage";
 import { importReadSnapshot, validateReadSnapshot } from "./read-snapshot";
 
 const ALLOWED_TABLES = new Set(["scene_embeddings", "scene_embeddings_768"]);
@@ -29,7 +29,7 @@ const RETRIEVER_K = 20;
  * lib/embeddings.ts に一本化する。インデックス作成は worker 側の責務なので、
  * embedDocuments は API からは呼ばれない。
  */
-function sceneEmbeddings(env: Bindings, signal?: AbortSignal, costLedger?: AnswerCostLedger): EmbeddingsInterface {
+function sceneEmbeddings(env: Bindings, signal?: AbortSignal, costLedger?: UsageRecorder): EmbeddingsInterface {
   return {
     embedQuery: (text: string) => embedQuery(env, text, signal, costLedger),
     embedDocuments: (texts: string[]) =>
@@ -133,7 +133,7 @@ export function createPostgresSceneSearchRepository(
 export async function openPostgresEmbeddingSceneSearch(
   env: Bindings,
   signal?: AbortSignal,
-  costLedger?: AnswerCostLedger,
+  costLedger?: UsageRecorder,
   options: { snapshot?: string } = {},
 ): Promise<SceneSearchRepository & { close(): Promise<void> }> {
   signal?.throwIfAborted();
@@ -190,20 +190,24 @@ export async function openPostgresSceneSearch(
   env: Bindings,
   params: { userId: string; videoIds: readonly number[] },
   signal?: AbortSignal,
-  costLedger?: AnswerCostLedger,
+  costLedger?: UsageRecorder,
 ): Promise<SceneSearch> {
   const repository = await openPostgresEmbeddingSceneSearch(env, signal, costLedger);
   const allowedVideoIds = new Set(params.videoIds);
   return {
-    async search(query: string, videoIds?: readonly number[]): Promise<SceneHit[]> {
-      signal?.throwIfAborted();
+    async search(query: string, videoIds?: readonly number[], callSignal?: AbortSignal): Promise<SceneHit[]> {
+      const executionSignal = callSignal && signal ? AbortSignal.any([callSignal, signal]) : callSignal ?? signal;
+      executionSignal?.throwIfAborted();
       if (videoIds !== undefined && (
         videoIds.length === 0 || videoIds.some((id) => !allowedVideoIds.has(id))
       )) throw new Error("Video selection must be a non-empty subset of the current course.");
       const selected = videoIds === undefined ? [...allowedVideoIds] : [...new Set(videoIds)];
       if (!selected.length) return [];
-      const queryEmbedding = await embedQuery(env, query, signal, costLedger);
-      return repository.search({queryEmbedding, userId: params.userId, videoIds: selected, limit: RETRIEVER_K});
+      const queryEmbedding = await embedQuery(env, query, executionSignal, costLedger);
+      executionSignal?.throwIfAborted();
+      const hits = await repository.search({queryEmbedding, userId: params.userId, videoIds: selected, limit: RETRIEVER_K});
+      executionSignal?.throwIfAborted();
+      return hits;
     },
     close: () => repository.close(),
   };

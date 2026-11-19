@@ -43,7 +43,7 @@ export type CourseReadOptions = {
 };
 
 
-export type CourseInfoOptions={videoLimit:number;videoOffset:number;courseDescriptionLimit:number;videoDescriptionLimit:number};
+export type CourseInfoOptions={videoIds?:readonly number[];videoLimit:number;videoOffset:number;courseDescriptionLimit:number;videoDescriptionLimit:number};
 export interface CourseRepository {
   getInfo(courseId:number,ownerUserId:string,options:CourseInfoOptions):Promise<CourseInfo|null>;
   getDetail(courseId:number,userId:string,options?:CourseReadOptions):Promise<CourseDetail|null>;

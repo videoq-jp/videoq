@@ -216,7 +216,7 @@ describe.each([false, true])("検索障害（stream=%s）", (stream) => {
         if (!stream) return runRag(ENV, PARAMS);
         for await (const _chunk of streamRag(ENV, PARAMS)) { /* consume */ }
       };
-      await expect(execute()).rejects.toBe(failure);
+      await expect(execute()).rejects.toThrow(LlmProviderError);
       expect(searchSignal?.aborted).toBe(true);
       expect(upstream).toHaveBeenCalledOnce();
       expect(closed).toBe(1);
@@ -235,7 +235,7 @@ describe.each([false, true])("検索障害（stream=%s）", (stream) => {
       if (!stream) return runRag(ENV, PARAMS);
       for await (const _chunk of streamRag(ENV, PARAMS)) { /* consume */ }
     };
-    await expect(execute()).rejects.toBe(original);
+    await expect(execute()).rejects.toThrow(LlmConfigurationError);
     expect(closed).toBe(1);
     expect(log).toHaveBeenCalledOnce();
   });
@@ -325,7 +325,7 @@ describe.each([false, true])("検索障害（stream=%s）", (stream) => {
         expect(chunk).not.toHaveProperty("final");
       }
     };
-    await expect(execute()).rejects.toBe(error);
+    await expect(execute()).rejects.toThrow(LlmConfigurationError);
     expect(bodies).toHaveLength(1);
     expect(closed).toBe(1);
   });
@@ -788,7 +788,7 @@ describe.each([false, true])("講座メタ情報（stream=%s）", (streaming) =>
     expect(closed).toBe(0);
     expect(searchCalls).toEqual([]);
     expect(getCourseInfo).toHaveBeenCalledWith(ENV, 3, PARAMS.ownerUserId, {
-      videoLimit: 20, videoOffset: 0,
+      videoIds: PARAMS.videoIds, videoLimit: 20, videoOffset: 0,
       courseDescriptionLimit: COURSE_DESCRIPTION_LIMIT,
       videoDescriptionLimit: VIDEO_DESCRIPTION_LIMIT,
     });

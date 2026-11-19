@@ -87,6 +87,7 @@ function envelope(
 }
 
 export type McpToolCallContext = {
+  signal?: AbortSignal;
   env: Bindings;
   userId: string;
   canWrite: boolean;
