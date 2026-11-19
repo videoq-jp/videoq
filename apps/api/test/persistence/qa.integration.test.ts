@@ -131,6 +131,36 @@ for(const backend of ['d1','postgres'] as const){
     const audit = await pool.query('SELECT action,lti_actor_id,actor_user_id FROM course_qa_moderation ORDER BY created_at');
     expect(audit.rows).toEqual([{ action: 'feature', lti_actor_id: 'c'.repeat(64), actor_user_id: null }, { action: 'delete_question', lti_actor_id: 'c'.repeat(64), actor_user_id: null }]);
   });
+  it.each([
+    { label: 'own deletion without posting', own: true, post: false, deleteOwn: true, moderate: false, edit: false, remove: true },
+    { label: 'posting without own deletion', own: true, post: true, deleteOwn: false, moderate: false, edit: true, remove: false },
+    { label: 'moderation without author editing', own: false, post: false, deleteOwn: false, moderate: true, edit: false, remove: true },
+    { label: 'peer without moderation', own: false, post: true, deleteOwn: true, moderate: false, edit: false, remove: false },
+  ])('keeps displayed and enforced capabilities consistent: $label', async row => {
+    const id = await ltiAsk();
+    const created = await mutate(env, lti(), { name: 'qa.reply', input: { courseId: 1, questionId: id, body: 'Original reply' } });
+    if (!('id' in created)) throw new Error('Missing reply');
+    const principal = lti(row.own ? 'a' : 'b', { post: row.post, deleteOwn: row.deleteOwn, moderate: row.moderate });
+    const result = await ltiGet(principal, id);
+    expect(result.question).toMatchObject({ canEdit: row.edit, canDelete: row.remove });
+    expect(result.replies[0]).toMatchObject({ canEdit: row.edit, canDelete: row.remove });
+    expect((await ltiList(principal)).items[0]).toMatchObject({ canEdit: row.edit, canDelete: row.remove });
+    for (const command of [
+      { name: 'qa.updateQuestion' as const, input: { courseId: 1, questionId: id, title: 'Edited', body: 'Edited' } },
+      { name: 'qa.updateReply' as const, input: { courseId: 1, questionId: id, replyId: created.id, body: 'Edited reply' } },
+    ]) {
+      if (row.edit) await expect(mutate(env, principal, command)).resolves.toEqual({ success: true });
+      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ status: 403 });
+    }
+    for (const command of [
+      { name: 'qa.deleteReply' as const, input: { courseId: 1, questionId: id, replyId: created.id } },
+      { name: 'qa.deleteQuestion' as const, input: { courseId: 1, questionId: id } },
+    ]) {
+      if (row.remove) await expect(mutate(env, principal, command)).resolves.toEqual({ success: true });
+      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ status: 403 });
+    }
+  });
+
   it('supports coursewide Q&A with no readable videos while hiding all source-bound and deleted-source posts', async () => {
     const hidden = await ltiAsk(lti(),11), coursewide = await ltiAsk(lti(),null);
     const empty = lti('b',{},[]);
