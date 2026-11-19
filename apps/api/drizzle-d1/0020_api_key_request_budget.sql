@@ -1,3 +1,4 @@
+-- drizzle-kit:custom
 -- MCP initialization/discovery are authenticated requests, not AI/tool executions.
 UPDATE apikey SET rate_limit_max = 1200, rate_limit_time_window = 3600000,
   request_count = 0, last_request = NULL
