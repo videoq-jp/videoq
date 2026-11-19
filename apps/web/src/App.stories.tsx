@@ -884,7 +884,8 @@ export const VideoMobileLayout: Story = {
   },
   async play({ canvasElement, userEvent }) {
     const canvas = within(canvasElement);
-    const transcriptTab = await canvas.findByRole('button', { name: i18n.t('videos.detail.transcriptSection') });
+    await canvas.findByRole('heading', { level: 1, name: detailVideo.title });
+    const transcriptTab = canvas.getByRole('button', { name: i18n.t('videos.detail.transcriptSection') });
     const tabs = transcriptTab.parentElement!;
     const header = canvas.getByRole('link', { name: 'VideoQ' }).closest('header')!;
     await expect(tabs.getBoundingClientRect().left).toBe(0);
