@@ -1,4 +1,4 @@
-import type { ChatHistoryExportRow } from "../repositories/chat-repository";
+import type { ChatHistoryExportRow } from "../persistence/contracts/chat-repository";
 
 const NEEDS_QUOTE = /[",\r\n]/;
 const SPREADSHEET_FORMULA_PREFIX = /^(?:[=+\-@\t\r\n]|\s+[=+\-@])/u;

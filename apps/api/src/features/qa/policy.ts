@@ -5,10 +5,12 @@
 export interface QaLogic<T> {
   and(left: T, right: T): T;
   or(left: T, right: T): T;
+  not(value: T): T;
 }
 export const qaBooleanLogic: QaLogic<boolean> = {
   and: (left, right) => left && right,
   or: (left, right) => left || right,
+  not: value => !value,
 };
 export interface QaPermissions<T> {
   canPost: T;
@@ -47,6 +49,21 @@ export function qaNativeAccessAllowed<T>(usingShare: boolean, facts: {
   return usingShare
     ? logic.and(facts.nativeEnabled, facts.shareMatches)
     : logic.or(facts.owner, logic.and(facts.nativeEnabled, facts.member));
+}
+
+/** LMS authority survives detachment and also protects mixed native/LMS courses. */
+export function qaNativeParticipationAllowed<T>(facts: {
+  managedByLms: T; nativeAccessDisabled: T; hasLmsVideo: T;
+}, logic: QaLogic<T>): T {
+  return logic.not(logic.or(logic.or(facts.managedByLms, facts.nativeAccessDisabled), facts.hasLmsVideo));
+}
+
+/** Empty LMS scopes permit course-level posts, but never another owner's course. */
+export function qaLtiAccessAllowed<T>(facts: {
+  validScope: T; ownerMatches: T; emptyScope: T; hasVisibleMember: T;
+}, logic: QaLogic<T>): T {
+  return logic.and(logic.and(facts.validScope, facts.ownerMatches),
+    logic.or(facts.emptyScope, facts.hasVisibleMember));
 }
 
 /** Database ownership, session validity and current video visibility are checked

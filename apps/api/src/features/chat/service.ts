@@ -1,52 +1,54 @@
-import {
-  updateChatLogFeedback,
-  iterateCourseChatHistoryForExport,
-} from "../../repositories/chat-repository";
-import { verifyChatFeedbackToken } from "../../lib/chat-feedback-token";
-import { courseOwnedBy } from "../../repositories/course-repository";
-import { streamChatHistoryCsv } from "../../shared/csv";
-import type { Bindings } from "../../types/bindings";
+import type { ChatRepository, ChatHistoryExportRow } from '../../persistence/contracts/chat-repository';
+import { streamChatHistoryCsv } from '../../shared/csv';
 
-export {
-  shareSlugExists,
-  getCourseChatHistory as historyForCourse,
-  deleteCourseChatLogs as resetHistory,
-  getCourseChatAnalytics as analyticsForCourse,
-} from "../../repositories/chat-repository";
-
-export async function exportHistoryCsv(
-  env: Bindings,
-  courseId: number,
-  userId: string,
-) {
-  if (!(await courseOwnedBy(env, courseId, userId))) {
-    return { notFound: true } as const;
-  }
-  return {
-    body: streamChatHistoryCsv(
-      iterateCourseChatHistoryForExport(env, courseId, userId),
-    ),
-    filename: `chat_history_course_${courseId}.csv`,
-  } as const;
+export interface ChatHistoryDependencies {
+  chat: Pick<ChatRepository, 'shareExists' | 'history' | 'deleteHistory' | 'analytics' | 'feedback'>;
+  courseOwnedBy(courseId: number, userId: string): Promise<boolean>;
+  historyRows(courseId: number, userId: string): AsyncIterable<ChatHistoryExportRow>;
+  verifyFeedbackToken(logId: number, shareSlug: string, token?: string): Promise<boolean>;
 }
 
-export async function submitFeedback(
-  env: Bindings,
-  logId: number,
-  feedback: "good" | "bad" | null,
-  opts: { userId?: string; shareSlug?: string | null; feedbackToken?: string },
-) {
-  if (opts.shareSlug && !await verifyChatFeedbackToken(env, logId, opts.shareSlug, opts.feedbackToken)) {
-    return { forbidden: "Invalid feedback token" } as const;
+export function createChatHistoryService(deps: ChatHistoryDependencies) {
+  async function exportHistoryCsv(
+    courseId: number,
+    userId: string,
+  ) {
+    if (!(await deps.courseOwnedBy(courseId, userId))) {
+      return { notFound: true } as const;
+    }
+    return {
+      body: streamChatHistoryCsv(
+        deps.historyRows(courseId, userId),
+      ),
+      filename: `chat_history_course_${courseId}.csv`,
+    } as const;
   }
-  const updated = await updateChatLogFeedback(env, logId, feedback, opts);
-  if ("notFound" in updated) return { notFound: "Specified chat history not found" } as const;
-  if ("forbidden" in updated) {
-    return { forbidden: opts.shareSlug ? "Share token mismatch" : "No permission to access this history" } as const;
+
+  async function submitFeedback(
+    logId: number,
+    feedback: "good" | "bad" | null,
+    opts: { userId?: string; shareSlug?: string | null; feedbackToken?: string },
+  ) {
+    if (opts.shareSlug && !await deps.verifyFeedbackToken(logId, opts.shareSlug, opts.feedbackToken)) {
+      return { forbidden: "Invalid feedback token" } as const;
+    }
+    const updated = await deps.chat.feedback(logId, feedback, opts);
+    if ("notFound" in updated) return { notFound: "Specified chat history not found" } as const;
+    if ("forbidden" in updated) {
+      return { forbidden: opts.shareSlug ? "Share token mismatch" : "No permission to access this history" } as const;
+    }
+    return {
+      ok: true as const,
+      chat_log_id: updated.id,
+      feedback: updated.feedback,
+    };
   }
+
   return {
-    ok: true as const,
-    chat_log_id: updated.id,
-    feedback: updated.feedback,
+    exportHistoryCsv, submitFeedback,
+    shareSlugExists: (slug: string) => deps.chat.shareExists(slug),
+    historyForCourse: (courseId: number, userId: string, limit: number, offset: number) => deps.chat.history(courseId, userId, limit, offset),
+    resetHistory: (courseId: number, userId: string) => deps.chat.deleteHistory(courseId, userId),
+    analyticsForCourse: (courseId: number, userId: string) => deps.chat.analytics(courseId, userId),
   };
 }

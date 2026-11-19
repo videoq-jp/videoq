@@ -71,12 +71,12 @@ for(const backend of ['d1','postgres'] as const){
     expect((await get('owner', id)).question.id).toBe(id);
     expect((await ltiGet(lti('b'), id)).question.id).toBe(id);
     for (const actor of ['alice', 'bob', null]) {
-      await expect(list(actor)).rejects.toMatchObject({ status: 404 });
-      await expect(get(actor, id, { shareSlug: 'linear-algebra' })).rejects.toMatchObject({ status: 404 });
+      await expect(list(actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(get(actor, id, { shareSlug: 'linear-algebra' })).rejects.toMatchObject({ code: "NOT_FOUND" });
     }
-    await expect(ask('alice')).rejects.toMatchObject({ status: 404 });
+    await expect(ask('alice')).rejects.toMatchObject({ code: "NOT_FOUND" });
     // Disconnecting an installation does not change persisted course authority.
-    await expect(list('alice')).rejects.toMatchObject({ status: 404 });
+    await expect(list('alice')).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await ltiList(lti())).total).toBe(1);
     expect((await pool.query('SELECT managed_by_lms FROM video_courses WHERE id=2')).rows[0].managed_by_lms).toBe(false);
   });
@@ -90,7 +90,7 @@ for(const backend of ['d1','postgres'] as const){
     expect((await ltiGet(lti(), id)).question).toMatchObject({ author: { source: 'moodle', name: 'aaaaaaaaaaaa', instructor: false }, canEdit: true, canDelete: true });
     expect((await ltiGet(lti('b'), id)).question).toMatchObject({ canEdit: false, canDelete: false });
     expect(JSON.stringify(await ltiGet(lti('b'), id))).not.toMatch(/private@example|author_id|lti_author_id|a{64}/);
-    await expect(mutate(env, lti('b'), { name: 'qa.updateQuestion', input: { courseId: 1, questionId: id, title: 'Hijacked', body: 'No' } })).rejects.toMatchObject({ status: 403 });
+    await expect(mutate(env, lti('b'), { name: 'qa.updateQuestion', input: { courseId: 1, questionId: id, title: 'Hijacked', body: 'No' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
   it('keeps native and Moodle identities separate even when their identifier strings coincide', async () => {
     const value = 'a'.repeat(64);
@@ -98,35 +98,35 @@ for(const backend of ['d1','postgres'] as const){
     await pool.query('INSERT INTO video_course_memberships(course_id,user_id,joined_at) VALUES(1,$1,\'2026-01-01\')', [value]);
     const nativeId = await ask(value);
     const moodleId = await ltiAsk();
-    await expect(mutate(env, lti(), { name: 'qa.updateQuestion', input: { courseId: 1, questionId: nativeId, title: 'Wrong identity', body: 'No' } })).rejects.toMatchObject({ status: 403 });
-    await expect(mutate(env, value, { name: 'qa.updateQuestion', input: { courseId: 1, questionId: moodleId, title: 'Wrong identity', body: 'No' } })).rejects.toMatchObject({ status: 403 });
+    await expect(mutate(env, lti(), { name: 'qa.updateQuestion', input: { courseId: 1, questionId: nativeId, title: 'Wrong identity', body: 'No' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(mutate(env, value, { name: 'qa.updateQuestion', input: { courseId: 1, questionId: moodleId, title: 'Wrong identity', body: 'No' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
   it('applies current resource scope to lists, counts, direct reads, writes and deleted sources', async () => {
     const id = await ltiAsk(lti(), 11);
     await ltiAsk(lti(), null);
     expect((await ltiList(lti('b', {}, [10]))).total).toBe(1);
-    await expect(ltiGet(lti('b', {}, [10]), id)).rejects.toMatchObject({ status: 404 });
-    await expect(ltiAsk(lti('b', {}, [10]), 11)).rejects.toMatchObject({ status: 404 });
+    await expect(ltiGet(lti('b', {}, [10]), id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ltiAsk(lti('b', {}, [10]), 11)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await pool.query('DELETE FROM videos WHERE id=11');
     expect((await pool.query('SELECT video_id,source_video_id::int FROM course_questions WHERE id=$1', [id])).rows[0]).toEqual({ video_id: null, source_video_id: 11 });
     expect((await ltiList(lti('b', {}, [10]))).total).toBe(1);
-    await expect(ltiGet(lti(), id)).rejects.toMatchObject({ status: 404 });
+    await expect(ltiGet(lti(), id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('rechecks posting, voting, own deletion and moderation independently', async () => {
     const id = await ltiAsk();
-    await expect(ltiAsk(lti('b', { post: false }))).rejects.toMatchObject({ status: 403 });
-    await expect(mutate(env, lti('b', { vote: false }), { name: 'qa.vote', input: { courseId: 1, questionId: id, voted: true } })).rejects.toMatchObject({ status: 403 });
-    await expect(mutate(env, lti('a', { deleteOwn: false }), { name: 'qa.deleteQuestion', input: { courseId: 1, questionId: id } })).rejects.toMatchObject({ status: 403 });
+    await expect(ltiAsk(lti('b', { post: false }))).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(mutate(env, lti('b', { vote: false }), { name: 'qa.vote', input: { courseId: 1, questionId: id, voted: true } })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(mutate(env, lti('a', { deleteOwn: false }), { name: 'qa.deleteQuestion', input: { courseId: 1, questionId: id } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     const teacher = lti('c', { moderate: true, instructor: true });
     const response = await mutate(env, teacher, { name: 'qa.reply', input: { courseId: 1, questionId: id, body: 'Teacher response' } });
     if (!('id' in response)) throw new Error('Missing reply');
     expect((await ltiGet(lti(), id)).replies[0].author).toMatchObject({ source: 'moodle', instructor: true });
     await mutate(env, lti('c', { moderate: true, instructor: false }), { name: 'qa.updateReply', input: { courseId: 1, questionId: id, replyId: response.id, body: 'Revised after badge permission changed' } });
     expect((await ltiGet(lti(), id)).replies[0].author.instructor).toBe(false);
-    await expect(mutate(env, teacher, { name: 'qa.updateQuestion', input: { courseId: 1, questionId: id, title: 'Other author', body: 'No' } })).rejects.toMatchObject({ status: 403 });
+    await expect(mutate(env, teacher, { name: 'qa.updateQuestion', input: { courseId: 1, questionId: id, title: 'Other author', body: 'No' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await mutate(env, teacher, { name: 'qa.feature', input: { courseId: 1, questionId: id, featured: true } });
     await mutate(env, teacher, { name: 'qa.feature', input: { courseId: 1, questionId: id, featured: true } });
-    await expect(mutate(env, lti('c', { moderate: false }), { name: 'qa.feature', input: { courseId: 1, questionId: id, featured: false } })).rejects.toMatchObject({ status: 403 });
+    await expect(mutate(env, lti('c', { moderate: false }), { name: 'qa.feature', input: { courseId: 1, questionId: id, featured: false } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await mutate(env, teacher, { name: 'qa.deleteQuestion', input: { courseId: 1, questionId: id } });
     const audit = await pool.query('SELECT action,lti_actor_id,actor_user_id FROM course_qa_moderation ORDER BY created_at');
     expect(audit.rows).toEqual([{ action: 'feature', lti_actor_id: 'c'.repeat(64), actor_user_id: null }, { action: 'delete_question', lti_actor_id: 'c'.repeat(64), actor_user_id: null }]);
@@ -150,14 +150,14 @@ for(const backend of ['d1','postgres'] as const){
       { name: 'qa.updateReply' as const, input: { courseId: 1, questionId: id, replyId: created.id, body: 'Edited reply' } },
     ]) {
       if (row.edit) await expect(mutate(env, principal, command)).resolves.toEqual({ success: true });
-      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ status: 403 });
+      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
     for (const command of [
       { name: 'qa.deleteReply' as const, input: { courseId: 1, questionId: id, replyId: created.id } },
       { name: 'qa.deleteQuestion' as const, input: { courseId: 1, questionId: id } },
     ]) {
       if (row.remove) await expect(mutate(env, principal, command)).resolves.toEqual({ success: true });
-      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ status: 403 });
+      else await expect(mutate(env, principal, command)).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
   });
 
@@ -165,16 +165,16 @@ for(const backend of ['d1','postgres'] as const){
     const hidden = await ltiAsk(lti(),11), coursewide = await ltiAsk(lti(),null);
     const empty = lti('b',{},[]);
     expect((await ltiList(empty)).items.map(q=>q.id)).toEqual([coursewide]);
-    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({status:404});
-    await expect(ltiAsk(empty,10)).rejects.toMatchObject({status:404});
+    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ltiAsk(empty,10)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await pool.query('DELETE FROM video_course_members WHERE course_id=1; DELETE FROM videos WHERE id IN (10,11)');
     expect((await ltiList(empty)).total).toBe(1);
-    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({status:404});
+    await expect(ltiGet(empty,hidden)).rejects.toMatchObject({ code: "NOT_FOUND" });
     const created = await ltiAsk(empty,null);
     expect((await ltiGet(empty,created)).question.canEdit).toBe(true);
-    await expect(ltiList(lti('b',{view:false},[]))).rejects.toMatchObject({status:404});
-    await expect(ltiAsk(lti('b',{post:false},[]),null)).rejects.toMatchObject({status:403});
-    await expect(ltiList({...empty,ownerUserId:'outsider'})).rejects.toMatchObject({status:404});
+    await expect(ltiList(lti('b',{view:false},[]))).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ltiAsk(lti('b',{post:false},[]),null)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ltiList({...empty,ownerUserId:'outsider'})).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('combines native and LTI votes idempotently without letting one actor remove another vote', async () => {
     const id = await ltiAsk();
@@ -188,11 +188,11 @@ for(const backend of ['d1','postgres'] as const){
   });
   it('rejects cross-course and cross-owner grants and loses access after membership removal', async () => {
     const id = await ltiAsk();
-    await expect(ltiGet({ ...lti(), courseId: 2 }, id)).rejects.toMatchObject({ status: 404 });
-    await expect(ltiGet({ ...lti(), ownerUserId: 'outsider' }, id)).rejects.toMatchObject({ status: 404 });
-    await expect(ltiGet(lti('b', { view: false }), id)).rejects.toMatchObject({ status: 404 });
+    await expect(ltiGet({ ...lti(), courseId: 2 }, id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ltiGet({ ...lti(), ownerUserId: 'outsider' }, id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ltiGet(lti('b', { view: false }), id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await pool.query('DELETE FROM video_course_members WHERE course_id=1 AND video_id=10');
-    await expect(ltiGet(lti(), id)).rejects.toMatchObject({ status: 404 });
+    await expect(ltiGet(lti(), id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await ltiList(lti())).total).toBe(0);
   });
 
@@ -209,28 +209,28 @@ for(const backend of ['d1','postgres'] as const){
     const id = await ask();
     expect(await list(null, { shareSlug: 'LINEAR-ALGEBRA' })).toMatchObject({ total: 1, canPost: false });
     expect((await get(null, id, { shareSlug: 'linear-algebra' })).question.id).toBe(id);
-    for (const actor of [null, 'outsider']) await expect(list(actor)).rejects.toMatchObject({ status: 404 });
-    await expect(list(null, { shareSlug: 'other-course' })).rejects.toMatchObject({ status: 404 });
+    for (const actor of [null, 'outsider']) await expect(list(actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(list(null, { shareSlug: 'other-course' })).rejects.toMatchObject({ code: "NOT_FOUND" });
     await pool.query("UPDATE video_courses SET share_slug=NULL WHERE id=1");
-    await expect(list('owner', { shareSlug: 'linear-algebra' })).rejects.toMatchObject({ status: 404 });
+    await expect(list('owner', { shareSlug: 'linear-algebra' })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('rejects cross-course question ids, reply ids and video ids', async () => {
     const other = await ask('outsider', { courseId: 2, videoId: 20 });
     const otherReply = await mutate(env, 'outsider', { name: 'qa.reply', input: { courseId: 2, questionId: other, body: 'Private answer' } });
-    await expect(get('alice', other)).rejects.toMatchObject({ status: 404 });
-    await expect(ask('alice', { videoId: 20 })).rejects.toMatchObject({ status: 404 });
+    await expect(get('alice', other)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ask('alice', { videoId: 20 })).rejects.toMatchObject({ code: "NOT_FOUND" });
     const own = await ask();
     if (!('id' in otherReply)) throw new Error('Missing reply');
-    await expect(mutate(env,'owner',{ name:'qa.deleteReply',input:{ courseId:1,questionId:own,replyId:otherReply.id } })).rejects.toMatchObject({ status:404 });
+    await expect(mutate(env,'owner',{ name:'qa.deleteReply',input:{ courseId:1,questionId:own,replyId:otherReply.id } })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('enforces author editing and instructor moderation', async () => {
     const id = await ask(); const replyId = await reply(id, 'bob');
-    await expect(mutate(env,'bob',{ name:'qa.updateQuestion',input:{ courseId:1,questionId:id,title:'Hijacked',body:'No' } })).rejects.toMatchObject({ status:403 });
-    await expect(mutate(env,'owner',{ name:'qa.updateReply',input:{ courseId:1,questionId:id,replyId,body:'Changed words' } })).rejects.toMatchObject({ status:403 });
+    await expect(mutate(env,'bob',{ name:'qa.updateQuestion',input:{ courseId:1,questionId:id,title:'Hijacked',body:'No' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(mutate(env,'owner',{ name:'qa.updateReply',input:{ courseId:1,questionId:id,replyId,body:'Changed words' } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await mutate(env,'alice',{ name:'qa.updateQuestion',input:{ courseId:1,questionId:id,title:'Edited title',body:'Edited question' } });
     await mutate(env,'bob',{ name:'qa.updateReply',input:{ courseId:1,questionId:id,replyId,body:'Edited reply' } });
     expect((await get('alice',id)).replies[0]?.body).toBe('Edited reply');
-    await expect(mutate(env,'bob',{ name:'qa.deleteQuestion',input:{ courseId:1,questionId:id } })).rejects.toMatchObject({ status:403 });
+    await expect(mutate(env,'bob',{ name:'qa.deleteQuestion',input:{ courseId:1,questionId:id } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await mutate(env,'owner',{ name:'qa.deleteReply',input:{ courseId:1,questionId:id,replyId } });
     expect((await get('owner',id)).replyTotal).toBe(0);
     await mutate(env,'owner',{ name:'qa.deleteQuestion',input:{ courseId:1,questionId:id } });
@@ -251,7 +251,7 @@ for(const backend of ['d1','postgres'] as const){
     for (let i=0;i<2;i++) await mutate(env,'bob',{ name:'qa.vote',input:{ courseId:1,questionId:a,voted:true } });
     expect((await get('bob',a)).question).toMatchObject({ votes:1,voted:true });
     expect((await list('alice',{sort:'votes'})).items[0]?.id).toBe(a);
-    await expect(mutate(env,'bob',{ name:'qa.feature',input:{ courseId:1,questionId:b,featured:true } })).rejects.toMatchObject({ status:403 });
+    await expect(mutate(env,'bob',{ name:'qa.feature',input:{ courseId:1,questionId:b,featured:true } })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await mutate(env,'owner',{ name:'qa.feature',input:{ courseId:1,questionId:b,featured:true } });
     expect((await list('alice',{sort:'votes'})).items[0]?.id).toBe(b);
     await mutate(env,'bob',{ name:'qa.vote',input:{ courseId:1,questionId:a,voted:false } });
@@ -260,10 +260,10 @@ for(const backend of ['d1','postgres'] as const){
   it('rechecks revoked membership and cascades course deletion', async () => {
     const id = await ask(); await reply(id);
     await pool.query("DELETE FROM video_course_memberships WHERE user_id='alice'");
-    await expect(get('alice',id)).rejects.toMatchObject({ status:404 });
+    await expect(get('alice',id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await pool.query('DELETE FROM video_courses WHERE id=1');
     expect((await pool.query('SELECT * FROM course_question_replies')).rowCount).toBe(0);
-    await expect(get('owner',id)).rejects.toMatchObject({ status:404 });
+    await expect(get('owner',id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('projects erased Moodle posts as anonymous tombstones while preserving peer replies', async () => {
     const id = await ltiAsk();
@@ -303,7 +303,7 @@ for(const backend of ['d1','postgres'] as const){
     expect((await list('alice',{search:"' OR 1=1 --"})).total).toBe(0);
     const principal=lti('b',{},Array.from({length:1000},(_,index)=>index+1));
     expect((await ltiGet(principal,id)).question.id).toBe(id);
-    await expect(ltiGet({...principal,videoIds:[...principal.videoIds,1001]},id)).rejects.toMatchObject({status:404});
+    await expect(ltiGet({...principal,videoIds:[...principal.videoIds,1001]},id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
   it('rolls moderation and deletion back together when audit persistence fails',async()=>{
     const id=await ask(),replyId=await reply(id,'bob');
@@ -331,11 +331,11 @@ for(const backend of ['d1','postgres'] as const){
     await pool.query("INSERT INTO lti_credentials(id,kind,payload,expires_at) VALUES($1,'session',$2,'2099-01-01')",[proof.sessionHash,payload]);
     expect((await ltiGet(principal,id)).question.canEdit).toBe(true);
     await pool.query("UPDATE lti_credentials SET expires_at='2000-01-01' WHERE id=$1",[proof.sessionHash]);
-    await expect(ltiGet(principal,id)).rejects.toMatchObject({status:403});
-    await expect(ltiList(principal)).rejects.toMatchObject({status:403});
-    await expect(mutate(env,principal,{name:'qa.deleteQuestion',input:{courseId:1,questionId:id}})).rejects.toMatchObject({status:403});
+    await expect(ltiGet(principal,id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ltiList(principal)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(mutate(env,principal,{name:'qa.deleteQuestion',input:{courseId:1,questionId:id}})).rejects.toMatchObject({ code: "FORBIDDEN" });
     await pool.query("DELETE FROM lti_credentials WHERE id=$1",[proof.sessionHash]);
-    await expect(ltiGet(principal,id)).rejects.toMatchObject({status:403});
+    await expect(ltiGet(principal,id)).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect((await ltiGet(lti(),id)).question.id).toBe(id);
   });
   if(backend==='d1'){
@@ -346,19 +346,19 @@ for(const backend of ['d1','postgres'] as const){
     it('rechecks native membership at the atomic mutation boundary',async()=>{
       const id=await ask();
       beforeBatch(()=>pool.query("DELETE FROM video_course_memberships WHERE user_id='alice'"));
-      await expect(mutate(env,'alice',{name:'qa.updateQuestion',input:{courseId:1,questionId:id,title:'Unauthorized edit',body:'No'}})).rejects.toMatchObject({status:404});
+      await expect(mutate(env,'alice',{name:'qa.updateQuestion',input:{courseId:1,questionId:id,title:'Unauthorized edit',body:'No'}})).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect((await get('owner',id)).question.title).toBe('Rotation matrices');
       expect((await pool.query('SELECT * FROM mutation_receipts')).rows).toEqual([]);
     });
     it('rechecks source visibility at the atomic mutation boundary',async()=>{
       const id=await ltiAsk();
       beforeBatch(()=>pool.query('DELETE FROM video_course_members WHERE course_id=1 AND video_id=10'));
-      await expect(mutate(env,lti(),{name:'qa.reply',input:{courseId:1,questionId:id,body:'Stale visibility'}})).rejects.toMatchObject({status:404});
+      await expect(mutate(env,lti(),{name:'qa.reply',input:{courseId:1,questionId:id,body:'Stale visibility'}})).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect((await get('owner',id)).replies).toEqual([]);
     });
     it('rechecks native course authority before returning public data',async()=>{
       await ask();beforeBatch(()=>pool.query('UPDATE video_courses SET native_access_disabled=true WHERE id=1'));
-      await expect(list(null,{shareSlug:'linear-algebra'})).rejects.toMatchObject({status:404});
+      await expect(list(null,{shareSlug:'linear-algebra'})).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect((await list('owner')).total).toBe(1);
     });
     it('rolls a reply insertion back when the parent update fails',async()=>{

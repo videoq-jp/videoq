@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { TEST_USER_ID, testAuthHeaders } from "./helpers/auth";
 import { requestTrpc, trpcData } from "./helpers/trpc";
-import * as courseService from "../src/features/courses/service";
+import * as courseService from "../src/integrations/courses";
 import * as videoService from "../src/features/videos/service";
 
 const ENV = {
@@ -10,7 +10,7 @@ const ENV = {
   CORS_ALLOW_ORIGIN: "http://localhost:5173",
 } as unknown as Parameters<ReturnType<typeof createApp>["request"]>[2];
 
-vi.mock("../src/features/courses/service", () => ({
+vi.mock("../src/integrations/courses", () => ({
   listCourses: vi.fn(async () => ({ count: 0, results: [] })),
   reorderUserCourses: vi.fn(async () => ({ ok: true })),
 }));

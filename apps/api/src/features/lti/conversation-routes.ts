@@ -2,8 +2,8 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv } from '../../types/bindings';
-import { ApiError, toErrorBody } from '../../shared/errors';
-import { listConversations, getConversation, deleteConversation } from '../chat/conversation-service';
+import { asApiError, toErrorBody } from '../../shared/errors';
+import { listConversations, getConversation, deleteConversation } from '../../integrations/conversations';
 import { ConversationNotFoundError, type ConversationScope } from '../../repositories/conversation-repository';
 import type { CourseAccess } from './course-access';
 import type { sessionRecord } from './protocol';
@@ -49,7 +49,8 @@ export function mountLtiConversations(routes: Hono<AppEnv>, authorize: Authorize
       return c.json({ ...detail, turns });
     } catch (error) {
       if (error instanceof ConversationNotFoundError) return c.json(toErrorBody('NOT_FOUND', 'Conversation not found.'), 404);
-      if (error instanceof ApiError) return c.json(toErrorBody(error.code, error.expose ? error.message : 'Personal history is unavailable.'), error.status);
+      const failure = asApiError(error);
+      if (failure) return c.json(toErrorBody(failure.code, failure.expose ? failure.message : 'Personal history is unavailable.'), failure.status);
       console.error(JSON.stringify({ event: 'lti_conversation_failed' }));
       return c.json(toErrorBody('INTERNAL_ERROR', 'Personal history is unavailable.'), 500);
     }

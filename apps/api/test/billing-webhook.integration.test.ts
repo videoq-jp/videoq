@@ -1,7 +1,7 @@
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { billingRoutes } from "../src/features/billing/routes";
-import { createCheckoutSession } from "../src/features/billing/service";
+import { createCheckoutSession } from "../src/integrations/billing";
 import { deleteAccountBilling } from "../src/features/billing/account-deletion";
 import { PLAN_CATALOG } from "../src/features/billing/catalog";
 import type { Bindings } from "../src/types/bindings";
@@ -136,7 +136,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
 
   it.each([null, "2999-01-01T00:00:00Z"])("blocks checkout while an account is banned (expires=%s)", async expires => {
     await admin.query("UPDATE users SET banned = true, ban_expires = $1 WHERE id = 'user_1'", [expires]);
-    await expect(createCheckoutSession(env, "user_1", "basic_monthly")).rejects.toMatchObject({ status: 404 });
+    await expect(createCheckoutSession(env, "user_1", "basic_monthly")).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(customersCreate).not.toHaveBeenCalled();
     expect(checkoutCreate).not.toHaveBeenCalled();
   });
@@ -159,7 +159,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     } finally {
       finish({ id: "cus_too_late" });
     }
-    expect(await checkout).toMatchObject({ status: 404 });
+    expect(await checkout).toMatchObject({ code: "NOT_FOUND" });
     expect(checkoutCreate).not.toHaveBeenCalled();
     expect((await state()).user.stripe_customer_id).toBeNull();
   });

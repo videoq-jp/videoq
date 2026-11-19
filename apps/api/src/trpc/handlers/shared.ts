@@ -6,7 +6,7 @@ import type {
   RpcInputMap,
   RpcOutputMap,
 } from "@videoq/trpc";
-import { ApiError } from "../../shared/errors";
+import { asApiError } from "../../shared/errors";
 import { isAPIError } from "better-auth/api";
 
 export type HandlersFor<Domain extends string> = Pick<
@@ -58,11 +58,12 @@ function normalizeError(error: unknown): never {
       cause: error,
     });
   }
-  if (error instanceof ApiError) {
+  const failure = asApiError(error);
+  if (failure) {
     throw new TRPCError({
-      code: apiStatusToTrpcCode(error.status),
-      message: error.expose ? error.message : "Request failed",
-      cause: { appCode: error.code, details: error.details, cause: error },
+      code: apiStatusToTrpcCode(failure.status),
+      message: failure.expose ? failure.message : "Request failed",
+      cause: { appCode: failure.code, details: failure.details, cause: error },
     });
   }
   throw error;

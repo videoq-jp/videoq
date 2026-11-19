@@ -1,9 +1,9 @@
 import { qaSqlLogic } from "../qa-policy-sql";
-import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
+import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import type pg from "pg";
 import type { QaQuestion, QaReply, QaListInput, QaGetInput, QaListResult, QaGetResult } from "../contracts/qa-repository";
 import { withClient } from "../../db/pool";
-import { ApiError, apiNotFound } from "../../shared/errors";
+import { forbidden as permissionDenied, notFound } from "../../application/errors";
 import { toUtcIso } from "../../shared/datetime";
 import type { Bindings } from "../../types/bindings";
 import {lockLtiDataSession} from './lti-session-lock';
@@ -14,7 +14,7 @@ type Actor = { ownerId: string; userId: string | null; ltiId: string | null; vid
 type DbQuestion = Omit<QaQuestion, "createdAt" | "updatedAt"> & { createdAt: Date; updatedAt: Date };
 type DbReply = Omit<QaReply, "createdAt" | "updatedAt"> & { createdAt: Date; updatedAt: Date };
 const dates = <T extends { createdAt: Date; updatedAt: Date }>(row: T) => ({ ...row, createdAt: toUtcIso(row.createdAt), updatedAt: toUtcIso(row.updatedAt) });
-const forbidden = () => new ApiError(403, "FORBIDDEN", "You cannot perform this Q&A operation.");
+const forbidden = () => permissionDenied("You cannot perform this Q&A operation.");
 
 class Parameters {
   values: unknown[] = [];
@@ -32,14 +32,17 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
         await lockLtiDataSession(client,principal.ownerUserId,principal.sessionProof);
       const course = (await client.query<{ user_id: string; share_slug: string | null; managed_by_lms: boolean; native_access_disabled: boolean }>(
         "SELECT user_id,share_slug,managed_by_lms,native_access_disabled FROM video_courses WHERE id=$1 FOR SHARE", [access.courseId])).rows[0];
-      if (!course) throw apiNotFound("Course not found");
+      if (!course) throw notFound("Course not found");
       let actor: Actor;
       if (typeof principal === "object" && principal !== null) {
-        if (!validLtiQaScope(principal, access) || principal.ownerUserId !== course.user_id) throw apiNotFound("Course not found");
+        const validScope = validLtiQaScope(principal, access);
+        if (!validScope || principal.ownerUserId !== course.user_id) throw notFound("Course not found");
         const members = await client.query<{ id: number }>(`SELECT m.video_id::float8 AS id FROM video_course_members m
           JOIN videos v ON v.id=m.video_id WHERE m.course_id=$1 AND v.user_id=$2 AND m.video_id=ANY($3::bigint[])
           FOR SHARE OF m,v`, [access.courseId, course.user_id, principal.videoIds]);
-        if (principal.videoIds.length && !members.rowCount) throw apiNotFound("Course not found");
+        if (!qaLtiAccessAllowed({ validScope, ownerMatches: principal.ownerUserId === course.user_id,
+          emptyScope: principal.videoIds.length === 0, hasVisibleMember: Boolean(members.rowCount),
+        }, qaBooleanLogic)) throw notFound("Course not found");
         // [] remains a scoped actor: visibleQuestion hides every source-bound post.
         actor = { ownerId: course.user_id, userId: null, ltiId: principal.authorId, videoIds: members.rows.map(row => row.id),
           canPost: principal.permissions.post, canVote: principal.permissions.vote, canDeleteOwn: principal.permissions.deleteOwn,
@@ -53,7 +56,9 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
         if (!owner || access.shareSlug !== undefined) {
           const protectedVideo = await client.query(`SELECT 1 FROM video_course_members m
             JOIN videos v ON v.id=m.video_id WHERE m.course_id=$1 AND v.managed_by_lms=true LIMIT 1`, [access.courseId]);
-          nativeEnabled = !course.managed_by_lms && !course.native_access_disabled && !protectedVideo.rowCount;
+          nativeEnabled = qaNativeParticipationAllowed({ managedByLms: course.managed_by_lms,
+            nativeAccessDisabled: course.native_access_disabled, hasLmsVideo: Boolean(protectedVideo.rowCount),
+          }, qaBooleanLogic);
         }
         const member = !owner && access.shareSlug === undefined && principal !== null && nativeEnabled
           ? Boolean((await client.query("SELECT id FROM video_course_memberships WHERE course_id=$1 AND user_id=$2 FOR SHARE", [access.courseId, principal])).rowCount)
@@ -62,7 +67,7 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
           owner, nativeEnabled, member,
           shareMatches: Boolean(course.share_slug && access.shareSlug !== undefined
             && course.share_slug.toLowerCase() === access.shareSlug.toLowerCase()),
-        }, qaBooleanLogic)) throw apiNotFound("Course not found");
+        }, qaBooleanLogic)) throw notFound("Course not found");
         actor = { ownerId: course.user_id, userId: principal, ltiId: null, canPost: principal !== null,
           canVote: principal !== null, canDeleteOwn: principal !== null, canModerate: owner, instructor: false };
       }
@@ -110,7 +115,7 @@ async function selectQuestion(client: pg.Client, actor: Actor, courseId: number,
   const p = new Parameters(), fields = questionFields(actor, p);
   const where = visibleQuestion(actor, p, courseId) + ` AND q.id=${p.add(id)}`;
   const row = (await client.query<DbQuestion>(`SELECT ${fields} ${questionFrom} WHERE ${where}`, p.values)).rows[0];
-  if (!row) throw apiNotFound("Question not found");
+  if (!row) throw notFound("Question not found");
   return dates(row);
 }
 const abilities = (actor: Actor) => ({ canPost: actor.canPost, canVote: actor.canVote, canModerate: actor.canModerate });
@@ -161,7 +166,7 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
       if (!qaMutationAllowed(name, actor, false, false, qaBooleanLogic)) throw forbidden();
       if (input.videoId !== null && ((actor.videoIds && !actor.videoIds.includes(input.videoId)) || !(await client.query(
         "SELECT id FROM video_course_members WHERE course_id=$1 AND video_id=$2 FOR SHARE", [input.courseId, input.videoId])).rowCount)) {
-        throw apiNotFound("Video not found in this course");
+        throw notFound("Video not found in this course");
       }
       const result = await client.query<{ id: string }>(`INSERT INTO course_questions(course_id,video_id,source_video_id,author_id,lti_author_id,lti_instructor,title,body)
         VALUES($1,$2,$2,$3,$4,$5,$6,$7) RETURNING id`, [input.courseId, input.videoId, actor.userId, actor.ltiId, actor.instructor, input.title, input.body]);
@@ -170,7 +175,7 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
     const p = new Parameters(), where = visibleQuestion(actor, p, input.courseId) + ` AND q.id=${p.add(input.questionId)}`;
     const question = (await client.query<AuthorRecord & { featured: boolean }>(
       `SELECT q.author_id,q.lti_author_id,q.featured FROM course_questions q WHERE ${where} FOR UPDATE`, p.values)).rows[0];
-    if (!question) throw apiNotFound("Question not found");
+    if (!question) throw notFound("Question not found");
     if (name === "qa.updateQuestion") {
       if (!qaMutationAllowed(name, actor, isOwn(actor, question), false, qaBooleanLogic)) throw forbidden();
       await client.query("UPDATE course_questions SET title=$2,body=$3,lti_instructor=$4,updated_at=now() WHERE id=$1",
@@ -189,7 +194,7 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
     } else if (name === "qa.updateReply" || name === "qa.deleteReply") {
       const reply = (await client.query<AuthorRecord>(
         "SELECT author_id,lti_author_id FROM course_question_replies WHERE id=$1 AND question_id=$2 FOR UPDATE", [input.replyId, input.questionId])).rows[0];
-      if (!reply) throw apiNotFound("Reply not found");
+      if (!reply) throw notFound("Reply not found");
       const own = isOwn(actor, reply);
       if (name === "qa.updateReply") {
         if (!qaMutationAllowed(name, actor, false, own, qaBooleanLogic)) throw forbidden();

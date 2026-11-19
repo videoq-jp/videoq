@@ -1,4 +1,4 @@
-import { historyForCourse, exportHistoryCsv } from '../src/features/chat/service';
+import { historyForCourse, exportHistoryCsv } from '../src/integrations/chat-history';
 import { teachingConnection } from '../src/features/teaching/service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
@@ -16,7 +16,7 @@ import { resolveFileUrl } from '../src/integrations/media';
 import { materialUri } from '../src/features/classroom/authorization';
 import { classroomConfig } from '../src/features/classroom/config';
 
-vi.mock('../src/features/chat/service', () => ({ historyForCourse: vi.fn(), exportHistoryCsv: vi.fn() }));
+vi.mock('../src/integrations/chat-history', () => ({ historyForCourse: vi.fn(), exportHistoryCsv: vi.fn() }));
 vi.mock('../src/features/teaching/service', () => ({ teachingConnection: vi.fn(), issueTeachingTicket: vi.fn() }));
 const records = vi.hoisted(() => new Map<string, { kind: string; payload: Record<string, unknown> }>());
 vi.mock('../src/features/lti/store', async original => ({

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { ApiError, toErrorBody } from "../shared/errors";
+import { asApiError, toErrorBody } from "../shared/errors";
 import { loggablePath } from "../shared/log-path";
 import { safeErrorStack, summarizeAuthApiError } from "../lib/auth-error-log";
 import type { AppEnv } from "../types/bindings";
@@ -10,14 +10,15 @@ import type { AppEnv } from "../types/bindings";
  * 契約: `{ error: { code, message, details? } }`（SEC-8: 内部詳細は漏らさない）。
  */
 export function onError(e: Error, c: Context<AppEnv>): Response {
-  if (e instanceof ApiError) {
+  const failure = asApiError(e);
+  if (failure) {
     return c.json(
       toErrorBody(
-        e.code,
-        e.expose ? e.message : "Request failed",
-        e.details,
+        failure.code,
+        failure.expose ? failure.message : "Request failed",
+        failure.details,
       ),
-      e.status,
+      failure.status,
     );
   }
 

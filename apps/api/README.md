@@ -31,6 +31,7 @@ src/
 │       ├── routes.ts      # Protocol-specific HTTP endpoints only
 │       ├── schemas.ts     # Zod schemas for raw transports
 │       └── service.ts     # use case orchestration
+├── application/           # Transport-independent models, failures and proof types
 ├── repositories/          # Compatibility facades over persistence contracts
 ├── persistence/
 │   ├── contracts/         # Backend-independent persistence capabilities
@@ -44,7 +45,10 @@ src/
 └── lib/                   # JWT, passwords, OAuth, SQS, encryption, etc.
 ```
 
-Dependencies flow from `tRPC router → Hono handler → service → repository`.
+Requests flow from `tRPC router → handler → integration → service → repository port`.
+In the extracted workflows, source dependencies point inward: services import contracts, while integrations
+select implementations and supply runtime configuration. A service does not
+construct its own database or provider client.
 Input validation and procedure names are centralized in `packages/trpc/src/routers`.
 
 The API uses incremental separation rather than requiring every feature to follow
@@ -69,20 +73,53 @@ an identical set of layers:
   returns application outcomes without HTTP statuses. Existing service functions
   preserve tRPC and MCP callers. Reservation/confirmation/deletion and outbox creation remain atomic
   persistence operations; task delivery follows the committed operation.
-- ESLint restricts these extracted modules to contracts and pure upload helpers.
-  Other features can adopt this pattern when changed; a repository-wide rewrite
-  is not required. The Q&A service and contracts also reject transport imports.
-  Other services still accept `Bindings`; convert each feature when its use cases
-  are extracted rather than treating every `service.ts` as an independent core.
+- `features/courses/service.ts` accepts a `CourseRepository` through
+  `createCourseService`. `integrations/courses.ts` supplies the selected backend
+  to HTTP/tRPC and MCP callers. Share-link validation and idempotent creation
+  run without runtime bindings.
+- `features/chat/service.ts` and `conversation-service.ts` accept persistence,
+  course access and feedback-token capabilities. `integrations/chat-history.ts`
+  and `integrations/conversations.ts` supply the implementations. Conversation
+  reads use `persistence/contracts/conversation-read.ts`; checkpoint and LangGraph
+  types remain in the separate execution contract. LMS attribution types do not
+  import the LTI runtime or credential store.
+- `features/billing/service.ts` accepts a `BillingRepository` and `BillingGateway`.
+  `integrations/stripe-gateway.ts` translates provider requests, subscriptions and
+  verified events; the service owns plan selection, customer checks, stale-event
+  reconciliation and bounded optimistic retries. Event payload projection happens
+  after deduplication. Provider calls still finish before the atomic billing write.
+- `application/errors.ts` describes failures using application kinds and codes.
+  HTTP and tRPC handlers translate them through `shared/errors.ts:asApiError`.
+  The extracted chat/billing workflows and Q&A repositories do not construct HTTP
+  errors. Existing `ApiError` callers keep their existing response envelopes.
+- Application chat/video models are independent of RPC schemas. The normal API
+  typecheck compiles `type-tests/application-models.ts` to catch contract drift.
+- ESLint restricts the extracted workflows, contracts and pure helpers. The
+  architecture test also walks their actual transitive imports, including type
+  imports, so a helper cannot silently reintroduce a runtime dependency. The pure
+  shared `@videoq/trpc/video-upload` constants/helpers are an explicit exception;
+  router and RPC schema imports are rejected.
+
+This is incremental separation. For example, chat generation in
+`features/chat/message-service.ts`, billing account deletion and several LMS
+services still combine orchestration with runtime adapters. New business rules
+belong in injected services or pure policies; add runtime composition to
+`integrations` and extend the boundary checks when extracting another workflow.
+Keep authorization facts and writes in the same transaction/batch: extracting a
+policy must not move a security check outside its atomic database operation.
 
 Run the focused policy and lifecycle checks with:
 
 ```bash
-npm exec --workspace @videoq/api -- vitest run test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
+npm run typecheck --workspace=@videoq/api
+npm run lint --workspace=@videoq/api
+npm exec --workspace @videoq/api -- vitest run test/application-services.test.ts test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/error-handler.test.ts test/trpc.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
 ```
 
 Set `PERSISTENCE_TEST_DATABASE_URL` to a disposable PostgreSQL database to run the
 same Q&A contract against both backends. Without it, PostgreSQL cases are skipped.
+Set `QUOTA_TEST_DATABASE_URL` to a disposable PostgreSQL database for the existing
+billing webhook, conversation, course-read and share/feedback integration suites.
 
 ## API contract
 
