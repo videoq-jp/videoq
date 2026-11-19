@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-const registry = 'yukiharada1228/shadcn-digital-agency-jp' // last synced: v0.8.6
+const registry = 'videoq-jp/shadcn-digital-agency-jp' // last synced: v0.8.6
 
 // Keep this list aligned with imports from src/components/ui. Do not use the
 // registry's all-components block: it installs demo-only components and their
