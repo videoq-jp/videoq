@@ -131,4 +131,4 @@ This describes the application's data flow. It does not establish a provider's r
 - [Transcription and scene search](../architecture/transcription-and-search.md): subtitles, scene boundaries, embeddings, and search limits.
 - [Q&A prompts and answer persistence](../architecture/prompt-engineering.md): model inputs, tool decisions, failure behavior, and quality checks.
 
-The Q&A implementation is [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag.ts). Its tools read [course information](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag-course-info.ts) and [scene search results](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/repositories/vector-repository.ts). These are the source of truth when behavior changes.
+The Q&A implementation is [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag.ts). Its tools read [course information](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/tools/course-info.ts) and [scene search results](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/repositories/vector-repository.ts). These are the source of truth when behavior changes.

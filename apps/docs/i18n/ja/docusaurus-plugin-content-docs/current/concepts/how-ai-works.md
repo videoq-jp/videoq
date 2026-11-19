@@ -131,6 +131,6 @@ UIは再読み込み後に選択中の会話を復元し、「自分の会話」
 - [文字起こしとシーン検索](../architecture/transcription-and-search.md)：字幕、場面の区切り、埋め込み、検索の上限。
 - [Q&Aのプロンプトと回答の保存](../architecture/prompt-engineering.md)：モデルへの入力、ツールの判断、失敗時の挙動、品質確認。
 
-Q&Aの実装は [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag.ts)です。ツールは[講座情報](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag-course-info.ts)と[シーン検索結果](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/repositories/vector-repository.ts)を取得します。挙動が変わった場合は、この実装を基準に文書を更新します。
+Q&Aの実装は [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag.ts)です。ツールは[講座情報](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/tools/course-info.ts)と[シーン検索結果](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/repositories/vector-repository.ts)を取得します。挙動が変わった場合は、この実装を基準に文書を更新します。
 
 要約の開始条件は省略すると要約が無効になるため、約6,000トークンを明示します。要約プロンプト・接頭辞・要約入力の切り詰め・保持するメッセージ件数は既定値を使い、要約モデルの出力トークン上限はアプリ側で指定しません。

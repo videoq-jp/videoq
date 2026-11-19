@@ -3,6 +3,7 @@ import { tool, type ToolRuntime } from "langchain";
 import { z } from "zod";
 import type { SceneHit } from "../repositories/vector-repository";
 import { toolResponseSchema, evidenceProgressSchema } from "../tools/contract";
+import { isAnswerTool } from "../tools/policy";
 import type { ToolValue } from "../tools/definition";
 import { LlmConfigurationError, LlmProviderError } from "./openai";
 
@@ -41,7 +42,7 @@ export async function loadRagMcpTools(
   options: { addSource: (hit: SceneHit) => number; collectContext: (text: string) => void },
 ) {
   const { tools: definitions } = await client.listTools();
-  const tools = definitions.map(definition => tool(async (args, runtime: ToolRuntime) => {
+  const tools = definitions.filter(definition => isAnswerTool(definition.name)).map(definition => tool(async (args, runtime: ToolRuntime) => {
     signal.throwIfAborted();
     const input = z.record(z.string(), z.unknown()).parse(args);
     const result = await client.callTool({ name: definition.name, arguments: input }, undefined, {

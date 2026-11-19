@@ -3,7 +3,8 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getCourseWithMembers } from "../src/repositories/chat-repository";
 import { getCourseInfo } from "../src/repositories/course-repository";
-import { courseInfoTool, COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/lib/rag-course-info";
+import { createCourseInfoTool, COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/tools/course-info";
+import { connectTestTools } from "./helpers/mcp-tools";
 import { openSceneSearch } from "../src/repositories/vector-repository";
 import { getVideoEvidence } from "../src/repositories/video-evidence-repository";
 import { embedding as testEmbedding } from "./helpers/embedding";
@@ -11,6 +12,10 @@ import type { Bindings } from "../src/types/bindings";
 
 vi.mock("../src/lib/embeddings", () => ({ embedQuery: vi.fn(async () => testEmbedding(1, 0)) }));
 
+async function courseInfoTool(env: Bindings, scope: { courseId: number; ownerUserId: string }, collectContext: (text: string) => void) {
+  const [tool] = await connectTestTools([createCourseInfoTool(env, scope)], undefined, { addSource: () => 1, collectContext });
+  return tool;
+}
 const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
@@ -108,7 +113,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
       const scope = await getCourseWithMembers(env, { courseId: 3, ...access });
       expect(scope).toMatchObject({ id: 3, userId: "owner", memberVideoIds: [60, 61] });
       const contexts: string[] = [];
-      const tool = courseInfoTool(env, { courseId: scope!.id, ownerUserId: scope!.userId }, (s) => contexts.push(s));
+      const tool = await courseInfoTool(env, { courseId: scope!.id, ownerUserId: scope!.userId }, (s) => contexts.push(s));
       const first = JSON.parse(await tool.invoke({ video_limit: 1, video_offset: 0 }));
       const second = JSON.parse(await tool.invoke({ video_limit: 1, video_offset: first.videos_meta.next_offset }));
       expect(first).toMatchObject({ name: "Digital circuits", video_count: 2,
@@ -144,7 +149,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
   });
 
   it("retrieves a course with no videos, description, embeddings", async () => {
-    const tool = courseInfoTool(env, { courseId: 5, ownerUserId: "owner" }, () => {});
+    const tool = await courseInfoTool(env, { courseId: 5, ownerUserId: "owner" }, () => {});
     expect(JSON.parse(await tool.invoke({ video_limit: 20, video_offset: 0 }))).toMatchObject({
       name: "Empty course", description: "", video_count: 0, videos: [],
       videos_meta: { total: 0, has_more: false, next_offset: null },
@@ -170,7 +175,7 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
     const query = vi.spyOn(pg.Client.prototype, "query");
     try {
       const contexts: string[] = [];
-      const tool = courseInfoTool(env, { courseId: 3, ownerUserId: "owner" }, s => contexts.push(s));
+      const tool = await courseInfoTool(env, { courseId: 3, ownerUserId: "owner" }, s => contexts.push(s));
       const result = JSON.parse(await tool.invoke({ video_limit: 1, video_offset: 0 }));
       expect(result).toMatchObject({
         description: courseDescription.slice(0, COURSE_DESCRIPTION_LIMIT),

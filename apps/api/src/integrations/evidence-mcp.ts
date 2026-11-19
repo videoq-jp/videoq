@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Bindings } from "../types/bindings";
 import { createEvidenceSession, type EvidenceToolScope } from "../tools/session";
-import { registerEvidenceTools } from "../tools/mcp";
+import { registerTools } from "../tools/mcp";
 import type { UsageRecorder } from "../tools/usage";
 
 /** Local transport bootstrap. Consumers can replace it with an HTTP MCP client. */
@@ -15,7 +15,7 @@ export async function connectEvidenceMcp(
   const sessionSignal = AbortSignal.any([signal, lifecycle.signal]);
   const session = createEvidenceSession(env, scope, sessionSignal, options);
   const server = new McpServer({ name: "videoq-evidence", version: "1.0.0" });
-  registerEvidenceTools(server, session.tools, sessionSignal);
+  registerTools(server, session.tools, sessionSignal);
   const client = new Client({ name: "videoq-agent", version: "1.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const close = async () => {

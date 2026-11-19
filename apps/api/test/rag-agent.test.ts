@@ -4,7 +4,7 @@ import { embedding as testEmbedding } from "./helpers/embedding";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { CourseDetail } from "../src/repositories/course-repository";
 import { getCourseInfo } from "../src/repositories/course-repository";
-import { MAX_COURSE_INFO_CALLS, COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/lib/rag-course-info";
+import { MAX_COURSE_INFO_CALLS, COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../src/tools/course-info";
 import type { SceneHit } from "../src/repositories/vector-repository";
 import type { Bindings } from "../src/types/bindings";
 import { LlmConfigurationError, LlmProviderError } from "../src/lib/openai";

@@ -64,7 +64,7 @@ Jingyang Lin, Jialian Wu, Jiang Liu, Ximeng Sun, Ze Wang, Xiaodong Yu, Jiebo Luo
 
 VideoQ's `overview_video`, `skim_video`, and `focus_clip` take inspiration from VideoSeek's overview / skim / focus tools. VideoQ implements its own subtitle sampling, cached-frame reads, course permissions, budgets, and timestamp citations. The agent chooses the tools it needs; no fixed three-step sequence is required. This adaptation does not establish that VideoSeek's benchmark accuracy or frame savings transfer to VideoQ.
 
-Implementation: [rag-video-evidence.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag-video-evidence.ts), [visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts). See [visual evidence and sampling limits](../guides/visual-evidence.md).
+Implementation: [video-evidence.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/tools/video-evidence.ts), [visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts). See [visual evidence and sampling limits](../guides/visual-evidence.md).
 
 ## Model and API references
 

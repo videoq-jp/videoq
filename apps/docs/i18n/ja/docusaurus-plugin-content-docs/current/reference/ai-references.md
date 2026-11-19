@@ -64,7 +64,7 @@ Jingyang Lin, Jialian Wu, Jiang Liu, Ximeng Sun, Ze Wang, Xiaodong Yu, Jiebo Luo
 
 VideoQの `overview_video`・`skim_video`・`focus_clip` は、VideoSeekのoverview / skim / focusツールを参考にしています。字幕の抽出、保存済み画像の読み取り、講座の権限、実行上限、時刻の引用はVideoQ独自の実装です。必要なツールをエージェントが選び、固定の3段階を必須にはしません。この応用だけで、論文の精度や処理画像数の削減効果をVideoQでも達成したとはいえません。
 
-対応実装: [rag-video-evidence.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/rag-video-evidence.ts)、[visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts)。[映像確認とサンプリングの制限](../guides/visual-evidence.md)も参照してください。
+対応実装: [video-evidence.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/tools/video-evidence.ts)、[visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts)。[映像確認とサンプリングの制限](../guides/visual-evidence.md)も参照してください。
 
 ## モデルとAPIの出典
 
