@@ -85,6 +85,10 @@ type Story = StoryObj<typeof meta>;
 export const Overview: Story = {
   globals: { locale: 'ja' },
   async play({ canvas, userEvent, canvasElement }) {
+    const loading = canvas.getByRole('progressbar', { name: '読み込み中' });
+    await expect(getComputedStyle(loading).fontSize).toBe('16px');
+    await expect(getComputedStyle(loading).lineHeight).toBe('27.2px');
+    await expect(getComputedStyle(loading).color).toBe('rgb(26, 26, 26)');
     const disabledMenu = canvas.getByRole('button', { name: '保存中は削除できません' });
     await expect(disabledMenu).toBeDisabled();
     await expect(getComputedStyle(disabledMenu).color).toBe('rgb(179, 179, 179)');
