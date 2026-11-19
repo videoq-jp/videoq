@@ -5,7 +5,12 @@ import { ESLint } from "eslint";
 
 it("prevents extracted use cases from acquiring runtime and implementation dependencies", async () => {
   const cwd = fileURLToPath(new URL("../", import.meta.url));
-  const eslint = new ESLint({ cwd });
+  const eslint = new ESLint({
+    cwd,
+    // CI's single-run parser reads disk-backed ASTs. These probes intentionally
+    // replace the same file's text repeatedly, so use its watch-program mode.
+    overrideConfig: { languageOptions: { parserOptions: { disallowAutomaticSingleRunInference: true } } },
+  });
   for (const relativePath of ["src/features/qa/policy.ts", "src/features/videos/upload-service.ts"]) {
     const filePath = resolve(cwd, relativePath);
     for (const source of [
