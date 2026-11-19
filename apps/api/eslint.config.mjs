@@ -52,6 +52,7 @@ export default [
   {
     files: [
       'src/application/**/*.ts',
+      'src/features/admin/core.ts', 'src/features/lms/native-learning-service.ts', 'src/persistence/contracts/native-session-repository.ts',
       'src/features/qa/policy.ts', 'src/features/qa/core.ts', 'src/features/teaching/core.ts', 'src/features/lms/upload-service.ts',
       'src/features/chat/generation-{service,ports}.ts',
       'src/features/videos/management-{service,ports}.ts',

@@ -60,7 +60,7 @@ a parallel rebuild does not provide an atomic collection-wide switch.
 
 For rollout and rollback ordering, see [deployment instructions](../../infra/DEPLOY.md#split-worker-rollout).
 
-## Transcription application boundary
+## Application boundaries
 
 `worker_python/use_cases/transcription.py` owns the PostgreSQL transcription
 lifecycle: eligible states, claiming work, failure/retry decisions, segmented
@@ -77,6 +77,17 @@ outbox and does not send a second indexing job. Provider calls are skipped when
 retrying delivery of a saved checkpoint. Source probing is also skipped on that
 replay path. SQL and checkpoint paging remain adapter responsibilities.
 
+`use_cases/visual_publication.py` owns immutable visual publication decisions:
+registration before uploads, cleanup of losing attempts, and manifest recovery
+and retry. Its ports use publication outcomes and selected chunk versions without
+internal API routes or storage SDKs. `tasks/cloud_visuals.py` supplies the signed
+API, object key layout, uploads and manifest generation. Ambiguous publication
+failures leave potentially committed objects for recovery; only a confirmed
+losing attempt removes its own keys. Existing task entrypoints remain unchanged.
+`tests/test_visual_publication_use_case.py` exercises competing publications,
+deletions, storage failures and retries without a database or object store;
+`tests/test_cloud_visuals.py` verifies adapter integration and immutable keys.
+
 Keep conditional claims and writes atomic in persistence adapters. In particular,
 a completion must preserve concurrent edits/deletion, and a queue failure after
 save must retry the indexing handoff without transcribing again.
@@ -85,7 +96,7 @@ save must retry the indexing handoff without transcribing again.
 Run these with the existing resume, persistence, cloud and segmented checks:
 
 ```bash
-uv run --frozen --extra dev pytest -q tests/test_architecture_boundaries.py tests/test_transcription_use_case.py tests/test_segmented_transcription_use_case.py tests/test_transcription_resume.py tests/test_transcription_persistence.py tests/test_cloud_transcription.py tests/test_segmented_transcription.py
+uv run --frozen --extra dev pytest -q tests/test_architecture_boundaries.py tests/test_visual_publication_use_case.py tests/test_cloud_visuals.py tests/test_transcription_use_case.py tests/test_segmented_transcription_use_case.py tests/test_transcription_resume.py tests/test_transcription_persistence.py tests/test_cloud_transcription.py tests/test_segmented_transcription.py
 ```
 
 Set `DATABASE_URL` to a disposable PostgreSQL database for the persistence and
