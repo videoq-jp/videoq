@@ -36,3 +36,21 @@ test('handoff metadata is fixed-account GET only and independent guard remains i
  const workflow=require('node:fs').readFileSync('.github/workflows/cd.yml','utf8');
  assert.match(workflow,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/deploy-tools\/node_modules\/wrangler\/bin\/wrangler\.js deploy/);
 });
+
+test('completed production deployment preserves the retired 768 index without permitting source or partial retirement',()=>{
+ function retired(){const f=fixture(true);f.config=deploymentHandoff(f.settings,f.config);f.settings.bindings=f.settings.bindings.filter(v=>v.name!==names[1]);f.config.vectorize=f.config.vectorize.filter(v=>v.binding!==names[1]);return f;}
+ const f=retired();assert.deepEqual(deploymentHandoff(f.settings,f.config),f.config);
+ for(const change of [
+  f=>f.settings.bindings.push({name:names[1],type:'vectorize',index_name:indexes(true)[1]}),
+  f=>f.config.vectorize.push({binding:names[1],index_name:indexes(true)[1]}),
+  f=>{f.settings.bindings.find(v=>v.name==='DB').id=dbs[0];},
+  f=>{f.config.d1_databases[0].database_id=dbs[0];},
+  f=>{f.config.d1_databases[0].database_name='other';},
+  f=>{f.settings.bindings.find(v=>v.name===names[0]).index_name='other';},
+  f=>{f.config.vectorize[0].index_name='other';},
+  f=>{f.config.vectorize=[];},
+  f=>{f.config.vectorize.push(f.config.vectorize[0]);},
+  f=>{f.settings.bindings.push({name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'});},
+ ]){const q=retired();change(q);assert.throws(()=>deploymentHandoff(q.settings,q.config));}
+ const source=fixture();source.settings.bindings=source.settings.bindings.filter(v=>v.name!==names[1]);source.config.vectorize=source.config.vectorize.slice(0,1);assert.throws(()=>deploymentHandoff(source.settings,source.config),/HANDOFF_REQUIRED/);
+});
