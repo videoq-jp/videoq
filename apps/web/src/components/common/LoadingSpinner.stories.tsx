@@ -37,7 +37,7 @@ export const VideoDetailLoading: Story = {
   parameters: { layout: 'fullscreen' },
   render: () => <DetailLoading backHref="/videos" />,
   async play({ canvas }) {
-    await expect(canvas.getByRole('progressbar')).toBeVisible();
+    for (const indicator of canvas.getAllByRole('progressbar')) await expect(indicator).toBeVisible();
     await expect(canvas.queryByRole('link', { name: i18n.t('common.actions.backToList') })).not.toBeInTheDocument();
   },
 };

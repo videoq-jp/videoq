@@ -345,18 +345,18 @@
       "monthlyUpload": "Monthly uploads"
     },
     "film": {
-      "title": "From publishing a course to student questions, in 30 seconds.",
-      "duration": "30 sec / Product demo",
+      "title": "From lecture videos to student questions and course insights.",
+      "duration": "2 min 30 sec / Product overview",
       "play": "Play the demo",
       "course": "Demo course: Five subjects for university study (math lesson)",
       "stepsLabel": "Demo steps",
       "steps": {
         "prepare": "Prepare a course",
-        "share": "Share the link",
+        "share": "Invite students",
         "answer": "Students ask",
         "review": "Review history"
       },
-      "note": "A walkthrough recreated on the app’s real screens with real course data and an AI assistant answer; the English edit uses a translated answer. Waiting times have been shortened. The opening messages are an illustration.",
+      "note": "Current English app screens with synthesized narration and captions. The recorded question, answer, and lesson are translated from the real-data demo. Learner identities are demo data, no invitation email was sent, and pacing is edited.",
       "error": "The video could not load.",
       "blocked": "Use the video’s play button to start.",
       "retry": "Reload video"

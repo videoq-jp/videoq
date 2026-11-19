@@ -1,10 +1,11 @@
 import { useState, type ComponentProps } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, waitFor } from 'storybook/test';
+import { expect, fn, mocked, waitFor } from 'storybook/test';
 import i18n from '@/i18n/config';
 import { appQueryClient } from '@/lib/queryClient';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { useAuthSession } from '@/lib/authSession';
 import { ChatPanel } from './ChatPanel';
 import { authFixtures } from '../../../.storybook/fixtures/auth';
 import { answer, answerData, citations, longAnswer } from '../../../.storybook/fixtures/chat';
@@ -386,3 +387,48 @@ export const ConstrainedSuggestions: Story = {
     await expect(composer.getBoundingClientRect().bottom).toBeLessThanOrEqual(frame.getBoundingClientRect().bottom);
   },
 };
+
+function LoadingTransitionExample(args: ComponentProps<typeof ChatPanel>) {
+  const [ready, setReady] = useState(false);
+  return <div>
+    <Button className="mb-4" onClick={() => {
+      const session = mocked(useAuthSession)();
+      mocked(useAuthSession).mockReturnValue({ ...session, isPending: false });
+      setReady(true);
+    }} disabled={ready}>Receive data</Button>
+    <ChatPanel {...args} />
+  </div>;
+}
+export const LoadingToReady: Story = {
+  render: args => <LoadingTransitionExample {...args} />,
+  beforeEach() {
+    const session = mocked(useAuthSession)();
+    mocked(useAuthSession).mockReturnValue({ ...session, isPending: true });
+  },
+  async play({ canvas, canvasElement, userEvent }) {
+    const frame = () => canvasElement.querySelector('[data-chat-frame]')!.getBoundingClientRect();
+    const composer = () => canvas.getByRole('textbox', { name: label('placeholder') }).getBoundingClientRect();
+    await expect(canvas.getByRole('progressbar', { name: label('restoringConversation') })).toBeVisible();
+    await expect(canvas.getByRole('textbox')).toBeDisabled();
+    const beforeFrame = frame();
+    const beforeComposer = composer();
+    await expect(beforeFrame.height).toBeGreaterThan(300);
+    await userEvent.click(canvas.getByRole('button', { name: 'Receive data' }));
+    await waitFor(() => expect(canvas.getByRole('textbox')).toBeEnabled());
+    for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+      await expect(Math.abs(frame()[dimension] - beforeFrame[dimension])).toBeLessThan(1);
+      await expect(Math.abs(composer()[dimension] - beforeComposer[dimension])).toBeLessThan(1);
+    }
+  },
+};
+export const LoadingToReadyMobile: Story = { ...LoadingToReady, globals: { viewport: { value: 'mobile', isRotated: false } } };
+export const LoadingToReadyEnglishMobile: Story = { ...LoadingToReady, globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };
+
+export const LoadingFrame: Story = {
+  ...LoadingToReady,
+  async play({ canvas }) {
+    await expect(canvas.getByRole('textbox')).toBeDisabled();
+    await expect(canvas.getByRole('progressbar', { name: label('restoringConversation') })).toBeVisible();
+  },
+};
+export const LoadingFrameMobile: Story = { ...LoadingFrame, globals: { viewport: { value: 'mobile', isRotated: false } } };

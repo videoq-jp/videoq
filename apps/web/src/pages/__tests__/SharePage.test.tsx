@@ -103,7 +103,7 @@ describe('SharePage', () => {
     expect(assistant).toHaveAttribute('aria-selected', 'true')
     expect(assistant).toHaveAttribute('tabindex', '0')
     expect(videos).toHaveAttribute('tabindex', '-1')
-    expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.assistant' })).toContainElement(screen.getByTestId('chat-panel'))
+    expect(screen.getByRole('tabpanel', { name: 'videos.shared.tabs.assistant' })).toContainElement(await screen.findByTestId('chat-panel'))
     expect(screen.getByRole('tab', { name: 'videos.shared.tabs.overview' })).toBeInTheDocument()
 
     fireEvent.keyDown(assistant, { key: 'ArrowLeft' })
@@ -145,7 +145,7 @@ describe('SharePage', () => {
       await screen.findByRole('tab', { name: 'videos.shared.tabs.assistant' })
       expect(screen.getByRole('tab', { name: 'videos.shared.tabs.overview' })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'videos.shared.tabs.qa' })).toBeInTheDocument()
-      expect(screen.getByText('qa.noOverview')).toBeInTheDocument()
+      expect(await screen.findByText('qa.noOverview')).toBeInTheDocument()
     } finally {
       vi.unstubAllGlobals()
     }

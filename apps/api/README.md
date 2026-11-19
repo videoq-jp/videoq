@@ -31,7 +31,13 @@ src/
 │       ├── routes.ts      # Protocol-specific HTTP endpoints only
 │       ├── schemas.ts     # Zod schemas for raw transports
 │       └── service.ts     # use case orchestration
-├── repositories/          # Persistence with Drizzle / SQL
+├── repositories/          # Compatibility facades over persistence contracts
+├── persistence/
+│   ├── contracts/         # Backend-independent persistence capabilities
+│   ├── d1/                # D1 implementations
+│   ├── postgres/          # PostgreSQL implementations
+│   └── factory.ts         # Backend selection
+├── integrations/          # External adapters and runtime composition
 ├── db/schema/modern.ts    # Source of truth for the runtime schema
 ├── middleware/            # auth, CORS, error handling
 ├── shared/                # Errors, pagination, dates, etc.
@@ -40,6 +46,34 @@ src/
 
 Dependencies flow from `tRPC router → Hono handler → service → repository`.
 Input validation and procedure names are centralized in `packages/trpc/src/routers`.
+
+The API uses incremental separation rather than requiring every feature to follow
+an identical set of layers:
+
+- `features/qa/policy.ts` owns the shared access and mutation rules. PostgreSQL
+  evaluates these rules on transaction-scoped facts; D1 composes them into SQL
+  predicates inside its atomic batch. Session validity, membership, current video
+  scope, locking and audit writes remain in the persistence implementations.
+  Displayed edit/delete capabilities use the same policy as mutations.
+- `features/videos/upload-service.ts` owns the upload lifecycle and accepts
+  `VideoUploadDependencies`, with no `Bindings` or concrete adapters. The
+  request-local `integrations/video-upload.ts` assembles persistence, media,
+  multipart and task adapters. Existing service functions preserve HTTP, tRPC and
+  MCP callers. Reservation/confirmation/deletion and outbox creation remain atomic
+  persistence operations; task delivery follows the committed operation.
+- ESLint restricts these extracted modules to contracts and pure upload helpers.
+  Other features can adopt this pattern when changed; a repository-wide rewrite
+  is not required. Transport response formatting still exists in the upload
+  lifecycle for compatibility and can be separated when the API changes.
+
+Run the focused policy and lifecycle checks with:
+
+```bash
+npm exec --workspace @videoq/api -- vitest run test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts
+```
+
+Set `PERSISTENCE_TEST_DATABASE_URL` to a disposable PostgreSQL database to run the
+same Q&A contract against both backends. Without it, PostgreSQL cases are skipped.
 
 ## API contract
 

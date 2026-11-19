@@ -1,10 +1,11 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CourseOverview, PanelTabs, type PanelTab } from './ViewerPanels';
+import { InlineLoading } from '@/components/common/InlineLoading';
 import { CourseQaPanel } from './qa/CourseQaPanel';
 
-export function CourseLearningDetails({ courseId, shareSlug, videoId, videoTitle, videoDescription, courseDescription, onVideoPlay }: {
-  courseId: number; shareSlug?: string; videoId?: number; videoTitle?: string;
+export function CourseLearningDetails({ courseId, shareSlug, videoId, videoTitle, videoDescription, courseDescription, onVideoPlay, loading = false }: {
+  courseId?: number; loading?: boolean; shareSlug?: string; videoId?: number; videoTitle?: string;
   videoDescription?: string; courseDescription?: string; onVideoPlay: (id: number, time: string) => void;
 }) {
   const { t } = useTranslation();
@@ -13,10 +14,10 @@ export function CourseLearningDetails({ courseId, shareSlug, videoId, videoTitle
   return <div>
     <PanelTabs tabs={['overview', 'qa']} activeTab={tab} idPrefix={id} onChange={setTab} label={t('qa.tabsLabel')} />
     <div id={`${id}-panel-overview`} role="tabpanel" aria-labelledby={`${id}-tab-overview`} hidden={tab !== 'overview'} className="p-4 lg:p-6">
-      {videoDescription || courseDescription ? <CourseOverview videoDescription={videoDescription} courseDescription={courseDescription} /> : <p className="text-solid-gray-600">{t('qa.noOverview')}</p>}
+      {loading ? <InlineLoading /> : videoDescription || courseDescription ? <CourseOverview videoDescription={videoDescription} courseDescription={courseDescription} /> : <p className="text-solid-gray-600">{t('qa.noOverview')}</p>}
     </div>
     <div id={`${id}-panel-qa`} role="tabpanel" aria-labelledby={`${id}-tab-qa`} hidden={tab !== 'qa'} className="px-4 lg:px-6">
-      <CourseQaPanel courseId={courseId} shareSlug={shareSlug} videoId={videoId} videoTitle={videoTitle} active={tab === 'qa'} onVideoPlay={onVideoPlay} />
+      {!loading && courseId !== undefined ? <CourseQaPanel courseId={courseId} shareSlug={shareSlug} videoId={videoId} videoTitle={videoTitle} active={tab === 'qa'} onVideoPlay={onVideoPlay} /> : <InlineLoading />}
     </div>
   </div>;
 }

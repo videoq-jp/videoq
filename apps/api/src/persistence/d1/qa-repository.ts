@@ -1,3 +1,5 @@
+import { qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
+import { qaSqlLogic } from "../qa-policy-sql";
 import type {QaQuestion,QaReply} from '@videoq/trpc';
 import type {QaRepository,QaPrincipal,QaAccess,QaCommand} from '../contracts/qa-repository';
 import {ApiError,apiNotFound} from '../../shared/errors';
@@ -24,13 +26,15 @@ function actor(principal:QaPrincipal,access:QaAccess,p:Parameters){
  const videos=`SELECT m.video_id FROM video_course_members m JOIN videos v ON v.id=m.video_id WHERE m.course_id=${course} AND v.user_id=${owner} AND m.video_id IN(SELECT value FROM json_each(${ids??"'[]'"}))`;
  let guard:string;
  if(lti){
-  const valid=lti.kind==='lti'&&lti.courseId===access.courseId&&lti.permissions.view&&access.shareSlug===undefined&&/^[a-f0-9]{64}$/.test(lti.authorId)&&lti.videoIds.length<=1000;
+  const valid=validLtiQaScope(lti,access);
   guard=`${p.add(valid)} AND EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND user_id=${p.add(lti.ownerUserId)}) AND (${p.add(lti.videoIds.length)}=0 OR EXISTS(${videos}))`;
  }else{
   const native=`EXISTS(SELECT 1 FROM video_courses c WHERE c.id=${course} AND NOT c.managed_by_lms AND NOT c.native_access_disabled AND NOT EXISTS(SELECT 1 FROM video_course_members m JOIN videos v ON v.id=m.video_id WHERE m.course_id=c.id AND v.managed_by_lms))`;
-  guard=access.shareSlug!==undefined
-   ?`${native} AND EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND lower(share_slug)=lower(${p.add(access.shareSlug)}))`
-   :`EXISTS(SELECT 1 FROM video_courses WHERE id=${course}) AND (${isOwner} OR (${native} AND EXISTS(SELECT 1 FROM video_course_memberships WHERE course_id=${course} AND user_id=${user})))`;
+  guard=qaNativeAccessAllowed(access.shareSlug!==undefined,{
+   owner:isOwner,nativeEnabled:native,
+   member:`EXISTS(SELECT 1 FROM video_course_memberships WHERE course_id=${course} AND user_id=${user})`,
+   shareMatches:`EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND lower(share_slug)=lower(${p.add(access.shareSlug??null)}))`,
+  },qaSqlLogic);
  }
  const canPost=lti?p.add(lti.permissions.post):p.add(principal!==null),canVote=lti?p.add(lti.permissions.vote):p.add(principal!==null);
  const canDeleteOwn=lti?p.add(lti.permissions.deleteOwn):p.add(principal!==null),canModerate=lti?p.add(lti.permissions.moderate):isOwner;
@@ -40,11 +44,11 @@ function actor(principal:QaPrincipal,access:QaAccess,p:Parameters){
 }
 type Actor=ReturnType<typeof actor>;
 function authorFields(alias:string,a:Actor){return `json_object('name',CASE WHEN ${alias}.lti_author_id='${'0'.repeat(64)}' THEN 'Deleted participant' WHEN ${alias}.lti_author_id IS NOT NULL THEN substr(${alias}.lti_author_id,1,12) ELSE u.username END,'source',CASE WHEN ${alias}.lti_author_id IS NULL THEN 'videoq' ELSE 'moodle' END,'instructor',CASE WHEN ${alias}.lti_author_id IS NOT NULL THEN ${alias}.lti_instructor ELSE coalesce(${alias}.author_id=${a.owner},0) END) AS author`;}
-function questionFields(a:Actor){return `q.id,q.title,q.body,v.id AS videoId,v.title AS videoTitle,${authorFields('q',a)},q.created_at AS createdAt,q.updated_at AS updatedAt,q.featured,
+function questionFields(a:Actor){const abilities=qaContentAbilities(a,a.own('q'),qaSqlLogic);return `q.id,q.title,q.body,v.id AS videoId,v.title AS videoTitle,${authorFields('q',a)},q.created_at AS createdAt,q.updated_at AS updatedAt,q.featured,
  (SELECT count(*) FROM course_question_replies r WHERE r.question_id=q.id) AS replyCount,
  ((SELECT count(*) FROM course_question_votes vote WHERE vote.question_id=q.id)+(SELECT count(*) FROM course_question_lti_votes vote WHERE vote.question_id=q.id)) AS votes,
  (EXISTS(SELECT 1 FROM course_question_votes vote WHERE vote.question_id=q.id AND vote.user_id=${a.user}) OR EXISTS(SELECT 1 FROM course_question_lti_votes vote WHERE vote.question_id=q.id AND vote.lti_author_id=${a.author})) AS voted,
- (${a.own('q')} AND ${a.canPost}) AS canEdit,((${a.own('q')} AND ${a.canDeleteOwn}) OR ${a.canModerate}) AS canDelete`;}
+ ${abilities.canEdit} AS canEdit,${abilities.canDelete} AS canDelete`;}
 const FROM='FROM course_questions q LEFT JOIN users u ON u.id=q.author_id LEFT JOIN videos v ON v.id=q.video_id AND EXISTS(SELECT 1 FROM video_course_members m WHERE m.course_id=q.course_id AND m.video_id=v.id)';
 function decode(row:Record<string,unknown>){const author=JSON.parse(String(row.author)) as QaQuestion['author'];return {...row,author:{...author,instructor:Boolean(author.instructor)},createdAt:toUtcIso(String(row.createdAt)),updatedAt:toUtcIso(String(row.updatedAt)),canEdit:Boolean(row.canEdit),canDelete:Boolean(row.canDelete)};}
 const question=(row:Record<string,unknown>)=>({...decode(row),featured:Boolean(row.featured),voted:Boolean(row.voted)}) as QaQuestion;
@@ -66,8 +70,8 @@ export function createD1QaRepository(database:D1Database):QaRepository{return {
   return {items:result[1].results.map(question),total:Number(result[2].results[0].total),...abilities(result[0].results[0])};
  },
  async get(principal,input){
-  const select=(replies=false)=>{const p=new Parameters(),a=actor(principal,input,p);const visible=`${a.session} AND (${a.guard}) AND ${a.visible} AND q.id=${p.add(input.questionId)}`;
-   return p.statement(database,replies?`SELECT r.id,r.body,${authorFields('r',a)},r.created_at AS createdAt,r.updated_at AS updatedAt,(${a.own('r')} AND ${a.canPost}) AS canEdit,((${a.own('r')} AND ${a.canDeleteOwn}) OR ${a.canModerate}) AS canDelete FROM course_question_replies r LEFT JOIN users u ON u.id=r.author_id WHERE r.question_id IN(SELECT q.id FROM course_questions q WHERE ${visible}) ORDER BY r.created_at,r.id LIMIT ${p.add(input.limit)} OFFSET ${p.add(input.offset)}`:`SELECT ${questionFields(a)} ${FROM} WHERE ${visible}`);
+  const select=(replies=false)=>{const p=new Parameters(),a=actor(principal,input,p),abilities=qaContentAbilities(a,a.own('r'),qaSqlLogic);const visible=`${a.session} AND (${a.guard}) AND ${a.visible} AND q.id=${p.add(input.questionId)}`;
+   return p.statement(database,replies?`SELECT r.id,r.body,${authorFields('r',a)},r.created_at AS createdAt,r.updated_at AS updatedAt,${abilities.canEdit} AS canEdit,${abilities.canDelete} AS canDelete FROM course_question_replies r LEFT JOIN users u ON u.id=r.author_id WHERE r.question_id IN(SELECT q.id FROM course_questions q WHERE ${visible}) ORDER BY r.created_at,r.id LIMIT ${p.add(input.limit)} OFFSET ${p.add(input.offset)}`:`SELECT ${questionFields(a)} ${FROM} WHERE ${visible}`);
   };
   const result=await database.batch<Record<string,unknown>>([accessStatement(database,principal,input),select(),select(true)]);
   const permissions=abilities(result[0].results[0]),row=result[1].results[0];if(!row)throw apiNotFound('Question not found');
@@ -84,12 +88,12 @@ async function mutate(database:D1Database,principal:Exclude<QaPrincipal,null>,co
  const replyId='replyId'in input?initial.add(input.replyId):"''";
  const ownR=`EXISTS(SELECT 1 FROM course_question_replies r WHERE r.id=${replyId} AND r.question_id=${qid} AND ${a.own('r')})`;
  if(name==='qa.ask'){
-  checks.push(`WHEN NOT ${a.canPost} THEN 4031`);
+  checks.push(`WHEN NOT ${qaMutationAllowed(name,a,ownQ,ownR,qaSqlLogic)} THEN 4031`);
   if(input.videoId!==null)checks.push(`WHEN NOT EXISTS(SELECT 1 FROM video_course_members WHERE course_id=${a.course} AND video_id=${initial.add(input.videoId)}${a.lti?` AND video_id IN(${a.videos})`:''}) THEN 4043`);
  }else{
   checks.push(`WHEN NOT EXISTS(SELECT 1 FROM course_questions q WHERE ${qwhere}) THEN 4041`);
   if(name==='qa.updateReply'||name==='qa.deleteReply')checks.push(`WHEN NOT EXISTS(SELECT 1 FROM course_question_replies WHERE id=${replyId} AND question_id=${qid}) THEN 4042`);
-  const permitted=name==='qa.updateQuestion'?`(${ownQ} AND ${a.canPost})`:name==='qa.deleteQuestion'?`((${ownQ} AND ${a.canDeleteOwn}) OR ${a.canModerate})`:name==='qa.updateReply'?`(${ownR} AND ${a.canPost})`:name==='qa.deleteReply'?`((${ownR} AND ${a.canDeleteOwn}) OR ${a.canModerate})`:name==='qa.reply'?a.canPost:name==='qa.vote'?a.canVote:a.canModerate;
+  const permitted=qaMutationAllowed(name,a,ownQ,ownR,qaSqlLogic);
   checks.push(`WHEN NOT ${permitted} THEN 4031`);
  }
  const statements=[initial.statement(database,`INSERT INTO mutation_receipts(token,kind,resource_id) VALUES(${initial.add(token)},'qa',CASE ${checks.join(' ')} ELSE 0 END)`)];
