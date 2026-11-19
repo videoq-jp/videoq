@@ -27,4 +27,20 @@ export default [
       }],
     },
   },
+  {
+    files: ['src/features/qa/policy.ts', 'src/features/videos/upload-service.ts'],
+    rules: {
+      // These extracted rules/use cases accept capabilities rather than env or adapters.
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          regex: '^(?!(?:\\.\\./\\.\\./persistence/contracts/[^/]+|\\.\\./\\.\\./lib/upload|@videoq/trpc/video-upload)$)',
+          message: 'Policy and upload use cases may import contracts and pure upload helpers only; compose runtime adapters in integrations/video-upload.ts.',
+        }],
+      }],
+      'no-restricted-syntax': ['error',
+        { selector: 'ImportExpression', message: 'Inject capabilities instead of loading implementations in a use case.' },
+        { selector: 'TSImportType', message: 'Use explicit contract imports so the dependency boundary is checked.' },
+      ],
+    },
+  },
 ]
