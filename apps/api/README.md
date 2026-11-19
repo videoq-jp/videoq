@@ -73,6 +73,15 @@ an identical set of layers:
   returns application outcomes without HTTP statuses. Existing service functions
   preserve tRPC and MCP callers. Reservation/confirmation/deletion and outbox creation remain atomic
   persistence operations; task delivery follows the committed operation.
+- `features/videos/management-service.ts` accepts `VideoManagementDependencies`
+  for listing, YouTube creation, transcript updates and deletion. The request-local
+  `integrations/video-management.ts` supplies persistence, validation, storage and
+  task capabilities. `features/videos/service.ts` retains compatibility entrypoints.
+  Authorization, writes and outbox creation remain atomic in persistence; delivery
+  follows the committed operation.
+- `features/membership/core.ts` accepts a `MembershipRepository`. Its integration
+  supplies the existing atomic membership operations; insertion counts and reuse
+  outcomes come from the committed operation, not a preceding read.
 - `features/courses/service.ts` accepts a `CourseRepository` through
   `createCourseService`. `integrations/courses.ts` supplies the selected backend
   to HTTP/tRPC and MCP callers. Share-link validation and idempotent creation
@@ -83,6 +92,21 @@ an identical set of layers:
   reads use `persistence/contracts/conversation-read.ts`; checkpoint and LangGraph
   types remain in the separate execution contract. LMS attribution types do not
   import the LTI runtime or credential store.
+- `features/chat/generation-service.ts` owns answer setup, quota reservation and
+  refund decisions, generation, persistence handoff and cost outcomes. Its
+  `generation-ports.ts` contracts contain application data without RPC, LangGraph
+  or runtime types. `integrations/chat-generation.ts` supplies execution, quota,
+  cost-ledger and LMS identity adapters. The ledger is opaque to the use case.
+  `features/chat/message-service.ts` only adapts requests, HTTP failures and SSE
+  events, including opt-in tool progress for older clients. Conversation log
+  preparation remains a callback to the existing atomic conversation commit;
+  committed turns are never logged twice. Nonstream commit failures and generated
+  streaming text retain consumed quota, while failures before generation retain
+  the existing refund behavior.
+- `features/billing/account-deletion-service.ts` accepts billing lookup and an
+  idempotent customer-deletion capability. The integration normalizes Stripe's
+  missing-customer error; other errors propagate so the durable outbox can retry
+  before account data and billing identity are removed.
 - `features/billing/service.ts` accepts a `BillingRepository` and `BillingGateway`.
   `integrations/stripe-gateway.ts` translates provider requests, subscriptions and
   verified events; the service owns plan selection, customer checks, stale-event
@@ -100,9 +124,9 @@ an identical set of layers:
   shared `@videoq/trpc/video-upload` constants/helpers are an explicit exception;
   router and RPC schema imports are rejected.
 
-This is incremental separation. For example, chat generation in
-`features/chat/message-service.ts`, billing account deletion and several LMS
-services still combine orchestration with runtime adapters. New business rules
+This is incremental separation. Several LMS services still combine orchestration
+with runtime adapters. Compatibility entrypoints may accept runtime bindings,
+but delegate business decisions to injected services. New business rules
 belong in injected services or pure policies; add runtime composition to
 `integrations` and extend the boundary checks when extracting another workflow.
 Keep authorization facts and writes in the same transaction/batch: extracting a
@@ -113,7 +137,7 @@ Run the focused policy and lifecycle checks with:
 ```bash
 npm run typecheck --workspace=@videoq/api
 npm run lint --workspace=@videoq/api
-npm exec --workspace @videoq/api -- vitest run test/application-services.test.ts test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/error-handler.test.ts test/trpc.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
+npm exec --workspace @videoq/api -- vitest run test/chat-generation-service.test.ts test/extracted-management-services.test.ts test/chat-send.test.ts test/billing-account-deletion.test.ts test/membership-service.test.ts test/video-service-atomicity.test.ts test/application-services.test.ts test/qa-policy.test.ts test/video-upload-service.test.ts test/architecture-boundaries.test.ts test/error-handler.test.ts test/trpc.test.ts test/persistence/qa.integration.test.ts test/persistence/video-service.d1.integration.test.ts test/videos-multipart.test.ts test/lti-routes.test.ts
 ```
 
 Set `PERSISTENCE_TEST_DATABASE_URL` to a disposable PostgreSQL database to run the

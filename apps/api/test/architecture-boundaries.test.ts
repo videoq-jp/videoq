@@ -17,6 +17,9 @@ it("prevents extracted use cases from acquiring runtime and implementation depen
   for (const relativePath of [
     "src/features/qa/policy.ts", "src/features/qa/core.ts", "src/features/videos/upload-service.ts",
     "src/features/courses/service.ts", "src/features/chat/service.ts", "src/features/chat/conversation-service.ts",
+    "src/features/chat/generation-service.ts", "src/features/chat/generation-ports.ts",
+    "src/features/videos/management-service.ts", "src/features/videos/management-ports.ts",
+    "src/features/membership/core.ts", "src/features/billing/account-deletion-service.ts",
     "src/features/billing/service.ts", "src/features/billing/ports.ts", "src/application/errors.ts",
   ]) {
     const filePath = resolve(cwd, relativePath);
@@ -64,12 +67,14 @@ it('checks real transitive dependencies of the extracted workflows, including ty
   const roots = [
     'features/qa/core', 'features/qa/service', 'features/qa/policy', 'features/videos/upload-service',
     'features/courses/service', 'features/chat/service', 'features/chat/conversation-service',
-    'features/billing/service',
+    'features/billing/service', 'features/chat/generation-service',
+    'features/videos/management-service', 'features/membership/core', 'features/billing/account-deletion-service',
   ];
   const pureFiles = new Set([
     ...roots, 'features/billing/catalog', 'features/billing/ports',
-    'lib/upload', 'lib/share-slug', 'shared/csv',
-    ...['qa-repository', 'billing-repository', 'course-repository', 'conversation-read', 'chat-repository',
+    'features/chat/generation-ports', 'features/videos/management-ports',
+    'lib/upload', 'lib/share-slug', 'shared/csv', 'lib/youtube',
+    ...['ai-quota', 'membership-repository', 'qa-repository', 'billing-repository', 'course-repository', 'conversation-read', 'chat-repository',
       'lti-subject', 'creation-idempotency', 'video-read-repository', 'video-upload-repository',
       'video-mutation-repository', 'multipart-upload-repository'].map(name => `persistence/contracts/${name}`),
   ].map(name => resolve(cwd, 'src', `${name}.ts`)));
