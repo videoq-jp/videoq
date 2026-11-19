@@ -463,13 +463,6 @@
       "when": 1794572321833,
       "tag": "0065_cheerful_stryfe",
       "breakpoints": true
-    },
-    {
-      "idx": 66,
-      "version": "7",
-      "when": 1795120415228,
-      "tag": "0066_api_key_request_budget",
-      "breakpoints": true
     }
   ]
 }
