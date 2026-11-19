@@ -8,7 +8,7 @@ import { processExternalTaskById } from '../lib/external-tasks';
 import { getR2ObjectSize, putMediaObject } from './media';
 import type { Bindings } from '../types/bindings';
 import { lmsUploadStream } from '../features/lms/upload';
-import { asApiError } from '../shared/errors';
+import { asLmsSyncError } from '../features/lms/resource';
 
 async function service(env: Bindings) {
   const repository = await createLmsUploadRepository(env);
@@ -34,9 +34,9 @@ export async function uploadLmsContent(env: Bindings, grant: OwnedLmsGrant, snap
         expired: () => signal.aborted,
       };
     });
-  } catch (error) { throw asApiError(error) ?? error; }
+  } catch (error) { throw asLmsSyncError(error) ?? error; }
 }
 export async function confirmLmsUpload(env: Bindings, grant: OwnedLmsGrant, snapshot: LmsUploadSnapshot, status: string) {
   try { await (await service(env)).confirm(grant, snapshot, status); }
-  catch (error) { throw asApiError(error) ?? error; }
+  catch (error) { throw asLmsSyncError(error) ?? error; }
 }

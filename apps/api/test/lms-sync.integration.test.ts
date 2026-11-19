@@ -811,6 +811,7 @@ describePostgres("Moodle synchronization using existing VideoQ accounts", () => 
       Authorization: "Bearer " + credential.token, "Content-Type": "video/mp4", "Content-Length": "3",
     }, body: new Uint8Array([4, 5, 6]) }, env);
     expect(late.status).toBe(409);
+    expect(await late.json()).toEqual({ error: 'UPLOAD_UNAVAILABLE' });
   });
 
   it("recovers a failed File through a new generation and rejects stale upload and confirmation", async () => {
