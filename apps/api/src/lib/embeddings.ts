@@ -7,7 +7,7 @@ import {
 } from "./openai";
 import { deadlineSignal } from "./request-timeout";
 import { embeddingDimensions, EmbeddingValidationError, resolveEmbeddingConfig, validateEmbedding, type EmbeddingConfig } from "./embedding-contract";
-import type { AnswerCostLedger } from "./answer-cost-ledger";
+import type { UsageRecorder } from "../tools/usage";
 
 /**
  * 検索クエリの埋め込みベクトルを生成する。
@@ -32,7 +32,7 @@ export type EmbeddingEnv = {
   EMBEDDING_API_KEY?: string;
 };
 
-async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: EmbeddingConfig, signal?: AbortSignal, costLedger?: AnswerCostLedger): Promise<number[]> {
+async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: EmbeddingConfig, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[]> {
   const baseURL = openAiBaseUrl({ ...env, OPENAI_BASE_URL: env.EMBEDDING_BASE_URL || env.OPENAI_BASE_URL });
   const credential = isOpenRouter(baseURL) && env.OPENROUTER_FEDERATION_POLICY_ID
     ? resolveOpenAiKey(env, "OpenAI-compatible embeddings", baseURL)
@@ -84,7 +84,7 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
   }
 }
 
-export async function embedQuery(env: EmbeddingEnv, text: string, signal?: AbortSignal, costLedger?: AnswerCostLedger): Promise<number[]> {
+export async function embedQuery(env: EmbeddingEnv, text: string, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[]> {
   signal?.throwIfAborted();
   const config = resolveEmbeddingConfig(env);
   const result = await embedWithOpenAi(env, text, config, signal, costLedger);

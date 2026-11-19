@@ -37,6 +37,7 @@ export function getCourseInfo(
     videoOffset: number;
     courseDescriptionLimit: number;
     videoDescriptionLimit: number;
+    videoIds?: readonly number[];
   },
 ): Promise<CourseInfo | null> {
   return withDb(env, async (db) => {
@@ -46,7 +47,7 @@ export function getCourseInfo(
       .select({
         name: videoCourses.name,
         description: sql<string>`left(${videoCourses.description}, ${options.courseDescriptionLimit + 1})`.as("description"),
-        video_count: courseVideoCount,
+        video_count: options.videoIds === undefined ? courseVideoCount : sql<number>`(SELECT count(*)::int FROM video_course_members m WHERE m.course_id="video_courses"."id" AND m.video_id=ANY(${sqlNumberArray(options.videoIds)}))`.as("video_count"),
       })
       .from(videoCourses)
       .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, ownerUserId)))
@@ -63,7 +64,7 @@ export function getCourseInfo(
       })
       .from(videoCourseMembers)
       .innerJoin(videos, eq(videos.id, videoCourseMembers.videoId))
-      .where(eq(videoCourseMembers.courseId, courseId))
+      .where(and(eq(videoCourseMembers.courseId, courseId), options.videoIds === undefined ? undefined : sql`${videos.id}=ANY(${sqlNumberArray(options.videoIds)})`))
       .orderBy(asc(videoCourseMembers.order), asc(videoCourseMembers.addedAt), asc(videoCourseMembers.id))
       .limit(options.videoLimit)
       .offset(options.videoOffset);

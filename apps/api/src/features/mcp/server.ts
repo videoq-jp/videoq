@@ -16,6 +16,8 @@ import {
 } from "../../lib/mcp-tools";
 import { enforceThrottles } from "../../lib/rate-limit";
 
+import { registerExternalEvidenceTools } from "./evidence-tools";
+
 const SERVER_NAME = "videoq-api";
 const SERVER_VERSION = "0.3.0";
 
@@ -157,5 +159,6 @@ export function createVideoqMcpServer(ctx: McpToolCallContext): McpServer {
     );
   }
 
+  registerExternalEvidenceTools(server, ctx);
   return server;
 }

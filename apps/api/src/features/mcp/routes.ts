@@ -122,6 +122,7 @@ mcpRoutes.all("/", async (c) => {
   });
   const server = createVideoqMcpServer({
     env: c.env,
+    signal: c.req.raw.signal,
     userId: c.var.userId!,
     authVia: c.var.authVia,
     requestId: c.var.requestId,
