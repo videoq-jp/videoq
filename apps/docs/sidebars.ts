@@ -44,6 +44,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/frontend',
         'guides/api',
+        'guides/codex-mcp',
         'guides/database',
         'guides/embeddings',
         'guides/visual-evidence',
