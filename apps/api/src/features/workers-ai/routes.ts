@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { AppEnv, Bindings } from "../../types/bindings";
+import { rateLimitBackend } from "../../lib/rate-limit";
 
 const MODEL = "@cf/openai/whisper-large-v3-turbo";
 const keys = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
@@ -43,6 +44,16 @@ workersAiRoutes.use("*", async (c, next) => {
   if (!auth.startsWith("Bearer ") || auth.length > 16391) return c.json({ error: "Unauthorized" }, 401);
   try { await verifyWorkersAiIdentity(auth.slice(7), c.env); }
   catch { return c.json({ error: "Unauthorized" }, 401); }
+  // One shared Durable Object bucket per verified role, across tokens/isolates.
+  // Lambda's 10 media consumers have headroom; token refresh cannot reset it.
+  if (!c.env.RATE_LIMITER && !c.env.RATE_LIMIT_BACKEND) return c.json({ error: "Rate limiter unavailable" }, 503);
+  try {
+    const result = await rateLimitBackend(c.env).consume(`workers-ai:transcribe:${c.env.WORKERS_AI_FEDERATION_SUBJECT}`, 120, 60);
+    if (!result.allowed) {
+      c.header("Retry-After", String(result.retryAfterSec));
+      return c.json({ error: "Rate limit exceeded" }, 429);
+    }
+  } catch { return c.json({ error: "Rate limiter unavailable" }, 503); }
   await next();
 });
 // Authentication precedes reading or parsing potentially large audio bodies.

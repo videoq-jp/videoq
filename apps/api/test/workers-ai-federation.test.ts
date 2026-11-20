@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTPayload } from "jose";
 import { Hono } from "hono";
 import { createApp } from "../src/app";
+import { createMemoryRateLimitBackend } from "../src/lib/rate-limit";
 import { verifyWorkersAiIdentity, workersAiRoutes } from "../src/features/workers-ai/routes";
 import type { AppEnv, Bindings } from "../src/types/bindings";
 
@@ -63,7 +64,7 @@ async function request(body: unknown, bearer = true) {
   return new Request(url, { method: "POST", headers: { "Content-Type": "application/json", ...(bearer ? {Authorization:`Bearer ${await token()}`} : {}) }, body: JSON.stringify(body) });
 }
 function env(run = vi.fn(async () => ({segments:[{start:0,end:1,text:"テスト"}]}))) {
-  return { ...trust, AI: {run} } as unknown as Bindings;
+  return { ...trust, AI: {run}, RATE_LIMIT_BACKEND: createMemoryRateLimitBackend() } as unknown as Bindings;
 }
 it("rejects unauthenticated audio before inference", async () => {
   const settings=env(); const response=await app.fetch(await request({audio},false), settings);
@@ -96,4 +97,21 @@ it("fails closed when the binding or trust is absent", async () => {
   for (const settings of [{...trust}, {AI:{run:vi.fn()}}]) {
     expect((await app.fetch(await request({audio},false),settings as Bindings)).status).toBe(503);
   }
+});
+it("rate limits the verified role across requests before inference", async () => {
+  const settings=env();
+  const consume=vi.fn(async()=>({allowed:false,retryAfterSec:42}));
+  settings.RATE_LIMIT_BACKEND={...settings.RATE_LIMIT_BACKEND!,consume};
+  const response=await app.fetch(await request({audio}),settings);
+  expect(response.status).toBe(429);expect(response.headers.get("retry-after")).toBe("42");
+  expect(consume).toHaveBeenCalledWith(`workers-ai:transcribe:${trust.WORKERS_AI_FEDERATION_SUBJECT}`,120,60);
+  expect(settings.AI!.run).not.toHaveBeenCalled();
+});
+it.each([false,true])("fails closed when the rate limiter is unavailable (throws=%s)", async throws=>{
+  const settings=env();
+  if(throws) settings.RATE_LIMIT_BACKEND={...settings.RATE_LIMIT_BACKEND!,consume:async()=>{throw Error("private infrastructure error");}};
+  else delete settings.RATE_LIMIT_BACKEND;
+  const response=await app.fetch(await request({audio}),settings);
+  expect(response.status).toBe(503);expect(await response.text()).not.toContain("private");
+  expect(settings.AI!.run).not.toHaveBeenCalled();
 });

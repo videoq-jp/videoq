@@ -405,7 +405,9 @@ verifies its signature using the configured AWS issuer's JWKS, exact issuer,
 audience, IAM role subject, issued-at and expiry. It then calls the fixed Whisper
 model through its Workers AI `AI` binding, with no provider API key. The Worker
 rejects other identities before reading audio and limits audio and inference
-options. The allowlisted issuer, audience and subject live in production Wrangler
+options. A shared Durable Object bucket permits 120 requests per minute per
+verified IAM role, across tokens and Worker instances. Excess requests return
+429 with `Retry-After`; a missing/unavailable rate limiter fails closed. The allowlisted issuer, audience and subject live in production Wrangler
 vars; local/on-prem deployments have no trust configured and cannot use this
 route. Terraform grants the worker role the exact STS audience and duration.
 
