@@ -54,3 +54,27 @@ test('completed production deployment preserves the retired 768 index without pe
  ]){const q=retired();change(q);assert.throws(()=>deploymentHandoff(q.settings,q.config));}
  const source=fixture();source.settings.bindings=source.settings.bindings.filter(v=>v.name!==names[1]);source.config.vectorize=source.config.vectorize.slice(0,1);assert.throws(()=>deploymentHandoff(source.settings,source.config),/HANDOFF_REQUIRED/);
 });
+
+
+test('Workers AI deployment follows only the exact already-prepared production tuple',()=>{
+ const prepared=()=>{
+  const f=fixture(true);f.config=deploymentHandoff(f.settings,f.config);
+  f.settings.bindings.find(v=>v.name===names[1]).index_name='videoq-prod-scenes-embeddinggemma2-768';
+  f.config.vectorize.find(v=>v.binding===names[1]).index_name='videoq-prod-scenes-embeddinggemma2-768';
+  return f;
+ };
+ const f=prepared();assert.deepEqual(deploymentHandoff(f.settings,f.config),f.config);
+ for(const change of [
+  f=>{f.settings.bindings.find(v=>v.name===names[1]).index_name=indexes(true)[1];},
+  f=>{f.config.vectorize.find(v=>v.binding===names[1]).index_name=indexes(true)[1];},
+  f=>{f.settings.bindings.find(v=>v.name==='DB').id=dbs[0];},
+  f=>{f.config.d1_databases[0].database_id=dbs[0];},
+  f=>{f.config.d1_databases[0].database_name='other';},
+  f=>{f.settings.bindings.find(v=>v.name===names[0]).index_name='other';},
+  f=>{f.config.vectorize.find(v=>v.binding===names[0]).index_name='other';},
+  f=>{f.settings.bindings.find(v=>v.name===names[1]).index_name='unknown';f.config.vectorize.find(v=>v.binding===names[1]).index_name='unknown';},
+  f=>{f.settings.bindings.push(f.settings.bindings.find(v=>v.name===names[1]));},
+  f=>{f.config.vectorize.push(f.config.vectorize.find(v=>v.binding===names[1]));},
+  f=>{f.settings.bindings.push({name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'});},
+ ]){const q=prepared();change(q);assert.throws(()=>deploymentHandoff(q.settings,q.config));}
+});
