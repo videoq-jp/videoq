@@ -12079,5 +12079,14 @@
     "web_worker_original_browser_skips": 2,
     "web_worker_evidence": "Saved-locale hydration and enforcing CSP actual ego equivalents recorded separately.",
     "decision": "No remaining repository migration work identified by source-specific responsibility review, enforcement tests or current local regressions. External live/deployment acceptance is an explicit limit; it has not been silently treated as a successful test."
+  },
+  "pr_main_integration": {
+    "base_commit": "947c2564",
+    "description": "mainの回答正規化修正を取り込み、純粋なnormalizationをapplicationに配置。既存libは互換exportとSDK adapterを維持し、AnswerTextServiceで逐次正規化と確定segmentを同期する。",
+    "validation": {
+      "typecheck": "all workspaces passed",
+      "related_api_tests": "7 files, 56 passed, 0 failed"
+    },
+    "audit_scope": "既存のsource hashと全体回帰結果はmain統合前の履歴。統合差分は上記の関連回帰と型検査、およびPR CIで追加検証する。"
   }
 }
