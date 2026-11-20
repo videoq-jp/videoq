@@ -57,6 +57,11 @@ space. Existing transcripts are retained.
 1. Merge a protected PR with passing required checks. Deploy native Gemma chat,
    the federation routes, worker adapters and both Vectorize bindings. Initially
    retain legacy 1536d query configuration while the new index is populated.
+   Before inserting vectors, create the 768d cosine index
+   `videoq-prod-scenes-embeddinggemma2-768` and its metadata indexes:
+   `user_id` (string), `video_id` (number), and `vector_id` (string).
+   Synchronization verifies ANN visibility using all three filters; creating
+   only the vector index cannot establish readiness.
 2. Confirm API CD and all three worker images completed. Review the independent
    worker-boundary plan (only the exact audience changes), then approve the
    production Terraform switch to Workers AI transcription and 768d documents.
