@@ -62,6 +62,19 @@ space. Existing transcripts are retained.
    `user_id` (string), `video_id` (number), and `vector_id` (string).
    Synchronization verifies ANN visibility using all three filters; creating
    only the vector index cannot establish readiness.
+
+   The existing deployment guard rejects adding or replacing a Vectorize binding
+   through ordinary CD. Before this first deployment, attach
+   `SCENE_VECTORIZE_768` to the approved new index as a controlled preparation
+   operation. Snapshot current settings, confirm the latest uploaded version is
+   the sole active version, and use the
+   [settings PATCH API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/script_and_version_settings/methods/edit/)
+   with `type: inherit` for every existing binding plus the one new Vectorize
+   binding. Verify that all previous bindings (including secrets), DB identity,
+   query model/profile and other settings are unchanged. Keep 1536d queries
+   active. If the binding already matches, no preparation write is needed; a
+   mismatched existing binding requires its own controlled migration. Preserve
+   the deployment guard, then run or retry ordinary CD.
 2. Confirm API CD and all three worker images completed. Review the independent
    worker-boundary plan (only the exact audience changes), then approve the
    production Terraform switch to Workers AI transcription and 768d documents.
