@@ -2,7 +2,7 @@
   "status": "not_affected",
   "owner": "VideoQ maintainers",
   "reviewer": "Codex applicability review",
-  "reviewedAt": "2026-11-17T07:25:54.882956+00:00",
+  "reviewedAt": "2026-11-20T19:36:35.346250+00:00",
   "expiresAt": "2026-12-10T21:05:42.246607+00:00",
   "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
   "scope": "Only the exact-image, numeric UID 10001, read-only VideoQ vLLM serving workloads rendered from the reviewed NVIDIA profiles; not a blanket upstream image approval. No image changes, installer operations, arbitrary hooks, downloaded Python model code or host-kernel claims. Includes the reviewed RTX 4090 profiles, their fixed memory fractions and eager configuration; site overrides still require review. Native video/Mooncake directories are masked by verified empty read-only mounts; the audio overlay includes a manifest-hashed local-input startup guard. Also includes the pinned Gemma 4 BF16 / EmbeddingGemma 2 / Whisper profile with gemma4 parsers, thinking disabled and bounded image input. This extension reviews command/filesystem applicability only; it does not attest GPU execution or model quality. Includes the RTX 4090 Gemma 4 BF16 command with 40 GiB CPU weight offload, eager execution, disabled processor cache and bounded multimodal input; GPU capacity and performance remain unverified.",
@@ -39,7 +39,7 @@
     "setuptools": "80.10.2",
     "urllib3": "2.8.0"
   },
-  "audioLockSha256": "ef25496313304c32b8aec4a48caffd6720e32b1a0780dace6bf241ef54557069",
+  "audioLockSha256": "4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e",
   "inventoryProbeSourceSha256": "67cbbc9c2dd2cf5ec225b073a24696e847e240f6337c3e3553c7fb8d9b0e7eb3",
   "nativeInventoryReferenceSha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
   "allowedArgs": [
@@ -516,6 +516,8 @@
         "CVE-2025-71202",
         "CVE-2025-71315",
         "CVE-2026-100074",
+        "CVE-2026-100075",
+        "CVE-2026-100081",
         "CVE-2026-23208",
         "CVE-2026-23239",
         "CVE-2026-23240",
@@ -951,70 +953,176 @@
         "CVE-2026-93037",
         "CVE-2026-93055",
         "CVE-2026-93067",
+        "CVE-2026-93095",
         "CVE-2026-93105",
+        "CVE-2026-93119",
         "CVE-2026-93125",
+        "CVE-2026-93137",
         "CVE-2026-93144",
         "CVE-2026-93148",
+        "CVE-2026-93151",
         "CVE-2026-93154",
         "CVE-2026-93175",
         "CVE-2026-93176",
+        "CVE-2026-93189",
         "CVE-2026-93192",
         "CVE-2026-93196",
         "CVE-2026-93199",
+        "CVE-2026-93207",
         "CVE-2026-93210",
         "CVE-2026-93221",
+        "CVE-2026-93250",
+        "CVE-2026-93264",
         "CVE-2026-93282",
+        "CVE-2026-93287",
+        "CVE-2026-93288",
+        "CVE-2026-93783",
         "CVE-2026-93787",
         "CVE-2026-93790",
         "CVE-2026-93792",
         "CVE-2026-93796",
+        "CVE-2026-93802",
         "CVE-2026-93806",
+        "CVE-2026-93813",
+        "CVE-2026-93816",
         "CVE-2026-93817",
         "CVE-2026-93824",
         "CVE-2026-93828",
+        "CVE-2026-93830",
+        "CVE-2026-97413",
         "CVE-2026-97415",
+        "CVE-2026-97417",
         "CVE-2026-97429",
+        "CVE-2026-97437",
+        "CVE-2026-97438",
         "CVE-2026-97442",
         "CVE-2026-97493",
         "CVE-2026-97497",
         "CVE-2026-97513",
+        "CVE-2026-97524",
+        "CVE-2026-97527",
+        "CVE-2026-97528",
         "CVE-2026-97530",
         "CVE-2026-97555",
         "CVE-2026-97557",
         "CVE-2026-97562",
         "CVE-2026-97564",
         "CVE-2026-97565",
+        "CVE-2026-97573",
+        "CVE-2026-97575",
+        "CVE-2026-97576",
+        "CVE-2026-97578",
+        "CVE-2026-97579",
         "CVE-2026-97581",
+        "CVE-2026-97584",
+        "CVE-2026-97594",
+        "CVE-2026-97595",
+        "CVE-2026-97602",
         "CVE-2026-97603",
+        "CVE-2026-97611",
+        "CVE-2026-97612",
         "CVE-2026-97615",
         "CVE-2026-97906",
+        "CVE-2026-97910",
+        "CVE-2026-97926",
+        "CVE-2026-97927",
+        "CVE-2026-97931",
+        "CVE-2026-97940",
+        "CVE-2026-97951",
+        "CVE-2026-97957",
         "CVE-2026-97960",
+        "CVE-2026-97981",
+        "CVE-2026-97982",
         "CVE-2026-97988",
+        "CVE-2026-97991",
         "CVE-2026-98017",
         "CVE-2026-98019",
+        "CVE-2026-98023",
+        "CVE-2026-98024",
+        "CVE-2026-98025",
+        "CVE-2026-98027",
+        "CVE-2026-98029",
         "CVE-2026-98033",
         "CVE-2026-98034",
+        "CVE-2026-98037",
+        "CVE-2026-98039",
         "CVE-2026-98041",
+        "CVE-2026-98051",
+        "CVE-2026-98052",
         "CVE-2026-98056",
+        "CVE-2026-98068",
+        "CVE-2026-98069",
+        "CVE-2026-98070",
+        "CVE-2026-98075",
+        "CVE-2026-98083",
         "CVE-2026-98084",
         "CVE-2026-98085",
+        "CVE-2026-98096",
         "CVE-2026-98104",
         "CVE-2026-98107",
+        "CVE-2026-98108",
         "CVE-2026-98115",
+        "CVE-2026-98116",
+        "CVE-2026-98122",
+        "CVE-2026-98123",
+        "CVE-2026-98130",
         "CVE-2026-98134",
+        "CVE-2026-98152",
+        "CVE-2026-98154",
+        "CVE-2026-98158",
         "CVE-2026-98164",
         "CVE-2026-98167",
+        "CVE-2026-98168",
         "CVE-2026-98171",
+        "CVE-2026-98173",
+        "CVE-2026-98186",
+        "CVE-2026-98189",
+        "CVE-2026-98206",
         "CVE-2026-98222",
         "CVE-2026-98229",
+        "CVE-2026-98230",
+        "CVE-2026-98231",
+        "CVE-2026-98238",
+        "CVE-2026-98239",
+        "CVE-2026-98241",
+        "CVE-2026-98251",
+        "CVE-2026-98253",
+        "CVE-2026-98257",
         "CVE-2026-98260",
+        "CVE-2026-98261",
+        "CVE-2026-98272",
+        "CVE-2026-98275",
+        "CVE-2026-98276",
+        "CVE-2026-98282",
         "CVE-2026-98283",
+        "CVE-2026-98311",
+        "CVE-2026-98320",
+        "CVE-2026-98323",
         "CVE-2026-98332",
         "CVE-2026-98333",
+        "CVE-2026-98339",
+        "CVE-2026-98340",
         "CVE-2026-98341",
+        "CVE-2026-98348",
+        "CVE-2026-98349",
+        "CVE-2026-98354",
+        "CVE-2026-98357",
+        "CVE-2026-98358",
         "CVE-2026-98359",
+        "CVE-2026-98360",
         "CVE-2026-98364",
         "CVE-2026-98365",
+        "CVE-2026-98366",
+        "CVE-2026-98367",
+        "CVE-2026-98368",
+        "CVE-2026-98369",
+        "CVE-2026-98370",
+        "CVE-2026-98373",
+        "CVE-2026-98374",
+        "CVE-2026-98378",
+        "CVE-2026-98381",
+        "CVE-2026-98383",
+        "CVE-2026-98419",
         "CVE-2026-98420",
         "CVE-2026-98432",
         "CVE-2026-98439",
@@ -1093,12 +1201,77 @@
         "CVE-2026-98837",
         "CVE-2026-98846",
         "CVE-2026-98862",
-        "CVE-2026-98863"
+        "CVE-2026-98863",
+        "CVE-2026-98872",
+        "CVE-2026-98879",
+        "CVE-2026-98882",
+        "CVE-2026-98889",
+        "CVE-2026-98890",
+        "CVE-2026-98899",
+        "CVE-2026-98901",
+        "CVE-2026-98911",
+        "CVE-2026-98930",
+        "CVE-2026-98964",
+        "CVE-2026-98968",
+        "CVE-2026-98993",
+        "CVE-2026-98996",
+        "CVE-2026-98999",
+        "CVE-2026-99002",
+        "CVE-2026-99012",
+        "CVE-2026-99013",
+        "CVE-2026-99014",
+        "CVE-2026-99015",
+        "CVE-2026-99018",
+        "CVE-2026-99027",
+        "CVE-2026-99032",
+        "CVE-2026-99039",
+        "CVE-2026-99053",
+        "CVE-2026-99054",
+        "CVE-2026-99056",
+        "CVE-2026-99078",
+        "CVE-2026-99083",
+        "CVE-2026-99109",
+        "CVE-2026-99110",
+        "CVE-2026-99117",
+        "CVE-2026-99126",
+        "CVE-2026-99128",
+        "CVE-2026-99138",
+        "CVE-2026-99147",
+        "CVE-2026-99152",
+        "CVE-2026-99153",
+        "CVE-2026-99154",
+        "CVE-2026-99166",
+        "CVE-2026-99167",
+        "CVE-2026-99203",
+        "CVE-2026-99212",
+        "CVE-2026-99213",
+        "CVE-2026-99218",
+        "CVE-2026-99227",
+        "CVE-2026-99231",
+        "CVE-2026-99236",
+        "CVE-2026-99239",
+        "CVE-2026-99260",
+        "CVE-2026-99270",
+        "CVE-2026-99272",
+        "CVE-2026-99274",
+        "CVE-2026-99275",
+        "CVE-2026-99282",
+        "CVE-2026-99284",
+        "CVE-2026-99287",
+        "CVE-2026-99288",
+        "CVE-2026-99292",
+        "CVE-2026-99295",
+        "CVE-2026-99302",
+        "CVE-2026-99304",
+        "CVE-2026-99306",
+        "CVE-2026-99310",
+        "CVE-2026-99311",
+        "CVE-2026-99999"
       ],
       "origin": "kernel-headers",
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
-      "impactStatement": "The exact linux-libc-dev package contains only verified non-executable UAPI headers/documentation (990 files), no kernel implementations or modules. Known kernel CVEs are not executable in this image. The 54 additions to the prior package review were checked against Linux CNA program-file records and affect kernel internal code, not installed UAPI headers. The host kernel is outside this container applicability statement.",
+      "impactStatement": "The exact linux-libc-dev package contains only verified non-executable UAPI headers/documentation (990 files), no kernel implementations or modules. Known kernel CVEs are not executable in this image. The 54 additions to the prior package review were checked against Linux CNA program-file records and affect kernel internal code, not installed UAPI headers. The host kernel is outside this container applicability statement. The 173 findings added on 2026-11-20 were individually matched to Linux CNA kernel implementation/internal-header paths; none list exported UAPI files. Pinned source records and hashes are retained in kernel-cve-review.json.",
       "references": [
         "https://packages.ubuntu.com/noble/linux-libc-dev",
         "apps/inference/vllm/security/kernel-cve-review.json"
@@ -1168,6 +1341,39 @@
       "vulnerabilities": [
         "CVE-2026-107695",
         "CVE-2026-107696",
+        "CVE-2026-125181",
+        "CVE-2026-125196",
+        "CVE-2026-125201",
+        "CVE-2026-125202",
+        "CVE-2026-125203",
+        "CVE-2026-125204",
+        "CVE-2026-125208",
+        "CVE-2026-125209",
+        "CVE-2026-125210",
+        "CVE-2026-125211",
+        "CVE-2026-125212",
+        "CVE-2026-125213",
+        "CVE-2026-125214",
+        "CVE-2026-125218",
+        "CVE-2026-125219",
+        "CVE-2026-125222",
+        "CVE-2026-125227",
+        "CVE-2026-125229",
+        "CVE-2026-125233",
+        "CVE-2026-125235",
+        "CVE-2026-125239",
+        "CVE-2026-125241",
+        "CVE-2026-125244",
+        "CVE-2026-125249",
+        "CVE-2026-125250",
+        "CVE-2026-125251",
+        "CVE-2026-125256",
+        "CVE-2026-125257",
+        "CVE-2026-125259",
+        "CVE-2026-125260",
+        "CVE-2026-125262",
+        "CVE-2026-125267",
+        "CVE-2026-125269",
         "CVE-2026-52296",
         "CVE-2026-52297",
         "CVE-2026-64830",
@@ -1226,7 +1432,8 @@
       "impactStatement": "These exact native libraries remain visible in the upstream-image scan but are absent from the serving filesystem namespace: mandatory empty, read-only volume mounts mask their directories. The workload evaluator checks every mount and the actual-image runtime probe checks the directories are empty and read-only. Any changed location, removed/writable mask or different image invalidates the assessment. This is not an upstream patch claim.",
       "references": [
         "charts/videoq-inference/templates/_helpers.tpl",
-        ".github/scripts/check-vllm-runtime.py"
+        ".github/scripts/check-vllm-runtime.py",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
       ]
     },
     {
@@ -1311,13 +1518,13 @@
       "TORCHDYNAMO_DISABLE": "1"
     }
   },
-  "runtimeProbeSourceSha256": "f0d259efe49b80c930130d0cb6151e80d8594baac6cb8d21cc1dcda5a3ba763d",
+  "runtimeProbeSourceSha256": "6fa35da15eef363aee2e6825ed0c6bd4e6c12ca69e047e9784de36dd9e88a715",
   "maskedNativeDirectories": [
     "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec",
     "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs",
     "/usr/local/lib/python3.12/dist-packages/mooncake"
   ],
-  "audioGuardSha256": "3c7956d948b53579ad7326d5dc76b67187c4c2862ad331ec4d0bdd9e1cf692fe",
+  "audioGuardSha256": "ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a",
   "audioAssessments": [
     {
       "vulnerability": "CVE-2026-107696",
@@ -1336,6 +1543,670 @@
       "references": [
         "https://security-tracker.debian.org/tracker/CVE-2026-107696",
         "apps/inference/whisper/audio_guard.py"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125250",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25690",
+        "https://github.com/FFmpeg/FFmpeg/commit/26c2980980295e5516f308c5a2792d2a72e43eae",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/gif.c#L405",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-gif-encoder-heap-buffer-overflow-via-shrunk-buf-remap",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125262",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25067",
+        "https://github.com/FFmpeg/FFmpeg/commit/fd6dfa613a48665dcb8d14186b33dad90aa40ae0",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/lcevcdec.c#L224",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-lcevc-enhancement-decoding",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125213",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25702",
+        "https://github.com/FFmpeg/FFmpeg/commit/aa4b80b54ee8645b5a77fe835ab2bbae1c9c465c",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/psd.c#L450",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-psd-decoder-rle-path",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125222",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25702",
+        "https://github.com/FFmpeg/FFmpeg/commit/62c308e0416bb701447817fe6f0bff074d206215",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/hapdec.c#L215",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-hap-parse-frame-header",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125233",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24913",
+        "https://github.com/FFmpeg/FFmpeg/commit/7f80b2ad83f37a4998d9617495c92b28a7339a90",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/dvbsubenc.c#L363",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-dvb-subtitle-encoder",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125196",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25416",
+        "https://github.com/FFmpeg/FFmpeg/commit/87cdb6cd6a8d1ec201cb82b30e64d5f946939e23",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/liboapvenc.c#L578",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-liboapv-apv-encoder-wrapper",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125256",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25573",
+        "https://github.com/FFmpeg/FFmpeg/commit/1f7bdea654a8a9a1761759e22d83943371cff21f",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/riscv/llvidencdsp_rvv.S#L26",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-risc-v-vector-diff-bytes-routine",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125202",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25136",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/vaapi_hevc.c#L221",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-hevc-vaapi-tile-arrays",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125227",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25232",
+        "https://github.com/FFmpeg/FFmpeg/commit/b89ce54d93bf644433dfa9fbc34f19c22237691a",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/cbs_jpeg.c#L299",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-cbs-jpeg-write-scan-integer-overflow",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125257",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24471",
+        "https://github.com/FFmpeg/FFmpeg/commit/733bec3e19759520ccdbeb6c3c0cae280bbe6dc5",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/nellymoserenc.c#L262",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-overflow-via-nellymoser-encoder-trellis-search",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125260",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25682",
+        "https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/exrenc.c#L226",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-in-exr-encoder-rle-path",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125204",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25682",
+        "https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/libwebpenc_common.c#L230",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-in-libwebp-encoder-conditional-replenishment",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125212",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25682",
+        "https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/videotoolboxenc.c#L2360",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-videotoolbox-encoder",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125214",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25337",
+        "https://github.com/FFmpeg/FFmpeg/commit/a61b32df3fd67f76c1c8c7ea51be2a66efb0f945",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/pcm-bluray.c#L170",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-in-blu-ray-pcm-decoder",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125218",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25682",
+        "https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/pngenc.c#L1148",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-apng-encoder-heap-buffer-overflow-via-encode-apng",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125210",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24992",
+        "https://github.com/FFmpeg/FFmpeg/commit/7c06aea6f0d26dd70c94ccba6127059cd0a0e352",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/libaribcaption.c#L799",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-overflow-in-libaribcaption-text-subtitle-decoding",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125219",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25136",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/vdpau_hevc.c#L163",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-hevc-vdpau-tile-arrays",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125241",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25702",
+        "https://github.com/FFmpeg/FFmpeg/commit/27f612b306eb04f81138173f705df9a9b055b01d",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/flicvideo.c#L63",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-flic-decoder-check-pixel-ptr",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125229",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25573",
+        "https://github.com/FFmpeg/FFmpeg/commit/45f98d0819efe2b7ce93e9034b7e6a4ed6700621",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/huffyuvenc.c#L762",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-out-of-bounds-memory-access-in-huffyuv-ffvhuff-median-predictor",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125259",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25573",
+        "https://github.com/FFmpeg/FFmpeg/commit/439b452f9fe916a9f7d8788ab6afee8fac846b0b",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/proresenc_kostya_common.c#L286",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-prores-prores-ks-encoder",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125235",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25682",
+        "https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/qsvenc.c#L2081",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-overflow-via-qsv-encoder-submit-frame",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125239",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25136",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/dxva2_hevc.c#L151",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-buffer-overflow-via-hevc-dxva-tile-parameters",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125269",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25020",
+        "https://github.com/FFmpeg/FFmpeg/commit/2c515eea07df719379e7f73deeeb7ccb8768433f",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/cbs_sei.c#L287",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-double-free-via-cbs-sei-delete-message-in-cbs-sei-c",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125181",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24901",
+        "https://github.com/FFmpeg/FFmpeg/commit/ee30fb98c0d4e97abbd5e371d2a3a926e92bec70",
+        "https://github.com/FFmpeg/FFmpeg/commit/c0d308a9a616f4abcc4e0a4d86f7de92ecdef9f6",
+        "https://github.com/FFmpeg/FFmpeg/commit/eb47d7bb6cf13042c6ab14e22fc0c0c3a6e51e12",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/flicvideo.c#L883",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-flic-decoder-out-of-bounds-write-via-fli-brun-byte-swap",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125208",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24328",
+        "https://github.com/FFmpeg/FFmpeg/commit/b8f159858e2fd29dae4fa34d9e713bbf9bbf190e",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/v4l2_buffers.c#L309",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-v4l2-m2m-encoder-out-of-bounds-write-in-v4l2-buffers-c",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125211",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24992",
+        "https://github.com/FFmpeg/FFmpeg/commit/4ec127c82678b06658e963291f272881dc878735",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/libaribcaption.c#L778",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-heap-corruption-via-libaribcaption-ass-error-cleanup",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125248",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25136",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/ffv1enc_vulkan.c#L330",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-9.0-through-9.0.2-integer-overflow-via-ffv1-vulkan-encoder-remap-buffer",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125249",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25136",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/vulkan_decode.c#L345",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-7.1-through-9.0.2-heap-out-of-bounds-write-via-vulkan-slice-buffer-sizing",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
+      ]
+    },
+    {
+      "vulnerability": "CVE-2026-125251",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "purl": "pkg:generic/ffmpeg@9.0.2",
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "impactStatement": "This exact FFmpeg finding affects an encoder, video/graphics path or a codec outside the allowed local-audio path. The hash-locked v2 startup guard permits only read mode, local MP3/WAV/FLAC demuxers and mp3/mp3float/pcm_s16le/flac decoders; it also rejects unsupported WAV stream codecs before caller decoding. Mandatory actual-image proof checks the loaded guard, allowed-codec identity, RTSP rejection, unsupported A-law WAV rejection and successful supported audio decoding. Changed inputs, guard, library identity or missing proof invalidate this configuration mitigation; this is not an upstream patch claim.",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/25572",
+        "https://github.com/FFmpeg/FFmpeg/commit/053660fdb0d2403b838690689c47ad7685c3b10b",
+        "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavcodec/vvc/refs.c#L148",
+        "https://github.com/FFmpeg/FFmpeg",
+        "https://www.vulncheck.com/advisories/ffmpeg-through-9.0.2-vvc-decoder-heap-out-of-bounds-write-via-refs-c",
+        "apps/inference/vllm/security/native-codec-cve-review.json"
       ]
     }
   ]

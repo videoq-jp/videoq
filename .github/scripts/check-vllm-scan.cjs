@@ -49,6 +49,8 @@ function assessAudioRuntime(result, policy, runtime) {
   assert.equal(audioProof?.status, 'passed');
   assert.equal(audioProof.details.guardSha256, policy.audioGuardSha256);
   assert.equal(audioProof.details.rtspRejected, true);
+  assert.equal(audioProof.details.unsupportedWavCodecRejected, true);
+  assert.deepEqual(audioProof.details.allowedCodecs, ['flac', 'mp3', 'mp3float', 'pcm_s16le']);
   result.accepted = [];
   result.blocking = result.blocking.filter(finding => {
     const assessment = policy.audioAssessments.find(a => a.vulnerability === finding.VulnerabilityID

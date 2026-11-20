@@ -100,7 +100,7 @@ def inspect_runtime():
         receipt = json.loads((audio_root / '.videoq-audio.json').read_text())
         if Path(sitecustomize.__file__).resolve() != guard or hashlib.sha256(guard.read_bytes()).hexdigest() != receipt['manifest']['runtimeGuardSha256']:
             raise ValueError('Audio startup guard identity changed')
-        if getattr(av.open, '__videoq_audio_guard__', None) != 'local-audio-only-v1':
+        if getattr(av.open, '__videoq_audio_guard__', None) != 'local-audio-only-v2':
             raise ValueError('PyAV must enforce the reviewed local-audio guard')
         try:
             av.open('rtsp://127.0.0.1/rejected')
@@ -109,7 +109,19 @@ def inspect_runtime():
                 raise
         else:
             raise ValueError('RTSP input was not rejected before network I/O')
-        return {'guardSha256': receipt['manifest']['runtimeGuardSha256'], 'rtspRejected': True}
+        # A-law is a valid WAV codec, but is outside the supported input contract.
+        import io, struct
+        data = b'\xd5' * 160
+        wav = b'RIFF' + struct.pack('<I', 36 + len(data)) + b'WAVEfmt ' + struct.pack('<IHHIIHH',16,6,1,16000,16000,1,8) + b'data' + struct.pack('<I',len(data)) + data
+        try:
+            with av.open(io.BytesIO(wav), format='wav') as container:
+                list(container.decode(audio=0))
+        except (ValueError, av.error.FFmpegError):
+            pass
+        else:
+            raise ValueError('Unsupported WAV codec was not rejected')
+        return {'guardSha256': receipt['manifest']['runtimeGuardSha256'], 'rtspRejected': True,
+                'unsupportedWavCodecRejected': True, 'allowedCodecs': ['flac','mp3','mp3float','pcm_s16le']}
 
     check('security.audio', audio_security)
 
