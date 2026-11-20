@@ -23,7 +23,7 @@ locals {
     FRONTEND_URL                    = "https://videoq.jp"
     OPENAI_BASE_URL                 = "https://openrouter.ai/api/v1"
     EMBEDDING_MODEL                 = "openai/text-embedding-3-small"
-    WHISPER_BACKEND                 = "openrouter"
+    WHISPER_BACKEND                 = var.worker_whisper_backend
     OPENROUTER_FEDERATION_POLICY_ID = var.openrouter_federation_policy_id
     OPENROUTER_FEDERATION_AUDIENCE  = var.openrouter_federation_audience
     ENABLE_HEAVY_PIPELINE           = "true"

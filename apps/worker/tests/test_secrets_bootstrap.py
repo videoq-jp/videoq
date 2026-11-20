@@ -211,3 +211,37 @@ def test_openrouter_key_is_loaded_from_shared_app_secret(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "boto3", SimpleNamespace(client=lambda _: client))
     bootstrap.ensure_secrets_loaded()
     assert os.environ["OPENROUTER_API_KEY"] == "router-key"
+
+
+def test_workers_ai_credentials_loaded_without_overwriting_runtime(monkeypatch):
+    import json
+    import sys
+
+    monkeypatch.setenv("APP_PARAM_NAME", "/videoq/prod/app")
+    monkeypatch.setenv("PERSISTENCE_BACKEND", "d1")
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "")
+    monkeypatch.setenv("WORKERS_AI_API_TOKEN", "")
+    monkeypatch.setenv("WHISPER_BACKEND", "workers-ai")
+
+    class FakeClient:
+        def close(self):
+            pass
+
+        def get_parameter(self, Name, WithDecryption):
+            assert Name == "/videoq/prod/app" and WithDecryption
+            return {"Parameter": {"Value": json.dumps({
+                "CLOUDFLARE_ACCOUNT_ID": "a" * 32,
+                "WORKERS_AI_API_TOKEN": "test-workers-ai-token",
+                "WHISPER_BACKEND": "openrouter",
+            })}}
+
+    class FakeBoto3:
+        def client(self, name):
+            assert name == "ssm"
+            return FakeClient()
+
+    monkeypatch.setitem(sys.modules, "boto3", FakeBoto3())
+    bootstrap.ensure_secrets_loaded()
+    assert os.environ["CLOUDFLARE_ACCOUNT_ID"] == "a" * 32
+    assert os.environ["WORKERS_AI_API_TOKEN"] == "test-workers-ai-token"
+    assert os.environ["WHISPER_BACKEND"] == "workers-ai"

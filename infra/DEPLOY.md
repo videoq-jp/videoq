@@ -391,15 +391,27 @@ aws lambda update-function-code \
   --region "$REGION"
 ```
 
-### Cloud transcription (OpenRouter)
+### Cloud transcription (Workers AI)
 
-The cloud worker uses `WHISPER_BACKEND=openrouter`. Set Terraform
-`openrouter_federation_policy_id` after configuring AWS outbound federation and
-OpenRouter trust; the Lambda execution role supplies its identity. No OpenRouter
-fixed key is required in the SSM parameter for WIF. Modal is retired; no Modal CLI or
-GitHub credentials are required. See
-[the switch runbook](../docs/operations/openai-transcription.md) for the
-in-flight job check, config refresh and retirement order.
+The hosted worker uses `worker_whisper_backend = "workers-ai"`, exposed as
+`WHISPER_BACKEND=workers-ai`. Add `CLOUDFLARE_ACCOUNT_ID` and a scoped
+`WORKERS_AI_API_TOKEN` to the existing `/videoq/prod/app` SSM SecureString JSON,
+preserving every other field. The token needs Workers AI inference access for
+that account. Never put its value into Terraform variables or Lambda environment
+configuration.
+
+Deploy the worker image with Workers AI support **before approving the Terraform
+configuration change**. Verify CD updated all three Lambda functions, then review
+and approve the `production-infra` plan. New invocations load credentials from SSM;
+existing transcripts are not regenerated. Audio is sent in 300-second chunks to
+`@cf/openai/whisper-large-v3-turbo`, with language hints and VAD enabled. Provider
+failures do not silently select another provider.
+
+Chat and embeddings continue to use OpenRouter workload identity federation.
+For rollback, set `worker_whisper_backend = "openrouter"` through the protected
+PR/Terraform flow after checking OpenRouter WIF, then verify a disposable upload.
+Keep the previous provider credentials until the new pipeline is verified. See
+[the AI runbook](../docs/operations/openai-transcription.md).
 
 ## 5. Frontend
 

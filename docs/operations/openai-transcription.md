@@ -1,18 +1,35 @@
-# Cloud AI: OpenRouter
+# Cloud AI: Workers AI transcription and OpenRouter
 
-The hosted profiles use OpenRouter for all AI calls. The preferred authentication
-is AWS workload identity federation; a fixed `OPENROUTER_API_KEY` remains an
-explicit development compatibility option.
+The AWS hosted worker uses Cloudflare Workers AI for transcription. Answers,
+image inspection and embeddings continue to use OpenRouter with AWS workload
+identity federation; a fixed `OPENROUTER_API_KEY` remains an explicit development
+compatibility option. Other deployment profiles retain their own configuration.
 
 | Use | Model | Endpoint |
 | --- | --- | --- |
 | Answers and image inspection | `openai/gpt-6-luna` | `/api/v1/chat/completions` |
 | Query and indexing embeddings | `openai/text-embedding-3-small` | `/api/v1/embeddings` |
-| Transcription | `openai/whisper-large-v3-turbo` | `/api/v1/audio/transcriptions` |
+| AWS hosted transcription | `@cf/openai/whisper-large-v3-turbo` | Cloudflare `/client/v4/accounts/{account}/ai/run/{model}` |
 
 LLM and embedding models are unchanged. The OpenRouter namespace is a routing
 alias, so existing 1536-dimensional vectors can be retained. Keep API and worker
 embedding configuration identical. On-premises inference still uses `local`.
+
+## Workers AI transcription
+
+The AWS Lambda Terraform default is `worker_whisper_backend = "workers-ai"`.
+The worker reads `CLOUDFLARE_ACCOUNT_ID` and `WORKERS_AI_API_TOKEN` from the
+existing app SSM SecureString, without logging either credential. Deploy the
+supporting worker image before approving the Terraform switch. The adapter uses
+300-second audio chunks, language hints and VAD, validates segment timestamps,
+and fails explicitly on provider errors. Existing transcripts remain intact.
+
+The Whisper Large V3 Turbo model family is unchanged, but provider preprocessing
+and decoding can change the result. Technical terminology still needs review;
+VAD may omit unusually quiet speech. See [the deployment steps and rollback](../../infra/DEPLOY.md#cloud-transcription-workers-ai).
+
+The following OpenRouter sections describe chat/embeddings, older transcription
+profiles and rollback compatibility.
 
 ## Workload identity federation (preferred)
 

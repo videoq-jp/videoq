@@ -152,3 +152,14 @@ variable "worker_groups" {
     error_message = "Exactly search/account must be configured with integer Lambda memory (128–10240), storage (512–10240), timeout (1–900), and concurrency (2–1000)."
   }
 }
+
+variable "worker_whisper_backend" {
+  description = "Hosted transcription provider. Roll back to openrouter only after confirming its workload identity is healthy."
+  type        = string
+  default     = "workers-ai"
+
+  validation {
+    condition     = contains(["workers-ai", "openrouter", "openai"], var.worker_whisper_backend)
+    error_message = "worker_whisper_backend must be workers-ai, openrouter or openai."
+  }
+}
