@@ -74,7 +74,7 @@ worker_visual_enabled = true
 # Match the API Worker's pinned AWS issuer, worker-role subject and service audience.
 # Apply the independent worker permissions boundary after all new images deploy,
 # before the production environment switch. Follow the staged cloud AI runbook.
-worker_whisper_backend = "workers-ai"
+worker_whisper_backend         = "workers-ai"
 workers_ai_federation_endpoint = "https://videoq.jp/api/internal/workers-ai/transcribe"
 
 # Independent search/account consumers (media keeps worker_lambda_* settings).
