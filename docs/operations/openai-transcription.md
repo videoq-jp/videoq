@@ -74,7 +74,9 @@ space. Existing transcripts are retained.
    query model/profile and other settings are unchanged. Keep 1536d queries
    active. If the binding already matches, no preparation write is needed; a
    mismatched existing binding requires its own controlled migration. Preserve
-   the deployment guard, then run or retry ordinary CD.
+   the deployment guard, then run or retry ordinary CD. Verify that the generated
+   upload-only configuration retains `ai: { binding: "AI" }`; the raw Wrangler
+   configuration alone does not prove that the binding reached production.
 2. Confirm API CD and all three worker images completed. Review the independent
    worker-boundary plan (only the exact audience changes), then approve the
    production Terraform switch to Workers AI transcription and 768d documents.
