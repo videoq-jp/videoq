@@ -1,5 +1,4 @@
 import type { ChatRepository, ChatHistoryExportRow } from '../../persistence/contracts/chat-repository';
-import { streamChatHistoryCsv } from '../../shared/csv';
 
 export interface ChatHistoryDependencies {
   chat: Pick<ChatRepository, 'shareExists' | 'history' | 'deleteHistory' | 'analytics' | 'feedback'>;
@@ -12,14 +11,12 @@ export function createChatHistoryService(deps: ChatHistoryDependencies) {
   async function exportHistoryCsv(
     courseId: number,
     userId: string,
-  ) {
+  ): Promise<{ notFound: true } | { rows: AsyncIterable<ChatHistoryExportRow>; filename: string }> {
     if (!(await deps.courseOwnedBy(courseId, userId))) {
       return { notFound: true } as const;
     }
     return {
-      body: streamChatHistoryCsv(
-        deps.historyRows(courseId, userId),
-      ),
+      rows: deps.historyRows(courseId, userId),
       filename: `chat_history_course_${courseId}.csv`,
     } as const;
   }

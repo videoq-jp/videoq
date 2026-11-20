@@ -13,8 +13,9 @@ from worker_python.pipeline.media_process import media_input_args, run_media_pro
 from worker_python.pipeline.storage import ObjectMediaSource
 from worker_python.pipeline.visual_frames import MAX_IMAGE_BYTES, MAX_CACHE_BYTES
 
-CHUNK_SECONDS = 60
-MAX_DURATION_SECONDS = 36_000
+from worker_python.domain.visual_checkpoints import (
+    CHUNK_SECONDS, MAX_DURATION_SECONDS, visual_chunk_window, visual_sample_targets,
+)
 MAX_CHUNK_BYTES = CHUNK_SECONDS * MAX_IMAGE_BYTES + 64 * 1024
 
 
@@ -33,11 +34,7 @@ def manifest_key(file_key: str) -> str:
 
 @contextmanager
 def build_visual_chunk(source: Path | ObjectMediaSource, video_id: int, duration: float, index: int):
-    if not math.isfinite(duration) or not 0 < duration <= MAX_DURATION_SECONDS:
-        raise ValueError("Visual inspection supports videos up to 10 hours")
-    if type(index) is not int or not 0 <= index < math.ceil(duration / CHUNK_SECONDS):
-        raise ValueError("Invalid visual chunk index")
-    start, end = index * CHUNK_SECONDS, min((index + 1) * CHUNK_SECONDS, duration)
+    start, end = visual_chunk_window(duration, index)
     # A 60fps recording only needs one image per second. Decoding its discarded
     # non-reference frames wastes CPU; reference frames retain their real PTS.
     # Low-frame-rate sources and source gaps may lose occupied seconds with
@@ -83,9 +80,8 @@ def _extract_visual_chunk(
         frames, sparse = [], []
         offset = 0
         time_base_valid = False
-        interval = max(5, duration / 240)
         # Every coarse sampling target belongs to exactly one source minute.
-        targets = [i * interval for i in range(240) if start <= i * interval < end]
+        targets = visual_sample_targets(duration, start, end)
         target_index = 0
         with timing.open() as timestamps, images.open("rb") as data:
             for line in timestamps:

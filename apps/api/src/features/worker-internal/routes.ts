@@ -1,3 +1,4 @@
+import { transcriptionFailureAllowed, validTranscriptionPlan, validTranscriptionSegments } from '../../application/transcription-policy';
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -161,7 +162,7 @@ workerInternalRoutes.post("/transcription/:action", async c => {
     return c.json({ accepted: await repo.begin(parsed.data, parsed.data.expectedStatus) });
   }
   const parsed = transcriptionFinish.safeParse(input);
-  if (!parsed.success || (parsed.data.transcript === null && parsed.data.errorCode === null) ||
+  if (!parsed.success || !transcriptionFailureAllowed(parsed.data.transcript, parsed.data.errorCode) ||
     (parsed.data.transcript !== null && new TextEncoder().encode(parsed.data.transcript).length > 1_800_000)) return c.json({ error: "INVALID_REQUEST" }, 400);
   if (c.env.TASK_SCHEDULER) await armMaintenance(c.env, Date.now() + 1000);
   const repo = await createWorkerTranscriptionRepository(c.env);
@@ -173,10 +174,10 @@ const checkpointRun = sourceRequest.extend({ runId }).strict();
 const checkpointChunk = checkpointRun.extend({ index: z.number().int().min(0).max(9999) }).strict();
 const checkpointSave = checkpointChunk.extend({ segments: z.array(z.object({
   start: z.number().finite().nonnegative(), end: z.number().finite().nonnegative(), text: z.string(),
-}).strict().refine(segment => segment.end >= segment.start)).max(10000) }).strict();
+}).strict().refine(segment => validTranscriptionSegments([segment]))).max(10000) }).strict();
 const checkpointInit = transcriptionSnapshot.extend({ durationMs: z.number().int().positive().max(3_000_000_000),
   chunkSeconds: z.number().int().min(30).max(300),
-}).strict().refine(input => Math.ceil(input.durationMs / (input.chunkSeconds*1000)) <= 10000);
+}).strict().refine(input => validTranscriptionPlan(input.durationMs, input.chunkSeconds));
 workerInternalRoutes.use("/checkpoints/*", bodyLimit({ maxSize: 1_900_000, onError: c => c.json({ error: "BODY_TOO_LARGE" }, 413) }));
 workerInternalRoutes.post("/checkpoints/:action", async c => {
   c.header("Cache-Control", "no-store");

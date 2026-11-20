@@ -1,3 +1,4 @@
+import { invitationInviterName } from '../../application/invitation-delivery';
 import {and,desc,eq} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {users,videoCourseInvitations,videoCourseMemberships,videoCourses} from '../../db/schema';
@@ -97,7 +98,7 @@ export async function getCourseInvitationByTokenHash(
     return {
       course_id: Number(row.courseId),
       course_name: row.courseName,
-      inviter_name: row.inviterName.trim() || row.inviterUsername,
+      inviter_name: invitationInviterName(row.inviterName,row.inviterUsername),
       email: row.email,
       status: row.status as InvitationStatus,
       expires_at: toUtcIso(row.expiresAt),

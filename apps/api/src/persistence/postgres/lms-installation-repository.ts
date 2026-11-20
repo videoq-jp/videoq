@@ -1,3 +1,5 @@
+import { managementSystemAdministrator, managementConnectionActive } from '../../application/lms-management';
+import { mediaDrizzleLogic } from '../media-eligibility-sql';
 import {and,eq,isNull,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {teachingConnections,lmsInstallations,users} from '../../db/schema';
@@ -10,10 +12,10 @@ export function createPostgresLmsInstallationRepository(env:Bindings):LmsInstall
   managementAccess(userId,identity){return withDb(env,async db=>{
    const [user]=await db.select({role:users.role}).from(users).where(eq(users.id,userId)).limit(1);
    if(!user)return null;
-   const [connection]=await db.select({active:sql<boolean>`${lmsInstallations.active} AND ${teachingConnections.active}`}).from(lmsInstallations)
+   const [connection]=await db.select({active:sql<boolean>`${managementConnectionActive(sql`${lmsInstallations.active}`,sql`${teachingConnections.active}`,mediaDrizzleLogic)}`}).from(lmsInstallations)
     .innerJoin(teachingConnections,and(eq(teachingConnections.provider,'moodle'),eq(teachingConnections.installationId,lmsInstallations.id),eq(teachingConnections.ownerUserId,userId)))
     .where(and(eq(lmsInstallations.issuer,identity.issuer),eq(lmsInstallations.clientId,identity.clientId),eq(lmsInstallations.deploymentId,identity.deploymentId))).limit(1);
-   return {systemAdmin:user.role==='admin',connectionActive:connection?.active??null};
+   return {systemAdmin:managementSystemAdministrator(user.role),connectionActive:connection?.active??null};
   });},
   async insert(registration){await withDb(env,db=>db.transaction(async tx=>{
     const [owner]=await tx.select({id:users.id}).from(users).where(and(eq(users.id,registration.ownerUserId),activeLmsOwner())).for('update');

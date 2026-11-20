@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
+import { qaCapabilities } from '@/application/qa-access';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, MessageCircle, Pin, ThumbsUp } from 'lucide-react';
@@ -103,9 +104,7 @@ function QaSession({ courseId, shareSlug, videoId, videoTitle, active, onVideoPl
   const vote = useMutation(trpc.qa.vote.mutationOptions());
   const feature = useMutation(trpc.qa.feature.mutationOptions());
   const busy = [ask, reply, updateQuestion, deleteQuestion, updateReply, deleteReply, vote, feature].some(mutation => mutation.isPending);
-  const canPost = selected ? detail.data?.canPost : list.data?.canPost;
-  const canVote = selected ? (detail.data?.canVote ?? detail.data?.canPost) : (list.data?.canVote ?? list.data?.canPost);
-  const canModerate = selected ? detail.data?.canModerate : list.data?.canModerate;
+  const { canPost, canVote, canModerate } = qaCapabilities(selected ? detail.data : list.data);
   const run = async (operation: () => Promise<void>) => {
     if (busy) return;
     setError(false);

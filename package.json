@@ -30,7 +30,7 @@
     "test": "npm run test --workspace @videoq/api && npm run test --workspace @videoq/web",
     "test:api": "npm run test --workspace @videoq/api",
     "test:web": "npm run test --workspace @videoq/web",
-    "typecheck": "npm run typecheck --workspace @videoq/trpc && npm run typecheck --workspace @videoq/api && npm run typecheck --workspace @videoq/web && npm run typecheck --workspace @videoq/docs && npm run typecheck --workspace @videoq/demo-video",
+    "typecheck": "npm run typecheck --workspace @videoq/domain && npm run typecheck --workspace @videoq/trpc && npm run typecheck --workspace @videoq/api && npm run typecheck --workspace @videoq/web && npm run typecheck --workspace @videoq/docs && npm run typecheck --workspace @videoq/demo-video",
     "test:lint": "node --test scripts/test-eslint.mjs",
     "audit:signatures": "node .github/scripts/audit-signatures.cjs"
   },

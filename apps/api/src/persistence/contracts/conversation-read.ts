@@ -1,7 +1,7 @@
-import type { LtiDataSubject } from "./lti-subject";
+import type { ConversationScope } from "../../application/conversation-scope";
+export type { ConversationScope } from "../../application/conversation-scope";
 import type { ChatAnswer } from '../../application/models';
 
-export type ConversationScope={ownerUserId:string;actorUserId:string|null;courseId:number|null;shareSlug:string|null;visitorSessionId?:string;ltiSubject?:LtiDataSubject};
 
 export type ConversationListInput={conversationIds?:string[];limit:number;offset:number};
 export type ConversationDetailInput={conversationId:string;beforeTurnId?:string;limit:number};

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
 import os
 from uuid import uuid4
@@ -13,26 +12,12 @@ from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.video_sql import VideoRow, reserve_processing_seconds
 
-CHUNK_SECONDS = 300
-MAX_VIDEO_DURATION_SECONDS = 3_000_000
-TRANSCRIPTION_LANES = 4
-
-
-@dataclass(frozen=True)
-class TranscriptionRun:
-    video_id: int
-    run_id: str
-    file_key: str
-    transcript_hash: str
-    duration_ms: int
-    chunk_seconds: int
-    chunk_count: int
-    completed: bool
-    transcription_language: str | None = None
-
-
-class TranscriptionQuotaError(RuntimeError):
-    pass
+from worker_python.domain.transcription_checkpoints import (
+    CHUNK_SECONDS, MAX_VIDEO_DURATION_SECONDS, TRANSCRIPTION_LANES,
+    TranscriptionRun, TranscriptionQuotaError, assemble_segments, can_reject_source, can_resume,
+    checkpoint_count, run_is_current, source_duration_ms, source_is_current,
+    terminal_chunk_failure, validate_chunk_seconds,
+)
 
 
 def _run(row) -> TranscriptionRun | None:
@@ -72,21 +57,13 @@ def configured_chunk_seconds() -> int:
         seconds = int(os.environ.get("WHISPER_CHUNK_SECONDS", str(CHUNK_SECONDS)))
     except ValueError as error:
         raise ValueError("WHISPER_CHUNK_SECONDS must be an integer from 30 to 300") from error
-    if not 30 <= seconds <= CHUNK_SECONDS:
-        raise ValueError("WHISPER_CHUNK_SECONDS must be an integer from 30 to 300")
-    return seconds
+    return validate_chunk_seconds(seconds)
 
 
 def initialize_run(video: VideoRow, duration: float) -> TranscriptionRun | None:
-    if not math.isfinite(duration) or not 0 < duration <= MAX_VIDEO_DURATION_SECONDS:
-        raise ValueError("Video duration exceeds the supported transcription range")
-    if not video.file_key or not video.transcript_hash:
-        raise ValueError("Transcription needs a source and transcript fingerprint")
-    duration_ms = math.ceil(duration * 1000)
+    duration_ms = source_duration_ms(duration, video.file_key, video.transcript_hash)
     chunk_seconds = configured_chunk_seconds()
-    count = math.ceil(duration_ms / (chunk_seconds * 1000))
-    if count > 10000:
-        raise ValueError("Transcription plan exceeds the 10,000-checkpoint limit")
+    count = checkpoint_count(duration_ms, chunk_seconds)
     if uses_internal_persistence():
         result = call_internal_api("checkpoints/initialize", {
             "videoId": video.id, "userId": video.user_id, "fileKey": video.file_key,
@@ -101,14 +78,14 @@ def initialize_run(video: VideoRow, duration: float) -> TranscriptionRun | None:
             SELECT status, file, md5(COALESCE(transcript, '')) AS transcript_hash
               FROM videos WHERE id = %s FOR UPDATE
         """, (video.id,)).fetchone()
-        if not current or current["status"] not in {"pending", "processing", "error"}:
-            return None
-        if current["file"] != video.file_key or current["transcript_hash"] != video.transcript_hash:
+        if not current or not source_is_current(
+            current["status"], current["file"], current["transcript_hash"], video.file_key, video.transcript_hash,
+        ):
             return None
         existing = _run(conn.execute(
             "SELECT * FROM video_transcription_runs WHERE video_id = %s", (video.id,),
         ).fetchone())
-        if existing and not existing.completed and (existing.file_key, existing.transcript_hash) == (video.file_key, video.transcript_hash):
+        if can_resume(existing, video.file_key, video.transcript_hash):
             conn.execute("UPDATE videos SET status = 'processing', error_message = '' WHERE id = %s", (video.id,))
             return existing
         reservation = reserve_processing_seconds(conn, video.id, math.ceil(duration))
@@ -156,10 +133,10 @@ def _lock_current(conn, run: TranscriptionRun) -> bool:
           FROM videos v JOIN video_transcription_runs r ON r.video_id = v.id
          WHERE v.id = %s FOR UPDATE OF v
     """, (run.video_id,)).fetchone()
-    return bool(row and row["completed_at"] is None and str(row["run_id"]) == run.run_id
-                and row["file"] == run.file_key
-                and row["transcript_hash"] == run.transcript_hash
-                and row["status"] in {"pending", "processing", "error"})
+    return bool(row and run_is_current(
+        run, status=row["status"], file_key=row["file"], transcript_hash=row["transcript_hash"],
+        run_id=str(row["run_id"]), completed=row["completed_at"] is not None,
+    ))
 
 
 def reject_no_audio(video_id: int, file_key: str, transcript_hash: str,
@@ -184,13 +161,12 @@ def reject_no_audio(video_id: int, file_key: str, transcript_hash: str,
               FROM videos v LEFT JOIN video_transcription_runs r ON r.video_id = v.id
              WHERE v.id = %s FOR UPDATE OF v
         """, (video_id,)).fetchone()
-        if not row or row["file"] != file_key or row["transcript_hash"] != transcript_hash:
-            return False
-        if row["status"] not in {"pending", "processing", "error"}:
-            return False
-        if run_id is not None and (row["run_id"] is None or str(row["run_id"]) != run_id):
-            return False
-        if run_id is not None and row["completed_at"] is not None:
+        if not row or not can_reject_source(
+            status=row["status"], file_key=row["file"], transcript_hash=row["transcript_hash"],
+            expected_file=file_key, expected_hash=transcript_hash,
+            run_id=str(row["run_id"]) if row["run_id"] is not None else None,
+            expected_run_id=run_id, completed=row["completed_at"] is not None,
+        ):
             return False
         if row["run_id"] is not None and row["completed_at"] is None:
             conn.execute("""
@@ -252,9 +228,10 @@ def record_chunk_failure(run: TranscriptionRun, index: int, error: str) -> None:
                    last_error = %s, updated_at = now()
              WHERE run_id = %s AND chunk_index = %s AND segments IS NULL RETURNING failures
         """, (error[:2000], run.run_id, index)).fetchone()
-        if row and row["failures"] >= 5:
+        message = terminal_chunk_failure(index, row["failures"], error) if row else None
+        if message is not None:
             conn.execute("UPDATE videos SET status = 'error', error_message = %s WHERE id = %s",
-                         (f"Transcription chunk {index + 1} failed: {error[:1000]}", run.video_id))
+                         (message, run.video_id))
 
 
 def assembled_segments(conn, run: TranscriptionRun) -> list[dict] | None:
@@ -262,6 +239,4 @@ def assembled_segments(conn, run: TranscriptionRun) -> list[dict] | None:
         SELECT chunk_index, segments FROM video_transcription_chunks
          WHERE run_id = %s ORDER BY chunk_index
     """, (run.run_id,)).fetchall()
-    if len(rows) != run.chunk_count or any(row["segments"] is None for row in rows):
-        return None
-    return [segment for row in rows for segment in row["segments"]]
+    return assemble_segments(run.chunk_count, [row["segments"] for row in rows])

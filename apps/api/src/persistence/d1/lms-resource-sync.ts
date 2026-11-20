@@ -1,3 +1,10 @@
+import { materialTeacherConnectionAccess, materialTeacherCourseMatches } from '../../application/lms-owner';
+import { d1LmsOwnerSql } from './lms-owner-policy';
+import { planResourceRemoval, resourceContentValues, resourceCourseTitle, resourceUploadError } from '../../application/resource-mutation';
+import { resourceSqlErrorChoice } from '../resource-policy-sql';
+import { planResourceReconciliation, resourceCourseBindingMatches, resourceCourseOwnerMatches, resourceRevisionConflict, resourceVideoBindingMatches } from '../../application/resource-reconciliation';
+import { quotaAllowsAdditional, validateUploadReservationBytes } from '../../application/quota-policy';
+import { quotaSqlComparison } from '../quota-policy-sql';
 import {MaterialsLeaseLostError} from '../contracts/materials-sync-repository';
 import {D1_MATERIALS_CONTEXT_LEASE} from './materials-sync-repository';
 import type {LmsResource,LmsResourceSyncRepository} from '../contracts/lms-resource-repository';
@@ -9,8 +16,7 @@ import {enqueueCurrentSceneDeletes,enqueueStagedSceneDeletes} from './scene-inde
 const NOW="strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 const MONTH="strftime('%Y-%m-%dT%H:%M:%fZ','now','start of month')";
 const ACTIVE=`EXISTS(SELECT 1 FROM lms_installations connection JOIN users owner ON owner.id=?
- WHERE connection.id=? AND connection.active=1 AND owner.is_active=1 AND owner.deactivated_at IS NULL
- AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now')))`;
+ WHERE connection.id=? AND connection.active=1 AND ${d1LmsOwnerSql()})`;
 const RESOURCE=`json_object('id',id,'installationId',installation_id,'externalId',external_id,'kind',kind,'contextId',context_id,'resourceLinkId',resource_link_id,
  'generation',generation,'manifestHash',manifest_hash,'enabled',enabled,'contentHash',content_hash,'contentType',content_type,'fileSize',file_size,
  'youtubeVideoId',youtube_video_id,'courseId',course_id,'videoId',video_id,'syncError',sync_error,'updatedAt',updated_at)`;
@@ -29,10 +35,11 @@ export function createD1LmsResourceSyncRepository(database:D1Database):LmsResour
   for(let attempt=0;attempt<5;attempt++){
    const [linkProbe]=await probes([{sql:`SELECT json_object('id',id,'ownerUserId',owner_user_id,'courseId',course_id,'resourceLinkId',resource_link_id) AS value
     FROM teaching_connections WHERE provider='moodle' AND installation_id=? AND context_id=? AND active=1`,values:[grant.id,manifest.contextId]}]);
-   const link=linkProbe.raw?JSON.parse(linkProbe.raw) as {id:string;ownerUserId:string;courseId:number;resourceLinkId:string|null}:null;
-   if(!link||link.resourceLinkId)throw new LmsSyncError(403,'TEACHER_CONNECTION_REQUIRED');
+   const candidateLink=linkProbe.raw?JSON.parse(linkProbe.raw) as {id:string;ownerUserId:string;courseId:number;resourceLinkId:string|null}:null;
+   const access=materialTeacherConnectionAccess(candidateLink,grant.ownerUserId);
+   if(access.kind==='denied')throw new LmsSyncError(403,access.code);
+   const link=access.connection;
    const ownerUserId=link.ownerUserId;
-   if(grant.ownerUserId && grant.ownerUserId!==ownerUserId)throw new LmsSyncError(403,'INSTALLATION_UNAVAILABLE');
    const authority=grant.materialsLease?`${ACTIVE} AND ${D1_MATERIALS_CONTEXT_LEASE}`:ACTIVE;
    const authorityValues=[ownerUserId,grant.id,...(grant.materialsLease?[grant.materialsLease.id,grant.id,grant.materialsLease.token]:[])];
    if(!await prepared(`SELECT (${authority}) AS allowed`,authorityValues).first<number>('allowed')){
@@ -47,7 +54,7 @@ export function createD1LmsResourceSyncRepository(database:D1Database):LmsResour
    ]);
    const previous=previousProbe.raw?resource(previousProbe.raw):null;
    const mapping=mappingProbe.raw?JSON.parse(mappingProbe.raw) as Mapping:null;
-   if(!mapping||mapping.courseId!==link.courseId)throw new LmsSyncError(403,'TEACHER_CONNECTION_REQUIRED');
+   if(!mapping || !materialTeacherCourseMatches(mapping,link.courseId))throw new LmsSyncError(403,'TEACHER_CONNECTION_REQUIRED');
    const [videoProbe,oldCourseProbe,sharedProbe]=await probes([
     {sql:`SELECT json_object('id',id,'userId',user_id,'status',status,'file',file,'sourceType',source_type,'youtubeVideoId',youtube_video_id,
       'transcriptionLanguage',transcription_language,'period',upload_usage_period_start,'multipart',multipart_upload,'managed',managed_by_lms,'heartbeat',upload_heartbeat_at) AS value FROM videos WHERE id=?`,values:[previous?.videoId??null]},
@@ -57,17 +64,19 @@ export function createD1LmsResourceSyncRepository(database:D1Database):LmsResour
    ]);
    const video=videoProbe.raw?JSON.parse(videoProbe.raw) as Video:null;
    const oldCourse=oldCourseProbe.raw?JSON.parse(oldCourseProbe.raw) as Course:null;
-   if(previous && (previous.kind!==(manifest.kind??'video') || previous.kind==='course' && previous.contextId!==manifest.contextId))throw new LmsSyncError(409,'RESOURCE_KIND_OR_CONTEXT_CHANGED');
-   if(previous && (manifest.generation<previous.generation || manifest.generation===previous.generation && manifestHash!==previous.manifestHash))throw new LmsSyncError(409,'STALE_GENERATION');
-   if(mapping && (mapping.userId!==ownerUserId || manifest.kind==='course' && (!mapping.managed || !mapping.disabled || previous?.courseId!=null && previous.courseId!==mapping.courseId)))throw new LmsSyncError(409,'COURSE_BINDING_CHANGED');
-   if(video && (video.userId!==ownerUserId || manifest.kind==='youtube' && (video.sourceType!=='youtube' || video.youtubeVideoId!==previous?.youtubeVideoId)))throw new LmsSyncError(409,'RESOURCE_BINDING_CHANGED');
-   const idempotent=previous?.generation===manifest.generation && (!manifest.enabled || (manifest.kind==='course'?mapping!==null:previous.videoId!==null));
-   const keep=manifest.kind!=='course' && !manifest.deleted && previous?.videoId!=null && video?.status!=='error' && (manifest.kind==='youtube'
-    ?video?.userId===ownerUserId && video.sourceType==='youtube' && previous.youtubeVideoId===(manifest.youtubeVideoId??previous.youtubeVideoId) && video.youtubeVideoId===previous.youtubeVideoId
-    :previous.contentHash===(manifest.file?.contentHash??previous.contentHash) && previous.fileSize===(manifest.file?.size??previous.fileSize) && previous.contentType===(manifest.file?.contentType??previous.contentType));
-   if(!idempotent && manifest.enabled && keep && manifest.transcriptionLanguage!==undefined && video?.transcriptionLanguage!==manifest.transcriptionLanguage)throw new LmsSyncError(409,'TRANSCRIPTION_LANGUAGE_LOCKED');
-   const removing=!idempotent && manifest.kind!=='course' && !keep && video!==null;
-   if(removing && Number(sharedProbe.raw)>0)throw new LmsSyncError(409,'SHARED_MATERIAL');
+   const revisionConflict=resourceRevisionConflict(previous,manifest,manifestHash);
+   if(revisionConflict)throw new LmsSyncError(409,revisionConflict);
+   if(!resourceCourseOwnerMatches(ownerUserId,mapping) || manifest.kind==='course' && !resourceCourseBindingMatches(ownerUserId,{
+    id:mapping.courseId,userId:mapping.userId,managedByLms:Boolean(mapping.managed),nativeAccessDisabled:Boolean(mapping.disabled),
+   },previous?.courseId))throw new LmsSyncError(409,'COURSE_BINDING_CHANGED');
+   if(!resourceVideoBindingMatches(ownerUserId,manifest,previous,video))throw new LmsSyncError(409,'RESOURCE_BINDING_CHANGED');
+   const reconciliation=planResourceReconciliation(ownerUserId,previous,video,manifest,mapping.courseId);
+   const {idempotent,keepVideo:keep}=reconciliation;
+   if(reconciliation.languageLocked)throw new LmsSyncError(409,'TRANSCRIPTION_LANGUAGE_LOCKED');
+   const removing=reconciliation.replaceSource && video!==null;
+   const removalBytes=removing && video?parseReservedBytesFromFileKey(video.file):null;
+   const removal=removing && video?planResourceRemoval({shared:Number(sharedProbe.raw)>0,status:video.status,bytes:removalBytes,uploadPeriodStart:video.period}):null;
+   if(removal?.kind==='blocked')throw new LmsSyncError(409,removal.code);
    const fences=[linkProbe,previousProbe,mappingProbe,videoProbe,oldCourseProbe,entryProbe,...(removing?[sharedProbe]:[])];
    const token=crypto.randomUUID(),videoToken=token+':video',courseToken=token+':course',clockToken=token+':month';
    const exists=(receipt=token)=>`EXISTS(SELECT 1 FROM mutation_receipts WHERE token='${receipt}')`;
@@ -81,20 +90,20 @@ export function createD1LmsResourceSyncRepository(database:D1Database):LmsResour
    }
    if(!idempotent){
     if(manifest.kind!=='course'){
-     if(previous?.courseId!=null && previous.videoId!=null){
-      if(previous.contextId!==manifest.contextId)statements.push(prepared(`DELETE FROM lti_course_video_tags WHERE video_id=? AND tag_id IN(SELECT id FROM lti_course_tags WHERE course_id=?) AND ${exists()}`,[previous.videoId,previous.courseId]));
+     if(reconciliation.detachMembership && previous){
+      if(reconciliation.clearPreviousVocabulary)statements.push(prepared(`DELETE FROM lti_course_video_tags WHERE video_id=? AND tag_id IN(SELECT id FROM lti_course_tags WHERE course_id=?) AND ${exists()}`,[previous.videoId,previous.courseId]));
       statements.push(prepared(`DELETE FROM video_course_members WHERE course_id=? AND video_id=? AND ${exists()}`,[previous.courseId,previous.videoId]));
      }
-     if(removing && video){
-      const bytes=parseReservedBytesFromFileKey(video.file);
+     if(video && removal?.kind==='remove'){
+      const bytes=removalBytes;
       const multipart=video.multipart?JSON.parse(video.multipart) as {uploadId:string}:null;
       statements.push(prepared(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'storage_cleanup',?,? WHERE ${exists()} ON CONFLICT(dedupe_key) DO NOTHING`,
        [JSON.stringify({file_key:video.file,user_id:ownerUserId,bytes,...(multipart?{multipart_upload_id:multipart.uploadId}:{})}),`storage:video:${video.id}`]),
-       prepared(`INSERT INTO external_tasks(kind,payload,dedupe_key,available_at) SELECT 'storage_cleanup',?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+2 hours') WHERE ${exists()} AND ?='uploading'
+       prepared(`INSERT INTO external_tasks(kind,payload,dedupe_key,available_at) SELECT 'storage_cleanup',?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+2 hours') WHERE ${exists()} AND ?=1
         AND EXISTS(SELECT 1 FROM lms_installations WHERE id=? AND materials_service IS NOT NULL) ON CONFLICT(dedupe_key) DO NOTHING`,
-        [JSON.stringify({file_key:video.file,user_id:ownerUserId,bytes:null}),`storage:video:${video.id}:late-upload`,video.status,grant.id]),
+        [JSON.stringify({file_key:video.file,user_id:ownerUserId,bytes:null}),`storage:video:${video.id}:late-upload`,Number(removal.lateUploadCleanup),grant.id]),
        enqueueCurrentSceneDeletes(database,video.id,token),enqueueStagedSceneDeletes(database,video.id,token));
-      if(video.status==='uploading' && video.period && bytes)statements.push(prepared(`UPDATE users SET used_upload_bytes=max(0,used_upload_bytes-?) WHERE id=? AND julianday(upload_usage_period_start)=julianday(?) AND ${exists()}`,[bytes,ownerUserId,video.period]));
+      if(removal.refund)statements.push(prepared(`UPDATE users SET used_upload_bytes=max(0,used_upload_bytes-?) WHERE id=? AND julianday(upload_usage_period_start)=julianday(?) AND ${exists()}`,[removal.refund.bytes,ownerUserId,removal.refund.periodStart]));
       statements.push(prepared(`DELETE FROM mcp_idempotency_records WHERE user_id=? AND resource_id=? AND action IN('request_video_upload','create_youtube_video') AND ${exists()}`,[ownerUserId,video.id]),
        prepared(`DELETE FROM videos WHERE id=? AND user_id=? AND ${exists()}`,[video.id,ownerUserId]));
      }
@@ -107,41 +116,42 @@ export function createD1LmsResourceSyncRepository(database:D1Database):LmsResour
        statements.push(prepared(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'sqs_job',json_set(?,'$.message.payload.video_id',resource_id),? FROM mutation_receipts WHERE token=?`,[JSON.stringify({message}),'job:'+message.job_id,videoToken]));
       }else{
        const file=manifest.file!;
-       if(!Number.isSafeInteger(file.size) || file.size<=0)throw new Error("Upload reservation bytes must be a positive safe integer.");
+       validateUploadReservationBytes(file.size);
        statements.push(prepared(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,${MONTH},0 WHERE ${exists()}`,[clockToken]));
        const period=`(SELECT kind FROM mutation_receipts WHERE token='${clockToken}')`;
        const usage=`CASE WHEN strftime('%Y-%m',upload_usage_period_start)=strftime('%Y-%m',${period}) THEN used_upload_bytes ELSE 0 END`;
        statements.push(prepared(`INSERT INTO videos(user_id,managed_by_lms,title,description,transcript,error_message,file,status,source_type,source_url,youtube_video_id,uploaded_at,transcription_language,upload_usage_period_start)
         SELECT id,1,?,'','','',?,'uploading','uploaded','','',${NOW},?,${period} FROM users WHERE id=? AND ${exists()}
-        AND is_over_quota IS NOT TRUE AND (storage_limit_gb IS NULL OR used_storage_bytes<=floor(storage_limit_gb*1073741824)-?)
-        AND (monthly_upload_limit_gb IS NULL OR (${usage})<=floor(monthly_upload_limit_gb*1073741824)-?)
+        AND is_over_quota IS NOT TRUE AND ${quotaAllowsAdditional('used_storage_bytes','floor(storage_limit_gb*1073741824)','?',quotaSqlComparison)}
+        AND ${quotaAllowsAdditional(usage,'floor(monthly_upload_limit_gb*1073741824)','?',quotaSqlComparison)}
         AND used_storage_bytes<=9007199254740991-? AND (${usage})<=9007199254740991-?`,
         [manifest.title,buildPendingUploadFileKey(ownerUserId,file.size,fileExtension(file.filename)),manifest.transcriptionLanguage??null,ownerUserId,file.size,file.size,file.size,file.size]),
         prepared(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'lms_upload',last_insert_rowid() WHERE changes()=1`,[videoToken]),
         prepared(`UPDATE users SET used_storage_bytes=used_storage_bytes+?,used_upload_bytes=(${usage})+?,upload_usage_period_start=${period} WHERE id=? AND ${exists(videoToken)}`,[file.size,file.size,ownerUserId]));
       }
-     }else if(manifest.enabled && keep)statements.push(prepared(`UPDATE videos SET title=?,managed_by_lms=1 WHERE id=? AND user_id=? AND ${exists()}`,[manifest.title,previous.videoId,ownerUserId]));
+     }else if(manifest.enabled && keep)statements.push(prepared(`UPDATE videos SET title=?,managed_by_lms=1 WHERE id=? AND user_id=? AND ${exists()}`,[manifest.title,reconciliation.videoId,ownerUserId]));
     }
-    const chosenVideo=keep?String(previous.videoId):`(SELECT resource_id FROM mutation_receipts WHERE token='${videoToken}')`;
+    const chosenVideo=keep?String(reconciliation.videoId):`(SELECT resource_id FROM mutation_receipts WHERE token='${videoToken}')`;
     if(manifest.kind==='course' && manifest.courseTitle || manifest.kind!=='course' && manifest.enabled){
      statements.push(prepared(`UPDATE video_courses SET managed_by_lms=1,native_access_disabled=1,name=coalesce(?,name),updated_at=${NOW} WHERE id=? AND user_id=? AND ${exists()} ${manifest.kind==='course'?'':`AND ${chosenVideo} IS NOT NULL`}`,
-      [manifest.kind==='course' || !entryProbe.raw?manifest.courseTitle??null:null,mapping.courseId,ownerUserId]));
+      [resourceCourseTitle(manifest,Boolean(entryProbe.raw)),mapping.courseId,ownerUserId]));
     }
     const chosenCourse=String(mapping.courseId);
     if(manifest.kind!=='course' && manifest.enabled)statements.push(prepared(`INSERT INTO video_course_members(course_id,video_id,"order",added_at)
      SELECT ${chosenCourse},${chosenVideo},0,${NOW} WHERE ${exists()} AND ${chosenVideo} IS NOT NULL`));
     const blocked=manifest.kind!=='course' && manifest.kind!=='youtube' && manifest.enabled && !keep;
-    const error=blocked?`CASE WHEN ${chosenVideo} IS NULL THEN (SELECT CASE WHEN is_over_quota IS TRUE OR (storage_limit_gb IS NOT NULL AND used_storage_bytes>floor(storage_limit_gb*1073741824)-?)
-     THEN 'STORAGE_LIMIT_EXCEEDED' WHEN monthly_upload_limit_gb IS NOT NULL THEN 'MONTHLY_UPLOAD_LIMIT_EXCEEDED' ELSE 'STORAGE_LIMIT_EXCEEDED' END FROM users WHERE id=?) ELSE NULL END`:'NULL';
+    const storageBlocked=`is_over_quota IS TRUE OR NOT ${quotaAllowsAdditional('used_storage_bytes','floor(storage_limit_gb*1073741824)','?',quotaSqlComparison)}`;
+    const quotaError=resourceUploadError(storageBlocked,'monthly_upload_limit_gb IS NOT NULL',resourceSqlErrorChoice);
+    const error=blocked?`CASE WHEN ${chosenVideo} IS NULL THEN (SELECT ${quotaError} FROM users WHERE id=?) ELSE NULL END`:'NULL';
     const isCourse=manifest.kind==='course';
+    const content=resourceContentValues(previous,manifest);
     statements.push(prepared(`INSERT INTO lms_resources(id,installation_id,external_id,kind,context_id,resource_link_id,generation,manifest_hash,enabled,content_hash,content_type,file_size,youtube_video_id,course_id,video_id,sync_error,updated_at)
      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,${chosenCourse},${isCourse?'NULL':chosenVideo},${error},${NOW} WHERE ${exists()}
      ON CONFLICT(id) DO UPDATE SET installation_id=excluded.installation_id,external_id=excluded.external_id,kind=excluded.kind,context_id=excluded.context_id,
       resource_link_id=excluded.resource_link_id,generation=excluded.generation,manifest_hash=excluded.manifest_hash,enabled=excluded.enabled,content_hash=excluded.content_hash,
       content_type=excluded.content_type,file_size=excluded.file_size,youtube_video_id=excluded.youtube_video_id,course_id=excluded.course_id,video_id=excluded.video_id,sync_error=excluded.sync_error,updated_at=excluded.updated_at`,
      [previous?.id??crypto.randomUUID(),grant.id,externalId,manifest.kind??'video',manifest.contextId,manifest.resourceLinkId,manifest.generation,manifestHash,manifest.enabled?1:0,
-      isCourse || manifest.deleted?null:manifest.file?.contentHash??previous?.contentHash??null,isCourse || manifest.deleted?null:manifest.file?.contentType??previous?.contentType??null,
-      isCourse || manifest.deleted?null:manifest.file?.size??previous?.fileSize??null,manifest.kind==='youtube'?manifest.youtubeVideoId??previous?.youtubeVideoId??null:null,...(blocked?[manifest.file!.size,ownerUserId]:[])]));
+      content.contentHash,content.contentType,content.fileSize,content.youtubeVideoId,...(blocked?[manifest.file!.size,ownerUserId]:[])]));
    }
    statements.push(prepared(`SELECT ${RESOURCE} AS value FROM lms_resources WHERE installation_id=? AND external_id=? AND ${exists()}`,[grant.id,externalId]),
     prepared('DELETE FROM mutation_receipts WHERE token IN(?,?,?,?)',[token,videoToken,courseToken,clockToken]));

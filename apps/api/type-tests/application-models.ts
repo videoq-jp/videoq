@@ -25,3 +25,29 @@ export type AdminFlagsCompatibility = Assert<Equal<AdminFlagsPatch, Omit<RpcInpu
 export type LearningGrantCompatibility = Assert<Equal<LearningGrant, z.infer<typeof sessionRecord>>>;
 export type NativeClaimsCompatibility = Assert<Equal<NativeLearningClaims,
   Pick<z.infer<typeof nativeAssertionClaims>, keyof NativeLearningClaims>>>;
+
+import type { AdminQuotaPatch, AdminUsagePatch } from '../src/application/admin';
+export type AdminQuotaCompatibility = Assert<Equal<AdminQuotaPatch, Omit<RpcInputMap['admin.patchQuota'], 'id'>>>;
+export type AdminUsageCompatibility = Assert<Equal<AdminUsagePatch, Omit<RpcInputMap['admin.patchUsage'], 'id'>>>;
+
+import type { LtiLoginRecord } from '../src/application/lti-launch';
+import type { loginRecord } from '../src/features/lti/protocol';
+export type LoginRecordCompatibility = Assert<Equal<LtiLoginRecord, z.infer<typeof loginRecord>>>;
+
+import type { ClassroomConfig, ClassroomLaunch, ClassroomAccount, ClassroomMaterial } from '../src/application/classroom';
+import type { ClassroomConfig as Config, launchSchema, materialSchema } from '../src/features/classroom/config';
+import type { accountSchema } from '../src/features/classroom/oauth';
+export type ClassroomConfigCompatibility = Assert<Equal<ClassroomConfig, Config>>;
+export type ClassroomLaunchCompatibility = Assert<Equal<ClassroomLaunch, z.infer<typeof launchSchema>>>;
+export type ClassroomMaterialCompatibility = Assert<Equal<ClassroomMaterial, z.infer<typeof materialSchema>>>;
+export type ClassroomAccountCompatibility = Assert<Equal<ClassroomAccount, z.infer<typeof accountSchema>>>;
+
+import type { ManagementIdentity, ManagementContext } from '../src/application/lms-management';
+import type { moodleManagementRequest, moodleManagementContext } from '@videoq/trpc/moodle-management';
+export type ManagementIdentityCompatibility = Assert<Equal<ManagementIdentity, z.infer<typeof moodleManagementRequest>>>;
+export type ManagementContextCompatibility = Assert<Equal<ManagementContext, z.infer<typeof moodleManagementContext>>>;
+
+import type { ClassroomStoredSession } from '../src/features/classroom/workflow-service';
+import type { classroomSession } from '../src/features/classroom/authorization';
+export type ClassroomSessionCompatibility = Assert<ClassroomStoredSession extends z.infer<typeof classroomSession> ? true : false>;
+export type ClassroomSessionReverseCompatibility = Assert<z.infer<typeof classroomSession> extends ClassroomStoredSession ? true : false>;

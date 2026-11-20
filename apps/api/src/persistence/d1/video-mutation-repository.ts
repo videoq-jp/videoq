@@ -1,8 +1,10 @@
+import { videoDeletionAllowed, videoCleanup, videoAbortRefundAllowed } from '../../application/video-mutation';
+import { videoTranscriptChanged } from '../../application/video-mutation';
+import { videoMutationStringLogic } from '../video-mutation-policy-sql';
 import { and, eq, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { videos } from "../../db/schema/sqlite";
 import { buildJobMessage, JOB_REINDEX_VIDEO_TRANSCRIPT } from "../../lib/job-message";
-import { parseReservedBytesFromFileKey } from "../../lib/upload";
 import type { VideoDetailRow } from "../contracts/video-read-repository";
 import { validateVideoDeletionOptions, type VideoMutationRepository } from "../contracts/video-mutation-repository";
 import { videoDetailProjection } from "./video-read-repository";
@@ -22,7 +24,7 @@ export function createD1VideoMutationRepository(database: D1Database, onIndexWor
         sql`EXISTS(SELECT 1 FROM mutation_receipts WHERE token=${token})`)).toSQL();
       const results = await database.batch<Record<string, unknown>>([
         database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id,effect_applied)
-          SELECT ?,'video_update',id,? IS NOT NULL AND coalesce(transcript,'') IS NOT ? FROM videos WHERE id=? AND user_id=?`)
+          SELECT ?,'video_update',id,${videoTranscriptChanged('? IS NOT NULL',"coalesce(transcript,'') IS NOT ?",videoMutationStringLogic)} FROM videos WHERE id=? AND user_id=?`)
           .bind(token, fields.transcript ?? null, fields.transcript ?? null, videoId, userId),
         database.prepare(`UPDATE videos SET title=coalesce(?,title),description=coalesce(?,description),transcript=coalesce(?,transcript)
           WHERE id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
@@ -63,14 +65,11 @@ export function createD1VideoMutationRepository(database: D1Database, onIndexWor
         const [video] = await db.select({ status: videos.status, file: videos.file, multipart: videos.multipartUpload,
           heartbeat: videos.uploadHeartbeatAt, uploadPeriod: videos.uploadUsagePeriodStart }).from(videos)
           .where(and(eq(videos.id, videoId), eq(videos.userId, userId))).limit(1);
-        if (!video || options.expectedStatus !== undefined && video.status !== options.expectedStatus ||
-            options.expectedFileKey !== undefined && video.file !== options.expectedFileKey ||
-            options.inactiveBefore && video.heartbeat !== null && new Date(video.heartbeat) >= options.inactiveBefore) {
+        if (!videoDeletionAllowed(video,options)) {
           return { deleted: false, cleanupTaskId: null };
         }
         const token = crypto.randomUUID();
-        const fileKey = video.file || null;
-        const bytes = fileKey ? parseReservedBytesFromFileKey(fileKey) ?? options.fallbackStorageBytes ?? null : null;
+        const { fileKey, bytes } = videoCleanup(video.file,options.fallbackStorageBytes);
         const cleanupKey = `storage:video:${videoId}`;
         const cleanupPayload = JSON.stringify({ user_id: userId, file_key: fileKey, bytes,
           ...(video.multipart ? { multipart_upload_id: video.multipart.uploadId } : {}) });
@@ -85,7 +84,7 @@ export function createD1VideoMutationRepository(database: D1Database, onIndexWor
           enqueueCurrentSceneDeletes(database, videoId, token),
           enqueueStagedSceneDeletes(database, videoId, token),
           database.prepare(`UPDATE users SET used_upload_bytes=max(0,used_upload_bytes-?) WHERE id=? AND upload_usage_period_start=?
-            AND ?='uploading' AND ?>0 AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
+            AND ${videoAbortRefundAllowed('?','?',videoMutationStringLogic)} AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
             .bind(bytes ?? 0, userId, video.uploadPeriod, video.status, bytes ?? 0, token),
           database.prepare(`DELETE FROM mcp_idempotency_records WHERE user_id=? AND resource_id=? AND action IN ('request_video_upload','create_youtube_video')
             AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`).bind(userId, videoId, token),

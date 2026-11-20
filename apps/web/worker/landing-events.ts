@@ -1,4 +1,4 @@
-import { isLandingEventPayload } from '../src/lib/landingEvents';
+import { isLandingEventPayload } from '../src/application/landing-events';
 
 const MAX_BYTES = 512;
 

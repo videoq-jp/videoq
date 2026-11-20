@@ -1,4 +1,4 @@
-/** A public, transport-independent domain error. Infrastructure errors stay private. */
+/** Public tool-adapter error; infrastructure details stay private. */
 export class ToolError extends Error {
   constructor(message: string, public readonly data: unknown = undefined) {
     super(message);

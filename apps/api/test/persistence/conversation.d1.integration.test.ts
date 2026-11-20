@@ -7,13 +7,13 @@ import {emptyCheckpoint} from '@langchain/langgraph-checkpoint';
 import {plainChatAnswer} from '@videoq/trpc/chat';
 import {createD1Fixture} from './d1-fixture';
 import {openD1Conversation,pruneD1Conversations} from '../../src/persistence/d1/conversation';
-import {ConversationBusyError,ConversationNotFoundError,type OpenConversation} from '../../src/persistence/contracts/conversation';
+import {ConversationBusyError,ConversationNotFoundError} from '../../src/persistence/contracts/conversation';
 let f:Awaited<ReturnType<typeof createD1Fixture>>;
 const scope={ownerUserId:'owner',actorUserId:'owner',courseId:1,shareSlug:null};
 const answer=plainChatAnswer('answer');
 const prepare=()=>({userId:'owner',courseId:1,question:'question',answer,retrievedContexts:[],isShared:false});
 const open=(id='conversation',existing=false)=>openD1Conversation(f.database,scope,id,existing);
-async function result(chat:OpenConversation){
+async function result(chat:Awaited<ReturnType<typeof open>>){
   const checkpoint=emptyCheckpoint();
   await chat.saver.put({configurable:{thread_id:chat.threadId}},checkpoint,{source:'loop',step:0,parents:{}},{});
   return {queryText:'question',answer,retrievedContexts:[],checkpointId:checkpoint.id};

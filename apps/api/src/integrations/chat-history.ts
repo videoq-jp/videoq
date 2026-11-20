@@ -1,3 +1,4 @@
+import { streamChatHistoryCsv } from '../shared/csv';
 import { createChatHistoryService } from '../features/chat/service';
 import { getCourseChatHistory, deleteCourseChatLogs, getCourseChatAnalytics, updateChatLogFeedback, shareSlugExists as shareExists, iterateCourseChatHistoryForExport } from '../repositories/chat-repository';
 import { courseOwnedBy } from '../repositories/course-repository';
@@ -32,7 +33,9 @@ export async function analyticsForCourse(env: Bindings, ...args: Parameters<Serv
   return chatHistoryService(env).analyticsForCourse(...args);
 }
 export async function exportHistoryCsv(env: Bindings, ...args: Parameters<Service["exportHistoryCsv"]>) {
-  return chatHistoryService(env).exportHistoryCsv(...args);
+  const result = await chatHistoryService(env).exportHistoryCsv(...args);
+  if ("rows" in result) return { filename: result.filename, body: streamChatHistoryCsv(result.rows) };
+  return { notFound: true } as const;
 }
 export async function submitFeedback(env: Bindings, ...args: Parameters<Service["submitFeedback"]>) {
   return chatHistoryService(env).submitFeedback(...args);

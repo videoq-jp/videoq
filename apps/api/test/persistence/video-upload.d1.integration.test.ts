@@ -7,6 +7,7 @@ videoUploadContract("D1 (workerd)", async () => {
   await database.prepare("CREATE TRIGGER reject_video BEFORE INSERT ON videos WHEN NEW.title='reject' BEGIN SELECT RAISE(ABORT,'test rejection'); END").run();
   return {
     repository: createD1VideoUploadRepository(database),
+    removeVideo: async videoId => { await database.prepare('DELETE FROM videos WHERE id=?').bind(videoId).run(); },
     seedOwner: async (options = {}) => {
       await database.prepare(`INSERT INTO users
         (id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,

@@ -1,7 +1,13 @@
+import { visualAttemptAdoptable, visualChunkPublishAllowed, visualPlan, visualReadyAllowed, visualRunMutable,
+  visualRunRecoveryAllowed, visualSourceCurrent, validateVisualCheckpoint, visualAttemptAllowed } from '../../application/visual-checkpoint-policy';
+import { visualStringLogic as logic } from '../visual-policy-sql';
 import { beginVisualObject } from "./visual-objects";
 import type { VisualCheckpoints, VisualRun, VisualChunk } from "../contracts/visual-checkpoints";
 const JOINS = "video_visual_runs r JOIN videos v ON v.id=r.video_id";
-const CURRENT = "r.file_key=v.file AND v.source_type='uploaded'";
+const CURRENT = visualSourceCurrent('r.file_key=v.file', "v.source_type='uploaded'", logic);
+const MUTABLE = visualRunMutable(CURRENT, "r.status<>'ready'", logic);
+const INITIAL = visualSourceCurrent('file=?', "source_type='uploaded'", logic);
+const CURRENT_RUN = `EXISTS(SELECT 1 FROM videos v WHERE v.id=video_visual_runs.video_id AND ${visualSourceCurrent('v.file=video_visual_runs.file_key', "v.source_type='uploaded'", logic)})`;
 const PROJECTION = `r.video_id AS videoId,r.run_id AS runId,r.file_key AS fileKey,r.duration_ms AS durationMs,r.chunk_count AS chunkCount,r.status,r.publication_version AS publicationVersion`;
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoints {
@@ -12,15 +18,14 @@ export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoin
         .bind(videoId,runId ?? null,runId ?? null).first<VisualRun>();
     },
     async initialize(videoId, fileKey, durationMs) {
-      if (!Number.isSafeInteger(durationMs) || durationMs<=0 || durationMs>36_000_000) throw new Error("Invalid visual duration");
-      const count = Math.ceil(durationMs/60_000);
+      const { count } = visualPlan(durationMs);
       const runId = crypto.randomUUID();
       const token = crypto.randomUUID();
       const result = await database.batch<VisualRun>([
-        database.prepare(`DELETE FROM video_visual_runs WHERE video_id=? AND file_key<>? AND EXISTS(SELECT 1 FROM videos WHERE id=? AND file=? AND source_type='uploaded')`)
+        database.prepare(`DELETE FROM video_visual_runs WHERE video_id=? AND file_key<>? AND EXISTS(SELECT 1 FROM videos WHERE id=? AND ${INITIAL})`)
           .bind(videoId,fileKey,videoId,fileKey),
         database.prepare(`INSERT INTO video_visual_runs(video_id,run_id,file_key,duration_ms,chunk_count)
-          SELECT id,?,?,?,? FROM videos WHERE id=? AND file=? AND source_type='uploaded' ON CONFLICT(video_id) DO NOTHING`)
+          SELECT id,?,?,?,? FROM videos WHERE id=? AND ${INITIAL} ON CONFLICT(video_id) DO NOTHING`)
           .bind(runId,fileKey,durationMs,count,videoId,fileKey),
         database.prepare("INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'visual_plan',? WHERE changes()=1").bind(token,videoId),
         database.prepare(`INSERT INTO video_visual_chunks(run_id,chunk_index) SELECT ?,value FROM json_each(?) WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
@@ -32,7 +37,7 @@ export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoin
     },
     async pending(runId) {
       const rows = await database.prepare(`SELECT c.chunk_index FROM video_visual_chunks c JOIN video_visual_runs r ON r.run_id=c.run_id
-        JOIN videos v ON v.id=r.video_id WHERE r.run_id=? AND ${CURRENT} AND r.status<>'ready' AND c.frame_count IS NULL ORDER BY c.chunk_index`)
+        JOIN videos v ON v.id=r.video_id WHERE r.run_id=? AND ${MUTABLE} AND c.frame_count IS NULL ORDER BY c.chunk_index`)
         .bind(runId).all<{chunk_index:number}>();
       return rows.results.map(r=>r.chunk_index);
     },
@@ -46,20 +51,23 @@ export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoin
       return results[0].results.length ? results[1].results : null;
     },
     async publishChunk(videoId,runId,index,frameCount,objectVersion) {
-      if (!Number.isSafeInteger(frameCount) || frameCount<0 || frameCount>60 || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(objectVersion)) throw new Error("Invalid visual checkpoint");
+      validateVisualCheckpoint(frameCount, objectVersion);
+      const publish = visualChunkPublishAllowed('frame_count IS NULL',
+        `EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='c:'||? AND a.video_id=? AND a.run_id=? AND a.chunk_index=?
+          AND a.status='pending' AND julianday(a.expires_at)>julianday('now'))`,
+        `EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${MUTABLE})`, logic);
+      const recover = visualRunRecoveryAllowed({ notReady: "status<>'ready'",
+        noChunkErrors: "NOT EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND last_error<>'')",
+        winningChunk: 'EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND object_version=?)', current: CURRENT_RUN,
+      }, logic);
       const result = await database.batch<{objectVersion:string|null}>([
         database.prepare(`UPDATE video_visual_chunks SET frame_count=?,object_version=?,last_error='',updated_at=${NOW}
-          WHERE run_id=? AND chunk_index=? AND frame_count IS NULL
-          AND EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='c:'||? AND a.video_id=? AND a.run_id=? AND a.chunk_index=?
-            AND a.status='pending' AND julianday(a.expires_at)>julianday('now')) AND EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${CURRENT} AND r.status<>'ready')`)
+          WHERE run_id=? AND chunk_index=? AND ${publish}`)
           .bind(frameCount,objectVersion,runId,index,objectVersion,videoId,runId,index,videoId,runId),
         database.prepare(`UPDATE visual_object_attempts SET status='published' WHERE id='c:'||? AND status='pending'
           AND EXISTS(SELECT 1 FROM video_visual_chunks c WHERE c.run_id=? AND c.chunk_index=? AND c.object_version=?)`)
           .bind(objectVersion,runId,index,objectVersion),
-        database.prepare(`UPDATE video_visual_runs SET status='processing',last_error='' WHERE run_id=? AND status<>'ready'
-          AND NOT EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND last_error<>'')
-          AND EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND object_version=?)
-          AND EXISTS(SELECT 1 FROM videos v WHERE v.id=video_visual_runs.video_id AND v.file=video_visual_runs.file_key AND v.source_type='uploaded')`).bind(runId,runId,runId,index,objectVersion),
+        database.prepare(`UPDATE video_visual_runs SET status='processing',last_error='' WHERE run_id=? AND ${recover}`).bind(runId,runId,runId,index,objectVersion),
         database.prepare(`SELECT c.object_version AS objectVersion FROM ${JOINS} JOIN video_visual_chunks c ON c.run_id=r.run_id
           WHERE v.id=? AND r.run_id=? AND c.chunk_index=? AND ${CURRENT}`).bind(videoId,runId,index),
       ]);
@@ -67,13 +75,15 @@ export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoin
       return {current:Boolean(row),objectVersion:row?.objectVersion ?? null};
     },
     async ready(videoId,runId,objectVersion) {
+      const adoptable = visualAttemptAdoptable("a.status='published'", "a.status='pending'", "julianday(a.expires_at)>julianday('now')", logic);
+      const ready = visualReadyAllowed({ current: CURRENT_RUN,
+        adoptableAttempt: `EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='m:'||? AND a.run_id=video_visual_runs.run_id AND ${adoptable})`,
+        complete: 'chunk_count=(SELECT count(*) FROM video_visual_chunks WHERE run_id=? AND frame_count IS NOT NULL AND object_version IS NOT NULL)',
+        hasFrames: '(SELECT sum(frame_count) FROM video_visual_chunks WHERE run_id=?)>0',
+      }, logic);
       const result = await database.batch([
         database.prepare(`UPDATE video_visual_runs SET status='ready',publication_version=coalesce(publication_version,?),completed_at=coalesce(completed_at,${NOW}),last_error=''
-          WHERE video_id=? AND run_id=? AND EXISTS(SELECT 1 FROM videos v WHERE v.id=video_visual_runs.video_id AND v.file=video_visual_runs.file_key AND v.source_type='uploaded')
-            AND EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='m:'||? AND a.run_id=video_visual_runs.run_id
-              AND (a.status='published' OR (a.status='pending' AND julianday(a.expires_at)>julianday('now'))))
-            AND chunk_count=(SELECT count(*) FROM video_visual_chunks WHERE run_id=? AND frame_count IS NOT NULL AND object_version IS NOT NULL)
-            AND (SELECT sum(frame_count) FROM video_visual_chunks WHERE run_id=?)>0 RETURNING run_id`)
+          WHERE video_id=? AND run_id=? AND ${ready} RETURNING run_id`)
           .bind(objectVersion,videoId,runId,objectVersion,runId,runId),
         database.prepare(`UPDATE visual_object_attempts SET status='published' WHERE id='m:'||? AND status='pending'
           AND EXISTS(SELECT 1 FROM video_visual_runs r JOIN videos v ON v.id=r.video_id WHERE r.run_id=? AND r.status='ready' AND r.publication_version=? AND r.file_key=v.file)`)
@@ -82,13 +92,14 @@ export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoin
       return result[0].results.length>0;
     },
     async failure(videoId,runId,index) {
+      const failure = visualAttemptAllowed(visualRunMutable(CURRENT_RUN, "status<>'ready'", logic), '? IS NOT NULL',
+        'EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND frame_count IS NULL)', logic);
       await database.batch([
         database.prepare(`UPDATE video_visual_chunks SET failures=failures+1,last_error='VISUAL_CHUNK_FAILED',updated_at=${NOW}
-          WHERE run_id=? AND chunk_index=? AND frame_count IS NULL AND EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${CURRENT} AND r.status<>'ready')`)
+          WHERE run_id=? AND chunk_index=? AND frame_count IS NULL AND EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${MUTABLE})`)
           .bind(runId,index ?? null,videoId,runId),
         database.prepare(`UPDATE video_visual_runs SET status='error',last_error='VISUAL_PROCESSING_FAILED'
-          WHERE video_id=? AND run_id=? AND status<>'ready' AND EXISTS(SELECT 1 FROM videos v WHERE v.id=video_visual_runs.video_id AND v.file=video_visual_runs.file_key AND v.source_type='uploaded')
-          AND (? IS NULL OR EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND frame_count IS NULL))`)
+          WHERE video_id=? AND run_id=? AND ${failure}`)
           .bind(videoId,runId,index ?? null,runId,index ?? null),
       ]);
     },

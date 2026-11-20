@@ -1,3 +1,4 @@
+import { saveVideoEdits } from '@/application/video-editing';
 import { useState, useCallback, useLayoutEffect, useRef, type SetStateAction } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Video } from '@videoq/trpc';
@@ -32,45 +33,14 @@ export function useVideoEditing({ video, videoId }: UseVideoEditingOptions) {
   }, []);
 
   const updateMutation = useMutation({
-    mutationFn: async () => {
-      if (!videoId || !video) return;
-
-      const currentTagIds = video.tags?.map(tag => tag.id) || [];
-      const tagsToAdd = editedTagIds.filter(id => !currentTagIds.includes(id));
-      const tagsToRemove = currentTagIds.filter(id => !editedTagIds.includes(id));
-      const metadata: { title?: string; description?: string } = {};
-      if (editedTitle !== video.title) metadata.title = editedTitle;
-      if (editedDescription !== (video.description ?? '')) metadata.description = editedDescription;
-      const metadataChanged = Object.keys(metadata).length > 0;
-      if (!metadataChanged && !tagsToAdd.length && !tagsToRemove.length) return;
-
-      let tagsChanged = false;
-      let updatedVideo: Video | undefined;
-      try {
-        if (metadataChanged) {
-          updatedVideo = await appTrpcClient.videos.update.mutate({
-            id: videoId,
-            ...metadata,
-          });
-        }
-
-        if (tagsToAdd.length > 0) {
-          tagsChanged = true;
-          await appTrpcClient.memberships.addTags.mutate({ videoId, tagIds: tagsToAdd });
-        }
-
-        // Finish all removals before refreshing, including when one fails.
-        tagsChanged ||= tagsToRemove.length > 0;
-        const removals = await Promise.allSettled(tagsToRemove.map(tagId =>
-          appTrpcClient.memberships.removeTag.mutate({ videoId, tagId })
-        ));
-        const failed = removals.find(result => result.status === 'rejected');
-        if (failed) throw failed.reason;
-      } finally {
-        // These requests can partially succeed; retries need the persisted state.
-        await invalidateAfterVideoUpdate(queryClient, videoId, { metadataChanged, tagsChanged, updatedVideo });
-      }
-    },
+    mutationFn: () => saveVideoEdits(videoId, video, {
+      title: editedTitle, description: editedDescription, tagIds: editedTagIds,
+    }, {
+      updateMetadata: input => appTrpcClient.videos.update.mutate(input),
+      addTags: input => appTrpcClient.memberships.addTags.mutate(input),
+      removeTag: input => appTrpcClient.memberships.removeTag.mutate(input),
+      refresh: (id, result) => invalidateAfterVideoUpdate(queryClient, id, result),
+    }),
     onSuccess: () => setIsEditing(false),
   });
   const { reset } = updateMutation;

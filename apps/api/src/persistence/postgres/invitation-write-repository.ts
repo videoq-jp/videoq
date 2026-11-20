@@ -1,9 +1,10 @@
+import { invitationDecisionState, invitationRecipientState, invitationBooleanChoice, planInvitationControl } from '../../application/invitation-lifecycle';
 import {features} from '../../lib/deployment';
-import {normalizeInvitationEmail} from '@videoq/trpc/course-invitations';
+import {normalizeInvitationEmail} from '@videoq/domain/course-invitations';
 import {and,eq} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {users,videoCourseInvitations,videoCourseMemberships,videoCourses} from '../../db/schema';
-import {effectiveInvitationStatus,isInvitationExpired,type InvitationStatus} from '../../lib/course-invitations';
+import {isInvitationExpired,type InvitationStatus} from '../../lib/course-invitations';
 import {nativeCourseExternalAccess} from './course-authority';
 import {insertInvitationEmailTasks} from './invitation-email-outbox';
 import type {Bindings} from '../../types/bindings';
@@ -40,16 +41,14 @@ export async function acceptCourseInvitation(
       if (invitationRows.length === 0) return { notFound: true } as const;
 
       const invitation = invitationRows[0];
-      if (
-        invitation.status === "accepted" &&
-        invitation.acceptedByUserId === userId
-      ) {
-        return { ok: true, courseId: Number(invitation.courseId) } as const;
-      }
-      if (invitation.status !== "pending") {
-        return { invalidState: invitation.status as InvitationStatus } as const;
-      }
-      if (isInvitationExpired(new Date(invitation.expiresAt), now)) {
+      const state = invitationDecisionState({ accepting: true, accepted: invitation.status === 'accepted',
+        acceptedByActor: invitation.acceptedByUserId === userId, notPending: invitation.status !== 'pending',
+        expired: isInvitationExpired(new Date(invitation.expiresAt), now) },
+        { replay: 'replay', invalidState: 'state', expired: 'expired', recipient: 'recipient' } as const,
+        invitationBooleanChoice<'replay' | 'state' | 'expired' | 'recipient'>());
+      if (state === 'replay') return { ok: true, courseId: Number(invitation.courseId) } as const;
+      if (state === 'state') return { invalidState: invitation.status as InvitationStatus } as const;
+      if (state === 'expired') {
         await tx
           .update(videoCourseInvitations)
           .set({ status: "expired", updatedAt: now.toISOString() })
@@ -62,12 +61,12 @@ export async function acceptCourseInvitation(
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      if (userRows.length === 0 || !userRows[0].emailVerified) {
-        return { emailUnverified: true } as const;
-      }
-      if (normalizeInvitationEmail(userRows[0].email) !== invitation.email) {
-        return { emailMismatch: true } as const;
-      }
+      const recipient = invitationRecipientState({ unverified: !userRows[0]?.emailVerified, identityChanged: false,
+        emailMismatch: normalizeInvitationEmail(userRows[0]?.email ?? '') !== invitation.email },
+        { unverified: 'unverified', retry: 'retry', mismatch: 'mismatch', apply: 'apply' } as const,
+        invitationBooleanChoice<'unverified' | 'retry' | 'mismatch' | 'apply'>());
+      if (recipient === 'unverified') return { emailUnverified: true } as const;
+      if (recipient === 'mismatch') return { emailMismatch: true } as const;
 
       await tx
         .insert(videoCourseMemberships)
@@ -114,10 +113,12 @@ export async function declineCourseInvitation(
         .for("update");
       if (invitationRows.length === 0) return { notFound: true } as const;
       const invitation = invitationRows[0];
-      if (invitation.status !== "pending") {
-        return { invalidState: invitation.status as InvitationStatus } as const;
-      }
-      if (isInvitationExpired(new Date(invitation.expiresAt), now)) {
+      const state = invitationDecisionState({ accepting: false, accepted: false, acceptedByActor: false,
+        notPending: invitation.status !== 'pending', expired: isInvitationExpired(new Date(invitation.expiresAt), now) },
+        { replay: 'replay', invalidState: 'state', expired: 'expired', recipient: 'recipient' } as const,
+        invitationBooleanChoice<'replay' | 'state' | 'expired' | 'recipient'>());
+      if (state === 'state') return { invalidState: invitation.status as InvitationStatus } as const;
+      if (state === 'expired') {
         await tx
           .update(videoCourseInvitations)
           .set({ status: "expired", updatedAt: now.toISOString() })
@@ -129,12 +130,12 @@ export async function declineCourseInvitation(
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      if (userRows.length === 0 || !userRows[0].emailVerified) {
-        return { emailUnverified: true } as const;
-      }
-      if (normalizeInvitationEmail(userRows[0].email) !== invitation.email) {
-        return { emailMismatch: true } as const;
-      }
+      const recipient = invitationRecipientState({ unverified: !userRows[0]?.emailVerified, identityChanged: false,
+        emailMismatch: normalizeInvitationEmail(userRows[0]?.email ?? '') !== invitation.email },
+        { unverified: 'unverified', retry: 'retry', mismatch: 'mismatch', apply: 'apply' } as const,
+        invitationBooleanChoice<'unverified' | 'retry' | 'mismatch' | 'apply'>());
+      if (recipient === 'unverified') return { emailUnverified: true } as const;
+      if (recipient === 'mismatch') return { emailMismatch: true } as const;
       await tx
         .update(videoCourseInvitations)
         .set({ status: "declined", updatedAt: now.toISOString() })
@@ -187,19 +188,15 @@ export async function rotatePendingCourseInvitation(
         .limit(1)
         .for("update");
       if (rows.length === 0) return { notFound: true } as const;
-      const status = effectiveInvitationStatus(
-        rows[0].status as InvitationStatus,
-        new Date(rows[0].expiresAt),
-        now,
-      );
-      if (status !== "pending") {
-        if (status === "expired" && rows[0].status === "pending") {
+      const plan = planInvitationControl(rows[0].status as InvitationStatus, new Date(rows[0].expiresAt), now);
+      if (plan.kind === 'deny') {
+        if (plan.markExpired) {
           await tx
             .update(videoCourseInvitations)
             .set({ status: "expired", updatedAt: now.toISOString() })
             .where(eq(videoCourseInvitations.id, invitationId));
         }
-        return { invalidState: status } as const;
+        return { invalidState: plan.status } as const;
       }
       // tokenHash は「誰も持っていないダミー」。古いリンクをここで即座に
       // 無効化し、実際に配る値は配送タスクが送信直前に発行する。
@@ -250,19 +247,15 @@ export async function revokePendingCourseInvitation(
         .limit(1)
         .for("update");
       if (rows.length === 0) return { notFound: true } as const;
-      const status = effectiveInvitationStatus(
-        rows[0].status as InvitationStatus,
-        new Date(rows[0].expiresAt),
-        now,
-      );
-      if (status !== "pending") {
-        if (status === "expired" && rows[0].status === "pending") {
+      const plan = planInvitationControl(rows[0].status as InvitationStatus, new Date(rows[0].expiresAt), now);
+      if (plan.kind === 'deny') {
+        if (plan.markExpired) {
           await tx
             .update(videoCourseInvitations)
             .set({ status: "expired", updatedAt: now.toISOString() })
             .where(eq(videoCourseInvitations.id, invitationId));
         }
-        return { invalidState: status } as const;
+        return { invalidState: plan.status } as const;
       }
       await tx
         .update(videoCourseInvitations)

@@ -12,6 +12,7 @@ import math
 import tempfile
 from pathlib import Path
 
+from worker_python.domain.visual_checkpoints import visual_source_eligible
 from worker_python.db import db_connection
 from worker_python.pipeline.media_process import media_input_args, run_media_process, media_failure
 from worker_python.pipeline.storage import ObjectMediaSource, upload_bytes
@@ -82,7 +83,7 @@ def publish_frame_cache(video_id: int, file_key: str, payload: bytes) -> bool:
         row = conn.execute(
             "SELECT file, source_type FROM videos WHERE id = %s FOR UPDATE", (video_id,),
         ).fetchone()
-        if not row or row["file"] != file_key or row["source_type"] != "uploaded":
+        if not row or not visual_source_eligible(file_key, row["file"], row["source_type"]):
             return False
         upload_bytes(frame_cache_key(file_key), payload, "application/json")
     return True

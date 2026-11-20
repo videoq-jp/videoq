@@ -1,3 +1,4 @@
+import { embedQuery } from '../src/lib/embeddings';
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -208,9 +209,11 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
       expect((await search.search("scene")).map((hit) => hit.content)).toEqual(["allowed scene", "selected scene"]);
       expect((await search.search("scene", [61])).map((hit) => hit.content)).toEqual(["selected scene"]);
       expect((await search.search("scene", [60, 60])).map((hit) => hit.content)).toEqual(["allowed scene"]);
+      const callsBeforeInvalidSelection = vi.mocked(embedQuery).mock.calls.length;
       for (const ids of [[], [62], [99], [60, 99]]) {
         await expect(search.search("scene", ids)).rejects.toThrow("subset");
       }
+      expect(vi.mocked(embedQuery).mock.calls.length).toBe(callsBeforeInvalidSelection);
     } finally {
       await search.close();
     }

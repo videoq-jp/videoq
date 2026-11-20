@@ -1,4 +1,5 @@
-import { MAX_VIDEO_UPLOAD_BYTES, type TranscriptionLanguage } from '@videoq/trpc/video-upload';
+import type { TranscriptionLanguage } from '@videoq/domain/video-upload';
+import { compressedUploadExceedsBudget, uploadCompressionBudget } from '@/application/video-upload';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
@@ -198,16 +199,13 @@ export function useVideoUpload(): UseVideoUploadReturn {
     let compressed: Awaited<ReturnType<typeof compressVideo>> | undefined;
     try {
       if (validation.upload.source === 'file') {
-        const storageRemaining = user?.storage_limit_bytes == null ? Infinity
-          : Math.max(0, user.storage_limit_bytes - (user.used_storage_bytes ?? 0));
-        // Do not let a cached account response from the previous month block a new one.
-        const uploadUsed = user?.upload_resets_at && Date.parse(user.upload_resets_at) <= Date.now()
-          ? 0 : user?.used_upload_bytes ?? 0;
-        const monthlyRemaining = user?.monthly_upload_limit_bytes == null ? Infinity
-          : Math.max(0, user.monthly_upload_limit_bytes - uploadUsed);
-        const maxCompressedBytes = Math.min(MAX_VIDEO_UPLOAD_BYTES, storageRemaining, monthlyRemaining);
-        if (maxCompressedBytes <= 0) {
-          setError(storageRemaining <= 0 ? 'videos.upload.validation.storageLimitExceeded' : 'videos.upload.validation.monthlyUploadLimitExceeded');
+        const { maxBytes: maxCompressedBytes, blockedBy } = uploadCompressionBudget({
+          storageLimitBytes: user?.storage_limit_bytes, storageUsedBytes: user?.used_storage_bytes,
+          monthlyLimitBytes: user?.monthly_upload_limit_bytes, monthlyUsedBytes: user?.used_upload_bytes,
+          uploadResetsAt: user?.upload_resets_at,
+        }, Date.now());
+        if (blockedBy) {
+          setError(blockedBy === 'storage' ? 'videos.upload.validation.storageLimitExceeded' : 'videos.upload.validation.monthlyUploadLimitExceeded');
           return;
         }
         const controller = new AbortController();
@@ -220,7 +218,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
           });
           controller.signal.throwIfAborted();
           // The server atomically reserves storage and monthly usage for these actual bytes.
-          if (compressed.file.size > maxCompressedBytes) throw new Error('videos.upload.compression.tooLarge');
+          if (compressedUploadExceedsBudget(compressed.file.size, maxCompressedBytes)) throw new Error('videos.upload.compression.tooLarge');
           setCompressedSizes({ before: validation.upload.data.file.size, after: compressed.file.size });
           validation.upload.data.file = compressed.file;
         } catch (error) {

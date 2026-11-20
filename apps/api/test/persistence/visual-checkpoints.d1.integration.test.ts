@@ -70,6 +70,28 @@ describe("D1 visual checkpoint publication", () => {
     expect((await repo.load(1))!.status).toBe('processing');
     expect((await repo.chunks(1,run.runId))![0].frameCount).toBe(1);
   });
+  it('keeps other chunk errors until all failed chunks have saved results', async () => {
+    const run = (await repo.initialize(1, 'file.mp4', 120_000))!;
+    await repo.failure(1, run.runId, 0);
+    await repo.failure(1, run.runId, 1);
+    await publish(1, run.runId, 0, 1, crypto.randomUUID());
+    expect((await repo.load(1))!.status).toBe('error');
+    await publish(1, run.runId, 1, 0, crypto.randomUUID());
+    expect((await repo.load(1))!.status).toBe('processing');
+    expect(await ready(1, run.runId)).toBe(true);
+  });
+  it('fences a changed source type even when file and run still match', async () => {
+    const run = (await repo.initialize(1, 'file.mp4', 60_000))!;
+    const version = crypto.randomUUID();
+    await repo.beginObject(1, run.runId, version, 0);
+    await f.database.prepare("UPDATE videos SET source_type='youtube'").run();
+    expect(await repo.initialize(1, 'file.mp4', 60_000)).toBeNull();
+    expect(await repo.beginObject(1, run.runId, crypto.randomUUID(), 0)).toBe(false);
+    expect(await repo.publishChunk(1, run.runId, 0, 1, version)).toEqual({ current: false, objectVersion: null });
+    expect(await repo.pending(run.runId)).toEqual([]);
+    await repo.failure(1, run.runId, 0);
+    expect(await f.database.prepare('SELECT status FROM video_visual_runs').first('status')).toBe('processing');
+  });
   it("rolls back plan and guards when chunk creation fails", async () => {
     await f.database.prepare("CREATE TRIGGER reject_chunk BEFORE INSERT ON video_visual_chunks BEGIN SELECT RAISE(ABORT,'injected failure'); END").run();
     await expect(repo.initialize(1,'file.mp4',120_000)).rejects.toThrow();

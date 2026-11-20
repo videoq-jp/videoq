@@ -110,6 +110,7 @@ jobs:
             web:
               - 'apps/web/**'
               - 'packages/trpc/**'
+              - 'packages/domain/**'
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
@@ -127,6 +128,7 @@ jobs:
             api:
               - 'apps/api/**'
               - 'packages/trpc/**'
+              - 'packages/domain/**'
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/cd.yml'

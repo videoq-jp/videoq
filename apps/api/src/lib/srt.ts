@@ -1,4 +1,4 @@
-import { iterSrtCues } from "@videoq/trpc/transcript";
+import { iterSrtCues } from "@videoq/domain/transcript";
 
 export const INVALID_SRT_MESSAGE = "Transcript must be in valid SRT format.";
 

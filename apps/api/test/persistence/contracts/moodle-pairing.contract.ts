@@ -68,6 +68,15 @@ export function moodlePairingContract(name:string,setup:()=>Promise<Fixture>){
       await f.execute('UPDATE lti_credentials SET expires_at=? WHERE id=?',['2000-01-01',code.ownerKey]);await expect(exchange(code)).rejects.toMatchObject({status:401});
       const expired=await issue();await f.execute('UPDATE lti_credentials SET expires_at=? WHERE id=?',['2000-01-01',expired.codeHash]);await expect(exchange(expired)).rejects.toMatchObject({status:401});
     });
+    it('keeps invalid-code and inactive-owner failures ahead of pointer and connection conflicts',async()=>{
+      await exchange(await issue());const code=await issue('other');
+      await f.execute('UPDATE users SET is_active=? WHERE id=?',[false,'other']);
+      await f.execute('DELETE FROM lti_credentials WHERE id=?',[code.ownerKey]);
+      await expect(exchange(code)).rejects.toMatchObject({status:403,code:'INACTIVE_ACCOUNT'});
+      await f.execute('UPDATE lti_credentials SET expires_at=? WHERE id=?',['2000-01-01',code.codeHash]);
+      await expect(exchange(code)).rejects.toMatchObject({status:401,code:'INVALID_PAIRING_CODE'});
+      expect(await f.credential(code.codeHash)).not.toBeNull();expect(await f.count('lms_installations')).toBe(1);
+    });
     it('reconnects only the same owner in materials mode and does not consume conflicts',async()=>{
       const first=await exchange(await issue());const next=await issue();
       expect(await exchange(next,{deploymentId:'3'})).toEqual(first);

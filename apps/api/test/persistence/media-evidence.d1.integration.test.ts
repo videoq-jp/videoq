@@ -43,6 +43,10 @@ it("enforces owner, native membership, share and LMS isolation for D1 media and 
     expect((await getVideoEvidence(env, { ownerUserId: "owner", videoIds: [1] }, 1))?.visualRunId).toBeNull();
     await database.prepare("UPDATE video_visual_runs SET status='ready'").run();
     expect((await getVideoEvidence(env, { ownerUserId: "owner", videoIds: [1] }, 1))?.visualRunId).toBe(visualRunId);
+    await database.prepare("UPDATE videos SET file='replaced.mp4' WHERE id=1").run();
+    expect((await getVideoEvidence(env, { ownerUserId: "owner", videoIds: [1] }, 1))?.visualRunId).toBeNull();
+    await database.prepare("UPDATE videos SET file='lesson.mp4' WHERE id=1").run();
+    expect((await getVideoEvidence(env, { ownerUserId: "owner", videoIds: [1] }, 1))?.visualRunId).toBe(visualRunId);
     await database.prepare("UPDATE videos SET status='processing' WHERE id=1").run();
     expect(await getVideoEvidence(env, { ownerUserId: "owner", videoIds: [1] }, 1)).toBeNull();
   } finally { await dispose(); }

@@ -1,3 +1,4 @@
+import { nativeSessionMarkerExpiry } from '../../application/native-session-marker';
 import type {NativeSessionRepository} from '../contracts/native-session-repository';
 import {nativeSessionDenied,matchesNativeSession,validateNativeSessionInput} from '../../shared/native-session';
 type Credential={id:string;kind:string;payload:string;expires_at:string};
@@ -25,7 +26,7 @@ export function createD1NativeSessionRepository(database:D1Database):NativeSessi
     ON CONFLICT DO NOTHING`).bind(input.nonceHash,input.nonceExpiresAt.toISOString(),input.ownerUserId,input.expiresAt.toISOString(),...args),
    database.prepare(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
     SELECT ?,'moodle-native-started','{}',? WHERE changes()=1 ON CONFLICT DO NOTHING`)
-    .bind(input.markerHash,new Date(input.expiresAt.getTime()+120_000).toISOString()),
+    .bind(input.markerHash,nativeSessionMarkerExpiry(input.expiresAt).toISOString()),
    database.prepare(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
     SELECT ?,'session',?,? WHERE changes()=1 ON CONFLICT DO NOTHING`)
     .bind(input.sessionHash,JSON.stringify(input.grant),input.expiresAt.toISOString()),

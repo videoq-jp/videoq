@@ -20,6 +20,4 @@ export async function requireConversationCheckpoint(memory?: ConversationMemory)
   }
 }
 
-export class ConversationCommitError extends Error {
-  constructor(cause: unknown) { super('Could not save the completed conversation answer.', { cause }); }
-}
+export { ConversationCommitError } from '../features/chat/execution-service';

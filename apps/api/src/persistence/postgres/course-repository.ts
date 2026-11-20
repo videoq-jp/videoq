@@ -1,3 +1,5 @@
+import { courseEditable, validCourseOrderInput, courseOrderAllowed, planSelectedCourseOrder, courseArrayOrderPlanning, courseAccessRole, courseAuthenticatedRole, courseOwnerPriority } from '../../application/course-management';
+import { courseManagementDrizzleLogic, courseDrizzleRoleChoice, courseDrizzlePriorityChoice } from '../course-management-policy-sql';
 import type {CourseRepository,CourseInfo,CourseDetail,CourseListItem,CourseReadOptions} from '../contracts/course-repository';
 import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
 import { videoStatusSchema } from "@videoq/trpc";
@@ -154,12 +156,7 @@ async function mapCourseDetail(
     video_count: g.video_count,
     share_slug: g.share_slug ?? null,
     videos: nestedVideos,
-    access_role:
-      accessRole === "public"
-        ? "public"
-        : g.owner_user_id === accessRole.viewerUserId
-          ? "owner"
-          : "member",
+    access_role: courseAccessRole(accessRole, g.owner_user_id),
   };
 }
 
@@ -265,7 +262,7 @@ export async function updateCourse(
     const patch: { name?: string; description?: string } = {};
     if (fields.name !== undefined) patch.name = fields.name;
     if (fields.description !== undefined) patch.description = fields.description;
-    const where = and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false));
+    const where = and(eq(videoCourses.id, courseId), courseEditable(sql`${videoCourses.userId} = ${userId}`, sql`${videoCourses.managedByLms} = false`, courseManagementDrizzleLogic));
     const [course] = Object.keys(patch).length > 0
       ? await tx.update(videoCourses).set(patch).where(where).returning(courseDetailSelect)
       : await tx.select(courseDetailSelect).from(videoCourses).where(where).for("update").limit(1);
@@ -287,7 +284,7 @@ export async function deleteCourse(
       const owner = await tx
         .select({ id: videoCourses.id })
         .from(videoCourses)
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
+        .where(and(eq(videoCourses.id, courseId), courseEditable(sql`${videoCourses.userId} = ${userId}`, sql`${videoCourses.managedByLms} = false`, courseManagementDrizzleLogic)))
         .for("update");
       if (owner.length === 0) return { notFound: true } as const;
 
@@ -319,8 +316,7 @@ export async function reorderCourses(
   userId: string,
   courseIds: number[],
 ): Promise<{ mismatch: true } | { ok: true }> {
-  if (courseIds.length === 0) return { mismatch: true } as const;
-  if (new Set(courseIds).size !== courseIds.length) return { mismatch: true } as const;
+  if (!validCourseOrderInput(courseIds)) return { mismatch: true } as const;
 
   return withDb(env, async (db) => {
     return db.transaction(async (tx) => {
@@ -331,12 +327,12 @@ export async function reorderCourses(
          FOR UPDATE
       `);
       const rows = sel.rows as Array<{ display_order: number }>;
-      if (rows.length !== courseIds.length) return { mismatch: true } as const;
+      if (!courseOrderAllowed({ validInput: true, allSelectedOwned: rows.length === courseIds.length }, { and: (a, b) => a && b })) return { mismatch: true } as const;
       // Lock by stable IDs, then sort the current values returned after any lock wait.
-      const slots = rows.map((r) => r.display_order).sort((a, b) => a - b);
+      const assignment = planSelectedCourseOrder(courseIds, rows.map(r => r.display_order), courseArrayOrderPlanning);
       await tx.execute(sql`
         UPDATE video_courses AS g SET display_order = d.slot
-          FROM unnest(${sqlNumberArray(courseIds)}, ${sqlNumberArray(slots, "int")}) AS d(gid, slot)
+          FROM unnest(${sqlNumberArray(courseIds)}, ${sqlNumberArray(assignment.map(item => item.slot), "int")}) AS d(gid, slot)
          WHERE g.id = d.gid AND g.user_id = ${userId}
            AND g.display_order IS DISTINCT FROM d.slot
       `);
@@ -433,15 +429,12 @@ export async function listCoursesPage(
         display_order: videoCourses.displayOrder,
         created_at: videoCourses.createdAt,
         video_count: courseVideoCount,
-        access_role: sql<"owner" | "member">`CASE
-          WHEN ${videoCourses.userId} = ${userId} THEN 'owner'
-          ELSE 'member'
-        END`,
+        access_role: courseAuthenticatedRole(sql`${videoCourses.userId} = ${userId}`, courseDrizzleRoleChoice),
       })
       .from(videoCourses)
       .where(visibleToUser)
       .orderBy(
-        sql`CASE WHEN ${videoCourses.userId} = ${userId} THEN 0 ELSE 1 END`,
+        courseOwnerPriority(sql`${videoCourses.userId} = ${userId}`, courseDrizzlePriorityChoice),
         asc(videoCourses.displayOrder),
         desc(videoCourses.createdAt),
         asc(videoCourses.id),

@@ -44,6 +44,13 @@ export function courseHistoryContract(name:string,setup:()=>Promise<HistoryFixtu
    await f.execute('UPDATE lti_credentials SET expires_at=? WHERE id=?',['2000-01-01',await courseHistoryId(scope())]);expect(await read()).toEqual([]);
    await log(3);await append(3);expect((await read()).map(r=>r.logId)).toEqual([3]);
   });
+  it('distinguishes explicit empty scope from omitted membership and stores normalized scopes',async()=>{
+   await log(1);await append(1,[f.videoIds[1],f.videoIds[0],f.videoIds[1]]);
+   expect(await readCredential(f.env,await courseHistoryId(scope()),'lti-history')).toMatchObject({scopeVideoIds:f.videoIds});
+   await log(2);await append(2,[]);
+   expect(await readCredential(f.env,await courseHistoryId(scope()),'lti-history')).toMatchObject({scopeVideoIds:[],turns:[{logId:2}]});
+   expect((await read()).map(r=>r.logId)).toEqual([2]);expect(await read([])).toEqual([]);
+  });
   it('derives omitted scopes from current course membership',async()=>{
    await log(1);await appendCourseHistory(f.env,scope(),'question',1,undefined);
    expect(await readCredential(f.env,await courseHistoryId(scope()),'lti-history')).toMatchObject({scopeVideoIds:f.videoIds});

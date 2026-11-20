@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { canReadCourseHistory } from '@/application/course-access';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/digital-agency/cn';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ export function ChatPanelFrame({ courseId, shareToken, showTitle = true, showHis
   tab?: PanelTab; onTabChange?: (tab: PanelTab) => void; children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const showTabs = !!courseId && !shareToken && showHistory;
+  const showTabs = canReadCourseHistory(courseId, shareToken) && showHistory;
   return <div data-chat-frame className={cn('flex min-h-0 flex-col overflow-hidden border border-solid-gray-420 bg-white', className ?? 'h-[500px] lg:h-[600px]')}>
       {(showTitle || showTabs) && <div className="px-4 py-3 border-b border-solid-gray-200 shrink-0 flex flex-wrap items-center justify-between gap-4">
         {showTitle && <Heading size="18" className="shrink-0">

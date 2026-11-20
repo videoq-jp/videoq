@@ -1,3 +1,4 @@
+import type { QuotaReservationFailure } from '../../application/quota-policy';
 export type AiAnswerReservation = {
   userId:string;
   /** Opaque database timestamp: preserve its precision for the refund fence. */
@@ -7,8 +8,7 @@ export type AiAnswerReservation = {
 };
 export type AiAnswerReservationResult =
   | {reservation:AiAnswerReservation}
-  | {overQuota:true}
-  | {exceeded:true;limit:number};
+  | QuotaReservationFailure;
 export interface AiQuotaRepository {
   reserve(userId:string):Promise<AiAnswerReservationResult>;
   release(reservation:AiAnswerReservation):Promise<void>;

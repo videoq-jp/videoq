@@ -11,7 +11,6 @@ import { getCourseWithMembers, updateChatLogFeedback } from "../../repositories/
 import { sendChatMessage, streamChatMessage } from "../chat/message-service";
 import { courseAccessContext } from "./course-access";
 import { appendCourseHistory, readCourseHistory } from "./history";
-import { transcriptPage } from "./transcript";
 import { mountLtiQa } from "./qa-routes";
 import { mountLtiConversations } from "./conversation-routes";
 import { mountLtiManagement } from "./management-routes";
@@ -19,10 +18,11 @@ import { mountLtiTags } from "./tag-routes";
 import { mountLtiReports } from "./report-routes";
 import { ltiSubjectKey } from "./identity";
 import { ltiSessionProof } from "./data-lock";
-import { playbackCueHint } from "./playback-context";
+import { learningMaterials, prepareLearningChat, authorizeLearningCourse, readLearningTranscript,
+  issueLearningFeedback, readLearningHistory, updateLearningFeedback, completeLearningChat,
+  ownerLearningHistoryAvailable } from "./learning-service";
 import { digest, randomSecret, readCredential, recordScopeVideos, putLtiFeedback } from "./store";
 import type { LearningAuthorization } from "./session-authorization";
-import { learningFeatures } from "./session-authorization";
 
 export type LearningRefusal = (c: Context<AppEnv>, status?: 400 | 401 | 403) => Response;
 export type LearningAuthorizer = (c: Context<AppEnv>) => Promise<LearningAuthorization | { error: Response }>;
@@ -45,10 +45,10 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
   const currentContext = (access: LearningAuthorization, env: Bindings) =>
     access.current ? Promise.resolve(access.current) : courseAccessContext(access.reg, access.grant, env);
   async function feedbackReference(c: Context<AppEnv>, sessionHash: string, courseId: number, logId: number | null) {
-    if (logId === null) return undefined;
-    const id = randomSecret();
-    await putLtiFeedback(c.env, await digest(id), sessionHash, courseId, logId);
-    return id;
+    return issueLearningFeedback(logId, {
+      newId: randomSecret,
+      save: async (id, log) => { await putLtiFeedback(c.env, await digest(id), sessionHash, courseId, log); },
+    });
   }
 
   // Material capabilities come from Moodle on every request, never from LTI roles
@@ -58,20 +58,19 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     if ("error" in access) return { error: access.error } as const;
     const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + access.grant.subjectHash }]);
     if (denied) return { error: throttledResponse(c, denied) } as const;
-    try {
-      const current = await currentContext(access, c.env);
-      if (!current) return { error: refused(c, 403) } as const;
-      const course = access.course ?? await getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId,
-        ltiVideoGrant: [...current.videos, ...(current.managementVideos ?? [])].map(video => video.videoId) });
-      if (!course) return { error: refused(c, 403) } as const;
-      return { current, course, grant: access.grant, reg: access.reg, sessionHash: access.sessionHash };
-    } catch { return { error: refused(c, 403) } as const; }
+    const result = await authorizeLearningCourse(access, {
+      current: () => currentContext(access, c.env),
+      course: videos => getCourseWithMembers(c.env, { courseId: access.grant.courseId, ltiCourseGrant: access.grant.courseId, ltiVideoGrant: videos }),
+    });
+    return 'denied' in result ? { error: refused(c, 403) } as const : result;
   }
 
-  async function authorizeMaterials(c: Context<AppEnv>) {
-    const access = await authorizeCourse(c);
-    if ('error' in access) return access;
-    return access.current.videos.length ? access : { error: refused(c, 403) } as const;
+  function completeAnswer(c: Context<AppEnv>, access: LearningAuthorization, question: string, logId: number | null, videoIds: number[] | undefined) {
+    const { grant, sessionHash } = access;
+    return completeLearningChat(question, logId, videoIds, {
+      append: (text, log, videos) => appendCourseHistory(c.env, { ...grant, sessionProof: ltiSessionProof(grant, sessionHash) }, text, log, videos),
+      feedback: log => feedbackReference(c, sessionHash, grant.courseId, log),
+    });
   }
 
   mountLtiQa(ltiRoutes, authorizeCourse, refused);
@@ -85,7 +84,7 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
   ltiRoutes.post('/course-history', async c => {
     const access = await authorizeCourse(c);
     if ('error' in access) return access.error;
-    if (access.current.ownerHistory !== true) return refused(c, 403);
+    if (!ownerLearningHistoryAvailable(access.current)) return refused(c, 403);
     const input = z.object({ action: z.enum(['list', 'csv']) }).strict()
       .safeParse(await c.req.json().catch(() => null));
     if (!input.success) return refused(c);
@@ -102,27 +101,20 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
   ltiRoutes.post("/materials", async c => {
     const access = await authorizeCourse(c);
     if ("error" in access) return access.error;
-    return c.json({ ...(access.current.courseTitle ? { courseTitle: access.current.courseTitle } : {}), courseHistoryAvailable: access.current.ownerHistory === true, permissions: access.current.permissions, learningAvailable: access.current.videos.length > 0,
-      ...(access.grant.transport === "native" ? { nativeProtocol: 1, features: learningFeatures(access.reg, access.grant) } : {}),
-      order: (access.current.materialOrder ?? [...access.current.videos, ...(access.current.managementVideos ?? [])].map(video => video.videoId))
-        .filter(videoId => access.course.memberVideoIds.includes(videoId)),
-      videos: access.current.videos.filter(video => access.course.memberVideoIds.includes(video.videoId)),
-      managementVideos: (access.current.managementVideos ?? []).filter(video => access.course.memberVideoIds.includes(video.videoId)) });
+    return c.json(learningMaterials(access.current, access.course, access.reg, access.grant));
   });
 
   ltiRoutes.post("/transcript", async c => {
     const input = z.object({ videoId: z.number().int().positive().safe(), cursor: z.number().int().min(0).max(100_000).default(0),
       limit: z.number().int().min(1).max(100).default(50) }).strict().safeParse(await c.req.json().catch(() => null));
     if (!input.success) return refused(c);
-    const access = await authorizeMaterials(c);
+    const access = await authorizeCourse(c);
     if ("error" in access) return access.error;
-    const { videoId, cursor, limit } = input.data;
-    const material = access.current.videos.find(video => video.videoId === videoId);
-    if (!access.current.permissions.viewTranscript || !material || !access.course.memberVideoIds.includes(videoId)) return refused(c, 403);
-    const video = await getVideoEvidence(c.env, { ownerUserId: access.course.userId, videoIds: [videoId] }, videoId);
-    if (!video) return refused(c, 403);
-    if (video.transcriptTooLarge) return c.json(toErrorBody("VALIDATION_ERROR", "This transcript is too large to display."), 413);
-    return c.json({ videoId, title: material.title, ...transcriptPage(video.transcript, cursor, limit) });
+    const result = await readLearningTranscript(access, input.data, (ownerUserId, videoIds, videoId) =>
+      getVideoEvidence(c.env, { ownerUserId, videoIds }, videoId));
+    if ('denied' in result) return refused(c, 403);
+    if ('tooLarge' in result) return c.json(toErrorBody("VALIDATION_ERROR", "This transcript is too large to display."), 413);
+    return c.json(result.page);
   });
 
   ltiRoutes.post("/history", async c => {
@@ -131,14 +123,13 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     const { grant, sessionHash } = access;
     const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]);
     if (denied) return throttledResponse(c, denied);
-    let allowed;
-    try { allowed = (await currentContext(access, c.env))?.videos ?? null; } catch { return refused(c, 403); }
-    const course = access.course ?? await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: allowed?.map(video => video.videoId) });
-    if (!course) return refused(c, 403);
-    const turns = await readCourseHistory(c.env, grant, course.userId, course.memberVideoIds);
-    return c.json({ turns: await Promise.all(turns.map(async ({ logId, ...turn }) => ({ ...turn,
-      feedbackId: await feedbackReference(c, sessionHash, grant.courseId, logId),
-    }))) });
+    const result = await readLearningHistory(access, {
+      current: () => currentContext(access, c.env),
+      course: videos => getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: videos }),
+      turns: (owner, videos) => readCourseHistory(c.env, grant, owner, videos),
+      feedback: log => feedbackReference(c, sessionHash, grant.courseId, log),
+    });
+    return 'denied' in result ? refused(c, 403) : c.json(result);
   });
 
   ltiRoutes.on("POST", ["/messages", "/messages/stream"], async c => {
@@ -151,36 +142,22 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     if (!input.success) return refused(c);
     let current;
     try { current = await currentContext(access, c.env); } catch { return refused(c, 403); }
-    if (current && !current.videos.length) return refused(c, 403);
-    if (input.data.conversationId && !current?.permissions.manageOwnHistory) return refused(c, 403);
-    const allowed = current?.videos ?? null;
-    const subjectKey = await ltiSubjectKey(grant);
-    const conversation = input.data.conversationId ? { conversation_id: input.data.conversationId,
-      resume_conversation: input.data.resumeConversation ?? false } : {};
-    const ltiVideoGrant = allowed?.map(video => video.videoId);
-    // Do not feed prior answers from a newly restricted scope back into the model.
-    const usedScope = allowed ? await recordScopeVideos(c.env, sessionHash, ltiVideoGrant!) : null;
-    if (allowed && !usedScope) return refused(c, 401);
-    const scopeChanged = usedScope?.some(id => !ltiVideoGrant!.includes(id));
-    const messagesInput = scopeChanged ? [input.data.messages.at(-1)!] : input.data.messages;
-    let messages = messagesInput;
-    if (input.data.playback) {
-      const playback = input.data.playback;
-      if (allowed ? !ltiVideoGrant!.includes(playback.video_id) : grant.videoId !== playback.video_id) return refused(c, 403);
-      const course = await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant });
-      if (!course?.memberVideoIds.includes(playback.video_id)) return refused(c, 403);
-      const seconds = Math.floor(playback.position_seconds);
-      const time = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
-        .map(value => String(value).padStart(2, "0")).join(":");
-      const video = await getVideoEvidence(c.env, { ownerUserId: course.userId, videoIds: course.memberVideoIds }, playback.video_id);
-      const cueHint = playbackCueHint(video?.transcript ?? null, playback.position_seconds);
-      const last = messages.at(-1)!;
-      const contextual = chatMessagesSchema.safeParse([...messages.slice(0, -1), {
-        role: "user", content: `[視聴中の教材情報: 動画ID ${playback.video_id}、再生位置 ${time} (${seconds}秒)。「今の場面」「この説明」への質問では、この動画の字幕を確認し、再生位置を含む字幕区間を特定して、その区間の内容を中心に回答してください。${cueHint}]\n${last.content}`,
-      }]);
-      if (!contextual.success) return refused(c);
-      messages = contextual.data;
-    }
+    const prepared = await prepareLearningChat(current, grant, {
+      ...input.data,
+      playback: input.data.playback ? { videoId: input.data.playback.video_id, seconds: input.data.playback.position_seconds } : undefined,
+    }, {
+      subjectKey: () => ltiSubjectKey(grant),
+      recordScope: videos => recordScopeVideos(c.env, sessionHash, videos),
+      course: videos => getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId, ltiVideoGrant: videos }),
+      transcript: async (ownerUserId, videoIds, videoId) =>
+        (await getVideoEvidence(c.env, { ownerUserId, videoIds }, videoId))?.transcript ?? null,
+      validateMessages: messages => {
+        const parsed = chatMessagesSchema.safeParse(messages);
+        return parsed.success ? parsed.data : null;
+      },
+    });
+    if ('denied' in prepared) return refused(c, prepared.denied === 'expired' ? 401 : prepared.denied === 'invalid' ? 400 : 403);
+    const { messages, allowed, ltiVideoGrant, subjectKey, conversation } = prepared;
     if (c.req.path.endsWith("/stream")) {
       const connection = new AbortController();
       const result = await streamChatMessage(c.env, {
@@ -197,8 +174,7 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
           if (allowed) await stream.writeSSE({ data: JSON.stringify({ type: "scope", videos: allowed }) });
           await result.write(async event => {
             if (event.type === "done") {
-              await appendCourseHistory(c.env, {...grant,sessionProof:ltiSessionProof(grant,sessionHash)}, input.data.messages.at(-1)!.content, event.chat_log_id, ltiVideoGrant);
-              const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, event.chat_log_id);
+              const feedbackId = await completeAnswer(c, access, input.data.messages.at(-1)!.content, event.chat_log_id, ltiVideoGrant);
               await stream.writeSSE({ data: JSON.stringify({ type: "done", feedbackId, feedback: event.feedback }) });
             } else await stream.writeSSE({ data: JSON.stringify(event) });
           });
@@ -216,8 +192,7 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     });
     // Expose a session-bound feedback reference, never owner log IDs.
     if (result.status !== 200 || !("answer" in result.body)) return c.json(result.body, result.status);
-    await appendCourseHistory(c.env, {...grant,sessionProof:ltiSessionProof(grant,sessionHash)}, input.data.messages.at(-1)!.content, result.body.chat_log_id ?? null, ltiVideoGrant);
-    const feedbackId = await feedbackReference(c, sessionHash, grant.courseId, result.body.chat_log_id ?? null);
+    const feedbackId = await completeAnswer(c, access, input.data.messages.at(-1)!.content, result.body.chat_log_id ?? null, ltiVideoGrant);
     return c.json({ answer: result.body.answer, ...(feedbackId ? { feedbackId, feedback: result.body.feedback ?? null } : {}), ...(allowed ? { videos: allowed } : {}) });
   });
 
@@ -227,16 +202,20 @@ export function mountLearningRoutes(ltiRoutes: Hono<AppEnv>, authorize: Learning
     if ("error" in access) return access.error;
     const input = z.object({ feedbackId: opaque, feedback: z.enum(["good", "bad"]).nullable() }).strict().safeParse(await c.req.json().catch(() => null));
     if (!input.success) return refused(c);
-    const { grant, sessionHash } = access;
-    const ref = z.object({ sessionHash: z.string(), courseId: z.number().int().positive(), logId: z.number().int().positive() })
-      .safeParse(await readCredential(c.env, await digest(input.data.feedbackId), "lti-feedback"));
-    if (!ref.success || ref.data.sessionHash !== sessionHash || ref.data.courseId !== grant.courseId) return refused(c, 403);
-    try { await currentContext(access, c.env); } catch { return refused(c, 403); }
-    if (!await getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId })) return refused(c, 403);
-    const denied = await enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]);
-    if (denied) return throttledResponse(c, denied);
-    const updated = await updateChatLogFeedback(c.env, ref.data.logId, input.data.feedback, { ltiCourseGrant: grant.courseId });
-    if ("notFound" in updated || "forbidden" in updated) return refused(c, 403);
-    return c.json({ feedback: updated.feedback });
+    const { grant } = access;
+    const result = await updateLearningFeedback(access, input.data.feedbackId, input.data.feedback, {
+      reference: async id => {
+        const parsed = z.object({ sessionHash: z.string(), courseId: z.number().int().positive(), logId: z.number().int().positive() })
+          .safeParse(await readCredential(c.env, await digest(id), "lti-feedback"));
+        return parsed.success ? parsed.data : null;
+      },
+      current: () => currentContext(access, c.env),
+      course: () => getCourseWithMembers(c.env, { courseId: grant.courseId, ltiCourseGrant: grant.courseId }),
+      throttle: () => enforceThrottles(c.env, [{ scope: "chat_authenticated", ident: "lti:" + grant.subjectHash }]),
+      update: (logId, feedback) => updateChatLogFeedback(c.env, logId, feedback, { ltiCourseGrant: grant.courseId }),
+    });
+    if ('denied' in result) return refused(c, 403);
+    if ('throttled' in result) return throttledResponse(c, result.throttled);
+    return c.json(result);
   });
 }

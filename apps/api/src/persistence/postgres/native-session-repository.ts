@@ -1,3 +1,4 @@
+import { nativeSessionMarkerExpiry } from '../../application/native-session-marker';
 import {withClient} from '../../db/pool';
 import type {Bindings} from '../../types/bindings';
 import type {NativeSessionRepository} from '../contracts/native-session-repository';
@@ -14,7 +15,7 @@ export function createPostgresNativeSessionRepository(env:Bindings):NativeSessio
       if (nonce.rowCount !== 1) throw denied();
       const marker = await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
         VALUES($1,'moodle-native-started','{}',$2) ON CONFLICT DO NOTHING RETURNING id`,
-      [input.markerHash, new Date(input.expiresAt.getTime() + 120_000)]);
+      [input.markerHash, nativeSessionMarkerExpiry(input.expiresAt)]);
       if (marker.rowCount === 1) {
         const created = await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
           VALUES($1,'session',$2,$3) ON CONFLICT DO NOTHING RETURNING id`,

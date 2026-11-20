@@ -46,7 +46,7 @@ jobs:
         working-directory: apps/worker
         run: |
           uv sync --locked --extra dev
-          uv run --locked --extra dev pytest -q tests/test_transcription_whisper.py tests/test_embeddings.py tests/test_secrets_bootstrap.py --junitxml="$RUNNER_TEMP/basic-worker.xml"
+          uv run --locked --extra dev pytest -q tests/test_transcription_whisper.py tests/test_transcription_source_use_case.py tests/test_uploaded_transcription_use_case.py tests/test_embeddings.py tests/test_secrets_bootstrap.py --junitxml="$RUNNER_TEMP/basic-worker.xml"
       - name: Install upstream Homebrew bottles
         if: runner.os == 'macOS'
         run: |

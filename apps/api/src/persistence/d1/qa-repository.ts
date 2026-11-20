@@ -1,4 +1,4 @@
-import { qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
+import { qaNativePermissions, qaQuestionScopeAllowed, qaContentAbilities, qaMutationEffects, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import { qaSqlLogic } from "../qa-policy-sql";
 import type {QaQuestion,QaReply} from '../contracts/qa-repository';
 import type {QaRepository,QaPrincipal,QaAccess,QaCommand} from '../contracts/qa-repository';
@@ -42,10 +42,14 @@ function actor(principal:QaPrincipal,access:QaAccess,p:Parameters){
    shareMatches:`EXISTS(SELECT 1 FROM video_courses WHERE id=${course} AND lower(share_slug)=lower(${p.add(access.shareSlug??null)}))`,
   },qaSqlLogic);
  }
- const canPost=lti?p.add(lti.permissions.post):p.add(principal!==null),canVote=lti?p.add(lti.permissions.vote):p.add(principal!==null);
- const canDeleteOwn=lti?p.add(lti.permissions.deleteOwn):p.add(principal!==null),canModerate=lti?p.add(lti.permissions.moderate):isOwner;
+ const permissions=lti?{canPost:p.add(lti.permissions.post),canVote:p.add(lti.permissions.vote),
+  canDeleteOwn:p.add(lti.permissions.deleteOwn),canModerate:p.add(lti.permissions.moderate)}:qaNativePermissions(p.add(principal!==null),isOwner);
+ const {canPost,canVote,canDeleteOwn,canModerate}=permissions;
  const own=(alias:string)=>`coalesce(${alias}.author_id=${user} OR ${alias}.lti_author_id=${author},0)`;
- const visible=`q.course_id=${course}${lti?` AND (q.source_video_id IS NULL OR q.source_video_id IN(${videos})) AND (q.video_id IS NULL OR q.video_id IN(${videos}))`:''}`;
+ const scope=lti?qaQuestionScopeAllowed({sourceUnbound:'q.source_video_id IS NULL',sourceGranted:`q.source_video_id IN(${videos})`,
+  videoUnbound:'q.video_id IS NULL',videoGranted:`q.video_id IN(${videos})`,
+ },qaSqlLogic):null;
+ const visible=`q.course_id=${course}${scope?` AND ${scope}`:''}`;
  return {course,user,author,owner,session,guard,canPost,canVote,canDeleteOwn,canModerate,own,visible,videos,lti};
 }
 type Actor=ReturnType<typeof actor>;
@@ -106,25 +110,26 @@ async function mutate(database:D1Database,principal:Exclude<QaPrincipal,null>,co
  const add=(build:(p:Parameters,gate:string,a:Actor)=>string)=>{const p=new Parameters(),current=actor(principal,input,p);const gate=`EXISTS(SELECT 1 FROM mutation_receipts WHERE token=${p.add(token)} AND kind='qa' AND resource_id=0)`;statements.push(p.statement(database,build(p,gate,current)));};
  const audit=(action:string,replyId:string|null=null,condition:(a:Actor,p:Parameters)=>string=()=> '1')=>add((p,gate,current)=>`INSERT INTO course_qa_moderation(id,course_id,question_id,reply_id,actor_user_id,lti_actor_id,action) SELECT ${p.add(crypto.randomUUID())},${current.course},${p.add('questionId'in input?input.questionId:'')},${p.add(replyId)},${current.user},${current.author},${p.add(action)} WHERE ${gate} AND (${condition(current,p)})`);
  const ownQuestion=(current:Actor,p:Parameters)=>`EXISTS(SELECT 1 FROM course_questions q WHERE q.id=${p.add('questionId'in input?input.questionId:'')} AND ${current.own('q')})`;
+ const effects=qaMutationEffects(name,{ownQuestion:ownQ,ownReply:ownR,featureChanged:'0',featured:'featured' in input && input.featured},qaSqlLogic);
  if(name==='qa.ask')add((p,gate,current)=>`INSERT INTO course_questions(id,course_id,video_id,source_video_id,author_id,lti_author_id,lti_instructor,title,body) SELECT ${p.add(id)},${current.course},${p.add(input.videoId)},${p.add(input.videoId)},${current.user},${current.author},${p.add(current.lti?.permissions.instructor??false)},${p.add(input.title)},${p.add(input.body)} WHERE ${gate}`);
  else if(name==='qa.updateQuestion')add((p,gate,current)=>`UPDATE course_questions SET title=${p.add(input.title)},body=${p.add(input.body)},lti_instructor=${p.add(current.lti?.permissions.instructor??false)},updated_at=${NOW} WHERE id=${p.add(input.questionId)} AND ${gate}`);
  else if(name==='qa.deleteQuestion'){
-  audit('delete_question',null,(current,p)=>`NOT (${ownQuestion(current,p)})`);
+  if(effects.moderation)audit(effects.moderation.action,null,(current,p)=>qaMutationEffects(name,{ownQuestion:ownQuestion(current,p),ownReply:'0',featureChanged:'0',featured:false},qaSqlLogic).moderation!.when);
   add((p,gate)=>`DELETE FROM course_questions WHERE id=${p.add(input.questionId)} AND ${gate}`);
  }else if(name==='qa.reply')add((p,gate,current)=>`INSERT INTO course_question_replies(id,question_id,author_id,lti_author_id,lti_instructor,body) SELECT ${p.add(id)},${p.add(input.questionId)},${current.user},${current.author},${p.add(current.lti?.permissions.instructor??false)},${p.add(input.body)} WHERE ${gate}`);
  else if(name==='qa.updateReply')add((p,gate,current)=>`UPDATE course_question_replies SET body=${p.add(input.body)},lti_instructor=${p.add(current.lti?.permissions.instructor??false)},updated_at=${NOW} WHERE id=${p.add(input.replyId)} AND ${gate}`);
  else if(name==='qa.deleteReply'){
-  audit('delete_reply',input.replyId,(current,p)=>`NOT EXISTS(SELECT 1 FROM course_question_replies r WHERE r.id=${p.add(input.replyId)} AND ${current.own('r')})`);
+  if(effects.moderation)audit(effects.moderation.action,input.replyId,(current,p)=>qaMutationEffects(name,{ownQuestion:'0',ownReply:`EXISTS(SELECT 1 FROM course_question_replies r WHERE r.id=${p.add(input.replyId)} AND ${current.own('r')})`,featureChanged:'0',featured:false},qaSqlLogic).moderation!.when);
   add((p,gate)=>`DELETE FROM course_question_replies WHERE id=${p.add(input.replyId)} AND ${gate}`);
  }else if(name==='qa.vote')add((p,gate,current)=>{
   const table=current.lti?'course_question_lti_votes':'course_question_votes',column=current.lti?'lti_author_id':'user_id',voter=current.lti?current.author:current.user;
   return input.voted?`INSERT INTO ${table}(question_id,${column}) SELECT ${p.add(input.questionId)},${voter} WHERE ${gate} ON CONFLICT DO NOTHING`:`DELETE FROM ${table} WHERE question_id=${p.add(input.questionId)} AND ${column}=${voter} AND ${gate}`;
  });
  else if(name==='qa.feature'){
-  audit(input.featured?'feature':'unfeature',null,(_current,p)=>`EXISTS(SELECT 1 FROM course_questions WHERE id=${p.add(input.questionId)} AND featured<>${p.add(input.featured)})`);
+  if(effects.moderation)audit(effects.moderation.action,null,(_current,p)=>qaMutationEffects(name,{ownQuestion:'0',ownReply:'0',featureChanged:`EXISTS(SELECT 1 FROM course_questions WHERE id=${p.add(input.questionId)} AND featured<>${p.add(input.featured)})`,featured:input.featured},qaSqlLogic).moderation!.when);
   add((p,gate)=>`UPDATE course_questions SET featured=${p.add(input.featured)} WHERE id=${p.add(input.questionId)} AND ${gate}`);
  }
- if(name==='qa.reply'||name==='qa.updateReply'||name==='qa.deleteReply')add((p,gate)=>`UPDATE course_questions SET updated_at=${NOW} WHERE id=${p.add(input.questionId)} AND ${gate}`);
+ if('questionId' in input && effects.touchQuestion)add((p,gate)=>`UPDATE course_questions SET updated_at=${NOW} WHERE id=${p.add(input.questionId)} AND ${gate}`);
  statements.push(database.prepare("DELETE FROM mutation_receipts WHERE token=? AND kind='qa' RETURNING resource_id AS code").bind(token));
  const results=await database.batch<{code:number}>(statements);check(results[results.length-1].results[0].code);
  return name==='qa.ask'||name==='qa.reply'?{id}:{success:true};

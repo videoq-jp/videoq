@@ -1,4 +1,5 @@
 import { features } from "@/lib/deployment";
+import { accountIdentifierEdit } from '@/application/account-editing';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -32,8 +33,7 @@ function AccountField({ field, currentValue }: { field: 'username' | 'email'; cu
   const wasEditing = useRef(false);
   const prefix = field === 'username' ? 'settings.usernameChange' : 'settings.emailChange';
   const id = `account-${field}`;
-  const trimmedValue = value.trim();
-  const unchanged = trimmedValue.toLowerCase() === currentValue.toLowerCase();
+  const { value: trimmedValue, unchanged } = accountIdentifierEdit(currentValue, value);
 
   useEffect(() => {
     if (editing) input.current?.focus();

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import logging
+from contextlib import contextmanager
 
 from worker_python.contracts import JOB_INDEX_VIDEO_TRANSCRIPT
 from worker_python.db import db_connection
@@ -20,6 +21,9 @@ from worker_python.video_sql import (
     transition_video_status,
 )
 from worker_python.video_status import VideoStatus
+
+from worker_python.use_cases.segmented_transcription_start import QuotaRecovery, start_segmented_transcription
+from worker_python.use_cases.transcription_source import require_transcription_source_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +81,7 @@ def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
             return finish_transcription(conn, video, transcript=transcript, error_message=error_message)
 
     def transcribe(video):
-        if video.source_type == "youtube" and os.environ.get("DEPLOYMENT_EDITION") == "onprem":
-            raise RuntimeError("YouTube integration is disabled in the on-prem edition")
+        require_transcription_source_allowed(video.source_type, os.environ.get("DEPLOYMENT_EDITION") != "onprem")
         searchapi_key = _load_searchapi_key(video.user_id) if video.source_type == "youtube" else None
 
         def reserve_processing(seconds: int) -> None:
@@ -93,14 +96,16 @@ def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
 
     def start_segmented(video):
         from worker_python.tasks.segmented_transcription import start_uploaded_transcription
-        from worker_python.transcription_checkpoints import TranscriptionQuotaError
-        try:
-            start_uploaded_transcription(video)
-        except TranscriptionQuotaError as exc:
-            # Keep the conditional transition and failure save in one transaction.
+        @contextmanager
+        def recovery():
+            # The same connection owns transition and failure save/rollback.
             with db_connection() as conn:
-                if transition_video_status(conn, video.id, video.status, VideoStatus.PROCESSING):
-                    finish_transcription(conn, video, transcript=None, error_message=str(exc))
+                yield QuotaRecovery(
+                    begin=lambda: transition_video_status(conn, video.id, video.status, VideoStatus.PROCESSING),
+                    finish=lambda message: finish_transcription(conn, video, transcript=None, error_message=message),
+                )
+
+        start_segmented_transcription(lambda: start_uploaded_transcription(video), recovery)
 
     execute_transcription(video_id, TranscriptionDependencies(
         load=load, begin=begin, transcribe=transcribe, finish=finish,

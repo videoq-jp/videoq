@@ -1,7 +1,10 @@
+import { adminAssignedRole, adminRoleIncludes, adminBooleanRoleLogic, adminDeletionAllowed, planAdminQuotaEdit, type AdminQuotaPatch, type AdminUsagePatch } from '../../application/admin';
+import { billingAccountAvailable } from '../../application/billing-state';
+import { billingDrizzleBanLogic } from '../billing-policy-sql';
+import { adminPostgresRoleLogic } from '../admin-policy-sql';
 import {createAuth} from "./auth";
 import {toUtcIso} from "../../shared/datetime";
 import { and, asc, count, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import type { RpcInputMap } from "@videoq/trpc";
 import { withDb, type Db } from "../../db/pool";
 import {literalSearchPage} from "../../shared/literal-search";
 import {
@@ -29,8 +32,8 @@ const adminUserSelect = {
   id: users.id,
   username: users.username,
   email: users.email,
-  is_active: sql<boolean>`NOT (COALESCE(${users.banned}, false) AND (${users.banExpires} IS NULL OR ${users.banExpires} >= now()))`.as("is_active"),
-  is_admin: sql<boolean>`COALESCE('admin' = ANY(string_to_array(${users.role}, ',')), false)`.as("is_admin"),
+  is_active: sql<boolean>`${billingAccountAvailable({banned:sql`COALESCE(${users.banned},false)`,noExpiry:sql`${users.banExpires} IS NULL`,expires:users.banExpires,now:sql`now()`},billingDrizzleBanLogic)}`.as("is_active"),
+  is_admin: adminRoleIncludes(users.role,adminPostgresRoleLogic).as("is_admin"),
   max_video_upload_size_mb: users.maxVideoUploadSizeMb,
   storage_limit_gb: users.storageLimitGb,
   monthly_upload_limit_gb: users.monthlyUploadLimitGb,
@@ -94,7 +97,7 @@ export async function isAdmin(env: Bindings, userId: string): Promise<boolean> {
       .where(eq(users.id, userId))
       .limit(1);
     if (rows.length === 0) return false;
-    return rows[0].role?.split(",").includes("admin") ?? false;
+    return adminRoleIncludes(rows[0].role,adminBooleanRoleLogic);
   });
 }
 
@@ -155,9 +158,10 @@ async function updateAdminUser(
 export async function patchAdminUserQuota(
   env: Bindings,
   userId: string,
-  patch: Omit<RpcInputMap["admin.patchQuota"], "id">,
+  patch: AdminQuotaPatch,
 ): Promise<AdminUser | null> {
-  if (patch.quota_source === "plan") {
+  const plan = planAdminQuotaEdit(patch);
+  if (plan.kind === "restorePlan") {
     return withDb(env, db => db.transaction(async tx => {
       const [user] = await tx
         .select({ planCode: users.planCode, subscriptionStatus: users.subscriptionStatus })
@@ -175,29 +179,12 @@ export async function patchAdminUserQuota(
     }));
   }
 
-  const set: Partial<{
-    monthlyUploadLimitGb: number | null;
-    storageLimitGb: number | null;
-    processingLimitMinutes: number | null;
-    aiAnswersLimit: number | null;
-    quotaSource: "plan" | "admin";
-  }> = {};
-  if (patch.monthly_upload_limit_gb !== undefined) {
-    set.monthlyUploadLimitGb = patch.monthly_upload_limit_gb;
-  }
-  if (patch.storage_limit_gb !== undefined) set.storageLimitGb = patch.storage_limit_gb;
-  if (patch.processing_limit_minutes !== undefined) {
-    set.processingLimitMinutes = patch.processing_limit_minutes;
-  }
-  if (patch.ai_answers_limit !== undefined) set.aiAnswersLimit = patch.ai_answers_limit;
-  if (patch.quota_source !== undefined) set.quotaSource = patch.quota_source;
-  else if (Object.keys(set).length > 0) set.quotaSource = "admin";
-  if (Object.keys(set).length === 0) return getAdminUser(env, userId);
+  if (plan.kind === 'unchanged') return getAdminUser(env, userId);
 
   return withDb(env, async (db) => {
     const rows = await db
       .update(users)
-      .set(set)
+      .set(plan.fields)
       .where(eq(users.id, userId))
       .returning(adminUserSelect);
     return rows[0] ? mapUser(rows[0]) : null;
@@ -217,7 +204,7 @@ export async function lockUserForHardDelete(
         .for("update")
         .limit(1);
       if (!target) return { notFound: true };
-      if (target.is_admin) return { forbiddenAdmin: true };
+      if (!adminDeletionAllowed(target.is_admin,{not:value=>!value})) return { forbiddenAdmin: true };
 
       await tx
         .update(users)
@@ -252,7 +239,7 @@ export async function lockUserForHardDelete(
 export async function patchAdminUserUsage(
   env: Bindings,
   userId: string,
-  patch: Omit<RpcInputMap["admin.patchUsage"], "id">,
+  patch: AdminUsagePatch,
 ): Promise<AdminUser | null> {
   const set: Partial<{
     usedStorageBytes: number;
@@ -280,12 +267,12 @@ export async function patchAdminUserUsage(
   });
 }
 
-export function createPostgresAdminUserRepository(env:Bindings):AdminUserRepository {
+export function createPostgresAdminUserRepository(env:Bindings,headers:Headers=new Headers()):AdminUserRepository {
   return {
-    patchFlags:(_actorId,targetId,patch,headers)=>updateAdminUser(env,targetId,async tx=>{
+    patchFlags:(_actorId,targetId,patch)=>updateAdminUser(env,targetId,async tx=>{
       const auth=createAuth(env,tx);
       if(patch.is_active!==undefined){const input={body:{userId:targetId},headers};if(patch.is_active)await auth.api.unbanUser(input);else await auth.api.banUser(input);}
-      if(patch.is_admin!==undefined)await auth.api.setRole({body:{userId:targetId,role:patch.is_admin?'admin':'user'},headers});
+      if(patch.is_admin!==undefined)await auth.api.setRole({body:{userId:targetId,role:adminAssignedRole(patch.is_admin)},headers});
     }),
     lockForHardDelete:id=>lockUserForHardDelete(env,id),
     isAdmin:id=>isAdmin(env,id), list:(q,limit,offset)=>listAdminUsers(env,q,limit,offset),

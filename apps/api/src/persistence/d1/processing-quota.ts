@@ -1,3 +1,5 @@
+import { quotaAllowsAdditional } from '../../application/quota-policy';
+import { quotaSqlComparison } from '../quota-policy-sql';
 import { validateProcessingReservation, type ProcessingQuotaRepository } from "../contracts/processing-quota";
 const CURRENT = "strftime('%Y-%m',u.usage_period_start)=strftime('%Y-%m','now')";
 const USED = `CASE WHEN ${CURRENT} THEN u.used_processing_seconds ELSE 0 END`;
@@ -11,7 +13,7 @@ export function createD1ProcessingQuotaRepository(database: D1Database): Process
           SELECT ?,CASE WHEN v.processing_seconds>0 THEN 'processing_reused' ELSE 'processing_reserved' END,v.id
           FROM videos v JOIN users u ON u.id=v.user_id WHERE v.id=? AND
           (v.processing_seconds>0 OR (u.is_over_quota IS NOT TRUE AND (${USED})<=9007199254740991-?
-            AND (u.processing_limit_minutes IS NULL OR (${USED})<=u.processing_limit_minutes*60-?)))`)
+            AND ${quotaAllowsAdditional(USED, 'u.processing_limit_minutes*60', '?', quotaSqlComparison)}))`)
           .bind(token, videoId, seconds, seconds),
         database.prepare(`UPDATE users AS u SET used_processing_seconds=(${USED})+?,
           used_ai_answers=CASE WHEN ${CURRENT} THEN used_ai_answers ELSE 0 END,

@@ -1,3 +1,5 @@
+import { gettingStartedState, STEP_ORDER, type StepKey, type GettingStartedProgress } from '@/application/getting-started';
+export type { GettingStartedProgress } from '@/application/getting-started';
 import { useState } from 'react';
 import { InlineLoading } from '@/components/common/InlineLoading';
 import { useTranslation } from 'react-i18next';
@@ -14,20 +16,6 @@ import {
   StepNavigationStepHeader,
   StepNavigationTitle,
 } from '@/components/ui/step-navigation';
-
-type StepKey = 'upload' | 'transcribe' | 'ask' | 'course';
-// Questions are asked from a course's chat, so the course comes before asking.
-const STEP_ORDER: StepKey[] = ['upload', 'transcribe', 'course', 'ask'];
-
-export interface GettingStartedProgress {
-  hasVideos: boolean;
-  hasProcessingVideos: boolean;
-  hasCompletedVideos: boolean;
-  /** The user owns a course (joined courses do not count). */
-  hasCourse: boolean;
-  hasCourseVideos: boolean;
-  hasAskedQuestion: boolean;
-}
 
 interface GettingStartedGuideProps {
   userId: string;
@@ -51,13 +39,7 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(() => readDismissed(userId));
 
-  const done: Record<StepKey, boolean> = {
-    upload: progress.hasVideos,
-    transcribe: progress.hasCompletedVideos,
-    course: progress.hasCourse && progress.hasCourseVideos,
-    ask: progress.hasAskedQuestion,
-  };
-  const currentKey = STEP_ORDER.find((key) => !done[key]);
+  const { done, currentKey, isWaiting } = gettingStartedState(progress);
 
   if (dismissed || !currentKey) return null;
 
@@ -69,9 +51,6 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
     }
     setDismissed(true);
   };
-
-  // Transcription runs on its own, so while it is underway there is nothing to click.
-  const isWaiting = currentKey === 'transcribe' && progress.hasProcessingVideos;
 
   const renderAction = (key: StepKey) => {
     switch (key) {

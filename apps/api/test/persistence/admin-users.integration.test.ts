@@ -91,6 +91,31 @@ for(const backend of ['d1','postgres']as const){
    const user=await admin.patchAdminUserQuota(env,'a',{quota_source:'plan',ai_answers_limit:99});const e=PLAN_CATALOG[expected].entitlements;
    expect(user).toMatchObject({quota_source:'plan',max_video_upload_size_mb:e.maxVideoUploadSizeMb,monthly_upload_limit_gb:e.monthlyUploadLimitGb,storage_limit_gb:e.storageLimitGb,processing_limit_minutes:e.processingLimitMinutes,ai_answers_limit:e.aiAnswersLimit,used_ai_answers:7,used_storage_bytes:1024});
   });
+  it('restores every paid plan for trialing/active/past_due and free limits for unusable status',async()=>{
+   for(const plan of ['basic','pro'] as const)for(const status of ['active','trialing','past_due','canceled',null]){
+    await execute("UPDATE users SET plan_code=?,subscription_status=?,quota_source='admin' WHERE id='a'",[plan,status]);
+    const expected=status==='active'||status==='trialing'||status==='past_due'?plan:'free';const e=PLAN_CATALOG[expected].entitlements;
+    expect(await admin.patchAdminUserQuota(env,'a',{quota_source:'plan',storage_limit_gb:null,ai_answers_limit:0})).toMatchObject({
+     quota_source:'plan',max_video_upload_size_mb:e.maxVideoUploadSizeMb,storage_limit_gb:e.storageLimitGb,
+     monthly_upload_limit_gb:e.monthlyUploadLimitGb,processing_limit_minutes:e.processingLimitMinutes,ai_answers_limit:e.aiAnswersLimit,
+    });
+   }
+  });
+  it('projects exact role tokens consistently for both listing and administrator checks',async()=>{
+   for(const [role,expected]of [['admin',true],['admin,user',true],['user,admin',true],['administrator',false],['user, admin',false],['Admin',false],['',false]] as const){
+    await execute("UPDATE users SET role=? WHERE id='a'",[role]);
+    expect(await admin.isAdmin(env,'a')).toBe(expected);expect((await admin.getAdminUser(env,'a'))?.is_admin).toBe(expected);
+    expect((await admin.listAdminUsers(env,'',10,0)).results.find(row=>row.id==='a')?.is_admin).toBe(expected);
+   }
+  });
+  it('keeps ban-only activity projection when legacy activity flags differ',async()=>{
+   await execute("UPDATE users SET banned=NULL,is_active=?,deactivated_at='2000-01-01T00:00:00Z' WHERE id='a'",[false]);
+   expect((await admin.getAdminUser(env,'a'))?.is_active).toBe(true);
+  });
+  if(backend==='d1')it('does not project a banned account with malformed expiry as active',async()=>{
+   await execute("UPDATE users SET banned=?,ban_expires='invalid' WHERE id='a'",[true]);
+   expect((await admin.getAdminUser(env,'a'))?.is_active).toBe(false);
+  });
   it('supports explicit unlimited quotas, zero, partial updates and a no-op patch',async()=>{
    const result=await admin.patchAdminUserQuota(env,'a',{storage_limit_gb:null,ai_answers_limit:0});expect(result).toMatchObject({quota_source:'admin',storage_limit_gb:null,ai_answers_limit:0});expect(await admin.patchAdminUserQuota(env,'a',{})).toEqual(result);expect(await admin.patchAdminUserQuota(env,'missing',{ai_answers_limit:1})).toBeNull();
    expect((await admin.getAdminUser(env,'b'))?.quota_source).toBe('plan');

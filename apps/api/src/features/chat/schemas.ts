@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validConversationQuestion } from '@videoq/domain/chat';
 import { chatCourseIdSchema, chatMessagesSchema } from "@videoq/trpc/schema";
 
 export const chatMessageBodySchema = z
@@ -7,7 +8,7 @@ export const chatMessageBodySchema = z
     conversation_id: z.uuid().optional(),
     resume_conversation: z.boolean().optional(),
     course_id: chatCourseIdSchema,
-  }).refine(body => !body.conversation_id || (body.messages.length === 1 && body.messages[0].role === 'user'), {
+  }).refine(body => validConversationQuestion(body.messages, body.conversation_id), {
     message: 'A conversation request requires one user question.', path: ['messages'],
   });
 

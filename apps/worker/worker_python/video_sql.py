@@ -5,34 +5,19 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 
 from worker_python.video_status import VideoStatus
+from worker_python.domain.video_processing import (
+    VideoRow, ProcessingReservationResult, indexing_completion, processing_quota_allowed,
+    processing_reservation_denied, processing_reservation_reused, processing_usage,
+    require_transcription_fingerprint, transcription_completion, validate_processing_seconds,
+)
+from worker_python.video_policy_sql import VIDEO_POLICY_SQL
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class VideoRow:
-    id: int
-    user_id: str
-    title: str
-    transcript: str | None
-    status: str
-    source_type: str
-    file_key: str | None
-    youtube_video_id: str | None
-    transcript_hash: str | None = None
-    transcription_language: str | None = None
-
-
-@dataclass(frozen=True)
-class ProcessingReservationResult:
-    allowed: bool
-    limit_seconds: int | None = None
 
 
 def _row_to_video(row: dict[str, Any]) -> VideoRow:
@@ -77,8 +62,7 @@ def reserve_processing_seconds(
     conn: psycopg.Connection[Any], video_id: int, seconds: int
 ) -> ProcessingReservationResult:
     """Reserve monthly processing usage once per video under one row lock."""
-    if seconds <= 0:
-        raise ValueError("processing seconds must be positive")
+    validate_processing_seconds(seconds)
 
     video = conn.execute(
         """
@@ -89,48 +73,23 @@ def reserve_processing_seconds(
         """,
         (video_id,),
     ).fetchone()
-    if video is None:
-        raise ValueError(f"Video {video_id} not found")
-    if int(video.get("processing_seconds") or 0) > 0:
+    if processing_reservation_reused(video_id, None if video is None else int(video.get("processing_seconds") or 0)):
         return ProcessingReservationResult(allowed=True)
 
     user_id = str(video["user_id"])
+    reset_period = """usage_period_start IS NULL
+        OR date_trunc('month', usage_period_start, 'UTC') <> date_trunc('month', now(), 'UTC')"""
+    usage = processing_usage(reset_period, 'used_processing_seconds', '%s', 'used_ai_answers',
+                             'usage_period_start', 'now()', VIDEO_POLICY_SQL)
+    allowed = processing_quota_allowed('is_over_quota IS NOT TRUE', usage.current_seconds,
+                                       'processing_limit_minutes::bigint', '%s', VIDEO_POLICY_SQL)
     reserved = conn.execute(
-        """
+        f"""
         UPDATE users
-           SET used_processing_seconds = CASE
-                 WHEN usage_period_start IS NULL
-                   OR date_trunc('month', usage_period_start, 'UTC')
-                      <> date_trunc('month', now(), 'UTC')
-                 THEN %s
-                 ELSE used_processing_seconds + %s
-               END,
-               used_ai_answers = CASE
-                 WHEN usage_period_start IS NULL
-                   OR date_trunc('month', usage_period_start, 'UTC')
-                      <> date_trunc('month', now(), 'UTC')
-                 THEN 0
-                 ELSE used_ai_answers
-               END,
-               usage_period_start = CASE
-                 WHEN usage_period_start IS NULL
-                   OR date_trunc('month', usage_period_start, 'UTC')
-                      <> date_trunc('month', now(), 'UTC')
-                 THEN now()
-                 ELSE usage_period_start
-               END
-         WHERE id = %s
-           AND is_over_quota IS NOT TRUE
-           AND (
-             processing_limit_minutes IS NULL
-             OR CASE
-                  WHEN usage_period_start IS NULL
-                    OR date_trunc('month', usage_period_start, 'UTC')
-                       <> date_trunc('month', now(), 'UTC')
-                  THEN 0
-                  ELSE used_processing_seconds
-                END <= processing_limit_minutes::bigint * 60 - %s
-           )
+           SET used_processing_seconds = {usage.next_seconds},
+               used_ai_answers = {usage.next_ai_answers},
+               usage_period_start = {usage.next_period_start}
+         WHERE id = %s AND {allowed}
         RETURNING used_processing_seconds
         """,
         (seconds, seconds, user_id, seconds),
@@ -145,10 +104,7 @@ def reserve_processing_seconds(
             (user_id,),
         ).fetchone()
         limit = None if state is None else state.get("processing_limit_minutes")
-        return ProcessingReservationResult(
-            allowed=False,
-            limit_seconds=None if limit is None else int(limit) * 60,
-        )
+        return processing_reservation_denied(None if limit is None else int(limit))
 
     conn.execute(
         "UPDATE videos SET processing_seconds = %s WHERE id = %s",
@@ -183,11 +139,11 @@ def transition_video_status(
 
 def finish_video_indexing(conn: psycopg.Connection[Any], video: VideoRow) -> bool:
     """Complete only the indexed snapshot; a concurrent edit remains pending."""
+    completion = indexing_completion("status = 'indexing'", "COALESCE(transcript, '') = %s",
+                                     "NULLIF(file, '') IS NOT DISTINCT FROM %s", VIDEO_POLICY_SQL)
     result = conn.execute(
-        """UPDATE videos SET status = 'completed', error_message = ''
-             WHERE id = %s AND user_id = %s AND status = 'indexing'
-               AND COALESCE(transcript, '') = %s
-               AND NULLIF(file, '') IS NOT DISTINCT FROM %s""",
+        f"""UPDATE videos SET status = {completion.status}, error_message = {completion.error}
+             WHERE id = %s AND user_id = %s AND {completion.allowed}""",
         (video.id, video.user_id, video.transcript or '', video.file_key),
     )
     return result.rowcount > 0
@@ -206,27 +162,22 @@ def finish_transcription(
     therefore completes without another automatic indexing job, including a
     deliberate clear. Existing state changes and deletions are left alone.
     """
-    if video.transcript_hash is None:
-        raise ValueError("Transcription requires the original transcript fingerprint")
+    require_transcription_fingerprint(video.transcript_hash)
+    completion = transcription_completion("target.status = 'processing'",
+        'target.transcript_hash = %(original_hash)s', '%(transcript)s::text IS NOT NULL',
+        '%(error_message)s', VIDEO_POLICY_SQL)
     row = conn.execute(
-        """
+        f"""
         WITH target AS (
             SELECT id, status, md5(COALESCE(transcript, '')) AS transcript_hash
               FROM videos WHERE id = %(video_id)s FOR UPDATE
         ), saved AS (
             UPDATE videos
-               SET transcript = CASE
-                     WHEN target.transcript_hash = %(original_hash)s AND %(transcript)s::text IS NOT NULL
-                     THEN %(transcript)s ELSE videos.transcript END,
-                   status = CASE
-                     WHEN target.transcript_hash <> %(original_hash)s THEN 'completed'
-                     WHEN %(transcript)s::text IS NULL THEN 'error'
-                     ELSE 'indexing' END,
-                   error_message = CASE
-                     WHEN target.transcript_hash = %(original_hash)s AND %(transcript)s::text IS NULL
-                     THEN %(error_message)s ELSE '' END
+               SET transcript = CASE WHEN {completion.save_transcript} THEN %(transcript)s ELSE videos.transcript END,
+                   status = {completion.status},
+                   error_message = {completion.error}
               FROM target
-             WHERE videos.id = target.id AND target.status = 'processing'
+             WHERE videos.id = target.id AND {completion.allowed}
             RETURNING videos.status
         )
         SELECT COALESCE(saved.status, target.status) AS status

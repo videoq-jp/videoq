@@ -1,4 +1,5 @@
 import { ViewerPlayerLoading } from '@/components/video/ViewerPlayerLoading';
+import { canManageCourse } from '@/application/course-access';
 import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
 import { useViewerViewport } from '@/hooks/useViewerViewport';
 import { CourseLearningDetails } from '@/components/video/CourseLearningDetails';
@@ -427,7 +428,7 @@ export function VideoCourseDetailView({
     if (playerRef.current) playerRef.current.scrollTop = 0;
   };
 
-  const canManage = !!course && course.access_role !== 'member';
+  const canManage = canManageCourse(course);
   const isMutationPending = isDeleting || isReordering || removingVideoId !== null;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

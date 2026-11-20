@@ -8,7 +8,7 @@ export async function getAdminUser(env:Bindings,id:string){return (await createA
 export async function patchAdminUserQuota(env:Bindings,id:string,patch:AdminQuotaPatch){return (await createAdminUserRepository(env)).patchQuota(id,patch);}
 export async function patchAdminUserUsage(env:Bindings,id:string,patch:AdminUsagePatch){return (await createAdminUserRepository(env)).patchUsage(id,patch);}
 export async function patchAdminUserFlags(env:Bindings,actorId:string,targetId:string,patch:AdminFlagsPatch,headers:Headers){
- return (await createAdminUserRepository(env)).patchFlags(actorId,targetId,patch,headers);
+ return (await createAdminUserRepository(env,headers)).patchFlags(actorId,targetId,patch);
 }
 export async function lockUserForHardDelete(env:Bindings,id:string){
  return (await createAdminUserRepository(env)).lockForHardDelete(id);

@@ -1,3 +1,5 @@
+import { uniqueMembershipIds, planTagAttachment, membershipCourseAllowed, membershipVideoAllowed, matchesMembershipOrder } from '../../application/membership-policy';
+import { membershipDrizzleLogic } from '../membership-policy-sql';
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import { sqlNumberArray } from "../../db/sql-array";
@@ -36,7 +38,7 @@ export async function attachTags(
 ): Promise<{ notFound: "Video not found" | "Resource not found" } | { added: number }> {
   return withDb(env, (db) => db.transaction(async (tx) => {
     if (!await lockOwnedVideo(tx, videoId, userId)) return { notFound: "Video not found" } as const;
-    const uniqueIds = [...new Set(tagIds)];
+    const uniqueIds = uniqueMembershipIds(tagIds);
     if (uniqueIds.length === 0) return { added: 0 };
 
     // Only requested tags are read. Share locks prevent deletion/ownership changes
@@ -47,10 +49,9 @@ export async function attachTags(
       .where(inArray(tags.id, uniqueIds))
       .orderBy(asc(tags.id))
       .for("share", { of: tags });
-    if (requested.length !== uniqueIds.length || requested.some(tag => tag.attachedId === null && tag.userId !== userId)) {
-      return { notFound: "Resource not found" } as const;
-    }
-    const idsToAdd = requested.filter(tag => tag.attachedId === null).map(tag => tag.id);
+    const plan = planTagAttachment(uniqueIds, requested.map(tag => ({ id: tag.id, ownerUserId: tag.userId, alreadyLinked: tag.attachedId !== null })), userId);
+    if (plan.kind === 'missing') return { notFound: "Resource not found" } as const;
+    const idsToAdd = plan.ids;
     if (idsToAdd.length === 0) return { added: 0 };
     const inserted = await tx.insert(videoTags)
       .values(idsToAdd.map(tagId => ({ videoId, tagId, addedAt: sql`CURRENT_TIMESTAMP` })))
@@ -85,14 +86,14 @@ export async function detachTag(
 
 async function lockOwnedCourse(db: Pick<Db, "select">, courseId: number, userId: string) {
   const rows = await db.select({ id: videoCourses.id }).from(videoCourses)
-    .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
+    .where(and(eq(videoCourses.id, courseId), membershipCourseAllowed({ owned: eq(videoCourses.userId, userId), native: eq(videoCourses.managedByLms, false) }, membershipDrizzleLogic)))
     .limit(1).for("update");
   return rows.length > 0;
 }
 
-async function lockOwnedCourseVideos(db: Pick<Db, "select">, videoIds: number[], userId: string, allowLmsCleanup = false) {
+async function lockOwnedCourseVideos(db: Pick<Db, "select">, videoIds: number[], userId: string, operation: 'add' | 'remove' = 'add') {
   const rows = await db.select({ id: videos.id }).from(videos)
-    .where(and(inArray(videos.id, videoIds), eq(videos.userId, userId), allowLmsCleanup ? undefined : eq(videos.managedByLms, false)))
+    .where(and(inArray(videos.id, videoIds), membershipVideoAllowed(operation, { owned: eq(videos.userId, userId), native: eq(videos.managedByLms, false) }, membershipDrizzleLogic)))
     .orderBy(asc(videos.id)).for("share");
   return rows.length === videoIds.length;
 }
@@ -134,7 +135,7 @@ export async function removeVideoFromCourse(
 ): Promise<CourseVideoNotFound | { notMember: true } | { ok: true }> {
   return withDb(env, (db) => db.transaction(async (tx) => {
     if (!await lockOwnedCourse(tx, courseId, userId)) return { notFound: "Course not found" } as const;
-    if (!await lockOwnedCourseVideos(tx, [videoId], userId, true)) return { notFound: "Video not found" } as const;
+    if (!await lockOwnedCourseVideos(tx, [videoId], userId, 'remove')) return { notFound: "Video not found" } as const;
     const rows = await tx.delete(videoCourseMembers)
       .where(and(eq(videoCourseMembers.courseId, courseId), eq(videoCourseMembers.videoId, videoId)))
       .returning({ id: videoCourseMembers.id });
@@ -151,7 +152,7 @@ export async function addVideosBulk(
 ): Promise<{ notFound: "Course not found" | "Some videos not found" } | { added: number }> {
   return withDb(env, (db) => db.transaction(async (tx) => {
     if (!await lockOwnedCourse(tx, courseId, userId)) return { notFound: "Course not found" } as const;
-    const uniqueIds = [...new Set(videoIds)];
+    const uniqueIds = uniqueMembershipIds(videoIds);
     if (uniqueIds.length === 0) return { added: 0 };
     if (!await lockOwnedCourseVideos(tx, uniqueIds, userId)) return { notFound: "Some videos not found" } as const;
 
@@ -183,7 +184,7 @@ export async function reorderVideos(
       const owner = await tx
         .select({ id: videoCourses.id })
         .from(videoCourses)
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId), eq(videoCourses.managedByLms, false)))
+        .where(and(eq(videoCourses.id, courseId), membershipCourseAllowed({ owned: eq(videoCourses.userId, userId), native: eq(videoCourses.managedByLms, false) }, membershipDrizzleLogic)))
         .for("update");
       if (owner.length === 0) return { notFound: true } as const;
 
@@ -193,12 +194,7 @@ export async function reorderVideos(
         .where(eq(videoCourseMembers.courseId, courseId))
         .orderBy(asc(videoCourseMembers.videoId))
         .for("update");
-      const memberIds = new Set(members.map(member => member.videoId));
-      if (
-        videoIds.length !== members.length ||
-        new Set(videoIds).size !== videoIds.length ||
-        videoIds.some(id => !memberIds.has(id))
-      ) return { mismatch: true } as const;
+      if (!matchesMembershipOrder(videoIds, members.map(member => member.videoId))) return { mismatch: true } as const;
 
       if (videoIds.length > 0) {
         await tx.execute(sql`

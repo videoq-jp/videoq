@@ -1,4 +1,4 @@
-import { iterSrtCues } from "@videoq/trpc/transcript";
+import { iterSrtCues } from "@videoq/domain/transcript";
 
 /** Locate the actual cue at the playhead; do not invent a scene from a timestamp. */
 export function playbackCueHint(transcript: string | null, seconds: number): string {

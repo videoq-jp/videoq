@@ -1,4 +1,4 @@
-import type { PlanCode, PlanEntitlements } from "../../features/billing/catalog";
+import type { PlanCode, PlanEntitlements } from "../../application/billing-catalog";
 export type BillingUser = {
   id: string;
   email: string;

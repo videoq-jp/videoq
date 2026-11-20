@@ -17,10 +17,16 @@ from urllib.request import Request, urlopen
 
 from .ai_connection import shared_api_key, OPENROUTER_BASE_URL
 from worker_python.env import env_flag, env_str, heavy_pipeline_enabled
-from worker_python.pipeline.srt import create_srt_from_whisper_segments, format_srt_time
+from worker_python.domain.srt import format_srt_time
+from worker_python.domain.transcription_segments import segments_within_interval
 from worker_python.pipeline.storage import ObjectMediaSource, resolve_media_input
 from worker_python.pipeline.media_process import MEDIA_INPUT_OPTIONS, media_input_args, run_media_process
-from worker_python.video_sql import VideoRow
+from worker_python.use_cases.transcription_source import (
+    TranscriptionMedia, TranscriptionSourceDependencies, transcribe_source,
+)
+from worker_python.use_cases.uploaded_transcription import (
+    UploadedTranscriptionDependencies, execute_uploaded_transcription,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +39,7 @@ NO_AUDIO_MESSAGE = "動画に音声トラックがありません。音声付き
 
 
 def run_transcription(
-    video: VideoRow,
+    video: TranscriptionMedia,
     *,
     searchapi_key: str | None = None,
     reserve_processing: Callable[[int], None] | None = None,
@@ -44,32 +50,21 @@ def run_transcription(
     When ENABLE_HEAVY_PIPELINE is off, returns a placeholder SRT so status
     transitions can be tested without FFmpeg/Whisper (no Otsu).
     """
-    if video.source_type == "youtube" and os.environ.get("DEPLOYMENT_EDITION") == "onprem":
-        raise RuntimeError("YouTube integration is disabled in the on-prem edition")
-    if not heavy_pipeline_enabled():
-        logger.info(
-            "ENABLE_HEAVY_PIPELINE off; placeholder transcript for video %d", video.id
-        )
-        if reserve_processing:
-            reserve_processing(1)
+    def placeholder():
+        logger.info("ENABLE_HEAVY_PIPELINE off; placeholder transcript for video %d", video.id)
         return (
             "1\n"
             "00:00:00,000 --> 00:00:01,000\n"
             "[placeholder transcript — enable ENABLE_HEAVY_PIPELINE for real transcription]\n"
         )
 
-    if video.source_type == "youtube":
-        if not video.youtube_video_id:
-            raise RuntimeError("youtube_video_id is required for YouTube transcription.")
-        raw_srt, duration = _transcribe_youtube(video.youtube_video_id, searchapi_key)
-        if reserve_processing:
-            reserve_processing(max(1, math.ceil(duration)))
-    elif not video.file_key:
-        raise RuntimeError(f"Video {video.id} has no file key for uploaded transcription.")
-    else:
-        raw_srt = _transcribe_uploaded(video.file_key, reserve_processing, video_id=video.id, language=video.transcription_language)
-
-    return raw_srt
+    return transcribe_source(video, TranscriptionSourceDependencies(
+        youtube=lambda identifier: _transcribe_youtube(identifier, searchapi_key),
+        uploaded=lambda source: _transcribe_uploaded(source.file_key, reserve_processing,
+            video_id=source.id, language=source.transcription_language),
+        placeholder=placeholder, reserve=reserve_processing, real_enabled=heavy_pipeline_enabled(),
+        youtube_allowed=os.environ.get("DEPLOYMENT_EDITION") != "onprem",
+    ))
 
 
 def _transcribe_uploaded(
@@ -80,32 +75,33 @@ def _transcribe_uploaded(
     with tempfile.TemporaryDirectory(prefix="videoq-tx-") as tmp:
         tmp_dir = Path(tmp)
         video_path = resolve_media_input(file_key)
-        duration = _ffprobe_duration(video_path)
-        if reserve_processing:
-            reserve_processing(max(1, math.ceil(duration)))
         audio_path = tmp_dir / "audio.mp3"
-        _ffmpeg_extract_mp3(video_path, audio_path)
-        segments = _whisper_transcribe(audio_path, **({"language": language} if language else {}))
-        srt = create_srt_from_whisper_segments(segments)
-        if not srt.strip():
-            raise RuntimeError("Whisper returned an empty transcript")
-        if video_id is not None and env_flag("VIDEO_VISUAL_ENABLED", True):
+
+        def optional_visuals():
+            if video_id is None or not env_flag("VIDEO_VISUAL_ENABLED", True):
+                return ()
             from worker_python.pipeline.visual_frames import build_frame_cache, publish_frame_cache
             from worker_python.pipeline.focus_frames import build_focus_cache, publish_focus_cache
 
-            try:
+            def frames(duration):
                 payload = build_frame_cache(video_path, video_id, duration)
                 publish_frame_cache(video_id, file_key, payload)
-            except Exception as exc:
-                # Optional visuals must not break a usable transcript. A backfill
-                # command can retry cache creation without paying for Whisper.
-                logger.warning("Frame cache unavailable for video %d (%s)", video_id, type(exc).__name__)
-            try:
+
+            def focus(duration):
                 with build_focus_cache(video_path, video_id, duration) as pack:
                     publish_focus_cache(video_id, file_key, pack)
-            except Exception as exc:
-                logger.warning("Focus cache unavailable for video %d (%s)", video_id, type(exc).__name__)
-        return srt
+
+            return (("Frame", frames), ("Focus", focus))
+
+        return execute_uploaded_transcription(UploadedTranscriptionDependencies(
+            duration=lambda: _ffprobe_duration(video_path), reserve=reserve_processing,
+            extract_audio=lambda: _ffmpeg_extract_mp3(video_path, audio_path),
+            recognize=lambda: _whisper_transcribe(audio_path, **({"language": language} if language else {})),
+            optional_visuals=optional_visuals,
+            report_visual_failure=lambda name, error: logger.warning(
+                "%s cache unavailable for video %d (%s)", name, video_id, error,
+            ),
+        ))
 
 
 def _ffmpeg_extract_mp3(video_path: Path | ObjectMediaSource, audio_path: Path) -> None:
@@ -169,16 +165,7 @@ def transcribe_audio_interval(
         client, model = _whisper_client()
         with client:
             segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
-    end_seconds = start_seconds + duration_seconds
-    result = []
-    for segment in segments:
-        start, end = float(segment["start"]), float(segment["end"])
-        if not math.isfinite(start) or not math.isfinite(end):
-            raise RuntimeError("Whisper returned non-finite timestamps")
-        start, end = max(start_seconds, start), min(end_seconds, end)
-        if start < end and segment["text"].strip():
-            result.append({"start": start, "end": end, "text": segment["text"]})
-    return result
+    return segments_within_interval(segments, start_seconds, duration_seconds)
 
 
 def _whisper_client():

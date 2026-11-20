@@ -28,9 +28,11 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/docs/package.json apps/docs/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/trpc/package.json packages/trpc/package.json
+COPY packages/domain/package.json packages/domain/package.json
 RUN npm ci --workspace @videoq/api --ignore-scripts
 COPY apps/api apps/api
 COPY packages/trpc packages/trpc
+COPY packages/domain packages/domain
 RUN npm run build:node --workspace @videoq/api
 
 FROM base AS dependencies
@@ -40,6 +42,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/docs/package.json apps/docs/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/trpc/package.json packages/trpc/package.json
+COPY packages/domain/package.json packages/domain/package.json
 RUN npm ci --workspace @videoq/api --omit=dev --omit=optional --ignore-scripts
 
 FROM base AS runtime
@@ -49,6 +52,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm /opt/verified-npm /usr/local/bin/npm 
 WORKDIR /workspace
 COPY --from=dependencies /workspace /workspace
 COPY --from=build /workspace/packages/trpc packages/trpc
+COPY --from=build /workspace/packages/domain packages/domain
 COPY --from=build /workspace/apps/api/dist apps/api/dist
 COPY --from=build /workspace/apps/api/drizzle apps/api/drizzle
 COPY --from=build /workspace/apps/api/scripts apps/api/scripts

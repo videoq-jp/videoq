@@ -1,4 +1,4 @@
-import type { AdminDeleteResult, AdminFlagsPatch } from '../../application/admin';
+import { adminSelfLockout, type AdminDeleteResult, type AdminFlagsPatch } from '../../application/admin';
 
 export interface AdminDependencies<User> {
   patchFlags(actorId: string, targetId: string, patch: AdminFlagsPatch): Promise<User | null>;
@@ -11,7 +11,7 @@ export interface AdminDependencies<User> {
 export function createAdminService<User>(deps: AdminDependencies<User>) {
   return {
     async patchFlags(actorId: string, targetId: string, patch: AdminFlagsPatch) {
-      if (actorId === targetId && (patch.is_active === false || patch.is_admin === false)) {
+      if (adminSelfLockout(actorId, targetId, patch)) {
         return { selfLockout: true as const };
       }
       const user = await deps.patchFlags(actorId, targetId, patch);

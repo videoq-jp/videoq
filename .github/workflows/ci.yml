@@ -270,6 +270,7 @@ jobs:
               - 'apps/api/scripts/migrations/d1/recover-visual-artifacts.ts'
               - 'apps/api/scripts/migrations/d1/visual-artifacts.ts'
               - 'apps/api/src/shared/media-path.ts'
+              - 'apps/api/src/application/media-path.ts'
               - 'apps/api/scripts/migrations/d1/postgres-login-fence.ts'
               - 'apps/api/scripts/migrations/d1/postgres-cutover-activity.ts'
               - 'apps/api/scripts/d1-migration-manifest.ts'
@@ -368,6 +369,7 @@ jobs:
               - 'apps/api/package.json'
               - 'apps/web/package.json'
               - 'packages/trpc/package.json'
+              - 'packages/domain/package.json'
               - 'package.json'
               - 'package-lock.json'
               - '.dockerignore'
@@ -389,6 +391,8 @@ jobs:
               - 'apps/api/src/lib/structured-answer.ts'
               - 'apps/api/test/local-chat-model.test.ts'
               - 'apps/worker/worker_python/pipeline/transcription*.py'
+              - 'apps/worker/worker_python/use_cases/*transcription*.py'
+              - 'apps/worker/worker_python/domain/srt.py'
               - 'apps/worker/worker_python/pipeline/*embedding*.py'
               - 'apps/worker/worker_python/pipeline/ai_connection.py'
               - 'apps/worker/tests/test_transcription_whisper.py'
@@ -404,6 +408,7 @@ jobs:
               - 'apps/api/**'
               - 'apps/worker/**'
               - 'packages/trpc/**'
+              - 'packages/domain/**'
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
@@ -437,6 +442,7 @@ jobs:
               - 'apps/web/**'
               - 'apps/demo-video/**'
               - 'packages/trpc/**'
+              - 'packages/domain/**'
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
@@ -607,7 +613,7 @@ jobs:
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: pip
-      # Cost-model tests read the TypeScript plan catalog with native type stripping.
+      # Cost-model tests load the shared TypeScript catalog through tsx.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -615,7 +621,7 @@ jobs:
         with:
           manager: npm
       - name: Install shared contracts for cost-model tests
-        run: npm ci --ignore-scripts --workspace @videoq/trpc
+        run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/trpc --workspace @videoq/domain --include-workspace-root
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
       - name: Install and test

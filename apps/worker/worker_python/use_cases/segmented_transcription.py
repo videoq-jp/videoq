@@ -8,6 +8,23 @@ from typing import Callable, Generic, Protocol, TypeVar
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class PendingDispatchDependencies:
+    next_heads: Callable[[int | None], list[int]]
+    has_pending: Callable[[], bool]
+    send_chunk: Callable[[int], None]
+    send_finish: Callable[[], None]
+
+
+def dispatch_pending(deps: PendingDispatchDependencies, *, after_index: int | None = None) -> None:
+    for index in deps.next_heads(after_index):
+        deps.send_chunk(index)
+    # Check the whole plan, not just the completed chunk's continuation lane.
+    # Delivery failure retries this step without repeating saved provider work.
+    if not deps.has_pending():
+        deps.send_finish()
+
+
 class ChunkRun(Protocol):
     completed: bool
     chunk_count: int

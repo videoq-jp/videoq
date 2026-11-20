@@ -36,7 +36,7 @@ COPY --from=ffmpeg-build /opt/ffmpeg/bin/ /usr/local/bin/
 COPY --from=ffmpeg-build /opt/ffmpeg/share/doc/ /usr/share/doc/videoq-ffmpeg/
 WORKDIR /app
 COPY LICENSE /usr/share/licenses/videoq/LICENSE
-COPY server.py provision.py provision_audio.py audio_guard.py ./
+COPY server.py transcription_core.py provision.py provision_audio.py audio_guard.py ./
 COPY security/verify_sqlite.py /app/verify_sqlite.py
 COPY security/fts5-secure-delete.db /app/fts5-secure-delete.db
 COPY security/verify_zlib.py /app/verify_zlib.py

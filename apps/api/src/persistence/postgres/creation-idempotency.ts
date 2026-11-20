@@ -1,13 +1,11 @@
+import { creationReceiptResult } from '../../application/creation-idempotency';
+export type { ExistingIdempotentResource } from '../../application/creation-idempotency';
+import type { ExistingIdempotentResource } from '../../application/creation-idempotency';
 export type {CreationIdempotency} from '../contracts/creation-idempotency';
 import type {CreationIdempotency} from '../contracts/creation-idempotency';
 import {and,eq,sql} from 'drizzle-orm';
 import type {Db} from '../../db/pool';
 import {mcpIdempotencyRecords} from '../../db/schema';
-
-export type ExistingIdempotentResource =
-  | { found: false }
-  | { found: true; conflict: true }
-  | { found: true; conflict: false; resourceId: number };
 
 /** 呼び出し側が user 行を FOR UPDATE 済みの transaction 内で使う。 */
 export async function findIdempotentResource(
@@ -30,12 +28,8 @@ export async function findIdempotentResource(
       ),
     )
     .limit(1);
-  const row = rows[0];
-  if (!row) return { found: false };
-  if (row.requestHash !== idempotency.requestHash) {
-    return { found: true, conflict: true };
-  }
-  return { found: true, conflict: false, resourceId: Number(row.resourceId) };
+  const result = creationReceiptResult(rows[0], idempotency.requestHash);
+  return result.found && !result.conflict ? { ...result, resourceId: Number(result.resourceId) } : result;
 }
 
 /** 対象リソースの INSERT と同じ transaction 内で記録する。 */

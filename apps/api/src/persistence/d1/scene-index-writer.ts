@@ -1,15 +1,22 @@
+import { canonicalSceneVectorInput, sceneEvidenceType, sceneFinishAllowed, sceneIndexCompletionOutcome,
+  scenePublishAllowed, sceneRunCurrent, sceneStageAllowed, validateSceneEmbedding, validateSceneIndexRun } from '../../application/scene-index-policy';
+import { sceneIndexStringLogic as logic } from '../scene-index-policy-sql';
 import type {D1Database} from "@cloudflare/workers-types";
 import type { SceneEmbedding, SceneIndexRunInput, SceneIndexWriter } from "../contracts/scene-index";
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-const RUN_IS_CURRENT = `r.user_id=? AND v.user_id=r.user_id AND versions.revision=r.source_revision
-  AND heads.run_id=r.id AND heads.video_id=r.video_id AND heads.dimensions=r.dimensions`;
+const RUN_IS_CURRENT = sceneRunCurrent({ owner: 'r.user_id=? AND v.user_id=r.user_id', source: 'versions.revision=r.source_revision',
+  head: 'heads.run_id=r.id AND heads.video_id=r.video_id AND heads.dimensions=r.dimensions',
+}, logic);
+const STAGING = sceneStageAllowed(RUN_IS_CURRENT, "r.status='staging'", logic);
+const PUBLISHABLE = scenePublishAllowed(RUN_IS_CURRENT, "r.status='staging'",
+  'r.expected_scenes=(SELECT count(*) FROM scene_staging WHERE run_id=r.id)', logic);
 const RUN_JOINS = `scene_index_runs r JOIN videos v ON v.id=r.video_id
   JOIN video_index_versions versions ON versions.video_id=v.id
   JOIN video_index_heads heads ON heads.video_id=v.id AND heads.dimensions=r.dimensions`;
 
 export async function sceneVectorId(runId: string, scene: SceneEmbedding): Promise<string> {
-  const canonical = JSON.stringify([runId, scene.id, scene.content, scene.startTime, scene.endTime, scene.evidenceType ?? "transcript", scene.embedding]);
+  const canonical = canonicalSceneVectorInput(runId, scene);
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
   return Array.from(new Uint8Array(hash), value => value.toString(16).padStart(2, "0")).join("");
 }
@@ -51,8 +58,7 @@ export function createD1SceneIndexWriter(database: D1Database): SceneIndexWriter
         fileKey: typeof row.fileKey === "string" ? row.fileKey : "", transcript: typeof row.transcript === "string" ? row.transcript : "", status: String(row.status) } : null;
     },
     async start(input: SceneIndexRunInput) {
-      if (![768, 1536].includes(input.dimensions) || !Number.isSafeInteger(input.expectedScenes) || input.expectedScenes < 0 ||
-          !input.runId || input.runId.length > 128) throw new Error("Invalid scene index run");
+      validateSceneIndexRun(input);
       const token = crypto.randomUUID();
       const result = await database.batch<Record<string, unknown>>([
         database.prepare(`INSERT INTO scene_index_runs(id,video_id,user_id,source_revision,dimensions,expected_scenes)
@@ -91,11 +97,10 @@ export function createD1SceneIndexWriter(database: D1Database): SceneIndexWriter
       let size = 0;
       const encoded = [];
       for (const scene of input) {
-        if (!scene.id || new TextEncoder().encode(scene.id).length > 64 || ids.has(scene.id) ||
-            typeof scene.content !== "string" || typeof scene.startTime !== "string" || typeof scene.endTime !== "string" ||
-            scene.evidenceType !== undefined && !["transcript", "visual"].includes(scene.evidenceType) ||
-            !Array.isArray(scene.embedding) || scene.embedding.length !== run.dimensions || !scene.embedding.every(value => Number.isFinite(value) && Number.isFinite(Math.fround(value))) ||
-            !scene.embedding.some(value => Math.fround(value) !== 0)) throw new Error("Invalid scene embedding");
+        validateSceneEmbedding(scene, run.dimensions, {
+          idFits: !scene.id || new TextEncoder().encode(scene.id).length <= 64,
+          duplicate: ids.has(scene.id),
+        });
         ids.add(scene.id);
         const embedding = JSON.stringify(scene.embedding);
         size += new TextEncoder().encode(JSON.stringify(scene)).length;
@@ -104,14 +109,14 @@ export function createD1SceneIndexWriter(database: D1Database): SceneIndexWriter
       }
       const token = crypto.randomUUID();
       const statements = [database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id)
-        SELECT ?,'scene_stage',r.video_id FROM ${RUN_JOINS} WHERE r.id=? AND ${RUN_IS_CURRENT} AND r.status='staging'`)
+        SELECT ?,'scene_stage',r.video_id FROM ${RUN_JOINS} WHERE r.id=? AND ${STAGING}`)
         .bind(token, runId, userId)];
       for (const { scene, embedding, vectorId } of encoded) {
         statements.push(database.prepare(`INSERT INTO scene_staging(run_id,scene_id,vector_id,content,start_time,end_time,evidence_type)
           SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
           ON CONFLICT(run_id,scene_id) DO UPDATE SET vector_id=CASE
             WHEN scene_staging.vector_id=excluded.vector_id THEN scene_staging.vector_id ELSE NULL END`)
-          .bind(runId, scene.id, vectorId, scene.content, scene.startTime, scene.endTime, scene.evidenceType ?? "transcript", token));
+          .bind(runId, scene.id, vectorId, scene.content, scene.startTime, scene.endTime, sceneEvidenceType(scene), token));
         statements.push(database.prepare(`INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions,embedding)
           SELECT ?,'upsert',?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) ON CONFLICT(id) DO NOTHING`)
           .bind(`u:${run.dimensions}:${vectorId}`, vectorId, scene.id, runId, run.video_id, userId, run.dimensions, embedding, token));
@@ -128,8 +133,7 @@ export function createD1SceneIndexWriter(database: D1Database): SceneIndexWriter
       const token = crypto.randomUUID();
       const result = await database.batch([
         database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id)
-          SELECT ?,'scene_publish',r.video_id FROM ${RUN_JOINS} WHERE r.id=? AND ${RUN_IS_CURRENT} AND r.status='staging'
-            AND r.expected_scenes=(SELECT count(*) FROM scene_staging WHERE run_id=r.id)`)
+          SELECT ?,'scene_publish',r.video_id FROM ${RUN_JOINS} WHERE r.id=? AND ${PUBLISHABLE}`)
           .bind(token, runId, userId),
         enqueueCurrentSceneDeletes(database, run.video_id, token, run.dimensions),
         database.prepare("DELETE FROM scenes WHERE video_id=? AND dimensions=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)")
@@ -166,18 +170,17 @@ export async function finishD1WorkerSceneIndex(
   const current = `v.id=? AND v.user_id=? AND versions.revision=? AND v.file=?`;
   const published = `EXISTS(SELECT 1 FROM video_index_heads h JOIN scene_index_runs r ON r.id=h.run_id
     WHERE h.video_id=v.id AND h.dimensions=? AND r.status='published' AND r.source_revision=versions.revision AND r.user_id=v.user_id)`;
+  const finish = sceneFinishAllowed("v.status='indexing'",
+    `EXISTS(SELECT 1 FROM video_index_versions versions WHERE versions.video_id=v.id AND ${current} AND ${published})`,
+    `NOT EXISTS(SELECT 1 FROM scenes s LEFT JOIN scene_index_tasks t ON t.id='u:'||s.dimensions||':'||s.vector_id
+      WHERE s.video_id=v.id AND s.dimensions=? AND (t.id IS NULL OR t.accepted_at IS NULL OR t.completed_at IS NULL))`, logic);
   const result = await database.batch<{ status: string; published: number }>([
     database.prepare(`UPDATE videos AS v SET status='completed',error_message=''
-      WHERE v.status='indexing' AND EXISTS(SELECT 1 FROM video_index_versions versions
-        WHERE versions.video_id=v.id AND ${current} AND ${published})
-      AND NOT EXISTS(SELECT 1 FROM scenes s LEFT JOIN scene_index_tasks t ON t.id='u:'||s.dimensions||':'||s.vector_id
-        WHERE s.video_id=v.id AND s.dimensions=? AND (t.id IS NULL OR t.accepted_at IS NULL OR t.completed_at IS NULL))`)
+      WHERE ${finish}`)
       .bind(input.videoId, input.userId, input.sourceRevision, input.fileKey, input.dimensions, input.dimensions),
     database.prepare(`SELECT v.status,${published} AS published FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
       WHERE ${current}`).bind(input.dimensions, input.videoId, input.userId, input.sourceRevision, input.fileKey),
   ]);
   const row = result[1].results[0];
-  if (!row || !["indexing", "completed"].includes(row.status)) return "stale";
-  if (row.status === "completed") return "completed";
-  return row.published ? "pending" : "missing";
+  return sceneIndexCompletionOutcome(row ? { status: row.status, published: Boolean(row.published) } : undefined);
 }

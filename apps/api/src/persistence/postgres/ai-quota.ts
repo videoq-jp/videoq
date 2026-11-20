@@ -1,3 +1,5 @@
+import { failedAiReservation, quotaAllowsNext } from '../../application/quota-policy';
+import { quotaSqlComparison } from '../quota-policy-sql';
 import { withClient } from "../../db/pool";
 import type { Bindings } from "../../types/bindings";
 import type { AiAnswerReservation, AiAnswerReservationResult,AiQuotaRepository } from "../contracts/ai-quota";
@@ -23,13 +25,7 @@ const RESERVE_AI_ANSWER_SQL = `UPDATE users
        END
  WHERE id = $1
    AND is_over_quota IS NOT TRUE
-   AND (
-     ai_answers_limit IS NULL
-     OR CASE
-          WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN 0
-          ELSE used_ai_answers
-        END < ai_answers_limit
-   )
+   AND ${quotaAllowsNext(`CASE WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN 0 ELSE used_ai_answers END`, 'ai_answers_limit', quotaSqlComparison)}
  RETURNING usage_period_start::text AS usage_period_start,
            plan_code, quota_source`;
 
@@ -71,14 +67,7 @@ export async function reserveAiAnswerUsage(
       [userId],
     );
     const row = state.rows[0];
-    if (!row) throw new Error("Quota owner not found.");
-    if (row.is_over_quota) return { overQuota: true } as const;
-
-    const limit = row.ai_answers_limit;
-    if (limit === null) {
-      throw new Error("Failed to reserve an unlimited AI answer quota.");
-    }
-    return { exceeded: true, limit: Number(limit) } as const;
+    return failedAiReservation(row ? { overQuota: Boolean(row.is_over_quota), limit: row.ai_answers_limit === null ? null : Number(row.ai_answers_limit) } : null);
   });
 }
 

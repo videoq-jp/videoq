@@ -1,3 +1,4 @@
+import { changedFields, saveAdminUserEdits, adminUserActions } from '@/application/admin-user-editing';
 import { isOnprem } from "@/lib/deployment";
 import { OnpremUserProvisioning, ResetUserAccessButton } from "@/components/auth/OnpremUserProvisioning";
 import { useEffect, useId, useRef, useState } from 'react';
@@ -71,17 +72,6 @@ type UserSettingsInput = {
 
 function numberInput(value: string): number | null {
   return value.trim() === '' ? null : Number(value);
-}
-
-function changedFields<K extends keyof AdminUser>(
-  current: AdminUser,
-  values: Pick<AdminUser, K>,
-): Partial<Pick<AdminUser, K>> {
-  const patch: Partial<Pick<AdminUser, K>> = {};
-  for (const key of Object.keys(values) as K[]) {
-    if (values[key] !== current[key]) patch[key] = values[key];
-  }
-  return patch;
 }
 
 export default function AdminPage() {
@@ -177,23 +167,15 @@ export default function AdminPage() {
       });
 
       const id = selectedUser.id;
-      const updates = [
-        { patch: flags, save: () => appTrpcClient.admin.patchFlags.mutate({ id, ...flags }) },
-        { patch: quota, save: () => appTrpcClient.admin.patchQuota.mutate({ id, ...quota }) },
-        { patch: usage, save: () => appTrpcClient.admin.patchUsage.mutate({ id, ...usage }) },
-      ].filter(({ patch }) => Object.keys(patch).length > 0);
-      if (updates.length === 0) return;
-
-      try {
-        for (const { patch, save } of updates) {
-          await save();
-          // Remember acknowledged edits for retries without adopting unrelated
-          // server changes (for example, usage accumulated while the form is open).
-          setSelectedUser(current => current?.id === id ? { ...current, ...patch } : current);
-        }
-      } finally {
-        await refreshQuery(queryClient, trpc.admin.listUsers.pathFilter());
-      }
+      await saveAdminUserEdits<Partial<AdminUser>>({
+        flags: { patch: flags, save: () => appTrpcClient.admin.patchFlags.mutate({ id, ...flags }) },
+        quota: { patch: quota, save: () => appTrpcClient.admin.patchQuota.mutate({ id, ...quota }) },
+        usage: { patch: usage, save: () => appTrpcClient.admin.patchUsage.mutate({ id, ...usage }) },
+      }, {
+        // Do not adopt unrelated server changes when remembering saved edits.
+        acknowledged: patch => setSelectedUser(current => current?.id === id ? { ...current, ...patch } : current),
+        refresh: () => refreshQuery(queryClient, trpc.admin.listUsers.pathFilter()),
+      });
     },
     onSuccess: () => {
       setStatusMessage({ type: 'success', text: t('admin.users.saveSuccess') });
@@ -488,7 +470,7 @@ export default function AdminPage() {
                               size="sm"
                               className="min-w-0 shrink-0 text-red-900 hover:bg-red-50 hover:text-red-1000"
                               aria-describedby={`${identityId}-name ${identityId}-email`}
-                              disabled={row.is_admin || row.id === user.id || isDeleting || deleteMutation.isPending}
+                              disabled={!adminUserActions(user.id, row).delete || isDeleting || deleteMutation.isPending}
                               onClick={(event) => {
                                 userActionTriggerRef.current = event.currentTarget;
                                 setUserToDelete(row);
@@ -562,7 +544,7 @@ export default function AdminPage() {
                 <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
                   <Checkbox
                     checked={isActive}
-                    disabled={selectedUser?.id === user.id}
+                    disabled={!!selectedUser && !adminUserActions(user.id, selectedUser).editFlags}
                     onCheckedChange={(value) => setIsActive(value === true)}
                   />
                   {t('admin.users.fields.isActive')}
@@ -570,7 +552,7 @@ export default function AdminPage() {
                 <label className="flex items-center gap-2 text-std-17N-170 text-solid-gray-800">
                   <Checkbox
                     checked={isAdminFlag}
-                    disabled={selectedUser?.id === user.id}
+                    disabled={!!selectedUser && !adminUserActions(user.id, selectedUser).editFlags}
                     onCheckedChange={(value) => setIsAdminFlag(value === true)}
                   />
                   {t('admin.users.fields.isAdmin')}

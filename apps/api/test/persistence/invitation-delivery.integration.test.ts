@@ -80,6 +80,24 @@ for(const backend of ['d1','postgres']as const){
   it('only marks stranded queued deliveries failed while preserving live retries and terminal invitations',async()=>{
    const now=new Date();expect(await failInvitationsWithoutLiveDelivery(env,now,60000)).toEqual({failed:0});await execute("UPDATE external_tasks SET dead_at=? WHERE id=1",[now.toISOString()]);expect(await failInvitationsWithoutLiveDelivery(env,now,60000)).toEqual({failed:1});expect(await failInvitationsWithoutLiveDelivery(env,now,60000)).toEqual({failed:0});expect((await state()).invitations[0].delivery_status).toBe('failed');
   });
+  it('uses a strict grace boundary for stranded delivery recovery',async()=>{
+   const now=new Date('2026-11-20T12:00:00.000Z'),cutoff=new Date(now.getTime()-60000);
+   await execute('UPDATE external_tasks SET dead_at=? WHERE id=1',[now.toISOString()]);
+   await execute('UPDATE video_course_invitations SET updated_at=? WHERE id=1',[cutoff.toISOString()]);
+   expect(await failInvitationsWithoutLiveDelivery(env,now,60000)).toEqual({failed:0});
+   expect(await failInvitationsWithoutLiveDelivery(env,new Date(now.getTime()+1),60000)).toEqual({failed:1});
+  });
+  it('does not rotate a token at its exact expiry time',async()=>{
+   const now=new Date('2026-11-20T12:00:00.000Z');
+   await execute('UPDATE video_course_invitations SET expires_at=? WHERE id=1',[now.toISOString()]);
+   expect(await rotateInvitationTokenForDelivery(env,1,'new-hash',now,lease)).toEqual({invalidState:'expired'});
+   expect((await state()).invitations[0]).toMatchObject({status:'expired',token_hash:'initial-hash'});
+  });
+  if(backend==='d1')it('retains a pending hash when stored expiry cannot be parsed',async()=>{
+   await execute("UPDATE video_course_invitations SET expires_at='invalid' WHERE id=1");
+   expect(await rotateInvitationTokenForDelivery(env,1,'new-hash',new Date(),lease)).toEqual({email:'learner@example.test',courseName:'Course',inviterName:'Teacher'});
+   expect((await state()).invitations[0]).toMatchObject({status:'pending',token_hash:'initial-hash'});
+  });
   it('rolls back invitation results if completing the task fails afterwards',async()=>{
    if(backend==='d1')await execute("CREATE TRIGGER fail_complete BEFORE UPDATE OF completed_at ON external_tasks WHEN NEW.completed_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'completion failure'); END");
    else await execute("CREATE FUNCTION fail_complete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.completed_at IS NOT NULL THEN RAISE EXCEPTION 'completion failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_complete BEFORE UPDATE ON external_tasks FOR EACH ROW EXECUTE FUNCTION fail_complete()");

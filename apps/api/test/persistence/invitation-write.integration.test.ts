@@ -35,6 +35,30 @@ for(const backend of ['d1','postgres']as const){
    expect(await accept()).toEqual({ok:true,courseId:1});expect(await accept()).toEqual({ok:true,courseId:1});expect((await state()).members).toEqual([{course_id:backend==='postgres'?'1':1,user_id:'learner',invitation_id:backend==='postgres'?'1':1}]);
    expect(await invitations.removeCourseUserMember(env,1,'learner','owner')).toEqual({ok:true});expect(await accept()).toEqual({ok:true,courseId:1});expect((await state()).members).toEqual([]);
   });
+  it('keeps accepted replay ahead of expiry and changed recipient verification without restoring membership',async()=>{
+   await accept();await invitations.removeCourseUserMember(env,1,'learner','owner');
+   await execute("UPDATE video_course_invitations SET expires_at='2000-01-01' WHERE id=1");
+   await execute("UPDATE users SET email_verified=?,email='changed@example.test' WHERE id='learner'",[false]);
+   const before=await state();expect(await accept()).toEqual({ok:true,courseId:1});expect(await state()).toEqual(before);
+   expect(await decline()).toEqual({invalidState:'accepted'});
+  });
+  it.each(['accept','decline','resend','revoke']as const)('expires at equality before applying %s',async action=>{
+   const now=new Date('2026-11-20T12:00:00.000Z');await execute('UPDATE video_course_invitations SET expires_at=? WHERE id=1',[now.toISOString()]);
+   const result=action==='accept'?await invitations.acceptCourseInvitation(env,'hash','learner',now)
+     :action==='decline'?await invitations.declineCourseInvitation(env,'hash','learner',now)
+     :action==='resend'?await invitations.rotatePendingCourseInvitation(env,1,1,'owner','replacement',new Date('2099-01-01'),now)
+     :await invitations.revokePendingCourseInvitation(env,1,1,'owner',now);
+   expect(result).toEqual(action==='accept'||action==='decline'?{expired:true}:{invalidState:'expired'});
+   expect((await state()).invitations[0]).toMatchObject({status:'expired',token_hash:'hash'});
+   expect((await state()).members).toEqual([]);expect((await state()).tasks).toEqual([]);
+  });
+  it.each(['decline','revoke']as const)('permits %s cleanup after a native course becomes LMS-managed',async action=>{
+   await execute('UPDATE video_courses SET managed_by_lms=? WHERE id=1',[true]);
+   const result=action==='decline'?await decline():await invitations.revokePendingCourseInvitation(env,1,1,'owner',new Date());
+   expect(result).toEqual(action==='decline'?{ok:true,courseId:1}:{ok:true});
+   expect((await state()).invitations[0].status).toBe(action==='decline'?'declined':'revoked');
+   expect((await state()).members).toEqual([]);expect((await state()).tasks).toEqual([]);
+  });
   it('accepts a plaintext invitation through the real tRPC boundary without persisting it',async()=>{
    const token='long-random-invitation-token-for-integration';await execute('UPDATE video_course_invitations SET token_hash=? WHERE id=1',[await hashInvitationToken(token)]);
    const response=await createApp().request('/api/trpc/courseMemberships.accept',{method:'POST',headers:{...testAuthHeaders('learner'),'content-type':'application/json'},body:JSON.stringify({token})},env);

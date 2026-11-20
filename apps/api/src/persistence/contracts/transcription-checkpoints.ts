@@ -1,10 +1,6 @@
 import type { TranscriptionSnapshot } from "./worker-transcription";
-export type TranscriptionRun = {
-  videoId: number; runId: string; fileKey: string; sourceRevision: string;
-  durationMs: number; chunkSeconds: number; chunkCount: number;
-  completed: boolean; transcriptionLanguage: string | null;
-};
-export type TranscriptSegment = { start: number; end: number; text: string };
+import type { TranscriptSegment, TranscriptionRun } from '../../application/transcription-policy';
+export type { TranscriptSegment, TranscriptionRun } from '../../application/transcription-policy';
 export interface TranscriptionCheckpoints {
   load(videoId: number, runId?: string): Promise<TranscriptionRun | null>;
   initialize(input: TranscriptionSnapshot, durationMs: number, chunkSeconds: number): Promise<{ run: TranscriptionRun | null; quotaExceeded: boolean }>;

@@ -62,20 +62,55 @@ For rollout and rollback ordering, see [deployment instructions](../../infra/DEP
 
 ## Application boundaries
 
+`use_cases/reindex_batch.py` owns the full-rebuild entry decision as well as bounded
+page dispatch and failure aggregation. It requires a search queue for cloud work,
+requires the stable current job ID for queued work and preserves the original root
+ID across continuation pages. `tasks/reindexing.py` supplies runtime configuration,
+queue delivery and inline capabilities. The inline capability retains the global
+advisory lock around the entire lazy video cursor lifetime, including failures.
+
 `worker_python/use_cases/transcription.py` owns the PostgreSQL transcription
 lifecycle: eligible states, claiming work, failure/retry decisions, segmented
 processing selection, and indexing handoff. It accepts metadata and capabilities;
 it imports no database, queue, provider, task adapter or environment configuration.
+`use_cases/cloud_transcription.py` owns the revision-fenced cloud lifecycle,
+including duplicate suppression, conditional begin, quota versus provider failure
+classification and retry decisions. Its adapter decodes the signed API response,
+loads secrets and invokes providers; successful saves own the atomic indexing outbox.
 `tasks/transcription.py` selects the cloud/PostgreSQL runtime and assembles those
 capabilities. PostgreSQL SQL, transactions, quota reservations, secret loading,
 provider calls and deterministic queue delivery remain in the adapter.
-`use_cases/segmented_transcription.py` owns plan reuse, bounded interval execution,
-checkpoint/retry decisions and completion handoff. The segmented task module
+`use_cases/transcription_source.py` owns source selection, edition restrictions and
+quota handoff. The media pipeline supplies caption, uploaded-file and development
+providers through capabilities and depends on a structural input contract rather
+than the database row model. Uploaded media probing retains its existing quota
+reservation before costly extraction; source selection does not reserve it twice.
+`use_cases/uploaded_transcription.py` owns uploaded-media processing order:
+probe duration, reserve rounded processing seconds, extract audio, recognize and
+reject empty subtitles. Optional frame and focus cache failures are isolated so
+that each cache still gets a chance and usable source-timestamped subtitles survive.
+`pipeline/transcription.py` supplies file lifetime, FFmpeg, Whisper, environment
+configuration and cache publication. Cache warnings retain exception types only.
+`use_cases/segmented_transcription.py` owns plan reuse, pending-lane dispatch, bounded interval execution,
+checkpoint/retry decisions and completion handoff. It
+checks pending heads through injected capabilities: finalization requires the whole
+plan to be done, even when the current continuation lane is empty. The adapter
 supplies provider, queue and checkpoint capabilities. Local finalization retains
 its database transaction; cloud finalization retains the internal API's atomic
 outbox and does not send a second indexing job. Provider calls are skipped when
 retrying delivery of a saved checkpoint. Source probing is also skipped on that
 replay path. SQL and checkpoint paging remain adapter responsibilities.
+
+`use_cases/transcript_index.py` validates original cues, prepares storage capability,
+groups search scenes and obtains embeddings before invoking atomic replacement.
+`use_cases/scene_index.py` likewise validates original/grouped SRT for cloud
+indexing; its adapter supplies the splitter and signed API operations. Source cue
+timestamps remain strings matching the API contract. Pending publication delivery
+is checked before parsing or model work, so retries do not regenerate embeddings.
+`pipeline/vector_index.py` keeps provider batch sizing and PostgreSQL operations.
+The writer rechecks the original transcript under the video row lock, replaces all
+scene rows in one transaction and preserves concurrent edits/deletion. Neither
+scene splitting nor embedding provider calls run inside that write transaction.
 
 `use_cases/visual_publication.py` owns immutable visual publication decisions:
 registration before uploads, cleanup of losing attempts, and manifest recovery
@@ -87,6 +122,25 @@ losing attempt removes its own keys. Existing task entrypoints remain unchanged.
 `tests/test_visual_publication_use_case.py` exercises competing publications,
 deletions, storage failures and retries without a database or object store;
 `tests/test_cloud_visuals.py` verifies adapter integration and immutable keys.
+
+`domain/srt.py` and `domain/scenes.py` own subtitle parsing, timestamps and scene
+models. `use_cases/scene_splitting.py` owns token-budget checks, Unicode-safe text
+splitting, lazy vector acquisition and ordered scene construction. The Otsu
+adapter supplies tokenizer/embedding providers and NumPy kernels; it keeps the
+existing accumulation precision and public entrypoints. Boundary tests inspect
+all domain and use-case files, and prohibit domain imports of use cases.
+
+`use_cases/job_execution.py` owns validated dispatch, retired/duplicate jobs,
+workload-group checks, task arguments, completion and failure bookkeeping.
+`lambda_handler.py` retains JSON/Base64 decoding, environment/bootstrap, registry
+loading and safe log formatting. Job payload rules and grouping live in
+`domain/jobs.py`; `contracts.py` and `job_routing.py` preserve existing adapter
+entrypoints. `domain/video_status.py` owns processing statuses.
+
+`use_cases/visual_manifest.py` owns publication readiness, overview selection and
+size-bounded thinning. The pipeline supplies sample reads and JSON encoding;
+immutable storage keys and the existing wire representation remain adapters.
+Manifest thinning retains the full overview lookup and selected chunk versions.
 
 Keep conditional claims and writes atomic in persistence adapters. In particular,
 a completion must preserve concurrent edits/deletion, and a queue failure after

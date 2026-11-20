@@ -53,6 +53,16 @@ export function courseContract(name:string,setup:()=>Promise<Fixture>){
       expect(await f.repository.getInfo(10,'owner',{...options,videoIds:[]})).toMatchObject({video_count:0,videos:[]});
       expect(await f.repository.getInfo(10,'owner',{...options,videoIds:[3]})).toMatchObject({video_count:0,videos:[]});
     });
+    it.each(['managed', 'disabled', 'mixed'] as const)('preserves owner access while refusing external %s courses', async reason => {
+      if (reason === 'mixed') await f.execute('UPDATE videos SET managed_by_lms=? WHERE id=2', [true]);
+      else await f.execute(`UPDATE video_courses SET ${reason === 'managed' ? 'managed_by_lms' : 'native_access_disabled'}=? WHERE id=10`, [true]);
+      expect((await f.repository.getDetail(10,'owner',{includeFileUrls:false}))?.access_role).toBe('owner');
+      expect(await f.repository.getDetail(10,'learner')).toBeNull();
+      expect(await f.repository.getShared('shared')).toBeNull();
+      expect(await f.repository.setShareSlug(10,'owner','replacement')).toEqual({notFound:true});
+      expect((await f.repository.listPage('owner',10,0)).results.some(c=>c.id===10)).toBe(true);
+      expect((await f.repository.listPage('learner',10,0)).results.some(c=>c.id===10)).toBe(false);
+    });
     it('creates concurrently with stable idempotency and per-user order allocation',async()=>{
       const key={action:'create_course' as const,key:'same',requestHash:'a'.repeat(64)};
       const results=await Promise.all([f.repository.create('owner','created','description',key),f.repository.create('owner','created','description',key)]);
@@ -87,6 +97,23 @@ export function courseContract(name:string,setup:()=>Promise<Fixture>){
       for(const ids of [[],[10,10],[10,20],[999]])expect(await f.repository.reorder('owner',ids)).toEqual({mismatch:true});
       expect((await f.repository.getDetail(10,'owner',{includeFileUrls:false}))?.display_order).toBe(7);
       expect(await f.repository.reorder('owner',[40,10])).toEqual({ok:true});
+    });
+    it('preserves sparse duplicate slots and permits selected owned LMS course reordering',async()=>{
+      await f.execute('UPDATE video_courses SET display_order=? WHERE id=10',[-2]);
+      await f.execute('UPDATE video_courses SET display_order=? WHERE id=30',[7]);
+      await f.execute('UPDATE video_courses SET display_order=? WHERE id=40',[7]);
+      expect(await f.repository.reorder('owner',[30,40,10])).toEqual({ok:true});
+      const options={includeFileUrls:false};
+      expect((await f.repository.getDetail(30,'owner',options))?.display_order).toBe(-2);
+      expect((await f.repository.getDetail(40,'owner',options))?.display_order).toBe(7);
+      expect((await f.repository.getDetail(10,'owner',options))?.display_order).toBe(7);
+      expect((await f.repository.getDetail(20,'other',options))?.display_order).toBe(0);
+    });
+    it('allows native content edits on disabled or mixed courses but refuses LMS-managed courses',async()=>{
+      await f.execute('UPDATE video_courses SET native_access_disabled=? WHERE id=10',[true]);
+      expect(await f.repository.update(10,'owner',{name:'disabled owner edit'})).toMatchObject({course:{name:'disabled owner edit'}});
+      expect(await f.repository.update(40,'owner',{name:'mixed owner edit'})).toMatchObject({course:{name:'mixed owner edit'}});
+      expect(await f.repository.update(30,'owner',{name:'LMS edit'})).toEqual({notFound:true});
     });
     it('enforces case-insensitive slug uniqueness and exact public lookup with atomic clearing',async()=>{
       expect(await f.repository.setShareSlug(20,'other','SHARED')).toEqual({conflict:true});

@@ -80,6 +80,11 @@ export function courseTagsContract(name:string,setup:()=>Promise<TagsFixture>){
    expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(results.find(r=>r.status==='rejected')).toMatchObject({reason:{status:413}});
    expect((await list()).tags).toHaveLength(200);expect(await f.count('lti_operation_reservations')).toBe(1);
   });
+  it('preserves backend overflow-versus-replay collision precedence without consuming an operation',async()=>{
+   const id=crypto.randomUUID();await create('Replay target',id);await f.seedTags(200);
+   await expect(create('Replay target',id,{...scope,actorKey:'a'.repeat(64)})).rejects.toMatchObject({status:f.env.DB?413:409});
+   expect(await f.count('lti_course_tag_operations')).toBe(1);expect(await f.count('lti_operation_reservations')).toBe(1);
+  });
   it('enforces the 200-tag limit and rejects duplicate assignment IDs',async()=>{
    await f.seedTags(200);await expect(create()).rejects.toMatchObject({status:413});const tag=(await list()).tags[0];
    expect(courseTagInput.safeParse({action:'assign',operationId:crypto.randomUUID(),videoId:f.videoIds[0],tagIds:[tag.id,tag.id],revision:'a'.repeat(64)}).success).toBe(false);

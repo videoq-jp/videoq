@@ -1,4 +1,8 @@
-import {and,asc,desc,eq,or,sql,type SQL} from 'drizzle-orm';
+import { courseEditable, validCourseOrderInput, courseOrderAllowed, planSelectedCourseOrder, courseAccessRole, courseAuthenticatedRole, courseOwnerPriority } from '../../application/course-management';
+import { courseManagementStringLogic, courseManagementDrizzleLogic, courseD1OrderPlanning, courseDrizzleRoleChoice, courseDrizzlePriorityChoice } from '../course-management-policy-sql';
+import { nativeCourseAccessAllowed } from '../../application/native-course-access';
+import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
+import {and,asc,desc,eq,sql,type SQL} from 'drizzle-orm';
 import {videoStatusSchema} from '@videoq/trpc';
 import {createD1Connection} from '../../db/d1/connection';
 import {videoCourses,videos,videoCourseMembers} from '../../db/schema/sqlite';
@@ -6,16 +10,20 @@ import {mapVideoListRow} from '../../repositories/video-mapping';
 import {toUtcIso} from '../../shared/datetime';
 import type {Bindings} from '../../types/bindings';
 import type {CourseRepository,CourseDetail,CourseReadOptions} from '../contracts/course-repository';
-import {NATIVE_COURSE_EXTERNAL} from './course-access';
+import {nativeCourseExternalSql} from './course-access';
 import {videoListProjection} from './video-read-repository';
 const NOW="strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-const external=sql.raw(NATIVE_COURSE_EXTERNAL.replaceAll('course.','"video_courses".'));
+const external=sql.raw(nativeCourseExternalSql('"video_courses"'));
 const count=sql<number>`(SELECT count(*) FROM video_course_members m WHERE m.course_id="video_courses"."id")`.as('video_count');
 const projection={id:videoCourses.id,name:videoCourses.name,description:videoCourses.description,display_order:videoCourses.displayOrder,
   created_at:videoCourses.createdAt,updated_at:videoCourses.updatedAt,share_slug:videoCourses.shareSlug,video_count:count,owner_user_id:videoCourses.userId};
 const owned=(id:number,userId:string)=>and(eq(videoCourses.id,id),eq(videoCourses.userId,userId));
-const editable=(id:number,userId:string)=>and(owned(id,userId),eq(videoCourses.managedByLms,false))!;
-const readable=(userId:string)=>or(eq(videoCourses.userId,userId),and(external,sql`EXISTS(SELECT 1 FROM video_course_memberships m WHERE m.course_id=${videoCourses.id} AND m.user_id=${userId})`))!;
+const editable=(id:number,userId:string)=>and(eq(videoCourses.id,id),courseEditable(sql`${videoCourses.userId}=${userId}`,sql`${videoCourses.managedByLms}=0`,courseManagementDrizzleLogic))!;
+const readable=(userId:string)=>nativeCourseAccessAllowed(false, {
+  owner: sql`${videoCourses.userId}=${userId}`, nativeEnabled: external,
+  participant: sql`EXISTS(SELECT 1 FROM video_course_memberships m WHERE m.course_id=${videoCourses.id} AND m.user_id=${userId})`,
+  shareMatches: sql`0`,
+}, nativeCourseDrizzleLogic);
 type Metadata={id:number;name:string;description:string;display_order:number;created_at:string;updated_at:string;share_slug:string|null;video_count:number;owner_user_id:string};
 export function createD1CourseRepository(database:D1Database,env:Bindings):CourseRepository {
   const db=createD1Connection(database);
@@ -27,7 +35,7 @@ export function createD1CourseRepository(database:D1Database,env:Bindings):Cours
   async function detail(course:Metadata,rows:Awaited<ReturnType<typeof members>>,viewer:'public'|{viewerUserId:string},options:CourseReadOptions):Promise<CourseDetail>{
     return {id:course.id,name:course.name,description:course.description,display_order:course.display_order,created_at:toUtcIso(course.created_at),
       updated_at:toUtcIso(course.updated_at),share_slug:course.share_slug,video_count:course.video_count,
-      access_role:viewer==='public'?'public':course.owner_user_id===viewer.viewerUserId?'owner':'member',
+      access_role:courseAccessRole(viewer,course.owner_user_id),
       videos:await Promise.all(rows.map(async row=>({...await mapVideoListRow(env,row,{includeFileUrl:options.includeFileUrls!==false}),order:row.member_order})))};
   }
   async function fetchDetail(where:SQL,viewer:'public'|{viewerUserId:string},options:CourseReadOptions){
@@ -74,22 +82,22 @@ export function createD1CourseRepository(database:D1Database,env:Bindings):Cours
       return courses[0]?{course:await detail(courses[0],rows,{viewerUserId:userId},options)}:{notFound:true};
     },
     async delete(id,userId){
+      const permission=courseEditable('user_id=?','managed_by_lms=0',courseManagementStringLogic);
       const results=await database.batch([
         database.prepare(`DELETE FROM mcp_idempotency_records WHERE user_id=? AND action='create_course' AND resource_id=?
-          AND EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=? AND managed_by_lms=0)`).bind(userId,id,id,userId),
-        database.prepare('DELETE FROM video_courses WHERE id=? AND user_id=? AND managed_by_lms=0 RETURNING id').bind(id,userId),
+          AND EXISTS(SELECT 1 FROM video_courses WHERE id=? AND ${permission})`).bind(userId,id,id,userId),
+        database.prepare(`DELETE FROM video_courses WHERE id=? AND ${permission} RETURNING id`).bind(id,userId),
       ]);
       return results[1].results.length?{ok:true}:{notFound:true};
     },
     async reorder(userId,ids){
-      if(!ids.length || new Set(ids).size!==ids.length)return {mismatch:true};
+      if(!validCourseOrderInput(ids))return {mismatch:true};
       const encoded=JSON.stringify(ids);
-      const permitted='(SELECT count(*) FROM video_courses WHERE user_id=? AND id IN(SELECT value FROM json_each(?)))=?';
+      const permitted=courseOrderAllowed({validInput:'1',allSelectedOwned:'(SELECT count(*) FROM video_courses WHERE user_id=? AND id IN(SELECT value FROM json_each(?)))=?'},courseManagementStringLogic);
+      const assignment=planSelectedCourseOrder('json_each(?)','SELECT id,display_order FROM video_courses WHERE user_id=? AND id IN(SELECT value FROM json_each(?))',courseD1OrderPlanning);
       const result=await database.batch<{allowed:number}>([
         database.prepare(`SELECT (${permitted}) AS allowed`).bind(userId,encoded,ids.length),
-        database.prepare(`WITH slots AS MATERIALIZED(SELECT display_order,row_number() OVER(ORDER BY display_order,id)-1 AS ordinal FROM video_courses
-            WHERE user_id=? AND id IN(SELECT value FROM json_each(?))),
-          desired AS MATERIALIZED(SELECT input.value AS id,slots.display_order FROM json_each(?) input JOIN slots ON slots.ordinal=CAST(input.key AS INTEGER))
+        database.prepare(`WITH ${assignment}
           UPDATE video_courses SET display_order=(SELECT display_order FROM desired WHERE desired.id=video_courses.id)
           WHERE user_id=? AND id IN(SELECT id FROM desired) AND (${permitted})
           AND display_order<>(SELECT display_order FROM desired WHERE desired.id=video_courses.id)`)
@@ -116,12 +124,12 @@ export function createD1CourseRepository(database:D1Database,env:Bindings):Cours
       return !result[0].results.length?{notFound:true}:result[1].results.length?{ok:true}:{notConfigured:true};
     },
     async listPage(userId,limit,offset){
-      const where=readable(userId),role=sql<'owner'|'member'>`CASE WHEN ${videoCourses.userId}=${userId} THEN 'owner' ELSE 'member' END`;
+      const where=readable(userId),role=courseAuthenticatedRole(sql`${videoCourses.userId}=${userId}`,courseDrizzleRoleChoice);
       const [totals,rows]=await db.batch([
         db.select({count:sql<number>`count(*)`}).from(videoCourses).where(where),
         db.select({id:videoCourses.id,name:videoCourses.name,description:videoCourses.description,display_order:videoCourses.displayOrder,
           created_at:videoCourses.createdAt,video_count:count,access_role:role}).from(videoCourses).where(where)
-          .orderBy(sql`CASE WHEN ${videoCourses.userId}=${userId} THEN 0 ELSE 1 END`,asc(videoCourses.displayOrder),desc(videoCourses.createdAt),asc(videoCourses.id)).limit(limit).offset(offset),
+          .orderBy(courseOwnerPriority(sql`${videoCourses.userId}=${userId}`,courseDrizzlePriorityChoice),asc(videoCourses.displayOrder),desc(videoCourses.createdAt),asc(videoCourses.id)).limit(limit).offset(offset),
       ]);
       return {count:totals[0].count,results:rows.map(row=>({...row,created_at:toUtcIso(row.created_at)}))};
     },

@@ -1,3 +1,4 @@
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
 import type {MaterialsSyncRepository,MaterialsConnection,MaterialsLease} from '../contracts/materials-sync-repository';
 import {MaterialsLeaseLostError} from '../contracts/materials-sync-repository';
@@ -58,7 +59,7 @@ export function createD1MaterialsSyncRepository(database:D1Database):MaterialsSy
      AND EXISTS(SELECT 1 FROM lms_resources r JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=r.installation_id AND t.context_id=r.context_id
        AND t.course_id=r.course_id AND t.active=1 AND t.resource_link_id IS NULL
       JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id
-      JOIN users owner ON owner.id=t.owner_user_id AND owner.is_active=1 AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))
+      JOIN users owner ON owner.id=t.owner_user_id AND ${d1LmsOwnerSql()}
       WHERE r.video_id=v.id AND r.installation_id=? AND r.external_id=? AND r.generation=? AND r.enabled=1 AND v.user_id=t.owner_user_id)
      AND ${D1_MATERIALS_CONTEXT_LEASE}`,[JSON.stringify({message}),dedupeKey,upload.videoId,upload.fileKey,lease.installationId,upload.externalId,upload.generation,...values(lease)]),
     prepare(`UPDATE videos SET status='pending',error_message='' WHERE id=? AND changes()=1`,[upload.videoId]),

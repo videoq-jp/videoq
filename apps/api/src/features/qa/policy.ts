@@ -1,3 +1,5 @@
+import { nativeCourseExternalAllowed, nativeCourseAccessAllowed } from '../../application/native-course-access';
+
 /** Q&A policy is independent of transport, persistence and runtime configuration.
  * Adapters supply boolean facts or atomic SQL predicates through this algebra.
  * SQL predicates must be composed from adapter-owned expressions/bound parameters.
@@ -18,9 +20,40 @@ export interface QaPermissions<T> {
   canDeleteOwn: T;
   canModerate: T;
 }
+
+/** Course access is checked separately. Anonymous readers never gain posting
+ * rights; native moderation belongs to the independently authenticated owner. */
+export function qaNativePermissions<T>(authenticated: T, owner: T): QaPermissions<T> {
+  return { canPost: authenticated, canVote: authenticated, canDeleteOwn: authenticated, canModerate: owner };
+}
+
+/** Both the original source and currently attached video must remain visible.
+ * Null bindings permit course-level posts, including an empty LMS video scope. */
+export function qaQuestionScopeAllowed<T>(facts: {
+  sourceUnbound: T; sourceGranted: T; videoUnbound: T; videoGranted: T;
+}, logic: QaLogic<T>): T {
+  return logic.and(logic.or(facts.sourceUnbound, facts.sourceGranted),
+    logic.or(facts.videoUnbound, facts.videoGranted));
+}
 export type QaOperation =
   | "qa.ask" | "qa.reply" | "qa.vote" | "qa.feature"
   | "qa.updateQuestion" | "qa.deleteQuestion" | "qa.updateReply" | "qa.deleteReply";
+
+/** Evaluate locked facts or atomic predicates without separating them from writes. */
+export function qaMutationEffects<T>(operation: QaOperation, facts: {
+  ownQuestion: T; ownReply: T; featureChanged: T; featured: boolean;
+}, logic: QaLogic<T>): {
+  touchQuestion: boolean;
+  moderation: { action: 'delete_question' | 'delete_reply' | 'feature' | 'unfeature'; when: T } | null;
+} {
+  return {
+    touchQuestion: operation === 'qa.reply' || operation === 'qa.updateReply' || operation === 'qa.deleteReply',
+    moderation: operation === 'qa.deleteQuestion' ? { action: 'delete_question', when: logic.not(facts.ownQuestion) }
+      : operation === 'qa.deleteReply' ? { action: 'delete_reply', when: logic.not(facts.ownReply) }
+      : operation === 'qa.feature' ? { action: facts.featured ? 'feature' : 'unfeature', when: facts.featureChanged }
+      : null,
+  };
+}
 
 export function qaContentAbilities<T>(permissions: Pick<QaPermissions<T>, "canPost" | "canDeleteOwn" | "canModerate">, own: T, logic: QaLogic<T>) {
   return {
@@ -46,16 +79,15 @@ export function qaMutationAllowed<T>(operation: QaOperation, permissions: QaPerm
 export function qaNativeAccessAllowed<T>(usingShare: boolean, facts: {
   owner: T; nativeEnabled: T; member: T; shareMatches: T;
 }, logic: QaLogic<T>): T {
-  return usingShare
-    ? logic.and(facts.nativeEnabled, facts.shareMatches)
-    : logic.or(facts.owner, logic.and(facts.nativeEnabled, facts.member));
+  return nativeCourseAccessAllowed(usingShare, { ...facts, participant: facts.member }, logic);
 }
 
 /** LMS authority survives detachment and also protects mixed native/LMS courses. */
 export function qaNativeParticipationAllowed<T>(facts: {
   managedByLms: T; nativeAccessDisabled: T; hasLmsVideo: T;
 }, logic: QaLogic<T>): T {
-  return logic.not(logic.or(logic.or(facts.managedByLms, facts.nativeAccessDisabled), facts.hasLmsVideo));
+  return nativeCourseExternalAllowed({ independentlyManaged: logic.not(facts.managedByLms),
+    nativeAccessEnabled: logic.not(facts.nativeAccessDisabled), noLmsVideo: logic.not(facts.hasLmsVideo) }, logic);
 }
 
 /** Empty LMS scopes permit course-level posts, but never another owner's course. */

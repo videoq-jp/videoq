@@ -1,3 +1,5 @@
+import { invitationInviterName } from '../../application/invitation-delivery';
+import { nativeCourseExternalSql } from './course-access';
 import {and,desc,eq,sql} from 'drizzle-orm';
 import {drizzle} from 'drizzle-orm/d1';
 import {users,videoCourses,videoCourseInvitations as invitations,videoCourseMemberships as memberships} from '../../db/schema/sqlite/modern';
@@ -21,12 +23,11 @@ export function createD1InvitationReadRepository(database:D1Database):Invitation
     members:members.map(r=>({user_id:r.id,username:r.username,email:r.email,joined_at:toUtcIso(r.joinedAt)}))};
   },
   async preview(hash){
-   const native=sql`${videoCourses.managedByLms}=0 AND ${videoCourses.nativeAccessDisabled}=0 AND NOT EXISTS(
-    SELECT 1 FROM video_course_members m JOIN videos v ON v.id=m.video_id WHERE m.course_id=${videoCourses.id} AND v.managed_by_lms=1)`;
+   const native=sql.raw(nativeCourseExternalSql('"video_courses"'));
    const [r]=await db.select({courseId:videoCourses.id,courseName:videoCourses.name,inviterName:users.name,inviterUsername:users.username,email:invitations.email,status:invitations.status,expiresAt:invitations.expiresAt})
     .from(invitations).innerJoin(videoCourses,eq(videoCourses.id,invitations.courseId)).innerJoin(users,eq(users.id,invitations.invitedByUserId))
     .where(and(eq(invitations.tokenHash,hash),native)).limit(1).all();
-   return r?{course_id:r.courseId,course_name:r.courseName,inviter_name:r.inviterName.trim()||r.inviterUsername,email:r.email,status:r.status as InvitationStatus,expires_at:toUtcIso(r.expiresAt)}:null;
+   return r?{course_id:r.courseId,course_name:r.courseName,inviter_name:invitationInviterName(r.inviterName,r.inviterUsername),email:r.email,status:r.status as InvitationStatus,expires_at:toUtcIso(r.expiresAt)}:null;
   },
  };
 }

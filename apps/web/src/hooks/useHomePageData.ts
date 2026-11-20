@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { firstOwnedCourse } from '@/application/course-access';
 import { trpc } from '@/lib/trpc';
 
 interface UseHomePageDataParams {
@@ -19,8 +20,7 @@ export function useHomePageData({ userId }: UseHomePageDataParams) {
   }));
   // The list puts the user's own courses before joined ones, so the first
   // item is owned exactly when the user owns at least one course.
-  const firstCourse = coursesQuery.data?.data[0];
-  const ownedCourse = firstCourse?.access_role === 'owner' ? firstCourse : null;
+  const ownedCourse = firstOwnedCourse(coursesQuery.data?.data);
   // Whether anyone has asked in that course yet. The AI answer counter is not
   // usable here: it is charged to the owner and resets every month.
   const historyQuery = useQuery(trpc.chat.history.queryOptions({

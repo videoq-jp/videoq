@@ -1,3 +1,4 @@
+import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection } from '../application/scene-retrieval';
 import type { Bindings } from "../types/bindings";
 import type { UsageRecorder } from "../tools/usage";
 import type { SceneHit } from "./contracts/scene-search";
@@ -34,14 +35,11 @@ export async function openSceneSearch(
     async search(query, videoIds, callSignal) {
       const executionSignal = callSignal && signal ? AbortSignal.any([callSignal, signal]) : callSignal ?? signal;
       executionSignal?.throwIfAborted();
-      if (videoIds !== undefined && (!videoIds.length || videoIds.some(id => !allowed.has(id)))) {
-        throw new Error("Video selection must be a non-empty subset of the current course.");
-      }
-      const selected = videoIds === undefined ? [...allowed] : [...new Set(videoIds)];
+      const selected = sceneSearchSelection(allowed, videoIds);
       if (!selected.length) return [];
       const queryEmbedding = await embedQuery(env, query, executionSignal, costLedger);
       executionSignal?.throwIfAborted();
-      const hits = await repository.search({ queryEmbedding, userId: params.userId, videoIds: selected, limit: 20 });
+      const hits = await repository.search({ queryEmbedding, userId: params.userId, videoIds: selected, limit: DEFAULT_SCENE_SEARCH_RESULTS });
       executionSignal?.throwIfAborted();
       return hits;
     },

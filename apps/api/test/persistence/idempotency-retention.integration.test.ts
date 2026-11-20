@@ -24,6 +24,11 @@ for(const backend of ['d1','postgres'] as const){
     });
     afterEach(async()=>{await dispose?.();});
     const seed=async(key:string,days:number,owner='owner')=>execute('INSERT INTO mcp_idempotency_records(user_id,action,key,request_hash,resource_id,created_at) VALUES(?,?,?,?,?,?)',[owner,'create_course',key,'a'.repeat(64),1,new Date(Date.now()-days*86400000).toISOString()]);
+    it('uses the application retention default through the public entrypoint',async()=>{
+      await seed('expired',45);await seed('retained',20);
+      expect(await pruneMcpIdempotencyRecords(env)).toEqual({deleted:1});
+      expect(await remaining()).toEqual(['retained']);
+    });
     it('bounds each sweep, retains recent and future requests, and counts only deleted rows',async()=>{
       await seed('old-a',90);await seed('old-b',80,'peer');await seed('old-c',70);await seed('recent',1);await seed('future',-2);
       expect(await pruneMcpIdempotencyRecords(env,30,2)).toEqual({deleted:2});expect(await remaining()).toEqual(['future','old-c','recent']);

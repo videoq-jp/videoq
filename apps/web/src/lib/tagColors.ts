@@ -1,10 +1,10 @@
 import type { ChipLabelColor } from '@/components/ui/chip-label'
-import { TAG_COLORS, type TagColor } from '@videoq/trpc/schema'
+import { TAG_COLORS } from '@videoq/domain/tag-policy'
 
 /** Digital Agency ChipLabel palette used for tags */
 export const TAG_CHIP_COLORS = TAG_COLORS satisfies readonly ChipLabelColor[]
 
-export type TagChipColor = TagColor
+export type TagChipColor = (typeof TAG_COLORS)[number]
 
 export const DEFAULT_TAG_CHIP_COLOR: TagChipColor = 'blue'
 

@@ -2,6 +2,7 @@ import {
   ALL_FORMATS, BlobSource, Conversion, Input, Mp4OutputFormat, Output, Quality, StreamTarget,
   type StreamTargetChunk,
 } from 'mediabunny';
+import { compressionEncoding, compressionStorageEstimate } from '../application/video-compression';
 import { COMPRESSION_DIRECTORY, compressionDimensions, type CompressionMessage, type CompressionPreset } from './videoCompressionSettings';
 
 type Start = { type: 'start'; file: File; preset: CompressionPreset; name: string; maxBytes: number };
@@ -39,14 +40,9 @@ async function convert({ file, preset, name, maxBytes }: Start) {
     }
     const dimensions = compressionDimensions(await video.getDisplayWidth(), await video.getDisplayHeight(), preset);
     const stats = await video.computePacketStats(120);
-    const targetRate = Math.min(preset === '1080p' ? 60 : 30, stats.averagePacketRate);
-    if (!Number.isFinite(targetRate) || targetRate <= 0) throw new Error('videos.upload.compression.unsupportedFile');
-    // Keep the source cadence at <= 60fps in standard mode, rather than doubling low-fps footage.
-    const presetBitrate = preset === '1080p' ? (targetRate > 30 ? 8_000_000 : 5_000_000) : 2_500_000;
-    // Re-encode low-bitrate inputs without inflating them to the preset ceiling.
-    const bitrate = Number.isFinite(stats.averageBitrate) && stats.averageBitrate > 0
-      ? Math.min(presetBitrate, Math.max(64_000, Math.floor(stats.averageBitrate * 0.9)))
-      : presetBitrate;
+    const encoding = compressionEncoding(preset, stats.averagePacketRate, stats.averageBitrate);
+    if (!encoding) throw new Error('videos.upload.compression.unsupportedFile');
+    const { frameRate: targetRate, bitrate } = encoding;
     const duration = await input.computeDuration();
     if (!Number.isFinite(duration) || duration <= 0) throw new Error('videos.upload.compression.unsupportedFile');
     const audioTracks = await input.getAudioTracks();
@@ -54,7 +50,7 @@ async function convert({ file, preset, name, maxBytes }: Start) {
     const audioBitrate = audioStats.reduce((sum, stats) => sum + stats.averageBitrate, 0);
     // Estimates are approximate; runtime writes still handle quota exhaustion.
     // A large extra reserve would reject 9 GB outputs against a 10 GiB quota.
-    const estimate = (bitrate + audioBitrate) / 8 * duration * 1.05;
+    const estimate = compressionStorageEstimate(bitrate, audioBitrate, duration);
     const storage = await navigator.storage.estimate();
     if (storage.quota !== undefined && storage.usage !== undefined && storage.quota - storage.usage < estimate) {
       throw new Error('videos.upload.compression.noSpace');

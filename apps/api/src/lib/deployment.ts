@@ -1,4 +1,4 @@
-import { deploymentEdition, deploymentFeatures } from "@videoq/trpc/deployment";
+import { deploymentEdition, deploymentFeatures } from "@videoq/domain/deployment";
 import type { Bindings } from "../types/bindings";
 import { apiNotFound } from "../shared/errors";
 

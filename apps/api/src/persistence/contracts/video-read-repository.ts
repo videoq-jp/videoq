@@ -1,3 +1,5 @@
+import type { VideoListCriteria, VideoStatusCounts } from '../../application/video-catalog';
+export type { VideoListCriteria, VideoStatusCounts } from '../../application/video-catalog';
 import type { VideoSourceType, VideoStatus } from "../../application/models";
 
 export type VideoListItem = {
@@ -21,27 +23,10 @@ export type VideoDetail = VideoListItem & {
   error_message: string | null;
 };
 
-export type VideoListCriteria = {
-  keyword: string; // q
-  statusFilter: string; // カンマ区切り
-  sortKey: string; // ordering
-  tagIds: number[] | null;
-};
-
 export type StaleUploadingVideo = {
   id: number;
   userId: string;
   fileKey: string | null;
-};
-
-export type VideoStatusCounts = {
-  total: number;
-  completed: number;
-  pending: number;
-  processing: number;
-  indexing: number;
-  error: number;
-  uploading: number;
 };
 
 export type VideoDetailRow = {

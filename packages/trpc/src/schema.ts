@@ -47,19 +47,8 @@ export const chatMessagesSchema = z
     }
   });
 
-export const TAG_COLORS = [
-  "gray",
-  "blue",
-  "light-blue",
-  "cyan",
-  "green",
-  "lime",
-  "yellow",
-  "orange",
-  "red",
-  "magenta",
-  "purple",
-] as const;
+import { TAG_COLORS } from "./tag-policy";
+export { TAG_COLORS } from "./tag-policy";
 
 export const tagColorSchema = z.enum(TAG_COLORS);
 export type TagColor = z.infer<typeof tagColorSchema>;

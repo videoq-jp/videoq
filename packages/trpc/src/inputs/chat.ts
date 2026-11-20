@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validConversationQuestion } from '@videoq/domain/chat';
 import { chatCourseIdSchema, chatMessagesSchema } from "../schema";
 
 const page = {
@@ -23,7 +24,7 @@ export const chatInputSchemas = {
     resumeConversation: z.boolean().optional(),
     courseId: chatCourseIdSchema,
     shareSlug: z.string().min(1).optional(),
-  }).refine(input => !input.conversationId || (input.messages.length === 1 && input.messages[0].role === 'user'), {
+  }).refine(input => validConversationQuestion(input.messages, input.conversationId), {
     message: 'A conversation request requires one user question.', path: ['messages'],
   }),
   "chat.feedback": z.object({

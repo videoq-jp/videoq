@@ -1,7 +1,11 @@
+import { privacyCourseContext, privacyRecentContext, privacyReportContext, privacyRecordAllowed } from '../../application/privacy-policy';
+import { privacyStringLogic } from '../privacy-policy-sql';
 import type {privacyCollections} from '../../shared/privacy';
 export type PrivacyCollection={from:string;where:string;key:string;cast:'bigint'|'uuid'|'text';context:string;data:string;binary?:'checkpoint'|'write';empty?:boolean};
-const contextFor=(course:string)=>`coalesce((SELECT m.context_id FROM lms_courses m WHERE m.installation_id=p.installation AND m.course_id=${course} ORDER BY m.id LIMIT 1),(SELECT t.context_id FROM teaching_connections t WHERE t.provider='moodle' AND t.installation_id=p.installation AND t.course_id=${course} ORDER BY t.context_id COLLATE BINARY LIMIT 1),'@orphan')`;
-const reportContext=(alias:string)=>`CASE WHEN EXISTS(SELECT 1 FROM lms_courses rc WHERE rc.installation_id=p.installation AND rc.course_id=${alias}.course_id AND rc.context_id=${alias}.context_id) OR EXISTS(SELECT 1 FROM teaching_connections tc WHERE tc.provider='moodle' AND tc.installation_id=p.installation AND tc.course_id=${alias}.course_id AND tc.context_id=${alias}.context_id) THEN ${alias}.context_id ELSE '@orphan' END`;
+const contextFor=(course:string)=>privacyCourseContext(`(SELECT m.context_id FROM lms_courses m WHERE m.installation_id=p.installation AND m.course_id=${course} ORDER BY m.id LIMIT 1)`,
+ `(SELECT t.context_id FROM teaching_connections t WHERE t.provider='moodle' AND t.installation_id=p.installation AND t.course_id=${course} ORDER BY t.context_id COLLATE BINARY LIMIT 1)`,privacyStringLogic);
+const reportContext=(alias:string)=>privacyReportContext(`EXISTS(SELECT 1 FROM lms_courses rc WHERE rc.installation_id=p.installation AND rc.course_id=${alias}.course_id AND rc.context_id=${alias}.context_id)`,
+ `EXISTS(SELECT 1 FROM teaching_connections tc WHERE tc.provider='moodle' AND tc.installation_id=p.installation AND tc.course_id=${alias}.course_id AND tc.context_id=${alias}.context_id)`,`${alias}.context_id`,privacyStringLogic);
 const author=(course:string)=>`(SELECT json_extract(a.value,'$.author') FROM json_each(p.authors) a WHERE json_extract(a.value,'$.id')=${course})`;
 type Collection=PrivacyCollection;
 const conversationFrom=`eligible p JOIN chat_conversations c ON true
@@ -32,11 +36,11 @@ export const privacyReadDefs:Record<typeof privacyCollections[number],Collection
     where:'m.actor_key=p.subject AND m.installation_id=p.installation',key:'m.id',cast:'uuid',context:reportContext('m'),
     data:`json_object('accessId',m.id,'from',m.from_date,'to',m.to_date,'resourceCount',m.resource_count,'scopeHash',m.scope_hash,'createdAt',m.created_at)`},
   recent_history:{from:"eligible p JOIN lti_credentials h ON h.kind='lti-history'",where:`json_extract(h.payload,'$.registrationId')=p.registration AND json_extract(h.payload,'$.subjectHash')=p.subject_hash`,key:'h.id',cast:'text',
-    context:`coalesce(json_extract(h.payload,'$.contextId'),${contextFor("CASE WHEN CAST(CAST(json_extract(h.payload,'$.courseId') AS INTEGER) AS TEXT)=CAST(json_extract(h.payload,'$.courseId') AS TEXT) THEN CAST(json_extract(h.payload,'$.courseId') AS INTEGER) END")})`,
+    context:privacyRecentContext("json_extract(h.payload,'$.contextId')",contextFor("CASE WHEN CAST(CAST(json_extract(h.payload,'$.courseId') AS INTEGER) AS TEXT)=CAST(json_extract(h.payload,'$.courseId') AS TEXT) THEN CAST(json_extract(h.payload,'$.courseId') AS INTEGER) END"),privacyStringLogic),
     data:`json_object('turns',json(h.payload -> '$.turns'),'expiresAt',h.expires_at)`},
   checkpoints:{from:conversationFrom+' JOIN conversation_checkpoints k ON k.thread_id=c.thread_id',where:'true',key:`json_array(k.thread_id,k.namespace,k.checkpoint_id)`,cast:'text',context:contextFor('c.course_id'),data:'',binary:'checkpoint'},
   // This saver embeds channel values in checkpoint bytes; there is no separate blobs table.
   checkpoint_blobs:{from:conversationFrom,where:'false',key:"'thread:'||c.thread_id",cast:'text',context:contextFor('c.course_id'),data:"'{}'",empty:true},
   checkpoint_writes:{from:conversationFrom+' JOIN conversation_checkpoint_writes k ON k.thread_id=c.thread_id',where:'true',key:`json_array(k.thread_id,k.namespace,k.checkpoint_id,k.task_id,k.idx)`,cast:'text',context:contextFor('c.course_id'),data:'',binary:'write'},
 };
-export const privacyScoped=(d:PrivacyCollection)=>`(${d.where}) AND (p.contexts IS NULL OR ${d.context} IN(SELECT value FROM json_each(p.contexts)))`;
+export const privacyScoped=(d:PrivacyCollection)=>privacyRecordAllowed(d.where,'p.contexts IS NULL',`${d.context} IN(SELECT value FROM json_each(p.contexts))`,privacyStringLogic);

@@ -1,3 +1,4 @@
+import { createTagService } from "../features/tags/core";
 import type { Bindings } from "../types/bindings";
 import { createTagRepository } from "../persistence/factory";
 export { INVALID_COLOR_MESSAGE,EMPTY_NAME_MESSAGE,normalizeTagName,isValidTagColor } from "../shared/tag-policy";
@@ -9,7 +10,7 @@ export async function getTagDetail(env: Bindings,tagId: number,userId: string) {
  return (await createTagRepository(env)).getDetail(tagId,userId);
 }
 export async function updateTag(env: Bindings,tagId: number,userId: string,fields: {name?: string;color?: string}) {
- return (await createTagRepository(env)).update(tagId,userId,fields);
+ return createTagService(await createTagRepository(env)).updateUserTag(tagId,userId,fields);
 }
 export async function createTag(env: Bindings,userId: string,name: string,color: string) {
  return (await createTagRepository(env)).create(userId,name,color);

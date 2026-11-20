@@ -1,11 +1,13 @@
-import {and,eq,sql} from 'drizzle-orm';
+import { teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse } from '../../application/teaching';
+import { d1LmsOwnerSql, activeD1LmsOwner } from './lms-owner-policy';
+import {and,eq} from 'drizzle-orm';
 import {createD1Connection} from '../../db/d1/connection';
 import {teachingConnections,lmsInstallations,ltiCredentials,users,videoCourses} from '../../db/schema/sqlite';
 import {ticketSchema} from '../../shared/teaching';
 import {ApiError} from '../../shared/errors';
 import type {TeachingRepository} from '../contracts/teaching-repository';
 const denied=()=>new ApiError(403,'FORBIDDEN','The teaching connection is unavailable.');
-const active=sql`${users.isActive}=1 AND ${users.deactivatedAt} IS NULL AND (${users.banned} IS NOT TRUE OR julianday(${users.banExpires})<=julianday('now'))`;
+const active=activeD1LmsOwner();
 const existingSql=`SELECT json_object('id',id,'ownerUserId',owner_user_id,'teacherSubject',teacher_subject,'courseId',course_id,'resourceLinkId',resource_link_id,'active',active) AS value
  FROM teaching_connections WHERE provider=? AND installation_id=? AND context_id=?`;
 type Existing={id:string;ownerUserId:string;teacherSubject:string;courseId:number;resourceLinkId:string|null;active:number};
@@ -33,22 +35,21 @@ export function createD1TeachingRepository(database:D1Database):TeachingReposito
     const context=[input.provider,input.installationId,input.contextId];
     const snapshot=await prepare(existingSql,context).first<string>('value');
     const existing=snapshot?JSON.parse(snapshot) as Existing:null;
-    if(existing&&(existing.ownerUserId!==ownerUserId||existing.teacherSubject!==input.teacherSubject||selectedCourseId!==undefined&&existing.courseId!==selectedCourseId))
+    if(teachingConnectionConflicts(existing,ownerUserId,input.teacherSubject,selectedCourseId))
      throw new ApiError(409,'CONFLICT','This class is already connected. Ask its owner to manage this connection.');
-    if(input.provider==='moodle'&&!input.resourceLinkId)throw denied();
-    const courseId=selectedCourseId??existing?.courseId;if(!courseId)throw denied();
+    if(!teachingResourceLinkAllowed(input))throw denied();
+    const courseId=selectTeachingCourse(existing,selectedCourseId);if(courseId===null)throw denied();
     const token=crypto.randomUUID(),gate='EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)';
     // The pre-read selects an expected state only. Every permission and the full
     // ticket/connection snapshot are checked again inside this atomic batch.
     const results=await database.batch([
      prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'teaching_connect',? WHERE
-      EXISTS(SELECT 1 FROM users owner WHERE owner.id=? AND owner.is_active=1 AND owner.deactivated_at IS NULL
-       AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now')))
+      EXISTS(SELECT 1 FROM users owner WHERE owner.id=? AND ${d1LmsOwnerSql()})
       AND EXISTS(SELECT 1 FROM lti_credentials WHERE id=? AND kind='teaching-connect' AND payload=? AND julianday(expires_at)>julianday('now'))
       AND (${existingSql}) IS ?
-      AND (?<>'moodle' OR EXISTS(SELECT 1 FROM lms_installations WHERE id=? AND active=1))
+      AND (?=0 OR EXISTS(SELECT 1 FROM lms_installations WHERE id=? AND active=1))
       AND EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=? AND native_access_disabled=0)`,
-      [token,courseId,ownerUserId,ticketId,raw,...context,snapshot,input.provider,input.installationId,courseId,ownerUserId]),
+      [token,courseId,ownerUserId,ticketId,raw,...context,snapshot,Number(teachingInstallationRequired(input.provider)),input.installationId,courseId,ownerUserId]),
      prepare(`INSERT INTO teaching_connections(id,provider,installation_id,context_id,teacher_subject,owner_user_id,course_id,resource_link_id,active)
       SELECT ?,?,?,?,?,?,?,?,1 WHERE ${gate}
       ON CONFLICT(provider,installation_id,context_id) DO UPDATE SET active=1,resource_link_id=excluded.resource_link_id`,
@@ -61,7 +62,7 @@ export function createD1TeachingRepository(database:D1Database):TeachingReposito
     // Stable permission failures should not become a misleading retry conflict.
     const owner=await db.select({id:users.id}).from(users).where(and(eq(users.id,ownerUserId),active)).limit(1);
     const course=await db.select({id:videoCourses.id}).from(videoCourses).where(and(eq(videoCourses.id,courseId),eq(videoCourses.userId,ownerUserId),eq(videoCourses.nativeAccessDisabled,false))).limit(1);
-    if(!owner.length||!course.length||input.provider==='moodle'&&!await prepare('SELECT id FROM lms_installations WHERE id=? AND active=1',[input.installationId]).first())throw denied();
+    if(!owner.length||!course.length||teachingInstallationRequired(input.provider)&&!await prepare('SELECT id FROM lms_installations WHERE id=? AND active=1',[input.installationId]).first())throw denied();
    }
    throw new ApiError(409,'CONFLICT','The teaching connection changed. Retry the connection.');
   },

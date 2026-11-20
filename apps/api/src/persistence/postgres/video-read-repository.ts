@@ -1,4 +1,6 @@
-import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import { videoStatusFilters, videoListOrder, countVideoStatuses, videoKeywordMatchedBy, videoUploadAbandoned } from '../../application/video-catalog';
+import { videoReadDrizzleLogic } from '../video-read-policy-sql';
+import { and, asc, desc, eq, ilike, inArray, sql, type SQL } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import { videos } from "../../db/schema";
 import { sqlNumberArray } from "../../db/sql-array";
@@ -6,13 +8,6 @@ import { literalContainsPattern } from "../../db/sql-like";
 import type { Bindings } from "../../types/bindings";
 import { mapVideoListRow, mapVideoDetailRow } from "../../repositories/video-mapping";
 import type { VideoDetail, VideoListItem, VideoListCriteria, VideoStatusCounts, StaleUploadingVideo, VideoReadRepository } from "../contracts/video-read-repository";
-
-const ORDER_MAP: Record<string, SQL> = {
-  uploaded_at_desc: desc(videos.uploadedAt),
-  uploaded_at_asc: asc(videos.uploadedAt),
-  title_asc: asc(videos.title),
-  title_desc: desc(videos.title),
-};
 
 export const videoTagsJson = sql<string>`COALESCE((
   SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color) ORDER BY t.name)
@@ -26,14 +21,11 @@ function buildFilterConditions(userId: string, c: VideoListCriteria): SQL {
   if (c.keyword) {
     const pattern = literalContainsPattern(c.keyword);
     conditions.push(
-      or(ilike(videos.title, pattern), ilike(videos.description, pattern))!,
+      videoKeywordMatchedBy(ilike(videos.title, pattern), ilike(videos.description, pattern), { or: (left,right) => sql`(${left} OR ${right})` }),
     );
   }
 
-  const statuses = c.statusFilter
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const statuses = videoStatusFilters(c.statusFilter);
   if (statuses.length === 1) {
     conditions.push(eq(videos.status, statuses[0]));
   } else if (statuses.length > 1) {
@@ -145,10 +137,8 @@ export async function listStaleUploadingVideos(
       })
       .from(videos)
       .where(
-        and(
-          eq(videos.status, "uploading"),
-          sql`COALESCE(${videos.uploadHeartbeatAt}, ${videos.uploadedAt}) < NOW() - (${olderThanHours}::double precision * INTERVAL '1 hour')`,
-        ),
+        videoUploadAbandoned(videos.status,
+          sql`COALESCE(${videos.uploadHeartbeatAt}, ${videos.uploadedAt}) < NOW() - (${olderThanHours}::double precision * INTERVAL '1 hour')`,videoReadDrizzleLogic),
       )
       .orderBy(asc(videos.uploadedAt))
       .limit(limit);
@@ -159,25 +149,6 @@ export async function listStaleUploadingVideos(
     }));
   });
 }
-
-const EMPTY_STATUS_COUNTS: VideoStatusCounts = {
-  total: 0,
-  completed: 0,
-  pending: 0,
-  processing: 0,
-  indexing: 0,
-  error: 0,
-  uploading: 0,
-};
-
-const COUNTED_STATUSES = [
-  "completed",
-  "pending",
-  "processing",
-  "indexing",
-  "error",
-  "uploading",
-] as const satisfies ReadonlyArray<Exclude<keyof VideoStatusCounts, "total">>;
 
 export async function countVideosByStatus(
   env: Bindings,
@@ -193,14 +164,7 @@ export async function countVideosByStatus(
       .where(eq(videos.userId, userId))
       .groupBy(videos.status);
 
-    const stats = { ...EMPTY_STATUS_COUNTS };
-    for (const row of rows) {
-      stats.total += row.count;
-      if ((COUNTED_STATUSES as readonly string[]).includes(row.status)) {
-        stats[row.status as (typeof COUNTED_STATUSES)[number]] += row.count;
-      }
-    }
-    return stats;
+    return countVideoStatuses(rows);
   });
 }
 
@@ -213,7 +177,8 @@ export async function listVideosPage(
   options: { includeFileUrls?: boolean } = {},
 ): Promise<{ count: number; results: VideoListItem[] }> {
   const where = buildFilterConditions(userId, criteria);
-  const orderBy = ORDER_MAP[criteria.sortKey] ?? desc(videos.uploadedAt);
+  const order = videoListOrder(criteria.sortKey);
+  const orderBy = order.direction==='asc'?asc(videos[order.field]):desc(videos[order.field]);
 
   const { rows, count } = await withDb(env, async (db) => {
     const countRows = await db

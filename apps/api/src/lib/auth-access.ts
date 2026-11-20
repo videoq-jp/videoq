@@ -11,14 +11,8 @@ import {
 } from "better-auth/oauth2";
 import { decodeProtectedHeader, errors as jwtErrors } from "jose";
 import { z } from "zod";
-import { isBanned } from "./auth-security";
-import { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "./mcp-auth";
-
-export type ResourceAccessResult =
-  | { kind: "ok"; userId: string; via: "apikey" | "oauth"; accessLevel: string }
-  | { kind: "rate_limited"; message: string; retryAfterSec: number }
-  | { kind: "invalid"; message: string; wwwAuthenticate?: string }
-  | { kind: "forbidden"; message: string; requiredScope: string };
+import { apiKeyResourceAccess, oauthResourceAccess, parseResourceScopes, type ResourceAccessResult } from "../application/resource-access";
+export type { ResourceAccessResult } from "../application/resource-access";
 
 /**
  * Resource-server policy exposed only through auth.api, never HTTP endpoints.
@@ -45,15 +39,10 @@ export function videoqResourceAccess(jwksCacheKey: object, audience: string) {
             retryAfterSec: Math.max(1, Math.ceil((parsed.success ? parsed.data.details?.tryAgainIn ?? 60_000 : 60_000) / 1000)) };
         }
         if (!result.valid || !result.key) return { kind: "invalid", message: "Invalid API key" };
-        const user = await ctx.context.internalAdapter.findUserById(result.key.referenceId);
-        if (!user || isBanned(user)) {
-          return { kind: "invalid", message: "User is inactive" };
-        }
-        return {
-          kind: "ok", userId: user.id, via: "apikey",
-          accessLevel: role(result.key.permissions ?? {}).authorize({ videoq: ["write"] }).success
-            ? "all" : "read_only",
-        };
+        const key = result.key;
+        const user = await ctx.context.internalAdapter.findUserById(key.referenceId);
+        return apiKeyResourceAccess(user,
+          () => role(key.permissions ?? {}).authorize({ videoq: ["write"] }).success, Date.now());
       }),
       verifyVideoqOAuth: createAuthEndpoint.serverOnly({
         method: "POST",
@@ -116,12 +105,8 @@ export function videoqResourceAccess(jwksCacheKey: object, audience: string) {
         }
         // The composed verifier has no scope parser. Keep this RFC 6749 shape
         // check until the standard request verifier supports local JWKS.
-        const scope = payload.scope;
-        if (scope !== undefined && (typeof scope !== "string" || !scope ||
-          scope.split(" ").some((value) => !/^[\x21\x23-\x5b\x5d-\x7e]+$/.test(value)))) {
-          return { kind: "invalid", message: "Invalid OAuth access token" };
-        }
-        const scopes = typeof scope === "string" ? scope.split(" ") : [];
+        const scopes = parseResourceScopes(payload.scope);
+        if (scopes === null) return { kind: "invalid", message: "Invalid OAuth access token" };
         const userId = payload.sub;
         if (!userId || typeof payload.client_id !== "string" || !payload.client_id) {
           return { kind: "invalid", message: "Invalid OAuth access token" };
@@ -129,17 +114,7 @@ export function videoqResourceAccess(jwksCacheKey: object, audience: string) {
         // A disconnected client's existing JWT remains usable until native
         // expiry (five minutes for new tokens). Bans still apply immediately.
         const user = await ctx.context.internalAdapter.findUserById(userId);
-        if (!user || isBanned(user)) return { kind: "invalid", message: "User is inactive" };
-        if (!scopes.includes(MCP_READ_SCOPE)) {
-          return {
-            kind: "forbidden", message: "OAuth token lacks videoq.read scope",
-            requiredScope: MCP_READ_SCOPE,
-          };
-        }
-        return {
-          kind: "ok", userId, via: "oauth",
-          accessLevel: scopes.includes(MCP_WRITE_SCOPE) ? "all" : "read_only",
-        };
+        return oauthResourceAccess(userId, user, scopes, Date.now());
       }),
     },
   } satisfies BetterAuthPlugin;

@@ -8,13 +8,14 @@ externalTaskContract("D1 (workerd)", async () => {
     repository: createD1ExternalTaskRepository(database),
     expireAndReady: async id => { await database.prepare("UPDATE external_tasks SET locked_at='2000-01-01T00:00:00.000Z',available_at='2000-01-01T00:00:00.000Z' WHERE id=?").bind(id).run(); },
     setAttempts: async (id, attempts) => { await database.prepare("UPDATE external_tasks SET attempts=? WHERE id=?").bind(attempts, id).run(); },
-    createCleanup: async (effectApplied = false) => {
+    createCleanup: async (effectApplied = false, quota = { used: 10, limitGb: 5 / 1024 ** 3, overQuota: true }) => {
       await database.prepare(`INSERT INTO users(id,username,email,is_over_quota,used_storage_bytes,storage_limit_gb,used_ai_answers,used_processing_seconds)
-        VALUES ('owner','owner','owner@example.test',1,10,?,0,0)`).bind(5 / 1024 ** 3).run();
+        VALUES ('owner','owner','owner@example.test',?,?,?,0,0)`).bind(Number(quota.overQuota), quota.used, quota.limitGb).run();
       const task = await database.prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key,effect_applied_at)
         VALUES ('storage_cleanup','{}','storage:owner',?) RETURNING id`).bind(effectApplied ? "2000-01-01T00:00:00.000Z" : null).first<{ id: number }>();
       return task!.id;
     },
+    retryDelay: async id => (await database.prepare("SELECT (julianday(available_at)-julianday(updated_at))*86400 AS delay FROM external_tasks WHERE id=?").bind(id).first<number>("delay"))!,
     rejectCompletion: async () => { await database.prepare("CREATE TRIGGER reject_complete BEFORE UPDATE ON external_tasks WHEN NEW.completed_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'test completion rejection'); END").run(); },
     seedHistory: async () => {
       await database.prepare(`INSERT INTO job_executions(job_id,job_type,payload_sha256,status,completed_at)

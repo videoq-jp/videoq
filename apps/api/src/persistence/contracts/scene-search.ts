@@ -1,11 +1,5 @@
-export type SceneHit = {
-  content: string;
-  videoId: number;
-  videoTitle: string;
-  startTime: string;
-  endTime: string;
-  evidenceType?: "transcript" | "visual";
-};
+import type { SceneHit } from '../../application/evidence';
+export type { SceneHit } from '../../application/evidence';
 
 export interface SceneSearchRepository {
   search(params: {

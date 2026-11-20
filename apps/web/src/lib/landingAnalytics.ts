@@ -1,3 +1,4 @@
+import { classifyLandingAudience, classifyLandingAcquisition } from '../application/landing-attribution';
 import { features } from "./deployment";
 import { LANDING_ACQUISITIONS, LANDING_AUDIENCES, LANDING_EVENTS, type LandingAcquisition, type LandingAudience, type LandingEvent, type LandingEventPayload, type LandingPlacement } from './landingEvents';
 
@@ -5,58 +6,19 @@ const STORAGE_KEY = 'videoq.landing.student-v1';
 const VISIT_TTL = 30 * 60_000;
 type Visit = { audience: LandingAudience; acquisition: LandingAcquisition; seen: LandingEvent[]; updated: number };
 
-export function getLandingAudience(search = window.location.search): LandingAudience {
-  const params = new URLSearchParams(search);
-  const value = LANDING_AUDIENCES.find(audience => audience === params.get('audience'));
-  if (value) return value;
-  // Instructor ads default to the online-course audience; historic student and
-  // teacher cohorts keep their classification. Untagged visits are general.
-  const acquisition = getLandingAcquisition(search);
-  if (acquisition === 'x_paid_instructor_ja' || acquisition === 'x_paid_instructor_en') return 'creator';
-  if (['x_paid_demo15_search', 'x_paid_student_ja', 'x_paid_student_en'].includes(acquisition)) return 'student';
-  return acquisition === 'x_paid_teacher_qa' ? 'school' : 'general';
-}
-
-function searchReferral(search: string): LandingAcquisition {
-  const params = new URLSearchParams(search);
-  // Campaign-tagged and known paid-click visits must not inflate search referrals.
-  if ([...params.keys()].some(key => key.startsWith('utm_') || ['gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid'].includes(key))) return 'unattributed';
+function referrerHost(): string | null {
   try {
     const referrer = new URL(document.referrer);
-    if (referrer.protocol !== 'https:' && referrer.protocol !== 'http:') return 'unattributed';
-    // Explicit hosts avoid lookalikes such as google.com.example.org.
-    return ['google.com', 'www.google.com', 'google.co.jp', 'www.google.co.jp',
-      'bing.com', 'www.bing.com', 'search.yahoo.co.jp', 'search.yahoo.com',
-      'duckduckgo.com', 'www.duckduckgo.com'].includes(referrer.hostname) ? 'search_referral' : 'unattributed';
-  } catch {
-    return 'unattributed';
-  }
+    return referrer.protocol === 'https:' || referrer.protocol === 'http:' ? referrer.hostname : null;
+  } catch { return null; }
+}
+
+export function getLandingAudience(search = window.location.search): LandingAudience {
+  return classifyLandingAudience(new URLSearchParams(search), referrerHost);
 }
 
 export function getLandingAcquisition(search = window.location.search): LandingAcquisition {
-  const params = new URLSearchParams(search);
-  if (params.get('measurement') === 'test') return 'internal_test';
-  if (params.get('utm_source') !== 'x') return searchReferral(search);
-  if (params.get('utm_medium') === 'paid_social'
-    && params.get('utm_campaign') === 'student_demo_test'
-    && params.get('utm_content') === 'demo15_search') return 'x_paid_demo15_search';
-  if (params.get('utm_medium') === 'paid_social'
-    && params.get('utm_campaign') === 'teacher_qa_test'
-    && params.get('utm_content') === 'lecture_qa') return 'x_paid_teacher_qa';
-  if (params.get('utm_medium') === 'paid_social'
-    && params.get('utm_campaign') === 'student_return_202610') {
-    if (params.get('utm_content') === 'demo15_search_ja') return 'x_paid_student_ja';
-    if (params.get('utm_content') === 'demo15_search_en') return 'x_paid_student_en';
-  }
-  if (params.get('utm_medium') === 'paid_social'
-    && params.get('utm_campaign') === 'instructor_202611') {
-    if (params.get('utm_content') === 'demo30_ja') return 'x_paid_instructor_ja';
-    if (params.get('utm_content') === 'demo30_en') return 'x_paid_instructor_en';
-  }
-  if (params.get('utm_medium') === 'organic_social'
-    && params.get('utm_campaign') === 'launch'
-    && ['intro', 'howto', 'usecase'].includes(params.get('utm_content') ?? '')) return 'x_organic_launch';
-  return 'unattributed';
+  return classifyLandingAcquisition(new URLSearchParams(search), referrerHost);
 }
 
 function enabled() {

@@ -1,19 +1,23 @@
+import { uniqueMembershipIds, tagAttachmentAllowed, membershipCourseAllowed, membershipVideoAllowed, membershipOrderAllowed } from '../../application/membership-policy';
+import { membershipSqlLogic } from '../membership-policy-sql';
 import type {MembershipRepository} from '../contracts/membership-repository';
 const NOW="strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 const VIDEO='EXISTS(SELECT 1 FROM videos WHERE id=? AND user_id=?)';
-const COURSE='EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=? AND managed_by_lms=0)';
-function courseVideos(ids:number[],userId:string,cleanup=false){
-  return {sql:`(SELECT count(*) FROM videos WHERE id IN(SELECT value FROM json_each(?)) AND user_id=? ${cleanup?'':'AND managed_by_lms=0'})=?`,
+const COURSE=`EXISTS(SELECT 1 FROM video_courses WHERE id=? AND ${membershipCourseAllowed({owned:'user_id=?',native:'managed_by_lms=0'},membershipSqlLogic)})`;
+function courseVideos(ids:number[],userId:string,operation:'add'|'remove'='add'){
+  return {sql:`(SELECT count(*) FROM videos WHERE id IN(SELECT value FROM json_each(?)) AND ${membershipVideoAllowed(operation,{owned:'user_id=?',native:'managed_by_lms=0'},membershipSqlLogic)})=?`,
     values:[JSON.stringify(ids),userId,ids.length]};
 }
 export function createD1MembershipRepository(database:D1Database):MembershipRepository {
   return {
     async reorderVideos(courseId,userId,videoIds){
       const ids=JSON.stringify(videoIds);
-      const match=`(SELECT count(*) FROM video_course_members WHERE course_id=?)=?
-        AND (SELECT count(DISTINCT value) FROM json_each(?))=?
-        AND NOT EXISTS(SELECT 1 FROM json_each(?) v WHERE NOT EXISTS(
-          SELECT 1 FROM video_course_members m WHERE m.course_id=? AND m.video_id=v.value))`;
+      const match=membershipOrderAllowed({
+        sameSize:'(SELECT count(*) FROM video_course_members WHERE course_id=?)=?',
+        unique:'(SELECT count(DISTINCT value) FROM json_each(?))=?',
+        allMembers:`NOT EXISTS(SELECT 1 FROM json_each(?) v WHERE NOT EXISTS(
+          SELECT 1 FROM video_course_members m WHERE m.course_id=? AND m.video_id=v.value))`,
+      },membershipSqlLogic);
       const values=[courseId,videoIds.length,ids,videoIds.length,ids,courseId];
       const order='(SELECT CAST(key AS INTEGER) FROM json_each(?) WHERE value=video_course_members.video_id)';
       const result=await database.batch<{owned:number;matched:number}>([
@@ -25,9 +29,9 @@ export function createD1MembershipRepository(database:D1Database):MembershipRepo
       return row.matched?{ok:true}:{mismatch:true};
     },
     async attachTags(videoId,userId,tagIds){
-      const ids=JSON.stringify([...new Set(tagIds)]),length=new Set(tagIds).size;
+      const uniqueIds=uniqueMembershipIds(tagIds),ids=JSON.stringify(uniqueIds),length=uniqueIds.length;
       const allowed=`(SELECT count(*) FROM tags t WHERE t.id IN(SELECT value FROM json_each(?)) AND
-        (t.user_id=? OR EXISTS(SELECT 1 FROM video_tags vt WHERE vt.video_id=? AND vt.tag_id=t.id)))=?`;
+        ${tagAttachmentAllowed({owned:'t.user_id=?',alreadyLinked:'EXISTS(SELECT 1 FROM video_tags vt WHERE vt.video_id=? AND vt.tag_id=t.id)'},membershipSqlLogic)})=?`;
       const values=[ids,userId,videoId,length];
       const result=await database.batch<{owned:number;allowed:number;id:number}>([
         database.prepare(`SELECT (${VIDEO}) AS owned,(${allowed}) AS allowed`).bind(videoId,userId,...values),
@@ -65,7 +69,7 @@ export function createD1MembershipRepository(database:D1Database):MembershipRepo
       return row.existing!==null?{alreadyIn:true,id:row.existing}:{id:result[1].results[0].id};
     },
     async removeVideoFromCourse(courseId,videoId,userId){
-      const videos=courseVideos([videoId],userId,true);
+      const videos=courseVideos([videoId],userId,'remove');
       const result=await database.batch<{owned:number;allowed:number;id:number}>([
         database.prepare(`SELECT (${COURSE}) AS owned,(${videos.sql}) AS allowed`).bind(courseId,userId,...videos.values),
         database.prepare(`DELETE FROM video_course_members WHERE course_id=? AND video_id=? AND (${COURSE}) AND (${videos.sql}) RETURNING id`)
@@ -76,7 +80,7 @@ export function createD1MembershipRepository(database:D1Database):MembershipRepo
       return result[1].results.length?{ok:true}:{notMember:true};
     },
     async addVideosBulk(courseId,videoIds,userId){
-      const ids=[...new Set(videoIds)],videos=courseVideos(ids,userId);
+      const ids=uniqueMembershipIds(videoIds),videos=courseVideos(ids,userId);
       const result=await database.batch<{owned:number;allowed:number;id:number}>([
         database.prepare(`SELECT (${COURSE}) AS owned,(${videos.sql}) AS allowed`).bind(courseId,userId,...videos.values),
         database.prepare(`INSERT INTO video_course_members(course_id,video_id,"order",added_at)

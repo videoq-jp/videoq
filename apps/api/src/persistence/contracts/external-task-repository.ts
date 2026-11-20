@@ -1,5 +1,5 @@
 export const EXTERNAL_TASK_LEASE_MS = 5 * 60 * 1000;
-import type { JobMessage } from "../../lib/job-message";
+import type { JobMessage } from "../../application/job-message";
 
 export type ExternalTaskKind =
   | "sqs_job"

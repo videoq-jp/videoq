@@ -1,3 +1,6 @@
+import { externalTaskFailure, storageCleanupRefundRequired, storageCleanupState, validateExternalTaskDeferral } from '../../application/external-task-policy';
+import { storageCleanupDrizzleLogic } from '../external-task-policy-sql';
+import { retentionBounds } from '../../features/maintenance/policy';
 import { ExternalTaskLeaseLostError, type ExternalTaskLease, type ClaimedExternalTask, type PersistedExternalTask, type ExternalTaskHealth, type ExternalTaskKind, type ExternalTaskRepository } from "../contracts/external-task-repository";
 import { and, eq, sql } from "drizzle-orm";
 import { type Db, withClient, withDb } from "../../db/pool";
@@ -14,7 +17,7 @@ import type { Bindings } from "../../types/bindings";
 
 
 
-const MAX_EXTERNAL_TASK_ATTEMPTS = 48;
+
 
 /**
  * リース満了までの猶予。下の各クエリの `INTERVAL '5 minutes'` と同じ値であること。
@@ -155,21 +158,16 @@ export async function completeStorageCleanupTask(
     db.transaction(async (tx) => {
       const task = await lockExternalTaskLease(tx, params.lease);
 
-      if (task.effectAppliedAt === null && params.bytes !== null && params.bytes > 0) {
-        const remaining = sql`GREATEST(0, ${users.usedStorageBytes} - ${params.bytes})`;
+      if (task.effectAppliedAt === null && storageCleanupRefundRequired(params.bytes)) {
+        const cleanup = storageCleanupState({
+          used: sql`${users.usedStorageBytes}`, refunded: sql`${params.bytes}`,
+          limitGb: sql`${users.storageLimitGb}`, overQuota: sql`${users.isOverQuota}`,
+        }, storageCleanupDrizzleLogic);
         await tx
           .update(users)
           .set({
-            usedStorageBytes: remaining,
-            isOverQuota: sql`CASE
-              WHEN ${users.isOverQuota}
-               AND (
-                 ${users.storageLimitGb} IS NULL
-                 OR ${remaining} <= floor(${users.storageLimitGb} * 1073741824)
-               )
-              THEN false
-              ELSE ${users.isOverQuota}
-            END`,
+            usedStorageBytes: cleanup.remaining,
+            isOverQuota: cleanup.overQuota,
           })
           .where(eq(users.id, params.userId));
       }
@@ -193,23 +191,24 @@ export async function failExternalTask(
   lease: ExternalTaskLease,
   error: string,
 ): Promise<{ dead: boolean; leaseLost: boolean }> {
+  const failure = externalTaskFailure(lease.attempt);
   return withClient(env, async (client) => {
     const result = await client.query<{ dead: boolean }>(
       `UPDATE external_tasks
           SET locked_at = NULL,
               last_error = $2,
-              dead_at = CASE WHEN attempts >= $3 THEN now() ELSE NULL END,
+              dead_at = CASE WHEN $3::boolean THEN now() ELSE NULL END,
               available_at = CASE
-                WHEN attempts >= $3 THEN available_at
+                WHEN $3::boolean THEN available_at
                 ELSE now()
-                  + LEAST(3600, 5 * (2 ^ LEAST(attempts, 10))) * INTERVAL '1 second'
+                  + $5 * INTERVAL '1 second'
               END,
               updated_at = now()
         WHERE id = $1 AND attempts = $4
           AND locked_at > clock_timestamp() - INTERVAL '5 minutes'
           AND completed_at IS NULL AND dead_at IS NULL
     RETURNING dead_at IS NOT NULL AS dead`,
-      [lease.id, error.slice(0, 2000), MAX_EXTERNAL_TASK_ATTEMPTS, lease.attempt],
+      [lease.id, error.slice(0, 2000), failure.dead, lease.attempt, failure.delaySeconds],
     );
     return { dead: result.rows[0]?.dead === true, leaseLost: result.rows.length === 0 };
   });
@@ -247,15 +246,10 @@ export async function getExternalTaskHealth(env: Bindings): Promise<ExternalTask
 /** SQS最大保持期間より長い30日を過ぎた完了台帳だけを、小分けで削除する。 */
 export async function pruneDeliveryHistory(
   env: Bindings,
-  retentionDays = 30,
-  limit = 500,
+  retentionDays?: number,
+  limit?: number,
 ): Promise<{ externalTasks: number; jobExecutions: number }> {
-  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1) {
-    throw new Error("retentionDays must be a positive integer.");
-  }
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) {
-    throw new Error("limit must be an integer between 1 and 5000.");
-  }
+  const bounds = retentionBounds(retentionDays, limit);
   return withClient(env, async (client) => {
     const external = await client.query(
       `WITH victims AS (
@@ -269,7 +263,7 @@ export async function pruneDeliveryHistory(
         USING victims
         WHERE task.id = victims.id
     RETURNING task.id`,
-      [retentionDays, limit],
+      [bounds.retentionDays, bounds.limit],
     );
     const jobs = await client.query(
       `WITH victims AS (
@@ -290,7 +284,7 @@ export async function pruneDeliveryHistory(
         USING victims
         WHERE job.job_id = victims.job_id
     RETURNING job.job_id`,
-      [retentionDays, limit],
+      [bounds.retentionDays, bounds.limit],
     );
     return {
       externalTasks: external.rowCount ?? 0,
@@ -339,7 +333,7 @@ export function createPostgresExternalTaskRepository(env: Bindings): ExternalTas
   createJob: params=>createJobTask(env,params), claim: params=>claimExternalTasks(env,params),
   complete: lease=>completeExternalTask(env,lease),
   async defer(lease,delayMs){
-   if(!Number.isSafeInteger(delayMs)||delayMs<1||delayMs>86400000)throw new Error('Invalid external task deferral');
+   validateExternalTaskDeferral(delayMs);
    await withDb(env,async db=>{
     const rows=await db.update(externalTasks).set({availableAt:sql`clock_timestamp()+(${delayMs}*interval '1 millisecond')`,lockedAt:null,lastError:'',updatedAt:sql`clock_timestamp()`})
       .where(externalTaskLeaseCondition(lease)).returning({id:externalTasks.id});

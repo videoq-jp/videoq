@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 import io
 import json
-import math
 import os
 from pathlib import Path
 import re
@@ -25,7 +24,7 @@ import httpx
 import numpy as np
 from starlette.responses import JSONResponse
 
-RATE = 16000
+from transcription_core import RATE, merge_speech_spans, restore_segments, TranscriptionDependencies, execute_transcription
 MODEL_ALIAS = "whisper-local"
 MAX_AUDIO_BYTES = 24 * 1024 * 1024
 MAX_BODY_BYTES = MAX_AUDIO_BYTES + 64 * 1024
@@ -119,19 +118,6 @@ def health():
     return {"status": "ok"}
 
 
-def merge_speech_spans(regions):
-    spans = []
-    for region in regions:
-        start, end = int(region["start"]), int(region["end"])
-        # Merge overlapping padding only. Retaining detected pauses avoids a
-        # decoder finishing after one utterance and silently dropping the next.
-        if spans and start <= spans[-1][1] and end - spans[-1][0] <= 30 * RATE:
-            spans[-1] = (spans[-1][0], end)
-        else:
-            spans.append((start, end))
-    return spans
-
-
 def decode_audio(path, directory):
     output = directory / "decoded.f32"
     subprocess.run([
@@ -154,32 +140,6 @@ def speech_spans(audio):
             min_silence_duration_ms=300, speech_pad_ms=400, max_speech_duration_s=28,
         )
     return merge_speech_spans(regions)
-
-
-def restore_segments(parts, duration):
-    result = []
-    for start, end, payload in parts:
-        if not isinstance(payload, dict) or not isinstance(payload.get("segments"), list):
-            raise ValueError("Invalid upstream response")
-        rows = payload.get("segments") or []
-        if not rows and str(payload.get("text", "")).strip():
-            raise ValueError("Upstream did not return real timestamps")
-        previous = 0.0
-        for row in rows:
-            if not isinstance(row, dict) or type(row.get("start")) not in (int, float) or type(row.get("end")) not in (int, float):
-                raise ValueError("Invalid upstream timestamps")
-            left, right = float(row["start"]), float(row["end"])
-            if not math.isfinite(left) or not math.isfinite(right) or left < previous or right < left:
-                raise ValueError("Invalid upstream timestamps")
-            previous = left
-            text = row.get("text")
-            if not isinstance(text, str):
-                raise ValueError("Invalid upstream text")
-            left = start / RATE + max(0, left)
-            right = min(duration, end / RATE, start / RATE + right)
-            if left < right and text.strip():
-                result.append({"id": len(result), "start": left, "end": right, "text": text})
-    return result
 
 
 def recognize(audio, span, language, deadline):
@@ -211,6 +171,11 @@ def recognize(audio, span, language, deadline):
     return start, end, payload
 
 
+def recognize_spans(audio, spans, language, deadline):
+    with ThreadPoolExecutor(max_workers=app.state.parallelism) as pool:
+        return list(pool.map(lambda span: recognize(audio, span, language, deadline), spans))
+
+
 @app.post("/v1/audio/transcriptions")
 def transcribe(
     file: UploadFile,
@@ -237,16 +202,12 @@ def transcribe(
             if not size:
                 raise HTTPException(400, "Audio is empty")
             audio = decode_audio(path, directory)
-            duration = len(audio) / RATE
-            spans = speech_spans(audio)
-            with ThreadPoolExecutor(max_workers=app.state.parallelism) as pool:
-                parts = list(pool.map(lambda span: recognize(audio, span, language, deadline), spans))
-            if time.monotonic() > deadline:
-                raise TimeoutError("Transcription deadline exceeded")
-            segments = restore_segments(parts, duration)
-            detected = next((part[2].get("language") for part in parts if isinstance(part[2].get("language"), str)), "unknown")
-            return {"task": "transcribe", "language": language or detected, "duration": duration,
-                    "text": " ".join(row["text"].strip() for row in segments), "segments": segments}
+            return execute_transcription(audio, TranscriptionDependencies(
+                duration=lambda value: len(value) / RATE,
+                speech_spans=speech_spans,
+                recognize=recognize_spans,
+                now=time.monotonic,
+            ), language=language, deadline=deadline)
     except (subprocess.SubprocessError, ValueError, RuntimeError) as error:
         raise HTTPException(422, "Audio or subtitle response could not be processed") from error
     except (httpx.TimeoutException, TimeoutError) as error:

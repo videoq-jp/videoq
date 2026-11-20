@@ -1,3 +1,4 @@
+import { postgresLmsOwnerSql } from './lms-owner-policy';
 import type pg from 'pg';
 import {withClient} from '../../db/pool';
 import type {Bindings} from '../../types/bindings';
@@ -8,7 +9,7 @@ import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
 const SOURCE=`SELECT v.id,v.status FROM lms_resources r JOIN videos v ON v.id=r.video_id JOIN lms_installations i ON i.id=r.installation_id JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=i.id AND t.context_id=r.context_id AND t.course_id=r.course_id AND t.active=true AND t.resource_link_id IS NULL JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id JOIN users owner ON owner.id=t.owner_user_id
  WHERE i.id=$1 AND owner.id=$2 AND r.id=$3 AND r.external_id=$4 AND r.generation=$5 AND v.id=$6 AND v.file=$7 AND r.file_size=$8 AND r.content_type=$9
  AND r.enabled=true AND r.kind='video' AND v.user_id=owner.id AND v.managed_by_lms=true AND v.source_type='uploaded'
- AND i.active=true AND owner.is_active=true AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR owner.ban_expires<=clock_timestamp()) FOR UPDATE OF r,v`;
+ AND i.active=true AND ${postgresLmsOwnerSql('clock_timestamp()')} FOR UPDATE OF r,v`;
 const sourceArgs=(g:OwnedLmsGrant,s:LmsUploadSnapshot)=>[g.id,g.ownerUserId,s.resourceId,s.externalId,s.generation,s.videoId,s.fileKey,s.size,s.contentType];
 export function createPostgresLmsUploadRepository(env:Bindings):LmsUploadRepository{
  async function write<T>(grant:OwnedLmsGrant,operation:(client:pg.Client)=>Promise<T>):Promise<T>{return withClient(env,async client=>{

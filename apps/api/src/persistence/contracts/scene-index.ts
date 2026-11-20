@@ -1,27 +1,5 @@
-export type SceneEmbedding = {
-  id: string;
-  content: string;
-  startTime: string;
-  endTime: string;
-  evidenceType?: "transcript" | "visual";
-  embedding: number[];
-};
-export type SceneIndexRunInput = {
-  runId: string;
-  videoId: number;
-  userId: string;
-  sourceRevision: string;
-  dimensions: 768 | 1536;
-  expectedScenes: number;
-};
-export type SceneIndexSource = {
-  videoId: number;
-  userId: string;
-  sourceRevision: string;
-  fileKey: string;
-  transcript: string;
-  status: string;
-};
+import type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource } from '../../application/scene-index-policy';
+export type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource, FinishSceneIndexInput, FinishSceneIndexResult } from '../../application/scene-index-policy';
 export interface SceneIndexWriter {
   readSource(videoId: number, userId: string): Promise<SceneIndexSource | null>;
   start(input: SceneIndexRunInput): Promise<boolean>;
@@ -53,12 +31,3 @@ export interface SceneIndexTaskRepository {
 
 /** Verification is paced independently of write retries and propagation delay. */
 export const SCENE_INDEX_VERIFY_INTERVAL_MS = 60 * 60 * 1000;
-
-export type FinishSceneIndexInput = {
-  videoId: number;
-  userId: string;
-  sourceRevision: string;
-  fileKey: string;
-  dimensions: 768 | 1536;
-};
-export type FinishSceneIndexResult = "completed" | "pending" | "missing" | "stale";

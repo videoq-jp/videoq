@@ -1,3 +1,4 @@
+import type { ChatAnswer } from "@videoq/domain/chat";
 import { EMBEDDING_DIMENSIONS } from "../../lib/embedding-dimensions";
 import {
 	pgTable,
@@ -656,7 +657,7 @@ export const chatLogs = pgTable(
 			cache: 1,
 		}),
 		question: text().notNull(),
-		response: jsonb().$type<import("@videoq/trpc/chat").ChatAnswer>().notNull(),
+		response: jsonb().$type<ChatAnswer>().notNull(),
 		isSharedOrigin: boolean("is_shared_origin").notNull(),
 		feedback: varchar({ length: 4 }),
 		createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
@@ -845,7 +846,7 @@ export const chatConversationTurns = pgTable("chat_conversation_turns", {
   threadId: text("thread_id").notNull(),
   checkpointId: text("checkpoint_id").notNull(),
   question: text("question").notNull(),
-  response: jsonb("response").$type<import("@videoq/trpc/chat").ChatAnswer>().notNull(),
+  response: jsonb("response").$type<ChatAnswer>().notNull(),
   chatLogId: bigint("chat_log_id", { mode: "number" }).references(() => chatLogs.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: "chat_conversation_turns_thread_fk" }).onDelete("cascade"), uniqueIndex("chat_conversation_turns_checkpoint_idx").on(table.threadId, table.checkpointId), index("chat_conversation_turns_thread_idx").on(table.threadId, table.id)]);

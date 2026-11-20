@@ -1,3 +1,4 @@
+import { pendingUploadedVideo, pendingYoutubeVideo, uploadConfirmationTransition, videoCreationReplayAllowed } from '../../application/video-creation';
 import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { users, videos } from "../../db/schema";
@@ -35,19 +36,7 @@ export async function createYoutubeVideo(
       }
       const rows = await tx
         .insert(videos)
-        .values({
-          userId,
-          file: "",
-          title: params.title,
-          description: params.description,
-          status: "pending",
-          sourceType: "youtube",
-          sourceUrl: params.sourceUrl,
-          youtubeVideoId: params.youtubeVideoId,
-          transcript: "",
-          errorMessage: "",
-          uploadedAt: sql`CURRENT_TIMESTAMP`,
-        })
+        .values({ ...pendingYoutubeVideo({ userId, title: params.title, description: params.description, sourceUrl: params.sourceUrl, youtubeVideoId: params.youtubeVideoId }), uploadedAt: sql`CURRENT_TIMESTAMP` })
         .returning({ id: videos.id });
       const videoId = Number(rows[0].id);
       const message = buildJobMessage(JOB_TRANSCRIBE_VIDEO, { video_id: videoId });
@@ -87,12 +76,13 @@ export async function confirmUploadedVideo(
 ): Promise<false | OutboxedVideoJob> {
   return withDb(env, async (db) =>
     db.transaction(async (tx) => {
+      const transition = uploadConfirmationTransition();
       const rows = await tx
         .update(videos)
-        .set({ status: "pending", errorMessage: "" })
+        .set(transition.changes)
         .where(and(
           eq(videos.id, videoId), eq(videos.userId, userId),
-          eq(videos.status, "uploading"), eq(videos.file, fileKey),
+          eq(videos.status, transition.from), eq(videos.file, fileKey),
         ))
         .returning({ id: videos.id });
       if (rows.length === 0) return false;
@@ -130,7 +120,8 @@ export async function reserveAndCreatePendingVideo(
           .where(and(eq(videos.id, existing.resourceId), eq(videos.userId, userId)))
           .limit(1);
         const video = rows[0];
-        if (!video) return { idempotencyConflict: true } as const;
+        if (!videoCreationReplayAllowed('uploaded', true, Boolean(video))) return { idempotencyConflict: true } as const;
+        if (!video) throw new Error('Missing replay video');
         return {
           ok: true as const,
           videoId: Number(video.id),
@@ -147,19 +138,8 @@ export async function reserveAndCreatePendingVideo(
       const rows = await tx
         .insert(videos)
         .values({
-          userId,
-          file: fileKey,
-          transcriptionLanguage,
-          title,
-          description,
-          status: "uploading",
-          uploadUsagePeriodStart: reservation.periodStart,
-          sourceType: "uploaded",
-          sourceUrl: "",
-          youtubeVideoId: "",
-          transcript: "",
-          errorMessage: "",
-          uploadedAt: sql`CURRENT_TIMESTAMP`,
+          ...pendingUploadedVideo({ userId, fileKey, title, description, transcriptionLanguage }),
+          uploadUsagePeriodStart: reservation.periodStart, uploadedAt: sql`CURRENT_TIMESTAMP`,
         })
         .returning({ id: videos.id });
       const videoId = Number(rows[0].id);

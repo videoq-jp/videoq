@@ -1,10 +1,5 @@
-export class UploadSessionError extends Error {
-  constructor(message: string, readonly code: "BAD_REQUEST" | "NOT_FOUND" = "BAD_REQUEST") {
-    super(message);
-  }
-}
-
-export type MultipartParts={partNumber:number;etag:string}[];
+import type { MultipartParts } from '../../application/multipart-upload';
+export { UploadSessionError, type MultipartParts } from '../../application/multipart-upload';
 export interface MultipartUploadRepository {
  initialize(videoId:number,userId:string,contentType:string):Promise<{part_size:number;part_count:number}>;
  partUrl(videoId:number,userId:string,partNumber:number):Promise<{upload_url:string}>;

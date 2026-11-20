@@ -17,15 +17,11 @@ export const modelAnswerSchema = z.object({
     sourceIds: z.array(z.number()).describe("Only the smallest set of retrieved evidence IDs directly supporting THIS passage, usually 1 or 2; not every source inspected. Visual descriptions cite the matching visual observations. Empty for metadata-only or unsupported statements."),
   }).strict()).min(1).describe("Separate claims or scenes with their own supporting citations. A multi-scene answer must have multiple segments rather than collecting all citations at the end."),
 }).strict();
-export type ModelAnswer = z.infer<typeof modelAnswerSchema>;
+export type { ModelAnswer } from "@videoq/domain/chat";
 
 export const chatAnswerSchema = z.object({
   segments: z.array(z.object({ text: z.string(), sourceIds: z.array(sourceIdSchema) }).strict()),
   sources: z.array(chatSourceSchema),
 }).strict();
-export type ChatAnswer = z.infer<typeof chatAnswerSchema>;
-export type ChatSource = z.infer<typeof chatSourceSchema>;
-
-/** Plain text is a projection, never another stored answer. */
-export const chatAnswerText = (answer: ChatAnswer): string => answer.segments.map(s => s.text).join("");
-export const plainChatAnswer = (text: string): ChatAnswer => ({ segments: [{ text, sourceIds: [] }], sources: [] });
+export type { ChatAnswer, ChatSource } from "@videoq/domain/chat";
+export { chatAnswerText, plainChatAnswer } from "@videoq/domain/chat";

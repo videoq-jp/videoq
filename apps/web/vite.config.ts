@@ -2,7 +2,7 @@ import { defineConfig, type PluginOption } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { readFileSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { deploymentEdition } from '../../packages/trpc/src/deployment'
+import { deploymentEdition } from '../../packages/domain/src/deployment'
 
 // plugin-react-swc resolves the hoisted vite copy, whose Plugin type differs from this workspace's vite.
 const reactPlugin = react() as unknown as PluginOption

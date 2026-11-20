@@ -1,7 +1,10 @@
+import { planInvitationControl } from '../../application/invitation-lifecycle';
+import { invitationDeliveryCutoff, invitationDeliveryStranded, invitationDeliveryWasSent, invitationInviterName } from '../../application/invitation-delivery';
+import { invitationDrizzleLogic } from '../invitation-policy-sql';
 import {and,eq,lt,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {externalTasks,users,videoCourseInvitations,videoCourses} from '../../db/schema';
-import {effectiveInvitationStatus,type InvitationStatus} from '../../lib/course-invitations';
+import {type InvitationStatus} from '../../lib/course-invitations';
 import {lockExternalTaskLease} from './external-task-repository';
 import type {ExternalTaskLease} from '../contracts/external-task-repository';
 import type {InvitationDeliveryOutcome,InvitationDeliveryRepository} from '../contracts/invitation-delivery-repository';
@@ -26,7 +29,7 @@ export async function recordInvitationDeliveryOutcomes(
           .set({
             deliveryStatus: outcome.status,
             lastSentAt:
-              outcome.status === "sent" ? outcome.attemptedAt.toISOString() : undefined,
+              invitationDeliveryWasSent(outcome.status, { equals: (status, expected) => status === expected }) ? outcome.attemptedAt.toISOString() : undefined,
             lastError: outcome.error?.slice(0, 1000) ?? null,
             sendAttempts: sql`${videoCourseInvitations.sendAttempts} + 1`,
             updatedAt: outcome.attemptedAt.toISOString(),
@@ -65,7 +68,7 @@ export async function failInvitationsWithoutLiveDelivery(
   now: Date,
   graceMs: number,
 ): Promise<{ failed: number }> {
-  const cutoff = new Date(now.getTime() - graceMs).toISOString();
+  const cutoff = invitationDeliveryCutoff(now, graceMs).toISOString();
   return withDb(env, async (db) => {
     const rows = await db
       .update(videoCourseInvitations)
@@ -75,11 +78,11 @@ export async function failInvitationsWithoutLiveDelivery(
         updatedAt: now.toISOString(),
       })
       .where(
-        and(
-          eq(videoCourseInvitations.status, "pending"),
-          eq(videoCourseInvitations.deliveryStatus, "queued"),
-          lt(videoCourseInvitations.updatedAt, cutoff),
-          sql`NOT EXISTS (
+        invitationDeliveryStranded({
+          pending: eq(videoCourseInvitations.status, "pending"),
+          queued: eq(videoCourseInvitations.deliveryStatus, "queued"),
+          graceElapsed: lt(videoCourseInvitations.updatedAt, cutoff),
+          noLiveTask: sql`NOT EXISTS (
             SELECT 1
               FROM external_tasks t
              WHERE t.kind = 'invitation_email'
@@ -87,7 +90,7 @@ export async function failInvitationsWithoutLiveDelivery(
                AND t.dead_at IS NULL
                AND (t.payload->>'invitation_id')::bigint = ${videoCourseInvitations.id}
           )`,
-        ),
+        }, invitationDrizzleLogic),
       )
       .returning({ id: videoCourseInvitations.id });
     return { failed: rows.length };
@@ -126,19 +129,15 @@ export async function rotateInvitationTokenForDelivery(
         .for("update");
       if (rows.length === 0) return { notFound: true } as const;
 
-      const status = effectiveInvitationStatus(
-        rows[0].status as InvitationStatus,
-        new Date(rows[0].expiresAt),
-        now,
-      );
-      if (status !== "pending") {
-        if (status === "expired" && rows[0].status === "pending") {
+      const plan = planInvitationControl(rows[0].status as InvitationStatus, new Date(rows[0].expiresAt), now);
+      if (plan.kind === 'deny') {
+        if (plan.markExpired) {
           await tx
             .update(videoCourseInvitations)
             .set({ status: "expired", updatedAt: now.toISOString() })
             .where(eq(videoCourseInvitations.id, invitationId));
         }
-        return { invalidState: status } as const;
+        return { invalidState: plan.status } as const;
       }
 
       await tx
@@ -148,7 +147,7 @@ export async function rotateInvitationTokenForDelivery(
       return {
         email: rows[0].email,
         courseName: rows[0].courseName,
-        inviterName: rows[0].inviterName.trim() || rows[0].inviterUsername,
+        inviterName: invitationInviterName(rows[0].inviterName, rows[0].inviterUsername),
       };
     }),
   );

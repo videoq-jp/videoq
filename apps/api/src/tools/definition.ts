@@ -13,7 +13,7 @@ export type ToolMetadata = {
   annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint?: boolean };
 };
 
-/** Framework-independent tool contract. Authorization is captured by the factory. */
+/** Transport-shared tool adapter definition; application policies are injected by its factory. */
 export type ToolDefinition = ToolMetadata & {
   name: string;
   description: string;

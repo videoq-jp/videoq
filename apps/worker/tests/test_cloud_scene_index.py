@@ -3,12 +3,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from worker_python.pipeline import cloud_scene_index as index
-from worker_python.pipeline.srt import SrtScene
 
 
 @pytest.fixture
 def setup(monkeypatch):
-    source = {"videoId": 1, "userId": "owner", "sourceRevision": "revision", "transcript": "srt"}
+    source = {"videoId": 1, "userId": "owner", "sourceRevision": "revision", "transcript": "\n".join(f"{i+1}\n00:00:00,000 --> 00:00:01,000\ntext{i}\n" for i in range(43))}
     calls = []
 
     def api(action, body):
@@ -19,8 +18,6 @@ def setup(monkeypatch):
     monkeypatch.setattr(index, "apply_scene_splitting", lambda text: text)
     monkeypatch.setattr(index, "resolve_embedding_config", lambda: MagicMock(dimensions=1536))
     monkeypatch.setattr(index, "embed_texts", lambda texts: [[0.5] * 1536 for _ in texts])
-    scenes = [SrtScene(i, "00:00:00,000", "00:00:01,000", 0, 1, f"text{i}") for i in range(43)]
-    monkeypatch.setattr(index, "parse_srt_scenes", lambda text: scenes)
     return source, calls
 
 
@@ -32,6 +29,8 @@ def test_chunks_publish_only_after_all_embedding_batches(setup):
     assert [len(body["scenes"]) for action, body in calls if action.endswith("/stage")] == [20, 20, 3]
     assert calls[1][1]["sourceRevision"] == source["sourceRevision"]
     assert len({scene["id"] for action, body in calls if action.endswith("/stage") for scene in body["scenes"]}) == 43
+    assert all(scene["startTime"] == "00:00:00,000" and scene["endTime"] == "00:00:01,000"
+               for action, body in calls if action.endswith("/stage") for scene in body["scenes"])
 
 
 def test_empty_caption_publishes_empty_run_without_embedding(setup, monkeypatch):

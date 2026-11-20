@@ -11,6 +11,7 @@ const video: VideoDetail = {
 };
 function fixture() {
   const deps = {
+    newFileKey: vi.fn<VideoUploadDependencies["newFileKey"]>().mockReturnValue(fileKey),
     videos: {
       reserveUpload: vi.fn<VideoUploadDependencies['videos']['reserveUpload']>().mockResolvedValue({ ok: true, videoId: 7, fileKey, reused: false }),
       getUploadState: vi.fn<VideoUploadDependencies['videos']['getUploadState']>().mockResolvedValue({ found: true, status: "uploading", fileKey }),

@@ -128,7 +128,7 @@ async function startCostLedger(
 }
 
 export function chatGenerationService(env: Bindings) {
-  return createChatGenerationService({
+  return createChatGenerationService<AnswerCostLedger, AbortSignal>({
     context: (input) => getCourseWithMembers(env, input),
     checkedLtiSubject,
     reserve: (userId) => reserveAiAnswerUsage(env, userId),

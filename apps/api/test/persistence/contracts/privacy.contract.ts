@@ -58,6 +58,19 @@ export function privacyContract(name:string,setup:()=>Promise<PrivacyFixture>){
    while(result.part){text+=result.part.chunk;if(result.next?.record)result=await part('logs',result.next);else break;}
    expect((JSON.parse(text) as {question:string}).question).toBe(question);await f.execute("UPDATE chat_logs SET question='changed' WHERE id=1");await expect(part('logs',first.next!)).rejects.toMatchObject({status:409});
   });
+  it('rejects stale authority before the legacy cache gate without changing records',async()=>{
+   await f.execute('INSERT INTO lti_credentials(id,kind,payload,expires_at) VALUES(?,?,?,?)',['legacy','lti-history','{}',new Date(Date.now()+60000).toISOString()]);
+   await expect(run({action:'catalog'})).rejects.toMatchObject({status:503,code:'PRIVACY_UPGRADE_PENDING'});
+   await f.execute("UPDATE lms_installations SET jwks_url='https://changed.example/jwks' WHERE id='school'");
+   await expect(erase()).rejects.toMatchObject({status:403,code:'FORBIDDEN'});expect(await f.count('chat_logs')).toBe(2);
+  });
+  it('checks registration authority before blocking legacy unattributed history',async()=>{
+   await f.execute('INSERT INTO lti_credentials(id,kind,payload,expires_at) VALUES(?,?,?,?)',['legacy-live','lti-history','{}',new Date(Date.now()+60000).toISOString()]);
+   await expect(run({action:'catalog'})).rejects.toMatchObject({status:503,code:'PRIVACY_UPGRADE_PENDING'});
+   await f.execute("UPDATE lms_installations SET jwks_url='https://changed.example/jwks' WHERE id='school'");
+   await expect(run({action:'catalog'})).rejects.toMatchObject({status:403});
+   await expect(erase()).rejects.toMatchObject({status:403});expect(await f.count('chat_logs')).toBe(2);
+  });
   it('supports inactive recovery but rejects changed registrations without deleting data',async()=>{
    await f.execute("UPDATE lms_installations SET active=false WHERE id='school'");await f.execute("UPDATE users SET is_active=false,banned=true WHERE id='owner'");expect((await part('logs')).part).not.toBeNull();
    await f.execute("UPDATE lms_installations SET jwks_url='https://changed.example/jwks' WHERE id='school'");await expect(erase()).rejects.toMatchObject({status:403});expect(await f.count('chat_logs')).toBe(2);

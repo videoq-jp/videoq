@@ -37,6 +37,11 @@ export function lmsResourceReadContract(name:string,setup:()=>Promise<Fixture>){
    expect(await getLmsResource(f.env,{id:'school'},'source')).toMatchObject({ownerUserId:'owner',video:{userId:'owner'}});
    await f.execute('UPDATE teaching_connections SET active=false');expect(await read()).toBeNull();
   });
+  it('preserves nullable ban semantics while refusing an indefinite ban',async()=>{
+   await f.execute("UPDATE users SET banned=NULL,ban_expires='2099-01-01' WHERE id='owner'");expect(await read()).not.toBeNull();
+   await f.execute("UPDATE users SET banned=true,ban_expires=NULL WHERE id='owner'");expect(await read()).toBeNull();
+   await f.execute("UPDATE users SET banned=false WHERE id='owner'");expect(await read()).not.toBeNull();
+  });
   it('never hydrates another owner media or a course whose ownership no longer matches its teacher',async()=>{
    await f.execute('UPDATE videos SET user_id=? WHERE id=1',['other']);expect(await read()).toMatchObject({resource:{videoId:1},video:null});
    await f.execute('UPDATE video_courses SET user_id=? WHERE id=10',['other']);expect(await read()).toBeNull();

@@ -86,12 +86,12 @@ class Assumptions:
 
 
 def read_catalog() -> dict:
-    uri = (ROOT / "apps/api/src/features/billing/catalog.ts").as_uri()
+    uri = (ROOT / "packages/domain/src/billing-catalog.ts").as_uri()
     return json.loads(subprocess.check_output([
-        "node", "--input-type=module", "-e",
+        "node", "--import", "tsx", "--input-type=module", "-e",
         f"import {{ PLAN_CATALOG }} from {json.dumps(uri)}; "
         "process.stdout.write(JSON.stringify(PLAN_CATALOG));",
-    ], text=True))
+    ], text=True, cwd=ROOT))
 
 
 def answer_scenarios(a: Assumptions) -> list[dict]:

@@ -7,6 +7,7 @@ import { createApp } from "../src/app";
 import { nodeBindings } from "../src/runtime/node-config";
 import { postgresRateLimitBackend } from "../src/runtime/postgres-rate-limit";
 import { provisionOnpremUser } from "../src/features/admin/onprem-users";
+import * as postgresAuth from "../src/persistence/postgres/auth";
 import type { Bindings } from "../src/types/bindings";
 
 const databaseURL = process.env.QUOTA_TEST_DATABASE_URL;
@@ -121,4 +122,28 @@ withPostgres("on-prem account lifecycle without SaaS services", () => {
     expect((await post("/api/auth/reset-password", { token: token(link), newPassword: password })).status).toBe(400);
     expect(outbound).not.toHaveBeenCalled();
   }, 60_000);
+
+  it("rolls back the account and issued token when no activation link reaches the workflow", async () => {
+    const counts = async () => (await pool.query(`SELECT
+      (SELECT count(*)::int FROM users) AS users,
+      (SELECT count(*)::int FROM account) AS accounts,
+      (SELECT count(*)::int FROM verification) AS tokens`)).rows[0];
+    const before = await counts();
+    let tokenIssued = false;
+    const original = postgresAuth.createAuth;
+    // Let the real provider persist the reset token, but simulate delivery that
+    // fails to supply the link to the caller. The entire outer transaction must abort.
+    const provider = vi.spyOn(postgresAuth, "createAuth").mockImplementation((bindings, db, profile) =>
+      original(bindings, db, profile, {
+        passwordReset: async () => { tokenIssued = true; },
+      }));
+    try {
+      await expect(provisionOnpremUser(env, {
+        email: `rollback-${suffix}@example.invalid`, username: `rollback_${suffix}`,
+      })).rejects.toThrow("Could not create an account activation link");
+      expect(tokenIssued).toBe(true);
+      expect(await counts()).toEqual(before);
+    } finally { provider.mockRestore(); }
+  });
+
 });

@@ -3,7 +3,7 @@ import { tool, type ToolRuntime } from "langchain";
 import { z } from "zod";
 import type { SceneHit } from "../repositories/vector-repository";
 import { toolResponseSchema, evidenceProgressSchema } from "../tools/contract";
-import { isAnswerTool } from "../tools/policy";
+import { isAnswerTool } from "../application/answer-tool-policy";
 import type { ToolValue } from "../tools/definition";
 import { LlmConfigurationError, LlmProviderError } from "./openai";
 

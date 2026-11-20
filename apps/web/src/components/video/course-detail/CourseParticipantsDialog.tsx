@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { CourseInviteRecipientResult } from '@videoq/trpc';
-import { normalizeInvitationEmail } from '@videoq/trpc/course-invitations';
+import { DELIVERY_POLL_WINDOW_MS, splitInvitationEmails, previewInvitationRecipients, invitationDeliveryPollInterval } from '@/application/course-invitations';
 import { appTrpcClient, trpc } from '@/lib/trpc';
 import { trackLandingEvent } from '@/lib/landingAnalytics';
 import { refreshQuery } from '@/lib/cacheInvalidation';
@@ -27,54 +27,10 @@ import {
   useDialog,
 } from '@/components/ui/dialog';
 
-/** 送信直後に配送状態を追う間隔と、追跡を打ち切るまでの時間。 */
-const DELIVERY_POLL_INTERVAL_MS = 3_000;
-const DELIVERY_POLL_WINDOW_MS = 30_000;
-
-function splitEmails(value: string): string[] {
-  return value
-    .split(/[\n,;]+/)
-    .map((email) => email.trim())
-    .filter(Boolean);
-}
-
-type RecipientPreviewStatus =
-  | 'ready'
-  | 'invalid'
-  | 'duplicate'
-  | 'already_member'
-  | 'already_invited';
-
-type RecipientPreview = {
-  email: string;
-  status: RecipientPreviewStatus;
-};
-
 type ParticipantAction =
   | { kind: 'invite'; emails: string[] }
   | { kind: 'resend' | 'revoke'; invitationId: number }
   | { kind: 'remove'; userId: string };
-
-function previewRecipients(
-  inputs: readonly string[],
-  memberEmails: ReadonlySet<string>,
-  pendingEmails: ReadonlySet<string>,
-): RecipientPreview[] {
-  const seen = new Set<string>();
-  return inputs.map((input) => {
-    const normalized = normalizeInvitationEmail(input);
-    if (!normalized) return { email: input, status: 'invalid' };
-    if (seen.has(normalized)) return { email: normalized, status: 'duplicate' };
-    seen.add(normalized);
-    if (memberEmails.has(normalized)) {
-      return { email: normalized, status: 'already_member' };
-    }
-    if (pendingEmails.has(normalized)) {
-      return { email: normalized, status: 'already_invited' };
-    }
-    return { email: normalized, status: 'ready' };
-  });
-}
 
 export function CourseParticipantsDialog({
   courseId,
@@ -101,14 +57,10 @@ export function CourseParticipantsDialog({
   const participantsQuery = useQuery({
     ...trpc.courseMemberships.participants.queryOptions({ courseId }),
     enabled: isOpen,
-    refetchInterval: (query) => {
-      if (!features.emailDelivery) return false;
-      if (Date.now() >= trackDeliveryUntil) return false;
-      const queued = query.state.data?.invitations.some(
-        (invitation) => invitation.status === 'pending' && invitation.delivery_status === 'queued',
-      );
-      return queued ? DELIVERY_POLL_INTERVAL_MS : false;
-    },
+    refetchInterval: query => invitationDeliveryPollInterval({
+      enabled: features.emailDelivery, now: Date.now(), until: trackDeliveryUntil,
+      invitations: query.state.data?.invitations,
+    }),
   });
   const operation = useMutation({
     mutationFn: async (action: ParticipantAction) => {
@@ -165,7 +117,7 @@ export function CourseParticipantsDialog({
   const isInviting = pendingAction?.kind === 'invite';
 
   const participants = participantsQuery.data;
-  const emailInputs = useMemo(() => splitEmails(emailInput), [emailInput]);
+  const emailInputs = useMemo(() => splitInvitationEmails(emailInput), [emailInput]);
   const recipientPreview = useMemo(() => {
     const memberEmails = new Set(
       participants?.members.map((member) => member.email.trim().toLowerCase()) ?? [],
@@ -175,7 +127,7 @@ export function CourseParticipantsDialog({
         .filter((invitation) => invitation.status === 'pending')
         .map((invitation) => invitation.email.trim().toLowerCase()) ?? [],
     );
-    return previewRecipients(emailInputs, memberEmails, pendingEmails);
+    return previewInvitationRecipients(emailInputs, memberEmails, pendingEmails);
   }, [emailInputs, participants]);
   const readyRecipientCount = recipientPreview.filter(({ status }) => status === 'ready').length;
 

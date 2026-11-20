@@ -1,4 +1,4 @@
-import { iterSrtCues } from "@videoq/trpc/transcript";
+import { iterSrtCues } from "@videoq/domain/transcript";
 
 /** Cue offsets, rather than timestamps, preserve overlapping and repeated cues. */
 export function transcriptPage(transcript: string | null, cursor: number, limit: number) {

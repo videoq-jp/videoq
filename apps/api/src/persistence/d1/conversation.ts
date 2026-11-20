@@ -1,3 +1,6 @@
+import { CONVERSATION_RETENTION_DAYS, conversationTitle, conversationCandidateIds, conversationCourseAllowed, conversationMembersAllowed, conversationStoredScopeAllowed, conversationLogShouldExpire, conversationTitleOnCommit } from '../../application/conversation-lifecycle';
+import { conversationStringLogic } from '../conversation-policy-sql';
+import { conversationStoredScopeConflict } from '../../application/conversation-lifecycle';
 import {apiConflict,apiNotFound,ApiError} from '../../shared/errors';
 import type {ConversationRepository,ConversationSummary,ConversationTurn} from '../contracts/conversation';
 import {toUtcIso} from '../../shared/datetime';
@@ -23,17 +26,17 @@ function scopeGuard(scope:ConversationScope,threadId:string,allowEmpty=false,ign
   const subject=checkedLtiSubject(scope.ltiSubject);
   const ids=JSON.stringify(subject.resourceVideoIds);
   const proof=subject.sessionProof;
-  return {sql:`? >= ${allowEmpty?0:1} AND EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=?)
-    AND (SELECT count(*) FROM video_course_members m JOIN videos v ON v.id=m.video_id
-      WHERE m.course_id=? AND v.user_id=? AND m.video_id IN(SELECT value FROM json_each(?)))=?
-    AND (?=1 OR NOT EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=? AND EXISTS(SELECT 1 FROM chat_conversations live WHERE live.thread_id=s.thread_id AND julianday(live.expires_at)>=julianday('now')) AND (s.subject_key<>? OR EXISTS(
-      SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?))))))
+  return {sql:`${conversationCourseAllowed('?','EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=?)',allowEmpty,conversationStringLogic)}
+    AND ${conversationMembersAllowed(`(SELECT count(*) FROM video_course_members m JOIN videos v ON v.id=m.video_id
+      WHERE m.course_id=? AND v.user_id=? AND m.video_id IN(SELECT value FROM json_each(?)))`,'?',conversationStringLogic)}
+    AND (?=1 OR NOT EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=? AND EXISTS(SELECT 1 FROM chat_conversations live WHERE live.thread_id=s.thread_id AND julianday(live.expires_at)>=julianday('now')) AND ${conversationStoredScopeConflict('s.subject_key<>?',`EXISTS(
+      SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?)))`,conversationStringLogic)}))
     ${proof?`AND EXISTS(SELECT 1 FROM users owner JOIN lti_credentials c ON c.id=? WHERE owner.id=? AND c.kind='session'
       AND julianday(c.expires_at)>julianday('now') AND json_extract(c.payload,'$.registrationId')=? AND json_extract(c.payload,'$.subjectHash')=?)`:''}`,
     values:[subject.resourceVideoIds.length,scope.courseId,scope.ownerUserId,scope.courseId,scope.ownerUserId,ids,subject.resourceVideoIds.length,ignoreStored?1:0,threadId,subject.subjectKey,ids,
       ...(proof?[proof.sessionHash,scope.ownerUserId,proof.registrationId,proof.subjectHash]:[])]};
 }
-export async function openD1Conversation(database:D1Database,scope:ConversationScope,conversationId:string,requireExisting=false):Promise<OpenConversation> {
+export async function openD1Conversation(database:D1Database,scope:ConversationScope,conversationId:string,requireExisting=false):Promise<OpenConversation<D1CheckpointSaver>> {
   const threadId=await conversationThreadId(scope,conversationId),scopeKey=await conversationThreadId(scope,'scope');
   const leaseId=crypto.randomUUID(),token=crypto.randomUUID();
   const guard=scopeGuard(scope,threadId),session=sessionGuard(scope);
@@ -43,7 +46,7 @@ export async function openD1Conversation(database:D1Database,scope:ConversationS
       .bind(token,...guard.values,requireExisting?1:0,threadId),
     database.prepare('DELETE FROM chat_conversations WHERE thread_id=? AND julianday(expires_at)<julianday(\'now\') AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)').bind(threadId,token),
     database.prepare(`INSERT INTO chat_conversations(thread_id,owner_user_id,actor_user_id,course_id,lease_id,conversation_id,scope_key,leased_until,expires_at)
-      SELECT ?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+20 minutes'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days')
+      SELECT ?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+20 minutes'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+${CONVERSATION_RETENTION_DAYS} days')
       WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) ON CONFLICT(thread_id) DO UPDATE SET
         lease_id=excluded.lease_id,leased_until=excluded.leased_until,expires_at=excluded.expires_at,conversation_id=excluded.conversation_id,scope_key=excluded.scope_key
       WHERE chat_conversations.lease_id IS NULL OR julianday(chat_conversations.leased_until)<julianday('now')`)
@@ -77,10 +80,10 @@ export async function openD1Conversation(database:D1Database,scope:ConversationS
         SELECT ?,?,?,?,(SELECT resource_id FROM mutation_receipts WHERE token=?) WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
           AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`)
         .bind(threadId,result.checkpointId,result.queryText,answer,logToken,commitToken,logInput?1:0,logToken),
-        database.prepare(`UPDATE chat_conversations SET committed_checkpoint_id=?,title=CASE WHEN title='' THEN ? ELSE title END,updated_at=${NOW},expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days')
+        database.prepare(`UPDATE chat_conversations SET committed_checkpoint_id=?,title=${conversationTitleOnCommit('title','?',conversationStringLogic)},updated_at=${NOW},expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+${CONVERSATION_RETENTION_DAYS} days')
           WHERE thread_id=? AND lease_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
           AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`)
-          .bind(result.checkpointId,result.queryText.trim().slice(0,120),threadId,leaseId,commitToken,logInput?1:0,logToken),
+          .bind(result.checkpointId,conversationTitle(result.queryText),threadId,leaseId,commitToken,logInput?1:0,logToken),
         database.prepare(`SELECT receipt.token,(SELECT resource_id FROM mutation_receipts WHERE token=?) AS chat_log_id
           FROM mutation_receipts receipt WHERE receipt.token=? AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`).bind(logToken,commitToken,logInput?1:0,logToken),
         database.prepare(`SELECT (${session.sql}) AS session_allowed,EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AS scope_allowed`).bind(...session.values,commitToken+':scope'),
@@ -99,12 +102,12 @@ export async function openD1Conversation(database:D1Database,scope:ConversationS
 /** Retention and attributed-log cleanup share the same atomic D1 batch. */
 export async function pruneD1Conversations(database:D1Database):Promise<number> {
   const result=await database.batch([
-    database.prepare(`DELETE FROM chat_logs WHERE EXISTS(SELECT 1 FROM lti_chat_log_subjects s WHERE s.chat_log_id=chat_logs.id) AND (
-      EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)<julianday('now')) OR
-      (julianday(created_at)<julianday('now','-30 days') AND NOT EXISTS(
-        SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)>=julianday('now'))))`),
+    database.prepare(`DELETE FROM chat_logs WHERE EXISTS(SELECT 1 FROM lti_chat_log_subjects s WHERE s.chat_log_id=chat_logs.id) AND ${conversationLogShouldExpire(
+      `EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
+        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)<julianday('now'))`,
+      `julianday(created_at)<julianday('now','-${CONVERSATION_RETENTION_DAYS} days')`,
+      `NOT EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
+        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)>=julianday('now'))`,conversationStringLogic)}`),
     database.prepare("DELETE FROM chat_conversations WHERE julianday(expires_at)<julianday('now') RETURNING thread_id"),
   ]);
   return result[1].results.length;
@@ -117,15 +120,15 @@ const summary=(row:SummaryRow):ConversationSummary=>({...row,createdAt:toUtcIso(
 function visibleScope(scope:ConversationScope){
   if(!scope.ltiSubject)return {sql:'1',values:[] as unknown[]};
   const subject=checkedLtiSubject(scope.ltiSubject);
-  return {sql:`EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=chat_conversations.thread_id AND s.subject_key=?
-    AND NOT EXISTS(SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?))))`,
+  return {sql:`EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=chat_conversations.thread_id AND ${conversationStoredScopeAllowed('s.subject_key=?',
+    'NOT EXISTS(SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?)))',conversationStringLogic)})`,
     values:[subject.subjectKey,JSON.stringify(subject.resourceVideoIds)]};
 }
 export function createD1ConversationRepository(database:D1Database):ConversationRepository {
   return {
     async list(scope,input){
       const scopeKey=await conversationThreadId(scope,'scope'),guard=scopeGuard(scope,'',true,true),visible=visibleScope(scope);
-      const ids=scope.shareSlug?JSON.stringify(input.conversationIds??[]):null,session=sessionGuard(scope);
+      const candidates=conversationCandidateIds(scope.shareSlug,input.conversationIds),ids=candidates===null?null:JSON.stringify(candidates),session=sessionGuard(scope);
       const batch=await database.batch<SummaryRow & {allowed:number;session_allowed:number}>([
         database.prepare(`SELECT (${guard.sql}) AS allowed,(${session.sql}) AS session_allowed`).bind(...guard.values,...session.values),
         database.prepare(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations WHERE scope_key=? AND julianday(expires_at)>julianday('now')

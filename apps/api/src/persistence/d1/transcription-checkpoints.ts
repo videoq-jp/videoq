@@ -1,8 +1,20 @@
+import {
+  TRANSCRIPTION_LANES, TRANSCRIPTION_FAILURE_LIMIT, transcriptionPlan, transcriptionQuotaAllowed, transcriptionRejectionAllowed,
+  transcriptionRunActive, transcriptionRunReusable, transcriptionSourceEligible, validTranscriptionSegments,
+} from '../../application/transcription-policy';
+import { quotaAllowsAdditional } from '../../application/quota-policy';
+import { quotaSqlComparison } from '../quota-policy-sql';
+import { transcriptionStringLogic as logic } from '../transcription-policy-sql';
 import type { TranscriptionCheckpoints, TranscriptionRun } from "../contracts/transcription-checkpoints";
 const CURRENT = "strftime('%Y-%m',u.usage_period_start)=strftime('%Y-%m','now')";
 const USED = `CASE WHEN ${CURRENT} THEN u.used_processing_seconds ELSE 0 END`;
-const ACTIVE = `r.video_id=v.id AND r.file_key=v.file AND r.transcript_hash=versions.revision
-  AND r.completed_at IS NULL AND v.status IN ('pending','processing','error')`;
+const ELIGIBLE = transcriptionSourceEligible({ pending: "v.status='pending'", processing: "v.status='processing'", error: "v.status='error'" }, logic);
+const REUSABLE = transcriptionRunReusable({ sameFile: 'r.file_key=v.file', sameRevision: 'r.transcript_hash=versions.revision', incomplete: 'r.completed_at IS NULL' }, logic);
+const ACTIVE = transcriptionRunActive({ belongsToVideo: 'r.video_id=v.id', reusable: REUSABLE, eligibleSource: ELIGIBLE }, logic);
+const QUOTA = transcriptionQuotaAllowed({ alreadyReserved: 'v.processing_seconds>0', notOverQuota: 'u.is_over_quota IS NOT TRUE',
+  representable: `(${USED})<=9007199254740991-?`,
+  withinLimit: quotaAllowsAdditional(USED, 'u.processing_limit_minutes*60', '?', quotaSqlComparison),
+}, logic);
 const JOINS = "video_transcription_runs r JOIN videos v ON v.id=r.video_id JOIN video_index_versions versions ON versions.video_id=v.id";
 const PROJECTION = `r.video_id AS videoId,r.run_id AS runId,r.file_key AS fileKey,r.transcript_hash AS sourceRevision,
   r.duration_ms AS durationMs,r.chunk_seconds AS chunkSeconds,r.chunk_count AS chunkCount,
@@ -16,10 +28,7 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
         .bind(videoId, runId ?? null, runId ?? null).first<TranscriptionRun>() ?? undefined);
     },
     async initialize(input, durationMs, chunkSeconds) {
-      const count = Math.ceil(durationMs / (chunkSeconds * 1000));
-      if (!Number.isSafeInteger(durationMs) || durationMs <= 0 || durationMs > 3_000_000_000 ||
-        !Number.isSafeInteger(chunkSeconds) || chunkSeconds < 30 || chunkSeconds > 300 || count > 10000) throw new Error("Invalid transcription plan");
-      const seconds = Math.ceil(durationMs / 1000);
+      const { count, seconds } = transcriptionPlan(durationMs, chunkSeconds);
       const token = crypto.randomUUID();
       const runId = crypto.randomUUID();
       const candidate = "EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)";
@@ -27,11 +36,10 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
       const result = await database.batch<TranscriptionRun & { kind: string }>([
         database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id,effect_applied)
           SELECT ?,'transcription_plan',v.id,EXISTS(SELECT 1 FROM video_transcription_runs r WHERE r.video_id=v.id
-            AND r.completed_at IS NULL AND r.file_key=v.file AND r.transcript_hash=versions.revision)
+            AND ${REUSABLE})
           FROM videos v JOIN users u ON u.id=v.user_id JOIN video_index_versions versions ON versions.video_id=v.id
-          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND v.status IN ('pending','processing','error')
-            AND (v.processing_seconds>0 OR (u.is_over_quota IS NOT TRUE AND (${USED})<=9007199254740991-?
-              AND (u.processing_limit_minutes IS NULL OR (${USED})<=u.processing_limit_minutes*60-?)))`)
+          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND ${ELIGIBLE}
+            AND ${QUOTA}`)
           .bind(token, input.videoId, input.userId, input.fileKey, input.sourceRevision, seconds, seconds),
         database.prepare(`UPDATE users AS u SET used_processing_seconds=(${USED})+?,
           used_ai_answers=CASE WHEN ${CURRENT} THEN used_ai_answers ELSE 0 END,
@@ -46,7 +54,7 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
         database.prepare(`UPDATE videos SET status='processing',error_message='' WHERE id=? AND ${candidate}`).bind(input.videoId, token),
         database.prepare(`SELECT ${PROJECTION} FROM ${JOINS} WHERE r.video_id=? AND ${candidate}`).bind(input.videoId, token),
         database.prepare(`SELECT 'quota' AS kind FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
-          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND v.status IN ('pending','processing','error')
+          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND ${ELIGIBLE}
           AND NOT ${candidate}`).bind(input.videoId, input.userId, input.fileKey, input.sourceRevision, token),
         database.prepare("DELETE FROM mutation_receipts WHERE token=?").bind(token),
       ]);
@@ -54,7 +62,7 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
     },
     async pendingHeads(runId, afterIndex) {
       const rows = await database.prepare(`SELECT min(chunk_index) AS chunk_index FROM video_transcription_chunks
-        WHERE run_id=? AND segments IS NULL AND (? IS NULL OR (chunk_index>? AND chunk_index%4=?%4)) GROUP BY chunk_index%4 ORDER BY chunk_index%4`)
+        WHERE run_id=? AND segments IS NULL AND (? IS NULL OR (chunk_index>? AND chunk_index%${TRANSCRIPTION_LANES}=?%${TRANSCRIPTION_LANES})) GROUP BY chunk_index%${TRANSCRIPTION_LANES} ORDER BY chunk_index%${TRANSCRIPTION_LANES}`)
         .bind(runId, afterIndex ?? null, afterIndex ?? null, afterIndex ?? null).all<{ chunk_index: number }>();
       return rows.results.map(row => row.chunk_index);
     },
@@ -65,7 +73,7 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
     },
     async saveChunk(videoId, runId, index, segments) {
       const payload = JSON.stringify(segments);
-      if (new TextEncoder().encode(payload).length > 1_000_000 || !segments.every(s => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start>=0 && s.end>=s.start && typeof s.text === "string")) throw new Error("Invalid transcription segments");
+      if (new TextEncoder().encode(payload).length > 1_000_000 || !validTranscriptionSegments(segments)) throw new Error("Invalid transcription segments");
       const result = await database.batch<{ active: number }>([
         database.prepare(`UPDATE video_transcription_chunks SET segments=?,fallback_segments='{}',last_error='',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
           WHERE run_id=? AND chunk_index=? AND segments IS NULL AND EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${ACTIVE})`)
@@ -93,12 +101,14 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
       return { active: true, rows, done: page.length<20 && rows.length===page.length };
     },
     async rejectNoAudio(input, runId, index) {
+      const rejection = transcriptionRejectionAllowed('? IS NOT NULL',
+        'EXISTS(SELECT 1 FROM video_transcription_runs r WHERE r.video_id=v.id AND r.run_id=? AND r.completed_at IS NULL)', logic);
       const token = crypto.randomUUID();
       const result = await database.batch([
         database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'transcription_no_audio',v.id
           FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
-          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND v.status IN ('pending','processing','error')
-          AND (? IS NULL OR EXISTS(SELECT 1 FROM video_transcription_runs r WHERE r.video_id=v.id AND r.run_id=? AND r.completed_at IS NULL))`)
+          WHERE v.id=? AND v.user_id=? AND v.file=? AND versions.revision=? AND ${ELIGIBLE}
+          AND ${rejection}`)
           .bind(token, input.videoId, input.userId, input.fileKey, input.sourceRevision, runId ?? null, runId ?? null),
         database.prepare(`UPDATE video_transcription_chunks SET last_error='NO_AUDIO_STREAM',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
           WHERE run_id=(SELECT run_id FROM video_transcription_runs WHERE video_id=?) AND chunk_index=?
@@ -119,7 +129,7 @@ export function createD1TranscriptionCheckpoints(database: D1Database): Transcri
           .bind(runId, index, videoId, runId),
         database.prepare(`UPDATE videos AS v SET status='error',error_message='TRANSCRIPTION_CHUNK_FAILED'
           WHERE id=? AND EXISTS(SELECT 1 FROM video_transcription_runs r JOIN video_index_versions versions ON versions.video_id=r.video_id
-            JOIN video_transcription_chunks c ON c.run_id=r.run_id WHERE r.run_id=? AND c.chunk_index=? AND c.failures>=5 AND c.segments IS NULL AND ${ACTIVE})`)
+            JOIN video_transcription_chunks c ON c.run_id=r.run_id WHERE r.run_id=? AND c.chunk_index=? AND c.failures>=${TRANSCRIPTION_FAILURE_LIMIT} AND c.segments IS NULL AND ${ACTIVE})`)
           .bind(videoId, runId, index),
       ]);
     },

@@ -4,6 +4,7 @@ import type { CreationIdempotency } from "../../../src/persistence/contracts/cre
 
 export interface VideoUploadFixture {
   repository: VideoUploadRepository;
+  removeVideo(videoId: number): Promise<void>;
   seedOwner(options?: { storageLimit?: number | null; monthlyLimit?: number | null; staleMonth?: boolean }): Promise<void>;
   blockOwner(): Promise<void>;
   failOutbox(): Promise<void>;
@@ -96,6 +97,28 @@ export function videoUploadContract(backend: string, createFixture: () => Promis
       expect(state.videos).toHaveLength(1); expect(state.tasks).toHaveLength(1);
       expect(state.tasks[0].videoId).toBe(state.videos[0].id);
       expect(state).toMatchObject({ storageBytes: 0, uploadBytes: 0, receiptCount: 1 });
+    });
+    it('keeps an uploaded reservation conflicted after its video is removed without debiting again', async () => {
+      const f = current(); await f.seedOwner();
+      const input = { ...upload(), idempotency: identity };
+      const created = await f.repository.reserveUpload(input);
+      if (!('ok' in created)) throw new Error('Expected upload');
+      await f.removeVideo(created.videoId);
+      expect(await f.repository.reserveUpload(input)).toEqual({ idempotencyConflict: true });
+      expect(await f.snapshot()).toMatchObject({ storageBytes: 1, uploadBytes: 1, videos: [], receiptCount: 1 });
+    });
+    it('keeps the original YouTube receipt identity after deletion without enqueuing another job', async () => {
+      const f = current(); await f.seedOwner();
+      const input = { ...youtube, idempotency: { ...identity, action: 'create_youtube_video' as const } };
+      const created = await f.repository.createYoutube(input);
+      if (!('videoId' in created)) throw new Error('Expected YouTube creation');
+      await f.removeVideo(created.videoId);
+      expect(await f.repository.createYoutube(input)).toEqual({ videoId: created.videoId, taskId: null, jobId: '', reused: true });
+      expect(await f.repository.createYoutube({ ...input, idempotency: { ...input.idempotency, requestHash: 'b'.repeat(64) } })).toEqual({ idempotencyConflict: true });
+      const state = await f.snapshot();
+      expect(state.videos).toEqual([]);
+      expect(state.tasks).toHaveLength(1);
+      expect(state.receiptCount).toBe(1);
     });
     it("rolls back YouTube registration when its outbox fails", async () => {
       const f = current(); await f.seedOwner(); await f.failOutbox();

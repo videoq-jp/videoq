@@ -70,6 +70,18 @@ export function teachingContract(name:string,setup:()=>Promise<TeachingFixture>)
    await expect(f.repository.connect(fresh.id,'alice',fresh.verified,1)).rejects.toMatchObject({status:403});
    expect(await f.count('teaching_connections')).toBe(0);expect(await f.repository.findInstallation('school')).toBeNull();
   });
+  it('reports an existing-course conflict before missing-link and revoked-site rejection',async()=>{
+   const first=await ticket();await f.repository.connect(first.id,'alice',first.verified,1);
+   const changed=await ticket({resourceLinkId:undefined});await f.execute('UPDATE lms_installations SET active=false');
+   await expect(f.repository.connect(changed.id,'alice',changed.verified,2)).rejects.toMatchObject({status:409,code:'CONFLICT'});
+   expect(await f.count('lti_credentials')).toBe(1);expect(await f.count('teaching_connections')).toBe(1);
+   expect((await f.repository.connections('alice'))[0]).toMatchObject({courseId:1,active:true});
+  });
+  it('requires a Moodle native resource link without consuming a valid ticket',async()=>{
+   const missing=await ticket({resourceLinkId:undefined});
+   await expect(f.repository.connect(missing.id,'alice',missing.verified,1)).rejects.toMatchObject({status:403});
+   expect(await f.count('lti_credentials')).toBe(1);expect(await f.count('teaching_connections')).toBe(0);
+  });
   it('rolls back ticket consumption when connection persistence fails',async()=>{
    const t=await ticket();await f.failConnect();
    await expect(f.repository.connect(t.id,'alice',t.verified,1)).rejects.toThrow();

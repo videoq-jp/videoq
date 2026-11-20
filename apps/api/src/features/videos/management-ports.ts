@@ -13,6 +13,7 @@ export type YoutubeCreateRequest = {
   description: string;
 };
 export interface VideoManagementDependencies {
+  extractYoutubeVideoId(value: string): string | null;
   list: VideoReadRepository["listPage"];
   detail: VideoReadRepository["getDetail"];
   createYoutube(

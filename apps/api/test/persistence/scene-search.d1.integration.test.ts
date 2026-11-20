@@ -89,6 +89,38 @@ describe("D1 + LangChain Vectorize scene search", () => {
     }] });
     expect(await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: [1], limit: 20 })).toEqual([]);
   });
+  it("ranks equal scores stably and deduplicates repeated provider results", async () => {
+    query.mockResolvedValue({matches:[match('scene-3','r1',0.9),match('scene-1','r1',0.9),match('scene-3','r1',0.8)]});
+    expect((await repository().search({queryEmbedding:embedding,userId:'owner',videoIds:[1,3],limit:20})).map(hit=>hit.videoId)).toEqual([1,3]);
+  });
+  it("accepts only the current physical vector identity", async () => {
+    await fixture.database.prepare("UPDATE scenes SET vector_id='current-physical' WHERE id='scene-1'").run();
+    try {
+      query.mockResolvedValue({matches:[{id:'old-physical',score:1,metadata:{scene_id:'scene-1',revision:'r1',vector_id:'current-physical'}}]});
+      expect(await repository().search({queryEmbedding:embedding,userId:'owner',videoIds:[1],limit:20})).toEqual([]);
+      query.mockResolvedValue({matches:[{id:'current-physical',score:1,metadata:{scene_id:'scene-1',revision:'r1'}}]});
+      expect(await repository().search({queryEmbedding:embedding,userId:'owner',videoIds:[1],limit:20})).toMatchObject([{videoId:1}]);
+    } finally { await fixture.database.prepare("UPDATE scenes SET vector_id=NULL WHERE id='scene-1'").run(); }
+  });
+  it("hydrates current revision after the provider returns", async () => {
+    query.mockImplementationOnce(async()=>{
+      await fixture.database.prepare("UPDATE scenes SET revision='r2' WHERE id='scene-1'").run();
+      return {matches:[match('scene-1','r1')]};
+    });
+    try { expect(await repository().search({queryEmbedding:embedding,userId:'owner',videoIds:[1],limit:20})).toEqual([]); }
+    finally { await fixture.database.prepare("UPDATE scenes SET revision='r1' WHERE id='scene-1'").run(); }
+  });
+  it("preserves search-specific ban and legacy activity behavior", async () => {
+    query.mockResolvedValue({matches:[match('scene-1')]});
+    const search=()=>repository().search({queryEmbedding:embedding,userId:'owner',videoIds:[1],limit:20});
+    try {
+      await fixture.database.prepare("UPDATE users SET is_active=0 WHERE id='owner'").run();expect(await search()).toHaveLength(1);
+      await fixture.database.prepare("UPDATE users SET banned=1,ban_expires='2099-01-01' WHERE id='owner'").run();expect(await search()).toEqual([]);
+      await fixture.database.prepare("UPDATE users SET ban_expires='2000-01-01' WHERE id='owner'").run();expect(await search()).toHaveLength(1);
+      await fixture.database.prepare("UPDATE users SET ban_expires='invalid' WHERE id='owner'").run();expect(await search()).toEqual([]);
+      await fixture.database.prepare("UPDATE users SET banned=NULL WHERE id='owner'").run();expect(await search()).toHaveLength(1);
+    } finally { await fixture.database.prepare("UPDATE users SET is_active=1,banned=0,ban_expires=NULL WHERE id='owner'").run(); }
+  });
   it("checks account visibility after the vector provider responds", async () => {
     query.mockImplementationOnce(async () => {
       await fixture.database.prepare("UPDATE users SET deactivated_at=? WHERE id=?").bind("2026-11-15T00:00:00.000Z", "owner").run();

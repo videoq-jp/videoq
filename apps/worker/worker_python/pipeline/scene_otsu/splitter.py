@@ -7,9 +7,7 @@ import logging
 import numpy as np
 
 from .embedders import SceneEmbedder
-from ..srt import format_srt_time, parse_srt_scenes, parse_srt_timestamp
-from .parsers import scenes_to_srt_string
-from .types import SceneSegment
+from worker_python.use_cases.scene_splitting import SceneSplittingPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -53,107 +51,16 @@ class SceneSplitter:
 
         return best_tau
 
-    def _split_long_text(
-        self, encoded: list[int], start_timestamp: str, end_timestamp: str, max_tokens: int
-    ) -> list[SceneSegment]:
-        total_tokens = len(encoded)
-        start_sec = parse_srt_timestamp(start_timestamp)
-        duration = parse_srt_timestamp(end_timestamp) - start_sec
+    def _policy(self):
+        return SceneSplittingPolicy(
+            self.embedder.encoding,
+            lambda texts: l2_normalize(self.embedder.get_embeddings(texts)),
+            lambda vectors, start, end: self._find_otsu_threshold(vectors[start : end + 1]),
+            log=logger.info,
+        )
 
-        scenes: list[SceneSegment] = []
-        chunk_start = 0
-        while chunk_start < total_tokens:
-            chunk_end = min(chunk_start + max_tokens, total_tokens)
-            while chunk_end > chunk_start:
-                try:
-                    chunk_text = self.embedder.encoding.decode(
-                        encoded[chunk_start:chunk_end], errors="strict"
-                    )
-                    # SRT reads strip outer whitespace. Removing a leading space
-                    # can expand a BPE token into several tokens in the saved text.
-                    if len(self.embedder.encoding.encode_ordinary(chunk_text.strip())) <= max_tokens:
-                        break
-                except UnicodeDecodeError:
-                    # Token boundaries can fall inside a UTF-8 character.
-                    pass
-                chunk_end -= 1
-            else:
-                raise ValueError("max_tokens is too small to preserve this text")
-
-            chunk_start_sec = start_sec + duration * (chunk_start / total_tokens)
-            chunk_end_sec = start_sec + duration * (chunk_end / total_tokens)
-
-            scenes.append(
-                SceneSegment(
-                    start_time=format_srt_time(chunk_start_sec),
-                    end_time=format_srt_time(chunk_end_sec),
-                    subtitles=[chunk_text],
-                )
-            )
-            chunk_start = chunk_end
-        return scenes
+    def _split_long_text(self, encoded, start_timestamp, end_timestamp, max_tokens):
+        return self._policy()._split_long_text(encoded, start_timestamp, end_timestamp, max_tokens)
 
     def process(self, srt_string: str, max_tokens: int = 512) -> str:
-        if max_tokens <= 0:
-            raise ValueError("max_tokens must be positive")
-        raw_subs = parse_srt_scenes(srt_string)
-        if not raw_subs:
-            logger.info("Scene splitting skipped: no valid subtitle cues")
-            return ""
-
-        texts = [" ".join(cue.text.splitlines()) for cue in raw_subs]
-
-        token_prefix = [0]
-        long_text_scenes: dict[int, list[SceneSegment]] = {}
-        for index, text in enumerate(texts):
-            # Captions are literal text, including strings such as <|endoftext|>.
-            encoded = self.embedder.encoding.encode_ordinary(text)
-            token_prefix.append(token_prefix[-1] + len(encoded))
-            if len(encoded) > max_tokens:
-                long_text_scenes[index] = self._split_long_text(
-                    encoded, raw_subs[index].start_time, raw_subs[index].end_time, max_tokens
-                )
-        del encoded
-        embeddings: np.ndarray | None = None
-        scenes: list[SceneSegment] = []
-        pending = [(0, len(texts) - 1)]
-        while pending:
-            start, end = pending.pop()
-            range_tokens = token_prefix[end + 1] - token_prefix[start]
-            if start == end and range_tokens > max_tokens:
-                scenes.extend(long_text_scenes.pop(start))
-                continue
-            # Joining cues adds spaces and can change token boundaries. Check
-            # the actual merged text before admitting a scene to the output.
-            if range_tokens <= max_tokens and (
-                start == end
-                or len(self.embedder.encoding.encode_ordinary(" ".join(texts[start : end + 1]))) <= max_tokens
-            ):
-                scenes.append(
-                    SceneSegment(
-                        start_time=raw_subs[start].start_time,
-                        end_time=raw_subs[end].end_time,
-                        subtitles=texts[start : end + 1],
-                    )
-                )
-                continue
-
-            if end == start + 1:
-                # Two over-budget cues have only one possible boundary.
-                split_idx = end
-            else:
-                if embeddings is None:
-                    embeddings = l2_normalize(self.embedder.get_embeddings(texts))
-                split_idx = start + self._find_otsu_threshold(embeddings[start : end + 1])
-            # Process the left range first without recursion or merging lists.
-            pending.append((split_idx, end))
-            pending.append((start, split_idx - 1))
-        result = scenes_to_srt_string(scenes)
-        # Whitespace-only token chunks do not form valid SRT cues.
-        scene_count = sum(any(text.strip() for text in scene.subtitles) for scene in scenes)
-        logger.info(
-            "Scene splitting completed. Original: %s segments, Scenes: %s",
-            len(raw_subs),
-            scene_count,
-        )
-        return result
+        return self._policy().process(srt_string, max_tokens=max_tokens)

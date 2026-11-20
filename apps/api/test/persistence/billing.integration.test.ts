@@ -38,6 +38,23 @@ for(const backend of ['d1','postgres']as const){
   it('returns the winner of concurrent first customer assignments',async()=>{
    const ids=await Promise.all([assignBillingCustomer(env,'owner','cus-a'),assignBillingCustomer(env,'owner','cus-b')]);expect(ids[0]).toBe(ids[1]);expect(['cus-a','cus-b']).toContain(ids[0]);
   });
+  it('projects valid stored plan codes without changing the persisted value',async()=>{
+   for(const code of ['free','basic','pro']){
+    await execute('UPDATE users SET plan_code=? WHERE id=?',[code,'owner']);
+    expect((await getBillingUser(env,'owner'))?.planCode).toBe(code);
+    expect((await read()).plan_code).toBe(code);
+   }
+  });
+  it('retains ban-only billing admission for inactive accounts and nullable ban flags',async()=>{
+   await execute("UPDATE users SET is_active=false,deactivated_at='2000-01-01',banned=NULL,ban_expires=NULL WHERE id='owner'");
+   expect(await getBillingUser(env,'owner')).not.toBeNull();
+   expect(await assignBillingCustomer(env,'owner','cus')).toBe('cus');
+   await execute("UPDATE users SET banned=true WHERE id='owner'");expect(await getBillingUser(env,'owner')).toBeNull();
+  });
+  if(backend==='d1')it('does not admit a banned account with an invalid stored expiry',async()=>{
+   await execute("UPDATE users SET banned=true,ban_expires='invalid-date' WHERE id='owner'");
+   expect(await getBillingUser(env,'owner')).toBeNull();expect(await assignBillingCustomer(env,'owner','cus')).toBeNull();
+  });
   it('atomically records an event and its entitlements, ignoring duplicate deliveries',async()=>{
    const state=await update();await Promise.all([commitStripeEvent(env,event(),state),commitStripeEvent(env,event(),state)]);
    expect(await hasProcessedStripeEvent(env,'evt')).toBe(true);const row=await read();expect(row.plan_code).toBe('pro');expect(Number(row.ai_answers_limit)).toBe(PLAN_CATALOG.pro.entitlements.aiAnswersLimit);
@@ -53,7 +70,10 @@ for(const backend of ['d1','postgres']as const){
    expect(Number(await hasProcessedStripeEvent(env,'first'))+Number(await hasProcessedStripeEvent(env,'second'))).toBe(1);
   });
   it('preserves admin quotas while updating subscription state',async()=>{
-   await execute("UPDATE users SET quota_source='admin',ai_answers_limit=17,storage_limit_gb=23 WHERE id='owner'");await commitStripeEvent(env,event(),await update());const row=await read();expect(row.plan_code).toBe('pro');expect(Number(row.ai_answers_limit)).toBe(17);expect(Number(row.storage_limit_gb)).toBe(23);
+   await execute("UPDATE users SET quota_source='admin',max_video_upload_size_mb=42,monthly_upload_limit_gb=NULL,storage_limit_gb=23,processing_limit_minutes=0,ai_answers_limit=17 WHERE id='owner'");
+   await commitStripeEvent(env,event(),await update());const row=await read();
+   expect(row.plan_code).toBe('pro');expect(Number(row.max_video_upload_size_mb)).toBe(42);expect(row.monthly_upload_limit_gb).toBeNull();
+   expect(Number(row.storage_limit_gb)).toBe(23);expect(Number(row.processing_limit_minutes)).toBe(0);expect(Number(row.ai_answers_limit)).toBe(17);
   });
   it('rolls back the receipt when applying the user update fails',async()=>{
    const state=await update();await failUpdate();await expect(commitStripeEvent(env,event(),state)).rejects.toThrow();expect(await hasProcessedStripeEvent(env,'evt')).toBe(false);expect((await read()).plan_code).toBe('free');

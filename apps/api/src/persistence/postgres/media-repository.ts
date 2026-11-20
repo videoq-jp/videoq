@@ -1,6 +1,7 @@
-import { isSafeMediaPath } from "../../shared/media-path";
+import { mediaAccessMode, mediaSharedPathValue, mediaAuthenticatedPermission } from '../../application/media-access';
+import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
 import type { MediaRepository } from "../contracts/media-repository";
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import {
   videos,
@@ -17,35 +18,34 @@ export async function getMediaPathAccess(
   path: string,
   opts: { userId?: string; shareSlug?: string },
 ): Promise<boolean | null> {
-  const safePath = isSafeMediaPath(path);
-  const shareSlug = opts.shareSlug;
-  if (shareSlug != null) {
+  const mode = mediaAccessMode(path, opts);
+  if (mode.kind === 'denied') return false;
+  if (mode.kind === 'shared') {
     return withDb(env, async (db) => {
       const rows = await db
-        .select({ allowed: safePath ? sql<boolean>`EXISTS (
+        .select({ allowed: mediaSharedPathValue(mode.safePath, () => sql<boolean>`EXISTS (
           SELECT 1 FROM ${videos} AS media_video
           JOIN ${videoCourseMembers} AS member ON member.video_id = media_video.id
           WHERE media_video.file = ${path}
             AND member.course_id = video_courses.id
-        )` : sql<boolean>`false` })
+        )`, sql<boolean>`false`) })
         .from(videoCourses)
-        .where(and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess()))
+        .where(and(eq(videoCourses.shareSlug, mode.shareSlug), nativeCourseExternalAccess()))
         .limit(1);
       return rows[0]?.allowed ?? null;
     });
   }
-  if (!safePath || opts.userId == null) return false;
-  const permission = or(
-    eq(videos.userId, opts.userId),
+  const permission = mediaAuthenticatedPermission(
+    eq(videos.userId, mode.userId),
     sql`EXISTS (
       SELECT 1 FROM ${videoCourseMembers}
       JOIN ${videoCourseMemberships}
         ON ${videoCourseMemberships.courseId} = ${videoCourseMembers.courseId}
       JOIN ${videoCourses} ON ${videoCourses.id} = ${videoCourseMembers.courseId}
       WHERE ${videoCourseMembers.videoId} = ${videos.id}
-        AND ${videoCourseMemberships.userId} = ${opts.userId}
+        AND ${videoCourseMemberships.userId} = ${mode.userId}
         AND ${nativeCourseExternalAccess()}
-    )`,
+    )`, nativeCourseDrizzleLogic,
   );
   return withDb(env, async (db) => {
     const rows = await db

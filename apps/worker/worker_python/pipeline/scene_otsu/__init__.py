@@ -9,6 +9,7 @@ from .embedders import SceneEmbedder
 from .parsers import scenes_to_srt_string
 from .splitter import SceneSplitter, l2_normalize
 from .types import SceneSegment
+from worker_python.use_cases.scene_splitting import split_scenes_best_effort
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,8 @@ def apply_scene_splitting(
     Apply Otsu scene splitting. Embedding contract errors fail the job;
     other failures return the original SRT as a best-effort fallback.
     """
-    try:
-        splitter = SceneSplitter()
-        return splitter.process(srt_content, max_tokens=max_tokens)
-    except EmbeddingContractError:
-        raise
-    except Exception:  # noqa: BLE001 — best-effort scene splitting
-        logger.warning("Scene splitting failed. Using original SRT content.")
-        return srt_content
+    return split_scenes_best_effort(
+        srt_content, lambda: SceneSplitter().process(srt_content, max_tokens=max_tokens),
+        lambda error: isinstance(error, EmbeddingContractError),
+        lambda: logger.warning("Scene splitting failed. Using original SRT content."),
+    )

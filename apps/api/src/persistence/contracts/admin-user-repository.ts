@@ -1,4 +1,3 @@
-import type { RpcInputMap } from "@videoq/trpc";
 export type AdminUser = {
   id: string;
   username: string;
@@ -19,13 +18,13 @@ export type AdminUser = {
   quota_source: "plan" | "admin";
 };
 
-export type AdminQuotaPatch = Omit<RpcInputMap["admin.patchQuota"], "id">;
-export type AdminUsagePatch = Omit<RpcInputMap["admin.patchUsage"], "id">;
+export type { AdminQuotaPatch, AdminUsagePatch } from '../../application/admin';
+import type { AdminQuotaPatch, AdminUsagePatch } from '../../application/admin';
 export type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
 import type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
 
 export interface AdminUserRepository {
-  patchFlags(actorId:string,targetId:string,patch:AdminFlagsPatch,headers:Headers):Promise<AdminUser|null>;
+  patchFlags(actorId:string,targetId:string,patch:AdminFlagsPatch):Promise<AdminUser|null>;
   lockForHardDelete(userId:string):Promise<AdminDeleteResult>;
   isAdmin(userId:string):Promise<boolean>;
   list(query:string,limit:number,offset:number):Promise<{count:number;results:AdminUser[]}>;

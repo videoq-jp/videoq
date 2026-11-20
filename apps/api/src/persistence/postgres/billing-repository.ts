@@ -1,14 +1,11 @@
-import { and, eq, sql } from "drizzle-orm";
+import { normalizeStoredPlanCode, selectBillingEntitlement, billingAccountAvailable } from '../../application/billing-state';
+import { billingDrizzleEntitlementChoice, billingDrizzleBanLogic } from '../billing-policy-sql';
+import { and, eq, sql, type SQLWrapper } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import { stripeEvents, users } from "../../db/schema";
-import type { PlanCode } from "../../features/billing/catalog";
 import type { Bindings } from "../../types/bindings";
 
 import { BillingStateChangedError, type BillingUser, type BillingPatch, type BillingUpdate, type BillingRepository } from "../contracts/billing-repository";
-function asPlanCode(value: string): PlanCode {
-  if (value === "basic" || value === "pro" || value === "free") return value;
-  return "free";
-}
 
 export async function getBillingUser(
   env: Bindings,
@@ -17,8 +14,9 @@ export async function getBillingUser(
   return findBillingUser(env, { userId, activeOnly: true });
 }
 
-const activeBillingUser = sql`NOT (COALESCE(${users.banned}, false)
-  AND (${users.banExpires} IS NULL OR ${users.banExpires} >= now()))`;
+const activeBillingUser = billingAccountAvailable({ banned: sql`COALESCE(${users.banned}, false)`,
+  noExpiry: sql`${users.banExpires} IS NULL`, expires: users.banExpires, now: sql`now()`,
+}, billingDrizzleBanLogic);
 
 export async function findBillingUser(
   env: Bindings,
@@ -49,7 +47,7 @@ export async function findBillingUser(
       email: row.email,
       stripeCustomerId: row.stripeCustomerId,
       stripeSubscriptionId: row.stripeSubscriptionId,
-      planCode: asPlanCode(row.planCode),
+      planCode: normalizeStoredPlanCode(row.planCode),
       subscriptionStatus: row.subscriptionStatus,
       revision: row.revision,
     };
@@ -63,16 +61,19 @@ async function updateBillingState(
   expectedRevision: string,
 ): Promise<void> {
   const { entitlements, ...fields } = patch;
+  const quota = (proposed: number, current: SQLWrapper) => selectBillingEntitlement(
+    users.quotaSource, sql`${proposed}`, sql`${current}`, billingDrizzleEntitlementChoice,
+  );
   const updated = await db.update(users).set({
     ...fields,
     updatedAt: sql`clock_timestamp()`,
     // Evaluate the current quota source while updating, not before Stripe I/O.
     ...(entitlements ? {
-      maxVideoUploadSizeMb: sql`CASE WHEN ${users.quotaSource} = 'plan' THEN ${entitlements.maxVideoUploadSizeMb} ELSE ${users.maxVideoUploadSizeMb} END`,
-      monthlyUploadLimitGb: sql`CASE WHEN ${users.quotaSource} = 'plan' THEN ${entitlements.monthlyUploadLimitGb} ELSE ${users.monthlyUploadLimitGb} END`,
-      storageLimitGb: sql`CASE WHEN ${users.quotaSource} = 'plan' THEN ${entitlements.storageLimitGb} ELSE ${users.storageLimitGb} END`,
-      processingLimitMinutes: sql`CASE WHEN ${users.quotaSource} = 'plan' THEN ${entitlements.processingLimitMinutes} ELSE ${users.processingLimitMinutes} END`,
-      aiAnswersLimit: sql`CASE WHEN ${users.quotaSource} = 'plan' THEN ${entitlements.aiAnswersLimit} ELSE ${users.aiAnswersLimit} END`,
+      maxVideoUploadSizeMb: quota(entitlements.maxVideoUploadSizeMb, users.maxVideoUploadSizeMb),
+      monthlyUploadLimitGb: quota(entitlements.monthlyUploadLimitGb, users.monthlyUploadLimitGb),
+      storageLimitGb: quota(entitlements.storageLimitGb, users.storageLimitGb),
+      processingLimitMinutes: quota(entitlements.processingLimitMinutes, users.processingLimitMinutes),
+      aiAnswersLimit: quota(entitlements.aiAnswersLimit, users.aiAnswersLimit),
     } : {}),
   }).where(and(
     eq(users.id, userId),

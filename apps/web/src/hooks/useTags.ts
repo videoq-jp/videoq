@@ -1,6 +1,7 @@
 import { queryOptions, useQueryClient, useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
 import type { Tag } from '@videoq/trpc';
+import { loadTagCatalog } from '@/application/tag-catalog';
 import { appTrpcClient, trpc } from '@/lib/trpc';
 import { refreshQuery } from '@/lib/cacheInvalidation';
 import {
@@ -15,16 +16,11 @@ const allTagsOptions = queryOptions({
   // sharing tags.list invalidation and in-flight requests across consumers.
   queryKey: [...trpc.tags.list.pathKey(), { scope: 'all' }] as const,
   queryFn: async ({ signal }) => {
-    const tags = new Map<number, Tag>();
-    let offset = 0;
-    while (true) {
-      const page = await appTrpcClient.tags.list.query({ limit: 100, offset }, { signal });
-      for (const tag of page.data) tags.set(tag.id, tag);
-      offset += page.data.length;
-      if (page.data.length === 0 || offset >= page.meta.total) {
-        return [...tags.values()].sort(compareTags);
-      }
-    }
+    const tags = await loadTagCatalog(async input => {
+      const page = await appTrpcClient.tags.list.query(input, { signal });
+      return { items: page.data, total: page.meta.total };
+    });
+    return tags.sort(compareTags);
   },
 });
 

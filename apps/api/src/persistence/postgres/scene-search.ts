@@ -1,3 +1,4 @@
+import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection, validateSceneSearchLimit } from '../../application/scene-retrieval';
 import type { SceneHit, SceneSearchRepository } from "../contracts/scene-search";
 import { PGEngine, PGVectorStore } from "@yukiharada1228/langchain-postgres";
 import type { EmbeddingsInterface } from "@langchain/core/embeddings";
@@ -22,7 +23,7 @@ function resolveVectorTable(env: Bindings): string {
   return name; // allowlist 済みなので式内展開は安全
 }
 
-const RETRIEVER_K = 20;
+
 
 /**
  * 検索クエリの埋め込みは hosted / private の OpenAI 互換 API を使う
@@ -108,7 +109,7 @@ export function createPostgresSceneSearchRepository(
 ): SceneSearchRepository {
   return {
     async search({ queryEmbedding, userId, videoIds, limit }) {
-      if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("Search limit must be between 1 and 50");
+      validateSceneSearchLimit(limit);
       if (queryEmbedding.length !== dimensions ||
           !queryEmbedding.every(value => Number.isFinite(value) && Number.isFinite(Math.fround(value))) ||
           !queryEmbedding.some(value => Math.fround(value) !== 0)) throw new Error("Invalid query embedding");
@@ -198,14 +199,11 @@ export async function openPostgresSceneSearch(
     async search(query: string, videoIds?: readonly number[], callSignal?: AbortSignal): Promise<SceneHit[]> {
       const executionSignal = callSignal && signal ? AbortSignal.any([callSignal, signal]) : callSignal ?? signal;
       executionSignal?.throwIfAborted();
-      if (videoIds !== undefined && (
-        videoIds.length === 0 || videoIds.some((id) => !allowedVideoIds.has(id))
-      )) throw new Error("Video selection must be a non-empty subset of the current course.");
-      const selected = videoIds === undefined ? [...allowedVideoIds] : [...new Set(videoIds)];
+      const selected = sceneSearchSelection(allowedVideoIds, videoIds);
       if (!selected.length) return [];
       const queryEmbedding = await embedQuery(env, query, executionSignal, costLedger);
       executionSignal?.throwIfAborted();
-      const hits = await repository.search({queryEmbedding, userId: params.userId, videoIds: selected, limit: RETRIEVER_K});
+      const hits = await repository.search({queryEmbedding, userId: params.userId, videoIds: selected, limit: DEFAULT_SCENE_SEARCH_RESULTS});
       executionSignal?.throwIfAborted();
       return hits;
     },

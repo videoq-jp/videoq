@@ -1,9 +1,10 @@
+import { videoDeletionAllowed, videoCleanup, videoAbortRefundAllowed } from '../../application/video-mutation';
+import { planVideoPatch, videoRefundBooleanLogic } from '../../application/video-mutation';
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { sceneEmbeddings,mcpIdempotencyRecords,videos } from "../../db/schema";
 import { insertJobTask,insertStorageCleanupTask } from "./external-task-repository";
 import { buildJobMessage,JOB_REINDEX_VIDEO_TRANSCRIPT } from "../../lib/job-message";
-import { parseReservedBytesFromFileKey } from "../../lib/upload";
 import { refundUnconfirmedUpload } from "./storage-quota";
 import { readVideoDetail,videoDetailSelect } from "./video-read-repository";
 import type { Bindings } from "../../types/bindings";
@@ -42,10 +43,8 @@ export async function updateVideo(
         .limit(1);
       if (!changes) return { notFound: true } as const;
 
-      const patch: { title?: string; description?: string; transcript?: string } = {};
-      if (changes.title) patch.title = fields.title;
-      if (changes.description) patch.description = fields.description;
-      if (changes.transcript) patch.transcript = fields.transcript;
+      const plan = planVideoPatch(fields,changes);
+      const patch = plan.patch;
       const row = Object.keys(patch).length > 0
         ? (await tx.update(videos).set(patch)
           .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
@@ -53,7 +52,7 @@ export async function updateVideo(
         : await readVideoDetail(tx, videoId, userId);
       if (!row) throw new Error("Locked video disappeared.");
 
-      if (changes.title) {
+      if (plan.syncTitle) {
         await tx
           .update(sceneEmbeddings)
           .set({
@@ -66,7 +65,7 @@ export async function updateVideo(
           .where(eq(sceneEmbeddings.videoId, videoId));
       }
       let reindexTaskId: number | null = null;
-      if (changes.transcript) {
+      if (plan.reindex) {
         const message = buildJobMessage(JOB_REINDEX_VIDEO_TRANSCRIPT, {
           video_id: videoId,
         });
@@ -105,24 +104,10 @@ export async function deleteVideoCascade(
         .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
         .for("update")
         .limit(1);
-      if (
-        locked.length === 0 ||
-        (options.expectedStatus !== undefined &&
-          locked[0].status !== options.expectedStatus) ||
-        (options.expectedFileKey !== undefined &&
-          locked[0].file !== options.expectedFileKey)
-        || (options.inactiveBefore !== undefined && locked[0].heartbeat !== null &&
-          new Date(locked[0].heartbeat) >= options.inactiveBefore)
-      ) {
+      if (!videoDeletionAllowed(locked[0],options)) {
         return { deleted: false, cleanupTaskId: null } as const;
       }
-
-      const fileKey = locked[0].file || null;
-      const cleanupBytes = fileKey
-        ? (parseReservedBytesFromFileKey(fileKey) ??
-          options.fallbackStorageBytes ??
-          null)
-        : null;
+      const { fileKey, bytes: cleanupBytes } = videoCleanup(locked[0].file,options.fallbackStorageBytes);
       const cleanupTaskId = fileKey
         ? await insertStorageCleanupTask(tx, {
             dedupeKey: `storage:video:${videoId}`,
@@ -136,7 +121,7 @@ export async function deleteVideoCascade(
       // A completed upload consumes its month's allowance even after deletion.
       // Row locking + the delete make abort refunds idempotent. A previous
       // month's reservation cannot subtract from a new month's usage.
-      if (locked[0].status === "uploading" && locked[0].uploadPeriod && cleanupBytes) {
+      if (videoAbortRefundAllowed(locked[0].status,cleanupBytes,videoRefundBooleanLogic) && locked[0].uploadPeriod && cleanupBytes) {
         await refundUnconfirmedUpload(tx, userId, cleanupBytes, locked[0].uploadPeriod);
       }
 

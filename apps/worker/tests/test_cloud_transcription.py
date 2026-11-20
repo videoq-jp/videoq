@@ -72,3 +72,23 @@ def test_cloud_entrypoint_does_not_open_postgres(monkeypatch):
     monkeypatch.setattr(task, "transcribe_cloud_video", run)
     transcription.transcribe_video(1)
     run.assert_called_once_with(1)
+
+
+@pytest.mark.parametrize('accepted', [True, False])
+def test_segmented_quota_recovery_maps_safe_code_and_preserves_source_fence(setup, monkeypatch, accepted):
+    from worker_python.tasks import segmented_transcription
+    from worker_python.domain.transcription_checkpoints import TranscriptionQuotaError
+    source, calls = setup
+    source.update(sourceType='uploaded', fileKey='file.mp4')
+    monkeypatch.setattr(task, 'heavy_pipeline_enabled', lambda: True)
+    monkeypatch.setattr(segmented_transcription, 'start_uploaded_transcription', MagicMock(side_effect=TranscriptionQuotaError('private quota detail')))
+    original_api = task.call_internal_api
+    def api(action, body):
+        result = original_api(action, body)
+        return {'accepted': accepted} if action == 'transcription/begin' else result
+    monkeypatch.setattr(task, 'call_internal_api', api)
+    task.transcribe_cloud_video(1)
+    assert [action for action, _ in calls] == ['transcription/source', 'transcription/begin'] + (['transcription/finish'] if accepted else [])
+    assert 'private quota detail' not in str(calls)
+    if accepted:
+        assert calls[-1][1] == {'videoId': 1, 'userId': 'owner', 'sourceRevision': 'revision', 'fileKey': 'file.mp4', 'transcript': None, 'errorCode': 'PROCESSING_QUOTA_EXCEEDED'}
