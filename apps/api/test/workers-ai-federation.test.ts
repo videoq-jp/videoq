@@ -130,3 +130,10 @@ it('rejects unauthenticated and oversized embedding batches before inference',as
  expect((await app.fetch(new Request(endpoint,await request({texts:Array(33).fill('private'),input_type:'document'})),settings)).status).toBe(400);
  expect(settings.AI!.run).not.toHaveBeenCalled();
 });
+
+it.each([null, {toString:null}, ['query'], 1])('rejects non-string embedding input types without coercion: %j',async input_type=>{
+ const settings=env();
+ const endpoint=url.replace(/\/transcribe$/,'/embeddings');
+ expect((await app.fetch(new Request(endpoint,await request({texts:['字幕'],input_type})),settings)).status).toBe(400);
+ expect(settings.AI!.run).not.toHaveBeenCalled();
+});
