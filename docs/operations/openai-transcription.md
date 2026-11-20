@@ -67,6 +67,9 @@ space. Existing transcripts are retained.
    production Terraform switch to Workers AI transcription and 768d documents.
 3. Snapshot completed-video IDs/revisions. Enqueue normal individual
    `reindex_video_transcript` jobs on the search queue using stable job IDs.
+   Start with one completed canary video and verify federation, embeddings and
+   768d vector delivery before scheduling the remaining videos with spacing
+   below the shared inference rate limit.
    The full-reindex dispatcher deliberately rejects a configuration that differs
    from the query configuration during staging; do not weaken that guard.
 4. Verify every current completed transcript has a published 768d head and that
