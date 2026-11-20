@@ -61,26 +61,20 @@ Q&Aの `read_video_window` は、検索で見つけた場面の前後の字幕�
 
 ## 設定
 
-API・Python worker・Docker・Terraformの既定値で、アップロード動画の画像確認と
-キャッシュ準備を有効にしています。Docker Composeの `.env` の既定値は次のとおりです。
+回答と画像確認は同じGemma 4モデルを使います。クラウドAPIの設定は次のとおりです。
 
 ```dotenv
+AI_PROVIDER=workers-ai
+LLM_MODEL=@cf/google/gemma-4-26b-a4b-it
+LLM_SEPARATE_TOOL_SCHEMA=true
 VIDEO_VISUAL_ENABLED=true
-LLM_MODEL=openai/gpt-6-luna
 ```
 
-```bash
-docker compose up -d --force-recreate api worker
-```
+WorkerのAI Bindingを使うため、クラウド推論用の固定APIキーは不要です。Gemmaのthinkingは無効にし、ツール判断と最終JSON生成を分けます。画像入力・厳密なJSON Schema出力・ツール呼び出しに対応した同じモデルで、回答と画像観察を処理します。
 
-ホスト上のAPIでは `apps/api/.dev.vars` に同じ値を設定します。Python workerには
-実際の動画処理には `ENABLE_HEAVY_PIPELINE=1` が必要です。
-画像確認と回答生成はAPIの `LLM_MODEL`・`LLM_API_KEY`・`LLM_BASE_URL`（共通のキーと `OPENAI_BASE_URL` を任意で上書き）を共用します。
-ホスト型の構成は `OPENROUTER_API_KEY` と `openai/gpt-6-luna` を使います。GPT-6 Lunaへのリクエストでは
-`reasoning_effort=none` を指定します。画像入力と厳密なJSON Schema出力を扱えるモデルが必要です。
-通常の回答モデルには引き続きツール呼び出しへの対応が必要です。無効にする場合はAPIとworkerの
-両方で `VIDEO_VISUAL_ENABLED=false` にしてください。以前の設定に明示的な false がある場合は、
-変更してプロセスを再起動するまで無効のままです。
+オンプレは[ローカルAI推論](local-inference.md)のGemma構成を使います。APIの `LLM_MODEL=videoq-chat` と社内の `LLM_BASE_URL` を指定し、認証がある場合は `LLM_API_KEY` をSecretで渡します。これは私設の互換エンドポイントで、Cloudflare BindingやAWS認証は不要です。APIとworkerで `VIDEO_VISUAL_ENABLED=true` を揃え、Python workerの実処理には `ENABLE_HEAVY_PIPELINE=1` を使います。
+
+映像確認を無効にする場合はAPIとworkerの両方で `VIDEO_VISUAL_ENABLED=false` を指定します。以前の明示的なfalse設定は、変更・再起動するまで維持されます。
 
 新規アップロードでは文字起こし後に、映像を60秒ずつ処理する独立したジョブをまとめて登録します。
 並列数はSQSイベントソースの上限（本番は最大10）で制御します。区間ジョブから次の区間ジョブを起動する連鎖を作らず、

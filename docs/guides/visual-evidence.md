@@ -73,28 +73,28 @@ subtitles provide sufficient evidence.
 
 ## Configuration
 
-The API, Python worker, Docker defaults and Terraform defaults enable uploaded
-video image tools and cache preparation. These are the Docker `.env` defaults:
+Answers and image inspection share Gemma 4. The hosted API selects:
 
 ```dotenv
+AI_PROVIDER=workers-ai
+LLM_MODEL=@cf/google/gemma-4-26b-a4b-it
+LLM_SEPARATE_TOOL_SCHEMA=true
 VIDEO_VISUAL_ENABLED=true
-LLM_MODEL=openai/gpt-6-luna
 ```
 
-Recreate the API and worker to load them:
+The native AI binding requires no fixed inference API key. Thinking is disabled;
+tool decisions and final JSON generation are separate. The same model supports
+image input, strict JSON-schema output and normal answer tool calling.
 
-```bash
-docker compose up -d --force-recreate api worker
-```
+On-premises uses the Gemma recipe in [local inference](local-inference.md):
+`LLM_MODEL=videoq-chat` and the private `LLM_BASE_URL`, with `LLM_API_KEY` in a
+runtime Secret if that endpoint requires authentication. Cloudflare bindings and
+AWS federation are unnecessary for a private endpoint. Enable
+`VIDEO_VISUAL_ENABLED=true` on API and worker; real Python video processing also
+requires `ENABLE_HEAVY_PIPELINE=1`.
 
-For host-run API development, set the same values in `apps/api/.dev.vars`. The
-Python worker needs `ENABLE_HEAVY_PIPELINE=1` for real video processing.
-Image inspection and answer generation share the API's `LLM_MODEL`,
-`LLM_API_KEY`, and `LLM_BASE_URL` (optional overrides of the shared provider key and `OPENAI_BASE_URL`). Hosted profiles use `OPENROUTER_API_KEY` and `openai/gpt-6-luna`. GPT-6 Luna requests use
-`reasoning_effort=none`. The endpoint/model must support image inputs and strict
-JSON-schema output. The normal answer model still needs tool calling. To opt out,
-set `VIDEO_VISUAL_ENABLED=false` on both API and worker. Existing explicit false
-overrides remain effective until changed and the processes restarted.
+To opt out, set `VIDEO_VISUAL_ENABLED=false` on both processes. Existing explicit
+false settings remain effective until changed and the processes restarted.
 
 After transcription, new uploads register independent jobs that process the video
 60 seconds at a time. The SQS event source's concurrency limit (10 in production) controls parallelism.

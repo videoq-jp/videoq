@@ -34,8 +34,8 @@ Web and API share operation names and input/output types through `packages/trpc`
 |---|---|---|
 | Frontend | Static nginx build or Vite | Cloudflare Workers Static Assets |
 | API | Wrangler development server | Cloudflare Workers |
-| Database | PostgreSQL + pgvector | Neon PostgreSQL + pgvector |
-| API-to-DB connection | Local connection string | Hyperdrive |
+| Database | PostgreSQL + pgvector | Cloudflare D1 + Vectorize |
+| API-to-DB connection | Local connection string | D1 / Vectorize bindings |
 | Video, subtitle, and other storage | Garage | Cloudflare R2 |
 | Job queue | ElasticMQ | Amazon SQS |
 | Python worker | Container continuously polling the queue | AWS Lambda triggered by SQS |
@@ -49,21 +49,24 @@ Locally, Caddy routes `http://localhost` to the frontend and API. Development Vi
 flowchart TB
     User[Browser] --> Web[Cloudflare Workers Static Assets]
     User --> API[Cloudflare Workers / Hono]
-    API --> HD[Hyperdrive] --> DB[(Neon PostgreSQL)]
-    API --> R2[(Videos and subtitles: R2)]
+    API --> DB[(Cloudflare D1)]
+    API --> Vectors[(Vectorize)]
+    API --> R2[(Cloudflare R2)]
     API --> DO[Durable Objects]
     API --> Queue[Amazon SQS]
     Queue --> Worker[Python / AWS Lambda]
-    Worker --> DB
     Worker --> R2
-    API --> AI[AI services]
-    Worker --> AI
+    Worker -->|Internal persistence API|API
+    Worker -->|GetWebIdentityToken|STS[AWS STS]
+    STS -->|Short-lived JWT|Worker
+    Worker -->|JWT for inference|API
+    API -->|AI binding|AI[Workers AI]
     API --> Mail[Mailgun]
 ```
 
-The API reaches the shared database through Hyperdrive; the Python worker uses a PostgreSQL connection. Check both when changing database columns.
+The hosted API uses D1 and Vectorize bindings; Lambda persists data through the internal API. On-premises uses PostgreSQL and pgvector.
 
-Hosted AI calls from both runtimes go through OpenRouter, authenticated with AWS workload identity federation in production. See the [cloud AI runbook](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md). On-premises deployments replace Durable Objects and hosted services as described in [Run VideoQ on-premises](../guides/on-premises.md).
+API answers and query embeddings use the native AI binding. Lambda transcription and document embeddings present a short-lived AWS JWT to the API Worker before it calls the same binding. OpenRouter and AI Gateway are not in this path. See the [cloud AI runbook](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md) and [on-premises layout](../guides/on-premises.md).
 
 ## Durable Object roles
 

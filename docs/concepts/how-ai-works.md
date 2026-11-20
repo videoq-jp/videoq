@@ -15,7 +15,7 @@ Checked against the implementation on **2026-10-31**.
 
 | Stage | Current behavior |
 |---|---|
-| Prepare videos | Acquire timestamped text, split it into scenes, then store 1536-dimensional embeddings |
+| Prepare videos | Acquire timestamped text, split it into scenes, then store embeddings for the selected profile (768 dimensions with EmbeddingGemma 2) |
 | Find evidence | A LangChain agent chooses course metadata or scene search within the authorized course |
 | Generate an answer | The model produces text segments with source IDs; the API owns the video titles and timestamps |
 | Display the answer | Stream text and validated citations during generation; batch UI updates on the next animation frame |
@@ -122,7 +122,7 @@ Instructions ask the model to stay within the retrieved evidence and acknowledge
 
 ## Where the data goes
 
-Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which are reached through OpenRouter in the hosted profile. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
+Hosted transcription, embeddings, image inspection and answers run on Workers AI. The API uses its native AI binding; Lambda presents a short-lived AWS workload JWT to the API Worker, which invokes the fixed model through that binding. OpenRouter and AI Gateway are not in this inference path. Private deployments use their configured local services. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
 
 This describes the application's data flow. It does not establish a provider's retention or training policy. No production credentials or account identifiers are needed to understand or configure the flow.
 
