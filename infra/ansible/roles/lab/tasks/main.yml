@@ -5,12 +5,13 @@
       - ansible_facts.distribution == 'Ubuntu'
       - ansible_facts.distribution_version in ['22.04', '24.04']
       - ansible_facts.architecture == 'x86_64'
+      - ansible_facts.memtotal_mb >= 122880
       - videoq_public_url is match('^https://[^/]+$')
       - (videoq_gitops_repository | videoq_repository) == videoq_gitops_repository
       - videoq_gitops_repository is not search('YOUR-ORG')
       - videoq_gitops_revision is match('^[A-Za-z0-9_./-]+$')
       - videoq_gitops_path is match('^clusters/[a-z0-9-]+/apps$')
-    fail_msg: Configure inventory.local.yml for an Ubuntu dedicated host. Use --syntax-check locally; --check cannot prove GPU or Kubernetes readiness.
+    fail_msg: Configure inventory.local.yml for an Ubuntu dedicated host with 128 GiB RAM (at least 120 GiB reported) for Gemma 4 CPU offload. Use --syntax-check locally; --check cannot prove GPU or Kubernetes readiness.
 
 - name: Require an encryption key and one complete repository authentication method
   ansible.builtin.assert:

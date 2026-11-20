@@ -406,6 +406,12 @@
             },
             "disableTorchCompile": {
               "type": "boolean"
+            },
+            "cpuOffloadGb": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64,
+              "description": "CPU weight offload in GiB for a shared-GPU vLLM chat service; requires sufficient host RAM."
             }
           },
           "additionalProperties": false

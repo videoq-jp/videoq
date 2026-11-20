@@ -29,7 +29,7 @@ class PreflightTests(unittest.TestCase):
 
     def test_refuses_unshared_capacity_or_wrong_node(self):
         node = {"metadata": {"labels": {"kubernetes.io/arch": "amd64", "kubernetes.io/os": "linux", "videoq.io/inference-target": "rtx4090"}},
-                "status": {"allocatable": {"nvidia.com/gpu.shared": "3"}, "conditions": [{"type": "Ready", "status": "True"}]}}
+                "status": {"allocatable": {"nvidia.com/gpu.shared": "3", "memory": "120Gi"}, "conditions": [{"type": "Ready", "status": "True"}]}}
         preflight.validate_node(node)
         for resources in [{"nvidia.com/gpu": "1"}, {"nvidia.com/gpu.shared": "6"}, {"nvidia.com/gpu.shared": "3", "nvidia.com/gpu": "1"}]:
             invalid = copy.deepcopy(node)
@@ -41,15 +41,26 @@ class PreflightTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             preflight.validate_node(invalid)
 
+    def test_gemma_cpu_offload_requires_real_host_ram(self):
+        self.assertEqual(preflight.validate_memory("MemTotal:       134217728 kB\n"), 128)
+        for meminfo in ("MemTotal: 33554432 kB\n", "MemAvailable: 134217728 kB\n"):
+            with self.assertRaisesRegex(ValueError, "128 GiB"):
+                preflight.validate_memory(meminfo)
+
     def test_requires_three_ready_independent_pinned_allocations_on_one_node(self):
         pods = []
         for role, name in preflight.ROLES.items():
             pods.append({"metadata": {"name": role + "-fixture", "labels": {"app.kubernetes.io/component": role}},
                          "spec": {"nodeName": "workstation", "runtimeClassName": "nvidia", "containers": [
                              {"name": name, "image": "ghcr.io/videoq-jp/videoq-vllm@sha256:" + "a" * 64,
+                              "args": [preflight.MODEL_PATHS[role], *(["--cpu-offload-gb", "40", "--tool-call-parser", "gemma4"] if role == "chat" else [])],
                               "resources": {"requests": {"nvidia.com/gpu.shared": "1"}, "limits": {"nvidia.com/gpu.shared": "1"}}}]},
                          "status": {"containerStatuses": [{"name": name, "ready": True}]}})
         self.assertEqual(set(preflight.validate_pods(pods, "workstation")), set(preflight.ROLES))
+        invalid = copy.deepcopy(pods)
+        invalid[0]["spec"]["containers"][0]["args"][2] = "0"
+        with self.assertRaisesRegex(ValueError, "CPU weight offload"):
+            preflight.validate_pods(invalid, "workstation")
         with self.assertRaises(ValueError):
             preflight.validate_pods(pods[:2], "workstation")
         invalid = copy.deepcopy(pods)

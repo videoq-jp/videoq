@@ -24,8 +24,9 @@ for chat, embeddings and transcription. Chat uses BF16 weights and requires a
 dedicated 80 GB GPU; label its node `videoq.io/gemma4-vram=80gb` after checking
 physical VRAM. All devices exposed on a labeled node must satisfy the chat VRAM
 requirement; mixed GPU nodes need device isolation. Embedding and Whisper
-reserve one additional GPU each. This
-profile does not fit three models on a single RTX 4090. The older
+reserve one additional GPU each. This fully resident
+profile does not fit three models on a single RTX 4090; the separate
+[4090 CPU-offload candidate](rtx4090.md) requires 128 GiB host RAM. The older
 Qwen recipes remain explicit compatibility profiles. A small CPU-only VPS cannot
 host the recommended chat service; point it at a separate private GPU server.
 
@@ -213,11 +214,11 @@ AMD/ROCm configuration is a separate follow-up; no target GPU/OS has been select
 and hardware execution remains unverified. GPU adoption requires physical
 acceptance and vulnerability evaluation.
 
-## Legacy RTX 4090 workstation
+## One RTX 4090 workstation
 
-The [RTX 4090 guide](rtx4090.md) retains the previous GPT-OSS 20B recipe, EmbeddingGemma 2 and Whisper
-on one GPU, with separate CUDA Pods. It is not the newly selected Gemma 4 stack. The native installer provisions the full
-application and prompts for an administrator. Simultaneous residency and real
-inference smoke checks passed on Ubuntu 22.04.5; full workload/performance
-qualification remains separate. The existing `vllm-nvidia` profile still requires
-three exclusive GPUs, and the alternative Qwen sharing profile remains a candidate.
+The [RTX 4090 guide](rtx4090.md) now uses Gemma 4 26B A4B, EmbeddingGemma 2 and
+Whisper with **40 GiB CPU weight offload and 128 GiB host RAM**. Select
+`rtx4090-gemma4-embeddinggemma.yaml`; it is separate from the three-exclusive-GPU
+profile above. This candidate has rendered configuration checks, but its GPU
+startup, co-residency, multimodal quality and latency still require site acceptance.
+Earlier GPT-OSS acceptance records remain historical evidence only.

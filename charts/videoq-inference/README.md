@@ -15,17 +15,22 @@ Mac development runs whisper.cpp natively with Metal, outside this Linux
 Kubernetes chart. Both speech engines use the application's `local` backend;
 see the [Mac setup and common API contract](../../docs/guides/local-inference.md#mac-development-with-whispercpp).
 
-## Legacy one RTX 4090
+## One RTX 4090 with Gemma 4
 
-This retained compatibility profile does not implement the new Gemma 4 selection.
-For the previous GPT-OSS 20B, text-only EmbeddingGemma 2 (768 dimensions) and Whisper
-large-v3-turbo on the same GPU, use `examples/rtx4090-gpt-oss-embeddinggemma.yaml`.
-The [native one-command installer](../../scripts/onprem/RTX4090.md) also installs
-K3s, backing services, VideoQ and the initial administrator. This configuration
-passed simultaneous residency and real inference smoke checks on Ubuntu 22.04.5
-with about 20 GiB VRAM in use. The CUDA embedding image is built locally and
-pinned by digest, rather than being covered by the signed release attestation.
-See [profile details](examples/rtx4090-gpt-oss-embeddinggemma.md) for limits and evidence.
+Use `examples/rtx4090-gemma4-embeddinggemma.yaml` with the application overlay
+`charts/videoq/examples/local-ai-gemma4.yaml`. This candidate keeps the selected
+Gemma 4 BF16 model by offloading up to 40 GiB of its weights to CPU RAM.
+It requires **128 GiB host RAM**, one 24 GB RTX 4090 and three shared GPU slots.
+Chat requests 80 GiB RAM (limit 104 GiB), runs one sequence at 8192 tokens and
+uses the `gemma4` parsers. EmbeddingGemma 2 and Whisper retain dedicated CUDA
+processes on the same card. Thinking is disabled and image reading is enabled.
+
+Follow the [updated 4090 runbook](../../docs/guides/rtx4090.md) for hardware checks,
+signed release installation, migration and real-model acceptance. Configuration
+checks do not prove GPU execution or acceptable latency. CPU offload introduces
+per-forward CPU/GPU traffic; this is not an all-in-VRAM profile. The old
+`rtx4090-gpt-oss-embeddinggemma.yaml` remains only for recovery of existing
+installations; its previous acceptance records do not certify Gemma 4.
 
 ### Alternative Qwen candidate
 
