@@ -149,7 +149,7 @@ def main():
     if args.real_models:
         values["networkPolicy"] = {"localEgressOnly":True}
         values["ai"].update({"openaiBaseUrl":"http://videoq-inference-chat:8000/v1", "llmModel":"videoq-chat",
-                            "embeddingBaseUrl":"http://videoq-inference-embedding:8000/v1", "embeddingModel":"gte-qwen2-1.5b-q4km-124fbdad",
+                            "embeddingBaseUrl":"http://videoq-inference-embedding:8000/v1", "embeddingModel":"gte-qwen2-1.5b-q4km-124fbdad", "embeddingProfile":"openai",
                             "separateToolSchema":True, "reasoningEffort":"none", "requestTimeoutMs":600000, "streamTimeoutMs":600000,
                             "whisperLocalUrl":"http://videoq-inference-whisper:8080/v1", "whisperChunkSeconds":30})
         resources = []
