@@ -106,11 +106,11 @@ run "workers_ai_federation_keeps_exact_issuer_permissions" {
   assert {
     condition = alltrue([for statement in jsondecode(aws_iam_policy.worker_boundary.policy).Statement :
       !contains(statement.Action, "sts:GetWebIdentityToken") || (
-        toset(statement.Condition["ForAllValues:StringEquals"]["sts:IdentityTokenAudience"]) == toset(["https://openrouter.ai", "https://videoq.jp/api/internal/workers-ai/transcribe"]) &&
+        toset(statement.Condition["ForAllValues:StringEquals"]["sts:IdentityTokenAudience"]) == toset(["https://videoq.jp/api/internal/workers-ai"]) &&
         statement.Condition.StringEquals["sts:SigningAlgorithm"] == "RS256" &&
         statement.Condition.NumericLessThanEquals["sts:DurationSeconds"] == "900"
       )
     ])
-    error_message = "The worker boundary must allow only the two reviewed federation audiences with RS256 and a 15-minute maximum."
+    error_message = "The worker boundary must allow only the reviewed Workers AI audience with RS256 and a 15-minute maximum."
   }
 }

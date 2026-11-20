@@ -393,43 +393,25 @@ aws lambda update-function-code \
 
 ### Cloud transcription (Workers AI)
 
-The hosted worker uses `worker_whisper_backend = "workers-ai"`, exposed as
-`WHISPER_BACKEND=workers-ai`. `workers_ai_federation_endpoint` is both the HTTPS
-proxy endpoint and the AWS STS audience. No Cloudflare inference API token is
-stored in Lambda or SSM.
+The cloud inference stack uses Workers AI for Gemma 4 answers/images,
+EmbeddingGemma 2 (768d) embeddings and Whisper large-v3-turbo transcription.
+It does not require AI Gateway or OpenRouter. Follow the
+[staged inference runbook](../docs/operations/openai-transcription.md) for the
+required two-phase vector migration, deployment order, verification and rollback.
 
-This is application-level workload identity federation, not a native Workers AI
-REST token exchange. Lambda calls regional STS `GetWebIdentityToken` as its
-execution role (RS256, at most 900 seconds). The existing VideoQ API Worker
-verifies its signature using the configured AWS issuer's JWKS, exact issuer,
-audience, IAM role subject, issued-at and expiry. It then calls the fixed Whisper
-model through its Workers AI `AI` binding, with no provider API key. The Worker
-rejects other identities before reading audio and limits audio and inference
-options. A shared Durable Object bucket permits 120 requests per minute per
-verified IAM role, across tokens and Worker instances. Excess requests return
-429 with `Retry-After`; a missing/unavailable rate limiter fails closed. The allowlisted issuer, audience and subject live in production Wrangler
-vars; local/on-prem deployments have no trust configured and cannot use this
-route. Terraform grants the worker role the exact STS audience and duration.
+Lambda exchanges its execution-role identity for a maximum 900-second RS256 AWS
+JWT with audience `https://videoq.jp/api/internal/workers-ai`. The existing API
+Worker verifies the exact issuer/role/audience/expiry before using its `AI`
+binding. The independent worker IAM permissions boundary must permit only that
+exact audience; review and apply only that boundary resource as an operator.
+Deploy the API and all worker images before approving the production Terraform
+switch. No fixed Cloudflare inference token is stored in Lambda/SSM.
 
-The independent maintenance Terraform root also owns the worker IAM permissions
-boundary. An operator must review and apply its `aws_iam_policy.worker_boundary`
-update, adding only this exact audience while retaining RS256, 900 seconds and
-all existing SSM/SQS/logging limits. Routine GitHub applies cannot edit or remove
-that ceiling. Do not apply unrelated maintenance changes as part of this switch.
-
-Deploy the API and worker images **before approving the Terraform configuration
-change**. Verify CD updated the API and all three Lambda functions, then review
-and approve `production-infra`. Verify an ordinary disposable upload completes,
-with subtitles and search indexing, and that unauthenticated/incorrect-role
-requests are rejected. Existing transcripts are not regenerated. Audio is sent
-in 300-second chunks to `@cf/openai/whisper-large-v3-turbo`, with language hints
-and VAD enabled. Provider failures do not silently select another provider.
-
-Chat and embeddings continue to use OpenRouter workload identity federation.
-For rollback, set `worker_whisper_backend = "openrouter"` through the protected
-PR/Terraform flow after checking OpenRouter WIF, then verify a disposable upload.
-The previously scoped Workers AI API token is not used by this inference path.
-See [the AI runbook](../docs/operations/openai-transcription.md).
+Keep the old 1536d query configuration during backfill. Once published 768d
+heads and vector coverage are verified, deploy the API embedding switch and
+remove legacy provider configuration. Verify a disposable upload, cited and
+streaming Japanese answers, slide inspection and invalid-identity rejection.
+Existing transcripts must not be regenerated merely to change embedding models.
 
 ## 5. Frontend
 

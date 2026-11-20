@@ -3,6 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { AppEnv, Bindings } from "../../types/bindings";
 import { rateLimitBackend } from "../../lib/rate-limit";
+import { WORKERS_EMBEDDING_MODEL } from "../../lib/workers-ai";
 
 const MODEL = "@cf/openai/whisper-large-v3-turbo";
 const keys = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
@@ -48,13 +49,30 @@ workersAiRoutes.use("*", async (c, next) => {
   // Lambda's 10 media consumers have headroom; token refresh cannot reset it.
   if (!c.env.RATE_LIMITER && !c.env.RATE_LIMIT_BACKEND) return c.json({ error: "Rate limiter unavailable" }, 503);
   try {
-    const result = await rateLimitBackend(c.env).consume(`workers-ai:transcribe:${c.env.WORKERS_AI_FEDERATION_SUBJECT}`, 120, 60);
+    const result = await rateLimitBackend(c.env).consume(`workers-ai:inference:${c.env.WORKERS_AI_FEDERATION_SUBJECT}`, 120, 60);
     if (!result.allowed) {
       c.header("Retry-After", String(result.retryAfterSec));
       return c.json({ error: "Rate limit exceeded" }, 429);
     }
   } catch { return c.json({ error: "Rate limiter unavailable" }, 503); }
   await next();
+});
+workersAiRoutes.post("/embeddings", bodyLimit({ maxSize: 512 * 1024,
+  onError: c => c.json({ error: "Embedding request too large" }, 413) }), async c => {
+  let body: unknown;
+  try { body = await c.req.json(); } catch { return c.json({ error: "Invalid JSON" }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ error: "Invalid embedding input" }, 400);
+  const { texts, input_type } = body as Record<string, unknown>;
+  if (!Array.isArray(texts) || !texts.length || texts.length > 32
+    || texts.some(text => typeof text !== "string" || !text.trim() || text.length > 8192)
+    || !["query", "document"].includes(String(input_type))) return c.json({ error: "Invalid embedding input" }, 400);
+  const prefix = input_type === "query" ? "task: search result | query: " : "title: none | text: ";
+  try {
+    const result = await c.env.AI!.run(WORKERS_EMBEDDING_MODEL, {
+      input: texts.map(text => prefix + text), dimensions: 768, encoding_format: "float",
+    });
+    return c.json(result);
+  } catch { return c.json({ error: "Workers AI embeddings failed" }, 502); }
 });
 // Authentication precedes reading or parsing potentially large audio bodies.
 workersAiRoutes.use("*", bodyLimit({ maxSize: 6 * 1024 * 1024,

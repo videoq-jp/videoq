@@ -104,7 +104,7 @@ it("rate limits the verified role across requests before inference", async () =>
   settings.RATE_LIMIT_BACKEND={...settings.RATE_LIMIT_BACKEND!,consume};
   const response=await app.fetch(await request({audio}),settings);
   expect(response.status).toBe(429);expect(response.headers.get("retry-after")).toBe("42");
-  expect(consume).toHaveBeenCalledWith(`workers-ai:transcribe:${trust.WORKERS_AI_FEDERATION_SUBJECT}`,120,60);
+  expect(consume).toHaveBeenCalledWith(`workers-ai:inference:${trust.WORKERS_AI_FEDERATION_SUBJECT}`,120,60);
   expect(settings.AI!.run).not.toHaveBeenCalled();
 });
 it.each([false,true])("fails closed when the rate limiter is unavailable (throws=%s)", async throws=>{
@@ -114,4 +114,19 @@ it.each([false,true])("fails closed when the rate limiter is unavailable (throws
   const response=await app.fetch(await request({audio}),settings);
   expect(response.status).toBe(503);expect(await response.text()).not.toContain("private");
   expect(settings.AI!.run).not.toHaveBeenCalled();
+});
+it.each(['document','query'])('authenticates embedding %s input and fixes model/preprocessing',async input_type=>{
+ const run=vi.fn(async()=>({data:[{index:0,embedding:[1,...Array(767).fill(0)]}]}));
+ const req=await request({texts:['字幕'],input_type,model:'attacker-model'});
+ const embeddingRequest=new Request(url.replace(/\/transcribe$/,'/embeddings'),req);
+ const response=await app.fetch(embeddingRequest,env(run));
+ expect(response.status).toBe(200);
+ expect(run).toHaveBeenCalledWith('@cf/google/embeddinggemma-2',{input:[input_type==='query'?'task: search result | query: 字幕':'title: none | text: 字幕'],dimensions:768,encoding_format:'float'});
+});
+it('rejects unauthenticated and oversized embedding batches before inference',async()=>{
+ const settings=env();
+ const endpoint=url.replace(/\/transcribe$/,'/embeddings');
+ expect((await app.fetch(new Request(endpoint,await request({texts:['private'],input_type:'document'},false)),settings)).status).toBe(401);
+ expect((await app.fetch(new Request(endpoint,await request({texts:Array(33).fill('private'),input_type:'document'})),settings)).status).toBe(400);
+ expect(settings.AI!.run).not.toHaveBeenCalled();
 });

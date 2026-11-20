@@ -50,6 +50,10 @@ class EmbeddingContractError(RuntimeError):
 def resolve_embedding_config(environ: Mapping[str, str] | None = None) -> EmbeddingConfig:
     env = os.environ if environ is None else environ
     profile = env.get("EMBEDDING_PROFILE", "").strip() or "openai"
+    if env.get("AI_PROVIDER") == "workers-ai":
+        if profile != "embeddinggemma2" or env.get("EMBEDDING_MODEL") != "@cf/google/embeddinggemma-2":
+            raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Workers AI requires the EmbeddingGemma 2 profile/model.")
+        return EmbeddingConfig("workers-ai", env["EMBEDDING_MODEL"], profile)
     if profile not in {"openai", "embeddinggemma2"}:
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROFILE must be openai or embeddinggemma2.")
     if profile == "embeddinggemma2" and not (env.get("EMBEDDING_MODEL", "").strip() and env.get("EMBEDDING_BASE_URL", "").strip()):

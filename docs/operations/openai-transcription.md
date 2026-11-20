@@ -1,227 +1,97 @@
-# Cloud AI: Workers AI transcription and OpenRouter
+# Cloud inference: Workers AI
 
-The AWS hosted worker uses Cloudflare Workers AI for transcription. Answers,
-image inspection and embeddings continue to use OpenRouter with AWS workload
-identity federation; a fixed `OPENROUTER_API_KEY` remains an explicit development
-compatibility option. Other deployment profiles retain their own configuration.
+The selected cloud stack uses Workers AI directly, without AI Gateway or
+OpenRouter in the production inference path.
 
-| Use | Model | Endpoint |
+| Purpose | Fixed model | Authentication |
 | --- | --- | --- |
-| Answers and image inspection | `openai/gpt-6-luna` | `/api/v1/chat/completions` |
-| Query and indexing embeddings | `openai/text-embedding-3-small` | `/api/v1/embeddings` |
-| AWS hosted transcription | `@cf/openai/whisper-large-v3-turbo` | Cloudflare `/client/v4/accounts/{account}/ai/run/{model}` |
+| Answers and image/slide reading | `@cf/google/gemma-4-26b-a4b-it` | API Worker's native `AI` binding |
+| Query and document embeddings | `@cf/google/embeddinggemma-2` (768d) | Binding for queries; AWS federation for Lambda documents |
+| Transcription | `@cf/openai/whisper-large-v3-turbo` | AWS federation from Lambda to the API Worker |
 
-LLM and embedding models are unchanged. The OpenRouter namespace is a routing
-alias, so existing 1536-dimensional vectors can be retained. Keep API and worker
-embedding configuration identical. On-premises inference still uses `local`.
+This file describes the target configuration and controlled rollout. Deployment
+status must be confirmed from successful CD/Terraform runs and runtime checks;
+committing these settings alone does not establish a completed cutover.
 
-## Workers AI transcription
+## Authentication boundary
 
-The AWS Lambda Terraform default is `worker_whisper_backend = "workers-ai"`.
-Lambda obtains an AWS-signed, short-lived OIDC token for
-`https://videoq.jp/api/internal/workers-ai/transcribe`. The VideoQ API Worker
-validates the AWS signature, issuer, exact role, audience and a maximum
-15-minute lifetime, then calls Workers AI through its `AI` binding. This is a
-custom federation boundary in the application; the Workers AI REST API itself
-still uses API tokens. No `WORKERS_AI_API_TOKEN` is used or loaded from SSM.
+Lambda obtains a short-lived AWS STS `GetWebIdentityToken` JWT using its execution
+role. The single audience is `https://videoq.jp/api/internal/workers-ai`.
+It sends that JWT to `/api/internal/workers-ai/transcribe` or `/embeddings`.
+The Worker verifies AWS JWKS signatures, pinned issuer, exact IAM role subject,
+audience, issued-at, not-before and expiry; only RS256 and at most 900 seconds
+are accepted. It then calls the fixed model using `env.AI.run()`.
+This is application workload federation, not native AWS-JWT authentication at
+the public Workers AI REST endpoint. Lambda stores no Cloudflare inference key.
 
-Deploy both API and worker support before approving the Terraform switch, which
-grants the exact STS audience and sets `WORKERS_AI_BASE_URL`. The adapter uses
-300-second audio chunks, language hints and VAD, validates segment timestamps,
-and fails explicitly on provider errors. Existing transcripts remain intact.
+A shared Durable Object rate limit permits 120 inference requests/minute per
+verified role, across tokens/isolates. Authentication precedes body parsing;
+missing trust/binding/limiter fails closed. Models cannot be selected by callers.
+Audio is capped at 4 MiB and processed in 300-second compressed chunks.
+Embedding batches contain at most 32 nonempty bounded texts. Provider errors
+are sanitized and do not trigger fallback to another inference provider.
 
-The Whisper Large V3 Turbo model family is unchanged, but provider preprocessing
-and decoding can change the result. Technical terminology still needs review;
-VAD may omit unusually quiet speech. See [the deployment steps and rollback](../../infra/DEPLOY.md#cloud-transcription-workers-ai).
+The issuer and exact role are pinned in production Wrangler vars. Terraform
+configures the same audience, signing algorithm and TTL. The independent
+maintenance Terraform root owns the worker permissions boundary; an operator
+must review/apply only `aws_iam_policy.worker_boundary`. Routine GitHub deploys
+cannot edit that ceiling.
 
-The following OpenRouter sections describe chat/embeddings, older transcription
-profiles and rollback compatibility.
+## Chat protocol and embedding contract
 
-## Workload identity federation (preferred)
+The OpenAI-compatible SDK transport uses the native binding in-process; its
+`.invalid` URL is a sentinel and is never fetched over the public network.
+Gemma's thinking is disabled. Tool decisions are separate from final JSON
+grammar. The final schema is supplied as both a constraint and an instruction,
+preventing required-key/whitespace loops. Stream usage summaries are normalized
+without buffering the answer. Refusals and incomplete JSON still fail closed.
 
-OpenRouter WIF requires Business or Enterprise. As of 2026-10-30, Business has
-no monthly minimum or seat fee and charges 8% on credit purchases (Standard:
-5.5%). Upgrading the account is an administrator action; deploying this code does
-not change the plan. [Business pricing](https://openrouter.ai/business).
+EmbeddingGemma 2 uses exactly 768 finite nonzero float32-compatible dimensions.
+Queries receive `task: search result | query: ` and documents receive
+`title: none | text: `, once. API and Lambda must select the same model, profile
+and preprocessing. Never truncate, pad or mix existing 1536d vectors into this
+space. Existing transcripts are retained.
 
-The runtime flow is regional AWS STS `GetWebIdentityToken` (RS256, 900 seconds),
-then OpenRouter `/api/v1/oauth/token` with the registered federation policy ID.
-Only inference-scoped bearer tokens are accepted. Tokens stay in memory and are
-refreshed at least 60 seconds before expiry. A configured policy takes precedence
-over old OpenRouter/purpose keys; an exchange failure never falls back to them.
+## Staged deployment
 
-1. Enable AWS outbound web identity federation for the AWS account. Record the
-   account-specific issuer URL from IAM. This account setting must be enabled
-   by an AWS administrator; this repository does not enable it automatically.
-2. In OpenRouter Settings → Workload identity, register the AWS issuer and create
-   separate policies for the Lambda role and API's AWS principal. Set audience
-   to `https://openrouter.ai`, pin `Subject` to each principal's exact ARN from
-   its STS JWT `sub`, and target an organization workspace inference key.
-   Personal keys and management-scoped policies are unsuitable for inference.
-   The target workspace key remains in OpenRouter; do not copy it into runtimes.
-3. Allow `sts:GetWebIdentityToken` for the intended principal, with audience,
-   algorithm and duration restrictions. Lambda Terraform adds this permission
-   when `openrouter_federation_policy_id` is set. The externally managed API
-   principal can use [the IAM policy template](../../infra/iam/videoq-openrouter-federation.json).
-4. For Lambda, set Terraform `openrouter_federation_policy_id` to the worker's
-   policy ID. For the API, set `OPENROUTER_FEDERATION_POLICY_ID` and `AWS_REGION`
-   in the production Wrangler vars. Policy IDs/audiences are non-secret. Keep
-   the optional audience variable identical on AWS and OpenRouter.
-5. Lambda uses its execution role through boto3. Cloudflare Workers use the
-   existing `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (and session token if
-   supplied) through SigV4. This removes the OpenRouter fixed key; it does not
-   eliminate Cloudflare's existing AWS credentials. Local Python development
-   may use the normal boto3 credential chain; the API needs AWS env credentials.
-6. Run the preflight below, then the complete disposable upload/index/search
-   check before releasing. Remove obsolete fixed OpenRouter and purpose-key
-   secrets once federation works. Never save exchanged JWTs or access tokens.
+1. Merge a protected PR with passing required checks. Deploy native Gemma chat,
+   the federation routes, worker adapters and both Vectorize bindings. Initially
+   retain legacy 1536d query configuration while the new index is populated.
+2. Confirm API CD and all three worker images completed. Review the independent
+   worker-boundary plan (only the exact audience changes), then approve the
+   production Terraform switch to Workers AI transcription and 768d documents.
+3. Snapshot completed-video IDs/revisions. Enqueue normal individual
+   `reindex_video_transcript` jobs on the search queue using stable job IDs.
+   The full-reindex dispatcher deliberately rejects a configuration that differs
+   from the query configuration during staging; do not weaken that guard.
+4. Verify every current completed transcript has a published 768d head and that
+   vector upserts are accepted/completed. Confirm representative vector IDs are
+   present in `videoq-prod-scenes-embeddinggemma2-768`. Re-enqueue any changed
+   transcripts, and recheck coverage before switching queries.
+5. Deploy the second protected change selecting Workers AI embeddings in the API
+   and remove the legacy endpoint/federation configuration. Keep the old index
+   until migration and rollback requirements are satisfied.
+6. Use an ordinary disposable video upload to verify transcription, indexing,
+   Japanese retrieval, structured and streaming cited answers, slide reading
+   and timestamp playback. Reject missing/incorrect-role tokens. Delete only
+   the disposable verification media after recording the outcome.
+7. Retire obsolete inference secrets and STS/OpenRouter permissions once all
+   cloud inference paths have passed. Keep AWS/S3/queue credentials required for
+   storage and jobs. Do not delete unrelated account resources.
 
-To inspect account readiness without changing AWS settings:
+For rollback, use a reviewed protected change restoring the previous matching
+API/worker model, profile, IAM audience and permissions boundary together.
+Changing only the Whisper backend is insufficient. Preserve previous vectors
+and transcripts, and reindex videos changed since the rollback snapshot.
 
-```sh
-python infra/scripts/openrouter_identity.py --region ap-northeast-1
-```
+## On-premises
 
-The command uses the boto3 credential chain and reports missing credentials,
-disabled federation, or the issuer URL. An AWS administrator can explicitly
-add `--enable` to enable account outbound federation. After granting STS token
-permission, use `--probe` as each intended workload identity to obtain its exact
-subject for the OpenRouter policy; the token itself is never printed.
+On-premises uses private OpenAI-compatible Gemma 4/EmbeddingGemma 2 endpoints and
+local Whisper; AWS federation and Cloudflare bindings are unnecessary there.
+See [local inference](../guides/local-inference.md) and the
+[RTX 4090 CPU-offload candidate](../guides/rtx4090.md). Real GPU/site acceptance
+remains separate from distribution configuration checks.
 
-For CI, set the non-secret GitHub variable
-`OPENROUTER_WORKER_FEDERATION_POLICY_ID` to the Lambda policy ID and optionally
-`OPENROUTER_FEDERATION_AUDIENCE`. Both the Terraform plan and apply workflows
-pass those values into Terraform, preventing the default empty ID from silently
-disabling WIF. The API's policy remains in production Wrangler vars. These IDs
-must target the corresponding workload subjects; do not reuse the Lambda policy
-for a different API principal.
-
-OpenRouter's endpoint validates the AWS issuer, audience, subject and signature.
-Business support, issuer/policy provisioning and account IAM access must exist
-before the live probe can succeed. Keep production untouched until those steps
-and the probes are complete.
-
-Sources: [OpenRouter WIF](https://openrouter.ai/docs/guides/overview/auth/workload-identity-federation),
-[AWS STS API](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetWebIdentityToken.html),
-[AWS token claims](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_outbound_token_claims.html).
-
-## Release order
-
-1. Provision the workload identity policies above and configure the API/worker
-   policy IDs. For explicit fixed-key development only, provide
-   `OPENROUTER_API_KEY`. Never commit keys or print secret payloads.
-2. Remove stale LLM/embedding endpoint and key overrides when using the unified
-   provider. Review deployment overrides for `WHISPER_BACKEND`; the hosted
-   profile uses `openrouter`, while an explicitly selected `openai` backend
-   continues to call OpenAI directly. The shared hosted URL is
-   `https://openrouter.ai/api/v1`.
-3. Before deploying, use a short non-sensitive audio fixture to verify
-   `verbose_json` and `timestamp_granularities=["segment"]` with the specified
-   Whisper model. The adapter rejects text-only transcripts without real
-   timestamps. Check a structured answer with tool calling, images and streaming,
-   and validate an embedding response has 1536 finite components.
-4. Check in-flight transcription runs and queued/active jobs before switching
-   worker versions. Existing transcripts, usage reservations and saved chunks
-   must be retained. Chunk intervals remain 300 seconds for the hosted profile.
-5. Deploy the matching API and Lambda code through CD before approving the
-   initial Terraform activation. The current worker must understand the
-   `openrouter` backend before Terraform changes its environment. For this
-   migration, wait until CD has updated the Lambda image, then approve the
-   pending production-infra apply. SSM values are cached per warm container;
-   a new worker version/configuration is required to load changed settings.
-6. Verify a complete new upload, transcription offsets, indexing and Q&A. Check
-   actual provider/model usage in OpenRouter. No production switch is proven
-   merely by changing repository configuration.
-
-After the Lambda environment activation has completed, run the production smoke
-with one temporary AI answer allowed:
-
-```sh
-gh workflow run operations.yml --ref main -f check=smoke -f verify_ai_answers=true
-```
-
-This uploads the reviewed synthetic fixture under a temporary low-quota user,
-checks processing and indexing, asks one question scoped to its temporary course,
-and requires a transcript citation to the uploaded video. Cleanup removes the
-synthetic video and course before deleting the user. The flag defaults to false
-for routine checks. Never overlap this migration check with the initial
-Terraform activation or count a health-only check as inference verification.
-
-## Run the model preflight
-
-Put `OPENROUTER_FEDERATION_POLICY_ID`, `AWS_REGION` and the local AWS workload
-credentials in the root `.env` (ignored by Git) or API `.dev.vars`. A development
-`OPENROUTER_API_KEY` can be used if WIF is not yet configured. The command checks both locations and uses a process variable
-first. Install the API dependencies and worker Python dependencies, then run
-from the repository root with a short, non-sensitive speech fixture:
-
-```sh
-VIDEOQ_TEST_PYTHON=/path/to/worker-venv/bin/python npm run openrouter:check --workspace @videoq/api -- /absolute/path/speech.flac
-```
-
-The default checks prerequisites without calling a model. Add `--probe` to make
-paid calls and upload the supplied speech file and the repository's public icon:
-
-```sh
-VIDEOQ_TEST_PYTHON=/path/to/worker-venv/bin/python npm run openrouter:check --workspace @videoq/api -- /absolute/path/speech.flac --probe
-```
-
-This uses the application adapters to check structured answers, streaming,
-tool calling followed by a final answer, image input, API query embeddings,
-worker transcription timestamps and worker indexing embeddings. It selects the
-three requested OpenRouter models independently of stale local overrides. Output
-contains status/counts only; transcripts, images, vectors and keys are not logged.
-It does not write application data or deploy services. A successful model
-preflight still requires a complete upload/index/search test in a disposable
-application environment before production. The optional `EMBEDDING_LIVE=1`
-integration test uses `EMBEDDING_TEST_DATABASE_URL` to create a temporary database
-and verifies Python indexing plus API retrieval and Q&A.
-
-## Compatibility and provider controls
-
-OpenRouter supports OpenAI-compatible multipart transcription and `verbose_json`.
-Structured fields vary by upstream provider; no subtitle timestamps are invented
-if an endpoint does not return them. The model page lists DeepInfra and Groq as
-providers. Transcription routing does not apply `provider.order`, `only` or
-`ignore`; do not assume those parameters pin an upstream speech provider.
-
-Data passes through OpenRouter and an upstream provider. Review their current
-logging/retention policies when deploying; OpenAI-direct endpoint retention
-claims do not automatically apply to this route. Existing plan allowances and
-usage accounting are unchanged. Older planning estimates for hosted `whisper-1`
-are historical assumptions, not prices or invoices for this model.
-
-Sources (checked 2026-10-30):
-[Whisper model and providers](https://openrouter.ai/openai/whisper-large-v3-turbo),
-[transcription API](https://openrouter.ai/docs/guides/overview/multimodal/stt),
-[embeddings API](https://openrouter.ai/docs/api_reference/embeddings).
-
-## Retiring the previous direct credentials
-
-Keep the organization workspace key targeted by each OpenRouter federation policy.
-Revoking that key would invalidate the federation path. The old direct OpenAI
-project keys are separate from those workspace keys and from the OpenAI admin
-key still used by Terraform project governance.
-
-After a successful production smoke with `verify_ai_answers=true`, dispatch
-`ai-credential-audit.yml` to inventory the remaining runtime copies without
-printing their values. The guarded `retire-ai-credentials.yml` defaults to `plan`;
-it also audits the API IAM user's policies and key ages using read-only calls.
-Review the project identity, key names/IDs, the worker key's unique match to a
-provider-redacted key, the SSM version, and both runtimes' federation configuration.
-
-For `operation=retire`, supply only the reviewed key IDs as a JSON array and
-`expected_ssm_version` from that plan. The script removes `OPENAI_API_KEY` from
-the worker app parameter and the production API, verifies both removals, revokes
-only the selected keys in the dedicated `videoq-prod` OpenAI project, and verifies
-the result. It preserves other SSM fields and the current encryption key, refuses
-concurrent parameter changes detected before writes, and never calls OpenRouter's
-management API. SSM's retained old parameter versions can contain the old key;
-provider-side revocation makes those copies unusable. If a step is interrupted,
-run `plan` again and review the new SSM version before retrying the same IDs;
-already absent project keys can be reverified safely.
-
-Use the normal production-infra gate and rerun the production smoke after
-retirement. Removing copies alone does not prove provider-side revocation.
-AWS IAM key rotation is a separate change: keep the previous key active until
-the replacement has passed the full upload/index/Q&A check.
+The earlier [Cloudflare pilot](cloudflare-ai-pilot.md) is historical evaluation,
+not the production authentication procedure or an accuracy guarantee. Whisper
+preprocessing can differ across providers; technical terms still need review.

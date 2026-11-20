@@ -219,7 +219,7 @@ resource "aws_iam_policy" "worker_boundary" {
     { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
     Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/${name}:*"] },
     { Effect = "Allow", Action = ["sts:GetWebIdentityToken"], Resource = "*", Condition = {
-      "ForAllValues:StringEquals" = { "sts:IdentityTokenAudience" = ["https://openrouter.ai", "https://videoq.jp/api/internal/workers-ai/transcribe"] },
+      "ForAllValues:StringEquals" = { "sts:IdentityTokenAudience" = ["https://videoq.jp/api/internal/workers-ai"] },
       StringEquals                = { "sts:SigningAlgorithm" = "RS256" }, NumericLessThanEquals = { "sts:DurationSeconds" = "900" }
     } }
   ] })

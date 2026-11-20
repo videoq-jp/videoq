@@ -51,11 +51,12 @@ def workload_token(audience: str) -> str:
 
 
 class WorkloadIdentityAuth(httpx.Auth):
-    def __init__(self, endpoint: str):
+    def __init__(self, endpoint: str, audience: str | None = None):
         self.endpoint = endpoint
+        self.audience = audience or os.environ.get("WORKERS_AI_FEDERATION_AUDIENCE") or endpoint
 
     def auth_flow(self, request):
         if str(request.url) != self.endpoint:
             raise RuntimeError("Workers AI identity destination mismatch")
-        request.headers["Authorization"] = f"Bearer {workload_token(self.endpoint)}"
+        request.headers["Authorization"] = f"Bearer {workload_token(self.audience)}"
         yield request
