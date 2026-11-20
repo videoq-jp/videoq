@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseAllDocuments } from "yaml";
 import { describe, expect, it } from "vitest";
+import { embeddingDimensions, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 
 const helm = process.env.HELM_BIN;
 const chart = fileURLToPath(new URL("../../../charts/videoq", import.meta.url));
@@ -35,7 +36,7 @@ withHelm("on-prem Helm distribution", () => {
   it("keeps discovery and streaming routes on the API and applies site-specific settings", () => {
     const resources = render("--set", "ingress.enabled=true", "--set", "api.replicas=3", "--set", "worker.replicas=4",
       "--set", "existingSecret=customer-secret", "--set", "imagePullSecrets[0].name=registry-secret",
-      "--set", "ai.embeddingModel=gte-qwen2-1.5b-q4km-124fbdad",
+      "--set", "ai.embeddingModel=gte-qwen2-1.5b-q4km-124fbdad", "--set", "ai.embeddingProfile=openai",
       "--set", "ai.embeddingBaseUrl=http://embedding:8000/v1", "--set", "migration.enabled=false");
     expect(resources.some(resource => resource.kind === "Job")).toBe(false);
     const ingress = resources.find(resource => resource.kind === "Ingress");
@@ -63,6 +64,20 @@ withHelm("on-prem Helm distribution", () => {
     expect(config.OPENROUTER_API_KEY).toBeUndefined();
     expect(config.WHISPER_BACKEND).toBe("local");
     expect(config.EMBEDDING_MODEL).toBe("embeddinggemma-2-f9972ac");
+  });
+  it.each(["local-ai-llamacpp.yaml", "local-ai-vllm.yaml"])("preserves the legacy 1536d contract in %s", overlay => {
+    const config = render("-f", `${chart}/examples/${overlay}`).find(resource => resource.kind === "ConfigMap").data;
+    expect(embeddingDimensions(resolveEmbeddingConfig(config))).toBe(1536);
+  });
+  it.each([false, true])("connects every lab inference path to its own services (real models=%s)", real => {
+    const script = fileURLToPath(new URL("../../../.github/scripts/onprem-lab.py", import.meta.url));
+    const result = spawnSync("python3", ["-c", "import importlib.util,json,sys; s=importlib.util.spec_from_file_location('lab',sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); print(json.dumps(m.inference_settings(sys.argv[2]=='true')))", script, String(real)], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    const config = render("--set-json", `ai=${result.stdout.trim()}`).find(resource => resource.kind === "ConfigMap").data;
+    expect(config.LLM_BASE_URL).toBe(real ? "http://videoq-inference-chat:8000/v1" : "http://inference:8080/v1");
+    expect(config.EMBEDDING_BASE_URL).toBe(real ? "http://videoq-inference-embedding:8000/v1" : "http://inference:8080/v1");
+    expect(config.WHISPER_LOCAL_URL).toBe(real ? "http://videoq-inference-whisper:8080/v1" : "http://inference:8080/v1");
+    expect(embeddingDimensions(resolveEmbeddingConfig(config))).toBe(real ? 1536 : 768);
   });
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {
     const missing = spawnSync(helm!, ["template", "test", chart], { encoding: "utf8" });
