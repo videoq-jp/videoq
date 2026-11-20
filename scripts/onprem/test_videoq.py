@@ -64,7 +64,7 @@ class InstallerTests(unittest.TestCase):
             images = root / "images.json"
             images.write_text(json.dumps(self.values()))
             target = root / "installation"
-            args = argparse.Namespace(images=str(images), directory=str(target), url="https://videoq.example.org", storage_url="https://s3.example.org")
+            args = argparse.Namespace(images=str(images), directory=str(target), url="https://videoq.example.org", storage_url="https://s3.example.org", ai="hosted")
             with patch.dict(os.environ, {"VIDEOQ_OPENROUTER_API_KEY": "test-only"}):
                 videoq.initialize(args)
                 previous = (target / "runtime.env").read_bytes()
@@ -159,6 +159,23 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("WHISPER_BACKEND='local'", environment)
             self.assertIn("LLM_SEPARATE_TOOL_SCHEMA='true'", environment)
 
+    def test_default_gpu_uses_gemma_embedding_contract_and_vision(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "images.json").write_text(json.dumps(self.values()))
+            args = argparse.Namespace(directory=str(root / "local"), images=str(root / "images.json"),
+                                      url="https://v.example", storage_url="https://s.example",
+                                      chat_url="http://chat:8000/v1", embedding_url="http://embedding:8000/v1",
+                                      transcription_url="http://whisper:8080/v1")
+            with patch.object(videoq.getpass, "getpass", side_effect=AssertionError("unexpected prompt")):
+                videoq.initialize(args)
+            environment = (root / "local/runtime.env").read_text()
+            self.assertNotIn("openrouter", environment.lower())
+            self.assertIn("EMBEDDING_PROFILE='embeddinggemma2'", environment)
+            self.assertIn("EMBEDDING_MODEL='embeddinggemma-2-f9972ac'", environment)
+            self.assertIn("VIDEO_VISUAL_ENABLED='true'", environment)
+            self.assertIn("LLM_SEPARATE_TOOL_SCHEMA='true'", environment)
+
     def test_failed_update_preserves_snapshot_and_stops_application(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -169,8 +186,8 @@ class InstallerTests(unittest.TestCase):
                 with patch.object(videoq, "start", side_effect=ValueError("migration failed")), patch.object(videoq, "docker") as docker:
                     with self.assertRaisesRegex(ValueError, "migration failed"):
                         videoq.update(args)
-                    snapshot.assert_called_once_with(root, Path(args.backup), resume=False)
-                    docker.assert_called_once_with(root, "stop", "gateway", "api", "worker", "scheduler", "web")
+                    snapshot.assert_called_once_with(root.resolve(), Path(args.backup).resolve(), resume=False)
+                    docker.assert_called_once_with(root.resolve(), "stop", "gateway", "api", "worker", "scheduler", "web")
             self.assertTrue((root / "compose.json").is_file())
 
 

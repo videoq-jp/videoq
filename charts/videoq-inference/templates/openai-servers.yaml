@@ -148,7 +148,8 @@ spec:
             {{- if $server.reasoningParser }}
             - --reasoning-parser
             - {{ $server.reasoningParser | quote }}
-            {{- else }}
+            {{- end }}
+            {{- if or (not $server.reasoningParser) (eq $server.reasoningParser "gemma4") }}
             - --default-chat-template-kwargs
             - '{"enable_thinking":false}'
             {{- end }}

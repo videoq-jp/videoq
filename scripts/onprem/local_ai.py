@@ -10,7 +10,7 @@ from common import json_documents, private_json
 
 PROFILES = {
     'local-cpu': ('local-ai-llamacpp.yaml', 'llamacpp-cpu.yaml'),
-    'local-gpu': ('local-ai-vllm.yaml', 'vllm-nvidia.yaml'),
+    'local-gpu': ('local-ai-gemma4.yaml', 'gemma4-embeddinggemma.yaml'),
 }
 
 
@@ -119,6 +119,8 @@ class LocalAI:
         total = {r: quantity(node['status']['allocatable'].get(r, 0), r) for r in ('cpu', 'memory', 'nvidia.com/gpu')}
         if self.ai == 'local-gpu' and node['metadata']['labels'].get('kubernetes.io/arch') != 'amd64':
             raise ValueError('digest 固定の上流 NVIDIA 推論イメージは amd64 専用です')
+        if self.ai == 'local-gpu' and node['metadata']['labels'].get('videoq.io/gemma4-vram') != '80gb':
+            raise ValueError('Gemma 4 には専用 80 GB GPU が必要です。VRAM を確認後、ノードに videoq.io/gemma4-vram=80gb を設定してください')
         required = {r: Decimal(0) for r in total}
         for obj in self.ai_plan + getattr(self, 'ai_app_plan', []) + getattr(self, 'ai_infra_plan', []):
             if obj['kind'] == 'Deployment':

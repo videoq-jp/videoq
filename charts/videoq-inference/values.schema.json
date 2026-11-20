@@ -388,12 +388,14 @@
             "toolCallParser": {
               "enum": [
                 "hermes",
-                "openai"
+                "openai",
+                "gemma4"
               ]
             },
             "reasoningParser": {
               "enum": [
-                "openai_gptoss"
+                "openai_gptoss",
+                "gemma4"
               ]
             },
             "dtype": {

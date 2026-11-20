@@ -158,7 +158,7 @@ def initialize(args):
     if public_url == storage_url:
         raise ValueError("ストレージにはVideoQとは別のオリジンが必要です")
     refs = image_refs(json.loads(Path(args.images).read_text()))
-    ai = getattr(args, "ai", "hosted")
+    ai = getattr(args, "ai", "local-gpu")
     key = (os.environ.get("VIDEOQ_OPENROUTER_API_KEY") or getpass.getpass("OpenRouter API key: ")) if ai == "hosted" else "local-inference"
     if not key.strip():
         raise ValueError("OpenRouter API keyが必要です")
@@ -198,10 +198,12 @@ def initialize(args):
             "OPENAI_BASE_URL": endpoint(args.chat_url), "EMBEDDING_BASE_URL": endpoint(args.embedding_url),
             "WHISPER_LOCAL_URL": endpoint(args.transcription_url), "WHISPER_BACKEND": "local",
             "LLM_MODEL": getattr(args, "chat_model", None) or "videoq-chat",
-            "EMBEDDING_MODEL": getattr(args, "embedding_model", None) or ("gte-qwen2-1.5b-q4km-124fbdad" if ai == "local-cpu" else "qwen3-embedding-4b-5cf2132a"),
-            "LLM_REASONING_EFFORT": "none", "LLM_SEPARATE_TOOL_SCHEMA": "true" if ai == "local-cpu" else "false",
+            "EMBEDDING_MODEL": getattr(args, "embedding_model", None) or ("gte-qwen2-1.5b-q4km-124fbdad" if ai == "local-cpu" else "embeddinggemma-2-f9972ac"),
+            "EMBEDDING_PROFILE": "openai" if ai == "local-cpu" else "embeddinggemma2",
+            "LLM_REASONING_EFFORT": "none" if ai == "local-cpu" else "", "LLM_SEPARATE_TOOL_SCHEMA": "true",
+            "LLM_PRESERVE_TOOL_REASONING": "true",
             "LLM_REQUEST_TIMEOUT_MS": "600000", "LLM_STREAM_TIMEOUT_MS": "600000",
-            "WHISPER_CHUNK_SECONDS": "30" if ai == "local-cpu" else "300", "VIDEO_VISUAL_ENABLED": "false",
+            "WHISPER_CHUNK_SECONDS": "30", "VIDEO_VISUAL_ENABLED": "false" if ai == "local-cpu" else "true",
         })
     files = {
         "runtime.env": env_text(runtime),
@@ -510,7 +512,7 @@ def main():
     init.add_argument("--url")
     init.add_argument("--storage-url")
     init.add_argument("--bind-address", help="入口ポートを公開するホストIP（省略時は全インターフェース）")
-    init.add_argument("--ai", choices=("hosted", "local-cpu", "local-gpu"), default="hosted")
+    init.add_argument("--ai", choices=("hosted", "local-cpu", "local-gpu"), default="local-gpu", help="初回の標準: local-gpu（Gemma 4 / EmbeddingGemma 2 / Whisper）。hosted は旧構成の互換用")
     init.add_argument("--chat-url", help="既存ローカル推論サーバーの /v1 URL")
     init.add_argument("--embedding-url")
     init.add_argument("--transcription-url")

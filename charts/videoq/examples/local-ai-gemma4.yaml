@@ -1,0 +1,21 @@
+# Pair with videoq-inference/examples/gemma4-embeddinggemma.yaml.
+# Gemma 4 handles both answers and image reading; EmbeddingGemma 2 is 768d.
+ai:
+  openaiBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1
+  llmBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1
+  llmModel: videoq-chat
+  reasoningEffort: ''
+  preserveToolReasoning: true
+  separateToolSchema: true
+  requestTimeoutMs: 600000
+  streamTimeoutMs: 600000
+  embeddingBaseUrl: http://videoq-inference-embedding.videoq.svc.cluster.local:8000/v1
+  embeddingModel: embeddinggemma-2-f9972ac
+  embeddingProfile: embeddinggemma2
+  whisperBackend: local
+  whisperChunkSeconds: 30
+  whisperLocalUrl: http://videoq-inference-whisper.videoq.svc.cluster.local:8080/v1
+config:
+  videoVisualEnabled: true
+networkPolicy:
+  localEgressOnly: true

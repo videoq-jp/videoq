@@ -53,16 +53,16 @@ withHelm("on-prem Helm distribution", () => {
     expect(resources.find(resource => resource.metadata.name === "test-videoq-api" && resource.kind === "Deployment").spec.replicas).toBe(3);
     expect(resources.find(resource => resource.metadata.name === "test-videoq-worker").spec.replicas).toBe(4);
   });
-  it("routes LLM overrides independently of shared OpenRouter services", () => {
-    const resources = render("--set", "ai.llmBaseUrl=https://openrouter.ai/api/v1", "--set", "ai.llmModel=vendor/model");
+  it("routes LLM overrides independently of local embedding and speech services", () => {
+    const resources = render("--set", "ai.llmBaseUrl=http://other-chat:8000/v1", "--set", "ai.llmModel=vendor/model");
     const config = resources.find(resource => resource.kind === "ConfigMap").data;
-    expect(config.LLM_BASE_URL).toBe("https://openrouter.ai/api/v1");
+    expect(config.LLM_BASE_URL).toBe("http://other-chat:8000/v1");
     expect(config.LLM_MODEL).toBe("vendor/model");
-    expect(config.OPENAI_BASE_URL).toBe("https://openrouter.ai/api/v1");
+    expect(config.OPENAI_BASE_URL).toBe("http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1");
     expect(config.LLM_API_KEY).toBeUndefined();
     expect(config.OPENROUTER_API_KEY).toBeUndefined();
-    expect(config.WHISPER_BACKEND).toBe("openrouter");
-    expect(config.EMBEDDING_MODEL).toBe("openai/text-embedding-3-small");
+    expect(config.WHISPER_BACKEND).toBe("local");
+    expect(config.EMBEDDING_MODEL).toBe("embeddinggemma-2-f9972ac");
   });
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {
     const missing = spawnSync(helm!, ["template", "test", chart], { encoding: "utf8" });
