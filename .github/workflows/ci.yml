@@ -613,7 +613,7 @@ jobs:
         with:
           manager: npm
       - name: Install shared catalog tooling
-        run: npm ci --ignore-scripts --workspace @videoq/domain --include-workspace-root
+        run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/domain --include-workspace-root
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
