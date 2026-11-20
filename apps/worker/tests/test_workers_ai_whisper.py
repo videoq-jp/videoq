@@ -12,10 +12,10 @@ def test_request_language_timestamps_and_no_secret_in_failure(tmp_path):
     audio = tmp_path / "test.mp3"
     audio.write_bytes(b"public audio")
     def handler(request):
-        assert request.url.path.endswith('/ai/run/' + MODEL)
+        assert request.url.path == '/api/internal/workers-ai/transcribe'
         assert json.loads(request.content) == {"audio": base64.b64encode(b"public audio").decode(), "language": "ja", "task": "transcribe", "vad_filter": True, "condition_on_previous_text": False}
         return httpx.Response(200, json={"success": True, "result": {"segments": [{"start": 1, "end": 2, "text": "テスト"}]}})
-    with httpx.Client(base_url="https://api.cloudflare.com/client/v4/accounts/test/ai/run/", transport=httpx.MockTransport(handler)) as client:
+    with httpx.Client(base_url="https://videoq.jp/api/internal/workers-ai/", transport=httpx.MockTransport(handler)) as client:
         assert transcribe(client, audio, offset=300, language="ja") == [{"start": 301, "end": 302, "text": "テスト"}]
     with httpx.Client(base_url="https://api.cloudflare.com/", transport=httpx.MockTransport(lambda r: httpx.Response(401, text="secret-token"))) as client:
         with pytest.raises(RuntimeError, match=r"^Workers AI transcription failed \(HTTP 401\)$"):
@@ -37,7 +37,7 @@ def test_rejects_unusable_timestamps(tmp_path, result):
 
 
 def test_missing_credentials_fail_closed(monkeypatch):
-    monkeypatch.delenv("WORKERS_AI_API_TOKEN", raising=False)
+    monkeypatch.delenv("WORKERS_AI_BASE_URL", raising=False)
     with pytest.raises(RuntimeError, match="requires"):
         create_client()
 

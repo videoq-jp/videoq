@@ -163,3 +163,14 @@ variable "worker_whisper_backend" {
     error_message = "worker_whisper_backend must be workers-ai, openrouter or openai."
   }
 }
+
+variable "workers_ai_federation_endpoint" {
+  description = "HTTPS Worker endpoint and STS audience for keyless Workers AI inference. Match the API Worker trust configuration."
+  type        = string
+  default     = "https://videoq.jp/api/internal/workers-ai/transcribe"
+
+  validation {
+    condition     = can(regex("^https://[^/?#@]+/api/internal/workers-ai/transcribe$", var.workers_ai_federation_endpoint))
+    error_message = "workers_ai_federation_endpoint must be an HTTPS Workers AI transcription endpoint."
+  }
+}

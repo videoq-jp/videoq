@@ -18,9 +18,15 @@ embedding configuration identical. On-premises inference still uses `local`.
 ## Workers AI transcription
 
 The AWS Lambda Terraform default is `worker_whisper_backend = "workers-ai"`.
-The worker reads `CLOUDFLARE_ACCOUNT_ID` and `WORKERS_AI_API_TOKEN` from the
-existing app SSM SecureString, without logging either credential. Deploy the
-supporting worker image before approving the Terraform switch. The adapter uses
+Lambda obtains an AWS-signed, short-lived OIDC token for
+`https://videoq.jp/api/internal/workers-ai/transcribe`. The VideoQ API Worker
+validates the AWS signature, issuer, exact role, audience and a maximum
+15-minute lifetime, then calls Workers AI through its `AI` binding. This is a
+custom federation boundary in the application; the Workers AI REST API itself
+still uses API tokens. No `WORKERS_AI_API_TOKEN` is used or loaded from SSM.
+
+Deploy both API and worker support before approving the Terraform switch, which
+grants the exact STS audience and sets `WORKERS_AI_BASE_URL`. The adapter uses
 300-second audio chunks, language hints and VAD, validates segment timestamps,
 and fails explicitly on provider errors. Existing transcripts remain intact.
 

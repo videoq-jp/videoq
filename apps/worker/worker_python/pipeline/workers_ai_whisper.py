@@ -1,10 +1,10 @@
-"""Opt-in Workers AI speech adapter. Never falls back to another provider."""
+"""Workers AI speech through the AWS OIDC-authenticated binding proxy."""
 from __future__ import annotations
 
 import base64
 import math
-import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -14,13 +14,15 @@ MODEL = "@cf/openai/whisper-large-v3-turbo"
 
 
 def create_client() -> httpx.Client:
-    account = env_str("CLOUDFLARE_ACCOUNT_ID")
-    token = env_str("WORKERS_AI_API_TOKEN")
-    if not account or not re.fullmatch(r"[a-fA-F0-9]{32}", account) or not token:
-        raise RuntimeError("Workers AI requires CLOUDFLARE_ACCOUNT_ID and WORKERS_AI_API_TOKEN")
+    from .workers_ai_federation import WorkloadIdentityAuth
+    endpoint = env_str("WORKERS_AI_BASE_URL")
+    url = urlsplit(endpoint)
+    if (url.scheme != "https" or not url.hostname or url.username or url.password
+            or url.query or url.fragment or url.path != "/api/internal/workers-ai/transcribe"):
+        raise RuntimeError("Workers AI requires an HTTPS WORKERS_AI_BASE_URL federation endpoint")
     return httpx.Client(
-        base_url=f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/run/",
-        headers={"Authorization": f"Bearer {token}"}, timeout=120.0,
+        base_url=endpoint.rsplit("/", 1)[0] + "/",
+        auth=WorkloadIdentityAuth(endpoint), timeout=120.0,
         follow_redirects=False,
     )
 
@@ -29,7 +31,7 @@ def transcribe(client: httpx.Client, audio: Path, *, offset: float, language: st
     # 300 seconds at the pipeline's 64 kbps is approximately 2.4 MB.
     if audio.stat().st_size > 4 * 1024 * 1024:
         raise RuntimeError("Workers AI audio chunk exceeds 4 MiB")
-    response = client.post(MODEL, json={
+    response = client.post("transcribe", json={
         "audio": base64.b64encode(audio.read_bytes()).decode("ascii"),
         "task": "transcribe", "vad_filter": True, "condition_on_previous_text": False,
         **({"language": language} if language else {}),

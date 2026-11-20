@@ -61,6 +61,8 @@
     }
   ],
 
+  "ai": { "binding": "AI" },
+
   "r2_buckets": [
     {
       "binding": "VIDEO_BUCKET",
@@ -103,7 +105,11 @@
         "logs": { "enabled": true, "head_sampling_rate": 1 },
         "traces": { "enabled": true, "head_sampling_rate": 0.05 }
       },
+      "ai": { "binding": "AI" },
       "vars": {
+        "WORKERS_AI_FEDERATION_ISSUER": "https://a19cda7d-c68b-4cab-8979-351347a0759c.tokens.sts.global.api.aws",
+        "WORKERS_AI_FEDERATION_AUDIENCE": "https://videoq.jp/api/internal/workers-ai/transcribe",
+        "WORKERS_AI_FEDERATION_SUBJECT": "arn:aws:iam::257240362763:role/videoq-worker-prod",
         "ENVIRONMENT": "production",
         "DEPLOYMENT_EDITION": "cloud",
         "PERSISTENCE_BACKEND": "d1",
