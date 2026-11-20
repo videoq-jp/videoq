@@ -1,4 +1,4 @@
-import { deploymentEdition } from "@videoq/trpc/deployment";
+import { deploymentEdition } from "@videoq/domain/deployment";
 import type { Bindings } from "../types/bindings";
 import { resolveEmbeddingConfig } from "../lib/embedding-contract";
 

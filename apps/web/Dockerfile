@@ -40,11 +40,13 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/docs/package.json apps/docs/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/trpc/package.json packages/trpc/package.json
+COPY packages/domain/package.json packages/domain/package.json
 RUN npm ci --ignore-scripts --workspace @videoq/web --workspace @videoq/api
 
 COPY apps/web apps/web
 COPY apps/api apps/api
 COPY packages/trpc packages/trpc
+COPY packages/domain packages/domain
 RUN npm run build --workspace @videoq/web
 RUN if [ "$VITE_DEPLOYMENT_EDITION" = onprem ]; then node apps/web/scripts/check-onprem-build.mjs apps/web/dist; fi
 RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template

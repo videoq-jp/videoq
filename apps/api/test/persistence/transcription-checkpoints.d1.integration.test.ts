@@ -55,6 +55,23 @@ describe("D1 transcription checkpoints", () => {
     expect(await usage()).toBe(0);
     expect(await repository.load(1)).toBeNull();
   });
+  it('reuses the original plan after quota changes without another debit', async () => {
+    const original = await repository.initialize(source, 300_001, 300);
+    await f.database.prepare("UPDATE users SET is_over_quota=1,processing_limit_minutes=0").run();
+    expect(await repository.initialize(source, 900_000, 30)).toEqual(original);
+    expect(await usage()).toBe(301);
+    expect(original.run?.chunkCount).toBe(2);
+  });
+  it('resets expired month usage and accepts quota equality before refusing the next video', async () => {
+    await f.database.prepare("UPDATE users SET used_processing_seconds=999999,used_ai_answers=99,usage_period_start='2000-01-01T00:00:00Z',processing_limit_minutes=1").run();
+    expect((await repository.initialize(source, 60_000, 30)).run?.chunkCount).toBe(2);
+    expect(await usage()).toBe(60);
+    expect(await f.database.prepare('SELECT used_ai_answers FROM users').first('used_ai_answers')).toBe(0);
+    await f.database.prepare("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES (2,'owner','Next','next.mp4','pending','','','2026-11-13T00:00:00Z','','uploaded','','')").run();
+    const next = (await createD1WorkerTranscriptionRepository(f.database).readSource(2))!;
+    expect(await repository.initialize(next, 1, 30)).toEqual({ run: null, quotaExceeded: true });
+    expect(await usage()).toBe(60);
+  });
   it("records bounded failure codes and permits a saved retry", async () => {
     const { run } = await repository.initialize(source, 300_000, 300);
     for (let i = 0; i < 5; i++) await repository.recordFailure(1, run!.runId, 0);
@@ -86,6 +103,13 @@ describe("D1 transcription checkpoints", () => {
     expect((await repository.load(1))!.completed).toBe(true);
     expect(await repository.chunkState(1, run!.runId, 0)).toEqual({ active: false, completed: false });
     expect(await f.database.prepare("SELECT error_message FROM videos").first("error_message")).toBe('NO_AUDIO_STREAM');
+  });
+  it('permits source-level no-audio rejection before planning and refuses completed scoped retries', async () => {
+    expect(await repository.rejectNoAudio(source)).toBe(true);
+    const { run } = await repository.initialize(source, 300_000, 300);
+    expect(await repository.rejectNoAudio(source, run!.runId, 0)).toBe(true);
+    expect(await repository.rejectNoAudio(source, run!.runId, 0)).toBe(false);
+    expect(await repository.rejectNoAudio(source)).toBe(true);
   });
   it("reads ordered bounded pages and rejects segments from stale runs", async () => {
     await f.database.prepare("UPDATE users SET processing_limit_minutes=NULL").run();

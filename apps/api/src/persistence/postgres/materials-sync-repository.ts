@@ -1,3 +1,4 @@
+import { postgresLmsOwnerSql } from './lms-owner-policy';
 import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
 import type pg from 'pg';
 import {sql} from 'drizzle-orm';
@@ -65,7 +66,7 @@ export function createPostgresMaterialsSyncRepository(env:Bindings):MaterialsSyn
    const resource=await client.query<{owner_user_id:string}>(`SELECT t.owner_user_id FROM lms_resources r
     JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=r.installation_id AND t.context_id=r.context_id AND t.course_id=r.course_id AND t.active=true AND t.resource_link_id IS NULL
     JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id
-    JOIN users owner ON owner.id=t.owner_user_id AND owner.is_active=true AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR owner.ban_expires<=clock_timestamp())
+    JOIN users owner ON owner.id=t.owner_user_id AND ${postgresLmsOwnerSql('clock_timestamp()')}
     WHERE r.installation_id=$1 AND r.external_id=$2 AND r.generation=$3 AND r.video_id=$4 AND r.enabled=true FOR UPDATE OF r FOR SHARE OF t`,[lease.installationId,upload.externalId,upload.generation,upload.videoId]);
    if(!resource.rowCount)return false;
    const changed=await client.query(`UPDATE videos SET status='pending',error_message='' WHERE id=$1 AND file=$2 AND status='uploading'

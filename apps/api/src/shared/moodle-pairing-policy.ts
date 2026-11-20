@@ -1,3 +1,4 @@
+import { pairingProofMatches, validPairingAuthentication } from '../application/pairing-exchange';
 import {z} from 'zod';
 import {materialsServiceSchema} from '../features/lms/contracts';
 import {LmsSyncError} from '../features/lms/resource';
@@ -12,7 +13,7 @@ export async function pairingCodeChallenge(verifier: string): Promise<string> {
   return btoa(String.fromCharCode(...hash)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 export async function requireProof(challenge: unknown, verifier?: string): Promise<void> {
-  if (challenge === undefined ? verifier !== undefined : typeof challenge !== "string" || !verifier || await pairingCodeChallenge(verifier) !== challenge) {
+  if (!await pairingProofMatches(challenge,verifier,pairingCodeChallenge)) {
     throw new LmsSyncError(401, "INVALID_PAIRING_CODE");
   }
 }
@@ -23,6 +24,6 @@ export const pairingExchangeSchema = z.object({
   mode: z.enum(["legacy", "materials"]).default("legacy"),
   codeVerifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/).optional(),
   materialsService: materialsServiceSchema.optional(),
-}).strict().refine(value => value.mode === "materials" ? value.syncToken === undefined && Boolean(value.materialsService) && Object.values(value.materialsService!).every(endpoint => endpoint.startsWith(value.issuer + "/") && new URL(endpoint).origin === new URL(value.issuer).origin) : Boolean(value.syncToken) && value.materialsService === undefined, "Invalid connection authentication mode");
+}).strict().refine(value => validPairingAuthentication(value,(endpoint,issuer)=>new URL(endpoint).origin===new URL(issuer).origin), "Invalid connection authentication mode");
 export const pairingPayloadSchema = z.object({ ownerUserId: z.string().min(1), moodleUrl: moodleUrlSchema, mode: z.enum(["legacy", "materials"]).default("legacy"), codeChallenge: codeChallengeSchema.optional() });
 export { PAIRING_SECONDS } from '../application/moodle-pairing';

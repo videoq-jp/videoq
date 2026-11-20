@@ -21,6 +21,14 @@ export function chatContract(name:string,create:()=>Promise<ChatFixture>) {
       await f.execute('UPDATE users SET banned=true WHERE id=?',['owner']);
       expect(await f.repository.context({courseId:1,ltiCourseGrant:1})).toBeNull();
     });
+    it.each(['managed', 'disabled', 'mixed'] as const)('keeps owner context distinct from shared %s context', async reason => {
+      if (reason === 'mixed') await f.execute('UPDATE videos SET managed_by_lms=? WHERE id=2', [true]);
+      else await f.execute(`UPDATE video_courses SET ${reason === 'managed' ? 'managed_by_lms' : 'native_access_disabled'}=? WHERE id=1`, [true]);
+      expect(await f.repository.context({courseId:1,userId:'owner'})).not.toBeNull();
+      expect(await f.repository.context({courseId:1,userId:'learner'})).toBeNull();
+      expect(await f.repository.context({courseId:1,userId:'owner',shareToken:'public'})).toBeNull();
+      expect(await f.repository.shareExists('public')).toBe(false);
+    });
     it('keeps structured answers and suppresses shared authors',async()=>{
       const native=await f.repository.create(input());const shared=await f.repository.create(input(true));
       const page=await f.repository.history(1,'owner',10,0);

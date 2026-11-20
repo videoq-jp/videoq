@@ -1,10 +1,9 @@
-import {ApiError} from './errors';
+import { createLtiSessionProof } from '../application/lti-session-proof';
+import { asApiError } from './errors';
+export type { LtiSessionProof } from '../application/lti-session-proof';
 
-/** Server-derived proof of the current stored LTI session, never browser input. */
-export type { LtiSessionProof } from "../application/lti-session-proof";
-import type { LtiSessionProof } from "../application/lti-session-proof";
-export function ltiSessionProof(grant: { registrationId: string; subjectHash: string }, sessionHash: string): LtiSessionProof {
-  if (!/^[a-f0-9]{64}$/.test(sessionHash) || !/^[a-f0-9]{64}$/.test(grant.subjectHash))
-    throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
-  return { sessionHash, registrationId: grant.registrationId, subjectHash: grant.subjectHash };
+/** Compatibility adapter for existing HTTP-facing persistence and LMS callers. */
+export function ltiSessionProof(grant: { registrationId: string; subjectHash: string }, sessionHash: string) {
+  try { return createLtiSessionProof(grant, sessionHash); }
+  catch (error) { throw asApiError(error) ?? error; }
 }

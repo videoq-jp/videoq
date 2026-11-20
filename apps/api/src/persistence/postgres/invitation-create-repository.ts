@@ -1,5 +1,6 @@
 import {features} from '../../lib/deployment';
-import {normalizeInvitationEmail} from '@videoq/trpc/course-invitations';
+import { invitationMemberEmails, invitationCandidates, uncreatedInvitationEmails, invitationPendingExpired } from '../../application/invitation-creation';
+import { invitationDrizzleLogic } from '../invitation-policy-sql';
 import {and,eq,inArray,lte} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {users,videoCourses,videoCourseInvitations,videoCourseMemberships} from '../../db/schema';
@@ -39,31 +40,22 @@ export async function createPendingCourseInvitations(
         .where(
           and(
             eq(videoCourseInvitations.courseId, courseId),
-            eq(videoCourseInvitations.status, "pending"),
-            lte(videoCourseInvitations.expiresAt, issuedAt.toISOString()),
+            invitationPendingExpired(eq(videoCourseInvitations.status, "pending"), lte(videoCourseInvitations.expiresAt, issuedAt.toISOString()), invitationDrizzleLogic),
           ),
         );
 
       const emails = inputs.map((input) => input.email);
-      const alreadyMemberEmails = new Set<string>();
-      const ownerEmail = normalizeInvitationEmail(ownerRows[0].ownerEmail);
-      if (ownerEmail && emails.includes(ownerEmail)) alreadyMemberEmails.add(ownerEmail);
-
+      let memberEmails: string[] = [];
       if (emails.length > 0) {
         const memberRows = await tx
           .select({ email: users.email })
           .from(videoCourseMemberships)
           .innerJoin(users, eq(users.id, videoCourseMemberships.userId))
           .where(eq(videoCourseMemberships.courseId,courseId));
-        for (const row of memberRows) {
-          const email = normalizeInvitationEmail(row.email);
-          if (email && emails.includes(email)) alreadyMemberEmails.add(email);
-        }
+        memberEmails = memberRows.map(row => row.email);
       }
-
-      const candidateInputs = inputs.filter(
-        (input) => !alreadyMemberEmails.has(input.email),
-      );
+      const alreadyMemberEmails = invitationMemberEmails(inputs, ownerRows[0].ownerEmail, memberEmails);
+      const candidateInputs = invitationCandidates(inputs, alreadyMemberEmails);
       const alreadyPendingEmails = new Set<string>();
       if (candidateInputs.length > 0) {
         const pendingRows = await tx
@@ -82,9 +74,7 @@ export async function createPendingCourseInvitations(
         for (const row of pendingRows) alreadyPendingEmails.add(row.email);
       }
 
-      const insertInputs = candidateInputs.filter(
-        (input) => !alreadyPendingEmails.has(input.email),
-      );
+      const insertInputs = invitationCandidates(candidateInputs, [...alreadyPendingEmails]);
       const inserted = insertInputs.length
         ? await tx
             .insert(videoCourseInvitations)
@@ -106,11 +96,6 @@ export async function createPendingCourseInvitations(
             .returning({ id: videoCourseInvitations.id, email: videoCourseInvitations.email })
         : [];
 
-      const insertedEmails = new Set(inserted.map((row) => row.email));
-      for (const input of insertInputs) {
-        if (!insertedEmails.has(input.email)) alreadyPendingEmails.add(input.email);
-      }
-
       // 招待行と配送タスクを同じtransactionでコミットする（outbox）。
       // 招待だけ残ってメールが永久に送られない状態を作らない。
       if (features(env).emailDelivery) await insertInvitationEmailTasks(
@@ -121,8 +106,8 @@ export async function createPendingCourseInvitations(
 
       return {
         created: inserted,
-        alreadyMemberEmails: [...alreadyMemberEmails],
-        alreadyPendingEmails: [...alreadyPendingEmails],
+        alreadyMemberEmails,
+        alreadyPendingEmails: uncreatedInvitationEmails(inputs, alreadyMemberEmails, inserted.map(row => row.email), [...alreadyPendingEmails]),
       };
     }),
   );

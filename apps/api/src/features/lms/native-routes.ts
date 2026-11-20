@@ -1,9 +1,5 @@
-import { classroomPlaybackVideo } from '../classroom/repository';
-import { resolveFileUrl } from '../../integrations/media';
 import { z } from 'zod';
-import {createTeachingRepository} from '../../persistence/factory';
-import { MaterialsClient } from './connector-client';
-import { issueTeachingTicket } from '../teaching/service';
+import { bootstrapNativeTeacher, nativeLearningPlayback } from '../../integrations/native-learning';
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { AppEnv } from "../../types/bindings";
@@ -43,17 +39,8 @@ nativeLearningRoutes.use("*", async (c: Context<AppEnv, string>, next) => {
     const input = z.object({ title: z.string().min(1).max(500).optional() }).strict().safeParse(await c.req.raw.clone().json());
     if (!input.success) return refuse(c);
     const { reg, claims } = await verifyNativeAssertion(c.env, assertion, '/teacher/connect', bodySha256);
-    if (!reg.id.startsWith('db:') || !reg.materialsService || !reg.deploymentId) return refuse(c, 403);
-    const access = await new MaterialsClient(c.env, { ...reg, deploymentId: reg.deploymentId, materialsService: reg.materialsService })
-      .access(claims.contextId, claims.resourceLinkId, claims.subject);
-    if (!access.permissions?.manageContent) return refuse(c, 403);
-    const nonce = await digest(JSON.stringify(['teaching-link', reg.id, claims.jti]));
-    const accepted=await (await createTeachingRepository(c.env)).consumeBootstrapNonce(nonce,new Date((claims.exp+60)*1000));
-    if(!accepted)return refuse(c,403);
-    return c.json(await issueTeachingTicket(c.env, { provider: 'moodle', installationId: reg.id.slice(3),
-      contextId: claims.contextId, teacherSubject: claims.subject, teacherName: claims.author?.name || 'Moodle user ' + claims.subject,
-      title: input.data.title || 'Moodle ' + claims.contextId, resourceLinkId: claims.resourceLinkId,
-      returnUrl: reg.issuer + '/course/view.php?id=' + encodeURIComponent(claims.contextId) }));
+    const result = await bootstrapNativeTeacher(c.env, reg, claims, input.data.title);
+    return result ? c.json(result) : refuse(c, 403);
   }
   const authorization = await authorizeNativeRequest(c.env, assertion, c.req.path.slice(prefix.length), bodySha256);
   c.set("nativeLearningAuthorization", authorization);
@@ -67,14 +54,9 @@ nativeLearningRoutes.onError((error, c) => {
 nativeLearningRoutes.post('/playback', async c => {
   const access = c.get('nativeLearningAuthorization');
   const input = z.object({ videoId: z.number().int().positive().safe() }).strict().safeParse(await c.req.json().catch(() => null));
-  if (!access?.course || !input.success || !access.current?.videos.some(item => item.videoId === input.data.videoId)) return refuse(c, 403);
-  const video = await classroomPlaybackVideo(c.env, access.course.userId, input.data.videoId);
-  if (!video) return refuse(c, 403);
-  if (video.sourceType === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(video.youtubeId))
-    return c.json({ kind: 'youtube', title: video.title, description: video.description, url: `https://www.youtube-nocookie.com/embed/${video.youtubeId}` });
-  const url = await resolveFileUrl(c.env, video.file);
-  if (!url?.startsWith('https://')) return refuse(c, 403);
-  return c.json({ kind: 'file', title: video.title, description: video.description, url });
+  if (!access || !input.success) return refuse(c, 403);
+  const result = await nativeLearningPlayback(c.env, access, input.data.videoId);
+  return result ? c.json(result) : refuse(c, 403);
 });
 mountLearningRoutes(nativeLearningRoutes, c => {
   const authorization = c.get("nativeLearningAuthorization");

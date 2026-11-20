@@ -1,3 +1,6 @@
+import { nativeCourseAccessAllowed } from '../../application/native-course-access';
+import { nativeCourseStringLogic } from '../native-course-policy-sql';
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import {chatAnswerSchema,chatAnswerText} from "@videoq/trpc/chat";
 import type {ChatRepository,ChatLogItem,ChatQuestionAuthor} from "../contracts/chat-repository";
 import {checkedLtiSubject} from "../../features/lti/identity";
@@ -43,10 +46,10 @@ export function createD1ChatRepository(database:D1Database):ChatRepository {
     async context(params) {
       const lti=params.ltiCourseGrant===params.courseId;
       if (!lti && !params.shareToken && !params.userId) return null;
-      const permission=lti?`EXISTS(SELECT 1 FROM users owner WHERE owner.id=course.user_id AND owner.is_active=1 AND owner.deactivated_at IS NULL
-        AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now')))`
+      const permission=lti?`EXISTS(SELECT 1 FROM users owner WHERE owner.id=course.user_id AND ${d1LmsOwnerSql()})`
         :params.shareToken?`course.share_slug=? AND ${NATIVE_COURSE_EXTERNAL}`
-        :`(course.user_id=? OR (${NATIVE_COURSE_EXTERNAL} AND EXISTS(SELECT 1 FROM video_course_memberships WHERE course_id=course.id AND user_id=?)))`;
+        :nativeCourseAccessAllowed(false, { owner: 'course.user_id=?', nativeEnabled: NATIVE_COURSE_EXTERNAL,
+          participant: 'EXISTS(SELECT 1 FROM video_course_memberships WHERE course_id=course.id AND user_id=?)', shareMatches: '0' }, nativeCourseStringLogic);
       const args=lti?[]:params.shareToken?[params.shareToken]:[params.userId??null,params.userId??null];
       const results=await database.batch<{id:number;userId:string;videoId:number}>([
         database.prepare(`SELECT course.id,course.user_id AS userId FROM video_courses course WHERE course.id=? AND ${permission}`).bind(params.courseId,...args),
@@ -90,7 +93,8 @@ export function createD1ChatRepository(database:D1Database):ChatRepository {
     async feedback(logId,value,options) {
       const permission=options.ltiCourseGrant!==undefined?'log.course_id=? AND log.is_shared_origin=1'
         :options.shareSlug?`course.share_slug=? AND log.is_shared_origin=1 AND ${NATIVE_COURSE_EXTERNAL}`
-        :`course.user_id=? OR (log.user_id=? AND ${NATIVE_COURSE_EXTERNAL})`;
+        :nativeCourseAccessAllowed(false, { owner: 'course.user_id=?', nativeEnabled: NATIVE_COURSE_EXTERNAL,
+          participant: 'log.user_id=?', shareMatches: '0' }, nativeCourseStringLogic);
       const args=options.ltiCourseGrant!==undefined?[options.ltiCourseGrant]:options.shareSlug?[options.shareSlug]:[options.userId??null,options.userId??null];
       const token=crypto.randomUUID();
       const results=await database.batch<{effect_applied:number;id:number;feedback:string|null}>([

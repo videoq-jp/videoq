@@ -1,3 +1,7 @@
+import { pendingUploadedVideo, pendingYoutubeVideo, uploadConfirmationTransition, videoCreationReplayAllowed } from '../../application/video-creation';
+import { validateCreationIdempotency } from '../../application/creation-idempotency';
+import { failedUploadReservation, quotaAllowsAdditional, validateUploadReservationBytes } from '../../application/quota-policy';
+import { quotaSqlComparison } from '../quota-policy-sql';
 import { and, eq } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { videos } from "../../db/schema/sqlite";
@@ -5,14 +9,11 @@ import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
 import type { CreationIdempotency } from "../contracts/creation-idempotency";
 import type { VideoUploadRepository } from "../contracts/video-upload-repository";
 
-const GIB = 1024 ** 3;
 const CURRENT_MONTH = "strftime('%Y-%m-%dT%H:%M:%fZ','now','start of month')";
 const CURRENT_UPLOAD_BYTES = `CASE WHEN strftime('%Y-%m',upload_usage_period_start)=strftime('%Y-%m','now') THEN used_upload_bytes ELSE 0 END`;
 
 function receipt(input: CreationIdempotency | undefined, action: CreationIdempotency["action"]) {
-  if (input && (input.action !== action || !input.key || input.key.length > 128 || !/^[a-f0-9]{64}$/.test(input.requestHash))) {
-    throw new Error("Invalid creation idempotency");
-  }
+  validateCreationIdempotency(input, action);
   return input ?? { action, key: `internal:${crypto.randomUUID()}`, requestHash: "0".repeat(64) };
 }
 
@@ -34,19 +35,21 @@ export function createD1VideoUploadRepository(database: D1Database): VideoUpload
 
   return {
     async reserveUpload(p) {
-      if (!Number.isSafeInteger(p.storageBytes) || p.storageBytes <= 0) throw new Error("Upload reservation bytes must be a positive safe integer.");
+      validateUploadReservationBytes(p.storageBytes);
       const identity = receipt(p.idempotency, "request_video_upload");
+      const initial = pendingUploadedVideo(p);
       const result = await database.batch<Record<string, unknown>>([
         database.prepare(`INSERT INTO videos
           (user_id,file,title,description,transcription_language,status,upload_usage_period_start,
            source_type,source_url,youtube_video_id,transcript,error_message,uploaded_at)
-          SELECT id,?,?,?,?, 'uploading',${CURRENT_MONTH},'uploaded','','','','',strftime('%Y-%m-%dT%H:%M:%fZ','now')
+          SELECT id,?,?,?,?,?,${CURRENT_MONTH},?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now')
           FROM users WHERE id=? AND is_over_quota IS NOT TRUE
-            AND (storage_limit_gb IS NULL OR used_storage_bytes <= floor(storage_limit_gb*1073741824)-?)
-            AND (monthly_upload_limit_gb IS NULL OR (${CURRENT_UPLOAD_BYTES}) <= floor(monthly_upload_limit_gb*1073741824)-?)
+            AND ${quotaAllowsAdditional('used_storage_bytes', 'floor(storage_limit_gb*1073741824)', '?', quotaSqlComparison)}
+            AND ${quotaAllowsAdditional(CURRENT_UPLOAD_BYTES, 'floor(monthly_upload_limit_gb*1073741824)', '?', quotaSqlComparison)}
             AND used_storage_bytes <= 9007199254740991-? AND (${CURRENT_UPLOAD_BYTES}) <= 9007199254740991-?
             AND NOT EXISTS (SELECT 1 FROM mcp_idempotency_records WHERE user_id=? AND action=? AND key=?)
-        `).bind(p.fileKey, p.title, p.description, p.transcriptionLanguage ?? null, p.userId, p.storageBytes, p.storageBytes,
+        `).bind(initial.file, initial.title, initial.description, initial.transcriptionLanguage ?? null, initial.status,
+          initial.sourceType, initial.sourceUrl, initial.youtubeVideoId, initial.transcript, initial.errorMessage, initial.userId, p.storageBytes, p.storageBytes,
           p.storageBytes, p.storageBytes, p.userId, identity.action, identity.key),
         rememberCreatedVideo(p.userId, identity),
         // changes() refers to the immediately preceding receipt INSERT in this
@@ -61,29 +64,32 @@ export function createD1VideoUploadRepository(database: D1Database): VideoUpload
       ]);
       const row = result[3].results[0];
       if (row) {
-        if (row.request_hash !== identity.requestHash || row.video_id === null) return { idempotencyConflict: true };
+        if (!videoCreationReplayAllowed('uploaded', row.request_hash === identity.requestHash, row.video_id !== null)) return { idempotencyConflict: true };
         return { ok: true, videoId: Number(row.video_id), fileKey: String(row.file), reused: result[0].meta.changes === 0 };
       }
       const state = result[4].results[0];
-      if (!state) throw new Error("Quota owner not found.");
-      if (state.is_over_quota) return { overQuota: true };
-      if (state.storage_limit_gb !== null && Number(state.used_storage_bytes) > Math.floor(Number(state.storage_limit_gb) * GIB) - p.storageBytes) {
-        return { exceeded: true, limit: Math.floor(Number(state.storage_limit_gb) * GIB) };
-      }
-      if (state.monthly_upload_limit_gb !== null) return { monthlyUploadExceeded: true, limit: Math.floor(Number(state.monthly_upload_limit_gb) * GIB) };
+      const failure = failedUploadReservation(state ? {
+        overQuota: Boolean(state.is_over_quota),
+        storageLimitGb: state.storage_limit_gb === null ? null : Number(state.storage_limit_gb),
+        storageUsedBytes: Number(state.used_storage_bytes),
+        monthlyLimitGb: state.monthly_upload_limit_gb === null ? null : Number(state.monthly_upload_limit_gb),
+      } : null, p.storageBytes);
+      if (failure) return failure;
       throw new Error("Upload quota exceeds the safe integer range.");
     },
     async createYoutube(p) {
       const identity = receipt(p.idempotency, "create_youtube_video");
+      const initial = pendingYoutubeVideo(p);
       const message = buildJobMessage(JOB_TRANSCRIBE_VIDEO, { video_id: 0 });
       const dedupeKey = `job:${message.job_id}`;
       const result = await database.batch<Record<string, unknown>>([
         database.prepare(`INSERT INTO videos
           (user_id,file,title,description,status,source_type,source_url,youtube_video_id,transcript,error_message,uploaded_at)
-          SELECT id,'',?,?,'pending','youtube',?,?,'','',strftime('%Y-%m-%dT%H:%M:%fZ','now')
+          SELECT id,?,?,?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now')
           FROM users WHERE id=? AND NOT EXISTS
             (SELECT 1 FROM mcp_idempotency_records WHERE user_id=? AND action=? AND key=?)
-        `).bind(p.title, p.description, p.sourceUrl, p.youtubeVideoId, p.userId, p.userId, identity.action, identity.key),
+        `).bind(initial.file, initial.title, initial.description, initial.status, initial.sourceType, initial.sourceUrl,
+          initial.youtubeVideoId, initial.transcript, initial.errorMessage, initial.userId, p.userId, identity.action, identity.key),
         rememberCreatedVideo(p.userId, identity),
         database.prepare(`INSERT INTO external_tasks (kind,payload,dedupe_key)
           SELECT 'sqs_job',json_set(?,'$.message.payload.video_id',resource_id),?
@@ -95,21 +101,22 @@ export function createD1VideoUploadRepository(database: D1Database): VideoUpload
       ]);
       const row = result[3].results[0];
       if (!row) throw new Error("Video owner not found.");
-      if (row.request_hash !== identity.requestHash) return { idempotencyConflict: true };
+      if (!videoCreationReplayAllowed('youtube', row.request_hash === identity.requestHash, row.video_id !== null)) return { idempotencyConflict: true };
       const task = result[4].results[0];
       return { videoId: Number(row.resource_id), taskId: task ? Number(task.id) : null,
         jobId: task ? message.job_id : "", reused: result[0].meta.changes === 0 };
     },
     async confirmUpload({ videoId, userId, fileKey }) {
+      const transition = uploadConfirmationTransition();
       const message = buildJobMessage(JOB_TRANSCRIBE_VIDEO, { video_id: videoId });
       const dedupeKey = `job:${message.job_id}`;
       const result = await database.batch<Record<string, unknown>>([
         database.prepare(`INSERT INTO external_tasks (kind,payload,dedupe_key)
-          SELECT 'sqs_job',?,? FROM videos WHERE id=? AND user_id=? AND status='uploading' AND file=?
-        `).bind(JSON.stringify({ message }), dedupeKey, videoId, userId, fileKey),
-        database.prepare(`UPDATE videos SET status='pending',error_message=''
-          WHERE id=? AND user_id=? AND status='uploading' AND file=? AND changes()=1
-        `).bind(videoId, userId, fileKey),
+          SELECT 'sqs_job',?,? FROM videos WHERE id=? AND user_id=? AND status=? AND file=?
+        `).bind(JSON.stringify({ message }), dedupeKey, videoId, userId, transition.from, fileKey),
+        database.prepare(`UPDATE videos SET status=?,error_message=?
+          WHERE id=? AND user_id=? AND status=? AND file=? AND changes()=1
+        `).bind(transition.changes.status, transition.changes.errorMessage, videoId, userId, transition.from, fileKey),
         database.prepare("SELECT id FROM external_tasks WHERE dedupe_key=?").bind(dedupeKey),
       ]);
       const task = result[2].results[0];

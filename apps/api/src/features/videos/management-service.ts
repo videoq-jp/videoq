@@ -1,8 +1,7 @@
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 import {
-  extractYoutubeVideoId,
   INVALID_YOUTUBE_URL_MESSAGE,
-} from "../../lib/youtube";
+} from "../../application/youtube";
 import type {
   VideoManagementDependencies,
   YoutubeCreateRequest,
@@ -45,7 +44,7 @@ export function createVideoManagementService(
     idempotency?: CreationIdempotency,
   ) {
     deps.requireYoutube();
-    const youtubeVideoId = extractYoutubeVideoId(body.youtube_url);
+    const youtubeVideoId = deps.extractYoutubeVideoId(body.youtube_url);
     if (youtubeVideoId === null) {
       return {
         fieldError: { youtube_url: [INVALID_YOUTUBE_URL_MESSAGE] },

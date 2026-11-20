@@ -20,9 +20,10 @@ const STRIKES_KEY = "idleStrikes";
  * 解決できずテストファイルごと落ちる。本番では `src/index.ts` が同じバンドルで
  * pg を静的に読むので、遅延させても起動コストは変わらない。
  *
- * 裏を返すと `alarm` / `reschedule` の実行時経路はテストで踏めていない。
- * 判断ロジックは lib/task-scheduler.ts の純粋関数に、クエリは
- * maintenance-schedule.integration.test.ts に切り出して個別に検証している。
+ * 非停止時に DB を使う `alarm` / `reschedule` 経路は、この runtime test では
+ * 実行しない。停止中の経路と実際の alarm storage は runtime test で検証する。
+ * 起床判断は application/maintenance-scheduling.ts の純粋関数に、クエリは
+ * maintenance-schedule.integration.test.ts に分けて検証している。
  */
 export class TaskScheduler extends DurableObject<Bindings> {
   /**

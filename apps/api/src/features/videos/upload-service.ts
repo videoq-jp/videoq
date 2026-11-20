@@ -1,3 +1,4 @@
+import { uploadConfirmed } from '../../application/multipart-upload';
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 import type { VideoUploadRepository } from "../../persistence/contracts/video-upload-repository";
 import type { VideoMutationRepository } from "../../persistence/contracts/video-mutation-repository";
@@ -6,18 +7,19 @@ import type { MultipartUploadRepository } from "../../persistence/contracts/mult
 import {
   buildPendingUploadFileKey, fileExtension, isAllowedExtension, isAllowedContentType,
   parseReservedBytesFromFileKey, unsupportedTypeMessage, invalidContentTypeMessage,
-} from "../../lib/upload";
-import { MAX_SINGLE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "@videoq/trpc/video-upload";
+} from "../../application/upload";
+import { MAX_SINGLE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "@videoq/domain/video-upload";
 
 /** Only the capabilities needed by the upload lifecycle; no runtime environment. */
-export interface VideoUploadDependencies {
+export interface VideoUploadDependencies<Body = unknown> {
+  newFileKey(userId: string, bytes: number, extension: string): string;
   videos: Pick<VideoUploadRepository, "reserveUpload" | "getUploadState" | "confirmUpload">
     & Pick<VideoMutationRepository, "delete"> & Pick<VideoReadRepository, "getDetail">;
   storage: {
     presigned: boolean;
     signPut(fileKey: string, contentType: string, bytes: number): Promise<string>;
     size(fileKey: string): Promise<number | null>;
-    put(fileKey: string, body: ReadableStream, contentType: string): Promise<void>;
+    put(fileKey: string, body: Body, contentType: string): Promise<void>;
   };
   multipart: Pick<MultipartUploadRepository, "initialize" | "complete">;
   tasks: { dispatch(taskId: number): Promise<unknown>; scheduleRecovery(): Promise<void> };
@@ -34,11 +36,11 @@ export type UploadRequest = {
   description: string;
 };
 
-export type DirectUploadFile = {
-  name: string; type: string; size: number; stream(): ReadableStream;
+export type DirectUploadFile<Body = unknown> = {
+  name: string; type: string; size: number; stream(): Body;
 };
-export type DirectUploadInput = {
-  file: DirectUploadFile; title: string; description: string; transcriptionLanguage?: string;
+export type DirectUploadInput<Body = unknown> = {
+  file: DirectUploadFile<Body>; title: string; description: string; transcriptionLanguage?: string;
 };
 export type DirectUploadResult =
   | { ok: true; video: VideoDetail | null }
@@ -62,9 +64,8 @@ export function directUploadTitleFailure(rawTitle: string) {
   return null;
 }
 
-const CONFIRMED_UPLOAD_STATUSES = new Set(["pending", "processing", "indexing", "completed", "error"]);
 
-export function createVideoUploadService(deps: VideoUploadDependencies) {
+export function createVideoUploadService<Body>(deps: VideoUploadDependencies<Body>) {
   const { videos, storage, multipart, tasks } = deps;
   const dispatchCleanupTask = async (taskId: number | null): Promise<void> => {
     if (taskId !== null) await tasks.dispatch(taskId);
@@ -104,7 +105,7 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
           Number.parseInt(idempotency.requestHash.slice(0, 12), 16),
           idempotency.requestHash.slice(12, 24),
         )
-      : buildPendingUploadFileKey(userId, body.file_size, ext);
+      : deps.newFileKey(userId, body.file_size, ext);
     const pending = await videos.reserveUpload({
       userId, storageBytes: body.file_size, fileKey, title: body.title,
       description: body.description, idempotency, transcriptionLanguage: body.transcriptionLanguage,
@@ -202,7 +203,7 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     if (!upload.found) return { notFound: true } as const;
     let alreadyConfirmed = upload.status !== "uploading";
     if (alreadyConfirmed) {
-      if (!upload.fileKey || !CONFIRMED_UPLOAD_STATUSES.has(upload.status)) {
+      if (!upload.fileKey || !uploadConfirmed(upload.status)) {
         return {
           badState: true as const,
           message: `Video is in '${upload.status}' state, expected 'uploading'`,
@@ -237,7 +238,7 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
         // A concurrent confirmation may have won after the initial status read.
         const latest = await videos.getUploadState(videoId, userId);
         if (!latest.found) return { notFound: true } as const;
-        if (!latest.fileKey || !CONFIRMED_UPLOAD_STATUSES.has(latest.status)) {
+        if (!latest.fileKey || !uploadConfirmed(latest.status)) {
           return {
             badState: true as const,
             message: "Video upload changed before confirmation.",
@@ -250,7 +251,7 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     return video ? { video, alreadyConfirmed } as const : { notFound: true } as const;
   }
 
-  async function createDirectUpload(userId: string, input: DirectUploadInput): Promise<DirectUploadResult> {
+  async function createDirectUpload(userId: string, input: DirectUploadInput<Body>): Promise<DirectUploadResult> {
     if (storage.presigned) return uploadFailure('unavailable', 'Direct upload is unavailable in object-storage mode.');
     const { file, description, transcriptionLanguage } = input;
     const title = input.title.trim();
@@ -272,7 +273,7 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     }
 
     const fileSize = file.size;
-    const fileKey = buildPendingUploadFileKey(userId, fileSize, ext);
+    const fileKey = deps.newFileKey(userId, fileSize, ext);
     const pending = await videos.reserveUpload({ userId, storageBytes: fileSize, fileKey, title, description, transcriptionLanguage });
     if ('monthlyUploadExceeded' in pending) return uploadFailure('quota', 'Monthly upload allowance exceeded.', 'MONTHLY_UPLOAD_LIMIT_EXCEEDED');
     if ('idempotencyConflict' in pending) throw new Error('Unexpected idempotency conflict without an idempotency key.');

@@ -1,4 +1,5 @@
-import {and,eq,sql} from 'drizzle-orm';
+import { activeD1LmsOwner } from './lms-owner-policy';
+import {and,eq} from 'drizzle-orm';
 import {createD1Connection} from '../../db/d1/connection';
 import {teachingConnections,lmsInstallations,lmsResources,users,videos,videoCourses} from '../../db/schema/sqlite';
 import {normalizeLmsResourceData} from '../../shared/lms-resource-values';
@@ -7,7 +8,7 @@ export function createD1LmsResourceReadRepository(database:D1Database):LmsResour
  const db=createD1Connection(database);
  return {async get(grant,externalId){
   const where=and(eq(lmsResources.installationId,grant.id),eq(lmsResources.externalId,externalId),grant.ownerUserId?eq(teachingConnections.ownerUserId,grant.ownerUserId):undefined,eq(lmsInstallations.active,true),
-   eq(users.isActive,true),sql`${users.deactivatedAt} IS NULL AND (${users.banned} IS NOT TRUE OR julianday(${users.banExpires})<=julianday('now'))`);
+   activeD1LmsOwner());
   // Select each table separately in one atomic batch: repeated id/source column
   // names in a joined D1 row must not overwrite another table's fields.
   const [resources,media]=await db.batch([

@@ -1,4 +1,4 @@
-import type {LtiSessionProof} from '../../shared/lti-session-proof';
+import type {LtiSessionProof} from '../../application/lti-session-proof';
 /** Expiring protocol credentials, including one-use login/OAuth state. */
 export interface CredentialRepository {
   put(id:string,kind:string,payload:Record<string,unknown>,expiresAt:number):Promise<void>;

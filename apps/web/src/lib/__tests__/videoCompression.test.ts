@@ -1,4 +1,5 @@
 import { compressVideo, supportsVideoCompression } from '../videoCompression';
+import { compressionEncoding, compressionStorageEstimate } from '@/application/video-compression';
 import { compressionDimensions, COMPRESSION_DIRECTORY } from '../videoCompressionSettings';
 
 class FakeWorker {
@@ -80,4 +81,19 @@ it('fits portrait and landscape frames without upscaling', () => {
   expect(compressionDimensions(3840, 2160, '1080p')).toEqual({ width: 1920, height: 1080 });
   expect(compressionDimensions(2160, 3840, '720p')).toEqual({ width: 720, height: 1280 });
   expect(compressionDimensions(640, 480, '1080p')).toEqual({ width: 640, height: 480 });
+});
+
+it('retains source cadence, caps high-rate footage and avoids bitrate inflation', () => {
+  expect(compressionEncoding('1080p', 24, 1_000_000)).toEqual({ frameRate: 24, bitrate: 900_000 });
+  expect(compressionEncoding('1080p', 120, 20_000_000)).toEqual({ frameRate: 60, bitrate: 8_000_000 });
+  expect(compressionEncoding('1080p', 30, Number.NaN)).toEqual({ frameRate: 30, bitrate: 5_000_000 });
+  expect(compressionEncoding('720p', 60, 20_000_000)).toEqual({ frameRate: 30, bitrate: 2_500_000 });
+  expect(compressionEncoding('720p', 24, 10_000)).toEqual({ frameRate: 24, bitrate: 64_000 });
+  for (const rate of [0, -1, Number.NaN, Number.NEGATIVE_INFINITY]) {
+    expect(compressionEncoding('1080p', rate, 1_000_000)).toBeNull();
+  }
+});
+
+it('includes copied audio and five percent overhead in temporary storage estimates', () => {
+  expect(compressionStorageEstimate(8_000_000, 256_000, 3600)).toBe(3_900_960_000);
 });

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { applyChatPart, plainChatAnswer, chatAnswerText, type ChatAnswer, type ChatContentPart } from '@videoq/trpc/chat';
 import { PUBLIC_DEMO_SHARE_SLUG } from '@videoq/trpc/public-demo';
 import { apiClient, ApiError } from '@/lib/api';
+import { sendChatAnswer } from '@/application/chat-send';
 import { trackLandingEvent } from '@/lib/landingAnalytics';
 import { trpc } from '@/lib/trpc';
 import { invalidateAfterChatAnswer, updateAfterChatFeedback } from '@/lib/cacheInvalidation';
@@ -16,7 +17,7 @@ import {
 } from '@/lib/chatStreamController';
 import {
   applyChatFeedback,
-  getNextChatFeedback,
+  submitChatFeedback,
   type ChatFeedbackValue,
 } from '@/lib/chatFeedback';
 
@@ -205,49 +206,45 @@ export function useChatMessages({ courseId, shareToken, conversationId: provided
     setIsLoading(true);
 
     try {
-      onSend?.();
-      for await (const event of apiClient.chatStream({
-        messages: [{ role: 'user', content }],
-        conversation_id: conversationId,
-        resume_conversation: resumeConversation.current,
-        ...(courseId ? { course_id: courseId } : {}),
-        ...(shareToken ? { share_slug: shareToken } : {}),
-      }, request.signal)) {
-        if (request.signal.aborted) return;
-        setMessages((prev) => {
-          const last = prev.at(-1);
-          if (!last || last.role !== 'assistant') return prev;
-          const progress = last.progress ? updateChatProgress(last.progress, event) : undefined;
-          const sources = event.type === 'source' && !last.answer.sources.some(source => source.id === event.source.id)
-            ? [...last.answer.sources, event.source] : last.answer.sources;
-          if (progress === last.progress && sources === last.answer.sources) return prev;
-          return [...prev.slice(0, -1), { ...last, progress, answer: { ...last.answer, sources } }];
-        });
-        streamController.handleEvent(event);
-        if (event.type === 'error') {
-          return;
-        }
-        if (event.type === 'done') {
+      await sendChatAnswer(!!shareToken, {
+        cancelled: () => request.signal.aborted,
+        started: () => onSend?.(),
+        events: () => apiClient.chatStream({
+          messages: [{ role: 'user', content }],
+          conversation_id: conversationId,
+          resume_conversation: resumeConversation.current,
+          ...(courseId ? { course_id: courseId } : {}),
+          ...(shareToken ? { share_slug: shareToken } : {}),
+        }, request.signal),
+        present: event => {
+          setMessages((prev) => {
+            const last = prev.at(-1);
+            if (!last || last.role !== 'assistant') return prev;
+            const progress = last.progress ? updateChatProgress(last.progress, event) : undefined;
+            const sources = event.type === 'source' && !last.answer.sources.some(source => source.id === event.source.id)
+              ? [...last.answer.sources, event.source] : last.answer.sources;
+            if (progress === last.progress && sources === last.answer.sources) return prev;
+            return [...prev.slice(0, -1), { ...last, progress, answer: { ...last.answer, sources } }];
+          });
+        },
+        stream: streamController,
+        persisted: refreshAccount => {
           resumeConversation.current = true;
           onAnswer?.();
           // Persistence is complete now, even while text awaits the next paint.
-          // Shared answers use the owner's quota, not the visitor's account.
-          if (!shareToken) {
+          if (refreshAccount) {
             void invalidateAfterChatAnswer(queryClient, courseId);
             trackLandingEvent('first_answer');
           }
-          break;
-        }
-      }
-      await streamController.complete();
-    } catch (error) {
-      if (request.signal.aborted) return;
-      streamController.abort();
-      console.error('Chat error:', error);
-      const errorMessage = tRef.current(
-        (error instanceof ApiError && error.code && CHAT_ERROR_KEYS[error.code]) || 'chat.error',
-      );
-      replaceLastAssistantMessage(errorMessage);
+        },
+        failed: error => {
+          console.error('Chat error:', error);
+          const errorMessage = tRef.current(
+            (error instanceof ApiError && error.code && CHAT_ERROR_KEYS[error.code]) || 'chat.error',
+          );
+          replaceLastAssistantMessage(errorMessage);
+        },
+      });
     } finally {
       if (streamAbortRef.current === request) {
         streamAbortRef.current = null;
@@ -275,32 +272,14 @@ export function useChatMessages({ courseId, shareToken, conversationId: provided
   }, [handleSend]);
 
   const handleFeedback = useCallback(async (chatLogId: number, value: 'good' | 'bad') => {
-    if (feedbackInFlightRef.current.has(chatLogId)) return;
-    const targetMessage = messages.find((message) => message.chatLogId === chatLogId);
-    if (!targetMessage) return;
-    if (shareToken && !targetMessage.feedbackToken) return;
-
-    const nextFeedback = getNextChatFeedback(targetMessage.feedback, value);
-
-    feedbackInFlightRef.current.add(chatLogId);
-    setFeedbackUpdatingIds(new Set(feedbackInFlightRef.current));
-    try {
-      const result = await feedbackMutation.mutateAsync({
-        chatLogId,
-        feedback: nextFeedback,
-        shareSlug: shareToken,
-        feedbackToken: shareToken ? targetMessage.feedbackToken : undefined,
-      });
-      setMessages((prev) => applyChatFeedback(prev, chatLogId, result.feedback));
-      if (courseId && !shareToken) {
-        await updateAfterChatFeedback(queryClient, courseId, result);
-      }
-    } catch (error) {
-      console.error('Failed to update feedback', error);
-    } finally {
-      feedbackInFlightRef.current.delete(chatLogId);
-      setFeedbackUpdatingIds(new Set(feedbackInFlightRef.current));
-    }
+    await submitChatFeedback({ chatLogId, selected: value, messages, shareToken, courseId }, {
+      pending: feedbackInFlightRef.current,
+      pendingChanged: () => setFeedbackUpdatingIds(new Set(feedbackInFlightRef.current)),
+      send: input => feedbackMutation.mutateAsync(input),
+      apply: (id, result) => setMessages(prev => applyChatFeedback(prev, id, result.feedback)),
+      refresh: (id, result) => updateAfterChatFeedback(queryClient, id, result),
+      failed: error => console.error('Failed to update feedback', error),
+    });
   }, [courseId, feedbackMutation, messages, queryClient, shareToken]);
 
   return {

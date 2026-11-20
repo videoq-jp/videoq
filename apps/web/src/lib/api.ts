@@ -1,4 +1,6 @@
 import { createParser } from 'eventsource-parser';
+import { createChatStreamAdmission } from '../application/chat-stream-admission';
+import { uploadPreparedFile } from '../application/file-upload';
 import { authClient } from './auth-client';
 import { getSafeNextPath } from './authRedirect';
 import { trackLandingEvent } from './landingAnalytics';
@@ -7,7 +9,7 @@ import { ApiError } from './api-error';
 import { createAppTrpcClient, TRPC_UNAUTHORIZED_EVENT } from './trpc';
 import { videoSchema } from '@videoq/trpc/schema';
 import { chatStreamEventSchema } from '@videoq/trpc/chat';
-import { MULTIPART_UPLOAD_THRESHOLD, videoUploadContentType } from '@videoq/trpc/video-upload';
+import { MULTIPART_UPLOAD_THRESHOLD, videoUploadContentType } from '@videoq/domain/video-upload';
 import { uploadMultipartFile } from './multipartUpload';
 import i18n from '@/i18n/config';
 import type {
@@ -302,8 +304,7 @@ export class ApiClient {
     const frames: string[] = [];
     const parser = createParser({ onEvent: event => frames.push(event.data) });
     let trailingCarriageReturn = false;
-    let lastSegmentIndex = -1;
-    const sourceIds = new Set<number>();
+    const admitEvent = createChatStreamAdmission();
 
     try {
       while (true) {
@@ -318,16 +319,7 @@ export class ApiClient {
           let event: ChatStreamEvent;
           try {
             event = chatStreamEventSchema.parse(JSON.parse(data));
-            if (event.type === 'source') sourceIds.add(event.source.id);
-            if (event.type === 'text_delta') {
-              if (event.segmentIndex < lastSegmentIndex || event.segmentIndex > lastSegmentIndex + 1) {
-                throw new Error('Non-sequential answer segment');
-              }
-              lastSegmentIndex = event.segmentIndex;
-            }
-            if (event.type === 'citation' && (event.segmentIndex !== lastSegmentIndex || !sourceIds.has(event.sourceId))) {
-              throw new Error('Unknown citation segment or source');
-            }
+            admitEvent(event);
           } catch {
             // Skipping a bad delta can make a truncated answer look complete.
             yield { type: 'error', code: 'STREAM_INVALID', message: '' };
@@ -422,36 +414,27 @@ export class ApiClient {
     const contentType = videoUploadContentType(data.file);
     if (!contentType) throw new ApiError('Invalid video file type', 'INVALID_FILE_TYPE');
     if (USE_S3_STORAGE) {
-      // 1. Request presigned upload URL
-      const { video, upload_url, multipart } = await this.rpc.videos.requestUpload.mutate({
-        filename: data.file.name,
-        contentType,
-        fileSize: data.file.size,
-        title: data.title,
-        description: data.description,
-        transcriptionLanguage: data.transcriptionLanguage,
-        ...(data.file.size >= MULTIPART_UPLOAD_THRESHOLD ? { multipart: true } : {}),
+      return uploadPreparedFile({
+        request: async () => {
+          const { video, upload_url, multipart } = await this.rpc.videos.requestUpload.mutate({
+            filename: data.file.name,
+            contentType,
+            fileSize: data.file.size,
+            title: data.title,
+            description: data.description,
+            transcriptionLanguage: data.transcriptionLanguage,
+            ...(data.file.size >= MULTIPART_UPLOAD_THRESHOLD ? { multipart: true } : {}),
+          });
+          return { videoId: video.id, directUrl: upload_url, multipart };
+        },
+        multipart: (videoId, session) => uploadMultipartFile(data.file, contentType, session, {
+          partUrl: partNumber => this.rpc.videos.uploadPartUrl.mutate({ id: videoId, partNumber }),
+          complete: parts => this.rpc.videos.completeMultipartUpload.mutate({ id: videoId, parts }),
+          abort: () => this.rpc.videos.abortUpload.mutate({ id: videoId }),
+        }, onProgress),
+        transfer: url => this.uploadToPresignedUrl(url, data.file, contentType, onProgress),
+        confirm: videoId => this.rpc.videos.confirmUpload.mutate({ id: videoId }),
       });
-
-      if (multipart) {
-        return uploadMultipartFile(data.file, contentType, multipart, {
-          partUrl: partNumber => this.rpc.videos.uploadPartUrl.mutate({ id: video.id, partNumber }),
-          complete: parts => this.rpc.videos.completeMultipartUpload.mutate({ id: video.id, parts }),
-          abort: () => this.rpc.videos.abortUpload.mutate({ id: video.id }),
-        }, onProgress);
-      }
-      if (!upload_url) throw new Error('Upload URL is missing');
-
-      // 2. Upload file directly to R2/S3
-      await this.uploadToPresignedUrl(
-        upload_url,
-        data.file,
-        contentType,
-        onProgress,
-      );
-
-      // 3. Confirm upload
-      return this.rpc.videos.confirmUpload.mutate({ id: video.id });
     }
 
     const formData = new FormData();

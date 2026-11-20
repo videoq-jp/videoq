@@ -47,6 +47,22 @@ export function videoMutationContract(backend: string, createFixture: () => Prom
       await expect(f.repository.delete(id, "owner")).rejects.toThrow();
       expect(await f.snapshot()).toMatchObject({ videos: 1, scenes: 1, externalTasks: 0, receipts: 0, uploadBytes: 5, storageBytes: 5 });
     });
+    it.each([
+      { status: 'uploading' as const, stale: false, remaining: 0 },
+      { status: 'uploading' as const, stale: true, remaining: 5 },
+      { status: 'completed' as const, stale: false, remaining: 5 },
+    ])('refunds only an unconfirmed reservation in its original month: %j', async ({ status, stale, remaining }) => {
+      const f=current(),id=await f.seed(status,stale);
+      expect(await f.repository.delete(id,'owner')).toMatchObject({deleted:true,cleanupTaskId:expect.any(Number)});
+      expect(await f.repository.delete(id,'owner')).toEqual({deleted:false,cleanupTaskId:null});
+      expect(await f.snapshot()).toMatchObject({videos:0,uploadBytes:remaining,storageBytes:5});
+    });
+    it('refuses deletion precondition mismatches without changing quota or queuing cleanup', async () => {
+      const f=current(),id=await f.seed('uploading');
+      for(const options of [{expectedStatus:'completed'},{expectedFileKey:'replacement.mp4'}])
+        expect(await f.repository.delete(id,'owner',options)).toEqual({deleted:false,cleanupTaskId:null});
+      expect(await f.snapshot()).toMatchObject({videos:1,externalTasks:0,uploadBytes:5,storageBytes:5});
+    });
     it("rejects invalid deletion accounting inputs", async () => {
       const f = current(); const id = await f.seed();
       for (const fallbackStorageBytes of [-1, 0.1, Number.MAX_SAFE_INTEGER + 1]) {

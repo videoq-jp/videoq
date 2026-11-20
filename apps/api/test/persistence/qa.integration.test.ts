@@ -214,6 +214,12 @@ for(const backend of ['d1','postgres'] as const){
     await pool.query("UPDATE video_courses SET share_slug=NULL WHERE id=1");
     await expect(list('owner', { shareSlug: 'linear-algebra' })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
+  it('projects native actor capabilities without granting anonymous or learner moderation', async () => {
+    expect(await list(null, { shareSlug: 'linear-algebra' })).toMatchObject({ canPost: false, canVote: false, canModerate: false });
+    expect(await list('outsider', { shareSlug: 'linear-algebra' })).toMatchObject({ canPost: true, canVote: true, canModerate: false });
+    expect(await list('alice')).toMatchObject({ canPost: true, canVote: true, canModerate: false });
+    expect(await list('owner')).toMatchObject({ canPost: true, canVote: true, canModerate: true });
+  });
   it('rejects cross-course question ids, reply ids and video ids', async () => {
     const other = await ask('outsider', { courseId: 2, videoId: 20 });
     const otherReply = await mutate(env, 'outsider', { name: 'qa.reply', input: { courseId: 2, questionId: other, body: 'Private answer' } });

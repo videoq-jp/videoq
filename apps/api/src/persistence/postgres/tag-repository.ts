@@ -1,7 +1,6 @@
 import {isUniqueViolation} from "../../db/errors";
 import {TagNameConflictError} from "../contracts/tag-repository";
 import { mapVideoListRow } from "../../repositories/video-mapping";
-import { INVALID_COLOR_MESSAGE, EMPTY_NAME_MESSAGE, normalizeTagName, isValidTagColor } from "../../shared/tag-policy";
 import type { TagListItem,TagDetail,TagRepository } from "../contracts/tag-repository";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import { type Db, withDb } from "../../db/pool";
@@ -125,19 +124,10 @@ export async function updateTag(
   tagId: number,
   userId: string,
   fields: { name?: string; color?: string },
-): Promise<{ notFound: true } | { error: string } | { tag: TagListItem }> {
-  const name = fields.name === undefined ? undefined : normalizeTagName(fields.name);
-  const error = name === null ? EMPTY_NAME_MESSAGE
-    : fields.color !== undefined && !isValidTagColor(fields.color) ? INVALID_COLOR_MESSAGE
-      : null;
+): Promise<{ notFound: true } | { tag: TagListItem }> {
+  const name = fields.name;
   const ownedTag = and(eq(tags.id, tagId), eq(tags.userId, userId));
   return withDb(env, async (db) => {
-    if (error) {
-      // Preserve notFound precedence without writing valid parts of an invalid patch.
-      const [owner] = await db.select({ id: tags.id }).from(tags).where(ownedTag).limit(1);
-      return owner ? { error } : { notFound: true } as const;
-    }
-
     const rows = name !== undefined || fields.color !== undefined
       ? await db
         .update(tags)

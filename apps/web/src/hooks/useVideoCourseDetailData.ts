@@ -1,3 +1,4 @@
+import { changedCourseMetadata, reorderCourseVideos, addableCourseVideos, rollbackCourseVideoOrder } from '@/application/course-editing';
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Course as VideoCourse } from '@videoq/trpc';
@@ -49,11 +50,7 @@ export function useAddableVideosQuery({
   });
   const courseVideos = course?.videos;
   const libraryVideos = videosQuery.videos;
-  const videos = useMemo(() => {
-    if (!courseVideos) return [];
-    const currentVideoIds = new Set(courseVideos.map((video) => video.id));
-    return libraryVideos.filter((video) => !currentVideoIds.has(video.id));
-  }, [courseVideos, libraryVideos]);
+  const videos = useMemo(() => addableCourseVideos(courseVideos, libraryVideos), [courseVideos, libraryVideos]);
 
   return { ...videosQuery, videos };
 }
@@ -108,21 +105,15 @@ export function useVideoCourseDetailMutations({
       await queryClient.cancelQueries(filter);
       const previous = queryClient.getQueryData(key);
       const optimistic = queryClient.setQueryData(key, (current) => {
-        if (!current?.videos || current.videos.length !== videoIds.length || new Set(videoIds).size !== videoIds.length) return current;
-        const videosById = new Map(current.videos.map((video) => [video.id, video]));
-        // A membership change since drag start must not drop newly added videos.
-        if (videoIds.some((id) => !videosById.has(id))) return current;
-        return { ...current, videos: videoIds.map((id, order) => ({ ...videosById.get(id)!, order })) };
+        if (!current) return current;
+        const videos = reorderCourseVideos(current.videos, videoIds);
+        return videos === current.videos ? current : { ...current, videos };
       });
       try {
         await appTrpcClient.memberships.reorderVideos.mutate({ courseId, videoIds });
       } catch (error) {
         // Preserve newer membership data and unrelated metadata during rollback.
-        queryClient.setQueryData(key, (current) => (
-          current && previous && current.videos === optimistic?.videos
-            ? { ...current, videos: previous.videos }
-            : current
-        ));
+        queryClient.setQueryData(key, current => rollbackCourseVideoOrder(current, previous, optimistic));
         await refreshQuery(queryClient, filter);
         throw error;
       }
@@ -146,10 +137,7 @@ export function useVideoCourseDetailMutations({
         throw new Error('Course ID is required');
       }
       const current = queryClient.getQueryData(trpc.courses.get.queryKey({ id: courseId }));
-      const patch = {
-        ...(payload.name !== undefined && payload.name !== current?.name ? { name: payload.name } : {}),
-        ...(payload.description !== undefined && payload.description !== current?.description ? { description: payload.description } : {}),
-      };
+      const patch = changedCourseMetadata(current, payload);
       if (Object.keys(patch).length === 0) return;
       return appTrpcClient.courses.update.mutate({ id: courseId, ...patch });
     },

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { resourceManifestSchema } from "./resource";
 import { toolClientAssertion, type ToolKeyEnvironment } from "../lti/tool-keys";
 import { lmsIdentity, materialsServiceSchema, materialsAccessResponse, type MaterialsService } from './contracts';
+import { materialsSnapshotIssues, MAX_MATERIAL_VIDEOS, MAX_MATERIAL_COURSE_ENTRIES } from './materials-snapshot-policy';
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
 export { materialsServiceSchema, materialManagementSchema, courseEntryAccessSchema, type MaterialsService } from './contracts';
@@ -9,18 +10,9 @@ const identity = lmsIdentity;
 export const materialsManifestSchema = z.object({ contextId: identity,
   // A complete snapshot is explicit; missing entries are never interpreted as tombstones.
   complete: z.literal(true), resources: z.array(z.object({ externalId: identity,
-    manifest: resourceManifestSchema }).strict()).max(1001),
+    manifest: resourceManifestSchema }).strict()).max(MAX_MATERIAL_VIDEOS + MAX_MATERIAL_COURSE_ENTRIES),
 }).strict().superRefine((snapshot, ctx) => {
-  const ids = new Set<string>();
-  let entries = 0, videos = 0;
-  for (const resource of snapshot.resources) {
-    if (resource.manifest.kind === 'course') entries++; else videos++;
-    if (resource.manifest.contextId !== snapshot.contextId || ids.has(resource.externalId)) {
-      ctx.addIssue({ code: "custom", message: "Duplicate or cross-context material" });
-    }
-    ids.add(resource.externalId);
-  }
-  if (entries > 1 || videos > 1000) ctx.addIssue({ code: 'custom', message: 'Too many course entries or materials' });
+  for (const message of materialsSnapshotIssues(snapshot)) ctx.addIssue({ code: 'custom', message });
 });
 export const exportStatusSchema = z.object({ jobId: lmsIdentity,
   generation: z.number().int().positive().safe(), status: z.enum(["queued", "uploading", "uploaded", "failed", "stale"]),

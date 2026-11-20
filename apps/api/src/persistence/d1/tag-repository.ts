@@ -4,7 +4,6 @@ import { createD1Connection } from "../../db/d1/connection";
 import { tags, videos, videoTags } from "../../db/schema/sqlite";
 import { mapVideoListRow } from "../../repositories/video-mapping";
 import { toUtcIso } from "../../shared/datetime";
-import { EMPTY_NAME_MESSAGE, INVALID_COLOR_MESSAGE, normalizeTagName, isValidTagColor } from "../../shared/tag-policy";
 import type { Bindings } from "../../types/bindings";
 import type { TagListItem, TagRepository } from "../contracts/tag-repository";
 import { videoTagsJson } from "./video-read-repository";
@@ -33,13 +32,8 @@ export function createD1TagRepository(database: D1Database, env: Bindings): TagR
       return { ...normalize({ ...tag, video_count: relatedVideos.length }), videos: relatedVideos };
     },
     async update(tagId, userId, fields) {
-      const name = fields.name === undefined ? undefined : normalizeTagName(fields.name);
-      const error = name === null ? EMPTY_NAME_MESSAGE : fields.color !== undefined && !isValidTagColor(fields.color) ? INVALID_COLOR_MESSAGE : null;
+      const name = fields.name;
       const owned = and(eq(tags.id, tagId), eq(tags.userId, userId));
-      if (error) {
-        const [tag] = await db.select({ id: tags.id }).from(tags).where(owned).limit(1);
-        return tag ? { error } : { notFound: true };
-      }
       const rows = name !== undefined || fields.color !== undefined
         ? await db.update(tags).set({ name: name ?? undefined, color: fields.color }).where(owned).returning(projection)
         : await db.select(projection).from(tags).where(owned).limit(1);

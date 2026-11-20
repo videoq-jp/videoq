@@ -1,5 +1,5 @@
 import type {OutboxedVideoJob} from './video-upload-repository';
-import type {MaterialsService} from '../../features/lms/contracts';
+import type {MaterialsService} from '../../application/lti-registration';
 export type MaterialsConnection={id:string;ownerUserId:string;clientId:string;deploymentId:string;materialsService:MaterialsService;materialsCursor:number};
 export type MaterialsLease={id:string;token:string;installationId:string};
 export type MaterialsClaim={status:'claimed';lease:MaterialsLease;connection:MaterialsConnection}|{status:'busy'}|{status:'unavailable'};

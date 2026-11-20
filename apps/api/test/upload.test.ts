@@ -1,6 +1,6 @@
 import { videosInputSchemas } from "../../../packages/trpc/src/inputs/videos";
 import { describe, it, expect, vi } from "vitest";
-import { MAX_VIDEO_UPLOAD_BYTES, multipartPartSize } from "@videoq/trpc/video-upload";
+import { MAX_VIDEO_UPLOAD_BYTES, multipartPartSize } from "@videoq/domain/video-upload";
 import {
   buildPendingUploadFileKey,
   fileExtension,

@@ -1,7 +1,7 @@
 import type { CurrentUser } from "../contracts/user-repository";
 import { eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
-import { MAX_VIDEO_UPLOAD_BYTES } from "@videoq/trpc/video-upload";
+import { accountEntitlementSummary } from "../../application/account-summary";
 import { currentUploadBytes } from "./storage-quota";
 import { users } from "../../db/schema";
 import type { Bindings } from "../../types/bindings";
@@ -10,7 +10,7 @@ import type { Bindings } from "../../types/bindings";
  * `account.me` procedure のレスポンスを組み立てる。
  */
 
-const GIB = 1024 ** 3;
+
 
 export async function getCurrentUser(
   env: Bindings,
@@ -56,26 +56,17 @@ export async function getCurrentUser(
       id: String(r.id),
       username: r.username,
       email: r.email,
-      is_admin: r.role?.split(",").includes("admin") ?? false,
+      ...accountEntitlementSummary({ role: r.role, planCode: r.plan_code, quotaSource: r.quota_source,
+        monthlyLimitGb: r.monthly_upload_limit_gb, storageLimitGb, processingLimitMinutes }),
       video_count: r.video_count,
-      // Compatibility for old clients; account-specific per-file caps are gone.
-      max_video_upload_size_mb: MAX_VIDEO_UPLOAD_BYTES / 1024 ** 2,
       used_upload_bytes: Number(r.used_upload_bytes),
-      monthly_upload_limit_bytes: r.monthly_upload_limit_gb === null ? null : Math.floor(r.monthly_upload_limit_gb * GIB),
       upload_resets_at: new Date(r.upload_resets_at).toISOString(),
       used_storage_bytes: Number(r.used_storage_bytes),
-      storage_limit_bytes:
-        storageLimitGb === null ? null : Math.trunc(storageLimitGb * GIB),
       used_processing_seconds: r.used_processing_seconds,
-      processing_limit_seconds:
-        processingLimitMinutes === null ? null : processingLimitMinutes * 60,
       used_ai_answers: r.used_ai_answers,
       ai_answers_limit: r.ai_answers_limit === null ? null : Number(r.ai_answers_limit),
       is_over_quota: r.is_over_quota,
-      plan_code:
-        r.plan_code === "basic" || r.plan_code === "pro" ? r.plan_code : "free",
       subscription_status: r.subscription_status,
-      quota_source: r.quota_source === "admin" ? "admin" : "plan",
     };
   });
 }

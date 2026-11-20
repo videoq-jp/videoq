@@ -37,6 +37,23 @@ The home landing page is included in the initial bundle and displays without wai
 
 `src/__tests__/App.navigation.test.tsx` verifies navigation, loading states, and interactions during errors using the real router, translations, and navigation. Use this integration test to check parent layouts in addition to individual page tests. Check browser rendering and interactions in `Application/Navigation` (`src/App.stories.tsx`).
 
+## Application boundaries
+
+`src/application` owns upload orchestration, multipart lifecycle, chat stream and
+progress state, feedback updates, message parsing, transcript search and compression
+dimensions. Video editing adds changed-field/tag persistence and recovery ordering;
+course editing owns metadata differences, addable-video selection and membership-safe
+reordering. Conversation selection owns bounded identity-only restoration, remembering
+stream recovery intent and choosing a new draft after deletion. Tag catalog loading
+owns paging and duplicate-ID merging; UI sorting, cancellation and tRPC response
+mapping remain in the query adapter. React hooks retain form state, query cache
+operations and RPC adapters.
+These modules accept structural inputs and injected capabilities, and
+can import only application modules and `@videoq/domain`. A separate TypeScript
+configuration checks them without DOM globals; ESLint and the architecture test
+check their imports. `src/lib` adapts browser APIs, translations and API clients,
+and preserves existing exports used by components.
+
 ## Video registration
 
 `prepareVideoUpload` in `src/lib/videoUpload.ts` validates form input and returns typed data for file uploads or YouTube registration. `useVideoUpload` passes the submission-time validation result directly to `runUploadWorkflow`. Input types for YouTube registration and tagging come from the tRPC client.

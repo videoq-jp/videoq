@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { multipartPartSize } from '@videoq/trpc/video-upload';
+import { multipartPartSize } from '@videoq/domain/video-upload';
 import { uploadMultipartFile } from '../multipartUpload';
 
 const etag = 'a'.repeat(32);

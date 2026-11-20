@@ -1,3 +1,4 @@
+import { ACCOUNT_VISIBLE_API_KEY_CONFIGS } from '../../application/account-integrations';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { withDb } from '../../db/pool';
 import { apikey, oauthClient, oauthConsent } from '../../db/schema';
@@ -10,7 +11,7 @@ export function createPostgresAccountIntegrationsRepository(env: Bindings): Acco
       id: apikey.id, config_id: apikey.configId, name: apikey.name,
       start: apikey.start, prefix: apikey.prefix, permissions: apikey.permissions,
       last_used_at: apikey.lastRequest, created_at: apikey.createdAt,
-    }).from(apikey).where(and(eq(apikey.referenceId, userId), inArray(apikey.configId, ['default', 'read-write'])))
+    }).from(apikey).where(and(eq(apikey.referenceId, userId), inArray(apikey.configId, [...ACCOUNT_VISIBLE_API_KEY_CONFIGS])))
       .orderBy(desc(apikey.createdAt), apikey.id)),
     listConnectedApps: userId => withDb(env, db => db.select({
       id: oauthConsent.id, client_id: oauthConsent.clientId, client_name: oauthClient.name,

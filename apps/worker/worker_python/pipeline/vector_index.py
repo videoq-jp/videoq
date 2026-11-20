@@ -16,7 +16,9 @@ from worker_python.env import env_str
 from worker_python.pipeline.embeddings import embed_texts
 from worker_python.pipeline.embedding_contract import resolve_embedding_config
 from worker_python.pipeline.embedding_schema import check_embedding_storage
-from worker_python.pipeline.srt import parse_srt_scenes
+from worker_python.domain.srt import SrtScene
+from worker_python.domain.video_processing import validate_transcript_clear
+from worker_python.use_cases.transcript_index import TranscriptIndexDependencies, execute_transcript_index
 from worker_python.pipeline.scene_otsu import apply_scene_splitting
 from worker_python.video_sql import VideoRow
 
@@ -74,8 +76,7 @@ def clear_video_transcript_index(video: VideoRow) -> int:
         ).fetchone()
         if current is None:
             return 0
-        if not current['matches'] or (video.transcript or '').strip():
-            raise ValueError('Transcript changed before clearing its index; retry')
+        validate_transcript_clear(current['matches'], video.transcript)
         deleted = 0
         for table in sorted(ALLOWED_TABLES):
             deleted += conn.execute(f'DELETE FROM "{table}" WHERE video_id = %s', (video.id,)).rowcount
@@ -83,28 +84,25 @@ def clear_video_transcript_index(video: VideoRow) -> int:
 
 
 def index_video_transcript(video: VideoRow) -> int:
-    """Group original cues for search without changing the saved transcript."""
-    if not video.transcript:
-        raise ValueError(f"Video {video.id} has no transcript")
+    """Compose scene preparation and the atomic PostgreSQL replacement."""
+    def prepare_replacement():
+        table = _table_name()
+        check_embedding_storage()
+        return lambda scenes, embeddings: _replace_video_scenes(video, table, scenes, embeddings)
 
-    scenes = parse_srt_scenes(video.transcript)
-    if not scenes:
-        raise ValueError(f"Video {video.id} transcript contains no valid SRT scenes")
+    def embed(texts):
+        # Provider batch limits belong to this adapter.
+        embeddings: list[list[float]] = []
+        for offset in range(0, len(texts), 64):
+            embeddings.extend(embed_texts(texts[offset:offset + 64]))
+        return embeddings
 
-    table = _table_name()
-    check_embedding_storage()
-    # The saved SRT retains original cue boundaries for playback and window reads.
-    # Only searchable scenes are grouped; the race check below uses the original.
-    scenes = parse_srt_scenes(apply_scene_splitting(video.transcript))
-    if not scenes:
-        raise ValueError(f"Video {video.id} scene splitting produced no valid SRT scenes")
-    texts = [s.text for s in scenes]
-    # Batch embeddings in chunks to avoid provider limits.
-    embeddings: list[list[float]] = []
-    batch_size = 64
-    for i in range(0, len(texts), batch_size):
-        embeddings.extend(embed_texts(texts[i : i + batch_size]))
+    return execute_transcript_index(video.id, video.transcript, TranscriptIndexDependencies(
+        prepare_replacement=prepare_replacement, split=apply_scene_splitting, embed=embed,
+    ))
 
+
+def _replace_video_scenes(video: VideoRow, table: str, scenes: list[SrtScene], embeddings: list[list[float]]) -> int:
     # Generate embeddings before opening the write transaction. Readers keep
     # the old scenes until every replacement row has been written successfully.
     with db_connection() as conn:

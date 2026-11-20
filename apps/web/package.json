@@ -11,7 +11,7 @@
     "preview:worker": "wrangler dev",
     "deploy": "wrangler deploy --env production",
     "cf-typegen": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler types worker/env.d.ts --env-interface WebEnv --include-runtime=false",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.storybook.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.application.json && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.storybook.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "test:worker": "node --test scripts/test-worker.mjs",
     "test:csp": "node --test scripts/test-csp-audit.mjs",
     "security:csp": "node scripts/csp-audit.mjs",
@@ -55,7 +55,8 @@
     "recharts": "^3.10.1",
     "remark-cjk-friendly": "^2.3.4",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "@videoq/domain": "0.1.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261025.1",

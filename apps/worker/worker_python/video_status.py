@@ -1,14 +1,2 @@
-"""Video processing statuses shared by tasks and database writes."""
-
-from __future__ import annotations
-
-from enum import Enum
-
-
-class VideoStatus(str, Enum):
-    UPLOADING = "uploading"
-    PENDING = "pending"
-    PROCESSING = "processing"
-    INDEXING = "indexing"
-    COMPLETED = "completed"
-    ERROR = "error"
+"""Compatibility export for persistence and runtime adapters."""
+from worker_python.domain.video_status import VideoStatus

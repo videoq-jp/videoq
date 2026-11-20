@@ -164,3 +164,30 @@ def test_failed_manifest_publication_can_retry_without_regenerating_chunks(visua
     tasks.finish_video_visuals(42, run.run_id)
     assert checkpoints.load_run(42).status == 'ready'
     tasks.build_visual_chunk.assert_called_once()
+
+
+def test_successful_chunk_keeps_other_chunk_failure_until_that_chunk_recovers(visual_db):
+    run = checkpoints.initialize(42, 'video.mkv', 61)
+    checkpoints.record_failure(run, 'first failed', 0)
+    checkpoints.record_failure(run, 'second failed', 1)
+    tasks.build_video_visual_chunk(42, run.run_id, 0)
+    with visual_db[0]() as conn:
+        state = conn.execute('SELECT status, last_error FROM video_visual_runs').fetchone()
+        chunks = conn.execute('SELECT frame_count, last_error FROM video_visual_chunks ORDER BY chunk_index').fetchall()
+    assert state == {'status': 'error', 'last_error': 'second failed'}
+    assert chunks == [{'frame_count': 1, 'last_error': ''}, {'frame_count': None, 'last_error': 'second failed'}]
+    tasks.build_video_visual_chunk(42, run.run_id, 1)
+    with visual_db[0]() as conn:
+        assert conn.execute('SELECT status, last_error FROM video_visual_runs').fetchone() == {'status': 'processing', 'last_error': ''}
+
+
+def test_failed_object_put_cannot_commit_chunk_success(visual_db, monkeypatch):
+    run = checkpoints.initialize(42, 'video.mkv', 5)
+    original = tasks.upload_bytes
+    monkeypatch.setattr(tasks, 'upload_bytes', MagicMock(side_effect=RuntimeError('PUT failed')))
+    with pytest.raises(RuntimeError, match='PUT failed'):
+        tasks.build_video_visual_chunk(42, run.run_id, 0)
+    assert checkpoints.chunk_complete(run, 0) is False
+    monkeypatch.setattr(tasks, 'upload_bytes', original)
+    tasks.build_video_visual_chunk(42, run.run_id, 0)
+    assert checkpoints.chunk_complete(run, 0) is True

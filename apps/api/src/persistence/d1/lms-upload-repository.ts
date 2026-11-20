@@ -1,3 +1,4 @@
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import type {LmsUploadRepository,LmsUploadSnapshot} from '../contracts/lms-upload-repository';
 import type {OwnedLmsGrant} from '../contracts/lms-resource-repository';
 import {contentSlot,contentCleanup,contentPayload,checkContentAttempt} from '../../shared/lms-upload';
@@ -5,7 +6,7 @@ import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
 const SOURCE=`SELECT v.id,v.status FROM lms_resources r JOIN videos v ON v.id=r.video_id JOIN lms_installations i ON i.id=r.installation_id JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=i.id AND t.context_id=r.context_id AND t.course_id=r.course_id AND t.active=1 AND t.resource_link_id IS NULL JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id JOIN users owner ON owner.id=t.owner_user_id
  WHERE i.id=? AND owner.id=? AND r.id=? AND r.external_id=? AND r.generation=? AND v.id=? AND v.file=? AND r.file_size=? AND r.content_type=?
  AND r.enabled=1 AND r.kind='video' AND v.user_id=owner.id AND v.managed_by_lms=1 AND v.source_type='uploaded'
- AND i.active=1 AND owner.is_active=1 AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))`;
+ AND i.active=1 AND ${d1LmsOwnerSql()}`;
 const sourceArgs=(g:OwnedLmsGrant,s:LmsUploadSnapshot)=>[g.id,g.ownerUserId,s.resourceId,s.externalId,s.generation,s.videoId,s.fileKey,s.size,s.contentType];
 const LIVE=`EXISTS(SELECT 1 FROM lti_credentials c WHERE c.id=? AND c.kind='lms-content-upload' AND json(c.payload)=json(?) AND julianday(c.expires_at)>julianday('now'))`;
 export function createD1LmsUploadRepository(database:D1Database):LmsUploadRepository{

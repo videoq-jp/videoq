@@ -1,3 +1,4 @@
+import { teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse } from '../../application/teaching';
 import {and,eq,gt,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {teachingConnections,lmsInstallations,ltiCredentials,users,videoCourses} from '../../db/schema';
@@ -33,17 +34,16 @@ export function createPostgresTeachingRepository(env:Bindings):TeachingRepositor
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([input.provider,input.installationId,input.contextId])},0))`);
     const [existing] = await tx.select().from(teachingConnections).where(and(eq(teachingConnections.provider, input.provider),
       eq(teachingConnections.installationId, input.installationId), eq(teachingConnections.contextId, input.contextId))).for('update');
-    if (existing && (existing.ownerUserId !== ownerUserId || existing.teacherSubject !== input.teacherSubject ||
-      selectedCourseId !== undefined && existing.courseId !== selectedCourseId)) {
+    if (teachingConnectionConflicts(existing, ownerUserId, input.teacherSubject, selectedCourseId)) {
       throw new ApiError(409, 'CONFLICT', 'This class is already connected. Ask its owner to manage this connection.');
     }
-    if (input.provider === 'moodle') {
+    if (teachingInstallationRequired(input.provider)) {
       const [site] = await tx.select({ id: lmsInstallations.id }).from(lmsInstallations)
         .where(and(eq(lmsInstallations.id, input.installationId), eq(lmsInstallations.active, true))).for('share');
-      if (!site || !input.resourceLinkId) throw denied();
+      if (!site || !teachingResourceLinkAllowed(input)) throw denied();
     }
-    const courseId = selectedCourseId ?? existing?.courseId;
-    if (!courseId) throw denied();
+    const courseId = selectTeachingCourse(existing, selectedCourseId);
+    if (courseId === null) throw denied();
     const [course] = await tx.select({ id: videoCourses.id }).from(videoCourses).where(and(
       eq(videoCourses.id, courseId), eq(videoCourses.userId, ownerUserId), eq(videoCourses.nativeAccessDisabled, false))).for('share');
     if (!course) throw denied();

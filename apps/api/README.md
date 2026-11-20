@@ -73,6 +73,13 @@ an identical set of layers:
   predicates inside its atomic batch. Session validity, membership, current video
   scope, locking and audit writes remain in the persistence implementations.
   Displayed edit/delete capabilities use the same policy as mutations.
+  The same pure policy selects moderation audit conditions and parent-question
+  timestamp effects; adapters evaluate them on locked facts or SQL predicates.
+  Native capabilities and the requirement to see both a question's original source
+  and its current video binding also belong to this policy. D1 consumes the policy's
+  audit actions as well as its predicates. Repository operation methods preserve a
+  single atomic capability; statement construction, IDs, vote-table mapping and
+  result formatting remain external.
   `features/qa/core.ts` accepts a `QaRepository`; `integrations/qa.ts` selects the
   implementation for HTTP/tRPC callers. Q&A input, result and command types live
   in `persistence/contracts/qa-repository.ts` without importing tRPC types.
@@ -96,6 +103,11 @@ an identical set of layers:
 - `features/membership/core.ts` accepts a `MembershipRepository`. Its integration
   supplies the existing atomic membership operations; insertion counts and reuse
   outcomes come from the committed operation, not a preceding read.
+  `application/membership-policy.ts` owns tag-link reuse, native/LMS membership
+  eligibility, first-occurrence deduplication and complete-permutation checks.
+  PostgreSQL applies those rules to locked rows; D1 compiles the same predicates
+  inside its atomic batch. SQL keeps append positions, generated IDs and actual
+  mutation counts consistent under concurrency.
 - `features/courses/service.ts` accepts a `CourseRepository` through
   `createCourseService`. `integrations/courses.ts` supplies the selected backend
   to HTTP/tRPC and MCP callers. Share-link validation and idempotent creation
@@ -106,6 +118,31 @@ an identical set of layers:
   reads use `persistence/contracts/conversation-read.ts`; checkpoint and LangGraph
   types remain in the separate execution contract. LMS attribution types do not
   import the LTI runtime or credential store.
+- `features/evidence/scene-search-service.ts` owns search scope validation,
+  invocation budgets, progress and safe result projection. `course-info-service.ts`
+  owns bounded course metadata projection and paging. Tool adapters retain Zod/MCP
+  schemas and inject search, cancellation and already-authorized course capabilities.
+  Counts reserve before awaiting providers so concurrent calls share one budget.
+  `video-evidence-service.ts` owns the shared call/image reservations, duplicate
+  suppression, subtitle windows/timelines and serialized visual execution. Storage,
+  model SDKs, usage recording and AbortSignal are supplied through tool adapters;
+  the application also checks cancellation before loading private metadata.
+  `application/video-evidence.ts` owns sparse/dense frame selection, image limits
+  and focus-interval validation; dense samples use a half-open interval and must
+  fit the remaining budget without resampling. `application/evidence.ts` owns
+  scene-hit data. The old `lib/video-evidence` path retains compatibility exports
+  and physical cache keys/byte limits; inner workflows cannot import that facade.
+- `features/chat/citation-policy.ts` validates citation identities and safe syntax
+  boundaries with domain models. `answer-text-service.ts` owns monotonic streamed
+  text and Unicode/JSON escape boundaries through an injected decoder;
+  `answer-content-service.ts` checks provisional text/citations against the final
+  answer. SDK partial-JSON parsing, Zod decoding, count-only logging and provider
+  error formatting remain in the `lib` adapters.
+- `application/quota-policy.ts` owns quota capacity comparisons, reservation
+  amount validation, result types and account/storage/monthly failure precedence.
+  Persistence implements the comparison algebra with bound SQL expressions so
+  admission still executes inside conditional writes and atomic batches. Database
+  clocks, refund period fences, locks and representation limits stay in adapters.
 - `features/chat/generation-service.ts` owns answer setup, quota reservation and
   refund decisions, generation, persistence handoff and cost outcomes. Its
   `generation-ports.ts` contracts contain application data without RPC, LangGraph
@@ -130,21 +167,185 @@ an identical set of layers:
   HTTP and tRPC handlers translate them through `shared/errors.ts:asApiError`.
   The extracted chat/billing workflows and Q&A repositories do not construct HTTP
   errors. Existing `ApiError` callers keep their existing response envelopes.
+- `features/chat/evidence-registry.ts` owns restored citation identities, source
+  deduplication and allowed-video projection; LangChain state/callbacks remain in
+  `lib/rag.ts`. `features/billing/cost-ledger.ts` owns numeric-only usage and call
+  lifecycle through injected clock/identity capabilities. Its runtime compatibility
+  adapter still supplies UUID/time and persists anonymous attempt outcomes.
+- `features/account/service.ts` owns search-credential status/save/removal.
+  `integrations/account-credentials.ts` supplies encryption, actor resolution and
+  persistence. Save completes encryption before resolving the actor and writing;
+  only ciphertext or null reaches the repository. RPC handlers format errors.
+- `features/lti/operation-policy.ts` owns delegated conversation, report, tag,
+  material and Q&A capability/scope selection. Readable and manageable materials
+  are intersected with current course membership; conversation exports omit log IDs
+  and feedback credentials. Schema parsing and protocol responses remain routes.
+  `features/course-reports/service.ts` validates and aggregates report data.
+  `features/material-management/service.ts` attempts dispatch after a committed
+  operation and retains acceptance when immediate dispatch must be deferred.
+- `application/resource-reconciliation.ts` owns LMS resource revision conflicts,
+  course/media binding coherence, idempotent replay, reuse/replacement, language
+  locks and membership/vocabulary change decisions. PostgreSQL evaluates it on
+  transaction-scoped snapshots; D1 fences the same snapshots in its mutation
+  batch before applying the plan. `application/lms-resource.ts` owns resource data;
+  persistence contracts preserve their existing type exports.
+- `application/resource-mutation.ts` owns shared-material deletion refusal,
+  unfinished-upload refund and late-cleanup eligibility, content identity retention,
+  course-title precedence and upload error classification. SQL adapters execute
+  refunds with the original period fence and compile error choices inside the
+  atomic write. Durable cleanup delivery, physical transfer grace periods and
+  provider-specific payload serialization remain external.
+- `application/lms-owner.ts` owns active/non-deactivated owner admission, inclusive
+  ban expiry and material-teacher connection coherence. PostgreSQL and D1 compile
+  the same policy into their guarded queries and atomic writes. Adapters retain
+  their original database clocks, fixed aliases, lock order and snapshot fences;
+  teacher ownership is derived from the connection independently of the installer.
+- `features/lti/learning-service.ts` owns material projection and scoped question
+  preparation for the shared LTI/native/Classroom routes. It removes old answers
+  after recorded scope shrinkage, checks saved-conversation and playback access,
+  and adds transcript-cue context through injected course/transcript capabilities.
+  The same service resolves current course access, enforces transcript permissions,
+  strips owner log IDs from history, binds feedback to the originating session and
+  records history before issuing feedback credentials. Feedback authority and course
+  checks still precede throttle consumption and writes. HTTP parsing, throttle
+  adapters, credential codecs, SSE framing and failure responses stay in the route.
+- `features/maintenance/scene-index-service.ts` owns leased vector synchronization,
+  readiness retries, immutable-ID compensation and missing-vector repair selection.
+  Its gateways hide Vectorize and LangChain; provider batching and document metadata
+  projection remain in persistence adapters. All started parallel work is awaited,
+  including after a database claim fails. Repair progress is recorded only after
+  every provider read succeeds; guarded outbox insertion remains SQL.
+- `features/maintenance/visual-object-service.ts` owns cleanup identity/key validation,
+  bounded processing and retry decisions through `VisualObjectCleanupRepository`.
+  `features/worker-internal/reindex-service.ts` checks page/index configuration through
+  injected capabilities and skips provider setup for empty pages.
+- `application/onprem-accounts.ts` owns account normalization, role selection and
+  activation/reset orchestration. `integrations/onprem-accounts.ts` supplies
+  transaction-scoped Better Auth capabilities; account creation and reset-token
+  issuance stay in the same PostgreSQL transaction. A missing activation link
+  aborts that transaction. Random credentials remain private to the adapter.
+- `features/worker-internal/transcription-service.ts` owns run/source consistency
+  and duplicate-completion decisions. The persistence factory only supplies ports;
+  the repository still commits run completion, subtitles and the outbox atomically.
+- `application/resource-access.ts` owns account-ban expiry, scope-claim parsing
+  and read/write authorization for verified OAuth credentials. `application/admin.ts`
+  owns supported-role and administrator self-demotion rules. Better Auth adapters
+  retain JWT/DPoP validation, fresh account lookup, native permission checks and
+  error/challenge formatting. Policy failures preserve the existing HTTP response.
+- `features/classroom/workflow-service.ts` owns catalog filtering, authorized material
+  selection, teacher connection, learning-session creation/revalidation and playback
+  selection. `integrations/classroom-workflow.ts` supplies Google clients, encryption,
+  storage and media URLs. Previously granted chat scope is retained when a session
+  is revalidated, so shared-chat authorization can detect removed materials.
+- `features/maintenance/audit-retention-service.ts` owns the enabled retention sweep,
+  time/pass limits and backlog reporting. Runtime configuration, clock and repository
+  creation are supplied by `features/lti/audit-retention.ts`; atomic deletion batches
+  remain in the persistence adapters.
+- `features/maintenance/policy.ts` owns retention defaults and batch bounds shared
+  by completed delivery history and MCP idempotency records.
+  `idempotency-retention-service.ts` validates before acquiring its repository;
+  the compatibility entrypoint supplies runtime composition. PostgreSQL and D1
+  delivery adapters delegate to the same policy and keep their existing deletion
+  SQL, including protection for executions with pending delivery.
+- `application/username.ts` owns username normalization and collision candidates.
+  Better Auth profile/user hooks supply the existing uniqueness lookup and UUID
+  generator. Fifty attempted candidates, suffix truncation, fallback format and
+  failure propagation are preserved; `lib/auth.ts` keeps the public normalization
+  export for compatibility.
+  `application/account-registration.ts` applies creation-time quota, usage and
+  display-identity defaults; runtime configuration is resolved before invoking it.
+  Client/provider fields cannot override the existing fresh-account usage defaults.
+- `application/oauth-consent.ts` owns current-consent scope checks and renewal
+  decisions over credential-free grant metadata. `lib/auth-security.ts` retains
+  credential decoding, provider rotation, endpoint hooks and OAuth error mapping.
+  Missing or already consumed credentials still defer to the native provider;
+  narrowed scopes are checked against current consent without caching it.
+- `application/agent-execution.ts` owns per-answer tool-round budgets and capability
+  selection from an already-authorized course/video scope. `lib/rag.ts` retains
+  LangGraph-specific step accounting and middleware composition. Visible-text
+  acceptance is in `application/answer-generation.ts`; SDK schema decoding and
+  provider error translation stay in `lib/structured-answer.ts`.
+- `application/answer-tool-policy.ts` owns the explicit tool capabilities available
+  to answer generation. The MCP/LangChain adapter consumes it directly. Tool
+  annotations remain descriptive and do not grant answer capabilities.
+- `application/reindex-job.ts` owns the durable all-video reindex enqueue order:
+  generate identity, persist the job, then attempt dispatch. `lib/jobs.ts` supplies
+  UUID, outbox and delivery implementations; deferred delivery retains the saved ID.
+- `application/conversation-scope.ts` owns user/course/share/visitor and LTI scope
+  validation plus canonical thread-identity input. `shared/conversation-scope.ts`
+  retains SHA-256 encoding and API error adaptation. Existing thread hashes and
+  namespace field ordering are checked against pre-extraction values.
 - Application chat/video models are independent of RPC schemas. The normal API
   typecheck compiles `type-tests/application-models.ts` to catch contract drift.
 - ESLint restricts the extracted workflows, contracts and pure helpers. The
-  architecture test also walks their actual transitive imports, including type
-  imports, so a helper cannot silently reintroduce a runtime dependency. The pure
-  shared `@videoq/trpc/video-upload` constants/helpers are an explicit exception;
-  router and RPC schema imports are rejected.
+  DOM-free application TypeScript configuration compiles all extracted workflows,
+  contracts and models. The architecture test checks that every ESLint-protected
+  module is included in that compilation graph. Opaque upload bodies and generic
+  cancellation states keep Web streams and AbortSignal in runtime adapters.
+  Synthetic forbidden-import checks cover every protected module, rather than a
+  representative file list. The architecture test also walks actual transitive imports, including type
+  imports, so a helper cannot silently reintroduce a runtime dependency. Shared upload, tag and invitation policies live in the framework-independent
+  `@videoq/domain` package. Share-link normalization/reserved names and transcript-quality
+  advisories also live there; course and evidence use cases import those policies
+  directly. The old `lib/share-slug` and `lib/transcript-quality` paths are
+  compatibility re-exports and are forbidden imports in protected workflows.
+  Router and RPC schema imports are rejected.
 
 The teaching connection workflow in `features/teaching/core.ts` accepts ticket,
 provider-authority and atomic-commit capabilities. `integrations/teaching.ts`
 owns runtime configuration, credential validation and provider clients; the
 existing service module preserves caller compatibility. Authority is rechecked
 before the repository atomically consumes the ticket and connects the course.
+`application/teaching.ts` owns existing-connection conflict checks, provider
+installation/resource-link requirements and explicit-versus-existing course
+selection. Both persistence implementations evaluate those rules at their original
+locked or snapshot-fenced steps. Ticket decoding, exact payload comparison,
+database expiry/ownership guards and atomic ticket consumption remain external.
 Application ticket types are checked against transport schemas by the normal
 typecheck, and the workflow is covered by the transitive dependency checks.
+
+The LMS resource workflow in `features/lms/resource-service.ts` owns YouTube
+ingestion eligibility, external identity validation order, manifest digest
+sequencing, resource status precedence and upload eligibility. The repository
+compatibility entrypoint supplies feature configuration, identity parsing, hashing
+and persistence. HTTP routes retain signed URL generation and response encoding;
+materials synchronization shares the same status policy. Disabled sources retain
+priority over sync errors, course completion and video processing status.
+The HTTP synchronization workflow also schedules immediate recovery after commit
+and delayed abandonment recovery for file sources. Course sources do not schedule
+either operation; a failed commit or immediate schedule cannot advance the workflow.
+
+`features/lms/native-teacher-service.ts` owns teacher bootstrap: require a database
+installation and fresh content-management authority, consume a registration-bound
+nonce, then issue the teaching ticket. Assertion verification and provider clients
+remain outer. The expiry grace and existing ticket fields are preserved.
+`features/media/learning-playback-service.ts` shares current-scope membership,
+owner-bound metadata lookup and YouTube/file selection between native LMS and
+Classroom. Storage signing stays injected; transports retain their error envelopes.
+`features/lms/installation-service.ts` owns installation creation, authentication
+and token rotation sequencing. The compatibility repository module retains schema
+decoding and crypto/runtime composition. Invalid tokens do not open persistence;
+service registrations create no sync-token secret, and generated tokens are
+returned only after the insert or owner-bound rotation succeeds.
+Snapshot duplicate/context/count rules live in
+`features/lms/materials-snapshot-policy.ts`; source-kind, deletion and language
+coherence live in `application/lms-resource.ts`. Connector Zod schemas delegate
+those decisions while retaining field decoding, schema errors and canonical JSON
+field order. File and YouTube sources share the existing 1000-material limit,
+with one additional course entry.
+
+`features/evidence/external-service.ts` owns external MCP evidence execution:
+current course access, weighted paid-work limits, owner quota reservation, provider
+completion-based consumption, refund and final ledger outcomes. Runtime evidence
+sessions, cancellation/deadlines, provider calls and ledger persistence are composed
+in `integrations/external-evidence.ts`. Cleanup cancellation does not change a
+failed execution into an interrupted one. Existing close/refund/ledger ordering
+and best-effort accounting failure handling are preserved.
+
+Saved-conversation question eligibility lives in `@videoq/domain/chat` and is
+shared by raw HTTP and tRPC schemas. The inner chat generation service also checks
+it before course lookup or quota reservation, so caller-supplied history cannot
+enter a saved conversation through a different adapter.
 
 The LMS upload workflow in `features/lms/upload-service.ts` owns generation
 snapshot validation, immutable-attempt sequencing, cleanup decisions and processing
@@ -154,6 +355,8 @@ the existing atomic repository operations, including generation and authority
 rechecks; storage I/O happens outside those transactions. Application failures
 are translated at the compatibility boundary. The workflow is included in the
 same transitive import restrictions as the other extracted use cases.
+Generation and source availability checks before content-header validation also
+live in this use case; the HTTP adapter preserves the existing validation order.
 
 The Moodle pairing workflow in `features/lms/pairing-service.ts` accepts an atomic
 pairing repository, clock, secret/hash, code encoding, maintenance and settings

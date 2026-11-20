@@ -1,3 +1,4 @@
+import { ACCOUNT_VISIBLE_API_KEY_CONFIGS } from '../../application/account-integrations';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { z } from 'zod';
@@ -11,7 +12,7 @@ export function createD1AccountIntegrationsRepository(database: D1Database): Acc
       id: apikey.id, config_id: apikey.configId, name: apikey.name,
       start: apikey.start, prefix: apikey.prefix, permissions: apikey.permissions,
       last_used_at: apikey.lastRequest, created_at: apikey.createdAt,
-    }).from(apikey).where(and(eq(apikey.referenceId, userId), inArray(apikey.configId, ['default', 'read-write'])))
+    }).from(apikey).where(and(eq(apikey.referenceId, userId), inArray(apikey.configId, [...ACCOUNT_VISIBLE_API_KEY_CONFIGS])))
       .orderBy(desc(apikey.createdAt), apikey.id).all(),
     async listConnectedApps(userId) {
       const rows = await db.select({

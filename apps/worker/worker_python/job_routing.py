@@ -1,22 +1,6 @@
-"""Queue selection shared by Lambda producers and the local poller."""
-
+"""Environment adapter for queue selection; grouping is a pure job policy."""
 import os
-
-from worker_python.contracts import (
-    JOB_DELETE_ACCOUNT_DATA, JOB_INDEX_VIDEO_TRANSCRIPT,
-    JOB_REINDEX_VIDEO_TRANSCRIPT, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS,
-)
-
-
-def job_group(job_type: str) -> str:
-    if job_type == JOB_DELETE_ACCOUNT_DATA:
-        return "account"
-    if job_type in {
-        JOB_INDEX_VIDEO_TRANSCRIPT, JOB_REINDEX_VIDEO_TRANSCRIPT,
-        JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS,
-    }:
-        return "search"
-    return "media"
+from worker_python.domain.jobs import job_group
 
 
 def queue_url_for_job(job_type: str) -> str:

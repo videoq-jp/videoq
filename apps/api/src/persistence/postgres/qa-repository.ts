@@ -1,5 +1,5 @@
 import { qaSqlLogic } from "../qa-policy-sql";
-import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
+import { qaBooleanLogic, qaMutationEffects, qaNativePermissions, qaQuestionScopeAllowed, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaNativeParticipationAllowed, qaLtiAccessAllowed, validLtiQaScope } from "../../features/qa/policy";
 import type pg from "pg";
 import type { QaQuestion, QaReply, QaListInput, QaGetInput, QaListResult, QaGetResult } from "../contracts/qa-repository";
 import { withClient } from "../../db/pool";
@@ -68,8 +68,8 @@ async function withCourse<T>(env: Bindings, access: Access, principal: Principal
           shareMatches: Boolean(course.share_slug && access.shareSlug !== undefined
             && course.share_slug.toLowerCase() === access.shareSlug.toLowerCase()),
         }, qaBooleanLogic)) throw notFound("Course not found");
-        actor = { ownerId: course.user_id, userId: principal, ltiId: null, canPost: principal !== null,
-          canVote: principal !== null, canDeleteOwn: principal !== null, canModerate: owner, instructor: false };
+        actor = { ownerId: course.user_id, userId: principal, ltiId: null,
+          ...qaNativePermissions(principal !== null, owner), instructor: false };
       }
       const result = await operation(client, actor);
       await client.query("COMMIT");
@@ -82,8 +82,10 @@ function visibleQuestion(actor: Actor, p: Parameters, courseId: number) {
   let filter = `q.course_id=${p.add(courseId)}`;
   if (actor.videoIds) {
     const ids = p.add(actor.videoIds);
-    filter += ` AND (q.source_video_id IS NULL OR q.source_video_id=ANY(${ids}::bigint[]))
-      AND (q.video_id IS NULL OR q.video_id=ANY(${ids}::bigint[]))`;
+    filter += ` AND ${qaQuestionScopeAllowed({
+      sourceUnbound: 'q.source_video_id IS NULL', sourceGranted: `q.source_video_id=ANY(${ids}::bigint[])`,
+      videoUnbound: 'q.video_id IS NULL', videoGranted: `q.video_id=ANY(${ids}::bigint[])`,
+    }, qaSqlLogic)}`;
   }
   return filter;
 }
@@ -176,6 +178,11 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
     const question = (await client.query<AuthorRecord & { featured: boolean }>(
       `SELECT q.author_id,q.lti_author_id,q.featured FROM course_questions q WHERE ${where} FOR UPDATE`, p.values)).rows[0];
     if (!question) throw notFound("Question not found");
+    const effects = qaMutationEffects(name, {
+      ownQuestion: isOwn(actor, question), ownReply: false,
+      featureChanged: 'featured' in input && question.featured !== input.featured,
+      featured: 'featured' in input && input.featured,
+    }, qaBooleanLogic);
     if (name === "qa.updateQuestion") {
       if (!qaMutationAllowed(name, actor, isOwn(actor, question), false, qaBooleanLogic)) throw forbidden();
       await client.query("UPDATE course_questions SET title=$2,body=$3,lti_instructor=$4,updated_at=now() WHERE id=$1",
@@ -184,12 +191,13 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
       const own = isOwn(actor, question);
       if (!qaMutationAllowed(name, actor, own, own, qaBooleanLogic)) throw forbidden();
       await client.query("DELETE FROM course_questions WHERE id=$1", [input.questionId]);
-      if (!own) await audit(client, actor, input.courseId, input.questionId, "delete_question");
+      const moderation = effects.moderation;
+      if (moderation?.when) await audit(client, actor, input.courseId, input.questionId, moderation.action);
     } else if (name === "qa.reply") {
       if (!qaMutationAllowed(name, actor, false, false, qaBooleanLogic)) throw forbidden();
       const result = await client.query<{ id: string }>(`INSERT INTO course_question_replies(question_id,author_id,lti_author_id,lti_instructor,body)
         VALUES($1,$2,$3,$4,$5) RETURNING id`, [input.questionId, actor.userId, actor.ltiId, actor.instructor, input.body]);
-      await client.query("UPDATE course_questions SET updated_at=now() WHERE id=$1", [input.questionId]);
+      if (effects.touchQuestion) await client.query("UPDATE course_questions SET updated_at=now() WHERE id=$1", [input.questionId]);
       return { id: result.rows[0].id };
     } else if (name === "qa.updateReply" || name === "qa.deleteReply") {
       const reply = (await client.query<AuthorRecord>(
@@ -202,9 +210,10 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
       } else {
         if (!qaMutationAllowed(name, actor, own, own, qaBooleanLogic)) throw forbidden();
         await client.query("DELETE FROM course_question_replies WHERE id=$1", [input.replyId]);
-        if (!own) await audit(client, actor, input.courseId, input.questionId, "delete_reply", input.replyId);
+        const moderation = qaMutationEffects(name, { ownQuestion: false, ownReply: own, featureChanged: false, featured: false }, qaBooleanLogic).moderation;
+        if (moderation?.when) await audit(client, actor, input.courseId, input.questionId, moderation.action, input.replyId);
       }
-      await client.query("UPDATE course_questions SET updated_at=now() WHERE id=$1", [input.questionId]);
+      if (effects.touchQuestion) await client.query("UPDATE course_questions SET updated_at=now() WHERE id=$1", [input.questionId]);
     } else if (name === "qa.vote") {
       if (!qaMutationAllowed(name, actor, false, false, qaBooleanLogic)) throw forbidden();
       if (actor.ltiId) {
@@ -216,9 +225,10 @@ export function mutate(env: Bindings, principal: Exclude<Principal, null>, comma
       }
     } else if (name === "qa.feature") {
       if (!qaMutationAllowed(name, actor, false, false, qaBooleanLogic)) throw forbidden();
-      if (question.featured !== input.featured) {
+      if (effects.moderation?.when) {
         await client.query("UPDATE course_questions SET featured=$2 WHERE id=$1", [input.questionId, input.featured]);
-        await audit(client, actor, input.courseId, input.questionId, input.featured ? "feature" : "unfeature");
+        const moderation = effects.moderation;
+        if (moderation?.when) await audit(client, actor, input.courseId, input.questionId, moderation.action);
       }
     }
     return { success: true };

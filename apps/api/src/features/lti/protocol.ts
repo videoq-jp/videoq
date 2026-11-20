@@ -1,11 +1,10 @@
+import { authorizeLtiLaunch } from "./launch-service";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { launchLocale } from "./locale";
 import { z } from "zod";
 import type { LtiRegistration } from "./config";
 
 export const CLAIM = "https://purl.imsglobal.org/spec/lti/claim/";
-const rolePrefix = "http://purl.imsglobal.org/vocab/lis/v2/membership#";
-const allowedRoles = new Set(["Learner", "Instructor", "Administrator", "ContentDeveloper", "Mentor"].map(role => rolePrefix + role));
 export const loginRecord = z.object({
   registrationId: z.string(), nonce: z.string(), browserHash: z.string(), target: z.string(),
   deploymentHint: z.string().optional(),
@@ -43,23 +42,23 @@ export async function verifyLaunch(
     requiredClaims: ["iss", "aud", "sub", "exp", "iat", "nonce"],
     maxTokenAge: "5m", clockTolerance: 5,
   });
-  const subject = z.string().min(1).parse(payload.sub);
-  if (payload.nonce !== login.nonce
-    || (payload.azp !== undefined && payload.azp !== reg.clientId)
-    || (Array.isArray(payload.aud) && payload.aud.length > 1 && payload.azp !== reg.clientId)
-    || payload[CLAIM + "message_type"] !== "LtiResourceLinkRequest"
-    || payload[CLAIM + "version"] !== "1.3.0"
-    || payload[CLAIM + "target_link_uri"] !== login.target) throw new Error("Invalid LTI launch");
-  const deploymentId = z.string().min(1).parse(payload[CLAIM + "deployment_id"]);
-  const context = z.object({ id: z.string().min(1) }).parse(payload[CLAIM + "context"]);
-  const resource = z.object({ id: z.string().min(1) }).parse(payload[CLAIM + "resource_link"]);
+  // Signature, issuer, audience and token age are verified before projection.
+  const identity = z.string().min(1);
+  const subject = identity.parse(payload.sub);
+  const deploymentId = identity.parse(payload[CLAIM + "deployment_id"]);
+  const context = z.object({ id: identity }).parse(payload[CLAIM + "context"]);
+  const resource = z.object({ id: identity }).parse(payload[CLAIM + "resource_link"]);
   const roles = z.array(z.string()).min(1).parse(payload[CLAIM + "roles"]);
-  if (!roles.some(role => allowedRoles.has(role)) || (login.deploymentHint && login.deploymentHint !== deploymentId)) {
-    throw new Error("LTI access is not allowed");
-  }
-  const binding = reg.resources.find(item => item.deploymentId === deploymentId
-    && item.contextId === context.id && item.resourceLinkId === resource.id);
-  if (!binding) throw new Error("LTI resource is not configured");
-  const accessProof = reg.courseAccess ? { token: z.object({ videoq_access: z.string().regex(/^[a-f0-9]+\.[a-f0-9]{64}$/).max(2200) }).parse(payload[CLAIM + "custom"]).videoq_access, subject } : undefined;
-  return { locale: launchLocale(payload, login.locale), subject, deploymentId, contextId: context.id, resourceLinkId: resource.id, roles, courseId: binding.courseId, ...(reg.materialsService ? { serviceSubject: subject } : {}), ...(accessProof ? { accessProof } : {}), ...(binding.videoId ? { videoId: binding.videoId } : {}), ...(binding.generation ? { resourceGeneration: binding.generation } : {}) };
+  const accessToken = reg.courseAccess
+    ? z.object({ videoq_access: z.string().regex(/^[a-f0-9]+\.[a-f0-9]{64}$/).max(2200) }).parse(payload[CLAIM + "custom"]).videoq_access
+    : undefined;
+  return authorizeLtiLaunch({
+    subject, deploymentId, contextId: context.id, resourceLinkId: resource.id, roles,
+    nonce: payload.nonce, authorizedParty: payload.azp, audience: payload.aud,
+    messageType: payload[CLAIM + "message_type"], version: payload[CLAIM + "version"],
+    target: payload[CLAIM + "target_link_uri"], locale: launchLocale(payload, login.locale), accessToken,
+  }, {
+    clientId: reg.clientId, resources: reg.resources,
+    requiresAccessProof: Boolean(reg.courseAccess), serviceAuthority: Boolean(reg.materialsService),
+  }, login);
 }

@@ -1,4 +1,5 @@
 import { startLandingVisit } from '@/lib/landingAnalytics';
+import { planPurchaseAction } from '@/application/plan-purchase';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -116,6 +117,7 @@ export default function PricingPage() {
         <div className="grid gap-6 md:grid-cols-3">
           {cards.map((plan) => {
             const isCurrent = plan.code === currentPlan;
+            const purchaseAction = planPurchaseAction(currentPlan, plan.code);
             return (
               <section
                 key={`${plan.code}-${plan.interval ?? 'free'}`}
@@ -163,9 +165,9 @@ export default function PricingPage() {
                   <Button type="button" disabled>
                     {t(awaitingAccount ? 'pricing.loadingAccount' : 'pricing.accountUnavailable')}
                   </Button>
-                ) : plan.code === 'free' && isCurrent ? (
+                ) : purchaseAction === 'current' ? (
                   <p className="text-std-17N-170 text-solid-gray-600">{t('pricing.currentPlan')}</p>
-                ) : currentPlan !== 'free' ? (
+                ) : purchaseAction === 'portal' ? (
                   <Button
                     type="button"
                     variant="outline"

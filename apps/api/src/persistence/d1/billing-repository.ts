@@ -1,8 +1,12 @@
+import { normalizeStoredPlanCode, selectBillingEntitlement, billingAccountAvailable } from '../../application/billing-state';
+import { billingStringEntitlementChoice, billingDrizzleBanLogic } from '../billing-policy-sql';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { users, stripeEvents } from '../../db/schema/sqlite/modern';
 import { BillingStateChangedError, type BillingRepository } from '../contracts/billing-repository';
-const active = sql`NOT (COALESCE(${users.banned}, 0) AND (${users.banExpires} IS NULL OR julianday(${users.banExpires}) >= julianday('now')))`;
+const active = billingAccountAvailable({ banned: sql`COALESCE(${users.banned}, 0)`,
+  noExpiry: sql`${users.banExpires} IS NULL`, expires: sql`julianday(${users.banExpires})`, now: sql`julianday('now')`,
+}, billingDrizzleBanLogic);
 export function createD1BillingRepository(database:D1Database):BillingRepository {
   const db=drizzle(database);
   return {
@@ -12,7 +16,7 @@ export function createD1BillingRepository(database:D1Database):BillingRepository
       const [row]=await db.select({id:users.id,email:users.email,stripeCustomerId:users.stripeCustomerId,stripeSubscriptionId:users.stripeSubscriptionId,
         planCode:users.planCode,subscriptionStatus:users.subscriptionStatus,revision:sql<string>`CAST(${users.billingRevision} AS TEXT)`})
         .from(users).where(and(where,target.activeOnly?active:undefined)).limit(1).all();
-      return row?{...row,planCode:row.planCode==='basic'||row.planCode==='pro'?row.planCode:'free'}:null;
+      return row?{...row,planCode:normalizeStoredPlanCode(row.planCode)}:null;
     },
     async assignCustomer(userId,customerId){
       const [row]=await db.update(users).set({stripeCustomerId:sql`coalesce(${users.stripeCustomerId},${customerId})`,updatedAt:sql`strftime('%Y-%m-%dT%H:%M:%fZ','now')`})
@@ -32,7 +36,7 @@ export function createD1BillingRepository(database:D1Database):BillingRepository
       if(entitlements){
         const quotas={maxVideoUploadSizeMb:'max_video_upload_size_mb',monthlyUploadLimitGb:'monthly_upload_limit_gb',storageLimitGb:'storage_limit_gb',processingLimitMinutes:'processing_limit_minutes',aiAnswersLimit:'ai_answers_limit'} as const;
         for(const [key,column]of Object.entries(quotas)){
-          sets.push(`${column}=CASE WHEN quota_source='plan' THEN ? ELSE ${column} END`);values.push(entitlements[key as keyof typeof quotas]);
+          sets.push(`${column}=${selectBillingEntitlement('quota_source','?',column,billingStringEntitlementChoice)}`);values.push(entitlements[key as keyof typeof quotas]);
         }
       }
       // The conditional receipt and its effects share one atomic D1 batch. A

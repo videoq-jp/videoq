@@ -24,6 +24,20 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/application/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{
+        regex: '^(?!(@videoq/domain/|\\./))',
+        message: 'Application workflows must not depend on React, browser adapters, RPC or API clients.',
+      }] }],
+      'no-restricted-syntax': ['error',
+        { selector: 'ImportExpression', message: 'Inject external capabilities into application workflows.' },
+        { selector: 'TSImportType', message: 'Use explicit application contracts.' },
+        { selector: 'CallExpression[callee.name="require"]', message: 'Application workflows cannot load external implementations.' },
+      ],
+    },
+  },
+  {
     files: ['**/*.stories.{ts,tsx}', '.storybook/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',

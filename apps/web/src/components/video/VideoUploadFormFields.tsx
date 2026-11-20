@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressIndicator, ProgressIndicatorLinear } from '@/components/ui/progress-indicator';
 import { VideoUploadButton } from './VideoUploadButton';
 import { useTranslation } from 'react-i18next';
-import { VIDEO_UPLOAD_TYPES, TRANSCRIPTION_LANGUAGES, type TranscriptionLanguage } from '@videoq/trpc/video-upload';
+import { VIDEO_UPLOAD_TYPES, TRANSCRIPTION_LANGUAGES, type TranscriptionLanguage } from '@videoq/domain/video-upload';
 import type { CompressionPreset } from '@/lib/videoCompression';
 
 const acceptedVideoTypes = Object.keys(VIDEO_UPLOAD_TYPES).join(',');

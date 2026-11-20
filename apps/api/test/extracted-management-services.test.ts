@@ -1,3 +1,4 @@
+import { extractYoutubeVideoId } from "../src/lib/youtube";
 import { describe, expect, it, vi } from "vitest";
 import { createAccountBillingDeletionService } from "../src/features/billing/account-deletion-service";
 import type { AccountBillingDeletionDependencies } from "../src/features/billing/account-deletion-service";
@@ -8,6 +9,7 @@ import type { VideoManagementDependencies } from "../src/features/videos/managem
 
 function videoFixture() {
   const deps = {
+    extractYoutubeVideoId,
     list: vi
       .fn<VideoManagementDependencies["list"]>()
       .mockResolvedValue({ count: 0, results: [] }),
@@ -188,6 +190,7 @@ describe("video management workflows", () => {
 describe("account billing deletion workflow", () => {
   function fixture(enabled = true) {
     const deps = {
+    extractYoutubeVideoId,
       enabled,
       findUser: vi
         .fn<AccountBillingDeletionDependencies["findUser"]>()

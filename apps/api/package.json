@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify --env production",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.d1-tools.json",
+    "typecheck": "tsc -p tsconfig.application.json && tsc --noEmit && tsc -p tsconfig.d1-tools.json",
     "test": "vitest run && npm run test:workers",
     "test:unit": "vitest run",
     "test:workers": "vitest run --config vitest.workers.config.ts",
@@ -81,7 +81,8 @@
     "openai": "^7.43.0",
     "pg": "^8.23.1",
     "stripe": "^23.0.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@videoq/domain": "0.1.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.12",

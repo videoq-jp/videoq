@@ -5,7 +5,8 @@ import { readMediaBytes, readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
 import { DEFAULT_LLM_MODEL, resolveLlmConnection, providerModel, isOpenRouter, LlmProviderError } from "./openai";
 import { deadlineSignal } from "./request-timeout";
-import { frameCacheKey, MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, MAX_FRAME_CACHE_BYTES, sampleByTime } from "./video-evidence";
+import { frameCacheKey, MAX_FRAME_CACHE_BYTES } from './video-evidence';
+import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, selectClipFrames } from '../application/video-evidence';
 import { readFocusFrames, type FrameSelection } from "./focus-frames";
 import { readVisualManifest, visualChunkKey, jpegBase64, type VisualVideo } from "./visual-manifest";
 import type { UsageRecorder } from "../tools/usage";
@@ -28,12 +29,10 @@ const observationsSchema = z.object({
 }).strict();
 type Frame = z.infer<typeof frameSchema>;
 
-export function selectClipFrames(frames: readonly Frame[], start: number, end: number, limit = MAX_CLIP_FRAMES): Frame[] {
-  const candidates = frames.filter(f => f.timestamp_seconds >= start && f.timestamp_seconds <= end);
-  return sampleByTime(candidates, f => f.timestamp_seconds, limit);
-}
+export { selectClipFrames } from '../application/video-evidence';
 
-export type VisualMode = "overview" | "skim" | "inspect" | "focus";
+import type { VisualMode, VisualInspectionResult } from "../application/visual-evidence";
+export type { VisualMode } from "../application/visual-evidence";
 
 async function readSparseFrames(
   env: Bindings, video: VisualVideo,
@@ -75,7 +74,7 @@ export async function inspectVideoClip(
   start: number, end: number, query: string, signal: AbortSignal,
   options: { mode: VisualMode; maxFrames: number } = { mode: "inspect", maxFrames: MAX_CLIP_FRAMES },
   costLedger?: UsageRecorder,
-) {
+): Promise<VisualInspectionResult> {
   const cache = options.mode === "focus"
     ? await readFocusFrames(env, video, start, end, signal, options.maxFrames)
     : await readSparseFrames(env, video, start, end, signal,

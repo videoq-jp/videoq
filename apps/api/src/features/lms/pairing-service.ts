@@ -1,5 +1,6 @@
+import { pairingExpiry } from '../../application/pairing-exchange';
 import { ApplicationError } from '../../application/errors';
-import { PAIRING_SECONDS, type PairingMode, type PairingExchangeInput, type PairingSettings } from '../../application/moodle-pairing';
+import { type PairingMode, type PairingExchangeInput, type PairingSettings } from '../../application/moodle-pairing';
 import type { MoodlePairingRepository } from '../../persistence/contracts/moodle-pairing-repository';
 
 export interface MoodlePairingDependencies {
@@ -21,7 +22,7 @@ export function createMoodlePairingService(deps: MoodlePairingDependencies) {
         throw new ApplicationError('forbidden', 'LTI_MATERIALS_DISABLED', 'LTI_MATERIALS_DISABLED');
       }
       const secret = deps.randomSecret();
-      const expiresAt = new Date(deps.now() + PAIRING_SECONDS * 1000);
+      const expiresAt = pairingExpiry(deps.now());
       await deps.repository.issue({
         ownerUserId, ownerKey: await deps.digest('moodle-pairing-owner:' + ownerUserId),
         codeHash: await deps.digest('moodle-pairing:' + secret),

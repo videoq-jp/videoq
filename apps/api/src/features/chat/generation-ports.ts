@@ -1,3 +1,4 @@
+import type { CancellationState } from '../../application/answer-generation';
 import type { ChatAnswer, ChatSource } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
 import type {
@@ -88,7 +89,7 @@ export type GenerationConversation = {
   scope: ConversationScope;
   persistLog: (answer: GeneratedAnswer) => CreateChatLogInput | null;
 };
-export interface ChatGenerationDependencies<Ledger> {
+export interface ChatGenerationDependencies<Ledger, Signal extends CancellationState = CancellationState> {
   context(input: ChatContextInput): Promise<GroupChatContext | null>;
   checkedLtiSubject(subject: LtiDataSubject): LtiDataSubject;
   reserve(userId: string): Promise<AiAnswerReservationResult>;
@@ -114,7 +115,7 @@ export interface ChatGenerationDependencies<Ledger> {
   stream(
     params: GenerationParams<Ledger>,
     conversation: GenerationConversation,
-    signal?: AbortSignal,
+    signal?: Signal,
   ): AsyncIterable<GenerationChunk>;
   isCommittedFailure(error: unknown): boolean;
   classifyFailure(error: unknown): ChatFailure;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createLmsUploadSnapshot, createLmsUploadService, type LmsUploadDependencies } from '../src/features/lms/upload-service';
+import { createLmsUploadSnapshot, createLmsUploadService, validateLmsUploadResource, type LmsUploadDependencies } from '../src/features/lms/upload-service';
 const grant = { id: 'school', ownerUserId: 'owner' };
 const snapshot = { resourceId: 'resource', externalId: 'source', generation: 1, videoId: 1, fileKey: 'original', size: 3, contentType: 'video/mp4' };
 function fixture() {
@@ -104,5 +104,24 @@ describe('LMS upload snapshot policy', () => {
     { ...source, resource: { ...source.resource, contentType: null } },
   ])('rejects unavailable or stale source facts %#', value => {
     expect(() => createLmsUploadSnapshot(value, 'source', 1)).toThrow(expect.objectContaining({ code: 'STALE_GENERATION' }));
+  });
+});
+
+describe('LMS upload generation before transport validation', () => {
+  const source = { resource: { id: 'resource', kind: 'video', enabled: true, generation: 1, fileSize: null, contentType: null }, video: { id: 1, file: 'original' }, ownerUserId: 'owner' };
+  it.each(['content', 'confirm'] as const)('preserves %s generation checks before metadata/header validation', operation => {
+    expect(() => validateLmsUploadResource(source, 1, operation)).not.toThrow();
+    for (const data of [null, { ...source, video: null },
+      { ...source, resource: { ...source.resource, enabled: false } },
+      { ...source, resource: { ...source.resource, kind: 'course' } },
+      { ...source, resource: { ...source.resource, generation: 2 } }]) {
+      expect(() => validateLmsUploadResource(data, 1, operation)).toThrow(expect.objectContaining({ kind: 'conflict', code: 'STALE_GENERATION' }));
+    }
+    expect(() => validateLmsUploadResource(source, Number.NaN, operation)).toThrow(expect.objectContaining({ code: 'STALE_GENERATION' }));
+  });
+  it('requires a resolved owner at confirmation while retaining the existing content precheck', () => {
+    const data = { ...source, ownerUserId: '' };
+    expect(() => validateLmsUploadResource(data, 1, 'content')).not.toThrow();
+    expect(() => validateLmsUploadResource(data, 1, 'confirm')).toThrow(expect.objectContaining({ code: 'STALE_GENERATION' }));
   });
 });

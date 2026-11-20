@@ -11,6 +11,7 @@ import re
 import sys
 import tempfile
 
+from worker_python.use_cases.search_evaluation import unique_cases, remote_chunks, prepare_remote_vectors, evaluation_payload
 from worker_python.pipeline.embedding_contract import EmbeddingConfig, resolve_embedding_config, validate_embedding
 from worker_python.search_evaluation import EvaluationError, _fail, _object, _parent, _read, validate_manifest
 
@@ -145,12 +146,9 @@ def prepare_remote(input_path: Path, output_path: Path, target_path: Path, *, ex
     destination = _parent(output_path) / output_path.name
     if os.path.lexists(destination):
         _fail("output_exists")
-    unique_by_question = {}
-    for case in manifest["cases"]:
-        unique_by_question.setdefault(case["question"], case)
-    unique = list(unique_by_question.values())
+    unique = unique_cases(manifest)
     summary = {"cases": len(manifest["cases"]), "unique_queries": len(unique), "invocations": (len(unique) + CHUNK_SIZE - 1) // CHUNK_SIZE}
-    chunks = [{**manifest, "samples": 1, "cases": unique[offset:offset + CHUNK_SIZE]} for offset in range(0, len(unique), CHUNK_SIZE)]
+    chunks = remote_chunks(manifest, CHUNK_SIZE)
     if any(len(json.dumps(chunk, ensure_ascii=False).encode()) > MAX_CHUNK_BYTES for chunk in chunks):
         _fail("request_too_large")
     if not execute:
@@ -173,16 +171,12 @@ def prepare_remote(input_path: Path, output_path: Path, target_path: Path, *, ex
         except Exception:
             _fail("runtime_inspection_failed")
         verify_function(metadata, target, manifest["embedding"])
-        vectors = {}
-        for chunk in chunks:
-            vectors.update(_invoke(client, target, chunk))
-        payload = {"version": 1, "cohort": manifest["cohort"], "corpusSha256": manifest["corpusSha256"],
-                   "model": manifest["embedding"]["model"], "dimensions": manifest["embedding"]["dimensions"], "samples": manifest["samples"],
-                   "cases": [{"queryEmbedding": vectors[case["question"]], "userId": case["userId"], "videoIds": list(dict.fromkeys(case["videoIds"])), "limit": case["limit"]} for case in manifest["cases"]],
-                   "generation": {"version": 1, "manifest_sha256": _digest(manifest, canonical=True), "embedding": manifest["embedding"],
-                                  "case_ids": [case["id"] for case in manifest["cases"]], "input_type": "query", "unique_queries": len(unique),
-                                  "runtime": {key: target[key] for key in ["functionArn", "functionVersion", "imageUri", "roleArn"]},
-                                  "invocations": len(chunks), "quality_evaluated": False}}
+        vectors = prepare_remote_vectors(chunks, lambda chunk: _invoke(client, target, chunk))
+        payload = evaluation_payload(manifest, vectors,
+            model=manifest["embedding"]["model"], dimensions=manifest["embedding"]["dimensions"],
+            manifest_sha256=_digest(manifest, canonical=True), unique_queries=len(unique),
+            runtime={key: target[key] for key in ["functionArn", "functionVersion", "imageUri", "roleArn"]},
+            invocations=len(chunks))
         try:
             descriptor, temporary = tempfile.mkstemp(prefix=".videoq-remote-query-", dir=destination.parent)
             with os.fdopen(descriptor, "w", encoding="utf-8") as output:

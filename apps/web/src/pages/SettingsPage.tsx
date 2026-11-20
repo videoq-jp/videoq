@@ -1,3 +1,4 @@
+import { isPaidPlan } from "@videoq/domain/billing-catalog";
 import { features } from "@/lib/deployment";
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -324,7 +325,7 @@ export default function SettingsPage() {
                 <Button asChild variant="outline">
                   <Link href="/pricing">{t('settings.billing.viewPlans')}</Link>
                 </Button>
-                {user?.plan_code === 'basic' || user?.plan_code === 'pro' ? (
+                {isPaidPlan(user?.plan_code ?? 'free') ? (
                   <ManageBillingButton locale={locale} />
                 ) : null}
               </div>

@@ -1,3 +1,6 @@
+import { CONVERSATION_RETENTION_DAYS, conversationTitle, conversationCandidateIds, conversationCourseAllowed, conversationMembersAllowed, conversationStoredScopeAllowed, conversationLogShouldExpire, conversationTitleOnCommit } from '../../application/conversation-lifecycle';
+import { conversationStringLogic } from '../conversation-policy-sql';
+import { conversationBooleanLogic } from '../../application/conversation-lifecycle';
 import {apiConflict,apiNotFound} from '../../shared/errors';
 import type {ConversationRepository} from '../contracts/conversation';
 import pg from 'pg';
@@ -18,11 +21,11 @@ export async function lockLtiConversationCourse(client: pg.Client, scope: Conver
   const subject = checkedLtiSubject(scope.ltiSubject);
   await lockLtiDataSession(client,scope.ownerUserId,subject.sessionProof);
   const course = await client.query<{ user_id: string }>('SELECT user_id FROM video_courses WHERE id=$1 FOR SHARE', [scope.courseId]);
-  if (course.rows[0]?.user_id !== scope.ownerUserId || !allowEmpty && !subject.resourceVideoIds.length) throw new ConversationNotFoundError();
+  if (!conversationCourseAllowed(subject.resourceVideoIds.length,course.rows[0]?.user_id === scope.ownerUserId,allowEmpty,conversationBooleanLogic)) throw new ConversationNotFoundError();
   const members = await client.query(`SELECT m.video_id FROM video_course_members m JOIN videos v ON v.id=m.video_id
     WHERE m.course_id=$1 AND v.user_id=$2 AND m.video_id=ANY($3::bigint[]) FOR SHARE OF m,v`,
   [scope.courseId, scope.ownerUserId, subject.resourceVideoIds]);
-  if (members.rowCount !== subject.resourceVideoIds.length) throw new ConversationNotFoundError();
+  if (!conversationMembersAllowed(members.rowCount,subject.resourceVideoIds.length,conversationBooleanLogic)) throw new ConversationNotFoundError();
 }
 
 export async function withConversationRead<T>(env: Bindings, scope: ConversationScope, operation: (client: pg.Client) => Promise<T>): Promise<T> {
@@ -42,7 +45,7 @@ export function ltiConversationFilter(scope: ConversationScope, firstParameter: 
   if (!scope.ltiSubject) return { sql: '', values: [] };
   const subject = checkedLtiSubject(scope.ltiSubject);
   return { sql: ` AND EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=chat_conversations.thread_id
-    AND s.subject_key=$${firstParameter} AND s.resource_video_ids <@ $${firstParameter + 1}::jsonb)`,
+    AND ${conversationStoredScopeAllowed(`s.subject_key=$${firstParameter}`,`s.resource_video_ids <@ $${firstParameter + 1}::jsonb`,conversationStringLogic)})`,
   values: [subject.subjectKey, JSON.stringify(subject.resourceVideoIds)] };
 }
 
@@ -62,7 +65,7 @@ export async function openConversation(env: Bindings, scope: ConversationScope, 
       await client.query('DELETE FROM chat_conversations WHERE thread_id = $1 AND expires_at < now()', [threadId]);
       const { rowCount } = await client.query(`INSERT INTO chat_conversations
         (thread_id, owner_user_id, actor_user_id, course_id, lease_id, conversation_id, scope_key, leased_until, expires_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '20 minutes', now() + interval '30 days')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '20 minutes', now() + interval '${CONVERSATION_RETENTION_DAYS} days')
         ON CONFLICT (thread_id) DO UPDATE SET lease_id = EXCLUDED.lease_id,
           leased_until = EXCLUDED.leased_until, expires_at = EXCLUDED.expires_at,
           conversation_id = EXCLUDED.conversation_id, scope_key = EXCLUDED.scope_key
@@ -71,7 +74,7 @@ export async function openConversation(env: Bindings, scope: ConversationScope, 
       if (!rowCount) throw new ConversationBusyError();
       if (scope.ltiSubject) {
         const subject = checkedLtiSubject(scope.ltiSubject);
-        const previous = await client.query<{ allowed: boolean }>(`SELECT subject_key=$2 AND resource_video_ids <@ $3::jsonb AS allowed
+        const previous = await client.query<{ allowed: boolean }>(`SELECT ${conversationStoredScopeAllowed('subject_key=$2','resource_video_ids <@ $3::jsonb',conversationStringLogic)} AS allowed
           FROM lti_conversation_scopes WHERE thread_id=$1`, [threadId, subject.subjectKey, JSON.stringify(subject.resourceVideoIds)]);
         if (previous.rows[0] && !previous.rows[0].allowed) throw new ConversationNotFoundError();
         await client.query(`INSERT INTO lti_conversation_scopes(thread_id,subject_key,resource_video_ids)
@@ -107,10 +110,10 @@ export async function openConversation(env: Bindings, scope: ConversationScope, 
             VALUES ($1, $2, $3, $4::jsonb, $5)`, [threadId, result.checkpointId, result.queryText,
             JSON.stringify(chatAnswerSchema.parse(result.answer)), persisted.chatLogId]);
           await client.query(`UPDATE chat_conversations SET committed_checkpoint_id = $3,
-            title = CASE WHEN title = '' THEN $4 ELSE title END,
-            updated_at = clock_timestamp(), expires_at = clock_timestamp() + interval '30 days'
+            title = ${conversationTitleOnCommit('title','$4',conversationStringLogic)},
+            updated_at = clock_timestamp(), expires_at = clock_timestamp() + interval '${CONVERSATION_RETENTION_DAYS} days'
             WHERE thread_id = $1 AND lease_id = $2`, [threadId, leaseId, result.checkpointId,
-            result.queryText.trim().slice(0, 120)]);
+            conversationTitle(result.queryText)]);
           await client.query('COMMIT');
           return persisted;
         } catch (error) {
@@ -140,12 +143,12 @@ export async function pruneConversations(env: Bindings): Promise<number> {
     try {
       // Serialize expiration against a concurrent resume/commit before deleting logs.
       await client.query('SELECT thread_id FROM chat_conversations WHERE expires_at < now() FOR UPDATE');
-      await client.query(`DELETE FROM chat_logs l USING lti_chat_log_subjects s WHERE l.id=s.chat_log_id AND (
-        EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-          WHERE t.chat_log_id=l.id AND c.expires_at < now()) OR
-        (l.created_at < now()-interval '30 days' AND NOT EXISTS(
-          SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-          WHERE t.chat_log_id=l.id AND c.expires_at >= now())))`);
+      await client.query(`DELETE FROM chat_logs l USING lti_chat_log_subjects s WHERE l.id=s.chat_log_id AND ${conversationLogShouldExpire(
+        `EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
+          WHERE t.chat_log_id=l.id AND c.expires_at < now())`,
+        `l.created_at < now()-interval '${CONVERSATION_RETENTION_DAYS} days'`,
+        `NOT EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
+          WHERE t.chat_log_id=l.id AND c.expires_at >= now())`,conversationStringLogic)}`);
       const result = await client.query('DELETE FROM chat_conversations WHERE expires_at < now()');
       await client.query('COMMIT');
       return result.rowCount ?? 0;
@@ -163,7 +166,7 @@ async function listConversations(env: Bindings, scope: ConversationScope,
   const scopeKey = await conversationThreadId(scope, 'scope');
   // Shared-link visitors have no account identity. UUIDs saved by this browser
   // select candidates only; the browser session independently authorizes access.
-  const ids = scope.shareSlug ? input.conversationIds ?? [] : null;
+  const ids = conversationCandidateIds(scope.shareSlug,input.conversationIds);
   const filter = ltiConversationFilter(scope, 5);
   return withConversationRead(env, scope, async client => {
     const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations

@@ -1,3 +1,4 @@
+import { createTagService } from "../../../src/features/tags/core";
 import {TagNameConflictError} from "../../../src/persistence/contracts/tag-repository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TAG_COLORS } from "@videoq/trpc";
@@ -15,18 +16,19 @@ export function tagRepositoryContract(backend: string, createFixture: () => Prom
     beforeEach(async () => { fixture = await createFixture(); }, 20_000);
     afterEach(async () => { await fixture?.dispose(); fixture = undefined; });
     const current = () => { if (!fixture) throw new Error("Tag fixture not initialized"); return fixture; };
-    it("normalizes updates and preserves ownership before validation errors", async () => {
+    it("applies application-validated updates and preserves ownership before validation errors", async () => {
       const repo = current().repository;
+      const service = createTagService(repo);
       const tag = await repo.create("owner", "Tag", TAG_COLORS[0]);
       expect(tag).toMatchObject({ name: "Tag", color: TAG_COLORS[0], video_count: 0 });
       expect(new Date(tag.created_at).toISOString()).toBe(tag.created_at);
       expect(await repo.getDetail(tag.id, "other")).toBeNull();
-      expect(await repo.update(tag.id, "other", { name: " " })).toEqual({ notFound: true });
-      expect(await repo.update(tag.id, "owner", { name: " " })).toHaveProperty("error");
-      expect(await repo.update(tag.id, "owner", { name: "Bad partial update", color: "invalid-color" })).toHaveProperty("error");
+      expect(await service.updateUserTag(tag.id, "other", { name: " " })).toEqual({ notFound: true });
+      expect(await service.updateUserTag(tag.id, "owner", { name: " " })).toHaveProperty("error");
+      expect(await service.updateUserTag(tag.id, "owner", { name: "Bad partial update", color: "invalid-color" })).toHaveProperty("error");
       expect((await repo.getDetail(tag.id, "owner"))?.name).toBe("Tag");
-      expect(await repo.update(tag.id, "owner", { name: "  Renamed  ", color: TAG_COLORS[1] })).toMatchObject({ tag: { name: "Renamed", color: TAG_COLORS[1] } });
-      expect(await repo.update(tag.id, "owner", {})).toMatchObject({ tag: { name: "Renamed" } });
+      expect(await service.updateUserTag(tag.id, "owner", { name: "  Renamed  ", color: TAG_COLORS[1] })).toMatchObject({ tag: { name: "Renamed", color: TAG_COLORS[1] } });
+      expect(await service.updateUserTag(tag.id, "owner", {})).toMatchObject({ tag: { name: "Renamed" } });
     });
     it("paginates owned tags and includes related videos with accurate counts", async () => {
       const f = current();

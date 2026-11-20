@@ -1,5 +1,6 @@
+import { uploadConfirmed, assertMultipartInitialization, activeMultipartSession, multipartReservation, multipartPartLength, orderedMultipartParts, multipartObjectMatches, assertMultipartObjectSize } from '../../application/multipart-upload';
 import { and, eq, sql } from "drizzle-orm";
-import { multipartPartSize, MAX_UPLOAD_PARTS, isValidUploadPartEtag } from "@videoq/trpc/video-upload";
+import { multipartPartSize } from "@videoq/domain/video-upload";
 import { withDb } from "../../db/pool";
 import { videos } from "../../db/schema";
 import {
@@ -7,7 +8,7 @@ import {
   getR2ObjectSize, presignR2UploadPart,
 } from "../../integrations/media";
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
-import { parseReservedBytesFromFileKey } from "../../lib/upload";
+import { parseReservedBytesFromFileKey } from "../../application/upload";
 import type { Bindings } from "../../types/bindings";
 import { insertJobTask } from "./external-task-repository";
 
@@ -23,9 +24,8 @@ export async function initializeMultipartUpload(
       const [video] = await tx.select({ file: videos.file, status: videos.status, session: videos.multipartUpload })
         .from(videos).where(and(eq(videos.id, videoId), eq(videos.userId, userId))).for("update");
       if (!video) throw new UploadSessionError("Video not found", "NOT_FOUND");
-      if (video.status !== "uploading") throw new UploadSessionError("Upload is already confirmed");
-      const fileSize = parseReservedBytesFromFileKey(video.file);
-      if (!fileSize) throw new UploadSessionError("Upload reservation is missing");
+      assertMultipartInitialization(video.status);
+      const fileSize = multipartReservation(parseReservedBytesFromFileKey(video.file));
       let session = video.session;
       if (!session) {
         const uploadId = await createR2MultipartUpload(env, video.file, contentType);
@@ -57,13 +57,9 @@ export async function getMultipartUploadPartUrl(
     const [video] = await tx.select({ file: videos.file, status: videos.status, session: videos.multipartUpload })
       .from(videos).where(and(eq(videos.id, videoId), eq(videos.userId, userId))).for("update");
     if (!video) throw new UploadSessionError("Video not found", "NOT_FOUND");
-    const session = video.session;
-    if (video.status !== "uploading" || !session) throw new UploadSessionError("Multipart upload is not active");
+    const session = activeMultipartSession(video.status, video.session);
     const size = parseReservedBytesFromFileKey(video.file);
-    if (!size || !Number.isInteger(partNumber) || partNumber < 1 || partNumber > Math.ceil(size / session.partSize)) {
-      throw new UploadSessionError("Invalid upload part number");
-    }
-    const length = Math.min(session.partSize, size - (partNumber - 1) * session.partSize);
+    const length = multipartPartLength(size,session.partSize,partNumber);
     const upload_url = await presignR2UploadPart(env, video.file, session.uploadId, partNumber, session.contentType, length);
     await tx.update(videos).set({ uploadHeartbeatAt: sql`now()` }).where(eq(videos.id, videoId));
     return { upload_url };
@@ -77,24 +73,20 @@ export async function completeMultipartVideoUpload(
     const [video] = await tx.select({ file: videos.file, status: videos.status, session: videos.multipartUpload })
       .from(videos).where(and(eq(videos.id, videoId), eq(videos.userId, userId))).for("update");
     if (!video) throw new UploadSessionError("Video not found", "NOT_FOUND");
-    if (["pending", "processing", "indexing", "completed", "error"].includes(video.status)) return null;
-    const session = video.session;
-    if (video.status !== "uploading" || !session) throw new UploadSessionError("Multipart upload is not active");
+    if (uploadConfirmed(video.status)) return null;
+    const session = activeMultipartSession(video.status, video.session);
     const size = parseReservedBytesFromFileKey(video.file);
-    const ordered = [...parts].sort((a, b) => a.partNumber - b.partNumber);
-    if (!size || parts.length > MAX_UPLOAD_PARTS || parts.length !== Math.ceil(size / session.partSize) ||
-        ordered.some((part, index) => part.partNumber !== index + 1 || !isValidUploadPartEtag(part.etag))) {
-      throw new UploadSessionError("Upload parts are missing or invalid");
-    }
+    const ordered = orderedMultipartParts(size,session.partSize,parts);
+    const reserved = size!;
     // Recover if R2 completed but the response/DB commit was lost. A unique
     // reserved file key and signed part lengths bind this object to this upload.
     let actual = await getR2ObjectSize(env, video.file);
     if (actual === null) {
       try { await completeR2MultipartUpload(env, video.file, session.uploadId, ordered); }
-      catch(error) { if(await getR2ObjectSize(env,video.file)!==size)throw error; }
+      catch(error) { if(!multipartObjectMatches(await getR2ObjectSize(env,video.file),reserved))throw error; }
       actual = await getR2ObjectSize(env, video.file);
     }
-    if (actual !== size) throw new UploadSessionError("Uploaded object size does not match the reserved size");
+    assertMultipartObjectSize(actual,reserved);
     await tx.update(videos).set({
       status: "pending", errorMessage: "", multipartUpload: null, uploadHeartbeatAt: null,
     }).where(eq(videos.id, videoId));

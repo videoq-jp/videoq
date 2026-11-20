@@ -1,3 +1,5 @@
+import { COURSE_HISTORY_MAX_TURNS, courseHistoryScopeIds, courseHistoryAttribution, retainedCourseHistory } from '../../application/course-history-append';
+import { historyStringChoice } from '../course-history-policy-sql';
 import type {CourseHistoryRepository,CourseHistoryScope} from '../contracts/course-history-repository';
 import {checkHistoryScope,historyDenied} from '../../shared/course-history';
 const safeJson=(column:string)=>`CASE WHEN json_valid(${column}) THEN ${column} ELSE '{}' END`;
@@ -13,16 +15,18 @@ const decode=(raw:string):unknown=>{try{return JSON.parse(raw) as unknown;}catch
 export function createD1CourseHistoryRepository(database:D1Database):CourseHistoryRepository{return {
  async append(scope,id,turn,allowed,expiresAt){
   const authority=guard(scope),old=safeJson('lti_credentials.payload');
-  const previous=`CASE WHEN julianday(lti_credentials.expires_at)>julianday('now')
-   AND json_type(${old},'$.scopeVideoIds')='array' AND json_type(${old},'$.turns')='array'
-   AND NOT EXISTS(SELECT 1 FROM json_each(${old},'$.scopeVideoIds') prior WHERE prior.type NOT IN('integer','real') OR prior.value<=0 OR prior.value>9007199254740991 OR prior.value<>CAST(prior.value AS INTEGER) OR
-    NOT EXISTS(SELECT 1 FROM json_each(excluded.payload,'$.scopeVideoIds') next WHERE next.type='integer' AND next.value=prior.value))
-   THEN ${old} -> '$.turns' ELSE '[]' END`;
+  const previous=retainedCourseHistory({
+   live:"julianday(lti_credentials.expires_at)>julianday('now')",
+   scopeArray:`json_type(${old},'$.scopeVideoIds')='array'`,
+   turnsArray:`json_type(${old},'$.turns')='array'`,
+   scopeCompatible:`NOT EXISTS(SELECT 1 FROM json_each(${old},'$.scopeVideoIds') prior WHERE prior.type NOT IN('integer','real') OR prior.value<=0 OR prior.value>9007199254740991 OR prior.value<>CAST(prior.value AS INTEGER) OR
+    NOT EXISTS(SELECT 1 FROM json_each(excluded.payload,'$.scopeVideoIds') next WHERE next.type='integer' AND next.value=prior.value))`,
+  },`${old} -> '$.turns'`,"'[]'",historyStringChoice);
   const recent=`(SELECT json_group_array(CASE WHEN type IN('array','object') THEN json(value) WHEN type='true' THEN json('true') WHEN type='false' THEN json('false') ELSE value END) FROM (SELECT value,type FROM (
    SELECT key,value,type FROM json_each(json_insert(${previous},'$[#]',json(excluded.payload -> '$.turns[0]')))
-    ORDER BY CAST(key AS INTEGER) DESC LIMIT 50) ORDER BY CAST(key AS INTEGER)))`;
-  const scopeJson=allowed===undefined?null:JSON.stringify([...new Set(allowed)].sort((a,b)=>a-b));
-  const attribution={registrationId:scope.registrationId,subjectHash:scope.subjectHash,courseId:scope.courseId,...(scope.contextId?{contextId:scope.contextId}:{})};
+    ORDER BY CAST(key AS INTEGER) DESC LIMIT ${COURSE_HISTORY_MAX_TURNS}) ORDER BY CAST(key AS INTEGER)))`;
+  const scopeJson=allowed===undefined?null:JSON.stringify(courseHistoryScopeIds(allowed));
+  const attribution=courseHistoryAttribution(scope);
   const result=await database.prepare(`WITH input AS (SELECT ? AS id,? AS attribution,coalesce(?,(
    SELECT json_group_array(video_id) FROM (SELECT DISTINCT video_id FROM video_course_members WHERE course_id=? ORDER BY video_id))) AS scope,? AS turn,? AS expiry)
    INSERT INTO lti_credentials(id,kind,payload,expires_at)
@@ -38,7 +42,7 @@ export function createD1CourseHistoryRepository(database:D1Database):CourseHisto
    database.prepare(`SELECT (${authority.sql}) AS allowed`).bind(...authority.values),
    database.prepare(`SELECT h.payload,coalesce((SELECT json_group_array(json_object('id',l.id,'answer',l.response,'feedback',l.feedback))
     FROM chat_logs l WHERE l.user_id=? AND l.course_id=? AND l.id IN(SELECT json_extract(CASE WHEN turn.type='object' THEN turn.value ELSE '{}' END,'$.logId')
-     FROM json_each(CASE WHEN json_type(${payload},'$.turns')='array' AND json_array_length(${payload},'$.turns')<=50
+     FROM json_each(CASE WHEN json_type(${payload},'$.turns')='array' AND json_array_length(${payload},'$.turns')<=${COURSE_HISTORY_MAX_TURNS}
       THEN ${payload} -> '$.turns' ELSE '[]' END) turn
      WHERE json_type(CASE WHEN turn.type='object' THEN turn.value ELSE '{}' END,'$.logId') IN('integer','real'))),'[]') AS logs
     FROM lti_credentials h WHERE h.id=? AND h.kind='lti-history' AND julianday(h.expires_at)>julianday('now') AND ${authority.sql}`)

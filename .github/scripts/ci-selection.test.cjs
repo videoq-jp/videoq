@@ -139,3 +139,24 @@ test('lab bootstrap and updater validation is required through the shared CI ent
   assert.match(lab, /workflow_call:/);
   assert.doesNotMatch(lab, /^  (pull_request|push|merge_group):/m);
 });
+
+test('shared domain changes select both API and frontend verification', () => {
+  for (const path of ['packages/domain/src/video-upload.ts', 'packages/domain/src/tag-policy.ts', 'packages/domain/package.json']) {
+    assert.equal(filter('hono', [path]), 'true', path);
+    assert.equal(filter('frontend', [path]), 'true', path);
+  }
+});
+
+
+test('extracted speech workflows retain native inference verification without lifecycle rehearsals', () => {
+  for (const path of ['apps/worker/worker_python/use_cases/transcription_source.py',
+    'apps/worker/worker_python/use_cases/uploaded_transcription.py',
+    'apps/worker/worker_python/use_cases/segmented_transcription.py',
+    'apps/worker/worker_python/domain/srt.py']) {
+    for (const event of events) {
+      assert.equal(selected('inference', event, [path]), true, `${event}: ${path}`);
+      assert.equal(selected('onprem_lifecycle', event, [path]), false, `${event}: ${path}`);
+      assert.equal(selected('whisper_gpu', event, [path]), false, `${event}: ${path}`);
+    }
+  }
+});

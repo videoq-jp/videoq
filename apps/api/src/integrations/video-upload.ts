@@ -1,3 +1,4 @@
+import { buildPendingUploadFileKey } from "../lib/upload";
 import { createVideoUploadService } from "../features/videos/upload-service";
 import type { Bindings } from "../types/bindings";
 import {
@@ -12,7 +13,8 @@ import { ABANDONED_UPLOAD_MS } from "../lib/upload-reconcile";
 
 /** Request-local composition shared by HTTP, tRPC and MCP entrypoints. */
 export function videoUploadService(env: Bindings) {
-  return createVideoUploadService({
+  return createVideoUploadService<ReadableStream>({
+    newFileKey: buildPendingUploadFileKey,
     videos: {
       reserveUpload: input => reserveAndCreatePendingVideo(env, input.userId, input.storageBytes,
         input.fileKey, input.title, input.description, input.idempotency, input.transcriptionLanguage),

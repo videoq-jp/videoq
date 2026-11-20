@@ -1,19 +1,22 @@
+import { managementSystemAdministrator, managementConnectionActive } from '../../application/lms-management';
+import { mediaDrizzleLogic } from '../media-eligibility-sql';
+import { d1LmsOwnerSql, activeD1LmsOwner } from './lms-owner-policy';
 import {and,eq,isNull,sql} from 'drizzle-orm';
 import {createD1Connection} from '../../db/d1/connection';
 import {teachingConnections,lmsInstallations,users} from '../../db/schema/sqlite';
 import type {LmsInstallationRepository} from '../contracts/lms-installation-repository';
-const ACTIVE=`owner.is_active=1 AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))`;
-const active=sql`${users.isActive}=1 AND ${users.deactivatedAt} IS NULL AND (${users.banned} IS NOT TRUE OR julianday(${users.banExpires})<=julianday('now'))`;
+const ACTIVE=`${d1LmsOwnerSql()}`;
+const active=activeD1LmsOwner();
 export function createD1LmsInstallationRepository(database:D1Database):LmsInstallationRepository {
  const db=createD1Connection(database);
  return {
   managementAccess(userId,identity){return (async db=>{
    const [user]=await db.select({role:users.role}).from(users).where(eq(users.id,userId)).limit(1);
    if(!user)return null;
-   const [connection]=await db.select({active:sql<boolean>`${lmsInstallations.active} AND ${teachingConnections.active}`.mapWith(Boolean)}).from(lmsInstallations)
+   const [connection]=await db.select({active:sql<boolean>`${managementConnectionActive(sql`${lmsInstallations.active}`,sql`${teachingConnections.active}`,mediaDrizzleLogic)}`.mapWith(Boolean)}).from(lmsInstallations)
     .innerJoin(teachingConnections,and(eq(teachingConnections.provider,'moodle'),eq(teachingConnections.installationId,lmsInstallations.id),eq(teachingConnections.ownerUserId,userId)))
     .where(and(eq(lmsInstallations.issuer,identity.issuer),eq(lmsInstallations.clientId,identity.clientId),eq(lmsInstallations.deploymentId,identity.deploymentId))).limit(1);
-   return {systemAdmin:user.role==='admin',connectionActive:connection?.active??null};
+   return {systemAdmin:managementSystemAdministrator(user.role),connectionActive:connection?.active??null};
   })(db);},
   async insert(p){
    const row=await database.prepare(`INSERT INTO lms_installations(id,owner_user_id,name,issuer,client_id,deployment_id,authorization_url,jwks_url,sync_token_hash,materials_service)

@@ -27,11 +27,13 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/docs/package.json apps/docs/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/trpc/package.json packages/trpc/package.json
+COPY packages/domain/package.json packages/domain/package.json
 RUN npm ci --workspace @videoq/api \
   && cp package-lock.json node_modules/.videoq-package-lock
 
 COPY apps/api apps/api
 COPY packages/trpc packages/trpc
+COPY packages/domain packages/domain
 
 WORKDIR /workspace/apps/api
 RUN chmod +x scripts/docker-dev.sh

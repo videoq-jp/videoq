@@ -94,7 +94,7 @@ def test_full_reindex_logs_totals_for_an_iterator(monkeypatch, caplog, size) -> 
             youtube_video_id=None,
         ) for i in range(size)
     )
-    with caplog.at_level("INFO", logger=reindexing.__name__):
+    with caplog.at_level("INFO", logger="worker_python.use_cases.reindex_batch"):
         reindexing._run_reindex(videos)
     message = f"Re-indexed {size}/{size} videos" if size else "No videos to re-index"
     assert f"Re-indexing completed: {message}" in caplog.messages

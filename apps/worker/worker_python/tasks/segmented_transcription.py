@@ -13,7 +13,7 @@ from worker_python.contracts import (
 from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.env import env_flag
-from worker_python.pipeline.srt import create_srt_from_whisper_segments
+from worker_python.domain.srt import create_srt_from_whisper_segments
 from worker_python.pipeline.storage import resolve_media_input
 from worker_python.pipeline.transcription import (
     NoAudioStreamError, _ffprobe_duration, ensure_audio_stream, transcribe_audio_interval,
@@ -23,6 +23,7 @@ from worker_python.video_sql import VideoRow, get_video_for_task, finish_transcr
 
 from worker_python.use_cases.segmented_transcription import (
     ChunkDependencies, PlanDependencies, FinalizationDependencies,
+    PendingDispatchDependencies, dispatch_pending,
     execute_chunk, start_plan, finish_plan,
 )
 
@@ -39,13 +40,12 @@ def _send(run: checkpoints.TranscriptionRun, kind: str, **extra) -> None:
 
 
 def _dispatch_pending(run: checkpoints.TranscriptionRun, *, after_index: int | None = None) -> None:
-    for index in checkpoints.pending_heads(run, after_index=after_index):
-        _send(run, JOB_TRANSCRIBE_VIDEO_CHUNK, chunk_index=index)
-    # Each lane checks the whole plan: the last completed chunk sends the finalizer.
-    # If delivery fails after a checkpoint commit, retrying that chunk gets here
-    # without another paid provider call. Stable job IDs absorb duplicate sends.
-    if not checkpoints.pending_heads(run):
-        _send(run, JOB_FINISH_VIDEO_TRANSCRIPTION)
+    dispatch_pending(PendingDispatchDependencies(
+        next_heads=lambda cursor: checkpoints.pending_heads(run, after_index=cursor),
+        has_pending=lambda: bool(checkpoints.pending_heads(run)),
+        send_chunk=lambda index: _send(run, JOB_TRANSCRIBE_VIDEO_CHUNK, chunk_index=index),
+        send_finish=lambda: _send(run, JOB_FINISH_VIDEO_TRANSCRIPTION),
+    ), after_index=after_index)
 
 
 def start_uploaded_transcription(video: VideoRow) -> None:

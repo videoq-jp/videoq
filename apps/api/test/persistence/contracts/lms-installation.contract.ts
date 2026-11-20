@@ -28,9 +28,13 @@ export function lmsInstallationContract(name:string,setup:()=>Promise<Fixture>){
    expect(await managementContext(f.env,'owner',input)).toEqual({connection:{owned:true,active:true},permissions:{account:true,billing:features(f.env).billing,systemAdmin:false}});
    await f.execute('UPDATE teaching_connections SET active=?',[false]);
    expect(await managementContext(f.env,'owner',input)).toMatchObject({connection:{owned:true,active:false},permissions:{account:true}});
+   await f.execute('UPDATE teaching_connections SET active=?',[true]);await f.execute('UPDATE lms_installations SET active=?',[false]);
+   expect(await managementContext(f.env,'owner',input)).toMatchObject({connection:{owned:true,active:false}});
    for(const field of ['issuer','clientId','deploymentId'])expect(await managementContext(f.env,'owner',{...input,[field]:'other'})).toMatchObject({connection:{owned:false,active:null}});
    await f.execute("UPDATE users SET role='admin' WHERE id='other'");
    expect(await managementContext(f.env,'other',input)).toEqual({connection:{owned:false,active:null},permissions:{account:false,billing:false,systemAdmin:true}});
+   await f.execute("UPDATE users SET role='user,admin' WHERE id='other'");
+   expect(await managementContext(f.env,'other',input)).toMatchObject({permissions:{systemAdmin:false}});
   });
   it('provisions and authenticates with only hashed tokens and lists only active owned connections',async()=>{
    const created=await provisionLmsInstallation(f.env,registration());expect(created.token).toMatch(/^[a-f0-9]{64}$/);

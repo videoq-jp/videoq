@@ -1,3 +1,4 @@
+import { extractYoutubeVideoId } from "../lib/youtube";
 import { requireFeature } from "../lib/deployment";
 import {
   listVideosPage,
@@ -19,6 +20,7 @@ import { createVideoManagementService } from "../features/videos/management-serv
 
 export function videoManagementService(env: Bindings) {
   return createVideoManagementService({
+    extractYoutubeVideoId,
     list: (...args) => listVideosPage(env, ...args),
     detail: (...args) => getVideoDetail(env, ...args),
     createYoutube: (...args) => createYoutubeVideo(env, ...args),

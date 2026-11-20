@@ -6,7 +6,8 @@ export interface ExternalTaskFixture {
   repository: ExternalTaskRepository;
   expireAndReady(id: number): Promise<void>;
   setAttempts(id: number, attempts: number): Promise<void>;
-  createCleanup(effectApplied?: boolean): Promise<number>;
+  createCleanup(effectApplied?: boolean, quota?: { used: number; limitGb: number | null; overQuota: boolean }): Promise<number>;
+  retryDelay(id: number): Promise<number>;
   rejectCompletion(): Promise<void>;
   seedHistory(): Promise<void>;
   snapshot(): Promise<{ storageBytes: number; overQuota: boolean; receipts: number; protectedJob: boolean; completed: number }>;
@@ -61,6 +62,26 @@ export function externalTaskContract(backend: string, createFixture: () => Promi
       await expect(f.repository.completeStorageCleanup({ lease, userId: "owner", bytes: 5 })).rejects.toBeInstanceOf(ExternalTaskLeaseLostError);
       expect((await f.snapshot()).storageBytes).toBe(5);
     });
+    it.each([
+      { used: 10, limitGb: null, overQuota: true, bytes: 5, remaining: 5, expected: false },
+      { used: 10, limitGb: 0, overQuota: true, bytes: 20, remaining: 0, expected: false },
+      { used: 10, limitGb: 0, overQuota: true, bytes: 5, remaining: 5, expected: true },
+      { used: 10, limitGb: 0, overQuota: false, bytes: 5, remaining: 5, expected: false },
+      { used: 10, limitGb: null, overQuota: true, bytes: 0, remaining: 10, expected: true },
+      { used: 10, limitGb: null, overQuota: true, bytes: null, remaining: 10, expected: true },
+    ])("preserves storage refund boundaries: %j", async ({ bytes, remaining, expected, ...quota }) => {
+      const f = current(); const id = await f.createCleanup(false, quota);
+      const [lease] = await f.repository.claim({ limit: 1, taskId: id });
+      await f.repository.completeStorageCleanup({ lease, userId: "owner", bytes });
+      expect(await f.snapshot()).toMatchObject({ storageBytes: remaining, overQuota: expected, completed: 1, receipts: 0 });
+    });
+    it.each([[1, 10], [9, 2560], [10, 3600], [47, 3600]])("schedules attempt %i using the database clock", async (attempt, seconds) => {
+      const f = current(); const task = await job(); await f.setAttempts(task.id, attempt - 1);
+      const [lease] = await f.repository.claim({ limit: 1, taskId: task.id });
+      expect(lease.attempt).toBe(attempt);
+      expect(await f.repository.fail(lease, "retry")).toEqual({ dead: false, leaseLost: false });
+      expect(await f.retryDelay(task.id)).toBeCloseTo(seconds, 2);
+    });
     it("does not refund storage again when the effect is already recorded", async () => {
       const f = current(); const id = await f.createCleanup(true);
       const [lease] = await f.repository.claim({ limit: 1, taskId: id });
@@ -90,6 +111,14 @@ export function externalTaskContract(backend: string, createFixture: () => Promi
       expect(await f.repository.pruneHistory()).toEqual({ externalTasks: 1, jobExecutions: 1 });
       expect((await f.snapshot()).protectedJob).toBe(true);
       expect(await f.repository.health()).toMatchObject({ pending: 1, dead: 0 });
+    });
+    it("rejects invalid retention bounds without deleting delivery or execution history", async () => {
+      const f = current(); await f.seedHistory();
+      const before = await f.snapshot();
+      for (const [days, limit] of [[0, 1], [1.5, 1], [30, 0], [30, 5001], [30, Infinity]]) {
+        await expect(f.repository.pruneHistory(days, limit)).rejects.toThrow();
+      }
+      expect(await f.snapshot()).toEqual(before);
     });
   });
 }

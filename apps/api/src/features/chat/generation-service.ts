@@ -1,3 +1,5 @@
+import type { CancellationState } from '../../application/answer-generation';
+import { validConversationQuestion } from '@videoq/domain/chat';
 import type { ChatAnswer } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
 import type { AiAnswerReservation } from "../../persistence/contracts/ai-quota";
@@ -17,8 +19,8 @@ import type {
 } from "./generation-ports";
 
 /** Answer lifecycle. Runtime adapters and transport formatting are supplied outside. */
-export function createChatGenerationService<Ledger>(
-  deps: ChatGenerationDependencies<Ledger>,
+export function createChatGenerationService<Ledger, Signal extends CancellationState = CancellationState>(
+  deps: ChatGenerationDependencies<Ledger, Signal>,
 ) {
   type ChatSendResult =
     | { ok: true; message: ChatMessage }
@@ -96,6 +98,9 @@ export function createChatGenerationService<Ledger>(
         ok: false,
         failure: failures.invalidRequest("Messages are empty."),
       };
+    }
+    if (!validConversationQuestion(opts.req.messages, opts.req.conversationId)) {
+      return { ok: false, failure: failures.invalidRequest('A conversation request requires one user question.') };
     }
     if (isShared && opts.req.courseId === null) {
       return {
@@ -317,7 +322,7 @@ export function createChatGenerationService<Ledger>(
 
   /** Stream generation progress while preserving quota and persistence semantics. */
   async function streamChatMessage(
-    opts: ChatGenerationOptions & { clientSignal?: AbortSignal },
+    opts: ChatGenerationOptions & { clientSignal?: Signal },
   ): Promise<{ write: (send: EventWriter) => Promise<void> }> {
     const req = opts.request;
 

@@ -2,7 +2,8 @@ import { unpreparedVisualEvidence } from "./visual-availability";
 import { z } from "zod";
 import { readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
-import { focusCacheKey, MAX_FOCUS_FRAMES } from "./video-evidence";
+import { focusCacheKey } from './video-evidence';
+import { MAX_FOCUS_FRAMES, assertFocusInterval, selectDenseFramePlan } from '../application/video-evidence';
 import { readVisualManifest, visualChunkKey, type VisualVideo } from "./visual-manifest";
 
 // Wire format written atomically by worker_python/pipeline/focus_frames.py.
@@ -39,9 +40,7 @@ export async function readFocusFrames(
   env: Bindings, video: VisualVideo,
   start: number, end: number, signal: AbortSignal, maxFrames = MAX_FOCUS_FRAMES,
 ): Promise<FrameSelection> {
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > 16) {
-    throw new Error("Focus requires a positive interval of at most 16 seconds");
-  }
+  assertFocusInterval(start, end);
   const plan = await readVisualManifest(env, video, signal);
   if (plan) {
     const frames: { timestamp_seconds: number; jpeg_base64: string }[] = [];
@@ -95,12 +94,11 @@ async function readFocusPack(
   }
   if (dataStart + nextOffset !== header.size) throw new Error("Focus index does not cover its image data");
   // Half-open interval avoids 17 frames for an exact [0, 16) second clip.
-  const selected = index.frames.filter(([time]) => time >= start * 1000 && time < end * 1000);
+  const selection = selectDenseFramePlan(index.frames, frame => frame[0], start * 1000, end * 1000, maxFrames);
+  if ('unavailable' in selection) return selection;
+  const selected = selection.frames;
   if (!selected.length) return chunk ? { frames: [], duration_seconds: index.duration_seconds, sampling_interval_seconds: 1 }
     : { unavailable: "No dense frames fall in this interval; the source may have a gap or the interval may be outside the video.", sampling_interval_seconds: 1 } as const;
-  if (selected.length > Math.min(MAX_FOCUS_FRAMES, maxFrames)) return {
-    unavailable: "Remaining image budget cannot cover this dense interval. Choose a shorter focus interval or answer from collected evidence.",
-  } as const;
   const offset = selected[0][1];
   const last = selected[selected.length - 1];
   const images = await readMediaRange(env, key, dataStart + offset, last[1] + last[2] - offset, signal, header.etag);

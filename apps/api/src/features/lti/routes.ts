@@ -7,15 +7,14 @@ import { z } from "zod";
 import type { AppEnv } from "../../types/bindings";
 import { toErrorBody } from "../../shared/errors";
 import { clientIp, enforceThrottles, throttledResponse } from "../../lib/rate-limit";
-import { getCourseWithMembers } from "../../repositories/chat-repository";
-import { courseAccessContext } from "./course-access";
 import { ltiConfig, type LtiRegistration } from "./config";
 import { resolvedLtiConfig } from "./registrations";
-import { loginRecord, sessionRecord, verifyLaunch } from "./protocol";
-import { consumeLogin, digest, putCredential, randomSecret, readCredential } from "./store";
+import { loginRecord } from "./protocol";
+import { randomSecret, readCredential } from "./store";
 import { loginView, questionView } from "./view";
 import { mountLearningRoutes } from "./learning-routes";
-import { registrationFingerprint, learningFeatures } from "./session-authorization";
+import { initiateLtiLogin, exchangeLtiLogin, authorizeLtiSession } from './session-service';
+import { ltiSessionDependencies } from '../../integrations/lti-session';
 
 export const ltiRoutes = new Hono<AppEnv>();
 const opaque = z.string().regex(/^[a-f0-9]{64}$/);
@@ -63,25 +62,22 @@ ltiRoutes.on(["GET", "POST"], "/login", async c => {
   const config = (await resolvedLtiConfig(c.env))!;
   let params: URLSearchParams;
   try { params = await parameters(c); } catch { return refused(c); }
-  const candidates = config.registrations.filter(reg => reg.issuer === params.get("iss")
-    && (!params.get("client_id") || reg.clientId === params.get("client_id")));
-  if (candidates.length !== 1 || !params.get("login_hint")) return refused(c);
-  const reg = candidates[0];
   const target = config.toolOrigin + "/api/lti/launch";
-  if (params.get("target_link_uri") !== target) return refused(c);
-  const deploymentHint = params.get("lti_deployment_id") || undefined;
-  if (deploymentHint && reg.deploymentId !== deploymentHint && !reg.resources.some(item => item.deploymentId === deploymentHint)) return refused(c);
   const locale = resolveLtiLocale(c.req.header("Accept-Language"));
-  const state = randomSecret(), nonce = randomSecret(), browserSecret = randomSecret();
-  await putCredential(c.env, state, "login", {
-    registrationId: reg.id, locale, nonce, browserHash: await digest(browserSecret), target, deploymentHint,
-  }, 300);
+  const initiated = await initiateLtiLogin(ltiSessionDependencies(c.env), config.registrations, target, {
+    issuer: params.get('iss') ?? '', clientId: params.get('client_id') || undefined,
+    loginHint: params.get('login_hint') || undefined, target: params.get('target_link_uri') ?? '',
+    deploymentHint: params.get('lti_deployment_id') || undefined,
+    messageHint: params.get('lti_message_hint') || undefined, locale,
+  });
+  if (!initiated) return refused(c);
+  const { reg, state, nonce, browserSecret, deploymentHint } = initiated;
   const url = new URL(reg.authorizationUrl);
   const authParams: Record<string, string> = {
     scope: "openid", response_type: "id_token", response_mode: "form_post", prompt: "none",
-    client_id: reg.clientId, redirect_uri: target, login_hint: params.get("login_hint")!, state, nonce,
+    client_id: reg.clientId, redirect_uri: target, login_hint: initiated.loginHint, state, nonce,
   };
-  if (params.get("lti_message_hint")) authParams.lti_message_hint = params.get("lti_message_hint")!;
+  if (initiated.messageHint) authParams.lti_message_hint = initiated.messageHint;
   if (deploymentHint) authParams.lti_deployment_id = deploymentHint;
   for (const [key, value] of Object.entries(authParams)) url.searchParams.set(key, value);
   const scriptNonce = randomSecret();
@@ -112,31 +108,11 @@ ltiRoutes.post("/session", async c => {
   if (c.req.header("Origin") !== config.toolOrigin) return refused(c, 403);
   const input = exchangeSchema.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return refused(c);
-  const login = loginRecord.safeParse(await readCredential(c.env, input.data.state, "login"));
-  if (!login.success || login.data.browserHash !== await digest(input.data.browserSecret)) return refused(c, 401);
-  const reg = config.registrations.find(item => item.id === login.data.registrationId);
-  if (!reg) return refused(c, 401);
-  let launch;
-  try { launch = await verifyLaunch(input.data.id_token, reg, login.data); }
-  catch { return refused(c, 401); }
-  const course = await getCourseWithMembers(c.env, { courseId: launch.courseId, ltiCourseGrant: launch.courseId });
-  if (!course || (launch.videoId !== undefined && !course.memberVideoIds.includes(launch.videoId))) return refused(c, 403);
-  let current;
-  try { current = await courseAccessContext(reg, launch, c.env); } catch { return refused(c, 403); }
-  const allowed = current?.videos ?? null;
-  const playbackVideoId = launch.videoId ?? allowed?.[0]?.videoId;
-  if (launch.videoId && current && ![...current.videos, ...(current.managementVideos ?? [])].some(video => video.videoId === launch.videoId)) return refused(c, 403);
-  if (!await consumeLogin(c.env, input.data.state)) return refused(c, 401);
-  const token = randomSecret();
-  const { subject, ...grant } = launch;
-  await putCredential(c.env, await digest(token), "session", {
-    ...grant, ...(allowed ? { scopeVideoIds: allowed.map(video => video.videoId).sort((a,b)=>a-b) } : {}), registrationId: reg.id, registrationHash: await registrationFingerprint(reg),
-    subjectHash: await digest(JSON.stringify([reg.issuer, reg.clientId, grant.deploymentId, subject])),
-  }, 3600);
-  return c.json({ token, expiresIn: 3600, learningAvailable: !current || current.videos.length > 0,
-    features: learningFeatures(reg, grant),
-    ...(playbackVideoId ? { playback: { videoId: playbackVideoId, parentOrigins: reg.frameOrigins, ...(allowed ? { videos: allowed } : {}) } } : {}),
+  const result = await exchangeLtiLogin(ltiSessionDependencies(c.env), config.registrations, {
+    state: input.data.state, browserSecret: input.data.browserSecret, idToken: input.data.id_token,
   });
+  if (!result.ok) return refused(c, result.failure === 'unauthorized' ? 401 : 403);
+  return c.json(result.value);
 });
 
 async function authorize(c: Context<AppEnv>) {
@@ -144,15 +120,9 @@ async function authorize(c: Context<AppEnv>) {
   if (c.req.header("Origin") !== config.toolOrigin) return { error: refused(c, 403) } as const;
   const token = c.req.header("Authorization")?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
   if (!token) return { error: refused(c, 401) } as const;
-  const session = sessionRecord.safeParse(await readCredential(c.env, await digest(token), "session"));
-  if (!session.success || session.data.transport !== undefined) return { error: refused(c, 401) } as const;
-  const grant = session.data;
-  const reg = config.registrations.find(item => item.id === grant.registrationId);
-  // Re-read bindings on every request: removal immediately revokes existing sessions.
-  if (!reg || grant.registrationHash !== await registrationFingerprint(reg) || !reg.resources.some(item => item.deploymentId === grant.deploymentId && item.contextId === grant.contextId
-    && item.resourceLinkId === grant.resourceLinkId && item.courseId === grant.courseId
-    && item.videoId === grant.videoId && item.generation === grant.resourceGeneration)) return { error: refused(c, 403) } as const;
-  return { grant, reg, sessionHash: await digest(token) } as const;
+  const result = await authorizeLtiSession(ltiSessionDependencies(c.env), config.registrations, token);
+  if (!result.ok) return { error: refused(c, result.failure === 'unauthorized' ? 401 : 403) } as const;
+  return result.value;
 }
 
 mountLearningRoutes(ltiRoutes, authorize, refused);

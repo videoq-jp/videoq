@@ -115,3 +115,41 @@ def test_first_transcription_persists_subtitles_and_schedules_indexing(transcrip
             "transcript": GENERATED, "status": "indexing",
         }
     enqueue.assert_called_once_with(42, "transcribe-job")
+
+
+@pytest.mark.parametrize('save_failure', [False, True])
+def test_segmented_quota_failure_transition_and_save_share_transaction(transcription_db, monkeypatch, save_failure):
+    from worker_python.tasks import segmented_transcription
+    from worker_python.domain.transcription_checkpoints import TranscriptionQuotaError
+    with transcription_db() as conn:
+        conn.execute("UPDATE videos SET status='pending', transcript=NULL WHERE id=42")
+    monkeypatch.setattr(transcription, 'heavy_pipeline_enabled', lambda: True)
+    monkeypatch.setattr(segmented_transcription, 'start_uploaded_transcription', MagicMock(side_effect=TranscriptionQuotaError('quota detail')))
+    if save_failure:
+        monkeypatch.setattr(transcription, 'finish_transcription', MagicMock(side_effect=RuntimeError('save failed')))
+        with pytest.raises(RuntimeError, match='save failed'):
+            transcription.transcribe_video(42)
+    else:
+        transcription.transcribe_video(42)
+    with transcription_db() as conn:
+        row = conn.execute('SELECT status, error_message FROM videos WHERE id=42').fetchone()
+    assert row == {'status': 'pending' if save_failure else 'error', 'error_message': '' if save_failure else 'quota detail'}
+
+
+def test_onprem_youtube_rejected_before_loading_credentials_or_provider(transcription_db, monkeypatch):
+    with transcription_db() as conn:
+        conn.execute("UPDATE videos SET status='pending', transcript=NULL, source_type='youtube' WHERE id=42")
+    monkeypatch.setenv('DEPLOYMENT_EDITION', 'onprem')
+    monkeypatch.setattr(transcription, 'heavy_pipeline_enabled', lambda: False)
+    credentials = MagicMock(side_effect=AssertionError('credentials must not be read'))
+    provider = MagicMock(side_effect=AssertionError('provider must not be called'))
+    monkeypatch.setattr(transcription, '_load_searchapi_key', credentials)
+    monkeypatch.setattr(transcription, 'run_transcription', provider)
+    with pytest.raises(transcription.TranscriptionExecutionFailedError, match='YouTube integration is disabled in the on-prem edition'):
+        transcription.transcribe_video(42)
+    credentials.assert_not_called()
+    provider.assert_not_called()
+    with transcription_db() as conn:
+        assert conn.execute('SELECT status, error_message FROM videos WHERE id=42').fetchone() == {
+            'status': 'error', 'error_message': 'YouTube integration is disabled in the on-prem edition',
+        }

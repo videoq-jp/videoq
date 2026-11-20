@@ -44,6 +44,7 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
       );`);
       return {
         repository: createPostgresVideoUploadRepository({ DATABASE_POOL: pool } as Bindings),
+        removeVideo: async videoId => { await pool.query('DELETE FROM videos WHERE id=$1', [videoId]); },
         seedOwner: async (options = {}) => {
           await pool.query(`INSERT INTO users (id,storage_limit_gb,monthly_upload_limit_gb,used_upload_bytes,upload_usage_period_start)
             VALUES ('owner',$1,$2,$3,$4)`, [

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { fn, mocked } from 'storybook/test';
 import { useVideoUpload } from '@/hooks/useVideoUpload';
 import { useTranslation } from 'react-i18next';
-import type { TranscriptionLanguage } from '@videoq/trpc/video-upload';
+import type { TranscriptionLanguage } from '@videoq/domain/video-upload';
 import type { CompressionPreset } from '@/lib/videoCompression';
 
 export interface UploadScenario {

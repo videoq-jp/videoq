@@ -12,20 +12,21 @@ import { conversationConfig, requireConversationCheckpoint, ConversationCommitEr
 import { AnswerContentStream } from "./answer-content-stream";
 import { LlmProviderError } from "./openai";
 import { validateChatAnswer } from "./chat-citations";
-import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatAnswer, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
-import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from "../tools/contract";
+import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
+import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from '../application/evidence';
+import { MAX_TOOL_ROUNDS, AnswerAgentBudget, hasAgentContext } from '../application/agent-execution';
+export { MAX_TOOL_ROUNDS } from '../application/agent-execution';
 export { MAX_SCENE_SEARCHES } from "../tools/contract";
 import { loadRagMcpTools } from "./rag-mcp-tools";
 import { evidenceProgressSchema as searchProgressSchema } from "../tools/contract";
 import { connectEvidenceMcp } from "../integrations/evidence-mcp";
-import { MAX_WINDOW_READS, MAX_CLIP_INSPECTIONS, MAX_OVERVIEWS, MAX_SKIMS, MAX_FOCUS_CALLS } from "./video-evidence";
 import {
   llmTimeoutMs,
   MAX_TOKENS,
   conversationMessages,
 } from "./llm";
 import { buildAgentSystemPrompt, buildNoCourseSystemPrompt } from "./prompts";
-import type { SceneHit } from "../repositories/vector-repository";
+import { SceneCollector, extractLatestUserQuery } from '../features/chat/evidence-registry';
 import type { Bindings } from "../types/bindings";
 import type { AnswerCostLedger } from "./answer-cost-ledger";
 
@@ -37,32 +38,15 @@ import type { AnswerCostLedger } from "./answer-cost-ledger";
  */
 type ChatMessageInput = { role: string; content: string };
 
-export type RagResult = {
-  queryText: string;
-  answer: ChatAnswer;
-  retrievedContexts: string[];
-  /** Internal LangGraph state, never part of the public response. */
-  checkpointId?: string;
-  persistedTurn?: { chatLogId: number | null; feedback: string | null };
-};
+export type { GenerationResult as RagResult } from '../application/answer-generation';
+import type { GenerationResult as RagResult } from '../application/answer-generation';
 
 /**
  * 暴走時の保険。1 検索あたり model → tools の 2 ステップ進むので、
  * 上限まで検索しても足りる余白を持たせた値にする。
  */
-export const MAX_TOOL_ROUNDS = MAX_SCENE_SEARCHES + MAX_COURSE_INFO_CALLS + MAX_WINDOW_READS + MAX_CLIP_INSPECTIONS + MAX_OVERVIEWS + MAX_SKIMS + MAX_FOCUS_CALLS;
 // Each round includes summarization/validation hooks, the model and tools.
 const RECURSION_LIMIT = 4 * MAX_TOOL_ROUNDS + 8;
-
-/** 最新の user メッセージ本文を抽出する。 */
-function extractLatestUserQuery(messages: readonly ChatMessageInput[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m.role === "user" && m.content) return m.content;
-  }
-  if (messages.length > 0) return messages[messages.length - 1].content ?? "";
-  return "";
-}
 
 export type RagParams = {
   messages: readonly ChatMessageInput[];
@@ -74,60 +58,6 @@ export type RagParams = {
   courseId?: number | null;
   costLedger?: AnswerCostLedger;
 };
-
-const sceneKey = (hit: SceneHit) => `${hit.evidenceType ?? "transcript"}|${hit.videoId}|${hit.startTime}|${hit.endTime}`;
-
-/** Assign stable source IDs across searches and persisted agent turns. */
-class SceneCollector {
-  constructor(private readonly allowed: readonly number[]) {}
-
-  restore(sources: readonly ChatSource[]) {
-    for (const source of sources) this.add({
-      videoId: source.video_id, videoTitle: source.title, startTime: source.start_time ?? "",
-      endTime: source.end_time ?? "", content: "", evidenceType: source.evidence_type,
-    });
-  }
-
-  private readonly order: SceneHit[] = [];
-  private readonly seen = new Map<string, number>();
-  readonly courseContexts = new Set<string>();
-
-  /** 既出なら既存の番号を、新規なら末尾に足して新しい番号を返す（1 始まり）。 */
-  add(hit: SceneHit): number {
-    const key = sceneKey(hit);
-    const known = this.seen.get(key);
-    if (known !== undefined) {
-      // A new frame observation or a freshly edited subtitle window can carry
-      // additional evidence at an existing timestamp. Preserve it in history.
-      const prior = this.order[known - 1];
-      prior.videoTitle = hit.videoTitle;
-      if (!prior.content.includes(hit.content)) {
-        prior.content += `\n${hit.content}`;
-      }
-      return known;
-    }
-    this.order.push(hit);
-    const index = this.order.length;
-    this.seen.set(key, index);
-    return index;
-  }
-
-  get hits(): readonly SceneHit[] {
-    return this.order.filter(hit => hit.content);
-  }
-
-  get sources(): ChatSource[] {
-    return this.savedSources.filter(source => this.allowed.includes(source.video_id));
-  }
-
-  get savedSources(): ChatSource[] {
-    return this.order.map((hit, index) => ({
-      id: index + 1, video_id: hit.videoId, title: hit.videoTitle,
-      start_time: hit.startTime, end_time: hit.endTime,
-      ...(hit.evidenceType ? { evidence_type: hit.evidenceType } : {}),
-    }));
-  }
-}
 
 /** Use Core's event assembler; the graph's custom channel only forwards events. */
 class ModelStreamHandler extends BaseCallbackHandler {
@@ -160,7 +90,7 @@ async function prepareAgent(
   const inputMessages = params.scope.memory
     ? [new HumanMessage(params.queryText)] : conversationMessages(params.scope.messages);
   let completedResult: RagResult | undefined;
-  let modelCalls = 0;
+  const modelBudget = new AnswerAgentBudget();
   let toolCalls = 0;
   // system は createAgent の systemPrompt ではなく messages で渡す。
   // systemPrompt はコンテンツブロック配列（[{type:"text"}]）で送信されるため、
@@ -226,7 +156,7 @@ async function prepareAgent(
             ...request.modelSettings,
             ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
           },
-          tools: ++modelCalls > MAX_TOOL_ROUNDS ? [] : request.tools,
+          tools: modelBudget.allowToolsForNextModelCall() ? request.tools : [],
         }),
       }),
     ],
@@ -267,9 +197,6 @@ function toResult(
     ],
   };
 }
-
-const hasAgentContext = (params: RagParams): boolean =>
-  params.courseId != null || (params.videoIds !== null && params.videoIds.length > 0);
 
 export async function runRag(
   env: Bindings,

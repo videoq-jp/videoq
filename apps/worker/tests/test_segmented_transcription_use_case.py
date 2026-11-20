@@ -2,11 +2,38 @@ from dataclasses import dataclass
 from unittest.mock import Mock
 
 import pytest
-from worker_python.use_cases.segmented_transcription import ChunkDependencies, execute_chunk
+from worker_python.use_cases.segmented_transcription import (
+    ChunkDependencies, PendingDispatchDependencies, dispatch_pending, execute_chunk,
+)
 
 
 class NoAudio(Exception):
     pass
+
+
+def test_empty_continuation_lane_does_not_finalize_while_other_lanes_are_pending():
+    deps = PendingDispatchDependencies(Mock(return_value=[]), Mock(return_value=True), Mock(), Mock())
+    dispatch_pending(deps, after_index=4)
+    deps.next_heads.assert_called_once_with(4)
+    deps.send_chunk.assert_not_called()
+    deps.send_finish.assert_not_called()
+
+
+def test_last_completed_lane_dispatches_finalization_when_the_whole_plan_is_done():
+    deps = PendingDispatchDependencies(Mock(return_value=[]), Mock(return_value=False), Mock(), Mock())
+    dispatch_pending(deps, after_index=4)
+    deps.send_finish.assert_called_once_with()
+
+
+def test_child_delivery_failure_does_not_start_finalization():
+    failure = RuntimeError('queue unavailable')
+    deps = PendingDispatchDependencies(Mock(return_value=[4, 5]), Mock(), Mock(side_effect=failure), Mock())
+    with pytest.raises(RuntimeError) as result:
+        dispatch_pending(deps, after_index=0)
+    assert result.value is failure
+    deps.send_chunk.assert_called_once_with(4)
+    deps.has_pending.assert_not_called()
+    deps.send_finish.assert_not_called()
 
 
 @dataclass

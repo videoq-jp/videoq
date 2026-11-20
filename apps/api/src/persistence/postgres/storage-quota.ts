@@ -1,3 +1,5 @@
+import { failedStorageReservation, failedUploadReservation, quotaAllowsAdditional, validateStorageReservationBytes, validateUploadReservationBytes } from '../../application/quota-policy';
+import { quotaDrizzleComparison } from '../quota-policy-sql';
 import {and,eq,sql} from "drizzle-orm";
 import type {Db} from "../../db/pool";
 import {users} from "../../db/schema";
@@ -16,9 +18,7 @@ export async function reserveUploadInTransaction(
   userId: string,
   additionalBytes: number,
 ): Promise<UploadReservationResult> {
-  if (!Number.isSafeInteger(additionalBytes) || additionalBytes <= 0) {
-    throw new Error("Upload reservation bytes must be a positive safe integer.");
-  }
+  validateUploadReservationBytes(additionalBytes);
   // The caller already holds the owner lock. Capture one fresh clock value
   // after that lock: transaction_timestamp() may still be in the previous month
   // after waiting, and must not overwrite usage already booked in the new one.
@@ -35,10 +35,8 @@ export async function reserveUploadInTransaction(
   }).where(and(
     eq(users.id, userId),
     sql`${users.isOverQuota} IS NOT TRUE`,
-    sql`(${users.storageLimitGb} IS NULL OR ${users.usedStorageBytes}
-      <= floor(${users.storageLimitGb} * 1073741824) - ${additionalBytes})`,
-    sql`(${users.monthlyUploadLimitGb} IS NULL OR ${usage}
-      <= floor(${users.monthlyUploadLimitGb} * 1073741824) - ${additionalBytes})`,
+    quotaAllowsAdditional(users.usedStorageBytes, sql`floor(${users.storageLimitGb} * 1073741824)`, sql`${additionalBytes}`, quotaDrizzleComparison),
+    quotaAllowsAdditional(usage, sql`floor(${users.monthlyUploadLimitGb} * 1073741824)`, sql`${additionalBytes}`, quotaDrizzleComparison),
   )).returning({ periodStart: users.uploadUsagePeriodStart });
   if (reserved?.periodStart) return { ok: true, periodStart: reserved.periodStart };
 
@@ -48,15 +46,11 @@ export async function reserveUploadInTransaction(
     storageUsed: users.usedStorageBytes,
     monthlyLimit: users.monthlyUploadLimitGb,
   }).from(users).where(eq(users.id, userId));
-  if (!state) throw new Error("Quota owner not found.");
-  if (state.overQuota) return { overQuota: true };
-  if (state.storageLimit !== null &&
-      state.storageUsed > Math.floor(state.storageLimit * 1073741824) - additionalBytes) {
-    return { exceeded: true, limit: Math.floor(state.storageLimit * 1073741824) };
-  }
-  if (state.monthlyLimit !== null) {
-    return { monthlyUploadExceeded: true, limit: Math.floor(state.monthlyLimit * 1073741824) };
-  }
+  const failure = failedUploadReservation(state ? {
+    overQuota: Boolean(state.overQuota), storageLimitGb: state.storageLimit,
+    storageUsedBytes: state.storageUsed, monthlyLimitGb: state.monthlyLimit,
+  } : null, additionalBytes);
+  if (failure) return failure;
   throw new Error("Failed to reserve unlimited upload quota.");
 }
 
@@ -75,9 +69,7 @@ export async function reserveStorageInTransaction(
   userId: string,
   additionalBytes: number,
 ): Promise<StorageReservationResult> {
-  if (!Number.isSafeInteger(additionalBytes) || additionalBytes < 0) {
-    throw new Error("Storage reservation bytes must be a non-negative safe integer.");
-  }
+  validateStorageReservationBytes(additionalBytes);
   const reserved = await db
     .update(users)
     .set({
@@ -87,11 +79,7 @@ export async function reserveStorageInTransaction(
       and(
         eq(users.id, userId),
         sql`${users.isOverQuota} IS NOT TRUE`,
-        sql`(
-          ${users.storageLimitGb} IS NULL
-          OR ${users.usedStorageBytes}
-             <= floor(${users.storageLimitGb} * 1073741824) - ${additionalBytes}
-        )`,
+        quotaAllowsAdditional(users.usedStorageBytes, sql`floor(${users.storageLimitGb} * 1073741824)`, sql`${additionalBytes}`, quotaDrizzleComparison),
       ),
     )
     .returning({ id: users.id });
@@ -109,10 +97,5 @@ export async function reserveStorageInTransaction(
     .where(eq(users.id, userId))
     .limit(1);
   const row = state[0];
-  if (!row) throw new Error("Quota owner not found.");
-  if (row.isOverQuota) return { overQuota: true } as const;
-  if (row.limitBytes === null) {
-    throw new Error("Failed to reserve unlimited storage quota.");
-  }
-  return { exceeded: true, limit: Number(row.limitBytes) } as const;
+  return failedStorageReservation(row ? { overQuota: Boolean(row.isOverQuota), limitBytes: row.limitBytes === null ? null : Number(row.limitBytes) } : null);
 }

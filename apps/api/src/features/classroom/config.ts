@@ -29,4 +29,4 @@ export const launchSchema = z.object({
   view: z.enum(['discovery', 'teacher', 'student']),
 }).strict().refine(value => value.view === 'discovery' ? !!value.addOnToken && !value.attachmentId : !!value.attachmentId);
 export type ClassroomLaunch = z.infer<typeof launchSchema>;
-export const classroomFeatures = { transcripts: true, qa: true, conversations: true, management: false, tags: false, reports: false };
+export { classroomFeatures } from './workflow-service';

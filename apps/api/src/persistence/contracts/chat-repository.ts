@@ -1,11 +1,11 @@
-import type {ChatAnswer,ChatSource} from "../../application/models";
+import type { ChatQuestionAuthor, ChatHistoryExportRow } from "../../application/chat-history";
+export type { ChatQuestionAuthor, ChatHistoryExportRow } from "../../application/chat-history";
+import type {ChatAnswer} from "../../application/models";
 import type {LtiDataSubject} from "./lti-subject";
-export type ChatQuestionAuthor={user_id:string;username:string;email:string};
 export type ChatLogItem={id:number;course:number;asked_by:ChatQuestionAuthor|null;question:string;answer:ChatAnswer;is_shared_origin:boolean;feedback:"good"|"bad"|null;created_at:string};
 export type GroupChatContext={id:number;userId:string;memberVideoIds:number[]};
 export type ChatContextInput={courseId:number;userId?:string|null;shareToken?:string|null;ltiCourseGrant?:number;ltiVideoGrant?:number[]};
 export type CreateChatLogInput={userId:string;courseId:number;question:string;answer:ChatAnswer;isShared:boolean;retrievedContexts:readonly string[];ltiSubject?:LtiDataSubject};
-export type ChatHistoryExportRow={created_at:string;asked_by:ChatQuestionAuthor|null;question:string;answer:string;is_shared_origin:boolean;citations:ChatSource[];feedback:string|null};
 export type ChatHistoryExportCursor={createdAt:string;id:number};
 export type ChatAnalytics={summary:{total_questions:number;date_range:{first:string|null;last:string|null}};time_series:{date:string;count:number}[];feedback:{good:number;bad:number;none:number}};
 export type ChatFeedbackInput={userId?:string;shareSlug?:string|null;ltiCourseGrant?:number};

@@ -50,12 +50,14 @@ describe('D1 cloud account deletion',()=>{
   for(let offset=0;offset<105;offset+=25)await f.database.batch(Array.from({length:Math.min(25,105-offset)},(_,i)=>f.database.prepare("INSERT INTO apikey(id,reference_id,key) VALUES(?,'owner','private')").bind('key'+(offset+i))));
   expect(await repository().step(grant)).toEqual({status:'progress'});expect(await count('apikey')).toBe(5);expect(await count('tags')).toBe(5);expect(await count('users')).toBe(2);expect(await repository().step(grant)).toEqual({status:'completed'});expect(await count('tags')).toBe(0);
  });
- it.each(['token','expiry','type','outbox','reactivated','admin','other-user']as const)('refuses an invalid %s grant without deleting data',async(kind)=>{
+ it.each(['token','expiry','type','outbox','reactivated','temporary-ban','admin','admin-list','other-user']as const)('refuses an invalid %s grant without deleting data',async(kind)=>{
   if(kind==='token')grant.leaseToken=crypto.randomUUID();
   if(kind==='expiry')await f.database.prepare("UPDATE job_executions SET lease_until='2000-01-01'").run();
   if(kind==='type')await f.database.prepare("UPDATE job_executions SET job_type='transcribe_video'").run();
   if(kind==='outbox')await f.database.prepare("UPDATE external_tasks SET payload='{}'").run();
   if(kind==='reactivated')await f.database.prepare('UPDATE users SET banned=0').run();
+  if(kind==='temporary-ban')await f.database.prepare("UPDATE users SET ban_expires='2099-01-01' WHERE id='owner'").run();
+  if(kind==='admin-list')await f.database.prepare("UPDATE users SET role='user,admin' WHERE id='owner'").run();
   if(kind==='admin')await f.database.prepare("UPDATE users SET role='admin' WHERE id='owner'").run();
   if(kind==='other-user')grant.userId='peer';
   expect(await repository().step(grant)).toEqual({status:'denied'});expect(await count('videos')).toBe(1);expect(await count('scenes')).toBe(1);

@@ -4,22 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { appTrpcClient, trpc } from '@/lib/trpc';
 import { useConfirm } from '@/components/common/feedback';
 import type { Message } from './useChatMessages';
+import {
+  restoreConversationSelection, rememberConversation, forgetConversation,
+  type StoredConversations as Stored,
+} from '@/application/conversation-selection';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-type Selection = { id: string; restore: boolean };
-type Stored = { selected: Selection; knownIds: string[] };
 function readSelection(key: string): Stored {
+  let data: unknown;
   try {
-    const data: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
-    if (data && typeof data === 'object' && 'selected' in data && 'knownIds' in data
-      && Array.isArray(data.knownIds) && data.selected && typeof data.selected === 'object'
-      && 'id' in data.selected && typeof data.selected.id === 'string' && UUID.test(data.selected.id)
-      && 'restore' in data.selected && typeof data.selected.restore === 'boolean') {
-      return { selected: { id: data.selected.id, restore: data.selected.restore },
-        knownIds: data.knownIds.filter((id): id is string => typeof id === 'string' && UUID.test(id)).slice(0, 100) };
-    }
+    data = JSON.parse(localStorage.getItem(key) ?? 'null');
   } catch { /* Storage may be unavailable; chat still works in memory. */ }
-  return { selected: { id: crypto.randomUUID(), restore: false }, knownIds: [] };
+  return restoreConversationSelection(data, () => crypto.randomUUID());
 }
 function store(key: string, value: Stored) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* No message content is stored here. */ }
@@ -69,11 +64,11 @@ export function useChatConversations({ courseId, shareToken, storageKey, showLis
     setSelected(selection); store(storageKey, { selected: selection, knownIds });
   };
   const remember = useCallback(() => {
-    const ids = [selected.id, ...knownIds.filter(id => id !== selected.id)].slice(0, 100);
-    setKnownIds(ids);
+    const remembered = rememberConversation(selected.id, knownIds);
+    setKnownIds(remembered.knownIds);
     // Persist before starting the stream so reload can recover an in-flight answer.
     // Keep the current draft mounted; only the next mount needs to load its transcript.
-    store(storageKey, { selected: { id: selected.id, restore: true }, knownIds: ids });
+    store(storageKey, remembered);
   }, [knownIds, selected.id, storageKey]);
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries(trpc.chat.conversations.pathFilter());
@@ -84,10 +79,9 @@ export function useChatConversations({ courseId, shareToken, storageKey, showLis
     if (!await confirm({ title: t('chat.deleteConversation'), description: t('chat.deleteConversationConfirm'),
       confirmLabel: t('chat.deleteConversation'), variant: 'danger' })) return;
     await deletion.mutateAsync({ ...access, conversationId: id });
-    const ids = knownIds.filter(value => value !== id);
-    setKnownIds(ids);
-    const selection = selected.id === id ? { id: crypto.randomUUID(), restore: false } : selected;
-    setSelected(selection); store(storageKey, { selected: selection, knownIds: ids });
+    const remaining = forgetConversation({ selected, knownIds }, id, () => crypto.randomUUID());
+    setKnownIds(remaining.knownIds);
+    setSelected(remaining.selected); store(storageKey, remaining);
     queryClient.removeQueries(trpc.chat.conversation.queryFilter({ ...access, conversationId: id }));
     refresh();
   };

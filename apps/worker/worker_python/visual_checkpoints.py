@@ -1,22 +1,13 @@
 """Durable visual work fenced by source identity and video deletion."""
 
-from dataclasses import dataclass
-import math
 from uuid import uuid4
 
 from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
-from worker_python.pipeline.visual_chunks import CHUNK_SECONDS, MAX_DURATION_SECONDS
-
-
-@dataclass(frozen=True)
-class VisualRun:
-    video_id: int
-    run_id: str
-    file_key: str
-    duration_ms: int
-    chunk_count: int
-    status: str
+from worker_python.domain.visual_checkpoints import (
+    CHUNK_SECONDS, MAX_DURATION_SECONDS, VisualRun, visual_plan, visual_source_eligible,
+    visual_run_reusable, visual_run_owns_source,
+)
 
 
 def _run(row):
@@ -40,18 +31,15 @@ def load_run(video_id: int, run_id: str | None = None) -> VisualRun | None:
 
 
 def initialize(video_id: int, file_key: str, duration: float) -> VisualRun | None:
-    if not math.isfinite(duration) or not 0 < duration <= MAX_DURATION_SECONDS:
-        raise ValueError("Visual inspection supports videos up to 10 hours")
-    duration_ms = math.ceil(duration * 1000)
-    count = math.ceil(duration_ms / (CHUNK_SECONDS * 1000))
+    duration_ms, count = visual_plan(duration)
     if uses_internal_persistence():
         return _cloud_run(call_internal_api("visual/initialize", {"videoId":video_id,"fileKey":file_key,"durationMs":duration_ms}).get("run"))
     with db_connection() as conn:
         row = conn.execute("SELECT file, source_type FROM videos WHERE id = %s FOR UPDATE", (video_id,)).fetchone()
-        if not row or row['file'] != file_key or row['source_type'] != 'uploaded':
+        if not row or not visual_source_eligible(file_key, row['file'], row['source_type']):
             return None
         existing = _run(conn.execute("SELECT * FROM video_visual_runs WHERE video_id = %s", (video_id,)).fetchone())
-        if existing and existing.file_key == file_key:
+        if visual_run_reusable(existing, file_key):
             return existing
         conn.execute("DELETE FROM video_visual_runs WHERE video_id = %s", (video_id,))
         run = _run(conn.execute("""
@@ -68,7 +56,7 @@ def lock_current(conn, run: VisualRun) -> bool:
         SELECT r.run_id, r.file_key, v.file FROM videos v
         JOIN video_visual_runs r ON r.video_id = v.id WHERE v.id = %s FOR UPDATE OF v
     """, (run.video_id,)).fetchone()
-    return bool(row and str(row['run_id']) == run.run_id and row['file'] == row['file_key'] == run.file_key)
+    return bool(row and visual_run_owns_source(run, str(row['run_id']), row['file_key'], row['file']))
 
 
 def pending_chunks(run: VisualRun) -> list[int]:

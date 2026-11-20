@@ -8,7 +8,7 @@ import * as media from "../src/integrations/media";
 import * as externalTasks from "../src/lib/external-tasks";
 import { reserveAndCreatePendingVideo, deleteVideoCascade, listStaleUploadingVideos } from "../src/repositories/video-repository";
 import { completeMultipartVideoUpload, getMultipartUploadPartUrl } from "../src/repositories/multipart-upload-repository";
-import { multipartPartSize } from "@videoq/trpc/video-upload";
+import { multipartPartSize } from "@videoq/domain/video-upload";
 import type { CreationIdempotency } from "../src/repositories/mcp-idempotency-repository";
 import type { Bindings } from "../src/types/bindings";
 

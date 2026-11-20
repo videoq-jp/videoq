@@ -53,7 +53,7 @@ async function verify(project) {
 if (process.argv[2] === '--workspace') {
   await verify(process.argv[3])
 } else {
-  for (const project of ['apps/api', 'apps/web', 'apps/docs', 'apps/demo-video', 'packages/trpc']) {
+  for (const project of ['apps/api', 'apps/web', 'apps/docs', 'apps/demo-video', 'packages/trpc', 'packages/domain']) {
     test(`${project}: native compiler and typed ESLint work side by side`, () => {
       // Release each TypeScript program before checking the next workspace.
       execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--workspace', project], { stdio: 'inherit' })

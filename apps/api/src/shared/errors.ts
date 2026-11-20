@@ -53,7 +53,7 @@ export class ApiError extends Error {
 }
 
 const applicationStatuses = {
-  validation: 400, unauthorized: 401, forbidden: 403, not_found: 404,
+  validation: 400, too_large: 413, unauthorized: 401, forbidden: 403, not_found: 404,
   conflict: 409, unavailable: 503,
 } as const satisfies Record<FailureKind, ContentfulStatusCode>;
 

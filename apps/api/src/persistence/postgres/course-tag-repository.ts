@@ -1,17 +1,17 @@
+import { MAX_COURSE_TAGS } from '../../application/course-tags';
 import type pg from 'pg';
 import {withDb} from '../../db/pool';
 import {reserveLtiOperation} from './operation-reservations';
 import {lockLmsGrant} from './lms-resource-repository';
 import {lockLtiDataSessionWithDb} from './lti-session-lock';
-import {tagDenied as denied,tagConflict as conflict,assignmentRevision,visible,requireManagedVideos,refineTagScope,tagCatalog,checkCourseTags} from '../../shared/course-tags';
+import {tagDenied as denied,tagConflict as conflict,assertTagOperationIdentity,assertTagOperationAvailable,checkTagMutation,refineTagScope,tagCatalog,checkCourseTags} from '../../shared/course-tags';
 import {digest} from '../../features/lti/store';
-import {ApiError} from '../../shared/errors';
 import type {Bindings} from '../../types/bindings';
 import type {CourseTagRepository,CourseTagScope,CourseTag} from '../contracts/course-tag-repository';
 async function readTags(client: pg.Client, scope: CourseTagScope) {
   return (await client.query<CourseTag>(`SELECT t.id,t.name,t.color,t.revision,
     ARRAY(SELECT v.video_id::text FROM lti_course_video_tags v WHERE v.tag_id=t.id ORDER BY v.video_id) AS video_ids
-    FROM lti_course_tags t WHERE t.course_id=$1 ORDER BY t.name,t.id LIMIT 201`, [scope.courseId])).rows;
+    FROM lti_course_tags t WHERE t.course_id=$1 ORDER BY t.name,t.id LIMIT ${MAX_COURSE_TAGS+1}`, [scope.courseId])).rows;
 }
 async function catalog(client:pg.Client,scope:CourseTagScope,reused=false){return tagCatalog(await readTags(client,scope),scope,reused);}
 async function currentScope(client: pg.Client, scope: CourseTagScope): Promise<CourseTagScope> {
@@ -47,27 +47,19 @@ export function createPostgresCourseTagRepository(env:Bindings):CourseTagReposit
       const prior = (await client.query<{ course_id: string; actor_key: string; request_hash: string }>(
         'SELECT course_id,actor_key,request_hash FROM lti_course_tag_operations WHERE id=$1', [input.operationId])).rows[0];
       if (prior) {
-        if (Number(prior.course_id) !== scope.courseId || prior.actor_key !== scope.actorKey || prior.request_hash !== hash) throw conflict();
+        assertTagOperationIdentity(Number(prior.course_id)===scope.courseId,prior.actor_key===scope.actorKey,prior.request_hash===hash);
         const result = await catalog(client, scope, true); await client.query('COMMIT'); return result;
       }
-      if (!freshOperation) throw conflict('This operation is no longer available. Refresh and start a new operation.');
+      assertTagOperationAvailable(freshOperation);
       const all = await readTags(client, scope);
+      await checkTagMutation(scope,input,all);
       if (input.action === 'create') {
-        if (all.length >= 200) throw new ApiError(413, 'VALIDATION_ERROR', 'Too many course tags.');
         await client.query('INSERT INTO lti_course_tags(id,course_id,name,color) VALUES($1,$2,$3,$4)',
         [input.operationId, scope.courseId, input.name, input.color]);
       } else if (input.action === 'assign') {
-        requireManagedVideos(scope, [input.videoId]);
-        if (input.tagIds.some(id => !all.some(tag => tag.id === id && visible(tag, scope)))) throw denied();
-        const ids = all.filter(tag => tag.video_ids.includes(String(input.videoId))).map(tag => tag.id);
-        if (await assignmentRevision(scope, input.videoId, ids) !== input.revision) throw conflict();
         await client.query('DELETE FROM lti_course_video_tags v USING lti_course_tags t WHERE v.tag_id=t.id AND t.course_id=$1 AND v.video_id=$2', [scope.courseId,input.videoId]);
         for (const id of input.tagIds) await client.query('INSERT INTO lti_course_video_tags(tag_id,video_id) VALUES($1,$2)', [id,input.videoId]);
       } else {
-        const tag = all.find(item => item.id === input.id && visible(item, scope));
-        if (!tag) throw denied();
-        requireManagedVideos(scope, tag.video_ids.map(Number));
-        if (tag.revision !== input.revision) throw conflict();
         if (input.action === 'delete') await client.query('DELETE FROM lti_course_tags WHERE id=$1 AND course_id=$2', [input.id,scope.courseId]);
         else await client.query('UPDATE lti_course_tags SET name=$1,color=$2,revision=$3 WHERE id=$4 AND course_id=$5',
         [input.name,input.color,crypto.randomUUID(),input.id,scope.courseId]);

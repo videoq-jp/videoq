@@ -72,6 +72,25 @@ export function materialManagementContract(name:string,setup:()=>Promise<Materia
   it('rolls back teaching text, outbox and replay barrier if durable receipt persistence fails',async()=>{
    await f.failReceipt();let failed=false;try{await update({transcript:materialSrt.replace('Original','Edited')});}catch(error){failed=true;expect(error).toBeInstanceOf(Error);const e=error as Error;expect(e.message+' '+(e.cause instanceof Error?e.cause.message:'')).toContain('receipt failure');}expect(failed).toBe(true);expect((await get()).material).toMatchObject({transcript:materialSrt,status:'completed'});expect(await f.tasks()).toHaveLength(0);expect(await f.count('lti_operation_reservations')).toBe(0);expect(await f.count('mutation_receipts')).toBe(0);
   });
+  it('keeps stale revision and generation failures ahead of later state and reference checks',async()=>{
+   const revision=(await get()).material.revision;
+   await f.execute("UPDATE videos SET status='pending' WHERE id=?",[scope.videoId]);
+   await expect(update({description:'Denied'},revision)).rejects.toMatchObject({status:409,message:'This material was changed by another operation. Refresh before saving.'});
+   const currentRevision=(await get()).material.revision;
+   await expect(update({description:'Denied'},currentRevision)).rejects.toMatchObject({status:409,message:'Wait for processing before editing this material.'});
+   await f.execute('UPDATE lms_resources SET generation=2 WHERE video_id=?',[scope.videoId]);
+   await f.execute('DELETE FROM video_course_members WHERE video_id=?',[scope.videoId]);
+   await expect(get()).rejects.toMatchObject({status:409,message:'The Moodle source has changed. Refresh after synchronization.'});
+   expect(await f.tasks()).toHaveLength(0);expect(await f.count('lti_material_operations')).toBe(0);
+   expect(await f.count('lti_operation_reservations')).toBe(0);
+  });
+  it('reads an exact multibyte description cap and refuses the first byte beyond it',async()=>{
+   await f.execute('UPDATE videos SET description=? WHERE id=?',['😀'.repeat(10000),scope.videoId]);
+   expect((await get()).material.description).toHaveLength(20000);
+   await f.execute('UPDATE videos SET description=description||? WHERE id=?',['x',scope.videoId]);
+   await expect(get()).rejects.toMatchObject({status:413,message:'This material is too large to edit here.'});
+   expect(await f.count('lti_material_operations')).toBe(0);
+  });
   it('refuses a retired operation without reapplying text changes',async()=>{
    const id=crypto.randomUUID(),revision=(await get()).material.revision;await update({description:'Once'},revision,id);await f.execute('DELETE FROM lti_material_operations WHERE id=?',[id]);
    await expect(update({description:'Once'},revision,id)).rejects.toMatchObject({status:409});await expect(update({description:'Once'},revision,id.toUpperCase())).rejects.toMatchObject({status:409});

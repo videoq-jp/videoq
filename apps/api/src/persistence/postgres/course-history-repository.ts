@@ -1,3 +1,5 @@
+import { COURSE_HISTORY_MAX_TURNS, courseHistoryScopeIds, courseHistoryAttribution, retainedCourseHistory } from '../../application/course-history-append';
+import { historyDrizzleChoice } from '../course-history-policy-sql';
 import {and,eq,inArray,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {chatLogs,ltiCredentials,videoCourseMembers} from '../../db/schema';
@@ -15,16 +17,20 @@ export function createPostgresCourseHistoryRepository(env:Bindings):CourseHistor
       await lockLtiDataSessionWithDb(db,result.rows[0].user_id,scope.sessionProof);
     }
     const members = allowed ?? (await db.select({ id: videoCourseMembers.videoId }).from(videoCourseMembers).where(eq(videoCourseMembers.courseId, scope.courseId))).map(row => row.id);
-    const scopeJson = JSON.stringify([...new Set(members)].sort((a,b) => a-b));
+    const scopeJson = JSON.stringify(courseHistoryScopeIds(members));
     // Atomic append protects simultaneous pages. A reduced permission scope drops
     // prior context instead of exposing answers from newly restricted videos.
-    const previous = sql`CASE WHEN ${ltiCredentials.expiresAt} > clock_timestamp() AND jsonb_typeof(${ltiCredentials.payload}->'scopeVideoIds')='array' AND jsonb_typeof(${ltiCredentials.payload}->'turns')='array' AND (${ltiCredentials.payload}->'scopeVideoIds') <@ ${scopeJson}::jsonb
-      THEN coalesce(${ltiCredentials.payload}->'turns', '[]'::jsonb) ELSE '[]'::jsonb END`;
-    const attribution={registrationId:scope.registrationId,subjectHash:scope.subjectHash,courseId:scope.courseId,...(scope.contextId?{contextId:scope.contextId}:{})};
+    const previous = retainedCourseHistory({
+      live: sql`${ltiCredentials.expiresAt} > clock_timestamp()`,
+      scopeArray: sql`jsonb_typeof(${ltiCredentials.payload}->'scopeVideoIds')='array'`,
+      turnsArray: sql`jsonb_typeof(${ltiCredentials.payload}->'turns')='array'`,
+      scopeCompatible: sql`(${ltiCredentials.payload}->'scopeVideoIds') <@ ${scopeJson}::jsonb`,
+    },sql`coalesce(${ltiCredentials.payload}->'turns', '[]'::jsonb)`,sql`'[]'::jsonb`,historyDrizzleChoice);
+    const attribution=courseHistoryAttribution(scope);
     const changed=await db.insert(ltiCredentials).values({ id, kind: "lti-history", payload: { ...attribution,scopeVideoIds: JSON.parse(scopeJson) as number[], turns: [turn] }, expiresAt })
       .onConflictDoUpdate({ target: ltiCredentials.id, set: { expiresAt, payload: sql`${JSON.stringify(attribution)}::jsonb || jsonb_build_object('scopeVideoIds', ${scopeJson}::jsonb, 'turns',
         (SELECT jsonb_agg(item ORDER BY ord) FROM (SELECT item, ord FROM jsonb_array_elements((${previous}) || ${JSON.stringify([turn])}::jsonb)
-          WITH ORDINALITY AS entries(item,ord) ORDER BY ord DESC LIMIT 50) recent))` }, setWhere:eq(ltiCredentials.kind,'lti-history') }).returning({id:ltiCredentials.id});
+          WITH ORDINALITY AS entries(item,ord) ORDER BY ord DESC LIMIT ${sql.raw(String(COURSE_HISTORY_MAX_TURNS))}) recent))` }, setWhere:eq(ltiCredentials.kind,'lti-history') }).returning({id:ltiCredentials.id});
     if(!changed.length)throw historyDenied();
   }));
  },

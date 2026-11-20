@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Callable, Generic, Protocol, TypeVar
 
-from worker_python.video_status import VideoStatus
+from worker_python.domain.video_status import VideoStatus
 
 logger = logging.getLogger(__name__)
 

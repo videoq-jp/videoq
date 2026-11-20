@@ -1,13 +1,17 @@
+import { assertMaterialGeneration, assertMaterialReferences, assertMaterialReadable, assertMaterialReplayIdentity, assertMaterialOperationAvailable, assertMaterialRevision, materialMutationKind, planMaterialMutation } from '../../application/material-mutation';
+import { inlineTranscript, inlineMaterialDescription } from '../../application/content-read';
+import { contentStringLogic } from '../content-read-policy-sql';
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import type {MaterialManagementRepository,ManagedMaterialScope,ManagedVideo,MaterialJob} from '../contracts/material-management-repository';
 import {materialConflict as conflict,revisionOf,originalMessage,materialView,checkMaterialManagement} from '../../shared/material-management';
-import {ApiError,apiNotFound} from '../../shared/errors';
+import {ApiError,apiNotFound,asApiError} from '../../shared/errors';
 import {buildJobMessage,type JobMessage} from '../../lib/job-message';
 import {digest} from '../../features/lti/store';
 import {operationReservationKey} from '../../shared/lti-operation-key';
 import {enqueueCurrentSceneDeletes,enqueueStagedSceneDeletes} from './scene-index-writer';
 const VIDEO=`(SELECT json_object('title',title,'file',file,'status',status,
- 'description',CASE WHEN length(CAST(description AS BLOB))<=40000 THEN description END,
- 'transcript',CASE WHEN length(CAST(transcript AS BLOB))<=2097152 THEN transcript END,
+ 'description',${inlineMaterialDescription('description','length(CAST(description AS BLOB))',contentStringLogic)},
+ 'transcript',${inlineTranscript('transcript','length(CAST(transcript AS BLOB))',contentStringLogic).value},
  'sourceRevision',(SELECT revision FROM video_index_versions WHERE video_id=v.id)) FROM videos v WHERE id=? AND user_id=? AND managed_by_lms=1)`;
 const RESOURCE=`(SELECT json_object('id',id,'generation',generation) FROM lms_resources WHERE installation_id=? AND context_id=? AND resource_link_id=? AND course_id=? AND video_id=? AND enabled=1)`;
 const REFS=`json_object('courses',json((SELECT json_group_array(course_id) FROM(SELECT course_id FROM video_course_members WHERE video_id=? ORDER BY course_id))),
@@ -20,12 +24,12 @@ const BUSY=`EXISTS(SELECT 1 FROM job_executions j WHERE j.status='running' AND j
  AND (j.job_type='reindex_all_videos_embeddings' OR EXISTS(SELECT 1 FROM external_tasks e WHERE e.kind='sqs_job'
  AND e.payload ->> '$.message.job_id'=j.job_id AND e.payload ->> '$.message.payload.video_id' IN(?,?))))`;
 function authority(scope:ManagedMaterialScope){const proof=scope.sessionProof;return {sql:`EXISTS(SELECT 1 FROM lms_installations i JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=i.id AND t.context_id=? AND t.course_id=? AND t.active=1 JOIN users owner ON owner.id=t.owner_user_id
- WHERE i.id=? AND owner.id=? AND i.active=1 AND owner.is_active=1 AND owner.deactivated_at IS NULL
- AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))
+ WHERE i.id=? AND owner.id=? AND i.active=1 AND ${d1LmsOwnerSql()}
  ${proof?`AND EXISTS(SELECT 1 FROM lti_credentials s WHERE s.id=? AND s.kind='session' AND julianday(s.expires_at)>julianday('now') AND json_extract(s.payload,'$.registrationId')=? AND json_extract(s.payload,'$.subjectHash')=?)`:''})`,
  values:[scope.contextId,scope.courseId,scope.installationId,scope.ownerUserId,...(proof?[proof.sessionHash,proof.registrationId,proof.subjectHash]:[])]};}
 const decode=<T>(raw:unknown):T|undefined=>{if(raw===null||raw===undefined)return undefined;if(typeof raw!=='string')throw new Error('Invalid material JSON');return JSON.parse(raw) as T;};
 export function createD1MaterialManagementRepository(database:D1Database):MaterialManagementRepository{return {async execute(scope,input){
+ try {
  checkMaterialManagement(scope,input);
  const prepare=(sql:string,args:unknown[]=[])=>database.prepare(sql).bind(...args),auth=authority(scope);
  const resourceArgs=[scope.installationId,scope.contextId,scope.resourceLinkId,scope.courseId,scope.videoId],videoArgs=[scope.videoId,scope.ownerUserId],jobArgs=[scope.videoId,String(scope.videoId)];
@@ -40,35 +44,27 @@ export function createD1MaterialManagementRepository(database:D1Database):Materi
   ]);
   const state=snapshot[0].results[0];if(!state.allowed)throw new ApiError(403,'FORBIDDEN','The material is unavailable.');
   const resource=decode<{id:string;generation:number}>(state.resource);if(!resource||!state.course)throw apiNotFound('Material not found.');
-  if(Number(resource.generation)!==scope.generation)throw conflict('The Moodle source has changed. Refresh after synchronization.');
+  assertMaterialGeneration(Number(resource.generation),scope.generation);
   const refs=decode<{courses:number[];resources:string[]}>(state.refs)!;
-  if(refs.courses.length!==1||Number(refs.courses[0])!==scope.courseId||refs.resources.length!==1)throw conflict('This material is referenced outside this course. Ask the connected account owner to review it.');
+  assertMaterialReferences(refs.courses.length,Number(refs.courses[0]),refs.resources.length,scope.courseId);
   const video=decode<ManagedVideo>(state.video);if(!video)throw apiNotFound('Material not found.');
-  if(video.description===null||video.transcript===null)throw new ApiError(413,'VALIDATION_ERROR','This material is too large to edit here.');
+  assertMaterialReadable(video);
   const latest=decode<MaterialJob>(state.job),retryJob=decode<MaterialJob>(state.retryJob);
   if(input.action==='get')return {material:await materialView(scope,video,latest,video.status==='error'?retryJob:undefined),externalTaskId:null,reused:false};
   if(state.busy)throw conflict('This material is being indexed. Try again after processing finishes.');
   const prior=snapshot[1].results[0];
-  if(prior){if(prior.actor_key!==scope.actorKey||prior.resource_id!==resource.id||prior.request_hash!==requestHash)throw conflict('This operation identifier has already been used.');}
-  else if(snapshot[2].results.length)throw conflict('This operation is no longer available. Refresh and start a new operation.');
-  const beforeRevision=await revisionOf(scope,video),next={...video};let message:JobMessage|undefined,indexChanged=false;
+  if(prior)assertMaterialReplayIdentity(prior.actor_key===scope.actorKey,prior.resource_id===resource.id,prior.request_hash===requestHash);
+  else assertMaterialOperationAvailable(snapshot[2].results.length===0);
+  const beforeRevision=await revisionOf(scope,video);let next={...video},message:JobMessage|undefined,indexChanged=false;
   if(!prior){
-   if(beforeRevision!==input.revision)throw conflict('This material was changed by another operation. Refresh before saving.');
-   if(input.action==='update'){
-    if(!['completed','error'].includes(video.status))throw conflict('Wait for processing before editing this material.');
-    if(input.fields.transcript!==undefined&&new TextEncoder().encode(input.fields.transcript).length>1_800_000)throw new ApiError(413,'VALIDATION_ERROR','Transcript is too large.');
-    const changed=input.fields.transcript!==undefined&&input.fields.transcript!==video.transcript;
-    next.description=input.fields.description??video.description;next.transcript=input.fields.transcript??video.transcript;
-    if(changed){next.status='indexing';indexChanged=true;message=buildJobMessage('index_video_transcript',{video_id:scope.videoId,...(!next.transcript.trim()?{allow_empty:true}:{})});}
-   }else if(input.action==='reindex'||video.status==='indexing'){
-    if(input.action==='reindex'&&video.status!=='completed')throw conflict('Wait for processing before starting a new index.');
-    next.status='indexing';indexChanged=true;message=buildJobMessage('index_video_transcript',{video_id:scope.videoId,...(!video.transcript.trim()?{allow_empty:true}:{})});
-   }else{
-    if(video.status!=='error')throw conflict('This material does not need a processing retry.');
-    const original=originalMessage.safeParse(retryJob?.message);
-    if(!original.success||original.data.payload.video_id!==scope.videoId||retryJob?.status==='completed')throw conflict('Retry synchronization from Moodle for this processing job.');
-    message=original.data;next.status='pending';
-   }
+   assertMaterialRevision(beforeRevision,input.revision);
+   const kind=materialMutationKind(input,video.status);
+   // D1's physical binding limit is checked after the shared edit admission.
+   if(input.action==='update'&&input.fields.transcript!==undefined&&new TextEncoder().encode(input.fields.transcript).length>1_800_000)throw new ApiError(413,'VALIDATION_ERROR','Transcript is too large.');
+   const original=kind==='retry'?originalMessage.safeParse(retryJob?.message):undefined;
+   const plan=planMaterialMutation(input,video,original?.success?original.data:undefined,retryJob?.status);
+   next=plan.next;indexChanged=plan.indexChanged;
+   if(plan.job)message=plan.job.kind==='index'?buildJobMessage('index_video_transcript',plan.job.payload):plan.job.message;
   }
   const token=crypto.randomUUID(),gate='EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)',dedupeKey='lti-material:'+input.operationId;
   const priorGuard=prior?`EXISTS(SELECT 1 FROM lti_material_operations WHERE id=? AND actor_key=? AND resource_id=? AND request_hash=? AND external_task_id IS ?)`
@@ -96,4 +92,5 @@ export function createD1MaterialManagementRepository(database:D1Database):Materi
   if(row){const current=decode<ManagedVideo>(row.video)!;return {material:await materialView(scope,current,decode<MaterialJob>(row.job),current.status==='error'?decode<MaterialJob>(row.retryJob):undefined),externalTaskId:row.taskId===null?null:Number(row.taskId),reused:Boolean(prior)};}
  }
  throw conflict('This material was changed by another operation. Refresh before saving.');
+ } catch(error) { throw asApiError(error)??error; }
 }};}

@@ -1,5 +1,5 @@
-export const MCP_READ_SCOPE = "videoq.read";
-export const MCP_WRITE_SCOPE = "videoq.write";
+import { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "../application/resource-access";
+export { MCP_READ_SCOPE, MCP_WRITE_SCOPE } from "../application/resource-access";
 export const MCP_OAUTH_SCOPES = [
   "openid",
   "profile",

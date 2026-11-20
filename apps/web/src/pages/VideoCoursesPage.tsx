@@ -1,3 +1,4 @@
+import { partitionCourseAccess, loadedCourseOrder } from '@/application/course-editing';
 import { useMemo, useState } from 'react';
 import {
   DndContext,
@@ -199,19 +200,8 @@ export default function VideoCoursesPage() {
     await createCourseMutation.mutateAsync({ name, description });
   };
 
-  const { ownedCourses, joinedCourses } = useMemo(() => ({
-    ownedCourses: courses.filter((course) => course.access_role !== 'member'),
-    joinedCourses: courses.filter((course) => course.access_role === 'member'),
-  }), [courses]);
-  const visibleCourses = useMemo(() => {
-    if (!orderedCourseIds) return ownedCourses;
-    const coursesById = new Map(ownedCourses.map((course) => [course.id, course]));
-    const ordered = orderedCourseIds
-      .map((id) => coursesById.get(id))
-      .filter((course): course is CourseListItem => Boolean(course));
-    const included = new Set(ordered.map((course) => course.id));
-    return [...ordered, ...ownedCourses.filter((course) => !included.has(course.id))];
-  }, [orderedCourseIds, ownedCourses]);
+  const { ownedCourses, joinedCourses } = useMemo(() => partitionCourseAccess(courses), [courses]);
+  const visibleCourses = useMemo(() => loadedCourseOrder(ownedCourses, orderedCourseIds), [orderedCourseIds, ownedCourses]);
   const reorderError = reorderCoursesMutation.error instanceof Error
     ? reorderCoursesMutation.error.message
     : null;

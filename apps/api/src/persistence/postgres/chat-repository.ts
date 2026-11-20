@@ -1,3 +1,6 @@
+import { nativeCourseAccessAllowed } from '../../application/native-course-access';
+import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
+import { activeLmsOwner } from './lms-owner-policy';
 import { ltiSessionRows } from './lti-session-lock';
 import { chatAnswerSchema, chatAnswerText, type ChatAnswer, type ChatSource } from "@videoq/trpc/chat";
 import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
@@ -77,8 +80,7 @@ export async function getCourseWithMembers(
     if (ltiGranted) {
       conditions.push(sql`EXISTS (SELECT 1 FROM ${users}
         WHERE ${users.id} = ${videoCourses.userId}
-          AND ${users.isActive} = true AND ${users.deactivatedAt} IS NULL
-          AND (${users.banned} IS NOT TRUE OR ${users.banExpires} <= now()))`);
+          AND ${activeLmsOwner()})`);
     } else if (params.shareToken) {
       conditions.push(eq(videoCourses.shareSlug, params.shareToken), nativeCourseExternalAccess());
     } else if (params.userId) {
@@ -337,8 +339,10 @@ export async function updateChatLogFeedback(
     : opts.shareSlug
     ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true
         AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)}`
-    : sql`course.user_id = ${opts.userId ?? null} OR (log.user_id = ${opts.userId ?? null}
-        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)})`;
+    : nativeCourseAccessAllowed(false, { owner: sql`course.user_id = ${opts.userId ?? null}`,
+        participant: sql`log.user_id = ${opts.userId ?? null}`,
+        nativeEnabled: nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`),
+        shareMatches: sql`false` }, nativeCourseDrizzleLogic);
   return withDb(env, async (db) => {
     const result = await db.execute<{ allowed: boolean; id: string | null; feedback: string | null }>(sql`
       WITH target AS (

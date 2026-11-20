@@ -1,5 +1,5 @@
 /** Application failures describe intent, independent of HTTP or RPC status codes. */
-export type FailureKind = 'validation' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'unavailable';
+export type FailureKind = 'validation' | 'too_large' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'unavailable';
 
 export class ApplicationError extends Error {
   constructor(
@@ -22,3 +22,5 @@ export const validationFailure = (message: string, code = 'VALIDATION_ERROR') =>
 export const conflict = (message: string, code = 'CONFLICT') => new ApplicationError('conflict', code, message);
 export const unavailable = (message: string, code = 'SERVICE_UNAVAILABLE') =>
   new ApplicationError('unavailable', code, message);
+
+export const tooLarge = (message: string) => new ApplicationError('too_large', 'VALIDATION_ERROR', message);

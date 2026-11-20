@@ -26,7 +26,7 @@ export const provisionInstallationSchema = z.object({
   }
 });
 
-export type ProvisionInstallation = z.infer<typeof provisionInstallationSchema>;
+export type { ProvisionInstallation } from "../../application/lti-registration";
 export const provisionServiceInstallationSchema = provisionInstallationSchema.safeExtend({ materialsService: materialsServiceSchema });
 export type ProvisionServiceInstallation = z.infer<typeof provisionServiceInstallationSchema>;
 

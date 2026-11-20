@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { remainingConnectedAppGrants } from '@/application/account-editing';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
@@ -33,7 +34,7 @@ export function ConnectedAppsSection({ headingLevel = 'h2' }: { headingLevel?: '
     onSuccess: async (_, { client_id }) => {
       await queryClient.cancelQueries(trpc.account.connectedApps.queryFilter());
       // The server revokes every grant for this app, including other resources.
-      queryClient.setQueryData(trpc.account.connectedApps.queryKey(), tokens => tokens?.filter(token => token.client_id !== client_id));
+      queryClient.setQueryData(trpc.account.connectedApps.queryKey(), tokens => remainingConnectedAppGrants(tokens, client_id));
       setStatusMessage({ tone: 'success', text: t('settings.connectedApps.successRevoked') });
     },
     onError: () => {

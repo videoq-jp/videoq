@@ -24,6 +24,10 @@ it("routes account operations to D1 and normalizes quota values and UTC months",
     expect(user?.upload_resets_at).toMatch(/^\d{4}-\d{2}-01T00:00:00\.000Z$/);
     await database.prepare("UPDATE users SET upload_usage_period_start='2000-01-01T00:00:00.000Z' WHERE id='owner'").run();
     expect((await getCurrentUser(env, "owner"))?.used_upload_bytes).toBe(0);
+    await database.prepare(`UPDATE users SET role='administrator',plan_code='basic',quota_source='plan',
+      monthly_upload_limit_gb=0,storage_limit_gb=0,processing_limit_minutes=0 WHERE id='owner'`).run();
+    expect(await getCurrentUser(env, 'owner')).toMatchObject({ is_admin: false, plan_code: 'basic', quota_source: 'plan',
+      monthly_upload_limit_bytes: 0, storage_limit_bytes: 0, processing_limit_seconds: 0 });
     expect(await setSearchApiKey(env, "owner", "test-ciphertext")).toBe(true);
     expect(await getSearchApiKeyStatus(env, "owner")).toBe(true);
   } finally { await dispose(); }

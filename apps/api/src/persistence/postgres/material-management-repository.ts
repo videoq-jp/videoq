@@ -1,3 +1,6 @@
+import { assertMaterialGeneration, assertMaterialReferences, assertMaterialReadable, assertMaterialReplayIdentity, assertMaterialOperationAvailable, assertMaterialRevision, materialMutationKind, planMaterialMutation } from '../../application/material-mutation';
+import { inlineTranscript, inlineMaterialDescription } from '../../application/content-read';
+import { contentStringLogic } from '../content-read-policy-sql';
 import type pg from 'pg';
 import {sql} from 'drizzle-orm';
 import {withDb,type Db} from '../../db/pool';
@@ -7,18 +10,19 @@ import {lockLtiDataSessionWithDb} from './lti-session-lock';
 import {reserveLtiOperation} from './operation-reservations';
 import {insertJobTask} from './external-task-repository';
 import {buildJobMessage,type JobMessage} from '../../lib/job-message';
-import {ApiError,apiNotFound} from '../../shared/errors';
+import {apiNotFound,asApiError} from '../../shared/errors';
+import type { ReadableManagedVideo } from '../../application/material-management';
 import {digest} from '../../features/lti/store';
 import {materialConflict as conflict,revisionOf,originalMessage,materialView,checkMaterialManagement} from '../../shared/material-management';
 import type {Bindings} from '../../types/bindings';
 import type {ManagedMaterialScope,ManagedVideo,MaterialJob,MaterialManagementRepository} from '../contracts/material-management-repository';
-async function readVideo(client: pg.Client, scope: ManagedMaterialScope): Promise<ManagedVideo> {
+async function readVideo(client: pg.Client, scope: ManagedMaterialScope): Promise<ReadableManagedVideo> {
   const video = (await client.query<ManagedVideo>(`SELECT title,file,status,
-    CASE WHEN octet_length(description)<=40000 THEN description END AS description,
-    CASE WHEN octet_length(transcript)<=2097152 THEN transcript END AS transcript
+    ${inlineMaterialDescription('description','octet_length(description)',contentStringLogic)} AS description,
+    ${inlineTranscript('transcript','octet_length(transcript)',contentStringLogic).value} AS transcript
     FROM videos WHERE id=$1 AND user_id=$2 AND managed_by_lms=true FOR UPDATE`, [scope.videoId, scope.ownerUserId])).rows[0];
   if (!video) throw apiNotFound('Material not found.');
-  if (video.description === null || video.transcript === null) throw new ApiError(413, 'VALIDATION_ERROR', 'This material is too large to edit here.');
+  assertMaterialReadable(video);
   return video;
 }
 async function latestJob(client: pg.Client, videoId: number, transcribeOnly = false) {
@@ -45,13 +49,12 @@ export function createPostgresMaterialManagementRepository(env:Bindings):Materia
         WHERE installation_id=$1 AND context_id=$2 AND resource_link_id=$3 AND course_id=$4 AND video_id=$5 AND enabled=true FOR UPDATE`,
       [scope.installationId,scope.contextId,scope.resourceLinkId,scope.courseId,scope.videoId])).rows[0];
       if (!resource) throw apiNotFound('Material not found.');
-      if (Number(resource.generation)!==scope.generation) throw conflict('The Moodle source has changed. Refresh after synchronization.');
+      assertMaterialGeneration(Number(resource.generation),scope.generation);
       const course = await client.query(`SELECT id FROM video_courses WHERE id=$1 AND user_id=$2 AND managed_by_lms=true FOR SHARE`, [scope.courseId,scope.ownerUserId]);
       if (!course.rowCount) throw apiNotFound('Material not found.');
       const members = await client.query<{ course_id: string }>('SELECT course_id FROM video_course_members WHERE video_id=$1 FOR SHARE', [scope.videoId]);
       const bindings = await client.query('SELECT id FROM lms_resources WHERE video_id=$1 FOR SHARE', [scope.videoId]);
-      if (members.rowCount!==1 || Number(members.rows[0].course_id)!==scope.courseId || bindings.rowCount!==1)
-        throw conflict('This material is referenced outside this course. Ask the connected account owner to review it.');
+      assertMaterialReferences(members.rowCount??0,Number(members.rows[0]?.course_id),bindings.rowCount??0,scope.courseId);
       if (input.action!=='get') {
         // Match the Python indexer's global/shared and per-video locks. Never
         // wait for provider I/O while holding course/account row locks.
@@ -69,36 +72,21 @@ export function createPostgresMaterialManagementRepository(env:Bindings):Materia
       const prior = (await client.query<{ actor_key: string; resource_id: string; request_hash: string; external_task_id: string | null }>(
         'SELECT actor_key,resource_id,request_hash,external_task_id FROM lti_material_operations WHERE id=$1', [input.operationId])).rows[0];
       if (prior) {
-        if (prior.actor_key!==scope.actorKey || prior.resource_id!==resource.id || prior.request_hash!==requestHash)
-          throw conflict('This operation identifier has already been used.');
+        assertMaterialReplayIdentity(prior.actor_key===scope.actorKey,prior.resource_id===resource.id,prior.request_hash===requestHash);
         const material = await publicMaterial(client,scope,video); await client.query('COMMIT');
         return { material, externalTaskId: prior.external_task_id === null ? null : Number(prior.external_task_id), reused: true };
       }
-      if (!freshOperation) throw conflict('This operation is no longer available. Refresh and start a new operation.');
+      assertMaterialOperationAvailable(freshOperation);
       const beforeRevision = await revisionOf(scope,video);
-      if (beforeRevision!==input.revision) throw conflict('This material was changed by another operation. Refresh before saving.');
+      assertMaterialRevision(beforeRevision,input.revision);
+      const kind=materialMutationKind(input,video.status);
+      const retryJob=kind==='retry'?await latestJob(client,scope.videoId,true):undefined;
+      const original=kind==='retry'?originalMessage.safeParse(retryJob?.message):undefined;
+      const plan=planMaterialMutation(input,video,original?.success?original.data:undefined,retryJob?.status);
       let message: JobMessage | undefined;
-      if (input.action==='update') {
-        if (!['completed','error'].includes(video.status)) throw conflict('Wait for processing before editing this material.');
-        const transcriptChanged = input.fields.transcript !== undefined && input.fields.transcript!==video.transcript;
-        await updateDerivedFields(db,scope.videoId,input.fields,transcriptChanged);
-        if (transcriptChanged) message=buildJobMessage('index_video_transcript',{video_id:scope.videoId,
-          ...(!input.fields.transcript!.trim() ? {allow_empty:true} : {})});
-      } else if (input.action==='reindex' || video.status==='indexing') {
-        if (input.action==='reindex' && video.status!=='completed') throw conflict('Wait for processing before starting a new index.');
-        await client.query("UPDATE videos SET status='indexing',error_message='' WHERE id=$1",[scope.videoId]);
-        message=buildJobMessage('index_video_transcript',{video_id:scope.videoId,...(!video.transcript?.trim()?{allow_empty:true}:{})});
-      } else {
-        if (video.status!=='error') throw conflict('This material does not need a processing retry.');
-        const retryJob=await latestJob(client,scope.videoId,true);
-        const original=originalMessage.safeParse(retryJob?.message);
-        if (!original.success || original.data.payload.video_id!==scope.videoId || retryJob?.status==='completed')
-          throw conflict('Retry synchronization from Moodle for this processing job.');
-        // Reuse the original job identity/payload, preserving worker leases and
-        // usage receipts even when its automatic retry is still in the queue.
-        message=original.data;
-        await client.query("UPDATE videos SET status='pending',error_message='' WHERE id=$1",[scope.videoId]);
-      }
+      if(input.action==='update') await updateDerivedFields(db,scope.videoId,input.fields,plan.transcriptChanged);
+      else await client.query("UPDATE videos SET status=$1,error_message='' WHERE id=$2",[plan.next.status,scope.videoId]);
+      if(plan.job) message=plan.job.kind==='index'?buildJobMessage('index_video_transcript',plan.job.payload):plan.job.message;
       const task=message ? await insertJobTask(db,{message,dedupeKey:'lti-material:'+input.operationId}) : null;
       const next = await readVideo(client,scope);
       await db.insert(ltiMaterialOperations).values({ id:input.operationId,resourceId:resource.id,videoId:scope.videoId,
@@ -106,7 +94,7 @@ export function createPostgresMaterialManagementRepository(env:Bindings):Materia
         beforeRevision,afterRevision:await revisionOf(scope,next),externalTaskId:task?.id??null });
       const material=await publicMaterial(client,scope,next); await client.query('COMMIT');
       return { material, externalTaskId:task?.id??null, reused:false };
-    } catch(error) { await client.query('ROLLBACK'); throw error; }
+    } catch(error) { await client.query('ROLLBACK'); throw asApiError(error)??error; }
   });
 }};}
 

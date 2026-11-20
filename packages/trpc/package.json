@@ -47,6 +47,10 @@
     "./deployment": {
       "types": "./src/deployment.ts",
       "default": "./src/deployment.ts"
+    },
+    "./tag-policy": {
+      "types": "./src/tag-policy.ts",
+      "default": "./src/tag-policy.ts"
     }
   },
   "scripts": {
@@ -55,7 +59,8 @@
   },
   "dependencies": {
     "@trpc/server": "^11.28.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@videoq/domain": "0.1.0"
   },
   "devDependencies": {
     "typescript": "npm:@typescript/typescript6@^6.0.2",

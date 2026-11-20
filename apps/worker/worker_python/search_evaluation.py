@@ -12,6 +12,7 @@ import tempfile
 import sys
 from urllib.parse import urlsplit
 
+from worker_python.use_cases.search_evaluation import unique_cases, prepare_local_vectors, evaluation_payload, EvaluationEmbeddingFailed
 from worker_python.env import env_str
 from worker_python.pipeline.ai_connection import is_openrouter, shared_base_url
 from worker_python.pipeline.embedding_contract import resolve_embedding_config, validate_embedding
@@ -136,7 +137,7 @@ def prepare(input_path: Path, output_path: Path, *, execute: bool = False) -> di
     destination = parent / output_path.name
     if os.path.lexists(destination):
         _fail("output_exists")
-    queries = list(dict.fromkeys(case["question"] for case in manifest["cases"]))
+    queries = [case["question"] for case in unique_cases(manifest)]
     summary = {"cases": len(manifest["cases"]), "unique_queries": len(queries), "dimensions": config.dimensions}
     if not execute:
         return {"status": "ready", **summary, "model_calls_made": False, "execute_required": True}
@@ -148,26 +149,16 @@ def prepare(input_path: Path, output_path: Path, *, execute: bool = False) -> di
         _fail("output_locked")
     temporary = None
     try:
-        vectors = {}
-        for offset in range(0, len(queries), BATCH_SIZE):
-            _configuration(manifest["embedding"])
-            batch = queries[offset:offset + BATCH_SIZE]
-            try:
-                result = embed_texts(batch, input_type="query")
-                if not isinstance(result, list) or len(result) != len(batch):
-                    _fail("invalid_embedding_output")
-                for question, vector in zip(batch, result, strict=True):
-                    vectors[question] = validate_embedding(vector, config)
-            except Exception:
-                _fail("embedding_failed")
-        payload = {
-            "version": 1, "cohort": manifest["cohort"], "corpusSha256": manifest["corpusSha256"],
-            "model": config.model, "dimensions": config.dimensions, "samples": manifest["samples"],
-            "cases": [{"queryEmbedding": vectors[case["question"]], "userId": case["userId"], "videoIds": list(dict.fromkeys(case["videoIds"])), "limit": case["limit"]} for case in manifest["cases"]],
-            "generation": {"version": 1, "manifest_sha256": hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
-                           "embedding": manifest["embedding"], "case_ids": [case["id"] for case in manifest["cases"]],
-                           "unique_queries": len(queries), "input_type": "query", "quality_evaluated": False},
-        }
+        try:
+            vectors = prepare_local_vectors(queries, BATCH_SIZE,
+                recheck=lambda: _configuration(manifest["embedding"]),
+                embed=lambda batch: embed_texts(batch, input_type="query"),
+                validate=lambda vector: validate_embedding(vector, config))
+        except EvaluationEmbeddingFailed:
+            _fail("embedding_failed")
+        payload = evaluation_payload(manifest, vectors, model=config.model, dimensions=config.dimensions,
+            manifest_sha256=hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+            unique_queries=len(queries))
         try:
             descriptor, temporary = tempfile.mkstemp(prefix=".videoq-query-", dir=parent)
             with os.fdopen(descriptor, "w", encoding="utf-8") as output:

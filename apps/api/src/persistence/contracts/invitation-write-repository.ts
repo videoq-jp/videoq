@@ -1,4 +1,4 @@
-import type {InvitationStatus} from "../../lib/course-invitations";
+import type {InvitationStatus} from "../../application/course-invitations";
 export type InvitationDecisionResult =
   | { notFound: true }
   | { emailUnverified: true }

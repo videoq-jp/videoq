@@ -13,6 +13,8 @@ import { getCourseWithMembers } from "../src/repositories/chat-repository";
 import { getVideoEvidence } from "../src/repositories/video-evidence-repository";
 import { digest } from "../src/features/lti/store";
 import { manageLtiMaterial } from "../src/features/lti/material-management";
+import { classroomPlaybackVideo } from '../src/features/classroom/repository';
+import { resolveFileUrl } from '../src/integrations/media';
 import { createMemoryRateLimitBackend, setRateLimitBackendForTests } from "../src/lib/rate-limit";
 
 const keyState = vi.hoisted(() => ({ keys: undefined as JWTVerifyGetKey | undefined }));
@@ -21,6 +23,12 @@ vi.mock("../src/features/lti/course-access", () => ({ courseAccessContext: vi.fn
 vi.mock("../src/repositories/chat-repository", () => ({ getCourseWithMembers: vi.fn(), updateChatLogFeedback: vi.fn() }));
 vi.mock("../src/repositories/video-evidence-repository", () => ({ getVideoEvidence: vi.fn() }));
 vi.mock("../src/features/lms/native-session", () => ({ ensureNativeSession: vi.fn(async () => {}) }));
+vi.mock('../src/features/classroom/repository', async original => ({
+  ...await original<typeof import('../src/features/classroom/repository')>(), classroomPlaybackVideo: vi.fn(),
+}));
+vi.mock('../src/integrations/media', async original => ({
+  ...await original<typeof import('../src/integrations/media')>(), resolveFileUrl: vi.fn(),
+}));
 vi.mock("../src/features/lti/material-management", async original => ({
   ...await original<typeof import("../src/features/lti/material-management")>(), manageLtiMaterial: vi.fn(),
 }));
@@ -61,6 +69,8 @@ beforeEach(() => {
   vi.mocked(getCourseWithMembers).mockResolvedValue({ id: 12, userId: "owner", memberVideoIds: [3] });
   vi.mocked(getVideoEvidence).mockResolvedValue({ id: 3, title: "Lesson", transcriptTooLarge: false,
     transcript: "1\n00:00:00,000 --> 00:00:01,000\nOriginal lesson\n" });
+  vi.mocked(classroomPlaybackVideo).mockResolvedValue({ file: 'video.mp4', sourceType: 'file', youtubeId: '', title: 'Lesson', description: 'Overview' });
+  vi.mocked(resolveFileUrl).mockResolvedValue('https://media.example/signed.mp4');
 });
 
 async function assertion(operation = "/materials", body = "{}", extra: Record<string, unknown> = {}, typ = "videoq-native+jwt") {
@@ -78,6 +88,27 @@ async function request(operation = "/materials", body = "{}", headers: Record<st
 }
 
 describe("Moodle server-authenticated learning API", () => {
+  it('serves playback through the freshly authorized owner and never reads a video outside the current scope', async () => {
+    expect(await (await request('/playback', JSON.stringify({ videoId: 3 }))).json()).toEqual({
+      kind: 'file', title: 'Lesson', description: 'Overview', url: 'https://media.example/signed.mp4',
+    });
+    expect(classroomPlaybackVideo).toHaveBeenCalledExactlyOnceWith(env, 'owner', 3);
+    vi.mocked(classroomPlaybackVideo).mockClear();
+    vi.mocked(resolveFileUrl).mockClear();
+    expect((await request('/playback', JSON.stringify({ videoId: 4 }))).status).toBe(403);
+    expect(classroomPlaybackVideo).not.toHaveBeenCalled();
+    expect(resolveFileUrl).not.toHaveBeenCalled();
+  });
+
+  it('returns a validated YouTube embed without storage signing and rejects insecure file URLs', async () => {
+    vi.mocked(classroomPlaybackVideo).mockResolvedValue({ file: '', sourceType: 'youtube', youtubeId: 'abcdefghijk', title: 'Lesson', description: 'Overview' });
+    expect(await (await request('/playback', JSON.stringify({ videoId: 3 }))).json()).toMatchObject({ kind: 'youtube', url: 'https://www.youtube-nocookie.com/embed/abcdefghijk' });
+    expect(resolveFileUrl).not.toHaveBeenCalled();
+    vi.mocked(classroomPlaybackVideo).mockResolvedValue({ file: 'video.mp4', sourceType: 'file', youtubeId: '', title: 'Lesson', description: 'Overview' });
+    vi.mocked(resolveFileUrl).mockResolvedValue('http://media.example/video.mp4');
+    expect((await request('/playback', JSON.stringify({ videoId: 3 }))).status).toBe(403);
+  });
+
   it('reuses only the course already freshly authorized for this request', async () => {
     vi.mocked(courseAccessContext).mockResolvedValue({ ...structuredClone(current),
       course:{id:12,userId:'owner',memberVideoIds:[3]} });

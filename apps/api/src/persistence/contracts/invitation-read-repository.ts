@@ -1,4 +1,4 @@
-import type {InvitationStatus,InvitationDeliveryStatus} from '../../lib/course-invitations';
+import type {InvitationStatus,InvitationDeliveryStatus} from '../../application/course-invitations';
 export type CourseInvitationListItem = {
   id: number;
   email: string;

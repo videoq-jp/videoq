@@ -1,3 +1,7 @@
+import { accountDeletionForbidden, accountDeletionVideoOutcome, accountDeletionDrainOutcome } from '../../application/worker-account-deletion';
+import { accountDeletionStringLogic } from '../worker-account-deletion-policy-sql';
+const forbidden = accountDeletionForbidden({ banned: 'coalesce(u.banned,0)=1', noExpiry: 'u.ban_expires IS NULL',
+ administrator: "instr(','||coalesce(u.role,'')||',',',admin,')>0", }, accountDeletionStringLogic);
 import type {AccountDeletionLease,WorkerAccountDeletion} from '../contracts/worker-account-deletion';
 import {createD1VideoMutationRepository} from './video-mutation-repository';
 function authorization(g:AccountDeletionLease){return {
@@ -5,7 +9,7 @@ function authorization(g:AccountDeletionLease){return {
   WHERE j.job_id=? AND j.job_type='delete_account_data' AND j.status='running' AND j.lease_token=? AND julianday(j.lease_until)>julianday('now')
    AND t.kind='sqs_job' AND json_extract(t.payload,'$.message.type')='delete_account_data'
    AND json_extract(t.payload,'$.message.job_id')=j.job_id AND json_extract(t.payload,'$.message.payload.user_id')=?)
-  AND NOT EXISTS(SELECT 1 FROM users u WHERE u.id=? AND (coalesce(u.banned,0)<>1 OR u.ban_expires IS NOT NULL OR instr(','||coalesce(u.role,'')||',',',admin,')>0))`,
+  AND NOT EXISTS(SELECT 1 FROM users u WHERE u.id=? AND ${forbidden})`,
  params:[`account-delete:${g.userId}`,g.jobId,g.leaseToken,g.userId,g.userId]};}
 /** Cloud worker operations are bounded and resume from the remaining DB rows. */
 export function createD1WorkerAccountDeletion(database:D1Database,notify:()=>Promise<void>):WorkerAccountDeletion{return {async step(grant){
@@ -14,7 +18,7 @@ export function createD1WorkerAccountDeletion(database:D1Database,notify:()=>Pro
  const video=await prepare('SELECT id FROM videos WHERE user_id=? ORDER BY id LIMIT 1',[grant.userId]).first<{id:number}>();
  if(video){
   const result=await createD1VideoMutationRepository(database,notify,fence).delete(video.id,grant.userId);
-  return {status:result.deleted?'progress':'denied'};
+  return accountDeletionVideoOutcome(result.deleted);
  }
  const token=crypto.randomUUID(),gate='EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)';
  const result=await database.batch<Record<string,unknown>>([
@@ -30,6 +34,6 @@ export function createD1WorkerAccountDeletion(database:D1Database,notify:()=>Pro
   prepare(`SELECT EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AS allowed,EXISTS(SELECT 1 FROM users WHERE id=?) AS remaining`,[token,grant.userId]),
   prepare('DELETE FROM mutation_receipts WHERE token=?',[token]),
  ]);
- const state=result[8].results[0];if(!state?.allowed)return {status:'denied'};
- await notify();return {status:state.remaining?'progress':'completed'};
+ const state=result[8].results[0],outcome=accountDeletionDrainOutcome(Boolean(state?.allowed),Boolean(state?.remaining));if(outcome.status==='denied')return outcome;
+ await notify();return outcome;
  }};}

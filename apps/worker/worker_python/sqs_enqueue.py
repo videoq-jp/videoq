@@ -8,7 +8,7 @@ import uuid
 from contextlib import closing
 from typing import Any
 
-from worker_python.contracts import validate_job_payload
+from worker_python.domain.jobs import build_job_message as prepare_job_message, child_job_id
 from worker_python.sqs_client import create_sqs_client
 from worker_python.job_routing import queue_url_for_job
 
@@ -21,31 +21,7 @@ def build_job_message(
     *,
     job_id: str | None = None,
 ) -> dict[str, Any]:
-    body = {} if payload is None else payload
-    validate_job_payload(job_type, body)
-    return {
-        "type": job_type,
-        "job_id": job_id or str(uuid.uuid4()),
-        "payload": body,
-    }
-
-
-def child_job_id(
-    parent_job_id: str,
-    job_type: str,
-    payload: dict[str, Any] | None = None,
-) -> str:
-    """Derive a stable UUID so a retried parent cannot create a new child job."""
-    canonical = json.dumps(
-        {
-            "parent_job_id": parent_job_id,
-            "type": job_type,
-            "payload": payload or {},
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"videoq:{canonical}"))
+    return prepare_job_message(job_type, payload, job_id=job_id, new_id=lambda: str(uuid.uuid4()))
 
 
 def enqueue_job(

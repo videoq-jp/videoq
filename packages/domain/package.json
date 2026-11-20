@@ -1,0 +1,53 @@
+{
+  "name": "@videoq/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./video-upload": {
+      "types": "./src/video-upload.ts",
+      "default": "./src/video-upload.ts"
+    },
+    "./tag-policy": {
+      "types": "./src/tag-policy.ts",
+      "default": "./src/tag-policy.ts"
+    },
+    "./course-invitations": {
+      "types": "./src/course-invitations.ts",
+      "default": "./src/course-invitations.ts"
+    },
+    "./chat": {
+      "types": "./src/chat.ts",
+      "default": "./src/chat.ts"
+    },
+    "./chat-content": {
+      "types": "./src/chat-content.ts",
+      "default": "./src/chat-content.ts"
+    },
+    "./chat-syntax": {
+      "types": "./src/chat-syntax.ts",
+      "default": "./src/chat-syntax.ts"
+    },
+    "./transcript": {
+      "types": "./src/transcript.ts",
+      "default": "./src/transcript.ts"
+    },
+    "./deployment": {
+      "types": "./src/deployment.ts",
+      "default": "./src/deployment.ts"
+    },
+    "./share-slug": {
+      "types": "./src/share-slug.ts",
+      "default": "./src/share-slug.ts"
+    },
+    "./transcript-quality": {
+      "types": "./src/transcript-quality.ts",
+      "default": "./src/transcript-quality.ts"
+    },
+    "./billing-catalog": "./src/billing-catalog.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  }
+}

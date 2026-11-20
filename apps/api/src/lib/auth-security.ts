@@ -1,3 +1,6 @@
+import { adminRoleChangeFailure } from "../application/admin";
+import { accountIsBanned } from "../application/resource-access";
+import { currentConsentAllows, refreshConsentDecision } from "../application/oauth-consent";
 import type { AuthContext, BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import {
   APIError,
@@ -23,12 +26,7 @@ type OAuthConsentGrant = {
 };
 
 export function isBanned(user: object): boolean {
-  if (!("banned" in user) || user.banned !== true) return false;
-  // Match the Admin plugin's temporary-ban expiry semantics for non-session
-  // credentials as well. Its session creation hook clears expired bans.
-  const expires = "banExpires" in user ? user.banExpires : null;
-  return !((expires instanceof Date || typeof expires === "string") &&
-    new Date(expires).getTime() < Date.now());
+  return accountIsBanned(user, Date.now());
 }
 
 function invalidGrant(): never {
@@ -42,15 +40,14 @@ function invalidGrant(): never {
 export async function hasOAuthConsent(
   adapter: AuthContext["adapter"], userId: string, clientId: string, scopes: readonly string[],
 ): Promise<boolean> {
-  const consent = await adapter.findOne<Pick<OAuthConsentGrant, "scopes">>({
+  return currentConsentAllows(scopes, () => adapter.findOne<Pick<OAuthConsentGrant, "scopes">>({
     model: "oauthConsent",
     select: ["scopes"],
     where: [
       { field: "userId", value: userId },
       { field: "clientId", value: clientId },
     ],
-  });
-  return Boolean(consent && scopes.every((scope) => consent.scopes.includes(scope)));
+  }));
 }
 
 async function findRefreshToken(
@@ -79,11 +76,10 @@ async function checkRefreshConsent(ctx: GenericEndpointContext, options: OAuthOp
   if (typeof body.grant_type !== "string" || body.grant_type.trim() !== "refresh_token" ||
     typeof body.refresh_token !== "string") return;
   const token = await findRefreshToken(ctx, options, body.refresh_token);
-  // Missing/replayed credentials stay with the provider's rotation and family-revocation handling.
-  if (!token || token.revoked) return;
-  if (!token.userId || !token.clientId || !await hasOAuthConsent(ctx.context.adapter, token.userId, token.clientId,
-    typeof body.scope === "string" ? body.scope.split(" ") : token.scopes,
-  )) invalidGrant();
+  const decision = await refreshConsentDecision(token ? {
+    revoked: Boolean(token.revoked), userId: token.userId, clientId: token.clientId, scopes: token.scopes,
+  } : null, body.scope, (userId, clientId, scopes) => hasOAuthConsent(ctx.context.adapter, userId, clientId, scopes));
+  if (decision === 'denied') invalidGrant();
 }
 
 const introspectionSchema = z.object({
@@ -170,16 +166,11 @@ export function videoqAuthSecurity(options: OAuthOptions<string[]>, grants?: OAu
           const role = ctx.path === "/admin/update-user"
             ? nestedRole
             : ("role" in body ? body.role : undefined) ?? nestedRole;
-          if (role === undefined) return;
-          if (role !== "user" && role !== "admin") {
-            throw new APIError("BAD_REQUEST", { message: "Role must be user or admin." });
-          }
           // Match the native endpoint's coercion (e.g. [id] also becomes id).
           const targetId = z.coerce.string().safeParse("userId" in body ? body.userId : undefined);
-          if (ctx.path !== "/admin/create-user" && targetId.success &&
-            session?.user.id === targetId.data && role !== "admin") {
-            throw new APIError("BAD_REQUEST", { message: "Cannot remove your own administrator role." });
-          }
+          const failure = adminRoleChangeFailure(role, session?.user.id,
+            ctx.path !== "/admin/create-user" && targetId.success ? targetId.data : undefined);
+          if (failure) throw new APIError("BAD_REQUEST", { message: failure });
         }),
       }, {
         matcher: ({ path }) => path === "/oauth2/token",

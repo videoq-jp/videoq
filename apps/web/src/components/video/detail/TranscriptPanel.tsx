@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { canEditVideoTranscript } from '@/application/video-editing';
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,7 +76,7 @@ export function TranscriptPanel({
                 variant="outline"
                 size="xs"
                 onClick={onStartTranscriptEditing}
-                disabled={!video.transcript && video.status !== 'completed'}
+                disabled={!canEditVideoTranscript(video)}
               >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 {t('videos.detail.editTranscriptButton')}

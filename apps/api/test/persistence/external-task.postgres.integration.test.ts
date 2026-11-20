@@ -23,11 +23,12 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
         repository: createPostgresExternalTaskRepository({ DATABASE_POOL: pool } as Bindings),
         expireAndReady: async id => { await pool.query("UPDATE external_tasks SET locked_at='2000-01-01',available_at='2000-01-01' WHERE id=$1", [id]); },
         setAttempts: async (id, attempts) => { await pool.query("UPDATE external_tasks SET attempts=$1 WHERE id=$2", [attempts, id]); },
-        createCleanup: async (effectApplied = false) => {
-          await pool.query("INSERT INTO users VALUES ('owner',10,$1,true)", [5 / 1024 ** 3]);
+        createCleanup: async (effectApplied = false, quota = { used: 10, limitGb: 5 / 1024 ** 3, overQuota: true }) => {
+          await pool.query("INSERT INTO users VALUES ('owner',$1,$2,$3)", [quota.used, quota.limitGb, quota.overQuota]);
           return Number((await pool.query(`INSERT INTO external_tasks(kind,payload,dedupe_key,effect_applied_at)
             VALUES ('storage_cleanup','{}','storage:owner',$1) RETURNING id`, [effectApplied ? "2000-01-01" : null])).rows[0].id);
         },
+        retryDelay: async id => Number((await pool.query("SELECT extract(epoch FROM available_at-updated_at) AS delay FROM external_tasks WHERE id=$1", [id])).rows[0].delay),
         rejectCompletion: async () => { await pool.query(`CREATE FUNCTION reject_complete() RETURNS trigger LANGUAGE plpgsql AS
           $$ BEGIN IF NEW.completed_at IS NOT NULL THEN RAISE EXCEPTION 'test completion rejection'; END IF; RETURN NEW; END $$;
           CREATE TRIGGER reject_complete BEFORE UPDATE ON external_tasks FOR EACH ROW EXECUTE FUNCTION reject_complete()`); },

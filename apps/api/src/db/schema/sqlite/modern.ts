@@ -1,3 +1,4 @@
+import type { ChatAnswer } from "@videoq/domain/chat";
 // SQLite / D1 schema. PostgreSQL history is maintained independently.
 import { sqliteTable, text, integer, real, index, uniqueIndex, foreignKey, check, unique, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql, asc, desc } from "drizzle-orm";
@@ -442,7 +443,7 @@ export const videoTags = sqliteTable("video_tags", {
 export const chatLogs = sqliteTable("chat_logs", {
     id: integer().primaryKey({ autoIncrement: true }),
     question: text().notNull(),
-    response: text({ mode: "json" }).$type<import("@videoq/trpc/chat").ChatAnswer>().notNull(),
+    response: text({ mode: "json" }).$type<ChatAnswer>().notNull(),
     isSharedOrigin: integer("is_shared_origin", { mode: "boolean" }).notNull(),
     feedback: text(),
     createdAt: text("created_at").notNull(),
@@ -555,7 +556,7 @@ export const chatConversationTurns = sqliteTable("chat_conversation_turns", {
     threadId: text("thread_id").notNull(),
     checkpointId: text("checkpoint_id").notNull(),
     question: text("question").notNull(),
-    response: text("response", { mode: "json" }).$type<import("@videoq/trpc/chat").ChatAnswer>().notNull(),
+    response: text("response", { mode: "json" }).$type<ChatAnswer>().notNull(),
     chatLogId: integer("chat_log_id").references(() => chatLogs.id, { onDelete: "set null" }),
     createdAt: isoDate("created_at").notNull().default(sql `(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 }, table => [foreignKey({ columns: [table.threadId], foreignColumns: [chatConversations.threadId], name: "chat_conversation_turns_thread_fk" }).onDelete("cascade"), uniqueIndex("chat_conversation_turns_checkpoint_idx").on(table.threadId, table.checkpointId), index("chat_conversation_turns_thread_idx").on(table.threadId, table.id)]);

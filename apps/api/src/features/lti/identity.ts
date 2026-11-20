@@ -1,15 +1,11 @@
 import { digest } from './store';
-import { ltiSessionProof } from '../../shared/lti-session-proof';
+import { asApiError } from '../../shared/errors';
+import { checkLtiDataSubject, ltiSubjectKeyInput } from '../../application/subject-identity';
+import type { LtiDataSubject } from '../../application/subject-identity';
+export type { LtiDataSubject } from '../../application/subject-identity';
 
-/** Internal attribution only; never an authentication credential or browser input. */
-export type { LtiDataSubject } from "../../persistence/contracts/lti-subject";
-import type { LtiDataSubject } from "../../persistence/contracts/lti-subject";
-export const ltiSubjectKey = (scope: { registrationId: string; subjectHash: string }) =>
-  digest(JSON.stringify(['lti-data-subject-v1', scope.registrationId, scope.subjectHash]));
-
+export const ltiSubjectKey = (scope: { registrationId: string; subjectHash: string }) => digest(ltiSubjectKeyInput(scope));
 export function checkedLtiSubject(subject: LtiDataSubject): LtiDataSubject {
-  if (!/^[a-f0-9]{64}$/.test(subject.subjectKey) || subject.resourceVideoIds.length > 1000
-    || subject.resourceVideoIds.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new Error('Invalid LTI subject scope');
-  return { subjectKey: subject.subjectKey, resourceVideoIds: [...new Set(subject.resourceVideoIds)].sort((a,b) => a-b),
-    ...(subject.sessionProof ? {sessionProof:ltiSessionProof(subject.sessionProof,subject.sessionProof.sessionHash)} : {}) };
+  try { return checkLtiDataSubject(subject); }
+  catch (error) { throw asApiError(error) ?? error; }
 }

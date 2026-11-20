@@ -1,3 +1,5 @@
+import { readReindexPage } from '../features/worker-internal/reindex-service';
+import { finishTranscriptionRun } from '../features/worker-internal/transcription-service';
 import type { Bindings } from "../types/bindings";
 import type { UserSecretsRepository } from "./contracts/user-secrets";
 import { persistenceBackend } from "./backend";
@@ -197,13 +199,7 @@ export async function createTranscriptionCheckpoints(env: Bindings): Promise<imp
 export async function finishWorkerTranscriptionRun(env: Bindings, videoId: number, runId: string, transcript: string | null) {
   const checkpoints = await createTranscriptionCheckpoints(env);
   const transcription = await createWorkerTranscriptionRepository(env);
-  const run = await checkpoints.load(videoId, runId);
-  const source = await transcription.readSource(videoId);
-  if (!run || !source) return { completed: false, stale: true, status: null };
-  if (run.completed) return { completed: true, stale: false, status: source.status };
-  if (run.fileKey !== source.fileKey || run.sourceRevision !== source.sourceRevision) return { completed: false, stale: true, status: source.status };
-  const status = await transcription.finish(source, transcript, transcript === null ? "TRANSCRIPTION_FAILED" : null, runId);
-  return { completed: Boolean((await checkpoints.load(videoId, runId))?.completed), stale: false, status };
+  return finishTranscriptionRun(checkpoints, transcription, videoId, runId, transcript);
 }
 
 export async function createVisualCheckpoints(env: Bindings): Promise<import("./contracts/visual-checkpoints").VisualCheckpoints> {
@@ -234,15 +230,18 @@ export async function createReindexRepository(env:Bindings):Promise<import("./co
 
 export async function readWorkerReindexPage(env:Bindings,input:{afterId:number;dimensions:768|1536;profile:string;model:string}) {
   if (persistenceBackend(env)!=="d1") throw new Error("Worker reindex API requires D1");
-  const ids=await (await createReindexRepository(env)).candidateIds(input.afterId);
-  if (!ids.length) return ids;
-  const embedding=await import("../lib/embedding-contract");
-  const config=embedding.resolveEmbeddingConfig(env);
-  const dimensions=embedding.embeddingDimensions(config);
-  if (dimensions!==input.dimensions || (config.profile??"openai")!==input.profile || config.model!==input.model) throw new Error("Embedding configuration mismatch");
-  const index=dimensions===768?env.SCENE_VECTORIZE_768:env.SCENE_VECTORIZE_1536;
-  if (!index || (await index.describe()).dimensions!==dimensions) throw new Error("Vector index is not ready");
-  return ids;
+  return readReindexPage({
+    repository: () => createReindexRepository(env),
+    configuration: async () => {
+      const embedding = await import('../lib/embedding-contract');
+      const config = embedding.resolveEmbeddingConfig(env);
+      return { dimensions: embedding.embeddingDimensions(config), profile: config.profile ?? 'openai', model: config.model };
+    },
+    indexDimensions: async dimensions => {
+      const index = dimensions === 768 ? env.SCENE_VECTORIZE_768 : env.SCENE_VECTORIZE_1536;
+      return index ? (await index.describe()).dimensions : null;
+    },
+  }, input);
 }
 
 export async function createAiQuotaRepository(env:Bindings):Promise<import("./contracts/ai-quota").AiQuotaRepository> {
@@ -263,7 +262,7 @@ export async function createChatRepository(env:Bindings):Promise<import("./contr
   const {createPostgresChatRepository}=await import("./postgres/chat-repository");return createPostgresChatRepository(env);
 }
 
-export async function openPersistenceConversation(env:Bindings,scope:import("./contracts/conversation").ConversationScope,id:string,requireExisting=false):Promise<import("./contracts/conversation").OpenConversation> {
+export async function openPersistenceConversation(env:Bindings,scope:import("./contracts/conversation").ConversationScope,id:string,requireExisting=false):Promise<import("./contracts/conversation").OpenConversation<import("@langchain/langgraph-checkpoint").BaseCheckpointSaver>> {
   if(persistenceBackend(env)==="d1"){
     if(!env.DB)throw new Error("D1 DB binding is required");
     const {openD1Conversation}=await import("./d1/conversation");return openD1Conversation(env.DB,scope,id,requireExisting);
@@ -464,12 +463,12 @@ export async function createBillingRepository(env:Bindings):Promise<import('./co
  const {createPostgresBillingRepository}=await import('./postgres/billing-repository');return createPostgresBillingRepository(env);
 }
 
-export async function createAdminUserRepository(env:Bindings):Promise<import('./contracts/admin-user-repository').AdminUserRepository>{
+export async function createAdminUserRepository(env:Bindings,headers?:Headers):Promise<import('./contracts/admin-user-repository').AdminUserRepository>{
  if(persistenceBackend(env)==='d1'){
   if(!env.DB)throw new Error('D1 DB binding is required');
-  const {createD1AdminUserRepository}=await import('./d1/admin-user-repository');return createD1AdminUserRepository(env.DB,env);
+  const {createD1AdminUserRepository}=await import('./d1/admin-user-repository');return createD1AdminUserRepository(env.DB,env,headers);
  }
- const {createPostgresAdminUserRepository}=await import('./postgres/admin-user-repository');return createPostgresAdminUserRepository(env);
+ const {createPostgresAdminUserRepository}=await import('./postgres/admin-user-repository');return createPostgresAdminUserRepository(env,headers);
 }
 
 export async function stepWorkerAccountDeletion(env:Bindings,lease:import('./contracts/worker-account-deletion').AccountDeletionLease){

@@ -1,15 +1,17 @@
+import { reportMediaAllowed, reportGrantMatches, reportLogAllowed } from '../../application/course-report';
+import { reportStringLogic } from '../course-report-policy-sql';
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import type {CourseReportRepository,ReportDay} from '../contracts/course-report-repository';
 import {checkCourseReport,reportDenied} from '../../shared/course-report';
 import {digest} from '../../features/lti/store';
 const IDS=`(SELECT json_group_array(video_id) FROM (SELECT DISTINCT r.video_id FROM lms_resources r
  JOIN video_course_members m ON m.course_id=r.course_id AND m.video_id=r.video_id
- JOIN videos v ON v.id=r.video_id AND v.user_id=? AND v.managed_by_lms=1 AND v.status='completed'
- JOIN json_each(?) granted ON json_extract(granted.value,'$.videoId')=r.video_id
-  AND json_extract(granted.value,'$.generation')=r.generation AND json_extract(granted.value,'$.resourceLinkId')=r.resource_link_id
+ JOIN videos v ON v.id=r.video_id AND ${reportMediaAllowed('v.user_id=?','v.managed_by_lms=1','v.status',reportStringLogic)}
+ JOIN json_each(?) granted ON ${reportGrantMatches("json_extract(granted.value,'$.videoId')=r.video_id","json_extract(granted.value,'$.generation')=r.generation","json_extract(granted.value,'$.resourceLinkId')=r.resource_link_id",reportStringLogic)}
  WHERE r.installation_id=? AND r.context_id=? AND r.course_id=? AND r.enabled=1 ORDER BY r.video_id))`;
 const AUTHORITY=`EXISTS(SELECT 1 FROM lms_installations i JOIN lms_courses c ON c.installation_id=i.id JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=i.id AND t.context_id=c.context_id AND t.course_id=c.course_id AND t.active=1 JOIN users owner ON owner.id=t.owner_user_id JOIN video_courses v ON v.id=c.course_id
  JOIN lti_credentials session ON session.id=? WHERE i.id=? AND owner.id=? AND i.active=1
- AND owner.is_active=1 AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))
+ AND ${d1LmsOwnerSql()}
  AND c.context_id=? AND c.course_id=? AND v.user_id=owner.id AND v.managed_by_lms=1
  AND session.kind='session' AND julianday(session.expires_at)>julianday('now')
  AND json_extract(session.payload,'$.registrationId')=? AND json_extract(session.payload,'$.subjectHash')=?
@@ -36,13 +38,16 @@ export function createD1CourseReportRepository(database:D1Database):CourseReport
     FROM chat_logs l JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id
     WHERE EXISTS(SELECT 1 FROM lti_report_accesses WHERE id=?) AND l.user_id=? AND l.course_id=? AND s.registration_id=? AND s.context_id=?
      AND julianday(l.created_at)>=julianday(?) AND julianday(l.created_at)<julianday(?,'+1 day')
-     AND json_type(${original})='array' AND json_array_length(${original})>0
-     AND NOT EXISTS(SELECT 1 FROM json_each(${original}) prior WHERE prior.type NOT IN('integer','real')
-      OR NOT EXISTS(SELECT 1 FROM json_each(?) granted WHERE granted.value=prior.value))
-     AND json_type(${response})='object' AND json_type(${response},'$.sources')='array'
-     AND NOT EXISTS(SELECT 1 FROM json_each(CASE WHEN json_type(${response},'$.sources')='array' THEN ${response}->'$.sources' ELSE '[]' END) source
-      WHERE json_type(${source},'$.video_id') IS NULL OR json_type(${source},'$.video_id') NOT IN('integer','real')
-       OR NOT EXISTS(SELECT 1 FROM json_each(?) granted WHERE granted.value=json_extract(${source},'$.video_id')))
+     AND ${reportLogAllowed({
+      originalNonempty:`json_type(${original})='array' AND json_array_length(${original})>0`,
+      originalReadable:`NOT EXISTS(SELECT 1 FROM json_each(${original}) prior WHERE prior.type NOT IN('integer','real')
+       OR NOT EXISTS(SELECT 1 FROM json_each(?) granted WHERE granted.value=prior.value))`,
+      responseObject:`json_type(${response})='object'`,
+      sourcesArray:`json_type(${response},'$.sources')='array'`,
+      allSourcesReadable:`NOT EXISTS(SELECT 1 FROM json_each(CASE WHEN json_type(${response},'$.sources')='array' THEN ${response}->'$.sources' ELSE '[]' END) source
+       WHERE json_type(${source},'$.video_id') IS NULL OR json_type(${source},'$.video_id') NOT IN('integer','real')
+        OR NOT EXISTS(SELECT 1 FROM json_each(?) granted WHERE granted.value=json_extract(${source},'$.video_id')))`,
+     },reportStringLogic)}
     GROUP BY date(l.created_at) ORDER BY date`)
     .bind(auditId,scope.ownerUserId,scope.courseId,scope.sessionProof.registrationId,scope.contextId,input.from,input.to,ids,ids),
    database.prepare(`SELECT (${AUTHORITY}) AS allowed`).bind(...authArgs),

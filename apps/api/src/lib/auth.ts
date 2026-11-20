@@ -1,3 +1,7 @@
+import { initializeAccount } from "../application/account-registration";
+import { createGoogleAccountProfile } from "../application/google-account";
+import { defaultApiKeyPermissions } from "../application/resource-access";
+export { usernameFromEmail } from "../application/username";
 import { API_KEY_RATE_LIMIT } from "./api-key-policy";
 import { features } from "./deployment";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
@@ -95,38 +99,6 @@ export function oauthProviderConfig(env: Bindings) {
     // The Hono app explicitly exposes the RFC 8414 issuer-path route.
     silenceWarnings: { oauthAuthServerConfig: true },
   };
-}
-
-/** Normalize an email local-part (or name) into a BA username candidate. */
-export function usernameFromEmail(email: string): string {
-  const local = email.split("@")[0] ?? "user";
-  let base = local
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  if (base.length < 3) base = `user_${base}`.replace(/_+/g, "_");
-  if (base.length < 3) base = "user";
-  return base.slice(0, 150);
-}
-
-async function allocateUniqueUsername(usernameExists: (candidate: string) => Promise<boolean>, preferred: string): Promise<string> {
-  let seed = preferred.includes("@")
-    ? usernameFromEmail(preferred)
-    : preferred
-        .toLowerCase()
-        .replace(/[^a-z0-9_]/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 150);
-  if (seed.length < 3) seed = usernameFromEmail(preferred.includes("@") ? preferred : `${seed || "user"}@x`);
-
-  for (let i = 0; i < 50; i++) {
-    const suffix = i === 0 ? "" : `_${i}`;
-    const candidate = `${seed.slice(0, Math.max(1, 150 - suffix.length))}${suffix}`;
-    if (!await usernameExists(candidate)) return candidate;
-  }
-  return `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 type AuthRateLimitStorage = NonNullable<
@@ -251,26 +223,10 @@ export function createAuthWithPersistence(env: Bindings, persistence: AuthPersis
             prompt: "select_account",
             requireEmailVerification: true,
             mapProfileToUser: async (profile) => {
-              const email =
-                typeof profile.email === "string" ? profile.email : "";
-              // Google is authoritative for Gmail and hosted Workspace mail.
-              // A third-party email may have changed owners since Google
-              // originally verified it; require our own mailbox verification.
-              const authoritativeEmail = email.toLowerCase().endsWith("@gmail.com") ||
-                (typeof profile.hd === "string" && profile.hd.trim().length > 0);
-              const preferred =
-                typeof profile.name === "string" && profile.name.trim()
-                  ? profile.name.trim()
-                  : email;
-              const allocated = await allocateUniqueUsername(persistence.usernameExists, email || preferred);
-              return {
-                name: preferred || allocated,
-                email,
-                emailVerified: profile.email_verified === true && authoritativeEmail,
-                image: typeof profile.picture === "string" ? profile.picture : undefined,
-                username: allocated,
-                displayUsername: allocated,
-              };
+              return createGoogleAccountProfile({
+                email: profile.email, displayName: profile.name, hostedDomain: profile.hd,
+                verifiedEmail: profile.email_verified, image: profile.picture,
+              }, { usernameExists: persistence.usernameExists, newId: () => crypto.randomUUID() });
             },
           },
         }
@@ -415,44 +371,9 @@ export function createAuthWithPersistence(env: Bindings, persistence: AuthPersis
         create: {
           before: async (user) => {
             const q = resolveSignupQuotaDefaults(env);
-            let username =
-              typeof user.username === "string" && user.username.trim()
-                ? user.username.trim()
-                : undefined;
-            if (!username) {
-              username = await allocateUniqueUsername(
-                persistence.usernameExists,
-                typeof user.email === "string" ? user.email : "user",
-              );
-            }
-            const displayUsername =
-              typeof user.displayUsername === "string" && user.displayUsername.trim()
-                ? user.displayUsername
-                : username;
-            const name =
-              (typeof user.name === "string" && user.name) ||
-              username ||
-              user.email;
-            return {
-              data: {
-                ...user,
-                name,
-                username,
-                displayUsername,
-                maxVideoUploadSizeMb: q.maxVideoUploadSizeMb,
-                aiAnswersLimit: q.aiAnswersLimit,
-                processingLimitMinutes: q.processingLimitMinutes,
-                storageLimitGb: q.storageLimitGb,
-                monthlyUploadLimitGb: q.monthlyUploadLimitGb,
-                isOverQuota: false,
-                usedAiAnswers: 0,
-                usedProcessingSeconds: 0,
-                usedStorageBytes: 0,
-                firstName: "",
-                lastName: "",
-                passwordResetRequired: false,
-              },
-            };
+            return { data: await initializeAccount(user, q, {
+              usernameExists: persistence.usernameExists, newId: () => crypto.randomUUID(),
+            }) };
           },
         },
       },
@@ -477,7 +398,7 @@ export function createAuthWithPersistence(env: Bindings, persistence: AuthPersis
           rateLimit: API_KEY_RATE_LIMIT,
           apiKeyHeaders: ["x-api-key"],
           permissions: {
-            defaultPermissions: { videoq: configId === "read-write" ? ["read", "write"] : ["read"] },
+            defaultPermissions: defaultApiKeyPermissions(configId),
           },
           startingCharactersConfig: {
             shouldStore: true,

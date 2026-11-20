@@ -12,6 +12,9 @@ from worker_python.pipeline.visual_chunks import manifest_key
 from worker_python.pipeline.visual_frames import frame_cache_key
 from worker_python.pipeline.focus_frames import focus_cache_key
 from worker_python.video_sql import delete_video_cascade
+from worker_python.use_cases.account_deletion import (
+    AccountDeletionDependencies, execute_account_deletion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,25 +75,24 @@ def _delete_user_row(conn, user_id: str) -> None:
 def delete_account_data(user_id: str) -> None:
     logger.info("Account deletion task started for user %s", user_id)
 
-    steps = [
-        ("delete_all_videos_for_user", _delete_all_videos_for_user),
-        ("delete_chat_history_for_user", _delete_chat_history_for_user),
-        ("delete_video_courses_for_user", _delete_video_courses_for_user),
-        ("delete_tags_for_user", _delete_tags_for_user),
-        ("delete_remaining_vectors_for_user", _delete_remaining_vectors_for_user),
-        ("delete_user_row", _delete_user_row),
-    ]
-
     with db_connection() as conn:
-        for step_name, step in steps:
-            try:
-                step(conn, user_id)
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                logger.exception(
-                    "Account deletion step %s failed for user %s", step_name, user_id
-                )
-                raise
+        def committed(operation):
+            def run(identifier):
+                try:
+                    operation(conn, identifier)
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
+            return run
+
+        execute_account_deletion(user_id, AccountDeletionDependencies(
+            delete_videos=committed(_delete_all_videos_for_user),
+            delete_chat_history=committed(_delete_chat_history_for_user),
+            delete_courses=committed(_delete_video_courses_for_user),
+            delete_tags=committed(_delete_tags_for_user),
+            delete_remaining_vectors=committed(_delete_remaining_vectors_for_user),
+            delete_user=committed(_delete_user_row),
+        ))
 
     logger.info("Account hard-deletion completed for user %s", user_id)

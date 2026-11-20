@@ -1,3 +1,7 @@
+import { pairingMaterialsUnavailable, pairingCanReplay, matchingPairingPayload, pairingConnectionConflict, pairingInstallationFields, pairingSyncTokenHash, pairingExpiry } from '../../application/pairing-exchange';
+import { pairingExchangeAllowed, pairingExchangeFailure } from '../../application/pairing-exchange';
+import { pairingSqlLogic, type PairingPredicate as Predicate } from '../pairing-policy-sql';
+import { d1LmsOwnerSql } from './lms-owner-policy';
 import type {Bindings} from '../../types/bindings';
 import type {MoodlePairingRepository} from '../contracts/moodle-pairing-repository';
 import {LmsSyncError} from '../../features/lms/resource';
@@ -5,11 +9,10 @@ import {ltiMaterialsEnabled} from '../../features/lti/config';
 import {digest} from '../../features/lti/store';
 import {hasSecretEncryptionKey} from '../../lib/secret-encryption';
 import {identity,parseKeys,parseStoredToolKeyRing,generateEncryptedToolKeyRing} from '../../shared/lti-tool-keyring';
-import {pairingPayloadSchema,requireProof,PAIRING_SECONDS} from '../../shared/moodle-pairing-policy';
-const ACTIVE=`owner.is_active=1 AND owner.deactivated_at IS NULL AND (owner.banned IS NOT TRUE OR julianday(owner.ban_expires)<=julianday('now'))`;
+import {pairingPayloadSchema,requireProof} from '../../shared/moodle-pairing-policy';
+const ACTIVE=`${d1LmsOwnerSql()}`;
 const ownerActive='EXISTS(SELECT 1 FROM users owner WHERE owner.id=? AND '+ACTIVE+')';
-type Predicate={sql:string;values:unknown[]};
-const and=(...terms:Predicate[]):Predicate=>({sql:terms.map(p=>`(${p.sql})`).join(' AND '),values:terms.flatMap(p=>p.values)});
+const and=(...terms:Predicate[])=>pairingSqlLogic.and(...terms);
 export function createD1MoodlePairingRepository(database:D1Database,env:Bindings):MoodlePairingRepository {
   return {
     async issue(input){
@@ -49,19 +52,19 @@ export function createD1MoodlePairingRepository(database:D1Database,env:Bindings
       throw new Error('LTI signing-key initialization failed');
     },
     async exchange(input,codeHash,receiptId){
-      if(input.mode==='materials' && !ltiMaterialsEnabled(env))throw new LmsSyncError(403,'LTI_MATERIALS_DISABLED');
+      if(pairingMaterialsUnavailable(input.mode,ltiMaterialsEnabled(env)))throw new LmsSyncError(403,'LTI_MATERIALS_DISABLED');
       const snapshots=await database.batch<{payload:string}>([
         database.prepare("SELECT payload FROM lti_credentials WHERE id=? AND kind='materials-pairing' AND julianday(expires_at)>julianday('now')").bind(receiptId),
         database.prepare("SELECT payload FROM lti_credentials WHERE id=? AND kind='moodle-pairing-code' AND julianday(expires_at)>julianday('now')").bind(codeHash),
       ]);
       const receiptRaw=snapshots[0].results[0]?.payload;
       const receipt=receiptRaw?JSON.parse(receiptRaw) as Record<string,unknown>:null;
-      const canReplay=input.mode==='materials' && receipt?.issuer===input.issuer && receipt.clientId===input.clientId && receipt.deploymentId===input.deploymentId;
+      const canReplay=pairingCanReplay(input,receipt);
       const rawCode=snapshots[1].results[0]?.payload;
       const parsed=pairingPayloadSchema.safeParse(rawCode?JSON.parse(rawCode):undefined);
-      const payload=parsed.success && parsed.data.moodleUrl===input.issuer && parsed.data.mode===input.mode?parsed.data:null;
+      const payload=matchingPairingPayload(parsed.success?parsed.data:null,input);
       if(!canReplay && !payload)throw new LmsSyncError(401,'INVALID_PAIRING_CODE');
-      const challenge=canReplay?receipt.codeChallenge:payload!.codeChallenge;
+      const challenge=canReplay?receipt!.codeChallenge:payload!.codeChallenge;
       await requireProof(challenge,input.codeVerifier);
       const ownerId=payload?.ownerUserId??null;
       const ownerKey=ownerId?await digest('moodle-pairing-owner:'+ownerId):'';
@@ -77,10 +80,12 @@ export function createD1MoodlePairingRepository(database:D1Database,env:Bindings
       const code:Predicate=payload?{sql:"EXISTS(SELECT 1 FROM lti_credentials WHERE id=? AND kind='moodle-pairing-code' AND julianday(expires_at)>julianday('now') AND payload=?)",values:[codeHash,rawCode]}:{sql:'0',values:[]};
       const active:Predicate={sql:ownerActive,values:[ownerId]};
       const pointer:Predicate={sql:"EXISTS(SELECT 1 FROM lti_credentials WHERE id=? AND kind='moodle-pairing' AND julianday(expires_at)>julianday('now') AND json_extract(payload,'$.codeHash')=?)",values:[ownerKey,codeHash]};
-      const conflict:Predicate={sql:'EXISTS(SELECT 1 FROM lms_installations WHERE issuer=? AND client_id=? AND (?<>\'materials\' OR owner_user_id<>?))',values:[input.issuer,input.clientId,input.mode,ownerId]};
-      const eligible=and(code,active,pointer,{sql:`NOT (${replay.sql})`,values:replay.values},{sql:`NOT (${conflict.sql})`,values:conflict.values});
+      const ownerConflict=pairingConnectionConflict(input.mode,{sql:'owner_user_id<>?',values:[ownerId]},pairingSqlLogic);
+      const conflict:Predicate={sql:`EXISTS(SELECT 1 FROM lms_installations WHERE issuer=? AND client_id=? AND ${ownerConflict.sql})`,values:[input.issuer,input.clientId,...ownerConflict.values]};
+      const eligible=pairingExchangeAllowed({code,active,pointer,replay,conflict},pairingSqlLogic);
       const token=crypto.randomUUID(),replayToken=token+':replay',candidateId=crypto.randomUUID();
-      const syncHash=input.mode==='materials'?null:await digest(input.syncToken!);
+      const syncHash=await pairingSyncTokenHash(input,digest);
+      const installation=pairingInstallationFields(input);
       const service=input.materialsService?JSON.stringify(input.materialsService):null;
       const flags=await database.batch<{replay:number;connected:number;code:number;active:number;pointer:number;conflict:number;installationId:string;ownerUserId:string}>([
         database.prepare(`SELECT (${replay.sql}) AS replay,(${connection.sql}) AS connected,(${code.sql}) AS code,(${active.sql}) AS active,(${pointer.sql}) AS pointer,(${conflict.sql}) AS conflict`)
@@ -89,14 +94,14 @@ export function createD1MoodlePairingRepository(database:D1Database,env:Bindings
         database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'pairing_exchange',0 WHERE ${eligible.sql}`).bind(token,...eligible.values),
         database.prepare(`UPDATE lms_installations SET name=?,deployment_id=?,authorization_url=?,jwks_url=?,sync_token_hash=?,materials_service=?,active=1
           WHERE issuer=? AND client_id=? AND owner_user_id=? AND ?='materials' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(input.issuer,input.deploymentId,input.issuer+'/mod/lti/auth.php',input.issuer+'/mod/lti/certs.php',syncHash,service,input.issuer,input.clientId,ownerId,input.mode,token),
+          .bind(input.issuer,input.deploymentId,installation.authorizationUrl,installation.jwksUrl,syncHash,service,input.issuer,input.clientId,ownerId,input.mode,token),
         database.prepare(`INSERT INTO lms_installations(id,owner_user_id,name,issuer,client_id,deployment_id,authorization_url,jwks_url,sync_token_hash,materials_service)
           SELECT ?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AND NOT EXISTS(SELECT 1 FROM lms_installations WHERE issuer=? AND client_id=?)`)
-          .bind(candidateId,ownerId,input.issuer,input.issuer,input.clientId,input.deploymentId,input.issuer+'/mod/lti/auth.php',input.issuer+'/mod/lti/certs.php',syncHash,service,token,input.issuer,input.clientId),
+          .bind(candidateId,ownerId,input.issuer,input.issuer,input.clientId,input.deploymentId,installation.authorizationUrl,installation.jwksUrl,syncHash,service,token,input.issuer,input.clientId),
         database.prepare(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
           SELECT ?,'materials-pairing',json_patch(json_object('installationId',id,'issuer',?,'clientId',?,'deploymentId',?),?),?
           FROM lms_installations WHERE issuer=? AND client_id=? AND ?='materials' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(receiptId,input.issuer,input.clientId,input.deploymentId,JSON.stringify(challenge?{codeChallenge:challenge}:{}),new Date(Date.now()+PAIRING_SECONDS*1000).toISOString(),input.issuer,input.clientId,input.mode,token),
+          .bind(receiptId,input.issuer,input.clientId,input.deploymentId,JSON.stringify(challenge?{codeChallenge:challenge}:{}),pairingExpiry(Date.now()).toISOString(),input.issuer,input.clientId,input.mode,token),
         database.prepare('DELETE FROM lti_credentials WHERE id IN(?,?) AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)').bind(codeHash,ownerKey,token),
         database.prepare(`SELECT connection.id AS installationId,connection.owner_user_id AS ownerUserId FROM lms_installations connection WHERE
           (connection.issuer=? AND connection.client_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)) OR
@@ -106,10 +111,8 @@ export function createD1MoodlePairingRepository(database:D1Database,env:Bindings
       ]);
       const saved=flags[flags.length-2].results[0];if(saved)return saved;
       const state=flags[0].results[0];
-      if(state.replay || !state.code)throw new LmsSyncError(401,'INVALID_PAIRING_CODE');
-      if(!state.active)throw new LmsSyncError(403,'INACTIVE_ACCOUNT');
-      if(!state.pointer)throw new LmsSyncError(401,'INVALID_PAIRING_CODE');
-      if(state.conflict)throw new LmsSyncError(409,'CONNECTION_EXISTS');
+      const failure=pairingExchangeFailure({replay:Boolean(state.replay),code:Boolean(state.code),active:Boolean(state.active),pointer:Boolean(state.pointer),conflict:Boolean(state.conflict)});
+      if(failure)throw new LmsSyncError(failure==='INACTIVE_ACCOUNT'?403:failure==='CONNECTION_EXISTS'?409:401,failure);
       throw new Error('Pairing exchange did not commit');
     },
   };

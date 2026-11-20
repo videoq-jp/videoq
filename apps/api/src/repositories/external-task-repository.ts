@@ -23,7 +23,7 @@ export async function failExternalTask(env: Bindings, lease: ExternalTaskLease, 
 export async function getExternalTaskHealth(env: Bindings) {
   return (await createExternalTaskRepository(env)).health();
 }
-export async function pruneDeliveryHistory(env: Bindings, retentionDays=30,limit=500) {
+export async function pruneDeliveryHistory(env: Bindings, retentionDays?:number,limit?:number) {
   return (await createExternalTaskRepository(env)).pruneHistory(retentionDays,limit);
 }
 

@@ -62,6 +62,17 @@ export function ltiRegistrationContract(name:string,setup:()=>Promise<Fixture>){
       await f.execute('UPDATE teaching_connections SET owner_user_id=?,active=? WHERE context_id=?',['owner',false,'linked-context']);
       expect(await links()).not.toContain('linked-launch');
     });
+    it('requires managed-course isolation but retains linked registrations with LMS-controlled content',async()=>{
+      await f.execute('UPDATE video_courses SET managed_by_lms=? WHERE id=?',[false,10]);
+      expect(await links()).toEqual([]);
+      await f.execute('UPDATE video_courses SET managed_by_lms=?,native_access_disabled=? WHERE id=?',[true,false,12]);
+      await f.execute(`INSERT INTO teaching_connections(id,provider,installation_id,context_id,teacher_subject,resource_link_id,owner_user_id,course_id,active)
+        VALUES('22222222-2222-4222-8222-222222222222','moodle','school','linked-context','teacher','linked-launch','owner',12,?)`,[true]);
+      await f.execute('INSERT INTO video_course_members(course_id,video_id,"order",added_at) VALUES(12,1,1,?)',['2026-11-13T00:00:00Z']);
+      expect((await registration())?.resources).toContainEqual(expect.objectContaining({kind:'linked',resourceLinkId:'linked-launch',courseId:12}));
+      await f.execute('UPDATE video_courses SET native_access_disabled=? WHERE id=?',[true,12]);
+      expect(await links()).not.toContain('linked-launch');
+    });
     it('rechecks current video ownership and course visibility',async()=>{
       await f.execute('UPDATE videos SET user_id=? WHERE id=?',['other',1]);expect(await links()).not.toContain('video');
       await f.execute('UPDATE video_courses SET native_access_disabled=? WHERE id=?',[false,10]);expect(await links()).toEqual([]);

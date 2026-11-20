@@ -9,13 +9,13 @@ from worker_python.db import db_connection
 from worker_python.internal_api import uses_internal_persistence
 from worker_python.pipeline import vector_index
 from worker_python.video_sql import finish_video_indexing, get_video_for_task
-from worker_python.video_status import VideoStatus
 
 logger = logging.getLogger(__name__)
 
 
-class IndexingExecutionFailedError(Exception):
-    """Raised when vector indexing fails and retry is allowed."""
+from worker_python.use_cases.indexing import (
+    IndexingDependencies, IndexingExecutionFailedError, execute_indexing,
+)
 
 
 def index_video_transcript(video_id: int, allow_empty: bool = False) -> None:
@@ -30,43 +30,21 @@ def index_video_transcript(video_id: int, allow_empty: bool = False) -> None:
             raise IndexingExecutionFailedError(f"Cloud indexing failed for video {video_id}") from exc
         return
 
-    with video_vector_write_lock(video_id):
+    def load(identifier):
         with db_connection() as conn:
-            video = get_video_for_task(conn, video_id)
+            return get_video_for_task(conn, identifier)
 
-        if video is None:
-            logger.info("Video %d was deleted; skipping indexing", video_id)
-            return
-        if video.status == VideoStatus.COMPLETED.value:
-            logger.info("Video %d is already indexed", video_id)
-            return
-
-        if video.status != VideoStatus.INDEXING.value:
-            raise IndexingExecutionFailedError(
-                f"Video {video_id} is not ready for indexing (status={video.status})"
-            )
-        try:
-            if allow_empty is True and not (video.transcript or '').strip():
-                vector_index.clear_video_transcript_index(video)
-            else:
-                vector_index.index_video_transcript(video)
-        except Exception as exc:
-            raise IndexingExecutionFailedError(
-                f"Vector indexing failed for video {video_id}: {exc}"
-            ) from exc
-
+    def finish(video):
         with db_connection() as conn:
             updated = finish_video_indexing(conn, video)
-            if not updated:
-                current = get_video_for_task(conn, video_id)
-                if current is not None and current.status == VideoStatus.INDEXING.value:
-                    raise IndexingExecutionFailedError('Transcript changed before indexing completion; retry')
+            current = None if updated else get_video_for_task(conn, video_id)
+            return updated, current
 
-        if not updated:
-            logger.warning(
-                "Video %d was not in %s status during indexing completion",
-                video_id,
-                VideoStatus.INDEXING.value,
-            )
-
-    logger.info("Successfully indexed video %d", video_id)
+    # The lock spans snapshot loading, provider writes and completion.
+    with video_vector_write_lock(video_id):
+        execute_indexing(video_id, IndexingDependencies(
+            load=load,
+            index=vector_index.index_video_transcript,
+            clear=vector_index.clear_video_transcript_index,
+            finish=finish,
+        ), allow_empty=allow_empty)

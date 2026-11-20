@@ -1,7 +1,7 @@
 import {
   normalizeShareSlug,
   SLUG_ALREADY_EXISTS_MESSAGE,
-} from "../../lib/share-slug";
+} from "@videoq/domain/share-slug";
 import type { CourseRepository } from "../../persistence/contracts/course-repository";
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 

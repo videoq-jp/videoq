@@ -114,6 +114,7 @@ services:
     volumes:
       - ./apps/api:/workspace/apps/api
       - ./packages/trpc:/workspace/packages/trpc:ro
+      - ./packages/domain:/workspace/packages/domain:ro
       - api_node_modules:/workspace/node_modules
       - api_workspace_node_modules:/workspace/apps/api/node_modules
       # npm ci also updates workspace-local dependencies beneath the read-only source mount.
@@ -157,6 +158,7 @@ services:
     volumes:
       - ./apps/api:/workspace/apps/api
       - ./packages/trpc:/workspace/packages/trpc:ro
+      - ./packages/domain:/workspace/packages/domain:ro
       - api_node_modules:/workspace/node_modules
       - api_workspace_node_modules:/workspace/apps/api/node_modules
       - api_trpc_node_modules:/workspace/packages/trpc/node_modules
@@ -249,6 +251,7 @@ services:
     volumes:
       - ./apps/web:/workspace/apps/web
       - ./packages/trpc:/workspace/packages/trpc:ro
+      - ./packages/domain:/workspace/packages/domain:ro
       - web_node_modules:/workspace/node_modules
       - web_workspace_node_modules:/workspace/apps/web/node_modules
       - web_trpc_node_modules:/workspace/packages/trpc/node_modules
