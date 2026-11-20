@@ -1,0 +1,788 @@
+{
+  "checked_at_utc": "2026-11-20T17:47:26.757138+00:00",
+  "scope": "Cloudflare pilot setup and public-fixture live smoke tests; production unchanged",
+  "gateway": {
+    "id": "videoq-pilot",
+    "collect_logs": false,
+    "cache": false,
+    "authentication_required": true,
+    "billing": "standard",
+    "live_http_status": 200,
+    "live_success": true,
+    "elapsed_seconds": 0.8641670416109264,
+    "without_gateway_token_status": 401
+  },
+  "credentials": {
+    "storage": "ignored root .env, mode 0600",
+    "workers_ai_token_rotated": true,
+    "previous_token_valid_after_rotation": false,
+    "secret_values_in_report": false
+  },
+  "transcription": {
+    "cases": [
+      {
+        "backend": "openrouter",
+        "fixture": "fleurs-ja-00",
+        "source_seconds": 10.44,
+        "assessment": {
+          "errors": [],
+          "reference_characters": 45,
+          "character_edits": 0,
+          "cer": 0.0,
+          "segment_count": 1,
+          "speech_regions": [],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 8.18,
+            "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう"
+          }
+        ],
+        "elapsed_seconds": 2.572878582868725
+      },
+      {
+        "backend": "openrouter",
+        "fixture": "fleurs-en-00",
+        "source_seconds": 5.832,
+        "assessment": {
+          "errors": [],
+          "reference_characters": 75,
+          "character_edits": 17,
+          "cer": 0.22666666666666666,
+          "segment_count": 3,
+          "speech_regions": [],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.39,
+            "end": 2.5900000000000003,
+            "text": " cabbage juice changes color depending on how a"
+          },
+          {
+            "start": 2.61,
+            "end": 3.09,
+            "text": " aesthetic."
+          },
+          {
+            "start": 3.15,
+            "end": 4.63,
+            "text": " basic alkaline, the chemist,"
+          }
+        ],
+        "elapsed_seconds": 1.0624650418758392
+      },
+      {
+        "backend": "workers-ai",
+        "fixture": "fleurs-ja-00",
+        "source_seconds": 10.44,
+        "assessment": {
+          "errors": [],
+          "reference_characters": 45,
+          "character_edits": 0,
+          "cer": 0.0,
+          "segment_count": 1,
+          "speech_regions": [],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 1.49,
+            "end": 8.17,
+            "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう"
+          }
+        ],
+        "estimated_inference_usd": 8.9262e-05,
+        "elapsed_seconds": 1.517060040961951
+      },
+      {
+        "backend": "workers-ai",
+        "fixture": "fleurs-en-00",
+        "source_seconds": 5.832,
+        "assessment": {
+          "errors": [],
+          "reference_characters": 75,
+          "character_edits": 2,
+          "cer": 0.02666666666666667,
+          "segment_count": 1,
+          "speech_regions": [],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.02,
+            "end": 5.1,
+            "text": " The cabbage juice changes color depending on how acidic, basic, alkaline the chemical is."
+          }
+        ],
+        "estimated_inference_usd": 4.9863599999999995e-05,
+        "elapsed_seconds": 6.168287416920066
+      }
+    ],
+    "pricing_checked": "2026-11-21",
+    "scope": "public short speech fixtures; not a production quality gate"
+  },
+  "limitations": [
+    "Speech results are single runs on two short public fixtures, not a representative lecture benchmark.",
+    "Gateway adapter live probes used a temporary inference key; production AWS workload federation trust was unchanged.",
+    "VAD removed silence hallucinations but dropped extremely quiet English in the synthetic long-silence fixture; adding 30dB to that fixture recovered speech.",
+    "Video 139 was evaluated in full against stored subtitles and selected slides, but no complete human-checked reference or production rollout was performed."
+  ],
+  "openrouter_auth_diagnosis": {
+    "checked_at_utc": "2026-11-20T17:38:07.162473+00:00",
+    "local_aws_subject": "arn:aws:iam::257240362763:user/warikan-bot",
+    "videoq_api_subject": "arn:aws:iam::257240362763:user/videoq-workers-api",
+    "aws_jwt_issuance_succeeded": true,
+    "openrouter_exchange_status": 400,
+    "openrouter_exchange_error": "invalid_grant",
+    "production_trust_policy_changed": false,
+    "temporary_key_creation": "completed after user email verification; revoked after live probes",
+    "temporary_key_requested_limit_usd": 0.25,
+    "temporary_key_requested_expiry": "1 hour"
+  },
+  "synthetic_boundary": {
+    "before_vad": {
+      "fixture": "public FLEURS Japanese speech, 294.56s silence, English speech",
+      "source_seconds": 310.76,
+      "sha256": "b8799a46dce3612923702ec4dfc9433d4c4eb09d403185aa08248bc451d54d51",
+      "elapsed_seconds": 25.4043122921139,
+      "segments": [
+        {
+          "start": 1.6599999999999997,
+          "end": 8.16,
+          "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう"
+        },
+        {
+          "start": 58.4,
+          "end": 59.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 88.39999999999999,
+          "end": 89.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 118.39999999999999,
+          "end": 119.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 148.4,
+          "end": 149.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 178.4,
+          "end": 179.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 208.4,
+          "end": 209.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 238.4,
+          "end": 239.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 268.40000000000003,
+          "end": 269.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 298.40000000000003,
+          "end": 299.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 300.0,
+          "end": 306.16,
+          "text": " Thank you."
+        }
+      ],
+      "first_chunk_speech_present": true,
+      "second_chunk_speech_present": true,
+      "silent_gap_segments": [
+        {
+          "start": 58.4,
+          "end": 59.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 88.39999999999999,
+          "end": 89.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 118.39999999999999,
+          "end": 119.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 148.4,
+          "end": 149.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 178.4,
+          "end": 179.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 208.4,
+          "end": 209.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 238.4,
+          "end": 239.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 268.40000000000003,
+          "end": 269.8,
+          "text": "ご視聴ありがとうございました"
+        },
+        {
+          "start": 298.40000000000003,
+          "end": 299.8,
+          "text": "ご視聴ありがとうございました"
+        }
+      ],
+      "source_bounds_valid": true,
+      "estimated_inference_usd": 0.002656998,
+      "scope": "synthetic two-chunk smoke; not continuous lecture or language accuracy evaluation"
+    },
+    "after_vad_original_quiet_fixture": {
+      "segments": [
+        {
+          "start": 1.49,
+          "end": 8.15,
+          "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。"
+        }
+      ],
+      "elapsed_seconds": 10.833672249689698,
+      "vad_filter": true,
+      "condition_on_previous_text": false,
+      "silent_gap_segments": []
+    },
+    "after_vad_english_gain_30db": {
+      "fixture": "public Japanese FLEURS + 294.56s silence + English FLEURS with 30dB gain",
+      "source_seconds": 310.76,
+      "elapsed_seconds": 10.042078499682248,
+      "segments": [
+        {
+          "start": 1.49,
+          "end": 8.15,
+          "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。"
+        },
+        {
+          "start": 304.88,
+          "end": 310.04,
+          "text": " The cabbage juice changes color depending on how acidic, basic, alkaline the chemical is."
+        }
+      ],
+      "vad_filter": true,
+      "condition_on_previous_text": false,
+      "silent_gap_segments": [],
+      "second_chunk_speech_present": true,
+      "scope": "synthetic boundary check, not a lecture quality gate"
+    }
+  },
+  "openrouter_live_preflights": [
+    {
+      "gateway": false,
+      "status": "passed",
+      "answer": true,
+      "streaming": true,
+      "tools": true,
+      "images": true,
+      "query_dimensions": 1536,
+      "worker_whisper_segments": 1,
+      "worker_embedding_dimensions": 1536
+    },
+    {
+      "gateway": true,
+      "status": "passed",
+      "answer": true,
+      "streaming": true,
+      "tools": true,
+      "images": true,
+      "query_dimensions": 1536,
+      "worker_whisper_segments": 1,
+      "worker_embedding_dimensions": 1536
+    }
+  ],
+  "temporary_openrouter_key": {
+    "requested_expiration": "1 hour",
+    "initial_limit_usd": 0.25,
+    "audio_minimum_available_usd": 0.5,
+    "adjusted_limit_usd": 1,
+    "usage_at_read": {
+      "label": "sk-or-v1-738...65f",
+      "usage": 0.000423485,
+      "limit": 1,
+      "limit_remaining": 0.999576515,
+      "expires_at": "2026-11-20T18:37:00.003Z",
+      "is_free_tier": false
+    },
+    "revocation": {
+      "deleted": true,
+      "inference_http_status_after_deletion": 401,
+      "local_key_removed": true
+    }
+  },
+  "demo_lesson_validation": {
+    "scope": "five original Kyoko synthetic-speech demo lessons, not natural lectures",
+    "reference": "apps/demo-video/content/course.json chapter narration",
+    "cases": [
+      {
+        "lesson": "japanese",
+        "source_seconds": 60,
+        "video_sha256": "055d860c3762bc23f69594e2049a63bdf320d5d955df09537db0670317d2f488",
+        "assessment": {
+          "errors": [],
+          "reference_characters": 284,
+          "character_edits": 2,
+          "cer": 0.007042253521126761,
+          "segment_count": 6,
+          "speech_regions": [
+            {
+              "start": 0,
+              "end": 20,
+              "has_caption": true,
+              "reference_characters": 94,
+              "cer": 0.0
+            },
+            {
+              "start": 20,
+              "end": 40,
+              "has_caption": true,
+              "reference_characters": 91,
+              "cer": 0.6703296703296703
+            },
+            {
+              "start": 40,
+              "end": 60,
+              "has_caption": true,
+              "reference_characters": 99,
+              "cer": 0.020202020202020204
+            }
+          ],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 8.86,
+            "text": "大学のレポートでは、主張と根拠を区別することが大切です。主張とは、筆者が伝えたい結論です。根拠とは、その結論を支える理由や事実です。"
+          },
+          {
+            "start": 9.02,
+            "end": 13.04,
+            "text": "読んだ文章に、何を言いたいのか、なぜそう言えるのか、と問いかけてみましょう。"
+          },
+          {
+            "start": 20.01,
+            "end": 27.33,
+            "text": "例えば、図書館の閲覧席を増やすべきだ、は主張です。週末は、閲覧席が満席になる、という観察は、根拠になります。"
+          },
+          {
+            "start": 27.55,
+            "end": 33.91,
+            "text": "ただし、一度の観察だけで十分とは限りません。複数の日の利用状況など、主張を支える情報を集めます。"
+          },
+          {
+            "start": 39.88,
+            "end": 48.5,
+            "text": "他の人の文章を引用するときは引用であることを明確にして出典を示します その上で自分はその情報をどう解釈したのかを書きましょう"
+          },
+          {
+            "start": 48.5,
+            "end": 53.78,
+            "text": "引用を並べるだけではなく根拠と自分の主張のつながりを説明することが大切です"
+          }
+        ],
+        "elapsed_seconds_including_extraction": 5.005042834207416
+      },
+      {
+        "lesson": "math",
+        "source_seconds": 60,
+        "video_sha256": "710f0ed1726741ffd8c350b8798d9c0a0ab14829ff33def59312d1f468ed81f8",
+        "assessment": {
+          "errors": [],
+          "reference_characters": 291,
+          "character_edits": 38,
+          "cer": 0.13058419243986255,
+          "segment_count": 10,
+          "speech_regions": [
+            {
+              "start": 0,
+              "end": 20,
+              "has_caption": true,
+              "reference_characters": 93,
+              "cer": 0.010752688172043012
+            },
+            {
+              "start": 20,
+              "end": 40,
+              "has_caption": true,
+              "reference_characters": 99,
+              "cer": 0.24242424242424243
+            },
+            {
+              "start": 40,
+              "end": 60,
+              "has_caption": true,
+              "reference_characters": 99,
+              "cer": 0.13131313131313133
+            }
+          ],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.04,
+            "text": "微分は、ある瞬間にどれくらい変化しているかを表します。"
+          },
+          {
+            "start": 3.24,
+            "end": 6.38,
+            "text": "グラフで考えると、その点に引いた接線の傾きです。"
+          },
+          {
+            "start": 6.54,
+            "end": 13.36,
+            "text": "まず2つの点の間で、平均の変化率を求め、その間隔を限りなく小さくすることで、瞬間の変化率を考えます。"
+          },
+          {
+            "start": 20.04,
+            "end": 22.7,
+            "text": "例えば、yイコールウックスの2乗を考えます。"
+          },
+          {
+            "start": 22.86,
+            "end": 27.06,
+            "text": "ウックスがhだけ増えたときの平均の変化率は、2ウックス、たすhです。"
+          },
+          {
+            "start": 27.24,
+            "end": 29.7,
+            "text": "hを0に近づけると、2ウックスになります。"
+          },
+          {
+            "start": 29.96,
+            "end": 32.66,
+            "text": "したがって、この関数の同関数は、2ウックスです。"
+          },
+          {
+            "start": 40.02,
+            "end": 42.2,
+            "text": "ウックスが3のとき、2ウックスは6です。"
+          },
+          {
+            "start": 42.2,
+            "end": 50.2,
+            "text": "つまり、Xが3の点での接線の傾きは6になります。関数の値が9であることと傾きが6であることを区別しましょう。"
+          },
+          {
+            "start": 50.38,
+            "end": 54.08,
+            "text": "微分を使うと、値そのものではなく、変化の勢いを調べられます。"
+          }
+        ],
+        "elapsed_seconds_including_extraction": 5.365122375078499
+      },
+      {
+        "lesson": "science",
+        "source_seconds": 60,
+        "video_sha256": "7c7017b15d8489683aacc41aae25c1d5a899e1842121f6b5d51168ac2aa4a970",
+        "assessment": {
+          "errors": [],
+          "reference_characters": 314,
+          "character_edits": 69,
+          "cer": 0.2197452229299363,
+          "segment_count": 10,
+          "speech_regions": [
+            {
+              "start": 0,
+              "end": 20,
+              "has_caption": true,
+              "reference_characters": 102,
+              "cer": 0.5098039215686274
+            },
+            {
+              "start": 20,
+              "end": 40,
+              "has_caption": true,
+              "reference_characters": 106,
+              "cer": 0.32075471698113206
+            },
+            {
+              "start": 40,
+              "end": 60,
+              "has_caption": true,
+              "reference_characters": 106,
+              "cer": 0.22641509433962265
+            }
+          ],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.64,
+            "text": "DNAは、塩基の並びによって遺伝情報を保存する分子です。"
+          },
+          {
+            "start": 3.78,
+            "end": 8.58,
+            "text": "遺伝子には、タンパク質を作る情報を持つものや、機能を持つRNAを生むものがあります。"
+          },
+          {
+            "start": 8.86,
+            "end": 12.18,
+            "text": "ここでは、タンパク質が作られる基本的な流れを見ていきます。"
+          },
+          {
+            "start": 19.96,
+            "end": 25.02,
+            "text": "最初の段階は転写です。DNAの必要な部分を元にRNAが合成されます。"
+          },
+          {
+            "start": 25.22,
+            "end": 28.66,
+            "text": "タンパク質を作る情報を運ぶのは、メッセンジャーRNAです。"
+          },
+          {
+            "start": 28.82,
+            "end": 33.42,
+            "text": "細胞は、すべての遺伝情報を一度に使うのではなく、必要に応じて利用します。"
+          },
+          {
+            "start": 39.99,
+            "end": 41.43,
+            "text": "次の段階は翻訳です。"
+          },
+          {
+            "start": 41.43,
+            "end": 46.55,
+            "text": "リボソームがメッセンジャーRNAの情報を読み、対応するアミノ酸を順番につなぎます。"
+          },
+          {
+            "start": 46.81,
+            "end": 48.55,
+            "text": "こうしてタンパク質が作られます。"
+          },
+          {
+            "start": 48.77,
+            "end": 53.67,
+            "text": "電車はRNAを作る段階、翻訳はタンパク質を作る段階、特別しましょう。"
+          }
+        ],
+        "elapsed_seconds_including_extraction": 5.955747874919325
+      },
+      {
+        "lesson": "social",
+        "source_seconds": 60,
+        "video_sha256": "cb74d60a4c290f389a263dda1e09ee95af55db5a42e29e16e97d36f61d27331f",
+        "assessment": {
+          "errors": [],
+          "reference_characters": 297,
+          "character_edits": 5,
+          "cer": 0.016835016835016835,
+          "segment_count": 10,
+          "speech_regions": [
+            {
+              "start": 0,
+              "end": 20,
+              "has_caption": true,
+              "reference_characters": 100,
+              "cer": 0.02
+            },
+            {
+              "start": 20,
+              "end": 40,
+              "has_caption": true,
+              "reference_characters": 98,
+              "cer": 0.30612244897959184
+            },
+            {
+              "start": 40,
+              "end": 60,
+              "has_caption": true,
+              "reference_characters": 99,
+              "cer": 0.020202020202020204
+            }
+          ],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.52,
+            "text": "市場の価格を考えるときは、需要と供給に注目します。"
+          },
+          {
+            "start": 3.7,
+            "end": 9.72,
+            "text": "需要量とは、ある価格で消費者が買いたい量です。供給量とは、その価格で生産者が売りたい量です。"
+          },
+          {
+            "start": 9.88,
+            "end": 14.78,
+            "text": "他の条件が同じなら、価格が上がると需要量は減り、供給量は増えると考えます。"
+          },
+          {
+            "start": 20.0,
+            "end": 23.56,
+            "text": "需要量と供給量が一致する価格を、均衡価格と言います。"
+          },
+          {
+            "start": 23.78,
+            "end": 28.28,
+            "text": "均衡価格より高いと、供給量が需要量を上回り、売れ残りが生じます。"
+          },
+          {
+            "start": 28.46,
+            "end": 32.72,
+            "text": "反対に低すぎると、需要量が供給量を上回り、品不足になります。"
+          },
+          {
+            "start": 32.72,
+            "end": 35.48,
+            "text": "これは単純化した競争市場のモデルです"
+          },
+          {
+            "start": 39.89,
+            "end": 44.03,
+            "text": "人気が高まるなどして需要が増えると需要曲線は右へ移動します"
+          },
+          {
+            "start": 44.03,
+            "end": 48.87,
+            "text": "供給曲線など他の条件が変わらなければ新しい均衡価格は上がります"
+          },
+          {
+            "start": 48.87,
+            "end": 54.01,
+            "text": "価格の変化による需要量の変化と需要そのものの変化を区別することがポイントです"
+          }
+        ],
+        "elapsed_seconds_including_extraction": 7.809360499959439
+      },
+      {
+        "lesson": "english",
+        "source_seconds": 60,
+        "video_sha256": "91b23697bd6df769d6c0d73678966a598cdd86c2927d77c0e75c4333d2433633",
+        "assessment": {
+          "errors": [],
+          "reference_characters": 274,
+          "character_edits": 17,
+          "cer": 0.06204379562043796,
+          "segment_count": 9,
+          "speech_regions": [
+            {
+              "start": 0,
+              "end": 20,
+              "has_caption": true,
+              "reference_characters": 91,
+              "cer": 0.06593406593406594
+            },
+            {
+              "start": 20,
+              "end": 40,
+              "has_caption": true,
+              "reference_characters": 87,
+              "cer": 0.034482758620689655
+            },
+            {
+              "start": 40,
+              "end": 60,
+              "has_caption": true,
+              "reference_characters": 96,
+              "cer": 0.08333333333333333
+            }
+          ],
+          "silence_hallucinated_characters": null
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.36,
+            "text": "英語の文章を読むときも、まず何を主張しているかをつかみます。"
+          },
+          {
+            "start": 3.54,
+            "end": 6.82,
+            "text": "I thinkに続く文は、書き手の考えを示すことがあります。"
+          },
+          {
+            "start": 7.12,
+            "end": 12.28,
+            "text": "図書館は、もっと長く開館すべきだ、という文なら、開館時間についての提案が主張です。"
+          },
+          {
+            "start": 20.04,
+            "end": 22.0,
+            "text": "リコーズは、理由を示す接続詞です。"
+          },
+          {
+            "start": 22.18,
+            "end": 27.24,
+            "text": "授業の後に、勉強する学生がいるから、という理由をつなげれば、提案の背景がわかります。"
+          },
+          {
+            "start": 27.46,
+            "end": 31.48,
+            "text": "主張と理由を分けて読むと、長い英文でも、論理の流れを追いやすくなります。"
+          },
+          {
+            "start": 40.1,
+            "end": 43.4,
+            "text": "Howeverは、前の内容と対比する話題を導くサインです。"
+          },
+          {
+            "start": 43.4,
+            "end": 50.06,
+            "text": "例えば、しかし開館時間を伸ばすには職員がもっと必要だ、と続けば、提案に対する課題が示されています。"
+          },
+          {
+            "start": 50.26,
+            "end": 54.18,
+            "text": "接続の表現に注目して、賛成の理由と課題を整理しましょう。"
+          }
+        ],
+        "elapsed_seconds_including_extraction": 10.181638583075255
+      }
+    ],
+    "backend": "workers-ai",
+    "manual_review": {
+      "math": [
+        "Reference 導関数 was transcribed as 同関数.",
+        "Some エックス tokens were transcribed as ウックス.",
+        "Other differences include equivalent numeric/Latin spellings."
+      ],
+      "science": [
+        "Reference 転写 was transcribed as 電車 in the final chapter.",
+        "Many other raw character differences are equivalent DNA/RNA Latin spellings or kanji variants."
+      ],
+      "conclusion": "No timestamp validation failures or missing chapters in these five synthetic lessons, but actual subject-term recognition errors prevent production transcription approval."
+    }
+  },
+  "natural_lecture_validation": {
+    "evidence": "cloudflare-ai-video139-2026-11-21.json",
+    "video_id": 139,
+    "complete": true,
+    "source_seconds": 2868.61575,
+    "chunks": 10,
+    "production_modified": false,
+    "recommendation": "Do not switch production transcription based on this lecture; confirmed terminology errors remain."
+  }
+}

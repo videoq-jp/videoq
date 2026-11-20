@@ -19,6 +19,16 @@ GitHub Actions から研究室への SSH、Webhook の受信口、外部公開�
 
 2026-11-13にはVast.aiのRTX 4090一枚で、Forgejo・Argo CD・systemd timerによる正式リリースへの自動更新、更新前データの保持、4領域のcold restore後の実API・画面操作を確認した。[実機検証記録](../verification/rtx4090-forgejo-auto-update-acceptance-2026-11-13.json)に対象版と範囲を記載する。未完了journalの拒否は合成状態で確認しており、実プロセス強制終了や破壊的migration失敗の実機試験ではない。更新中は書き込みを止めてモデルPodを再作成し、今回の更新には約8分を要した。研究室の実機、負荷試験、別ホストへの完全オフライン復元は未検証。
 
+## 現在のモデル選択と必要RAM
+
+新しい配布構成はGemma 4 26B A4B（回答・画像）、EmbeddingGemma 2（768次元）、Whisper large-v3-turboです。
+`scripts/gitops/promote.py`は`rtx4090-gemma4-embeddinggemma.yaml`と`local-ai-gemma4.yaml`を選びます。
+一枚の4090ではGemmaのBF16重みを最大40GiB CPUへオフロードするため、**ホストRAM 128GiB**が必要です。
+Ansibleは120GiB以上の認識メモリを要求します。新チャット用PVCは`videoq-gemma4-4090`（70GiB）です。
+既存GPT-OSS用PVCを削除せず、[4090の移行・受け入れ手順](rtx4090.md)に従ってください。
+上記の2026-11-12/13の実機記録は旧GPT-OSS構成です。Gemmaの起動・速度・三モデル同居は未検証です。
+新しい配布物が公開されるまでは、古い署名付きチャートにこの設定を重ねないでください。
+
 ## リポジトリの分担
 
 | 保存先 | 内容 |
@@ -108,7 +118,7 @@ Argo CD は読み取り専用の鍵を使い、Gitの構成を管理者の信頼
 
 ## 2. Ansible で初回準備する
 
-Ubuntu 22.04/24.04 amd64、RTX 4090 1枚、十分な空きディスクを持つ専用ホストを用意する。
+Ubuntu 22.04/24.04 amd64、RTX 4090 1枚、RAM 128GiB、十分な空きディスクを持つ専用ホストを用意する。
 LAN IP、DNS/DHCP予約、SSHホスト鍵、sudo権限は管理者が事前に確認する。
 
 ```bash

@@ -61,6 +61,8 @@
     }
   ],
 
+  "ai": { "binding": "AI" },
+
   "r2_buckets": [
     {
       "binding": "VIDEO_BUCKET",
@@ -103,7 +105,11 @@
         "logs": { "enabled": true, "head_sampling_rate": 1 },
         "traces": { "enabled": true, "head_sampling_rate": 0.05 }
       },
+      "ai": { "binding": "AI" },
       "vars": {
+        "WORKERS_AI_FEDERATION_ISSUER": "https://a19cda7d-c68b-4cab-8979-351347a0759c.tokens.sts.global.api.aws",
+        "WORKERS_AI_FEDERATION_AUDIENCE": "https://videoq.jp/api/internal/workers-ai",
+        "WORKERS_AI_FEDERATION_SUBJECT": "arn:aws:iam::257240362763:role/videoq-worker-prod",
         "ENVIRONMENT": "production",
         "DEPLOYMENT_EDITION": "cloud",
         "PERSISTENCE_BACKEND": "d1",
@@ -125,7 +131,9 @@
         "OPENROUTER_FEDERATION_AUDIENCE": "https://openrouter.ai",
         "AWS_REGION": "ap-northeast-1",
         "EMBEDDING_MODEL": "openai/text-embedding-3-small",
-        "LLM_MODEL": "openai/gpt-6-luna",
+        "LLM_PROVIDER": "workers-ai",
+        "LLM_SEPARATE_TOOL_SCHEMA": "true",
+        "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
         "VIDEO_VISUAL_ENABLED": "true",
         "PGVECTOR_COLLECTION_NAME": "scene_embeddings",
         "OAUTH_ISSUER_URL": "https://videoq.jp",
@@ -150,7 +158,8 @@
         }
       ],
       "vectorize": [
-        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" }
+        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" },
+        { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-prod-scenes-embeddinggemma2-768" }
       ],
       "r2_buckets": [
         {

@@ -13,6 +13,7 @@ import { securityHeaders } from "./middleware/security-headers";
 import { onError } from "./middleware/error-handler";
 import { toErrorBody } from "./shared/errors";
 import { workerInternalRoutes } from "./features/worker-internal/routes";
+import { workersAiRoutes } from "./features/workers-ai/routes";
 import { healthRoutes } from "./features/health/routes";
 import { videoRoutes } from "./features/videos/routes";
 import { chatRoutes } from "./features/chat/routes";
@@ -67,6 +68,7 @@ export function createApp() {
 
   app.route("/", healthRoutes);
   app.route("/internal/worker", workerInternalRoutes);
+  app.route("/api/internal/workers-ai", workersAiRoutes);
 
   // Better Auth handler (sessions, email/password, API keys, OAuth AS).
   app.on(["POST", "GET"], "/api/auth/*", async (c) => {

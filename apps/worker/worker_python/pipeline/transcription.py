@@ -181,6 +181,9 @@ def _whisper_client():
             timeout=660.0, max_retries=2,
         )
         model = "whisper-local"
+    elif backend == "workers-ai":
+        from .workers_ai_whisper import create_client, MODEL
+        return create_client(), MODEL
     elif backend == "openrouter":
         api_key = shared_api_key(OPENROUTER_BASE_URL) if env_str("OPENROUTER_FEDERATION_POLICY_ID") else env_str("OPENROUTER_API_KEY")
         if not api_key:
@@ -194,7 +197,7 @@ def _whisper_client():
         client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1", timeout=120.0, max_retries=2)
         model = "whisper-1"
     else:
-        raise RuntimeError("Unsupported WHISPER_BACKEND; configure openrouter, openai or local")
+        raise RuntimeError("Unsupported WHISPER_BACKEND; configure openrouter, openai, workers-ai or local")
     return client, model
 
 
@@ -203,6 +206,14 @@ def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> lis
     with client:
         # Whisper API soft limit ~25MB; split longer audio into ~10min chunks if needed.
         size_mb = audio_path.stat().st_size / (1024 * 1024)
+        from .workers_ai_whisper import MODEL
+        # Keep Workers AI requests bounded even when compressed audio is small.
+        if model == MODEL:
+            all_segments = []
+            with closing(_split_audio_chunks(audio_path, chunk_seconds=300)) as chunks:
+                for offset, chunk_path in chunks:
+                    all_segments.extend(_whisper_file(client, chunk_path, model, offset=offset, language=language))
+            return all_segments
         if size_mb <= 24:
             return _whisper_file(client, audio_path, model, offset=0.0, **({"language": language} if language else {}))
 
@@ -218,6 +229,9 @@ def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> lis
 def _whisper_file(
     client: Any, audio_path: Path, model: str, *, offset: float, language: str | None = None
 ) -> list[dict[str, Any]]:
+    from .workers_ai_whisper import MODEL, transcribe
+    if model == MODEL:
+        return transcribe(client, audio_path, offset=offset, language=language)
     if model == "openai/whisper-large-v3-turbo" and env_str("OPENROUTER_FEDERATION_POLICY_ID"):
         # A warm worker can process several chunks after the initial client is created.
         client.api_key = shared_api_key(OPENROUTER_BASE_URL)

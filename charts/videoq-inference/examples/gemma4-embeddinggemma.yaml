@@ -1,0 +1,92 @@
+# Recommended local stack. Chat requires a dedicated 80 GB NVIDIA GPU.
+# Label that node videoq.io/gemma4-vram=80gb after verifying its VRAM.
+# Embedding and Whisper each reserve another GPU; no shared-4090 claim.
+backend: vllm
+servers:
+  chat:
+    engine: vllm
+    servedModel: videoq-chat
+    modelRepo: google/gemma-4-26B-A4B-it
+    modelRevision: 4d7ae4984b7db7de8f8457170b3f1a419ee76d52
+    modelFile: ''
+    modelSha256: ''
+    toolCallParser: gemma4
+    reasoningParser: gemma4
+    contextLength: 8192
+    persistence:
+      size: 70Gi
+    nodeSelector:
+      kubernetes.io/arch: amd64
+      videoq.io/gemma4-vram: 80gb
+    extraArgs:
+    - --gpu-memory-utilization
+    - '0.85'
+    - --max-num-seqs
+    - '2'
+    - --limit-mm-per-prompt
+    - '{"image":16,"audio":0,"video":0}'
+    resources:
+      requests:
+        cpu: '4'
+        memory: 16Gi
+        nvidia.com/gpu: 1
+      limits:
+        cpu: '12'
+        memory: 32Gi
+        nvidia.com/gpu: 1
+  embedding:
+    engine: vllm
+    servedModel: embeddinggemma-2-f9972ac
+    modelRepo: google/embeddinggemma-2
+    modelRevision: f9972ac22e696a105c482202646979e33e4b5a1e
+    modelFile: ''
+    modelSha256: ''
+    contextLength: 8192
+    cpuThreads: 2
+    nodeSelector:
+      kubernetes.io/arch: amd64
+    disableTorchCompile: true
+    extraArgs:
+    - --gpu-memory-utilization
+    - '0.85'
+    - --max-num-seqs
+    - '8'
+    - --attention-backend
+    - FLEX_ATTENTION
+    - --enforce-eager
+    - --pooler-config
+    - '{"use_activation":true}'
+    persistence:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: '1'
+        memory: 4Gi
+        nvidia.com/gpu: 1
+      limits:
+        cpu: '2'
+        memory: 8Gi
+        nvidia.com/gpu: 1
+whisper:
+  backend: vllm
+  modelRepo: openai/whisper-large-v3-turbo
+  modelRevision: 41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+  modelFile: ''
+  modelSha256: ''
+  maxConcurrentRequests: 2
+  upstreamParallelism: 4
+  requestTimeoutSeconds: 110
+  maxSequences: 8
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: '2'
+      memory: 8Gi
+      nvidia.com/gpu: 1
+    limits:
+      cpu: '4'
+      memory: 16Gi
+      nvidia.com/gpu: 1
+  nodeSelector:
+    kubernetes.io/arch: amd64

@@ -9,6 +9,7 @@ ai:
   streamTimeoutMs: 600000
   embeddingBaseUrl: http://videoq-inference-embedding.videoq.svc.cluster.local:8000/v1
   embeddingModel: qwen3-embedding-4b-5cf2132a
+  embeddingProfile: openai
   whisperBackend: local
   whisperChunkSeconds: 300
   whisperLocalUrl: http://videoq-inference-whisper.videoq.svc.cluster.local:8080/v1

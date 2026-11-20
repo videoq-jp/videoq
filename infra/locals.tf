@@ -13,20 +13,23 @@ locals {
 
   lambda_basic_execution_policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   common_lambda_environment = merge({
-    APP_PARAM_NAME                  = aws_ssm_parameter.app.name
-    USE_S3_STORAGE                  = "true"
-    SQS_QUEUE_NAME                  = aws_sqs_queue.main.name
-    SQS_QUEUE_URL                   = aws_sqs_queue.main.id
-    SQS_MEDIA_QUEUE_URL             = aws_sqs_queue.main.url
-    SQS_SEARCH_QUEUE_URL            = aws_sqs_queue.group["search"].url
-    SQS_ACCOUNT_QUEUE_URL           = aws_sqs_queue.group["account"].url
-    FRONTEND_URL                    = "https://videoq.jp"
-    OPENAI_BASE_URL                 = "https://openrouter.ai/api/v1"
-    EMBEDDING_MODEL                 = "openai/text-embedding-3-small"
-    WHISPER_BACKEND                 = "openrouter"
-    OPENROUTER_FEDERATION_POLICY_ID = var.openrouter_federation_policy_id
-    OPENROUTER_FEDERATION_AUDIENCE  = var.openrouter_federation_audience
-    ENABLE_HEAVY_PIPELINE           = "true"
+    APP_PARAM_NAME                 = aws_ssm_parameter.app.name
+    USE_S3_STORAGE                 = "true"
+    SQS_QUEUE_NAME                 = aws_sqs_queue.main.name
+    SQS_QUEUE_URL                  = aws_sqs_queue.main.id
+    SQS_MEDIA_QUEUE_URL            = aws_sqs_queue.main.url
+    SQS_SEARCH_QUEUE_URL           = aws_sqs_queue.group["search"].url
+    SQS_ACCOUNT_QUEUE_URL          = aws_sqs_queue.group["account"].url
+    FRONTEND_URL                   = "https://videoq.jp"
+    AI_PROVIDER                    = "workers-ai"
+    OPENAI_BASE_URL                = "https://videoq.jp/api/internal/workers-ai"
+    EMBEDDING_BASE_URL             = "https://videoq.jp/api/internal/workers-ai"
+    EMBEDDING_PROFILE              = "embeddinggemma2"
+    EMBEDDING_MODEL                = "@cf/google/embeddinggemma-2"
+    WHISPER_BACKEND                = var.worker_whisper_backend
+    WORKERS_AI_BASE_URL            = var.workers_ai_federation_endpoint
+    WORKERS_AI_FEDERATION_AUDIENCE = "https://videoq.jp/api/internal/workers-ai"
+    ENABLE_HEAVY_PIPELINE          = "true"
     }, var.env_name == "prod" ? {
     # Production persists through the signed API and must not retain a Neon
     # credential reference after the D1 handoff.
