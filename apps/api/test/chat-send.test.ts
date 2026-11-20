@@ -1018,7 +1018,7 @@ describe("POST /messages/stream（SSE）", () => {
   });
 
   it.each(["owner", "public"])("%s: streamed, stored and nonstream answers agree after validation", async access => {
-    const answer = { segments: [{ text: "回答", sourceIds: [1, 1, 99] }, { text: " 数式 $x[1]$ コード `a[1]`.", sourceIds: [1] }] };
+    const answer = { segments: [{ text: "回答", sourceIds: [1, 1, 99] }, { text: " 数式 \u001b[0m$x[1]$ コード `a[1]`.", sourceIds: [1] }] };
     const log = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       stubOpenAi({ answer });
@@ -1032,7 +1032,7 @@ describe("POST /messages/stream（SSE）", () => {
         if (event.type === "source") streamed.sources.push(event.source);
         if (event.type === "text_delta" || event.type === "citation") applyChatPart(streamed, event.type === "text_delta" ? { ...event, type: "text" } : event);
       }
-      expect(streamed.segments).toEqual([{ text: "回答", sourceIds: [1] }, { text: " 数式 $x[1]$ コード `a[1]`.", sourceIds: [1] }]);
+      expect(streamed.segments).toEqual([{ text: "回答", sourceIds: [1] }, { text: "\n\n 数式 $x[1]$ コード `a[1]`.", sourceIds: [1] }]);
       expect(events.findIndex(e => e.type === "source")).toBeLessThan(events.findIndex(e => e.type === "citation"));
       expect(events.at(-1)).toMatchObject({ type: "done", chat_log_id: 99 });
       const insert = calls.find(call => call.sql.includes("chat_logs") && call.sql.includes("returning"))!;

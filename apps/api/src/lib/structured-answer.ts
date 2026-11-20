@@ -1,3 +1,4 @@
+import { normalizeAnswerTexts } from "../application/answer-normalization";
 import { AnswerTextService } from "../features/chat/answer-text-service";
 import { StructuredAnswerError, assertAnswerHasText } from "../application/answer-generation";
 import { z } from "zod";
@@ -21,6 +22,8 @@ export function assertCompletedAnswer(message: BaseMessage | undefined): void {
 export function parseModelAnswer(text: string): ModelAnswer {
   try {
     const answer = modelAnswerSchema.parse(JSON.parse(text));
+    const texts = normalizeAnswerTexts(answer.segments.map(segment => segment.text));
+    answer.segments = answer.segments.map((segment, index) => ({ ...segment, text: texts[index] }));
     assertAnswerHasText(answer);
     return answer;
   } catch {

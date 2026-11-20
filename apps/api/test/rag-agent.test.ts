@@ -561,7 +561,7 @@ describe("RAG エージェント（ストリーミング）", () => {
         if ("source" in chunk) rendered.sources.push(chunk.source);
       }
       expect(chunks.at(-1)).toMatchObject({ final: { answer: rendered } });
-      expect(chatAnswerText(rendered)).toBe("前半の回答。 後半の回答。");
+      expect(chatAnswerText(rendered)).toBe("前半の回答。\n\n 後半の回答。");
       expect(bodies.length + finalCalls).toBe(2);
     } finally {
       await stream.return();

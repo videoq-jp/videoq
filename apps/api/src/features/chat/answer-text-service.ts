@@ -1,3 +1,4 @@
+import { normalizeAnswerTexts } from "../../application/answer-normalization";
 import type { ModelAnswer } from '@videoq/domain/chat';
 import { StructuredAnswerError } from '../../application/answer-generation';
 
@@ -25,12 +26,15 @@ export class AnswerTextService {
   private inString = false;
   private escaped = false;
   private closedPrefix = "";
+  private normalizedTexts: string[] = [];
 
   /** Only objects closed on the wire, never the SDK's repaired partial JSON. */
   completedSegments(): ModelAnswer["segments"] {
     if (!this.closedPrefix) return [];
     try {
-      return this.deps.decodeComplete(this.closedPrefix + "]}").segments;
+      return this.deps.decodeComplete(this.closedPrefix + "]}").segments
+        .slice(0, this.normalizedTexts.length)
+        .map((segment, index) => ({ ...segment, text: this.normalizedTexts[index] }));
     } catch {
       throw new StructuredAnswerError("Invalid structured answer segment.");
     }
@@ -62,11 +66,16 @@ export class AnswerTextService {
     try { partial = this.deps.decodePartial(stableJsonPrefix(this.raw)); } catch { return []; }
     const segments = (partial as { segments?: unknown[] } | null)?.segments;
     if (!Array.isArray(segments)) return [];
+    const complete = this.depth === 0 && !this.inString;
+    const closed = this.closedPrefix ? this.deps.decodeComplete(this.closedPrefix + "]}").segments.length : 0;
+    const rawTexts: string[] = [];
+    for (const segment of segments) {
+      if (!segment || typeof segment !== "object" || !("text" in segment) || typeof segment.text !== "string") break;
+      rawTexts.push(segment.text.replace(/[\uD800-\uDBFF]$/, ""));
+    }
+    this.normalizedTexts = normalizeAnswerTexts(rawTexts, complete ? rawTexts.length : closed);
     const out: Array<{ segmentIndex: number; text: string }> = [];
-    segments.forEach((segment, segmentIndex) => {
-      if (!segment || typeof segment !== "object" || !("text" in segment) || typeof segment.text !== "string") return;
-      // A split surrogate must not be painted as a replacement glyph.
-      const text = segment.text.replace(/[\uD800-\uDBFF]$/, "");
+    this.normalizedTexts.forEach((text, segmentIndex) => {
       const previous = this.emitted[segmentIndex];
       if (!text.startsWith(previous ?? "")) throw new StructuredAnswerError("Structured answer changed an emitted prefix.");
       if (previous === undefined || text.length > previous.length) {
