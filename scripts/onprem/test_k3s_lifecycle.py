@@ -43,7 +43,7 @@ class KubernetesLifecycleTests(unittest.TestCase):
             directory = Path(temporary) / 'installation'
             args = argparse.Namespace(command='install', directory=str(directory), url='https://videoq.example.com',
                                       cluster=cluster, run_id=None, source_sha=None, backup=None, purge=False, yes=False,
-                                      username=None, email=None)
+                                      username=None, email=None, ai='openrouter')
             instance = FixtureInstaller(args)
             instance.tools()
             created = False

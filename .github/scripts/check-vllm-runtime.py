@@ -126,7 +126,7 @@ def inspect_runtime():
 
     def registry():
         from vllm.model_executor.models import ModelRegistry
-        architectures = ("GptOssForCausalLM", "EmbeddingGemma2Model", "WhisperForConditionalGeneration")
+        architectures = ("GptOssForCausalLM", "Gemma4ForConditionalGeneration", "EmbeddingGemma2Model", "WhisperForConditionalGeneration")
         for architecture in architectures:
             if architecture not in ModelRegistry.get_supported_archs():
                 raise ValueError(f"Missing architecture: {architecture}")
