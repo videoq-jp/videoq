@@ -605,15 +605,6 @@ jobs:
       - name: Configure DNS before OS and browser dependencies
         if: runner.os == 'Linux' && runner.environment == 'github-hosted'
         run: python3 .github/scripts/configure-onprem-ci-dns.py
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: npm
-      - uses: ./.github/actions/setup-package-manager
-        with:
-          manager: npm
-      - name: Install shared catalog tooling
-        run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/domain --include-workspace-root
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
@@ -622,7 +613,7 @@ jobs:
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: pip
-      # Cost-model tests read the TypeScript plan catalog with native type stripping.
+      # Cost-model tests load the shared TypeScript catalog through tsx.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -630,7 +621,7 @@ jobs:
         with:
           manager: npm
       - name: Install shared contracts for cost-model tests
-        run: npm ci --ignore-scripts --workspace @videoq/trpc
+        run: npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/trpc --workspace @videoq/domain --include-workspace-root
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
       - name: Install and test
