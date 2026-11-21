@@ -1,43 +1,209 @@
-import { nativeCourseExternalSql } from './course-access';
-import { invitationMemberEmails, uncreatedInvitationEmails, invitationCreationAllowed, invitationPendingExpired } from '../../application/invitation-creation';
-import { invitationStringChoice } from '../invitation-policy-sql';
-import {validateInvitationBatch,type InvitationCreateRepository} from '../contracts/invitation-create-repository';
-const NATIVE=nativeCourseExternalSql('c');
-const MEMBERS=`(SELECT json_group_array(json_array(member.id,member.email)) FROM (SELECT m.id,u.email FROM video_course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=c.id ORDER BY m.id) member)`;
-const GATE='EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)';
-export function createD1InvitationCreateRepository(database:D1Database,emailDelivery:boolean):InvitationCreateRepository{
- const prepare=(query:string,args:unknown[]=[])=>database.prepare(query).bind(...args);
- return {async create(courseId,ownerId,inputs){
-  validateInvitationBatch(inputs);const issuedAt=inputs[0]?.createdAt??new Date();
-  for(let attempt=0;attempt<5;attempt++){
-   const snapshot=await prepare(`SELECT owner.email AS owner_email,${MEMBERS} AS members FROM video_courses c JOIN users owner ON owner.id=c.user_id WHERE c.id=? AND c.user_id=? AND ${NATIVE}`,[courseId,ownerId]).first<{owner_email:string;members:string}>();
-   if(!snapshot)return {notFound:true};
-   const members=JSON.parse(snapshot.members) as [number,string][];
-   const alreadyMembers=invitationMemberEmails(inputs,snapshot.owner_email,members.map(([,email])=>email));
-   const expired=invitationPendingExpired("status='pending'",'julianday(expires_at)<=julianday(?)',invitationStringChoice);
-   const eligible=invitationCreationAllowed({notMember:"json_extract(input.value,'$.email') NOT IN(SELECT value FROM json_each(?))",
-    notPending:"NOT EXISTS(SELECT 1 FROM video_course_invitations pending WHERE pending.course_id=? AND pending.email=json_extract(input.value,'$.email') AND pending.status='pending')"},invitationStringChoice);
-   const token=crypto.randomUUID(),encoded=JSON.stringify(inputs.map(i=>({email:i.email,hash:i.tokenHash,expires:i.expiresAt.toISOString(),created:i.createdAt.toISOString()})));
-   const result=await database.batch<Record<string,unknown>>([
-    prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'invitation_create',c.id FROM video_courses c JOIN users owner ON owner.id=c.user_id
-     WHERE c.id=? AND c.user_id=? AND owner.email=? AND ${MEMBERS}=? AND ${NATIVE}`,[token,courseId,ownerId,snapshot.owner_email,snapshot.members]),
-    prepare(`UPDATE video_course_invitations SET status='expired',updated_at=? WHERE course_id=? AND ${expired} AND ${GATE}`,[issuedAt.toISOString(),courseId,issuedAt.toISOString(),token]),
-    prepare(`INSERT INTO video_course_invitations(course_id,email,invited_by_user_id,status,delivery_status,token_hash,expires_at,created_at,updated_at,send_attempts,creation_nonce)
-     SELECT ?,json_extract(input.value,'$.email'),?,'pending','queued',json_extract(input.value,'$.hash'),json_extract(input.value,'$.expires'),json_extract(input.value,'$.created'),json_extract(input.value,'$.created'),0,?
-     FROM json_each(?) input WHERE ${GATE}
-      AND ${eligible}
-     ON CONFLICT DO NOTHING`,[courseId,ownerId,token,encoded,token,JSON.stringify(alreadyMembers),courseId]),
-    prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'invitation_email',json_object('invitation_id',id),'invitation_email:'||id||':'||? FROM video_course_invitations
-     WHERE creation_nonce=? AND ?=1 AND ${GATE} ON CONFLICT DO NOTHING`,[issuedAt.getTime(),token,emailDelivery?1:0,token]),
-    prepare(`SELECT id,email FROM video_course_invitations WHERE creation_nonce=? AND ${GATE} ORDER BY id`,[token,token]),
-    prepare('SELECT token FROM mutation_receipts WHERE token=?',[token]),
-    prepare('UPDATE video_course_invitations SET creation_nonce=NULL WHERE creation_nonce=?',[token]),
-    prepare('DELETE FROM mutation_receipts WHERE token=?',[token]),
-   ]);
-   if(!result[5].results.length)continue;
-   const created=result[4].results.map(r=>({id:Number(r.id),email:String(r.email)}));
-   return {created,alreadyMemberEmails:alreadyMembers,alreadyPendingEmails:uncreatedInvitationEmails(inputs,alreadyMembers,created.map(row=>row.email))};
-  }
-  throw new Error('Course membership changed repeatedly; retry invitation creation');
- }};
+import { and, eq, sql, exists, notExists } from "drizzle-orm";
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  insertSelectFields,
+  runD1Batch,
+  type D1Query,
+} from "../../db/d1/query-builders";
+import {
+  users,
+  videoCourses,
+  videoCourseMemberships as memberships,
+  videoCourseInvitations as invitations,
+  mutationReceipts as receipts,
+  externalTasks,
+} from "../../db/schema/sqlite";
+import { nativeCourseExternalAccess } from "./course-access";
+import {
+  invitationMemberEmails,
+  uncreatedInvitationEmails,
+  invitationCandidates,
+  invitationPendingExpired,
+} from "../../application/invitation-creation";
+import { invitationDrizzleLogic } from "../invitation-policy-sql";
+import {
+  validateInvitationBatch,
+  type InvitationCreateRepository,
+} from "../contracts/invitation-create-repository";
+
+export function createD1InvitationCreateRepository(
+  database: D1Database,
+  emailDelivery: boolean,
+): InvitationCreateRepository {
+  const db = createD1Connection(database);
+  const memberRows = db
+    .select({ id: memberships.id, email: users.email })
+    .from(memberships)
+    .innerJoin(users, eq(users.id, memberships.userId))
+    .where(eq(memberships.courseId, videoCourses.id))
+    .orderBy(memberships.id)
+    .as("member");
+  const members = db
+    .select({
+      value: sql<string>`json_group_array(json_array(${memberRows.id},${memberRows.email}))`,
+    })
+    .from(memberRows);
+  return {
+    async create(courseId, ownerId, inputs) {
+      validateInvitationBatch(inputs);
+      const issuedAt = inputs[0]?.createdAt ?? new Date();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const snapshot = await db
+          .select({
+            ownerEmail: users.email,
+            members: sql<string>`(${members})`,
+          })
+          .from(videoCourses)
+          .innerJoin(users, eq(users.id, videoCourses.userId))
+          .where(
+            and(
+              eq(videoCourses.id, courseId),
+              eq(videoCourses.userId, ownerId),
+              nativeCourseExternalAccess(),
+            ),
+          )
+          .get();
+        if (!snapshot) return { notFound: true };
+        const memberEmails = (
+          JSON.parse(snapshot.members) as [number, string][]
+        ).map(([, email]) => email);
+        const alreadyMembers = invitationMemberEmails(
+          inputs,
+          snapshot.ownerEmail,
+          memberEmails,
+        );
+        const token = crypto.randomUUID();
+        const gate = exists(
+          db
+            .select({ token: receipts.token })
+            .from(receipts)
+            .where(eq(receipts.token, token)),
+        );
+        const statements: D1Query[] = [
+          db.insert(receipts).select(
+            db
+              .select(
+                insertSelectFields(receipts, {
+                  token: sql`${token}`,
+                  kind: sql`'invitation_create'`,
+                  resourceId: videoCourses.id,
+                }),
+              )
+              .from(videoCourses)
+              .innerJoin(users, eq(users.id, videoCourses.userId))
+              .where(
+                and(
+                  eq(videoCourses.id, courseId),
+                  eq(videoCourses.userId, ownerId),
+                  eq(users.email, snapshot.ownerEmail),
+                  sql`(${members})=${snapshot.members}`,
+                  nativeCourseExternalAccess(),
+                ),
+              ),
+          ),
+          db
+            .update(invitations)
+            .set({ status: "expired", updatedAt: issuedAt.toISOString() })
+            .where(
+              and(
+                eq(invitations.courseId, courseId),
+                invitationPendingExpired(
+                  eq(invitations.status, "pending"),
+                  sql`julianday(${invitations.expiresAt})<=julianday(${issuedAt.toISOString()})`,
+                  invitationDrizzleLogic,
+                ),
+                gate,
+              ),
+            ),
+        ];
+        for (const input of invitationCandidates(inputs, alreadyMembers)) {
+          const pending = db
+            .select({ id: invitations.id })
+            .from(invitations)
+            .where(
+              and(
+                eq(invitations.courseId, courseId),
+                eq(invitations.email, input.email),
+                eq(invitations.status, "pending"),
+              ),
+            );
+          statements.push(
+            db
+              .insert(invitations)
+              .select(
+                db
+                  .select(
+                    insertSelectFields(invitations, {
+                      courseId: sql`${courseId}`,
+                      email: sql`${input.email}`,
+                      invitedByUserId: sql`${ownerId}`,
+                      tokenHash: sql`${input.tokenHash}`,
+                      expiresAt: sql`${input.expiresAt.toISOString()}`,
+                      createdAt: sql`${input.createdAt.toISOString()}`,
+                      updatedAt: sql`${input.createdAt.toISOString()}`,
+                      creationNonce: sql`${token}`,
+                    }),
+                  )
+                  .from(receipts)
+                  .where(and(eq(receipts.token, token), notExists(pending))),
+              )
+              .onConflictDoNothing(),
+          );
+        }
+        if (emailDelivery)
+          statements.push(
+            db
+              .insert(externalTasks)
+              .select(
+                db
+                  .select(
+                    insertSelectFields(externalTasks, {
+                      kind: sql`'invitation_email'`,
+                      payload: sql`json_object('invitation_id',${invitations.id})`,
+                      dedupeKey: sql`'invitation_email:'||${invitations.id}||':'||${issuedAt.getTime()}`,
+                    }),
+                  )
+                  .from(invitations)
+                  .where(and(eq(invitations.creationNonce, token), gate)),
+              )
+              .onConflictDoNothing(),
+          );
+        const createdIndex = statements.length;
+        statements.push(
+          db
+            .select({ id: invitations.id, email: invitations.email })
+            .from(invitations)
+            .where(and(eq(invitations.creationNonce, token), gate))
+            .orderBy(invitations.id),
+          db
+            .select({ token: receipts.token })
+            .from(receipts)
+            .where(eq(receipts.token, token)),
+          db
+            .update(invitations)
+            .set({ creationNonce: null })
+            .where(eq(invitations.creationNonce, token)),
+          db.delete(receipts).where(eq(receipts.token, token)),
+        );
+        const result = await runD1Batch(database, statements);
+        if (!result[createdIndex + 1].results.length) continue;
+        const created = result[createdIndex].results.map((row) => ({
+          id: Number(row.id),
+          email: String(row.email),
+        }));
+        return {
+          created,
+          alreadyMemberEmails: alreadyMembers,
+          alreadyPendingEmails: uncreatedInvitationEmails(
+            inputs,
+            alreadyMembers,
+            created.map((row) => row.email),
+          ),
+        };
+      }
+      throw new Error(
+        "Course membership changed repeatedly; retry invitation creation",
+      );
+    },
+  };
 }

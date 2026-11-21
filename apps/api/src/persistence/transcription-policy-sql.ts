@@ -1,10 +1,11 @@
-import type { TranscriptionChoice } from '../application/transcription-policy';
+import { and, or, not, sql, type SQL } from "drizzle-orm";
+import type { TranscriptionChoice } from "../application/transcription-policy";
 
-/** Operands are adapter-owned SQL expressions; user data stays bound. */
-export const transcriptionStringLogic: TranscriptionChoice<string, string> = {
-  and: (...terms) => `(${terms.map(term => `(${term})`).join(' AND ')})`,
-  or: (...terms) => `(${terms.map(term => `(${term})`).join(' OR ')})`,
-  not: term => `NOT (${term})`,
-  choose: (condition, yes, no) => `CASE WHEN ${condition} THEN ${yes} ELSE ${no} END`,
-  literal: value => `'${value}'`,
+export const transcriptionDrizzleLogic: TranscriptionChoice<SQL, SQL> = {
+  and: (...terms) => and(...terms)!,
+  or: (...terms) => or(...terms)!,
+  not: (term) => not(term),
+  choose: (condition, yes, no) =>
+    sql`CASE WHEN ${condition} THEN ${yes} ELSE ${no} END`,
+  literal: (value) => sql`${value}`,
 };

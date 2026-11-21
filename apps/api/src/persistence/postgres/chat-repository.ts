@@ -1,12 +1,21 @@
-import { nativeCourseAccessAllowed } from '../../application/native-course-access';
-import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
-import { activeLmsOwner } from './lms-owner-policy';
-import { ltiSessionRows } from './lti-session-lock';
-import { chatAnswerSchema, chatAnswerText, type ChatAnswer, type ChatSource } from "@videoq/trpc/chat";
-import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { insertSelectValues } from "../../db/postgres/query-builders";
+import { nativeCourseAccessAllowed } from "../../application/native-course-access";
+import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
+import { activeLmsOwner } from "./lms-owner-policy";
+import { lockLtiDataSessionWithDb } from "./lti-session-lock";
+import {
+  chatAnswerSchema,
+  chatAnswerText,
+  type ChatAnswer,
+  type ChatSource,
+} from "@videoq/trpc/chat";
+import { and, asc, desc, eq, gt, or, sql, exists } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import {
   chatLogs,
+  chatConversations,
+  ltiCredentials,
   ltiChatLogSubjects,
   users,
   videoCourses,
@@ -14,8 +23,14 @@ import {
 } from "../../db/schema";
 import { toUtcIso } from "../../shared/datetime";
 import type { Bindings } from "../../types/bindings";
-import { checkedLtiSubject, type LtiDataSubject } from '../../features/lti/identity';
-import { nativeCourseExternalAccess, nativeCourseReadableBy } from './course-authority';
+import {
+  checkedLtiSubject,
+  type LtiDataSubject,
+} from "../../features/lti/identity";
+import {
+  nativeCourseExternalAccess,
+  nativeCourseReadableBy,
+} from "./course-authority";
 
 type ChatQuestionAuthor = {
   user_id: string;
@@ -42,7 +57,6 @@ export type GroupChatContext = {
   memberVideoIds: number[];
 };
 
-
 function chatFeedback(value: unknown): "good" | "bad" | null {
   return value === "good" || value === "bad" ? value : null;
 }
@@ -54,10 +68,10 @@ function mapQuestionAuthor(
   email: unknown,
 ): ChatQuestionAuthor | null {
   if (
-    isSharedOrigin
-    || typeof userId !== "string"
-    || typeof username !== "string"
-    || typeof email !== "string"
+    isSharedOrigin ||
+    typeof userId !== "string" ||
+    typeof username !== "string" ||
+    typeof email !== "string"
   ) {
     return null;
   }
@@ -70,7 +84,13 @@ function mapQuestionAuthor(
  */
 export async function getCourseWithMembers(
   env: Bindings,
-  params: { courseId: number; userId?: string | null; shareToken?: string | null; ltiCourseGrant?: number; ltiVideoGrant?: number[] },
+  params: {
+    courseId: number;
+    userId?: string | null;
+    shareToken?: string | null;
+    ltiCourseGrant?: number;
+    ltiVideoGrant?: number[];
+  },
 ): Promise<GroupChatContext | null> {
   // Only verified LMS transports (LTI) may supply this server-side grant.
   const ltiGranted = params.ltiCourseGrant === params.courseId;
@@ -78,11 +98,19 @@ export async function getCourseWithMembers(
   return withDb(env, async (db) => {
     const conditions = [eq(videoCourses.id, params.courseId)];
     if (ltiGranted) {
-      conditions.push(sql`EXISTS (SELECT 1 FROM ${users}
-        WHERE ${users.id} = ${videoCourses.userId}
-          AND ${activeLmsOwner()})`);
+      conditions.push(
+        exists(
+          db
+            .select({ id: users.id })
+            .from(users)
+            .where(and(eq(users.id, videoCourses.userId), activeLmsOwner())),
+        ),
+      );
     } else if (params.shareToken) {
-      conditions.push(eq(videoCourses.shareSlug, params.shareToken), nativeCourseExternalAccess());
+      conditions.push(
+        eq(videoCourses.shareSlug, params.shareToken),
+        nativeCourseExternalAccess(),
+      );
     } else if (params.userId) {
       conditions.push(nativeCourseReadableBy(params.userId));
     }
@@ -107,7 +135,14 @@ export async function getCourseWithMembers(
     return {
       id: Number(row.id),
       userId: String(row.userId),
-      memberVideoIds: members.map((m) => Number(m.videoId)).filter(id => !ltiGranted || params.ltiVideoGrant === undefined || params.ltiVideoGrant.includes(id)),
+      memberVideoIds: members
+        .map((m) => Number(m.videoId))
+        .filter(
+          (id) =>
+            !ltiGranted ||
+            params.ltiVideoGrant === undefined ||
+            params.ltiVideoGrant.includes(id),
+        ),
     };
   });
 }
@@ -127,31 +162,53 @@ export async function createChatLogWithDb(
 ): Promise<{ id: number; feedback: string | null }> {
   if (params.ltiSubject) {
     const subject = checkedLtiSubject(params.ltiSubject);
-    if (!params.isShared) throw new Error('LTI attribution requires an external course grant');
-    // One statement keeps attribution atomic even outside a conversation transaction.
-    const source = subject.sessionProof ? sql`FROM (${ltiSessionRows(params.userId,subject.sessionProof)}) permitted` : sql``;
-    const provenance = subject.sessionProof ? sql`
-      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
-        THEN c.payload->>'registrationId' END,
-      CASE WHEN c.payload->>'courseId'=${String(params.courseId)} AND c.payload->>'registrationId' LIKE 'db:%'
-        THEN c.payload->>'contextId' END` : sql`NULL,NULL`;
-    // Reuse the existing author snapshot column for either verified LMS transport.
-    const classroomAuthor = subject.sessionProof ? sql`
-      CASE WHEN c.payload->>'transport'='classroom' AND c.payload->>'courseId'=${String(params.courseId)}
-        THEN c.payload->'classroomAuthor'
-      WHEN c.payload->>'transport'='native' AND c.payload->>'courseId'=${String(params.courseId)}
-        THEN c.payload->'moodleAuthor' END` : sql`NULL`;
-    const session = subject.sessionProof ? sql`LEFT JOIN lti_credentials c ON c.id=${subject.sessionProof.sessionHash}` : sql``;
-    const result = await db.execute<{ id: number }>(sql`WITH saved AS (
-      INSERT INTO chat_logs(user_id,course_id,question,response,retrieved_contexts,is_shared_origin,feedback,created_at)
-      SELECT ${params.userId},${params.courseId},${params.question},${JSON.stringify(chatAnswerSchema.parse(params.answer))}::jsonb,
-        ${JSON.stringify(params.retrievedContexts)}::jsonb,true,NULL,now() ${source} RETURNING id
-    ) INSERT INTO lti_chat_log_subjects(chat_log_id,subject_key,resource_video_ids,registration_id,context_id,classroom_author)
-      SELECT saved.id,${subject.subjectKey},${JSON.stringify(subject.resourceVideoIds)}::jsonb,${provenance},${classroomAuthor}
-      FROM saved ${session}
-      RETURNING chat_log_id::float8 AS id`);
-    if (!result.rows[0]) throw new Error('Missing attributed chat log');
-    return { id: result.rows[0].id, feedback: null };
+    if (!params.isShared)
+      throw new Error("LTI attribution requires an external course grant");
+    // Values inserts let PostgreSQL generate both ALWAYS and BY DEFAULT identities.
+    // A transaction keeps the log and attribution atomic, including standalone calls.
+    return db.transaction(async (tx) => {
+      await lockLtiDataSessionWithDb(tx, params.userId, subject.sessionProof);
+      const [saved] = await tx
+        .insert(chatLogs)
+        .values({
+          userId: params.userId,
+          courseId: params.courseId,
+          question: params.question,
+          response: chatAnswerSchema.parse(params.answer),
+          retrievedContexts: params.retrievedContexts,
+          isSharedOrigin: true,
+          feedback: null,
+          createdAt: sql`now()`,
+        })
+        .returning({ id: chatLogs.id });
+      if (subject.sessionProof) {
+        await tx.insert(ltiChatLogSubjects).select(
+          tx
+            .select(
+              insertSelectValues(ltiChatLogSubjects, {
+                chatLogId: saved.id,
+                subjectKey: subject.subjectKey,
+                resourceVideoIds: subject.resourceVideoIds,
+                registrationId: sql`CASE WHEN ${ltiCredentials.payload}->>'courseId'=${String(params.courseId)} AND ${ltiCredentials.payload}->>'registrationId' LIKE 'db:%' THEN ${ltiCredentials.payload}->>'registrationId' END`,
+                contextId: sql`CASE WHEN ${ltiCredentials.payload}->>'courseId'=${String(params.courseId)} AND ${ltiCredentials.payload}->>'registrationId' LIKE 'db:%' THEN ${ltiCredentials.payload}->>'contextId' END`,
+                classroomAuthor: sql`CASE WHEN ${ltiCredentials.payload}->>'transport'='classroom' AND ${ltiCredentials.payload}->>'courseId'=${String(params.courseId)} THEN ${ltiCredentials.payload}->'classroomAuthor'
+          WHEN ${ltiCredentials.payload}->>'transport'='native' AND ${ltiCredentials.payload}->>'courseId'=${String(params.courseId)} THEN ${ltiCredentials.payload}->'moodleAuthor' END`,
+              }),
+            )
+            .from(ltiCredentials)
+            .where(eq(ltiCredentials.id, subject.sessionProof.sessionHash)),
+        );
+      } else {
+        await tx
+          .insert(ltiChatLogSubjects)
+          .values({
+            chatLogId: saved.id,
+            subjectKey: subject.subjectKey,
+            resourceVideoIds: subject.resourceVideoIds,
+          });
+      }
+      return { id: Number(saved.id), feedback: null };
+    });
   }
   const rows = await db
     .insert(chatLogs)
@@ -178,7 +235,7 @@ export async function createChatLog(
   env: Bindings,
   params: Parameters<typeof createChatLogWithDb>[1],
 ): Promise<{ id: number; feedback: string | null }> {
-  return withDb(env, db => createChatLogWithDb(db, params));
+  return withDb(env, (db) => createChatLogWithDb(db, params));
 }
 
 /**
@@ -195,11 +252,15 @@ export async function deleteCourseChatLogs(
       const owner = await tx
         .select({ id: videoCourses.id })
         .from(videoCourses)
-        .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+        .where(
+          and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)),
+        )
         .limit(1);
       if (owner.length === 0) return { notFound: true } as const;
 
-      await tx.execute(sql`DELETE FROM chat_conversations WHERE course_id = ${courseId}`);
+      await tx
+        .delete(chatConversations)
+        .where(eq(chatConversations.courseId, courseId));
       await tx.delete(chatLogs).where(eq(chatLogs.courseId, courseId));
       return { ok: true } as const;
     }),
@@ -270,7 +331,10 @@ async function getCourseChatHistoryExportPage(
         ),
       )
       .leftJoin(users, eq(users.id, chatLogs.userId))
-      .leftJoin(ltiChatLogSubjects, eq(ltiChatLogSubjects.chatLogId, chatLogs.id))
+      .leftJoin(
+        ltiChatLogSubjects,
+        eq(ltiChatLogSubjects.chatLogId, chatLogs.id),
+      )
       .where(and(eq(chatLogs.courseId, courseId), afterCursor))
       .orderBy(asc(chatLogs.createdAt), asc(chatLogs.id))
       .limit(CHAT_HISTORY_EXPORT_PAGE_SIZE);
@@ -282,12 +346,14 @@ async function getCourseChatHistoryExportPage(
         const answer = chatAnswerSchema.parse(row.answer);
         return {
           created_at: toUtcIso(row.createdAt),
-          asked_by: row.classroomAuthor ?? mapQuestionAuthor(
-            row.isSharedOrigin,
-            row.userId,
-            row.username,
-            row.email,
-          ),
+          asked_by:
+            row.classroomAuthor ??
+            mapQuestionAuthor(
+              row.isSharedOrigin,
+              row.userId,
+              row.username,
+              row.email,
+            ),
           question: row.question,
           answer: chatAnswerText(answer),
           is_shared_origin: row.isSharedOrigin,
@@ -334,32 +400,55 @@ export async function updateChatLogFeedback(
   feedback: "good" | "bad" | null,
   opts: { userId?: string; shareSlug?: string | null; ltiCourseGrant?: number },
 ) {
-  const permission = opts.ltiCourseGrant !== undefined
-    ? sql`log.course_id = ${opts.ltiCourseGrant} AND log.is_shared_origin = true`
-    : opts.shareSlug
-    ? sql`course.share_slug = ${opts.shareSlug} AND log.is_shared_origin = true
-        AND ${nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`)}`
-    : nativeCourseAccessAllowed(false, { owner: sql`course.user_id = ${opts.userId ?? null}`,
-        participant: sql`log.user_id = ${opts.userId ?? null}`,
-        nativeEnabled: nativeCourseExternalAccess(sql`course.id`, sql`course.managed_by_lms`, sql`course.native_access_disabled`),
-        shareMatches: sql`false` }, nativeCourseDrizzleLogic);
+  const log = alias(chatLogs, "feedback_log"),
+    course = alias(videoCourses, "feedback_course");
+  const permission =
+    opts.ltiCourseGrant !== undefined
+      ? sql`${log.courseId}=${opts.ltiCourseGrant} AND ${log.isSharedOrigin}=true`
+      : opts.shareSlug
+        ? sql`${course.shareSlug}=${opts.shareSlug} AND ${log.isSharedOrigin}=true AND ${nativeCourseExternalAccess(course.id, course.managedByLms, course.nativeAccessDisabled)}`
+        : nativeCourseAccessAllowed(
+            false,
+            {
+              owner: sql`${course.userId}=${opts.userId ?? null}`,
+              participant: sql`${log.userId}=${opts.userId ?? null}`,
+              nativeEnabled: nativeCourseExternalAccess(
+                course.id,
+                course.managedByLms,
+                course.nativeAccessDisabled,
+              ),
+              shareMatches: sql`false`,
+            },
+            nativeCourseDrizzleLogic,
+          );
   return withDb(env, async (db) => {
-    const result = await db.execute<{ allowed: boolean; id: string | null; feedback: string | null }>(sql`
-      WITH target AS (
-        SELECT log.id, COALESCE((${permission}), false) AS allowed
-          FROM chat_logs log
-          JOIN video_courses course ON course.id = log.course_id
-         WHERE log.id = ${logId}
-      ), updated AS (
-        UPDATE chat_logs log SET feedback = ${feedback}
-          FROM target
-         WHERE log.id = target.id AND target.allowed
-        RETURNING log.id, log.feedback
-      )
-      SELECT target.allowed, updated.id, updated.feedback
-        FROM target LEFT JOIN updated ON updated.id = target.id
-    `);
-    const row = result.rows[0];
+    const target = db.$with("target").as(
+      db
+        .select({
+          id: log.id,
+          allowed: sql<boolean>`COALESCE((${permission}),false)`.as("allowed"),
+        })
+        .from(log)
+        .innerJoin(course, eq(course.id, log.courseId))
+        .where(eq(log.id, logId)),
+    );
+    const updated = db.$with("updated").as(
+      db
+        .update(chatLogs)
+        .set({ feedback })
+        .from(target)
+        .where(and(eq(chatLogs.id, target.id), target.allowed))
+        .returning({ id: chatLogs.id, feedback: chatLogs.feedback }),
+    );
+    const [row] = await db
+      .with(target, updated)
+      .select({
+        allowed: target.allowed,
+        id: updated.id,
+        feedback: updated.feedback,
+      })
+      .from(target)
+      .leftJoin(updated, eq(updated.id, target.id));
     if (!row) return { notFound: true } as const;
     if (!row.allowed) return { forbidden: true } as const;
     // A concurrent history reset may delete an authorized row before UPDATE acquires it.
@@ -377,7 +466,12 @@ export async function shareSlugExists(
     const rows = await db
       .select({ id: videoCourses.id })
       .from(videoCourses)
-      .where(and(eq(videoCourses.shareSlug, shareSlug), nativeCourseExternalAccess()))
+      .where(
+        and(
+          eq(videoCourses.shareSlug, shareSlug),
+          nativeCourseExternalAccess(),
+        ),
+      )
       .limit(1);
     return rows.length > 0;
   });
@@ -406,41 +500,49 @@ export async function getCourseChatAnalytics(
 ): Promise<{ notFound: true } | ChatAnalytics> {
   return withDb(env, async (db) => {
     // Scan the authorized course's history once, then derive both totals and days.
-    const result = await db.execute(sql`
-      SELECT COALESCE(sum(day.count), 0)::int AS total,
-             min(day.first_dt) AS first_dt,
-             max(day.last_dt) AS last_dt,
-             COALESCE(sum(day.good), 0)::int AS good,
-             COALESCE(sum(day.bad), 0)::int AS bad,
-             COALESCE(sum(day.none), 0)::int AS none,
-             COALESCE(
-               json_agg(json_build_object('date', day.date::text, 'count', day.count) ORDER BY day.date)
-                 FILTER (WHERE day.date IS NOT NULL), '[]'::json
-             ) AS time_series
-        FROM video_courses course
-        LEFT JOIN LATERAL (
-          SELECT (created_at AT TIME ZONE 'UTC')::date AS date,
-                 count(*)::int AS count,
-                 min(created_at) AS first_dt,
-                 max(created_at) AS last_dt,
-                 count(*) FILTER (WHERE feedback = 'good')::int AS good,
-                 count(*) FILTER (WHERE feedback = 'bad')::int AS bad,
-                 count(*) FILTER (WHERE feedback IS NULL)::int AS none
-            FROM chat_logs WHERE course_id = course.id
-           GROUP BY (created_at AT TIME ZONE 'UTC')::date
-        ) day ON true
-       WHERE course.id = ${courseId} AND course.user_id = ${userId}
-       GROUP BY course.id
-    `);
-    const s = result.rows[0] as {
-      total: number;
-      first_dt: string | Date | null;
-      last_dt: string | Date | null;
-      good: number;
-      bad: number;
-      none: number;
-      time_series: ChatAnalytics["time_series"];
-    } | undefined;
+    const date = sql<string>`(${chatLogs.createdAt} AT TIME ZONE 'UTC')::date`;
+    const day = db
+      .select({
+        date: date.as("date"),
+        count: sql<number>`count(*)::int`.as("count"),
+        first: sql<string | Date | null>`min(${chatLogs.createdAt})`.as(
+          "first_dt",
+        ),
+        last: sql<string | Date | null>`max(${chatLogs.createdAt})`.as(
+          "last_dt",
+        ),
+        good: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback}='good')::int`.as(
+          "good",
+        ),
+        bad: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback}='bad')::int`.as(
+          "bad",
+        ),
+        none: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback} IS NULL)::int`.as(
+          "none",
+        ),
+      })
+      .from(chatLogs)
+      .where(eq(chatLogs.courseId, videoCourses.id))
+      .groupBy(date)
+      .as("day");
+    const [s] = await db
+      .select({
+        total: sql<number>`COALESCE(sum(${day.count}),0)::int`,
+        first_dt: sql<string | Date | null>`min(${day.first})`,
+        last_dt: sql<string | Date | null>`max(${day.last})`,
+        good: sql<number>`COALESCE(sum(${day.good}),0)::int`,
+        bad: sql<number>`COALESCE(sum(${day.bad}),0)::int`,
+        none: sql<number>`COALESCE(sum(${day.none}),0)::int`,
+        time_series: sql<
+          ChatAnalytics["time_series"]
+        >`COALESCE(json_agg(json_build_object('date',${day.date}::text,'count',${day.count}) ORDER BY ${day.date}) FILTER(WHERE ${day.date} IS NOT NULL),'[]'::json)`,
+      })
+      .from(videoCourses)
+      .leftJoinLateral(day, sql`true`)
+      .where(
+        and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)),
+      )
+      .groupBy(videoCourses.id);
     if (!s) return { notFound: true } as const;
 
     return {
@@ -467,10 +569,15 @@ export async function getCourseChatHistory(
   return withDb(env, async (db) => {
     const [total] = await db
       .select({
-        count: sql<number>`(SELECT count(*)::int FROM chat_logs WHERE course_id = "video_courses"."id")`,
+        count: sql<number>`(${db
+          .select({ n: sql`count(*)::int` })
+          .from(chatLogs)
+          .where(eq(chatLogs.courseId, videoCourses.id))})`,
       })
       .from(videoCourses)
-      .where(and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)))
+      .where(
+        and(eq(videoCourses.id, courseId), eq(videoCourses.userId, userId)),
+      )
       .limit(1);
     if (!total) return { notFound: true } as const;
     if (offset >= total.count) return { count: total.count, results: [] };
@@ -491,7 +598,10 @@ export async function getCourseChatHistory(
       })
       .from(chatLogs)
       .leftJoin(users, eq(users.id, chatLogs.userId))
-      .leftJoin(ltiChatLogSubjects, eq(ltiChatLogSubjects.chatLogId, chatLogs.id))
+      .leftJoin(
+        ltiChatLogSubjects,
+        eq(ltiChatLogSubjects.chatLogId, chatLogs.id),
+      )
       .where(eq(chatLogs.courseId, courseId))
       .orderBy(desc(chatLogs.createdAt), desc(chatLogs.id))
       .limit(limit)
@@ -500,12 +610,9 @@ export async function getCourseChatHistory(
     const results: ChatLogItem[] = rows.map((r) => ({
       id: Number(r.id),
       course: Number(r.course_id),
-      asked_by: r.classroomAuthor ?? mapQuestionAuthor(
-        r.is_shared_origin,
-        r.user_id,
-        r.username,
-        r.email,
-      ),
+      asked_by:
+        r.classroomAuthor ??
+        mapQuestionAuthor(r.is_shared_origin, r.user_id, r.username, r.email),
       question: r.question,
       answer: chatAnswerSchema.parse(r.answer),
       is_shared_origin: r.is_shared_origin,
@@ -517,13 +624,22 @@ export async function getCourseChatHistory(
   });
 }
 
-export function createPostgresChatRepository(env:Bindings):import("../contracts/chat-repository").ChatRepository {
+export function createPostgresChatRepository(
+  env: Bindings,
+): import("../contracts/chat-repository").ChatRepository {
   return {
-    context:params=>getCourseWithMembers(env,params),create:params=>createChatLog(env,params),
-    deleteHistory:(courseId,userId)=>deleteCourseChatLogs(env,courseId,userId),
-    exportPage:(courseId,userId,cursor)=>getCourseChatHistoryExportPage(env,courseId,userId,cursor),
-    feedback:(logId,feedback,options)=>updateChatLogFeedback(env,logId,feedback,options),shareExists:slug=>shareSlugExists(env,slug),
-    analytics:(courseId,userId)=>getCourseChatAnalytics(env,courseId,userId),
-    history:(courseId,userId,limit,offset)=>getCourseChatHistory(env,courseId,userId,limit,offset),
+    context: (params) => getCourseWithMembers(env, params),
+    create: (params) => createChatLog(env, params),
+    deleteHistory: (courseId, userId) =>
+      deleteCourseChatLogs(env, courseId, userId),
+    exportPage: (courseId, userId, cursor) =>
+      getCourseChatHistoryExportPage(env, courseId, userId, cursor),
+    feedback: (logId, feedback, options) =>
+      updateChatLogFeedback(env, logId, feedback, options),
+    shareExists: (slug) => shareSlugExists(env, slug),
+    analytics: (courseId, userId) =>
+      getCourseChatAnalytics(env, courseId, userId),
+    history: (courseId, userId, limit, offset) =>
+      getCourseChatHistory(env, courseId, userId, limit, offset),
   };
 }

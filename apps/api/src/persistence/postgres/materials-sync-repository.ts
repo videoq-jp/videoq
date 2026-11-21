@@ -1,98 +1,529 @@
-import { postgresLmsOwnerSql } from './lms-owner-policy';
-import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
-import type pg from 'pg';
-import {sql} from 'drizzle-orm';
-import {withClient} from '../../db/pool';
-import type {Bindings} from '../../types/bindings';
-import type {MaterialsSyncRepository,MaterialsLease,MaterialsConnection} from '../contracts/materials-sync-repository';
-import {MaterialsLeaseLostError} from '../contracts/materials-sync-repository';
-const ACTIVE=`i.active=true AND i.materials_service IS NOT NULL`;
-const CONFIG=`jsonb_build_object('owner',i.owner_user_id,'client',i.client_id,'deployment',i.deployment_id,'service',i.materials_service)`;
-const CONNECTION=`i.id,i.owner_user_id AS "ownerUserId",i.client_id AS "clientId",i.deployment_id AS "deploymentId",i.materials_service AS "materialsService",i.materials_cursor AS "materialsCursor"`;
-function normalizeConnection(row:MaterialsConnection):MaterialsConnection{
- const cursor=Number(row.materialsCursor);if(!Number.isSafeInteger(cursor)||cursor<0)throw new Error('Invalid materials cursor');
- return {...row,materialsCursor:cursor};
+import {
+  and,
+  eq,
+  inArray,
+  isNull,
+  isNotNull,
+  exists,
+  notExists,
+  sql,
+  type SQLWrapper,
+} from "drizzle-orm";
+import { alias, QueryBuilder } from "drizzle-orm/pg-core";
+import { withDb, type Db } from "../../db/pool";
+import { insertSelectValues } from "../../db/postgres/query-builders";
+import {
+  lmsInstallations as installations,
+  ltiCredentials as credentials,
+  users,
+  teachingConnections,
+  lmsResources,
+  videoCourses,
+  videos,
+  externalTasks,
+} from "../../db/schema";
+import { activeLmsOwner } from "./lms-owner-policy";
+import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
+import type { Bindings } from "../../types/bindings";
+import type {
+  MaterialsSyncRepository,
+  MaterialsLease,
+  MaterialsConnection,
+} from "../contracts/materials-sync-repository";
+import { MaterialsLeaseLostError } from "../contracts/materials-sync-repository";
+const configuration = (i: {
+  ownerUserId: SQLWrapper;
+  clientId: SQLWrapper;
+  deploymentId: SQLWrapper;
+  materialsService: SQLWrapper;
+}) =>
+  sql`jsonb_build_object('owner',${i.ownerUserId},'client',${i.clientId},'deployment',${i.deploymentId},'service',${i.materialsService})`;
+export function postgresMaterialsLease(
+  lease: MaterialsLease,
+  kind: "materials-lease" | "materials-poll" | "either" = "materials-lease",
+) {
+  const db = new QueryBuilder(),
+    c = alias(credentials, "material_lease"),
+    i = alias(installations, "lease_installation"),
+    owner = alias(users, "lease_owner");
+  return exists(
+    db
+      .select({ id: c.id })
+      .from(c)
+      .innerJoin(i, eq(i.id, sql`${c.payload}->>'installationId'`))
+      .innerJoin(owner, eq(owner.id, i.ownerUserId))
+      .where(
+        and(
+          eq(c.id, lease.id),
+          eq(i.id, lease.installationId),
+          eq(sql`${c.payload}->>'lease'`, lease.token),
+          kind === "either"
+            ? inArray(c.kind, ["materials-lease", "materials-poll"])
+            : eq(c.kind, kind),
+          sql`${c.expiresAt}>clock_timestamp()`,
+          eq(i.active, true),
+          isNotNull(i.materialsService),
+          sql`${c.payload}->'configuration'=${configuration(i)}`,
+        ),
+      ),
+  );
 }
-export function postgresMaterialsLease(lease:MaterialsLease){return sql`EXISTS(SELECT 1 FROM lti_credentials lease JOIN lms_installations i ON i.id=lease.payload->>'installationId' JOIN users owner ON owner.id=i.owner_user_id
- WHERE lease.id=${lease.id} AND i.id=${lease.installationId} AND lease.payload->>'lease'=${lease.token} AND lease.kind='materials-lease' AND lease.expires_at>clock_timestamp()
- AND ${sql.raw(ACTIVE)} AND lease.payload->'configuration'=${sql.raw(CONFIG)})`;}
-const owns=(start:number,kind?:'materials-lease'|'materials-poll')=>`EXISTS(SELECT 1 FROM lti_credentials lease JOIN lms_installations i ON i.id=lease.payload->>'installationId' JOIN users owner ON owner.id=i.owner_user_id
- WHERE lease.id=$${start} AND i.id=$${start+2} AND lease.payload->>'lease'=$${start+1} AND ${kind?`lease.kind='${kind}'`:"lease.kind IN('materials-lease','materials-poll')"} AND lease.expires_at>clock_timestamp() AND ${ACTIVE} AND lease.payload->'configuration'=${CONFIG})`;
-export function createPostgresMaterialsSyncRepository(env:Bindings):MaterialsSyncRepository {
- const args=(lease:MaterialsLease)=>[lease.id,lease.token,lease.installationId];
- async function write<T>(lease:MaterialsLease,kind:'materials-lease'|'materials-poll',operation:(client:pg.Client)=>Promise<T>):Promise<T|null>{
-  return withClient(env,async client=>{
-   await client.query('BEGIN');try{
-    // Owner -> connection -> lease matches resource synchronization/revocation.
-    // Holding these rows closes the MVCC gap between authorization and a write
-    // that waits for an export row owned by another transaction.
-    await client.query(`SELECT id FROM users WHERE id IN(SELECT owner_user_id FROM teaching_connections WHERE provider='moodle' AND installation_id=$1) ORDER BY id FOR SHARE`,[lease.installationId]);
-    await client.query('SELECT id FROM lms_installations WHERE id=$1 FOR UPDATE',[lease.installationId]);
-    const current=await client.query(`SELECT id FROM lti_credentials WHERE id=$1 AND ${owns(1,kind)} FOR SHARE`,args(lease));
-    if(!current.rowCount){await client.query('COMMIT');return null;}
-    const result=await operation(client);await client.query('COMMIT');return result;
-   }catch(error){await client.query('ROLLBACK');throw error;}
-  });
- }
- return {
-  claimContext(installationId,leaseId,token){return withClient(env,async client=>{
-   await client.query('BEGIN');try{
-    await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at) SELECT $1,'materials-lease',jsonb_build_object('lease',$2::text,'installationId',i.id,'configuration',${CONFIG}),clock_timestamp()+interval '10 minutes'
-     FROM lms_installations i JOIN users owner ON owner.id=i.owner_user_id WHERE i.id=$3 AND ${ACTIVE}
-     ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at WHERE lti_credentials.kind='materials-lease' AND lti_credentials.expires_at<clock_timestamp()`,[leaseId,token,installationId]);
-    const row=(await client.query<MaterialsConnection>(`SELECT ${CONNECTION} FROM lms_installations i JOIN users owner ON owner.id=i.owner_user_id WHERE i.id=$1 AND ${owns(2,'materials-lease')}`,[installationId,leaseId,token,installationId])).rows[0];
-    const available=row?true:Boolean((await client.query(`SELECT 1 FROM lms_installations i JOIN users owner ON owner.id=i.owner_user_id WHERE i.id=$1 AND ${ACTIVE}`,[installationId])).rowCount);
-    await client.query('COMMIT');return row?{status:'claimed',lease:{id:leaseId,token,installationId},connection:normalizeConnection(row)}:{status:available?'busy':'unavailable'};
-   }catch(error){await client.query('ROLLBACK');throw error;}
-  });},
-  owns(lease){return withClient(env,async client=>Boolean((await client.query<{owned:boolean}>(`SELECT (${owns(1)}) AS owned`,args(lease))).rows[0].owned));},
-  async release(lease){await withClient(env,client=>client.query("DELETE FROM lti_credentials WHERE id=$1 AND kind IN('materials-lease','materials-poll') AND payload->>'lease'=$2",[lease.id,lease.token]));},
-  async prepareExport(lease,key,contextId,attempt){
-   const value=await write(lease,'materials-lease',async client=>{
-    await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at) SELECT $1,'materials-export',$2::jsonb,clock_timestamp()+interval '1 hour' WHERE ${owns(3,'materials-lease')}
-     ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at WHERE lti_credentials.kind='materials-export' AND lti_credentials.expires_at<=clock_timestamp()`,[key,JSON.stringify({installationId:lease.installationId,contextId,attempt}),...args(lease)]);
-    const payload=(await client.query<{payload:Record<string,unknown>}>(`SELECT payload FROM lti_credentials WHERE id=$1 AND kind='materials-export' AND expires_at>clock_timestamp()
-     AND payload->>'installationId'=$2 AND payload->>'contextId'=$3 AND ${owns(4,'materials-lease')}`,[key,lease.installationId,contextId,...args(lease)])).rows[0]?.payload;
-    if(!payload || typeof payload.attempt!=='string')throw new MaterialsLeaseLostError();
-    return {attempt:payload.attempt,...(typeof payload.jobId==='string'?{jobId:payload.jobId}:{})};
-   });
-   if(!value)throw new MaterialsLeaseLostError();return value;
-  },
-  async saveExportJob(lease,key,attempt,jobId){return await write(lease,'materials-lease',async client=>Boolean((await client.query(`UPDATE lti_credentials SET payload=jsonb_set(payload,'{jobId}',to_jsonb($1::text)) WHERE id=$2 AND kind='materials-export' AND expires_at>clock_timestamp()
-   AND payload->>'attempt'=$3 AND payload->>'installationId'=$4 AND ${owns(5,'materials-lease')} RETURNING id`,[jobId,key,attempt,lease.installationId,...args(lease)])).rowCount))??false;},
-  async deleteExport(lease,key,attempt){return await write(lease,'materials-lease',async client=>Boolean((await client.query(`DELETE FROM lti_credentials WHERE id=$1 AND kind='materials-export' AND payload->>'attempt'=$2 AND payload->>'installationId'=$3 AND ${owns(4,'materials-lease')} RETURNING id`,[key,attempt,lease.installationId,...args(lease)])).rowCount))??false;},
-  async confirmUpload(lease,upload){return await write(lease,'materials-lease',async client=>{
-   // Lock the resource before its video, matching resource synchronization.
-   const resource=await client.query<{owner_user_id:string}>(`SELECT t.owner_user_id FROM lms_resources r
-    JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=r.installation_id AND t.context_id=r.context_id AND t.course_id=r.course_id AND t.active=true AND t.resource_link_id IS NULL
-    JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id
-    JOIN users owner ON owner.id=t.owner_user_id AND ${postgresLmsOwnerSql('clock_timestamp()')}
-    WHERE r.installation_id=$1 AND r.external_id=$2 AND r.generation=$3 AND r.video_id=$4 AND r.enabled=true FOR UPDATE OF r FOR SHARE OF t`,[lease.installationId,upload.externalId,upload.generation,upload.videoId]);
-   if(!resource.rowCount)return false;
-   const changed=await client.query(`UPDATE videos SET status='pending',error_message='' WHERE id=$1 AND file=$2 AND status='uploading'
-    AND user_id=$3 AND ${owns(4,'materials-lease')} RETURNING id`,[upload.videoId,upload.fileKey,resource.rows[0].owner_user_id,...args(lease)]);
-   if(!changed.rowCount)return false;
-   const message=buildJobMessage(JOB_TRANSCRIBE_VIDEO,{video_id:upload.videoId});
-   const task=await client.query<{id:number}>(`INSERT INTO external_tasks(kind,payload,dedupe_key) VALUES('sqs_job',$1::jsonb,$2) RETURNING id`,[JSON.stringify({message}),`job:${message.job_id}`]);
-   return {videoId:upload.videoId,taskId:Number(task.rows[0].id),jobId:message.job_id};
-  })??false;},
-  claimNext(token){return withClient(env,async client=>{
-   await client.query('BEGIN');try{
-    const row=(await client.query<MaterialsConnection>(`SELECT ${CONNECTION} FROM lms_installations i JOIN users owner ON owner.id=i.owner_user_id WHERE ${ACTIVE} AND i.next_materials_sync_at<=clock_timestamp()
-     AND NOT EXISTS(SELECT 1 FROM lti_credentials c WHERE c.id='lti-materials-poll:'||i.id AND c.expires_at>=clock_timestamp())
-     ORDER BY i.next_materials_sync_at,i.id LIMIT 1 FOR UPDATE OF i SKIP LOCKED`)).rows[0];
-    if(!row){await client.query('COMMIT');return null;}
-    const id='lti-materials-poll:'+row.id;
-    const inserted=await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at) SELECT $1,'materials-poll',jsonb_build_object('lease',$2::text,'installationId',i.id,'configuration',${CONFIG}),clock_timestamp()+interval '1 minute'
-     FROM lms_installations i WHERE i.id=$3 ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at WHERE lti_credentials.kind='materials-poll' AND lti_credentials.expires_at<clock_timestamp() RETURNING id`,[id,token,row.id]);
-    if(!inserted.rowCount){await client.query('COMMIT');return null;}
-    await client.query(`UPDATE lms_installations SET next_materials_sync_at=(SELECT expires_at FROM lti_credentials WHERE id=$1) WHERE id=$2`,[id,row.id]);
-    await client.query('COMMIT');return {lease:{id,token,installationId:row.id},connection:normalizeConnection(row)};
-   }catch(error){await client.query('ROLLBACK');throw error;}
-  });},
-  async finishPoll(lease,cursor,delaySeconds){
-   if(!Number.isSafeInteger(cursor)||cursor<0||![10,30].includes(delaySeconds))throw new Error('Invalid materials poll completion');
-   return await write(lease,'materials-poll',async client=>Boolean((await client.query(`UPDATE lms_installations SET materials_cursor=$1,next_materials_sync_at=(clock_timestamp()+($2*interval '1 second')) WHERE id=$3 AND ${owns(4,'materials-poll')} RETURNING id`,[cursor,delaySeconds,lease.installationId,...args(lease)])).rowCount))??false;
-  },
- };
+const projection = {
+  id: installations.id,
+  ownerUserId: installations.ownerUserId,
+  clientId: installations.clientId,
+  deploymentId: installations.deploymentId,
+  materialsService: sql<
+    MaterialsConnection["materialsService"]
+  >`${installations.materialsService}`,
+  materialsCursor: installations.materialsCursor,
+};
+function normalizeConnection(row: MaterialsConnection): MaterialsConnection {
+  const cursor = Number(row.materialsCursor);
+  if (!Number.isSafeInteger(cursor) || cursor < 0)
+    throw new Error("Invalid materials cursor");
+  return { ...row, materialsCursor: cursor };
+}
+export function createPostgresMaterialsSyncRepository(
+  env: Bindings,
+): MaterialsSyncRepository {
+  const active = and(
+    eq(installations.active, true),
+    isNotNull(installations.materialsService),
+  );
+  const payload = (token: string) =>
+    sql`jsonb_build_object('lease',${token}::text,'installationId',${installations.id},'configuration',${configuration(installations)})`;
+  const exportMatch = (lease: MaterialsLease, key: string) =>
+    and(
+      eq(credentials.id, key),
+      eq(credentials.kind, "materials-export"),
+      eq(sql`${credentials.payload}->>'installationId'`, lease.installationId),
+    );
+  async function write<T>(
+    lease: MaterialsLease,
+    kind: "materials-lease" | "materials-poll",
+    operation: (db: Db) => Promise<T>,
+  ): Promise<T | null> {
+    return withDb(env, (database) =>
+      database.transaction(async (db) => {
+        // Owner -> connection -> lease matches synchronization and revocation. Keep
+        // the authority rows locked while a subsequent export/video write waits.
+        await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            inArray(
+              users.id,
+              db
+                .select({ id: teachingConnections.ownerUserId })
+                .from(teachingConnections)
+                .where(
+                  and(
+                    eq(teachingConnections.provider, "moodle"),
+                    eq(
+                      teachingConnections.installationId,
+                      lease.installationId,
+                    ),
+                  ),
+                ),
+            ),
+          )
+          .orderBy(users.id)
+          .for("share");
+        await db
+          .select({ id: installations.id })
+          .from(installations)
+          .where(eq(installations.id, lease.installationId))
+          .for("update");
+        const current = await db
+          .select({ id: credentials.id })
+          .from(credentials)
+          .where(
+            and(
+              eq(credentials.id, lease.id),
+              postgresMaterialsLease(lease, kind),
+            ),
+          )
+          .for("share");
+        if (!current.length) return null;
+        return operation(db);
+      }),
+    );
+  }
+  return {
+    claimContext(installationId, leaseId, token) {
+      return withDb(env, (database) =>
+        database.transaction(async (db) => {
+          const lease = { id: leaseId, token, installationId };
+          await db
+            .insert(credentials)
+            .select(
+              db
+                .select(
+                  insertSelectValues(credentials, {
+                    id: leaseId,
+                    kind: "materials-lease",
+                    payload: payload(token),
+                    expiresAt: sql`clock_timestamp()+interval '10 minutes'`,
+                  }),
+                )
+                .from(installations)
+                .innerJoin(users, eq(users.id, installations.ownerUserId))
+                .where(and(eq(installations.id, installationId), active)),
+            )
+            .onConflictDoUpdate({
+              target: credentials.id,
+              set: {
+                payload: sql`excluded.payload`,
+                expiresAt: sql`excluded.expires_at`,
+              },
+              setWhere: and(
+                eq(credentials.kind, "materials-lease"),
+                sql`${credentials.expiresAt}<clock_timestamp()`,
+              ),
+            });
+          const [row] = await db
+            .select(projection)
+            .from(installations)
+            .innerJoin(users, eq(users.id, installations.ownerUserId))
+            .where(
+              and(
+                eq(installations.id, installationId),
+                postgresMaterialsLease(lease),
+              ),
+            );
+          const available = row
+            ? true
+            : (
+                await db
+                  .select({ id: installations.id })
+                  .from(installations)
+                  .innerJoin(users, eq(users.id, installations.ownerUserId))
+                  .where(and(eq(installations.id, installationId), active))
+              ).length > 0;
+          return row
+            ? { status: "claimed", lease, connection: normalizeConnection(row) }
+            : { status: available ? "busy" : "unavailable" };
+        }),
+      );
+    },
+    owns(lease) {
+      return withDb(
+        env,
+        async (db) =>
+          (
+            await db
+              .select({ id: credentials.id })
+              .from(credentials)
+              .where(
+                and(
+                  eq(credentials.id, lease.id),
+                  postgresMaterialsLease(lease, "either"),
+                ),
+              )
+          ).length > 0,
+      );
+    },
+    async release(lease) {
+      await withDb(env, (db) =>
+        db
+          .delete(credentials)
+          .where(
+            and(
+              eq(credentials.id, lease.id),
+              inArray(credentials.kind, ["materials-lease", "materials-poll"]),
+              eq(sql`${credentials.payload}->>'lease'`, lease.token),
+            ),
+          ),
+      );
+    },
+    async prepareExport(lease, key, contextId, attempt) {
+      const result = await write(lease, "materials-lease", async (db) => {
+        await db
+          .insert(credentials)
+          .select(
+            db
+              .select(
+                insertSelectValues(credentials, {
+                  id: key,
+                  kind: "materials-export",
+                  payload: {
+                    installationId: lease.installationId,
+                    contextId,
+                    attempt,
+                  },
+                  expiresAt: sql`clock_timestamp()+interval '1 hour'`,
+                }),
+              )
+              .from(installations)
+              .where(
+                and(
+                  eq(installations.id, lease.installationId),
+                  postgresMaterialsLease(lease),
+                ),
+              ),
+          )
+          .onConflictDoUpdate({
+            target: credentials.id,
+            set: {
+              payload: sql`excluded.payload`,
+              expiresAt: sql`excluded.expires_at`,
+            },
+            setWhere: and(
+              eq(credentials.kind, "materials-export"),
+              sql`${credentials.expiresAt}<=clock_timestamp()`,
+            ),
+          });
+        const [row] = await db
+          .select({ payload: credentials.payload })
+          .from(credentials)
+          .where(
+            and(
+              exportMatch(lease, key),
+              sql`${credentials.expiresAt}>clock_timestamp()`,
+              eq(sql`${credentials.payload}->>'contextId'`, contextId),
+              postgresMaterialsLease(lease),
+            ),
+          );
+        const value = row?.payload;
+        if (!value || typeof value.attempt !== "string")
+          throw new MaterialsLeaseLostError();
+        return {
+          attempt: value.attempt,
+          ...(typeof value.jobId === "string" ? { jobId: value.jobId } : {}),
+        };
+      });
+      if (!result) throw new MaterialsLeaseLostError();
+      return result;
+    },
+    async saveExportJob(lease, key, attempt, jobId) {
+      return (
+        (await write(
+          lease,
+          "materials-lease",
+          async (db) =>
+            (
+              await db
+                .update(credentials)
+                .set({
+                  payload: sql`jsonb_set(${credentials.payload},'{jobId}',to_jsonb(${jobId}::text))`,
+                })
+                .where(
+                  and(
+                    exportMatch(lease, key),
+                    sql`${credentials.expiresAt}>clock_timestamp()`,
+                    eq(sql`${credentials.payload}->>'attempt'`, attempt),
+                    postgresMaterialsLease(lease),
+                  ),
+                )
+                .returning({ id: credentials.id })
+            ).length > 0,
+        )) ?? false
+      );
+    },
+    async deleteExport(lease, key, attempt) {
+      return (
+        (await write(
+          lease,
+          "materials-lease",
+          async (db) =>
+            (
+              await db
+                .delete(credentials)
+                .where(
+                  and(
+                    exportMatch(lease, key),
+                    eq(sql`${credentials.payload}->>'attempt'`, attempt),
+                    postgresMaterialsLease(lease),
+                  ),
+                )
+                .returning({ id: credentials.id })
+            ).length > 0,
+        )) ?? false
+      );
+    },
+    async confirmUpload(lease, upload) {
+      return (
+        (await write(lease, "materials-lease", async (db) => {
+          // Resource before video, matching resource synchronization.
+          const [resource] = await db
+            .select({ owner: teachingConnections.ownerUserId })
+            .from(lmsResources)
+            .innerJoin(
+              teachingConnections,
+              and(
+                eq(teachingConnections.provider, "moodle"),
+                eq(
+                  teachingConnections.installationId,
+                  lmsResources.installationId,
+                ),
+                eq(teachingConnections.contextId, lmsResources.contextId),
+                eq(teachingConnections.courseId, lmsResources.courseId),
+                eq(teachingConnections.active, true),
+                isNull(teachingConnections.resourceLinkId),
+              ),
+            )
+            .innerJoin(
+              videoCourses,
+              and(
+                eq(videoCourses.id, teachingConnections.courseId),
+                eq(videoCourses.userId, teachingConnections.ownerUserId),
+              ),
+            )
+            .innerJoin(
+              users,
+              and(
+                eq(users.id, teachingConnections.ownerUserId),
+                activeLmsOwner(sql`clock_timestamp()`),
+              ),
+            )
+            .where(
+              and(
+                eq(lmsResources.installationId, lease.installationId),
+                eq(lmsResources.externalId, upload.externalId),
+                eq(lmsResources.generation, upload.generation),
+                eq(lmsResources.videoId, upload.videoId),
+                eq(lmsResources.enabled, true),
+              ),
+            )
+            .$dynamic()
+            .for("update", { of: lmsResources })
+            .for("share", { of: teachingConnections });
+          if (!resource) return false;
+          const changed = await db
+            .update(videos)
+            .set({ status: "pending", errorMessage: "" })
+            .where(
+              and(
+                eq(videos.id, upload.videoId),
+                eq(videos.file, upload.fileKey),
+                eq(videos.status, "uploading"),
+                eq(videos.userId, resource.owner),
+                postgresMaterialsLease(lease),
+              ),
+            )
+            .returning({ id: videos.id });
+          if (!changed.length) return false;
+          const message = buildJobMessage(JOB_TRANSCRIBE_VIDEO, {
+            video_id: upload.videoId,
+          });
+          const [task] = await db
+            .insert(externalTasks)
+            .values({
+              kind: "sqs_job",
+              payload: { message },
+              dedupeKey: `job:${message.job_id}`,
+            })
+            .returning({ id: externalTasks.id });
+          return {
+            videoId: upload.videoId,
+            taskId: Number(task.id),
+            jobId: message.job_id,
+          };
+        })) ?? false
+      );
+    },
+    claimNext(token) {
+      return withDb(env, (database) =>
+        database.transaction(async (db) => {
+          const c = alias(credentials, "poll_lease"),
+            pollId = sql<string>`'lti-materials-poll:'||${installations.id}`;
+          const [row] = await db
+            .select(projection)
+            .from(installations)
+            .innerJoin(users, eq(users.id, installations.ownerUserId))
+            .where(
+              and(
+                active,
+                sql`${installations.nextMaterialsSyncAt}<=clock_timestamp()`,
+                notExists(
+                  db
+                    .select({ id: c.id })
+                    .from(c)
+                    .where(
+                      and(
+                        eq(c.id, pollId),
+                        sql`${c.expiresAt}>=clock_timestamp()`,
+                      ),
+                    ),
+                ),
+              ),
+            )
+            .orderBy(installations.nextMaterialsSyncAt, installations.id)
+            .limit(1)
+            .for("update", { of: installations, skipLocked: true });
+          if (!row) return null;
+          const id = "lti-materials-poll:" + row.id;
+          const inserted = await db
+            .insert(credentials)
+            .select(
+              db
+                .select(
+                  insertSelectValues(credentials, {
+                    id,
+                    kind: "materials-poll",
+                    payload: payload(token),
+                    expiresAt: sql`clock_timestamp()+interval '1 minute'`,
+                  }),
+                )
+                .from(installations)
+                .where(eq(installations.id, row.id)),
+            )
+            .onConflictDoUpdate({
+              target: credentials.id,
+              set: {
+                payload: sql`excluded.payload`,
+                expiresAt: sql`excluded.expires_at`,
+              },
+              setWhere: and(
+                eq(credentials.kind, "materials-poll"),
+                sql`${credentials.expiresAt}<clock_timestamp()`,
+              ),
+            })
+            .returning({ id: credentials.id });
+          if (!inserted.length) return null;
+          await db
+            .update(installations)
+            .set({
+              nextMaterialsSyncAt: sql`${db.select({ expiry: credentials.expiresAt }).from(credentials).where(eq(credentials.id, id))}`,
+            })
+            .where(eq(installations.id, row.id));
+          return {
+            lease: { id, token, installationId: row.id },
+            connection: normalizeConnection(row),
+          };
+        }),
+      );
+    },
+    async finishPoll(lease, cursor, delaySeconds) {
+      if (
+        !Number.isSafeInteger(cursor) ||
+        cursor < 0 ||
+        ![10, 30].includes(delaySeconds)
+      )
+        throw new Error("Invalid materials poll completion");
+      return (
+        (await write(
+          lease,
+          "materials-poll",
+          async (db) =>
+            (
+              await db
+                .update(installations)
+                .set({
+                  materialsCursor: cursor,
+                  nextMaterialsSyncAt: sql`clock_timestamp()+(${delaySeconds}*interval '1 second')`,
+                })
+                .where(
+                  and(
+                    eq(installations.id, lease.installationId),
+                    postgresMaterialsLease(lease, "materials-poll"),
+                  ),
+                )
+                .returning({ id: installations.id })
+            ).length > 0,
+        )) ?? false
+      );
+    },
+  };
 }

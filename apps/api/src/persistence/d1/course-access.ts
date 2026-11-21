@@ -1,14 +1,32 @@
-import { nativeCourseExternalAllowed } from '../../application/native-course-access';
-import { nativeCourseStringLogic } from '../native-course-policy-sql';
-
-/** Closed aliases belong to adapters; no caller-provided SQL identifiers. */
-export function nativeCourseExternalSql(alias: 'course' | 'c' | '"video_courses"'): string {
-  return nativeCourseExternalAllowed({
-    independentlyManaged: `${alias}.managed_by_lms=0`,
-    nativeAccessEnabled: `${alias}.native_access_disabled=0`,
-    noLmsVideo: `NOT EXISTS(SELECT 1 FROM video_course_members protected_member
-      JOIN videos protected_video ON protected_video.id=protected_member.video_id
-      WHERE protected_member.course_id=${alias}.id AND protected_video.managed_by_lms=1)`,
-  }, nativeCourseStringLogic);
+import { and, eq, notExists } from "drizzle-orm";
+import {
+  videoCourses,
+  videoCourseMembers,
+  videos,
+} from "../../db/schema/sqlite";
+import { QueryBuilder } from "drizzle-orm/sqlite-core";
+import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
+import { nativeCourseExternalAllowed } from "../../application/native-course-access";
+/** Shared native access predicate for typed query builders. */
+export function nativeCourseExternalAccess() {
+  const db = new QueryBuilder();
+  return nativeCourseExternalAllowed(
+    {
+      independentlyManaged: eq(videoCourses.managedByLms, false),
+      nativeAccessEnabled: eq(videoCourses.nativeAccessDisabled, false),
+      noLmsVideo: notExists(
+        db
+          .select({ id: videoCourseMembers.videoId })
+          .from(videoCourseMembers)
+          .innerJoin(videos, eq(videos.id, videoCourseMembers.videoId))
+          .where(
+            and(
+              eq(videoCourseMembers.courseId, videoCourses.id),
+              eq(videos.managedByLms, true),
+            ),
+          ),
+      ),
+    },
+    nativeCourseDrizzleLogic,
+  );
 }
-export const NATIVE_COURSE_EXTERNAL = nativeCourseExternalSql('course');

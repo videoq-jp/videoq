@@ -1,95 +1,358 @@
-import type {D1Database} from "@cloudflare/workers-types";
-import type { SceneIndexTask, SceneIndexTaskRepository } from "../contracts/scene-index";
+import type { D1Database } from "@cloudflare/workers-types";
+import {
+  and,
+  or,
+  eq,
+  ne,
+  gt,
+  isNull,
+  isNotNull,
+  exists,
+  not,
+  inArray,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  insertSelectFields,
+  insertSelectValues,
+  runD1Batch,
+} from "../../db/d1/query-builders";
+import {
+  sceneIndexTasks as tasks,
+  scenes,
+  videos,
+  sceneStaging,
+  sceneIndexRuns as runs,
+  videoIndexVersions as versions,
+  videoIndexHeads as heads,
+  mutationReceipts as receipts,
+  externalTasks,
+} from "../../db/schema/sqlite";
+import type {
+  SceneIndexTask,
+  SceneIndexTaskRepository,
+} from "../contracts/scene-index";
 import { buildJobMessage } from "../../lib/job-message";
 
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-// A vector ID is immutable for a run/scene/content triple. Superseded runs can
-// never become heads again, so an obsolete ID cannot later name current content.
-const DESIRED = `EXISTS(SELECT 1 FROM scenes s JOIN videos v ON v.id=s.video_id
-  WHERE s.id=t.scene_id AND s.dimensions=t.dimensions AND s.revision=t.revision
-    AND coalesce(s.vector_id,s.id)=t.vector_id AND v.id=t.video_id AND v.user_id=t.user_id)
-  OR EXISTS(SELECT 1 FROM scene_staging s JOIN scene_index_runs r ON r.id=s.run_id
-    JOIN videos v ON v.id=r.video_id JOIN video_index_versions versions ON versions.video_id=v.id
-    JOIN video_index_heads heads ON heads.video_id=v.id AND heads.dimensions=r.dimensions
-    WHERE s.scene_id=t.scene_id AND s.vector_id=t.vector_id AND r.id=t.revision AND r.dimensions=t.dimensions
-      AND r.video_id=t.video_id AND r.user_id=t.user_id AND v.user_id=t.user_id
-      AND r.source_revision=versions.revision AND heads.run_id=r.id AND r.status='staging')`;
-const OWNS = "id=? AND lease_token=? AND completed_at IS NULL AND julianday(lease_until)>julianday('now')";
-
-export function createD1SceneIndexTaskRepository(database: D1Database): SceneIndexTaskRepository {
+const now = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ','now')`;
+export function createD1SceneIndexTaskRepository(
+  database: D1Database,
+): SceneIndexTaskRepository {
+  const db = createD1Connection(database);
+  const t = alias(tasks, "t");
+  // Superseded runs cannot become heads again; vector IDs identify immutable content.
+  const desired = () =>
+    or(
+      exists(
+        db
+          .select({ id: scenes.id })
+          .from(scenes)
+          .innerJoin(videos, eq(videos.id, scenes.videoId))
+          .where(
+            and(
+              eq(scenes.id, t.sceneId),
+              eq(scenes.dimensions, t.dimensions),
+              eq(scenes.revision, t.revision),
+              eq(sql`coalesce(${scenes.vectorId},${scenes.id})`, t.vectorId),
+              eq(videos.id, t.videoId),
+              eq(videos.userId, t.userId),
+            ),
+          ),
+      ),
+      exists(
+        db
+          .select({ id: sceneStaging.sceneId })
+          .from(sceneStaging)
+          .innerJoin(runs, eq(runs.id, sceneStaging.runId))
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .innerJoin(versions, eq(versions.videoId, videos.id))
+          .innerJoin(
+            heads,
+            and(
+              eq(heads.videoId, videos.id),
+              eq(heads.dimensions, runs.dimensions),
+            ),
+          )
+          .where(
+            and(
+              eq(sceneStaging.sceneId, t.sceneId),
+              eq(sceneStaging.vectorId, t.vectorId),
+              eq(runs.id, t.revision),
+              eq(runs.dimensions, t.dimensions),
+              eq(runs.videoId, t.videoId),
+              eq(runs.userId, t.userId),
+              eq(videos.userId, t.userId),
+              eq(runs.sourceRevision, versions.revision),
+              eq(heads.runId, runs.id),
+              eq(runs.status, "staging"),
+            ),
+          ),
+      ),
+    )!;
+  const owns = (task: Pick<SceneIndexTask, "id" | "leaseToken">) =>
+    and(
+      eq(tasks.id, task.id),
+      eq(tasks.leaseToken, task.leaseToken),
+      isNull(tasks.completedAt),
+      sql`julianday(${tasks.leaseUntil})>julianday('now')`,
+    )!;
+  const receipt = (token: string) =>
+    exists(
+      db
+        .select({ token: receipts.token })
+        .from(receipts)
+        .where(eq(receipts.token, token)),
+    );
   return {
     async claim() {
-      const row = await database.prepare(`UPDATE scene_index_tasks SET lease_token=?,
-        lease_until=strftime('%Y-%m-%dT%H:%M:%fZ','now','+300 seconds'),attempts=attempts+1
-        WHERE id=(SELECT id FROM scene_index_tasks WHERE completed_at IS NULL
-          AND julianday(available_at)<=julianday('now') AND (lease_token IS NULL OR julianday(lease_until)<=julianday('now'))
-          ORDER BY available_at,created_at,id LIMIT 1) RETURNING *`).bind(crypto.randomUUID()).first<{
-          id: string; operation: "upsert" | "delete"; vector_id: string; scene_id: string; revision: string;
-          video_id: number; user_id: string; dimensions: 768 | 1536; embedding: string | null; accepted_at: string | null; lease_token: string;
-        }>();
-      return row ? { id: row.id, operation: row.operation, vectorId: row.vector_id, sceneId: row.scene_id, revision: row.revision,
-        videoId: row.video_id, userId: row.user_id, dimensions: row.dimensions,
-        embedding: row.embedding === null ? null : JSON.parse(row.embedding) as number[], acceptedAt: row.accepted_at, leaseToken: row.lease_token } : null;
+      const candidate = db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          and(
+            isNull(tasks.completedAt),
+            sql`julianday(${tasks.availableAt})<=julianday('now')`,
+            or(
+              isNull(tasks.leaseToken),
+              sql`julianday(${tasks.leaseUntil})<=julianday('now')`,
+            ),
+          ),
+        )
+        .orderBy(tasks.availableAt, tasks.createdAt, tasks.id)
+        .limit(1);
+      const row = await db
+        .update(tasks)
+        .set({
+          leaseToken: crypto.randomUUID(),
+          leaseUntil: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+300 seconds')`,
+          attempts: sql`${tasks.attempts}+1`,
+        })
+        .where(eq(tasks.id, candidate))
+        .returning()
+        .get();
+      return row
+        ? {
+            ...row,
+            dimensions: row.dimensions as 768 | 1536,
+            leaseToken: row.leaseToken!,
+          }
+        : null;
     },
     async isDesired(taskId) {
-      return Boolean((await database.prepare(`SELECT (${DESIRED}) AS desired FROM scene_index_tasks t WHERE t.id=?`)
-        .bind(taskId).first<{ desired: number }>())?.desired);
+      return Boolean(
+        (
+          await db
+            .select({ desired: desired() })
+            .from(t)
+            .where(eq(t.id, taskId))
+            .get()
+        )?.desired,
+      );
     },
     async accept(task) {
-      const rows = await database.prepare(`UPDATE scene_index_tasks SET accepted_at=${NOW},embedding=NULL,last_error_code=''
-        WHERE ${OWNS} RETURNING id`).bind(task.id, task.leaseToken).all();
-      return rows.results.length > 0;
+      return (
+        (
+          await db
+            .update(tasks)
+            .set({ acceptedAt: now, embedding: null, lastErrorCode: "" })
+            .where(owns(task))
+            .returning({ id: tasks.id })
+        ).length > 0
+      );
     },
-    async complete(task: SceneIndexTask) {
+    async complete(task) {
       const token = crypto.randomUUID();
-      const message = buildJobMessage("index_video_transcript", { video_id: task.videoId });
-      const rows = await database.batch([
-        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id)
-          SELECT ?,'scene_ready',video_id FROM scene_index_tasks WHERE ${OWNS}`).bind(token, task.id, task.leaseToken),
-        database.prepare(`UPDATE scene_index_tasks SET completed_at=${NOW},embedding=NULL,
-          lease_token=NULL,lease_until=NULL,last_error_code='' WHERE ${OWNS} RETURNING id`).bind(task.id, task.leaseToken),
-        database.prepare(`UPDATE scene_index_runs SET pending_vectors=pending_vectors-1
-          WHERE id=? AND video_id=? AND user_id=? AND dimensions=? AND status='published' AND pending_vectors>0
-            AND ?='upsert' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(task.revision, task.videoId, task.userId, task.dimensions, task.operation, token),
-        database.prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key)
-          SELECT 'sqs_job',?,? WHERE ?='upsert' AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
-            AND EXISTS(SELECT 1 FROM videos v JOIN video_index_versions versions ON versions.video_id=v.id
-              JOIN video_index_heads heads ON heads.video_id=v.id AND heads.dimensions=?
-              JOIN scene_index_runs r ON r.id=heads.run_id WHERE v.id=? AND v.user_id=? AND v.status='indexing'
-                AND r.id=? AND r.status='published' AND r.pending_vectors=0 AND r.source_revision=versions.revision)
-          ON CONFLICT(dedupe_key) DO NOTHING`).bind(JSON.stringify({ message }),
-            `scene-ready:${task.dimensions}:${task.videoId}:${task.revision}`, task.operation, token,
-            task.dimensions, task.videoId, task.userId, task.revision),
-        database.prepare("DELETE FROM mutation_receipts WHERE token=?").bind(token),
+      const message = buildJobMessage("index_video_transcript", {
+        video_id: task.videoId,
+      });
+      const ready = exists(
+        db
+          .select({ id: videos.id })
+          .from(videos)
+          .innerJoin(versions, eq(versions.videoId, videos.id))
+          .innerJoin(
+            heads,
+            and(
+              eq(heads.videoId, videos.id),
+              eq(heads.dimensions, task.dimensions),
+            ),
+          )
+          .innerJoin(runs, eq(runs.id, heads.runId))
+          .where(
+            and(
+              eq(videos.id, task.videoId),
+              eq(videos.userId, task.userId),
+              eq(videos.status, "indexing"),
+              eq(runs.id, task.revision),
+              eq(runs.status, "published"),
+              eq(runs.pendingVectors, 0),
+              eq(runs.sourceRevision, versions.revision),
+            ),
+          ),
+      );
+      const result = await runD1Batch(database, [
+        db.insert(receipts).select(
+          db
+            .select(
+              insertSelectFields(receipts, {
+                token: sql`${token}`,
+                kind: sql`'scene_ready'`,
+                resourceId: tasks.videoId,
+              }),
+            )
+            .from(tasks)
+            .where(owns(task)),
+        ),
+        db
+          .update(tasks)
+          .set({
+            completedAt: now,
+            embedding: null,
+            leaseToken: null,
+            leaseUntil: null,
+            lastErrorCode: "",
+          })
+          .where(owns(task))
+          .returning({ id: tasks.id }),
+        db
+          .update(runs)
+          .set({ pendingVectors: sql`${runs.pendingVectors}-1` })
+          .where(
+            and(
+              eq(runs.id, task.revision),
+              eq(runs.videoId, task.videoId),
+              eq(runs.userId, task.userId),
+              eq(runs.dimensions, task.dimensions),
+              eq(runs.status, "published"),
+              gt(runs.pendingVectors, 0),
+              sql`${task.operation}='upsert'`,
+              receipt(token),
+            ),
+          ),
+        db
+          .insert(externalTasks)
+          .select(
+            db
+              .select(
+                insertSelectValues(externalTasks, {
+                  kind: "sqs_job",
+                  payload: { message },
+                  dedupeKey: `scene-ready:${task.dimensions}:${task.videoId}:${task.revision}`,
+                }),
+              )
+              .from(receipts)
+              .where(
+                and(
+                  sql`${task.operation}='upsert'`,
+                  eq(receipts.token, token),
+                  ready,
+                ),
+              ),
+          )
+          .onConflictDoNothing({ target: externalTasks.dedupeKey }),
+        db.delete(receipts).where(eq(receipts.token, token)),
       ]);
-      return rows[1].results.length > 0;
+      return result[1].results.length > 0;
     },
     async retry(task, code) {
-      const rows = await database.prepare(`UPDATE scene_index_tasks SET lease_token=NULL,lease_until=NULL,last_error_code=?,
-        available_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+'||
-          CASE WHEN ?='VECTORIZE_NOT_READY' THEN min(60,5*(1 << min(attempts,4)))
-            ELSE min(3600,5*(1 << min(attempts,10))) END||' seconds')
-        WHERE ${OWNS} RETURNING id`).bind(code, code, task.id, task.leaseToken).all();
-      return rows.results.length > 0;
+      return (
+        (
+          await db
+            .update(tasks)
+            .set({
+              leaseToken: null,
+              leaseUntil: null,
+              lastErrorCode: code,
+              availableAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+'||CASE WHEN ${code}='VECTORIZE_NOT_READY' THEN min(60,5*(1 << min(${tasks.attempts},4))) ELSE min(3600,5*(1 << min(${tasks.attempts},10))) END||' seconds')`,
+            })
+            .where(owns(task))
+            .returning({ id: tasks.id })
+        ).length > 0
+      );
     },
     async reconcileObsolete(limit = 100) {
-      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error("Invalid index reconciliation limit");
-      const obsolete = (await database.prepare(`SELECT t.id FROM scene_index_tasks t
-        WHERE t.operation='upsert' AND t.completed_at IS NOT NULL AND t.last_error_code<>'SUPERSEDED'
-          AND NOT (${DESIRED}) ORDER BY t.completed_at,t.id LIMIT ?`).bind(limit).all<{ id: string }>()).results;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500)
+        throw new Error("Invalid index reconciliation limit");
+      const obsolete = await db
+        .select({ id: t.id })
+        .from(t)
+        .where(
+          and(
+            eq(t.operation, "upsert"),
+            isNotNull(t.completedAt),
+            ne(t.lastErrorCode, "SUPERSEDED"),
+            not(desired()),
+          ),
+        )
+        .orderBy(t.completedAt, t.id)
+        .limit(limit);
       if (!obsolete.length) return 0;
-      const ids = JSON.stringify(obsolete.map(row => row.id));
-      const result = await database.batch([
-        database.prepare(`INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions)
-          SELECT 'd:'||t.dimensions||':'||t.vector_id,'delete',t.vector_id,t.scene_id,t.revision,t.video_id,t.user_id,t.dimensions
-          FROM scene_index_tasks t WHERE t.id IN(SELECT value FROM json_each(?)) AND NOT (${DESIRED})
-          ON CONFLICT(id) DO UPDATE SET completed_at=NULL,available_at=${NOW}
-            WHERE scene_index_tasks.lease_token IS NULL OR julianday(scene_index_tasks.lease_until)<=julianday('now')
-          RETURNING id`).bind(ids),
-        database.prepare(`UPDATE scene_index_tasks AS t SET last_error_code='SUPERSEDED'
-          WHERE t.id IN(SELECT value FROM json_each(?)) AND NOT (${DESIRED}) AND EXISTS(
-            SELECT 1 FROM scene_index_tasks d WHERE d.id='d:'||t.dimensions||':'||t.vector_id)`).bind(ids),
+      const selected = and(
+        inArray(
+          t.id,
+          obsolete.map((row) => row.id),
+        ),
+        not(desired()),
+      );
+      const d = alias(tasks, "d");
+      const result = await runD1Batch(database, [
+        db
+          .insert(tasks)
+          .select(
+            db
+              .select(
+                insertSelectFields(tasks, {
+                  id: sql`'d:'||${t.dimensions}||':'||${t.vectorId}`,
+                  operation: sql`'delete'`,
+                  vectorId: t.vectorId,
+                  sceneId: t.sceneId,
+                  revision: t.revision,
+                  videoId: t.videoId,
+                  userId: t.userId,
+                  dimensions: t.dimensions,
+                }),
+              )
+              .from(t)
+              .where(selected),
+          )
+          .onConflictDoUpdate({
+            target: tasks.id,
+            set: { completedAt: null, availableAt: now },
+            setWhere: or(
+              isNull(tasks.leaseToken),
+              sql`julianday(${tasks.leaseUntil})<=julianday('now')`,
+            ),
+          })
+          .returning({ id: tasks.id }),
+        db
+          .update(tasks)
+          .set({ lastErrorCode: "SUPERSEDED" })
+          .where(
+            inArray(
+              tasks.id,
+              db
+                .select({ id: t.id })
+                .from(t)
+                .where(
+                  and(
+                    selected,
+                    exists(
+                      db
+                        .select({ id: d.id })
+                        .from(d)
+                        .where(
+                          eq(
+                            d.id,
+                            sql`'d:'||${t.dimensions}||':'||${t.vectorId}`,
+                          ),
+                        ),
+                    ),
+                  ),
+                ),
+            ),
+          ),
       ]);
       return result[0].results.length;
     },

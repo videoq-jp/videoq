@@ -66,8 +66,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     await expect(addVideosToCourseBulk(env, "owner", 10, [3, 4, 4, 1, 2])).resolves.toEqual({
       ok: true, message: "Added 2 videos to course", added_count: 2, skipped_count: 3,
     });
-    // BEGIN, locked ownership checks for course/videos, INSERT, COMMIT.
-    expect(query).toHaveBeenCalledTimes(5);
+    // BEGIN, locked course/videos, requested memberships, maximum order, INSERT, COMMIT.
+    expect(query).toHaveBeenCalledTimes(7);
     expect(connect).toHaveBeenCalledTimes(1);
     query.mockRestore();
     connect.mockRestore();

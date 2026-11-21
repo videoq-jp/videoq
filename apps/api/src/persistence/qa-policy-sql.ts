@@ -1,8 +1,8 @@
+import { and, or, not, type SQL } from "drizzle-orm";
 import type { QaLogic } from "../features/qa/policy";
 
-/** Operands are SQL predicates produced by the adapter, never raw user input. */
-export const qaSqlLogic: QaLogic<string> = {
-  and: (left, right) => `(${left} AND ${right})`,
-  or: (left, right) => `(${left} OR ${right})`,
-  not: value => `(NOT (${value}))`,
+export const qaDrizzleLogic: QaLogic<SQL> = {
+  and: (left, right) => and(left, right)!,
+  or: (left, right) => or(left, right)!,
+  not,
 };

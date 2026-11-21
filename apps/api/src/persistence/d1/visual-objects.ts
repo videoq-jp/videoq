@@ -1,51 +1,230 @@
-import { visualAttemptAllowed, visualObjectAttempt, visualObjectDesired, visualRunMutable, visualSourceCurrent } from '../../application/visual-checkpoint-policy';
-import { visualStringLogic as logic } from '../visual-policy-sql';
-import type { VisualCleanup, VisualObjectCleanupRepository } from '../contracts/visual-object-cleanup';
-export type { VisualCleanup } from '../contracts/visual-object-cleanup';
-const CURRENT = visualSourceCurrent('r.file_key=v.file', "v.source_type='uploaded'", logic);
-const MUTABLE = visualRunMutable(CURRENT, "r.status<>'ready'", logic);
-const DESIRED = visualObjectDesired({ current: CURRENT, manifest: "visual_object_attempts.kind='manifest'", ready: "r.status='ready'",
-  winningManifest: 'r.publication_version=visual_object_attempts.object_version', chunk: "visual_object_attempts.kind='chunk'",
-  winningChunk: `EXISTS(SELECT 1 FROM video_visual_chunks c WHERE c.run_id=r.run_id
-    AND c.chunk_index=visual_object_attempts.chunk_index AND c.object_version=visual_object_attempts.object_version)`,
-}, logic);
-export const VISUAL_OBJECT_DESIRED = `(EXISTS(SELECT 1 FROM video_visual_runs r JOIN videos v ON v.id=r.video_id
-  WHERE r.run_id=visual_object_attempts.run_id AND v.id=visual_object_attempts.video_id AND v.file=visual_object_attempts.file_key AND ${DESIRED}))`;
-export async function beginVisualObject(database:D1Database,videoId:number,runId:string,version:string,index?:number) {
-  const { id, kind } = visualObjectAttempt(version, index);
-  const allowed = visualAttemptAllowed(MUTABLE, '? IS NOT NULL',
-    'EXISTS(SELECT 1 FROM video_visual_chunks c WHERE c.run_id=r.run_id AND c.chunk_index=? AND c.frame_count IS NULL)', logic);
-  const result=await database.batch([
-    database.prepare(`INSERT INTO visual_object_attempts(id,kind,video_id,run_id,file_key,chunk_index,object_version,expires_at,available_at)
-      SELECT ?,?,v.id,r.run_id,r.file_key,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+1 hour'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+1 hour')
-      FROM video_visual_runs r JOIN videos v ON v.id=r.video_id WHERE v.id=? AND r.run_id=? AND ${allowed}
-      ON CONFLICT(id) DO NOTHING`)
-      .bind(id,kind,index??null,version,videoId,runId,index??null,index??null),
-    database.prepare(`SELECT a.id FROM visual_object_attempts a JOIN video_visual_runs r ON r.run_id=a.run_id JOIN videos v ON v.id=r.video_id
-      WHERE a.id=? AND a.video_id=? AND a.run_id=? AND a.status='pending' AND julianday(a.expires_at)>julianday('now')
-        AND v.file=a.file_key AND ${MUTABLE}`).bind(id,videoId,runId),
-  ]);
-  return result[1].results.length>0;
-}
+import {
+  and,
+  eq,
+  ne,
+  exists,
+  not,
+  isNull,
+  or,
+  sql,
+  inArray,
+} from "drizzle-orm";
+import { QueryBuilder } from "drizzle-orm/sqlite-core";
+import { createD1Connection } from "../../db/d1/connection";
+import { insertSelectFields, runD1Batch } from "../../db/d1/query-builders";
+import {
+  visualObjectAttempts as attempts,
+  videoVisualRuns as runs,
+  videoVisualChunks as chunks,
+  videos,
+} from "../../db/schema/sqlite";
+import {
+  visualAttemptAllowed,
+  visualObjectAttempt,
+  visualObjectDesired,
+  visualRunMutable,
+  visualSourceCurrent,
+} from "../../application/visual-checkpoint-policy";
+import { visualDrizzleLogic as logic } from "../visual-policy-sql";
+import type {
+  VisualCleanup,
+  VisualObjectCleanupRepository,
+} from "../contracts/visual-object-cleanup";
+export type { VisualCleanup } from "../contracts/visual-object-cleanup";
 
-export function createVisualObjectCleanup(database:D1Database): VisualObjectCleanupRepository {
+const builder = new QueryBuilder();
+const current = visualSourceCurrent(
+  eq(runs.fileKey, videos.file),
+  eq(videos.sourceType, "uploaded"),
+  logic,
+);
+const mutable = visualRunMutable(current, ne(runs.status, "ready"), logic);
+export function visualObjectDesiredPredicate() {
+  const desired = visualObjectDesired(
+    {
+      current,
+      manifest: eq(attempts.kind, "manifest"),
+      ready: eq(runs.status, "ready"),
+      winningManifest: eq(runs.publicationVersion, attempts.objectVersion),
+      chunk: eq(attempts.kind, "chunk"),
+      winningChunk: exists(
+        builder
+          .select({ run: chunks.runId })
+          .from(chunks)
+          .where(
+            and(
+              eq(chunks.runId, runs.runId),
+              eq(chunks.chunkIndex, attempts.chunkIndex),
+              eq(chunks.objectVersion, attempts.objectVersion),
+            ),
+          ),
+      ),
+    },
+    logic,
+  );
+  return exists(
+    builder
+      .select({ run: runs.runId })
+      .from(runs)
+      .innerJoin(videos, eq(videos.id, runs.videoId))
+      .where(
+        and(
+          eq(runs.runId, attempts.runId),
+          eq(videos.id, attempts.videoId),
+          eq(videos.file, attempts.fileKey),
+          desired,
+        ),
+      ),
+  );
+}
+export async function beginVisualObject(
+  database: D1Database,
+  videoId: number,
+  runId: string,
+  version: string,
+  index?: number,
+) {
+  const db = createD1Connection(database),
+    { id, kind } = visualObjectAttempt(version, index);
+  const allowed = visualAttemptAllowed(
+    mutable,
+    sql`${index ?? null} IS NOT NULL`,
+    exists(
+      db
+        .select({ run: chunks.runId })
+        .from(chunks)
+        .where(
+          and(
+            eq(chunks.runId, runs.runId),
+            eq(chunks.chunkIndex, index ?? -1),
+            isNull(chunks.frameCount),
+          ),
+        ),
+    ),
+    logic,
+  );
+  const available = sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+1 hour')`;
+  const result = await runD1Batch(database, [
+    db
+      .insert(attempts)
+      .select(
+        db
+          .select(
+            insertSelectFields(attempts, {
+              id: sql`${id}`,
+              kind: sql`${kind}`,
+              videoId: videos.id,
+              runId: runs.runId,
+              fileKey: runs.fileKey,
+              chunkIndex: sql`${index ?? null}`,
+              objectVersion: sql`${version}`,
+              expiresAt: available,
+              availableAt: available,
+            }),
+          )
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .where(and(eq(videos.id, videoId), eq(runs.runId, runId), allowed)),
+      )
+      .onConflictDoNothing({ target: attempts.id }),
+    db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .innerJoin(runs, eq(runs.runId, attempts.runId))
+      .innerJoin(videos, eq(videos.id, runs.videoId))
+      .where(
+        and(
+          eq(attempts.id, id),
+          eq(attempts.videoId, videoId),
+          eq(attempts.runId, runId),
+          eq(attempts.status, "pending"),
+          sql`julianday(${attempts.expiresAt})>julianday('now')`,
+          eq(videos.file, attempts.fileKey),
+          mutable,
+        ),
+      ),
+  ]);
+  return result[1].results.length > 0;
+}
+export function createVisualObjectCleanup(
+  database: D1Database,
+): VisualObjectCleanupRepository {
+  const db = createD1Connection(database);
   return {
-    async claim():Promise<VisualCleanup|null> {
-      return database.prepare(`UPDATE visual_object_attempts SET status='deleting',lease_token=?,lease_until=strftime('%Y-%m-%dT%H:%M:%fZ','now','+5 minutes'),attempts=attempts+1
-        WHERE id=(SELECT id FROM visual_object_attempts WHERE status<>'cleaned' AND julianday(available_at)<=julianday('now')
-          AND (lease_token IS NULL OR julianday(lease_until)<=julianday('now'))
-          AND NOT ${VISUAL_OBJECT_DESIRED}
-          ORDER BY available_at,id LIMIT 1) RETURNING id,kind,file_key,run_id,chunk_index,object_version,lease_token`)
-        .bind(crypto.randomUUID()).first<VisualCleanup>();
+    async claim(): Promise<VisualCleanup | null> {
+      const candidate = db
+        .select({ id: attempts.id })
+        .from(attempts)
+        .where(
+          and(
+            ne(attempts.status, "cleaned"),
+            sql`julianday(${attempts.availableAt})<=julianday('now')`,
+            or(
+              isNull(attempts.leaseToken),
+              sql`julianday(${attempts.leaseUntil})<=julianday('now')`,
+            ),
+            not(visualObjectDesiredPredicate()),
+          ),
+        )
+        .orderBy(attempts.availableAt, attempts.id)
+        .limit(1);
+      const [row] = await db
+        .update(attempts)
+        .set({
+          status: "deleting",
+          leaseToken: crypto.randomUUID(),
+          leaseUntil: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+5 minutes')`,
+          attempts: sql`${attempts.attempts}+1`,
+        })
+        .where(inArray(attempts.id, candidate))
+        .returning({
+          id: attempts.id,
+          kind: attempts.kind,
+          file_key: attempts.fileKey,
+          run_id: attempts.runId,
+          chunk_index: attempts.chunkIndex,
+          object_version: attempts.objectVersion,
+          lease_token: attempts.leaseToken,
+        });
+      return row ? { ...row, lease_token: row.lease_token! } : null;
     },
-    async complete(task:VisualCleanup) {
-      const result=await database.prepare(`UPDATE visual_object_attempts SET status='cleaned',lease_token=NULL,lease_until=NULL,last_error_code=''
-        WHERE id=? AND status='deleting' AND lease_token=? AND julianday(lease_until)>julianday('now') RETURNING id`).bind(task.id,task.lease_token).all();
-      return result.results.length>0;
+    async complete(task) {
+      const rows = await db
+        .update(attempts)
+        .set({
+          status: "cleaned",
+          leaseToken: null,
+          leaseUntil: null,
+          lastErrorCode: "",
+        })
+        .where(
+          and(
+            eq(attempts.id, task.id),
+            eq(attempts.status, "deleting"),
+            eq(attempts.leaseToken, task.lease_token),
+            sql`julianday(${attempts.leaseUntil})>julianday('now')`,
+          ),
+        )
+        .returning({ id: attempts.id });
+      return rows.length > 0;
     },
-    async retry(task:VisualCleanup) {
-      await database.prepare(`UPDATE visual_object_attempts SET lease_token=NULL,lease_until=NULL,last_error_code='VISUAL_OBJECT_DELETE_FAILED',
-        available_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+5 minutes') WHERE id=? AND status='deleting' AND lease_token=?`).bind(task.id,task.lease_token).run();
+    async retry(task) {
+      await db
+        .update(attempts)
+        .set({
+          leaseToken: null,
+          leaseUntil: null,
+          lastErrorCode: "VISUAL_OBJECT_DELETE_FAILED",
+          availableAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+5 minutes')`,
+        })
+        .where(
+          and(
+            eq(attempts.id, task.id),
+            eq(attempts.status, "deleting"),
+            eq(attempts.leaseToken, task.lease_token),
+          ),
+        )
+        .run();
     },
   };
 }

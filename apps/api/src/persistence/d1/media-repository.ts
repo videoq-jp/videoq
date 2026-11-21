@@ -1,32 +1,88 @@
-import { NATIVE_COURSE_EXTERNAL } from './course-access';
-import { mediaAccessMode, mediaSharedPermission, mediaAuthenticatedPermission } from '../../application/media-access';
-import { nativeCourseStringLogic } from '../native-course-policy-sql';
+import { and, eq, exists, sql } from "drizzle-orm";
+import {
+  mediaAccessMode,
+  mediaSharedPathValue,
+  mediaAuthenticatedPermission,
+} from "../../application/media-access";
+import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import type { MediaRepository } from "../contracts/media-repository";
-
-// LMS-controlled material never becomes public through a native course link.
-const EXTERNAL_ACCESS = NATIVE_COURSE_EXTERNAL;
-
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  videos,
+  videoCourses,
+  videoCourseMembers,
+  videoCourseMemberships,
+} from "../../db/schema/sqlite";
+import { nativeCourseExternalAccess } from "./course-access";
 export function createD1MediaRepository(database: D1Database): MediaRepository {
+  const db = createD1Connection(database);
   return {
     async getPathAccess(path, options) {
-      const mode=mediaAccessMode(path,options);
-      if(mode.kind==='denied')return false;
-      if (mode.kind==='shared') {
-        const permission=mediaSharedPermission('?=1',`EXISTS (
-          SELECT 1 FROM videos media_video JOIN video_course_members member ON member.video_id=media_video.id
-          WHERE media_video.file=? AND member.course_id=course.id)`,nativeCourseStringLogic);
-        const row = await database.prepare(`SELECT ${permission} AS allowed
-          FROM video_courses course WHERE course.share_slug=? AND ${EXTERNAL_ACCESS} LIMIT 1`)
-          .bind(mode.safePath ? 1 : 0, path, mode.shareSlug).first<{ allowed: number }>();
+      const mode = mediaAccessMode(path, options);
+      if (mode.kind === "denied") return false;
+      if (mode.kind === "shared") {
+        const permission = mediaSharedPathValue(
+          mode.safePath,
+          () =>
+            exists(
+              db
+                .select({ id: videos.id })
+                .from(videos)
+                .innerJoin(
+                  videoCourseMembers,
+                  eq(videoCourseMembers.videoId, videos.id),
+                )
+                .where(
+                  and(
+                    eq(videos.file, path),
+                    eq(videoCourseMembers.courseId, videoCourses.id),
+                  ),
+                ),
+            ),
+          sql<boolean>`false`,
+        );
+        const [row] = await db
+          .select({ allowed: permission })
+          .from(videoCourses)
+          .where(
+            and(
+              eq(videoCourses.shareSlug, mode.shareSlug),
+              nativeCourseExternalAccess(),
+            ),
+          )
+          .limit(1);
         return row ? Boolean(row.allowed) : null;
       }
-      const permission=mediaAuthenticatedPermission('user_id=?',`EXISTS (
-        SELECT 1 FROM video_course_members member JOIN video_course_memberships membership ON membership.course_id=member.course_id
-          JOIN video_courses course ON course.id=member.course_id
-        WHERE member.video_id=videos.id AND membership.user_id=? AND ${EXTERNAL_ACCESS})`,nativeCourseStringLogic);
-      const row = await database.prepare(`SELECT 1 AS allowed FROM videos WHERE file=? AND ${permission} LIMIT 1`)
-        .bind(path, mode.userId, mode.userId).first();
-      return Boolean(row);
+      const permission = mediaAuthenticatedPermission(
+        eq(videos.userId, mode.userId),
+        exists(
+          db
+            .select({ id: videoCourseMembers.id })
+            .from(videoCourseMembers)
+            .innerJoin(
+              videoCourseMemberships,
+              eq(videoCourseMemberships.courseId, videoCourseMembers.courseId),
+            )
+            .innerJoin(
+              videoCourses,
+              eq(videoCourses.id, videoCourseMembers.courseId),
+            )
+            .where(
+              and(
+                eq(videoCourseMembers.videoId, videos.id),
+                eq(videoCourseMemberships.userId, mode.userId),
+                nativeCourseExternalAccess(),
+              ),
+            ),
+        ),
+        nativeCourseDrizzleLogic,
+      );
+      const rows = await db
+        .select({ id: videos.id })
+        .from(videos)
+        .where(and(eq(videos.file, path), permission))
+        .limit(1);
+      return rows.length > 0;
     },
   };
 }

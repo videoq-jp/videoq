@@ -1,37 +1,73 @@
-import { quotaAllowsAdditional } from '../../application/quota-policy';
-import { quotaSqlComparison } from '../quota-policy-sql';
-import { withClient } from "../../db/pool";
+import { and, eq, sql } from "drizzle-orm";
+import { withDb } from "../../db/pool";
+import { users, videos } from "../../db/schema";
+import { quotaAllowsAdditional } from "../../application/quota-policy";
+import { quotaDrizzleComparison } from "../quota-policy-sql";
 import type { Bindings } from "../../types/bindings";
-import { validateProcessingReservation, type ProcessingQuotaRepository } from "../contracts/processing-quota";
-export function createPostgresProcessingQuotaRepository(env: Bindings): ProcessingQuotaRepository {
+import {
+  validateProcessingReservation,
+  type ProcessingQuotaRepository,
+} from "../contracts/processing-quota";
+export function createPostgresProcessingQuotaRepository(
+  env: Bindings,
+): ProcessingQuotaRepository {
   return {
     async reserve(videoId, seconds) {
       validateProcessingReservation(videoId, seconds);
-      return withClient(env, async client => {
-        await client.query("BEGIN");
-        try {
-          const video = (await client.query<{ user_id: string; processing_seconds: number }>(
-            "SELECT user_id,processing_seconds FROM videos WHERE id=$1 FOR UPDATE", [videoId])).rows[0];
+      return withDb(env, (db) =>
+        db.transaction(async (tx) => {
+          const [video] = await tx
+            .select({
+              userId: videos.userId,
+              processingSeconds: videos.processingSeconds,
+            })
+            .from(videos)
+            .where(eq(videos.id, videoId))
+            .for("update");
           if (!video) throw new Error("Processing video not found");
-          let allowed = Number(video.processing_seconds) > 0;
+          let allowed = Number(video.processingSeconds) > 0;
           if (!allowed) {
-            const current = "date_trunc('month',usage_period_start,'UTC')=date_trunc('month',now(),'UTC')";
-            const used = `CASE WHEN ${current} THEN used_processing_seconds ELSE 0 END`;
-            const changed = await client.query(`UPDATE users SET used_processing_seconds=(${used})+$1,
-              used_ai_answers=CASE WHEN ${current} THEN used_ai_answers ELSE 0 END,
-              usage_period_start=CASE WHEN ${current} THEN usage_period_start ELSE now() END
-              WHERE id=$2 AND is_over_quota IS NOT TRUE AND (${used})<=9007199254740991-$1
-              AND ${quotaAllowsAdditional(used, 'processing_limit_minutes::bigint*60', '$1', quotaSqlComparison)} RETURNING id`, [seconds, video.user_id]);
-            allowed = Boolean(changed.rowCount);
-            if (allowed) await client.query("UPDATE videos SET processing_seconds=$1 WHERE id=$2", [seconds, videoId]);
+            const current = sql`date_trunc('month',${users.usagePeriodStart},'UTC')=date_trunc('month',now(),'UTC')`;
+            const used = sql`CASE WHEN ${current} THEN ${users.usedProcessingSeconds} ELSE 0 END`;
+            const changed = await tx
+              .update(users)
+              .set({
+                usedProcessingSeconds: sql`(${used})+${seconds}`,
+                usedAiAnswers: sql`CASE WHEN ${current} THEN ${users.usedAiAnswers} ELSE 0 END`,
+                usagePeriodStart: sql`CASE WHEN ${current} THEN ${users.usagePeriodStart} ELSE now() END`,
+              })
+              .where(
+                and(
+                  eq(users.id, video.userId),
+                  sql`${users.isOverQuota} IS NOT TRUE`,
+                  sql`(${used})<=9007199254740991-${seconds}`,
+                  quotaAllowsAdditional(
+                    used,
+                    sql`${users.processingLimitMinutes}::bigint*60`,
+                    sql`${seconds}`,
+                    quotaDrizzleComparison,
+                  ),
+                ),
+              )
+              .returning({ id: users.id });
+            allowed = changed.length > 0;
+            if (allowed)
+              await tx
+                .update(videos)
+                .set({ processingSeconds: seconds })
+                .where(eq(videos.id, videoId));
           }
-          const user = (await client.query<{ processing_limit_minutes: number | null }>(
-            "SELECT processing_limit_minutes FROM users WHERE id=$1", [video.user_id])).rows[0];
+          const [user] = await tx
+            .select({ limit: users.processingLimitMinutes })
+            .from(users)
+            .where(eq(users.id, video.userId));
           if (!user) throw new Error("Processing owner not found");
-          await client.query("COMMIT");
-          return { allowed, limitSeconds: user.processing_limit_minutes === null ? null : user.processing_limit_minutes * 60 };
-        } catch (error) { await client.query("ROLLBACK"); throw error; }
-      });
+          return {
+            allowed,
+            limitSeconds: user.limit === null ? null : user.limit * 60,
+          };
+        }),
+      );
     },
   };
 }

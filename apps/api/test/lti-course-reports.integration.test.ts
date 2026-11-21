@@ -1,3 +1,4 @@
+import { expectPersistenceFailure } from "./helpers/persistence-error";
 import pg from 'pg';
 import { Hono } from 'hono';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -113,7 +114,7 @@ const installation: PrivacyInstallation = { id: 'school', ownerUserId: 'owner', 
     await log();
     await pool.query(`CREATE FUNCTION report_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic audit failure'; END $$;
       CREATE TRIGGER reject_report_audit BEFORE INSERT ON lti_report_accesses FOR EACH ROW EXECUTE FUNCTION report_audit_failure()`);
-    try { await expect(report()).rejects.toThrow('Synthetic audit failure'); expect(await audits()).toEqual([]); }
+    try { await expectPersistenceFailure(report(), 'Synthetic audit failure'); expect(await audits()).toEqual([]); }
     finally { await pool.query('DROP TRIGGER reject_report_audit ON lti_report_accesses; DROP FUNCTION report_audit_failure()'); }
   });
   it('exports/erases access receipts for the approved actor/context and retains other actors and shared course content', async () => {

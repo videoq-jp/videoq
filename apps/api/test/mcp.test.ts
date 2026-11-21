@@ -414,12 +414,12 @@ describe("MCP JSON-RPC", () => {
     rowsFor = (sql) => {
       if (sql.includes("UPDATE api_keys")) return apiKeyRow();
       if (sql.includes('FROM "mcp_idempotency_records"')) return [];
-      if (sql.toLowerCase().includes('insert into "video_courses"')) {
+      if (sql.includes("INSERT INTO video_courses")) {
         return [{ id: 7 }];
       }
       if (
         sql.includes('FROM "video_courses"') &&
-        !sql.includes('INNER JOIN "videos"')
+        sql.includes("video_count")
       ) {
         return [
           {

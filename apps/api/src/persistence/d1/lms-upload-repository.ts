@@ -1,54 +1,347 @@
-import { d1LmsOwnerSql } from './lms-owner-policy';
-import type {LmsUploadRepository,LmsUploadSnapshot} from '../contracts/lms-upload-repository';
-import type {OwnedLmsGrant} from '../contracts/lms-resource-repository';
-import {contentSlot,contentCleanup,contentPayload,checkContentAttempt} from '../../shared/lms-upload';
-import {buildJobMessage,JOB_TRANSCRIBE_VIDEO} from '../../lib/job-message';
-const SOURCE=`SELECT v.id,v.status FROM lms_resources r JOIN videos v ON v.id=r.video_id JOIN lms_installations i ON i.id=r.installation_id JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=i.id AND t.context_id=r.context_id AND t.course_id=r.course_id AND t.active=1 AND t.resource_link_id IS NULL JOIN video_courses course ON course.id=t.course_id AND course.user_id=t.owner_user_id JOIN users owner ON owner.id=t.owner_user_id
- WHERE i.id=? AND owner.id=? AND r.id=? AND r.external_id=? AND r.generation=? AND v.id=? AND v.file=? AND r.file_size=? AND r.content_type=?
- AND r.enabled=1 AND r.kind='video' AND v.user_id=owner.id AND v.managed_by_lms=1 AND v.source_type='uploaded'
- AND i.active=1 AND ${d1LmsOwnerSql()}`;
-const sourceArgs=(g:OwnedLmsGrant,s:LmsUploadSnapshot)=>[g.id,g.ownerUserId,s.resourceId,s.externalId,s.generation,s.videoId,s.fileKey,s.size,s.contentType];
-const LIVE=`EXISTS(SELECT 1 FROM lti_credentials c WHERE c.id=? AND c.kind='lms-content-upload' AND json(c.payload)=json(?) AND julianday(c.expires_at)>julianday('now'))`;
-export function createD1LmsUploadRepository(database:D1Database):LmsUploadRepository{
- const prepare=(sql:string,args:unknown[]=[])=>database.prepare(sql).bind(...args);
- return {
-  async prepare(a){
-   checkContentAttempt(a);const payload=contentPayload(a),slot=contentSlot(a.snapshot);
-   const result=await database.batch([
-    prepare(`INSERT INTO lti_credentials(id,kind,payload,expires_at) SELECT ?,'lms-content-upload',?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+15 minutes') WHERE EXISTS(${SOURCE} AND v.status='uploading') AND (NOT EXISTS(SELECT 1 FROM external_tasks WHERE dedupe_key=?) OR ${LIVE})
-     ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at WHERE lti_credentials.kind='lms-content-upload' AND julianday(lti_credentials.expires_at)<=julianday('now')`,[slot,payload,...sourceArgs(a.grant,a.snapshot),contentCleanup(a.id),slot,payload]),
-    prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key,available_at) SELECT 'storage_cleanup',?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+2 hours') WHERE ${LIVE} ON CONFLICT(dedupe_key) DO NOTHING`,[JSON.stringify({file_key:a.fileKey,user_id:a.grant.ownerUserId,bytes:0}),contentCleanup(a.id),slot,payload]),
-    prepare(`SELECT id FROM lti_credentials WHERE id=? AND kind='lms-content-upload' AND json(payload)=json(?) AND EXISTS(${SOURCE} AND v.status='uploading')`,[slot,payload,...sourceArgs(a.grant,a.snapshot)]),
-   ]);return Boolean(result[2].results.length);
-  },
-  async adopt(a){
-   checkContentAttempt(a);const token=crypto.randomUUID(),slot=contentSlot(a.snapshot),payload=contentPayload(a),gate='EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)';
-   const result=await database.batch([
-    prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'lms_content_adopt',? WHERE EXISTS(${SOURCE} AND v.status='uploading') AND ${LIVE}
-     AND EXISTS(SELECT 1 FROM external_tasks WHERE dedupe_key=? AND kind='storage_cleanup' AND json_extract(payload,'$.file_key')=? AND attempts=0 AND locked_at IS NULL AND completed_at IS NULL AND dead_at IS NULL AND julianday(available_at)>julianday('now'))`,[token,a.snapshot.videoId,...sourceArgs(a.grant,a.snapshot),slot,payload,contentCleanup(a.id),a.fileKey]),
-    prepare(`UPDATE videos SET file=?,upload_heartbeat_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND ${gate}`,[a.fileKey,a.snapshot.videoId,token]),
-    // The candidate is now canonical; its delayed cleanup retires the old key instead.
-    prepare(`UPDATE external_tasks SET payload=json_set(payload,'$.file_key',?) WHERE dedupe_key=? AND ${gate}`,[a.snapshot.fileKey,contentCleanup(a.id),token]),
-    prepare(`DELETE FROM lti_credentials WHERE id=? AND json(payload)=json(?) AND ${gate}`,[slot,payload,token]),
-    prepare('SELECT token FROM mutation_receipts WHERE token=?',[token]),prepare('DELETE FROM mutation_receipts WHERE token=?',[token]),
-   ]);return Boolean(result[4].results.length);
-  },
-  async abandon(a){
-   checkContentAttempt(a);
-   await database.batch([
-    prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'storage_cleanup',?,? WHERE NOT EXISTS(SELECT 1 FROM videos WHERE file=?)
-     AND EXISTS(SELECT 1 FROM external_tasks WHERE dedupe_key=? AND kind='storage_cleanup' AND json_extract(payload,'$.file_key')=?) ON CONFLICT(dedupe_key) DO NOTHING`,[JSON.stringify({file_key:a.fileKey,user_id:a.grant.ownerUserId,bytes:0}),'lms-content-abandon:'+a.id,a.fileKey,contentCleanup(a.id),a.fileKey]),
-    prepare("DELETE FROM lti_credentials WHERE id=? AND kind='lms-content-upload' AND json(payload)=json(?)",[contentSlot(a.snapshot),contentPayload(a)]),
-   ]);
-  },
-  async confirm(grant,snapshot,objectVerified){
-   const message=buildJobMessage(JOB_TRANSCRIBE_VIDEO,{video_id:snapshot.videoId}),dedupe='job:'+message.job_id;
-   const result=await database.batch<Record<string,unknown>>([
-    prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'sqs_job',?,? WHERE ?=1 AND EXISTS(${SOURCE} AND v.status='uploading')`,[JSON.stringify({message}),dedupe,objectVerified?1:0,...sourceArgs(grant,snapshot)]),
-    prepare("UPDATE videos SET status='pending',error_message='' WHERE id=? AND changes()=1",[snapshot.videoId]),
-    prepare('SELECT id FROM external_tasks WHERE dedupe_key=?',[dedupe]),prepare(SOURCE,sourceArgs(grant,snapshot)),
-   ]);const task=result[2].results[0];if(task)return {status:'queued',job:{videoId:snapshot.videoId,taskId:Number(task.id),jobId:message.job_id}};
-   const status=result[3].results[0]?.status;return typeof status==='string'&&['pending','processing','indexing','completed','error'].includes(status)?{status:'already'}:{status:'stale'};
-  },
- };
+import { and, or, eq, exists, notExists, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  insertSelectFields,
+  insertSelectValues,
+  runD1Batch,
+} from "../../db/d1/query-builders";
+import {
+  lmsResources as resources,
+  videos,
+  lmsInstallations as installations,
+  teachingConnections as connections,
+  videoCourses,
+  users,
+  ltiCredentials as credentials,
+  externalTasks as tasks,
+  mutationReceipts as receipts,
+} from "../../db/schema/sqlite";
+import { activeD1LmsOwner } from "./lms-owner-policy";
+import type {
+  LmsUploadRepository,
+  LmsUploadSnapshot,
+  LmsContentAttempt,
+} from "../contracts/lms-upload-repository";
+import type { OwnedLmsGrant } from "../contracts/lms-resource-repository";
+import {
+  contentSlot,
+  contentCleanup,
+  contentPayload,
+  checkContentAttempt,
+} from "../../shared/lms-upload";
+import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
+export function createD1LmsUploadRepository(
+  database: D1Database,
+): LmsUploadRepository {
+  const db = createD1Connection(database);
+  const source = (g: OwnedLmsGrant, s: LmsUploadSnapshot, uploading = false) =>
+    db
+      .select({ id: videos.id, status: videos.status })
+      .from(resources)
+      .innerJoin(videos, eq(videos.id, resources.videoId))
+      .innerJoin(installations, eq(installations.id, resources.installationId))
+      .innerJoin(
+        connections,
+        and(
+          eq(connections.provider, "moodle"),
+          eq(connections.installationId, installations.id),
+          eq(connections.contextId, resources.contextId),
+          eq(connections.courseId, resources.courseId),
+          eq(connections.active, true),
+          isNull(connections.resourceLinkId),
+        ),
+      )
+      .innerJoin(
+        videoCourses,
+        and(
+          eq(videoCourses.id, connections.courseId),
+          eq(videoCourses.userId, connections.ownerUserId),
+        ),
+      )
+      .innerJoin(users, eq(users.id, connections.ownerUserId))
+      .where(
+        and(
+          eq(installations.id, g.id),
+          eq(users.id, g.ownerUserId),
+          eq(resources.id, s.resourceId),
+          eq(resources.externalId, s.externalId),
+          eq(resources.generation, s.generation),
+          eq(videos.id, s.videoId),
+          eq(videos.file, s.fileKey),
+          eq(resources.fileSize, s.size),
+          eq(resources.contentType, s.contentType),
+          eq(resources.enabled, true),
+          eq(resources.kind, "video"),
+          eq(videos.userId, users.id),
+          eq(videos.managedByLms, true),
+          eq(videos.sourceType, "uploaded"),
+          eq(installations.active, true),
+          activeD1LmsOwner(),
+          uploading ? eq(videos.status, "uploading") : undefined,
+        ),
+      )
+      .limit(1);
+  const live = (a: LmsContentAttempt) =>
+    exists(
+      db
+        .select({ id: credentials.id })
+        .from(credentials)
+        .where(
+          and(
+            eq(credentials.id, contentSlot(a.snapshot)),
+            eq(credentials.kind, "lms-content-upload"),
+            sql`json(${credentials.payload})=json(${contentPayload(a)})`,
+            sql`julianday(${credentials.expiresAt})>julianday('now')`,
+          ),
+        ),
+    );
+  const gate = (token: string) =>
+    exists(
+      db
+        .select({ token: receipts.token })
+        .from(receipts)
+        .where(eq(receipts.token, token)),
+    );
+  return {
+    async prepare(a) {
+      checkContentAttempt(a);
+      const payload = contentPayload(a),
+        slot = contentSlot(a.snapshot);
+      const result = await runD1Batch(database, [
+        db
+          .insert(credentials)
+          .select(
+            db
+              .select(
+                insertSelectFields(credentials, {
+                  id: sql`${slot}`,
+                  kind: sql`'lms-content-upload'`,
+                  payload: sql`${payload}`,
+                  expiresAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+15 minutes')`,
+                }),
+              )
+              .from(source(a.grant, a.snapshot, true).as("source"))
+              .where(
+                or(
+                  notExists(
+                    db
+                      .select({ id: tasks.id })
+                      .from(tasks)
+                      .where(eq(tasks.dedupeKey, contentCleanup(a.id))),
+                  ),
+                  live(a),
+                ),
+              ),
+          )
+          .onConflictDoUpdate({
+            target: credentials.id,
+            set: {
+              payload: sql`excluded.payload`,
+              expiresAt: sql`excluded.expires_at`,
+            },
+            setWhere: and(
+              eq(credentials.kind, "lms-content-upload"),
+              sql`julianday(${credentials.expiresAt})<=julianday('now')`,
+            ),
+          }),
+        db
+          .insert(tasks)
+          .select(
+            db
+              .select(
+                insertSelectValues(tasks, {
+                  kind: "storage_cleanup",
+                  payload: {
+                    file_key: a.fileKey,
+                    user_id: a.grant.ownerUserId,
+                    bytes: 0,
+                  },
+                  dedupeKey: contentCleanup(a.id),
+                  availableAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+2 hours')`,
+                }),
+              )
+              .from(credentials)
+              .where(and(eq(credentials.id, slot), live(a))),
+          )
+          .onConflictDoNothing({ target: tasks.dedupeKey }),
+        db
+          .select({ id: credentials.id })
+          .from(credentials)
+          .where(
+            and(
+              eq(credentials.id, slot),
+              eq(credentials.kind, "lms-content-upload"),
+              sql`json(${credentials.payload})=json(${payload})`,
+              exists(source(a.grant, a.snapshot, true)),
+            ),
+          ),
+      ]);
+      return result[2].results.length > 0;
+    },
+    async adopt(a) {
+      checkContentAttempt(a);
+      const token = crypto.randomUUID(),
+        slot = contentSlot(a.snapshot),
+        payload = contentPayload(a);
+      const cleanup = exists(
+        db
+          .select({ id: tasks.id })
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.dedupeKey, contentCleanup(a.id)),
+              eq(tasks.kind, "storage_cleanup"),
+              eq(sql`json_extract(${tasks.payload},'$.file_key')`, a.fileKey),
+              eq(tasks.attempts, 0),
+              isNull(tasks.lockedAt),
+              isNull(tasks.completedAt),
+              isNull(tasks.deadAt),
+              sql`julianday(${tasks.availableAt})>julianday('now')`,
+            ),
+          ),
+      );
+      const result = await runD1Batch(database, [
+        db.insert(receipts).select(
+          db
+            .select(
+              insertSelectValues(receipts, {
+                token,
+                kind: "lms_content_adopt",
+                resourceId: a.snapshot.videoId,
+              }),
+            )
+            .from(source(a.grant, a.snapshot, true).as("source"))
+            .where(and(live(a), cleanup)),
+        ),
+        db
+          .update(videos)
+          .set({
+            file: a.fileKey,
+            uploadHeartbeatAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
+          })
+          .where(and(eq(videos.id, a.snapshot.videoId), gate(token))),
+        // Once canonical, the delayed cleanup retires the former file key instead.
+        db
+          .update(tasks)
+          .set({
+            payload: sql`json_set(${tasks.payload},'$.file_key',${a.snapshot.fileKey})`,
+          })
+          .where(and(eq(tasks.dedupeKey, contentCleanup(a.id)), gate(token))),
+        db
+          .delete(credentials)
+          .where(
+            and(
+              eq(credentials.id, slot),
+              sql`json(${credentials.payload})=json(${payload})`,
+              gate(token),
+            ),
+          ),
+        db
+          .select({ token: receipts.token })
+          .from(receipts)
+          .where(eq(receipts.token, token)),
+        db.delete(receipts).where(eq(receipts.token, token)),
+      ]);
+      return result[4].results.length > 0;
+    },
+    async abandon(a) {
+      checkContentAttempt(a);
+      const original = alias(tasks, "original_cleanup");
+      await runD1Batch(database, [
+        db
+          .insert(tasks)
+          .select(
+            db
+              .select(
+                insertSelectValues(tasks, {
+                  kind: "storage_cleanup",
+                  payload: {
+                    file_key: a.fileKey,
+                    user_id: a.grant.ownerUserId,
+                    bytes: 0,
+                  },
+                  dedupeKey: "lms-content-abandon:" + a.id,
+                }),
+              )
+              .from(original)
+              .where(
+                and(
+                  eq(original.dedupeKey, contentCleanup(a.id)),
+                  eq(original.kind, "storage_cleanup"),
+                  eq(
+                    sql`json_extract(${original.payload},'$.file_key')`,
+                    a.fileKey,
+                  ),
+                  notExists(
+                    db
+                      .select({ id: videos.id })
+                      .from(videos)
+                      .where(eq(videos.file, a.fileKey)),
+                  ),
+                ),
+              ),
+          )
+          .onConflictDoNothing({ target: tasks.dedupeKey }),
+        db
+          .delete(credentials)
+          .where(
+            and(
+              eq(credentials.id, contentSlot(a.snapshot)),
+              eq(credentials.kind, "lms-content-upload"),
+              sql`json(${credentials.payload})=json(${contentPayload(a)})`,
+            ),
+          ),
+      ]);
+    },
+    async confirm(grant, snapshot, objectVerified) {
+      const message = buildJobMessage(JOB_TRANSCRIBE_VIDEO, {
+          video_id: snapshot.videoId,
+        }),
+        dedupe = "job:" + message.job_id;
+      const result = await runD1Batch<{ id: number; status: string }>(
+        database,
+        [
+          db.insert(tasks).select(
+            db
+              .select(
+                insertSelectValues(tasks, {
+                  kind: "sqs_job",
+                  payload: { message },
+                  dedupeKey: dedupe,
+                }),
+              )
+              .from(source(grant, snapshot, true).as("source"))
+              .where(sql`${Number(objectVerified)}=1`),
+          ),
+          db
+            .update(videos)
+            .set({ status: "pending", errorMessage: "" })
+            .where(and(eq(videos.id, snapshot.videoId), sql`changes()=1`)),
+          db
+            .select({ id: tasks.id })
+            .from(tasks)
+            .where(eq(tasks.dedupeKey, dedupe)),
+          source(grant, snapshot),
+        ],
+      );
+      const task = result[2].results[0];
+      if (task)
+        return {
+          status: "queued",
+          job: {
+            videoId: snapshot.videoId,
+            taskId: Number(task.id),
+            jobId: message.job_id,
+          },
+        };
+      const status = result[3].results[0]?.status;
+      return typeof status === "string" &&
+        ["pending", "processing", "indexing", "completed", "error"].includes(
+          status,
+        )
+        ? { status: "already" }
+        : { status: "stale" };
+    },
+  };
 }

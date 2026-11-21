@@ -1,96 +1,82 @@
-import { failedAiReservation, quotaAllowsNext } from '../../application/quota-policy';
-import { quotaSqlComparison } from '../quota-policy-sql';
-import { withClient } from "../../db/pool";
+import { and, eq, sql } from "drizzle-orm";
+import { users } from "../../db/schema";
+import {
+  failedAiReservation,
+  quotaAllowsNext,
+} from "../../application/quota-policy";
+import { quotaDrizzleComparison } from "../quota-policy-sql";
+import { withDb } from "../../db/pool";
 import type { Bindings } from "../../types/bindings";
-import type { AiAnswerReservation, AiAnswerReservationResult,AiQuotaRepository } from "../contracts/ai-quota";
+import type {
+  AiAnswerReservation,
+  AiAnswerReservationResult,
+  AiQuotaRepository,
+} from "../contracts/ai-quota";
 
-const MONTHLY_USAGE_IS_STALE_SQL = `(
-  usage_period_start IS NULL
-  OR date_trunc('month', usage_period_start, 'UTC')
-     <> date_trunc('month', now(), 'UTC')
-)`;
-
-const RESERVE_AI_ANSWER_SQL = `UPDATE users
-   SET used_ai_answers = CASE
-         WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN 1
-         ELSE used_ai_answers + 1
-       END,
-       used_processing_seconds = CASE
-         WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN 0
-         ELSE used_processing_seconds
-       END,
-       usage_period_start = CASE
-         WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN now()
-         ELSE usage_period_start
-       END
- WHERE id = $1
-   AND is_over_quota IS NOT TRUE
-   AND ${quotaAllowsNext(`CASE WHEN ${MONTHLY_USAGE_IS_STALE_SQL} THEN 0 ELSE used_ai_answers END`, 'ai_answers_limit', quotaSqlComparison)}
- RETURNING usage_period_start::text AS usage_period_start,
-           plan_code, quota_source`;
-
-/**
- * LLM 呼び出し前に AI 回答枠を予約する。
- *
- * 上限判定・UTC 月替わりリセット・加算を単一の条件付き UPDATE にまとめることで、
- * 同じ所有者に対する並行リクエストでも上限を超えて予約されないようにする。
- */
+const stale = sql`(${users.usagePeriodStart} IS NULL OR date_trunc('month',${users.usagePeriodStart},'UTC')<>date_trunc('month',now(),'UTC'))`;
+const used = sql`CASE WHEN ${stale} THEN 0 ELSE ${users.usedAiAnswers} END`;
+/** Reserve the quota with one guarded update so concurrent requests cannot exceed it. */
 export async function reserveAiAnswerUsage(
   env: Bindings,
   userId: string,
 ): Promise<AiAnswerReservationResult> {
-  return withClient(env, async (client) => {
-    const reserved = await client.query<{ usage_period_start: string; plan_code: string; quota_source: string }>(
-      RESERVE_AI_ANSWER_SQL,
-      [userId],
+  return withDb(env, async (db) => {
+    const [reservation] = await db
+      .update(users)
+      .set({
+        usedAiAnswers: sql`CASE WHEN ${stale} THEN 1 ELSE ${users.usedAiAnswers}+1 END`,
+        usedProcessingSeconds: sql`CASE WHEN ${stale} THEN 0 ELSE ${users.usedProcessingSeconds} END`,
+        usagePeriodStart: sql`CASE WHEN ${stale} THEN now() ELSE ${users.usagePeriodStart} END`,
+      })
+      .where(
+        and(
+          eq(users.id, userId),
+          sql`${users.isOverQuota} IS NOT TRUE`,
+          quotaAllowsNext(used, users.aiAnswersLimit, quotaDrizzleComparison),
+        ),
+      )
+      .returning({
+        usagePeriodStart: sql<string>`${users.usagePeriodStart}::text`,
+        planCode: users.planCode,
+        quotaSource: users.quotaSource,
+      });
+    if (reservation) return { reservation: { userId, ...reservation } };
+    const [state] = await db
+      .select({ overQuota: users.isOverQuota, limit: users.aiAnswersLimit })
+      .from(users)
+      .where(eq(users.id, userId));
+    return failedAiReservation(
+      state
+        ? {
+            overQuota: Boolean(state.overQuota),
+            limit: state.limit === null ? null : Number(state.limit),
+          }
+        : null,
     );
-
-    const reservation = reserved.rows[0];
-    if (reservation) {
-      return {
-        reservation: {
-          userId,
-          usagePeriodStart: reservation.usage_period_start,
-          planCode: reservation.plan_code,
-          quotaSource: reservation.quota_source,
-        },
-      };
-    }
-
-    const state = await client.query<{
-      is_over_quota: boolean;
-      ai_answers_limit: number | null;
-    }>(
-      `SELECT is_over_quota, ai_answers_limit
-         FROM users
-        WHERE id = $1`,
-      [userId],
-    );
-    const row = state.rows[0];
-    return failedAiReservation(row ? { overQuota: Boolean(row.is_over_quota), limit: row.ai_answers_limit === null ? null : Number(row.ai_answers_limit) } : null);
   });
 }
-
-/**
- * 回答を利用者へ完了できなかった場合に予約を返却する。
- * 月替わり後の新しい利用期間を誤って減算しないよう、予約時の期間も条件に含める。
- */
+/** Fence the return by the original period so it cannot debit a new month. */
 export async function releaseAiAnswerReservation(
   env: Bindings,
   reservation: AiAnswerReservation,
 ): Promise<void> {
-  return withClient(env, async (client) => {
-    await client.query(
-      `UPDATE users
-          SET used_ai_answers = GREATEST(used_ai_answers - 1, 0)
-        WHERE id = $1
-          AND usage_period_start = $2::timestamptz`,
-      [reservation.userId, reservation.usagePeriodStart],
-    );
+  await withDb(env, async (db) => {
+    await db
+      .update(users)
+      .set({ usedAiAnswers: sql`greatest(${users.usedAiAnswers}-1,0)` })
+      .where(
+        and(
+          eq(users.id, reservation.userId),
+          sql`${users.usagePeriodStart}=${reservation.usagePeriodStart}::timestamptz`,
+        ),
+      );
   });
 }
-
-
-export function createPostgresAiQuotaRepository(env:Bindings):AiQuotaRepository {
-  return {reserve:userId=>reserveAiAnswerUsage(env,userId),release:reservation=>releaseAiAnswerReservation(env,reservation)};
+export function createPostgresAiQuotaRepository(
+  env: Bindings,
+): AiQuotaRepository {
+  return {
+    reserve: (userId) => reserveAiAnswerUsage(env, userId),
+    release: (reservation) => releaseAiAnswerReservation(env, reservation),
+  };
 }

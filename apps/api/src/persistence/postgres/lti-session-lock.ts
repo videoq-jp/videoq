@@ -1,27 +1,58 @@
-import { sql, type SQL } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import type pg from 'pg';
-import type { Db } from '../../db/pool';
-import { ApiError } from '../../shared/errors';
+import { users, ltiCredentials } from "../../db/schema";
+import { QueryBuilder } from "drizzle-orm/pg-core";
+import { materializedCtesSQL } from "../../db/materialized-cte";
+import { sql, and, eq, type SQL } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import type pg from "pg";
+import type { Db } from "../../db/pool";
+import { ApiError } from "../../shared/errors";
 
-import {ltiSessionProof,type LtiSessionProof} from '../../shared/lti-session-proof';
+import {
+  ltiSessionProof,
+  type LtiSessionProof,
+} from "../../shared/lti-session-proof";
 
 /** Owner first, then session: erasure takes the same owner lock exclusively. */
-export function ltiSessionRows(ownerUserId: string, proof: LtiSessionProof): SQL {
+export function ltiSessionRows(
+  ownerUserId: string,
+  proof: LtiSessionProof,
+): SQL {
   ltiSessionProof(proof, proof.sessionHash);
-  return sql`WITH owner AS MATERIALIZED (
-    SELECT id FROM users WHERE id=${ownerUserId} FOR SHARE
-  ) SELECT c.id FROM owner JOIN lti_credentials c ON c.id=${proof.sessionHash}
-    WHERE c.kind='session' AND c.expires_at>now()
-      AND c.payload->>'registrationId'=${proof.registrationId}
-      AND c.payload->>'subjectHash'=${proof.subjectHash} FOR SHARE OF c`;
+  const qb = new QueryBuilder();
+  const ownerRows = qb
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, ownerUserId))
+    .for("share");
+  const owner = qb.$with("owner").as(ownerRows);
+  const session = qb
+    .select({ id: ltiCredentials.id })
+    .from(owner)
+    .innerJoin(ltiCredentials, eq(ltiCredentials.id, proof.sessionHash))
+    .where(
+      and(
+        eq(ltiCredentials.kind, "session"),
+        sql`${ltiCredentials.expiresAt}>now()`,
+        sql`${ltiCredentials.payload}->>'registrationId'=${proof.registrationId}`,
+        sql`${ltiCredentials.payload}->>'subjectHash'=${proof.subjectHash}`,
+      ),
+    )
+    .for("share", { of: ltiCredentials });
+  return materializedCtesSQL([{ name: "owner", source: ownerRows }], session);
 }
 
 /** Call within the write/read transaction before course or conversation locks. */
-export async function lockLtiDataSessionWithDb(db: Db, ownerUserId: string, proof?: LtiSessionProof) {
+export async function lockLtiDataSessionWithDb(
+  db: Db,
+  ownerUserId: string,
+  proof?: LtiSessionProof,
+) {
   if (!proof) return;
   if (!(await db.execute(ltiSessionRows(ownerUserId, proof))).rows.length)
-    throw new ApiError(403, 'FORBIDDEN', 'The Moodle session is unavailable.');
+    throw new ApiError(403, "FORBIDDEN", "The Moodle session is unavailable.");
 }
-export const lockLtiDataSession = (client: pg.Client, ownerUserId: string, proof?: LtiSessionProof) =>
-  lockLtiDataSessionWithDb(drizzle(client), ownerUserId, proof);
+export const lockLtiDataSession = (
+  client: pg.Client,
+  ownerUserId: string,
+  proof?: LtiSessionProof,
+) => lockLtiDataSessionWithDb(drizzle(client), ownerUserId, proof);

@@ -1,13 +1,69 @@
-import type {PrivacyAuthorizationRepository,PrivacyRegistration} from '../contracts/privacy-authorization-repository';
-export function createD1PrivacyAuthorizationRepository(database:D1Database):PrivacyAuthorizationRepository{return {
- findInstallation:identity=>database.prepare(`SELECT id,owner_user_id AS ownerUserId,issuer,client_id AS clientId,deployment_id AS deploymentId,jwks_url AS jwksUrl
-  FROM lms_installations WHERE issuer=? AND client_id=? AND deployment_id=?`).bind(identity.issuer,identity.clientId,identity.deploymentId).first<PrivacyRegistration>(),
- async consumeNonce(r,nonce,action,expiresAt){
-  const row=await database.prepare(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
-   SELECT ?,'lti-privacy-nonce',?,? FROM lms_installations i JOIN users owner ON owner.id=i.owner_user_id
-   WHERE i.id=? AND i.owner_user_id=? AND i.issuer=? AND i.client_id=? AND i.deployment_id=? AND i.jwks_url=?
-    AND julianday(?)>julianday('now') ON CONFLICT DO NOTHING RETURNING id`)
-   .bind(nonce,JSON.stringify({installationId:r.id,action}),expiresAt.toISOString(),r.id,r.ownerUserId,r.issuer,r.clientId,r.deploymentId,r.jwksUrl,expiresAt.toISOString()).first();
-  return Boolean(row);
- },
-};}
+import { and, eq, sql } from "drizzle-orm";
+import { createD1Connection } from "../../db/d1/connection";
+import { insertSelectFields } from "../../db/d1/query-builders";
+import {
+  lmsInstallations,
+  ltiCredentials,
+  users,
+} from "../../db/schema/sqlite";
+import type { PrivacyAuthorizationRepository } from "../contracts/privacy-authorization-repository";
+export function createD1PrivacyAuthorizationRepository(
+  database: D1Database,
+): PrivacyAuthorizationRepository {
+  const db = createD1Connection(database);
+  return {
+    async findInstallation(identity) {
+      return (
+        (await db
+          .select({
+            id: lmsInstallations.id,
+            ownerUserId: lmsInstallations.ownerUserId,
+            issuer: lmsInstallations.issuer,
+            clientId: lmsInstallations.clientId,
+            deploymentId: lmsInstallations.deploymentId,
+            jwksUrl: lmsInstallations.jwksUrl,
+          })
+          .from(lmsInstallations)
+          .where(
+            and(
+              eq(lmsInstallations.issuer, identity.issuer),
+              eq(lmsInstallations.clientId, identity.clientId),
+              eq(lmsInstallations.deploymentId, identity.deploymentId),
+            ),
+          )
+          .get()) ?? null
+      );
+    },
+    async consumeNonce(r, nonce, action, expiresAt) {
+      const rows = await db
+        .insert(ltiCredentials)
+        .select(
+          db
+            .select(
+              insertSelectFields(ltiCredentials, {
+                id: sql`${nonce}`,
+                kind: sql`'lti-privacy-nonce'`,
+                payload: sql`${JSON.stringify({ installationId: r.id, action })}`,
+                expiresAt: sql`${expiresAt.toISOString()}`,
+              }),
+            )
+            .from(lmsInstallations)
+            .innerJoin(users, eq(users.id, lmsInstallations.ownerUserId))
+            .where(
+              and(
+                eq(lmsInstallations.id, r.id),
+                eq(lmsInstallations.ownerUserId, r.ownerUserId),
+                eq(lmsInstallations.issuer, r.issuer),
+                eq(lmsInstallations.clientId, r.clientId),
+                eq(lmsInstallations.deploymentId, r.deploymentId),
+                eq(lmsInstallations.jwksUrl, r.jwksUrl),
+                sql`julianday(${expiresAt.toISOString()})>julianday('now')`,
+              ),
+            ),
+        )
+        .onConflictDoNothing()
+        .returning({ id: ltiCredentials.id });
+      return rows.length === 1;
+    },
+  };
+}
