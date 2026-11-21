@@ -107,18 +107,6 @@ variable "worker_visual_enabled" {
   default     = true
 }
 
-variable "openrouter_federation_policy_id" {
-  description = "OpenRouter inference federation policy for the Lambda worker (non-secret); empty retains explicit key compatibility"
-  type        = string
-  default     = ""
-}
-
-variable "openrouter_federation_audience" {
-  description = "Audience registered in the OpenRouter workload identity policy"
-  type        = string
-  default     = "https://openrouter.ai"
-}
-
 variable "worker_media_maximum_concurrency" {
   type    = number
   default = 10
@@ -154,7 +142,7 @@ variable "worker_groups" {
 }
 
 variable "worker_whisper_backend" {
-  description = "Hosted transcription provider. Roll back to openrouter only after confirming its workload identity is healthy."
+  description = "Hosted transcription provider. Restore matching endpoint, model, IAM audience and boundary together when changing providers."
   type        = string
   default     = "workers-ai"
 

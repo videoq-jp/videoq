@@ -584,7 +584,7 @@ Check both Cloudflare Workers logs and Lambda CloudWatch logs.
 The original `aws_lambda_function.worker`, `aws_sqs_queue.main`, and their names
 remain unchanged for media and old mixed messages. `worker_groups.tf` adds search
 and account queues/functions with individual DLQs and alarms. The three functions
-share the existing worker role (and its OpenRouter subject), SSM parameters and ECR
+share the existing worker role (and its AWS workload identity subject), SSM parameters and ECR
 image. No database migration is required by this split.
 
 Apply in this order to avoid sending jobs before their consumers are ready:

@@ -65,7 +65,7 @@ workersAiRoutes.post("/embeddings", bodyLimit({ maxSize: 512 * 1024,
   const { texts, input_type } = body as Record<string, unknown>;
   if (!Array.isArray(texts) || !texts.length || texts.length > 32
     || texts.some(text => typeof text !== "string" || !text.trim() || text.length > 8192)
-    || !["query", "document"].includes(String(input_type))) return c.json({ error: "Invalid embedding input" }, 400);
+    || (input_type !== "query" && input_type !== "document")) return c.json({ error: "Invalid embedding input" }, 400);
   const prefix = input_type === "query" ? "task: search result | query: " : "title: none | text: ";
   try {
     const result = await c.env.AI!.run(WORKERS_EMBEDDING_MODEL, {

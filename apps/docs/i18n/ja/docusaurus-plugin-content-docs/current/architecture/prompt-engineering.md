@@ -61,9 +61,9 @@ Q&Aは、必要に応じてツールで情報を取得し、回答を組み立�
 
 | 項目 | 現在の実装 |
 |---|---|
-| 回答・画像モデル | `LLM_MODEL`。ホスト型の構成は `openai/gpt-6-luna`（同じGPT-6 Lunaモデル） |
-| 回答の接続先 | `LLM_BASE_URL`（未設定なら `OPENAI_BASE_URL`）のChat Completions。ホスト型の構成は `https://openrouter.ai/api/v1` |
-| 推論の設定 | `gpt-6-luna` または `openai/gpt-6-luna` では `none`。Chat Completionsでのツール呼び出しに対応するため |
+| 回答・画像モデル | `LLM_MODEL`。クラウドは `@cf/google/gemma-4-26b-a4b-it`、社内サービスは `videoq-chat` |
+| 回答の接続先 | クラウドはAI Binding。社内サービスは `LLM_BASE_URL`（未設定なら `OPENAI_BASE_URL`）のChat Completions |
+| 推論の設定 | 標準Gemma構成はthinking無効。ツール判断と最終JSON生成を分離 |
 | 生成設定と出力上限 | temperatureは `0`。構造化出力を含め、モデル呼び出し1回あたり最大1,024出力トークン |
 | リクエストの期限 | 講座RAGは非ストリーミングが2分、ストリーミングが5分 |
 | プロバイダーの自動再試行 | APIのチャットモデルでは無効 |
@@ -73,7 +73,7 @@ Q&Aは、必要に応じてツールで情報を取得し、回答を組み立�
 
 回答生成と画像確認に共通のモデルをAPIの `LLM_MODEL` で設定します。ツール呼び出しと厳密なJSON出力に加え、映像確認を有効にする場合は画像入力への対応が必要です。APIとworkerで共用する検索モデルの設定は[埋め込み](../guides/embeddings.md)を参照してください。
 
-モデルの出典には[GPT-6 Lunaの公式モデル資料](../reference/ai-references.md#gpt-6-luna)、または実際に設定したモデルの資料を引用します。
+モデルの出典は[Gemma 4のWorkers AIモデル資料](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/)と、実際に固定した社内モデルの版を記録します。
 
 ## 構造化回答・引用と権限
 
@@ -149,7 +149,7 @@ Chat Completionsの互換処理として残すのは、ツール選択と回答�
 
 日本語・英語で、登録情報だけの質問、授業内容の質問、両方が必要な質問を試します。回答だけでなく、使ったツール、引用先、講座外の情報が混ざらないことを確認します。
 
-`LLM_MODEL` は回答や生成に使うモデル、`EMBEDDING_MODEL` は検索用のモデルです。埋め込みは1536次元固定で、API・workerのモデルも揃えます。モデル変更には既存ベクトルの再生成が必要です。[設定と制約](../guides/embeddings.md)を参照してください。
+`LLM_MODEL` は回答や生成に使うモデル、`EMBEDDING_MODEL` は検索用のモデルです。標準のEmbeddingGemma 2は768次元で、旧1536次元とは別の索引です。API・workerのモデルと前処理を揃えます。モデル変更には既存ベクトルの再生成が必要です。[設定と制約](../guides/embeddings.md)を参照してください。
 
 実モデルのテスト方法と料金が発生する条件は[テストと確認コマンド](../guides/testing.md)を参照してください。
 

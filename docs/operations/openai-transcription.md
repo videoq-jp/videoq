@@ -57,11 +57,34 @@ space. Existing transcripts are retained.
 1. Merge a protected PR with passing required checks. Deploy native Gemma chat,
    the federation routes, worker adapters and both Vectorize bindings. Initially
    retain legacy 1536d query configuration while the new index is populated.
+   Before inserting vectors, create the 768d cosine index
+   `videoq-prod-scenes-embeddinggemma2-768` and its metadata indexes:
+   `user_id` (string), `video_id` (number), and `vector_id` (string).
+   Synchronization verifies ANN visibility using all three filters; creating
+   only the vector index cannot establish readiness.
+
+   The existing deployment guard rejects adding or replacing a Vectorize binding
+   through ordinary CD. Before this first deployment, attach
+   `SCENE_VECTORIZE_768` to the approved new index as a controlled preparation
+   operation. Snapshot current settings, confirm the latest uploaded version is
+   the sole active version, and use the
+   [settings PATCH API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/script_and_version_settings/methods/edit/)
+   with `type: inherit` for every existing binding plus the one new Vectorize
+   binding. Verify that all previous bindings (including secrets), DB identity,
+   query model/profile and other settings are unchanged. Keep 1536d queries
+   active. If the binding already matches, no preparation write is needed; a
+   mismatched existing binding requires its own controlled migration. Preserve
+   the deployment guard, then run or retry ordinary CD. Verify that the generated
+   upload-only configuration retains `ai: { binding: "AI" }`; the raw Wrangler
+   configuration alone does not prove that the binding reached production.
 2. Confirm API CD and all three worker images completed. Review the independent
    worker-boundary plan (only the exact audience changes), then approve the
    production Terraform switch to Workers AI transcription and 768d documents.
 3. Snapshot completed-video IDs/revisions. Enqueue normal individual
    `reindex_video_transcript` jobs on the search queue using stable job IDs.
+   Start with one completed canary video and verify federation, embeddings and
+   768d vector delivery before scheduling the remaining videos with spacing
+   below the shared inference rate limit.
    The full-reindex dispatcher deliberately rejects a configuration that differs
    from the query configuration during staging; do not weaken that guard.
 4. Verify every current completed transcript has a published 768d head and that

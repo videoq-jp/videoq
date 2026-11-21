@@ -34,8 +34,8 @@ WebとAPIは `packages/trpc` で操作名・入力・出力の型を共有しま
 |---|---|---|
 | 画面 | nginxの静的ビルド、またはVite | Cloudflare Workers Static Assets |
 | API | Wranglerの開発サーバー | Cloudflare Workers |
-| DB | PostgreSQL + pgvector | Neon PostgreSQL + pgvector |
-| APIからDBへの接続 | ローカル接続文字列 | Hyperdrive |
+| DB | PostgreSQL + pgvector | Cloudflare D1 + Vectorize |
+| APIからDBへの接続 | ローカル接続文字列 | D1 / Vectorize Binding |
 | 動画・字幕などの保管 | Garage | Cloudflare R2 |
 | ジョブキュー | ElasticMQ | Amazon SQS |
 | Python worker | キューを継続的に取得するコンテナ | SQSを契機に動くAWS Lambda |
@@ -47,23 +47,26 @@ WebとAPIは `packages/trpc` で操作名・入力・出力の型を共有しま
 
 ```mermaid
 flowchart TB
-    User[ブラウザ] --> Web[Cloudflare Workers Static Assets]
+    User[Browser] --> Web[Cloudflare Workers Static Assets]
     User --> API[Cloudflare Workers / Hono]
-    API --> HD[Hyperdrive] --> DB[(Neon PostgreSQL)]
-    API --> R2[(動画・字幕: R2)]
+    API --> DB[(Cloudflare D1)]
+    API --> Vectors[(Vectorize)]
+    API --> R2[(Cloudflare R2)]
     API --> DO[Durable Objects]
     API --> Queue[Amazon SQS]
     Queue --> Worker[Python / AWS Lambda]
-    Worker --> DB
     Worker --> R2
-    API --> AI[AIサービス]
-    Worker --> AI
+    Worker -->|Internal persistence API|API
+    Worker -->|GetWebIdentityToken|STS[AWS STS]
+    STS -->|Short-lived JWT|Worker
+    Worker -->|JWT for inference|API
+    API -->|AI binding|AI[Workers AI]
     API --> Mail[Mailgun]
 ```
 
-APIはHyperdrive経由、Python workerはPostgreSQL接続で同じDBを利用します。DBの列を変更するときは両方への影響を確認します。
+クラウドのAPIはD1・VectorizeのBindingを使い、Lambdaは内部API経由でデータを保存します。オンプレはPostgreSQLとpgvectorを使います。
 
-ホスト型のAI呼び出しは、APIとworkerのどちらもOpenRouterを経由します。本番の認証にはAWSのワークロードIDフェデレーションを使います。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照してください。オンプレでDurable Objectsとホスト型サービスを置き換える構成は[オンプレで動かす](../guides/on-premises.md)で説明しています。
+回答と質問の埋め込みはAPIのAI Binding、Lambdaの文字起こし・文書埋め込みはAWSの短期JWTでAPI Workerへ認証してから同じBindingを使います。OpenRouterとAI Gatewayは経由しません。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)と[オンプレ構成](../guides/on-premises.md)を参照してください。
 
 ## Durable Objectsの役割
 
