@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 import unittest
 from unittest.mock import MagicMock, patch
-from rotate_api_aws_key import rotate, verify_smoke, require_permissions, patch_worker, smoke_log, USER_ARN, JOURNAL, RotationGuardError
+from rotate_api_aws_key import rotate, verify_smoke, require_permissions, patch_worker, smoke_log, USER_ARN, API_POLICY, JOURNAL, RotationGuardError
 
 ROOT = Path(__file__).resolve().parents[2]
 OLD = 'AKIA'+'O'*16
@@ -22,7 +22,8 @@ class RotationTests(unittest.TestCase):
         self.journal = None
         self.session, self.iam, self.ssm = MagicMock(), MagicMock(), MagicMock()
         self.session.client.side_effect = lambda name: self.iam if name == 'iam' else self.ssm
-        self.documents = {'sqs': json.loads((ROOT/'infra/iam/videoq-api-sqs-send.json').read_text())}
+        self.documents = {'sqs': json.loads((ROOT/'infra/iam/videoq-api-sqs-send.json').read_text()),
+                          'sts': json.loads((ROOT/'infra/iam/videoq-openrouter-federation.json').read_text())}
         self.iam.get_user.return_value = {'User': {'Arn': USER_ARN}}
         def paginate(name, **kwargs):
             return [{'AccessKeyMetadata': [{'AccessKeyId': key, 'Status': status} for key, status in self.keys.items()]}] if name == 'list_access_keys' else [{'PolicyNames': list(self.documents)}] if name == 'list_user_policies' else []
@@ -52,12 +53,8 @@ class RotationTests(unittest.TestCase):
         self.ssm.delete_parameter.side_effect = delete
         self.env = {'CLOUDFLARE_ACCOUNT_ID': 'a'*32, 'CLOUDFLARE_API_TOKEN': 'PRIVATE_CF', 'GH_TOKEN': 'PRIVATE_GH', 'GITHUB_SHA': 'a'*40}
         self.settings = {'success': True, 'result': {'bindings': [
-            {'type': 'plain_text', 'name': key, 'text': value} for key, value in {
-                'AI_PROVIDER': 'workers-ai', 'LLM_PROVIDER': 'workers-ai',
-                'LLM_MODEL': '@cf/google/gemma-4-26b-a4b-it',
-                'EMBEDDING_PROFILE': 'embeddinggemma2',
-                'EMBEDDING_MODEL': '@cf/google/embeddinggemma-2',
-            }.items()] + [{'type': 'ai', 'name': 'AI'}]}}
+            {'type': 'plain_text', 'name': 'OPENROUTER_FEDERATION_POLICY_ID', 'text': API_POLICY},
+            {'type': 'plain_text', 'name': 'OPENAI_BASE_URL', 'text': 'https://openrouter.ai/api/v1'}]}}
         return contextlib.ExitStack()
 
     def patches(self, stack):
@@ -128,40 +125,6 @@ class RotationTests(unittest.TestCase):
                 rotate(self.session, self.env, 'install')
             self.iam.create_access_key.assert_not_called()
             self.patch_worker.assert_not_called()
-
-    def test_retired_inference_permission_stops_rotation_before_key_creation(self):
-        with self.setup() as stack:
-            self.patches(stack)
-            self.documents['retired'] = {'Statement': [{'Effect': 'Allow',
-                'Action': 'sts:GetWebIdentityToken', 'Resource': '*', 'Condition': {
-                    'ForAllValues:StringEquals': {'sts:IdentityTokenAudience': ['https://openrouter.ai']},
-                    'StringEquals': {'sts:SigningAlgorithm': 'RS256'},
-                    'NumericLessThanEquals': {'sts:DurationSeconds': '900'},
-                }}]}
-            with self.assertRaisesRegex(RotationGuardError, 'LEAST_PRIVILEGE'):
-                rotate(self.session, self.env, 'install')
-            self.iam.create_access_key.assert_not_called()
-
-    def test_legacy_or_incomplete_inference_configuration_prevents_rotation(self):
-        for extra in [
-            {'type': 'plain_text', 'name': 'OPENROUTER_FEDERATION_POLICY_ID', 'text': 'old'},
-            {'type': 'plain_text', 'name': 'OPENAI_BASE_URL', 'text': 'https://openrouter.ai/api/v1'},
-            {'type': 'plain_text', 'name': 'EMBEDDING_PROVIDER', 'text': 'openai'},
-            {'type': 'plain_text', 'name': 'EMBEDDING_PROFILE', 'text': 'openai'},
-            {'type': 'secret_text', 'name': 'OPENAI_API_KEY'},
-            None,
-        ]:
-            with self.subTest(extra=extra), self.setup() as stack:
-                self.patches(stack)
-                bindings = self.settings['result']['bindings']
-                if extra is None:
-                    bindings[:] = [b for b in bindings if b['type'] != 'ai']
-                else:
-                    bindings.append(extra)
-                with self.assertRaisesRegex(RotationGuardError, 'NATIVE_WORKERS_AI'):
-                    rotate(self.session, self.env, 'install')
-                self.iam.create_access_key.assert_not_called()
-                self.patch_worker.assert_not_called()
 
     def test_inherited_group_policies_require_review(self):
         with self.setup() as stack:

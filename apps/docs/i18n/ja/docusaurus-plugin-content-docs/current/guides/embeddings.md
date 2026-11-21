@@ -1,73 +1,102 @@
 ---
 title: 埋め込みの設定と検証
-description: EmbeddingGemma 2の768次元仕様、旧1536次元プロファイル、診断と移行。
+description: 1536次元固定の仕様、モデル・接続先の設定、診断方法、モデルの整合性。
 ---
 
 # 埋め込みの設定と検証
 
-クラウド版とオンプレ版の標準は、768次元のEmbeddingGemma 2です。APIとPython workerでモデル・プロファイル・前処理を揃えます。旧1536次元の索引は互換性や復旧のため別の領域に保持します。次元数が同じだけでは、同じベクトル空間とは限りません。
-
-| 構成 | 次元数 | 保存先 |
-|---|---|---|
-| Workers AI / `embeddinggemma2` | 768 | D1のシーンとVectorizeの `videoq-prod-scenes-embeddinggemma2-768` |
-| 社内のEmbeddingGemma 2 / `embeddinggemma2` | 768 | PostgreSQLの `scene_embeddings_768.embedding vector(768)` |
-| 明示的な旧 `openai` プロファイル | 1536 | PostgreSQLの `scene_embeddings.embedding vector(1536)` または保持中の旧クラウド索引 |
+VideoQはシーンの埋め込みを `scene_embeddings.embedding vector(1536)` に保存します。API・Python workerの次元数は定数 `EMBEDDING_DIMENSIONS = 1536` で固定です。API・worker は同じ固定の保存形式と出力条件を検証します。
 
 ## 外部または社内の接続先を選ぶ
 
-クラウドAPIはCloudflareのAI Bindingを使います。
+埋め込みは OpenAI 互換 API に統一しています。標準設定は次のとおりです。
 
 ```dotenv
-AI_PROVIDER=workers-ai
-EMBEDDING_PROFILE=embeddinggemma2
-EMBEDDING_MODEL=@cf/google/embeddinggemma-2
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+EMBEDDING_MODEL=openai/text-embedding-3-small
 ```
 
-LambdaはAWSが発行する短期JWTを取得し、API Workerの固定の埋め込み経路を呼び出します。Cloudflareの推論キー、OpenRouter、AI Gatewayは使いません。[本番切り替え手順](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照してください。
-
-社内のvLLMサービスでは、APIとworkerの両方を設定します。
+API・worker の両方に `OPENROUTER_API_KEY` を設定します。モデルは1536次元の OpenAI text-embedding-3-small のままで、OpenRouter の名前空間を付けただけでは再索引は不要です。社内の llama.cpp／vLLM も同じ形式を使い、接続先とモデル名を明示します。
 
 ```dotenv
-AI_PROVIDER=openai
-EMBEDDING_PROFILE=embeddinggemma2
-EMBEDDING_MODEL=embeddinggemma-2-f9972ac
 EMBEDDING_BASE_URL=http://embedding.intranet:8000/v1
 EMBEDDING_API_KEY=local-inference
+EMBEDDING_MODEL=gte-qwen2-1.5b-q4km-124fbdad
 ```
 
-ここでの `openai` は互換プロトコルの指定です。仮のキーは社内サーバーの認証を無効にしている場合だけ使い、認証がある場合は実際のキーを実行環境のSecretで渡します。埋め込み専用の接続先を明示してください。Composeからホストの8001番ポートを使う場合は `http://host.docker.internal:8001/v1` です。`PGVECTOR_COLLECTION_NAME` を未設定にすると、プロファイルに対応するテーブルを選びます。チャットと音声には別の設定があります。[ローカル推論](local-inference.md)も参照してください。
+認証不要の社内サーバーでは仮のキーを使います。`EMBEDDING_API_KEY` が空なら
+接続先に応じたキー（OpenRouter なら `OPENROUTER_API_KEY`、それ以外は `OPENAI_API_KEY`）、`EMBEDDING_BASE_URL` が空なら `OPENAI_BASE_URL` を使用するため、
+埋め込みを別サービスに配置する場合は専用 URL を必ず設定してください。
+Compose からホストの 8001 番ポートに接続する例は `http://host.docker.internal:8001/v1` です。
+API・worker のモデル名と接続先を揃えます。LLM と Whisper の設定は独立しています。
+[ローカル AI 推論](local-inference.md)も参照してください。
 
-質問には `task: search result | query: `、文書には `title: none | text: ` を一度だけ付けます。社内のEmbeddingGemma 2にはOpenAIの `dimensions` 上書きを送らず、本来の768次元出力を検証します。Workers AI Bindingでは768次元を明示します。旧llama.cpp/GTE・Qwen構成は `EMBEDDING_PROFILE=openai` と1536次元を明示します。
+`POST /v1/embeddings` に `dimensions: 1536`、`encoding_format: float`、model、input を送ります。
+llama.cpp 構成は元の出力が 1536 次元の gte-Qwen2、vLLM 構成は次元削減を明示した
+Qwen3-Embedding-4B を使います。不正な出力を切り詰めたり、ゼロ埋めしたり、次元指定を
+外して再試行したり、外部サービスへ自動的に切り替えたりしません。
 
-## 検証する内容
+API の形式は固定です。モデル名は前後空白を除去し、大小文字は保持します。空なら
+`text-embedding-3-small` を使うため、社内の実際のモデル名と接続先を明示してください。
 
-PostgreSQLの列宣言は、空のテーブルでも選択したプロファイルの次元数と照合します。列がない、次元数が違う、次元指定のないvector型である場合は失敗します。
+出典は [OpenAI の埋め込み](../reference/ai-references.md#openai-embeddings)、Qwen3 を使う場合は
+[Qwen3 Embedding](../reference/ai-references.md#qwen3-embedding)を参照し、重みの revision、量子化、
+配備したイメージを記録してください。
 
-各ベクトルは指定次元数ちょうどの有限数値で、float32に収まり、ゼロベクトルでないことが必要です。応答の件数とindexも入力に一致させます。切り詰め・ゼロ埋め・異なる空間の混在や、別の提供元への自動切り替えは行いません。
+## 何を検証するか
 
-再索引では保存済みの字幕を変更しません。PostgreSQLでは置換ベクトル生成後に動画単位のトランザクションで行を置き換えます。クラウドでは元データの改訂番号を確認したステージングと不変のベクトルIDを使い、条件付きANN検索で見えることを確認して完了します。保存やupsert受付だけでは検索可能と判定しません。
+シーン検索・索引作成を行う経路では、DBの宣言型が `vector(1536)` か確認します。空テーブルでも検出し、列欠落・別型・次元未固定の `vector` は拒否します。
 
-## APIとworkerの診断を比較する
+生成ベクトルは、1536個の有限な数値からなり、pgvectorのfloat32に収まり、非ゼロである必要があります。文字列や真偽値を数値に変換して受け入れません。バッチ件数とOpenAIの応答indexも入力に対応するか検証します。
 
-オンプレのPostgreSQLでは、モデル・プロファイル・接続先と `DATABASE_URL` を揃え、API・workerのディレクトリからそれぞれ実行します。
+シーン分割も共通の出力検証を使いますが、単独の計算にはDB接続を要求しません。契約違反は正常なフォールバックとして隠さず失敗させます。純粋なデータ削除にはモデル呼び出しや認証情報を要求しません。
+
+全体再索引では、対象動画がある場合にDBの埋め込み契約を確認し、**動画1本分の新しい埋め込みをすべて生成・検証してから、その動画の既存行を変更**します。現在の動画行をロックして字幕を再確認し、1つのトランザクションで行を置き換えます。失敗した動画の旧索引は保持し、ほかの動画は処理を続けます。1件でも失敗すれば再試行のためジョブを失敗にします。最初に全索引を削除する処理や、別途短い入力でモデルを試す処理はありません。必要なら下記の `--probe` 診断を明示的に実行します。原子的な置き換えの単位は動画ごとであり、索引全体ではありません。
+
+## APIとworkerの診断結果を比較する
+
+各実行環境で有効なモデル・接続先と、そのDBを指す `DATABASE_URL` を設定します。以下はAPI・workerそれぞれのディレクトリで実行します。APIは `DOTENV_CONFIG_PATH` でdotenvファイルを指定できます。Pythonはexport済み環境変数を読みます。
 
 ```bash
+# apps/api: 設定とDBの宣言型のみ
 npm run embeddings:check
+# apps/worker: workerをインストールしたPython環境で実行
 python -m worker_python.check_embeddings
 ```
 
-モデルへの短い呼び出しも行う場合は `--probe` を追加します。npmでは `npm run embeddings:check -- --probe` です。APIスクリプトは `DOTENV_CONFIG_PATH`、Pythonはexportされた環境変数を読みます。Node/Pythonのこの診断にはWorkers AI Bindingがないため、クラウド推論はWorker実行環境と通常のLambdaジョブで検証します。
+短い診断入力でモデル出力も検証する場合は、明示的に `--probe` を付けます。外部APIの利用料金が発生する場合があります。
 
-社内のGemma構成では `expected_dimensions: 768` と `db_dimensions: 768` を報告します。APIとworkerのprovider・model・profile・次元数を比較してください。ログに認証情報、接続文字列、入力本文、ベクトル本体は出しません。ヘルスチェックは有料の埋め込み呼び出しを行いません。
+```bash
+# apps/api
+npm run embeddings:check -- --probe
+# apps/worker
+python -m worker_python.check_embeddings --probe
+```
 
-| 内部エラー | 意味 |
+DB検証の成功時は次のようなJSONが出力されます。
+
+```json
+{"event":"embedding.validation","provider":"openai","model":"text-embedding-3-small","expected_dimensions":1536,"db_dimensions":1536}
+```
+
+出力検証では `actual_dimensions` も出ます。両環境の `provider`・`model`・次元の項目を比較してください。診断ログに認証情報・接続文字列・入力文・ベクトル本体は含めません。起動やヘルスチェックだけで有料Embeddingを生成することはありません。
+
+| 内部理由 | 意味 |
 |---|---|
-| `EMBEDDING_CONFIG_INVALID` | プロファイル・接続先の不備、または恒久的な提供元の拒否 |
-| `EMBEDDING_SCHEMA_MISMATCH` | DBの列宣言が選択した仕様と不一致 |
-| `EMBEDDING_OUTPUT_INVALID` | ベクトル値・件数・応答indexが不正 |
+| `EMBEDDING_CONFIG_INVALID` | workerの埋め込み要求に対するHTTP 4xxの拒否（408/429を除く） |
+| `EMBEDDING_SCHEMA_MISMATCH` | DBの宣言型が `vector(1536)` と異なる |
+| `EMBEDDING_OUTPUT_INVALID` | モデル出力・件数・indexが不正 |
 
-回答失敗時は予約した利用枠を戻し、workerは通常の再試行を使います。仕様違反はシーン分割でもエラーにします。タイムアウト・レート制限・サーバー障害では従来の分割フォールバックを使う場合がありますが、提供元は切り替えません。
+Q&Aの公開エラーは既存の分類を維持します。設定・スキーマ不整合はHTTP 400の `VALIDATION_ERROR` またはSSEの `LLM_CONFIGURATION_ERROR`、出力不整合はHTTP 500の `INTERNAL_ERROR` またはSSEの `LLM_PROVIDER_ERROR` です。失敗した回答では予約済み利用枠を解放します。workerは既存の失敗・再試行処理に接続します。
+
+workerは、非対応モデル・次元指定などに対する恒久的な拒否をシーン分割の上位へ伝えます。providerのエラー本文はログに出しません。タイムアウト・利用制限・サーバー障害は、シーン分割の既存フォールバックを維持します。
 
 ## モデルの整合性
 
-社内サービスでは重み・版・量子化・pooling・前処理を記録し、Workers AIでは固定のモデル識別子を記録します。既存環境のモデルを変える場合は、検索対象を再生成してから質問側を切り替えます。クラウドの段階移行では旧1536次元を保持し、768次元の全対象・改訂番号・検索可能性を確認してから質問側を切り替えます。切り詰めやゼロ埋めで旧ベクトルを流用しないでください。
+保存済みベクトルと検索用ベクトルは、同じ重み・revision・量子化・pooling・前処理を
+使う必要があります。同じ次元数でも異なるモデルのベクトルは混在できません。
+保存行にモデルの来歴は記録されないため、採用した設定を記録し、API・worker の診断を照合します。
+
+初期導入時は、選んだモデル設定でデータベースを初期化します。運用中にモデルを変える場合は、
+Q&A とインデックス更新を止めてシーンの埋め込みを再生成し、その後に検索を再開してください。
+現在のアプリケーションとデータベースは、出力を 1536 次元に固定しています。

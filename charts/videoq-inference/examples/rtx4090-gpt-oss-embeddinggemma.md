@@ -1,5 +1,3 @@
-> Legacy recovery profile. New installations use [Gemma 4 with CPU offload](../../../docs/guides/rtx4090.md). The evidence below applies only to GPT-OSS.
-
 # GPT-OSS / EmbeddingGemma 2 / Whisper on one RTX 4090
 
 All three engines use the same signed, digest-pinned vLLM image in separate

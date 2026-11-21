@@ -7,7 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "psycopg[binary]>=3.2",
     "openai>=1.40",
-    "httpx>=0.27",
     # Includes STS GetWebIdentityToken for outbound workload federation.
     "boto3>=1.43.122",
     # Security floor for boto3/requests, also enforced by the Lambda pip build.

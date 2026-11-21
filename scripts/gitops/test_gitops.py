@@ -322,14 +322,6 @@ class ManifestTests(unittest.TestCase):
         self.assertIn('TORCHDYNAMO_DISABLE', serialized)
         self.assertIn('FLEX_ATTENTION', serialized)
         self.assertIn('embeddinggemma-2-f9972ac', serialized)
-        self.assertIn('/models/4d7ae4984b7db7de8f8457170b3f1a419ee76d52', serialized)
-        self.assertIn('videoq-gemma4-4090', serialized)
-        self.assertNotIn('gpt-oss', serialized)
-        chat = by_name['videoq-inference-chat']['spec']['template']['spec']['containers'][0]
-        self.assertEqual(chat['args'][chat['args'].index('--cpu-offload-gb') + 1], '40')
-        config = next(o for o in objects if o['kind'] == 'ConfigMap' and 'VIDEO_VISUAL_ENABLED' in o.get('data', {}))
-        self.assertEqual(config['data']['VIDEO_VISUAL_ENABLED'], 'true')
-        self.assertEqual(config['data']['EMBEDDING_PROFILE'], 'embeddinggemma2')
 
 
 if __name__ == '__main__':

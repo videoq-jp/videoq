@@ -1,9 +1,9 @@
 # Production API AWS key rotation
 
 The API remains on Cloudflare Workers. Its IAM user must have only
-`sqs:SendMessage` on the three production worker queues. The API uses its native
-Workers AI binding for inference and requires no STS inference permission. Lambda
-uses its separate execution role for AWS workload federation.
+`sqs:SendMessage` on `videoq-worker-prod` and the existing audience/RS256/900-second
+restricted `sts:GetWebIdentityToken` statement. No API hosting migration or mTLS
+integration is part of this procedure.
 
 ## One-time administrator setup
 
@@ -12,8 +12,7 @@ administrator must perform these two scoped changes using the normal IAM console
 
 1. On IAM user `videoq-workers-api`, replace only inline policy
    `videoq-sqs-send` with [the send-only policy](../../infra/iam/videoq-api-sqs-send.json).
-   After the native inference cutover is verified, remove the obsolete
-   `videoq-openrouter-federation` inline policy. The runtime sends messages to an
+   Keep `videoq-openrouter-federation` unchanged. The runtime sends messages to an
    explicit queue URL; it does not use `GetQueueUrl` or `GetQueueAttributes`.
 2. On the deployment role referenced by `AWS_GITHUB_ACTIONS_DEPLOY_ROLE_ARN`
    (normally `videoq-github-actions-deploy`), add
@@ -32,7 +31,7 @@ Each write stage is main-only and uses the existing `production-infra` gate.
 Run stages against reviewed current main while no API deployment is in flight.
 
 1. Dispatch `api-aws-key-rotation.yml` with `operation=install`. It verifies the
-   exact send-only user permissions and native Workers AI settings, creates a second
+   exact user permissions and production federation settings, creates a second
    key, persists it in SecureString `/videoq/prod/api-key-rotation`, verifies its
    AWS identity, and patches the two Worker secrets in one Cloudflare operation.
    The old key remains active. A temporary credential journal makes interrupted

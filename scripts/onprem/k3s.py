@@ -148,7 +148,7 @@ class Installer(Lifecycle, LocalAI):
             os.chmod(self.directory, 0o700)
         self.state_path = self.directory / 'installation.json'
         self.state = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
-        self.ai = getattr(args, 'ai', None) or self.state.get('ai', 'openrouter' if self.state else 'local-gpu')
+        self.ai = getattr(args, 'ai', None) or self.state.get('ai', 'openrouter')
         if self.state and self.ai != self.state.get('ai', 'openrouter'):
             raise ValueError('既存データの AI プロファイルは変更できません。埋め込みの再索引を計画するか、新しい導入先を使用してください')
         self.url = public_origin(args.url or self.state.get('url') or input('公開 HTTPS URL（https://公開IPv4 またはドメイン）: ').strip())
@@ -490,7 +490,7 @@ def main():
     parser.add_argument('--cluster', help='クラスタ名（新規導入時の標準: videoq-vps）')
     parser.add_argument('--run-id', help='成功した On-prem Release の実行 ID')
     parser.add_argument('--source-sha', help='任意のソース固定（標準: 成功したリリース実行の SHA を自動取得）')
-    parser.add_argument('--ai', choices=['openrouter', 'local-cpu', 'local-gpu'], help='初回の AI 構成（標準: local-gpu（Gemma 4 / EmbeddingGemma 2 / Whisper）、再開時は記録した構成）')
+    parser.add_argument('--ai', choices=['openrouter', 'local-cpu', 'local-gpu'], help='初回の AI 構成（標準: openrouter、再開時は記録した構成）')
     parser.add_argument('--username')
     parser.add_argument('--email')
     parser.add_argument('--backup', help='更新前の新規バックアップ保存先（標準: 導入先/backups）')

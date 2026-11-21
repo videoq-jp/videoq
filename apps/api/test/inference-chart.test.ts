@@ -16,24 +16,6 @@ withHelm("private local inference deployment", () => {
     expect(result.status, result.stderr).toBe(0);
     return parseAllDocuments(result.stdout).filter(doc => doc.contents).map(doc => doc.toJSON());
   }
-  it("pins the selected multimodal Gemma stack and reserves dedicated GPUs", () => {
-    const resources = render("-f", `${chart}/examples/gemma4-embeddinggemma.yaml`);
-    const deployments = resources.filter(r => r.kind === "Deployment");
-    const chat = deployments.find(r => r.metadata.name.endsWith("-chat")).spec.template.spec;
-    const embedding = deployments.find(r => r.metadata.name.endsWith("-embedding")).spec.template.spec;
-    const whisper = deployments.find(r => r.metadata.name.endsWith("-whisper")).spec.template.spec;
-    expect(chat.nodeSelector["videoq.io/gemma4-vram"]).toBe("80gb");
-    expect(chat.containers[0].args).toEqual(expect.arrayContaining([
-      "/models/4d7ae4984b7db7de8f8457170b3f1a419ee76d52", "--tool-call-parser", "gemma4",
-      "--reasoning-parser", "--default-chat-template-kwargs", '{"enable_thinking":false}',
-    ]));
-    expect(chat.initContainers.find((c: { name: string }) => c.name === "provision-model").env).toContainEqual({ name: "MODEL_REPO", value: "google/gemma-4-26B-A4B-it" });
-    expect(embedding.containers[0].args).toContain("/models/f9972ac22e696a105c482202646979e33e4b5a1e");
-    expect(whisper.initContainers.find((c: { name: string }) => c.name === "provision-model").env).toContainEqual({ name: "MODEL_REPO", value: "openai/whisper-large-v3-turbo" });
-    for (const pod of [chat, embedding, whisper]) {
-      expect(pod.containers.reduce((total: number, c: { resources?: { requests?: Record<string, number> } }) => total + (c.resources?.requests?.["nvidia.com/gpu"] || 0), 0)).toBe(1);
-    }
-  });
   it("keeps models persistent and serves only private APIs with cloud inference disabled", () => {
     const resources = render();
     expect(resources.filter(r => r.kind === "Service")).toHaveLength(3);
@@ -236,26 +218,6 @@ withHelm("private local inference deployment", () => {
     }
     const embedding = deployments.find(d => d.metadata.name.endsWith("-embedding"));
     expect(embedding.spec.template.spec.containers[0].args).toContain('{"matryoshka_dimensions":[1536]}');
-  });
-  it("keeps Gemma 4 on one shared GPU with explicit CPU weight offload", () => {
-    const profile = ["-f", `${chart}/examples/rtx4090-gemma4-embeddinggemma.yaml`];
-    const deployments = render(...profile).filter(d => d.kind === "Deployment");
-    for (const deployment of deployments) {
-      const pod = deployment.spec.template.spec;
-      expect(pod.runtimeClassName).toBe("nvidia");
-      expect(pod.containers.filter(c => c.resources.limits["nvidia.com/gpu.shared"] === 1)).toHaveLength(1);
-      expect(pod.nodeSelector["videoq.io/gemma4-vram"]).toBeUndefined();
-    }
-    const chat = deployments.find(d => d.metadata.name.endsWith("-chat")).spec.template.spec.containers[0];
-    expect(chat.args[chat.args.indexOf("--cpu-offload-gb") + 1]).toBe("40");
-    expect(chat.args.filter((a: string) => a === "--cpu-offload-gb")).toHaveLength(1);
-    expect(chat.args).toContain("gemma4");
-    expect(chat.args).toContain('{"enable_thinking":false}');
-    expect(chat.args).toContain("/models/4d7ae4984b7db7de8f8457170b3f1a419ee76d52");
-    expect(chat.resources.requests.memory).toBe("80Gi");
-    expect(command(...profile, "--set", "servers.chat.cpuOffloadGb=-1").status).not.toBe(0);
-    expect(command(...profile, "--set", "gpuSharing.enabled=false").status).not.toBe(0);
-    expect(command(...profile, "--set", "servers.chat.extraArgs={--cpu-offload-gb,1}").status).not.toBe(0);
   });
   it("keeps GPT-OSS, task-aware EmbeddingGemma and Whisper on one shared CUDA GPU", () => {
     const profile = ["-f", `${chart}/examples/rtx4090-gpt-oss-embeddinggemma.yaml`];

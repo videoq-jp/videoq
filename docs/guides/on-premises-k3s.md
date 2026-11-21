@@ -16,9 +16,9 @@ SSH port forwarding is not required.
 
 ## Prepare
 
-Use a Linux amd64 GPU host for the default Gemma profile (amd64/arm64 for explicit CPU profiles) with Docker Engine, Python 3.9+, curl, tar and
+Use a Linux amd64/arm64 VPS with Docker Engine, Python 3.9+, curl, tar and
 coreutils. Run from this repository's root. Reserve resources for K3s as well
-as the application; new installations default to local Gemma 4 inference. Single-node storage
+as the application; inference defaults to hosted OpenRouter. Single-node storage
 has no host-failure redundancy, so keep data and key backups on another host.
 
 Allow inbound **TCP 443** in the VPS provider's firewall and any host firewall.
@@ -46,7 +46,6 @@ required by this configuration.
 
 ## Install
 
-Prepare the GPU cluster described below before using the default install.
 Replace the URL with your domain or public IPv4:
 
 ```sh
@@ -80,9 +79,7 @@ The smoke test alone does not evaluate AI quality or video-processing capacity.
 ## Choose local AI
 
 Select Whisper, embeddings and LLM together with `--ai` on the initial `install`.
-The default for new installations is `local-gpu`: Gemma 4 26B A4B,
-EmbeddingGemma 2 (768d) and Whisper large-v3-turbo. Existing installations
-retain their recorded profile; embedding changes require a controlled reindex.
+The default is `openrouter`.
 
 ```sh
 # Local CPU inference
@@ -94,21 +91,18 @@ python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai loca
 
 | Option | LLM and embeddings | Whisper |
 |---|---|---|
-| `--ai openrouter` (legacy opt-in) | OpenRouter | OpenRouter |
+| `--ai openrouter` (default) | OpenRouter | OpenRouter |
 | `--ai local-cpu` | llama.cpp CPU images | Signed gateway + whisper.cpp CPU image |
-| `--ai local-gpu` (default) | Gemma 4 + EmbeddingGemma 2 on vLLM | Whisper large-v3-turbo on vLLM |
+| `--ai local-gpu` | Signed NVIDIA vLLM image | Signed gateway + the same NVIDIA vLLM image |
 
 Local profiles do not ask for an OpenRouter key. Inference APIs remain internal;
-the command configures application endpoints and model names. Gemma 4 enables
-visual Q&A; the legacy CPU text profile disables it. Profiles come from the verified release charts and
+the command configures application endpoints and model names and disables visual
+Q&A for these text models. Profiles come from the verified release charts and
 verified image values are applied last. CPU supports amd64/arm64; GPU supports amd64.
 
 Reserve resources for resident models. In the verified recipe, **inference alone**
-requests 5.25 CPUs and 7.5 GiB RAM for CPU, or the rendered requests for the new GPU profile, including three
-allocatable NVIDIA GPUs. Chat requires a dedicated 80 GB GPU with the node
-label `videoq.io/gemma4-vram=80gb`; verify VRAM before labeling it. All GPUs
-exposed on that single node must satisfy the chat VRAM requirement; a label
-cannot select an 80 GB device from a mixed 24/80 GB node. Application, database and cluster resources are
+requests 5.25 CPUs and 7.5 GiB RAM for CPU, or 6.25 CPUs, 24.5 GiB RAM and three
+allocatable NVIDIA GPUs for GPU. Application, database and cluster resources are
 additional. The installer compares the rendered chart's requests with available
 node resources and stops before model downloads if they do not fit. A roughly
 4 GB VPS cannot run this CPU profile.

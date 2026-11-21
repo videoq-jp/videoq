@@ -55,8 +55,7 @@ separate machine; API and video workers call its endpoint.
 
 For a concrete CPU or NVIDIA GPU deployment of local chat, embeddings and
 Whisper, see [local inference](local-inference.md). The default application
-values select private Gemma 4, EmbeddingGemma 2 (768d) and Whisper services;
-install their paired inference profile before starting the application.
+values use hosted OpenRouter; the local overlay is an explicit opt-in.
 
 ## How it differs from Cloudflare
 

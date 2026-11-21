@@ -4,33 +4,26 @@ This optional chart installs selectable private LLM / embedding servers and
 whisper.cpp (CPU) / vLLM (NVIDIA) speech services. llama.cpp is the CPU default; vLLM is the NVIDIA GPU
 option. Install it separately from the application chart so
 model caches, GPU scheduling and application upgrades have separate lifecycles.
-For new local installations, use the explicit **Gemma 4 26B A4B + EmbeddingGemma 2 +
+For new local installations, use the explicit **gpt-oss-20b + EmbeddingGemma 2 +
 Whisper** profile below. The chart's unoverlaid Qwen defaults are retained for
 compatibility with existing CPU deployments.
-The application chart defaults to private Gemma services; apply its paired
-`examples/local-ai-gemma4.yaml` overlay for the recommended GPU installation.
-CPU and older GPU profiles remain explicit compatibility options.
+The application chart's default still uses hosted OpenRouter; explicitly apply its
+`examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml` overlay to select these services.
 
 Mac development runs whisper.cpp natively with Metal, outside this Linux
 Kubernetes chart. Both speech engines use the application's `local` backend;
 see the [Mac setup and common API contract](../../docs/guides/local-inference.md#mac-development-with-whispercpp).
 
-## One RTX 4090 with Gemma 4
+## One RTX 4090
 
-Use `examples/rtx4090-gemma4-embeddinggemma.yaml` with the application overlay
-`charts/videoq/examples/local-ai-gemma4.yaml`. This candidate keeps the selected
-Gemma 4 BF16 model by offloading up to 40 GiB of its weights to CPU RAM.
-It requires **128 GiB host RAM**, one 24 GB RTX 4090 and three shared GPU slots.
-Chat requests 80 GiB RAM (limit 104 GiB), runs one sequence at 8192 tokens and
-uses the `gemma4` parsers. EmbeddingGemma 2 and Whisper retain dedicated CUDA
-processes on the same card. Thinking is disabled and image reading is enabled.
-
-Follow the [updated 4090 runbook](../../docs/guides/rtx4090.md) for hardware checks,
-signed release installation, migration and real-model acceptance. Configuration
-checks do not prove GPU execution or acceptable latency. CPU offload introduces
-per-forward CPU/GPU traffic; this is not an all-in-VRAM profile. The old
-`rtx4090-gpt-oss-embeddinggemma.yaml` remains only for recovery of existing
-installations; its previous acceptance records do not certify Gemma 4.
+For GPT-OSS 20B, text-only EmbeddingGemma 2 (768 dimensions) and Whisper
+large-v3-turbo on the same GPU, use `examples/rtx4090-gpt-oss-embeddinggemma.yaml`.
+The [native one-command installer](../../scripts/onprem/RTX4090.md) also installs
+K3s, backing services, VideoQ and the initial administrator. This configuration
+passed simultaneous residency and real inference smoke checks on Ubuntu 22.04.5
+with about 20 GiB VRAM in use. The CUDA embedding image is built locally and
+pinned by digest, rather than being covered by the signed release attestation.
+See [profile details](examples/rtx4090-gpt-oss-embeddinggemma.md) for limits and evidence.
 
 ### Alternative Qwen candidate
 
@@ -79,7 +72,7 @@ configured site services.
 
 | Recipe | Inference values | Application values | Model placement |
 |---|---|---|---|
-| Recommended | `examples/gemma4-embeddinggemma.yaml` | `charts/videoq/examples/local-ai-gemma4.yaml` | Three dedicated GPUs; chat needs 80 GB VRAM |
+| Recommended | `examples/gpt-oss-embeddinggemma.yaml` | `charts/videoq/examples/local-ai-gpt-oss.yaml` | One GPU for gpt-oss; CPU EmbeddingGemma 2 and Whisper |
 | llama.cpp CPU | defaults or `examples/llamacpp-cpu.yaml` | `charts/videoq/examples/local-ai-llamacpp.yaml` | Separate CPU chat and embedding Pods; Whisper CPU |
 | vLLM NVIDIA | `examples/vllm-nvidia.yaml` | `charts/videoq/examples/local-ai-vllm.yaml` | Three GPUs, one each for chat, embedding and Whisper |
 
@@ -119,32 +112,21 @@ worker must receive the same alias and endpoint. When replacing weights, change
 both `servers.embedding.servedModel` and `ai.embeddingModel` rather than reusing
 an old alias. The existing database does not automatically migrate vector spaces.
 
-## Recommended Gemma 4 + EmbeddingGemma 2 + Whisper profile
+## Recommended gpt-oss + EmbeddingGemma 2 + Whisper profile
 
-Use `examples/gemma4-embeddinggemma.yaml` and the paired application overlay
-`charts/videoq/examples/local-ai-gemma4.yaml`. Official model revisions are pinned:
+This profile pins `openai/gpt-oss-20b` and `google/embeddinggemma-2` to immutable
+Hugging Face revisions. Chat uses vLLM's OpenAI tool and reasoning parsers with
+low reasoning effort. Embeddings and Whisper use separate upstream vLLM Pods.
+The profile reserves three dedicated NVIDIA GPUs, one per model. The GPU must support the pinned vLLM
+runtime and gpt-oss quantization; measure VRAM with the configured 8192-token
+context and concurrency on the target GPU. CPU-only inference for gpt-oss is
+not provided by this profile.
 
-| Purpose | Model | Revision |
-|---|---|---|
-| Answers, tools and image/slide reading | `google/gemma-4-26B-A4B-it` | `4d7ae4984b7db7de8f8457170b3f1a419ee76d52` |
-| Text embeddings (768d) | `google/embeddinggemma-2` | `f9972ac22e696a105c482202646979e33e4b5a1e` |
-| Transcription | `openai/whisper-large-v3-turbo` | `41f01f3fe87f28c78e2fbf8b568835947dd65ed9` |
-
-The profile reserves three dedicated NVIDIA GPUs. Chat loads BF16 weights and
-requires an 80 GB GPU, an 8192-token context and at most two simultaneous
-sequences. Its node selector requires `videoq.io/gemma4-vram=80gb`; verify the
-physical GPU before applying that label. All GPUs exposed on a labeled chat node
-must meet that VRAM requirement; a mixed 24/80 GB node label cannot select a
-specific device. Use a dedicated homogeneous node or site-managed device isolation.
-Embedding and Whisper each reserve a
-separate GPU. GPU counts alone do not verify VRAM. The profile is not suitable
-for one 24 GB RTX 4090. Budget at least the rendered CPU/RAM requests plus the
-application, database and cluster overhead; provide persistent model storage.
-
-Gemma uses `gemma4` tool and reasoning parsers. Thinking is disabled; leave
-`reasoningEffort` empty. The application enables image reading and separates
-tool decisions from final structured answers with `separateToolSchema: true`.
-No OpenRouter or AI Gateway is used by this local profile.
+Use `separateToolSchema: true` in the application profile: make tool decisions
+without the final-answer grammar, then enforce the strict JSON schema on the
+terminal answer. The real-model compatibility check requires this separation
+with the pinned vLLM runtime. Preserve gpt-oss reasoning internally across tool
+continuations with `preserveToolReasoning: true`.
 
 The signed inference chart pins the upstream `vllm/vllm-openai` digest for all
 three model services. The VideoQ gateway only preprocesses audio and provisions
@@ -171,18 +153,18 @@ updates must update and revalidate the wheel lock and base package versions.
 
 The upstream inspection workflow must pass raw vulnerability evaluation, exact
 file inventories and audio import/model registration checks before every release.
-Prior sequential L40S evidence applies to the older models, not Gemma 4.
-This profile still requires real GPU/site acceptance for model startup, VRAM,
-tool calls, strict JSON, streaming, Japanese image reading and complete uploads. See
+The pinned image and separate audio volume have also passed sequential L40S
+contract tests for all three real models; these are not a capacity or site
+Kubernetes acceptance test. See
 [inspection evidence](../../docs/verification/upstream-vllm-inspection.json).
 
 
 ```sh
 helm upgrade --install inference charts/videoq-inference -n videoq --create-namespace \
-  -f charts/videoq-inference/examples/gemma4-embeddinggemma.yaml \
+  -f charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml \
   -f /secure/inference-site.yaml --wait --timeout 30m
 helm upgrade --install videoq charts/videoq -n videoq -f /secure/site.yaml \
-  -f charts/videoq/examples/local-ai-gemma4.yaml --wait --timeout 15m
+  -f charts/videoq/examples/local-ai-gpt-oss.yaml --wait --timeout 15m
 ```
 
 The application migration adds `scene_embeddings_768`. API queries and worker

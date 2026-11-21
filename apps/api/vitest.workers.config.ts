@@ -4,8 +4,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     cloudflareTest({
-      // Unit workerd tests must not create remote AI sessions or require deployment credentials.
-      remoteBindings: false,
       main: "./test/workers/worker.ts",
       miniflare: {
         // Intercept below workerd's native fetch, preserving its receiver checks.

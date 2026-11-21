@@ -35,8 +35,8 @@ def checked_source(source):
     paths = ['scripts/onprem/' + name for name in ('native.py', 'k3s.py', 'common.py', 'endpoint.py')]
     paths += ['charts/videoq/examples/single-node/' + name for name in
               ('infrastructure.yaml', 'garage.toml', 'elasticmq.conf')]
-    paths += ['infra/garage/init.py', 'charts/videoq/examples/local-ai-gemma4.yaml',
-              'charts/videoq-inference/examples/rtx4090-gemma4-embeddinggemma.yaml']
+    paths += ['infra/garage/init.py', 'charts/videoq/examples/local-ai-gpt-oss.yaml',
+              'charts/videoq-inference/examples/rtx4090-gpt-oss-embeddinggemma.yaml']
     for path in paths:
         signed = subprocess.check_output(['git', '-C', str(ROOT), 'show', source + ':' + path])
         if signed != (ROOT / path).read_bytes():
@@ -97,9 +97,9 @@ def compile_videoq(directory, manifest, verified, public_url, storage_gib, liste
                     port.update({'hostPort': 443, 'hostIP': listen_ip})
     # local-path waits for a consuming Pod before binding. Keep this claim in
     # the model wave or Argo waits for Bound before creating its consumer.
-    model_claim = {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': 'videoq-gemma4-4090'},
+    model_claim = {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': 'videoq-gpt-oss-4090'},
                   'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'local-path',
-                           'resources': {'requests': {'storage': '70Gi'}}}}
+                           'resources': {'requests': {'storage': '20Gi'}}}}
     objects = [order(item, 0) for item in infra]
     objects.append(order(model_claim, 10))
     script = (ROOT / 'infra/garage/init.py').read_text()
@@ -117,11 +117,11 @@ def compile_videoq(directory, manifest, verified, public_url, storage_gib, liste
     objects.append(order(job, 10))
     charts = manifest['charts']
     inference = deep_merge(inference, {'requireImageDigests': True, 'servers': {'chat': {
-        'persistence': {'existingClaim': 'videoq-gemma4-4090'}}}})
+        'persistence': {'existingClaim': 'videoq-gpt-oss-4090'}}}})
     models = render(directory / charts['inference']['name'], 'inference', inference,
-                    [ROOT / 'charts/videoq-inference/examples/rtx4090-gemma4-embeddinggemma.yaml'])
+                    [ROOT / 'charts/videoq-inference/examples/rtx4090-gpt-oss-embeddinggemma.yaml'])
     objects += [order(item, 10) for item in models]
-    values = deep_merge(application_values(public_url), yaml.safe_load((ROOT / 'charts/videoq/examples/local-ai-gemma4.yaml').read_text()))
+    values = deep_merge(application_values(public_url), yaml.safe_load((ROOT / 'charts/videoq/examples/local-ai-gpt-oss.yaml').read_text()))
     values = deep_merge(values, application)
     objects += [order(item, 30) for item in render(directory / charts['application']['name'], 'videoq', values)]
     validate_resources(objects)

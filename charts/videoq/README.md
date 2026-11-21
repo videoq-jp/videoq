@@ -14,9 +14,9 @@ Helm 4.3.1 is used by CI.
 
 To keep chat, embeddings and uploaded-audio transcription on the site too, use
 the optional [local inference chart](../videoq-inference/README.md) and this
-chart's `examples/local-ai-gemma4.yaml` overlay (CPU alternatives remain explicit). It includes CPU and NVIDIA GPU
+chart's `examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml` overlay. It includes CPU and NVIDIA GPU
 provisioning instructions, model caches, acceptance checks and egress controls.
-The default application values select private Gemma 4, EmbeddingGemma 2 (768d) and Whisper endpoints.
+The default application values continue to select hosted OpenRouter inference.
 
 The default Cloudflare Workers/Lambda deployment remains available. The on-prem
 API uses Hono directly on Node, PostgreSQL row locks for shared rate limits,
@@ -46,7 +46,7 @@ through the same authentication, permissions, quota and streaming routes.
 - An ingress controller, DNS and TLS. Route `/api`, `/.well-known`, `/health`
   and `/ready` to API port 8787, and the remaining paths to web port 80. The
   optional Ingress does this routing, preserving paths without rewriting.
-- Private local inference services. For a
+- OpenRouter access or separately deployed compatible inference services. For a
   closed network, configure all three: chat, embeddings and Whisper.
   The on-prem edition disables Google sign-in, YouTube/SearchAPI, Mailgun and
   Stripe. Chat models must support the existing tool/JSON contract and,
@@ -322,8 +322,8 @@ AI endpoints are configured separately: apply the chosen local-inference overlay
 for fully on-site processing. The application edition does not change a
 site-selected inference endpoint or migrate existing embeddings.
 
-The defaults route answers/images to local Gemma 4, embeddings to local
-EmbeddingGemma 2 (768d), and transcription to local Whisper large-v3-turbo.
-Use `examples/local-ai-gemma4.yaml` with the matching inference chart profile.
-No hosted inference key is required. Existing installations retain their selected
-endpoints; changing embedding models requires migrations and a full reindex.
+The hosted defaults route answers/images, embeddings, and transcription through
+OpenRouter. Prefer `ai.federationPolicyId` with `ai.federationAudience` and AWS workload credentials. An explicit development alternative is `OPENROUTER_API_KEY` in the existing runtime Secret. The models
+are `openai/gpt-6-luna`, `openai/text-embedding-3-small` (1536 dimensions), and
+`openai/whisper-large-v3-turbo`. Remove stale `LLM_*` / `EMBEDDING_*` endpoint/key
+overrides to share the provider. Local overlays continue to use private inference.

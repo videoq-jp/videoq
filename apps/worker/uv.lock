@@ -1503,7 +1503,6 @@ source = { editable = "." }
 dependencies = [
     { name = "boto3" },
     { name = "cryptography" },
-    { name = "httpx" },
     { name = "numpy" },
     { name = "openai" },
     { name = "psycopg", extra = ["binary"] },
@@ -1522,7 +1521,6 @@ dev = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.43.122" },
     { name = "cryptography", specifier = ">=42.0" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "langchain-postgres", marker = "extra == 'dev'", specifier = "==0.0.19" },
     { name = "numpy", specifier = ">=1.26" },

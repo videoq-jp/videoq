@@ -70,12 +70,13 @@ lambda_log_retention_days = 30
 # Visual Q&A caches are enabled by default (set false to opt out; match the API flag).
 worker_visual_enabled = true
 
-# --- Workers AI workload identity --------------------------------------------
-# Match the API Worker's pinned AWS issuer, worker-role subject and service audience.
-# Apply the independent worker permissions boundary after all new images deploy,
-# before the production environment switch. Follow the staged cloud AI runbook.
-worker_whisper_backend         = "workers-ai"
-workers_ai_federation_endpoint = "https://videoq.jp/api/internal/workers-ai/transcribe"
+# --- OpenRouter workload identity --------------------------------------------
+# Enable AWS outbound identity federation and register its issuer in OpenRouter first.
+# Use the worker role's own OpenRouter inference policy (not the API principal's).
+# CI reads repository/environment variables OPENROUTER_WORKER_FEDERATION_POLICY_ID
+# and OPENROUTER_FEDERATION_AUDIENCE, using the same values for plan and apply.
+# openrouter_federation_policy_id = "<worker-policy-id>"
+# openrouter_federation_audience  = "https://openrouter.ai"
 
 # Independent search/account consumers (media keeps worker_lambda_* settings).
 worker_media_maximum_concurrency = 10

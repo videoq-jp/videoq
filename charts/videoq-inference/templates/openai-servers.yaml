@@ -4,9 +4,6 @@
 {{- $engine := default $root.Values.backend $server.engine }}
 {{- include "inference.validateSharing" (dict "root" $root "engine" $engine "resources" $server.resources "extraArgs" $server.extraArgs) }}
 {{- $image := (index $root.Values $engine).image }}
-{{- if and $server.cpuOffloadGb (or (ne $engine "vllm") (not $root.Values.gpuSharing.enabled)) }}
-{{- fail "cpuOffloadGb requires shared-GPU vLLM chat" }}
-{{- end }}
 {{- if and $server.disableTorchCompile (or (ne $engine "vllm") (and (not $root.Values.gpuSharing.enabled) (not (has "--enforce-eager" $server.extraArgs)))) }}
 {{- fail "disableTorchCompile requires vllm with --enforce-eager" }}
 {{- end }}
@@ -139,7 +136,7 @@ spec:
             - --dtype
             - {{ default "half" $server.dtype | quote }}
             - --cpu-offload-gb
-            - {{ default 0 $server.cpuOffloadGb | quote }}
+            - "0"
             - --enforce-eager
             {{- end }}
             - --generation-config
@@ -151,8 +148,7 @@ spec:
             {{- if $server.reasoningParser }}
             - --reasoning-parser
             - {{ $server.reasoningParser | quote }}
-            {{- end }}
-            {{- if or (not $server.reasoningParser) (eq $server.reasoningParser "gemma4") }}
+            {{- else }}
             - --default-chat-template-kwargs
             - '{"enable_thinking":false}'
             {{- end }}

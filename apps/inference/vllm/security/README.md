@@ -1,29 +1,3 @@
-## 2026-11-20 extension and enforced codec contract
-
-The new raw scan adds 173 Linux implementation findings and 33 FFmpeg findings
-in already-masked native directories. Each Linux CNA record was fetched from
-pinned CVEProject commit metadata, hashed and checked for affected program files:
-all 173 list kernel implementation/internal-header paths, none exported UAPI.
-The exact image/header inventory and absence of kernel modules remain required;
-this does not assess the host kernel. Records are in `kernel-cve-review.json`.
-
-The read-only audio overlay also contains FFmpeg 9.0.2 findings in encoders,
-video paths and unsupported decoders. PyAV 19.0.2 is still the latest upstream
-wheel at this review; these packages are not claimed patched. The v2 hash-locked
-guard now forces both demuxer **and decoder** whitelists, permits read mode only,
-and rejects unsupported stream codecs before caller decoding. Allowed codecs
-are only `mp3`, `mp3float`, `pcm_s16le` and `flac`. This closes the ambiguity that
-WAV can carry codecs other than PCM. The private gateway sends PCM16 WAV to
-Whisper. Other WAV subtypes must be normalized by the gateway, not passed directly.
-
-The 29 additional overlay assessments require fresh actual-image proof of guard
-identity, successful supported decoding, RTSP rejection and rejection of a real
-A-law WAV input, plus the exact allowed-codec list. The scanner, raw findings,
-package identities, locations, mandatory mounts and existing expiry are retained.
-`native-codec-cve-review.json` records the pinned primary CNA sources/hashes and
-FFmpeg references. A missing/changed proof is blocking. This is configuration
-mitigation for fixed VideoQ services, not a blanket FFmpeg or vLLM approval.
-
 # Upstream vLLM applicability review
 
 ## Enforced native-library isolation and local audio
@@ -77,8 +51,8 @@ verification; the earlier GPU inference evidence remains historical.
 A passing applicability
 check is not a claim that the upstream packages are patched or that the raw scan
 is empty. `runtime-assessment.json` permits only the exact listed CVE/package/PURL
-combinations, after verifying actual image files and all fourteen rendered deployment
-variants (seven NVIDIA profiles, including the Gemma 4 and shared RTX 4090 profiles,
+combinations, after verifying actual image files and all ten rendered deployment
+variants (five NVIDIA profiles, including the two shared RTX 4090 profiles,
 with downloads enabled and disabled).
 
 | Finding scope | Raw count | Evidence and applicability |

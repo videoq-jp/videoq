@@ -129,10 +129,8 @@ helm test videoq -n videoq --timeout 2m
 For fully local AI, install the verified inference archive with
 `verified-inference.json` last, and the application with the matching local AI
 overlay before `verified-images.json`. See the
-[local inference guide](local-inference.md). The application defaults select private
-Gemma 4, EmbeddingGemma 2 and local Whisper endpoints; install their matching
-inference profile and provide the site endpoints. Hosted OpenRouter is a legacy
-opt-in profile. Downloading a chart alone does not provision a running model.
+[local inference guide](local-inference.md). Hosted OpenRouter remains the application
+default; downloading the inference chart alone does not switch AI endpoints.
 
 The chart enforces digests but does not itself enforce signatures. The verifier
 is an operator-side gate; a cluster administrator can bypass it. If that must be
