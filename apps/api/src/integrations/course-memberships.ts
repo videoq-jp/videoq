@@ -1,3 +1,4 @@
+import { isValidInvitationEmail } from "@videoq/trpc/course-invitations";
 import * as workflow from '../features/course-memberships/core';
 import type { CourseMembershipDependencies } from '../features/course-memberships/ports';
 import * as repository from '../repositories/course-invitation-repository';
@@ -9,6 +10,7 @@ import type { Bindings } from '../types/bindings';
 function dependencies(env: Bindings): CourseMembershipDependencies {
   return {
     now: () => new Date(),
+    isValidEmail: isValidInvitationEmail,
     createRepository: { create: (...args) => repository.createPendingCourseInvitations(env, ...args) },
     readRepository: {
       participants: (...args) => repository.listCourseParticipants(env, ...args),

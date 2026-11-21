@@ -13,12 +13,12 @@ export type RecipientPreview = {
 };
 
 export function previewInvitationRecipients(
-  inputs: readonly string[], memberEmails: ReadonlySet<string>, pendingEmails: ReadonlySet<string>,
+  inputs: readonly string[], memberEmails: ReadonlySet<string>, pendingEmails: ReadonlySet<string>, isValidEmail: (email: string) => boolean,
 ): RecipientPreview[] {
   const seen = new Set<string>();
   return inputs.map(input => {
     const normalized = normalizeInvitationEmail(input);
-    if (!normalized) return { email: input, status: 'invalid' };
+    if (!normalized || !isValidEmail(normalized)) return { email: input, status: 'invalid' };
     if (seen.has(normalized)) return { email: normalized, status: 'duplicate' };
     seen.add(normalized);
     if (memberEmails.has(normalized)) return { email: normalized, status: 'already_member' };

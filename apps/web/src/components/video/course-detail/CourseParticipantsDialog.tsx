@@ -1,3 +1,4 @@
+import { isValidInvitationEmail } from "@videoq/trpc/course-invitations";
 import { Input } from "@/components/ui/input";
 import { features } from "@/lib/deployment";
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -127,7 +128,7 @@ export function CourseParticipantsDialog({
         .filter((invitation) => invitation.status === 'pending')
         .map((invitation) => invitation.email.trim().toLowerCase()) ?? [],
     );
-    return previewInvitationRecipients(emailInputs, memberEmails, pendingEmails);
+    return previewInvitationRecipients(emailInputs, memberEmails, pendingEmails, isValidInvitationEmail);
   }, [emailInputs, participants]);
   const readyRecipientCount = recipientPreview.filter(({ status }) => status === 'ready').length;
 

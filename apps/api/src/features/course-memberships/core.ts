@@ -27,7 +27,7 @@ export async function inviteCourseMembers(
   | { results: InviteRecipientResult[] }
 > {
   const limit = deps.batchLimit;
-  const plan = planInvitationEmails(rawEmails);
+  const plan = planInvitationEmails(rawEmails, email => deps.isValidEmail(email));
   const ready = plan.filter(({ status }) => status === "ready");
   if (ready.length > limit) return { tooMany: true, limit };
   const expiresAt = invitationExpiresAt(issuedAt);

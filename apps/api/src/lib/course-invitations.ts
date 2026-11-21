@@ -1,3 +1,10 @@
+import { isValidInvitationEmail } from "@videoq/trpc/course-invitations";
+import { planInvitationEmails as plan } from "../application/course-invitations";
+
+export function planInvitationEmails(emails: readonly string[]) {
+  return plan(emails, isValidInvitationEmail);
+}
+
 export * from "../application/course-invitations";
 import { sha256Hex } from "../shared/crypto";
 
