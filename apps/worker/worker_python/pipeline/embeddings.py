@@ -21,7 +21,46 @@ def embed_texts(texts: list[str], *, input_type: str = "document") -> list[list[
     if not texts:
         return []
     config = resolve_embedding_config()
+    if config.provider == "workers-ai":
+        return _embed_workers_ai(texts, config, input_type=input_type)
     return _embed_openai_batch(texts, config, input_type=input_type)
+
+
+def _embed_workers_ai(texts: list[str], config: EmbeddingConfig, *, input_type: str) -> list[list[float]]:
+    import httpx
+    from urllib.parse import urlsplit
+    from .workers_ai_federation import WorkloadIdentityAuth
+
+    base = env_str("EMBEDDING_BASE_URL").rstrip("/")
+    url = urlsplit(base)
+    if (url.scheme != "https" or not url.hostname or url.username or url.password
+            or url.query or url.fragment or url.path != "/api/internal/workers-ai"):
+        raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Workers AI requires an HTTPS federation embedding endpoint.", config)
+    if input_type not in {"query", "document"}:
+        raise ValueError("input_type must be query or document")
+    endpoint = base + "/embeddings"
+    vectors = []
+    try:
+        with httpx.Client(auth=WorkloadIdentityAuth(endpoint), timeout=120, follow_redirects=False) as client:
+            for start in range(0, len(texts), 32):
+                batch = texts[start:start + 32]
+                response = client.post(endpoint, json={"texts": batch, "input_type": input_type})
+                if response.status_code != 200:
+                    raise _provider_http_error(config, response.status_code)
+                payload = response.json()
+                data = payload.get("data") if isinstance(payload, dict) else None
+                if (not isinstance(data, list) or len(data) != len(batch)
+                        or any(not isinstance(row, dict) or type(row.get("index")) is not int for row in data)):
+                    raise invalid_output(config)
+                rows = sorted(data, key=lambda row: row["index"])
+                if any(row["index"] != i for i, row in enumerate(rows)):
+                    raise invalid_output(config)
+                vectors.extend(validate_embedding(row.get("embedding"), config) for row in rows)
+        return vectors
+    except httpx.HTTPError:
+        raise RuntimeError("Workers AI embeddings connection failed") from None
+    except (ValueError, UnicodeError):
+        raise invalid_output(config) from None
 
 
 def _embed_openai_batch(texts: list[str], config: EmbeddingConfig, *, input_type: str = "document") -> list[list[float]]:

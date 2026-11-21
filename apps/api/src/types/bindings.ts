@@ -44,6 +44,9 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
   Omit<PlatformResources, "SCENE_VECTORIZE_1536" | "SCENE_VECTORIZE_768"> &
   SecretBindings & {
     RUNTIME?: "node";
+    AI_PROVIDER?: "workers-ai" | "openai";
+    LLM_PROVIDER?: "workers-ai" | "openai";
+    EMBEDDING_PROVIDER?: "workers-ai" | "openai";
     DEFAULT_MONTHLY_UPLOAD_LIMIT_GB?: string;
     DEPLOYMENT_EDITION?: "cloud" | "onprem";
     DATABASE_URL?: string;

@@ -391,15 +391,27 @@ aws lambda update-function-code \
   --region "$REGION"
 ```
 
-### Cloud transcription (OpenRouter)
+### Cloud transcription (Workers AI)
 
-The cloud worker uses `WHISPER_BACKEND=openrouter`. Set Terraform
-`openrouter_federation_policy_id` after configuring AWS outbound federation and
-OpenRouter trust; the Lambda execution role supplies its identity. No OpenRouter
-fixed key is required in the SSM parameter for WIF. Modal is retired; no Modal CLI or
-GitHub credentials are required. See
-[the switch runbook](../docs/operations/openai-transcription.md) for the
-in-flight job check, config refresh and retirement order.
+The cloud inference stack uses Workers AI for Gemma 4 answers/images,
+EmbeddingGemma 2 (768d) embeddings and Whisper large-v3-turbo transcription.
+It does not require AI Gateway or OpenRouter. Follow the
+[staged inference runbook](../docs/operations/openai-transcription.md) for the
+required two-phase vector migration, deployment order, verification and rollback.
+
+Lambda exchanges its execution-role identity for a maximum 900-second RS256 AWS
+JWT with audience `https://videoq.jp/api/internal/workers-ai`. The existing API
+Worker verifies the exact issuer/role/audience/expiry before using its `AI`
+binding. The independent worker IAM permissions boundary must permit only that
+exact audience; review and apply only that boundary resource as an operator.
+Deploy the API and all worker images before approving the production Terraform
+switch. No fixed Cloudflare inference token is stored in Lambda/SSM.
+
+Keep the old 1536d query configuration during backfill. Once published 768d
+heads and vector coverage are verified, deploy the API embedding switch and
+remove legacy provider configuration. Verify a disposable upload, cited and
+streaming Japanese answers, slide inspection and invalid-identity rejection.
+Existing transcripts must not be regenerated merely to change embedding models.
 
 ## 5. Frontend
 

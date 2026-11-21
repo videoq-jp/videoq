@@ -100,3 +100,17 @@ run "resource_smoke_guard_reads_only_its_fixed_hold_metadata" {
     error_message = "Smoke must gain only fixed execution reads, never control or journal mutation."
   }
 }
+
+run "workers_ai_federation_keeps_exact_issuer_permissions" {
+  command = plan
+  assert {
+    condition = alltrue([for statement in jsondecode(aws_iam_policy.worker_boundary.policy).Statement :
+      !contains(statement.Action, "sts:GetWebIdentityToken") || (
+        toset(statement.Condition["ForAllValues:StringEquals"]["sts:IdentityTokenAudience"]) == toset(["https://videoq.jp/api/internal/workers-ai"]) &&
+        statement.Condition.StringEquals["sts:SigningAlgorithm"] == "RS256" &&
+        statement.Condition.NumericLessThanEquals["sts:DurationSeconds"] == "900"
+      )
+    ])
+    error_message = "The worker boundary must allow only the reviewed Workers AI audience with RS256 and a 15-minute maximum."
+  }
+}

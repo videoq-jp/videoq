@@ -117,6 +117,6 @@ try {
     console.log(item.audio + ' audio → ' + item.language + ' question: cited answer and SSE passed');
   }
   writeFileSync(join(output, 'model-e2e-result.json'), JSON.stringify({status: 'passed', inference: 'real models; no protocol fixtures',
-    models: ['gpt-oss-20b', 'EmbeddingGemma 2 text-only 768d', privateLab ? 'Whisper large-v3-turbo upstream vLLM' : 'Whisper large-v3-turbo Q5_0'],
+    expectedModels: ['Gemma 4 26B A4B BF16 with CPU offload', 'EmbeddingGemma 2 text-only 768d', privateLab ? 'Whisper large-v3-turbo upstream vLLM' : 'Whisper large-v3-turbo Q5_0'],
     courseId: state.courseId, videos: state.videos, cases: results}, null, 2) + '\n');
 } finally { await closeLabHttp(); }

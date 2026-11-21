@@ -93,6 +93,23 @@ def load_native_images(images, env, output, cluster=CLUSTER):
     return imports
 
 
+def inference_settings(real_models=False):
+    """Keep both labs independent of production Helm defaults."""
+    chat = "http://videoq-inference-chat:8000/v1" if real_models else "http://inference:8080/v1"
+    return {
+        "openaiBaseUrl": chat, "llmBaseUrl": chat,
+        "llmModel": "videoq-chat" if real_models else "lab-model",
+        "embeddingBaseUrl": "http://videoq-inference-embedding:8000/v1" if real_models else chat,
+        "embeddingModel": "gte-qwen2-1.5b-q4km-124fbdad" if real_models else "embeddinggemma-2-f9972ac",
+        "embeddingProfile": "openai" if real_models else "embeddinggemma2",
+        "separateToolSchema": True, "reasoningEffort": "none" if real_models else "",
+        "requestTimeoutMs": 600000 if real_models else 120000,
+        "streamTimeoutMs": 600000 if real_models else 300000,
+        "whisperBackend": "local", "whisperChunkSeconds": 30,
+        "whisperLocalUrl": "http://videoq-inference-whisper:8080/v1" if real_models else chat,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("kubeconfig", type=Path)
@@ -144,14 +161,10 @@ def main():
         apply_secret()
     values = {"fullnameOverride":"videoq", "publicUrl":"http://127.0.0.1:18787", "storage":{"endpoint":"http://127.0.0.1:19000","internalEndpoint":"http://garage:3900","bucket":"videoq-media","region":"garage"},
               "queue":{"url":"http://queue:9324/000000000000/videoq-jobs"},
-              "ai":{"openaiBaseUrl":"http://inference:8080/v1","llmModel":"lab-model","whisperBackend":"local","whisperLocalUrl":"http://inference:8080/v1"},
+              "ai":inference_settings(args.real_models),
               "config":{"videoVisualEnabled":False}}
     if args.real_models:
         values["networkPolicy"] = {"localEgressOnly":True}
-        values["ai"].update({"openaiBaseUrl":"http://videoq-inference-chat:8000/v1", "llmModel":"videoq-chat",
-                            "embeddingBaseUrl":"http://videoq-inference-embedding:8000/v1", "embeddingModel":"gte-qwen2-1.5b-q4km-124fbdad",
-                            "separateToolSchema":True, "reasoningEffort":"none", "requestTimeoutMs":600000, "streamTimeoutMs":600000,
-                            "whisperLocalUrl":"http://videoq-inference-whisper:8080/v1", "whisperChunkSeconds":30})
         resources = []
         inference_values = {"downloadModels":False, "networkPolicy":{"clientNamespace":NAMESPACE,"clientRelease":"videoq","denyEgress":True},
                             "whisper":{"image":{"repository":"videoq-whisper","tag":args.image_tag,"digest":"","pullPolicy":"Never"}},

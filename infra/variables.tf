@@ -152,3 +152,25 @@ variable "worker_groups" {
     error_message = "Exactly search/account must be configured with integer Lambda memory (128–10240), storage (512–10240), timeout (1–900), and concurrency (2–1000)."
   }
 }
+
+variable "worker_whisper_backend" {
+  description = "Hosted transcription provider. Roll back to openrouter only after confirming its workload identity is healthy."
+  type        = string
+  default     = "workers-ai"
+
+  validation {
+    condition     = contains(["workers-ai", "openrouter", "openai"], var.worker_whisper_backend)
+    error_message = "worker_whisper_backend must be workers-ai, openrouter or openai."
+  }
+}
+
+variable "workers_ai_federation_endpoint" {
+  description = "HTTPS Worker endpoint and STS audience for keyless Workers AI inference. Match the API Worker trust configuration."
+  type        = string
+  default     = "https://videoq.jp/api/internal/workers-ai/transcribe"
+
+  validation {
+    condition     = can(regex("^https://[^/?#@]+/api/internal/workers-ai/transcribe$", var.workers_ai_federation_endpoint))
+    error_message = "workers_ai_federation_endpoint must be an HTTPS Workers AI transcription endpoint."
+  }
+}

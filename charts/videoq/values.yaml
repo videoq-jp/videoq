@@ -56,24 +56,24 @@ ai:
   # Non-secret policy ID enables AWS workload identity; runtime needs an AWS identity.
   federationPolicyId: ""
   federationAudience: https://openrouter.ai
-  openaiBaseUrl: https://openrouter.ai/api/v1
+  openaiBaseUrl: http://videoq-inference-chat.videoq.svc.cluster.local:8000/v1
   # Answer generation and image inspection only; empty retains openaiBaseUrl.
   llmBaseUrl: ""
   # Supply LLM_API_KEY through the existing Secret.
-  llmModel: openai/gpt-6-luna
+  llmModel: videoq-chat
   reasoningEffort: ""
-  separateToolSchema: false
-  preserveToolReasoning: false
+  separateToolSchema: true
+  preserveToolReasoning: true
   requestTimeoutMs: 120000
   streamTimeoutMs: 300000
   # OpenAI-compatible embedding service; empty reuses openaiBaseUrl.
-  embeddingBaseUrl: ""
-  embeddingModel: openai/text-embedding-3-small
-  embeddingProfile: openai
-  whisperBackend: openrouter
-  # CPU overlay reduces this to 30; hosted/NVIDIA profiles use 300.
-  whisperChunkSeconds: 300
-  whisperLocalUrl: ""
+  embeddingBaseUrl: http://videoq-inference-embedding.videoq.svc.cluster.local:8000/v1
+  embeddingModel: embeddinggemma-2-f9972ac
+  embeddingProfile: embeddinggemma2
+  whisperBackend: local
+  # Short checkpoints for the recommended local profile; legacy profiles may use 300.
+  whisperChunkSeconds: 30
+  whisperLocalUrl: http://videoq-inference-whisper.videoq.svc.cluster.local:8080/v1
 
 # Enable with local AI. The site's CNI must enforce Kubernetes NetworkPolicy.
 networkPolicy:

@@ -15,7 +15,7 @@ resource "aws_iam_role_policy_attachment" "worker_basic_execution" {
 
 data "aws_iam_policy_document" "worker_permissions" {
   dynamic "statement" {
-    for_each = var.openrouter_federation_policy_id != "" ? [1] : []
+    for_each = var.worker_whisper_backend == "workers-ai" ? [1] : []
     content {
       effect    = "Allow"
       actions   = ["sts:GetWebIdentityToken"]
@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "worker_permissions" {
       condition {
         test     = "ForAllValues:StringEquals"
         variable = "sts:IdentityTokenAudience"
-        values   = [var.openrouter_federation_audience]
+        values   = ["https://videoq.jp/api/internal/workers-ai"]
       }
       condition {
         test     = "StringEquals"

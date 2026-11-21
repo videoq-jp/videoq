@@ -74,7 +74,7 @@ describe("local tools and native final-answer schema", () => {
     expect(calls).toHaveLength(2);
     expect(calls[1].response_format).toMatchObject({ type: "json_schema", json_schema: { strict: true } });
     expect(calls[1].tools).toBeUndefined();
-    expect(calls[1].messages).toEqual(calls[0].messages);
+    expect(calls[1].messages).toEqual([expect.objectContaining({role:"system",content:expect.stringContaining("Return only JSON matching this schema.")}), ...(calls[0].messages as unknown[])]);
     expect(JSON.stringify(calls[1])).not.toContain("UNTRUSTED DRAFT");
   });
   it.each(["length", "content_filter"])("does not generate again after an incomplete %s decision", async reason => {

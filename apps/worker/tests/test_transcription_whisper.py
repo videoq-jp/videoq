@@ -140,7 +140,7 @@ def test_local_gateway_has_time_for_multiple_cpu_speech_spans(monkeypatch):
 @pytest.mark.parametrize("backend", ["modal", "whisper.cpp", "typo"])
 def test_retired_or_unknown_backend_is_rejected(monkeypatch, backend):
     monkeypatch.setenv("WHISPER_BACKEND", backend)
-    with pytest.raises(RuntimeError, match="configure openrouter, openai or local"):
+    with pytest.raises(RuntimeError, match="configure openrouter, openai, workers-ai or local"):
         transcription._whisper_client()
 
 
