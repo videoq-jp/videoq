@@ -4,6 +4,7 @@ import type { CourseMembershipDependencies } from '../src/features/course-member
 
 function fixture() {
   return {
+    isValidEmail: () => true,
     now: () => new Date('2026-11-20T00:00:00Z'),
     createRepository: { create: vi.fn() },
     readRepository: { participants: vi.fn(), preview: vi.fn() },

@@ -27,6 +27,24 @@ describe("inviteCourseMembers", () => {
     repo.recordInvitationDeliveryOutcomes.mockResolvedValue(undefined);
   });
 
+  it("queues valid recipients while reporting invalid syntax individually", async () => {
+    repo.createPendingCourseInvitations.mockResolvedValue({
+      created: [{ id: 10, email: "valid@example.com" }], alreadyMemberEmails: [], alreadyPendingEmails: [],
+    });
+    const result = await inviteCourseMembers(ENV, 5, "teacher-user", [
+      "a:b@example.com", "a@b-.com", " Valid@Example.COM ", "VALID@example.com",
+    ]);
+    expect(result).toMatchObject({ results: [
+      { email: "a:b@example.com", status: "invalid" },
+      { email: "a@b-.com", status: "invalid" },
+      { email: "valid@example.com", status: "queued" },
+      { email: "VALID@example.com", status: "duplicate" },
+    ] });
+    expect(repo.createPendingCourseInvitations.mock.calls[0][3]).toEqual([
+      expect.objectContaining({ email: "valid@example.com" }),
+    ]);
+  });
+
   it("メール送信はリクエスト内で行わず、配送タスクに委譲する", async () => {
     repo.createPendingCourseInvitations.mockResolvedValue({
       created: [

@@ -4,6 +4,7 @@ import type { InvitationWriteRepository } from '../../persistence/contracts/invi
 
 export interface CourseMembershipDependencies {
   now(): Date;
+  isValidEmail(email: string): boolean;
   createRepository: InvitationCreateRepository;
   readRepository: InvitationReadRepository;
   writeRepository: InvitationWriteRepository;

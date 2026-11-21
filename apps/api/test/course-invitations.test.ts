@@ -1,3 +1,4 @@
+import { invitationEmailSchema } from "@videoq/trpc/course-invitations";
 import { describe, expect, it } from "vitest";
 import {
   effectiveInvitationStatus,
@@ -76,5 +77,32 @@ describe("course invitation domain", () => {
   it("masks the local part in public invitation previews", () => {
     expect(maskInvitationEmail("student@example.com")).toBe("s*****t@example.com");
     expect(maskInvitationEmail("a@example.com")).toBe("a@example.com");
+  });
+});
+
+describe("invitation email syntax at the adapter boundary", () => {
+  it.each(["a b@example.com", "a\tb@example.com", "a:b@example.com", "a@b-.com", "a@b.-com", `a@${"b".repeat(64)}.com`, "a@@example.com"])("rejects %s without rejecting the valid recipient", invalid => {
+    expect(invitationEmailSchema.safeParse(invalid).success).toBe(false);
+    expect(planInvitationEmails([invalid, " Valid+tag@Example.COM "])).toEqual([
+      { email: invalid, status: "invalid" },
+      { email: "valid+tag@example.com", status: "ready" },
+    ]);
+  });
+  it("preserves invitation-specific length limits", () => {
+    expect(invitationEmailSchema.safeParse(`${"a".repeat(65)}@example.com`).success).toBe(false);
+    expect(invitationEmailSchema.safeParse(`${"a".repeat(64)}@example.com`).success).toBe(true);
+  });
+});
+
+
+describe("invitation email length boundaries", () => {
+  const domain = `${"b".repeat(63)}.${"c".repeat(63)}.`;
+  it.each([
+    { length: 254, email: `${"a".repeat(64)}@${domain}${"d".repeat(61)}`, accepted: true },
+    { length: 255, email: `${"a".repeat(64)}@${domain}${"d".repeat(62)}`, accepted: false },
+  ])("accepts=$accepted at $length normalized characters", ({ email, length, accepted }) => {
+    expect(email).toHaveLength(length);
+    expect(invitationEmailSchema.safeParse(` ${email.toUpperCase()} `).success).toBe(accepted);
+    expect(planInvitationEmails([email])[0].status).toBe(accepted ? "ready" : "invalid");
   });
 });

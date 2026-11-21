@@ -18,11 +18,11 @@ type PlannedInvitationEmail = {
   status: "ready" | "invalid" | "duplicate";
 };
 
-export function planInvitationEmails(rawEmails: readonly string[]): PlannedInvitationEmail[] {
+export function planInvitationEmails(rawEmails: readonly string[], isValidEmail: (email: string) => boolean): PlannedInvitationEmail[] {
   const seen = new Set<string>();
   return rawEmails.map((input) => {
     const email = normalizeInvitationEmail(input);
-    if (!email) {
+    if (!email || !isValidEmail(email)) {
       return { email: input, status: "invalid" };
     }
     if (seen.has(email)) {

@@ -24,6 +24,7 @@ export const coursesInputSchemas = {
   "courses.deleteShare": z.object({ id }),
   "courseMemberships.invite": z.object({
     courseId: id,
+    // Keep syntax errors per recipient; the workflow uses invitationEmailSchema.safeParse.
     emails: z.array(z.string().max(1024)).min(1).max(100),
   }),
   "courseMemberships.participants": z.object({ courseId: id }),
