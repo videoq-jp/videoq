@@ -113,6 +113,35 @@ describe("signed scene ingestion with D1", () => {
     expect(await call("finish", input)).toEqual({ status: "completed" });
   });
 
+  it("reindexes imported SHA-256 revisions without changing their source fence", async () => {
+    await fixture.database.prepare("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES (5,'owner','Imported','five.mp4','indexing','original','','2026-11-13T00:00:00Z','','uploaded','','')").run();
+    await call("source", { videoId: 5 });
+    const revision = "a".repeat(64);
+    await fixture.database.prepare("UPDATE video_index_versions SET revision=? WHERE video_id=5").bind(revision).run();
+    const source = (await call("source", { videoId: 5 })).source as { sourceRevision: string };
+    expect(source.sourceRevision).toBe(revision);
+    const snapshot = { videoId: 5, userId: "owner", sourceRevision: revision };
+    for (const dimensions of [1536, 768]) {
+      const run = { ...snapshot, runId: crypto.randomUUID(), dimensions, expectedScenes: 1 };
+      expect(await call("start", { ...run, userId: "foreign" })).toEqual({ accepted: false });
+      expect(await call("start", { ...run, sourceRevision: "b".repeat(64) })).toEqual({ accepted: false });
+      expect(await call("start", run)).toEqual({ accepted: true });
+      expect(await call("stage", { runId: run.runId, userId: "owner", scenes: [{ id: crypto.randomUUID(), content: "Imported", startTime: "00:00:00,000", endTime: "00:00:01,000", embedding: Array(dimensions).fill(0.1) }] })).toEqual({ accepted: true });
+      expect(await call("publish", { runId: run.runId, userId: "owner" })).toEqual({ accepted: true });
+    }
+    for (const invalid of ["not-a-revision", "a".repeat(63), "A".repeat(64)]) {
+      expect((await app.fetch(signed("scene-index/start", { ...snapshot, sourceRevision: invalid, runId: crypto.randomUUID(), dimensions: 768, expectedScenes: 1 }), env)).status).toBe(400);
+    }
+    const finish = { ...snapshot, fileKey: "five.mp4", dimensions: 768 };
+    expect(await call("finish", finish)).toEqual({ status: "pending" });
+    expect(await call("finish", { ...finish, sourceRevision: "b".repeat(64) })).toEqual({ status: "stale" });
+    await fixture.database.prepare("UPDATE scene_index_tasks SET accepted_at='2026-11-13T00:00:00Z',completed_at='2026-11-13T00:00:00Z' WHERE video_id=5 AND operation='upsert'").run();
+    expect(await call("finish", finish)).toEqual({ status: "completed" });
+    expect(await fixture.database.prepare("SELECT revision FROM video_index_versions WHERE video_id=5").first("revision")).toBe(revision);
+    expect(await fixture.database.prepare("SELECT transcript FROM videos WHERE id=5").first("transcript")).toBe("original");
+    expect(await fixture.database.prepare("SELECT count(*) n FROM video_index_heads WHERE video_id=5").first("n")).toBe(2);
+  });
+
   it("reserves processing through the signed API exactly once", async () => {
     const input = { videoId: 1, seconds: 20 };
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -131,7 +160,10 @@ describe("signed scene ingestion with D1", () => {
       expect(res.status).toBe(200);
       return res.json<Record<string, unknown>>();
     };
+    await request("source", { videoId: 3 });
+    await fixture.database.prepare("UPDATE video_index_versions SET revision=? WHERE video_id=3").bind("c".repeat(64)).run();
     const source = (await request("source", { videoId: 3 })).source as { sourceRevision: string };
+    expect(source.sourceRevision).toBe("c".repeat(64));
     expect(source).not.toHaveProperty("transcript");
     const snapshot = { videoId: 3, userId: "owner", fileKey: "three.mp4", sourceRevision: source.sourceRevision };
     expect(await request("begin", { ...snapshot, expectedStatus: "pending" })).toEqual({ accepted: true });
