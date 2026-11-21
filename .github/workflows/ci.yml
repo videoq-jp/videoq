@@ -354,6 +354,7 @@ jobs:
               - '.github/scripts/install-helm.sh'
               - '.github/onprem-lab/**'
             onprem:
+              - 'apps/security/openssl/**'
               - '.github/actions/scan-image/**'
               - '.github/scripts/grype-scan.py'
               - '.github/scripts/install-security-tools.py'
