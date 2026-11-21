@@ -20,12 +20,12 @@ export function ChatProgressView({ progress, waitingForAnswer }: {
 
   const queries = [...new Set(searches.map((search) => search.query))];
   const runningTools = tools.filter(tool => tool.status === 'running');
-  const label = pending
-    ? tools.length > 0
-      ? runningTools.length > 0
-        ? [...new Set(runningTools.map(tool => `${t(`chat.progress.tools.${tool.tool}.running`)} (${tool.tool})`))].join(' / ')
-        : t('chat.progress.answering')
-      : searches.length > 0 ? t('chat.progress.checkingVideos') : t('chat.progress.preparing')
+  const pendingLabel = phase === 'searching'
+    ? runningTools.length > 0
+      ? [...new Set(runningTools.map(tool => t(`chat.progress.tools.${tool.tool}.running`)))].join(' / ')
+      : t('chat.progress.checkingVideos')
+    : t(`chat.progress.${phase === 'complete' ? 'answering' : phase === 'error' ? 'interrupted' : phase}`);
+  const label = pending ? pendingLabel
     : phase === 'error' ? t('chat.progress.interrupted')
       : tools.length > 0 ? t('chat.progress.usedTools', { count: tools.length }) : t('chat.progress.searched');
   const summary = <>
@@ -58,7 +58,6 @@ export function ChatProgressView({ progress, waitingForAnswer }: {
               {tools.map(tool => (
                 <li key={tool.id} className="[overflow-wrap:anywhere]">
                   <span>{t(`chat.progress.tools.${tool.tool}.name`)}</span>
-                  {' '}<code>{tool.tool}</code>
                   {' — '}<span>{t(`chat.progress.toolStatus.${tool.status}`)}</span>
                 </li>
               ))}

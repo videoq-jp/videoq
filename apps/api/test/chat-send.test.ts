@@ -1110,10 +1110,11 @@ describe("POST /messages/stream（SSE）", () => {
     });
   });
 
-  it.each(["owner", "public"].flatMap(access => [false, true].map(toolProgress => ({ access, toolProgress }))))("$access (tool progress: $toolProgress): sends source metadata before prose", async ({ access, toolProgress }) => {
+  it.each(["owner", "public"].flatMap(access => [false, true].flatMap(toolProgress => [false, true].map(generationProgress => ({ access, toolProgress, generationProgress })))))("$access (tool progress: $toolProgress, generation progress: $generationProgress): sends source metadata before prose", async ({ access, toolProgress, generationProgress }) => {
     stubOpenAi({ content: "Hello!", preamble: "調べますね。" });
     const params = new URLSearchParams();
     if (toolProgress) params.set("tool_progress", "1");
+    if (generationProgress) params.set("generation_progress", "1");
     if (access === "public") params.set("share_slug", "abc123");
     const response = await post("/messages/stream?" + params.toString(), {
       messages: [{ role: "user", content: "hi" }], course_id: 3,
@@ -1123,10 +1124,12 @@ describe("POST /messages/stream（SSE）", () => {
     expect(response.headers.get("cache-control")).toBe("no-cache");
     expect(response.headers.get("x-accel-buffering")).toBe("no");
     expect(sseEvents(await response.text())).toEqual([
+      ...(generationProgress ? [{ type: "generation_progress", phase: "thinking" }] : []),
       ...(toolProgress ? [{ type: "tool_progress", call_id: 1, tool: "search_scenes", status: "running" }] : []),
       { type: "searching", query: "scene", search_id: 1 },
       { type: "search_completed", query: "scene", search_id: 1, result_count: 1 },
       ...(toolProgress ? [{ type: "tool_progress", call_id: 1, tool: "search_scenes", status: "complete" }] : []),
+      ...(generationProgress ? [{ type: "generation_progress", phase: "reviewing" }] : []),
       { type: "source", source: { id: 1, video_id: 60, title: "Video A", start_time: "00:00:10", end_time: "00:00:20" } },
       { type: "text_delta", segmentIndex: 0, text: "Hel" },
       { type: "text_delta", segmentIndex: 0, text: "lo!" },

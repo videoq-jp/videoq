@@ -113,6 +113,36 @@ export const AwaitingResponse: Story = { parameters: { chat: waiting }, async pl
   await expect(context.canvas.getByRole('status')).toHaveTextContent(label('progress.preparing'));
   await expect(context.canvas.queryByRole('button', { name: label('feedbackGood') })).not.toBeInTheDocument();
 } };
+export const Thinking: Story = { parameters: { chat: { events: [{ type: 'generation_progress', phase: 'thinking' }], keepOpen: true } satisfies ChatPanelScenario }, async play(context) {
+  await send(context);
+  await waitFor(() => expect(context.canvas.getByRole('status')).toHaveTextContent(label('progress.thinking')));
+} };
+export const Summarizing: Story = { parameters: { chat: { events: [{ type: 'generation_progress', phase: 'summarizing' }], keepOpen: true } satisfies ChatPanelScenario }, async play(context) {
+  await send(context);
+  await waitFor(() => expect(context.canvas.getByRole('status')).toHaveTextContent(label('progress.summarizing')));
+} };
+export const BeforeAnswerProgress: Story = { parameters: { chat: waiting }, async play(context) {
+  await send(context);
+  for (const phase of ['thinking', 'summarizing', 'thinking'] as const) {
+    network.emit([{ type: 'generation_progress', phase }]);
+    await waitFor(() => expect(context.canvas.getByRole('status')).toHaveTextContent(label(`progress.${phase}`)));
+  }
+  for (const call_id of [1, 2]) {
+    network.emit([{ type: 'tool_progress', call_id, tool: 'search_scenes', status: 'running' }]);
+    await waitFor(() => expect(context.canvas.getByRole('status')).toHaveTextContent(label('progress.tools.search_scenes.running')));
+    network.emit([
+      { type: 'tool_progress', call_id, tool: 'search_scenes', status: 'complete' },
+      { type: 'generation_progress', phase: 'reviewing' },
+    ]);
+    await waitFor(() => expect(context.canvas.getByRole('status')).toHaveTextContent(label('progress.reviewing')));
+    await expect(context.canvas.getByRole('status')).not.toHaveTextContent(label('progress.answering'));
+  }
+  network.emit(answerEvents(english()));
+  network.finish();
+  await context.canvas.findByRole('button', { name: label('feedbackGood') });
+  await expect(input(context)).toBeEnabled();
+} };
+export const BeforeAnswerProgressEnglishMobile: Story = { ...BeforeAnswerProgress, globals: { locale: 'en', viewport: { value: 'mobile', isRotated: false } } };
 export const Searching: Story = { parameters: { chat: { events: searchingEvents, keepOpen: true } satisfies ChatPanelScenario }, async play(context) {
   await send(context); await assertBusy(context);
   const details = await context.canvas.findByRole('button', { name: `${label('progress.checkingVideos')}。${label('progress.details')}` });
@@ -122,7 +152,7 @@ export const Searching: Story = { parameters: { chat: { events: searchingEvents,
 } };
 export const Reviewing: Story = { parameters: { chat: { events: reviewedEvents, keepOpen: true } satisfies ChatPanelScenario }, async play(context) {
   await send(context);
-  await expect(await context.canvas.findByRole('status')).toHaveTextContent(label('progress.checkingVideos'));
+  await expect(await context.canvas.findByRole('status')).toHaveTextContent(label('progress.reviewing'));
 } };
 export const Streaming: Story = { parameters: { chat: { events: [...reviewedEvents, { type: 'text_delta', segmentIndex: 0, text: firstTokens }], keepOpen: true } satisfies ChatPanelScenario }, async play(context) {
   await send(context);

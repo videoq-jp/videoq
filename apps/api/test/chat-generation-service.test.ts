@@ -291,6 +291,7 @@ describe("answer application lifecycle without runtime adapters", () => {
     const { deps, service } = fixture();
     deps.stream.mockImplementation(() =>
       chunks([
+        { generationProgress: { type: "generation_progress", phase: "thinking" } },
         { searching: "query", searchId: 1 },
         { searchCompleted: { id: 1, query: "query", count: 2 } },
         {
@@ -310,6 +311,7 @@ describe("answer application lifecycle without runtime adapters", () => {
       ]),
     );
     expect(await collect(service)).toEqual([
+      { type: "generation_progress", phase: "thinking" },
       { type: "searching", query: "query", searchId: 1 },
       { type: "searchCompleted", query: "query", searchId: 1, count: 2 },
       {

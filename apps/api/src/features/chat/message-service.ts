@@ -130,9 +130,10 @@ export async function streamChatMessage(
     displayQuestion?: string;
     clientSignal?: AbortSignal;
     includeToolProgress?: boolean;
+    includeGenerationProgress?: boolean;
   },
 ): Promise<{ write: (send: SseEventWriter) => Promise<void> }> {
-  const { body, includeToolProgress, ...options } = opts;
+  const { body, includeToolProgress, includeGenerationProgress, ...options } = opts;
   const result = await chatGenerationService(env).stream({
     ...options,
     request: toChatRequestInput(body),
@@ -142,6 +143,7 @@ export async function streamChatMessage(
       result.write(async (event) => {
         // Older clients reject unknown SSE events until they reload.
         if (event.type === "tool_progress" && !includeToolProgress) return;
+        if (event.type === "generation_progress" && !includeGenerationProgress) return;
         await send(toStreamEvent(event));
       }),
   };

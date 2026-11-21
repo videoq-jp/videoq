@@ -13,6 +13,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Preparing: Story = {};
+export const Thinking: Story = { args: { progress: { phase: 'thinking', searches: [] } } };
+export const Summarizing: Story = { args: { progress: { phase: 'summarizing', searches: [] } } };
+export const Reviewing: Story = { args: { progress: { ...searched, phase: 'reviewing' } } };
+export const ReviewingAfterTools: Story = { args: { progress: {
+  phase: 'reviewing', searches: [], tools: [{ id: 1, tool: 'search_scenes', status: 'complete' }],
+} } };
+export const SummarizingAfterTools: Story = { args: { progress: {
+  phase: 'summarizing', searches: [], tools: [{ id: 1, tool: 'search_scenes', status: 'complete' }],
+} } };
+export const Answering: Story = { args: { progress: { ...searched, phase: 'answering' } } };
 export const Searching: Story = { args: { progress: searching } };
 export const InspectingVideo: Story = {
   args: { progress: { phase: 'searching', searches: [], tools: [

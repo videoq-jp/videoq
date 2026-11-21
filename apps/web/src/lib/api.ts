@@ -273,6 +273,7 @@ export class ApiClient {
     const { share_slug, ...bodyData } = data;
     const params = new URLSearchParams();
     params.set('tool_progress', '1');
+    params.set('generation_progress', '1');
     if (share_slug) params.set('share_slug', share_slug);
     const endpoint = `/chat/messages/stream${params.size ? `?${params}` : ''}`;
 

@@ -821,6 +821,9 @@
     "generating": "Generating a response",
     "progress": {
       "preparing": "Reviewing your question",
+      "thinking": "Deciding how to investigate your question",
+      "summarizing": "Organizing the conversation so far",
+      "reviewing": "Reviewing the findings and checking whether more information is needed",
       "checkingVideos": "Checking lecture videos",
       "searched": "Searched lecture videos",
       "interrupted": "Response interrupted",

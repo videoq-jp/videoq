@@ -400,6 +400,8 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
               await send(part);
             } else if ("source" in chunk) {
               await send({ type: "source", source: chunk.source });
+            } else if ("generationProgress" in chunk) {
+              await send(chunk.generationProgress);
             } else if ("toolProgress" in chunk) {
               await send(chunk.toolProgress);
             } else if ("searching" in chunk) {

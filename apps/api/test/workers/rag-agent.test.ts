@@ -70,6 +70,7 @@ describe("RAG agent in the Workers runtime", () => {
       ownerUserId: "00000000-0000-4000-8000-000000000005", videoIds: null, locale: null,
     });
     try {
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "answering" } });
       expect((await stream.next()).value).toEqual({ part: { type: "text", segmentIndex: 0, text: "First" } });
       await stream.return();
       expect(upstream?.aborted).toBe(true);
@@ -130,6 +131,11 @@ describe("RAG agent in the Workers runtime", () => {
       const result = streaming
         ? await (async () => {
             for await (const chunk of streamRag(ENV, params)) chunks.push(chunk);
+            expect(chunks.filter(chunk => "generationProgress" in chunk)).toEqual([
+              { generationProgress: { type: "generation_progress", phase: "thinking" } },
+              { generationProgress: { type: "generation_progress", phase: "reviewing" } },
+              ...(mode === "metadata-search" ? [{ generationProgress: { type: "generation_progress", phase: "reviewing" } }] : []),
+            ]);
             const final = chunks.find((chunk) => "final" in chunk);
             if (!final) throw new Error("Missing final answer");
             expect(chunks.filter(chunk => "part" in chunk && chunk.part.type === "text").map(chunk => "part" in chunk && chunk.part.type === "text" ? chunk.part.text : "").join("")).toBe(chatAnswerText(final.final.answer));

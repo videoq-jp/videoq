@@ -1,4 +1,4 @@
-import type { ChatStreamEvent, ChatToolProgressEvent } from '@videoq/domain/chat';
+import type { ChatGenerationProgressEvent, ChatStreamEvent, ChatToolProgressEvent } from '@videoq/domain/chat';
 
 interface ChatToolStep {
   id: number;
@@ -13,7 +13,7 @@ interface ChatSearchStep {
 }
 
 export interface ChatProgress {
-  phase: 'preparing' | 'searching' | 'reviewing' | 'answering' | 'complete' | 'error';
+  phase: 'preparing' | 'searching' | 'complete' | 'error' | ChatGenerationProgressEvent['phase'];
   searches: ChatSearchStep[];
   tools?: ChatToolStep[];
 }
@@ -22,6 +22,13 @@ export const createChatProgress = (): ChatProgress => ({ phase: 'preparing', sea
 
 export function updateChatProgress(progress: ChatProgress, event: ChatStreamEvent): ChatProgress {
   if (progress.phase === 'error' || progress.phase === 'complete') return progress;
+
+  if (event.type === 'generation_progress') {
+    // Once answer text is arriving, late progress must not replace that state.
+    if (progress.phase === 'answering' && event.phase !== 'answering') return progress;
+    if (progress.phase === event.phase) return progress;
+    return { ...progress, phase: event.phase };
+  }
 
   if (event.type === 'tool_progress') {
     const tools = [...(progress.tools ?? [])];
