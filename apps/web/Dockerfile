@@ -52,6 +52,21 @@ RUN if [ "$VITE_DEPLOYMENT_EDITION" = onprem ]; then node apps/web/scripts/check
 RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template
 
 
+FROM build AS openssl-security
+# Compile checksum-pinned upstream fixes until Alpine publishes these backports.
+RUN apk add --no-cache abuild build-base perl linux-headers
+COPY apps/security/openssl /build/openssl
+WORKDIR /build/openssl
+RUN abuild-keygen -a -n \
+    && cp /root/.abuild/*.pub /etc/apk/keys/ \
+    && MAKEFLAGS=-j4 abuild -F -d -r \
+    && mkdir /security-packages \
+    && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && cp /root/.abuild/*.pub /security-packages/ \
+    && test -f /security-packages/libssl3-3.5.9-r100.apk \
+    && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+
 FROM nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606 AS runtime
 
 # Refresh the pinned base's Brotli, curl, Expat and libxslt security fixes.
@@ -61,6 +76,11 @@ RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libc
 RUN apk add --no-cache --upgrade \
     --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
     'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
+
+COPY --from=openssl-security /security-packages /tmp/security-packages
+RUN cp /tmp/security-packages/*.pub /etc/apk/keys/ \
+    && apk add --no-network /tmp/security-packages/libcrypto3-3.5.9-r100.apk /tmp/security-packages/libssl3-3.5.9-r100.apk \
+    && rm -rf /tmp/security-packages
 
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template

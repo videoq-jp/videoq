@@ -21,6 +21,21 @@ RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import 
     && test "$(npm --version)" = "$NPM_VERSION"
 # END managed npm
 
+FROM base AS openssl-security
+# Compile checksum-pinned upstream fixes until Alpine publishes these backports.
+RUN apk add --no-cache abuild build-base perl linux-headers
+COPY apps/security/openssl /build/openssl
+WORKDIR /build/openssl
+RUN abuild-keygen -a -n \
+    && cp /root/.abuild/*.pub /etc/apk/keys/ \
+    && MAKEFLAGS=-j4 abuild -F -d -r \
+    && mkdir /security-packages \
+    && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && cp /root/.abuild/*.pub /security-packages/ \
+    && test -f /security-packages/libssl3-3.5.9-r100.apk \
+    && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+
 FROM base AS build
 WORKDIR /workspace
 COPY package.json package-lock.json ./
@@ -46,6 +61,10 @@ COPY packages/domain/package.json packages/domain/package.json
 RUN npm ci --workspace @videoq/api --omit=dev --omit=optional --ignore-scripts
 
 FROM base AS runtime
+COPY --from=openssl-security /security-packages /tmp/security-packages
+RUN cp /tmp/security-packages/*.pub /etc/apk/keys/ \
+    && apk add --no-network /tmp/security-packages/libcrypto3-3.5.9-r100.apk /tmp/security-packages/libssl3-3.5.9-r100.apk \
+    && rm -rf /tmp/security-packages
 ENV NODE_ENV=production
 # The final image executes bundled entries; package installation is build-only.
 RUN rm -rf /usr/local/lib/node_modules/npm /opt/verified-npm /usr/local/bin/npm /usr/local/bin/npx
