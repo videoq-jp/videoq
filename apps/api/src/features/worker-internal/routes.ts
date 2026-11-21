@@ -64,12 +64,15 @@ workerInternalRoutes.post("/jobs/:action", async c => {
 
 const userId = z.string().min(1).max(128);
 const runId = z.string().uuid();
+// Imported sources retain their SHA-256 revision; native writes use UUIDs.
+// Persistence still compares the exact owner, revision and file snapshot.
+const sourceRevisionToken = z.union([z.string().uuid(), z.string().regex(/^[a-f0-9]{64}$/)]);
 const sourceRequest = z.object({ videoId: z.number().int().positive().safe() }).strict();
 const startRequest = sourceRequest.extend({
-  runId, userId, sourceRevision: z.string().uuid(), dimensions: z.union([z.literal(768), z.literal(1536)]),
+  runId, userId, sourceRevision: sourceRevisionToken, dimensions: z.union([z.literal(768), z.literal(1536)]),
   expectedScenes: z.number().int().min(0).max(1_000_000),
 }).strict();
-const finishRequest = sourceRequest.extend({ userId, sourceRevision: z.string().uuid(), fileKey: z.string().max(4096),
+const finishRequest = sourceRequest.extend({ userId, sourceRevision: sourceRevisionToken, fileKey: z.string().max(4096),
   dimensions: z.union([z.literal(768), z.literal(1536)]),
 }).strict();
 const publishRequest = z.object({ runId, userId }).strict();
@@ -135,7 +138,7 @@ workerInternalRoutes.post("/processing/reserve", async c => {
 });
 
 
-const transcriptionSnapshot = sourceRequest.extend({ userId, sourceRevision: z.string().uuid(), fileKey: z.string().max(4096) }).strict();
+const transcriptionSnapshot = sourceRequest.extend({ userId, sourceRevision: sourceRevisionToken, fileKey: z.string().max(4096) }).strict();
 const transcriptionBegin = transcriptionSnapshot.extend({ expectedStatus: z.enum(["pending", "error", "processing"]) }).strict();
 const transcriptionFinish = transcriptionSnapshot.extend({ transcript: z.string().max(1_800_000).nullable(),
   errorCode: z.enum(["TRANSCRIPTION_FAILED", "PROCESSING_QUOTA_EXCEEDED"]).nullable(),
