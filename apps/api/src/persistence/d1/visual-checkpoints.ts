@@ -1,106 +1,424 @@
-import { visualAttemptAdoptable, visualChunkPublishAllowed, visualPlan, visualReadyAllowed, visualRunMutable,
-  visualRunRecoveryAllowed, visualSourceCurrent, validateVisualCheckpoint, visualAttemptAllowed } from '../../application/visual-checkpoint-policy';
-import { visualStringLogic as logic } from '../visual-policy-sql';
+import {
+  and,
+  eq,
+  ne,
+  exists,
+  notExists,
+  isNull,
+  isNotNull,
+  sql,
+} from "drizzle-orm";
+import { createD1Connection } from "../../db/d1/connection";
+import { insertSelectFields } from "../../db/d1/query-builders";
+import {
+  videos,
+  videoVisualRuns as runs,
+  videoVisualChunks as chunks,
+  visualObjectAttempts as attempts,
+  mutationReceipts as receipts,
+} from "../../db/schema/sqlite";
+import {
+  visualAttemptAdoptable,
+  visualChunkPublishAllowed,
+  visualPlan,
+  visualReadyAllowed,
+  visualRunMutable,
+  visualRunRecoveryAllowed,
+  visualSourceCurrent,
+  validateVisualCheckpoint,
+  visualAttemptAllowed,
+} from "../../application/visual-checkpoint-policy";
+import { visualDrizzleLogic as logic } from "../visual-policy-sql";
 import { beginVisualObject } from "./visual-objects";
-import type { VisualCheckpoints, VisualRun, VisualChunk } from "../contracts/visual-checkpoints";
-const JOINS = "video_visual_runs r JOIN videos v ON v.id=r.video_id";
-const CURRENT = visualSourceCurrent('r.file_key=v.file', "v.source_type='uploaded'", logic);
-const MUTABLE = visualRunMutable(CURRENT, "r.status<>'ready'", logic);
-const INITIAL = visualSourceCurrent('file=?', "source_type='uploaded'", logic);
-const CURRENT_RUN = `EXISTS(SELECT 1 FROM videos v WHERE v.id=video_visual_runs.video_id AND ${visualSourceCurrent('v.file=video_visual_runs.file_key', "v.source_type='uploaded'", logic)})`;
-const PROJECTION = `r.video_id AS videoId,r.run_id AS runId,r.file_key AS fileKey,r.duration_ms AS durationMs,r.chunk_count AS chunkCount,r.status,r.publication_version AS publicationVersion`;
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-export function createD1VisualCheckpoints(database: D1Database): VisualCheckpoints {
+import type {
+  VisualCheckpoints,
+  VisualRun,
+} from "../contracts/visual-checkpoints";
+const now = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ','now')`;
+export function createD1VisualCheckpoints(
+  database: D1Database,
+): VisualCheckpoints {
+  const db = createD1Connection(database);
+  const current = visualSourceCurrent(
+    eq(runs.fileKey, videos.file),
+    eq(videos.sourceType, "uploaded"),
+    logic,
+  );
+  const mutable = visualRunMutable(current, ne(runs.status, "ready"), logic);
+  const currentRun = exists(
+    db
+      .select({ id: videos.id })
+      .from(videos)
+      .where(and(eq(videos.id, runs.videoId), current)),
+  );
+  const projection = {
+    videoId: runs.videoId,
+    runId: runs.runId,
+    fileKey: runs.fileKey,
+    durationMs: runs.durationMs,
+    chunkCount: runs.chunkCount,
+    status: sql<VisualRun["status"]>`${runs.status}`,
+    publicationVersion: runs.publicationVersion,
+  };
+  const receipt = (token: string) =>
+    exists(
+      db
+        .select({ token: receipts.token })
+        .from(receipts)
+        .where(eq(receipts.token, token)),
+    );
   return {
-    beginObject:(videoId,runId,version,index)=>beginVisualObject(database,videoId,runId,version,index),
+    beginObject: (videoId, runId, version, index) =>
+      beginVisualObject(database, videoId, runId, version, index),
     async load(videoId, runId) {
-      return database.prepare(`SELECT ${PROJECTION} FROM ${JOINS} WHERE v.id=? AND ${CURRENT} AND (? IS NULL OR r.run_id=?)`)
-        .bind(videoId,runId ?? null,runId ?? null).first<VisualRun>();
+      return (
+        (await db
+          .select(projection)
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .where(
+            and(
+              eq(videos.id, videoId),
+              current,
+              runId == null ? undefined : eq(runs.runId, runId),
+            ),
+          )
+          .get()) ?? null
+      );
     },
     async initialize(videoId, fileKey, durationMs) {
-      const { count } = visualPlan(durationMs);
-      const runId = crypto.randomUUID();
-      const token = crypto.randomUUID();
-      const result = await database.batch<VisualRun>([
-        database.prepare(`DELETE FROM video_visual_runs WHERE video_id=? AND file_key<>? AND EXISTS(SELECT 1 FROM videos WHERE id=? AND ${INITIAL})`)
-          .bind(videoId,fileKey,videoId,fileKey),
-        database.prepare(`INSERT INTO video_visual_runs(video_id,run_id,file_key,duration_ms,chunk_count)
-          SELECT id,?,?,?,? FROM videos WHERE id=? AND ${INITIAL} ON CONFLICT(video_id) DO NOTHING`)
-          .bind(runId,fileKey,durationMs,count,videoId,fileKey),
-        database.prepare("INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'visual_plan',? WHERE changes()=1").bind(token,videoId),
-        database.prepare(`INSERT INTO video_visual_chunks(run_id,chunk_index) SELECT ?,value FROM json_each(?) WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(runId,JSON.stringify(Array.from({length:count},(_,i)=>i)),token),
-        database.prepare(`SELECT ${PROJECTION} FROM ${JOINS} WHERE v.id=? AND v.file=? AND ${CURRENT}`).bind(videoId,fileKey),
-        database.prepare("DELETE FROM mutation_receipts WHERE token=?").bind(token),
+      const { count } = visualPlan(durationMs),
+        runId = crypto.randomUUID(),
+        token = crypto.randomUUID();
+      const initial = and(
+        eq(videos.id, videoId),
+        visualSourceCurrent(
+          eq(videos.file, fileKey),
+          eq(videos.sourceType, "uploaded"),
+          logic,
+        ),
+      );
+      const result = await db.batch([
+        db
+          .delete(runs)
+          .where(
+            and(
+              eq(runs.videoId, videoId),
+              ne(runs.fileKey, fileKey),
+              exists(db.select({ id: videos.id }).from(videos).where(initial)),
+            ),
+          ),
+        db
+          .insert(runs)
+          .select(
+            db
+              .select(
+                insertSelectFields(runs, {
+                  videoId: videos.id,
+                  runId: sql`${runId}`,
+                  fileKey: sql`${fileKey}`,
+                  durationMs: sql`${durationMs}`,
+                  chunkCount: sql`${count}`,
+                }),
+              )
+              .from(videos)
+              .where(initial),
+          )
+          .onConflictDoNothing({ target: runs.videoId }),
+        db.insert(receipts).select(
+          db
+            .select(
+              insertSelectFields(receipts, {
+                token: sql`${token}`,
+                kind: sql`'visual_plan'`,
+                resourceId: sql`${videoId}`,
+              }),
+            )
+            .from(videos)
+            .where(and(eq(videos.id, videoId), sql`changes()=1`)),
+        ),
+        db.insert(chunks).select(
+          db
+            .select(
+              insertSelectFields(chunks, {
+                runId: sql`${runId}`,
+                chunkIndex: sql`value`,
+              }),
+            )
+            .from(
+              sql`json_each(${JSON.stringify(Array.from({ length: count }, (_, i) => i))})`,
+            )
+            .where(receipt(token)),
+        ),
+        db
+          .select(projection)
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .where(
+            and(eq(videos.id, videoId), eq(videos.file, fileKey), current),
+          ),
+        db.delete(receipts).where(eq(receipts.token, token)),
       ]);
-      return result[4].results[0] ?? null;
+      return result[4][0] ?? null;
     },
     async pending(runId) {
-      const rows = await database.prepare(`SELECT c.chunk_index FROM video_visual_chunks c JOIN video_visual_runs r ON r.run_id=c.run_id
-        JOIN videos v ON v.id=r.video_id WHERE r.run_id=? AND ${MUTABLE} AND c.frame_count IS NULL ORDER BY c.chunk_index`)
-        .bind(runId).all<{chunk_index:number}>();
-      return rows.results.map(r=>r.chunk_index);
+      const rows = await db
+        .select({ index: chunks.chunkIndex })
+        .from(chunks)
+        .innerJoin(runs, eq(runs.runId, chunks.runId))
+        .innerJoin(videos, eq(videos.id, runs.videoId))
+        .where(and(eq(runs.runId, runId), mutable, isNull(chunks.frameCount)))
+        .orderBy(chunks.chunkIndex);
+      return rows.map((row) => row.index);
     },
-    async chunks(videoId,runId) {
-      const results = await database.batch<VisualChunk>([
-        database.prepare(`SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${CURRENT}`).bind(videoId,runId),
-        database.prepare(`SELECT c.chunk_index AS "index",c.frame_count AS frameCount,c.object_version AS objectVersion
-          FROM ${JOINS} JOIN video_visual_chunks c ON c.run_id=r.run_id WHERE v.id=? AND r.run_id=? AND ${CURRENT} ORDER BY c.chunk_index`)
-          .bind(videoId,runId),
+    async chunks(videoId, runId) {
+      const condition = and(
+        eq(videos.id, videoId),
+        eq(runs.runId, runId),
+        current,
+      );
+      const result = await db.batch([
+        db
+          .select({ id: runs.runId })
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .where(condition),
+        db
+          .select({
+            index: chunks.chunkIndex,
+            frameCount: chunks.frameCount,
+            objectVersion: chunks.objectVersion,
+          })
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .innerJoin(chunks, eq(chunks.runId, runs.runId))
+          .where(condition)
+          .orderBy(chunks.chunkIndex),
       ]);
-      return results[0].results.length ? results[1].results : null;
+      return result[0].length ? result[1] : null;
     },
-    async publishChunk(videoId,runId,index,frameCount,objectVersion) {
+    async publishChunk(videoId, runId, index, frameCount, objectVersion) {
       validateVisualCheckpoint(frameCount, objectVersion);
-      const publish = visualChunkPublishAllowed('frame_count IS NULL',
-        `EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='c:'||? AND a.video_id=? AND a.run_id=? AND a.chunk_index=?
-          AND a.status='pending' AND julianday(a.expires_at)>julianday('now'))`,
-        `EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${MUTABLE})`, logic);
-      const recover = visualRunRecoveryAllowed({ notReady: "status<>'ready'",
-        noChunkErrors: "NOT EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND last_error<>'')",
-        winningChunk: 'EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND object_version=?)', current: CURRENT_RUN,
-      }, logic);
-      const result = await database.batch<{objectVersion:string|null}>([
-        database.prepare(`UPDATE video_visual_chunks SET frame_count=?,object_version=?,last_error='',updated_at=${NOW}
-          WHERE run_id=? AND chunk_index=? AND ${publish}`)
-          .bind(frameCount,objectVersion,runId,index,objectVersion,videoId,runId,index,videoId,runId),
-        database.prepare(`UPDATE visual_object_attempts SET status='published' WHERE id='c:'||? AND status='pending'
-          AND EXISTS(SELECT 1 FROM video_visual_chunks c WHERE c.run_id=? AND c.chunk_index=? AND c.object_version=?)`)
-          .bind(objectVersion,runId,index,objectVersion),
-        database.prepare(`UPDATE video_visual_runs SET status='processing',last_error='' WHERE run_id=? AND ${recover}`).bind(runId,runId,runId,index,objectVersion),
-        database.prepare(`SELECT c.object_version AS objectVersion FROM ${JOINS} JOIN video_visual_chunks c ON c.run_id=r.run_id
-          WHERE v.id=? AND r.run_id=? AND c.chunk_index=? AND ${CURRENT}`).bind(videoId,runId,index),
+      const winningChunk = exists(
+        db
+          .select({ id: chunks.runId })
+          .from(chunks)
+          .where(
+            and(
+              eq(chunks.runId, runId),
+              eq(chunks.chunkIndex, index),
+              eq(chunks.objectVersion, objectVersion),
+            ),
+          ),
+      );
+      const publish = visualChunkPublishAllowed(
+        isNull(chunks.frameCount),
+        exists(
+          db
+            .select({ id: attempts.id })
+            .from(attempts)
+            .where(
+              and(
+                eq(attempts.id, "c:" + objectVersion),
+                eq(attempts.videoId, videoId),
+                eq(attempts.runId, runId),
+                eq(attempts.chunkIndex, index),
+                eq(attempts.status, "pending"),
+                sql`julianday(${attempts.expiresAt})>julianday('now')`,
+              ),
+            ),
+        ),
+        exists(
+          db
+            .select({ id: runs.runId })
+            .from(runs)
+            .innerJoin(videos, eq(videos.id, runs.videoId))
+            .where(and(eq(videos.id, videoId), eq(runs.runId, runId), mutable)),
+        ),
+        logic,
+      );
+      const recover = visualRunRecoveryAllowed(
+        {
+          notReady: ne(runs.status, "ready"),
+          noChunkErrors: notExists(
+            db
+              .select({ id: chunks.runId })
+              .from(chunks)
+              .where(and(eq(chunks.runId, runId), ne(chunks.lastError, ""))),
+          ),
+          winningChunk,
+          current: currentRun,
+        },
+        logic,
+      );
+      const result = await db.batch([
+        db
+          .update(chunks)
+          .set({ frameCount, objectVersion, lastError: "", updatedAt: now })
+          .where(
+            and(eq(chunks.runId, runId), eq(chunks.chunkIndex, index), publish),
+          ),
+        db
+          .update(attempts)
+          .set({ status: "published" })
+          .where(
+            and(
+              eq(attempts.id, "c:" + objectVersion),
+              eq(attempts.status, "pending"),
+              winningChunk,
+            ),
+          ),
+        db
+          .update(runs)
+          .set({ status: "processing", lastError: "" })
+          .where(and(eq(runs.runId, runId), recover)),
+        db
+          .select({ objectVersion: chunks.objectVersion })
+          .from(runs)
+          .innerJoin(videos, eq(videos.id, runs.videoId))
+          .innerJoin(chunks, eq(chunks.runId, runs.runId))
+          .where(
+            and(
+              eq(videos.id, videoId),
+              eq(runs.runId, runId),
+              eq(chunks.chunkIndex, index),
+              current,
+            ),
+          ),
       ]);
-      const row = result[3].results[0];
-      return {current:Boolean(row),objectVersion:row?.objectVersion ?? null};
+      const row = result[3][0];
+      return {
+        current: Boolean(row),
+        objectVersion: row?.objectVersion ?? null,
+      };
     },
-    async ready(videoId,runId,objectVersion) {
-      const adoptable = visualAttemptAdoptable("a.status='published'", "a.status='pending'", "julianday(a.expires_at)>julianday('now')", logic);
-      const ready = visualReadyAllowed({ current: CURRENT_RUN,
-        adoptableAttempt: `EXISTS(SELECT 1 FROM visual_object_attempts a WHERE a.id='m:'||? AND a.run_id=video_visual_runs.run_id AND ${adoptable})`,
-        complete: 'chunk_count=(SELECT count(*) FROM video_visual_chunks WHERE run_id=? AND frame_count IS NOT NULL AND object_version IS NOT NULL)',
-        hasFrames: '(SELECT sum(frame_count) FROM video_visual_chunks WHERE run_id=?)>0',
-      }, logic);
-      const result = await database.batch([
-        database.prepare(`UPDATE video_visual_runs SET status='ready',publication_version=coalesce(publication_version,?),completed_at=coalesce(completed_at,${NOW}),last_error=''
-          WHERE video_id=? AND run_id=? AND ${ready} RETURNING run_id`)
-          .bind(objectVersion,videoId,runId,objectVersion,runId,runId),
-        database.prepare(`UPDATE visual_object_attempts SET status='published' WHERE id='m:'||? AND status='pending'
-          AND EXISTS(SELECT 1 FROM video_visual_runs r JOIN videos v ON v.id=r.video_id WHERE r.run_id=? AND r.status='ready' AND r.publication_version=? AND r.file_key=v.file)`)
-          .bind(objectVersion,runId,objectVersion),
+    async ready(videoId, runId, objectVersion) {
+      const adoptable = visualAttemptAdoptable(
+        eq(attempts.status, "published"),
+        eq(attempts.status, "pending"),
+        sql`julianday(${attempts.expiresAt})>julianday('now')`,
+        logic,
+      );
+      const complete = db
+        .select({ count: sql<number>`count(*)` })
+        .from(chunks)
+        .where(
+          and(
+            eq(chunks.runId, runId),
+            isNotNull(chunks.frameCount),
+            isNotNull(chunks.objectVersion),
+          ),
+        );
+      const frames = db
+        .select({ count: sql<number>`sum(${chunks.frameCount})` })
+        .from(chunks)
+        .where(eq(chunks.runId, runId));
+      const ready = visualReadyAllowed(
+        {
+          current: currentRun,
+          adoptableAttempt: exists(
+            db
+              .select({ id: attempts.id })
+              .from(attempts)
+              .where(
+                and(
+                  eq(attempts.id, "m:" + objectVersion),
+                  eq(attempts.runId, runs.runId),
+                  adoptable,
+                ),
+              ),
+          ),
+          complete: eq(runs.chunkCount, complete),
+          hasFrames: sql`(${frames})>0`,
+        },
+        logic,
+      );
+      const result = await db.batch([
+        db
+          .update(runs)
+          .set({
+            status: "ready",
+            publicationVersion: sql`coalesce(${runs.publicationVersion},${objectVersion})`,
+            completedAt: sql`coalesce(${runs.completedAt},${now})`,
+            lastError: "",
+          })
+          .where(and(eq(runs.videoId, videoId), eq(runs.runId, runId), ready))
+          .returning({ id: runs.runId }),
+        db
+          .update(attempts)
+          .set({ status: "published" })
+          .where(
+            and(
+              eq(attempts.id, "m:" + objectVersion),
+              eq(attempts.status, "pending"),
+              exists(
+                db
+                  .select({ id: runs.runId })
+                  .from(runs)
+                  .innerJoin(videos, eq(videos.id, runs.videoId))
+                  .where(
+                    and(
+                      eq(runs.runId, runId),
+                      eq(runs.status, "ready"),
+                      eq(runs.publicationVersion, objectVersion),
+                      eq(runs.fileKey, videos.file),
+                    ),
+                  ),
+              ),
+            ),
+          ),
       ]);
-      return result[0].results.length>0;
+      return result[0].length > 0;
     },
-    async failure(videoId,runId,index) {
-      const failure = visualAttemptAllowed(visualRunMutable(CURRENT_RUN, "status<>'ready'", logic), '? IS NOT NULL',
-        'EXISTS(SELECT 1 FROM video_visual_chunks WHERE run_id=? AND chunk_index=? AND frame_count IS NULL)', logic);
-      await database.batch([
-        database.prepare(`UPDATE video_visual_chunks SET failures=failures+1,last_error='VISUAL_CHUNK_FAILED',updated_at=${NOW}
-          WHERE run_id=? AND chunk_index=? AND frame_count IS NULL AND EXISTS(SELECT 1 FROM ${JOINS} WHERE v.id=? AND r.run_id=? AND ${MUTABLE})`)
-          .bind(runId,index ?? null,videoId,runId),
-        database.prepare(`UPDATE video_visual_runs SET status='error',last_error='VISUAL_PROCESSING_FAILED'
-          WHERE video_id=? AND run_id=? AND ${failure}`)
-          .bind(videoId,runId,index ?? null,runId,index ?? null),
+    async failure(videoId, runId, index) {
+      const pending = exists(
+        db
+          .select({ id: chunks.runId })
+          .from(chunks)
+          .where(
+            and(
+              eq(chunks.runId, runId),
+              eq(chunks.chunkIndex, sql`${index ?? null}`),
+              isNull(chunks.frameCount),
+            ),
+          ),
+      );
+      const failure = visualAttemptAllowed(
+        visualRunMutable(currentRun, ne(runs.status, "ready"), logic),
+        sql`${index ?? null} IS NOT NULL`,
+        pending,
+        logic,
+      );
+      await db.batch([
+        db
+          .update(chunks)
+          .set({
+            failures: sql`${chunks.failures}+1`,
+            lastError: "VISUAL_CHUNK_FAILED",
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(chunks.runId, runId),
+              eq(chunks.chunkIndex, sql`${index ?? null}`),
+              isNull(chunks.frameCount),
+              exists(
+                db
+                  .select({ id: runs.runId })
+                  .from(runs)
+                  .innerJoin(videos, eq(videos.id, runs.videoId))
+                  .where(
+                    and(eq(videos.id, videoId), eq(runs.runId, runId), mutable),
+                  ),
+              ),
+            ),
+          ),
+        db
+          .update(runs)
+          .set({ status: "error", lastError: "VISUAL_PROCESSING_FAILED" })
+          .where(
+            and(eq(runs.videoId, videoId), eq(runs.runId, runId), failure),
+          ),
       ]);
     },
   };

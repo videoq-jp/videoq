@@ -1,57 +1,188 @@
-import { reportMediaAllowed, reportGrantMatches, reportLogAllowed, courseReportVideoIds } from '../../application/course-report';
-import { reportStringLogic } from '../course-report-policy-sql';
-import {withDb} from '../../db/pool';
-import {lockLmsGrant} from './lms-resource-repository';
-import {lockLtiDataSessionWithDb} from './lti-session-lock';
-import type {Bindings} from '../../types/bindings';
-import type {CourseReportRepository,ReportDay} from '../contracts/course-report-repository';
-import {reportDenied as denied,checkCourseReport} from '../../shared/course-report';
-import {digest} from '../../features/lti/store';
-export function createPostgresCourseReportRepository(env:Bindings):CourseReportRepository{return {async summarize(scope,input,actorKey){
- checkCourseReport(scope,input);
-  return withDb(env, async (db, client) => {
-    await client.query('BEGIN');
-    try {
-      await client.query("SET LOCAL statement_timeout='5s'; SET LOCAL lock_timeout='500ms'");
-      await lockLmsGrant(db, { id: scope.installationId, ownerUserId: scope.ownerUserId },scope.contextId,scope.courseId);
-      await lockLtiDataSessionWithDb(db, scope.ownerUserId, scope.sessionProof);
-      const session = await client.query(`SELECT id FROM lti_credentials WHERE id=$1
-        AND payload->>'contextId'=$2 AND payload->>'courseId'=$3`, [scope.sessionProof.sessionHash, scope.contextId, String(scope.courseId)]);
-      if (session.rowCount !== 1) throw denied();
-      const course = await client.query(`SELECT c.id FROM lms_courses c JOIN video_courses v ON v.id=c.course_id
-        WHERE c.installation_id=$1 AND c.context_id=$2 AND c.course_id=$3 AND v.user_id=$4
-          AND v.managed_by_lms=true FOR SHARE OF c,v`, [scope.installationId, scope.contextId, scope.courseId, scope.ownerUserId]);
-      if (course.rowCount !== 1) throw denied();
-      const resources = await client.query<{ video_id: string }>(`SELECT r.video_id FROM lms_resources r
-        JOIN video_course_members m ON m.course_id=r.course_id AND m.video_id=r.video_id
-        JOIN videos v ON v.id=r.video_id AND ${reportMediaAllowed('v.user_id=$4','v.managed_by_lms=true','v.status',reportStringLogic)}
-        JOIN jsonb_to_recordset($5::jsonb) AS granted("videoId" bigint,generation bigint,"resourceLinkId" text)
-          ON ${reportGrantMatches('granted."videoId"=r.video_id','granted.generation=r.generation','granted."resourceLinkId"=r.resource_link_id',reportStringLogic)}
-        WHERE r.installation_id=$1 AND r.context_id=$2 AND r.course_id=$3 AND r.enabled=true FOR SHARE OF r,m,v`,
-      [scope.installationId, scope.contextId, scope.courseId, scope.ownerUserId, JSON.stringify(scope.readable)]);
-      const ids = courseReportVideoIds(resources.rows.map(row => Number(row.video_id)));
-      const days = await client.query<ReportDay>(`SELECT (l.created_at AT TIME ZONE 'UTC')::date::text AS date,
-        count(*)::int AS questions,count(*) FILTER(WHERE l.feedback='good')::int AS good,
-        count(*) FILTER(WHERE l.feedback='bad')::int AS bad,count(*) FILTER(WHERE l.feedback IS NULL)::int AS none
-        FROM chat_logs l JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id
-        WHERE l.user_id=$1 AND l.course_id=$2 AND s.registration_id=$3 AND s.context_id=$4
-          AND l.created_at >= $5::date AT TIME ZONE 'UTC' AND l.created_at < ($6::date + 1) AT TIME ZONE 'UTC'
-          AND ${reportLogAllowed({
-            originalNonempty:'jsonb_array_length(s.resource_video_ids)>0',
-            originalReadable:'s.resource_video_ids <@ $7::jsonb',
-            responseObject:"jsonb_typeof(l.response)='object'",
-            sourcesArray:"jsonb_typeof(l.response->'sources')='array'",
-            allSourcesReadable:`NOT EXISTS(SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(l.response->'sources')='array'
-              THEN l.response->'sources' ELSE '[]'::jsonb END) source
-              WHERE NOT ($7::jsonb @> jsonb_build_array(source->'video_id')))`,
-          },reportStringLogic)}
-        GROUP BY (l.created_at AT TIME ZONE 'UTC')::date ORDER BY date`,
-      [scope.ownerUserId, scope.courseId, 'db:' + scope.installationId, scope.contextId, input.from, input.to, JSON.stringify(ids)]);
-      await client.query(`INSERT INTO lti_report_accesses(installation_id,course_id,context_id,actor_key,from_date,to_date,resource_count,scope_hash)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, [scope.installationId, scope.courseId, scope.contextId, actorKey,
-        input.from, input.to, ids.length, await digest(JSON.stringify(ids))]);
-      await client.query('COMMIT');
-      return days.rows;
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-  });
-}};}
+import { and, eq, notExists, sql } from "drizzle-orm";
+import { withDb } from "../../db/pool";
+import {
+  ltiCredentials,
+  lmsCourses,
+  videoCourses,
+  lmsResources,
+  videoCourseMembers,
+  videos,
+  chatLogs,
+  ltiChatLogSubjects,
+  ltiReportAccesses,
+} from "../../db/schema";
+import {
+  reportMediaAllowed,
+  reportGrantMatches,
+  reportLogAllowed,
+  courseReportVideoIds,
+} from "../../application/course-report";
+import { reportDrizzleLogic as logic } from "../course-report-policy-sql";
+import { lockLmsGrant } from "./lms-resource-repository";
+import { lockLtiDataSessionWithDb } from "./lti-session-lock";
+import {
+  reportDenied as denied,
+  checkCourseReport,
+} from "../../shared/course-report";
+import { digest } from "../../features/lti/store";
+import type { Bindings } from "../../types/bindings";
+import type { CourseReportRepository } from "../contracts/course-report-repository";
+
+export function createPostgresCourseReportRepository(
+  env: Bindings,
+): CourseReportRepository {
+  return {
+    async summarize(scope, input, actorKey) {
+      checkCourseReport(scope, input);
+      return withDb(env, (db) =>
+        db.transaction(async (tx) => {
+          await tx.execute(
+            sql`SET LOCAL statement_timeout='5s'; SET LOCAL lock_timeout='500ms'`,
+          );
+          await lockLmsGrant(
+            tx,
+            { id: scope.installationId, ownerUserId: scope.ownerUserId },
+            scope.contextId,
+            scope.courseId,
+          );
+          await lockLtiDataSessionWithDb(
+            tx,
+            scope.ownerUserId,
+            scope.sessionProof,
+          );
+          const session = await tx
+            .select({ id: ltiCredentials.id })
+            .from(ltiCredentials)
+            .where(
+              and(
+                eq(ltiCredentials.id, scope.sessionProof.sessionHash),
+                sql`${ltiCredentials.payload}->>'contextId'=${scope.contextId}`,
+                sql`${ltiCredentials.payload}->>'courseId'=${String(scope.courseId)}`,
+              ),
+            );
+          if (session.length !== 1) throw denied();
+          const course = await tx
+            .select({ id: lmsCourses.id })
+            .from(lmsCourses)
+            .innerJoin(videoCourses, eq(videoCourses.id, lmsCourses.courseId))
+            .where(
+              and(
+                eq(lmsCourses.installationId, scope.installationId),
+                eq(lmsCourses.contextId, scope.contextId),
+                eq(lmsCourses.courseId, scope.courseId),
+                eq(videoCourses.userId, scope.ownerUserId),
+                eq(videoCourses.managedByLms, true),
+              ),
+            )
+            .for("share", { of: [lmsCourses, videoCourses] });
+          if (course.length !== 1) throw denied();
+          const resources = await tx
+            .select({ id: lmsResources.videoId })
+            .from(lmsResources)
+            .innerJoin(
+              videoCourseMembers,
+              and(
+                eq(videoCourseMembers.courseId, lmsResources.courseId),
+                eq(videoCourseMembers.videoId, lmsResources.videoId),
+              ),
+            )
+            .innerJoin(
+              videos,
+              and(
+                eq(videos.id, lmsResources.videoId),
+                reportMediaAllowed(
+                  eq(videos.userId, scope.ownerUserId),
+                  eq(videos.managedByLms, true),
+                  videos.status,
+                  logic,
+                ),
+              ),
+            )
+            .innerJoin(
+              sql`jsonb_to_recordset(${JSON.stringify(scope.readable)}::jsonb) AS granted("videoId" bigint,generation bigint,"resourceLinkId" text)`,
+              reportGrantMatches(
+                sql`granted."videoId"=${lmsResources.videoId}`,
+                sql`granted.generation=${lmsResources.generation}`,
+                sql`granted."resourceLinkId"=${lmsResources.resourceLinkId}`,
+                logic,
+              ),
+            )
+            .where(
+              and(
+                eq(lmsResources.installationId, scope.installationId),
+                eq(lmsResources.contextId, scope.contextId),
+                eq(lmsResources.courseId, scope.courseId),
+                eq(lmsResources.enabled, true),
+              ),
+            )
+            .for("share", { of: [lmsResources, videoCourseMembers, videos] });
+          const ids = courseReportVideoIds(
+              resources.map((row) => Number(row.id)),
+            ),
+            encoded = JSON.stringify(ids);
+          const date = sql<string>`(${chatLogs.createdAt} AT TIME ZONE 'UTC')::date`;
+          const source = sql`jsonb_array_elements(CASE WHEN jsonb_typeof(${chatLogs.response}->'sources')='array' THEN ${chatLogs.response}->'sources' ELSE '[]'::jsonb END) source`;
+          const readable = reportLogAllowed(
+            {
+              originalNonempty: sql`jsonb_array_length(${ltiChatLogSubjects.resourceVideoIds})>0`,
+              originalReadable: sql`${ltiChatLogSubjects.resourceVideoIds}<@${encoded}::jsonb`,
+              responseObject: sql`jsonb_typeof(${chatLogs.response})='object'`,
+              sourcesArray: sql`jsonb_typeof(${chatLogs.response}->'sources')='array'`,
+              allSourcesReadable: notExists(
+                tx
+                  .select({ value: sql`source` })
+                  .from(source)
+                  .where(
+                    sql`NOT (${encoded}::jsonb @> jsonb_build_array(source->'video_id'))`,
+                  ),
+              ),
+            },
+            logic,
+          );
+          const days = await tx
+            .select({
+              date: sql<string>`${date}::text`,
+              questions: sql<number>`count(*)::int`,
+              good: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback}='good')::int`,
+              bad: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback}='bad')::int`,
+              none: sql<number>`count(*) FILTER(WHERE ${chatLogs.feedback} IS NULL)::int`,
+            })
+            .from(chatLogs)
+            .innerJoin(
+              ltiChatLogSubjects,
+              eq(ltiChatLogSubjects.chatLogId, chatLogs.id),
+            )
+            .where(
+              and(
+                eq(chatLogs.userId, scope.ownerUserId),
+                eq(chatLogs.courseId, scope.courseId),
+                eq(
+                  ltiChatLogSubjects.registrationId,
+                  "db:" + scope.installationId,
+                ),
+                eq(ltiChatLogSubjects.contextId, scope.contextId),
+                sql`${chatLogs.createdAt}>=${input.from}::date::timestamp AT TIME ZONE 'UTC'`,
+                sql`${chatLogs.createdAt}<(${input.to}::date+1)::timestamp AT TIME ZONE 'UTC'`,
+                readable,
+              ),
+            )
+            .groupBy(date)
+            .orderBy(date);
+          await tx
+            .insert(ltiReportAccesses)
+            .values({
+              installationId: scope.installationId,
+              courseId: scope.courseId,
+              contextId: scope.contextId,
+              actorKey,
+              fromDate: input.from,
+              toDate: input.to,
+              resourceCount: ids.length,
+              scopeHash: await digest(encoded),
+            });
+          return days;
+        }),
+      );
+    },
+  };
+}

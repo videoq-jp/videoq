@@ -1,52 +1,215 @@
-import { privacyCatalogPage, privacySubjectsWithData, privacyHistoryNeedsUpgrade } from '../../application/privacy-policy';
-import { PRIVACY_CONTEXT_PAGE_SIZE } from '../../application/privacy';
-import { privacyStringLogic } from '../privacy-policy-sql';
-import {withClient} from '../../db/pool';
-import type {Bindings} from '../../types/bindings';
-import type {PrivacyRepository} from '../contracts/privacy-repository';
-import {ORPHAN_CONTEXT,privacySubject,assertPrivacyRecovery} from '../../shared/privacy';
-import {subjectPrivacyContexts,exportPrivacyPart,erasePrivacyData} from './privacy-data';
-export function createPostgresPrivacyRepository(env:Bindings):PrivacyRepository{return {async execute(installation,request){
-  return withClient(env,async client=>{
-    await client.query('BEGIN');
-    try {
-      const identity=await client.query(`SELECT id FROM lms_installations WHERE id=$1 AND owner_user_id=$2 AND issuer=$3 AND client_id=$4 AND deployment_id=$5 AND ($6::text IS NULL OR jwks_url=$6)`,
-        [installation.id,installation.ownerUserId,installation.issuer,installation.clientId,installation.deploymentId,installation.jwksUrl??null]);
-      assertPrivacyRecovery(Boolean(identity.rowCount));
-      // This is recovery authority, independent of enrolment, quota or active connection state.
-      const owner=await client.query(`SELECT id FROM users WHERE id IN(
-        SELECT $3::text UNION SELECT owner_user_id FROM teaching_connections WHERE provider='moodle' AND installation_id=$1
-        UNION SELECT DISTINCT l.user_id FROM chat_logs l JOIN lti_chat_log_subjects s ON s.chat_log_id=l.id
-          WHERE s.subject_key IN(SELECT subject_key FROM lti_chat_log_subjects WHERE registration_id=$2)
-      ) ORDER BY id FOR ${request.action==='erase'?'UPDATE':'SHARE'}`,[installation.id,'db:'+installation.id,installation.ownerUserId]);
-      const current=await client.query(`SELECT id FROM lms_installations WHERE id=$1 AND owner_user_id=$2 AND issuer=$3 AND client_id=$4 AND deployment_id=$5 AND ($6::text IS NULL OR jwks_url=$6) FOR SHARE`,
-      [installation.id,installation.ownerUserId,installation.issuer,installation.clientId,installation.deploymentId,installation.jwksUrl??null]);
-      assertPrivacyRecovery(Boolean(owner.rowCount)&&Boolean(current.rowCount));
-      const legacy=await client.query(`SELECT 1 FROM lti_credentials WHERE kind='lti-history' AND ${privacyHistoryNeedsUpgrade('expires_at>now()',"payload->>'registrationId' IS NULL","payload->>'subjectHash' IS NULL",privacyStringLogic)} LIMIT 1`);
-      assertPrivacyRecovery(true,!legacy.rowCount);
-      let result:unknown;
-      if(request.action==='catalog') {
-        const contexts=await client.query<{context:string}>(`SELECT context FROM(
-          SELECT context_id AS context FROM lms_courses WHERE installation_id=$1 UNION
-          SELECT context_id FROM teaching_connections WHERE provider='moodle' AND installation_id=$1 UNION
-          SELECT payload->>'contextId' FROM lti_credentials WHERE kind='lti-history' AND payload->>'registrationId'=$2
-            AND payload->>'contextId' IS NOT NULL UNION SELECT $3::text) contexts WHERE context COLLATE "C">$4 ORDER BY context COLLATE "C" LIMIT ${PRIVACY_CONTEXT_PAGE_SIZE+1}`,
-        [installation.id,'db:'+installation.id,ORPHAN_CONTEXT,request.after??'']);
-        result=privacyCatalogPage(contexts.rows,row=>row.context);
-      } else if(request.action==='users') {
-        const matches:boolean[]=[];
-        for(const raw of request.subjects) {
-          const found=await subjectPrivacyContexts(client,installation,await privacySubject(installation,raw),'',request.contexts);
-          matches.push(found.contexts.length>0);
+import { privacyDrizzleLogic } from "../privacy-policy-sql";
+import { and, or, eq, inArray, sql } from "drizzle-orm";
+import { alias, union } from "drizzle-orm/pg-core";
+import {
+  privacyCatalogPage,
+  privacySubjectsWithData,
+  privacyHistoryNeedsUpgrade,
+} from "../../application/privacy-policy";
+import { PRIVACY_CONTEXT_PAGE_SIZE } from "../../application/privacy";
+import { withDb } from "../../db/pool";
+import {
+  lmsInstallations,
+  users,
+  teachingConnections,
+  chatLogs,
+  ltiChatLogSubjects as subjects,
+  ltiCredentials,
+  lmsCourses,
+} from "../../db/schema";
+import type { Bindings } from "../../types/bindings";
+import type { PrivacyRepository } from "../contracts/privacy-repository";
+import {
+  ORPHAN_CONTEXT,
+  privacySubject,
+  assertPrivacyRecovery,
+} from "../../shared/privacy";
+import {
+  subjectPrivacyContexts,
+  exportPrivacyPart,
+  erasePrivacyData,
+} from "./privacy-data";
+export function createPostgresPrivacyRepository(
+  env: Bindings,
+): PrivacyRepository {
+  return {
+    async execute(installation, request) {
+      return withDb(env, async (db, client) => {
+        await client.query("BEGIN");
+        try {
+          const identity = and(
+            eq(lmsInstallations.id, installation.id),
+            eq(lmsInstallations.ownerUserId, installation.ownerUserId),
+            eq(lmsInstallations.issuer, installation.issuer),
+            eq(lmsInstallations.clientId, installation.clientId),
+            eq(lmsInstallations.deploymentId, installation.deploymentId),
+            installation.jwksUrl == null
+              ? undefined
+              : eq(lmsInstallations.jwksUrl, installation.jwksUrl),
+          );
+          assertPrivacyRecovery(
+            (
+              await db
+                .select({ id: lmsInstallations.id })
+                .from(lmsInstallations)
+                .where(identity)
+            ).length > 0,
+          );
+          // Recovery remains independent of enrolment, quota and connection activity.
+          // Lock every affected owner in stable order before rechecking installation identity.
+          const registered = alias(subjects, "registered");
+          const affected = db
+            .select({ id: chatLogs.userId })
+            .from(chatLogs)
+            .innerJoin(subjects, eq(subjects.chatLogId, chatLogs.id))
+            .where(
+              inArray(
+                subjects.subjectKey,
+                db
+                  .select({ key: registered.subjectKey })
+                  .from(registered)
+                  .where(
+                    eq(registered.registrationId, "db:" + installation.id),
+                  ),
+              ),
+            );
+          const owners = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(
+              or(
+                eq(users.id, installation.ownerUserId),
+                inArray(
+                  users.id,
+                  db
+                    .select({ id: teachingConnections.ownerUserId })
+                    .from(teachingConnections)
+                    .where(
+                      and(
+                        eq(teachingConnections.provider, "moodle"),
+                        eq(teachingConnections.installationId, installation.id),
+                      ),
+                    ),
+                ),
+                inArray(users.id, affected),
+              ),
+            )
+            .orderBy(users.id)
+            .for(request.action === "erase" ? "update" : "share");
+          const current = await db
+            .select({ id: lmsInstallations.id })
+            .from(lmsInstallations)
+            .where(identity)
+            .for("share");
+          assertPrivacyRecovery(owners.length > 0 && current.length > 0);
+          const legacy = await db
+            .select({ id: ltiCredentials.id })
+            .from(ltiCredentials)
+            .where(
+              and(
+                eq(ltiCredentials.kind, "lti-history"),
+                privacyHistoryNeedsUpgrade(
+                  sql`${ltiCredentials.expiresAt}>now()`,
+                  sql`${ltiCredentials.payload}->>'registrationId' IS NULL`,
+                  sql`${ltiCredentials.payload}->>'subjectHash' IS NULL`,
+                  privacyDrizzleLogic,
+                ),
+              ),
+            )
+            .limit(1);
+          assertPrivacyRecovery(true, !legacy.length);
+          let result: unknown;
+          if (request.action === "catalog") {
+            const contexts = union(
+              db
+                .select({ context: lmsCourses.contextId })
+                .from(lmsCourses)
+                .where(eq(lmsCourses.installationId, installation.id)),
+              db
+                .select({ context: teachingConnections.contextId })
+                .from(teachingConnections)
+                .where(
+                  and(
+                    eq(teachingConnections.provider, "moodle"),
+                    eq(teachingConnections.installationId, installation.id),
+                  ),
+                ),
+              db
+                .select({
+                  context:
+                    sql<string>`${ltiCredentials.payload}->>'contextId'`.as(
+                      "context",
+                    ),
+                })
+                .from(ltiCredentials)
+                .where(
+                  and(
+                    eq(ltiCredentials.kind, "lti-history"),
+                    eq(
+                      sql`${ltiCredentials.payload}->>'registrationId'`,
+                      "db:" + installation.id,
+                    ),
+                    sql`${ltiCredentials.payload}->>'contextId' IS NOT NULL`,
+                  ),
+                ),
+              db
+                .select({
+                  context: sql<string>`${ORPHAN_CONTEXT}`.as("context"),
+                })
+                .from(sql`(VALUES(1)) singleton(value)`),
+            ).as("contexts");
+            const rows = await db
+              .select({ context: contexts.context })
+              .from(contexts)
+              .where(
+                sql`${contexts.context} COLLATE "C">${request.after ?? ""}`,
+              )
+              .orderBy(sql`${contexts.context} COLLATE "C"`)
+              .limit(PRIVACY_CONTEXT_PAGE_SIZE + 1);
+            result = privacyCatalogPage(rows, (row) => row.context);
+          } else if (request.action === "users") {
+            const matches: boolean[] = [];
+            for (const raw of request.subjects) {
+              const found = await subjectPrivacyContexts(
+                db,
+                installation,
+                await privacySubject(installation, raw),
+                "",
+                request.contexts,
+              );
+              matches.push(found.contexts.length > 0);
+            }
+            result = {
+              subjects: privacySubjectsWithData(request.subjects, matches),
+            };
+          } else {
+            const subject = await privacySubject(installation, request.subject);
+            result =
+              request.action === "contexts"
+                ? await subjectPrivacyContexts(
+                    db,
+                    installation,
+                    subject,
+                    request.after,
+                  )
+                : request.action === "export"
+                  ? await exportPrivacyPart(db, installation, subject, request)
+                  : {
+                      erased: await erasePrivacyData(
+                        db,
+                        installation,
+                        subject,
+                        request.contexts,
+                      ),
+                    };
+          }
+          await client.query("COMMIT");
+          return result;
+        } catch (error) {
+          await client.query("ROLLBACK");
+          throw error;
         }
-        result={subjects:privacySubjectsWithData(request.subjects,matches)};
-      } else {
-        const subject=await privacySubject(installation,request.subject);
-        result=request.action==='contexts'?await subjectPrivacyContexts(client,installation,subject,request.after):
-          request.action==='export'?await exportPrivacyPart(client,installation,subject,request):
-          {erased:await erasePrivacyData(client,installation,subject,request.contexts)};
-      }
-      await client.query('COMMIT');return result;
-    }catch(error){await client.query('ROLLBACK');throw error;}
-  });
-}};}
+      });
+    },
+  };
+}

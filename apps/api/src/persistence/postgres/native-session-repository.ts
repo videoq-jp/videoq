@@ -1,37 +1,92 @@
-import { nativeSessionMarkerExpiry } from '../../application/native-session-marker';
-import {withClient} from '../../db/pool';
-import type {Bindings} from '../../types/bindings';
-import type {NativeSessionRepository} from '../contracts/native-session-repository';
-import {nativeSessionDenied as denied,matchesNativeSession,validateNativeSessionInput} from '../../shared/native-session';
-export function createPostgresNativeSessionRepository(env:Bindings):NativeSessionRepository{return {async ensure(input){
- validateNativeSessionInput(input);
-  await withClient(env, async client => {
-    await client.query("BEGIN");
-    try {
-      if (!(await client.query("SELECT id FROM users WHERE id=$1 FOR SHARE", [input.ownerUserId])).rowCount) throw denied();
-      const nonce = await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
-        VALUES($1,'moodle-native-request','{}',$2) ON CONFLICT DO NOTHING RETURNING id`,
-      [input.nonceHash, input.nonceExpiresAt]);
-      if (nonce.rowCount !== 1) throw denied();
-      const marker = await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
-        VALUES($1,'moodle-native-started','{}',$2) ON CONFLICT DO NOTHING RETURNING id`,
-      [input.markerHash, nativeSessionMarkerExpiry(input.expiresAt)]);
-      if (marker.rowCount === 1) {
-        const created = await client.query(`INSERT INTO lti_credentials(id,kind,payload,expires_at)
-          VALUES($1,'session',$2,$3) ON CONFLICT DO NOTHING RETURNING id`,
-        [input.sessionHash, JSON.stringify(input.grant), input.expiresAt]);
-        if (created.rowCount !== 1) throw denied();
-      }
-      const markerState=await client.query<{kind:string}>('SELECT kind FROM lti_credentials WHERE id=$1 FOR SHARE',[input.markerHash]);
-      if(markerState.rows[0]?.kind!=='moodle-native-started')throw denied();
-      const existing = await client.query<{ payload: unknown; expiresAt: Date }>(
-        `SELECT payload,expires_at AS "expiresAt" FROM lti_credentials
-          WHERE id=$1 AND kind='session' AND expires_at>clock_timestamp() FOR SHARE`, [input.sessionHash]);
-      if(!matchesNativeSession(existing.rows[0]?.payload,existing.rows[0]?.expiresAt??new Date(NaN),input))throw denied();
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    }
-  });
-}};}
+import { and, eq, sql } from "drizzle-orm";
+import { withDb } from "../../db/pool";
+import { users, ltiCredentials as credentials } from "../../db/schema";
+import { nativeSessionMarkerExpiry } from "../../application/native-session-marker";
+import type { Bindings } from "../../types/bindings";
+import type { NativeSessionRepository } from "../contracts/native-session-repository";
+import {
+  nativeSessionDenied as denied,
+  matchesNativeSession,
+  validateNativeSessionInput,
+} from "../../shared/native-session";
+export function createPostgresNativeSessionRepository(
+  env: Bindings,
+): NativeSessionRepository {
+  return {
+    async ensure(input) {
+      validateNativeSessionInput(input);
+      await withDb(env, (db) =>
+        db.transaction(async (tx) => {
+          const [owner] = await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.id, input.ownerUserId))
+            .for("share");
+          if (!owner) throw denied();
+          const nonce = await tx
+            .insert(credentials)
+            .values({
+              id: input.nonceHash,
+              kind: "moodle-native-request",
+              payload: {},
+              expiresAt: input.nonceExpiresAt,
+            })
+            .onConflictDoNothing()
+            .returning({ id: credentials.id });
+          if (nonce.length !== 1) throw denied();
+          const marker = await tx
+            .insert(credentials)
+            .values({
+              id: input.markerHash,
+              kind: "moodle-native-started",
+              payload: {},
+              expiresAt: nativeSessionMarkerExpiry(input.expiresAt),
+            })
+            .onConflictDoNothing()
+            .returning({ id: credentials.id });
+          if (marker.length === 1) {
+            const created = await tx
+              .insert(credentials)
+              .values({
+                id: input.sessionHash,
+                kind: "session",
+                payload: input.grant,
+                expiresAt: input.expiresAt,
+              })
+              .onConflictDoNothing()
+              .returning({ id: credentials.id });
+            if (created.length !== 1) throw denied();
+          }
+          const [markerState] = await tx
+            .select({ kind: credentials.kind })
+            .from(credentials)
+            .where(eq(credentials.id, input.markerHash))
+            .for("share");
+          if (markerState?.kind !== "moodle-native-started") throw denied();
+          const [existing] = await tx
+            .select({
+              payload: credentials.payload,
+              expiresAt: credentials.expiresAt,
+            })
+            .from(credentials)
+            .where(
+              and(
+                eq(credentials.id, input.sessionHash),
+                eq(credentials.kind, "session"),
+                sql`${credentials.expiresAt}>clock_timestamp()`,
+              ),
+            )
+            .for("share");
+          if (
+            !matchesNativeSession(
+              existing?.payload,
+              existing?.expiresAt ?? new Date(NaN),
+              input,
+            )
+          )
+            throw denied();
+        }),
+      );
+    },
+  };
+}

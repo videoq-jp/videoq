@@ -1,7 +1,8 @@
-import type { ResourceErrorChoice } from '../application/resource-mutation';
+import { sql, type SQL } from "drizzle-orm";
+import type { ResourceErrorChoice } from "../application/resource-mutation";
 
-/** Predicates are adapter-owned SQL; codes are a closed application union. */
-export const resourceSqlErrorChoice: ResourceErrorChoice<string, string> = {
-  code: code => `'${code}'`,
-  when: (predicate, yes, no) => `CASE WHEN (${predicate}) THEN ${yes} ELSE ${no} END`,
+export const resourceDrizzleErrorChoice: ResourceErrorChoice<SQL, SQL> = {
+  code: (code) => sql`${code}`,
+  when: (condition, yes, no) =>
+    sql`CASE WHEN ${condition} THEN ${yes} ELSE ${no} END`,
 };

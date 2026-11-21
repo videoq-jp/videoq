@@ -1,19 +1,57 @@
-import { videoStatusFilters, videoListOrder, countVideoStatuses, videoKeywordMatchedBy, videoUploadAbandoned } from '../../application/video-catalog';
-import { videoReadDrizzleLogic } from '../video-read-policy-sql';
-import { and, asc, desc, eq, ilike, inArray, sql, type SQL } from "drizzle-orm";
+import { QueryBuilder } from "drizzle-orm/pg-core";
+import {
+  videoStatusFilters,
+  videoListOrder,
+  countVideoStatuses,
+  videoKeywordMatchedBy,
+  videoUploadAbandoned,
+} from "../../application/video-catalog";
+import { videoReadDrizzleLogic } from "../video-read-policy-sql";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
-import { videos } from "../../db/schema";
+import {
+  videos,
+  videoTags,
+  tags,
+  videoVisualRuns as visualRuns,
+  videoVisualChunks as visualChunks,
+} from "../../db/schema";
 import { sqlNumberArray } from "../../db/sql-array";
 import { literalContainsPattern } from "../../db/sql-like";
 import type { Bindings } from "../../types/bindings";
-import { mapVideoListRow, mapVideoDetailRow } from "../../repositories/video-mapping";
-import type { VideoDetail, VideoListItem, VideoListCriteria, VideoStatusCounts, StaleUploadingVideo, VideoReadRepository } from "../contracts/video-read-repository";
+import {
+  mapVideoListRow,
+  mapVideoDetailRow,
+} from "../../repositories/video-mapping";
+import type {
+  VideoDetail,
+  VideoListItem,
+  VideoListCriteria,
+  VideoStatusCounts,
+  StaleUploadingVideo,
+  VideoReadRepository,
+} from "../contracts/video-read-repository";
 
-export const videoTagsJson = sql<string>`COALESCE((
-  SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color) ORDER BY t.name)
-  FROM video_tags vt JOIN tags t ON t.id = vt.tag_id
-  WHERE vt.video_id = "videos"."id"
-), '[]'::json)::text`.as("tags");
+const queryBuilder = new QueryBuilder();
+const tagsQuery = queryBuilder
+  .select({
+    value: sql`json_agg(json_build_object('id',${tags.id},'name',${tags.name},'color',${tags.color}) ORDER BY ${tags.name})`,
+  })
+  .from(videoTags)
+  .innerJoin(tags, eq(tags.id, videoTags.tagId))
+  .where(eq(videoTags.videoId, videos.id));
+export const videoTagsJson =
+  sql<string>`COALESCE((${tagsQuery}),'[]'::json)::text`.as("tags");
 
 function buildFilterConditions(userId: string, c: VideoListCriteria): SQL {
   const conditions: SQL[] = [eq(videos.userId, userId)];
@@ -21,7 +59,11 @@ function buildFilterConditions(userId: string, c: VideoListCriteria): SQL {
   if (c.keyword) {
     const pattern = literalContainsPattern(c.keyword);
     conditions.push(
-      videoKeywordMatchedBy(ilike(videos.title, pattern), ilike(videos.description, pattern), { or: (left,right) => sql`(${left} OR ${right})` }),
+      videoKeywordMatchedBy(
+        ilike(videos.title, pattern),
+        ilike(videos.description, pattern),
+        { or: (left, right) => sql`(${left} OR ${right})` },
+      ),
     );
   }
 
@@ -36,7 +78,10 @@ function buildFilterConditions(userId: string, c: VideoListCriteria): SQL {
     conditions.push(
       inArray(
         videos.id,
-        sql`(SELECT vt.video_id FROM video_tags vt WHERE vt.tag_id = ANY(${sqlNumberArray(c.tagIds)}))`,
+        queryBuilder
+          .select({ id: videoTags.videoId })
+          .from(videoTags)
+          .where(sql`${videoTags.tagId}=ANY(${sqlNumberArray(c.tagIds)})`),
       ),
     );
   }
@@ -44,9 +89,24 @@ function buildFilterConditions(userId: string, c: VideoListCriteria): SQL {
   return and(...conditions)!;
 }
 
-export const visualProcessing = sql`(SELECT jsonb_build_object('status', r.status, 'total_chunks', r.chunk_count,
-  'completed_chunks', (SELECT count(*)::int FROM video_visual_chunks c WHERE c.run_id = r.run_id AND c.frame_count IS NOT NULL))
-  FROM video_visual_runs r WHERE r.video_id = ${videos.id} AND r.file_key = ${videos.file})`;
+const completed = queryBuilder
+  .select({ value: sql`count(*)::int` })
+  .from(visualChunks)
+  .where(
+    and(
+      eq(visualChunks.runId, visualRuns.runId),
+      isNotNull(visualChunks.frameCount),
+    ),
+  );
+const visualQuery = queryBuilder
+  .select({
+    value: sql`jsonb_build_object('status',${visualRuns.status},'total_chunks',${visualRuns.chunkCount},'completed_chunks',(${completed}))`,
+  })
+  .from(visualRuns)
+  .where(
+    and(eq(visualRuns.videoId, videos.id), eq(visualRuns.fileKey, videos.file)),
+  );
+export const visualProcessing = sql`(${visualQuery})`;
 
 const videoListSelect = {
   id: videos.id,
@@ -80,7 +140,8 @@ export const videoDetailSelect = {
 };
 
 export async function readVideoDetail(db: Db, videoId: number, userId: string) {
-  const [row] = await db.select(videoDetailSelect)
+  const [row] = await db
+    .select(videoDetailSelect)
     .from(videos)
     .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
     .limit(1);
@@ -97,26 +158,32 @@ export async function getVideoDetail(
   return row ? mapVideoDetailRow(env, row, options) : null;
 }
 
-export async function getVideoMetadata(env: Bindings, videoId: number, userId: string) {
+export async function getVideoMetadata(
+  env: Bindings,
+  videoId: number,
+  userId: string,
+) {
   const row = await withDb(env, async (db) => {
-    const [video] = await db.select({
-      ...videoListSelect,
-      file: sql<null>`NULL`,
-      error_message: videos.errorMessage,
-      // MCP offsets count UTF-16 code units, as String.length / slice do.
-      // Supplementary Unicode characters contribute two units, not one.
-      transcript_total_chars: sql<number>`COALESCE(
+    const [video] = await db
+      .select({
+        ...videoListSelect,
+        file: sql<null>`NULL`,
+        error_message: videos.errorMessage,
+        // MCP offsets count UTF-16 code units, as String.length / slice do.
+        // Supplementary Unicode characters contribute two units, not one.
+        transcript_total_chars: sql<number>`COALESCE(
         char_length(${videos.transcript}) +
         regexp_count(${videos.transcript} COLLATE "C", ${"[\u{10000}-\u{10ffff}]"}), 0
       )`,
-    }).from(videos)
+      })
+      .from(videos)
       .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
       .limit(1);
     return video;
   });
   if (!row) return null;
   return {
-    ...await mapVideoListRow(env, row, { includeFileUrl: false }),
+    ...(await mapVideoListRow(env, row, { includeFileUrl: false })),
     error_message: row.error_message || null,
     transcript_available: row.transcript_total_chars > 0,
     transcript_total_chars: row.transcript_total_chars,
@@ -137,8 +204,11 @@ export async function listStaleUploadingVideos(
       })
       .from(videos)
       .where(
-        videoUploadAbandoned(videos.status,
-          sql`COALESCE(${videos.uploadHeartbeatAt}, ${videos.uploadedAt}) < NOW() - (${olderThanHours}::double precision * INTERVAL '1 hour')`,videoReadDrizzleLogic),
+        videoUploadAbandoned(
+          videos.status,
+          sql`COALESCE(${videos.uploadHeartbeatAt}, ${videos.uploadedAt}) < NOW() - (${olderThanHours}::double precision * INTERVAL '1 hour')`,
+          videoReadDrizzleLogic,
+        ),
       )
       .orderBy(asc(videos.uploadedAt))
       .limit(limit);
@@ -178,7 +248,10 @@ export async function listVideosPage(
 ): Promise<{ count: number; results: VideoListItem[] }> {
   const where = buildFilterConditions(userId, criteria);
   const order = videoListOrder(criteria.sortKey);
-  const orderBy = order.direction==='asc'?asc(videos[order.field]):desc(videos[order.field]);
+  const orderBy =
+    order.direction === "asc"
+      ? asc(videos[order.field])
+      : desc(videos[order.field]);
 
   const { rows, count } = await withDb(env, async (db) => {
     const countRows = await db
@@ -208,12 +281,17 @@ export async function listVideosPage(
 
   return { count, results };
 }
-export function createPostgresVideoReadRepository(env: Bindings): VideoReadRepository {
- return {
-  getDetail: (videoId,userId,options) => getVideoDetail(env,videoId,userId,options),
-  getMetadata: (videoId,userId) => getVideoMetadata(env,videoId,userId),
-  listStaleUploads: (olderThanHours,limit) => listStaleUploadingVideos(env,olderThanHours,limit),
-  countByStatus: userId => countVideosByStatus(env,userId),
-  listPage: (userId,criteria,limit,offset,options) => listVideosPage(env,userId,criteria,limit,offset,options),
- };
+export function createPostgresVideoReadRepository(
+  env: Bindings,
+): VideoReadRepository {
+  return {
+    getDetail: (videoId, userId, options) =>
+      getVideoDetail(env, videoId, userId, options),
+    getMetadata: (videoId, userId) => getVideoMetadata(env, videoId, userId),
+    listStaleUploads: (olderThanHours, limit) =>
+      listStaleUploadingVideos(env, olderThanHours, limit),
+    countByStatus: (userId) => countVideosByStatus(env, userId),
+    listPage: (userId, criteria, limit, offset, options) =>
+      listVideosPage(env, userId, criteria, limit, offset, options),
+  };
 }

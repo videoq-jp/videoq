@@ -1,223 +1,540 @@
-import { CONVERSATION_RETENTION_DAYS, conversationTitle, conversationCandidateIds, conversationCourseAllowed, conversationMembersAllowed, conversationStoredScopeAllowed, conversationLogShouldExpire, conversationTitleOnCommit } from '../../application/conversation-lifecycle';
-import { conversationStringLogic } from '../conversation-policy-sql';
-import { conversationBooleanLogic } from '../../application/conversation-lifecycle';
-import {apiConflict,apiNotFound} from '../../shared/errors';
-import type {ConversationRepository} from '../contracts/conversation';
-import pg from 'pg';
-import {chatAnswerSchema} from '@videoq/trpc/chat';
-import type {RagResult} from '../../lib/rag';
-import {databaseConnectionString,withClient,withDb} from '../../db/pool';
-import type {Bindings} from '../../types/bindings';
-import {checkedLtiSubject} from '../../features/lti/identity';
-import {lockLtiDataSession} from './lti-session-lock';
-import {conversationThreadId} from '../../shared/conversation-scope';
-import {CONVERSATION_CHECKPOINT_SCHEMA,ConversationNotFoundError,ConversationBusyError,type ConversationScope,type PersistConversationLog,type PersistedConversationAnswer} from '../contracts/conversation';
-import {createChatLogWithDb} from './chat-repository';
-
-/** Recheck current backend membership while holding the owning course stable.
- * Read/delete may use an empty scope; opening/committing model memory may not. */
-export async function lockLtiConversationCourse(client: pg.Client, scope: ConversationScope, allowEmpty = false) {
+import { QueryBuilder } from "drizzle-orm/pg-core";
+import {
+  and,
+  or,
+  eq,
+  inArray,
+  isNull,
+  isNotNull,
+  exists,
+  not,
+  desc,
+  sql,
+} from "drizzle-orm";
+import {
+  CONVERSATION_RETENTION_DAYS,
+  conversationTitle,
+  conversationCandidateIds,
+  conversationCourseAllowed,
+  conversationMembersAllowed,
+  conversationStoredScopeAllowed,
+  conversationLogShouldExpire,
+  conversationTitleOnCommit,
+  conversationBooleanLogic,
+} from "../../application/conversation-lifecycle";
+import { conversationDrizzleLogic as logic } from "../conversation-policy-sql";
+import { apiConflict, apiNotFound } from "../../shared/errors";
+import type { ConversationRepository } from "../contracts/conversation";
+import pg from "pg";
+import { chatAnswerSchema } from "@videoq/trpc/chat";
+import type { RagResult } from "../../lib/rag";
+import { databaseConnectionString, withDb, type Db } from "../../db/pool";
+import {
+  chatConversations as conversations,
+  chatConversationTurns as turns,
+  ltiConversationScopes as scopes,
+  videoCourses,
+  videoCourseMembers,
+  videos,
+  chatLogs,
+  ltiChatLogSubjects as subjects,
+} from "../../db/schema";
+import type { Bindings } from "../../types/bindings";
+import { checkedLtiSubject } from "../../features/lti/identity";
+import { lockLtiDataSessionWithDb } from "./lti-session-lock";
+import { conversationThreadId } from "../../shared/conversation-scope";
+import {
+  CONVERSATION_CHECKPOINT_SCHEMA,
+  ConversationNotFoundError,
+  ConversationBusyError,
+  type ConversationScope,
+  type PersistConversationLog,
+  type PersistedConversationAnswer,
+} from "../contracts/conversation";
+import { createChatLogWithDb } from "./chat-repository";
+const retention = (clock: "now" | "fresh") =>
+  clock === "now"
+    ? sql`now()+(${CONVERSATION_RETENTION_DAYS}*interval '1 day')`
+    : sql`clock_timestamp()+(${CONVERSATION_RETENTION_DAYS}*interval '1 day')`;
+/** Course and member locks keep current backend membership stable throughout the operation. */
+export async function lockLtiConversationCourse(
+  db: Db,
+  scope: ConversationScope,
+  allowEmpty = false,
+) {
   if (!scope.ltiSubject) return;
   const subject = checkedLtiSubject(scope.ltiSubject);
-  await lockLtiDataSession(client,scope.ownerUserId,subject.sessionProof);
-  const course = await client.query<{ user_id: string }>('SELECT user_id FROM video_courses WHERE id=$1 FOR SHARE', [scope.courseId]);
-  if (!conversationCourseAllowed(subject.resourceVideoIds.length,course.rows[0]?.user_id === scope.ownerUserId,allowEmpty,conversationBooleanLogic)) throw new ConversationNotFoundError();
-  const members = await client.query(`SELECT m.video_id FROM video_course_members m JOIN videos v ON v.id=m.video_id
-    WHERE m.course_id=$1 AND v.user_id=$2 AND m.video_id=ANY($3::bigint[]) FOR SHARE OF m,v`,
-  [scope.courseId, scope.ownerUserId, subject.resourceVideoIds]);
-  if (!conversationMembersAllowed(members.rowCount,subject.resourceVideoIds.length,conversationBooleanLogic)) throw new ConversationNotFoundError();
+  await lockLtiDataSessionWithDb(db, scope.ownerUserId, subject.sessionProof);
+  const [course] = await db
+    .select({ owner: videoCourses.userId })
+    .from(videoCourses)
+    .where(eq(videoCourses.id, sql`${scope.courseId}`))
+    .for("share");
+  if (
+    !conversationCourseAllowed(
+      subject.resourceVideoIds.length,
+      course?.owner === scope.ownerUserId,
+      allowEmpty,
+      conversationBooleanLogic,
+    )
+  )
+    throw new ConversationNotFoundError();
+  const members = await db
+    .select({ id: videoCourseMembers.videoId })
+    .from(videoCourseMembers)
+    .innerJoin(videos, eq(videos.id, videoCourseMembers.videoId))
+    .where(
+      and(
+        eq(videoCourseMembers.courseId, sql`${scope.courseId}`),
+        eq(videos.userId, scope.ownerUserId),
+        inArray(videoCourseMembers.videoId, subject.resourceVideoIds),
+      ),
+    )
+    .for("share", { of: [videoCourseMembers, videos] });
+  if (
+    !conversationMembersAllowed(
+      members.length,
+      subject.resourceVideoIds.length,
+      conversationBooleanLogic,
+    )
+  )
+    throw new ConversationNotFoundError();
 }
-
-export async function withConversationRead<T>(env: Bindings, scope: ConversationScope, operation: (client: pg.Client) => Promise<T>): Promise<T> {
-  return withClient(env, async client => {
-    if (!scope.ltiSubject) return operation(client);
-    await client.query('BEGIN');
-    try {
-      await lockLtiConversationCourse(client, scope, true);
-      const result = await operation(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-  });
+export async function withConversationRead<T>(
+  env: Bindings,
+  scope: ConversationScope,
+  operation: (db: Db) => Promise<T>,
+): Promise<T> {
+  return withDb(env, (db) =>
+    scope.ltiSubject
+      ? db.transaction(async (tx) => {
+          await lockLtiConversationCourse(tx, scope, true);
+          return operation(tx);
+        })
+      : operation(db),
+  );
 }
-
-export function ltiConversationFilter(scope: ConversationScope, firstParameter: number) {
-  if (!scope.ltiSubject) return { sql: '', values: [] };
+export function ltiConversationFilter(scope: ConversationScope) {
+  if (!scope.ltiSubject) return sql`true`;
   const subject = checkedLtiSubject(scope.ltiSubject);
-  return { sql: ` AND EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=chat_conversations.thread_id
-    AND ${conversationStoredScopeAllowed(`s.subject_key=$${firstParameter}`,`s.resource_video_ids <@ $${firstParameter + 1}::jsonb`,conversationStringLogic)})`,
-  values: [subject.subjectKey, JSON.stringify(subject.resourceVideoIds)] };
+  // The subject and whole original resource set must still belong to this scope.
+  return exists(
+    new QueryBuilder()
+      .select({ id: scopes.threadId })
+      .from(scopes)
+      .where(
+        and(
+          eq(scopes.threadId, conversations.threadId),
+          conversationStoredScopeAllowed(
+            eq(scopes.subjectKey, subject.subjectKey),
+            sql`${scopes.resourceVideoIds}<@${JSON.stringify(subject.resourceVideoIds)}::jsonb`,
+            logic,
+          ),
+        ),
+      ),
+  );
 }
-
-/** Authorization must finish before opening a thread. Never accept a raw thread ID. */
-export async function openConversation(env: Bindings, scope: ConversationScope, conversationId: string, requireExisting = false) {
-  const { PostgresSaver } = await import("@langchain/langgraph-checkpoint-postgres");
-  const threadId = await conversationThreadId(scope, conversationId);
-  const leaseId = crypto.randomUUID();
-  const scopeKey = await conversationThreadId(scope, "scope");
-  const checkpointId = await withClient(env, async client => {
-    await client.query('BEGIN');
-    try {
-      await lockLtiConversationCourse(client, scope);
-      if (requireExisting && !(await client.query('SELECT 1 FROM chat_conversations WHERE thread_id = $1 AND expires_at > now() FOR UPDATE', [threadId])).rowCount) {
+/** Authorization precedes opening; callers cannot supply an unscoped thread ID. */
+export async function openConversation(
+  env: Bindings,
+  scope: ConversationScope,
+  conversationId: string,
+  requireExisting = false,
+) {
+  const { PostgresSaver } =
+    await import("@langchain/langgraph-checkpoint-postgres");
+  const threadId = await conversationThreadId(scope, conversationId),
+    leaseId = crypto.randomUUID(),
+    scopeKey = await conversationThreadId(scope, "scope");
+  const checkpointId = await withDb(env, (database) =>
+    database.transaction(async (db) => {
+      await lockLtiConversationCourse(db, scope);
+      if (
+        requireExisting &&
+        !(
+          await db
+            .select({ id: conversations.threadId })
+            .from(conversations)
+            .where(
+              and(
+                eq(conversations.threadId, threadId),
+                sql`${conversations.expiresAt}>now()`,
+              ),
+            )
+            .for("update")
+        ).length
+      )
         throw new ConversationNotFoundError();
-      }
-      await client.query('DELETE FROM chat_conversations WHERE thread_id = $1 AND expires_at < now()', [threadId]);
-      const { rowCount } = await client.query(`INSERT INTO chat_conversations
-        (thread_id, owner_user_id, actor_user_id, course_id, lease_id, conversation_id, scope_key, leased_until, expires_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '20 minutes', now() + interval '${CONVERSATION_RETENTION_DAYS} days')
-        ON CONFLICT (thread_id) DO UPDATE SET lease_id = EXCLUDED.lease_id,
-          leased_until = EXCLUDED.leased_until, expires_at = EXCLUDED.expires_at,
-          conversation_id = EXCLUDED.conversation_id, scope_key = EXCLUDED.scope_key
-        WHERE chat_conversations.lease_id IS NULL OR chat_conversations.leased_until < now()
-        RETURNING thread_id`, [threadId, scope.ownerUserId, scope.actorUserId, scope.courseId, leaseId, conversationId, scopeKey]);
-      if (!rowCount) throw new ConversationBusyError();
+      await db
+        .delete(conversations)
+        .where(
+          and(
+            eq(conversations.threadId, threadId),
+            sql`${conversations.expiresAt}<now()`,
+          ),
+        );
+      const opened = await db
+        .insert(conversations)
+        .values({
+          threadId,
+          ownerUserId: scope.ownerUserId,
+          actorUserId: scope.actorUserId,
+          courseId: scope.courseId,
+          leaseId,
+          conversationId,
+          scopeKey,
+          leasedUntil: sql`now()+interval '20 minutes'`,
+          expiresAt: retention("now"),
+        })
+        .onConflictDoUpdate({
+          target: conversations.threadId,
+          set: {
+            leaseId,
+            leasedUntil: sql`excluded.leased_until`,
+            expiresAt: sql`excluded.expires_at`,
+            conversationId,
+            scopeKey,
+          },
+          setWhere: or(
+            isNull(conversations.leaseId),
+            sql`${conversations.leasedUntil}<now()`,
+          ),
+        })
+        .returning({ id: conversations.threadId });
+      if (!opened.length) throw new ConversationBusyError();
       if (scope.ltiSubject) {
         const subject = checkedLtiSubject(scope.ltiSubject);
-        const previous = await client.query<{ allowed: boolean }>(`SELECT ${conversationStoredScopeAllowed('subject_key=$2','resource_video_ids <@ $3::jsonb',conversationStringLogic)} AS allowed
-          FROM lti_conversation_scopes WHERE thread_id=$1`, [threadId, subject.subjectKey, JSON.stringify(subject.resourceVideoIds)]);
-        if (previous.rows[0] && !previous.rows[0].allowed) throw new ConversationNotFoundError();
-        await client.query(`INSERT INTO lti_conversation_scopes(thread_id,subject_key,resource_video_ids)
-          VALUES($1,$2,$3::jsonb) ON CONFLICT(thread_id) DO NOTHING`, [threadId, subject.subjectKey, JSON.stringify(subject.resourceVideoIds)]);
+        const [previous] = await db
+          .select({
+            allowed: conversationStoredScopeAllowed(
+              eq(scopes.subjectKey, subject.subjectKey),
+              sql`${scopes.resourceVideoIds}<@${JSON.stringify(subject.resourceVideoIds)}::jsonb`,
+              logic,
+            ),
+          })
+          .from(scopes)
+          .where(eq(scopes.threadId, threadId));
+        if (previous && !previous.allowed)
+          throw new ConversationNotFoundError();
+        await db
+          .insert(scopes)
+          .values({
+            threadId,
+            subjectKey: subject.subjectKey,
+            resourceVideoIds: subject.resourceVideoIds,
+          })
+          .onConflictDoNothing({ target: scopes.threadId });
       }
-      const { rows } = await client.query<{ committed_checkpoint_id: string | null }>(
-        'SELECT committed_checkpoint_id FROM chat_conversations WHERE thread_id = $1 AND lease_id = $2', [threadId, leaseId]);
-      await client.query('COMMIT');
-      return rows[0].committed_checkpoint_id;
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-  });
-  // Workers cannot share pools between requests; Node may use its existing pool.
-  const pool = env.DATABASE_POOL ?? new pg.Pool({ connectionString: databaseConnectionString(env), max: 2, connectionTimeoutMillis: 10_000 });
+      const [row] = await db
+        .select({ id: conversations.committedCheckpointId })
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.threadId, threadId),
+            eq(conversations.leaseId, leaseId),
+          ),
+        );
+      return row.id;
+    }),
+  );
+  // Workers cannot share pools across requests; Node can reuse its configured pool.
+  const pool =
+    env.DATABASE_POOL ??
+    new pg.Pool({
+      connectionString: databaseConnectionString(env),
+      max: 2,
+      connectionTimeoutMillis: 10_000,
+    });
   return {
     threadId,
     checkpointId,
-    saver: new PostgresSaver(pool, undefined, { schema: CONVERSATION_CHECKPOINT_SCHEMA }),
-    async commit(result: RagResult, persistLog?: PersistConversationLog): Promise<PersistedConversationAnswer> {
-      if (!result.checkpointId) throw new Error('Missing conversation checkpoint');
-      return withDb(env, async (db, client) => {
-        await client.query('BEGIN');
-        try {
-          await lockLtiConversationCourse(client, scope);
-          const owned = await client.query(`SELECT thread_id FROM chat_conversations
-            WHERE thread_id = $1 AND lease_id = $2 AND leased_until > now() FOR UPDATE`, [threadId, leaseId]);
-          if (!owned.rowCount) throw new ConversationBusyError();
-          const logInput=persistLog?await persistLog(result):null;
-          const log=logInput?await createChatLogWithDb(db,logInput):null;
-          const persisted=log?{chatLogId:log.id,feedback:log.feedback}:{chatLogId:null,feedback:null};
-          if (scope.ltiSubject) await client.query('UPDATE lti_conversation_scopes SET resource_video_ids=$2::jsonb WHERE thread_id=$1',
-            [threadId, JSON.stringify(checkedLtiSubject(scope.ltiSubject).resourceVideoIds)]);
-          await client.query(`INSERT INTO chat_conversation_turns (thread_id, checkpoint_id, question, response, chat_log_id)
-            VALUES ($1, $2, $3, $4::jsonb, $5)`, [threadId, result.checkpointId, result.queryText,
-            JSON.stringify(chatAnswerSchema.parse(result.answer)), persisted.chatLogId]);
-          await client.query(`UPDATE chat_conversations SET committed_checkpoint_id = $3,
-            title = ${conversationTitleOnCommit('title','$4',conversationStringLogic)},
-            updated_at = clock_timestamp(), expires_at = clock_timestamp() + interval '${CONVERSATION_RETENTION_DAYS} days'
-            WHERE thread_id = $1 AND lease_id = $2`, [threadId, leaseId, result.checkpointId,
-            conversationTitle(result.queryText)]);
-          await client.query('COMMIT');
+    saver: new PostgresSaver(pool, undefined, {
+      schema: CONVERSATION_CHECKPOINT_SCHEMA,
+    }),
+    async commit(
+      result: RagResult,
+      persistLog?: PersistConversationLog,
+    ): Promise<PersistedConversationAnswer> {
+      if (!result.checkpointId)
+        throw new Error("Missing conversation checkpoint");
+      return withDb(env, (database) =>
+        database.transaction(async (db) => {
+          await lockLtiConversationCourse(db, scope);
+          const owned = await db
+            .select({ id: conversations.threadId })
+            .from(conversations)
+            .where(
+              and(
+                eq(conversations.threadId, threadId),
+                eq(conversations.leaseId, leaseId),
+                sql`${conversations.leasedUntil}>now()`,
+              ),
+            )
+            .for("update");
+          if (!owned.length) throw new ConversationBusyError();
+          const input = persistLog ? await persistLog(result) : null,
+            log = input ? await createChatLogWithDb(db, input) : null;
+          const persisted = log
+            ? { chatLogId: log.id, feedback: log.feedback }
+            : { chatLogId: null, feedback: null };
+          if (scope.ltiSubject)
+            await db
+              .update(scopes)
+              .set({
+                resourceVideoIds: checkedLtiSubject(scope.ltiSubject)
+                  .resourceVideoIds,
+              })
+              .where(eq(scopes.threadId, threadId));
+          await db
+            .insert(turns)
+            .values({
+              threadId,
+              checkpointId: result.checkpointId!,
+              question: result.queryText,
+              response: chatAnswerSchema.parse(result.answer),
+              chatLogId: persisted.chatLogId,
+            });
+          await db
+            .update(conversations)
+            .set({
+              committedCheckpointId: result.checkpointId,
+              title: sql`${conversationTitleOnCommit(conversations.title, sql`${conversationTitle(result.queryText)}`, logic)}`,
+              updatedAt: sql`clock_timestamp()`,
+              expiresAt: retention("fresh"),
+            })
+            .where(
+              and(
+                eq(conversations.threadId, threadId),
+                eq(conversations.leaseId, leaseId),
+              ),
+            );
           return persisted;
-        } catch (error) {
-          await client.query('ROLLBACK');
-          throw error;
-        }
-      });
+        }),
+      );
     },
     async close() {
       try {
-        await withClient(env, client => client.query(`UPDATE chat_conversations SET lease_id = NULL, leased_until = NULL
-          WHERE thread_id = $1 AND lease_id = $2`, [threadId, leaseId]));
+        await withDb(env, (db) =>
+          db
+            .update(conversations)
+            .set({ leaseId: null, leasedUntil: null })
+            .where(
+              and(
+                eq(conversations.threadId, threadId),
+                eq(conversations.leaseId, leaseId),
+              ),
+            ),
+        );
       } finally {
         if (!env.DATABASE_POOL) await pool.end();
       }
     },
   };
 }
-
-/** Conversation ownership/expiry is application policy, independent of model compaction.
- * Ownership FKs cascade a whole thread, including course/account deletion. No
- * checkpoint generations, channel versions or parent pointers are rewritten.
- */
+/** Lock expired threads before cleanup, serializing against resumes and commits. */
 export async function pruneConversations(env: Bindings): Promise<number> {
-  return withClient(env, async client => {
-    await client.query('BEGIN');
-    try {
-      // Serialize expiration against a concurrent resume/commit before deleting logs.
-      await client.query('SELECT thread_id FROM chat_conversations WHERE expires_at < now() FOR UPDATE');
-      await client.query(`DELETE FROM chat_logs l USING lti_chat_log_subjects s WHERE l.id=s.chat_log_id AND ${conversationLogShouldExpire(
-        `EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-          WHERE t.chat_log_id=l.id AND c.expires_at < now())`,
-        `l.created_at < now()-interval '${CONVERSATION_RETENTION_DAYS} days'`,
-        `NOT EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-          WHERE t.chat_log_id=l.id AND c.expires_at >= now())`,conversationStringLogic)}`);
-      const result = await client.query('DELETE FROM chat_conversations WHERE expires_at < now()');
-      await client.query('COMMIT');
-      return result.rowCount ?? 0;
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
+  return withDb(env, (database) =>
+    database.transaction(async (db) => {
+      await db
+        .select({ id: conversations.threadId })
+        .from(conversations)
+        .where(sql`${conversations.expiresAt}<now()`)
+        .for("update");
+      const linked = (expired: boolean) =>
+        exists(
+          db
+            .select({ id: turns.id })
+            .from(turns)
+            .innerJoin(
+              conversations,
+              eq(conversations.threadId, turns.threadId),
+            )
+            .where(
+              and(
+                eq(turns.chatLogId, chatLogs.id),
+                expired
+                  ? sql`${conversations.expiresAt}<now()`
+                  : sql`${conversations.expiresAt}>=now()`,
+              ),
+            ),
+        );
+      await db
+        .delete(chatLogs)
+        .where(
+          and(
+            exists(
+              db
+                .select({ id: subjects.chatLogId })
+                .from(subjects)
+                .where(eq(subjects.chatLogId, chatLogs.id)),
+            ),
+            conversationLogShouldExpire(
+              linked(true),
+              sql`${chatLogs.createdAt}<now()-(${CONVERSATION_RETENTION_DAYS}*interval '1 day')`,
+              not(linked(false)),
+              logic,
+            ),
+          ),
+        );
+      const deleted = await db
+        .delete(conversations)
+        .where(sql`${conversations.expiresAt}<now()`)
+        .returning({ id: conversations.threadId });
+      return deleted.length;
+    }),
+  );
+}
+const summaryProjection = {
+  id: conversations.conversationId,
+  title: conversations.title,
+  createdAt: conversations.createdAt,
+  updatedAt: conversations.updatedAt,
+  isGenerating: sql<boolean>`${conversations.leaseId} IS NOT NULL AND ${conversations.leasedUntil}>now()`,
+};
+type ConversationRow = {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isGenerating: boolean;
+};
+const summary = (row: ConversationRow) => ({
+  ...row,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+});
+async function listConversations(
+  env: Bindings,
+  scope: ConversationScope,
+  input: { conversationIds?: string[]; limit: number; offset: number },
+) {
+  const scopeKey = await conversationThreadId(scope, "scope"),
+    ids = conversationCandidateIds(scope.shareSlug, input.conversationIds);
+  return withConversationRead(env, scope, async (db) => {
+    const rows = await db
+      .select(summaryProjection)
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.scopeKey, scopeKey),
+          sql`${conversations.expiresAt}>now()`,
+          isNotNull(conversations.committedCheckpointId),
+          ids === null ? undefined : inArray(conversations.conversationId, ids),
+          ltiConversationFilter(scope),
+        ),
+      )
+      .orderBy(desc(conversations.updatedAt), desc(conversations.threadId))
+      .limit(input.limit + 1)
+      .offset(input.offset);
+    return {
+      items: rows.slice(0, input.limit).map(summary),
+      hasMore: rows.length > input.limit,
+    };
   });
 }
-
-type ConversationRow = { id: string; title: string; createdAt: Date; updatedAt: Date; isGenerating: boolean };
-const summary = (row: ConversationRow) => ({ ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
-const SUMMARY_COLUMNS = `conversation_id AS id, title, created_at AS "createdAt", updated_at AS "updatedAt",
-  (lease_id IS NOT NULL AND leased_until > now()) AS "isGenerating"`;
-
-async function listConversations(env: Bindings, scope: ConversationScope,
-  input: { conversationIds?: string[]; limit: number; offset: number }) {
-  const scopeKey = await conversationThreadId(scope, 'scope');
-  // Shared-link visitors have no account identity. UUIDs saved by this browser
-  // select candidates only; the browser session independently authorizes access.
-  const ids = conversationCandidateIds(scope.shareSlug,input.conversationIds);
-  const filter = ltiConversationFilter(scope, 5);
-  return withConversationRead(env, scope, async client => {
-    const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations
-      WHERE scope_key = $1 AND expires_at > now() AND committed_checkpoint_id IS NOT NULL
-        AND ($2::uuid[] IS NULL OR conversation_id = ANY($2::uuid[]))${filter.sql}
-      ORDER BY updated_at DESC, thread_id DESC LIMIT $3 OFFSET $4`, [scopeKey, ids, input.limit + 1, input.offset, ...filter.values]);
-    return { items: rows.slice(0, input.limit).map(summary), hasMore: rows.length > input.limit };
-  });
-}
-
-async function getConversation(env: Bindings, scope: ConversationScope,
-  input: { conversationId: string; beforeTurnId?: string; limit: number }) {
+async function getConversation(
+  env: Bindings,
+  scope: ConversationScope,
+  input: { conversationId: string; beforeTurnId?: string; limit: number },
+) {
   const threadId = await conversationThreadId(scope, input.conversationId);
-  const filter = ltiConversationFilter(scope, 2);
-  return withConversationRead(env, scope, async client => {
-    const { rows } = await client.query<ConversationRow>(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations
-      WHERE thread_id = $1 AND expires_at > now()${filter.sql}${scope.ltiSubject ? ' FOR SHARE' : ''}`, [threadId, ...filter.values]);
-    if (!rows[0]) throw apiNotFound('Conversation not found.');
-    const turns = await client.query<{ id: string; question: string; response: unknown; createdAt: Date; chatLogId: string | null; feedback: 'good' | 'bad' | null }>(`
-      SELECT t.id::text, t.question, t.response, t.created_at AS "createdAt", t.chat_log_id AS "chatLogId", l.feedback
-      FROM chat_conversation_turns t LEFT JOIN chat_logs l ON l.id = t.chat_log_id
-      WHERE t.thread_id = $1 AND ($2::bigint IS NULL OR t.id < $2::bigint)
-      ORDER BY t.id DESC LIMIT $3`, [threadId, input.beforeTurnId ?? null, input.limit + 1]);
-    const items = turns.rows.slice(0, input.limit).reverse().map(turn => {
-      const chatLogId = turn.chatLogId === null ? null : Number(turn.chatLogId);
-      const answer = chatAnswerSchema.parse(turn.response);
-      return { id: turn.id, question: turn.question, answer,createdAt:turn.createdAt.toISOString(),chatLogId,feedback:turn.feedback };
-    });
-    return { ...summary(rows[0]), turns: items, hasMore: turns.rows.length > input.limit };
+  return withConversationRead(env, scope, async (db) => {
+    const query = db
+      .select(summaryProjection)
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.threadId, threadId),
+          sql`${conversations.expiresAt}>now()`,
+          ltiConversationFilter(scope),
+        ),
+      );
+    const [row] = await (scope.ltiSubject ? query.for("share") : query);
+    if (!row) throw apiNotFound("Conversation not found.");
+    const page = await db
+      .select({
+        id: sql<string>`${turns.id}::text`,
+        question: turns.question,
+        response: turns.response,
+        createdAt: turns.createdAt,
+        chatLogId: turns.chatLogId,
+        feedback: chatLogs.feedback,
+      })
+      .from(turns)
+      .leftJoin(chatLogs, eq(chatLogs.id, turns.chatLogId))
+      .where(
+        and(
+          eq(turns.threadId, threadId),
+          input.beforeTurnId === undefined
+            ? undefined
+            : sql`${turns.id}<${input.beforeTurnId}::bigint`,
+        ),
+      )
+      .orderBy(desc(turns.id))
+      .limit(input.limit + 1);
+    const items = page
+      .slice(0, input.limit)
+      .reverse()
+      .map((turn) => ({
+        id: turn.id,
+        question: turn.question,
+        answer: chatAnswerSchema.parse(turn.response),
+        createdAt: turn.createdAt.toISOString(),
+        chatLogId: turn.chatLogId === null ? null : Number(turn.chatLogId),
+        feedback: turn.feedback as "good" | "bad" | null,
+      }));
+    return {
+      ...summary(row),
+      turns: items,
+      hasMore: page.length > input.limit,
+    };
   });
 }
-
-async function deleteConversation(env: Bindings, scope: ConversationScope, id: string) {
+async function deleteConversation(
+  env: Bindings,
+  scope: ConversationScope,
+  id: string,
+) {
   const threadId = await conversationThreadId(scope, id);
-  return withClient(env, async client => {
-    await client.query('BEGIN');
-    try {
-      await lockLtiConversationCourse(client, scope, true);
-      const row = await client.query<{ busy: boolean }>(`SELECT (lease_id IS NOT NULL AND leased_until > now()) AS busy
-        FROM chat_conversations WHERE thread_id = $1 FOR UPDATE`, [threadId]);
-      if (row.rows[0]?.busy) throw apiConflict('Wait for the current answer to finish before deleting this conversation.', 'CONVERSATION_BUSY');
-      await client.query(`DELETE FROM chat_logs WHERE id IN (
-        SELECT chat_log_id FROM chat_conversation_turns WHERE thread_id = $1
-      )`, [threadId]);
-      await client.query('DELETE FROM chat_conversations WHERE thread_id = $1', [threadId]);
-      await client.query('COMMIT');
+  return withDb(env, (database) =>
+    database.transaction(async (db) => {
+      await lockLtiConversationCourse(db, scope, true);
+      const [row] = await db
+        .select({
+          busy: sql<boolean>`${conversations.leaseId} IS NOT NULL AND ${conversations.leasedUntil}>now()`,
+        })
+        .from(conversations)
+        .where(eq(conversations.threadId, threadId))
+        .for("update");
+      if (row?.busy)
+        throw apiConflict(
+          "Wait for the current answer to finish before deleting this conversation.",
+          "CONVERSATION_BUSY",
+        );
+      await db
+        .delete(chatLogs)
+        .where(
+          inArray(
+            chatLogs.id,
+            db
+              .select({ id: turns.chatLogId })
+              .from(turns)
+              .where(eq(turns.threadId, threadId)),
+          ),
+        );
+      await db
+        .delete(conversations)
+        .where(eq(conversations.threadId, threadId));
       return { success: true as const };
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-  });
+    }),
+  );
 }
-
-export function createPostgresConversationRepository(env:Bindings):ConversationRepository {
-  return {list:(scope,input)=>listConversations(env,scope,input),detail:(scope,input)=>getConversation(env,scope,input),delete:(scope,id)=>deleteConversation(env,scope,id)};
+export function createPostgresConversationRepository(
+  env: Bindings,
+): ConversationRepository {
+  return {
+    list: (scope, input) => listConversations(env, scope, input),
+    detail: (scope, input) => getConversation(env, scope, input),
+    delete: (scope, id) => deleteConversation(env, scope, id),
+  };
 }

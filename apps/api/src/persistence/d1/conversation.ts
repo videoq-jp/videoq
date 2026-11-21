@@ -1,179 +1,755 @@
-import { CONVERSATION_RETENTION_DAYS, conversationTitle, conversationCandidateIds, conversationCourseAllowed, conversationMembersAllowed, conversationStoredScopeAllowed, conversationLogShouldExpire, conversationTitleOnCommit } from '../../application/conversation-lifecycle';
-import { conversationStringLogic } from '../conversation-policy-sql';
-import { conversationStoredScopeConflict } from '../../application/conversation-lifecycle';
-import {apiConflict,apiNotFound,ApiError} from '../../shared/errors';
-import type {ConversationRepository,ConversationSummary,ConversationTurn} from '../contracts/conversation';
-import {toUtcIso} from '../../shared/datetime';
-import {chatAnswerSchema} from "@videoq/trpc/chat";
-import {checkedLtiSubject} from "../../features/lti/identity";
-import {conversationThreadId} from "../../shared/conversation-scope";
-import {ConversationBusyError,ConversationNotFoundError,type ConversationScope,type OpenConversation} from "../contracts/conversation";
-import {D1CheckpointSaver} from "./checkpoint-saver";
-import {d1ChatLogStatements} from "./chat-repository";
-const NOW="strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-function sessionGuard(scope:ConversationScope) {
-  const proof=scope.ltiSubject?checkedLtiSubject(scope.ltiSubject).sessionProof:undefined;
-  return proof?{sql:`EXISTS(SELECT 1 FROM users owner JOIN lti_credentials c ON c.id=? WHERE owner.id=? AND c.kind='session'
-    AND julianday(c.expires_at)>julianday('now') AND json_extract(c.payload,'$.registrationId')=? AND json_extract(c.payload,'$.subjectHash')=?)`,
-    values:[proof.sessionHash,scope.ownerUserId,proof.registrationId,proof.subjectHash]}:{sql:'1',values:[]};
+import {
+  and,
+  or,
+  eq,
+  ne,
+  inArray,
+  notInArray,
+  isNull,
+  isNotNull,
+  exists,
+  notExists,
+  not,
+  desc,
+  sql,
+  type SQL,
+} from "drizzle-orm";
+import { alias, QueryBuilder } from "drizzle-orm/sqlite-core";
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  insertSelectValues,
+  runD1Batch,
+  type D1Query,
+} from "../../db/d1/query-builders";
+import {
+  mutationReceipts as receipts,
+  chatConversations as conversations,
+  ltiConversationScopes as scopes,
+  users,
+  ltiCredentials,
+  videoCourses,
+  videoCourseMembers,
+  videos,
+  conversationCheckpoints as checkpoints,
+  chatConversationTurns as turns,
+  chatLogs,
+  ltiChatLogSubjects as subjects,
+} from "../../db/schema/sqlite";
+import {
+  CONVERSATION_RETENTION_DAYS,
+  conversationTitle,
+  conversationCandidateIds,
+  conversationCourseAllowed,
+  conversationMembersAllowed,
+  conversationStoredScopeAllowed,
+  conversationLogShouldExpire,
+  conversationTitleOnCommit,
+  conversationStoredScopeConflict,
+} from "../../application/conversation-lifecycle";
+import { conversationDrizzleLogic as logic } from "../conversation-policy-sql";
+import { apiConflict, apiNotFound, ApiError } from "../../shared/errors";
+import type {
+  ConversationRepository,
+  ConversationSummary,
+  ConversationTurn,
+} from "../contracts/conversation";
+import { toUtcIso } from "../../shared/datetime";
+import { chatAnswerSchema } from "@videoq/trpc/chat";
+import { checkedLtiSubject } from "../../features/lti/identity";
+import { conversationThreadId } from "../../shared/conversation-scope";
+import {
+  ConversationBusyError,
+  ConversationNotFoundError,
+  type ConversationScope,
+  type OpenConversation,
+} from "../contracts/conversation";
+import { D1CheckpointSaver } from "./checkpoint-saver";
+import { d1ChatLogStatements } from "./chat-repository";
+const qb = new QueryBuilder();
+const now = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ','now')`;
+const retention = sql`strftime('%Y-%m-%dT%H:%M:%fZ','now',${"+" + CONVERSATION_RETENTION_DAYS + " days"})`;
+const gate = (token: string) =>
+  exists(
+    qb
+      .select({ token: receipts.token })
+      .from(receipts)
+      .where(eq(receipts.token, token)),
+  );
+function sessionGuard(scope: ConversationScope) {
+  const proof = scope.ltiSubject
+    ? checkedLtiSubject(scope.ltiSubject).sessionProof
+    : undefined;
+  const c = alias(ltiCredentials, "conversation_session");
+  return proof
+    ? exists(
+        qb
+          .select({ id: users.id })
+          .from(users)
+          .innerJoin(c, eq(c.id, proof.sessionHash))
+          .where(
+            and(
+              eq(users.id, scope.ownerUserId),
+              eq(c.kind, "session"),
+              sql`julianday(${c.expiresAt})>julianday('now')`,
+              eq(
+                sql`json_extract(${c.payload},'$.registrationId')`,
+                proof.registrationId,
+              ),
+              eq(
+                sql`json_extract(${c.payload},'$.subjectHash')`,
+                proof.subjectHash,
+              ),
+            ),
+          ),
+      )
+    : sql`1`;
 }
-function scopeFailure(sessionAllowed:number):never {
-  if(!sessionAllowed)throw new ApiError(403,'FORBIDDEN','The Moodle session is unavailable.');
+function scopeFailure(sessionAllowed: unknown): never {
+  if (!sessionAllowed)
+    throw new ApiError(403, "FORBIDDEN", "The Moodle session is unavailable.");
   throw new ConversationNotFoundError();
 }
-function scopeGuard(scope:ConversationScope,threadId:string,allowEmpty=false,ignoreStored=false) {
-  if(!scope.ltiSubject)return {sql:'1',values:[] as unknown[]};
-  const subject=checkedLtiSubject(scope.ltiSubject);
-  const ids=JSON.stringify(subject.resourceVideoIds);
-  const proof=subject.sessionProof;
-  return {sql:`${conversationCourseAllowed('?','EXISTS(SELECT 1 FROM video_courses WHERE id=? AND user_id=?)',allowEmpty,conversationStringLogic)}
-    AND ${conversationMembersAllowed(`(SELECT count(*) FROM video_course_members m JOIN videos v ON v.id=m.video_id
-      WHERE m.course_id=? AND v.user_id=? AND m.video_id IN(SELECT value FROM json_each(?)))`,'?',conversationStringLogic)}
-    AND (?=1 OR NOT EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=? AND EXISTS(SELECT 1 FROM chat_conversations live WHERE live.thread_id=s.thread_id AND julianday(live.expires_at)>=julianday('now')) AND ${conversationStoredScopeConflict('s.subject_key<>?',`EXISTS(
-      SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?)))`,conversationStringLogic)}))
-    ${proof?`AND EXISTS(SELECT 1 FROM users owner JOIN lti_credentials c ON c.id=? WHERE owner.id=? AND c.kind='session'
-      AND julianday(c.expires_at)>julianday('now') AND json_extract(c.payload,'$.registrationId')=? AND json_extract(c.payload,'$.subjectHash')=?)`:''}`,
-    values:[subject.resourceVideoIds.length,scope.courseId,scope.ownerUserId,scope.courseId,scope.ownerUserId,ids,subject.resourceVideoIds.length,ignoreStored?1:0,threadId,subject.subjectKey,ids,
-      ...(proof?[proof.sessionHash,scope.ownerUserId,proof.registrationId,proof.subjectHash]:[])]};
+function contained(ids: number[]) {
+  return notExists(
+    qb
+      .select({ value: sql`previous.value` })
+      .from(sql`json_each(${scopes.resourceVideoIds}) previous`)
+      .where(
+        notInArray(
+          sql`previous.value`,
+          qb
+            .select({ value: sql`value` })
+            .from(sql`json_each(${JSON.stringify(ids)})`),
+        ),
+      ),
+  );
 }
-export async function openD1Conversation(database:D1Database,scope:ConversationScope,conversationId:string,requireExisting=false):Promise<OpenConversation<D1CheckpointSaver>> {
-  const threadId=await conversationThreadId(scope,conversationId),scopeKey=await conversationThreadId(scope,'scope');
-  const leaseId=crypto.randomUUID(),token=crypto.randomUUID();
-  const guard=scopeGuard(scope,threadId),session=sessionGuard(scope);
-  const statements=[
-    database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'conversation_open',0 WHERE (${guard.sql})
-      AND (?=0 OR EXISTS(SELECT 1 FROM chat_conversations WHERE thread_id=? AND julianday(expires_at)>julianday('now')))`)
-      .bind(token,...guard.values,requireExisting?1:0,threadId),
-    database.prepare('DELETE FROM chat_conversations WHERE thread_id=? AND julianday(expires_at)<julianday(\'now\') AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)').bind(threadId,token),
-    database.prepare(`INSERT INTO chat_conversations(thread_id,owner_user_id,actor_user_id,course_id,lease_id,conversation_id,scope_key,leased_until,expires_at)
-      SELECT ?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+20 minutes'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+${CONVERSATION_RETENTION_DAYS} days')
-      WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) ON CONFLICT(thread_id) DO UPDATE SET
-        lease_id=excluded.lease_id,leased_until=excluded.leased_until,expires_at=excluded.expires_at,conversation_id=excluded.conversation_id,scope_key=excluded.scope_key
-      WHERE chat_conversations.lease_id IS NULL OR julianday(chat_conversations.leased_until)<julianday('now')`)
-      .bind(threadId,scope.ownerUserId,scope.actorUserId,scope.courseId,leaseId,conversationId,scopeKey,token),
-    database.prepare("INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'conversation_lease',0 WHERE changes()=1").bind(token+':lease'),
+function scopeGuard(
+  scope: ConversationScope,
+  threadId: string,
+  allowEmpty = false,
+  ignoreStored = false,
+) {
+  if (!scope.ltiSubject) return sql`1`;
+  const subject = checkedLtiSubject(scope.ltiSubject),
+    live = alias(conversations, "live");
+  const count = qb
+    .select({ count: sql<number>`count(*)` })
+    .from(videoCourseMembers)
+    .innerJoin(videos, eq(videos.id, videoCourseMembers.videoId))
+    .where(
+      and(
+        eq(videoCourseMembers.courseId, sql`${scope.courseId}`),
+        eq(videos.userId, scope.ownerUserId),
+        inArray(videoCourseMembers.videoId, subject.resourceVideoIds),
+      ),
+    );
+  return and(
+    conversationCourseAllowed(
+      sql`${subject.resourceVideoIds.length}`,
+      exists(
+        qb
+          .select({ id: videoCourses.id })
+          .from(videoCourses)
+          .where(
+            and(
+              eq(videoCourses.id, sql`${scope.courseId}`),
+              eq(videoCourses.userId, scope.ownerUserId),
+            ),
+          ),
+      ),
+      allowEmpty,
+      logic,
+    ),
+    conversationMembersAllowed(
+      sql`${count}`,
+      sql`${subject.resourceVideoIds.length}`,
+      logic,
+    ),
+    ignoreStored
+      ? undefined
+      : notExists(
+          qb
+            .select({ id: scopes.threadId })
+            .from(scopes)
+            .where(
+              and(
+                eq(scopes.threadId, threadId),
+                exists(
+                  qb
+                    .select({ id: live.threadId })
+                    .from(live)
+                    .where(
+                      and(
+                        eq(live.threadId, scopes.threadId),
+                        sql`julianday(${live.expiresAt})>=julianday('now')`,
+                      ),
+                    ),
+                ),
+                conversationStoredScopeConflict(
+                  ne(scopes.subjectKey, subject.subjectKey),
+                  not(contained(subject.resourceVideoIds)),
+                  logic,
+                ),
+              ),
+            ),
+        ),
+    sessionGuard(scope),
+  )!;
+}
+// Keep the receipt's creation and all guarded effects in a single D1 batch.
+function receiptInsert(
+  db: ReturnType<typeof createD1Connection>,
+  token: string,
+  kind: string,
+  condition: SQL,
+) {
+  return db.insert(receipts).select(
+    db
+      .select(insertSelectValues(receipts, { token, kind, resourceId: 0 }))
+      .from(sql`(VALUES(1)) input`)
+      .where(condition),
+  );
+}
+function visibleScope(scope: ConversationScope) {
+  if (!scope.ltiSubject) return sql`1`;
+  const subject = checkedLtiSubject(scope.ltiSubject);
+  return exists(
+    qb
+      .select({ id: scopes.threadId })
+      .from(scopes)
+      .where(
+        and(
+          eq(scopes.threadId, conversations.threadId),
+          conversationStoredScopeAllowed(
+            eq(scopes.subjectKey, subject.subjectKey),
+            contained(subject.resourceVideoIds),
+            logic,
+          ),
+        ),
+      ),
+  );
+}
+const generating = and(
+  isNotNull(conversations.leaseId),
+  sql`julianday(${conversations.leasedUntil})>julianday('now')`,
+)!;
+const idle = or(
+  isNull(conversations.leaseId),
+  sql`julianday(${conversations.leasedUntil})<=julianday('now')`,
+)!;
+const summaryProjection = {
+  id: conversations.conversationId,
+  title: conversations.title,
+  createdAt: sql<string>`${conversations.createdAt}`,
+  updatedAt: sql<string>`${conversations.updatedAt}`,
+  isGenerating: generating,
+};
+const summary = (row: {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  isGenerating: unknown;
+}): ConversationSummary => ({
+  ...row,
+  createdAt: toUtcIso(row.createdAt),
+  updatedAt: toUtcIso(row.updatedAt),
+  isGenerating: Boolean(row.isGenerating),
+});
+export async function openD1Conversation(
+  database: D1Database,
+  scope: ConversationScope,
+  conversationId: string,
+  requireExisting = false,
+): Promise<OpenConversation<D1CheckpointSaver>> {
+  const db = createD1Connection(database),
+    threadId = await conversationThreadId(scope, conversationId),
+    scopeKey = await conversationThreadId(scope, "scope");
+  const leaseId = crypto.randomUUID(),
+    token = crypto.randomUUID(),
+    session = sessionGuard(scope);
+  const statements: D1Query[] = [
+    receiptInsert(
+      db,
+      token,
+      "conversation_open",
+      and(
+        scopeGuard(scope, threadId),
+        requireExisting
+          ? exists(
+              db
+                .select({ id: conversations.threadId })
+                .from(conversations)
+                .where(
+                  and(
+                    eq(conversations.threadId, threadId),
+                    sql`julianday(${conversations.expiresAt})>julianday('now')`,
+                  ),
+                ),
+            )
+          : undefined,
+      )!,
+    ),
+    db
+      .delete(conversations)
+      .where(
+        and(
+          eq(conversations.threadId, threadId),
+          sql`julianday(${conversations.expiresAt})<julianday('now')`,
+          gate(token),
+        ),
+      ),
+    db
+      .insert(conversations)
+      .select(
+        db
+          .select(
+            insertSelectValues(conversations, {
+              threadId,
+              ownerUserId: scope.ownerUserId,
+              actorUserId: scope.actorUserId,
+              courseId: scope.courseId,
+              leaseId,
+              conversationId,
+              scopeKey,
+              leasedUntil: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now','+20 minutes')`,
+              expiresAt: retention,
+            }),
+          )
+          .from(receipts)
+          .where(eq(receipts.token, token)),
+      )
+      .onConflictDoUpdate({
+        target: conversations.threadId,
+        set: {
+          leaseId,
+          leasedUntil: sql`excluded.leased_until`,
+          expiresAt: sql`excluded.expires_at`,
+          conversationId,
+          scopeKey,
+        },
+        setWhere: or(
+          isNull(conversations.leaseId),
+          sql`julianday(${conversations.leasedUntil})<julianday('now')`,
+        ),
+      }),
+    receiptInsert(db, token + ":lease", "conversation_lease", sql`changes()=1`),
   ];
-  if(scope.ltiSubject){const subject=checkedLtiSubject(scope.ltiSubject);statements.push(database.prepare(`INSERT INTO lti_conversation_scopes(thread_id,subject_key,resource_video_ids)
-    SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) ON CONFLICT(thread_id) DO NOTHING`)
-    .bind(threadId,subject.subjectKey,JSON.stringify(subject.resourceVideoIds),token+':lease'));}
-  statements.push(database.prepare('SELECT committed_checkpoint_id FROM chat_conversations WHERE thread_id=? AND lease_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)').bind(threadId,leaseId,token+':lease'),
-    database.prepare(`SELECT (${session.sql}) AS session_allowed,EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AS eligible`).bind(...session.values,token),database.prepare('DELETE FROM mutation_receipts WHERE token IN (?,?)').bind(token,token+':lease'));
-  const opened=await database.batch<{committed_checkpoint_id:string|null;session_allowed:number;eligible:number}>(statements);
-  const row=opened[opened.length-3].results[0];
-  if(!row){const access=opened[opened.length-2].results[0];if(!access.session_allowed)scopeFailure(0);if(access.eligible)throw new ConversationBusyError();throw new ConversationNotFoundError();}
-  return {threadId,checkpointId:row.committed_checkpoint_id,saver:new D1CheckpointSaver(database,{threadId,leaseId}),
-    async commit(result,prepareLog) {
-      if(!result.checkpointId)throw new Error('Missing conversation checkpoint');
-      const logInput=prepareLog?await prepareLog(result):null;
-      const answer=JSON.stringify(chatAnswerSchema.parse(result.answer));
-      const commitToken=crypto.randomUUID(),logToken=commitToken+':log';
-      const current=scopeGuard(scope,threadId);
-      const batch=[database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'conversation_scope',0 WHERE (${current.sql})`).bind(commitToken+':scope',...current.values),
-        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'conversation_commit',0
-        WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AND EXISTS(SELECT 1 FROM chat_conversations WHERE thread_id=? AND lease_id=? AND julianday(leased_until)>julianday('now'))
-          AND EXISTS(SELECT 1 FROM conversation_checkpoints WHERE thread_id=? AND namespace='' AND checkpoint_id=?)`)
-        .bind(commitToken,commitToken+':scope',threadId,leaseId,threadId,result.checkpointId)];
-      if(logInput)batch.push(...d1ChatLogStatements(database,logInput,logToken,{sql:'EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)',values:[commitToken]}));
-      if(scope.ltiSubject)batch.push(database.prepare('UPDATE lti_conversation_scopes SET resource_video_ids=? WHERE thread_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))')
-        .bind(JSON.stringify(checkedLtiSubject(scope.ltiSubject).resourceVideoIds),threadId,commitToken,logInput?1:0,logToken));
-      batch.push(database.prepare(`INSERT INTO chat_conversation_turns(thread_id,checkpoint_id,question,response,chat_log_id)
-        SELECT ?,?,?,?,(SELECT resource_id FROM mutation_receipts WHERE token=?) WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
-          AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`)
-        .bind(threadId,result.checkpointId,result.queryText,answer,logToken,commitToken,logInput?1:0,logToken),
-        database.prepare(`UPDATE chat_conversations SET committed_checkpoint_id=?,title=${conversationTitleOnCommit('title','?',conversationStringLogic)},updated_at=${NOW},expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+${CONVERSATION_RETENTION_DAYS} days')
-          WHERE thread_id=? AND lease_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)
-          AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`)
-          .bind(result.checkpointId,conversationTitle(result.queryText),threadId,leaseId,commitToken,logInput?1:0,logToken),
-        database.prepare(`SELECT receipt.token,(SELECT resource_id FROM mutation_receipts WHERE token=?) AS chat_log_id
-          FROM mutation_receipts receipt WHERE receipt.token=? AND (?=0 OR EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?))`).bind(logToken,commitToken,logInput?1:0,logToken),
-        database.prepare(`SELECT (${session.sql}) AS session_allowed,EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AS scope_allowed`).bind(...session.values,commitToken+':scope'),
-        database.prepare('DELETE FROM mutation_receipts WHERE token IN (?,?,?)').bind(commitToken,logToken,commitToken+':scope'));
-      const committed=await database.batch<{chat_log_id:number|null;session_allowed:number;scope_allowed:number}>(batch);
-      const saved=committed[committed.length-3].results[0];
-      const access=committed[committed.length-2].results[0];
-      if(!access.scope_allowed)scopeFailure(access.session_allowed);
-      if(!saved)throw new ConversationBusyError();
-      return {chatLogId:saved.chat_log_id,feedback:null};
+  if (scope.ltiSubject) {
+    const subject = checkedLtiSubject(scope.ltiSubject);
+    statements.push(
+      db
+        .insert(scopes)
+        .select(
+          db
+            .select(
+              insertSelectValues(scopes, {
+                threadId,
+                subjectKey: subject.subjectKey,
+                resourceVideoIds: subject.resourceVideoIds,
+              }),
+            )
+            .from(receipts)
+            .where(eq(receipts.token, token + ":lease")),
+        )
+        .onConflictDoNothing({ target: scopes.threadId }),
+    );
+  }
+  statements.push(
+    db
+      .select({
+        checkpoint: sql<
+          string | null
+        >`${conversations.committedCheckpointId}`.as("checkpoint"),
+      })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.threadId, threadId),
+          eq(conversations.leaseId, leaseId),
+          gate(token + ":lease"),
+        ),
+      ),
+    db
+      .select({
+        session: session.as("session"),
+        eligible: gate(token).as("eligible"),
+      })
+      .from(sql`(VALUES(1)) input`),
+    db
+      .delete(receipts)
+      .where(inArray(receipts.token, [token, token + ":lease"])),
+  );
+  const opened = await runD1Batch<{
+      checkpoint: string | null;
+      session: number;
+      eligible: number;
+    }>(database, statements),
+    row = opened[opened.length - 3].results[0];
+  if (!row) {
+    const access = opened[opened.length - 2].results[0];
+    if (!access.session) scopeFailure(0);
+    if (access.eligible) throw new ConversationBusyError();
+    throw new ConversationNotFoundError();
+  }
+  return {
+    threadId,
+    checkpointId: row.checkpoint,
+    saver: new D1CheckpointSaver(database, { threadId, leaseId }),
+    async commit(result, prepareLog) {
+      if (!result.checkpointId)
+        throw new Error("Missing conversation checkpoint");
+      const logInput = prepareLog ? await prepareLog(result) : null,
+        answer = chatAnswerSchema.parse(result.answer),
+        commitToken = crypto.randomUUID(),
+        logToken = commitToken + ":log";
+      const finalGate = and(
+        gate(commitToken),
+        logInput ? gate(logToken) : undefined,
+      )!;
+      const batch: (D1Query | D1PreparedStatement)[] = [
+        receiptInsert(
+          db,
+          commitToken + ":scope",
+          "conversation_scope",
+          scopeGuard(scope, threadId),
+        ),
+        receiptInsert(
+          db,
+          commitToken,
+          "conversation_commit",
+          and(
+            gate(commitToken + ":scope"),
+            exists(
+              db
+                .select({ id: conversations.threadId })
+                .from(conversations)
+                .where(
+                  and(
+                    eq(conversations.threadId, threadId),
+                    eq(conversations.leaseId, leaseId),
+                    sql`julianday(${conversations.leasedUntil})>julianday('now')`,
+                  ),
+                ),
+            ),
+            exists(
+              db
+                .select({ id: checkpoints.checkpointId })
+                .from(checkpoints)
+                .where(
+                  and(
+                    eq(checkpoints.threadId, threadId),
+                    eq(checkpoints.namespace, ""),
+                    eq(checkpoints.checkpointId, result.checkpointId),
+                  ),
+                ),
+            ),
+          )!,
+        ),
+      ];
+      if (logInput)
+        batch.push(
+          ...d1ChatLogStatements(
+            database,
+            logInput,
+            logToken,
+            gate(commitToken),
+          ),
+        );
+      if (scope.ltiSubject)
+        batch.push(
+          db
+            .update(scopes)
+            .set({
+              resourceVideoIds: checkedLtiSubject(scope.ltiSubject)
+                .resourceVideoIds,
+            })
+            .where(and(eq(scopes.threadId, threadId), finalGate)),
+        );
+      const logId = db
+        .select({ id: receipts.resourceId })
+        .from(receipts)
+        .where(eq(receipts.token, logToken));
+      batch.push(
+        db.insert(turns).select(
+          db
+            .select(
+              insertSelectValues(turns, {
+                threadId,
+                checkpointId: result.checkpointId,
+                question: result.queryText,
+                response: answer,
+                chatLogId: sql`${logId}`,
+              }),
+            )
+            .from(receipts)
+            .where(
+              and(
+                eq(receipts.token, commitToken),
+                logInput ? gate(logToken) : undefined,
+              ),
+            ),
+        ),
+        db
+          .update(conversations)
+          .set({
+            committedCheckpointId: result.checkpointId,
+            title: sql`${conversationTitleOnCommit(conversations.title, sql`${conversationTitle(result.queryText)}`, logic)}`,
+            updatedAt: now,
+            expiresAt: retention,
+          })
+          .where(
+            and(
+              eq(conversations.threadId, threadId),
+              eq(conversations.leaseId, leaseId),
+              finalGate,
+            ),
+          ),
+        db
+          .select({ chatLogId: sql<number | null>`${logId}`.as("chatLogId") })
+          .from(receipts)
+          .where(
+            and(
+              eq(receipts.token, commitToken),
+              logInput ? gate(logToken) : undefined,
+            ),
+          ),
+        db
+          .select({
+            session: session.as("session"),
+            allowed: gate(commitToken + ":scope").as("allowed"),
+          })
+          .from(sql`(VALUES(1)) input`),
+        db
+          .delete(receipts)
+          .where(
+            inArray(receipts.token, [
+              commitToken,
+              logToken,
+              commitToken + ":scope",
+            ]),
+          ),
+      );
+      const committed = await runD1Batch<{
+          chatLogId: number | null;
+          session: number;
+          allowed: number;
+        }>(database, batch),
+        saved = committed[committed.length - 3].results[0],
+        access = committed[committed.length - 2].results[0];
+      if (!access.allowed) scopeFailure(access.session);
+      if (!saved) throw new ConversationBusyError();
+      return { chatLogId: saved.chatLogId, feedback: null };
     },
-    async close(){await database.prepare('UPDATE chat_conversations SET lease_id=NULL,leased_until=NULL WHERE thread_id=? AND lease_id=?').bind(threadId,leaseId).run();},
+    async close() {
+      await db
+        .update(conversations)
+        .set({ leaseId: null, leasedUntil: null })
+        .where(
+          and(
+            eq(conversations.threadId, threadId),
+            eq(conversations.leaseId, leaseId),
+          ),
+        );
+    },
   };
 }
-
-/** Retention and attributed-log cleanup share the same atomic D1 batch. */
-export async function pruneD1Conversations(database:D1Database):Promise<number> {
-  const result=await database.batch([
-    database.prepare(`DELETE FROM chat_logs WHERE EXISTS(SELECT 1 FROM lti_chat_log_subjects s WHERE s.chat_log_id=chat_logs.id) AND ${conversationLogShouldExpire(
-      `EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)<julianday('now'))`,
-      `julianday(created_at)<julianday('now','-${CONVERSATION_RETENTION_DAYS} days')`,
-      `NOT EXISTS(SELECT 1 FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-        WHERE t.chat_log_id=chat_logs.id AND julianday(c.expires_at)>=julianday('now'))`,conversationStringLogic)}`),
-    database.prepare("DELETE FROM chat_conversations WHERE julianday(expires_at)<julianday('now') RETURNING thread_id"),
+export async function pruneD1Conversations(
+  database: D1Database,
+): Promise<number> {
+  const db = createD1Connection(database);
+  const linked = (expired: boolean) =>
+    exists(
+      db
+        .select({ id: turns.id })
+        .from(turns)
+        .innerJoin(conversations, eq(conversations.threadId, turns.threadId))
+        .where(
+          and(
+            eq(turns.chatLogId, chatLogs.id),
+            expired
+              ? sql`julianday(${conversations.expiresAt})<julianday('now')`
+              : sql`julianday(${conversations.expiresAt})>=julianday('now')`,
+          ),
+        ),
+    );
+  const result = await db.batch([
+    db
+      .delete(chatLogs)
+      .where(
+        and(
+          exists(
+            db
+              .select({ id: subjects.chatLogId })
+              .from(subjects)
+              .where(eq(subjects.chatLogId, chatLogs.id)),
+          ),
+          conversationLogShouldExpire(
+            linked(true),
+            sql`julianday(${chatLogs.createdAt})<julianday('now',${"-" + CONVERSATION_RETENTION_DAYS + " days"})`,
+            not(linked(false)),
+            logic,
+          ),
+        ),
+      ),
+    db
+      .delete(conversations)
+      .where(sql`julianday(${conversations.expiresAt})<julianday('now')`)
+      .returning({ id: conversations.threadId }),
   ]);
-  return result[1].results.length;
+  return result[1].length;
 }
-
-type SummaryRow={id:string;title:string;createdAt:string;updatedAt:string;isGenerating:number};
-const SUMMARY_COLUMNS=`conversation_id AS id,title,created_at AS createdAt,updated_at AS updatedAt,
-  (lease_id IS NOT NULL AND julianday(leased_until)>julianday('now')) AS isGenerating`;
-const summary=(row:SummaryRow):ConversationSummary=>({...row,createdAt:toUtcIso(row.createdAt),updatedAt:toUtcIso(row.updatedAt),isGenerating:Boolean(row.isGenerating)});
-function visibleScope(scope:ConversationScope){
-  if(!scope.ltiSubject)return {sql:'1',values:[] as unknown[]};
-  const subject=checkedLtiSubject(scope.ltiSubject);
-  return {sql:`EXISTS(SELECT 1 FROM lti_conversation_scopes s WHERE s.thread_id=chat_conversations.thread_id AND ${conversationStoredScopeAllowed('s.subject_key=?',
-    'NOT EXISTS(SELECT 1 FROM json_each(s.resource_video_ids) previous WHERE previous.value NOT IN(SELECT value FROM json_each(?)))',conversationStringLogic)})`,
-    values:[subject.subjectKey,JSON.stringify(subject.resourceVideoIds)]};
-}
-export function createD1ConversationRepository(database:D1Database):ConversationRepository {
+export function createD1ConversationRepository(
+  database: D1Database,
+): ConversationRepository {
+  const db = createD1Connection(database);
+  const access = (scope: ConversationScope, condition: SQL) =>
+    db
+      .select({
+        allowed: condition.as("allowed"),
+        session: sessionGuard(scope).as("session"),
+      })
+      .from(sql`(VALUES(1)) input`);
   return {
-    async list(scope,input){
-      const scopeKey=await conversationThreadId(scope,'scope'),guard=scopeGuard(scope,'',true,true),visible=visibleScope(scope);
-      const candidates=conversationCandidateIds(scope.shareSlug,input.conversationIds),ids=candidates===null?null:JSON.stringify(candidates),session=sessionGuard(scope);
-      const batch=await database.batch<SummaryRow & {allowed:number;session_allowed:number}>([
-        database.prepare(`SELECT (${guard.sql}) AS allowed,(${session.sql}) AS session_allowed`).bind(...guard.values,...session.values),
-        database.prepare(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations WHERE scope_key=? AND julianday(expires_at)>julianday('now')
-          AND committed_checkpoint_id IS NOT NULL AND (? IS NULL OR conversation_id IN(SELECT value FROM json_each(?)))
-          AND (${guard.sql}) AND (${visible.sql}) ORDER BY updated_at DESC,thread_id DESC LIMIT ? OFFSET ?`)
-          .bind(scopeKey,ids,ids,...guard.values,...visible.values,input.limit+1,input.offset),
+    async list(scope, input) {
+      const scopeKey = await conversationThreadId(scope, "scope"),
+        guard = scopeGuard(scope, "", true, true),
+        candidates = conversationCandidateIds(
+          scope.shareSlug,
+          input.conversationIds,
+        );
+      const result = await db.batch([
+        access(scope, guard),
+        db
+          .select(summaryProjection)
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.scopeKey, scopeKey),
+              sql`julianday(${conversations.expiresAt})>julianday('now')`,
+              isNotNull(conversations.committedCheckpointId),
+              candidates === null
+                ? undefined
+                : inArray(conversations.conversationId, candidates),
+              guard,
+              visibleScope(scope),
+            ),
+          )
+          .orderBy(desc(conversations.updatedAt), desc(conversations.threadId))
+          .limit(input.limit + 1)
+          .offset(input.offset),
       ]);
-      if(!batch[0].results[0]?.allowed)scopeFailure(batch[0].results[0]?.session_allowed);
-      return {items:batch[1].results.slice(0,input.limit).map(summary),hasMore:batch[1].results.length>input.limit};
+      if (!result[0][0]?.allowed) scopeFailure(result[0][0]?.session);
+      return {
+        items: result[1].slice(0, input.limit).map(summary),
+        hasMore: result[1].length > input.limit,
+      };
     },
-    async detail(scope,input){
-      const threadId=await conversationThreadId(scope,input.conversationId),guard=scopeGuard(scope,threadId,true),visible=visibleScope(scope);
-      const permission=`thread_id=? AND julianday(expires_at)>julianday('now') AND (${guard.sql}) AND (${visible.sql})`;
-      const values=[threadId,...guard.values,...visible.values],session=sessionGuard(scope),current=scopeGuard(scope,threadId,true,true);
-      const results=await database.batch<SummaryRow & {allowed:number;session_allowed:number;question:string;response:string;chatLogId:number|null;feedback:'good'|'bad'|null}>([
-        database.prepare(`SELECT (${current.sql}) AS allowed,(${session.sql}) AS session_allowed`).bind(...current.values,...session.values),
-        database.prepare(`SELECT ${SUMMARY_COLUMNS} FROM chat_conversations WHERE ${permission}`).bind(...values),
-        database.prepare(`SELECT CAST(t.id AS TEXT) AS id,t.question,t.response,t.created_at AS createdAt,t.chat_log_id AS chatLogId,l.feedback
-          FROM chat_conversation_turns t LEFT JOIN chat_logs l ON l.id=t.chat_log_id WHERE t.thread_id=? AND (? IS NULL OR t.id<CAST(? AS INTEGER))
-          AND EXISTS(SELECT 1 FROM chat_conversations WHERE ${permission}) ORDER BY t.id DESC LIMIT ?`)
-          .bind(threadId,input.beforeTurnId??null,input.beforeTurnId??null,...values,input.limit+1),
+    async detail(scope, input) {
+      const threadId = await conversationThreadId(scope, input.conversationId),
+        permission = and(
+          eq(conversations.threadId, threadId),
+          sql`julianday(${conversations.expiresAt})>julianday('now')`,
+          scopeGuard(scope, threadId, true),
+          visibleScope(scope),
+        );
+      const result = await db.batch([
+        access(scope, scopeGuard(scope, threadId, true, true)),
+        db.select(summaryProjection).from(conversations).where(permission),
+        db
+          .select({
+            id: sql<string>`CAST(${turns.id} AS TEXT)`,
+            question: turns.question,
+            response: turns.response,
+            createdAt: sql<string>`${turns.createdAt}`,
+            chatLogId: turns.chatLogId,
+            feedback: chatLogs.feedback,
+          })
+          .from(turns)
+          .leftJoin(chatLogs, eq(chatLogs.id, turns.chatLogId))
+          .where(
+            and(
+              eq(turns.threadId, threadId),
+              input.beforeTurnId == null
+                ? undefined
+                : sql`${turns.id}<CAST(${input.beforeTurnId} AS INTEGER)`,
+              exists(
+                db
+                  .select({ id: conversations.threadId })
+                  .from(conversations)
+                  .where(permission),
+              ),
+            ),
+          )
+          .orderBy(desc(turns.id))
+          .limit(input.limit + 1),
       ]);
-      if(!results[0].results[0]?.allowed)scopeFailure(results[0].results[0]?.session_allowed);
-      const row=results[1].results[0];if(!row)throw apiNotFound('Conversation not found.');
-      const turns:ConversationTurn[]=results[2].results.slice(0,input.limit).reverse().map(t=>({id:t.id,question:t.question,
-        answer:chatAnswerSchema.parse(JSON.parse(t.response)),createdAt:toUtcIso(t.createdAt),chatLogId:t.chatLogId,feedback:t.feedback}));
-      return {...summary(row),turns,hasMore:results[2].results.length>input.limit};
+      if (!result[0][0]?.allowed) scopeFailure(result[0][0]?.session);
+      const row = result[1][0];
+      if (!row) throw apiNotFound("Conversation not found.");
+      const page: ConversationTurn[] = result[2]
+        .slice(0, input.limit)
+        .reverse()
+        .map((t) => ({
+          id: t.id,
+          question: t.question,
+          answer: chatAnswerSchema.parse(t.response),
+          createdAt: toUtcIso(t.createdAt),
+          chatLogId: t.chatLogId,
+          feedback: t.feedback as "good" | "bad" | null,
+        }));
+      return {
+        ...summary(row),
+        turns: page,
+        hasMore: result[2].length > input.limit,
+      };
     },
-    async delete(scope,id){
-      const threadId=await conversationThreadId(scope,id),guard=scopeGuard(scope,threadId,true,true),token=crypto.randomUUID(),session=sessionGuard(scope);
-      const result=await database.batch<{busy:number;eligible:number;session_allowed:number}>([
-        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id) SELECT ?,'conversation_delete',0 WHERE (${guard.sql})`).bind(token,...guard.values),
-        database.prepare(`SELECT (lease_id IS NOT NULL AND julianday(leased_until)>julianday('now')) AS busy FROM chat_conversations
-          WHERE thread_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`).bind(threadId,token),
-        database.prepare(`DELETE FROM chat_logs WHERE id IN(SELECT t.chat_log_id FROM chat_conversation_turns t JOIN chat_conversations c ON c.thread_id=t.thread_id
-          WHERE c.thread_id=? AND (c.lease_id IS NULL OR julianday(c.leased_until)<=julianday('now')))
-          AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`).bind(threadId,token),
-        database.prepare(`DELETE FROM chat_conversations WHERE thread_id=? AND (lease_id IS NULL OR julianday(leased_until)<=julianday('now'))
-          AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`).bind(threadId,token),
-        database.prepare(`SELECT (${session.sql}) AS session_allowed,EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?) AS eligible`).bind(...session.values,token),
-        database.prepare('DELETE FROM mutation_receipts WHERE token=?').bind(token),
+    async delete(scope, id) {
+      const threadId = await conversationThreadId(scope, id),
+        token = crypto.randomUUID();
+      const result = await db.batch([
+        receiptInsert(
+          db,
+          token,
+          "conversation_delete",
+          scopeGuard(scope, threadId, true, true),
+        ),
+        db
+          .select({ busy: generating })
+          .from(conversations)
+          .where(and(eq(conversations.threadId, threadId), gate(token))),
+        db.delete(chatLogs).where(
+          and(
+            inArray(
+              chatLogs.id,
+              db
+                .select({ id: turns.chatLogId })
+                .from(turns)
+                .innerJoin(
+                  conversations,
+                  eq(conversations.threadId, turns.threadId),
+                )
+                .where(and(eq(conversations.threadId, threadId), idle)),
+            ),
+            gate(token),
+          ),
+        ),
+        db
+          .delete(conversations)
+          .where(and(eq(conversations.threadId, threadId), idle, gate(token))),
+        db
+          .select({ session: sessionGuard(scope), eligible: gate(token) })
+          .from(sql`(VALUES(1)) input`),
+        db.delete(receipts).where(eq(receipts.token, token)),
       ]);
-      if(!result[4].results[0]?.eligible)scopeFailure(result[4].results[0]?.session_allowed);
-      if(result[1].results[0]?.busy)throw apiConflict('Wait for the current answer to finish before deleting this conversation.','CONVERSATION_BUSY');
-      return {success:true};
+      if (!result[4][0]?.eligible) scopeFailure(result[4][0]?.session);
+      if (result[1][0]?.busy)
+        throw apiConflict(
+          "Wait for the current answer to finish before deleting this conversation.",
+          "CONVERSATION_BUSY",
+        );
+      return { success: true };
     },
   };
 }

@@ -408,7 +408,7 @@ describe.each([false, true])("講座メタ情報のチャット経路（stream=%
     expect(JSON.stringify(modelRequests)).not.toContain("abc123");
     expect(JSON.stringify(modelRequests)).not.toContain("private.mp4");
     const metadataQueries = calls.filter((call) =>
-      call.sql.includes("video_count") || call.sql.includes("inner join videos"));
+      call.sql.includes("video_count") || call.sql.includes("left(videos.description"));
     expect(metadataQueries).toHaveLength(2);
     for (const query of metadataQueries) {
       expect(String(query.sql)).not.toMatch(/video_tags|share_slug|\bfile\b|source_url|uploaded_at/);
@@ -662,7 +662,7 @@ describe("POST /messages（非ストリーミング）", () => {
     expect(requests.some((r) => r.url.includes("sqs"))).toBe(false);
 
     expect(calls.some(
-      (c) => c.sql.includes("RETURNING usage_period_start") && c.sql.includes("+ 1"),
+      (c) => c.sql.includes("RETURNING usage_period_start") && /\+\s*1\b/.test(String(c.sql)),
     )).toBe(true);
 
   });

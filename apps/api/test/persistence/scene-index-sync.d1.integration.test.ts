@@ -219,7 +219,7 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     upsertHook = async () => { entered(); await waiting; };
     const database = new Proxy(fixture.database, {get(target,key) {
       if (key === "prepare") return (sql: string) => {
-        if (sql.startsWith("UPDATE scene_index_tasks SET lease_token") && ++calls === 2) throw new Error("synthetic-claim-failure");
+        if (/^update "?scene_index_tasks"? set .*"?attempts"?\s*=/i.test(sql) && ++calls === 2) throw new Error("synthetic-claim-failure");
         return target.prepare(sql);
       };
       const value: unknown = Reflect.get(target,key); return typeof value === "function" ? value.bind(target) : value;

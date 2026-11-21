@@ -1,5 +1,6 @@
-import type { SceneIndexLogic } from '../application/scene-index-policy';
+import { and, type SQL } from "drizzle-orm";
+import type { SceneIndexLogic } from "../application/scene-index-policy";
 
-export const sceneIndexStringLogic: SceneIndexLogic<string> = {
-  and: (...terms) => `(${terms.map(term => `(${term})`).join(' AND ')})`,
+export const sceneIndexDrizzleLogic: SceneIndexLogic<SQL> = {
+  and: (...terms) => and(...terms)!,
 };

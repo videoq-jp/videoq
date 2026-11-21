@@ -1,8 +1,8 @@
-import type { VisualLogic } from '../application/visual-checkpoint-policy';
+import { and, or, not, type SQL } from "drizzle-orm";
+import type { VisualLogic } from "../application/visual-checkpoint-policy";
 
-/** Expressions are adapter-owned. Request values always remain bound. */
-export const visualStringLogic: VisualLogic<string> = {
-  and: (...terms) => `(${terms.map(term => `(${term})`).join(' AND ')})`,
-  or: (...terms) => `(${terms.map(term => `(${term})`).join(' OR ')})`,
-  not: term => `NOT (${term})`,
+export const visualDrizzleLogic: VisualLogic<SQL> = {
+  and: (...terms) => and(...terms)!,
+  or: (...terms) => or(...terms)!,
+  not,
 };

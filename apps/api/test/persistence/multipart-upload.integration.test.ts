@@ -18,8 +18,8 @@ for(const backend of ['d1','postgres']as const){
    if(backend==='d1'){
     const f=await createD1Fixture();database=f.database;dispose=f.dispose;env={DB:f.database,DEPLOYMENT_EDITION:'cloud',RUNTIME:'node'} as Bindings;
     loseCommitResponse=()=>{
-     const wrap=(statement:D1PreparedStatement):D1PreparedStatement=>new Proxy(statement,{get(target,key){if(key==='bind')return(...values:unknown[])=>wrap(target.bind(...values));if(key==='all')return async()=>{const result=await target.all();if(lose){lose=false;throw new Error('lost commit response');}return result;};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
-     let lose=true;env.DB=new Proxy(f.database,{get(target,key){if(key==='prepare')return(sql:string)=>sql.startsWith('UPDATE videos SET multipart_upload=')?wrap(target.prepare(sql)):target.prepare(sql);const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
+     const wrap=(statement:D1PreparedStatement):D1PreparedStatement=>new Proxy(statement,{get(target,key){if(key==='bind')return(...values:unknown[])=>wrap(target.bind(...values));if(key==='all'||key==='raw')return async(...args:unknown[])=>{const result=await Reflect.get(target,key).apply(target,args);if(lose){lose=false;throw new Error('lost commit response');}return result;};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
+     let lose=true;env.DB=new Proxy(f.database,{get(target,key){if(key==='prepare')return(sql:string)=>/^update videos set .*\bmultipart_upload\s*=/i.test(sql.replaceAll('"','').replace(/\s+/g,' ').trim())?wrap(target.prepare(sql)):target.prepare(sql);const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
     };
     execute=async(sql,args=[])=>{await f.database.prepare(sql).bind(...args).run();};rows=async(sql)=>(await f.database.prepare(sql).all<Record<string,unknown>>()).results;
    }else{
@@ -59,7 +59,7 @@ for(const backend of ['d1','postgres']as const){
    await Promise.all([initialize(),initialize(),initialize()]);const active=(await session()).uploadId;if(backend==='postgres')expect(media.create).toHaveBeenCalledTimes(1);else expect(media.create.mock.calls.length).toBeLessThanOrEqual(3);expect(active).toBeTruthy();objects.set(file,5);await gc();expect(objects.get(file)).toBe(5);expect(media.abort.mock.calls.every(c=>c[2]!==active)).toBe(true);expect((await rows("SELECT used_storage_bytes FROM users WHERE id='owner'"))[0].used_storage_bytes).toEqual(backend==='postgres'?'5':5);
   });
   it('preserves an adopted session when the initialization commit response is lost',async()=>{
-   loseCommitResponse();await expect(initialize()).rejects.toThrow(backend==='postgres'?'commit':'lost commit response');const active=await session();expect(active.uploadId).toBeTruthy();await initialize();expect(media.create).toHaveBeenCalledTimes(1);objects.set(file,5);await gc();expect(media.abort).not.toHaveBeenCalled();expect(objects.get(file)).toBe(5);
+   loseCommitResponse();const initialization=initialize();if(backend==='d1')await expect(initialization).rejects.toMatchObject({cause:{message:'lost commit response'}});else await expect(initialization).rejects.toThrow('commit');const active=await session();expect(active.uploadId).toBeTruthy();await initialize();expect(media.create).toHaveBeenCalledTimes(1);objects.set(file,5);await gc();expect(media.abort).not.toHaveBeenCalled();expect(objects.get(file)).toBe(5);
   });
   it('signs the exact final part length and rejects invalid part numbers',async()=>{
    file=buildPendingUploadFileKey('owner',64*1024*1024+3,'.mp4');await execute('UPDATE videos SET file=? WHERE id=1',[file]);await initialize();await getMultipartUploadPartUrl(env,1,'owner',2);expect(media.sign.mock.calls[0][5]).toBe(3);

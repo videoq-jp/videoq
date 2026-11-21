@@ -1,31 +1,44 @@
-import { externalTaskFailure, storageCleanupRefundRequired, storageCleanupState, validateExternalTaskDeferral } from '../../application/external-task-policy';
-import { storageCleanupDrizzleLogic } from '../external-task-policy-sql';
-import { retentionBounds } from '../../features/maintenance/policy';
-import { ExternalTaskLeaseLostError, type ExternalTaskLease, type ClaimedExternalTask, type PersistedExternalTask, type ExternalTaskHealth, type ExternalTaskKind, type ExternalTaskRepository } from "../contracts/external-task-repository";
-import { and, eq, sql } from "drizzle-orm";
-import { type Db, withClient, withDb } from "../../db/pool";
-import { externalTasks, users } from "../../db/schema";
+import { alias } from "drizzle-orm/pg-core";
+import { sqlNumberArray } from "../../db/sql-array";
+import {
+  externalTaskFailure,
+  storageCleanupRefundRequired,
+  storageCleanupState,
+  validateExternalTaskDeferral,
+} from "../../application/external-task-policy";
+import { storageCleanupDrizzleLogic } from "../external-task-policy-sql";
+import { retentionBounds } from "../../features/maintenance/policy";
+import {
+  ExternalTaskLeaseLostError,
+  type ExternalTaskLease,
+  type ClaimedExternalTask,
+  type PersistedExternalTask,
+  type ExternalTaskHealth,
+  type ExternalTaskKind,
+  type ExternalTaskRepository,
+} from "../contracts/external-task-repository";
+import {
+  and,
+  eq,
+  sql,
+  or,
+  isNull,
+  isNotNull,
+  inArray,
+  notExists,
+} from "drizzle-orm";
+import { type Db, withDb } from "../../db/pool";
+import { externalTasks, users, jobExecutions } from "../../db/schema";
 import type { JobMessage } from "../../lib/job-message";
 import type { Bindings } from "../../types/bindings";
 
-
-
 /** attempts is a monotonic fencing token: an older claimant cannot update a new lease. */
-
-
-
-
-
-
-
 
 /**
  * リース満了までの猶予。下の各クエリの `INTERVAL '5 minutes'` と同じ値であること。
  * TASK_SCHEDULER は、この猶予を過ぎた lock を回収するために起床時刻を決める。
  */
-export {EXTERNAL_TASK_LEASE_MS} from "../contracts/external-task-repository";
-
-
+export { EXTERNAL_TASK_LEASE_MS } from "../contracts/external-task-repository";
 
 function externalTaskLeaseCondition(lease: ExternalTaskLease) {
   return and(
@@ -51,8 +64,6 @@ export async function lockExternalTaskLease(
   if (rows.length === 0) throw new ExternalTaskLeaseLostError();
   return rows[0];
 }
-
-
 
 /** 呼び出し元のDB transactionにジョブ配送も含めるためのoutbox primitive。 */
 export async function insertJobTask(
@@ -90,41 +101,56 @@ export async function createJobTask(
 
 export async function claimExternalTasks(
   env: Bindings,
-  params: { limit: number; taskId?: number; excludeTaskIds?: readonly number[] },
+  params: {
+    limit: number;
+    taskId?: number;
+    excludeTaskIds?: readonly number[];
+  },
 ): Promise<ClaimedExternalTask[]> {
-  return withClient(env, async (client) => {
-    const result = await client.query<{
-      id: string;
-      attempts: number;
-      kind: ExternalTaskKind;
-      payload: Record<string, unknown>;
-    }>(
-      `WITH candidates AS (
-           SELECT id
-             FROM external_tasks
-            WHERE completed_at IS NULL
-              AND dead_at IS NULL
-            AND available_at <= now()
-            AND NOT (id = ANY($3::bigint[]))
-            AND (locked_at IS NULL OR locked_at < now() - INTERVAL '5 minutes')
-            AND ($2::bigint IS NULL OR id = $2)
-          ORDER BY available_at, id
-          FOR UPDATE SKIP LOCKED
-          LIMIT $1
-       )
-       UPDATE external_tasks AS task
-          SET locked_at = now(),
-              attempts = attempts + 1,
-              updated_at = now()
-         FROM candidates
-        WHERE task.id = candidates.id
-      RETURNING task.id, task.attempts, task.kind, task.payload`,
-      [params.limit, params.taskId ?? null, params.excludeTaskIds ?? []],
+  return withDb(env, async (db) => {
+    const candidates = db.$with("candidates").as(
+      db
+        .select({ id: externalTasks.id })
+        .from(externalTasks)
+        .where(
+          and(
+            isNull(externalTasks.completedAt),
+            isNull(externalTasks.deadAt),
+            sql`${externalTasks.availableAt}<=now()`,
+            sql`NOT (${externalTasks.id}=ANY(${sqlNumberArray(params.excludeTaskIds ?? [])}))`,
+            or(
+              isNull(externalTasks.lockedAt),
+              sql`${externalTasks.lockedAt}<now()-interval '5 minutes'`,
+            ),
+            params.taskId === undefined
+              ? undefined
+              : sql`${externalTasks.id}=${params.taskId}::bigint`,
+          ),
+        )
+        .orderBy(externalTasks.availableAt, externalTasks.id)
+        .for("update", { skipLocked: true })
+        .limit(params.limit),
     );
-    return result.rows.map((row) => ({
+    const rows = await db
+      .with(candidates)
+      .update(externalTasks)
+      .set({
+        lockedAt: sql`now()`,
+        attempts: sql`${externalTasks.attempts}+1`,
+        updatedAt: sql`now()`,
+      })
+      .from(candidates)
+      .where(eq(externalTasks.id, candidates.id))
+      .returning({
+        id: externalTasks.id,
+        attempts: externalTasks.attempts,
+        kind: externalTasks.kind,
+        payload: externalTasks.payload,
+      });
+    return rows.map((row) => ({
       id: Number(row.id),
       attempt: row.attempts,
-      kind: row.kind,
+      kind: row.kind as ExternalTaskKind,
       payload: row.payload,
     }));
   });
@@ -158,11 +184,19 @@ export async function completeStorageCleanupTask(
     db.transaction(async (tx) => {
       const task = await lockExternalTaskLease(tx, params.lease);
 
-      if (task.effectAppliedAt === null && storageCleanupRefundRequired(params.bytes)) {
-        const cleanup = storageCleanupState({
-          used: sql`${users.usedStorageBytes}`, refunded: sql`${params.bytes}`,
-          limitGb: sql`${users.storageLimitGb}`, overQuota: sql`${users.isOverQuota}`,
-        }, storageCleanupDrizzleLogic);
+      if (
+        task.effectAppliedAt === null &&
+        storageCleanupRefundRequired(params.bytes)
+      ) {
+        const cleanup = storageCleanupState(
+          {
+            used: sql`${users.usedStorageBytes}`,
+            refunded: sql`${params.bytes}`,
+            limitGb: sql`${users.storageLimitGb}`,
+            overQuota: sql`${users.isOverQuota}`,
+          },
+          storageCleanupDrizzleLogic,
+        );
         await tx
           .update(users)
           .set({
@@ -192,53 +226,46 @@ export async function failExternalTask(
   error: string,
 ): Promise<{ dead: boolean; leaseLost: boolean }> {
   const failure = externalTaskFailure(lease.attempt);
-  return withClient(env, async (client) => {
-    const result = await client.query<{ dead: boolean }>(
-      `UPDATE external_tasks
-          SET locked_at = NULL,
-              last_error = $2,
-              dead_at = CASE WHEN $3::boolean THEN now() ELSE NULL END,
-              available_at = CASE
-                WHEN $3::boolean THEN available_at
-                ELSE now()
-                  + $5 * INTERVAL '1 second'
-              END,
-              updated_at = now()
-        WHERE id = $1 AND attempts = $4
-          AND locked_at > clock_timestamp() - INTERVAL '5 minutes'
-          AND completed_at IS NULL AND dead_at IS NULL
-    RETURNING dead_at IS NOT NULL AS dead`,
-      [lease.id, error.slice(0, 2000), failure.dead, lease.attempt, failure.delaySeconds],
-    );
-    return { dead: result.rows[0]?.dead === true, leaseLost: result.rows.length === 0 };
+  return withDb(env, async (db) => {
+    const rows = await db
+      .update(externalTasks)
+      .set({
+        lockedAt: null,
+        lastError: error.slice(0, 2000),
+        deadAt: failure.dead ? sql`now()` : null,
+        availableAt: failure.dead
+          ? sql`${externalTasks.availableAt}`
+          : sql`now()+${failure.delaySeconds}*interval '1 second'`,
+        updatedAt: sql`now()`,
+      })
+      .where(externalTaskLeaseCondition(lease))
+      .returning({ dead: isNotNull(externalTasks.deadAt) });
+    return { dead: rows[0]?.dead === true, leaseLost: rows.length === 0 };
   });
 }
 
 /** Workers Logs向けの小さなbacklog snapshot。監視系を業務処理へ混ぜない。 */
-export async function getExternalTaskHealth(env: Bindings): Promise<ExternalTaskHealth> {
-  return withClient(env, async (client) => {
-    const result = await client.query<{
-      pending: string;
-      dead: string;
-      oldest_pending_seconds: string | null;
-    }>(
-      `SELECT COUNT(*) FILTER (
-                WHERE completed_at IS NULL AND dead_at IS NULL
-              )::text AS pending,
-              COUNT(*) FILTER (WHERE dead_at IS NOT NULL)::text AS dead,
-              EXTRACT(EPOCH FROM now() - MIN(created_at) FILTER (
-                WHERE completed_at IS NULL AND dead_at IS NULL
-              ))::text AS oldest_pending_seconds
-         FROM external_tasks`,
+export async function getExternalTaskHealth(
+  env: Bindings,
+): Promise<ExternalTaskHealth> {
+  return withDb(env, async (db) => {
+    const pending = and(
+      isNull(externalTasks.completedAt),
+      isNull(externalTasks.deadAt),
     );
-    const row = result.rows[0];
+    const [row] = await db
+      .select({
+        pending: sql<string>`count(*) FILTER(WHERE ${pending})::text`,
+        dead: sql<string>`count(*) FILTER(WHERE ${isNotNull(externalTasks.deadAt)})::text`,
+        oldest: sql<
+          string | null
+        >`EXTRACT(EPOCH FROM now()-min(${externalTasks.createdAt}) FILTER(WHERE ${pending}))::text`,
+      })
+      .from(externalTasks);
     return {
       pending: Number(row?.pending ?? 0),
       dead: Number(row?.dead ?? 0),
-      oldestPendingSeconds:
-        row?.oldest_pending_seconds == null
-          ? null
-          : Number(row.oldest_pending_seconds),
+      oldestPendingSeconds: row?.oldest == null ? null : Number(row.oldest),
     };
   });
 }
@@ -250,45 +277,49 @@ export async function pruneDeliveryHistory(
   limit?: number,
 ): Promise<{ externalTasks: number; jobExecutions: number }> {
   const bounds = retentionBounds(retentionDays, limit);
-  return withClient(env, async (client) => {
-    const external = await client.query(
-      `WITH victims AS (
-         SELECT id
-           FROM external_tasks
-          WHERE completed_at < now() - ($1 * INTERVAL '1 day')
-          ORDER BY completed_at, id
-          LIMIT $2
-       )
-       DELETE FROM external_tasks AS task
-        USING victims
-        WHERE task.id = victims.id
-    RETURNING task.id`,
-      [bounds.retentionDays, bounds.limit],
-    );
-    const jobs = await client.query(
-      `WITH victims AS (
-         SELECT candidate.job_id
-           FROM job_executions AS candidate
-          WHERE candidate.completed_at < now() - ($1 * INTERVAL '1 day')
-            AND NOT EXISTS (
-                  SELECT 1
-                    FROM external_tasks AS task
-                   WHERE task.kind = 'sqs_job'
-                     AND task.completed_at IS NULL
-                     AND task.payload->'message'->>'job_id' = candidate.job_id
-                )
-          ORDER BY candidate.completed_at, candidate.job_id
-          LIMIT $2
-       )
-       DELETE FROM job_executions AS job
-        USING victims
-        WHERE job.job_id = victims.job_id
-    RETURNING job.job_id`,
-      [bounds.retentionDays, bounds.limit],
-    );
+  return withDb(env, async (db) => {
+    const victims = db
+      .select({ id: externalTasks.id })
+      .from(externalTasks)
+      .where(
+        sql`${externalTasks.completedAt}<now()-(${bounds.retentionDays}*interval '1 day')`,
+      )
+      .orderBy(externalTasks.completedAt, externalTasks.id)
+      .limit(bounds.limit);
+    const external = await db
+      .delete(externalTasks)
+      .where(inArray(externalTasks.id, victims))
+      .returning({ id: externalTasks.id });
+    const candidate = alias(jobExecutions, "candidate");
+    const jobs = db
+      .select({ id: candidate.jobId })
+      .from(candidate)
+      .where(
+        and(
+          sql`${candidate.completedAt}<now()-(${bounds.retentionDays}*interval '1 day')`,
+          notExists(
+            db
+              .select({ id: externalTasks.id })
+              .from(externalTasks)
+              .where(
+                and(
+                  eq(externalTasks.kind, "sqs_job"),
+                  isNull(externalTasks.completedAt),
+                  sql`${externalTasks.payload}->'message'->>'job_id'=${candidate.jobId}`,
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(candidate.completedAt, candidate.jobId)
+      .limit(bounds.limit);
+    const removedJobs = await db
+      .delete(jobExecutions)
+      .where(inArray(jobExecutions.jobId, jobs))
+      .returning({ id: jobExecutions.jobId });
     return {
-      externalTasks: external.rowCount ?? 0,
-      jobExecutions: jobs.rowCount ?? 0,
+      externalTasks: external.length,
+      jobExecutions: removedJobs.length,
     };
   });
 }
@@ -312,7 +343,9 @@ export async function insertStorageCleanupTask(
         user_id: params.userId,
         file_key: params.fileKey,
         bytes: params.bytes,
-        ...(params.multipartUploadId ? { multipart_upload_id: params.multipartUploadId } : {}),
+        ...(params.multipartUploadId
+          ? { multipart_upload_id: params.multipartUploadId }
+          : {}),
       },
       dedupeKey: params.dedupeKey,
     })
@@ -324,24 +357,37 @@ export async function insertStorageCleanupTask(
     .from(externalTasks)
     .where(eq(externalTasks.dedupeKey, params.dedupeKey))
     .limit(1);
-  if (existing.length === 0) throw new Error("Storage cleanup task disappeared.");
+  if (existing.length === 0)
+    throw new Error("Storage cleanup task disappeared.");
   return Number(existing[0].id);
 }
 
-export function createPostgresExternalTaskRepository(env: Bindings): ExternalTaskRepository {
- return {
-  createJob: params=>createJobTask(env,params), claim: params=>claimExternalTasks(env,params),
-  complete: lease=>completeExternalTask(env,lease),
-  async defer(lease,delayMs){
-   validateExternalTaskDeferral(delayMs);
-   await withDb(env,async db=>{
-    const rows=await db.update(externalTasks).set({availableAt:sql`clock_timestamp()+(${delayMs}*interval '1 millisecond')`,lockedAt:null,lastError:'',updatedAt:sql`clock_timestamp()`})
-      .where(externalTaskLeaseCondition(lease)).returning({id:externalTasks.id});
-    if(!rows.length)throw new ExternalTaskLeaseLostError();
-   });
-  },
-  completeStorageCleanup: params=>completeStorageCleanupTask(env,params),
-  fail: (lease,error)=>failExternalTask(env,lease,error), health: ()=>getExternalTaskHealth(env),
-  pruneHistory: (days,limit)=>pruneDeliveryHistory(env,days,limit),
- };
+export function createPostgresExternalTaskRepository(
+  env: Bindings,
+): ExternalTaskRepository {
+  return {
+    createJob: (params) => createJobTask(env, params),
+    claim: (params) => claimExternalTasks(env, params),
+    complete: (lease) => completeExternalTask(env, lease),
+    async defer(lease, delayMs) {
+      validateExternalTaskDeferral(delayMs);
+      await withDb(env, async (db) => {
+        const rows = await db
+          .update(externalTasks)
+          .set({
+            availableAt: sql`clock_timestamp()+(${delayMs}*interval '1 millisecond')`,
+            lockedAt: null,
+            lastError: "",
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(externalTaskLeaseCondition(lease))
+          .returning({ id: externalTasks.id });
+        if (!rows.length) throw new ExternalTaskLeaseLostError();
+      });
+    },
+    completeStorageCleanup: (params) => completeStorageCleanupTask(env, params),
+    fail: (lease, error) => failExternalTask(env, lease, error),
+    health: () => getExternalTaskHealth(env),
+    pruneHistory: (days, limit) => pruneDeliveryHistory(env, days, limit),
+  };
 }

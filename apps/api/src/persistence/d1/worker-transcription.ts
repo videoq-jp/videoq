@@ -1,72 +1,274 @@
-import { transcriptionCompletion, transcriptionFinishAllowed, transcriptionRunReusable,
-  validateTranscriptionBegin, validateTranscriptionFinish } from '../../application/transcription-policy';
-import { transcriptionStringLogic as logic } from '../transcription-policy-sql';
+import { and, eq, exists, inArray, isNull, isNotNull, sql } from "drizzle-orm";
+import { createD1Connection } from "../../db/d1/connection";
+import {
+  insertSelectFields,
+  insertSelectValues,
+  runD1Batch,
+} from "../../db/d1/query-builders";
+import {
+  videos,
+  users,
+  videoIndexVersions as versions,
+  videoTranscriptionRuns as runs,
+  videoTranscriptionChunks as chunks,
+  mutationReceipts as receipts,
+  scenes,
+  sceneStaging,
+  sceneIndexRuns,
+  externalTasks,
+} from "../../db/schema/sqlite";
+import {
+  transcriptionCompletion,
+  transcriptionFinishAllowed,
+  transcriptionRunReusable,
+  validateTranscriptionBegin,
+  validateTranscriptionFinish,
+} from "../../application/transcription-policy";
+import { transcriptionDrizzleLogic as logic } from "../transcription-policy-sql";
 import { buildJobMessage } from "../../lib/job-message";
 import type { WorkerTranscriptionRepository } from "../contracts/worker-transcription";
-import { enqueueCurrentSceneDeletes, enqueueStagedSceneDeletes } from "./scene-index-writer";
-
-export function createD1WorkerTranscriptionRepository(database: D1Database): WorkerTranscriptionRepository {
+import {
+  enqueueCurrentSceneDeletes,
+  enqueueStagedSceneDeletes,
+} from "./scene-index-writer";
+export function createD1WorkerTranscriptionRepository(
+  database: D1Database,
+): WorkerTranscriptionRepository {
+  const db = createD1Connection(database);
+  const receipt = (token: string) =>
+    exists(
+      db
+        .select({ token: receipts.token })
+        .from(receipts)
+        .where(eq(receipts.token, token)),
+    );
   return {
     async readSource(videoId) {
-      const result = await database.batch<Record<string, unknown>>([
-        database.prepare(`INSERT INTO video_index_versions(video_id,revision) SELECT id,? FROM videos WHERE id=?
-          ON CONFLICT(video_id) DO NOTHING`).bind(crypto.randomUUID(), videoId),
-        database.prepare(`SELECT v.id AS videoId,v.user_id AS userId,v.title,versions.revision AS sourceRevision,v.file AS fileKey,
-          v.status,v.source_type AS sourceType,v.youtube_video_id AS youtubeVideoId,v.transcription_language AS transcriptionLanguage,
-          CASE WHEN v.source_type='youtube' THEN u.searchapi_api_key_encrypted ELSE NULL END AS searchapiKeyEncrypted
-          FROM videos v JOIN users u ON u.id=v.user_id JOIN video_index_versions versions ON versions.video_id=v.id WHERE v.id=?`).bind(videoId),
+      const result = await db.batch([
+        db
+          .insert(versions)
+          .select(
+            db
+              .select(
+                insertSelectFields(versions, {
+                  videoId: videos.id,
+                  revision: sql`${crypto.randomUUID()}`,
+                }),
+              )
+              .from(videos)
+              .where(eq(videos.id, videoId)),
+          )
+          .onConflictDoNothing({ target: versions.videoId }),
+        db
+          .select({
+            videoId: videos.id,
+            userId: videos.userId,
+            title: videos.title,
+            sourceRevision: versions.revision,
+            fileKey: videos.file,
+            status: videos.status,
+            sourceType: videos.sourceType,
+            youtubeVideoId: videos.youtubeVideoId,
+            transcriptionLanguage: videos.transcriptionLanguage,
+            searchapiKeyEncrypted: sql<
+              string | null
+            >`CASE WHEN ${videos.sourceType}='youtube' THEN ${users.searchapiApiKeyEncrypted} ELSE NULL END`,
+          })
+          .from(videos)
+          .innerJoin(users, eq(users.id, videos.userId))
+          .innerJoin(versions, eq(versions.videoId, videos.id))
+          .where(eq(videos.id, videoId)),
       ]);
-      return result[1].results[0] as Awaited<ReturnType<WorkerTranscriptionRepository["readSource"]>> ?? null;
+      return result[1][0] ?? null;
     },
     async begin(input, expectedStatus) {
       validateTranscriptionBegin(expectedStatus);
-      const result = await database.prepare(`UPDATE videos SET status='processing',error_message=''
-        WHERE id=? AND user_id=? AND file=? AND status=?
-          AND EXISTS(SELECT 1 FROM video_index_versions WHERE video_id=videos.id AND revision=?) RETURNING id`)
-        .bind(input.videoId, input.userId, input.fileKey, expectedStatus, input.sourceRevision).all();
-      return result.results.length > 0;
+      return (
+        (
+          await db
+            .update(videos)
+            .set({ status: "processing", errorMessage: "" })
+            .where(
+              and(
+                eq(videos.id, input.videoId),
+                eq(videos.userId, input.userId),
+                eq(videos.file, input.fileKey),
+                eq(videos.status, expectedStatus),
+                exists(
+                  db
+                    .select({ id: versions.videoId })
+                    .from(versions)
+                    .where(
+                      and(
+                        eq(versions.videoId, videos.id),
+                        eq(versions.revision, input.sourceRevision),
+                      ),
+                    ),
+                ),
+              ),
+            )
+            .returning({ id: videos.id })
+        ).length > 0
+      );
     },
     async finish(input, transcript, errorCode, runId) {
       validateTranscriptionFinish(transcript, errorCode);
-      if (transcript !== null && new TextEncoder().encode(transcript).length > 1_800_000) throw new Error("Transcript exceeds D1 row budget");
-      const reusable = transcriptionRunReusable({ sameFile: 'r.file_key=v.file', sameRevision: 'r.transcript_hash=versions.revision', incomplete: 'r.completed_at IS NULL' }, logic);
-      const allowed = transcriptionFinishAllowed({ processing: "v.status='processing'", error: "v.status='error'", hasRun: '? IS NOT NULL',
-        completeCurrentRun: `EXISTS(SELECT 1 FROM video_transcription_runs r WHERE r.video_id=v.id AND r.run_id=?
-          AND ${reusable} AND r.chunk_count=(SELECT count(*) FROM video_transcription_chunks c WHERE c.run_id=r.run_id AND c.segments IS NOT NULL))`,
-      }, logic);
-      const completion = transcriptionCompletion('(SELECT effect_applied FROM mutation_receipts WHERE token=?)=1', '? IS NOT NULL', '?', logic);
-      const saved = transcriptionCompletion('effect_applied=1', '? IS NOT NULL', '?', logic).saveTranscript;
+      if (
+        transcript !== null &&
+        new TextEncoder().encode(transcript).length > 1_800_000
+      )
+        throw new Error("Transcript exceeds D1 row budget");
+      const reusable = transcriptionRunReusable(
+        {
+          sameFile: eq(runs.fileKey, videos.file),
+          sameRevision: eq(runs.transcriptHash, versions.revision),
+          incomplete: isNull(runs.completedAt),
+        },
+        logic,
+      );
+      const completeChunks = db
+        .select({ count: sql<number>`count(*)` })
+        .from(chunks)
+        .where(and(eq(chunks.runId, runs.runId), isNotNull(chunks.segments)));
+      const allowed = transcriptionFinishAllowed(
+        {
+          processing: eq(videos.status, "processing"),
+          error: eq(videos.status, "error"),
+          hasRun: sql`${runId ?? null} IS NOT NULL`,
+          completeCurrentRun: exists(
+            db
+              .select({ id: runs.runId })
+              .from(runs)
+              .where(
+                and(
+                  eq(runs.videoId, videos.id),
+                  eq(runs.runId, sql`${runId ?? null}`),
+                  reusable,
+                  eq(runs.chunkCount, completeChunks),
+                ),
+              ),
+          ),
+        },
+        logic,
+      );
       const token = crypto.randomUUID();
-      const message = buildJobMessage("index_video_transcript", { video_id: input.videoId });
-      const result = await database.batch<{ status: string }>([
-        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id,effect_applied)
-          SELECT ?,'transcription_finish',v.id,versions.revision=? FROM videos v
-          JOIN video_index_versions versions ON versions.video_id=v.id
-          WHERE v.id=? AND v.user_id=? AND v.file=? AND ${allowed}`)
-          .bind(token, input.sourceRevision, input.videoId, input.userId, input.fileKey, runId ?? null, runId ?? null, runId ?? null),
-        database.prepare(`UPDATE videos SET
-          transcript=CASE WHEN ${completion.saveTranscript} THEN ? ELSE transcript END,
-          status=${completion.status},
-          error_message=${completion.error}
-          WHERE id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(token, transcript, transcript, token, transcript, token, transcript, errorCode ?? "", input.videoId, token),
-        database.prepare(`INSERT INTO mutation_receipts(token,kind,resource_id)
-          SELECT ?,'transcription_saved',resource_id FROM mutation_receipts WHERE token=? AND ${saved}`)
-          .bind(token + ":saved", token, transcript),
-        database.prepare(`UPDATE video_index_versions SET revision=? WHERE video_id=?
-          AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`).bind(crypto.randomUUID(), input.videoId, token + ":saved"),
+      const sameRevision = db
+        .select({ value: receipts.effectApplied })
+        .from(receipts)
+        .where(eq(receipts.token, token));
+      const completion = transcriptionCompletion(
+        sql`(${sameRevision})=1`,
+        sql`${transcript} IS NOT NULL`,
+        sql`${errorCode ?? ""}`,
+        logic,
+      );
+      const saved = transcriptionCompletion(
+        eq(receipts.effectApplied, true),
+        sql`${transcript} IS NOT NULL`,
+        sql`${errorCode ?? ""}`,
+        logic,
+      ).saveTranscript;
+      const message = buildJobMessage("index_video_transcript", {
+        video_id: input.videoId,
+      });
+      const result = await runD1Batch<{ status: string }>(database, [
+        db.insert(receipts).select(
+          db
+            .select(
+              insertSelectFields(receipts, {
+                token: sql`${token}`,
+                kind: sql`'transcription_finish'`,
+                resourceId: videos.id,
+                effectApplied: eq(versions.revision, input.sourceRevision),
+              }),
+            )
+            .from(videos)
+            .innerJoin(versions, eq(versions.videoId, videos.id))
+            .where(
+              and(
+                eq(videos.id, input.videoId),
+                eq(videos.userId, input.userId),
+                eq(videos.file, input.fileKey),
+                allowed,
+              ),
+            ),
+        ),
+        db
+          .update(videos)
+          .set({
+            transcript: sql`CASE WHEN ${completion.saveTranscript} THEN ${transcript} ELSE ${videos.transcript} END`,
+            status: completion.status,
+            errorMessage: completion.error,
+          })
+          .where(and(eq(videos.id, input.videoId), receipt(token))),
+        db.insert(receipts).select(
+          db
+            .select(
+              insertSelectFields(receipts, {
+                token: sql`${token + ":saved"}`,
+                kind: sql`'transcription_saved'`,
+                resourceId: receipts.resourceId,
+              }),
+            )
+            .from(receipts)
+            .where(and(eq(receipts.token, token), saved)),
+        ),
+        db
+          .update(versions)
+          .set({ revision: crypto.randomUUID() })
+          .where(
+            and(eq(versions.videoId, input.videoId), receipt(token + ":saved")),
+          ),
         enqueueCurrentSceneDeletes(database, input.videoId, token + ":saved"),
         enqueueStagedSceneDeletes(database, input.videoId, token + ":saved"),
-        database.prepare("DELETE FROM scenes WHERE video_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)").bind(input.videoId, token + ":saved"),
-        database.prepare("DELETE FROM scene_staging WHERE run_id IN(SELECT id FROM scene_index_runs WHERE video_id=?) AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)")
-          .bind(input.videoId, token + ":saved"),
-        database.prepare(`INSERT INTO external_tasks(kind,payload,dedupe_key) SELECT 'sqs_job',?,?
-          WHERE EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)`)
-          .bind(JSON.stringify({ message }), `job:${message.job_id}`, token + ":saved"),
-        database.prepare("SELECT status FROM videos WHERE id=? AND user_id=? AND file=?").bind(input.videoId, input.userId, input.fileKey),
-        database.prepare("UPDATE video_transcription_runs SET completed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE run_id=? AND EXISTS(SELECT 1 FROM mutation_receipts WHERE token=?)")
-          .bind(runId ?? null, token),
-        database.prepare("DELETE FROM mutation_receipts WHERE token IN (?,?)").bind(token, token + ":saved"),
+        db
+          .delete(scenes)
+          .where(
+            and(eq(scenes.videoId, input.videoId), receipt(token + ":saved")),
+          ),
+        db
+          .delete(sceneStaging)
+          .where(
+            and(
+              inArray(
+                sceneStaging.runId,
+                db
+                  .select({ id: sceneIndexRuns.id })
+                  .from(sceneIndexRuns)
+                  .where(eq(sceneIndexRuns.videoId, input.videoId)),
+              ),
+              receipt(token + ":saved"),
+            ),
+          ),
+        db.insert(externalTasks).select(
+          db
+            .select(
+              insertSelectValues(externalTasks, {
+                kind: "sqs_job",
+                payload: { message },
+                dedupeKey: `job:${message.job_id}`,
+              }),
+            )
+            .from(receipts)
+            .where(eq(receipts.token, token + ":saved")),
+        ),
+        db
+          .select({ status: videos.status })
+          .from(videos)
+          .where(
+            and(
+              eq(videos.id, input.videoId),
+              eq(videos.userId, input.userId),
+              eq(videos.file, input.fileKey),
+            ),
+          ),
+        db
+          .update(runs)
+          .set({ completedAt: sql`strftime('%Y-%m-%dT%H:%M:%fZ','now')` })
+          .where(and(eq(runs.runId, sql`${runId ?? null}`), receipt(token))),
+        db
+          .delete(receipts)
+          .where(inArray(receipts.token, [token, token + ":saved"])),
       ]);
       return result[9].results[0]?.status ?? null;
     },

@@ -1,14 +1,34 @@
-import { videoDeletionAllowed, videoCleanup, videoAbortRefundAllowed } from '../../application/video-mutation';
-import { planVideoPatch, videoRefundBooleanLogic } from '../../application/video-mutation';
+import {
+  videoDeletionAllowed,
+  videoCleanup,
+  videoAbortRefundAllowed,
+} from "../../application/video-mutation";
+import {
+  planVideoPatch,
+  videoRefundBooleanLogic,
+} from "../../application/video-mutation";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
-import { sceneEmbeddings,mcpIdempotencyRecords,videos } from "../../db/schema";
-import { insertJobTask,insertStorageCleanupTask } from "./external-task-repository";
-import { buildJobMessage,JOB_REINDEX_VIDEO_TRANSCRIPT } from "../../lib/job-message";
+import {
+  sceneEmbeddings,
+  mcpIdempotencyRecords,
+  videos,
+} from "../../db/schema";
+import {
+  insertJobTask,
+  insertStorageCleanupTask,
+} from "./external-task-repository";
+import {
+  buildJobMessage,
+  JOB_REINDEX_VIDEO_TRANSCRIPT,
+} from "../../lib/job-message";
 import { refundUnconfirmedUpload } from "./storage-quota";
-import { readVideoDetail,videoDetailSelect } from "./video-read-repository";
+import { readVideoDetail, videoDetailSelect } from "./video-read-repository";
 import type { Bindings } from "../../types/bindings";
-import { validateVideoDeletionOptions,type VideoMutationRepository } from "../contracts/video-mutation-repository";
+import {
+  validateVideoDeletionOptions,
+  type VideoMutationRepository,
+} from "../contracts/video-mutation-repository";
 
 export async function updateVideo(
   env: Bindings,
@@ -27,15 +47,18 @@ export async function updateVideo(
       // Compare under the row lock without transferring a potentially large transcript.
       const [changes] = await tx
         .select({
-          title: fields.title === undefined
-            ? sql<boolean>`false`
-            : sql<boolean>`${videos.title} IS DISTINCT FROM ${fields.title}`,
-          description: fields.description === undefined
-            ? sql<boolean>`false`
-            : sql<boolean>`${videos.description} IS DISTINCT FROM ${fields.description}`,
-          transcript: fields.transcript === undefined
-            ? sql<boolean>`false`
-            : sql<boolean>`COALESCE(${videos.transcript}, '') IS DISTINCT FROM ${fields.transcript}`,
+          title:
+            fields.title === undefined
+              ? sql<boolean>`false`
+              : sql<boolean>`${videos.title} IS DISTINCT FROM ${fields.title}`,
+          description:
+            fields.description === undefined
+              ? sql<boolean>`false`
+              : sql<boolean>`${videos.description} IS DISTINCT FROM ${fields.description}`,
+          transcript:
+            fields.transcript === undefined
+              ? sql<boolean>`false`
+              : sql<boolean>`COALESCE(${videos.transcript}, '') IS DISTINCT FROM ${fields.transcript}`,
         })
         .from(videos)
         .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
@@ -43,13 +66,18 @@ export async function updateVideo(
         .limit(1);
       if (!changes) return { notFound: true } as const;
 
-      const plan = planVideoPatch(fields,changes);
+      const plan = planVideoPatch(fields, changes);
       const patch = plan.patch;
-      const row = Object.keys(patch).length > 0
-        ? (await tx.update(videos).set(patch)
-          .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
-          .returning(videoDetailSelect))[0]
-        : await readVideoDetail(tx, videoId, userId);
+      const row =
+        Object.keys(patch).length > 0
+          ? (
+              await tx
+                .update(videos)
+                .set(patch)
+                .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
+                .returning(videoDetailSelect)
+            )[0]
+          : await readVideoDetail(tx, videoId, userId);
       if (!row) throw new Error("Locked video disappeared.");
 
       if (plan.syncTitle) {
@@ -98,31 +126,54 @@ export async function deleteVideoCascade(
   return withDb(env, async (db) => {
     return db.transaction(async (tx) => {
       const locked = await tx
-        .select({ status: videos.status, file: videos.file, multipart: videos.multipartUpload,
-          heartbeat: videos.uploadHeartbeatAt, uploadPeriod: videos.uploadUsagePeriodStart })
+        .select({
+          status: videos.status,
+          file: videos.file,
+          multipart: videos.multipartUpload,
+          heartbeat: videos.uploadHeartbeatAt,
+          uploadPeriod: videos.uploadUsagePeriodStart,
+        })
         .from(videos)
         .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
         .for("update")
         .limit(1);
-      if (!videoDeletionAllowed(locked[0],options)) {
+      if (!videoDeletionAllowed(locked[0], options)) {
         return { deleted: false, cleanupTaskId: null } as const;
       }
-      const { fileKey, bytes: cleanupBytes } = videoCleanup(locked[0].file,options.fallbackStorageBytes);
+      const { fileKey, bytes: cleanupBytes } = videoCleanup(
+        locked[0].file,
+        options.fallbackStorageBytes,
+      );
       const cleanupTaskId = fileKey
         ? await insertStorageCleanupTask(tx, {
             dedupeKey: `storage:video:${videoId}`,
             userId,
             fileKey,
             bytes: cleanupBytes,
-            ...(locked[0].multipart ? { multipartUploadId: locked[0].multipart.uploadId } : {}),
+            ...(locked[0].multipart
+              ? { multipartUploadId: locked[0].multipart.uploadId }
+              : {}),
           })
         : null;
 
       // A completed upload consumes its month's allowance even after deletion.
       // Row locking + the delete make abort refunds idempotent. A previous
       // month's reservation cannot subtract from a new month's usage.
-      if (videoAbortRefundAllowed(locked[0].status,cleanupBytes,videoRefundBooleanLogic) && locked[0].uploadPeriod && cleanupBytes) {
-        await refundUnconfirmedUpload(tx, userId, cleanupBytes, locked[0].uploadPeriod);
+      if (
+        videoAbortRefundAllowed(
+          locked[0].status,
+          cleanupBytes,
+          videoRefundBooleanLogic,
+        ) &&
+        locked[0].uploadPeriod &&
+        cleanupBytes
+      ) {
+        await refundUnconfirmedUpload(
+          tx,
+          userId,
+          cleanupBytes,
+          locked[0].uploadPeriod,
+        );
       }
 
       await tx
@@ -139,7 +190,9 @@ export async function deleteVideoCascade(
         );
 
       // No FK; remove vector rows so orphan embeddings do not linger.
-      await tx.execute(sql`DELETE FROM scene_embeddings WHERE video_id = ${videoId}`);
+      await tx
+        .delete(sceneEmbeddings)
+        .where(eq(sceneEmbeddings.videoId, videoId));
 
       // FK cascades remove tags and course memberships.
       await tx
@@ -149,7 +202,15 @@ export async function deleteVideoCascade(
     });
   });
 }
-export function createPostgresVideoMutationRepository(env: Bindings): VideoMutationRepository {
- return {update: (videoId,userId,fields)=>updateVideo(env,videoId,userId,fields),
- delete: async (videoId,userId,options={})=>{validateVideoDeletionOptions(options);return await deleteVideoCascade(env,videoId,userId,options);}};
+export function createPostgresVideoMutationRepository(
+  env: Bindings,
+): VideoMutationRepository {
+  return {
+    update: (videoId, userId, fields) =>
+      updateVideo(env, videoId, userId, fields),
+    delete: async (videoId, userId, options = {}) => {
+      validateVideoDeletionOptions(options);
+      return await deleteVideoCascade(env, videoId, userId, options);
+    },
+  };
 }

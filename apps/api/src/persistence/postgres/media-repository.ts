@@ -1,7 +1,11 @@
-import { mediaAccessMode, mediaSharedPathValue, mediaAuthenticatedPermission } from '../../application/media-access';
-import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
+import { and, eq, exists, sql } from "drizzle-orm";
+import {
+  mediaAccessMode,
+  mediaSharedPathValue,
+  mediaAuthenticatedPermission,
+} from "../../application/media-access";
+import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import type { MediaRepository } from "../contracts/media-repository";
-import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import {
   videos,
@@ -10,44 +14,72 @@ import {
   videoCourseMemberships,
 } from "../../db/schema";
 import type { Bindings } from "../../types/bindings";
-import { nativeCourseExternalAccess } from './course-authority';
-
-/** One authorization snapshot; null means the share slug itself is invalid. */
+import { nativeCourseExternalAccess } from "./course-authority";
 export async function getMediaPathAccess(
   env: Bindings,
   path: string,
-  opts: { userId?: string; shareSlug?: string },
+  options: { userId?: string; shareSlug?: string },
 ): Promise<boolean | null> {
-  const mode = mediaAccessMode(path, opts);
-  if (mode.kind === 'denied') return false;
-  if (mode.kind === 'shared') {
-    return withDb(env, async (db) => {
-      const rows = await db
-        .select({ allowed: mediaSharedPathValue(mode.safePath, () => sql<boolean>`EXISTS (
-          SELECT 1 FROM ${videos} AS media_video
-          JOIN ${videoCourseMembers} AS member ON member.video_id = media_video.id
-          WHERE media_video.file = ${path}
-            AND member.course_id = video_courses.id
-        )`, sql<boolean>`false`) })
-        .from(videoCourses)
-        .where(and(eq(videoCourses.shareSlug, mode.shareSlug), nativeCourseExternalAccess()))
-        .limit(1);
-      return rows[0]?.allowed ?? null;
-    });
-  }
-  const permission = mediaAuthenticatedPermission(
-    eq(videos.userId, mode.userId),
-    sql`EXISTS (
-      SELECT 1 FROM ${videoCourseMembers}
-      JOIN ${videoCourseMemberships}
-        ON ${videoCourseMemberships.courseId} = ${videoCourseMembers.courseId}
-      JOIN ${videoCourses} ON ${videoCourses.id} = ${videoCourseMembers.courseId}
-      WHERE ${videoCourseMembers.videoId} = ${videos.id}
-        AND ${videoCourseMemberships.userId} = ${mode.userId}
-        AND ${nativeCourseExternalAccess()}
-    )`, nativeCourseDrizzleLogic,
-  );
+  const mode = mediaAccessMode(path, options);
+  if (mode.kind === "denied") return false;
   return withDb(env, async (db) => {
+    if (mode.kind === "shared") {
+      const permission = mediaSharedPathValue(
+        mode.safePath,
+        () =>
+          exists(
+            db
+              .select({ id: videos.id })
+              .from(videos)
+              .innerJoin(
+                videoCourseMembers,
+                eq(videoCourseMembers.videoId, videos.id),
+              )
+              .where(
+                and(
+                  eq(videos.file, path),
+                  eq(videoCourseMembers.courseId, videoCourses.id),
+                ),
+              ),
+          ),
+        sql<boolean>`false`,
+      );
+      const [row] = await db
+        .select({ allowed: permission })
+        .from(videoCourses)
+        .where(
+          and(
+            eq(videoCourses.shareSlug, mode.shareSlug),
+            nativeCourseExternalAccess(),
+          ),
+        )
+        .limit(1);
+      return row ? Boolean(row.allowed) : null;
+    }
+    const permission = mediaAuthenticatedPermission(
+      eq(videos.userId, mode.userId),
+      exists(
+        db
+          .select({ courseId: videoCourseMembers.courseId })
+          .from(videoCourseMembers)
+          .innerJoin(
+            videoCourseMemberships,
+            eq(videoCourseMemberships.courseId, videoCourseMembers.courseId),
+          )
+          .innerJoin(
+            videoCourses,
+            eq(videoCourses.id, videoCourseMembers.courseId),
+          )
+          .where(
+            and(
+              eq(videoCourseMembers.videoId, videos.id),
+              eq(videoCourseMemberships.userId, mode.userId),
+              nativeCourseExternalAccess(),
+            ),
+          ),
+      ),
+      nativeCourseDrizzleLogic,
+    );
     const rows = await db
       .select({ id: videos.id })
       .from(videos)
@@ -56,7 +88,8 @@ export async function getMediaPathAccess(
     return rows.length > 0;
   });
 }
-
 export function createPostgresMediaRepository(env: Bindings): MediaRepository {
- return { getPathAccess: (path,options)=>getMediaPathAccess(env,path,options) };
+  return {
+    getPathAccess: (path, options) => getMediaPathAccess(env, path, options),
+  };
 }

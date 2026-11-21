@@ -1,3 +1,4 @@
+import { expectPersistenceFailure } from "./helpers/persistence-error";
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -139,7 +140,7 @@ const now = new Date('2026-11-06T00:00:00Z'), cutoff = new Date(now.getTime() - 
     await pool.query(`CREATE FUNCTION reject_audit_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic audit delete failure'; END $$;
       CREATE TRIGGER reject_audit_delete BEFORE DELETE ON lti_course_tag_operations FOR EACH ROW EXECUTE FUNCTION reject_audit_delete()`);
     try {
-      await expect(pruneLtiAudit(env, now)).rejects.toThrow('synthetic audit delete failure');
+      await expectPersistenceFailure(pruneLtiAudit(env, now), 'synthetic audit delete failure');
       expect((await pool.query('SELECT count(*)::int n FROM lti_course_tag_operations')).rows[0].n).toBe(1);
       expect((await pool.query('SELECT count(*)::int n FROM lti_operation_reservations')).rows[0].n).toBe(0);
     } finally { await pool.query('DROP TRIGGER reject_audit_delete ON lti_course_tag_operations; DROP FUNCTION reject_audit_delete()'); }

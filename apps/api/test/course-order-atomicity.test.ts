@@ -50,7 +50,7 @@ describe("講座表示順の採番", () => {
     ).resolves.toEqual({ ok: true, courseId: 9, reused: false });
 
     const lockIndex = calls.findIndex(
-      (call) => call.sql.includes("SELECT 1 FROM users") && call.sql.includes("FOR UPDATE"),
+      (call) => call.sql.includes("FROM users") && call.sql.includes("FOR UPDATE"),
     );
     const insertIndex = calls.findIndex((call) => call.sql.includes("INSERT INTO video_courses"));
     expect(lockIndex).toBeGreaterThanOrEqual(0);

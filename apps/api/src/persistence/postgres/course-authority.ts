@@ -1,7 +1,24 @@
-import { nativeCourseExternalAllowed, nativeCourseAccessAllowed } from '../../application/native-course-access';
-import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
-import { sql, type SQL, type AnyColumn } from 'drizzle-orm';
-import { videoCourses, videoCourseMemberships } from '../../db/schema';
+import { QueryBuilder, alias } from "drizzle-orm/pg-core";
+import {
+  nativeCourseExternalAllowed,
+  nativeCourseAccessAllowed,
+} from "../../application/native-course-access";
+import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
+import {
+  sql,
+  and,
+  eq,
+  exists,
+  notExists,
+  type SQL,
+  type AnyColumn,
+} from "drizzle-orm";
+import {
+  videoCourses,
+  videoCourseMemberships,
+  videoCourseMembers,
+  videos,
+} from "../../db/schema";
 
 /** Native invitations and public links never substitute for Moodle access.
  * Old independent courses may already contain an LMS video: deny the whole
@@ -12,20 +29,49 @@ export function nativeCourseExternalAccess(
   managedByLms: AnyColumn | SQL = videoCourses.managedByLms,
   nativeAccessDisabled: AnyColumn | SQL = videoCourses.nativeAccessDisabled,
 ) {
-  return nativeCourseExternalAllowed({ independentlyManaged: sql`${managedByLms} = false`,
-    nativeAccessEnabled: sql`${nativeAccessDisabled} = false`, noLmsVideo: sql`NOT EXISTS (
-    SELECT 1 FROM video_course_members protected_member
-      JOIN videos protected_video ON protected_video.id = protected_member.video_id
-     WHERE protected_member.course_id = ${courseId} AND protected_video.managed_by_lms = true
-  )` }, nativeCourseDrizzleLogic);
+  const member = alias(videoCourseMembers, "protected_member"),
+    video = alias(videos, "protected_video");
+  return nativeCourseExternalAllowed(
+    {
+      independentlyManaged: sql`${managedByLms}=false`,
+      nativeAccessEnabled: sql`${nativeAccessDisabled}=false`,
+      noLmsVideo: notExists(
+        new QueryBuilder()
+          .select({ courseId: member.courseId })
+          .from(member)
+          .innerJoin(video, eq(video.id, member.videoId))
+          .where(
+            and(
+              sql`${member.courseId}=${courseId}`,
+              eq(video.managedByLms, true),
+            ),
+          ),
+      ),
+    },
+    nativeCourseDrizzleLogic,
+  );
 }
 
 /** Independently authenticated data owners retain operator access. */
 export function nativeCourseReadableBy(userId: string) {
-  return nativeCourseAccessAllowed(false, { owner: sql`${videoCourses.userId} = ${userId}`,
-    nativeEnabled: nativeCourseExternalAccess(), participant: sql`EXISTS (
-    SELECT 1 FROM ${videoCourseMemberships}
-     WHERE ${videoCourseMemberships.courseId} = ${videoCourses.id}
-       AND ${videoCourseMemberships.userId} = ${userId}
-  )`, shareMatches: sql`false` }, nativeCourseDrizzleLogic);
+  return nativeCourseAccessAllowed(
+    false,
+    {
+      owner: sql`${videoCourses.userId} = ${userId}`,
+      nativeEnabled: nativeCourseExternalAccess(),
+      participant: exists(
+        new QueryBuilder()
+          .select({ courseId: videoCourseMemberships.courseId })
+          .from(videoCourseMemberships)
+          .where(
+            and(
+              eq(videoCourseMemberships.courseId, videoCourses.id),
+              eq(videoCourseMemberships.userId, userId),
+            ),
+          ),
+      ),
+      shareMatches: sql`false`,
+    },
+    nativeCourseDrizzleLogic,
+  );
 }

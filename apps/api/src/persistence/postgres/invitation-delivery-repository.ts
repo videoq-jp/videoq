@@ -1,15 +1,28 @@
-import { planInvitationControl } from '../../application/invitation-lifecycle';
-import { invitationDeliveryCutoff, invitationDeliveryStranded, invitationDeliveryWasSent, invitationInviterName } from '../../application/invitation-delivery';
-import { invitationDrizzleLogic } from '../invitation-policy-sql';
-import {and,eq,lt,sql} from 'drizzle-orm';
-import {withDb} from '../../db/pool';
-import {externalTasks,users,videoCourseInvitations,videoCourses} from '../../db/schema';
-import {type InvitationStatus} from '../../lib/course-invitations';
-import {lockExternalTaskLease} from './external-task-repository';
-import type {ExternalTaskLease} from '../contracts/external-task-repository';
-import type {InvitationDeliveryOutcome,InvitationDeliveryRepository} from '../contracts/invitation-delivery-repository';
-import {nativeCourseExternalAccess} from './course-authority';
-import type {Bindings} from '../../types/bindings';
+import { planInvitationControl } from "../../application/invitation-lifecycle";
+import {
+  invitationDeliveryCutoff,
+  invitationDeliveryStranded,
+  invitationDeliveryWasSent,
+  invitationInviterName,
+} from "../../application/invitation-delivery";
+import { invitationDrizzleLogic } from "../invitation-policy-sql";
+import { and, eq, lt, sql, notExists, isNull } from "drizzle-orm";
+import { withDb } from "../../db/pool";
+import {
+  externalTasks,
+  users,
+  videoCourseInvitations,
+  videoCourses,
+} from "../../db/schema";
+import { type InvitationStatus } from "../../lib/course-invitations";
+import { lockExternalTaskLease } from "./external-task-repository";
+import type { ExternalTaskLease } from "../contracts/external-task-repository";
+import type {
+  InvitationDeliveryOutcome,
+  InvitationDeliveryRepository,
+} from "../contracts/invitation-delivery-repository";
+import { nativeCourseExternalAccess } from "./course-authority";
+import type { Bindings } from "../../types/bindings";
 /**
  * 配信結果と配送タスク完了を同じ transaction で記録する。
  * 成功・失敗のどちらも lease を確認し、古い実行者による上書きを防ぐ。
@@ -28,8 +41,11 @@ export async function recordInvitationDeliveryOutcomes(
           .update(videoCourseInvitations)
           .set({
             deliveryStatus: outcome.status,
-            lastSentAt:
-              invitationDeliveryWasSent(outcome.status, { equals: (status, expected) => status === expected }) ? outcome.attemptedAt.toISOString() : undefined,
+            lastSentAt: invitationDeliveryWasSent(outcome.status, {
+              equals: (status, expected) => status === expected,
+            })
+              ? outcome.attemptedAt.toISOString()
+              : undefined,
             lastError: outcome.error?.slice(0, 1000) ?? null,
             sendAttempts: sql`${videoCourseInvitations.sendAttempts} + 1`,
             updatedAt: outcome.attemptedAt.toISOString(),
@@ -78,19 +94,27 @@ export async function failInvitationsWithoutLiveDelivery(
         updatedAt: now.toISOString(),
       })
       .where(
-        invitationDeliveryStranded({
-          pending: eq(videoCourseInvitations.status, "pending"),
-          queued: eq(videoCourseInvitations.deliveryStatus, "queued"),
-          graceElapsed: lt(videoCourseInvitations.updatedAt, cutoff),
-          noLiveTask: sql`NOT EXISTS (
-            SELECT 1
-              FROM external_tasks t
-             WHERE t.kind = 'invitation_email'
-               AND t.completed_at IS NULL
-               AND t.dead_at IS NULL
-               AND (t.payload->>'invitation_id')::bigint = ${videoCourseInvitations.id}
-          )`,
-        }, invitationDrizzleLogic),
+        invitationDeliveryStranded(
+          {
+            pending: eq(videoCourseInvitations.status, "pending"),
+            queued: eq(videoCourseInvitations.deliveryStatus, "queued"),
+            graceElapsed: lt(videoCourseInvitations.updatedAt, cutoff),
+            noLiveTask: notExists(
+              db
+                .select({ id: externalTasks.id })
+                .from(externalTasks)
+                .where(
+                  and(
+                    eq(externalTasks.kind, "invitation_email"),
+                    isNull(externalTasks.completedAt),
+                    isNull(externalTasks.deadAt),
+                    sql`(${externalTasks.payload}->>'invitation_id')::bigint=${videoCourseInvitations.id}`,
+                  ),
+                ),
+            ),
+          },
+          invitationDrizzleLogic,
+        ),
       )
       .returning({ id: videoCourseInvitations.id });
     return { failed: rows.length };
@@ -122,15 +146,27 @@ export async function rotateInvitationTokenForDelivery(
           inviterUsername: users.username,
         })
         .from(videoCourseInvitations)
-        .innerJoin(videoCourses, eq(videoCourses.id, videoCourseInvitations.courseId))
+        .innerJoin(
+          videoCourses,
+          eq(videoCourses.id, videoCourseInvitations.courseId),
+        )
         .innerJoin(users, eq(users.id, videoCourseInvitations.invitedByUserId))
-        .where(and(eq(videoCourseInvitations.id, invitationId), nativeCourseExternalAccess()))
+        .where(
+          and(
+            eq(videoCourseInvitations.id, invitationId),
+            nativeCourseExternalAccess(),
+          ),
+        )
         .limit(1)
         .for("update");
       if (rows.length === 0) return { notFound: true } as const;
 
-      const plan = planInvitationControl(rows[0].status as InvitationStatus, new Date(rows[0].expiresAt), now);
-      if (plan.kind === 'deny') {
+      const plan = planInvitationControl(
+        rows[0].status as InvitationStatus,
+        new Date(rows[0].expiresAt),
+        now,
+      );
+      if (plan.kind === "deny") {
         if (plan.markExpired) {
           await tx
             .update(videoCourseInvitations)
@@ -147,15 +183,24 @@ export async function rotateInvitationTokenForDelivery(
       return {
         email: rows[0].email,
         courseName: rows[0].courseName,
-        inviterName: invitationInviterName(rows[0].inviterName, rows[0].inviterUsername),
+        inviterName: invitationInviterName(
+          rows[0].inviterName,
+          rows[0].inviterUsername,
+        ),
       };
     }),
   );
 }
 
-
-export function createPostgresInvitationDeliveryRepository(env:Bindings):InvitationDeliveryRepository{return {
- record:(outcomes,opts)=>recordInvitationDeliveryOutcomes(env,outcomes,opts),
- failStranded:(now,grace)=>failInvitationsWithoutLiveDelivery(env,now,grace),
- rotate:(id,hash,now,lease)=>rotateInvitationTokenForDelivery(env,id,hash,now,lease),
-};}
+export function createPostgresInvitationDeliveryRepository(
+  env: Bindings,
+): InvitationDeliveryRepository {
+  return {
+    record: (outcomes, opts) =>
+      recordInvitationDeliveryOutcomes(env, outcomes, opts),
+    failStranded: (now, grace) =>
+      failInvitationsWithoutLiveDelivery(env, now, grace),
+    rotate: (id, hash, now, lease) =>
+      rotateInvitationTokenForDelivery(env, id, hash, now, lease),
+  };
+}

@@ -3,14 +3,12 @@ import { eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { accountEntitlementSummary } from "../../application/account-summary";
 import { currentUploadBytes } from "./storage-quota";
-import { users } from "../../db/schema";
+import { users, videos } from "../../db/schema";
 import type { Bindings } from "../../types/bindings";
 
 /**
  * `account.me` procedure のレスポンスを組み立てる。
  */
-
-
 
 export async function getCurrentUser(
   env: Bindings,
@@ -36,10 +34,10 @@ export async function getCurrentUser(
         plan_code: users.planCode,
         subscription_status: users.subscriptionStatus,
         quota_source: users.quotaSource,
-        // Must be "users"."id": ${users.id} becomes bare "id" → videos.id in this subquery.
-        video_count: sql<number>`(SELECT count(*)::int FROM videos v WHERE v.user_id = "users"."id")`.as(
-          "video_count",
-        ),
+        video_count: sql<number>`(${db
+          .select({ value: sql<number>`count(*)::int` })
+          .from(videos)
+          .where(eq(videos.userId, users.id))})`.as("video_count"),
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -50,21 +48,30 @@ export async function getCurrentUser(
     const storageLimitGb =
       r.storage_limit_gb === null ? null : Number(r.storage_limit_gb);
     const processingLimitMinutes =
-      r.processing_limit_minutes === null ? null : Number(r.processing_limit_minutes);
+      r.processing_limit_minutes === null
+        ? null
+        : Number(r.processing_limit_minutes);
 
     return {
       id: String(r.id),
       username: r.username,
       email: r.email,
-      ...accountEntitlementSummary({ role: r.role, planCode: r.plan_code, quotaSource: r.quota_source,
-        monthlyLimitGb: r.monthly_upload_limit_gb, storageLimitGb, processingLimitMinutes }),
+      ...accountEntitlementSummary({
+        role: r.role,
+        planCode: r.plan_code,
+        quotaSource: r.quota_source,
+        monthlyLimitGb: r.monthly_upload_limit_gb,
+        storageLimitGb,
+        processingLimitMinutes,
+      }),
       video_count: r.video_count,
       used_upload_bytes: Number(r.used_upload_bytes),
       upload_resets_at: new Date(r.upload_resets_at).toISOString(),
       used_storage_bytes: Number(r.used_storage_bytes),
       used_processing_seconds: r.used_processing_seconds,
       used_ai_answers: r.used_ai_answers,
-      ai_answers_limit: r.ai_answers_limit === null ? null : Number(r.ai_answers_limit),
+      ai_answers_limit:
+        r.ai_answers_limit === null ? null : Number(r.ai_answers_limit),
       is_over_quota: r.is_over_quota,
       subscription_status: r.subscription_status,
     };

@@ -1,9 +1,10 @@
-/** Operands are closed SQL expressions and placeholders supplied by adapters. */
-export const conversationStringLogic = {
-  atLeast: (value: string, minimum: number) => `${value} >= ${minimum}`,
-  equal: (left: string, right: string) => `${left}=${right}`,
-  and: (left: string, right: string) => `(${left} AND ${right})`,
-  or: (left: string, right: string) => `(${left} OR ${right})`,
-  empty: (value: string) => `${value} = ''`,
-  choose: (condition: string, yes: string, no: string) => `CASE WHEN ${condition} THEN ${yes} ELSE ${no} END`,
+import { and, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+export const conversationDrizzleLogic = {
+  atLeast: (value: SQLWrapper, minimum: number) => sql`${value}>=${minimum}`,
+  equal: (left: SQLWrapper, right: SQLWrapper) => sql`${left}=${right}`,
+  and: (left: SQL, right: SQL) => and(left, right)!,
+  or: (left: SQL, right: SQL) => or(left, right)!,
+  empty: (value: SQLWrapper) => sql`${value}=''`,
+  choose: (condition: SQL, yes: SQLWrapper, no: SQLWrapper) =>
+    sql`CASE WHEN ${condition} THEN ${yes} ELSE ${no} END`,
 };

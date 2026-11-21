@@ -1,21 +1,23 @@
-import {isUniqueViolation} from "../../db/errors";
-import {TagNameConflictError} from "../contracts/tag-repository";
+import { QueryBuilder } from "drizzle-orm/pg-core";
+import { isUniqueViolation } from "../../db/errors";
+import { TagNameConflictError } from "../contracts/tag-repository";
 import { mapVideoListRow } from "../../repositories/video-mapping";
-import type { TagListItem,TagDetail,TagRepository } from "../contracts/tag-repository";
+import type {
+  TagListItem,
+  TagDetail,
+  TagRepository,
+} from "../contracts/tag-repository";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import { type Db, withDb } from "../../db/pool";
 import { tags, videos, videoTags } from "../../db/schema";
 import { toUtcIso } from "../../shared/datetime";
-import {
-  videoTagsJson,
-} from "./video-read-repository";
+import { videoTagsJson } from "./video-read-repository";
 import type { Bindings } from "../../types/bindings";
 
-// Tag 一覧 API のレスポンス表現。
-// Must be "tags"."id": ${tags.id} becomes bare "id" → vt.id.
-const videoCountSubquery = sql<number>`(SELECT count(*) FROM video_tags vt WHERE vt.tag_id = "tags"."id")::int`.as(
-  "video_count",
-);
+const videoCountSubquery = sql<number>`(${new QueryBuilder()
+  .select({ value: sql<number>`count(*)::int` })
+  .from(videoTags)
+  .where(eq(videoTags.tagId, tags.id))})`.as("video_count");
 
 const tagSelect = {
   id: tags.id,
@@ -65,11 +67,7 @@ export async function listTagsPage(
  * タグ詳細。未所有または不在は null。
  * videos は該当 VideoTag の動画一覧表現を返し、安定した挿入順として vt.id ASC を用いる。
  */
-async function readTagDetail(
-  db: Db,
-  tagId: number,
-  userId: string,
-) {
+async function readTagDetail(db: Db, tagId: number, userId: string) {
   const tagRows = await db
     .select(tagSelect)
     .from(tags)
@@ -128,18 +126,17 @@ export async function updateTag(
   const name = fields.name;
   const ownedTag = and(eq(tags.id, tagId), eq(tags.userId, userId));
   return withDb(env, async (db) => {
-    const rows = name !== undefined || fields.color !== undefined
-      ? await db
-        .update(tags)
-        .set({ name: name ?? undefined, color: fields.color })
-        .where(ownedTag)
-        .returning(tagListSelect)
-      : await db
-        .select(tagListSelect)
-        .from(tags)
-        .where(ownedTag)
-        .limit(1);
-    return rows[0] ? { tag: mapTagListItem(rows[0]) } : { notFound: true } as const;
+    const rows =
+      name !== undefined || fields.color !== undefined
+        ? await db
+            .update(tags)
+            .set({ name: name ?? undefined, color: fields.color })
+            .where(ownedTag)
+            .returning(tagListSelect)
+        : await db.select(tagListSelect).from(tags).where(ownedTag).limit(1);
+    return rows[0]
+      ? { tag: mapTagListItem(rows[0]) }
+      : ({ notFound: true } as const);
   });
 }
 
@@ -177,17 +174,27 @@ export async function deleteTag(
       .delete(tags)
       .where(and(eq(tags.id, tagId), eq(tags.userId, userId)))
       .returning({ id: tags.id });
-    return rows.length > 0 ? { ok: true } as const : { notFound: true } as const;
+    return rows.length > 0
+      ? ({ ok: true } as const)
+      : ({ notFound: true } as const);
   });
 }
 
 export function createPostgresTagRepository(env: Bindings): TagRepository {
- return {listPage: (userId,limit,offset)=>listTagsPage(env,userId,limit,offset),
- getDetail: (tagId,userId)=>getTagDetail(env,tagId,userId), update: (tagId,userId,fields)=>updateTag(env,tagId,userId,fields).catch(normalizeTagNameConflict),
- create: (userId,name,color)=>createTag(env,userId,name,color).catch(normalizeTagNameConflict),delete: (tagId,userId)=>deleteTag(env,tagId,userId)};
+  return {
+    listPage: (userId, limit, offset) =>
+      listTagsPage(env, userId, limit, offset),
+    getDetail: (tagId, userId) => getTagDetail(env, tagId, userId),
+    update: (tagId, userId, fields) =>
+      updateTag(env, tagId, userId, fields).catch(normalizeTagNameConflict),
+    create: (userId, name, color) =>
+      createTag(env, userId, name, color).catch(normalizeTagNameConflict),
+    delete: (tagId, userId) => deleteTag(env, tagId, userId),
+  };
 }
 
-function normalizeTagNameConflict(error:unknown):never {
- if(isUniqueViolation(error,"tags_user_id_name_uniq"))throw new TagNameConflictError();
- throw error;
+function normalizeTagNameConflict(error: unknown): never {
+  if (isUniqueViolation(error, "tags_user_id_name_uniq"))
+    throw new TagNameConflictError();
+  throw error;
 }

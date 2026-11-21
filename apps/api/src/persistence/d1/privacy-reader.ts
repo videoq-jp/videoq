@@ -1,81 +1,347 @@
-import { privacyCatalogPage, privacySubjectsWithData, privacyCursorFailure, privacyRecordCursor } from '../../application/privacy-policy';
-import { PRIVACY_CONTEXT_PAGE_SIZE } from '../../application/privacy';
-import { privacyContextCollections, privacyContextPage, privacyExportPage, PRIVACY_EXPORT_CHUNK_CHARACTERS } from "../../application/privacy";
-import {z} from 'zod';
-import {ApiError} from '../../shared/errors';
-import {privacySubject,privacyRequest,type PrivacySubject,type PrivacyInstallation} from '../../shared/privacy';
-import {digest} from '../../features/lti/store';
-import {privacyReadDefs as defs,privacyScoped as scoped} from './privacy-read-definitions';
-type ReadRequest=Exclude<z.infer<typeof privacyRequest>,{action:'erase'}>;
-import {prepareD1PrivacyScope,checkD1PrivacyScope} from './privacy-scope';
-const changed=()=>new ApiError(409,'CONFLICT','Data changed. Restart the export.');
-function base64(raw:unknown):string{
- const bytes=raw instanceof Uint8Array?raw:raw instanceof ArrayBuffer?new Uint8Array(raw):Array.isArray(raw)?Uint8Array.from(raw as number[]):null;
- if(!bytes)throw new Error('Invalid privacy checkpoint encoding');
- const chunks:string[]=[];for(let offset=0;offset<bytes.length;offset+=32768)chunks.push(String.fromCharCode(...bytes.subarray(offset,offset+32768)));
- return btoa(chunks.join(''));
+import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { union } from "drizzle-orm/sqlite-core";
+import { runD1Batch, type D1Query } from "../../db/d1/query-builders";
+import {
+  lmsCourses,
+  teachingConnections,
+  ltiCredentials,
+} from "../../db/schema/sqlite";
+import {
+  privacyCatalogPage,
+  privacySubjectsWithData,
+  privacyCursorFailure,
+  privacyRecordCursor,
+} from "../../application/privacy-policy";
+import {
+  PRIVACY_CONTEXT_PAGE_SIZE,
+  privacyContextCollections,
+  privacyContextPage,
+  privacyExportPage,
+  PRIVACY_EXPORT_CHUNK_CHARACTERS,
+} from "../../application/privacy";
+import { z } from "zod";
+import { ApiError } from "../../shared/errors";
+import {
+  privacySubject,
+  privacyRequest,
+  type PrivacySubject,
+  type PrivacyInstallation,
+} from "../../shared/privacy";
+import { digest } from "../../features/lti/store";
+import {
+  privacyReadQueries,
+  binaryNames,
+  privacyCollectionShape,
+} from "./privacy-read-definitions";
+import {
+  prepareD1PrivacyScope,
+  checkD1PrivacyScope,
+  type D1PrivacySubjectScope,
+} from "./privacy-scope";
+type ReadRequest = Exclude<z.infer<typeof privacyRequest>, { action: "erase" }>;
+const changed = () =>
+  new ApiError(409, "CONFLICT", "Data changed. Restart the export.");
+function base64(raw: unknown): string {
+  const bytes =
+    raw instanceof Uint8Array
+      ? raw
+      : raw instanceof ArrayBuffer
+        ? new Uint8Array(raw)
+        : Array.isArray(raw)
+          ? Uint8Array.from(raw as number[])
+          : null;
+  if (!bytes) throw new Error("Invalid privacy checkpoint encoding");
+  const chunks: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 32768)
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 32768)));
+  return btoa(chunks.join(""));
 }
-function binaryData(row:Record<string,unknown>,kind:'checkpoint'|'write'){
- return JSON.stringify(kind==='checkpoint'?{conversationId:row.conversationId,namespace:row.namespace,checkpointId:row.checkpoint_id,parentCheckpointId:row.parent_id,
-  type:row.checkpoint_type,encoding:'base64',data:base64(row.checkpoint),metadataType:row.metadata_type,metadata:base64(row.metadata)}:
- {conversationId:row.conversationId,namespace:row.namespace,checkpointId:row.checkpoint_id,taskId:row.task_id,taskPath:row.task_path,index:row.idx,channel:row.channel,type:row.value_type,encoding:'base64',data:base64(row.value)});
+function binaryData(
+  row: Record<string, unknown>,
+  kind: "checkpoint" | "write",
+) {
+  return JSON.stringify(
+    kind === "checkpoint"
+      ? {
+          conversationId: row.conversationId,
+          namespace: row.namespace,
+          checkpointId: row.checkpoint_id,
+          parentCheckpointId: row.parent_id,
+          type: row.checkpoint_type,
+          encoding: "base64",
+          data: base64(row.checkpoint),
+          metadataType: row.metadata_type,
+          metadata: base64(row.metadata),
+        }
+      : {
+          conversationId: row.conversationId,
+          namespace: row.namespace,
+          checkpointId: row.checkpoint_id,
+          taskId: row.task_id,
+          taskPath: row.task_path,
+          index: row.idx,
+          channel: row.channel,
+          type: row.value_type,
+          encoding: "base64",
+          data: base64(row.value),
+        },
+  );
 }
-/** Complete-record reads for the D1 privacy adapter. */
-export function createD1PrivacyReader(database:D1Database){
- async function stable<T>(installation:PrivacyInstallation,subjects:PrivacySubject[],contexts:string[]|null,
-  build:(query:(subject:PrivacySubject,sql:string,args?:unknown[])=>D1PreparedStatement)=>D1PreparedStatement[],finish:(rows:D1Result<Record<string,unknown>>[])=>T|Promise<T>):Promise<T>{
-  for(let attempt=0;attempt<5;attempt++){
-   const scope=await prepareD1PrivacyScope(database,installation,subjects,contexts);
-   const result=await database.batch<Record<string,unknown>>([scope.check(),...build(scope.query)]);
-   if(!checkD1PrivacyScope(result[0].results[0]))continue;
-   return finish(result.slice(1));
+export function createD1PrivacyReader(database: D1Database) {
+  async function stable<T>(
+    installation: PrivacyInstallation,
+    subjects: PrivacySubject[],
+    contexts: string[] | null,
+    build: (scope: (s: PrivacySubject) => D1PrivacySubjectScope) => D1Query[],
+    finish: (rows: D1Result<Record<string, unknown>>[]) => T | Promise<T>,
+  ): Promise<T> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const scope = await prepareD1PrivacyScope(
+        database,
+        installation,
+        subjects,
+        contexts,
+      );
+      const result = await runD1Batch<Record<string, unknown>>(database, [
+        scope.check(),
+        ...build(scope.forSubject),
+      ]);
+      if (!checkD1PrivacyScope(result[0].results[0])) continue;
+      return finish(result.slice(1));
+    }
+    throw changed();
   }
-  throw changed();
- }
- function contextSql(after:string){
-  const relevant=privacyContextCollections;
-  // Avoid the platform's compound-SELECT limit. Each collection contributes
-  // at most 101 distinct candidates after the cursor; their ordered union still
-  // contains the first 101 global results without aggregating all history rows.
-  const groups=relevant.map(n=>{const d=defs[n];return `json((SELECT json_group_array(context) FROM(
-   SELECT DISTINCT ${d.context} AS context FROM ${d.from} WHERE ${scoped(d)} AND ${d.context} COLLATE BINARY>cursor.after
-    ORDER BY context COLLATE BINARY LIMIT ${PRIVACY_CONTEXT_PAGE_SIZE+1})))`;});
-  return {sql:`SELECT DISTINCT item.value AS context FROM (SELECT ? AS after) cursor
-   JOIN json_each(json_array(${groups.join(',')})) groups JOIN json_each(groups.value) item ORDER BY context COLLATE BINARY LIMIT ${PRIVACY_CONTEXT_PAGE_SIZE+1}`,args:[after]};
-
- }
- return {async execute(installation:PrivacyInstallation,input:ReadRequest):Promise<unknown>{
-  const parsed=privacyRequest.safeParse(input);if(!parsed.success||parsed.data.action==='erase')throw new ApiError(400,'VALIDATION_ERROR','Invalid privacy read request.');input=parsed.data;
-  if(input.action==='catalog'){
-   const s=await privacySubject(installation,'');
-   return stable(installation,[s],null,q=>[q(s,`SELECT context FROM(SELECT m.context_id AS context FROM eligible p JOIN lms_courses m ON m.installation_id=p.installation
-    UNION SELECT t.context_id FROM eligible p JOIN teaching_connections t ON t.provider='moodle' AND t.installation_id=p.installation
-    UNION SELECT json_extract(h.payload,'$.contextId') FROM eligible p JOIN lti_credentials h ON h.kind='lti-history' AND json_extract(h.payload,'$.registrationId')=p.registration WHERE json_extract(h.payload,'$.contextId') IS NOT NULL
-    UNION SELECT '@orphan' FROM eligible) WHERE context COLLATE BINARY>? ORDER BY context COLLATE BINARY LIMIT ${PRIVACY_CONTEXT_PAGE_SIZE+1}`,[input.after??''])],rows=>privacyCatalogPage(rows[0].results,r=>r.context as string));
+  function contexts(scope: D1PrivacySubjectScope, after: string) {
+    const { db } = scope,
+      defs = privacyReadQueries(scope);
+    // Bound each collection before combining via JSON, avoiding D1's compound
+    // SELECT limit while retaining the first 101 distinct global contexts.
+    const groups = privacyContextCollections.map((name) => {
+      const q = defs[name].query;
+      const page = db
+        .selectDistinct({ context: q.context })
+        .from(q)
+        .where(sql`${q.context} COLLATE BINARY>${after}`)
+        .orderBy(sql`${q.context} COLLATE BINARY`)
+        .limit(PRIVACY_CONTEXT_PAGE_SIZE + 1)
+        .as("context_page");
+      return db
+        .select({ value: sql`json_group_array(${page.context})` })
+        .from(page);
+    });
+    return scope.wrap(
+      db
+        .selectDistinct({ context: sql<string>`item.value`.as("context") })
+        .from(
+          sql`json_each(json_array(${sql.join(
+            groups.map((group) => sql`json(${group})`),
+            sql`,`,
+          )})) groups`,
+        )
+        .innerJoin(sql`json_each(groups.value) item`, sql`true`)
+        .orderBy(sql`item.value COLLATE BINARY`)
+        .limit(PRIVACY_CONTEXT_PAGE_SIZE + 1),
+    );
   }
-  if(input.action==='users'){
-   const subjects=await Promise.all(input.subjects.map(s=>privacySubject(installation,s))),c=contextSql('');
-   return stable(installation,subjects,input.contexts,q=>subjects.map(s=>q(s,c.sql,c.args)),rows=>({subjects:privacySubjectsWithData(input.subjects,rows.map(row=>row.results.length>0))}));
-  }
-  const s=await privacySubject(installation,input.subject);
-  if(input.action==='contexts'){
-   const c=contextSql(input.after??'');return stable(installation,[s],null,q=>[q(s,c.sql,c.args)],rows=>privacyContextPage(rows[0].results,r=>r.context as string));
-  }
-  const d=defs[input.collection],point=input.cursor?.record,rawId=privacyRecordCursor(input.cursor);
-  const cursorFailure=privacyCursorFailure(input.collection,d.cast==='bigint'?'integer':d.cast==='uuid'?'uuid':'opaque',rawId,value=>z.uuid().safeParse(value).success);
-  if(cursorFailure==='retiredConversation')throw changed();
-  if(cursorFailure==='invalid')throw new ApiError(400,'VALIDATION_ERROR','Invalid export cursor.');
-  const id=d.cast==='uuid'?rawId?.toLowerCase():rawId;
-  const fields=d.binary==='checkpoint'?'c.conversation_id AS conversationId,k.namespace,k.checkpoint_id,k.parent_id,k.checkpoint_type,k.checkpoint,k.metadata_type,k.metadata':d.binary==='write'?'c.conversation_id AS conversationId,k.namespace,k.checkpoint_id,k.task_id,k.task_path,k.idx,k.channel,k.value_type,k.value':`${d.data} AS data`;
-  return stable(installation,[s],input.contexts,q=>[q(s,`SELECT CAST(${d.key} AS TEXT) AS id,${d.context} AS context,${fields} FROM ${d.from} WHERE ${scoped(d)} ${id?`AND ${d.key}${point?'=':'>'}?`:''} ORDER BY ${d.key} LIMIT 1`,id?[id]:[])],async rows=>{
-   const row=rows[0].results[0];
-   if(!row){const result=privacyExportPage(null,point);if('changed' in result)throw changed();return result;}
-   const data=d.binary?binaryData(row,d.binary):row.data;if(typeof data!=='string')throw new Error('Invalid privacy export data');
-   const characters=Array.from(data),revision=await digest(data),offset=point?.offset??0;
-   const result=privacyExportPage({id:row.id as string,context:row.context as string,total:characters.length,revision,
-    chunk:characters.slice(offset,offset+PRIVACY_EXPORT_CHUNK_CHARACTERS).join('')},point);
-   if('changed' in result)throw changed();
-   return result;
-  });
- }};
+  return {
+    async execute(
+      installation: PrivacyInstallation,
+      input: ReadRequest,
+    ): Promise<unknown> {
+      const parsed = privacyRequest.safeParse(input);
+      if (!parsed.success || parsed.data.action === "erase")
+        throw new ApiError(
+          400,
+          "VALIDATION_ERROR",
+          "Invalid privacy read request.",
+        );
+      input = parsed.data;
+      if (input.action === "catalog") {
+        const subject = await privacySubject(installation, ""),
+          after = input.after ?? "";
+        return stable(
+          installation,
+          [subject],
+          null,
+          (get) => {
+            const scope = get(subject),
+              { db, p } = scope;
+            const combined = union(
+              db
+                .select({
+                  context: sql<string>`${lmsCourses.contextId}`.as("context"),
+                })
+                .from(p)
+                .innerJoin(
+                  lmsCourses,
+                  eq(lmsCourses.installationId, p.installation),
+                ),
+              db
+                .select({
+                  context: sql<string>`${teachingConnections.contextId}`.as(
+                    "context",
+                  ),
+                })
+                .from(p)
+                .innerJoin(
+                  teachingConnections,
+                  and(
+                    eq(teachingConnections.provider, sql`'moodle'`),
+                    eq(teachingConnections.installationId, p.installation),
+                  ),
+                ),
+              db
+                .select({
+                  context:
+                    sql<string>`json_extract(${ltiCredentials.payload},'$.contextId')`.as(
+                      "context",
+                    ),
+                })
+                .from(p)
+                .innerJoin(
+                  ltiCredentials,
+                  and(
+                    eq(ltiCredentials.kind, sql`'lti-history'`),
+                    eq(
+                      sql`json_extract(${ltiCredentials.payload},'$.registrationId')`,
+                      p.registration,
+                    ),
+                  ),
+                )
+                .where(
+                  isNotNull(
+                    sql`json_extract(${ltiCredentials.payload},'$.contextId')`,
+                  ),
+                ),
+              db
+                .select({ context: sql<string>`'@orphan'`.as("context") })
+                .from(p),
+            ).as("contexts");
+            return [
+              scope.wrap(
+                db
+                  .select({ context: sql`${combined.context}`.as("context") })
+                  .from(combined)
+                  .where(sql`${combined.context} COLLATE BINARY>${after}`)
+                  .orderBy(sql`${combined.context} COLLATE BINARY`)
+                  .limit(PRIVACY_CONTEXT_PAGE_SIZE + 1),
+              ),
+            ];
+          },
+          (rows) =>
+            privacyCatalogPage(rows[0].results, (row) => row.context as string),
+        );
+      }
+      if (input.action === "users") {
+        const requested = input.subjects,
+          subjects = await Promise.all(
+            requested.map((s) => privacySubject(installation, s)),
+          );
+        return stable(
+          installation,
+          subjects,
+          input.contexts,
+          (get) => subjects.map((s) => contexts(get(s), "")),
+          (rows) => ({
+            subjects: privacySubjectsWithData(
+              requested,
+              rows.map((row) => row.results.length > 0),
+            ),
+          }),
+        );
+      }
+      const subject = await privacySubject(installation, input.subject);
+      if (input.action === "contexts") {
+        const after = input.after ?? "";
+        return stable(
+          installation,
+          [subject],
+          null,
+          (get) => [contexts(get(subject), after)],
+          (rows) =>
+            privacyContextPage(rows[0].results, (row) => row.context as string),
+        );
+      }
+      const request = input,
+        point = request.cursor?.record,
+        rawId = privacyRecordCursor(request.cursor),
+        shape = privacyCollectionShape(request.collection);
+      const failure = privacyCursorFailure(
+        request.collection,
+        shape.cast === "bigint"
+          ? "integer"
+          : shape.cast === "uuid"
+            ? "uuid"
+            : "opaque",
+        rawId,
+        (value) => z.uuid().safeParse(value).success,
+      );
+      if (failure === "retiredConversation") throw changed();
+      if (failure === "invalid")
+        throw new ApiError(400, "VALIDATION_ERROR", "Invalid export cursor.");
+      const id = shape.cast === "uuid" ? rawId?.toLowerCase() : rawId;
+      return stable(
+        installation,
+        [subject],
+        request.contexts,
+        (get) => {
+          const scope = get(subject),
+            d = privacyReadQueries(scope)[request.collection],
+            q = d.query;
+          const binary = Object.fromEntries(
+            binaryNames.map((name) => [name, sql`${q[name]}`.as(name)]),
+          );
+          return [
+            scope.wrap(
+              scope.db
+                .select({
+                  id: sql<string>`CAST(${q.key} AS TEXT)`.as("id"),
+                  context: sql`${q.context}`.as("context"),
+                  data: sql`${q.data}`.as("data"),
+                  ...binary,
+                })
+                .from(q)
+                .where(
+                  id
+                    ? point
+                      ? eq(sql`${q.key}`, id)
+                      : gt(sql`${q.key}`, id)
+                    : undefined,
+                )
+                .orderBy(sql`${q.key}`)
+                .limit(1),
+            ),
+          ];
+        },
+        async (rows) => {
+          const row = rows[0].results[0];
+          if (!row) {
+            const result = privacyExportPage(null, point);
+            if ("changed" in result) throw changed();
+            return result;
+          }
+          const data = shape.binary ? binaryData(row, shape.binary) : row.data;
+          if (typeof data !== "string")
+            throw new Error("Invalid privacy export data");
+          const characters = Array.from(data),
+            revision = await digest(data),
+            offset = point?.offset ?? 0;
+          const result = privacyExportPage(
+            {
+              id: row.id as string,
+              context: row.context as string,
+              total: characters.length,
+              revision,
+              chunk: characters
+                .slice(offset, offset + PRIVACY_EXPORT_CHUNK_CHARACTERS)
+                .join(""),
+            },
+            point,
+          );
+          if ("changed" in result) throw changed();
+          return result;
+        },
+      );
+    },
+  };
 }
