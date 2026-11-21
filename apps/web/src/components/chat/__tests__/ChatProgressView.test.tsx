@@ -5,23 +5,30 @@ import type { Message } from '@/hooks/useChatMessages';
 import { ChatProgressView } from '../ChatProgressView';
 
 describe('chat activity display', () => {
+  it.each(['thinking', 'summarizing', 'reviewing', 'answering'] as const)('shows the %s phase without opening details', phase => {
+    render(<ChatProgressView progress={{ phase, searches: [], tools: [] }} waitingForAnswer />);
+    expect(screen.getByRole('status')).toHaveTextContent(`chat.progress.${phase}`);
+    expect(screen.getByText(`chat.progress.${phase}`, { selector: 'span' })).toBeVisible();
+  });
+
   it('shows the active visual tool without opening details and retains its status after the answer', () => {
     const progress = { phase: 'searching', searches: [], tools: [
       { id: 1, tool: 'get_course_info', status: 'complete' },
       { id: 2, tool: 'focus_clip', status: 'running' },
     ] } as const;
     const { rerender } = render(<ChatProgressView progress={{ ...progress, searches: [], tools: [...progress.tools] }} waitingForAnswer />);
-    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.tools.focus_clip.running (focus_clip)');
-    expect(screen.getByText('chat.progress.tools.focus_clip.running (focus_clip)', { selector: 'span' })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.tools.focus_clip.running');
+    expect(screen.getByText('chat.progress.tools.focus_clip.running', { selector: 'span' })).toBeVisible();
     expect(screen.getByRole('status')).not.toHaveTextContent('chat.progress.preparing');
     fireEvent.click(screen.getByRole('button'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.getByText('focus_clip', { selector: 'code' })).toBeVisible();
+    expect(screen.getByText('chat.progress.tools.focus_clip.name')).toBeVisible();
+    expect(screen.queryByText('focus_clip', { selector: 'code' })).not.toBeInTheDocument();
     expect(screen.getByText('chat.progress.toolStatus.running')).toBeVisible();
 
     const finished = { ...progress, searches: [], tools: progress.tools.map(tool => ({ ...tool, status: 'complete' as const })) };
     rerender(<ChatProgressView progress={{ ...finished, phase: 'reviewing' }} waitingForAnswer />);
-    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.answering');
+    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.reviewing');
     rerender(<ChatProgressView progress={{ ...finished, phase: 'complete' }} waitingForAnswer={false} />);
     expect(screen.getByRole('status')).toHaveTextContent('chat.progress.usedTools');
     expect(screen.getAllByText('chat.progress.toolStatus.complete')).toHaveLength(2);
@@ -36,12 +43,12 @@ describe('chat activity display', () => {
       },
     };
     const { rerender } = render(<ChatMessageBubble {...props} message={message} isAwaitingResponse />);
-    const waitingLabel = screen.getByRole('status').textContent;
+    expect(screen.getByRole('status')).toHaveTextContent(searched ? 'chat.progress.reviewing' : 'chat.progress.preparing');
 
     // The network has finished, but the typewriter has not painted the answer.
     const receivedMessage: Message = { ...message, progress: { ...message.progress!, phase: 'complete' } };
     rerender(<ChatMessageBubble {...props} message={receivedMessage} isAwaitingResponse />);
-    expect(screen.getByRole('status').textContent).toBe(waitingLabel);
+    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.answering');
 
     rerender(<ChatMessageBubble {...props} message={{ ...receivedMessage, answer: plainChatAnswer('回答') }} isAwaitingResponse />);
     expect(screen.getByText('回答')).toBeVisible();
@@ -70,7 +77,7 @@ describe('chat activity display', () => {
         phase: 'reviewing', searches: message.progress!.searches.map((search) => ({ ...search, status: 'complete' })),
       },
     }} isAwaitingResponse />);
-    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.checkingVideos');
+    expect(screen.getByRole('status')).toHaveTextContent('chat.progress.reviewing');
     expect(screen.getByText('ドモルガンの定理')).not.toBeVisible();
 
     rerender(<ChatMessageBubble {...props} message={message} isAwaitingResponse />);

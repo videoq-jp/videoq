@@ -1,3 +1,4 @@
+import type { ChatGenerationProgressEvent } from "@videoq/domain/chat";
 import type { CancellationState } from '../../application/answer-generation';
 import type { ChatAnswer, ChatSource } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
@@ -55,6 +56,7 @@ export type AnswerPart =
   | { type: "text"; segmentIndex: number; text: string }
   | { type: "citation"; segmentIndex: number; sourceId: number };
 export type GenerationChunk =
+  | { generationProgress: ChatGenerationProgressEvent }
   | { part: AnswerPart }
   | { source: ChatSource }
   | { toolProgress: ToolProgress }
@@ -62,6 +64,7 @@ export type GenerationChunk =
   | { searchCompleted: { id: number; query: string; count: number } }
   | { final: GeneratedAnswer };
 export type ChatGenerationEvent =
+  | ChatGenerationProgressEvent
   | AnswerPart
   | ToolProgress
   | { type: "source"; source: ChatSource }

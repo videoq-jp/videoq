@@ -12,7 +12,7 @@ import { conversationConfig, requireConversationCheckpoint, ConversationCommitEr
 import { AnswerContentStream } from "./answer-content-stream";
 import { LlmProviderError } from "./openai";
 import { validateChatAnswer } from "./chat-citations";
-import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, type ChatToolProgressEvent, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
+import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, chatGenerationProgressEventSchema, type ChatGenerationProgressEvent, type ChatToolProgressEvent, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
 import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from '../application/evidence';
 import { MAX_TOOL_ROUNDS, AnswerAgentBudget, hasAgentContext } from '../application/agent-execution';
 export { MAX_TOOL_ROUNDS } from '../application/agent-execution';
@@ -90,6 +90,7 @@ async function prepareAgent(
   const inputMessages = params.scope.memory
     ? [new HumanMessage(params.queryText)] : conversationMessages(params.scope.messages);
   let completedResult: RagResult | undefined;
+  let writeProgress: ((chunk: unknown) => void) | undefined;
   const modelBudget = new AnswerAgentBudget();
   let toolCalls = 0;
   // system は createAgent の systemPrompt ではなく messages で渡す。
@@ -113,7 +114,12 @@ async function prepareAgent(
         createMiddleware({
           name: "citationRegistry",
           stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]) }),
-          beforeAgent(state) { collector.restore(state.evidenceSources); },
+          beforeAgent(state, runtime) {
+            collector.restore(state.evidenceSources);
+            // Capture the request's custom stream writer for summary callbacks;
+            // callback execution does not inherit the graph's async-local config.
+            if (params.streaming) writeProgress = runtime.writer;
+          },
           afterAgent(state) {
             assertCompletedAnswer(state.messages.at(-1));
             completedResult = toResult(params.queryText, collector, state.structuredResponse);
@@ -122,7 +128,9 @@ async function prepareAgent(
             return { evidenceSources: collector.savedSources };
           },
         }),
-        ...conversationCompaction(env, params.timeoutMs, params.scope.costLedger),
+        ...conversationCompaction(env, params.timeoutMs, params.scope.costLedger, () => writeProgress?.({
+          generationProgress: { type: "generation_progress", phase: "summarizing" },
+        } satisfies RagGenerationProgress)),
         createMiddleware({
           name: "propagateSearchErrors",
           // wrapToolCall 経由の実行例外は、そのまま呼び出し元へ伝播する。
@@ -148,16 +156,25 @@ async function prepareAgent(
           }
         },
         // 引数不備の繰り返しも含め、最終ターンはツールなしで回答させる。
-        wrapModelCall: (request, handler) => handler({
-          ...request,
-          // Summarization replaces graph messages; always restore trusted instructions.
-          messages: [new SystemMessage(systemPrompt), ...request.messages.filter(message => message.type !== "system")],
-          modelSettings: {
-            ...request.modelSettings,
-            ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
-          },
-          tools: modelBudget.allowToolsForNextModelCall() ? request.tools : [],
-        }),
+        wrapModelCall: (request, handler) => {
+          const tools = modelBudget.allowToolsForNextModelCall() ? request.tools : [];
+          if (params.streaming) request.runtime.writer?.({
+            generationProgress: {
+              type: "generation_progress",
+              phase: tools.length === 0 ? "answering" : toolCalls > 0 ? "reviewing" : "thinking",
+            },
+          } satisfies RagGenerationProgress);
+          return handler({
+            ...request,
+            // Summarization replaces graph messages; always restore trusted instructions.
+            messages: [new SystemMessage(systemPrompt), ...request.messages.filter(message => message.type !== "system")],
+            modelSettings: {
+              ...request.modelSettings,
+              ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
+            },
+            tools,
+          });
+        },
       }),
     ],
   });
@@ -234,6 +251,8 @@ export async function runRag(
 
 type RagSearchProgress = z.infer<typeof searchProgressSchema>;
 const toolProgressSchema = z.object({ toolProgress: chatToolProgressEventSchema });
+const generationProgressSchema = z.object({ generationProgress: chatGenerationProgressEventSchema });
+type RagGenerationProgress = { generationProgress: ChatGenerationProgressEvent };
 type RagToolProgress = z.infer<typeof toolProgressSchema>;
 
 export type RagStreamChunk =
@@ -241,6 +260,7 @@ export type RagStreamChunk =
   | { source: ChatSource }
   | RagSearchProgress
   | RagToolProgress
+  | RagGenerationProgress
   | { final: RagResult };
 
 /** `signal` はクライアント切断時に上流 LLM も止めるためのもの（コスト保護）。 */
@@ -284,6 +304,10 @@ export async function* streamRag(
         else {
           const toolProgress = toolProgressSchema.safeParse(chunk);
           if (toolProgress.success) yield toolProgress.data;
+          else {
+            const generationProgress = generationProgressSchema.safeParse(chunk);
+            if (generationProgress.success) yield generationProgress.data;
+          }
         }
       } else {
         const message = chunk.modelEvent as ChatModelStreamEvent;

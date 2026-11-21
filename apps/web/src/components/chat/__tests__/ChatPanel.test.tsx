@@ -695,7 +695,7 @@ describe('ChatPanel', () => {
     await act(async () => { finishTool() })
     await waitFor(() => expect(screen.getByText('映像の回答')).toBeVisible())
     fireEvent.click(screen.getByRole('button', { name: /chat.progress.details/ }))
-    expect(screen.getByText('focus_clip', { selector: 'code' })).toBeVisible()
+    expect(screen.getByText('chat.progress.tools.focus_clip.name')).toBeVisible()
     expect(screen.getByText('chat.progress.toolStatus.complete')).toBeVisible()
   })
 

@@ -819,6 +819,9 @@
     "generating": "回答を生成しています",
     "progress": {
       "preparing": "質問を確認しています",
+      "thinking": "質問に合う調べ方を考えています",
+      "summarizing": "これまでの会話を整理しています",
+      "reviewing": "調べた情報と、追加で調べる必要があるかを確認しています",
       "checkingVideos": "講義動画を確認しています",
       "searched": "講義動画を検索しました",
       "interrupted": "回答の生成を中断しました",

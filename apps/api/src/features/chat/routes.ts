@@ -113,6 +113,7 @@ chatRoutes.post(
       locale: messageService.requestLocaleFromHeader(c.req.header("Accept-Language")),
       clientSignal: AbortSignal.any([c.req.raw.signal, connection.signal]),
       includeToolProgress: c.req.query("tool_progress") === "1",
+      includeGenerationProgress: c.req.query("generation_progress") === "1",
     });
     c.header("Cache-Control", "no-cache");
     c.header("Content-Encoding", "Identity");

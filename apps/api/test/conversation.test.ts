@@ -69,6 +69,9 @@ it.each([false, true])('resumes native agent messages without reconstructing the
     const chunks = [];
     for await (const chunk of streamRag(ENV, next)) chunks.push(chunk);
     expect(chunks.some(chunk => 'part' in chunk)).toBe(true);
+    expect(chunks.filter(chunk => 'generationProgress' in chunk)).toEqual([
+      { generationProgress: { type: 'generation_progress', phase: 'answering' } },
+    ]);
     expect(chunks.at(-1)).toHaveProperty('final.checkpointId');
   } else await runRag(ENV, next);
   expect(requests.at(-1)?.messages).toEqual(expect.arrayContaining([
@@ -92,6 +95,10 @@ it.each([false, true])('persists real middleware compaction directly in agent st
     const chunks = [];
     for await (const chunk of streamRag(ENV, input)) chunks.push(chunk);
     expect(JSON.stringify(chunks)).not.toContain('The user is studying the dot product');
+    expect(chunks.filter(chunk => 'generationProgress' in chunk)).toEqual([
+      { generationProgress: { type: 'generation_progress', phase: 'summarizing' } },
+      { generationProgress: { type: 'generation_progress', phase: 'answering' } },
+    ]);
     result = chunks.findLast(chunk => 'final' in chunk)!.final;
   } else result = await runRag(ENV, input);
   expect(requests.filter(request => !request.response_format)).toHaveLength(1);
@@ -143,6 +150,7 @@ it('cancels native agent streaming when the consumer stops reading', async () =>
     return Promise.resolve(stalledChatResponse(upstream, () => {}, true, '{"segments":[{"text":"First'));
   });
   const stream = streamRag(ENV, params('question', memory(new MemorySaver())));
+  expect((await stream.next()).value).toEqual({ generationProgress: { type: 'generation_progress', phase: 'answering' } });
   expect((await stream.next()).value).toHaveProperty('part');
   await expect(stream.return(undefined)).resolves.toHaveProperty('done', true);
   expect(upstream?.aborted).toBe(true);
@@ -243,4 +251,29 @@ it('keeps the committed state when an asynchronous checkpoint write fails', asyn
   put.mockRestore();
   const committed = await saver.get({ configurable: { thread_id: 'chat', checkpoint_id: first.checkpointId } });
   expect(JSON.stringify(committed!.channel_values.messages)).not.toContain('Not committed');
+});
+
+
+it('reports conversation organization while the summary model is still pending', async () => {
+  const saver = new MemorySaver();
+  const { checkpointId } = await seed(saver);
+  const summary = Promise.withResolvers<Response>();
+  vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
+    const body = JSON.parse(requestBodyText(init.body));
+    if (!body.response_format) return summary.promise;
+    return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: {
+      role: 'assistant', content: JSON.stringify(ANSWER),
+    } }] }, !!body.stream));
+  });
+  const stream = streamRag(ENV, params('Explain', memory(saver, 'chat', checkpointId)));
+  try {
+    expect((await stream.next()).value).toEqual({
+      generationProgress: { type: 'generation_progress', phase: 'summarizing' },
+    });
+  } finally {
+    summary.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: {
+      role: 'assistant', content: 'The user is studying vectors.',
+    } }] }, false));
+    await stream.return();
+  }
 });

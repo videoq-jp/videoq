@@ -1,6 +1,30 @@
 import { createChatProgress, updateChatProgress } from '../chatProgress';
 
 describe('chat progress', () => {
+  it('tracks actual model stages around repeated searches and ignores late progress after answer text', () => {
+    let progress = createChatProgress();
+    for (const phase of ['thinking', 'summarizing', 'thinking'] as const) {
+      progress = updateChatProgress(progress, { type: 'generation_progress', phase });
+      expect(progress.phase).toBe(phase);
+    }
+    progress = updateChatProgress(progress, { type: 'tool_progress', call_id: 1, tool: 'search_scenes', status: 'running' });
+    expect(progress.phase).toBe('searching');
+    progress = updateChatProgress(progress, { type: 'tool_progress', call_id: 1, tool: 'search_scenes', status: 'complete' });
+    progress = updateChatProgress(progress, { type: 'generation_progress', phase: 'reviewing' });
+    expect(progress.phase).toBe('reviewing');
+    progress = updateChatProgress(progress, { type: 'tool_progress', call_id: 2, tool: 'search_scenes', status: 'running' });
+    expect(progress.phase).toBe('searching');
+    progress = updateChatProgress(progress, { type: 'tool_progress', call_id: 2, tool: 'search_scenes', status: 'complete' });
+    progress = updateChatProgress(progress, { type: 'generation_progress', phase: 'summarizing' });
+    expect(progress.phase).toBe('summarizing');
+    progress = updateChatProgress(progress, { type: 'generation_progress', phase: 'reviewing' });
+    progress = updateChatProgress(progress, { type: 'text_delta', segmentIndex: 0, text: '回答' });
+    expect(progress.phase).toBe('answering');
+    expect(updateChatProgress(progress, { type: 'generation_progress', phase: 'reviewing' })).toBe(progress);
+    progress = updateChatProgress(progress, { type: 'done', chat_log_id: null, feedback: null });
+    expect(updateChatProgress(progress, { type: 'generation_progress', phase: 'thinking' })).toBe(progress);
+  });
+
   it('tracks concurrent and repeated tools through legacy search events and ignores duplicate starts', () => {
     let progress = createChatProgress();
     const start = { type: 'tool_progress', call_id: 1, tool: 'focus_clip', status: 'running' } as const;

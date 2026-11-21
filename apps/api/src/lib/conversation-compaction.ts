@@ -12,14 +12,16 @@ class SummaryResultObserver extends BaseCallbackHandler {
   name = 'conversationSummaryResult';
   awaitHandlers = true;
   error: Error | undefined;
+  constructor(private readonly onStart?: () => void) { super(); }
+  handleChatModelStart() { this.onStart?.(); }
   handleLLMError(error: Error) { this.error = error; }
   handleLLMEnd(result: LLMResult) {
     if (!result.generations[0]?.[0]?.text.trim()) this.error = new Error('Empty conversation summary.');
   }
 }
 
-export function conversationCompaction(env: Bindings, timeoutMs: number, costLedger?: AnswerCostLedger) {
-  const observer = new SummaryResultObserver();
+export function conversationCompaction(env: Bindings, timeoutMs: number, costLedger?: AnswerCostLedger, onSummaryStart?: () => void) {
+  const observer = new SummaryResultObserver(onSummaryStart);
   const middleware = summarizationMiddleware({
     model: createChatModel(env, { timeoutMs, costLedger, purpose: 'conversation_summary', callbacks: [observer] }),
     // No trigger means summarization never runs. Other options use library defaults.

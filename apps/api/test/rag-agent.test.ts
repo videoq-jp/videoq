@@ -485,6 +485,7 @@ describe("RAG エージェント（ストリーミング）", () => {
     });
     const stream = streamRag(ENV, PARAMS);
     try {
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "thinking" } });
       expect((await stream.next()).value).toEqual({ part: { type: "text", segmentIndex: 0, text: "First" } });
       await stream.return();
       expect(upstream?.aborted).toBe(true);
@@ -582,6 +583,7 @@ describe("RAG エージェント（ストリーミング）", () => {
     ]);
     const stream = streamRag(ENV, PARAMS);
     try {
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "thinking" } });
       expect((await stream.next()).value).toEqual({ toolProgress: { type: "tool_progress", call_id: 1, tool: "search_scenes", status: "running" } });
       expect((await stream.next()).value).toEqual({ searching: "scene", searchId: 1 });
       await started.promise;
@@ -696,6 +698,12 @@ describe("RAG エージェント（ストリーミング）", () => {
     const searching = chunks.filter((c) => typeof c === "object" && c !== null && "searching" in c);
     expect(searching).toEqual([{ searching: "検索語", searchId: 1 }]);
     expect(chunks).toContainEqual({ searchCompleted: { id: 1, query: "検索語", count: 1 } });
+    expect(chunks.filter(chunk => "generationProgress" in chunk)).toEqual([
+      { generationProgress: { type: "generation_progress", phase: "thinking" } },
+      { generationProgress: { type: "generation_progress", phase: "reviewing" } },
+    ]);
+    expect(chunks.findIndex(chunk => "generationProgress" in chunk && chunk.generationProgress.phase === "reviewing"))
+      .toBeGreaterThan(chunks.findIndex(chunk => "searchCompleted" in chunk));
 
     const parts = chunks.filter((c) => "part" in c).map(c => c.part);
     expect(parts.filter(p => p.type === "text").map(p => p.text).join("")).toBe("回答本文");
@@ -714,6 +722,7 @@ describe("RAG エージェント（ストリーミング）", () => {
     ]);
     const stream = streamRag(ENV, PARAMS);
     try {
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "thinking" } });
       const first = await stream.next();
       expect(first.value).toEqual({ toolProgress: { type: "tool_progress", call_id: 1, tool: "search_scenes", status: "running" } });
       expect((await stream.next()).value).toEqual({ searching: "時間のかかる検索", searchId: 1 });

@@ -1,4 +1,4 @@
-import { CHAT_TOOL_NAMES } from "@videoq/domain/chat";
+import { CHAT_GENERATION_PHASES, CHAT_TOOL_NAMES } from "@videoq/domain/chat";
 import { z } from "zod";
 import { chatFeedbackSchema } from "./model-schemas";
 import { chatSourceSchema, sourceIdSchema } from "./chat-answer";
@@ -18,8 +18,14 @@ export const chatToolProgressEventSchema = z.object({
   status: z.enum(["running", "complete", "error"]),
 });
 export type { ChatToolProgressEvent } from "@videoq/domain/chat";
+export const chatGenerationProgressEventSchema = z.object({
+  type: z.literal("generation_progress"),
+  phase: z.enum(CHAT_GENERATION_PHASES),
+});
+export type { ChatGenerationProgressEvent } from "@videoq/domain/chat";
 export const chatStreamEventSchema = z.discriminatedUnion("type", [
   chatToolProgressEventSchema,
+  chatGenerationProgressEventSchema,
   z.object({ type: z.literal("source"), source: chatSourceSchema }),
   z.object({ type: z.literal("text_delta"), segmentIndex, text: z.string() }),
   z.object({ type: z.literal("citation"), segmentIndex, sourceId: sourceIdSchema }),
