@@ -53,7 +53,7 @@ test('audio applicability requires the verified guard, exact library identity an
     package: 'ffmpeg', version: '9.0.2', purl: 'pkg:generic/ffmpeg@9.0.2', locations: finding.Locations,
     impactStatement: 'Verified startup guard rejects network inputs', references: ['review']}]};
   const runtime = {status: 'passed', checks: {'security.audio': {status: 'passed',
-    details: {guardSha256: 'reviewed-guard', rtspRejected: true}}}};
+    details: {guardSha256: 'reviewed-guard', rtspRejected: true, unsupportedWavCodecRejected: true, allowedCodecs: ['flac','mp3','mp3float','pcm_s16le']}}}};
   const evaluate = (value = finding, proof = runtime) => assessAudioRuntime({blocking: [structuredClone(value)]}, policy, proof);
   assert.equal(evaluate().accepted.length, 1);
   for (const mutate of [value => value.VulnerabilityID = 'CVE-new', value => value.InstalledVersion = '8.1.1',
@@ -62,7 +62,9 @@ test('audio applicability requires the verified guard, exact library identity an
   }
   for (const mutate of [value => value.status = 'failed', value => value.checks['security.audio'].status = 'failed',
     value => value.checks['security.audio'].details.guardSha256 = 'tampered',
-    value => value.checks['security.audio'].details.rtspRejected = false]) {
+    value => value.checks['security.audio'].details.rtspRejected = false,
+    value => value.checks['security.audio'].details.unsupportedWavCodecRejected = false,
+    value => value.checks['security.audio'].details.allowedCodecs.push('pcm_bluray')]) {
     const copy = structuredClone(runtime); mutate(copy); assert.throws(() => evaluate(finding, copy));
   }
 });
