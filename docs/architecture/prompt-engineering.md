@@ -61,9 +61,9 @@ These are application defaults, not measurements of production settings or provi
 
 | Setting | Current implementation |
 |---|---|
-| Answer and image model | `LLM_MODEL`: hosted `@cf/google/gemma-4-26b-a4b-it`, private alias `videoq-chat` |
-| Answer endpoint | Native AI binding when hosted; private Chat Completions at `LLM_BASE_URL` (falls back to `OPENAI_BASE_URL`) |
-| Reasoning effort | Thinking disabled for the selected Gemma profile; tool decisions separated from final JSON generation |
+| Answer and image model | `LLM_MODEL`, hosted profile `openai/gpt-6-luna` (same GPT-6 Luna model) |
+| Answer endpoint | Chat Completions at `LLM_BASE_URL` (falls back to `OPENAI_BASE_URL`), hosted profile `https://openrouter.ai/api/v1` |
+| Reasoning effort | `none` when the model is `gpt-6-luna` or `openai/gpt-6-luna`, for Chat Completions tool calling |
 | Sampling and output budget | Temperature `0`; at most 1,024 output tokens per model call, including structured output |
 | Request deadline | Course RAG: 2 minutes for non-streaming requests; 5 minutes for streaming requests |
 | Automatic provider retries | Disabled in the API chat-model wrapper |
@@ -73,7 +73,7 @@ These are application defaults, not measurements of production settings or provi
 
 Configure the shared answer and image model with the API's `LLM_MODEL`. It must support tool calling and strict JSON output, plus image input when visual Q&A is enabled. See [embeddings](../guides/embeddings.md) for the search-model configuration shared by the API and worker.
 
-Model attribution: [Gemma 4 on Workers AI](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/) and the pinned private model revision actually deployed.
+Model attribution: [GPT-6 Luna's official model documentation](../reference/ai-references.md#gpt-6-luna), or the source for the model actually configured.
 
 ## Structured answers, citations and permissions
 
@@ -149,7 +149,7 @@ The API saves the completed question, structured answer and retrieved context be
 
 Test metadata-only questions, lesson-content questions, and questions requiring both, in English and Japanese. Check the selected tools and citations as well as the answer, and verify that information outside the course is not included.
 
-`LLM_MODEL` is used for answers and generation; `EMBEDDING_MODEL` is used for search. The selected EmbeddingGemma 2 profile uses 768 dimensions, separately from legacy 1536-dimensional indexes. API and worker must use the same model and preprocessing. Changing models requires regenerating existing vectors. See [embedding configuration and limitations](../guides/embeddings.md).
+`LLM_MODEL` is used for answers and generation; `EMBEDDING_MODEL` is used for search. Embeddings are fixed at 1536 dimensions, and the API and worker must also use the same model. Changing models requires regenerating existing vectors. See [embedding configuration and limitations](../guides/embeddings.md).
 
 See [tests and verification commands](../guides/testing.md) for live-model tests and when they incur charges.
 

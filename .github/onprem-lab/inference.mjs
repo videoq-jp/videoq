@@ -15,9 +15,7 @@ createServer(async (req, res) => {
   if (req.url === '/v1/embeddings') {
     counts.embeddings++;
     const input = Array.isArray(body.input) ? body.input : [body.input];
-    const dimensions = body.model === 'embeddinggemma-2-f9972ac' ? 768 : 1536;
-    if (dimensions === 768 && (body.dimensions !== undefined || input.some(text => !/^(task: search result \| query: |title: none \| text: )/.test(text)))) { res.writeHead(400); return res.end(); }
-    return json({object:'list',model:body.model,data:input.map((_,index)=>({object:'embedding',index,embedding:[1,...Array(dimensions - 1).fill(0)]})),usage:{prompt_tokens:8,total_tokens:8}});
+    return json({object:'list',model:body.model,data:input.map((_,index)=>({object:'embedding',index,embedding:[1,...Array(1535).fill(0)]})),usage:{prompt_tokens:8,total_tokens:8}});
   }
   if (req.url === '/v1/chat/completions') {
     counts.chat++;

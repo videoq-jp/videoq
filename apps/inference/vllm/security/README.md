@@ -77,8 +77,8 @@ verification; the earlier GPU inference evidence remains historical.
 A passing applicability
 check is not a claim that the upstream packages are patched or that the raw scan
 is empty. `runtime-assessment.json` permits only the exact listed CVE/package/PURL
-combinations, after verifying actual image files and all fourteen rendered deployment
-variants (seven NVIDIA profiles, including the Gemma 4 and shared RTX 4090 profiles,
+combinations, after verifying actual image files and all ten rendered deployment
+variants (five NVIDIA profiles, including the shared RTX 4090 profiles,
 with downloads enabled and disabled).
 
 | Finding scope | Raw count | Evidence and applicability |

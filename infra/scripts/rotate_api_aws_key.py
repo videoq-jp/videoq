@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener
 from audit_ai_credentials import NoRedirect, api_json, error_summary
+from retire_ai_credentials import API_POLICY, verify_router
 
 USER = 'videoq-workers-api'
 USER_ARN = 'arn:aws:iam::257240362763:user/'+USER
@@ -56,28 +57,14 @@ def require_permissions(iam):
             statements.extend(value if isinstance(value, list) else [value])
     expected = [
         {'Effect': 'Allow', 'Action': 'sqs:SendMessage', 'Resource': QUEUE_ARNS},
+        {'Effect': 'Allow', 'Action': 'sts:GetWebIdentityToken', 'Resource': '*', 'Condition': {
+            'ForAllValues:StringEquals': {'sts:IdentityTokenAudience': ['https://openrouter.ai']},
+            'StringEquals': {'sts:SigningAlgorithm': 'RS256'},
+            'NumericLessThanEquals': {'sts:DurationSeconds': '900'},
+        }},
     ]
     if sorted(map(normalized, statements)) != sorted(map(normalized, expected)):
         raise RotationGuardError('USER_POLICY_MUST_MATCH_REVIEWED_LEAST_PRIVILEGE')
-
-
-def require_native_inference(bindings):
-    plain = {b['name']: b.get('text', '') for b in bindings if b.get('type') == 'plain_text'}
-    required = {
-        'AI_PROVIDER': 'workers-ai',
-        'LLM_MODEL': '@cf/google/gemma-4-26b-a4b-it',
-        'EMBEDDING_PROFILE': 'embeddinggemma2',
-        'EMBEDDING_MODEL': '@cf/google/embeddinggemma-2',
-    }
-    if (any(plain.get(key) != value for key, value in required.items())
-            or any(plain.get(key, 'workers-ai') != 'workers-ai' for key in ('LLM_PROVIDER', 'EMBEDDING_PROVIDER'))
-            or any(plain.get(key) for key in ('OPENAI_BASE_URL', 'LLM_BASE_URL', 'EMBEDDING_BASE_URL',
-                                             'OPENROUTER_FEDERATION_POLICY_ID', 'OPENROUTER_FEDERATION_AUDIENCE'))
-            or not any(b.get('type') == 'ai' and b.get('name') == 'AI' for b in bindings)
-            or any(b.get('name') in {'OPENAI_API_KEY', 'OPENROUTER_API_KEY', 'LLM_API_KEY', 'EMBEDDING_API_KEY'}
-                   and (b.get('type') == 'secret_text' or b.get('text')) for b in bindings)):
-        raise RotationGuardError('VERIFIED_NATIVE_WORKERS_AI_CONFIGURATION_REQUIRED')
-    return plain
 
 
 def list_keys(iam):
@@ -188,7 +175,8 @@ def rotate(session, environ, operation, proof=''):
     settings = api_json(url+'/settings', token)
     if settings.get('success') is not True:
         raise RotationGuardError('WORKER_SETTINGS_UNAVAILABLE')
-    plain = require_native_inference(settings['result']['bindings'])
+    plain = {b['name']: b.get('text', '') for b in settings['result']['bindings'] if b.get('type') == 'plain_text'}
+    verify_router(plain, API_POLICY)
     if plain.get('AWS_SESSION_TOKEN'):
         raise RotationGuardError('UNEXPECTED_PLAINTEXT_SESSION_TOKEN')
     with closing(session.client('iam')) as iam, closing(session.client('ssm')) as ssm:

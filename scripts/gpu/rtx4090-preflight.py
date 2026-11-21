@@ -15,11 +15,6 @@ import subprocess
 
 
 ROLES = {"chat": "chat", "embedding": "embedding", "whisper": "engine"}
-MODEL_PATHS = {
-    "chat": "/models/4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
-    "embedding": "/models/f9972ac22e696a105c482202646979e33e4b5a1e",
-    "whisper": "/models/41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
-}
 
 
 def run(*args):
@@ -42,13 +37,6 @@ def validate_host(system, machine, os_release, gpu_csv):
     return {"name": name, "uuid": uuid, "memory_mib": float(memory)}
 
 
-def validate_memory(meminfo):
-    match = re.search(r"^MemTotal:\s+(\d+) kB$", meminfo, re.MULTILINE)
-    if not match or int(match[1]) < 120 * 1024**2:
-        raise ValueError("Gemma 4 CPU offload requires 128 GiB host RAM (at least 120 GiB reported)")
-    return int(match[1]) / 1024**2
-
-
 def validate_node(node):
     labels = node["metadata"].get("labels", {})
     if any(labels.get(k) != v for k, v in {
@@ -59,9 +47,6 @@ def validate_node(node):
     resources = node["status"].get("allocatable", {})
     if resources.get("nvidia.com/gpu.shared") != "3" or resources.get("nvidia.com/gpu", "0") != "0":
         raise ValueError("The device plugin must advertise exactly three shared slots and no exclusive slots")
-    memory = re.fullmatch(r"(\d+)(Ki|Mi|Gi)", resources.get("memory", ""))
-    if not memory or int(memory[1]) * {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3}[memory[2]] < 112 * 1024**3:
-        raise ValueError("Gemma 4 node requires at least 112 GiB allocatable RAM for CPU offload and application services")
     if not any(c["type"] == "Ready" and c["status"] == "True" for c in node["status"].get("conditions", [])):
         raise ValueError("Node is not Ready")
 
@@ -79,12 +64,6 @@ def validate_pods(pods, node):
             raise ValueError("All inference Pods must use the NVIDIA runtime on the selected workstation")
         containers = {c["name"]: c for c in spec["containers"]}
         engine = containers[ROLES[role]]
-        args = engine.get("args", [])
-        if MODEL_PATHS[role] not in args:
-            raise ValueError("The allocated engine must use the selected pinned model revision")
-        if role == "chat":
-            if args.count("--cpu-offload-gb") != 1 or args[args.index("--cpu-offload-gb") + 1:][:1] != ["40"] or "gemma4" not in args:
-                raise ValueError("Gemma 4 requires 40 GiB CPU weight offload and the gemma4 parser")
         for kind in ["requests", "limits"]:
             resource = engine["resources"][kind]
             if resource.get("nvidia.com/gpu.shared") not in (1, "1") or "nvidia.com/gpu" in resource:
@@ -123,9 +102,7 @@ def main():
     # platform.freedesktop_os_release handles quoted os-release values.
     gpu = validate_host(platform.system(), platform.machine(), platform.freedesktop_os_release(),
                         run("nvidia-smi", "--query-gpu=name,uuid,memory.total", "--format=csv,noheader,nounits"))
-    from pathlib import Path
-    host_memory_gib = validate_memory(Path("/proc/meminfo").read_text())
-    result = {"host": gpu, "host_memory_gib": host_memory_gib, "logical_cpus": os.cpu_count(), "driver": run("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"),
+    result = {"host": gpu, "logical_cpus": os.cpu_count(), "driver": run("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"),
               "allocated_cuda_checks": "not run", "full_videoq_acceptance": "not established"}
     if args.node:
         validate_node(json.loads(run("kubectl", "get", "node", args.node, "-o", "json")))

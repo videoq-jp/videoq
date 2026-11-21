@@ -29,7 +29,7 @@ test('the existing required CI gate includes on-prem validation', () => {
   assert.match(onprem, /workflow_call:/);
   for (const [name, patterns] of Object.entries({
     onprem_lifecycle: ['charts/**', 'scripts/onprem/**/*.py', 'scripts/onprem/**/*.sh', 'scripts/onprem/**/*.mjs', 'scripts/onprem/**/requirements*.txt', 'apps/api/drizzle/**'],
-    onprem: ['apps/web/Dockerfile*', 'apps/worker/uv.lock', 'package-lock.json', '.github/runtime-versions.json'],
+    onprem: ['apps/security/openssl/**', 'apps/web/Dockerfile*', 'apps/worker/uv.lock', 'package-lock.json', '.github/runtime-versions.json'],
   })) {
     const filter = ci.match(new RegExp(`^            ${name}:\\n([\\s\\S]*?)(?=^            \\w+:)`, 'm'))[1];
     for (const pattern of patterns) assert.ok(filter.includes(`'${pattern}'`), pattern);
@@ -158,4 +158,5 @@ test('API and web install the official patched OpenSSL and retain exact-version 
     assert.equal(repair.sourceFile(`apps/${component}/security/grype.json`), false);
   }
   assert.equal(repair.sourceFile('apps/api/security/alpine-openssl.openvex.json'), false);
+  assert.equal(repair.sourceFile('apps/security/openssl/backports.openvex.json'), false);
 });

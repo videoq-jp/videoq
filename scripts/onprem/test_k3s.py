@@ -224,7 +224,7 @@ class LocalAITests(unittest.TestCase):
         instance.ai_plan = [{'kind': 'Deployment', 'spec': {'template': {'spec': {'containers': [
             {'resources': {'requests': {'cpu': '1', 'memory': '8Gi', 'nvidia.com/gpu': 1 if mode == 'local-gpu' else 0}}}
         ]}}}} for _ in range(3)]
-        node = {'metadata': {'name': 'k3d-videoq-vps-server-0', 'labels': {'kubernetes.io/arch': 'amd64', 'videoq.io/gemma4-vram': '80gb'}},
+        node = {'metadata': {'name': 'k3d-videoq-vps-server-0', 'labels': {'kubernetes.io/arch': 'amd64'}},
                 'status': {'allocatable': {'cpu': '16', 'memory': memory, 'nvidia.com/gpu': gpu}}}
         instance.kube = lambda *args, **kw: json.dumps({'items': [node] if args[1] == 'nodes' else []})
         return instance
@@ -242,15 +242,6 @@ class LocalAITests(unittest.TestCase):
                 instance.check_ai_capacity()
             instance = self.capacity_instance(directory, 'local-gpu', '64Gi', 3)
             instance.check_ai_capacity()
-
-    def test_gpu_recipe_requires_explicit_vram_label(self):
-        with tempfile.TemporaryDirectory() as directory:
-            instance = self.capacity_instance(directory, 'local-gpu', '64Gi', 3)
-            node = json.loads(instance.kube('get', 'nodes'))['items'][0]
-            node['metadata']['labels'].pop('videoq.io/gemma4-vram')
-            instance.kube = lambda *a, **kw: json.dumps({'items': [node]})
-            with self.assertRaisesRegex(ValueError, '80 GB'):
-                instance.check_ai_capacity()
 
     def test_gpu_mode_does_not_create_a_cpu_only_k3d_node(self):
         instance = object.__new__(installer.Installer)

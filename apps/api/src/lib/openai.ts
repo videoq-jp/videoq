@@ -1,6 +1,5 @@
 import { federatedOpenRouterToken, type FederationSettings } from "./openrouter-federation";
 import type { Bindings } from "../types/bindings";
-import { workersAiChatFetch, WORKERS_BINDING_BASE_URL } from "./workers-ai";
 
 /**
  * OpenAI 呼び出しの共通部（埋め込み / チャット生成）。
@@ -55,12 +54,8 @@ export function resolveOpenAiKey(env: ConnectionSettings, purpose: string, baseU
 
 /** Answer generation and image inspection share a connection, with optional overrides. */
 export function resolveLlmConnection(
-  env: ConnectionSettings & Pick<Bindings, "LLM_API_KEY" | "LLM_BASE_URL" | "AI" | "AI_PROVIDER" | "LLM_PROVIDER">,
-): { apiKey: ProviderCredential; baseURL: string; fetch?: typeof fetch } {
-  if ((env.LLM_PROVIDER || env.AI_PROVIDER) === "workers-ai") {
-    if (!env.AI) throw new LlmConfigurationError("Workers AI binding is required.");
-    return { apiKey: "binding-only", baseURL: WORKERS_BINDING_BASE_URL, fetch: workersAiChatFetch(env) };
-  }
+  env: ConnectionSettings & Pick<Bindings, "LLM_API_KEY" | "LLM_BASE_URL">,
+): { apiKey: ProviderCredential; baseURL: string } {
   const baseURL = (env.LLM_BASE_URL || openAiBaseUrl(env)).replace(/\/+$/, "");
   const apiKey = isOpenRouter(baseURL) && env.OPENROUTER_FEDERATION_POLICY_ID
     ? resolveOpenAiKey(env, "LLM", baseURL)

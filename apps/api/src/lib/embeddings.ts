@@ -8,8 +8,6 @@ import {
 import { deadlineSignal } from "./request-timeout";
 import { embeddingDimensions, EmbeddingValidationError, resolveEmbeddingConfig, validateEmbedding, type EmbeddingConfig } from "./embedding-contract";
 import type { UsageRecorder } from "../tools/usage";
-import type { Bindings } from "../types/bindings";
-import { WORKERS_EMBEDDING_MODEL } from "./workers-ai";
 
 /**
  * 検索クエリの埋め込みベクトルを生成する。
@@ -19,9 +17,6 @@ import { WORKERS_EMBEDDING_MODEL } from "./workers-ai";
 const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export type EmbeddingEnv = {
-  AI_PROVIDER?: string;
-  EMBEDDING_PROVIDER?: string;
-  AI?: Bindings["AI"];
   EMBEDDING_PROFILE?: string;
   EMBEDDING_MODEL?: string;
   OPENAI_API_KEY?: string;
@@ -92,25 +87,6 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
 export async function embedQuery(env: EmbeddingEnv, text: string, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[]> {
   signal?.throwIfAborted();
   const config = resolveEmbeddingConfig(env);
-  if (config.provider === "workers-ai") {
-    if (!env.AI) throw new LlmConfigurationError("Workers AI binding is required.");
-    const call = costLedger?.begin("query_embedding", config.model);
-    try {
-      const result: unknown = await env.AI.run(WORKERS_EMBEDDING_MODEL, {
-        input: [`task: search result | query: ${text}`], dimensions: 768, encoding_format: "float",
-      }, { signal: deadlineSignal(EMBEDDING_TIMEOUT_MS, signal) });
-      signal?.throwIfAborted();
-      if (!isRecord(result)) throw new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
-      call?.complete(result.usage);
-      if (!Array.isArray(result.data) || result.data.length !== 1 || !isRecord(result.data[0]) || result.data[0].index !== 0) throw new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
-      return validateEmbedding(result.data[0].embedding, "EMBEDDING_OUTPUT_INVALID", config);
-    } catch (error) {
-      if (signal?.aborted) { call?.interrupt(); signal.throwIfAborted(); }
-      call?.fail();
-      if (error instanceof EmbeddingValidationError) throw error;
-      throw new LlmProviderError("Workers AI embeddings failed.");
-    }
-  }
   const result = await embedWithOpenAi(env, text, config, signal, costLedger);
   signal?.throwIfAborted();
   return result;

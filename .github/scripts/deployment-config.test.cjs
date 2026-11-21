@@ -64,10 +64,10 @@ test('omitted production bindings do not inherit development data stores or vari
   const original = { name: 'videoq-api-dev', vars: { ENVIRONMENT: 'development' },
     d1_databases: [{ binding: 'DB', database_id: 'development' }], vectorize: [{ binding: 'SCENE_VECTORIZE_1536', index_name: 'development' }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: 'development' }], r2_buckets: [{ binding: 'VIDEO_BUCKET', bucket_name: 'development' }],
-    durable_objects: { bindings: [{ name: 'TASK_SCHEDULER', class_name: 'DevOnly' }] }, ai: { binding: 'DEV_AI' },
+    durable_objects: { bindings: [{ name: 'TASK_SCHEDULER', class_name: 'DevOnly' }] },
     env: { production: { name: 'videoq-api' } } };
   const result = deploymentConfig(original, 'api', '/artifacts');
-  for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects', 'ai']) assert.equal(result[key], undefined);
+  for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects']) assert.equal(result[key], undefined);
 });
 
 test('the production API exposes the signed worker persistence path through its narrowly scoped route', () => {
@@ -82,17 +82,4 @@ test('the production API exposes the signed worker persistence path through its 
   const result = deploymentConfig({ env: { production: { name: 'videoq-api', routes: expected, workers_dev: false } } }, 'api', '/artifacts');
   assert.deepEqual(result.routes, expected);
   assert.equal(result.workers_dev, false);
-});
-
-
-test('approved production AI binding survives the upload-only configuration', () => {
-  const source = require('node:fs').readFileSync('apps/api/wrangler.jsonc', 'utf8');
-  const production = source.slice(source.indexOf('"production": {'));
-  const ai = JSON.parse(production.match(/"ai"\s*:\s*(\{[^}]+\})/)?.[1] ?? 'null');
-  const vars = Object.fromEntries(['LLM_PROVIDER', 'LLM_MODEL'].map(key =>
-    [key, production.match(new RegExp('"'+key+'"\\s*:\\s*"([^"\\n]+)"'))?.[1]]));
-  const result = deploymentConfig({ env: { production: { name: 'videoq-api', ai, vars } } }, 'api', '/artifacts');
-  assert.deepEqual(result.ai, { binding: 'AI' });
-  assert.equal(result.vars.LLM_PROVIDER, 'workers-ai');
-  assert.equal(result.vars.LLM_MODEL, '@cf/google/gemma-4-26b-a4b-it');
 });

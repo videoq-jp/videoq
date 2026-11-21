@@ -8,25 +8,19 @@ description: Run VideoQ chat, embeddings and Whisper inside the on-premises netw
 VideoQ can run chat, embeddings and Whisper on site alongside its web, API and
 worker workloads. Initial container/model downloads can use the internet;
 uploaded video, audio and AI requests use private services during processing.
-The application Helm defaults select private local inference. Apply the paired
-Gemma 4 overlays below to install the matching model services.
+The application's default Helm values still select hosted OpenRouter. Applying
+the local overlay explicitly switches all three AI functions.
 
 | Recipe | LLM / embedding runtime | Application overlay |
 |---|---|---|
-| NVIDIA GPUs (recommended) | Gemma 4 26B A4B, EmbeddingGemma 2 and Whisper on upstream vLLM | `local-ai-gemma4.yaml` |
+| NVIDIA GPUs | gpt-oss-20b, EmbeddingGemma 2 and Whisper on upstream vLLM | `local-ai-gpt-oss.yaml` |
 | CPU | llama.cpp, separate chat / embedding APIs | `local-ai-llamacpp.yaml` |
 | NVIDIA GPU | vLLM, separate chat / embedding APIs | `local-ai-vllm.yaml` |
 
-The recommended model combination is **Gemma 4 26B A4B + EmbeddingGemma 2 + Whisper
-large-v3-turbo**. Pair `charts/videoq-inference/examples/gemma4-embeddinggemma.yaml`
-with `charts/videoq/examples/local-ai-gemma4.yaml`. This selects three dedicated NVIDIA GPUs
-for chat, embeddings and transcription. Chat uses BF16 weights and requires a
-dedicated 80 GB GPU; label its node `videoq.io/gemma4-vram=80gb` after checking
-physical VRAM. All devices exposed on a labeled node must satisfy the chat VRAM
-requirement; mixed GPU nodes need device isolation. Embedding and Whisper
-reserve one additional GPU each. This fully resident
-profile does not fit three models on a single RTX 4090; the separate
-[4090 CPU-offload candidate](rtx4090.md) requires 128 GiB host RAM. The older
+The recommended model combination is **gpt-oss-20b + EmbeddingGemma 2 + Whisper
+large-v3-turbo**. Pair `charts/videoq-inference/examples/gpt-oss-embeddinggemma.yaml`
+with `charts/videoq/examples/local-ai-gpt-oss.yaml`. This selects three dedicated NVIDIA GPUs
+for chat, embeddings and transcription. The older
 Qwen recipes remain explicit compatibility profiles. A small CPU-only VPS cannot
 host the recommended chat service; point it at a separate private GPU server.
 
@@ -36,8 +30,7 @@ normalized 768-dimensional vectors. `ai.embeddingProfile: embeddinggemma2`
 selects this contract in **both API and worker**. The application prepends the
 model's task prefix to ordinary OpenAI embedding input; no custom API is required.
 
-Take a database/configuration backup and pause uploads, transcript edits and
-search during migration. Apply database migrations before starting the new app. The additive migration
+Apply database migrations before starting the new app. The additive migration
 creates `scene_embeddings_768`, leaving the existing 1536-dimensional
 `scene_embeddings` table intact. With uploads and transcript edits paused,
 rebuild completed videos using the new worker configuration:
@@ -52,21 +45,22 @@ Keep search unavailable until the rebuild completes. Do not set the old
 selects the old table, but any videos uploaded or edited since cutover must be
 reindexed there too. Vector spaces are never mixed, truncated or padded.
 
-Gemma 4 uses vLLM's `gemma4` tool and reasoning parsers, with thinking disabled
-and no OpenAI reasoning-effort setting. `preserveToolReasoning: true` retains
-provider reasoning internally between tool calls. `separateToolSchema: true`
-separates tool decisions from final JSON grammar enforcement. The application
-overlay enables image/slide inspection using the same Gemma 4 chat service.
-EmbeddingGemma's image/audio encoders are not used for indexing.
+gpt-oss uses `reasoningEffort: low` and the OpenAI tool/reasoning parsers.
+`preserveToolReasoning: true` retains provider reasoning internally between tool
+calls; reasoning is not added to the user-visible answer text.
+`separateToolSchema: true` separates tool decisions from final JSON grammar
+enforcement so retrieval is not suppressed by the schema constraint.
+It is text-only,
+so visual inspection stays disabled. EmbeddingGemma's image/audio encoders are
+not used by the application; multimodal indexing requires separate application work.
 
 The inference chart pins the upstream vLLM image, without an engine build.
 Its missing audio dependencies use hash-locked upstream wheels on a separate
 read-only runtime volume; verified copies on the model PVC support offline restarts.
 Every release must pass the upstream vulnerability, file inventory and audio
-dependency checks. Earlier profile evidence does not validate this Gemma 4 stack. The new profile
-has configuration/contract checks; real GPU execution, memory capacity and
-Japanese multimodal quality must pass site acceptance before production use. See the [inspection evidence](../verification/upstream-vllm-inspection.json)
-and [profile installation](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#recommended-gemma-4--embeddinggemma-2--whisper-profile).
+dependency checks. All three pinned models passed sequential L40S protocol tests;
+validate capacity and driver compatibility on the deployment hardware. See the [inspection evidence](../verification/upstream-vllm-inspection.json)
+and [profile installation](https://github.com/videoq-jp/videoq/blob/main/charts/videoq-inference/README.md#recommended-gpt-oss--embeddinggemma-2--whisper-profile).
 
 Whisper uses **whisper.cpp on CPU** and **vLLM on NVIDIA GPUs**. Both are
 accessed through a private gateway that performs VAD and audio normalization,
@@ -116,8 +110,7 @@ that enforces NetworkPolicy is required for the provided network restrictions.
 Changing embedding weights, quantization, pooling or preprocessing requires
 rebuilding existing scene embeddings, even when both models output 1536 dimensions.
 The llama.cpp CPU recipe uses native 1536-dimensional gte-Qwen2 embeddings;
-the legacy Qwen vLLM recipe uses Matryoshka output set to 1536 dimensions.
-The recommended Gemma profile uses EmbeddingGemma 2 at 768 dimensions.
+vLLM uses Qwen3-Embedding-4B with Matryoshka output set to 1536 dimensions.
 The on-prem edition disables external mail, Google login, Stripe and
 YouTube/SearchAPI; administrators issue local accounts and private setup links.
 
@@ -216,9 +209,9 @@ acceptance and vulnerability evaluation.
 
 ## One RTX 4090 workstation
 
-The [RTX 4090 guide](rtx4090.md) now uses Gemma 4 26B A4B, EmbeddingGemma 2 and
-Whisper with **40 GiB CPU weight offload and 128 GiB host RAM**. Select
-`rtx4090-gemma4-embeddinggemma.yaml`; it is separate from the three-exclusive-GPU
-profile above. This candidate has rendered configuration checks, but its GPU
-startup, co-residency, multimodal quality and latency still require site acceptance.
-Earlier GPT-OSS acceptance records remain historical evidence only.
+The [RTX 4090 guide](rtx4090.md) covers GPT-OSS 20B, EmbeddingGemma 2 and Whisper
+on one GPU, with separate CUDA Pods. The native installer provisions the full
+application and prompts for an administrator. Simultaneous residency and real
+inference smoke checks passed on Ubuntu 22.04.5; full workload/performance
+qualification remains separate. The existing `vllm-nvidia` profile still requires
+three exclusive GPUs, and the alternative Qwen sharing profile remains a candidate.

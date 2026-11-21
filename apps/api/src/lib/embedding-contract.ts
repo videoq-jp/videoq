@@ -3,8 +3,8 @@ import { EMBEDDING_DIMENSIONS } from "./embedding-dimensions";
 
 export { EMBEDDING_DIMENSIONS };
 
-export type EmbeddingConfig = { provider: "openai" | "workers-ai"; model: string; profile?: "embeddinggemma2" };
-export type EmbeddingSettings = { AI_PROVIDER?: string; EMBEDDING_PROVIDER?: string; EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
+export type EmbeddingConfig = { provider: "openai"; model: string; profile?: "embeddinggemma2" };
+export type EmbeddingSettings = { EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
 
 export const embeddingDimensions = (config?: EmbeddingConfig): number => config?.profile === "embeddinggemma2" ? 768 : EMBEDDING_DIMENSIONS;
 export const embeddingTable = (config: EmbeddingConfig): string => config.profile === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings";
@@ -45,12 +45,6 @@ export class EmbeddingValidationError extends LlmProviderError {
 
 export function resolveEmbeddingConfig(env: EmbeddingSettings): EmbeddingConfig {
   const profile = env.EMBEDDING_PROFILE?.trim() || "openai";
-  if ((env.EMBEDDING_PROVIDER || env.AI_PROVIDER) === "workers-ai") {
-    if (profile !== "embeddinggemma2" || env.EMBEDDING_MODEL !== "@cf/google/embeddinggemma-2") {
-      throw new EmbeddingConfigurationError("EMBEDDING_CONFIG_INVALID", "Workers AI requires the EmbeddingGemma 2 profile/model.");
-    }
-    return { provider: "workers-ai", model: env.EMBEDDING_MODEL, profile };
-  }
   if (!["openai", "embeddinggemma2"].includes(profile)) {
     throw new EmbeddingConfigurationError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROFILE must be openai or embeddinggemma2.");
   }

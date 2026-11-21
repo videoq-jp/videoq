@@ -5,10 +5,6 @@ description: Macと空のRTX 4090サーバーから、導入・動作確認・�
 
 # 後輩向け：RTX 4090 1枚のVideoQを空のサーバーから立ち上げる
 
-新しいモデル構成では**RTX 4090一枚＋RAM 128GiB**を用意します。Gemma 4のBF16重みを
-最大40GiB CPUメモリへオフロードする候補です。旧GPT-OSSでの記録はGemmaの動作証明ではありません。
-この手順を始める前に[4090の構成・移行・受け入れ条件](rtx4090.md)を確認してください。
-
 対象は、MacからSSH接続できる専用Ubuntuサーバーを管理する人です。AnsibleやKubernetesの経験は前提にしません。
 研究室のLAN内で使う場合と、Vast.aiで練習する場合を分けて説明します。
 **コード枠は一行ずつ実行し、コマンドが失敗したら次のコマンドには進まないでください。** Pythonの`PY`で囲まれた部分は、開始行から終了行までをまとめて貼り付けます。
@@ -46,7 +42,7 @@ GitHubアカウント、GitHubへの書き込み権限、公開の採用版登�
 
 | 項目 | 用意するもの |
 | --- | --- |
-| サーバー | 専用Ubuntu 22.04/24.04 amd64、RTX 4090 24GB 1枚、RAM 128GiB、systemdが動くVMまたは実機 |
+| サーバー | 専用Ubuntu 22.04/24.04 amd64、RTX 4090 24GB 1枚、systemdが動くVMまたは実機 |
 | メモリー | 64GB程度を推奨。今回の検証VMで実際に見えた容量は約49GiB |
 | ディスク | 初期検証は約97GiBで実施。継続運用は200GB以上など、動画・モデル・旧イメージ・バックアップ分の余裕を用意する |
 | 管理用PC | この手順はMac、Git、Python 3.14、Helm、Google Chromeを使用 |
@@ -135,11 +131,11 @@ Vastの例ではHostを`videoq-practice`、Userを`root`、PortとHostNameをVas
 IdentityFileは実際に登録した鍵です。最初の接続では、管理者・提供元から得たSSHホスト鍵と照合します。
 
 ```bash
-ssh "$VIDEOQ_HOST" 'hostname; nvidia-smi; free -h; sudo -n true; ip -4 -brief address; df -h /'
+ssh "$VIDEOQ_HOST" 'hostname; nvidia-smi; sudo -n true; ip -4 -brief address; df -h /'
 ansible all -i "$VIDEOQ_HOST," -m ansible.builtin.ping
 ```
 
-**成功条件**：RTX 4090が1枚表示され、RAMが128GiBあり、sudoとAnsible pingが成功する。
+**成功条件**：RTX 4090が1枚表示され、sudoとAnsible pingが成功する。
 `ip`の結果でVideoQ用IPが実際に割り当てられていることも確認します。
 Python interpreter discoveryの警告だけなら失敗ではありません。表示されたPythonパスを次のinventoryに固定します。
 GPUドライバーが無い実機の準備は[詳細手順](https://github.com/videoq-jp/videoq/blob/main/docs/guides/lab-gitops.md#2-ansible-で初回準備する)を参照してください。

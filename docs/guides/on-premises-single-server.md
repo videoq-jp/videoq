@@ -22,7 +22,7 @@ has one replica; backups on another host are required for host-loss recovery.
 | Repository checkout | Installer and configuration templates |
 | Verified `verified-images.json` | Pin the reviewed application images |
 | Public application and storage URLs | Browser login, upload and playback |
-| Existing private Gemma 4, EmbeddingGemma 2 and Whisper services | Chat/vision, 768d embeddings and transcription |
+| OpenRouter key or existing local inference services | Chat, embeddings and transcription |
 
 Use Python 3.9+, Docker Engine and Docker Compose on the Linux server. The installer generates a separate private
 directory, uses production application images pinned by digest, generates unique
@@ -56,18 +56,14 @@ cd videoq
 ```
 
 Run all following commands from the repository root. Keep the verified release
-and generated configuration outside the checkout. New installations default to local GPU inference. Provision the private
-services using the [Gemma 4 profile](local-inference.md) first, then supply their
-OpenAI-compatible base URLs. Compose does not provision GPU inference servers.
-The explicit `--ai hosted` option is retained only for legacy installations.
+and generated configuration outside the checkout. For the default hosted AI
+configuration, the installer prompts for an OpenRouter key without echoing it.
+Local AI connection options are described below.
 
 ```sh
 python3 scripts/onprem/videoq.py --directory /secure/videoq-server install \
   --images /secure/videoq-release/verified-images.json \
   --url https://videoq.example.edu --storage-url https://s3.example.edu \
-  --chat-url http://private-chat:8000/v1 \
-  --embedding-url http://private-embedding:8000/v1 \
-  --transcription-url http://private-whisper:8080/v1 \
   --username site_admin --email admin@example.com
 ```
 
@@ -84,10 +80,7 @@ For separate review of the generated configuration:
 ```sh
 python3 scripts/onprem/videoq.py --directory /secure/videoq-server init \
   --images /secure/videoq-release/verified-images.json \
-  --url https://videoq.example.edu --storage-url https://s3.example.edu \
-  --chat-url http://private-chat:8000/v1 \
-  --embedding-url http://private-embedding:8000/v1 \
-  --transcription-url http://private-whisper:8080/v1
+  --url https://videoq.example.edu --storage-url https://s3.example.edu
 python3 scripts/onprem/videoq.py --directory /secure/videoq-server doctor
 python3 scripts/onprem/videoq.py --directory /secure/videoq-server start
 python3 scripts/onprem/videoq.py --directory /secure/videoq-server status
@@ -158,17 +151,16 @@ as the application Helm overlays. Use them with `install` or `init`. Provide `--
 `--transcription-url` with their `/v1` paths. These presets connect to existing
 private inference services; they do not provision models or GPU drivers. See
 [local inference](local-inference.md) for the model-serving requirements. The default
-models match `local-ai-gemma4.yaml` for GPU and `local-ai-llamacpp.yaml` for CPU; explicit
+models match `charts/videoq/examples/local-ai-{llamacpp,vllm}.yaml`; explicit
 `--chat-model` and `--embedding-model` override them. `VIDEOQ_LOCAL_AI_KEY` supplies
 a shared provider key; absent a key, the preset uses `local-inference`.
 
-Local presets remove hosted credentials and endpoints. GPU Gemma enables visual
-Q&A; the legacy CPU text profile disables it.
+Local presets remove hosted credentials and endpoints and disable visual Q&A.
 For an existing dataset, changing the embedding model requires reindexing, even
 when the dimensions match. This CLI does not install a host firewall or enforce
 private-only egress.
 
-Only explicit legacy `--ai hosted` prompts for an OpenRouter key without echo. Automation can provide it
+The OpenRouter key is prompted without terminal echo. Automation can provide it
 through `VIDEOQ_OPENROUTER_API_KEY`. Keep the generated directory and backups
 private: `runtime.env` includes the encryption key needed to recover user secrets.
 Initialization refuses an existing destination and never silently replaces keys.

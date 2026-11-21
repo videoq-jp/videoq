@@ -106,6 +106,40 @@ class GrypeScan(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     scan.main()
 
+    def test_local_openssl_backports_require_pinned_patch_bytes_and_exact_package_revision(self):
+        import hashlib
+        root = pathlib.Path(__file__).resolve().parents[2]
+        directory = root / 'apps/security/openssl'
+        manifest = json.loads((directory / 'upstream-fixes.json').read_text())
+        recipe = (directory / 'APKBUILD').read_text()
+        self.assertEqual(len(manifest), 5)
+        for name, provenance in manifest.items():
+            data = (directory / name).read_bytes()
+            self.assertEqual(hashlib.sha512(data).hexdigest(), provenance['sha512'])
+            self.assertTrue(data.startswith(('From ' + provenance['commit'] + ' ').encode()))
+            self.assertIn(provenance['sha512'] + '  ' + name, recipe)
+        self.assertIn('pkgrel=100\n', recipe)
+        vex = directory / 'backports.openvex.json'
+        for version, cve, assessed in [
+            ('3.5.9-r100', 'CVE-2026-124709', True),
+            ('3.5.9-r100', 'CVE-2026-107493', True),
+            ('3.5.9-r1', 'CVE-2026-124709', False),
+            ('3.5.9-r100', 'CVE-2026-other', False),
+        ]:
+            sbom, raw = fixture()
+            artifact = sbom['artifacts'][0]
+            artifact.update(name='libssl3', version=version, type='apk',
+                purl=f'pkg:apk/alpine/libssl3@{version}?arch=x86_64&distro=alpine-3.24.4')
+            raw['matches'][0]['artifact'] = copy.deepcopy(artifact)
+            raw['matches'][0]['vulnerability']['id'] = cve
+            result = scan.normalize(sbom, raw, [str(vex)])['Results'][0]
+            self.assertEqual(not result['Vulnerabilities'], assessed)
+        for component in ['api', 'web']:
+            docker = (root / f'apps/{component}/Dockerfile').read_text()
+            self.assertIn('MAKEFLAGS=-j4 abuild -F -d -r', docker)
+            self.assertNotIn('!check', recipe)
+            self.assertIn('COPY --from=openssl-security /security-packages', docker)
+
     def test_alpine_openssl_backport_assessment_never_covers_old_or_unrelated_packages(self):
         vex = pathlib.Path(__file__).resolve().parents[2] / 'apps/api/security/alpine-openssl.openvex.json'
         policy = json.loads(vex.read_text())

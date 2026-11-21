@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "sts:GetWebIdentityToken",
+    "Resource": "*",
+    "Condition": {
+      "ForAllValues:StringEquals": { "sts:IdentityTokenAudience": ["https://openrouter.ai"] },
+      "StringEquals": { "sts:SigningAlgorithm": "RS256" },
+      "NumericLessThanEquals": { "sts:DurationSeconds": "900" }
+    }
+  }]
+}

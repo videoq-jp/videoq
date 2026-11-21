@@ -78,13 +78,6 @@ class AnswerChatModel extends ChatOpenAICompletions {
       }
       return this.completionWithRetry({ ...request, tools: undefined, tool_choice: undefined, parallel_tool_calls: undefined }, options);
     }
-    if (this.separateToolSchema && request.response_format?.type === "json_schema") {
-      // Constrained decoding alone does not tell local models the required keys.
-      // Supply the schema as an instruction too, avoiding whitespace-only loops.
-      request = { ...request, messages: [{ role: "system", content:
-        `Return only JSON matching this schema. Include every required property, including empty arrays. Schema: ${JSON.stringify(request.response_format.json_schema.schema)}`,
-      }, ...request.messages] };
-    }
     // The SDK's .parse() tries to parse nonempty tool preambles as final JSON.
     // Keep native schema enforcement on the request, and let providerStrategy
     // validate terminal responses after the agent has processed tool calls.
@@ -158,7 +151,7 @@ export function createChatModel(
   env: Bindings,
   opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "conversation_summary"; callbacks?: Callbacks },
 ): ChatOpenAICompletions {
-  const { apiKey, baseURL, fetch } = resolveLlmConnection(env);
+  const { apiKey, baseURL } = resolveLlmConnection(env);
   const model = providerModel(env.LLM_MODEL || DEFAULT_LLM_MODEL, baseURL);
   // useResponsesApi: false でも ChatOpenAI はモデル名で /responses を選ぶ。
   // 互換サーバーでも /chat/completions を使うため、専用クラスで固定する。
@@ -166,7 +159,7 @@ export function createChatModel(
   const chatModel = new AnswerChatModel({
     model,
     apiKey,
-    configuration: { baseURL, fetch },
+    configuration: { baseURL },
     temperature: 0,
     reasoning: reasoningEffort ? { effort: reasoningEffort } : undefined,
     // Send the field explicitly for OpenRouter slugs and custom compatible aliases.

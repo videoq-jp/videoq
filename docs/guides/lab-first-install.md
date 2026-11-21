@@ -5,10 +5,6 @@ description: Start with an empty RTX 4090 host and follow the lab installation, 
 
 # Lab setup walkthrough
 
-現在のGemma 4構成では、RTX 4090一枚に加え**RAM 128GiB**を用意します。
-40GiBのCPUオフロードを使う候補で、Gemmaの実機受け入れは未完了です。
-過去のGPT-OSS検証との違い、モデル・移行条件は[4090手順](rtx4090.md)を先に確認してください。
-
 The complete step-by-step manual is currently available in Japanese:
 
 **[Open the Japanese lab installation manual](https://docs.videoq.jp/ja/guides/lab-first-install/).**

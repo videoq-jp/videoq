@@ -1,0 +1,339 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/videoq-jp/videoq/security/vex/openssl-local-backports-2026-11-21",
+  "author": "VideoQ maintainers",
+  "timestamp": "2026-11-21T07:30:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-88822"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-88823"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95691"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95692"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-107496"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-124709"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-107493"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-107494"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-121482"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-84786"
+      },
+      "products": [
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.3"
+        },
+        {
+          "@id": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=aarch64&distro=alpine-3.24.4"
+        }
+      ],
+      "status": "fixed",
+      "action_statement": "VideoQ builds the local 3.5.9-r100 package using apps/security/openssl/APKBUILD. The Alpine 5e6d18a5ba2eec060b34a671a43ee54a5e72714a recipe and all existing backports are retained; five additional checksum-pinned upstream commits are recorded in upstream-fixes.json. All patches and the OpenSSL source archive are checksum-verified by abuild; the OpenSSL test suite runs before signing these APKs. This statement covers only the locally built r100 identities, never upstream r0/r1 or unrelated CVEs. See apps/security/openssl/README.md."
+    }
+  ]
+}
