@@ -41,6 +41,9 @@ withHelm("private local inference deployment", () => {
     expect(whisper.containers[1].resources.requests.cpu).toBe("2");
     expect(whisper.containers[0].volumeMounts[0].readOnly).toBe(true);
     const policy = resources.find(r => r.kind === "NetworkPolicy");
+    expect(policy.spec.ingress[0].from[0].podSelector.matchExpressions).toContainEqual({
+      key: "app.kubernetes.io/component", operator: "In", values: ["api", "worker", "background-worker"],
+    });
     expect(policy.spec.ingress[0].ports.map((port: { port: number }) => port.port).sort()).toEqual([8000, 8080]);
     expect(policy.spec.ingress[0].from[0]).toMatchObject({
       namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "videoq" } },

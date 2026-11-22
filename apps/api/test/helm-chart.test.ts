@@ -12,6 +12,19 @@ const settings = ["--set", "publicUrl=https://videoq.example.edu", "--set", "sto
 const withHelm = helm ? describe : describe.skip;
 
 withHelm("on-prem Helm distribution", () => {
+  it("renders the actual lifecycle lab values with dedicated TypeScript worker queues", () => {
+    const script = fileURLToPath(new URL("../../../.github/scripts/onprem-lab.py", import.meta.url));
+    const values = spawnSync("python3", ["-c", "import importlib.util,json,sys; s=importlib.util.spec_from_file_location('lab',sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); print(json.dumps(m.lab_values()))", script], { encoding: "utf8" });
+    expect(values.status, values.stderr).toBe(0);
+    const rendered = spawnSync(helm!, ["template", "videoq", chart, "-f", "-"], { input: values.stdout, encoding: "utf8" });
+    expect(rendered.status, rendered.stderr).toBe(0);
+    const resources = parseAllDocuments(rendered.stdout).filter(doc => doc.contents).map(doc => doc.toJSON());
+    expect(resources.find(row => row.metadata.name === "videoq-background-worker").spec.template.spec.containers[0].command).toEqual(["node", "dist/background-worker.mjs"]);
+    const config = resources.find(row => row.kind === "ConfigMap").data;
+    expect(new Set([config.SQS_QUEUE_URL, config.SQS_SEARCH_QUEUE_URL, config.SQS_ACCOUNT_QUEUE_URL]).size).toBe(3);
+    expect(config.SQS_SEARCH_QUEUE_URL).toContain("/videoq-search");
+    expect(config.SQS_ACCOUNT_QUEUE_URL).toContain("/videoq-account");
+  });
   function render(...extra: string[]) {
     const result = spawnSync(helm!, ["template", "test", chart, ...settings, ...extra], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);

@@ -32,7 +32,7 @@
     ]
   },
   "helm": {
-    "passed": 9,
+    "passed": 10,
     "lint": true
   },
   "onpremInstallerUnitTests": {
@@ -49,5 +49,20 @@
     "queuesVerified": 3,
     "distinctDeadLetterQueues": true,
     "sharedQueueConfigurationRejected": true
+  },
+  "kindLifecycleFixtureRepair": {
+    "status": "fixed; full lifecycle CI rerun required",
+    "failedCiJob": "https://github.com/videoq-jp/videoq/actions/runs/45024592485/job/137214878217",
+    "cause": "lab Helm values and ElasticMQ fixture still used only the media queue",
+    "dedicatedQueueUrlsPrepared": true,
+    "realElasticMqFixtureQueuesVerified": 3,
+    "visibilitySeconds": 960,
+    "separateDeadLetterQueues": true,
+    "backgroundWorkerStoppedBeforeBackup": true,
+    "localInferenceNetworkPolicyAllowsBackgroundWorker": true,
+    "helmAndInferenceTestsPassed": 28,
+    "cpuAcceptanceSafetyTestsPassed": 17,
+    "bothChartsLintPassed": true,
+    "temporaryQueueContainerRemoved": true
   }
 }
