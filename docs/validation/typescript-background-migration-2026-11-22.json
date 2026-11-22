@@ -272,10 +272,13 @@
     "schemaChanged": false,
     "testVideo": {
       "id": 537,
-      "status": "indexing",
+      "status": "completed",
       "vectorUpsertAcceptedAt": "2026-11-22T16:08:00.251Z",
-      "completed": false
+      "completed": true,
+      "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
+      "lastErrorCode": ""
     },
-    "outstanding": "Drain existing vector task backlog, verify video completion, rerun maintenance deployment/smoke, then restore ordinary CD."
+    "outstanding": "Maintenance recovery deployment/smoke is running; ordinary CD and transport cutover remain unverified.",
+    "recoveryWorkflowRun": 45042542268
   }
 }
