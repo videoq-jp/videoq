@@ -395,7 +395,9 @@
     "accountDeletion": "completed",
     "dedicatedCredentialPauseResumeVerified": true,
     "temporaryResourcesDeleted": true,
-    "productionCutoverVerified": false
+    "productionCutoverVerified": false,
+    "automaticSchedulerEvidence": "cloudflare-scheduler-background-2026-11-22.json",
+    "automaticSchedulerCompleted": true
   },
   "cloudflareBindingsRollout": {
     "pullRequest": 1603,

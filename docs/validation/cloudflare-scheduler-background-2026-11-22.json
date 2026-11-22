@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-22",
+  "runtime": "Actual Cloudflare Queues, Workflows and TaskScheduler Durable Object alarm with isolated remote D1/R2/Vectorize and real Workers AI",
+  "applicationSourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+  "model": "@cf/google/embeddinggemma-2",
+  "workflowStatus": "complete",
+  "elapsedSeconds": 174.639,
+  "jobStatus": "completed",
+  "videoStatus": "completed",
+  "scenes": [
+    {
+      "count": 1,
+      "dimensions": 768
+    }
+  ],
+  "pendingVectorTasks": 0,
+  "manualSceneSynchronizationInvoked": false,
+  "manualAlarmTriggerInvoked": false,
+  "durableObjectDeletedThroughMigration": true,
+  "temporaryResourcesDeleted": true,
+  "productionDataChanged": false,
+  "limitations": [
+    "Small synthetic subtitle; no production media processing or administrator UI exercised.",
+    "Production-specific IAM and maintenance ownership/failure recovery remain unverified."
+  ]
+}
