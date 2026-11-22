@@ -211,5 +211,27 @@
     "codeBuildControlFlagPresent": false,
     "productionControlEnabled": false,
     "nextRequirement": "Provision and verify the dedicated Cloudflare credential through the controlled operator process, then review and approve the infrastructure opt-in before production transport cutover."
+  },
+  "queuePreparationLiveAttempt": {
+    "runId": 45032757041,
+    "url": "https://github.com/videoq-jp/videoq/actions/runs/45032757041",
+    "headSha": "4c5d19e1890c749077f322598bf07b78300dcb6e",
+    "approval": "explicit user approval submitted; production-infra gate accepted",
+    "conclusion": "failure",
+    "failure": "Cloudflare queues request returned HTTP 403 during initial list; create loop not reached",
+    "credentialSource": "production-infra/CLOUDFLARE_INFRA_TOKEN",
+    "nextRequirement": "Verify target-account scope and Queues Write permission, rotate the environment secret through the documented process, then rerun queue preparation with its manual gate.",
+    "queuesPrepared": false
+  },
+  "pythonCleanupCi": {
+    "pullRequest": 1602,
+    "headCommit": "a88a17a1",
+    "runId": 45031283150,
+    "ciSuccess": "success",
+    "lifecycleJobId": 137235268216,
+    "lifecycleConclusion": "success",
+    "lifecycleCompletedAt": "2026-11-22T15:17:11Z",
+    "productionCleanupApplied": false,
+    "mergePrerequisite": "Verified Cloudflare cutover, old queue drain and retirement of background Lambdas."
   }
 }
