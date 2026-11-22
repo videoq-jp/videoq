@@ -249,7 +249,6 @@ jobs:
               - '.github/scripts/aws-canonical-migration.cjs'
               - '.github/scripts/background-migration-fence.cjs'
               - '.github/scripts/background-maintenance.cjs'
-              - '.github/scripts/background-maintenance-verification.cjs'
               - '.github/scripts/background-maintenance-store.cjs'
               - '.github/scripts/background-maintenance-store.integration.cjs'
               - '.github/scripts/background-maintenance-transport.cjs'

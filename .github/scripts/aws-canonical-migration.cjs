@@ -7,8 +7,7 @@ const m=require('./neon-admin.cjs');
 const {migrationTarget}=require('./migration-backend.cjs');
 const {readDeploymentSettings,assertDeploymentPreservesState}=require('./protect-api-deployment.cjs');
 const {assertBackgroundMigrationFence,createBackgroundMigrationReadTransport,backgroundBindingsPresent}=require('./background-migration-fence.cjs');
-const {createCanonicalBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
-const {verifyBackgroundMaintenance}=require('./background-maintenance-verification.cjs');
+const {createCanonicalBackgroundMaintenance,verifyBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
 const ACCOUNT='12daec56fdba43f677f2766ee26a5a39';
 const PARAMETER='/videoq/security/prod/d1-migration';
 async function runCanonicalMigration({env=process.env,root=resolve('migration-source'),operatorRoot=resolve(__dirname,'../..'),aws=m.aws,readParameter=m.readParameter,execute=execFileSync,fetcher=fetch,readConfig,now=Date.now,sleep,readMigrations=()=>readdirSync(join(root,'apps/api/drizzle-d1')).filter(n=>n.endsWith('.sql')).sort()}={}) {

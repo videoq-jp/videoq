@@ -7,8 +7,7 @@ const {mkdtempSync,writeFileSync,rmSync}=require('node:fs');
 const {tmpdir}=require('node:os');
 const {join}=require('node:path');
 const {createBackgroundMaintenanceStore}=require('./background-maintenance-store.cjs');
-const {createCanonicalBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
-const {verifyBackgroundMaintenance}=require('./background-maintenance-verification.cjs');
+const {createCanonicalBackgroundMaintenance,verifyBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
 async function verifyBackgroundStoreTransactions({endpoint}){
  const url=new URL(endpoint);
  assert.ok(url.protocol==='http:'&&url.hostname==='127.0.0.1'&&Number(url.port)>=1024&&url.pathname==='/'&&!url.username&&!url.password&&!url.search&&!url.hash,'Only a loopback DynamoDB Local endpoint is allowed');
