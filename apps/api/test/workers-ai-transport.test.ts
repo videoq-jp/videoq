@@ -22,8 +22,11 @@ describe("Workers AI native transport", () => {
       tool_calls: [{ id: "call-search", type: "function", function: { name, arguments: args } }],
     } }], usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
   });
-  it.each([false, true])("repairs the observed null before LangChain validates and executes search (stream=%s)", async streaming => {
-    const run = vi.fn(async () => Response.json(toolCompletion('{"query":"nullについて SIFT","video_ids":"null"}')));
+  it.each([
+    [false, "null"], [true, "null"], [false, "None"], [true, "None"],
+  ] as const)("repairs the observed absent selection before LangChain executes search (stream=%s, value=%s)", async (streaming, absent) => {
+    const query = "nullとNoneについて SIFT";
+    const run = vi.fn(async () => Response.json(toolCompletion(JSON.stringify({ query, video_ids: absent }))));
     const ledger = new AnswerCostLedger();
     const model = createChatModel({ AI: { run }, LLM_MODEL: WORKERS_AI_LLM_MODEL,
       LLM_SEPARATE_TOOL_SCHEMA: "true" } as Bindings, { timeoutMs: 1000, costLedger: ledger });
@@ -37,15 +40,18 @@ describe("Workers AI native transport", () => {
     const definition = createSceneSearchTool({ search, close: async () => undefined }, [42]);
     const args = definition.schema.parse(calls[0].args);
     await definition.invoke(args, { signal: new AbortController().signal });
-    expect(search).toHaveBeenCalledWith("nullについて SIFT", undefined, expect.any(AbortSignal));
+    expect(search).toHaveBeenCalledWith(query, undefined, expect.any(AbortSignal));
     expect(ledger.calls).toMatchObject([{ status: "completed", usage: { total_tokens: 18 } }]);
   });
   it.each([
     ['{"query":"null","video_ids":null}', "search_scenes"],
     ['{"query":"null","video_ids":[42]}', "search_scenes"],
     ['{"query":"null","video_ids":"NULL"}', "search_scenes"],
+    ['{"query":"None","video_ids":"none"}', "search_scenes"],
+    ['{"query":"None","video_ids":" None "}', "search_scenes"],
     ['{"query":"null","video_ids":"[]"}', "search_scenes"],
     ['{"query":"null","video_ids":"null"}', "other_tool"],
+    ['{"query":"None","video_ids":"None"}', "other_tool"],
     ['not JSON', "search_scenes"],
   ])("preserves unrelated or invalid arguments: %s (%s)", async (args, name) => {
     const completion = toolCompletion(args, name);

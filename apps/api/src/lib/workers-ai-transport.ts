@@ -2,10 +2,12 @@ import type OpenAI from "openai";
 
 export const WORKERS_AI_LLM_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 
-/** Workers AI's Gemma auto-tool parser turns bare null into the string "null".
+/** Workers AI's Gemma auto-tool responses contain string "null" / "None"
+ * for the absent video selection instead of JSON null.
  * Repair only the known nullable scene-search field, before SDK/LangChain
  * validation. Never coerce query text, arbitrary tools or other invalid values.
- * https://github.com/vllm-project/vllm/pull/39679
+ * Remove after the serving fix is verified across responses:
+ * https://github.com/cloudflare/ai/issues/695
  */
 function repairSceneSearchNull(completion: OpenAI.Chat.Completions.ChatCompletion): void {
   for (const choice of completion.choices ?? []) {
@@ -15,7 +17,7 @@ function repairSceneSearchNull(completion: OpenAI.Chat.Completions.ChatCompletio
       try { args = JSON.parse(call.function.arguments); }
       catch { continue; } // Leave malformed arguments to the existing validator.
       if (args && typeof args === "object" && !Array.isArray(args) &&
-          "video_ids" in args && args.video_ids === "null") {
+          "video_ids" in args && (args.video_ids === "null" || args.video_ids === "None")) {
         call.function.arguments = JSON.stringify({ ...args, video_ids: null });
       }
     }
