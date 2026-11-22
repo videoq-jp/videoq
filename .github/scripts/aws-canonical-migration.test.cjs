@@ -42,6 +42,28 @@ test('ownership and pause are checked again after child completion',async()=>{
   const f=fixture();f.options.execute=(...args)=>{f.calls.push(args);mutate(f);};await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,1);
  }
 });
+test('bound Cloudflare workers cannot migrate with only an API pause and caller acknowledgement',async()=>{
+ const f=fixture();f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+ await assert.rejects(runCanonicalMigration(f.options),/BACKGROUND_QUEUE_LIST/);assert.equal(f.calls.length,0);
+});
+test('migration verifies paused background resources before and after schema execution',async()=>{
+ for(const reopen of [false,true]){
+  const f=fixture();f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+  const queues=['account','search'].map((kind,i)=>({queue_id:String(i+1).repeat(32),queue_name:`videoq-${kind}-prod`,modified_on:'2020-01-01T00:00:00Z',settings:{message_retention_period:345600,delivery_paused:true},consumers:[{type:'worker',script_name:'videoq-api',dead_letter_queue:`videoq-${kind}-dlq-prod`}]}));
+  const workflows=[{id:'job-one',version_id:'11111111-2222-4333-8444-555555555555',status:'paused'}];
+  f.options.fetcher=async(url,options)=>{
+   assert.equal(options.method,'GET');
+   if(url.includes('/workers/'))return Response.json({success:true,result:f.settings});
+   if(url.includes('/workflows/'))return Response.json({success:true,result:workflows});
+   if(url.includes('/queues?'))return Response.json({success:true,result:queues});
+   const row=queues.find(row=>url.endsWith('/'+row.queue_id));assert.ok(row);return Response.json({success:true,result:row});
+  };
+  f.options.execute=(...args)=>{f.calls.push(args);if(reopen)workflows[0].status='running';};
+  if(reopen)await assert.rejects(runCanonicalMigration(f.options),/WORKFLOW_PAUSE_REQUIRED/);
+  else assert.equal((await runCanonicalMigration(f.options)).application_paused,true);
+  assert.equal(f.calls.length,1);
+ }
+});
 
 function noOpFixture(names=['0000_initial.sql']){
  const f=fixture();f.env.MAINTENANCE_WRITERS_STOPPED='false';f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false});f.production.vars.MIGRATION_TRAFFIC_STATE='running';

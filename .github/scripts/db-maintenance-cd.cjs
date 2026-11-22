@@ -12,7 +12,8 @@ function relevant(path) {
     .some(name => path === '.github/operations-tools/' + name)) return true;
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
-  if (['.github/scripts/aws-canonical-migration.cjs','.github/scripts/migration-backend.cjs','.github/scripts/protect-api-deployment.cjs'].includes(path)) return true;
+  if (['.github/scripts/aws-canonical-migration.cjs','.github/scripts/migration-backend.cjs','.github/scripts/protect-api-deployment.cjs',
+    '.github/scripts/background-migration-fence.cjs','.github/scripts/background-queue-admission.cjs','.github/scripts/background-workflow-admission.cjs'].includes(path)) return true;
   if (['.github/scripts/cutover-api-traffic.cjs','.github/scripts/cutover-owned-api-traffic.cjs'].includes(path)) return true;
   if (path === '.github/scripts/cutover-consumer-control.cjs') return true;
   if (path === '.github/scripts/cutover-consumer-prepare.cjs') return true;

@@ -14,6 +14,31 @@ This implementation does not provision a credential, apply Terraform, pause prod
 
 A D1 migration failure keeps the application paused and fails the existing state-machine execution. Do not treat a failed execution or partially applied migration history as permission to resume. Inspect the fixed migration history and complete/recover the operation while preserving writer exclusion.
 
+## Cloudflare background workers
+
+When queue/Workflow bindings are present (even while job routing is still `sqs`),
+schema-changing migrations also verify the fixed production account/search queues
+and search Workflow before and after the Wrangler child. Both queue consumers must
+belong to `videoq-api`, retain their expected DLQs, and have delivery paused. The
+queue's last modification must be at least 16 minutes old: the documented
+[consumer wall-time limit](https://developers.cloudflare.com/queues/platform/limits/)
+is 15 minutes, with one additional minute allowed before observing Workflows.
+All search Workflow instances must be paused or terminal; `waitingForPause`,
+sleeping, queued and rollback executions are not stopped. Unknown states and read
+failures refuse the migration. These checks do not pause or resume resources.
+
+The migration token additionally needs read access to Queues and Workflow execution
+metadata. Its transport permits only fixed queue metadata and the fixed Workflow
+instance listing; it cannot retrieve instance parameters/output or write resources.
+Provision those read permissions through the existing controlled credential process
+before binding deployment. Ordinary code-only CD with an exact migration ledger
+continues to perform no schema write and does not require a forced background pause.
+
+Operators must keep deployment automation and other control-plane writers excluded
+throughout the maintenance window. A timestamp/read check is evidence under that
+exclusion, not a substitute for it. The recoverable pause/restore components still
+need a durable owned operator execution path before production transport cutover.
+
 
 ## Verification
 

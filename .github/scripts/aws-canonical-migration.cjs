@@ -6,6 +6,7 @@ const {execFileSync}=require('node:child_process');
 const m=require('./neon-admin.cjs');
 const {migrationTarget}=require('./migration-backend.cjs');
 const {readDeploymentSettings,assertDeploymentPreservesState}=require('./protect-api-deployment.cjs');
+const {assertBackgroundMigrationFence,createBackgroundMigrationReadTransport}=require('./background-migration-fence.cjs');
 const ACCOUNT='12daec56fdba43f677f2766ee26a5a39';
 const PARAMETER='/videoq/security/prod/d1-migration';
 async function runCanonicalMigration({env=process.env,root=resolve('migration-source'),operatorRoot=resolve(__dirname,'../..'),aws=m.aws,readParameter=m.readParameter,execute=execFileSync,fetcher=fetch,readConfig,readMigrations=()=>readdirSync(join(root,'apps/api/drizzle-d1')).filter(n=>n.endsWith('.sql')).sort()}={}) {
@@ -65,6 +66,8 @@ async function runCanonicalMigration({env=process.env,root=resolve('migration-so
   }
   const pause=settings.bindings.filter(binding=>binding.name==='MIGRATION_TRAFFIC_STATE');
   if(pause.length!==1||pause[0].type!=='plain_text'||pause[0].text!=='paused') throw Error('D1_MIGRATION_REQUIRES_PAUSED_API');
+  const backgroundRequest=createBackgroundMigrationReadTransport({token:secret.CLOUDFLARE_API_TOKEN,fetcher});
+  await assertBackgroundMigrationFence({production:target.production,settings,request:backgroundRequest});
   ownership();
   const childEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>env[k]).map(k=>[k,env[k]]));
   Object.assign(childEnv,cf,{CI:'true',WRANGLER_SEND_METRICS:'false'});
@@ -75,6 +78,7 @@ async function runCanonicalMigration({env=process.env,root=resolve('migration-so
   const after=await readDeploymentSettings(cf,fetcher);
   assertDeploymentPreservesState(after,target.production);
   if(after.bindings.find(binding=>binding.name==='MIGRATION_TRAFFIC_STATE')?.text!=='paused') throw Error('D1_MIGRATION_PAUSE_CHANGED');
+  await assertBackgroundMigrationFence({production:target.production,settings:after,request:backgroundRequest});
   return {backend:'d1',source_sha:source,application_paused:true};
 }
 module.exports={runCanonicalMigration};

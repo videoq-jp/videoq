@@ -161,5 +161,23 @@
     "deploymentPolicyTestsPassed": 45,
     "terraformValidate": true,
     "terraformFormat": true
+  },
+  "backgroundMaintenancePreparation": {
+    "status": "draft; no production control changes",
+    "deploymentOperationsTestsPassed": 773,
+    "operatorBundleAndTriggerTestsPassed": 3,
+    "schemaMigrationFenceIntegrated": true,
+    "fenceChecks": [
+      "expected queue identities and consumers",
+      "queue delivery paused and last modification at least 16 minutes old",
+      "all search Workflows paused or terminal",
+      "pre/post schema command recheck",
+      "read-only scoped metadata transport"
+    ],
+    "remaining": [
+      "durable owned pause/restore executor and recovery",
+      "controlled token read permissions verification",
+      "live isolated integration verification before production routing"
+    ]
   }
 }
