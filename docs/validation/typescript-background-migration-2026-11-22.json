@@ -291,7 +291,7 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "API recovery, ordinary CD and SQS-preserving Cloudflare binding rollout succeeded. Queue metadata adapter fix PR1607, maintenance opt-in, production ownership/failure recovery, routing cutover and retirement remain pending.",
+    "outstanding": "API recovery, SQS-preserving Cloudflare bindings and live Queue metadata adapter fix are deployed. Reviewed Terraform maintenance opt-in approval is pending; production IAM/owned recovery verification, routing cutover, queue drain and Lambda/Python retirement remain incomplete.",
     "recoveryWorkflowRun": 45042542268,
     "recoveryWorkflowConclusion": "failure",
     "recoveryFailureStage": "video-processing",
@@ -325,7 +325,7 @@
   "backgroundMaintenanceInfrastructurePlan": {
     "applied": false,
     "stateSerialRead": 27,
-    "planSha256": "a21a651f5f2aa8f383a08233d5d77bb4f646e8064992bc19d02f7e8b4b54c030",
+    "planSha256": "f7e080d4da8607c03645cea2bffbefb0a39564fb279933f444f7782195341068",
     "changes": [
       {
         "address": "aws_codebuild_project.job[\"migration\"]",
@@ -371,7 +371,7 @@
     "createsOrDeletes": false,
     "codeOrLiveAliasesChanged": false,
     "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required.",
-    "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a"
+    "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1"
   },
   "vectorIngestionFairness": {
     "pullRequest": 1605,
@@ -413,5 +413,19 @@
     "maintenanceCdRun": 45053926426,
     "maintenanceCdConclusion": "success",
     "evidence": "cloudflare-background-bindings-2026-11-22.json"
+  },
+  "queueConsumerMetadataFix": {
+    "pullRequest": 1607,
+    "mergedMainSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
+    "mainCiRun": 45055404344,
+    "mainCiConclusion": "success",
+    "maintenanceCdRun": 45055635271,
+    "maintenanceCdConclusion": "success",
+    "ordinaryCdRun": 45055635258,
+    "ordinaryCdConclusion": "success",
+    "liveMigrationBundleMatchesMain": true,
+    "adapterSha256": "e3ed9b64a6cbf01d3dd8fc53f6ab44a3b41402796c60d148b6139e2a8e02f09b",
+    "readOnlyProductionQueueAdmissionCheck": "passed",
+    "productionControlMutations": 0
   }
 }
