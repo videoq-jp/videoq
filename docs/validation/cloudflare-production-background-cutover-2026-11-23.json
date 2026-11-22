@@ -285,7 +285,17 @@
   "integratedCleanupValidation": {
     "sourceSha": "3faf603e55e50df1a63f7f3d83baac3221d89e02",
     "ciRunId": 45075951731,
-    "statusAtCapture": "in_progress"
+    "statusAtCapture": "completed",
+    "conclusion": "success",
+    "scope": [
+      "production image HTTP tests",
+      "source builds with real CPU models and public egress blocked",
+      "single-server lifecycle",
+      "registry updates",
+      "failed migration recovery"
+    ],
+    "includesDeletedSourceWorkflowFix": true,
+    "productionPythonCleanupDeployed": false
   },
   "postFixCitedSmoke": {
     "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
