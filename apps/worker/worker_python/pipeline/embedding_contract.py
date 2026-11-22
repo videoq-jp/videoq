@@ -52,6 +52,14 @@ def resolve_embedding_config(environ: Mapping[str, str] | None = None) -> Embedd
     profile = env.get("EMBEDDING_PROFILE", "").strip() or "openai"
     if profile not in {"openai", "embeddinggemma2"}:
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROFILE must be openai or embeddinggemma2.")
+    provider = env.get("EMBEDDING_PROVIDER", "").strip() or "openai"
+    if provider not in {"openai", "workers-ai"}:
+        raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROVIDER must be openai or workers-ai.")
+    if provider == "workers-ai":
+        model = env.get("EMBEDDING_MODEL", "").strip() or "@cf/google/embeddinggemma-2"
+        if profile != "embeddinggemma2" or model != "@cf/google/embeddinggemma-2":
+            raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Workers AI embeddings require the embeddinggemma2 profile and @cf/google/embeddinggemma-2 model.")
+        return EmbeddingConfig(provider, model, profile)
     if profile == "embeddinggemma2" and not (env.get("EMBEDDING_MODEL", "").strip() and env.get("EMBEDDING_BASE_URL", "").strip()):
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EmbeddingGemma 2 requires EMBEDDING_MODEL and a dedicated EMBEDDING_BASE_URL.")
     model = env.get("EMBEDDING_MODEL", "").strip() or "text-embedding-3-small"

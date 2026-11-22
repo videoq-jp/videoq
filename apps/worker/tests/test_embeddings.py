@@ -236,3 +236,67 @@ def test_router_endpoint_never_receives_a_legacy_direct_key(monkeypatch):
     with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
         embeddings.embed_texts(["fixture"])
     request.assert_not_called()
+
+
+def workers_ai_settings(monkeypatch):
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "workers-ai")
+    monkeypatch.setenv("EMBEDDING_PROFILE", "embeddinggemma2")
+    monkeypatch.setenv("EMBEDDING_MODEL", "@cf/google/embeddinggemma-2")
+    monkeypatch.delenv("EMBEDDING_BASE_URL", raising=False)
+
+
+def test_workers_ai_config_and_batch_contract(monkeypatch):
+    workers_ai_settings(monkeypatch)
+    vector = [1.0] + [0.0] * 767
+    api = MagicMock(side_effect=lambda action, payload: {
+        "model": payload["model"], "profile": payload["profile"], "dimensions": 768,
+        "embeddings": [vector for _ in payload["texts"]],
+    })
+    monkeypatch.setattr(embeddings, "call_internal_api", api)
+    http = MagicMock(side_effect=AssertionError("Direct provider request must not be used"))
+    monkeypatch.setattr(embeddings.urllib.request, "urlopen", http)
+    texts = [f"字幕{i}" for i in range(33)]
+    assert embeddings.embed_texts(texts) == [vector] * 33
+    assert api.call_count == 2
+    assert api.call_args_list[0].args == ("embeddings/generate", {
+        "model": "@cf/google/embeddinggemma-2", "profile": "embeddinggemma2", "dimensions": 768,
+        "inputType": "document", "texts": texts[:32],
+    })
+    embeddings.embed_texts(["質問"], input_type="query")
+    assert api.call_args.args[1]["inputType"] == "query"
+    assert api.call_args.args[1]["texts"] == ["質問"]  # Worker adds prefix once.
+    assert resolve_embedding_config().provider == "workers-ai"
+
+
+@pytest.mark.parametrize("change", [{"model": "other"}, {"profile": "openai"}, {"dimensions": 1536}, {"dimensions": True}, {"embeddings": []}, {"embeddings": [VECTOR]}])
+def test_workers_ai_rejects_response_drift(monkeypatch, change):
+    workers_ai_settings(monkeypatch)
+    monkeypatch.setattr(embeddings, "call_internal_api", MagicMock(return_value={
+        "model": "@cf/google/embeddinggemma-2", "profile": "embeddinggemma2", "dimensions": 768,
+        "embeddings": [[1.0] + [0.0] * 767], **change,
+    }))
+    with pytest.raises(EmbeddingContractError):
+        embeddings.embed_texts(["字幕"])
+
+
+def test_workers_ai_permanent_errors_are_not_scene_fallbacks(monkeypatch):
+    from worker_python.internal_api import InternalApiError
+    workers_ai_settings(monkeypatch)
+    api = MagicMock(side_effect=InternalApiError(409))
+    monkeypatch.setattr(embeddings, "call_internal_api", api)
+    with pytest.raises(EmbeddingContractError) as error:
+        embeddings.embed_texts(["字幕"])
+    assert error.value.reason == "EMBEDDING_CONFIG_INVALID"
+    api.side_effect = InternalApiError(503)
+    with pytest.raises(InternalApiError):
+        embeddings.embed_texts(["字幕"])
+
+
+@pytest.mark.parametrize("settings", [
+    {"EMBEDDING_PROVIDER": "unknown"},
+    {"EMBEDDING_PROVIDER": "workers-ai"},
+    {"EMBEDDING_PROVIDER": "workers-ai", "EMBEDDING_PROFILE": "embeddinggemma2", "EMBEDDING_MODEL": "local-gemma"},
+])
+def test_workers_ai_invalid_settings(settings):
+    with pytest.raises(EmbeddingContractError):
+        resolve_embedding_config(settings)

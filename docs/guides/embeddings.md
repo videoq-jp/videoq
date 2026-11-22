@@ -1,11 +1,13 @@
 ---
 title: Configure and verify embeddings
-description: The fixed 1536-dimensional contract, model/endpoint settings, diagnostics, and model consistency.
+description: Embedding profiles, Workers AI setup, diagnostics, and model consistency.
 ---
 
 # Configure and verify embeddings
 
-VideoQ stores scene embeddings in `scene_embeddings.embedding vector(1536)`. The API and Python worker use a fixed `EMBEDDING_DIMENSIONS = 1536` constant. Both runtimes validate the same fixed storage and output contract.
+The default API and Python worker profile uses 1536 dimensions. The explicit
+`embeddinggemma2` profile uses 768 dimensions; both runtimes validate the selected
+storage and output contract.
 
 ## Choose a hosted or private endpoint
 
@@ -47,11 +49,53 @@ For attribution, see [OpenAI embeddings](../reference/ai-references.md#openai-em
 and [Qwen3 Embedding](../reference/ai-references.md#qwen3-embedding) when that family
 is used. Record the actual weight revision, quantization and serving image.
 
+## Opt in to Workers AI EmbeddingGemma 2
+
+The hosted default remains unchanged. To prepare a separate 768-dimensional
+EmbeddingGemma 2 corpus, configure the API and ingestion worker consistently:
+
+```dotenv
+EMBEDDING_PROVIDER=workers-ai
+EMBEDDING_PROFILE=embeddinggemma2
+EMBEDDING_MODEL=@cf/google/embeddinggemma-2
+```
+
+The API requires its Cloudflare `AI` binding. It uses LangChain
+`OpenAIEmbeddings` with a temporary binding transport; no OpenAI or Cloudflare API
+key is sent for these inference calls. Replace this transport with the official
+Cloudflare embeddings integration once its model support is released. LangChain
+handles batching (32 inputs) and concurrency (2); the application keeps its
+30-second deadline, caller cancellation and 768-dimensional vector validation.
+There are no automatic retries or alternate-provider fallbacks.
+
+Queries receive `task: search result | query: ` and documents receive
+`title: none | text: ` exactly once in the API. The ingestion worker sends raw
+text through the authenticated internal API rather than adding another prefix.
+Set `WORKER_INTERNAL_API_ORIGIN` and `WORKER_INTERNAL_API_SECRET` in the Python
+worker, and the same `WORKER_INTERNAL_API_SECRET` in the API, using the existing
+worker authentication configuration. `POST /internal/worker/embeddings/generate`
+accepts at most 32 texts (16,000 characters each) per signed request; model,
+profile and dimensions must match the API configuration before inference runs.
+The worker batches requests and validates returned model metadata and vectors.
+No new Cloudflare token is required by the Python worker.
+
+Upstream tracking: [LangChain JS #12285](https://github.com/langchain-ai/langchainjs/pull/12285)
+and [LangChain Python #103](https://github.com/cloudflare/langchain-cloudflare/pull/103).
+
+**Do not switch an existing corpus merely because it has 768 dimensions.** The
+existing local EmbeddingGemma profile also uses the 768-dimensional storage
+slot; equal dimensions do not prove compatible model revisions or input formats.
+Provision and fully populate a separate evaluation index/storage environment,
+record the model and input format, compare retrieval quality, and coordinate the
+query and ingestion configuration before switching traffic. This setting adds
+an opt-in generation path; it does not migrate existing vectors or activate a
+production cutover.
+
 ## What gets checked
 
-Before scene search or indexing, the relevant path verifies the declared DB column is `vector(1536)`, including when the table is empty. A missing column, another type, or an unbounded `vector` column fails validation.
+Before scene search or indexing, the PostgreSQL path verifies the declared DB column matches the selected profile (`vector(1536)` by default, `vector(768)` for `embeddinggemma2`), including when the table is empty. A missing column, another type, or an unbounded `vector` column fails validation.
 
-Every generated vector must contain exactly 1536 finite numeric values, fit pgvector's float32 representation, and remain nonzero. Strings and booleans are rejected. Batch counts and OpenAI response indices must match the inputs.
+Every generated vector must contain exactly the selected profile’s number of finite numeric values, fit pgvector's float32 representation, and remain nonzero. Strings and booleans are rejected. Batch counts and OpenAI response indices must match the inputs.
 
 Scene splitting uses output validation without requiring a DB for standalone calculations. Contract errors propagate instead of silently producing fallback scenes. Pure data deletion requires no model call or credentials.
 
@@ -105,4 +149,4 @@ chosen configuration and verify API/worker diagnostics together.
 For a new deployment, initialize the database with the chosen model settings.
 When changing models later, stop Q&A/indexing and rebuild the scene vectors
 before resuming searches. Do not mix vectors from different model versions.
-The current application and database require exactly 1536 dimensions.
+The default profile uses 1536 dimensions; `embeddinggemma2` uses its separate 768-dimensional storage.
