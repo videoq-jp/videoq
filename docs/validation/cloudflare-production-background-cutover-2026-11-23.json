@@ -186,8 +186,38 @@
   "remainingIssue": {
     "pr": 1612,
     "workflowId": "7f7c4b98622f07601261b53463858507f50663408069a72bb35cad2f1312df26",
-    "description": "Published index and cited answers succeeded; workflow finish retries after synthetic source deletion. Await fixed deployment and owned-workflow recovery."
+    "description": "Affected owned synthetic workflow recovered through checkpoint restart; job and workflow completed without direct database status mutation. Preventive fix PR1612 still awaits CI and production deployment."
   },
   "legacyResourcesRetired": false,
-  "migrationComplete": false
+  "migrationComplete": false,
+  "ownedWorkflowRecovery": {
+    "workflowId": "7f7c4b98622f07601261b53463858507f50663408069a72bb35cad2f1312df26",
+    "jobId": "69ac5553-366e-48a9-9d89-75ab46ba2ee0",
+    "videoId": 548,
+    "requestedAt": "2026-11-22T21:49:08.183747+00:00",
+    "request": {
+      "status": "restart",
+      "from": {
+        "name": "load-source",
+        "count": 1,
+        "type": "do"
+      }
+    },
+    "guards": {
+      "ownedSyntheticProof": true,
+      "videoAbsent": true,
+      "cachedLeaseMatches": true,
+      "maintenanceIdle": true
+    },
+    "response": {
+      "status": "queued",
+      "timestamp": "2026-11-22T21:49:09.157Z"
+    },
+    "verifiedAt": "2026-11-22T21:49:51.369016+00:00",
+    "workflowStatus": "complete",
+    "jobStatus": "completed",
+    "jobAttempts": 1,
+    "jobCompletedAt": "2026-11-22T21:49:12.807Z",
+    "databaseStatusMutation": false
+  }
 }
