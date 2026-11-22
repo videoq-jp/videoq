@@ -17,12 +17,17 @@ describe.each([undefined, "production"])("Wrangler embedding settings (%s)", (en
     try {
       // Load a disposable file so the developer's .dev.vars and credentials
       // never influence this configuration integration test.
-      writeFileSync(join(directory, ".dev.vars"), Object.entries(testCase.env)
+      // Explicitly select the legacy profile when testing OpenAI overrides.
+      // Production defaults now deliberately select a different provider.
+      const overrides = { EMBEDDING_PROVIDER: "openai", EMBEDDING_PROFILE: "openai", EMBEDDING_MODEL: "", ...testCase.env };
+      writeFileSync(join(directory, ".dev.vars"), Object.entries(overrides)
         .map(([key, value]) => `${key}=${JSON.stringify(value)}`).join("\n"));
       const bindings = unstable_getVarsForDev(
         join(directory, "wrangler.jsonc"), undefined, config.vars, environment, true,
       );
       const settings = {
+        EMBEDDING_PROVIDER: String(bindings.EMBEDDING_PROVIDER?.value ?? ""),
+        EMBEDDING_PROFILE: String(bindings.EMBEDDING_PROFILE?.value ?? ""),
         EMBEDDING_MODEL: String(bindings.EMBEDDING_MODEL?.value ?? ""),
         OPENAI_BASE_URL: String(bindings.OPENAI_BASE_URL?.value ?? ""),
         EMBEDDING_BASE_URL: String(bindings.EMBEDDING_BASE_URL?.value ?? ""),
@@ -38,4 +43,14 @@ describe.each([undefined, "production"])("Wrangler embedding settings (%s)", (en
       rmSync(directory, { recursive: true, force: true });
     }
   });
+});
+
+
+it("selects Workers AI from the actual production defaults without credentials", () => {
+  const config = unstable_readConfig({ config: configPath, env: "production" });
+  expect(resolveEmbeddingConfig(config.vars)).toEqual({
+    provider: "workers-ai", model: "@cf/google/embeddinggemma-2", profile: "embeddinggemma2",
+  });
+  expect(() => resolveEmbeddingConfig({ ...config.vars, EMBEDDING_MODEL: "CustomModel" }))
+    .toThrowError(expect.objectContaining({ reason: "EMBEDDING_CONFIG_INVALID" }));
 });
