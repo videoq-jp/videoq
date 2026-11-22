@@ -89,3 +89,13 @@ for (const [name, change] of [
     assert.equal(f.mutations.length, 0);
   });
 }
+
+test('SSM token destinations are metadata only and restricted to the production security prefix', () => {
+  const f = fixture();
+  f.config.credentials[0].secrets = ['ssm:/videoq/security/prod/background-maintenance'];
+  assert.doesNotThrow(() => check.validateConfig(f.config));
+  for (const value of ['ssm:/other/account/secret', 'ssm:/videoq/security/prod/../secret', 'ssm:/videoq/security/prod/key\nPRIVATE']) {
+    f.config.credentials[0].secrets = [value];
+    assert.throws(() => check.validateConfig(f.config));
+  }
+});

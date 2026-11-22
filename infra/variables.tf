@@ -153,13 +153,23 @@ variable "worker_groups" {
   }
 }
 
+variable "cloudflare_background_jobs_routing_enabled" {
+  description = "Hand media search jobs to the signed API while retaining legacy search/account consumers for draining."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.cloudflare_background_jobs_routing_enabled || var.env_name == "prod"
+    error_message = "Cloudflare background routing requires the production signed API environment."
+  }
+}
+
 variable "cloudflare_background_jobs_enabled" {
   description = "Retire the search/account Lambdas after Cloudflare consumers are verified and legacy deliveries are drained."
   type        = bool
   default     = false
   validation {
-    condition     = !var.cloudflare_background_jobs_enabled || var.env_name == "prod"
-    error_message = "Cloudflare background cutover currently requires the production signed API environment."
+    condition     = !var.cloudflare_background_jobs_enabled || (var.env_name == "prod" && var.cloudflare_background_jobs_routing_enabled)
+    error_message = "Retiring background Lambdas requires production Cloudflare routing to be enabled first."
   }
 }
 

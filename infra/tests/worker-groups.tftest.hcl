@@ -95,10 +95,34 @@ run "short_function_timeouts_preserve_lease_recovery" {
   }
 }
 
-run "cloudflare_cutover_retires_functions_but_retains_queues_and_logs" {
+run "route_media_handoff_before_retiring_any_consumers" {
+  command = plan
+  variables {
+    cloudflare_background_jobs_routing_enabled = true
+  }
+  assert {
+    condition     = length(aws_lambda_function.group) == 2 && length(aws_lambda_event_source_mapping.group) == 2 && length(aws_sqs_queue.group) == 2 && length(aws_cloudwatch_log_group.group) == 2
+    error_message = "Routing must preserve every legacy consumer, queue and log while old deliveries drain."
+  }
+  assert {
+    condition     = aws_lambda_function.worker.environment[0].variables["SEARCH_JOB_BACKEND"] == "cloudflare" && aws_lambda_function.worker.environment[0].variables["WORKER_JOB_GROUP"] == ""
+    error_message = "Change media handoff first while preserving old mixed-message compatibility."
+  }
+}
+
+run "refuse_retirement_before_routing" {
   command = plan
   variables {
     cloudflare_background_jobs_enabled = true
+  }
+  expect_failures = [var.cloudflare_background_jobs_enabled]
+}
+
+run "cloudflare_cutover_retires_functions_but_retains_queues_and_logs" {
+  command = plan
+  variables {
+    cloudflare_background_jobs_routing_enabled = true
+    cloudflare_background_jobs_enabled         = true
   }
   assert {
     condition     = length(aws_lambda_function.group) == 0 && length(aws_lambda_event_source_mapping.group) == 0 && length(aws_sqs_queue.group) == 2 && length(aws_cloudwatch_log_group.group) == 2
@@ -113,8 +137,9 @@ run "cloudflare_cutover_retires_functions_but_retains_queues_and_logs" {
 run "explicit_final_queue_retirement" {
   command = plan
   variables {
-    cloudflare_background_jobs_enabled = true
-    retire_background_queues           = true
+    cloudflare_background_jobs_routing_enabled = true
+    cloudflare_background_jobs_enabled         = true
+    retire_background_queues                   = true
   }
   assert {
     condition     = length(aws_sqs_queue.group) == 0 && length(aws_sqs_queue.group_dlq) == 0 && length(aws_cloudwatch_log_group.group) == 2 && aws_sqs_queue.main.name == "videoq-worker-prod"

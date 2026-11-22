@@ -122,6 +122,9 @@ function definition({table, projects, neonRetired = false}) {
     active.Operation = {Type: 'Choice', Choices: states.Operation.Choices.filter(choice =>
       ['migration', 'smoke', 'deploy', 'd1-resource-hold'].includes(choice.StringEquals)), Default: 'RetiredOperation'};
     active.RetiredOperation = {Type: 'Fail', Error: 'RETIRED_NEON_OPERATION'};
+    // The opt-in background fence may wait 16 minutes before schema work.
+    // Retain the historical PostgreSQL graph's timeout below.
+    active.Migrate.TimeoutSeconds = 3600;
     return {Comment: 'AWS-only D1 maintenance; retained archives are outside the job lifecycle',
       StartAt: 'Operation', TimeoutSeconds: 7200, States: active};
   }
