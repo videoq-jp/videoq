@@ -160,6 +160,9 @@ Environment and uses OIDC authentication for validated main commits.
   approval is not required; deployment follows the CI validation above.
 - `production-infra`: Infrastructure and Cloudflare resource sync. Preserve manual
   approval and restrict deployments to the main branch.
+  The preflight summary lists resource declarations, instance counts, actions,
+  and changed top-level attributes. It omits values, instance keys and output names.
+  A private saved plan is inspected and deleted on the runner; it is not uploaded.
 - Require approval for Actions from all external contributors' forks.
 - Pin Actions to full commit SHAs and update them through Dependabot.
 
