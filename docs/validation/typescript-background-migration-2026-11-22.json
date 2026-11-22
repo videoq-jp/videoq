@@ -1,13 +1,6 @@
 {
   "date": "2026-11-22",
   "status": "implementation and verification in progress; production transport unchanged",
-  "apiSuite": {
-    "passed": 3463,
-    "failed": 0,
-    "skipped": 1555,
-    "files": 459,
-    "maxWorkers": 2
-  },
   "focusedPostgresAndNodeE2E": {
     "passed": 26,
     "failed": 0,
@@ -117,5 +110,30 @@
     "queueProvisioningTestsPassed": 4,
     "workerRuntimeTestsPassed": 100,
     "nodeBuild": true
+  },
+  "defaultApiSuiteFinal": {
+    "passed": 3463,
+    "failed": 0,
+    "skipped": 1555,
+    "files": 459,
+    "maxWorkers": 2,
+    "scope": "Final default environment; PostgreSQL-dependent tests skipped without a configured test connection"
+  },
+  "apiSuite": {
+    "passed": 4110,
+    "failed": 0,
+    "skipped": 886,
+    "files": 455,
+    "maxWorkers": 2,
+    "scope": "Earlier complete suite with PostgreSQL test connection configured; final follow-up checks recorded separately"
+  },
+  "finalPostgresNodeAndD1DeletionChecks": {
+    "passed": 39,
+    "failed": 0,
+    "files": 4,
+    "realPostgres": true,
+    "realElasticMQ": true,
+    "builtNodeProcess": true,
+    "model": "synthetic OpenAI-compatible server"
   }
 }
