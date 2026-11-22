@@ -1,0 +1,133 @@
+{
+  "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
+  "preparedAt": "2026-11-22T23:02:06.967262+00:00",
+  "planSha256": "e43cda951cff4f8e46666a86b5ffa41c463beb9a40ab7186852bfb1a4c6b103f",
+  "changes": [
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_duration[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_duration[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_errors[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_errors[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_throttles[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_throttles[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_event_source_mapping.group[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_event_source_mapping.group[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.group[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.group[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.worker",
+      "actions": [
+        "update"
+      ],
+      "changedKeys": [
+        "environment"
+      ],
+      "environmentChangedKeys": [
+        "WORKER_JOB_GROUP"
+      ],
+      "workerJobGroupBefore": "",
+      "workerJobGroupAfter": "media"
+    }
+  ],
+  "added": 0,
+  "changed": 1,
+  "destroyed": 12,
+  "retainedMediaCodeOrImageChanged": false,
+  "sqsQueuesAndDlqsRetained": true,
+  "sqsAlarmsRetained": true,
+  "logGroupsRetained": true,
+  "manualApprovalGranted": false,
+  "applied": false,
+  "remainingGates": [
+    "Final legacy search message redelivery",
+    "Sustained empty observations for all legacy queues and DLQs",
+    "Fresh main/deployment/maintenance recheck",
+    "Manual infrastructure approval"
+  ],
+  "supersedesEarlierTargetOnlyPreview": "Final scope includes the eight dependent Lambda alarms, which were omitted from the earlier targeted preview.",
+  "readyForApply": false,
+  "productionChecks": {
+    "nativeCutoverPr": 1611,
+    "deletedSourceFixPr": 1612,
+    "productionCdRunId": 45079205140,
+    "deletionRaceVerified": true,
+    "citedSmokeRunId": 45079965423,
+    "citedSmokeConclusion": "success",
+    "productionAccountDeletionAndDuplicateVerified": true
+  },
+  "legacyQueueObservation": {
+    "observedAt": "2026-11-22T23:03:08.343691+00:00",
+    "allEmpty": false,
+    "nonempty": [
+      {
+        "queue": "videoq-worker-search-prod",
+        "counts": {
+          "ApproximateNumberOfMessages": 0,
+          "ApproximateNumberOfMessagesNotVisible": 1,
+          "ApproximateNumberOfMessagesDelayed": 0
+        }
+      }
+    ]
+  }
+}
