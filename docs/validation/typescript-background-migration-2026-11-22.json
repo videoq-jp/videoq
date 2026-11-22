@@ -291,10 +291,29 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "Recovery workflow 45042542268 failed at video-processing verification: synthetic video 538 remains indexing behind legacy vector-delete tasks. Main fairness fix is merged; CI and ordinary CD recovery remain pending.",
+    "outstanding": "Video 538 and legacy delete backlog completed normally. Recovery workflow 45049764940 is running on CI-verified main; ordinary CD and Cloudflare cutover remain pending.",
     "recoveryWorkflowRun": 45042542268,
     "recoveryWorkflowConclusion": "failure",
-    "recoveryFailureStage": "video-processing"
+    "recoveryFailureStage": "video-processing",
+    "latestRecoveryAttempt": {
+      "runId": 45048338032,
+      "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+      "codePromotion": "success",
+      "smokeBuild": "videoq-db-smoke-prod:5353bd79-f77b-4411-8927-e3a25b1be823",
+      "conclusion": "failure",
+      "failureStage": "database-and-cleanup",
+      "reason": "Existing synthetic video 538 remains indexing; smoke safely refused another upload."
+    },
+    "backlogRecovery": {
+      "videoId": 538,
+      "videoStatus": "completed",
+      "vectorUpsertAcceptedAt": "2026-11-22T17:27:45.676Z",
+      "vectorTaskCompletedAt": "2026-11-22T17:29:00.328Z",
+      "lastErrorCode": "",
+      "legacyDeleteBacklogDrained": true,
+      "completionMethod": "Normal task scheduler; no forced SQL status changes."
+    },
+    "recoveryRetryRun": 45049764940
   },
   "backgroundMaintenanceInfrastructurePlan": {
     "applied": false,
@@ -350,7 +369,7 @@
     "pullRequest": 1605,
     "mergedMainSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
     "mainCiRun": 45046621904,
-    "mainCiConclusion": "in_progress",
+    "mainCiConclusion": "success",
     "regressionTestsPassed": 28,
     "productionObservation": {
       "observedAt": "2026-11-22T17:03:25Z",
