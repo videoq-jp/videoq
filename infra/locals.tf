@@ -33,6 +33,9 @@ locals {
     DEPLOYMENT_EDITION         = "cloud"
     PERSISTENCE_BACKEND        = "d1"
     WORKER_INTERNAL_API_ORIGIN = "https://videoq.jp"
+    EMBEDDING_PROVIDER         = "workers-ai"
+    EMBEDDING_PROFILE          = "embeddinggemma2"
+    EMBEDDING_MODEL            = "@cf/google/embeddinggemma-2"
     } : {
     DB_PARAM_NAME = "/${local.name_prefix}/${var.env_name}/worker-db"
     PGSSLROOTCERT = "/etc/pki/tls/certs/ca-bundle.crt"
