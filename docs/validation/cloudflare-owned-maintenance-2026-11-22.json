@@ -1,0 +1,59 @@
+{
+  "verifiedAt": "2026-11-22T20:23:12.328793+00:00",
+  "sourceSha": "8a545f6b0869ae214b7d968468c6694e9321a054",
+  "executionArn": "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-34116b425cfc7023e9cfb6379c862cac",
+  "status": "SUCCEEDED",
+  "redriveCount": 2,
+  "stopDate": "2026-11-23T05:20:10.426000+09:00",
+  "queuePausedObservedAt": 1795377509396,
+  "originalQueueStates": [
+    {
+      "name": "videoq-account-prod",
+      "paused": false
+    },
+    {
+      "name": "videoq-search-prod",
+      "paused": false
+    }
+  ],
+  "restoredQueueStates": [
+    {
+      "name": "videoq-account-prod",
+      "paused": false
+    },
+    {
+      "name": "videoq-search-prod",
+      "paused": false
+    }
+  ],
+  "queueOriginalPlanSha256": "b4fb5b50c5bf438094c47d5da78881e74f49e5151e19eeeb8e492050207eb03d",
+  "workflowInstancesInOriginalPlan": 0,
+  "pausedCheckpointRetained": true,
+  "restoredCheckpointRetained": true,
+  "schemaCompletionProofPresent": false,
+  "globalLockReleased": true,
+  "controlReadbackAt": "2026-11-22T20:21:55.267Z",
+  "unexpectedInitialReadbackFailure": "BACKGROUND_QUEUE_UPDATE_INCOMPLETE; separately observed successful update before redrive",
+  "plannedFailureConfirmed": "BACKGROUND_VERIFICATION_RECOVERY_REQUIRED",
+  "deploymentReadback": {
+    "sourceSha": "8a545f6b0869ae214b7d968468c6694e9321a054",
+    "operatorSourceMatchesMain": true,
+    "operatorModulesVerified": 9,
+    "starterSourceMatchesMain": true,
+    "starterVersion": "55",
+    "stateMachineVerificationFlagDeployed": true,
+    "migrationTimeoutMinutes": 50,
+    "backgroundControlEnabled": true,
+    "operatorZipSha256": "7b57d196edd5a2546a51ab50f3834f8378e2a553c2f183ad5687aaad67998dbf"
+  },
+  "scopeLimit": "Production Workflow instance plan was empty. Real running Workflow pause/resume was separately verified on isolated resources; this run proves AWS ownership, durable plans, queue control, real drain and original-state restoration.",
+  "readbackDelayFix": {
+    "pullRequest": 1610,
+    "headSha": "938c959fadad50fdebffee4ad1089a77bfcaf403",
+    "nodeTestsPassed": 808,
+    "actualDynamoDbLocalIntegrationTestsPassed": 20,
+    "bundleAndDeployTestsPassed": 10,
+    "deployed": false
+  },
+  "routingChanged": false
+}

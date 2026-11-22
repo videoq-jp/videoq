@@ -1,7 +1,7 @@
 {
   "status": "preview-only; not applied or approved",
-  "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
-  "planSha256": "6b28c591e5ce0c4000b9fb0ffa807b62be17c6f099860ac6a0c51d50d910ca37",
+  "sourceSha": "8a545f6b0869ae214b7d968468c6694e9321a054",
+  "planSha256": "807cacff6b1272a2ebab5bc8b671014c1b1db61394753d168f80195482918d80",
   "targetedPlan": {
     "targets": [
       "aws_lambda_function.worker",
@@ -95,8 +95,10 @@
     "nodeTestsPassed": 801,
     "actualDynamoDbLocalIntegrationTestsPassed": 20,
     "bundleAndDeployTestsPassed": 10,
-    "productionExecutionCompleted": false,
-    "remaining": "Merge queue, main CI, AWS operator deployment/readback, actual pause/failure/native redrive/original-state restoration"
+    "productionExecutionCompleted": true,
+    "remaining": "Readback delay fix PR 1610 is validated and queued; deploy before native transport cutover.",
+    "executionArn": "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-34116b425cfc7023e9cfb6379c862cac",
+    "conclusion": "SUCCEEDED; original states restored and global lock released"
   },
   "onpremRealModels": {
     "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
@@ -108,9 +110,21 @@
     "publicEgressBlocked": true
   },
   "remainingBeforeApply": [
-    "Complete the owned AWS rehearsal",
-    "Create a fresh plan from current main and recheck live state",
-    "Review the concrete three updates and obtain manual infrastructure approval",
-    "Persist the routing repository variable and apply the approved plan"
-  ]
+    "Manual infrastructure approval",
+    "No active deployment or maintenance",
+    "Recheck current main and the same reviewed three-update scope"
+  ],
+  "preparedAt": "2026-11-22T20:27:37.915383+00:00",
+  "retainedResources": [
+    "videoq-worker-prod",
+    "videoq-worker-search-prod",
+    "videoq-worker-account-prod",
+    "all existing SQS queues and DLQs"
+  ],
+  "apiJobBackendsAfterThisPhase": {
+    "search": "sqs",
+    "account": "sqs"
+  },
+  "applied": false,
+  "manualApprovalGranted": false
 }
