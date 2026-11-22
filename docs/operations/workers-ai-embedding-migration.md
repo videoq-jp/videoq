@@ -95,6 +95,18 @@ Workflows を含む API を配送先 `sqs` で配備する。隔離したデー�
 停止→スキーマ移行→成功記録→元の停止状態への復元を行う。API の全体停止は解除しない。
 失敗時は停止を維持し、同一実行の再試行では保存済みの計画から復旧する。
 本番でのオプトインと実際の AWS/Cloudflare 権限・復旧検証はまだ行っていない。
+
+専用資格情報は `/videoq/security/prod/background-maintenance` に保存し、
+`CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` を持つ JSON とする。
+Queue 制御には `Queues Write`、Workflow の pause/resume には公式 API が要求する
+`Workers Scripts Write` が必要になる（[Workflow status API の権限](https://developers.cloudflare.com/api/resources/workflows/subresources/instances/subresources/status/methods/edit/)）。
+後者は Workflow 操作だけに限定された権限ではなく、対象アカウントの Worker コードを
+更新できる権限でもある。トークンの実効権限と、アダプターが許可する操作範囲を混同しない。
+本番アカウントだけにスコープを限定し、専用トークン・期限・所有者を記録する。
+SSM の読取権限はオプトインした移行ジョブの実行ロールだけへ付与し、GitHub の要求用
+ロールや通常 CD へトークンを渡さない。発行後は秘密値を出力せず、キュー一覧と
+Workflow メタデータの読取、隔離した実行の停止・復元で実効権限を検証する。
+
 スキーマ移行の実行前後の読み取りガードは `aws-canonical-migration.cjs` へ接続済みで、
 キューと Workflow の停止が確認できなければスキーマ変更を拒否する。
 キュー停止だけでは配送済み handler や起動済み Workflows の停止を証明できないため、
