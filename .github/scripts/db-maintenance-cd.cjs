@@ -21,7 +21,7 @@ function relevant(path) {
   if (['.github/scripts/cutover-postgres-activity.mjs','.github/scripts/cutover-postgres-fence.mjs'].includes(path)) return true;
   if (path === '.github/scripts/neon-fence-audit.mjs') return true;
   if (['.github/scripts/d1-resource-smoke-guard.cjs','.github/scripts/d1-resource-journal.cjs'].includes(path)) return true;
-  if (['.github/scripts/production-smoke-store.cjs','.github/scripts/aws-production-smoke.cjs'].includes(path)) return true;
+  if (['.github/scripts/production-smoke-store.cjs','.github/scripts/aws-production-smoke.cjs','.github/scripts/production-smoke-result.cjs'].includes(path)) return true;
   if (['.github/scripts/isolated-smoke-target.cjs','.github/scripts/isolated-smoke-manifest.cjs'].includes(path)) return true;
   if (['.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs'].includes(path)) return true;
   if (['.github/scripts/backup-d1-export.mts','.github/scripts/backup-d1-run.mjs'].includes(path)) return true;
