@@ -74,8 +74,22 @@ node --test .github/scripts/embedding-migration-metrics.test.cjs
 `production-infra` 承認ゲートを通して4つの Cloudflare キュー（検索・アカウントと各 DLQ）を
 作成する。その後、準備済みの binding を本番 Wrangler 設定へ反映した変更をレビューし、
 Workflows を含む API を配送先 `sqs` で配備する。隔離したデータで登録・再試行・
-途中再開・権限境界を検証する。その後、リポジトリ変数
-進行中の CD がないことを確認し、`CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED=true` を設定して承認付き Terraform
+途中再開・権限境界を検証する。
+
+配送先の切り替え前に、DB メンテナンスの停止・復元処理を新しい実行環境へ対応させる。
+現在の停止処理と smoke イメージ確認には旧3 Lambda の固定参照が残っている。
+`background-queue-admission.cjs` は本番の検索・アカウントキューだけを対象に、
+元の停止状態を保存する計画、設定・consumer の同一性確認、配送停止と元の状態への復元を提供する。
+メンテナンス所有権と復元可能な状態の検証は呼び出し元に必須とし、通常の CI でテストする。
+この部品はまだ DB メンテナンス実行系には接続していない。
+キュー停止だけでは配送済み handler や起動済み Workflows の停止を証明できないため、
+実行中 Workflows の停止確認・再開、処理中 handler の排出確認、保存済み計画からの復旧、
+撤去後の Lambda 構成確認を含む統合検証が済むまで配送先を切り替えない。
+Queue の配送制御は [Cloudflare Queue PATCH API](https://developers.cloudflare.com/api/resources/queues/methods/edit/)、
+Workflow の停止・再開は [公式の実行制御](https://developers.cloudflare.com/workflows/build/trigger-workflows/) を参照する。
+
+運用制御の統合検証後、進行中の CD がないことを確認し、
+`CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED=true` を設定して承認付き Terraform
 Apply で `cloudflare_background_jobs_routing_enabled=true` を反映する。この段階は
 メディア Lambda の検索ジョブを署名付き API へ渡す変更だけで、旧検索・アカウント
 Lambda とキューは維持する。API 側がまだ `sqs` なら同じ outbox から旧 SQS へ配送する。
