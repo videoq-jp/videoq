@@ -46,6 +46,28 @@ beforeEach(async()=>{
 });
 afterEach(async()=>{await fixture.dispose();});
 describe('resumable search workflow with actual D1 persistence',()=>{
+  it('completes and cleans artifacts when the video is deleted before the finish step',async()=>{
+    await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
+    const send=vi.fn(async()=>{});env.SEARCH_FAILURES={send} as unknown as Queue;
+    const {step}=simulator();const perform=step.do.bind(step);
+    step.do=(async(name:string,config:unknown,callback:()=>Promise<unknown>)=>{
+      if(name==='finish-video-indexing')await fixture.database.prepare('DELETE FROM videos WHERE id=1').run();
+      return perform(name,config,callback);
+    }) as WorkflowStep['do'];
+    await workflow().run({payload:{...job,type:'index_video_transcript'}} as WorkflowEvent<unknown>,step);
+    expect(calls).toBe(1);expect(objects.size).toBe(0);expect(send).not.toHaveBeenCalled();
+    expect(await fixture.database.prepare("SELECT status FROM job_executions WHERE job_id='workflow-test'").first('status')).toBe('completed');
+  });
+  it('keeps rejecting a changed source that still exists at the finish step',async()=>{
+    await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
+    const {step}=simulator();const perform=step.do.bind(step);
+    step.do=(async(name:string,config:unknown,callback:()=>Promise<unknown>)=>{
+      if(name==='finish-video-indexing')await fixture.database.prepare('UPDATE video_index_versions SET revision=? WHERE video_id=1').bind(crypto.randomUUID()).run();
+      return perform(name,config,callback);
+    }) as WorkflowStep['do'];
+    await expect(workflow().run({payload:{...job,type:'index_video_transcript'}} as WorkflowEvent<unknown>,step)).rejects.toThrow('source changed');
+    expect(await fixture.database.prepare("SELECT status FROM job_executions WHERE job_id='workflow-test'").first('status')).toBe('failed');
+  });
   it('publishes scenes, completes the stable job and removes intermediate artifacts',async()=>{
     const {step}=simulator();await workflow().run(event,step);
     expect(calls).toBe(1);expect(objects.size).toBe(0);
