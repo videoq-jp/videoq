@@ -68,6 +68,7 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     EMBEDDING_BASE_URL?: string;
     EMBEDDING_API_KEY?: string;
     EMBEDDING_PROFILE?: string;
+    EMBEDDING_PROVIDER?: string;
     LLM_REASONING_EFFORT?: "none" | "minimal" | "low" | "medium" | "high";
     LLM_SEPARATE_TOOL_SCHEMA?: string;
     LLM_PRESERVE_TOOL_REASONING?: string;

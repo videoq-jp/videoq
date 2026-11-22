@@ -2,6 +2,8 @@ import { transcriptionFailureAllowed, validTranscriptionPlan, validTranscription
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { embedTexts } from "../../lib/embeddings";
+import { resolveEmbeddingConfig } from "../../lib/embedding-contract";
 import { armMaintenance } from "../../lib/task-scheduler";
 import type { AppEnv } from "../../types/bindings";
 import { createJobRepository, createWorkerScenePersistence, createProcessingQuotaRepository, createWorkerTranscriptionRepository, createTranscriptionCheckpoints, finishWorkerTranscriptionRun, createVisualCheckpoints, readWorkerReindexPage } from "../../persistence/factory";
@@ -324,4 +326,31 @@ workerInternalRoutes.post('/account-delete/step',async c=>{
  // Persisted storage/vector cleanup must retain a wake-up even if a response is lost.
  await armMaintenance(c.env,Date.now()+1000);
  return c.json(await stepWorkerAccountDeletion(c.env,parsed.data));
+});
+
+
+// The Python worker uses its existing signed channel; inference credentials stay
+// in the Worker AI binding. Reject drift before generating any vectors.
+workerInternalRoutes.use("/embeddings/*", bodyLimit({ maxSize: 1_900_000, onError: c => c.json({ error: "BODY_TOO_LARGE" }, 413) }));
+workerInternalRoutes.post("/embeddings/generate", async c => {
+  c.header("Cache-Control", "no-store");
+  const body = await c.req.text();
+  if (!await verifyWorkerRequest(c.req.raw, c.env.WORKER_INTERNAL_API_SECRET, body)) return c.json({ error: "UNAUTHORIZED" }, 401);
+  let input: unknown;
+  try { input = JSON.parse(body); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
+  const parsed = z.object({
+    model: z.literal("@cf/google/embeddinggemma-2"), profile: z.literal("embeddinggemma2"), dimensions: z.literal(768),
+    inputType: z.enum(["query", "document"]), texts: z.array(z.string().min(1).max(16_000)).min(1).max(32),
+  }).strict().safeParse(input);
+  if (!parsed.success) return c.json({ error: "INVALID_REQUEST" }, 400);
+  try {
+    const config = resolveEmbeddingConfig(c.env);
+    if (config.provider !== "workers-ai" || config.model !== parsed.data.model || config.profile !== parsed.data.profile) {
+      return c.json({ error: "EMBEDDING_CONFIG_MISMATCH" }, 409);
+    }
+    const embeddings = await embedTexts(c.env, parsed.data.texts, parsed.data.inputType, c.req.raw.signal);
+    return c.json({ model: config.model, profile: config.profile, dimensions: 768, embeddings });
+  } catch {
+    return c.json({ error: "EMBEDDING_UNAVAILABLE" }, 503);
+  }
 });

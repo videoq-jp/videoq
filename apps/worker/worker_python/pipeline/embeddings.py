@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 
 from worker_python.env import env_str
+from worker_python.internal_api import call_internal_api, InternalApiError
 from .ai_connection import shared_api_key, shared_base_url, is_openrouter
 from .embedding_contract import (
     EmbeddingConfig,
@@ -21,7 +22,34 @@ def embed_texts(texts: list[str], *, input_type: str = "document") -> list[list[
     if not texts:
         return []
     config = resolve_embedding_config()
+    if config.provider == "workers-ai":
+        return _embed_workers_ai(texts, config, input_type=input_type)
     return _embed_openai_batch(texts, config, input_type=input_type)
+
+
+def _embed_workers_ai(texts: list[str], config: EmbeddingConfig, *, input_type: str) -> list[list[float]]:
+    if input_type not in {"query", "document"}:
+        raise ValueError("input_type must be query or document")
+    vectors = []
+    for offset in range(0, len(texts), 32):
+        batch = texts[offset:offset + 32]
+        # Prefixes are applied once, by the same LangChain adapter as API queries.
+        try:
+            result = call_internal_api("embeddings/generate", {
+                "model": config.model, "profile": config.profile, "dimensions": config.dimensions,
+                "inputType": input_type, "texts": batch,
+            })
+        except InternalApiError as exc:
+            if exc.status is not None and 400 <= exc.status < 500 and exc.status not in {408, 429}:
+                raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Worker embedding API rejected the request. Check embedding settings on API and worker.", config) from None
+            raise
+        data = result.get("embeddings")
+        if (result.get("model") != config.model or result.get("profile") != config.profile
+                or type(result.get("dimensions")) is not int or result["dimensions"] != config.dimensions
+                or not isinstance(data, list) or len(data) != len(batch)):
+            raise invalid_output(config)
+        vectors.extend(validate_embedding(vector, config) for vector in data)
+    return vectors
 
 
 def _embed_openai_batch(texts: list[str], config: EmbeddingConfig, *, input_type: str = "document") -> list[list[float]]:

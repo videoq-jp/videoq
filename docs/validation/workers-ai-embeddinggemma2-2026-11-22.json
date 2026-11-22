@@ -1,0 +1,111 @@
+{
+  "date": "2026-11-22",
+  "scope": "Opt-in text embedding generation; production model and existing indexes unchanged",
+  "upstream": {
+    "javascript": {
+      "pr": "https://github.com/langchain-ai/langchainjs/pull/12285",
+      "runtimeTests": 17,
+      "typeTests": 4,
+      "build": true,
+      "lint": true,
+      "typecheck": "same 16 pre-existing errors as baseline",
+      "live": [
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 768,
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 256,
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/baai/bge-base-en-v1.5",
+          "dimensions": 768,
+          "query": true,
+          "documents": 2
+        }
+      ]
+    },
+    "python": {
+      "pr": "https://github.com/cloudflare/langchain-cloudflare/pull/103",
+      "unitPassed": 498,
+      "unitSkipped": 2,
+      "focusedModelTests": 18,
+      "mypy": true,
+      "ruff": true,
+      "live": [
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 768,
+          "mode": "sync",
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 768,
+          "mode": "async",
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 256,
+          "mode": "sync",
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/google/embeddinggemma-2",
+          "dimensions": 256,
+          "mode": "async",
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/baai/bge-base-en-v1.5",
+          "dimensions": 768,
+          "mode": "sync",
+          "query": true,
+          "documents": 2
+        },
+        {
+          "model": "@cf/baai/bge-base-en-v1.5",
+          "dimensions": 768,
+          "mode": "async",
+          "query": true,
+          "documents": 2
+        }
+      ],
+      "binding": "unit-tested; no live Python Worker runtime test"
+    }
+  },
+  "videoq": {
+    "unitTests": 64,
+    "workerRuntimeTests": 14,
+    "pythonTests": 63,
+    "typecheck": true,
+    "lint": true,
+    "live": {
+      "dimensions": 768,
+      "documents": 2,
+      "finite": true,
+      "upstreamComparisonMaxAbsoluteDifference": 2.9999999984209325e-9,
+      "upstreamComparisonMinCosine": 1
+    },
+    "pythonSignedEndpointLive": {
+      "path": "Python signed internal API -> actual Worker route -> LangChain OpenAIEmbeddings -> remote AI binding",
+      "dimensions": 768,
+      "documents": 2,
+      "queries": 1
+    },
+    "notes": [
+      "Wrangler Node binding proxy cannot serialize AbortSignal; live application test uses workerd with the real remote AI binding.",
+      "No corpus re-embedding or production cutover was performed. Models with equal dimensions must still use separately rebuilt indexes."
+    ]
+  }
+}

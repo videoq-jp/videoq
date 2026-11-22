@@ -105,3 +105,34 @@ def test_cloud_bootstrap_loads_api_key_without_reading_database_secret(monkeypat
     bootstrap.ensure_secrets_loaded()
     client.get_parameter.assert_called_once_with(Name="/app", WithDecryption=True)
     assert internal_api.os.environ["WORKER_INTERNAL_API_SECRET"] == "a" * 40
+
+
+def test_embedding_operation_uses_signed_channel_and_large_bounded_response(monkeypatch):
+    monkeypatch.setenv("WORKER_INTERNAL_API_ORIGIN", "https://api.example.test")
+    monkeypatch.setenv("WORKER_INTERNAL_API_SECRET", "s" * 40)
+    response = MagicMock()
+    response.__enter__.return_value.read.return_value = b'{"embeddings":[]}'
+    opener = MagicMock()
+    opener.open.return_value = response
+    monkeypatch.setattr(internal_api, "build_opener", lambda *args: opener)
+    assert internal_api.call_internal_api("embeddings/generate", {"texts": ["字幕"]}) == {"embeddings": []}
+    request = opener.open.call_args.args[0]
+    assert request.full_url == "https://api.example.test/internal/worker/embeddings/generate"
+    response.__enter__.return_value.read.assert_called_once_with(2_100_001)
+    timestamp = request.get_header("X-videoq-worker-timestamp")
+    message = f"videoq-worker-v1\n{timestamp}\nPOST\nhttps://api.example.test\n/internal/worker/embeddings/generate\n".encode() + request.data
+    assert request.get_header("X-videoq-worker-signature") == hmac.new(("s" * 40).encode(), message, hashlib.sha256).hexdigest()
+
+
+def test_embedding_http_error_retains_status_without_response_body(monkeypatch):
+    from io import BytesIO
+    from urllib.error import HTTPError
+    monkeypatch.setenv("WORKER_INTERNAL_API_ORIGIN", "https://api.example.test")
+    monkeypatch.setenv("WORKER_INTERNAL_API_SECRET", "s" * 40)
+    opener = MagicMock()
+    opener.open.side_effect = HTTPError("https://api.example.test", 409, "private body", {}, BytesIO(b"private provider data"))
+    monkeypatch.setattr(internal_api, "build_opener", lambda *args: opener)
+    with pytest.raises(internal_api.InternalApiError) as error:
+        internal_api.call_internal_api("embeddings/generate", {})
+    assert error.value.status == 409
+    assert "private" not in str(error.value)

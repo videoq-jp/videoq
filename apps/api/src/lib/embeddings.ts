@@ -1,3 +1,5 @@
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { workersAiEmbeddingFetch } from "./workers-ai-embedding-transport";
 import {
   LlmConfigurationError,
   LlmProviderError,
@@ -18,6 +20,8 @@ const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export type EmbeddingEnv = {
   EMBEDDING_PROFILE?: string;
+  EMBEDDING_PROVIDER?: string;
+  AI?: Pick<Ai, "run">;
   EMBEDDING_MODEL?: string;
   OPENAI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
@@ -87,7 +91,9 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
 export async function embedQuery(env: EmbeddingEnv, text: string, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[]> {
   signal?.throwIfAborted();
   const config = resolveEmbeddingConfig(env);
-  const result = await embedWithOpenAi(env, text, config, signal, costLedger);
+  const result = config.provider === "workers-ai"
+    ? (await embedWithWorkersAi(env, [text], "query", config, signal, costLedger))[0]
+    : await embedWithOpenAi(env, text, config, signal, costLedger);
   signal?.throwIfAborted();
   return result;
 }
@@ -101,5 +107,53 @@ async function embeddingJson(res: Response, config: EmbeddingConfig, signal?: Ab
   catch {
     signal?.throwIfAborted();
     throw new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
+  }
+}
+
+
+export type EmbeddingInputType = "query" | "document";
+
+/** Shared input contract for search and the authenticated ingestion endpoint. */
+export async function embedTexts(env: EmbeddingEnv, texts: string[], inputType: EmbeddingInputType, signal?: AbortSignal): Promise<number[][]> {
+  signal?.throwIfAborted();
+  const config = resolveEmbeddingConfig(env);
+  if (config.provider !== "workers-ai") throw new LlmConfigurationError("Shared embedding generation requires the Workers AI provider.");
+  if (texts.length === 0) return [];
+  return embedWithWorkersAi(env, texts, inputType, config, signal);
+}
+
+async function embedWithWorkersAi(env: EmbeddingEnv, texts: string[], inputType: EmbeddingInputType, config: EmbeddingConfig, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[][]> {
+  if (!env.AI) throw new LlmConfigurationError("Workers AI embeddings require the AI binding.");
+  const deadline = deadlineSignal(EMBEDDING_TIMEOUT_MS, signal);
+  const call = costLedger?.begin("query_embedding", config.model);
+  let usage: unknown;
+  let transportError: unknown;
+  const bindingFetch = workersAiEmbeddingFetch(env.AI, config, deadline, value => { usage = value; });
+  const embeddings = new OpenAIEmbeddings({
+    model: config.model, dimensions: embeddingDimensions(config), encodingFormat: "float",
+    stripNewLines: false, batchSize: 32, maxConcurrency: 2, maxRetries: 0,
+    timeout: EMBEDDING_TIMEOUT_MS,
+    configuration: {
+      baseURL: "https://workers-ai.invalid/v1", apiKey: "binding", fetch: async (input, init) => {
+        try { return await bindingFetch(input, init); }
+        catch (error) { transportError = error; throw error; }
+      },
+    },
+  });
+  try {
+    const inputs = texts.map(text => inputType === "query"
+      ? `task: search result | query: ${text}`
+      : `title: none | text: ${text}`);
+    const vectors = await embeddings.embedDocuments(inputs);
+    deadline.throwIfAborted();
+    if (vectors.length !== texts.length) throw new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
+    vectors.forEach(vector => validateEmbedding(vector, "EMBEDDING_OUTPUT_INVALID", config));
+    call?.complete(usage);
+    return vectors;
+  } catch {
+    if (deadline.aborted) { call?.interrupt(); deadline.throwIfAborted(); }
+    call?.fail();
+    if (transportError instanceof EmbeddingValidationError) throw transportError;
+    throw new LlmProviderError("Workers AI embeddings request failed. Check the server configuration.");
   }
 }
