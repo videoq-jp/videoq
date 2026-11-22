@@ -74,7 +74,7 @@
       "scopeIsolation": true
     },
     "qualityGatePassed": true,
-    "limitation": "Source-anchor hit/rank regression only. Not exhaustive relevance recall, human review, or permission to cut over production."
+    "limitation": "Source-anchor hit/rank regression only. Not exhaustive relevance recall, human review, or proof of a completed production cutover."
   },
   "readback": {
     "vectors": 420,
@@ -86,5 +86,28 @@
     "privateLabels": true,
     "privateResults": true
   },
-  "productionCutoverCompleted": false
+  "productionCutoverCompleted": false,
+  "fullCorpusReadback": {
+    "model": "@cf/google/embeddinggemma-2",
+    "profile": "embeddinggemma2",
+    "dimensions": 768,
+    "verifiedVectors": 2190,
+    "videos": 80,
+    "minCosine": 1,
+    "pendingTasks": 0,
+    "old1536SourceUnchanged": true,
+    "allHeadsReady": true,
+    "sourceSha256": "ba1367474217a26a22e13f8af5e19c6985767f57c8e350f8be5d2c9ec56c00f7",
+    "verifiedAt": "2026-11-22T08:23:53.313Z"
+  },
+  "preparedWorkerImageSecurity": {
+    "imageDigest": "sha256:342ac10fd37976cae380af5928291462b51c8256a14be71705763d4263c6bcb0",
+    "scanner": "Grype 0.122.0 / Syft 1.57.2",
+    "policy": "apps/worker/security/grype.json",
+    "strictGatePassed": true,
+    "unsuppressedHigh": 0,
+    "unsuppressedCritical": 0,
+    "unsuppressedMedium": 6,
+    "unsuppressedLow": 3
+  }
 }
