@@ -206,11 +206,24 @@
   "backgroundMaintenanceLiveReadiness": {
     "date": "2026-11-22",
     "operations": "read-only SSM metadata, IAM policy simulation and CodeBuild environment metadata",
-    "dedicatedCredentialParameterExists": false,
+    "dedicatedCredentialParameterExists": true,
     "migrationRoleCredentialReadDecision": "implicitDeny",
     "codeBuildControlFlagPresent": false,
     "productionControlEnabled": false,
-    "nextRequirement": "Provision and verify the dedicated Cloudflare credential through the controlled operator process, then review and approve the infrastructure opt-in before production transport cutover."
+    "nextRequirement": "Approve and apply independent migration-role opt-in, deploy bindings, then verify isolated pause/restore before routing cutover.",
+    "credentialProvisioning": {
+      "tokenName": "videoq-background-maintenance-20261123",
+      "expiry": "2027-02-21",
+      "permissions": [
+        "Queues Write",
+        "Workers Scripts Write"
+      ],
+      "accountId": "12daec56fdba43f677f2766ee26a5a39",
+      "ssmReadBackVerified": true,
+      "fourQueueMetadataReadsVerified": true,
+      "temporarySecretFileDeleted": true,
+      "workflowControlVerified": false
+    }
   },
   "queuePreparationLiveAttempt": {
     "runId": 45032757041,
