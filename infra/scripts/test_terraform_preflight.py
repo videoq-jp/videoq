@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 import os
 from pathlib import Path
 import re
@@ -27,8 +28,15 @@ class PreflightTests(unittest.TestCase):
 
     def completed(self, code):
         # These stand in for resource values or diagnostics; neither may leak.
-        return self.inspect({"return_value": subprocess.CompletedProcess(
-            [], code, stdout=b"PRIVATE_PLAN_VALUE", stderr=b"PRIVATE_PROVIDER_ERROR")})
+        result = subprocess.CompletedProcess([], code, stdout=b"PRIVATE_PLAN_VALUE", stderr=b"PRIVATE_PROVIDER_ERROR")
+        if code == 2:
+            return self.inspect({"side_effect": [result, subprocess.CompletedProcess([], 0, stdout=json.dumps({
+                "resource_changes": [{"mode": "managed", "type": "aws_ssm_parameter", "name": "app",
+                    "index": "PRIVATE_INDEX", "address": "PRIVATE_ADDRESS", "change": {
+                        "actions": ["update"], "before": {"value": "PRIVATE_BEFORE"},
+                        "after": {"value": "PRIVATE_AFTER"}}}]
+            }).encode(), stderr=b"PRIVATE_SHOW_ERROR")]})
+        return self.inspect({"return_value": result})
 
     def test_no_changes_skips_approval_and_succeeds(self):
         code, output, summary, logs, call = self.completed(0)
@@ -42,12 +50,40 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(call.args[0][:2], ["terraform", "plan"])
         self.assertTrue(call.kwargs["capture_output"])
 
+    def test_failed_inspection_blocks_approval_without_exposing_plan_or_diagnostics(self):
+        for inspected in [subprocess.CompletedProcess([], 1, b"PRIVATE_OUTPUT", b"PRIVATE_ERROR"),
+                          subprocess.CompletedProcess([], 0, b"PRIVATE_INVALID_JSON", b"")]:
+            code, output, summary, logs, _ = self.inspect({"side_effect": [subprocess.CompletedProcess([], 2), inspected]})
+            self.assertEqual(code, 1)
+            self.assertEqual(output + summary, "")
+            self.assertNotIn("PRIVATE", logs)
+
+    def test_metadata_groups_instances_and_omits_addresses_output_names_and_nested_keys(self):
+        row = {"mode": "managed", "type": "aws_lambda_function", "name": "group",
+               "index": "PRIVATE_INDEX", "address": "PRIVATE_ADDRESS", "change": {
+                   "actions": ["delete", "create"], "before": {"environment": {"PRIVATE_KEY": "PRIVATE_VALUE"}},
+                   "after": {}, "after_unknown": {"id": True, "environment": {"PRIVATE_NESTED": True}}}}
+        plan = {"resource_changes": [row, row], "output_changes": {"PRIVATE_OUTPUT": {"actions": ["update"], "after": "PRIVATE_VALUE"}}}
+        summary = terraform_preflight.review_metadata(plan)
+        self.assertIn("aws_lambda_function.group | 2 | delete, create | environment, id", summary)
+        self.assertIn("Changed outputs: 1", summary)
+        self.assertNotIn("PRIVATE", summary)
+
+    def test_private_plan_is_removed_after_success_and_inspection_failure(self):
+        success = self.completed(2)
+        failure = self.inspect({"side_effect": [subprocess.CompletedProcess([], 2), subprocess.CompletedProcess([], 1)]})
+        for result in (success, failure):
+            call = result[-1]
+            self.assertEqual(call.args[0][:2], ["terraform", "show"])
+            self.assertFalse(Path(call.args[0][-1]).parent.exists())
+
     def test_changes_use_the_existing_policy(self):
         code, output, summary, logs, _ = self.completed(2)
         self.assertEqual(code, 0)
         self.assertEqual(output, "has_changes=true\n")
         self.assertIn("existing approval", summary)
         self.assertNotIn("PRIVATE", logs + summary)
+        self.assertIn("aws_ssm_parameter.app | 1 | update | value", summary)
 
     def test_failures_never_grant_approval_or_claim_no_changes(self):
         for exit_code in (1, 3, -15):
