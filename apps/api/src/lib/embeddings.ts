@@ -178,11 +178,21 @@ async function embedDocumentsWithOpenAi(env: EmbeddingEnv, texts: string[], inpu
       const response = await fetch(new Request(request, { signal: deadlineSignal(EMBEDDING_TIMEOUT_MS, signal ? AbortSignal.any([signal, request.signal]) : request.signal) }));
       if (!response.ok) return response;
       const data: unknown = await response.clone().json();
-      if (!isRecord(data) || !Array.isArray(data.data) || data.data.length !== body.input.length || data.data.some((row, index) => !isRecord(row) || row.index !== index)) {
+      const invalid = (): never => {
         validationError = new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
         throw validationError;
-      }
-      return response;
+      };
+      if (!isRecord(data) || !Array.isArray(data.data) || data.data.length !== body.input.length) return invalid();
+      const ordered = data.data.map((row: unknown) => {
+        if (!isRecord(row) || typeof row.index !== 'number' || !Number.isSafeInteger(row.index)) return invalid();
+        return { row, index: row.index };
+      }).sort((a, b) => a.index - b.index).map(({ row, index }, expected) => {
+        if (index !== expected) return invalid();
+        return row;
+      });
+      // Match Python's ordering contract even if a compatible provider returns
+      // valid indexed rows out of order. Never accept missing or duplicate rows.
+      return Response.json({ ...data, data: ordered });
     } },
   });
   try {

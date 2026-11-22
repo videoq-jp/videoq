@@ -26,8 +26,8 @@ export async function runBackgroundJob(env: Bindings, input: unknown, signal?: A
       signal?.throwIfAborted();
       if (job.type === 'delete_account_data') {
         await executeLeasedAccountDeletion({
-          renew: () => repository.heartbeat(job.job_id, leaseToken),
-          step: () => stepWorkerAccountDeletion(env, { userId: job.payload.user_id, jobId: job.job_id, leaseToken }),
+          renew: () => { signal?.throwIfAborted(); return repository.heartbeat(job.job_id, leaseToken); },
+          step: () => { signal?.throwIfAborted(); return stepWorkerAccountDeletion(env, { userId: job.payload.user_id, jobId: job.job_id, leaseToken }); },
         });
         return;
       }

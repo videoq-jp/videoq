@@ -1,3 +1,4 @@
+import { streamingOtsuBoundary } from '../application/streaming-otsu';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { canonicalBackgroundJob, parseBackgroundJob } from '../application/background-job';
 import { parseSearchScenes } from '../application/search-scene-splitting';
@@ -118,25 +119,33 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
             if (!object) throw new Error('Source snapshot is missing');
             return object.json<SceneIndexSource>();
           });
-          const grouped = source.transcript.trim() ? await splitTranscriptForIndex(this.env, source.transcript, undefined, async texts => {
-            const vectors: number[][] = [];
-            for (let offset = 0; offset < texts.length; offset += 16) {
-              const artifact = `${root}${snapshot.runId}-split-${offset}.json`;
-              await step.do(`split-embeddings-${offset}`, retry, async () => {
-                await renew();
-                if (!await bucket.head(artifact)) {
-                  const values = await embedTexts(this.env, texts.slice(offset, offset + 16), 'document');
-                  await bucket.put(artifact, JSON.stringify(values), { httpMetadata: { contentType: 'application/json' } });
+          let artifactsReady = false;
+          const grouped = source.transcript.trim() ? await splitTranscriptForIndex(this.env, source.transcript, undefined,
+            () => Promise.reject(new Error('Use streaming scene boundaries')),
+            async (start, end, texts) => {
+              if (!artifactsReady) {
+                for (let offset = 0; offset < texts.length; offset += 16) {
+                  const artifact = `${root}${snapshot.runId}-split-${offset}.json`;
+                  await step.do(`split-embeddings-${offset}`, retry, async () => {
+                    await renew();
+                    if (!await bucket.head(artifact)) {
+                      const values = await embedTexts(this.env, texts.slice(offset, offset + 16), 'document');
+                      await bucket.put(artifact, JSON.stringify(values), { httpMetadata: { contentType: 'application/json' } });
+                    }
+                  });
                 }
+                artifactsReady = true;
+              }
+              return streamingOtsuBoundary(start, end, {
+                dimensions, batchSize: 16, batchesPerStep: 64,
+                readBatch: async offset => {
+                  const object = await bucket.get(`${root}${snapshot.runId}-split-${offset}.json`);
+                  if (!object) throw new Error('Scene splitting embeddings are missing');
+                  return object.json<number[][]>();
+                },
+                checkpoint: (name, operation) => step.do(name, retry, async () => { await renew(); return operation(); }),
               });
-              vectors.push(...await io(`read-split-${offset}`, async () => {
-                const values = await bucket.get(artifact);
-                if (!values) throw new Error('Scene splitting embeddings are missing');
-                return values.json<number[][]>();
-              }));
-            }
-            return vectors;
-          }) : '';
+            }) : '';
           scenes = parseSearchScenes(grouped);
           if (source.transcript.trim() && !scenes.length) throw new Error('Scene splitting produced no scenes');
         }

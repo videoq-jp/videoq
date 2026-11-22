@@ -68,7 +68,11 @@ node --test .github/scripts/embedding-migration-metrics.test.cjs
 動画処理からの検索ジョブは、メディア Lambda 側の `SEARCH_JOB_BACKEND` もそろえ、
 署名付き内部 API の outbox を経由して渡す。
 
-本番切り替え前に4つの Cloudflare キュー（検索・アカウントと各 DLQ）を作成し、
+本番向けの追加 binding は `infra/cloudflare-background.production.json` に準備してある。
+最初の配備では本番 API の binding を増やさず、既存の SQS 配送を維持する。
+`Sync Cloudflare Resources` の `prepare_background_queues=true` を指定し、既存の
+`production-infra` 承認ゲートを通して4つの Cloudflare キュー（検索・アカウントと各 DLQ）を
+作成する。その後、準備済みの binding を本番 Wrangler 設定へ反映した変更をレビューし、
 Workflows を含む API を配送先 `sqs` で配備する。隔離したデータで登録・再試行・
 途中再開・権限境界を検証してから、新規投入を止めて既存 SQS の可視・処理中・
 遅延メッセージと DLQ を確認する。既存処理が残る間は旧 consumer を撤去しない。
@@ -76,10 +80,11 @@ Workflows を含む API を配送先 `sqs` で配備する。隔離したデー�
 切り替え後の確認が完了したら Terraform の
 `cloudflare_background_jobs_enabled=true` で検索・アカウント Lambda とその
 イベントソースを撤去する。残るメディア Lambda は `media` 専用になる。
-CD のリポジトリ変数 `BACKGROUND_JOBS_RUNTIME=cloudflare` も同時に設定し、
-以後のイメージ更新が撤去済みの関数を対象にしないようにする。
+リポジトリ変数 `CLOUDFLARE_BACKGROUND_JOBS_ENABLED=true` は Terraform と CD の
+両方へ適用され、以後のイメージ更新が撤去済みの関数を対象にしないようにする。
+進行中の CD がないことを確認してから設定し、承認付き Terraform Apply を実行する。
 旧キューと DLQ の撤去は、空であることを再確認した後の別段階で
-`retire_background_queues=true` を使う。履歴ログとメディア用リソースは保持する。
+`RETIRE_BACKGROUND_QUEUES=true`（Terraform の `retire_background_queues=true`）を使う。履歴ログとメディア用リソースは保持する。
 
 [実装時の検証記録](../validation/typescript-background-migration-2026-11-22.json)
 には、本番切り替え前の結果と未完了項目を分けて記録する。

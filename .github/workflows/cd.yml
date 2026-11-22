@@ -485,7 +485,7 @@ jobs:
           SOURCE_SHA: ${{ needs.changes.outputs.sha }}
           IMAGE_REPOSITORY: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY_WORKER }}
           FUNCTION_NAME: ${{ secrets.LAMBDA_WORKER_FUNCTION_NAME }}
-          BACKGROUND_JOBS_RUNTIME: ${{ vars.BACKGROUND_JOBS_RUNTIME || 'lambda' }}
+          BACKGROUND_JOBS_RUNTIME: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ENABLED == 'true' && 'cloudflare' || 'lambda' }}
         run: |
           docker tag "videoq-worker:$SOURCE_SHA" "$IMAGE_REPOSITORY:$SOURCE_SHA"
           docker tag "videoq-worker:$SOURCE_SHA" "$IMAGE_REPOSITORY:latest"

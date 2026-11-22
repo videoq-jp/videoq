@@ -65,6 +65,7 @@ export function otsuBoundary(vectors: readonly number[][], start: number, end: n
 export interface SceneSplittingDependencies {
   encoding: SceneEncoding;
   embed(texts: string[]): Promise<number[][]>;
+  boundary?(start: number, end: number, texts: string[]): Promise<number>;
 }
 
 /** Iterative port of the Python splitter; no runtime, storage or provider dependency. */
@@ -109,7 +110,11 @@ export async function splitSearchScenes(transcript: string, deps: SceneSplitting
       continue;
     }
     let split = end;
-    if (end !== start + 1) {
+    if (end !== start + 1 && deps.boundary) {
+      const boundary = await deps.boundary(start, end, texts);
+      if (!Number.isSafeInteger(boundary) || boundary < 1 || boundary >= end - start + 1) throw new Error('Invalid scene boundary');
+      split = start + boundary;
+    } else if (end !== start + 1) {
       if (!vectors) {
         vectors = await deps.embed(texts);
         const dimensions = vectors[0]?.length;

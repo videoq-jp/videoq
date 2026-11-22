@@ -4,12 +4,12 @@ import { EmbeddingValidationError, resolveEmbeddingConfig } from '../../lib/embe
 import { LlmConfigurationError } from '../../lib/openai';
 import { createSceneEncoding } from './tokenizer';
 
-export async function splitTranscriptForIndex(env: EmbeddingEnv, transcript: string, signal?: AbortSignal, checkpointEmbeddings?: (texts: string[]) => Promise<number[][]>): Promise<string> {
+export async function splitTranscriptForIndex(env: EmbeddingEnv, transcript: string, signal?: AbortSignal, checkpointEmbeddings?: (texts: string[]) => Promise<number[][]>, checkpointBoundary?: (start: number, end: number, texts: string[]) => Promise<number>): Promise<string> {
   const config = resolveEmbeddingConfig(env);
   const encoding = await createSceneEncoding(config.model, config.provider ?? 'openai');
   try {
     return await splitSearchScenes(transcript, {
-      encoding,
+      encoding, boundary: checkpointBoundary,
       embed: async texts => {
         if (checkpointEmbeddings) return checkpointEmbeddings(texts);
         const vectors: number[][] = [];

@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { openAiBaseUrl } from '../src/lib/openai';
 import { embedTexts } from '../src/lib/embeddings';
 const vector = (dimensions: number) => [1, ...Array(dimensions - 1).fill(0)];
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('LangChain document embeddings for on-premises indexing', () => {
+  it('trims trailing slashes while preserving long interior slash runs', () => {
+    const base = 'http://embeddings.test/' + '/'.repeat(100_000) + 'v1';
+    expect(openAiBaseUrl({ OPENAI_BASE_URL: base })).toBe(base);
+    expect(openAiBaseUrl({ OPENAI_BASE_URL: base + '////' })).toBe(base);
+  });
   it.each([768,1536])('keeps batching, order, literal newlines and model prefixes (%i)', async dimensions => {
     const calls: { input: string[]; dimensions?: number; encoding_format: string }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (request: Request) => {
@@ -19,6 +25,13 @@ describe('LangChain document embeddings for on-premises indexing', () => {
     expect(calls[0].input[0]).toBe((dimensions===768?'title: none | text: ':'')+texts[0]);
     expect(calls[0].dimensions).toBe(dimensions===768?undefined:1536);
     expect(calls[0].encoding_format).toBe('float');
+  });
+  it('orders valid indexed provider rows before returning document vectors', async () => {
+    const first=vector(1536),second=[2,...Array(1535).fill(0)];
+    vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:[{index:1,embedding:second},{index:0,embedding:first}]})));
+    expect(await embedTexts({OPENAI_API_KEY:'test'},['first','second'],'document')).toEqual([first,second]);
+    vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:[{index:0,embedding:first},{index:0,embedding:second}]})));
+    await expect(embedTexts({OPENAI_API_KEY:'test'},['first','second'],'document')).rejects.toMatchObject({reason:'EMBEDDING_OUTPUT_INVALID'});
   });
   it('rejects provider row/index drift and wrong dimensions', async () => {
     for (const data of [[{index:1,embedding:vector(1536)}],[{index:0,embedding:[1]}],[]]) {

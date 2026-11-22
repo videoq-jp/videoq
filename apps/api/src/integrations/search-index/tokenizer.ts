@@ -26,11 +26,27 @@ export function sceneEncoding(ranks: TiktokenBPE): SceneEncoding {
   };
 }
 
+// This cache contains immutable public rank data only, never request text or
+// bindings. Sharing it avoids allocating a tokenizer per concurrent workflow.
+// Keep one encoding so model changes cannot grow the isolate's cache forever.
+let cachedEncoding: { name: string; value: Promise<SceneEncoding> } | undefined;
+
 export async function createSceneEncoding(model: string, provider: string): Promise<SceneEncoding> {
   let name = 'cl100k_base';
   if (provider === 'openai') {
     try { name = getEncodingNameForModel(model as TiktokenModel); } catch { /* Match Python's fallback for unknown provider models. */ }
   }
+  if (cachedEncoding?.name === name) return cachedEncoding.value;
+  const value = loadSceneEncoding(name);
+  cachedEncoding = { name, value };
+  try { return await value; }
+  catch (error) {
+    if (cachedEncoding?.value === value) cachedEncoding = undefined;
+    throw error;
+  }
+}
+
+async function loadSceneEncoding(name: string): Promise<SceneEncoding> {
   switch (name) {
     case 'o200k_base': return sceneEncoding((await import('js-tiktoken/ranks/o200k_base')).default);
     case 'p50k_base': return sceneEncoding((await import('js-tiktoken/ranks/p50k_base')).default);
