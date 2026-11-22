@@ -32,7 +32,7 @@ after(async()=>{
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],label);await docker(['rm','--force','--volumes',name]);}
  catch(e){if(!String(e.stderr||'').includes('No such object'))throw e;}
 },{timeout:30000});
-test('background maintenance plans use real DynamoDB conditional transactions',async()=>{
+test('background maintenance plans and process-replacement recovery use real DynamoDB transactions',async()=>{
  await require('./background-maintenance-store.integration.cjs').verifyBackgroundStoreTransactions({endpoint:localEndpoint});
 });
 async function fixture(){

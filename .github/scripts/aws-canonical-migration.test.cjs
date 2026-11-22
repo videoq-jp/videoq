@@ -156,3 +156,53 @@ test('schema failure preserves pause and the same run can retry and restore its 
  const original=f.state.row.background_queues.S;f.options.execute=execute;await runCanonicalMigration(f.options);
  assert.equal(f.state.row.background_queues.S,original);assert.deepEqual(f.queues.map(row=>row.settings.delivery_paused),[false,true]);
 });
+
+function verificationFixture(){
+ const f=managedFixture();
+ Object.assign(f.env,{MAINTENANCE_BACKGROUND_VERIFICATION:'true',MAINTENANCE_WRITERS_STOPPED:'false'});
+ f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false,background_verification:true});
+ Object.assign(f.production.vars,{MIGRATION_TRAFFIC_STATE:'running',ACCOUNT_JOB_BACKEND:'sqs',SEARCH_JOB_BACKEND:'sqs'});
+ f.settings.bindings=[...Object.entries(f.production.vars).map(([name,text])=>({name,type:'plain_text',text})),{name:'DB',type:'d1',id:f.production.d1_databases[0].database_id},...f.production.vectorize.map(row=>({name:row.binding,type:'vectorize',index_name:row.index_name}))];
+ return f;
+}
+test('AWS verification deliberately fails after native pause, then restores the same plans without schema work',async()=>{
+ const f=verificationFixture();
+ await assert.rejects(runCanonicalMigration(f.options),/BACKGROUND_VERIFICATION_RECOVERY_REQUIRED/);
+ assert.equal(f.calls.length,0);assert.ok(f.queues.every(row=>row.settings.delivery_paused));assert.ok(f.workflows.every(row=>row.status==='paused'));
+ assert.ok(f.state.row.background_verification_paused);assert.equal(f.state.row.background_schema_complete,undefined);
+ const original=f.state.row.background_queues.S;
+ const result=await runCanonicalMigration(f.options);assert.equal(result.background_verified,true);assert.equal(result.read_only,true);
+ assert.deepEqual(f.queues.map(row=>row.settings.delivery_paused),[false,true]);assert.deepEqual(f.workflows.map(row=>row.status),['running','paused']);
+ assert.equal(f.state.row.background_queues.S,original);assert.ok(f.state.row.background_verification_complete);assert.equal(f.calls.length,0);
+ const writes=f.mutations.length;await runCanonicalMigration(f.options);assert.equal(f.mutations.length,writes);
+ assert.equal(f.settings.bindings.find(row=>row.name==='MIGRATION_TRAFFIC_STATE').text,'running');
+});
+test('verification refuses routing drift, wrong owned input, missing opt-in and a paused API before control writes',async()=>{
+ for(const mutate of [
+  f=>{f.settings.bindings.find(row=>row.name==='SEARCH_JOB_BACKEND').text='cloudflare';},
+  f=>{f.settings.bindings.push({name:'ACCOUNT_JOB_BACKEND',type:'plain_text',text:'sqs'});},
+  f=>{f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false});},
+  f=>{f.env.VIDEOQ_BACKGROUND_MAINTENANCE='false';},
+  f=>{f.production.vars.MIGRATION_TRAFFIC_STATE='paused';f.settings.bindings.find(row=>row.name==='MIGRATION_TRAFFIC_STATE').text='paused';},
+  f=>{f.env.MAINTENANCE_WRITERS_STOPPED='true';},
+ ]){
+  const f=verificationFixture();mutate(f);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.mutations.length,0);assert.equal(f.calls.length,0);
+ }
+ const f=verificationFixture();await assert.rejects(runCanonicalMigration(f.options),/RECOVERY_REQUIRED/);
+ const writes=f.mutations.length;f.settings.bindings.find(row=>row.name==='ACCOUNT_JOB_BACKEND').text='cloudflare';
+ await assert.rejects(runCanonicalMigration(f.options),/SQS_ROUTING_REQUIRED/);assert.equal(f.mutations.length,writes);assert.equal(f.state.row.background_verification_complete,undefined);
+});
+test('ordinary schema work cannot inherit a verification-only lock or opt into verification on PostgreSQL',async()=>{
+ const f=verificationFixture();delete f.env.MAINTENANCE_BACKGROUND_VERIFICATION;await assert.rejects(runCanonicalMigration(f.options),/SOURCE_MISMATCH/);assert.equal(f.calls.length,0);
+ const p=verificationFixture();p.production.vars={ENVIRONMENT:'production'};await assert.rejects(runCanonicalMigration(p.options),/D1_REQUIRED/);assert.equal(p.calls.length,0);assert.equal(p.parameters.length,0);
+});
+test('verification rechecks SQS routing between control writes instead of relying on its initial observation',async()=>{
+ const f=verificationFixture(),fetcher=f.options.fetcher;
+ f.options.fetcher=async(url,options)=>{
+  const result=await fetcher(url,options);
+  if(options.method==='PATCH')f.settings.bindings.find(row=>row.name==='SEARCH_JOB_BACKEND').text='cloudflare';
+  return result;
+ };
+ await assert.rejects(runCanonicalMigration(f.options),/SQS_ROUTING_REQUIRED/);
+ assert.equal(f.mutations.length,1);assert.ok(f.state.row.background_queues);assert.equal(f.state.row.background_verification_paused,undefined);assert.equal(f.calls.length,0);
+});

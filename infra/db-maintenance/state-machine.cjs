@@ -81,6 +81,7 @@ function definition({table, projects, neonRetired = false}) {
     Migrate: job('migration', 'migration', 'Release', [
       variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),
       variable('MAINTENANCE_WRITERS_STOPPED', "States.Format('{}', $.writers_stopped)"),
+      variable('MAINTENANCE_BACKGROUND_VERIFICATION', "States.Format('{}', $.background_verification)"),
     ]),
     BackupStandalone: job('backup', 'backup', 'Release'),
     SmokeStandalone: job('smoke', 'smoke', 'Release', [variable('VERIFY_AI_ANSWERS', "States.Format('{}', $.verify_ai_answers)")]),

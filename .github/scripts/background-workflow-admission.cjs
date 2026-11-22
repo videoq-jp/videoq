@@ -1,4 +1,4 @@
-// Call only after API/queue admission is closed and delivered queue handlers
+// Call only after native producer/queue admission is closed and delivered queue handlers
 // have drained. Persist prepare() before change(). Never terminate/restart work.
 const {randomUUID}=require('node:crypto');
 const ACCOUNT='12daec56fdba43f677f2766ee26a5a39',WORKFLOW='videoq-search-index-prod';

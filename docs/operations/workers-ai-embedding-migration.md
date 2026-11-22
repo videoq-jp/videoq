@@ -94,7 +94,37 @@ Workflows を含む API を配送先 `sqs` で配備する。隔離したデー�
 `enable_background_maintenance=true` のオプトイン時だけ移行ジョブが専用資格情報を読み、
 停止→スキーマ移行→成功記録→元の停止状態への復元を行う。API の全体停止は解除しない。
 失敗時は停止を維持し、同一実行の再試行では保存済みの計画から復旧する。
-本番でのオプトインと実際の AWS/Cloudflare 権限・復旧検証はまだ行っていない。
+2026-11-23 に承認済みのインフラ更新3件を適用し、本番のオプトイン、移行ジョブの
+実行上限50分、専用 SSM 資格情報と実行記録への IAM 権限を確認した。
+IAM シミュレーションは実際の CodeBuild 実行による読取・復旧の証明とは分けて扱う。
+専用トークンによる隔離 Queue/Workflow の実停止・再開と、実 TaskScheduler による
+自動ベクトル同期は検証済みだが、本番の AWS 所有権を伴う停止・復元は未検証である。
+検証に用いた一時 Cloudflare リソースは撤去し、API で不在を確認した。
+
+現在の通常 CD は、スキーマの適用済み台帳が一致すると読み取りだけで終了し、
+専用制御資格情報の読取や停止・復元を実行しない。したがって通常 CD の成功を
+停止・復旧の受け入れ証跡として扱わない。スキーマ変更を伴う経路は、同じ migration
+実行の全体ロックと API 停止を要求する。別の resource hold の所有権を転用したり、
+`writers_stopped` の値だけで停止を主張したり、検証のためだけの DDL を追加しない。
+
+切り替え前の実制御検証には、migration 要求の `background_verification: true` を使う。
+要求は現在の main の SHA と `writers_stopped: false` を持ち、既存の migration starter、
+全体ロック、固定 CodeBuild、専用トークン、実行記録を通る。`enable_background_maintenance`
+が有効で、稼働中の D1 API の検索・アカウント配送先が両方とも `sqs` の場合だけ許可する。
+この配送先確認を制御操作のたびに繰り返し、ネイティブ処理への新規配送が閉じていることを
+確認する。API 全体の停止やスキーマ変更は行わない。
+
+最初の実行は、元の状態を保存して Queue の配送を止め、実時間で16分の排出待ちを行い、
+Workflow の停止を確認する。その証跡を DynamoDB に不変保存した後、意図的に
+`BACKGROUND_VERIFICATION_RECOVERY_REQUIRED` で失敗する。失敗した migration の
+全体ロックは、新しい maintenance 要求でも削除しない。実行が終了し子 build が全て
+終了したこと、同じロック・SHA・停止計画を保持すること、AWS 操作者の
+`states:RedriveExecution` 権限を事前に確認してから、**同じ execution ARN** を
+[AWS の native redrive](https://docs.aws.amazon.com/step-functions/latest/apireference/API_RedriveExecution.html)
+で再開する。別の run、手動 CodeBuild override、全体ロックの削除で代用しない。
+redrive は保存済み証跡から元の停止状態へ戻し、復元完了を記録する。元から停止していた
+Queue/Workflow は再開せず、スキーマ移行の完了証明も生成しない。通常のスキーマ移行と
+検証専用の記録は、要求フラグと実行入力により相互に流用できない。
 
 専用資格情報は `/videoq/security/prod/background-maintenance` に保存し、
 `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` を持つ JSON とする。
