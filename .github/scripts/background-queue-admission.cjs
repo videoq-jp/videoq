@@ -8,7 +8,7 @@ const ID=/^[a-f0-9]{32}$/;
 const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
 function snapshot(row,name,id){
  if(row?.queue_name!==name||!ID.test(row.queue_id??'')||id&&row.queue_id!==id||!row.settings||!Number.isSafeInteger(row.settings.message_retention_period)||row.settings.message_retention_period<345600||row.settings.delivery_paused!==undefined&&typeof row.settings.delivery_paused!=='boolean')throw Error('BACKGROUND_QUEUE_IDENTITY_OR_SETTINGS_DRIFT');
- if(!Array.isArray(row.consumers)||row.consumers.length!==1||row.consumers[0].type!=='worker'||row.consumers[0].script_name!=='videoq-api'||row.consumers[0].dead_letter_queue!==name.replace('-prod','-dlq-prod'))throw Error('BACKGROUND_QUEUE_CONSUMER_DRIFT');
+ if(!Array.isArray(row.consumers)||row.consumers.length!==1||row.consumers[0].type!=='worker'||(row.consumers[0].script_name??row.consumers[0].script)!=='videoq-api'||row.consumers[0].script_name!==undefined&&row.consumers[0].script!==undefined&&row.consumers[0].script_name!==row.consumers[0].script||row.consumers[0].dead_letter_queue!==name.replace('-prod','-dlq-prod'))throw Error('BACKGROUND_QUEUE_CONSUMER_DRIFT');
  const {delivery_paused,...settings}=row.settings;
  return{paused:delivery_paused??false,configurationHash:resourceDigest({settings,consumers:row.consumers})};
 }

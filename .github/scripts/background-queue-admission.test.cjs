@@ -52,3 +52,20 @@ test('missing and duplicate queues cannot become an admission plan',async()=>{
   const f=fixture();mutate(f);await assert.rejects(f.control.prepare(),/SCOPE/);
  }
 });
+
+test('live Queue API script metadata supports pause/restore and rejects conflicting aliases',async()=>{
+ const f=fixture();
+ for(const row of f.rows){row.consumers[0].script=row.consumers[0].script_name;delete row.consumers[0].script_name;}
+ const plan=await f.control.prepare();
+ assert.equal((await f.control.change(plan,true)).admissionPaused,true);
+ assert.equal((await f.control.change(plan,false)).originalAdmissionRestored,true);
+ for(const script of ['unrelated',null,'']){
+  const invalid=fixture();invalid.rows[0].consumers[0].script=script;
+  await assert.rejects(invalid.control.prepare(),/CONSUMER_DRIFT/);
+  assert.equal(invalid.writes.length,0);
+ }
+ const drift=fixture(),original=await drift.control.prepare();
+ drift.rows[0].consumers[0].script='unrelated';
+ await assert.rejects(drift.control.change(original,true),/CONSUMER_DRIFT/);
+ assert.equal(drift.writes.length,0);
+});
