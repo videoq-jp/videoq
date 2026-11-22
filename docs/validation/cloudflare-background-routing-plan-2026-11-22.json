@@ -1,0 +1,116 @@
+{
+  "status": "preview-only; not applied or approved",
+  "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
+  "planSha256": "6b28c591e5ce0c4000b9fb0ffa807b62be17c6f099860ac6a0c51d50d910ca37",
+  "targetedPlan": {
+    "targets": [
+      "aws_lambda_function.worker",
+      "aws_lambda_function.group"
+    ],
+    "changes": [
+      {
+        "address": "aws_lambda_function.group[\"account\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      },
+      {
+        "address": "aws_lambda_function.group[\"search\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      },
+      {
+        "address": "aws_lambda_function.worker",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND",
+          "WORKER_JOB_GROUP"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      }
+    ],
+    "dependencyGraphRefreshed": true,
+    "openaiManagementIncluded": false
+  },
+  "fullPreflight": {
+    "runId": 45061089280,
+    "sourceSha": "4c9c8c8fe4bd31b65b9dcb59b2d9d6a1b58bff49",
+    "conclusion": "read-only preflight succeeded; apply waiting for approval",
+    "changes": [
+      {
+        "resource": "aws_lambda_function.group",
+        "instances": 2,
+        "actions": [
+          "update"
+        ],
+        "attributes": [
+          "environment"
+        ]
+      },
+      {
+        "resource": "aws_lambda_function.worker",
+        "instances": 1,
+        "actions": [
+          "update"
+        ],
+        "attributes": [
+          "environment"
+        ]
+      }
+    ],
+    "routingFlagEnabled": false
+  },
+  "intendedEffect": "Existing Lambda search child jobs use the signed enqueue API; API backend remains SQS until its separate cutover. All legacy Lambda consumers and SQS queues remain.",
+  "defaultSemantics": {
+    "missingSearchBackendBefore": "sqs",
+    "mediaGroupBefore": "absent; default empty group",
+    "mediaGroupAfter": "explicit empty group"
+  },
+  "ownedRehearsal": {
+    "pullRequest": 1608,
+    "headSha": "d7eab843834e45c9d63d45c0a97f06b7a8c5f8c5",
+    "nodeTestsPassed": 801,
+    "actualDynamoDbLocalIntegrationTestsPassed": 20,
+    "bundleAndDeployTestsPassed": 10,
+    "productionExecutionCompleted": false,
+    "remaining": "Merge queue, main CI, AWS operator deployment/readback, actual pause/failure/native redrive/original-state restoration"
+  },
+  "onpremRealModels": {
+    "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+    "releaseRunId": 45053926447,
+    "conclusion": "success",
+    "cpuJobId": 137310859348,
+    "startedAt": "2026-11-22T18:34:45Z",
+    "completedAt": "2026-11-22T18:56:58Z",
+    "publicEgressBlocked": true
+  },
+  "remainingBeforeApply": [
+    "Complete the owned AWS rehearsal",
+    "Create a fresh plan from current main and recheck live state",
+    "Review the concrete three updates and obtain manual infrastructure approval",
+    "Persist the routing repository variable and apply the approved plan"
+  ]
+}
