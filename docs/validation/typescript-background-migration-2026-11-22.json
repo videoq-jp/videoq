@@ -291,7 +291,7 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "API incident recovery and ordinary CD succeeded. Binding rollout on main 2a7136fb remains in CI; infrastructure opt-in, production background verification, routing cutover and retirement remain pending.",
+    "outstanding": "API recovery, ordinary CD and SQS-preserving Cloudflare binding rollout succeeded. Queue metadata adapter fix PR1607, maintenance opt-in, production ownership/failure recovery, routing cutover and retirement remain pending.",
     "recoveryWorkflowRun": 45042542268,
     "recoveryWorkflowConclusion": "failure",
     "recoveryFailureStage": "video-processing",
@@ -405,7 +405,13 @@
     "mergeQueueCiRun": 45051295750,
     "mergeQueueCiConclusion": "success",
     "mainCiRun": 45052555822,
-    "productionBindingsVerified": false,
-    "productionTransports": "sqs"
+    "productionBindingsVerified": true,
+    "productionTransports": "sqs",
+    "mainCiConclusion": "success",
+    "ordinaryCdRun": 45053926394,
+    "ordinaryCdConclusion": "success",
+    "maintenanceCdRun": 45053926426,
+    "maintenanceCdConclusion": "success",
+    "evidence": "cloudflare-background-bindings-2026-11-22.json"
   }
 }
