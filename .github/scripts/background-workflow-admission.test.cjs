@@ -11,8 +11,9 @@ function fixture(){
   row.status=body.status==='pause'?'waitingForPause':'running';if(failure==='after')throw Error('lost');
   return{success:true,result:{status:row.status}};
  };
- const control=createBackgroundWorkflowAdmission(request,{assertOwnership:async()=>{if(!owner)throw Error('owner');},assertAdmissionClosed:async()=>{if(!closed)throw Error('admission');},assertRestoreSafe:async()=>{if(!safe)throw Error('restore');}});
- return{rows,writes,request,control,fail:v=>{failure=v;},owner:v=>{owner=v;},closed:v=>{closed=v;},safe:v=>{safe=v;}};
+ const options={assertOwnership:async()=>{if(!owner)throw Error('owner');},assertAdmissionClosed:async()=>{if(!closed)throw Error('admission');},assertRestoreSafe:async()=>{if(!safe)throw Error('restore');},sleep:async()=>{}};
+ const control=createBackgroundWorkflowAdmission(request,options);
+ return{rows,writes,request,control,options,fail:v=>{failure=v;},owner:v=>{owner=v;},closed:v=>{closed=v;},safe:v=>{safe=v;}};
 }
 test('waitingForPause is pending; resume restores active instances and preserves original pauses',async()=>{
  const f=fixture(),plan=await f.control.prepare();assert.equal(plan.instances.length,4);
@@ -58,4 +59,41 @@ test('cursor pagination keeps later active instances and refuses repeated cursor
  const plan=await control.prepare();assert.equal(plan.instances.length,2);assert.equal(calls,2);
  const broken=createBackgroundWorkflowAdmission(async()=>({success:true,result:[],result_info:{cursor:'same'}}),{assertAdmissionClosed:async()=>{}});
  await assert.rejects(broken.prepare(),/CURSOR/);
+});
+
+test('Workflow pause and resume wait for delayed metadata without duplicate control requests',async()=>{
+ const f=fixture();f.rows.splice(2);let pending=null,sleeps=0;
+ const request=async(method,path,body)=>{
+  const result=await f.request(method,path,body);
+  if(method==='PATCH')pending={id:'job-0',status:body.status==='pause'?'running':'paused',remaining:3};
+  else if(pending?.remaining>0){pending.remaining--;result.result.find(row=>row.id===pending.id).status=pending.status;}
+  return result;
+ };
+ const c=createBackgroundWorkflowAdmission(request,{...f.options,sleep:async ms=>{assert.equal(ms,1000);sleeps++;}}),plan=await c.prepare();
+ assert.equal((await c.change(plan,true)).waitingForPause,true);f.rows[0].status='paused';
+ assert.equal((await c.change(plan,false)).originalExecutionRestored,true);
+ assert.equal(f.writes.length,2);assert.equal(sleeps,6);assert.equal(f.rows[1].status,'paused');
+});
+test('Workflow readback timeout and changed admission/identity keep the original plan and stop writes',async()=>{
+ for(const scenario of ['timeout','admission','identity']){
+  const f=fixture();f.rows.splice(2);let pending=false,sleeps=0;
+  const request=async(method,path,body)=>{
+   const result=await f.request(method,path,body);if(method==='PATCH')pending=true;
+   else if(pending)result.result.find(row=>row.id==='job-0').status='running';
+   return result;
+  };
+  const c=createBackgroundWorkflowAdmission(request,{...f.options,sleep:async()=>{sleeps++;if(scenario==='admission')f.closed(false);if(scenario==='identity')f.rows[0].version_id='22222222-2222-4333-8444-555555555555';}}),plan=await c.prepare();
+  await assert.rejects(c.change(plan,true),scenario==='timeout'?/UPDATE_INCOMPLETE/:scenario==='admission'?/admission/:/IDENTITY_CHANGED/);
+  assert.equal(f.writes.length,1);assert.equal(sleeps,scenario==='timeout'?59:1);
+ }
+});
+test('Workflow resume rechecks restoration safety during delayed readback',async()=>{
+ const f=fixture(),plan=await f.control.prepare();await f.control.change(plan,true);for(const row of f.rows)if(row.status==='waitingForPause')row.status='paused';let pending=false;
+ const request=async(method,path,body)=>{
+  const result=await f.request(method,path,body);if(method==='PATCH')pending=true;
+  else if(pending)result.result.find(row=>row.id==='job-0').status='paused';
+  return result;
+ };
+ const c=createBackgroundWorkflowAdmission(request,{...f.options,sleep:async()=>f.safe(false)});
+ await assert.rejects(c.change(plan,false),/restore/);assert.equal(f.writes.length,4);
 });

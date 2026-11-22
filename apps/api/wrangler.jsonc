@@ -124,9 +124,9 @@
       },
       "ai": { "binding": "AI" },
       "vars": {
-        // Keep legacy delivery until drained and the new execution paths are verified.
-        "ACCOUNT_JOB_BACKEND": "sqs",
-        "SEARCH_JOB_BACKEND": "sqs",
+        // Legacy consumers remain available until their SQS messages are drained.
+        "ACCOUNT_JOB_BACKEND": "cloudflare",
+        "SEARCH_JOB_BACKEND": "cloudflare",
         "ENVIRONMENT": "production",
         "DEPLOYMENT_EDITION": "cloud",
         "PERSISTENCE_BACKEND": "d1",

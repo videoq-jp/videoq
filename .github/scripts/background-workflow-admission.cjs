@@ -10,7 +10,8 @@ function checked(plan){
  if(plan?.version!==1||plan.account!==ACCOUNT||plan.workflow!==WORKFLOW||!UUID.test(plan.operationId??'')||!Array.isArray(plan.instances)||plan.instances.length>100000||new Set(plan.instances.map(row=>row.id)).size!==plan.instances.length||plan.instances.some(row=>typeof row.id!=='string'||!/^[\w-]{1,100}$/.test(row.id)||!UUID.test(row.versionId??'')||typeof row.originalPaused!=='boolean'))throw Error('INVALID_BACKGROUND_WORKFLOW_PLAN');
  return plan;
 }
-function createBackgroundWorkflowAdmission(request,{assertOwnership=async()=>{throw Error('BACKGROUND_WORKFLOW_OWNERSHIP_REQUIRED');},assertAdmissionClosed=async()=>{throw Error('BACKGROUND_WORKFLOW_ADMISSION_FENCE_REQUIRED');},assertRestoreSafe=async()=>{throw Error('BACKGROUND_WORKFLOW_RESTORE_FENCE_REQUIRED');}}={}){
+function createBackgroundWorkflowAdmission(request,{assertOwnership=async()=>{throw Error('BACKGROUND_WORKFLOW_OWNERSHIP_REQUIRED');},assertAdmissionClosed=async()=>{throw Error('BACKGROUND_WORKFLOW_ADMISSION_FENCE_REQUIRED');},assertRestoreSafe=async()=>{throw Error('BACKGROUND_WORKFLOW_RESTORE_FENCE_REQUIRED');},sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+ if(typeof sleep!=='function')throw Error('BACKGROUND_WORKFLOW_OBSERVATION_SLEEP_REQUIRED');
  const base=`accounts/${ACCOUNT}/workflows/${WORKFLOW}/instances`;
  async function list(){
   const result=[],seen=new Set();let cursor;
@@ -60,8 +61,14 @@ function createBackgroundWorkflowAdmission(request,{assertOwnership=async()=>{th
     if(!pause&&current.status==='waitingForPause')throw Error('BACKGROUND_WORKFLOW_PAUSE_NOT_FINISHED');
     await owned(plan,!pause);let failure;
     try{await request('PATCH',`${base}/${encodeURIComponent(original.id)}/status`,{status:pause?'pause':'resume'});}catch(error){failure=error;}
-    const after=(await observe(plan))[i];
-    if(!TERMINAL.has(after.status)&&!(pause?['paused','waitingForPause'].includes(after.status):ACTIVE.has(after.status))){if(failure)throw failure;throw Error('BACKGROUND_WORKFLOW_UPDATE_INCOMPLETE');}
+    let confirmed=false;const observationDeadline=Date.now()+60_000;
+    for(let attempt=0;attempt<60;attempt++){
+     await owned(plan,!pause);const after=(await observe(plan))[i];
+     if(TERMINAL.has(after.status)||(pause?['paused','waitingForPause'].includes(after.status):ACTIVE.has(after.status))){confirmed=true;break;}
+     if(attempt===59||Date.now()>=observationDeadline)break;
+     await sleep(1000);
+    }
+    if(!confirmed){if(failure)throw failure;throw Error('BACKGROUND_WORKFLOW_UPDATE_INCOMPLETE');}
    }
    await owned(plan,!pause);return this.inspect(plan);
   },
