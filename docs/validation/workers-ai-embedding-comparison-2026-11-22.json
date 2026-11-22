@@ -86,7 +86,7 @@
     "privateLabels": true,
     "privateResults": true
   },
-  "productionCutoverCompleted": false,
+  "productionCutoverCompleted": true,
   "fullCorpusReadback": {
     "model": "@cf/google/embeddinggemma-2",
     "profile": "embeddinggemma2",
@@ -96,9 +96,10 @@
     "minCosine": 1,
     "pendingTasks": 0,
     "old1536SourceUnchanged": true,
+    "unchangedTextAndBoundaries": true,
     "allHeadsReady": true,
     "sourceSha256": "ba1367474217a26a22e13f8af5e19c6985767f57c8e350f8be5d2c9ec56c00f7",
-    "verifiedAt": "2026-11-22T08:23:53.313Z"
+    "verifiedAt": "2026-11-22T09:59:06.052Z"
   },
   "preparedWorkerImageSecurity": {
     "imageDigest": "sha256:342ac10fd37976cae380af5928291462b51c8256a14be71705763d4263c6bcb0",
@@ -109,5 +110,51 @@
     "unsuppressedCritical": 0,
     "unsuppressedMedium": 6,
     "unsuppressedLow": 3
+  },
+  "productionCutover": {
+    "verifiedAt": "2026-11-22T09:59:06.052Z",
+    "implementationPr": 1597,
+    "rolloutPr": 1598,
+    "implementationMerge": "f7bcff55180cf1f72b63d3a638c34f3066aa95c9",
+    "rolloutMerge": "b588e2a6d335832c1fa1fc65a2b97d3b2cabe1dc",
+    "apiVersion": "f527f532-b5cb-4400-b981-dcf21b9aa165",
+    "apiTrafficPercentage": 100,
+    "workerImageDigest": "sha256:342ac10fd37976cae380af5928291462b51c8256a14be71705763d4263c6bcb0",
+    "workers": [
+      "videoq-worker-prod",
+      "videoq-worker-search-prod",
+      "videoq-worker-account-prod"
+    ],
+    "allConsumersResumed": true,
+    "otherApiBindingsAndSecretReferencesPreserved": true,
+    "otherWorkerEnvironmentPreserved": true,
+    "pythonImageToProductionApi": {
+      "document": {
+        "count": 1,
+        "dimensions": 768
+      },
+      "query": {
+        "count": 1,
+        "dimensions": 768
+      }
+    },
+    "browser": {
+      "verifiedAt": "2026-11-22T09:58:11.662Z",
+      "freshSceneSearchCompleted": true,
+      "searchResults": 20,
+      "finalAnswerCompleted": true,
+      "citations": 6,
+      "allCitationsMatchSourceBoundaries": true,
+      "allSourcesWithinVerifiedCourse": true,
+      "citationPlaybackVerified": true,
+      "firstAttemptFailedBeforeObservedToolExecution": true,
+      "firstFailureCauseDetermined": false,
+      "retryWithExplicitToolSucceeded": true
+    },
+    "healthStatus": 200,
+    "readinessStatus": 200,
+    "old1536RollbackSnapshotPreserved": true,
+    "dualWriteToOldIndex": false,
+    "evaluationFunctionDisabled": true
   }
 }
