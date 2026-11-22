@@ -1,6 +1,6 @@
 # Search and account consumers receive the same operational coverage as media.
 resource "aws_cloudwatch_metric_alarm" "group_errors" {
-  for_each            = local.worker_groups
+  for_each            = local.lambda_worker_groups
   alarm_name          = "${local.name_prefix}-worker-${each.key}-${var.env_name}-errors"
   alarm_description   = "Worker Lambda returned one or more errors in five minutes."
   namespace           = "AWS/Lambda"
@@ -22,7 +22,7 @@ resource "aws_cloudwatch_metric_alarm" "group_errors" {
 # Unlike Lambda Errors, this includes failures returned in batchItemFailures.
 # FailedInvokeEventCount is timestamped at completion, before the SQS retry wait.
 resource "aws_cloudwatch_metric_alarm" "group_job_failures" {
-  for_each            = local.worker_groups
+  for_each            = local.lambda_worker_groups
   alarm_name          = "${local.name_prefix}-worker-${each.key}-${var.env_name}-job-failures"
   alarm_description   = "One or more worker SQS events failed in five minutes, including partial batch failures. Messages may still be waiting for retry."
   namespace           = "AWS/Lambda"
@@ -43,7 +43,7 @@ resource "aws_cloudwatch_metric_alarm" "group_job_failures" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "group_throttles" {
-  for_each            = local.worker_groups
+  for_each            = local.lambda_worker_groups
   alarm_name          = "${local.name_prefix}-worker-${each.key}-${var.env_name}-throttles"
   alarm_description   = "Worker Lambda was throttled."
   namespace           = "AWS/Lambda"
@@ -63,7 +63,7 @@ resource "aws_cloudwatch_metric_alarm" "group_throttles" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "group_duration" {
-  for_each          = local.worker_groups
+  for_each          = local.lambda_worker_groups
   alarm_name        = "${local.name_prefix}-worker-${each.key}-${var.env_name}-duration"
   alarm_description = "A completed Worker Lambda invocation reached at least 80% of its timeout. Duration is reported after execution."
   namespace         = "AWS/Lambda"

@@ -1,7 +1,8 @@
 # The original worker/queue remains the media consumer and drains pre-split jobs.
 # Keep its resource address, name and DLQ intact during migration.
 locals {
-  worker_groups = var.worker_groups
+  worker_groups        = var.retire_background_queues ? {} : var.worker_groups
+  lambda_worker_groups = var.cloudflare_background_jobs_enabled ? {} : var.worker_groups
 }
 
 resource "aws_sqs_queue" "group_dlq" {
@@ -9,9 +10,6 @@ resource "aws_sqs_queue" "group_dlq" {
   name                      = "${local.name_prefix}-worker-${each.key}-dlq-${var.env_name}"
   message_retention_seconds = 1209600
   sqs_managed_sse_enabled   = true
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_sqs_queue" "group" {
@@ -28,9 +26,6 @@ resource "aws_sqs_queue" "group" {
     deadLetterTargetArn = aws_sqs_queue.group_dlq[each.key].arn
     maxReceiveCount     = var.sqs_max_receive_count
   })
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_sqs_queue_policy" "group_require_tls" {
@@ -53,7 +48,7 @@ resource "aws_sqs_queue_policy" "group_require_tls" {
 }
 
 resource "aws_cloudwatch_log_group" "group" {
-  for_each          = local.worker_groups
+  for_each          = var.worker_groups
   name              = "/aws/lambda/${local.name_prefix}-worker-${each.key}-${var.env_name}"
   retention_in_days = var.lambda_log_retention_days
   lifecycle {
@@ -62,7 +57,7 @@ resource "aws_cloudwatch_log_group" "group" {
 }
 
 resource "aws_lambda_function" "group" {
-  for_each      = local.worker_groups
+  for_each      = local.lambda_worker_groups
   function_name = "${local.name_prefix}-worker-${each.key}-${var.env_name}"
   role          = aws_iam_role.worker.arn
   package_type  = "Image"
@@ -86,7 +81,7 @@ resource "aws_lambda_function" "group" {
 }
 
 resource "aws_lambda_event_source_mapping" "group" {
-  for_each                = local.worker_groups
+  for_each                = local.lambda_worker_groups
   event_source_arn        = aws_sqs_queue.group[each.key].arn
   function_name           = aws_lambda_function.group[each.key].arn
   batch_size              = 1

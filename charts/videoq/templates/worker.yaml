@@ -44,6 +44,10 @@ spec:
           envFrom:
             {{- include "videoq.envFrom" . | nindent 12 }}
           env:
+            {{- if .Values.backgroundWorker.enabled }}
+            - name: WORKER_JOB_GROUP
+              value: media
+            {{- end }}
             - name: R2_S3_ENDPOINT
               value: {{ default .Values.storage.endpoint .Values.storage.internalEndpoint | quote }}
             {{- with .Values.worker.extraEnv }}

@@ -58,3 +58,28 @@ node --test .github/scripts/embedding-migration-metrics.test.cjs
 2026-11-22、ユーザーの削除依頼により `videoq-prod-scenes-1536` を削除した。本番APIから `SCENE_VECTORIZE_1536` と、D1では不要な旧 `PGVECTOR_COLLECTION_NAME` を除去した。D1の1536次元専用シーン2,190件、配信head80件、run80件、タスク2,344件を削除した。削除前に全旧シーンの本文・動画・時刻・種別が現行768次元にも存在することを照合し、削除後にも現行2,191件が変更されていないことを確認した。元字幕・動画・共有source revisionは削除していない。
 
 通常CDは、旧接続が本番・設定の両方から既に除去され、同じ本番D1とWorkers AIの768次元接続が維持されている状態だけを受け入れる。片側だけの接続追加・削除、モデル設定の不一致、稼働中インデックスの消失は拒否する。開発・オンプレミス向けOpenAI互換実装と過去の移行・比較記録は維持する。
+
+## TypeScript ワーカーへの移行準備
+
+検索・アカウント処理を TypeScript に共通化する実装を追加した。クラウド版の
+配送先は現段階では `sqs` のままとし、コード追加だけでは切り替えない。
+`ACCOUNT_JOB_BACKEND=cloudflare` は `ACCOUNT_JOBS`、
+`SEARCH_JOB_BACKEND=cloudflare` は `SEARCH_JOBS` と `SEARCH_INDEX_WORKFLOW` を使う。
+動画処理からの検索ジョブは、メディア Lambda 側の `SEARCH_JOB_BACKEND` もそろえ、
+署名付き内部 API の outbox を経由して渡す。
+
+本番切り替え前に4つの Cloudflare キュー（検索・アカウントと各 DLQ）を作成し、
+Workflows を含む API を配送先 `sqs` で配備する。隔離したデータで登録・再試行・
+途中再開・権限境界を検証してから、新規投入を止めて既存 SQS の可視・処理中・
+遅延メッセージと DLQ を確認する。既存処理が残る間は旧 consumer を撤去しない。
+
+切り替え後の確認が完了したら Terraform の
+`cloudflare_background_jobs_enabled=true` で検索・アカウント Lambda とその
+イベントソースを撤去する。残るメディア Lambda は `media` 専用になる。
+CD のリポジトリ変数 `BACKGROUND_JOBS_RUNTIME=cloudflare` も同時に設定し、
+以後のイメージ更新が撤去済みの関数を対象にしないようにする。
+旧キューと DLQ の撤去は、空であることを再確認した後の別段階で
+`retire_background_queues=true` を使う。履歴ログとメディア用リソースは保持する。
+
+[実装時の検証記録](../validation/typescript-background-migration-2026-11-22.json)
+には、本番切り替え前の結果と未完了項目を分けて記録する。

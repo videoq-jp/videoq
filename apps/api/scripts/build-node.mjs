@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 const bundle = await build({
-  entryPoints: { "provision-user": "scripts/provision-user.ts", node: "src/runtime/node.ts", "migrate-database": "scripts/migrate-database.ts" },
+  entryPoints: { "background-worker": "src/runtime/background-worker.ts", "provision-user": "scripts/provision-user.ts", node: "src/runtime/node.ts", "migrate-database": "scripts/migrate-database.ts" },
   outdir: "dist", outExtension: { ".js": ".mjs" },
   metafile: true,
   bundle: true, platform: "node", target: "node22", format: "esm",

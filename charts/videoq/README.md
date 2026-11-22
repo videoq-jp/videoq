@@ -327,3 +327,20 @@ OpenRouter. Prefer `ai.federationPolicyId` with `ai.federationAudience` and AWS 
 are `openai/gpt-6-luna`, `openai/text-embedding-3-small` (1536 dimensions), and
 `openai/whisper-large-v3-turbo`. Remove stale `LLM_*` / `EMBEDDING_*` endpoint/key
 overrides to share the provider. Local overlays continue to use private inference.
+
+## TypeScript search and account worker
+
+Set `backgroundWorker.enabled=true` and provide `queue.searchUrl` and
+`queue.accountUrl` after creating dedicated persistent queues and dead-letter
+queues. Both URLs must differ from the media `queue.url` and from each other.
+The worker reuses the API image and runs `node dist/background-worker.mjs`.
+`examples/site.yaml` enables this topology; the single-node ElasticMQ example
+includes the additional queues. While enabled, the Python worker accepts media
+jobs only. Drain jobs from the legacy shared queue before switching an existing
+installation.
+
+For an existing installation, keep `backgroundWorker.enabled=false` until the
+new queues and image are ready, then enable the Node worker and producer routing
+together. Preserve old queues and DLQs until their visible and in-flight message
+counts are zero. Storage deletion continues through the existing durable cleanup
+outbox and maintenance jobs.

@@ -22,6 +22,10 @@ data:
   R2_S3_INTERNAL_ENDPOINT: {{ .Values.storage.internalEndpoint | quote }}
   R2_S3_REGION: {{ .Values.storage.region | quote }}
   SQS_QUEUE_URL: {{ required "queue.url is required" .Values.queue.url | quote }}
+  {{- if .Values.backgroundWorker.enabled }}
+  SQS_SEARCH_QUEUE_URL: {{ required "queue.searchUrl is required for backgroundWorker" .Values.queue.searchUrl | quote }}
+  SQS_ACCOUNT_QUEUE_URL: {{ required "queue.accountUrl is required for backgroundWorker" .Values.queue.accountUrl | quote }}
+  {{- end }}
   AWS_REGION: {{ .Values.queue.region | quote }}
   SQS_VISIBILITY_TIMEOUT: "900"
   SQS_MAX_MESSAGES: "1"

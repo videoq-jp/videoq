@@ -8,7 +8,7 @@ export const WORKERS_AI_EMBEDDING_MODEL = "@cf/google/embeddinggemma-2";
 export type EmbeddingSettings = { EMBEDDING_PROVIDER?: string; EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
 
 export const embeddingDimensions = (config?: EmbeddingConfig): number => config?.profile === "embeddinggemma2" ? 768 : EMBEDDING_DIMENSIONS;
-export const embeddingTable = (config: EmbeddingConfig): string => config.profile === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings";
+export const embeddingTable = (config: EmbeddingConfig): "scene_embeddings" | "scene_embeddings_768" => config.profile === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings";
 export type EmbeddingReason =
   | "EMBEDDING_CONFIG_INVALID"
   | "EMBEDDING_SCHEMA_MISMATCH"

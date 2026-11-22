@@ -33,17 +33,23 @@ type SecretBindings = {
 
 // Keep generated binding names/types, while allowing deployment-specific string
 // values and runtimes without Cloudflare resources.
+// Workflow generated types refer back to their entrypoint. Break that cycle
+// at the runtime boundary, just as Vectorize v2 is adapted below.
+type GeneratedBindings = Omit<CloudflareBindings, "SEARCH_INDEX_WORKFLOW">;
 type RuntimeStrings = {
-  [K in keyof CloudflareBindings as NonNullable<CloudflareBindings[K]> extends string ? K : never]: string;
+  [K in keyof GeneratedBindings as NonNullable<GeneratedBindings[K]> extends string ? K : never]: string;
 };
 type PlatformResources = {
-  [K in keyof CloudflareBindings as NonNullable<CloudflareBindings[K]> extends string ? never : K]?: CloudflareBindings[K];
+  [K in keyof GeneratedBindings as NonNullable<GeneratedBindings[K]> extends string ? never : K]?: GeneratedBindings[K];
 };
 
 export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL" | "LLM_BASE_URL" | "LLM_MAX_TOKENS"> &
   Omit<PlatformResources, "SCENE_VECTORIZE_1536" | "SCENE_VECTORIZE_768"> &
   SecretBindings & {
     RUNTIME?: "node";
+    SEARCH_INDEX_WORKFLOW?: Workflow<unknown>;
+    ACCOUNT_JOB_BACKEND?: "sqs" | "cloudflare";
+    SEARCH_JOB_BACKEND?: "sqs" | "cloudflare";
     DEFAULT_MONTHLY_UPLOAD_LIMIT_GB?: string;
     DEPLOYMENT_EDITION?: "cloud" | "onprem";
     DATABASE_URL?: string;

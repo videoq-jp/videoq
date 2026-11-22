@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-22",
+  "status": "implementation and verification in progress; production transport unchanged",
+  "apiSuite": {
+    "passed": 4110,
+    "failed": 0,
+    "skipped": 886,
+    "files": 455,
+    "maxWorkers": 2
+  },
+  "focusedPostgresAndNodeE2E": {
+    "passed": 26,
+    "failed": 0,
+    "realPostgres": true,
+    "realElasticMQ": true,
+    "builtNodeProcess": true,
+    "model": "synthetic OpenAI-compatible server"
+  },
+  "cloudNativeLive": {
+    "date": "2026-11-22",
+    "runtime": "native local workerd Workflows + local D1/R2 + real remote Workers AI and temporary remote Vectorize",
+    "model": "@cf/google/embeddinggemma-2",
+    "workflowStatus": "complete",
+    "elapsedSeconds": 156.33,
+    "videoStatus": "completed",
+    "jobStatus": "completed",
+    "pendingVectorTasks": 0,
+    "scenes": 3,
+    "maintenancePasses": 148,
+    "productionDataChanged": false,
+    "temporaryVectorizeDeleted": true
+  },
+  "terraformMockTests": {
+    "passed": 4,
+    "failed": 0,
+    "productionInfrastructureChanged": false
+  },
+  "limitations": [
+    "Local D1/R2 and a temporary remote Vectorize index were used; no production application data was modified.",
+    "Local workerd HMR interrupted an earlier pending retry; pause/resume recovered the same instance. The reported clean run had no HMR or recovery intervention.",
+    "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark."
+  ],
+  "remaining": [
+    "Complete production review, rollout, draining and retirement of legacy consumers.",
+    "Remove superseded Python search/account execution paths after cutover."
+  ],
+  "cloudNativeGenerationWithSplittingCheckpoints": {
+    "date": "2026-11-22",
+    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+    "model": "@cf/google/embeddinggemma-2",
+    "workflowStatus": "complete",
+    "elapsedSeconds": 2.39,
+    "jobStatus": "completed",
+    "scenes": [
+      {
+        "count": 3,
+        "dimensions": 768
+      }
+    ],
+    "vectorDelivery": [
+      {
+        "pending": 3
+      }
+    ],
+    "productionDataChanged": false
+  },
+  "workflowRecoveryTests": {
+    "passed": 13,
+    "failed": 0,
+    "scope": "Real D1 migrations and persistence; step simulator injects lost acknowledgements and transient artifact reads"
+  },
+  "workerRuntimeTests": {
+    "passed": 100,
+    "failed": 0,
+    "files": 16
+  },
+  "checks": {
+    "apiLint": true,
+    "apiTypecheck": true,
+    "nodeBuild": true,
+    "workerDryRun": true,
+    "productionWorkerDryRun": true,
+    "helmLint": true,
+    "terraformValidate": true,
+    "terraformApplyExecuted": false
+  }
+}

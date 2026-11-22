@@ -520,6 +520,10 @@ jobs:
       LMS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       LTI_BROWSER_TESTS: "1"
     services:
+      elasticmq:
+        image: softwaremill/elasticmq-native:1.6.16
+        ports:
+          - 9324:9324
       postgres:
         image: pgvector/pgvector:pg17
         env:
@@ -575,6 +579,8 @@ jobs:
           npm run db:verify --workspace @videoq/api
           npm run test:unit --workspace @videoq/api -- --maxWorkers=2
           npm run test:workers --workspace @videoq/api
+          npm run build:node --workspace @videoq/api
+          BACKGROUND_WORKER_E2E=1 SQS_TEST_ENDPOINT=http://127.0.0.1:9324/ npm run test:unit --workspace @videoq/api -- --maxWorkers=1 test/background-worker.e2e.test.ts
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:

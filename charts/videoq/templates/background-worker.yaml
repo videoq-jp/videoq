@@ -1,0 +1,42 @@
+{{- if .Values.backgroundWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "videoq.fullname" . }}-background-worker
+  labels:
+    {{- include "videoq.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backgroundWorker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "videoq.selector" . | nindent 6 }}
+      app.kubernetes.io/component: background-worker
+  template:
+    metadata:
+      labels:
+        {{- include "videoq.selector" . | nindent 8 }}
+        app.kubernetes.io/component: background-worker
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 840
+      securityContext:
+        {{- include "videoq.nodeSecurity" . | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: background-worker
+          image: {{ include "videoq.apiImage" . | quote }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command: [node, dist/background-worker.mjs]
+          securityContext:
+            {{- include "videoq.containerSecurity" . | nindent 12 }}
+          envFrom:
+            {{- include "videoq.envFrom" . | nindent 12 }}
+          env:
+            - name: BACKGROUND_WORKER_GROUPS
+              value: account,search
+          resources: {{ toYaml .Values.backgroundWorker.resources | nindent 12 }}
+{{- end }}

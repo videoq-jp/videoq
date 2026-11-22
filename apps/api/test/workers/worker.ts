@@ -7,3 +7,5 @@ export default {
     return new Response("Workers runtime test entrypoint");
   },
 } satisfies ExportedHandler<CloudflareBindings>;
+
+export { SearchIndexWorkflow } from "../../src/workflows/search-index";

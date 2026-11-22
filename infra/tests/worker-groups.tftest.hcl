@@ -94,3 +94,30 @@ run "short_function_timeouts_preserve_lease_recovery" {
     error_message = "Even a lease claimed just before Lambda timeout must expire before the next SQS attempt."
   }
 }
+
+run "cloudflare_cutover_retires_functions_but_retains_queues_and_logs" {
+  command = plan
+  variables {
+    cloudflare_background_jobs_enabled = true
+  }
+  assert {
+    condition = length(aws_lambda_function.group) == 0 && length(aws_lambda_event_source_mapping.group) == 0 && length(aws_sqs_queue.group) == 2 && length(aws_cloudwatch_log_group.group) == 2
+    error_message = "Cutover must remove background Lambdas while retaining drained queues and historical logs until explicit cleanup."
+  }
+  assert {
+    condition = aws_lambda_function.worker.environment[0].variables["SEARCH_JOB_BACKEND"] == "cloudflare" && aws_lambda_function.worker.environment[0].variables["WORKER_JOB_GROUP"] == "media"
+    error_message = "The remaining media Lambda must hand search jobs to the signed API."
+  }
+}
+
+run "explicit_final_queue_retirement" {
+  command = plan
+  variables {
+    cloudflare_background_jobs_enabled = true
+    retire_background_queues = true
+  }
+  assert {
+    condition = length(aws_sqs_queue.group) == 0 && length(aws_sqs_queue.group_dlq) == 0 && length(aws_cloudwatch_log_group.group) == 2 && aws_sqs_queue.main.name == "videoq-worker-prod"
+    error_message = "Final cleanup removes only legacy background queues, retaining media and historical logs."
+  }
+}

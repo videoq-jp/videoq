@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from contextlib import closing
 from typing import Any
@@ -35,6 +36,16 @@ def enqueue_job(
 
     Returns MessageId, or None when SQS is not configured (caller should fall back).
     """
+    if os.environ.get("SEARCH_JOB_BACKEND") == "cloudflare":
+        from worker_python.domain.jobs import job_group
+        if job_group(job_type) == "search":
+            from worker_python.internal_api import call_internal_api
+            message = build_job_message(job_type, payload, job_id=job_id)
+            result = call_internal_api("enqueue", message)
+            if result.get("messageId") != message["job_id"]:
+                raise RuntimeError("Invalid internal enqueue response")
+            return message["job_id"]
+
     queue_url = queue_url_for_job(job_type)
     if not queue_url:
         logger.info(

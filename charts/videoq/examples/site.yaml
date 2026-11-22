@@ -25,8 +25,13 @@ storage:
   internalEndpoint: http://garage.storage.svc.cluster.local:3900
   bucket: videoq-media
   region: garage
+backgroundWorker:
+  enabled: true
+
 queue:
   url: http://queue.messaging.svc.cluster.local:9324/000000000000/videoq-jobs
+  searchUrl: http://queue.messaging.svc.cluster.local:9324/000000000000/videoq-search
+  accountUrl: http://queue.messaging.svc.cluster.local:9324/000000000000/videoq-account
   region: us-east-1
 ingress:
   enabled: true

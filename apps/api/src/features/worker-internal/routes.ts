@@ -1,3 +1,6 @@
+import { parseBackgroundJob } from '../../application/background-job';
+import { createJobTask } from '../../repositories/external-task-repository';
+import { processExternalTaskById } from '../../lib/external-tasks';
 import { transcriptionFailureAllowed, validTranscriptionPlan, validTranscriptionSegments } from '../../application/transcription-policy';
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -15,7 +18,7 @@ const identity = z.object({
 }).strict();
 const lease = z.object({ jobId: z.string().min(1).max(128), leaseToken: z.string().uuid() }).strict();
 const failure = lease.extend({ errorCode: z.literal("WORKER_EXECUTION_FAILED") });
-const actions = new Set(["claim", "complete", "fail", "heartbeat"]);
+const actions = new Set(["claim", "complete", "fail", "heartbeat", "enqueue"]);
 const encoder = new TextEncoder();
 
 /** Sign the exact bytes, audience and operation. Credentials expire after 60s;
@@ -47,6 +50,15 @@ workerInternalRoutes.post("/jobs/:action", async c => {
   }
   let input: unknown;
   try { input = JSON.parse(body); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
+  if (action === "enqueue") {
+    let message;
+    try { message = parseBackgroundJob(input); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
+    if (message.type === 'delete_account_data') return c.json({ error: "INVALID_REQUEST" }, 400);
+    if (c.env.TASK_SCHEDULER) await armMaintenance(c.env, Date.now() + 1000);
+    const task = await createJobTask(c.env, { message });
+    await processExternalTaskById(c.env, task.id);
+    return c.json({ messageId: message.job_id });
+  }
   if (action === "claim") {
     const parsed = identity.safeParse(input);
     if (!parsed.success) return c.json({ error: "INVALID_REQUEST" }, 400);

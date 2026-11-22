@@ -8,7 +8,7 @@ import {
   videoRefundBooleanLogic,
 } from "../../application/video-mutation";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { withDb } from "../../db/pool";
+import { withDb, type Db } from "../../db/pool";
 import {
   sceneEmbeddings,
   mcpIdempotencyRecords,
@@ -123,85 +123,100 @@ export async function deleteVideoCascade(
   | { deleted: false; cleanupTaskId: null }
   | { deleted: true; cleanupTaskId: number | null }
 > {
-  return withDb(env, async (db) => {
-    return db.transaction(async (tx) => {
-      const locked = await tx
-        .select({
-          status: videos.status,
-          file: videos.file,
-          multipart: videos.multipartUpload,
-          heartbeat: videos.uploadHeartbeatAt,
-          uploadPeriod: videos.uploadUsagePeriodStart,
-        })
-        .from(videos)
-        .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
-        .for("update")
-        .limit(1);
-      if (!videoDeletionAllowed(locked[0], options)) {
-        return { deleted: false, cleanupTaskId: null } as const;
-      }
-      const { fileKey, bytes: cleanupBytes } = videoCleanup(
-        locked[0].file,
-        options.fallbackStorageBytes,
-      );
-      const cleanupTaskId = fileKey
-        ? await insertStorageCleanupTask(tx, {
-            dedupeKey: `storage:video:${videoId}`,
-            userId,
-            fileKey,
-            bytes: cleanupBytes,
-            ...(locked[0].multipart
-              ? { multipartUploadId: locked[0].multipart.uploadId }
-              : {}),
-          })
-        : null;
-
-      // A completed upload consumes its month's allowance even after deletion.
-      // Row locking + the delete make abort refunds idempotent. A previous
-      // month's reservation cannot subtract from a new month's usage.
-      if (
-        videoAbortRefundAllowed(
-          locked[0].status,
-          cleanupBytes,
-          videoRefundBooleanLogic,
-        ) &&
-        locked[0].uploadPeriod &&
-        cleanupBytes
-      ) {
-        await refundUnconfirmedUpload(
-          tx,
-          userId,
-          cleanupBytes,
-          locked[0].uploadPeriod,
-        );
-      }
-
-      await tx
-        .delete(mcpIdempotencyRecords)
-        .where(
-          and(
-            eq(mcpIdempotencyRecords.userId, userId),
-            eq(mcpIdempotencyRecords.resourceId, videoId),
-            inArray(mcpIdempotencyRecords.action, [
-              "request_video_upload",
-              "create_youtube_video",
-            ]),
-          ),
-        );
-
-      // No FK; remove vector rows so orphan embeddings do not linger.
-      await tx
-        .delete(sceneEmbeddings)
-        .where(eq(sceneEmbeddings.videoId, videoId));
-
-      // FK cascades remove tags and course memberships.
-      await tx
-        .delete(videos)
-        .where(and(eq(videos.id, videoId), eq(videos.userId, userId)));
-      return { deleted: true, cleanupTaskId } as const;
-    });
-  });
+  return withDb(env, db => db.transaction(tx => deleteVideoInTransaction(tx, videoId, userId, options)));
 }
+
+export async function deleteVideoInTransaction(
+  tx: Parameters<Parameters<Db["transaction"]>[0]>[0],
+  videoId: number,
+  userId: string,
+  options: {
+    expectedStatus?: string;
+    expectedFileKey?: string;
+    fallbackStorageBytes?: number | null;
+    /** Recheck abandonment under the row lock, after a concurrent part request. */
+    inactiveBefore?: Date;
+  } = {},
+): Promise<
+  | { deleted: false; cleanupTaskId: null }
+  | { deleted: true; cleanupTaskId: number | null }
+> {
+  const locked = await tx
+    .select({
+      status: videos.status,
+      file: videos.file,
+      multipart: videos.multipartUpload,
+      heartbeat: videos.uploadHeartbeatAt,
+      uploadPeriod: videos.uploadUsagePeriodStart,
+    })
+    .from(videos)
+    .where(and(eq(videos.id, videoId), eq(videos.userId, userId)))
+    .for("update")
+    .limit(1);
+  if (!videoDeletionAllowed(locked[0], options)) {
+    return { deleted: false, cleanupTaskId: null } as const;
+  }
+  const { fileKey, bytes: cleanupBytes } = videoCleanup(
+    locked[0].file,
+    options.fallbackStorageBytes,
+  );
+  const cleanupTaskId = fileKey
+    ? await insertStorageCleanupTask(tx, {
+        dedupeKey: `storage:video:${videoId}`,
+        userId,
+        fileKey,
+        bytes: cleanupBytes,
+        ...(locked[0].multipart
+          ? { multipartUploadId: locked[0].multipart.uploadId }
+          : {}),
+      })
+    : null;
+
+  // A completed upload consumes its month's allowance even after deletion.
+  // Row locking + the delete make abort refunds idempotent. A previous
+  // month's reservation cannot subtract from a new month's usage.
+  if (
+    videoAbortRefundAllowed(
+      locked[0].status,
+      cleanupBytes,
+      videoRefundBooleanLogic,
+    ) &&
+    locked[0].uploadPeriod &&
+    cleanupBytes
+  ) {
+    await refundUnconfirmedUpload(
+      tx,
+      userId,
+      cleanupBytes,
+      locked[0].uploadPeriod,
+    );
+  }
+
+  await tx
+    .delete(mcpIdempotencyRecords)
+    .where(
+      and(
+        eq(mcpIdempotencyRecords.userId, userId),
+        eq(mcpIdempotencyRecords.resourceId, videoId),
+        inArray(mcpIdempotencyRecords.action, [
+          "request_video_upload",
+          "create_youtube_video",
+        ]),
+      ),
+    );
+
+  // No FK; remove vector rows so orphan embeddings do not linger.
+  await tx
+    .delete(sceneEmbeddings)
+    .where(eq(sceneEmbeddings.videoId, videoId));
+
+  // FK cascades remove tags and course memberships.
+  await tx
+    .delete(videos)
+    .where(and(eq(videos.id, videoId), eq(videos.userId, userId)));
+  return { deleted: true, cleanupTaskId } as const;
+}
+
 export function createPostgresVideoMutationRepository(
   env: Bindings,
 ): VideoMutationRepository {

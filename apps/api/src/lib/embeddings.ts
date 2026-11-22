@@ -117,9 +117,9 @@ export type EmbeddingInputType = "query" | "document";
 export async function embedTexts(env: EmbeddingEnv, texts: string[], inputType: EmbeddingInputType, signal?: AbortSignal): Promise<number[][]> {
   signal?.throwIfAborted();
   const config = resolveEmbeddingConfig(env);
-  if (config.provider !== "workers-ai") throw new LlmConfigurationError("Shared embedding generation requires the Workers AI provider.");
   if (texts.length === 0) return [];
-  return embedWithWorkersAi(env, texts, inputType, config, signal);
+  if (config.provider === "workers-ai") return embedWithWorkersAi(env, texts, inputType, config, signal);
+  return embedDocumentsWithOpenAi(env, texts, inputType, config, signal);
 }
 
 async function embedWithWorkersAi(env: EmbeddingEnv, texts: string[], inputType: EmbeddingInputType, config: EmbeddingConfig, signal?: AbortSignal, costLedger?: UsageRecorder): Promise<number[][]> {
@@ -155,5 +155,46 @@ async function embedWithWorkersAi(env: EmbeddingEnv, texts: string[], inputType:
     call?.fail();
     if (transportError instanceof EmbeddingValidationError) throw transportError;
     throw new LlmProviderError("Workers AI embeddings request failed. Check the server configuration.");
+  }
+}
+
+/** Indexing uses LangChain batching for hosted and private OpenAI-compatible servers. */
+async function embedDocumentsWithOpenAi(env: EmbeddingEnv, texts: string[], inputType: EmbeddingInputType, config: EmbeddingConfig, signal?: AbortSignal): Promise<number[][]> {
+  const baseURL = openAiBaseUrl({ ...env, OPENAI_BASE_URL: env.EMBEDDING_BASE_URL || env.OPENAI_BASE_URL });
+  const credential = isOpenRouter(baseURL) && env.OPENROUTER_FEDERATION_POLICY_ID
+    ? resolveOpenAiKey(env, "OpenAI-compatible embeddings", baseURL)
+    : env.EMBEDDING_API_KEY || resolveOpenAiKey(env, "OpenAI-compatible embeddings", baseURL);
+  const apiKey = typeof credential === "function" ? await credential() : credential;
+  const inputs = texts.map(text => config.profile === "embeddinggemma2"
+    ? (inputType === "query" ? "task: search result | query: " : "title: none | text: ") + text : text);
+  let validationError: EmbeddingValidationError | undefined;
+  const embeddings = new OpenAIEmbeddings({
+    model: config.model, apiKey, stripNewLines: false, batchSize: 32, maxConcurrency: 1, maxRetries: 0,
+    ...(config.profile === "embeddinggemma2" ? {} : { dimensions: embeddingDimensions(config) }),
+    encodingFormat: "float", timeout: EMBEDDING_TIMEOUT_MS,
+    configuration: { baseURL, fetch: async (input, init) => {
+      const request = new Request(input, init);
+      const body = await request.clone().json<{ input: string[] }>();
+      const response = await fetch(new Request(request, { signal: deadlineSignal(EMBEDDING_TIMEOUT_MS, signal ? AbortSignal.any([signal, request.signal]) : request.signal) }));
+      if (!response.ok) return response;
+      const data: unknown = await response.clone().json();
+      if (!isRecord(data) || !Array.isArray(data.data) || data.data.length !== body.input.length || data.data.some((row, index) => !isRecord(row) || row.index !== index)) {
+        validationError = new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
+        throw validationError;
+      }
+      return response;
+    } },
+  });
+  try {
+    const vectors = await embeddings.embedDocuments(inputs);
+    signal?.throwIfAborted();
+    if (vectors.length !== texts.length) throw new EmbeddingValidationError("EMBEDDING_OUTPUT_INVALID", config);
+    vectors.forEach(vector => validateEmbedding(vector, "EMBEDDING_OUTPUT_INVALID", config));
+    return vectors;
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (validationError) throw validationError;
+    if (error instanceof EmbeddingValidationError) throw error;
+    throw new LlmProviderError("OpenAI embeddings request failed. Check the server configuration.");
   }
 }

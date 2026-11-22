@@ -6,7 +6,7 @@ import { frameCacheKey, focusCacheKey } from '../lib/video-evidence';
 import { claimExternalTasks, completeExternalTask, completeStorageCleanupTask, failExternalTask } from '../repositories/external-task-repository';
 import { createMultipartUploadRepository, createExternalTaskRepository } from '../persistence/factory';
 import { deliverInvitationEmail } from '../lib/invitation-delivery';
-import { sendSqsMessage } from '../lib/sqs';
+import { deliverJob } from './background-jobs/delivery';
 import { armMaintenance, DISPATCH_SAFETY_NET_MS } from '../lib/task-scheduler';
 import { deleteAccountBilling } from '../features/billing/account-deletion';
 import type { Bindings } from '../types/bindings';
@@ -19,7 +19,7 @@ function dependencies(env: Bindings): ExternalTaskDependencies {
     defer: async (task, ms) => (await createExternalTaskRepository(env)).defer(task, ms),
     arm: at => armMaintenance(env, at), now: Date.now, safetyNetMs: DISPATCH_SAFETY_NET_MS,
     get emailDelivery() { return features(env).emailDelivery; },
-    deleteBilling: user => deleteAccountBilling(env, user), sendJob: message => sendSqsMessage(env, message),
+    deleteBilling: user => deleteAccountBilling(env, user), sendJob: message => deliverJob(env, message),
     hasUploadingFile: async key => (await createMultipartUploadRepository(env)).hasUploadingFile(key),
     referencesFile: async (key, id) => (await createMultipartUploadRepository(env)).referencesFile(key, id),
     abortMultipart: (key, id) => abortR2MultipartUpload(env, key, id),

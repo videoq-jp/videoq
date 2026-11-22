@@ -40,6 +40,14 @@ worker:
   nodeSelector: {}
   tolerations: []
 
+# Enable after provisioning dedicated queues and draining legacy deliveries.
+backgroundWorker:
+  enabled: false
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
 storage:
   bucket: videoq-media
   # Browser-reachable S3 endpoint. Configure bucket CORS for publicUrl.
@@ -51,6 +59,8 @@ queue:
   # Existing persistent SQS-compatible queue, with retries and a dead-letter queue.
   url: ""
   region: us-east-1
+  searchUrl: ""
+  accountUrl: ""
 
 ai:
   # Non-secret policy ID enables AWS workload identity; runtime needs an AWS identity.
