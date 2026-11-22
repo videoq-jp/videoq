@@ -1,0 +1,82 @@
+{
+  "createdAt": "2026-11-22T21:56:35.226Z",
+  "userId": "6b1f18a1-60f0-4142-a889-836b55f135eb",
+  "scope": "Owned signed synthetic user only; normal admin deletion repository and durable outbox; production Cloudflare account queue",
+  "phase": "production-deletion-and-duplicate-verified",
+  "jobId": "ec664ac0-9833-46c8-9041-5df0df3c188a",
+  "taskId": 1218,
+  "deliveredAt": "2026-11-22T21:56:42.304Z",
+  "restReplay": {
+    "requestedAt": "2026-11-22T21:59:15.041460+00:00",
+    "source": "Exact persisted outbox message",
+    "proxyDeliveryNotProven": true,
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "metrics": {
+          "backlog_count": 1,
+          "backlog_bytes": 139,
+          "oldest_message_timestamp_ms": 0
+        }
+      }
+    }
+  },
+  "verifiedAt": "2026-11-22T22:00:06.517564+00:00",
+  "readback": [
+    [
+      {
+        "remaining_users": 0
+      }
+    ],
+    [
+      {
+        "job_id": "ec664ac0-9833-46c8-9041-5df0df3c188a",
+        "job_type": "delete_account_data",
+        "status": "completed",
+        "attempts": 1,
+        "last_error": "",
+        "completed_at": "2026-11-22T21:59:21.760Z"
+      }
+    ],
+    [
+      {
+        "remaining_credentials": 0
+      }
+    ]
+  ],
+  "duplicateReplay": {
+    "requestedAt": "2026-11-22T22:00:06.970658+00:00",
+    "sameJobId": true,
+    "priorStatus": "completed",
+    "priorAttempts": 1,
+    "accepted": true,
+    "verifiedAt": "2026-11-22T22:00:40.312448+00:00",
+    "jobAttemptsAfter": 1,
+    "jobStatusAfter": "completed",
+    "userStillAbsent": true,
+    "queueMetrics": {
+      "account": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      },
+      "accountDlq": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      }
+    }
+  },
+  "applicationSourceSha": "d5e9b0516131fac2c592c255c983b178429b59ee",
+  "sourceFiles": {
+    "apps/api/src/persistence/d1/admin-user-repository.ts": "9731554158297e854ef88c5af0587226cdb0cec10ce0ee1e9e80e5089b3eb1f9",
+    "apps/api/src/integrations/external-tasks.ts": "6e39d3424664e21da55d709a4c35a2649fbdc1c1736d8a6829ec65d0769fbf7f",
+    ".github/scripts/production-smoke-store.cjs": "63535b47f27f860c0b8675de9d889190285c5d12b0aed98303fd2a383cdb786e"
+  },
+  "scopeLimits": [
+    "Synthetic fixture created with the existing HMAC identity guard; no customer account targeted.",
+    "Normal deletion repository created the ban and matching durable outbox.",
+    "getPlatformProxy queue send was not accepted as production delivery evidence; exact outbox message was replayed with the official Queue API.",
+    "Validates the actual production account Worker and duplicate handling; does not assert browser administrator authentication coverage."
+  ]
+}
