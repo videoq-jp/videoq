@@ -25,8 +25,11 @@ export async function synchronizeSceneIndex(deps: SceneIndexSyncDependencies, li
   const result = { claimed: 0, completed: 0, pending: 0, failed: 0, leaseLost: 0 };
   let requested = 0;
   const consume = async () => {
-    while (requested++ < limit) {
-      const task = await tasks.claim();
+    // Reserve one slot for ingestion so old delete backlogs cannot block new videos.
+    // The remaining slots retain oldest-first cleanup scheduling.
+    while (requested < limit) {
+      const slot = requested++;
+      const task = await tasks.claim({ preferUpserts: slot === 0 });
       if (!task) break;
       result.claimed++;
       if (!deps.indexAvailable(task.dimensions)) {
