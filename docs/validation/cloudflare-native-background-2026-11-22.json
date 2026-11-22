@@ -37,5 +37,6 @@
     "Isolated harness manually ran scene-index synchronization; production TaskScheduler alarm integration still needs verification.",
     "Production-specific maintenance ownership/failure recovery and migration-role IAM are not proven by direct isolated controls.",
     "Temporary account fixture modeled the normal ban/outbox request state; this did not exercise the administrator UI."
-  ]
+  ],
+  "cleanupReadBackEvidence": "cloudflare-native-cleanup-2026-11-22.json"
 }

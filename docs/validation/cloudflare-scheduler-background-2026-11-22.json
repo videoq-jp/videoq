@@ -22,5 +22,6 @@
   "limitations": [
     "Small synthetic subtitle; no production media processing or administrator UI exercised.",
     "Production-specific IAM and maintenance ownership/failure recovery remain unverified."
-  ]
+  ],
+  "cleanupReadBackEvidence": "cloudflare-native-cleanup-2026-11-22.json"
 }
