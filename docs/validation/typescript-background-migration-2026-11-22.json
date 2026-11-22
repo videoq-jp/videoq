@@ -291,8 +291,10 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "Maintenance recovery deployment/smoke is running; ordinary CD and transport cutover remain unverified.",
-    "recoveryWorkflowRun": 45042542268
+    "outstanding": "Recovery workflow 45042542268 failed at video-processing verification: synthetic video 538 remains indexing behind legacy vector-delete tasks. Main fairness fix is merged; CI and ordinary CD recovery remain pending.",
+    "recoveryWorkflowRun": 45042542268,
+    "recoveryWorkflowConclusion": "failure",
+    "recoveryFailureStage": "video-processing"
   },
   "backgroundMaintenanceInfrastructurePlan": {
     "applied": false,
@@ -343,5 +345,21 @@
     "createsOrDeletes": false,
     "codeOrLiveAliasesChanged": false,
     "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required."
+  },
+  "vectorIngestionFairness": {
+    "pullRequest": 1605,
+    "mergedMainSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+    "mainCiRun": 45046621904,
+    "mainCiConclusion": "in_progress",
+    "regressionTestsPassed": 28,
+    "productionObservation": {
+      "observedAt": "2026-11-22T17:03:25Z",
+      "syntheticVideoId": 538,
+      "videoStatus": "indexing",
+      "pendingDeleteTasks": 600,
+      "pendingUpsertTasks": 1,
+      "upsertAttempts": 0
+    },
+    "productionFixDeployed": false
   }
 }
