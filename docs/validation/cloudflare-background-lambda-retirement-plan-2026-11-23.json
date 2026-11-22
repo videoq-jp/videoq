@@ -1,7 +1,7 @@
 {
   "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
-  "preparedAt": "2026-11-22T23:02:06.967262+00:00",
-  "planSha256": "e43cda951cff4f8e46666a86b5ffa41c463beb9a40ab7186852bfb1a4c6b103f",
+  "preparedAt": "2026-11-22T23:11:52.543196+00:00",
+  "planSha256": "344c8d1160d1344fd7042679255b9bb850a03c11483620db2fa01dc6a0e23941",
   "changes": [
     {
       "address": "aws_cloudwatch_metric_alarm.group_duration[\"account\"]",
@@ -100,13 +100,48 @@
   "manualApprovalGranted": false,
   "applied": false,
   "remainingGates": [
-    "Final legacy search message redelivery",
-    "Sustained empty observations for all legacy queues and DLQs",
-    "Fresh main/deployment/maintenance recheck",
-    "Manual infrastructure approval"
+    "Manual infrastructure approval",
+    "Recheck latest main, identical scope, drain and idle deployment/maintenance immediately before apply"
   ],
   "supersedesEarlierTargetOnlyPreview": "Final scope includes the eight dependent Lambda alarms, which were omitted from the earlier targeted preview.",
   "readyForApply": false,
+  "readyForManualApproval": true,
+  "drainGate": {
+    "observedAt": "2026-11-22T23:11:52.538487+00:00",
+    "latestObservation": "2026-11-22T23:11:23.173005+00:00",
+    "latestAgeSeconds": 29.37,
+    "latestAllEmpty": true,
+    "sustainedEmptySeconds": 155.16,
+    "emptySamples": 6,
+    "requiredEmptySamples": 3,
+    "requiredEmptyObservationSpanSeconds": 60,
+    "oldConfigGraceStartedAt": "2026-11-22T21:35:18.452000+00:00",
+    "oldConfigGraceElapsedSeconds": 5794.09,
+    "requiredOldConfigGraceSeconds": 900,
+    "oldConfigGraceSatisfied": true,
+    "drainGateSatisfied": true,
+    "scope": "Legacy media/mixed queue, search/account queues and all three DLQs; all visible/in-flight/delayed counts; 30-second samples."
+  },
+  "idlePreflight": {
+    "verifiedAt": "2026-11-22T23:10:13.391564+00:00",
+    "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
+    "globalMaintenanceLockAbsent": true,
+    "productionDeploymentsIdle": true,
+    "projects": {
+      "videoq-db-deploy-prod": {
+        "buildsChecked": 50,
+        "activeBuilds": 0
+      },
+      "videoq-db-migration-prod": {
+        "buildsChecked": 71,
+        "activeBuilds": 0
+      },
+      "videoq-db-smoke-prod": {
+        "buildsChecked": 232,
+        "activeBuilds": 0
+      }
+    }
+  },
   "productionChecks": {
     "nativeCutoverPr": 1611,
     "deletedSourceFixPr": 1612,
@@ -116,18 +151,10 @@
     "citedSmokeConclusion": "success",
     "productionAccountDeletionAndDuplicateVerified": true
   },
-  "legacyQueueObservation": {
-    "observedAt": "2026-11-22T23:03:08.343691+00:00",
-    "allEmpty": false,
-    "nonempty": [
-      {
-        "queue": "videoq-worker-search-prod",
-        "counts": {
-          "ApproximateNumberOfMessages": 0,
-          "ApproximateNumberOfMessagesNotVisible": 1,
-          "ApproximateNumberOfMessagesDelayed": 0
-        }
-      }
-    ]
+  "repositoryVariableChange": {
+    "name": "CLOUDFLARE_BACKGROUND_JOBS_ENABLED",
+    "value": "true",
+    "purpose": "Keep subsequent deployments aligned with retired legacy search/account Lambda consumers",
+    "applied": false
   }
 }
