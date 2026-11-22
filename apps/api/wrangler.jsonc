@@ -131,7 +131,9 @@
         "OPENROUTER_FEDERATION_POLICY_ID": "c333bd7c-880a-437c-9fc9-e5825716325e",
         "OPENROUTER_FEDERATION_AUDIENCE": "https://openrouter.ai",
         "AWS_REGION": "ap-northeast-1",
-        "EMBEDDING_MODEL": "openai/text-embedding-3-small",
+        "EMBEDDING_PROVIDER": "workers-ai",
+        "EMBEDDING_PROFILE": "embeddinggemma2",
+        "EMBEDDING_MODEL": "@cf/google/embeddinggemma-2",
         "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
 
         "LLM_MAX_TOKENS": "4096",

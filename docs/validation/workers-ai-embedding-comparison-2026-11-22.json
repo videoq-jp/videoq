@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-22",
+  "corpus": {
+    "videos": 16,
+    "scenes": 420,
+    "dimensions": {
+      "baseline": 1536,
+      "candidate": 768
+    },
+    "sourceHash": "80501747be14235e175c4a1e66c908c9a515793a4511ed25386caa467d3c7924",
+    "unchangedTextAndBoundaries": true
+  },
+  "evaluation": {
+    "positiveQuestions": 24,
+    "topics": 12,
+    "diagnosticQuestions": 4,
+    "searchSamplesPerQuestion": 3,
+    "ownerNegativeQueries": 56,
+    "labelsSha256": "53425772f7e0351ef48482a8ece2eb67155a1a14d744a323c8861b09feb39af8",
+    "gates": {
+      "anchorHitAt5DeltaMin": -0.02,
+      "anchorHitAt20DeltaMin": 0,
+      "anchorMrrAt20DeltaMin": -0.02,
+      "ownerLeakageMax": 0,
+      "scopeLeakageMax": 0,
+      "minimumReadbackCosine": 0.99999
+    },
+    "version": 1,
+    "labelMethod": "AI-reviewed source transcript anchors, fixed before model query embeddings or search results; not an exhaustive relevance set and not human-reviewed",
+    "models": {
+      "openai": {
+        "questions": 24,
+        "samples": 3,
+        "hit1": 0.3333333333333333,
+        "hit5": 0.625,
+        "hit20": 0.7916666666666666,
+        "mrr20": 0.4711744639376218,
+        "knownAnchorRecall20": 0.6527777777777778,
+        "stableQuestions": 24,
+        "queryApiLatencyMs": {
+          "p50": 205.7379170000022,
+          "p95": 238.48358299999745
+        }
+      },
+      "gemma": {
+        "questions": 24,
+        "samples": 3,
+        "hit1": 0.2916666666666667,
+        "hit5": 0.6666666666666666,
+        "hit20": 0.875,
+        "mrr20": 0.4780505952380952,
+        "knownAnchorRecall20": 0.7569444444444446,
+        "stableQuestions": 24,
+        "queryApiLatencyMs": {
+          "p50": 186.0850419999988,
+          "p95": 236.61220799999865
+        }
+      }
+    },
+    "delta": {
+      "hit1": -0.04166666666666663,
+      "hit5": 0.04166666666666663,
+      "hit20": 0.08333333333333337,
+      "mrr20": 0.006876131300473376,
+      "knownAnchorRecall20": 0.10416666666666685
+    },
+    "ownerLeakage": 0,
+    "scopeLeakage": 0,
+    "checks": {
+      "anchorHit5": true,
+      "anchorHit20": true,
+      "anchorMrr20": true,
+      "ownerIsolation": true,
+      "scopeIsolation": true
+    },
+    "qualityGatePassed": true,
+    "limitation": "Source-anchor hit/rank regression only. Not exhaustive relevance recall, human review, or permission to cut over production."
+  },
+  "readback": {
+    "vectors": 420,
+    "minCosine": 1
+  },
+  "privacy": {
+    "privateRawInputs": true,
+    "privateVectors": true,
+    "privateLabels": true,
+    "privateResults": true
+  },
+  "productionCutoverCompleted": false
+}

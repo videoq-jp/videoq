@@ -76,6 +76,8 @@ test('production configuration and read-only migration support retirement of the
  const indexes=production.match(/\"vectorize\"\s*:\s*(\[[\s\S]*?\])/);
  assert.ok(indexes);
  assert.deepEqual(JSON.parse(indexes[1]),[{binding:'SCENE_VECTORIZE_1536',index_name:'videoq-prod-scenes-1536'},{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}]);
- assert.match(production, /"EMBEDDING_MODEL": "openai\/text-embedding-3-small"/);
- assert.doesNotMatch(production, /"AI_PROVIDER"|"EMBEDDING_PROFILE"/);
+ assert.match(production, /"EMBEDDING_MODEL": "@cf\/google\/embeddinggemma-2"/);
+ assert.match(production, /"EMBEDDING_PROVIDER": "workers-ai"/);
+ assert.match(production, /"EMBEDDING_PROFILE": "embeddinggemma2"/);
+ assert.doesNotMatch(production, /"AI_PROVIDER"/);
 });
