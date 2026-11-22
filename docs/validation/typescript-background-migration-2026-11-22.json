@@ -291,7 +291,7 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "API recovery, SQS-preserving Cloudflare bindings and live Queue metadata adapter fix are deployed. Reviewed Terraform maintenance opt-in approval is pending; production IAM/owned recovery verification, routing cutover, queue drain and Lambda/Python retirement remain incomplete.",
+    "outstanding": "API recovery, SQS-preserving Cloudflare bindings, Queue metadata adapter fix and approved maintenance infrastructure are deployed. Actual owned production pause/restore recovery verification, routing cutover, queue drain and Lambda/Python retirement remain incomplete.",
     "recoveryWorkflowRun": 45042542268,
     "recoveryWorkflowConclusion": "failure",
     "recoveryFailureStage": "video-processing",
@@ -323,7 +323,7 @@
     }
   },
   "backgroundMaintenanceInfrastructurePlan": {
-    "applied": false,
+    "applied": true,
     "stateSerialRead": 27,
     "planSha256": "f7e080d4da8607c03645cea2bffbefb0a39564fb279933f444f7782195341068",
     "changes": [
@@ -370,8 +370,25 @@
     "removedGrants": [],
     "createsOrDeletes": false,
     "codeOrLiveAliasesChanged": false,
-    "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required.",
-    "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1"
+    "remaining": "Infrastructure applied and live configuration verified. Actual owned production pause/restore and recovery verification remain required before routing cutover.",
+    "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
+    "applyResult": {
+      "added": 0,
+      "changed": 3,
+      "destroyed": 0
+    },
+    "liveReadback": {
+      "verifiedAt": "2026-11-22T18:47:09.204927+00:00",
+      "migrationTimeoutMinutes": 50,
+      "migrationFlag": "true",
+      "smokeTimeoutMinutes": 40,
+      "smokeFlag": "false",
+      "migrationRoleSsmGetParameterSimulation": "allowed",
+      "migrationRoleRunGetItemSimulation": "allowed",
+      "migrationRoleRunUpdateItemSimulation": "allowed",
+      "actualOwnedPauseRestoreRehearsalCompleted": false,
+      "migrationRoleMaintenanceConditionCheckSimulation": "allowed"
+    }
   },
   "vectorIngestionFairness": {
     "pullRequest": 1605,
