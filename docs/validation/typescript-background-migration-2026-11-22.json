@@ -184,7 +184,15 @@
     "productionStoreAndOwnershipIntegrationVerified": false,
     "terraformMockScenariosPassed": 34,
     "ownedMigrationExecutionIntegrationTestsPassed": 2,
-    "ownedDynamoStoreAndMigrationIntegrationPrepared": true
+    "ownedDynamoStoreAndMigrationIntegrationPrepared": true,
+    "realDynamoDbLocalIntegrationTestsPassed": 20,
+    "dynamoDbLocalImage": "amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86",
+    "realDynamoDbTransactionChecks": [
+      "immutable plans",
+      "lost acknowledgement read-back",
+      "atomic global-lock replacement rejects write"
+    ],
+    "localTestResourcesCleanedUp": true
   },
   "retiredLambdaImageBaselinePreparation": {
     "status": "prepared; production still uses three Lambdas",

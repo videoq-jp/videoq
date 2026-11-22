@@ -78,6 +78,16 @@ before production transport cutover.
 
 ## Verification
 
+Background maintenance storage also runs in the existing real DynamoDB Local
+fixture (`d1-resource-hold.integration.cjs`): all 20 tests passed with the added
+immutable-plan, lost-acknowledgement and atomic lock-replacement checks. The
+standalone `background-maintenance-store.integration.cjs` accepts only an explicit
+`VIDEOQ_LOCAL_DYNAMODB_ENDPOINT` on `127.0.0.1` and uses dummy credentials with host
+credential/config files disabled. It fails without modifying an already-existing
+table. This verifies actual DynamoDB transaction semantics, not production IAM or
+Cloudflare control scopes. The CI operations fixture runs it using the existing
+digest-pinned disposable DynamoDB container.
+
 Six parent/selection tests, all 404 Node security tests, 57 infrastructure tests and 10 Terraform mock-provider tests passed. A real allowlisted operator ZIP with no application dependencies applied all 20 SQL migrations to a dedicated remote D1 using separately locked Wrangler 4.151.3; a second execution found no pending migrations. Remote migration-history equality, zero foreign-key errors and empty users/videos were checked. That fixture mocked AWS metadata and Worker settings, so it does not prove live AWS IAM or production pause/drain. The dedicated D1 was deleted and absence verified. No Vectorize index or Worker was created or modified. [Evidence](evidence/d1-aws-migrations-2026-11-16.json).
 
 D1 SQL, D1 Drizzle configuration and production Wrangler selection changes trigger the same coordinated migration-before-API/worker deployment graph. Deploy and verify this operator bundle before merging the eventual production D1 selection.

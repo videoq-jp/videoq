@@ -250,6 +250,7 @@ jobs:
               - '.github/scripts/background-migration-fence.cjs'
               - '.github/scripts/background-maintenance.cjs'
               - '.github/scripts/background-maintenance-store.cjs'
+              - '.github/scripts/background-maintenance-store.integration.cjs'
               - '.github/scripts/background-maintenance-transport.cjs'
               - '.github/scripts/canonical-background-maintenance.cjs'
               - '.github/scripts/background-queue-admission.cjs'
