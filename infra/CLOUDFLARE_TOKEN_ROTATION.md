@@ -53,6 +53,24 @@ the calendar automatically.
 6. Update the backup calendar reminders to the new expiry dates.
 7. Confirm that `Operations / tokens` passes and the summary shows the updated dates.
 
+### Background maintenance token in AWS SSM
+
+The dedicated `videoq-background-maintenance-20261123` token expires on
+**2027-02-21**. Its destination is the SecureString parameter
+`/videoq/security/prod/background-maintenance`, rather than a GitHub secret.
+Keep its account scope and required permissions as documented in the
+[background migration procedure](../docs/operations/workers-ai-embedding-migration.md).
+
+Rotate it between maintenance executions, after confirming that no execution is
+holding paused consumers or awaiting recovery. Preserve the JSON fields
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, write the replacement as a new
+SecureString version, and verify the read-back without printing either value.
+Verify queue and Workflow metadata access, then complete an isolated pause and
+restore check through the maintenance execution role before revoking the old
+token. If that check fails, retain the old token for recovery. Do not copy this
+credential into GitHub or grant its SSM read permission to ordinary CD.
+Update the matching expiry entry and backup reminders after successful rotation.
+
 ## Test without sending notifications
 
 Under Actions → Operations → Run workflow, select `check=tokens`, enable `dry_run` and set
