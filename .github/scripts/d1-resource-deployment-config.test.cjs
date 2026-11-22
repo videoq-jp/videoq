@@ -78,3 +78,19 @@ test('Workers AI deployment follows only the exact already-prepared production t
   f=>{f.settings.bindings.push({name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'});},
  ]){const q=prepared();change(q);assert.throws(()=>deploymentHandoff(q.settings,q.config));}
 });
+
+test('native production preserves completed 1536 retirement and rejects partial retirement or stale model',()=>{
+ function retired(){const f=fixture(true);f.config=deploymentHandoff(f.settings,f.config);f.settings.bindings=f.settings.bindings.filter(v=>v.name!==names[0]);f.config.vectorize=f.config.vectorize.filter(v=>v.binding!==names[0]);f.settings.bindings.find(v=>v.name===names[1]).index_name='videoq-prod-scenes-embeddinggemma2-768';f.config.vectorize[0].index_name='videoq-prod-scenes-embeddinggemma2-768';for(const [name,text] of Object.entries({EMBEDDING_PROVIDER:'workers-ai',EMBEDDING_PROFILE:'embeddinggemma2',EMBEDDING_MODEL:'@cf/google/embeddinggemma-2'})){f.settings.bindings.push({name,type:'plain_text',text});f.config.vars[name]=text;}return f;}
+ const f=retired();assert.deepEqual(deploymentHandoff(f.settings,f.config),f.config);
+ for(const change of [
+ f=>f.config.vectorize.push({binding:names[0],index_name:indexes(true)[0]}),
+ f=>f.settings.bindings.push({name:names[0],type:'vectorize',index_name:indexes(true)[0]}),
+ f=>{f.config.vars.EMBEDDING_MODEL='openai/text-embedding-3-small';},
+ f=>{f.settings.bindings.find(b=>b.name==='EMBEDDING_PROVIDER').text='openai';},
+ f=>{f.config.vectorize=[];},
+ f=>{f.settings.bindings=f.settings.bindings.filter(b=>b.name!==names[1]);f.config.vectorize=[];},
+ f=>{f.config.vectorize[0].index_name='other';},
+ f=>{f.config.d1_databases[0].database_id=dbs[0];},
+ f=>{f.settings.bindings.push({name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'});},
+ ]){const q=retired();change(q);assert.throws(()=>deploymentHandoff(q.settings,q.config));}
+});

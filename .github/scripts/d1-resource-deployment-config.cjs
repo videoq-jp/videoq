@@ -22,6 +22,13 @@ function deploymentHandoff(settings,config){
   assertDeploymentPreservesState(settings,config);
   return structuredClone(config);
  }
+ // Follow the completed OpenAI retirement; ordinary CD cannot remove/re-add it.
+ if(!settings.bindings.some(v=>v.name===NAMES[0])&&Array.isArray(config.vectorize)&&!config.vectorize.some(v=>v.binding===NAMES[0])){
+  const liveIndex=one(settings.bindings,'name',NAMES[1]),configuredIndex=one(config.vectorize,'binding',NAMES[1]);
+  if(db.id!==TARGET[0]||configuredDb.database_id!==TARGET[0]||configuredDb.database_name!=='videoq-prod-db'||liveIndex.type!=='vectorize'||liveIndex.index_name!==WORKERS_AI_TARGET[2]||configuredIndex.index_name!==WORKERS_AI_TARGET[2])throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');
+  assertDeploymentPreservesState(settings,config);
+  return structuredClone(config);
+ }
  const live=[db.id,...NAMES.map(name=>{const row=one(settings.bindings,'name',name);if(row.type!=='vectorize')throw Error('RESOURCE_DEPLOYMENT_HANDOFF_REQUIRED');return row.index_name;})];
  const configured=[configuredDb.database_id,...NAMES.map(name=>one(config.vectorize,'binding',name).index_name)];
  // Follow only the explicitly approved additive Workers AI preparation. Both

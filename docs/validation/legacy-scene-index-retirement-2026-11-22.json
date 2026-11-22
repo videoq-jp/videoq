@@ -1,0 +1,33 @@
+{
+  "verifiedAt": "2026-11-22T10:20:40.568Z",
+  "deletedIndex": "videoq-prod-scenes-1536",
+  "removedBindings": [
+    "SCENE_VECTORIZE_1536",
+    "PGVECTOR_COLLECTION_NAME"
+  ],
+  "deletedRows": [
+    0,
+    80,
+    2344,
+    80,
+    2190
+  ],
+  "activeScenesPreserved": 2191,
+  "activeScenesNow": 2191,
+  "legacyRowsRemaining": 0,
+  "unrelatedBindingsPreserved": true,
+  "activeIndex": "videoq-prod-scenes-embeddinggemma2-768",
+  "verification": {
+    "search": {
+      "verifiedAt": "2026-11-22T10:22:12.659Z",
+      "matches": 20,
+      "ownerScopePreserved": true,
+      "index": "videoq-prod-scenes-embeddinggemma2-768"
+    },
+    "health": 200,
+    "ready": 200,
+    "scriptTestsPassed": 747,
+    "embeddingTestsPassed": 48,
+    "apiTypecheckPassed": true
+  }
+}

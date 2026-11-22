@@ -75,9 +75,17 @@ test('production configuration and read-only migration support retirement of the
  const production=source.slice(source.indexOf('\"production\": {'));
  const indexes=production.match(/\"vectorize\"\s*:\s*(\[[\s\S]*?\])/);
  assert.ok(indexes);
- assert.deepEqual(JSON.parse(indexes[1]),[{binding:'SCENE_VECTORIZE_1536',index_name:'videoq-prod-scenes-1536'},{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}]);
+ assert.deepEqual(JSON.parse(indexes[1]),[{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}]);
  assert.match(production, /"EMBEDDING_MODEL": "@cf\/google\/embeddinggemma-2"/);
  assert.match(production, /"EMBEDDING_PROVIDER": "workers-ai"/);
  assert.match(production, /"EMBEDDING_PROFILE": "embeddinggemma2"/);
  assert.doesNotMatch(production, /"AI_PROVIDER"/);
+});
+
+test('canonical native production migration requires active 768 and supports retired 1536',()=>{
+ const f=fixture();const config=f.options.readConfig();
+ const p=config.env.production;Object.assign(p.vars,{EMBEDDING_PROVIDER:'workers-ai',EMBEDDING_PROFILE:'embeddinggemma2',EMBEDDING_MODEL:'@cf/google/embeddinggemma-2'});
+ p.vectorize=[{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}];
+ assert.equal(migrationTarget(config).backend,'d1');
+ config.env.production.vectorize=[];assert.throws(()=>migrationTarget(config),/CONFIGURATION/);
 });

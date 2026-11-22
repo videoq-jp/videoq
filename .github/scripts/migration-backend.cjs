@@ -16,9 +16,10 @@ function migrationTarget(config) {
     || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(databases[0].database_id ?? '')
     || /^0+-0+-0+-0+-0+$/.test(databases[0].database_id) || !databases[0].database_name
     || databases[0].migrations_dir !== 'drizzle-d1' || databases[0].migrations_pattern !== undefined) throw Error('INVALID_D1_MIGRATION_CONFIGURATION');
+  const native = vars.EMBEDDING_PROVIDER === 'workers-ai' && vars.EMBEDDING_PROFILE === 'embeddinggemma2' && vars.EMBEDDING_MODEL === '@cf/google/embeddinggemma-2';
   const indexes = ['SCENE_VECTORIZE_1536','SCENE_VECTORIZE_768'].map(name => {
     const matches = (production.vectorize ?? []).filter(binding => binding.binding === name);
-    if (name === 'SCENE_VECTORIZE_768' && matches.length === 0) return undefined;
+    if (matches.length === 0 && (native ? name === 'SCENE_VECTORIZE_1536' : name === 'SCENE_VECTORIZE_768')) return undefined;
     if (matches.length !== 1 || typeof matches[0].index_name !== 'string' || !matches[0].index_name) throw Error('INVALID_D1_MIGRATION_CONFIGURATION');
     return matches[0].index_name;
   });

@@ -140,7 +140,6 @@
         "LLM_SEPARATE_TOOL_SCHEMA": "true",
         "LLM_PRESERVE_TOOL_REASONING": "true",
         "VIDEO_VISUAL_ENABLED": "true",
-        "PGVECTOR_COLLECTION_NAME": "scene_embeddings",
         "OAUTH_ISSUER_URL": "https://videoq.jp",
         "BETTER_AUTH_URL": "https://videoq.jp",
         "R2_BUCKET_NAME": "videoq-media-prod",
@@ -163,7 +162,6 @@
         }
       ],
       "vectorize": [
-        { "binding": "SCENE_VECTORIZE_1536", "index_name": "videoq-prod-scenes-1536" },
         { "binding": "SCENE_VECTORIZE_768", "index_name": "videoq-prod-scenes-embeddinggemma2-768" }
       ],
       "r2_buckets": [
