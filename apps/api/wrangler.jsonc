@@ -28,6 +28,8 @@
     "traces": { "enabled": true, "head_sampling_rate": 1 }
   },
 
+  "ai": { "binding": "AI" },
+
   "vars": {
     "ENVIRONMENT": "development",
     "USE_S3_STORAGE": "true",
@@ -40,10 +42,14 @@
     "DEFAULT_PROCESSING_LIMIT_MINUTES": "45",
     "DEFAULT_AI_ANSWERS_LIMIT": "30",
     "STRIPE_AUTOMATIC_TAX": "false",
-    // Hosted defaults share OpenRouter; private endpoints set their own model.
+    // Chat, summaries and vision share Workers AI; embeddings keep OpenRouter.
     "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
     "EMBEDDING_MODEL": "openai/text-embedding-3-small",
-    "LLM_MODEL": "openai/gpt-6-luna",
+    "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+
+    "LLM_MAX_TOKENS": "4096",
+    "LLM_SEPARATE_TOOL_SCHEMA": "true",
+    "LLM_PRESERVE_TOOL_REASONING": "true",
     "VIDEO_VISUAL_ENABLED": "true",
     "PGVECTOR_COLLECTION_NAME": "scene_embeddings",
     "OAUTH_ISSUER_URL": "http://localhost",
@@ -103,6 +109,7 @@
         "logs": { "enabled": true, "head_sampling_rate": 1 },
         "traces": { "enabled": true, "head_sampling_rate": 0.05 }
       },
+      "ai": { "binding": "AI" },
       "vars": {
         "ENVIRONMENT": "production",
         "DEPLOYMENT_EDITION": "cloud",
@@ -119,13 +126,17 @@
         "DEFAULT_PROCESSING_LIMIT_MINUTES": "45",
         "DEFAULT_AI_ANSWERS_LIMIT": "30",
         "STRIPE_AUTOMATIC_TAX": "false",
-        // Match the hosted worker model and shared OpenRouter endpoint.
+        // Workers AI chat/vision is independent of the media worker and embeddings.
         "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
         "OPENROUTER_FEDERATION_POLICY_ID": "c333bd7c-880a-437c-9fc9-e5825716325e",
         "OPENROUTER_FEDERATION_AUDIENCE": "https://openrouter.ai",
         "AWS_REGION": "ap-northeast-1",
         "EMBEDDING_MODEL": "openai/text-embedding-3-small",
-        "LLM_MODEL": "openai/gpt-6-luna",
+        "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+
+        "LLM_MAX_TOKENS": "4096",
+        "LLM_SEPARATE_TOOL_SCHEMA": "true",
+        "LLM_PRESERVE_TOOL_REASONING": "true",
         "VIDEO_VISUAL_ENABLED": "true",
         "PGVECTOR_COLLECTION_NAME": "scene_embeddings",
         "OAUTH_ISSUER_URL": "https://videoq.jp",

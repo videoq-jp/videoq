@@ -83,3 +83,12 @@ VIDEO_VISUAL_ENABLED="true"
 # This uses AWS workload credentials and takes precedence over old OpenRouter keys.
 # OPENROUTER_FEDERATION_POLICY_ID=
 # OPENROUTER_FEDERATION_AUDIENCE=https://openrouter.ai
+
+# Workers AI: one Gemma model for answers, summaries and image tools.
+# Embeddings/transcription keep their existing independent settings.
+# LLM_BASE_URL=https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT_ID/ai/v1
+# LLM_API_KEY=your-workers-ai-api-token
+# LLM_MODEL=@cf/google/gemma-4-26b-a4b-it
+# LLM_MAX_TOKENS=4096
+# LLM_SEPARATE_TOOL_SCHEMA=true
+# LLM_PRESERVE_TOOL_REASONING=true

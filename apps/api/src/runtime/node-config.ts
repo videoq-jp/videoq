@@ -84,6 +84,7 @@ export function nodeBindings(source: Environment): Bindings {
     OPENROUTER_FEDERATION_AUDIENCE: source.OPENROUTER_FEDERATION_AUDIENCE,
     OPENAI_API_KEY: source.OPENAI_API_KEY, OPENAI_BASE_URL: source.OPENAI_BASE_URL,
     LLM_API_KEY: source.LLM_API_KEY, LLM_BASE_URL: source.LLM_BASE_URL,
+    LLM_MAX_TOKENS: source.LLM_MAX_TOKENS,
     LLM_MODEL: source.LLM_MODEL || "gpt-6-luna",
     LLM_REASONING_EFFORT: reasoningEffort as Bindings["LLM_REASONING_EFFORT"],
     LLM_SEPARATE_TOOL_SCHEMA: source.LLM_SEPARATE_TOOL_SCHEMA || "false",

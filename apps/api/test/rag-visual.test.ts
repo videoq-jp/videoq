@@ -27,20 +27,27 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllGlobals());
 
 describe.each([false, true].flatMap(streaming =>
-  [undefined, "shared-model"].map(model => ({ streaming, model })),
+  [undefined, "shared-model", "@cf/google/gemma-4-26b-a4b-it"].map(model => ({ streaming, model })),
 ))("visual RAG integration (stream=$streaming, model=$model)", ({ streaming, model }) => {
   it.each([false, true, "focus"])("keeps observations private and citations stable (navigation=%s)", async navigation => {
     let agentTurns = 0;
     let visualCalls = 0;
-    vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
+    vi.stubGlobal("fetch", async (url: unknown, init: RequestInit) => {
       const request = JSON.parse(requestBodyText(init.body));
+      const workersAi = model?.startsWith("@cf/");
+      const hasImages = request.messages.some((m: { content: unknown }) => Array.isArray(m.content)
+        && m.content.some(p => p.type === "image_url"));
       expect(request.model).toBe(model ?? "gpt-6-luna");
+      if (workersAi) {
+        expect(request.chat_template_kwargs).toEqual({ enable_thinking: false });
+        expect(String(url)).toBe("https://api.cloudflare.com/client/v4/accounts/test/ai/v1/chat/completions");
+        expect(new Headers(init.headers).get("authorization")).toBe("Bearer workers-test");
+      }
       if (!model) {
         expect(request.reasoning_effort).toBe("none");
         expect(request).not.toHaveProperty("max_tokens");
       } else expect(request).not.toHaveProperty("reasoning_effort");
-      if (request.messages.some((m: { content: unknown }) => Array.isArray(m.content)
-        && m.content.some(p => p.type === "image_url"))) {
+      if (hasImages) {
         visualCalls++;
         expect(request.stream).toBeUndefined();
         if (navigation === "focus" && visualCalls === 3) {
@@ -71,7 +78,10 @@ describe.each([false, true].flatMap(streaming =>
       } }] }, request.stream, "agent-final");
     });
     // No visual flag: image tools must be available for uploads by default.
-    const env = { OPENAI_API_KEY: "test", OPENAI_BASE_URL: "https://models.test/v1", ...(model ? { LLM_MODEL: model } : {}) } as Bindings;
+    const env = { OPENAI_API_KEY: "test", OPENAI_BASE_URL: "https://models.test/v1", ...(model?.startsWith("@cf/") ? {
+      LLM_MODEL: model, LLM_API_KEY: "workers-test",
+      LLM_BASE_URL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1",
+    } : model ? { LLM_MODEL: model } : {}) } as Bindings;
     const params = { ownerUserId: "owner", videoIds: [42], messages: [{ role: "user", content: "What is the red curve?" }], locale: "en" };
     let result;
     if (streaming) {

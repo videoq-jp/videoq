@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     cloudflareTest({
+      remoteBindings: false,
       main: "./test/workers/worker.ts",
       miniflare: {
         // Intercept below workerd's native fetch, preserving its receiver checks.

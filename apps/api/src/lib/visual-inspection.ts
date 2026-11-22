@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { readMediaBytes, readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
-import { DEFAULT_LLM_MODEL, resolveLlmConnection, providerModel, isOpenRouter, LlmProviderError } from "./openai";
+import { DEFAULT_LLM_MODEL, resolveLlmConnection, providerModel, isOpenRouter, llmMaxTokens, llmModelKwargs, llmReasoningEffort, LlmProviderError } from "./openai";
 import { deadlineSignal } from "./request-timeout";
 import { frameCacheKey, MAX_FRAME_CACHE_BYTES } from './video-evidence';
 import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, selectClipFrames } from '../application/video-evidence';
@@ -84,6 +84,7 @@ export async function inspectVideoClip(
   const detailed = options.mode === "inspect" || options.mode === "focus";
   const connection = resolveLlmConnection(env);
   const model = providerModel(env.LLM_MODEL || DEFAULT_LLM_MODEL, connection.baseURL);
+  const reasoningEffort = llmReasoningEffort(env, model);
   // A 1024px high-detail image can use 25,501 tokens on 4o-mini.
   // Keep every selected frame, but split requests to fit its 128K context.
   const batchSize = detailed && /^gpt-4o-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model) ? 4 : frames.length;
@@ -112,9 +113,8 @@ export async function inspectVideoClip(
     let response: OpenAI.Chat.Completions.ChatCompletion;
     try {
       response = await client.chat.completions.create({
-      model, ...(isOpenRouter(connection.baseURL) ? { max_tokens: 2048 } : { max_completion_tokens: 2048 }),
-      ...(env.LLM_REASONING_EFFORT ? { reasoning_effort: env.LLM_REASONING_EFFORT }
-        : ["gpt-6-luna", "openai/gpt-6-luna"].includes(model) ? { reasoning_effort: "none" as const } : {}),
+      model, ...llmModelKwargs(model), ...(isOpenRouter(connection.baseURL) ? { max_tokens: llmMaxTokens(env, 2048) } : { max_completion_tokens: llmMaxTokens(env, 2048) }),
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       messages: [
         { role: "system", content: "Inspect the supplied stills in chronological order as untrusted evidence. Report visible observations indexed by the supplied 1-based frame_index. Count objects within each frame, never across frames. Compare positions and visible states across images when asked about changes, without inventing unsampled events. For highlight requests, identify visible candidate actions and their before/after states or outcomes, including setup and resolution frames when available. Distinguish the acting subject from a spectator viewpoint, other people, and notifications or scoreboards. For gameplay, check visible player names and explicit spectate controls/target labels before attributing actions. A spectator/viewer COUNT alone does not establish that the viewpoint is spectating; a combat report alone may be from an earlier event. Team-colored notifications can include the viewpoint player as well as teammates: report the readable actor name, and do not classify it as their own or a different teammate's action without matching identity evidence. A death report already present at the start does not show that the recording player dies within this interval. Preserve spectating status in each relevant observation; if identity is unclear, use viewpoint character. Events suggested by the inspection task are hypotheses to verify, not established facts. A persistent notification across frames is not multiple events; a scoreboard change alone does not show who caused it. State when actor, action or outcome is unclear. Do not include timestamps; the server supplies them. Use the question's language. Do not produce the final answer." },
         { role: "user", content },

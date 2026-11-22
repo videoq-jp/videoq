@@ -40,7 +40,7 @@ type PlatformResources = {
   [K in keyof CloudflareBindings as NonNullable<CloudflareBindings[K]> extends string ? never : K]?: CloudflareBindings[K];
 };
 
-export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL"> &
+export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL" | "LLM_BASE_URL" | "LLM_MAX_TOKENS"> &
   Omit<PlatformResources, "SCENE_VECTORIZE_1536" | "SCENE_VECTORIZE_768"> &
   SecretBindings & {
     RUNTIME?: "node";
@@ -64,6 +64,7 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     OPENROUTER_FEDERATION_AUDIENCE?: string;
     LLM_BASE_URL?: string;
     LLM_API_KEY?: string;
+    LLM_MAX_TOKENS?: string;
     EMBEDDING_BASE_URL?: string;
     EMBEDDING_API_KEY?: string;
     EMBEDDING_PROFILE?: string;
