@@ -191,7 +191,14 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         if (job.type === 'index_video_transcript') {
           await step.do('finish-video-indexing', retry, async () => {
             await renew();
-            if (await finish(prepared.source) !== 'completed') throw new Error('Scene index delivery is pending or source changed');
+            if (await finish(prepared.source) !== 'completed') {
+              // Deletion can follow vector readiness before this durable step
+              // wakes up. A removed source has no remaining indexing work;
+              // existing sources must still pass the revision/readiness fence.
+              if (await persistence.readSource(prepared.source.videoId) !== null) {
+                throw new Error('Scene index delivery is pending or source changed');
+              }
+            }
           });
         }
       }
