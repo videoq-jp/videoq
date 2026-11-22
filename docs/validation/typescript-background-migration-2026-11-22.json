@@ -135,5 +135,22 @@
     "realElasticMQ": true,
     "builtNodeProcess": true,
     "model": "synthetic OpenAI-compatible server"
+  },
+  "productionPreflightReconciliationFinding": {
+    "status": "fix prepared; production recovery not yet verified",
+    "pendingSyntheticUpload": 1,
+    "obsoleteReconciliationParametersBefore": 104,
+    "parametersAfter": 5,
+    "documentedD1Limit": 100,
+    "reference": "https://developers.cloudflare.com/d1/platform/limits/",
+    "diagnosis": "Existing synthetic operations-smoke upload has one unattempted vector task; production alarm reports scene-index maintenance failure. Read-only production SQL compilation proves the reconciliation statement exceeds the parameter limit.",
+    "regression": {
+      "obsoleteVectors": 105,
+      "activeIndexPreserved": true,
+      "previousCodeFailed": true,
+      "fixedReconciliationTestsPassed": 2,
+      "otherSyncTestsPassed": 25
+    },
+    "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
   }
 }

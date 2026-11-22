@@ -335,6 +335,37 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     expect(vectors.size).toBe(0);
     expect(await tasks.reconcileObsolete()).toBe(0);
   });
+  it("reconciles more than 100 obsolete vectors within D1's parameter limit", async () => {
+    await publish("active"); await sync();
+    await fixture.database.prepare(`WITH RECURSIVE rows(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM rows WHERE n<105)
+      INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions,completed_at)
+      SELECT 'obsolete-'||n,'upsert','old-vector-'||n,'old-scene-'||n,'obsolete',1,'owner',1536,
+        strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM rows`).run();
+    let maximumParameters=0;
+    const bounded=new Proxy(fixture.database, {get(target,key){
+      if(key==='prepare')return (query:string)=>{
+        const statement=target.prepare(query);
+        return new Proxy(statement,{get(prepared,method){
+          if(method==='bind')return (...parameters:unknown[])=>{
+            maximumParameters=Math.max(maximumParameters,parameters.length);
+            if(parameters.length>100)throw new Error('D1 bound parameter limit exceeded');
+            return prepared.bind(...parameters);
+          };
+          const value=Reflect.get(prepared,method);
+          return typeof value==='function'?value.bind(prepared):value;
+        }});
+      };
+      const value=Reflect.get(target,key);
+      return typeof value==='function'?value.bind(target):value;
+    }});
+    const tasks=createD1SceneIndexTaskRepository(bounded);
+    expect(await tasks.reconcileObsolete()).toBe(100);
+    expect(await tasks.reconcileObsolete()).toBe(5);
+    expect(await tasks.reconcileObsolete()).toBe(0);
+    expect(maximumParameters).toBeLessThanOrEqual(100);
+    expect(await fixture.database.prepare("SELECT count(*) AS count FROM scene_index_tasks WHERE operation='delete'").first('count')).toBe(105);
+    expect(await search()).toMatchObject([{content:'Authoritative D1 content'}]);
+  });
   it("accepts identical staging retries but refuses different data for the same run/scene", async () => {
     expect(await writer.start({ runId: "immutable", videoId: 1, userId: "owner", sourceRevision, dimensions: 1536, expectedScenes: 1 })).toBe(true);
     expect(await writer.stage("immutable", "owner", [scene("First")])).toBe(true);

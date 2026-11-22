@@ -290,10 +290,10 @@ export function createD1SceneIndexTaskRepository(
         .limit(limit);
       if (!obsolete.length) return 0;
       const selected = and(
-        inArray(
-          t.id,
-          obsolete.map((row) => row.id),
-        ),
+        // D1 permits 100 bound parameters per statement. Keep the bounded ID
+        // page in one parameter so predicates and defaults retain room too.
+        inArray(t.id, db.select({ id: sql<string>`value` })
+          .from(sql`json_each(${JSON.stringify(obsolete.map(row => row.id))})`)),
         not(desired()),
       );
       const d = alias(tasks, "d");
