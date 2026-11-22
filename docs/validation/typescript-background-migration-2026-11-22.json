@@ -202,5 +202,14 @@
     "liveLegacyThreeLambdaImageBaselinePassed": true,
     "liveOperation": "read-only",
     "liveCloudflareTopologyVerified": false
+  },
+  "backgroundMaintenanceLiveReadiness": {
+    "date": "2026-11-22",
+    "operations": "read-only SSM metadata, IAM policy simulation and CodeBuild environment metadata",
+    "dedicatedCredentialParameterExists": false,
+    "migrationRoleCredentialReadDecision": "implicitDeny",
+    "codeBuildControlFlagPresent": false,
+    "productionControlEnabled": false,
+    "nextRequirement": "Provision and verify the dedicated Cloudflare credential through the controlled operator process, then review and approve the infrastructure opt-in before production transport cutover."
   }
 }
