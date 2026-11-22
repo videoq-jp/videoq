@@ -47,11 +47,6 @@ def require_transcription_fingerprint(fingerprint: str | None) -> None:
         raise ValueError('Transcription requires the original transcript fingerprint')
 
 
-def validate_transcript_clear(matches_snapshot: bool, transcript: str | None) -> None:
-    if not matches_snapshot or (transcript or '').strip():
-        raise ValueError('Transcript changed before clearing its index; retry')
-
-
 class VideoProcessingLogic(Protocol[Value, Predicate]):
     def all(self, *terms: Predicate) -> Predicate: ...
     def any(self, *terms: Predicate) -> Predicate: ...
@@ -92,21 +87,6 @@ def processing_quota_allowed(
 ) -> Predicate:
     return logic.all(not_over_quota, logic.any(logic.is_unlimited(limit_minutes),
         logic.at_most(used_seconds, logic.subtract(logic.multiply(limit_minutes, 60), seconds))))
-
-
-@dataclass(frozen=True)
-class IndexingCompletion(Generic[Value, Predicate]):
-    status: Value
-    error: Value
-    allowed: Predicate
-
-
-def indexing_completion(
-    indexing: Predicate, same_transcript: Predicate, same_file: Predicate,
-    logic: VideoProcessingLogic[Value, Predicate],
-) -> IndexingCompletion[Value, Predicate]:
-    return IndexingCompletion(logic.literal('completed'), logic.literal(''),
-        logic.all(indexing, same_transcript, same_file))
 
 
 @dataclass(frozen=True)

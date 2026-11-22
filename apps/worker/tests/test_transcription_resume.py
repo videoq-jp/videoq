@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from worker_python.tasks import indexing, transcription
+from worker_python.tasks import transcription
 from worker_python.video_sql import VideoRow
 
 
@@ -67,34 +67,22 @@ def test_completed_status_duplicate_is_a_noop(monkeypatch) -> None:
     enqueue.assert_not_called()
 
 
-def test_indexing_handoff_runs_real_task_when_queue_is_unavailable(monkeypatch):
+def test_indexing_handoff_retries_when_search_queue_is_unavailable(monkeypatch):
     video = _video("indexing")
-    video.transcript = "1\n00:00:00,000 --> 00:00:01,000\nHello"
     conn = MagicMock()
 
     @contextmanager
     def connection():
         yield conn
 
-    @contextmanager
-    def lock(video_id):
-        assert video_id == 42
-        yield
-
-    for module in (transcription, indexing):
-        monkeypatch.setattr(module, "db_connection", connection)
-        monkeypatch.setattr(module, "get_video_for_task", lambda *_args, **_kwargs: video)
-    monkeypatch.setattr(indexing, "video_vector_write_lock", lock)
+    monkeypatch.setattr(transcription, "db_connection", connection)
+    monkeypatch.setattr(transcription, "get_video_for_task", lambda *_args, **_kwargs: video)
     monkeypatch.setattr(transcription, "enqueue_job", MagicMock(return_value=None))
-    write = MagicMock(return_value=1)
-    transition = MagicMock(return_value=True)
-    monkeypatch.setattr(indexing.vector_index, "index_video_transcript", write)
-    monkeypatch.setattr(indexing, "finish_video_indexing", transition)
-
-    transcription.transcribe_video(42, job_id="transcribe-job")
-
-    write.assert_called_once_with(video)
-    transition.assert_called_once_with(conn, video)
+    provider = MagicMock()
+    monkeypatch.setattr(transcription, "run_transcription", provider)
+    with pytest.raises(RuntimeError, match="TypeScript indexing handoff"):
+        transcription.transcribe_video(42, job_id="transcribe-job")
+    provider.assert_not_called()
 
 
 @pytest.mark.parametrize("status", ["pending", "processing", "error"])

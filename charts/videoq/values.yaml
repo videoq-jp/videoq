@@ -40,9 +40,9 @@ worker:
   nodeSelector: {}
   tolerations: []
 
-# Enable after provisioning dedicated queues and draining legacy deliveries.
+# Required: search/account execution is provided by the TypeScript worker.
 backgroundWorker:
-  enabled: false
+  enabled: true
   replicas: 1
   resources:
     requests: { cpu: 100m, memory: 256Mi }

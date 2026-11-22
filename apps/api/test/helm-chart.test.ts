@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 const helm = process.env.HELM_BIN;
 const chart = fileURLToPath(new URL("../../../charts/videoq", import.meta.url));
 const settings = ["--set", "publicUrl=https://videoq.example.edu", "--set", "storage.endpoint=https://s3.example.edu",
-  "--set", "queue.url=http://queue:9324/000000000000/videoq-jobs"];
+  "--set", "queue.url=http://queue:9324/000000000000/videoq-jobs",
+  "--set", "queue.searchUrl=http://queue:9324/000000000000/videoq-search",
+  "--set", "queue.accountUrl=http://queue:9324/000000000000/videoq-account"];
 const withHelm = helm ? describe : describe.skip;
 
 withHelm("on-prem Helm distribution", () => {
@@ -18,12 +20,15 @@ withHelm("on-prem Helm distribution", () => {
   it("renders only app resources and references operator-managed credentials", () => {
     const resources = render();
     expect(resources.map(resource => resource.kind).sort()).toEqual([
-      "ConfigMap", "CronJob", "CronJob", "Deployment", "Deployment", "Deployment", "Job", "Pod", "Service", "Service",
+      "ConfigMap", "CronJob", "CronJob", "Deployment", "Deployment", "Deployment", "Deployment", "Job", "Pod", "Service", "Service",
     ].sort());
     const config = resources.find(resource => resource.kind === "ConfigMap");
     expect(config.data).toMatchObject({ DEPLOYMENT_EDITION: "onprem", USE_S3_STORAGE: "true", BETTER_AUTH_URL: "https://videoq.example.edu" });
     expect(Object.values(config.data).every(value => typeof value === "string")).toBe(true);
     expect(config.data.DATABASE_URL).toBeUndefined();
+    expect(config.data.SQS_SEARCH_QUEUE_URL).toContain("videoq-search");
+    const background = resources.find(resource => resource.kind === "Deployment" && resource.metadata.name.endsWith("-background-worker"));
+    expect(background.spec.template.spec.containers[0].command).toEqual(["node", "dist/background-worker.mjs"]);
     const api = resources.find(resource => resource.kind === "Deployment" && resource.metadata.name.endsWith("-api"));
     expect(api.spec.template.spec.containers[0].envFrom).toContainEqual({ secretRef: { name: "videoq-runtime" } });
     expect(api.spec.template.spec.containers[0].readinessProbe.httpGet.path).toBe("/ready");
@@ -67,7 +72,7 @@ withHelm("on-prem Helm distribution", () => {
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {
     const missing = spawnSync(helm!, ["template", "test", chart], { encoding: "utf8" });
     expect(missing.status).not.toBe(0);
-    for (const setting of ["ai.unknownSetting=true", "api.trustedProxyHops=-1", "api.databasePoolMax=1", "existingSecret=", "publicUrl=https://example.edu/prefix"]) {
+    for (const setting of ["backgroundWorker.enabled=false", "queue.searchUrl=", "queue.accountUrl=", "ai.unknownSetting=true", "api.trustedProxyHops=-1", "api.databasePoolMax=1", "existingSecret=", "publicUrl=https://example.edu/prefix"]) {
       expect(spawnSync(helm!, ["template", "test", chart, ...settings, "--set", setting], { encoding: "utf8" }).status).not.toBe(0);
     }
   });
@@ -123,7 +128,7 @@ withHelm("on-prem Helm distribution", () => {
         : ["Deployment", "Job"].includes(resource.kind) ? resource.spec.template.spec : undefined;
       return pod?.containers.map((container: { image: string }) => container.image) ?? [];
     });
-    expect(images).toHaveLength(7);
+    expect(images).toHaveLength(8);
     expect(images.every(image => image.endsWith(`@${digest}`))).toBe(true);
     for (const component of ["api", "web", "worker"]) {
       const flags = ["--set", "requireImageDigests=true",

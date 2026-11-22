@@ -70,7 +70,7 @@ def test_transcription_completion_preserves_concurrent_changes(transcription_db,
     provider = MagicMock(side_effect=generate)
     enqueue = MagicMock()
     monkeypatch.setattr(transcription, "run_transcription", provider)
-    monkeypatch.setattr(transcription, "_enqueue_or_run_indexing", enqueue)
+    monkeypatch.setattr(transcription, "_enqueue_indexing", enqueue)
     if change in ("none", "metadata") and failure == "provider":
         with pytest.raises(transcription.TranscriptionExecutionFailedError, match="Provider unavailable"):
             transcription.transcribe_video(42, job_id="transcribe-job")
@@ -108,7 +108,7 @@ def test_first_transcription_persists_subtitles_and_schedules_indexing(transcrip
         conn.execute("UPDATE videos SET transcript = %s, status = 'pending' WHERE id = 42", (original,))
     monkeypatch.setattr(transcription, "run_transcription", MagicMock(return_value=GENERATED))
     enqueue = MagicMock()
-    monkeypatch.setattr(transcription, "_enqueue_or_run_indexing", enqueue)
+    monkeypatch.setattr(transcription, "_enqueue_indexing", enqueue)
     transcription.transcribe_video(42, job_id="transcribe-job")
     with transcription_db() as conn:
         assert conn.execute("SELECT transcript, status FROM videos WHERE id = 42").fetchone() == {

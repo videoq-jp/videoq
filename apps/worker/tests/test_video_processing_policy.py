@@ -1,11 +1,10 @@
 import pytest
 
 from worker_python.domain.video_processing import (
-    indexing_completion, processing_quota_allowed, processing_reservation_denied,
+    processing_quota_allowed, processing_reservation_denied,
     processing_reservation_reused, processing_usage, require_transcription_fingerprint,
-    transcription_completion, validate_processing_seconds, validate_transcript_clear,
+    transcription_completion, validate_processing_seconds,
 )
-from worker_python.use_cases.scene_splitting import split_scenes_best_effort
 
 
 class Facts:
@@ -61,31 +60,3 @@ def test_transcription_preserves_manual_edits_even_when_provider_failed(same, ha
     result = transcription_completion(True, same, has_result, 'provider failed', FACTS)
     assert (result.status, result.save_transcript, result.error, result.allowed) == (status, save, error, True)
     assert not transcription_completion(False, same, has_result, 'provider failed', FACTS).allowed
-
-
-def test_index_completion_requires_the_same_transcript_file_and_indexing_state():
-    assert indexing_completion(True, True, True, FACTS).allowed
-    for facts in [(False, True, True), (True, False, True), (True, True, False)]:
-        assert not indexing_completion(*facts, FACTS).allowed
-    with pytest.raises(ValueError, match='fingerprint'):
-        require_transcription_fingerprint(None)
-    require_transcription_fingerprint('')
-    validate_transcript_clear(True, ' \n')
-    for matches, transcript in [(False, ''), (True, 'edited')]:
-        with pytest.raises(ValueError, match='before clearing'):
-            validate_transcript_clear(matches, transcript)
-
-
-def test_best_effort_split_reports_only_recoverable_errors_and_keeps_original_text():
-    error = RuntimeError('split failed')
-    reports = []
-    def fail(): raise error
-    assert split_scenes_best_effort('original', fail, lambda _: False, lambda: reports.append('fallback')) == 'original'
-    assert reports == ['fallback']
-    reports.clear()
-    with pytest.raises(RuntimeError) as caught:
-        split_scenes_best_effort('original', fail, lambda _: True, lambda: reports.append('fallback'))
-    assert caught.value is error
-    assert reports == []
-    assert split_scenes_best_effort('original', lambda: 'split', lambda _: True, lambda: reports.append('fallback')) == 'split'
-    assert reports == []

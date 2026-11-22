@@ -4,7 +4,7 @@ AWS Lambda / local poller handler for SQS background jobs.
 Native message shape (apps/api lib/jobs.ts):
 
 {
-  "type": "index_video_transcript",
+  "type": "transcribe_video",
   "job_id": "<uuid>",
   "payload": { "video_id": 123 }
 }

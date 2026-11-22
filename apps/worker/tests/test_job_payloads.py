@@ -55,7 +55,11 @@ def test_all_job_types_preserve_arguments_from_producer_to_task(execution, job_t
     expected = {**payload, **({"job_id": "job"} if job_type in {JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS} else {})}
     task.assert_called_once_with(**expected)
     # Check the real callable's interface without running providers or deleting data.
-    signature(get_task(job_type)).bind(*task.call_args.args, **task.call_args.kwargs)
+    if job_type in {JOB_DELETE_ACCOUNT_DATA, JOB_INDEX_VIDEO_TRANSCRIPT, JOB_REINDEX_VIDEO_TRANSCRIPT, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS}:
+        with pytest.raises(KeyError, match="Task not registered"):
+            get_task(job_type)
+    else:
+        signature(get_task(job_type)).bind(*task.call_args.args, **task.call_args.kwargs)
     claim.assert_called_once_with("job", job_type, payload)
     complete.assert_called_once_with("job", "lease")
 

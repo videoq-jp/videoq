@@ -1,5 +1,3 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -11,11 +9,10 @@ import { resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 import { openSceneSearch } from "../src/repositories/vector-repository";
 import type { Bindings } from "../src/types/bindings";
 import { embedding } from "./helpers/embedding";
+import { replacePostgresTranscriptIndex } from "../src/persistence/postgres/transcript-index-writer";
+import { parseSearchScenes } from "../src/application/search-scene-splitting";
 
-const exec = promisify(execFile);
 const databaseUrl = process.env.EMBEDDING_TEST_DATABASE_URL;
-const workerPath = fileURLToPath(new URL("../../worker", import.meta.url));
-const pythonHelper = fileURLToPath(new URL("./helpers/embedding-store.py", import.meta.url));
 const migrations = fileURLToPath(new URL("../drizzle", import.meta.url));
 
 afterEach(() => vi.unstubAllGlobals());
@@ -23,8 +20,8 @@ afterEach(() => vi.unstubAllGlobals());
 (databaseUrl ? describe : describe.skip).each([
   { profile: "openai", model: "text-embedding-3-small", dimensions: 1536, table: "scene_embeddings" },
   { profile: "embeddinggemma2", model: "embeddinggemma-2-f9972ac", dimensions: 768, table: "scene_embeddings_768" },
-])("$profile cross-language storage", ({ profile, model, dimensions, table }) => {
-  it("migrates an empty DB, writes through Python, searches through the API and builds both HNSW indexes", async () => {
+] as const)("$profile shared TypeScript storage", ({ profile, model, dimensions, table }) => {
+  it("migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index", async () => {
     const vector = () => embedding(1).slice(0, dimensions);
     const settings = { EMBEDDING_PROFILE: profile, EMBEDDING_MODEL: model, EMBEDDING_BASE_URL: "http://embedding.test/v1" };
     const name = `videoq_embedding_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -39,11 +36,14 @@ afterEach(() => vi.unstubAllGlobals());
       pool.on("error", () => {});
       await migrate(drizzle(pool), { migrationsFolder: migrations });
       await assertEmbeddingSchema(pool, resolveEmbeddingConfig(settings));
-      const { stdout } = await exec(process.env.VIDEOQ_TEST_PYTHON || "python3", [pythonHelper], {
-        cwd: workerPath,
-        env: { ...process.env, DATABASE_URL: url.toString(), ...settings, PYTHONPATH: workerPath },
-      });
-      expect(stdout).toContain("python_save_search_hnsw_ok");
+      const transcript = "1\n00:00:00,000 --> 00:00:05,000\nWater evaporates when heated.\n";
+      for (const [owner, videoId] of [["allowed-owner", 60], ["other-owner", 61], ["allowed-owner", 62]] as const) {
+        await pool.query(`INSERT INTO users (id,email,username,max_video_upload_size_mb,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes)
+          VALUES ($1,$2,$3,100,false,0,0,0) ON CONFLICT (id) DO NOTHING`, [owner, `${owner}@example.invalid`, owner]);
+        await pool.query(`INSERT INTO videos (id,user_id,title,transcript,status,file,description,uploaded_at,error_message,source_type,source_url,youtube_video_id)
+          VALUES ($1,$2,$3,$4,'completed','','',NOW(),'','uploaded','','')`, [videoId, owner, `Video ${videoId}`, transcript]);
+        expect(await replacePostgresTranscriptIndex(pool, { table, dimensions }, {videoId,userId:owner,transcript}, parseSearchScenes(transcript), [vector()])).toBe(1);
+      }
       const env = { HYPERDRIVE: { connectionString: url.toString() }, OPENAI_API_KEY: "test-key", ...settings } as Bindings;
       const fetch = vi.fn(async () => Response.json({ data: [{ index: 0, embedding: vector() }] }));
       vi.stubGlobal("fetch", fetch);

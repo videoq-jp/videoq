@@ -330,7 +330,7 @@ overrides to share the provider. Local overlays continue to use private inferenc
 
 ## TypeScript search and account worker
 
-Set `backgroundWorker.enabled=true` and provide `queue.searchUrl` and
+The TypeScript background worker is required. Provide `queue.searchUrl` and
 `queue.accountUrl` after creating dedicated persistent queues and dead-letter
 queues. Both URLs must differ from the media `queue.url` and from each other.
 The worker reuses the API image and runs `node dist/background-worker.mjs`.
@@ -339,8 +339,26 @@ includes the additional queues. While enabled, the Python worker accepts media
 jobs only. Drain jobs from the legacy shared queue before switching an existing
 installation.
 
-For an existing installation, keep `backgroundWorker.enabled=false` until the
-new queues and image are ready, then enable the Node worker and producer routing
-together. Preserve old queues and DLQs until their visible and in-flight message
-counts are zero. Storage deletion continues through the existing durable cleanup
+Before upgrading an existing installation, provision the dedicated queues and
+drain the legacy shared queue and DLQ with the previous release. Deploy the Node
+worker and producer routing together. `backgroundWorker.enabled=false` is rejected
+because Python no longer executes search/account jobs. Preserve old queues and
+DLQs until visible, in-flight and delayed message counts are zero. Storage deletion continues through the existing durable cleanup
 outbox and maintenance jobs.
+
+### Upgrade from the Python search/account worker
+
+Prepare and drain the legacy queues with the previous release before using this
+release. Pause new uploads, transcript edits and account deletion requests, keep
+the old consumers running until visible, in-flight and delayed counts and DLQs
+are zero, then take a backup with the previous installer.
+
+For operator-managed Kubernetes, apply the dedicated queues and all required
+`queue.*Url` values, then deploy the chart and images together. The installer
+records `videoq-background-worker` with the other writers for backup and updates.
+For an older generated Compose installation, update its reviewed Compose file
+and `runtime.env` to the supplied background-worker topology while retaining the
+existing project name, volumes and credentials. Add the two dedicated queues to
+its persistent ElasticMQ configuration. The updater rejects the old single-worker
+file until this migration is complete; it never upgrades to a release that leaves
+search/account deliveries without a consumer.

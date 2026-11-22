@@ -560,7 +560,7 @@ jobs:
           manager: pip
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
-      - name: Install worker for cross-language embedding tests
+      - name: Install worker for media protocol integration tests
         run: |
           uv export --quiet --project apps/worker --locked --extra dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/worker-requirements.txt"
           python -m pip install --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/worker-requirements.txt"

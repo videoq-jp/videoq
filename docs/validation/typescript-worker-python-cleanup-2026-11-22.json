@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-22",
+  "status": "post-cutover cleanup prepared; not deployed",
+  "requires": [
+    "Production Cloudflare queue/workflow rollout and verification",
+    "Legacy search/account consumer drain and retirement before merge"
+  ],
+  "python": {
+    "passed": 778,
+    "skipped": 1,
+    "realPostgres": true,
+    "dependenciesSyncedFromLock": true
+  },
+  "typescriptPostgresStorage": {
+    "passed": 2,
+    "profiles": [
+      "openai",
+      "embeddinggemma2"
+    ],
+    "realPostgres": true
+  },
+  "restrictedMoodleWorker": {
+    "passed": 5,
+    "realPostgres": true,
+    "worker": "TypeScript",
+    "covers": [
+      "API-produced explicit clear",
+      "restricted database role",
+      "atomic rollback",
+      "idempotent retry",
+      "no embedding calls"
+    ]
+  },
+  "helm": {
+    "passed": 9,
+    "lint": true
+  },
+  "onpremInstallerUnitTests": {
+    "tests": 84,
+    "skipped": 5,
+    "failed": 0
+  },
+  "apiTypecheck": true,
+  "apiLint": true,
+  "productionChanged": false
+}

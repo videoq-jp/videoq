@@ -13,15 +13,12 @@ dependencies = [
     "urllib3>=2.8.0,<3",
     "cryptography>=42.0",
     "numpy>=1.26",
-    "tiktoken>=0.7",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "httpx>=0.27",
-    # Verify that Python writes remain compatible with both search clients.
-    "langchain-postgres==0.0.19",
 ]
 
 [build-system]

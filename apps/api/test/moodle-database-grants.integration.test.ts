@@ -1,9 +1,8 @@
+import { runBackgroundJob } from '../src/integrations/background-jobs/execute';
 import { pruneLtiAudit } from '../src/features/lti/audit-retention';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
-import { execFile } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { migrateDatabase } from '../scripts/migrate-database';
 import { lockConversationTestRoles } from './helpers/conversation-role-lock';
 import { provisionLmsInstallation } from '../src/repositories/lms-installation-repository';
@@ -20,6 +19,8 @@ import { courseReport } from '../src/features/lti/course-reports';
 import { issueMoodlePairing } from '../src/features/lms/pairing';
 import { listQuestions, mutate } from '../src/integrations/qa';
 import type { Bindings } from '../src/types/bindings';
+
+afterEach(() => vi.restoreAllMocks());
 
 const databaseUrl=process.env.QUOTA_TEST_DATABASE_URL;
 const roles=['videoq_migrate_20260918','videoq_worker_20261014','videoq_api_access','videoq_worker_access',
@@ -220,7 +221,7 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
     expect((await api.query("SELECT has_schema_privilege(current_user,'public','CREATE') AS ddl")).rows[0].ddl).toBe(false);
   });
 
-  it('delivers an API transcript-clear job through the restricted Python worker, with atomic failure and idempotent retry',async()=>{
+  it('delivers an API transcript-clear job through the restricted TypeScript worker, with atomic failure and idempotent retry',async()=>{
     await provisionLmsInstallation(env,{id:'clear-school',ownerUserId:'owner',name:'Clear fixture',
       issuer:'https://moodle.example',clientId:'clear-client',deploymentId:'clear-deployment',authorizationUrl:'https://moodle.example/auth',jwksUrl:'https://moodle.example/keys'});
     const sources=[];
@@ -249,33 +250,27 @@ const moodleTables=['lti_credentials','lti_tool_keys','lms_installations','lms_c
       revision:before.material.revision,fields:{transcript:''}});
     const message=(await api.query('SELECT payload FROM external_tasks WHERE id=$1',[cleared.externalTaskId])).rows[0].payload.message;
     expect(message).toMatchObject({type:'index_video_transcript',payload:{video_id:scope.videoId,allow_empty:true}});
-    const execute=()=>new Promise<{batchItemFailures:{itemIdentifier:string}[];embeddingCalls:number;errors?:{type:string;sqlstate:string|null}[]}>((resolve,reject)=>{
-      const child=execFile(process.env.LOCAL_AI_TEST_WORKER_PYTHON??'python3',
-        [fileURLToPath(new URL('./helpers/moodle-worker-clear.py',import.meta.url))],
-        {timeout:30000,maxBuffer:1024*1024,env:{PATH:process.env.PATH,PYTHONPATH:fileURLToPath(new URL('../../worker/',import.meta.url)),
-          DATABASE_URL:workerDatabaseUrl,AWS_EC2_METADATA_DISABLED:'true'}},(error,stdout)=>{
-          if(error){reject(new Error('Restricted worker fixture failed (exit '+error.code+'): '+stdout));return;}
-          try{resolve(JSON.parse(stdout));}catch{reject(new Error('Restricted worker returned invalid fixture output'));}
-        });
-      child.stdin!.end(JSON.stringify(message));
-    });
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Explicit clearing must not call providers'));
+    const execute=()=>runBackgroundJob({DATABASE_POOL:worker,EMBEDDING_MODEL:'text-embedding-3-small',DEPLOYMENT_EDITION:'onprem'} as Bindings,message);
     const counts=async()=> (await owner.query(`SELECT
       (SELECT count(*)::int FROM scene_embeddings WHERE video_id=$1) AS hosted,
       (SELECT count(*)::int FROM scene_embeddings_768 WHERE video_id=$1) AS local`,[scope.videoId])).rows[0];
     try{
       await owner.query('REVOKE DELETE ON scene_embeddings_768 FROM videoq_worker_access');
-      const failed=await execute();expect(failed.embeddingCalls).toBe(0);expect(failed.batchItemFailures).toHaveLength(1);
-      expect(failed.errors).toContainEqual({type:'InsufficientPrivilege',sqlstate:'42501'});
+      await expect(execute()).rejects.toMatchObject({code:'42501'});
+      expect(fetch).not.toHaveBeenCalled();
       expect(await counts()).toEqual({hosted:1,local:1});
       expect((await owner.query('SELECT status FROM videos WHERE id=$1',[scope.videoId])).rows[0].status).toBe('indexing');
       expect((await owner.query('SELECT status,attempts,last_error FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
         .toEqual({status:'failed',attempts:1,last_error:'WORKER_EXECUTION_FAILED'});
     }finally{await owner.query('GRANT DELETE ON scene_embeddings_768 TO videoq_worker_access');}
-    expect(await execute()).toEqual({batchItemFailures:[],embeddingCalls:0});
+    await execute();
+    expect(fetch).not.toHaveBeenCalled();
     expect(await counts()).toEqual({hosted:0,local:0});
     expect((await owner.query('SELECT transcript,status FROM videos WHERE id=$1',[scope.videoId])).rows[0])
       .toEqual({transcript:'',status:'completed'});
-    expect(await execute()).toEqual({batchItemFailures:[],embeddingCalls:0});
+    await execute();
+    expect(fetch).not.toHaveBeenCalled();
     expect((await owner.query('SELECT status,attempts FROM job_executions WHERE job_id=$1',[message.job_id])).rows[0])
       .toEqual({status:'completed',attempts:2});
     for(const table of ['scene_embeddings','scene_embeddings_768'])

@@ -13,7 +13,6 @@ from worker_python.pipeline.transcription import run_transcription
 from worker_python.internal_api import uses_internal_persistence
 from worker_python.pipeline.user_secret_envelope import try_decrypt
 from worker_python.sqs_enqueue import child_job_id, enqueue_job
-from worker_python.tasks.indexing import index_video_transcript
 from worker_python.video_sql import (
     get_video_for_task,
     reserve_processing_seconds,
@@ -50,14 +49,13 @@ def _load_searchapi_key(user_id: str) -> str | None:
     return try_decrypt(row.get("searchapi_api_key_encrypted"))
 
 
-def _enqueue_or_run_indexing(video_id: int, parent_job_id: str) -> None:
+def _enqueue_indexing(video_id: int, parent_job_id: str) -> None:
     payload = {"video_id": video_id}
     next_job_id = child_job_id(parent_job_id, JOB_INDEX_VIDEO_TRANSCRIPT, payload)
     message_id = enqueue_job(JOB_INDEX_VIDEO_TRANSCRIPT, payload, job_id=next_job_id)
     if message_id:
         return
-    logger.info("SQS unavailable; running indexing inline for video %d", video_id)
-    index_video_transcript(video_id)
+    raise RuntimeError("Search queue is unavailable; retry the TypeScript indexing handoff")
 
 
 def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
@@ -109,6 +107,6 @@ def transcribe_video(video_id: int, *, job_id: str | None = None) -> None:
 
     execute_transcription(video_id, TranscriptionDependencies(
         load=load, begin=begin, transcribe=transcribe, finish=finish,
-        handoff=_enqueue_or_run_indexing, start_segmented=start_segmented,
+        handoff=_enqueue_indexing, start_segmented=start_segmented,
         segmented_enabled=heavy_pipeline_enabled(),
     ), job_id=job_id)

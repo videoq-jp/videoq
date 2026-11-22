@@ -12,62 +12,26 @@ unacknowledged for retry. Start with the
 infrastructure, or the [Helm chart](../../charts/videoq/README.md) for a cluster
 with site-managed queues, storage and inference.
 
-## Hosted queue groups
+## Execution topology
 
-Hosted AWS deployments use three SQS queues and three Lambda functions sharing
-one immutable container image and the existing worker IAM identity:
+Python executes media jobs only: transcription, visual preparation, chunks and
+finalizers. Search indexing and account deletion use the shared TypeScript
+processors in `apps/api`: Cloudflare Queues/Workflows in the cloud, and
+`node dist/background-worker.mjs` with dedicated SQS-compatible queues on-prem.
 
-| Group | Queue / Lambda (prod) | Jobs | Memory / timeout / maximum concurrency |
-|---|---|---|---|
-| Media | `videoq-worker-prod` (existing) | Transcription and visuals, including chunks/finalizers | 5120 MB / 900 s / 10 |
-| Search | `videoq-worker-search-prod` | Index, per-video reindex, full-reindex dispatch | 2048 MB / 900 s / 4 |
-| Account | `videoq-worker-account-prod` | Account deletion | 1024 MB / 900 s / 2 |
+Transcription hands indexing to the dedicated search queue. A failed handoff
+retries the media job; it never embeds or writes search vectors inline in Python.
+Cloud transcription saves the indexing intent in the existing durable outbox.
+On-prem Compose includes the Node worker; Helm requires it and separate search
+and account queue URLs. Drain old shared deliveries and DLQs with the previous
+release before upgrading. Do not deploy this cleanup until the hosted transport
+cutover and legacy consumer drain have been verified.
 
-Each group has its own DLQ and Lambda/queue alarms. Hosted visibility must be at
-least `max(6 * timeout, 900 + timeout + 60)` seconds, allowing a DB lease claimed
-late in a timed-out invocation to expire before retry. Terraform computes this
-for search/account and validates the explicit media setting. Keep its lease
-constant synchronized with Python `JOB_LEASE_SECONDS`. Configure search/account
-resources through Terraform `worker_groups`; media retains the existing settings.
-Concurrency limits are per event source, and the account concurrency quota and
-shared DB/provider capacity must cover the combined workload (default ceiling 16).
-The role and image remain shared; this change isolates execution capacity and
-resource settings, not permissions or deployments.
-
-Both API producers and Python child-job producers select `SQS_MEDIA_QUEUE_URL`,
-`SQS_SEARCH_QUEUE_URL`, or `SQS_ACCOUNT_QUEUE_URL` by job type. An unset group URL
-falls back to `SQS_QUEUE_URL`, preserving single-queue local/on-prem operation.
-The hosted media queue keeps its original name and accepts old mixed messages
-while they drain. New search/account functions reject jobs from another group.
-Tasks are imported only when dispatched so media imports do not run at startup
-of unrelated consumers.
-
-With SQS configured, `reindex_all_videos_embeddings` dispatches at most 25 video
-IDs per invocation to `reindex_video_transcript`. It enqueues a continuation with
-`after_id` when more IDs remain. Before any send, every nonempty page validates
-embedding storage. A schema/configuration failure sends no children or continuation
-and fails the parent for retry after repair. Per-video jobs still recheck storage.
-Children retain the original root job ID across pages so boundary changes on
-retry cannot assign a second identity to the same video. Continuations also use
-deterministic IDs;
-any failed send fails the parent so it can retry. Each video loads its current
-transcript under the existing per-video lock, and failures retry independently.
-Dispatcher success means delivery was accepted, not that every video completed;
-watch search failures/backlog/DLQ for completion. No global vector lock is held
-across the rebuild. Without SQS, the local maintenance helper retains its inline,
-globally locked execution. Schema/model migrations must be coordinated separately;
-a parallel rebuild does not provide an atomic collection-wide switch.
-
-For rollout and rollback ordering, see [deployment instructions](../../infra/DEPLOY.md#split-worker-rollout).
+The remaining media Lambda retains its queue, DLQ, logs and IAM identity. Keep
+queue visibility and `JOB_LEASE_SECONDS` aligned with the media timeout as
+specified in [deployment instructions](../../infra/DEPLOY.md).
 
 ## Application boundaries
-
-`use_cases/reindex_batch.py` owns the full-rebuild entry decision as well as bounded
-page dispatch and failure aggregation. It requires a search queue for cloud work,
-requires the stable current job ID for queued work and preserves the original root
-ID across continuation pages. `tasks/reindexing.py` supplies runtime configuration,
-queue delivery and inline capabilities. The inline capability retains the global
-advisory lock around the entire lazy video cursor lifetime, including failures.
 
 `worker_python/use_cases/transcription.py` owns the PostgreSQL transcription
 lifecycle: eligible states, claiming work, failure/retry decisions, segmented
@@ -100,17 +64,6 @@ its database transaction; cloud finalization retains the internal API's atomic
 outbox and does not send a second indexing job. Provider calls are skipped when
 retrying delivery of a saved checkpoint. Source probing is also skipped on that
 replay path. SQL and checkpoint paging remain adapter responsibilities.
-
-`use_cases/transcript_index.py` validates original cues, prepares storage capability,
-groups search scenes and obtains embeddings before invoking atomic replacement.
-`use_cases/scene_index.py` likewise validates original/grouped SRT for cloud
-indexing; its adapter supplies the splitter and signed API operations. Source cue
-timestamps remain strings matching the API contract. Pending publication delivery
-is checked before parsing or model work, so retries do not regenerate embeddings.
-`pipeline/vector_index.py` keeps provider batch sizing and PostgreSQL operations.
-The writer rechecks the original transcript under the video row lock, replaces all
-scene rows in one transaction and preserves concurrent edits/deletion. Neither
-scene splitting nor embedding provider calls run inside that write transaction.
 
 `use_cases/visual_publication.py` owns immutable visual publication decisions:
 registration before uploads, cleanup of losing attempts, and manifest recovery
@@ -178,15 +131,11 @@ Supported operations:
 | `build_video_visual_chunk` | Build one bounded chunk of the optional visual caches |
 | `finish_video_visuals` | Publish the visual caches once every chunk is saved |
 | `build_video_visuals` | Compatibility: move an older queued whole-video job to the chunk pipeline |
-| `index_video_transcript` | Group cues into search scenes, generate embeddings and atomically replace searchable scenes |
-| `reindex_video_transcript` | Reindex a single video |
-| `reindex_all_videos_embeddings` | Reindex all videos |
-| `delete_account_data` | Delete database records, vectors, and objects in storage |
 
 `payload` is an object containing only the arguments for the job. Video jobs accept
 `video_id` as an integer from 1 through JavaScript's maximum safe integer. Strings,
-fractions, and booleans are not converted to IDs. Account deletion requires a
-nonblank string for `user_id`; reindexing all videos requires an empty object.
+fractions, and booleans are not converted to IDs. Search/account message shapes
+remain available to producers, while their execution belongs to TypeScript.
 The worker applies the same validation when sending and receiving jobs, rejecting
 invalid input before acquiring an execution lease. For SQS batches, only invalid
 messages are returned as failures; processing continues for the others.
@@ -327,12 +276,11 @@ python -m pytest tests/ -q
 Recommended setup:
 
 ```bash
-docker compose up -d postgres garage garage-init elasticmq worker
+docker compose up -d postgres garage garage-init elasticmq worker background-worker
 docker compose logs -f worker
 ```
 
-To trigger processing of pending rows (real uploaded transcription requires SQS;
-YouTube, development placeholders, and indexing can run inline):
+To enqueue pending rows (both media and search queues and their workers must be running):
 
 ```bash
 python scripts/process_pending.py

@@ -1,8 +1,7 @@
+import { indexTranscript } from "../src/integrations/search-index/index-transcript";
 import { URL } from "node:url";
-import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { parse } from "dotenv";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -21,8 +20,6 @@ const settings = Object.fromEntries(
   ["OPENROUTER_FEDERATION_POLICY_ID", "OPENROUTER_FEDERATION_AUDIENCE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENROUTER_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY", "EMBEDDING_MODEL"].map((key) =>
     [key, process.env[key] ?? configured[key]]),
 );
-const exec = promisify(execFile);
-const workerPath = fileURLToPath(new URL("../../worker", import.meta.url));
 
 describe.skipIf(!enabled)("real embedding providers", () => {
   it("indexes a short transcript and answers Q&A", async () => {
@@ -41,15 +38,13 @@ describe.skipIf(!enabled)("real embedding providers", () => {
       pool = new Pool({ connectionString: url.toString(), max: 1 });
       pool.on("error", () => {});
       await migrate(drizzle(pool), { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) });
-      const { stdout } = await exec(process.env.VIDEOQ_TEST_PYTHON || "python3", [
-        fileURLToPath(new URL("./helpers/embedding-live.py", import.meta.url)),
-      ], {
-        cwd: workerPath,
-        env: { ...process.env, ...providerSettings, DATABASE_URL: url.toString(), PYTHONPATH: workerPath },
-        timeout: 180_000,
-      });
-      expect(stdout).toContain("live_index_ok");
-      const env = { ...providerSettings, HYPERDRIVE: { connectionString: url.toString() } } as Bindings;
+      const transcript = "1\n00:00:00,000 --> 00:00:06,000\n蒸発とは、水などの液体が表面から気体に変化することです。\n\n2\n00:00:06,000 --> 00:00:12,000\n凝結とは、水蒸気などの気体が冷えて液体に変わることです。\n";
+      await pool.query(`INSERT INTO users (id,email,username,max_video_upload_size_mb,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes)
+        VALUES ('embedding-live','embedding-live@example.invalid','embedding-live',100,false,0,0,0)`);
+      await pool.query(`INSERT INTO videos (id,file,title,description,uploaded_at,transcript,status,error_message,user_id,source_type,source_url,youtube_video_id)
+        VALUES (60,'','水の状態変化','',NOW(),$1,'completed','','embedding-live','uploaded','','')`, [transcript]);
+      const env = { ...providerSettings, HYPERDRIVE: { connectionString: url.toString() }, DATABASE_POOL:pool } as Bindings;
+      expect(await indexTranscript(env, 60)).toBeGreaterThan(0);
       expect(await embedQuery(env, "蒸発とは何ですか？")).toHaveLength(1536);
       const question = { messages: [{ role: "user", content: "動画に基づいて蒸発とは何か説明してください。" }], videoIds: [60], locale: "ja" };
       const answer = await runRag(env, { ...question, ownerUserId: "embedding-live" });
