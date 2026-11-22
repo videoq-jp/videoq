@@ -22,7 +22,7 @@ SCRIPTS = [
     "background-maintenance-store.cjs", "background-maintenance-transport.cjs", "canonical-background-maintenance.cjs",
     "neon-admin.cjs", "neon-fence-audit.mjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "d1-resource-smoke-guard.cjs", "d1-resource-journal.cjs",
-    "production-smoke.mjs", "production-smoke-policy.cjs", "production-smoke-store.cjs", "aws-production-smoke.cjs", "production-stream-proof.cjs",
+    "production-smoke.mjs", "production-smoke-policy.cjs", "production-smoke-result.cjs", "production-smoke-store.cjs", "aws-production-smoke.cjs", "production-stream-proof.cjs",
     "isolated-smoke-target.cjs", "isolated-smoke-manifest.cjs",
     "backup-restore.mjs", "backup-archive.mjs", "backup-download.mjs", "backup-d1-run.mjs", "backup-d1-export.mts", "provision-public-demo.mjs", "public-demo-policy.cjs",
 ]

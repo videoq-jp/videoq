@@ -118,7 +118,7 @@ async function main() {
       {stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 8*1024*1024, env: {...process.env, OPERATION: 'audit',
         GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'videoq-jp/videoq', VIDEOQ_BUNDLED_CHROMIUM: 'true'}});
     const report = stage === 'audit' ? null : JSON.parse(readFileSync('operations-report.json', 'utf8'));
-    if (report && report.status !== 'ok') throw new Error('PRODUCTION_VERIFICATION_FAILED');
+    if (report) require('../../../.github/scripts/production-smoke-result.cjs').assertProductionSmoke(report);
     console.log('Production verification succeeded: ' + stage); return;
   }
   if (stage === 'migration') {
