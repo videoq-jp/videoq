@@ -2,10 +2,10 @@
   "date": "2026-11-22",
   "status": "implementation and verification in progress; production transport unchanged",
   "apiSuite": {
-    "passed": 4110,
+    "passed": 3463,
     "failed": 0,
-    "skipped": 886,
-    "files": 455,
+    "skipped": 1555,
+    "files": 459,
     "maxWorkers": 2
   },
   "focusedPostgresAndNodeE2E": {
@@ -38,7 +38,8 @@
   "limitations": [
     "Local D1/R2 and a temporary remote Vectorize index were used; no production application data was modified.",
     "Local workerd HMR interrupted an earlier pending retry; pause/resume recovered the same instance. The reported clean run had no HMR or recovery intervention.",
-    "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark."
+    "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark.",
+    "The first streaming probe stalled in a local step past its deadline and completed after pause/resume. A subsequent fresh instance on the same runtime completed without intervention in 1.90 seconds. The local stall cause is not established."
   ],
   "remaining": [
     "Complete production review, rollout, draining and retirement of legacy consumers.",
@@ -83,5 +84,38 @@
     "helmLint": true,
     "terraformValidate": true,
     "terraformApplyExecuted": false
+  },
+  "cloudNativeStreamingSplitting": {
+    "workflowId": "streaming-clean-ab4493e7-5b6e-4e04-88e6-37beebf77a44",
+    "status": "complete",
+    "elapsedSeconds": 1.9042747500000001,
+    "database": [
+      [
+        {
+          "status": "completed",
+          "count": 2
+        }
+      ],
+      [
+        {
+          "dimensions": 768,
+          "count": 3
+        }
+      ]
+    ],
+    "intervention": false,
+    "productionDataChanged": false,
+    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+    "model": "@cf/google/embeddinggemma-2",
+    "scope": "Streaming Otsu splitting, 768-dimensional generation and D1 staging; Vectorize not bound in this run"
+  },
+  "followupChecks": {
+    "typecheck": true,
+    "lint": true,
+    "workflowRecoveryTestsPassed": 13,
+    "focusedKernelEmbeddingsCancellationTestsPassed": 13,
+    "queueProvisioningTestsPassed": 4,
+    "workerRuntimeTestsPassed": 100,
+    "nodeBuild": true
   }
 }
