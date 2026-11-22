@@ -293,5 +293,55 @@
     },
     "outstanding": "Maintenance recovery deployment/smoke is running; ordinary CD and transport cutover remain unverified.",
     "recoveryWorkflowRun": 45042542268
+  },
+  "backgroundMaintenanceInfrastructurePlan": {
+    "applied": false,
+    "stateSerialRead": 27,
+    "planSha256": "2cb0c4352080aa60e9ef4c11056b1c8495b7c400c1f3980190db9b232d0192ec",
+    "changes": [
+      {
+        "address": "aws_codebuild_project.job[\"migration\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "build_timeout",
+          "environment"
+        ]
+      },
+      {
+        "address": "aws_codebuild_project.job[\"smoke\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ]
+      },
+      {
+        "address": "aws_iam_role_policy.build[\"migration\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "policy"
+        ]
+      }
+    ],
+    "migrationTimeoutMinutes": {
+      "before": 15,
+      "after": 50
+    },
+    "migrationFlag": "true",
+    "smokeFlag": "false",
+    "addedGrants": [
+      "GetParameter for only /videoq/security/prod/background-maintenance",
+      "GetItem/UpdateItem for run#* records in the maintenance table",
+      "ConditionCheckItem for only the maintenance lock record"
+    ],
+    "removedGrants": [],
+    "createsOrDeletes": false,
+    "codeOrLiveAliasesChanged": false,
+    "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required."
   }
 }
