@@ -186,7 +186,8 @@
   "remainingIssue": {
     "pr": 1612,
     "workflowId": "7f7c4b98622f07601261b53463858507f50663408069a72bb35cad2f1312df26",
-    "description": "Affected owned synthetic workflow recovered through checkpoint restart; job and workflow completed without direct database status mutation. Preventive fix PR1612 still awaits CI and production deployment."
+    "description": "Preventive fix PR1612 deployed from main49ee9b5; owned production pause/delete/resume regression completed without checkpoint restart. Legacy retirement and Python cleanup deployment remain pending.",
+    "status": "resolved"
   },
   "legacyResourcesRetired": false,
   "migrationComplete": false,
@@ -272,5 +273,18 @@
       "failed migration recovery"
     ],
     "productionPythonCleanupDeployed": false
+  },
+  "deletedSourceFix": {
+    "pullRequest": 1612,
+    "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
+    "mainCiRunId": 45077541871,
+    "productionCdRunId": 45079205140,
+    "regressionEvidence": "cloudflare-workflow-deletion-regression-2026-11-23.json",
+    "status": "verified"
+  },
+  "integratedCleanupValidation": {
+    "sourceSha": "3faf603e55e50df1a63f7f3d83baac3221d89e02",
+    "ciRunId": 45075951731,
+    "statusAtCapture": "in_progress"
   }
 }
