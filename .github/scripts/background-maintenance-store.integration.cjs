@@ -8,6 +8,7 @@ const {tmpdir}=require('node:os');
 const {join}=require('node:path');
 const {createBackgroundMaintenanceStore}=require('./background-maintenance-store.cjs');
 const {createCanonicalBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
+const {verifyBackgroundMaintenance}=require('./background-maintenance-verification.cjs');
 async function verifyBackgroundStoreTransactions({endpoint}){
  const url=new URL(endpoint);
  assert.ok(url.protocol==='http:'&&url.hostname==='127.0.0.1'&&Number(url.port)>=1024&&url.pathname==='/'&&!url.username&&!url.password&&!url.search&&!url.hash,'Only a loopback DynamoDB Local endpoint is allowed');
@@ -103,6 +104,22 @@ async function verifyBackgroundStoreTransactions({endpoint}){
   native('put-item',{TableName:table,Item:{...lock,execution_arn:{S:execution+'-changed'}}});
   await assert.rejects(controller().restore(),/LOCK_REQUIRED/);
   assert.equal(writes,restoredWrites);
+  // The production rehearsal is owned by a distinct, explicitly non-schema
+  // request. Its real DynamoDB records must never authorize schema work.
+  const verificationLock={...lock,input:{S:JSON.stringify({kind:'migration',source_sha:source,writers_stopped:false,background_verification:true})}};
+  native('put-item',{TableName:table,Item:verificationLock});
+  native('put-item',{TableName:table,Item:{pk:{S:'run#'+run},kind:{S:'migration'},execution_arn:{S:execution}}});
+  const verify=()=>verifyBackgroundMaintenance({aws:asyncAws,run,source,credential:{CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:'isolated-test-token-not-a-credential'},fetcher,assertOwnership:async()=>{},assertProducerAdmissionClosed:async()=>{},now:()=>clock,sleep:async()=>{clock+=16*60*1000;}});
+  await assert.rejects(verify(),/BACKGROUND_VERIFICATION_RECOVERY_REQUIRED/);
+  assert.ok(queues.every(row=>row.settings.delivery_paused));
+  const verificationOriginal=native('get-item',{TableName:table,Key:{pk:{S:'run#'+run}},ConsistentRead:true}).Item.background_queues.S;
+  dropAcknowledgement=true;assert.equal((await verify()).status,'restored');
+  assert.deepEqual(queues.map(row=>row.settings.delivery_paused),[false,true]);
+  assert.deepEqual(workflows.map(row=>row.status),['running','paused']);
+  const verificationRow=native('get-item',{TableName:table,Key:{pk:{S:'run#'+run}},ConsistentRead:true}).Item;
+  assert.equal(verificationRow.background_queues.S,verificationOriginal);
+  assert.ok(verificationRow.background_verification_complete);
+  assert.equal(verificationRow.background_schema_complete,undefined);
  }finally{
   if(created)native('delete-table',{TableName:table});
  }

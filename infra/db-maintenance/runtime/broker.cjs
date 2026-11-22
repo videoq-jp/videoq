@@ -87,6 +87,8 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       const {Item: existing} = await get('run#' + run_id);
       if (existing) {
         if (existing.kind.S !== request.kind || (existing.inspection?.S || '') !== (request.inspection || '')) throw new Error('RUN_KIND_MISMATCH');
+        if(request.kind==='migration'&&(request.background_verification===true||existing.background_verification?.BOOL===true)&&
+          (existing.source_sha?.S!==request.source_sha||existing.writers_stopped?.BOOL!==request.writers_stopped||existing.background_verification?.BOOL!==(request.background_verification===true)))throw Error('MIGRATION_REQUEST_CHANGED');
         if ([HOLD_KIND,D1_HOLD_KIND].includes(request.kind) && existing.source_sha?.S !== request.source_sha) throw new Error(request.kind===D1_HOLD_KIND?'D1_RESOURCE_HOLD_SOURCE_CHANGED':'CUTOVER_HOLD_SOURCE_CHANGED');
         if (request.kind === HOLD_KIND && existing.cutover_phase?.S !== 'holding') throw new Error('CUTOVER_RECOVERY_REQUIRED');
         try {
@@ -113,6 +115,7 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
       const failedRotation = ['rotate', 'rollback'].includes(lock.kind.S) && previous.status !== 'SUCCEEDED';
       if (failedRotation && !['rotate', 'rollback'].includes(request.kind)) throw new Error('ROTATION_RECOVERY_REQUIRED');
       if (lock.kind.S === 'deploy' && previous.status !== 'SUCCEEDED' && request.kind !== 'deploy') throw new Error('DEPLOYMENT_RECOVERY_REQUIRED');
+      if (lock.kind.S === 'migration' && previous.status !== 'SUCCEEDED') throw new Error('MIGRATION_RECOVERY_REQUIRED');
       await noActiveBuilds(); buildsChecked = true;
       await aws('ddb', 'DeleteItem', {TableName: table, Key: {pk: {S: 'maintenance'}},
         ConditionExpression: 'execution_arn = :old', ExpressionAttributeValues: {':old': lock.execution_arn}});
@@ -122,8 +125,9 @@ function createBroker(aws, configuration, fetchMain = currentMain) {
     if (['migration','deploy',HOLD_KIND,D1_HOLD_KIND].includes(request.kind) && await fetchMain() !== request.source_sha) throw new Error('SOURCE_MUST_MATCH_CURRENT_MAIN');
     const name = 'db-' + run_id;
     const arn = executionArn(machine, name);
-    const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, ...request, run_id});
-    const item = {kind: {S: request.kind}, execution_arn: {S: arn}, ...(request.inspection ? {inspection: {S: request.inspection}} : {})};
+    const payload = JSON.stringify({source_sha: '', writers_stopped: false, verify_ai_answers: false, background_verification: false, ...request, run_id});
+    const item = {kind: {S: request.kind}, execution_arn: {S: arn}, ...(request.inspection ? {inspection: {S: request.inspection}} : {}),
+      ...(request.kind==='migration'?{source_sha:{S:request.source_sha},writers_stopped:{BOOL:request.writers_stopped},background_verification:{BOOL:request.background_verification===true}}:{})};
     try {
       await aws('ddb', 'TransactWriteItems', {TransactItems: [
         {Put: {TableName: table, Item: {pk: {S: 'maintenance'}, ...item, name: {S: name}, input: {S: payload}, created_at: {S: new Date().toISOString()}}, ConditionExpression: 'attribute_not_exists(pk)'}},

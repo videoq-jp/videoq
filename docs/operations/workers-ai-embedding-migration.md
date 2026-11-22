@@ -107,6 +107,25 @@ IAM シミュレーションは実際の CodeBuild 実行による読取・復�
 実行の全体ロックと API 停止を要求する。別の resource hold の所有権を転用したり、
 `writers_stopped` の値だけで停止を主張したり、検証のためだけの DDL を追加しない。
 
+切り替え前の実制御検証には、migration 要求の `background_verification: true` を使う。
+要求は現在の main の SHA と `writers_stopped: false` を持ち、既存の migration starter、
+全体ロック、固定 CodeBuild、専用トークン、実行記録を通る。`enable_background_maintenance`
+が有効で、稼働中の D1 API の検索・アカウント配送先が両方とも `sqs` の場合だけ許可する。
+この配送先確認を制御操作のたびに繰り返し、ネイティブ処理への新規配送が閉じていることを
+確認する。API 全体の停止やスキーマ変更は行わない。
+
+最初の実行は、元の状態を保存して Queue の配送を止め、実時間で16分の排出待ちを行い、
+Workflow の停止を確認する。その証跡を DynamoDB に不変保存した後、意図的に
+`BACKGROUND_VERIFICATION_RECOVERY_REQUIRED` で失敗する。失敗した migration の
+全体ロックは、新しい maintenance 要求でも削除しない。実行が終了し子 build が全て
+終了したこと、同じロック・SHA・停止計画を保持すること、AWS 操作者の
+`states:RedriveExecution` 権限を事前に確認してから、**同じ execution ARN** を
+[AWS の native redrive](https://docs.aws.amazon.com/step-functions/latest/apireference/API_RedriveExecution.html)
+で再開する。別の run、手動 CodeBuild override、全体ロックの削除で代用しない。
+redrive は保存済み証跡から元の停止状態へ戻し、復元完了を記録する。元から停止していた
+Queue/Workflow は再開せず、スキーマ移行の完了証明も生成しない。通常のスキーマ移行と
+検証専用の記録は、要求フラグと実行入力により相互に流用できない。
+
 専用資格情報は `/videoq/security/prod/background-maintenance` に保存し、
 `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` を持つ JSON とする。
 Queue 制御には `Queues Write`、Workflow の pause/resume には公式 API が要求する

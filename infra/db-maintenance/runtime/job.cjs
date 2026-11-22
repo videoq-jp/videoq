@@ -132,7 +132,7 @@ async function main() {
     execFileSync('npm', ['audit', 'signatures', '--prefix', '.github/deploy-tools'], {cwd, stdio: ['ignore','pipe','pipe'], maxBuffer: 8*1024*1024});
     execFileSync('ln', ['-s', '.github/deploy-tools/node_modules', 'node_modules'], {cwd, stdio: ['ignore','pipe','pipe']});
     const result = await require('../../../.github/scripts/aws-canonical-migration.cjs').runCanonicalMigration({root:cwd});
-    console.log('Canonical-main database migration succeeded: ' + result.backend + ' ' + source); return;
+    console.log((result.background_verified?'Background maintenance verification succeeded: ':'Canonical-main database migration succeeded: ') + result.backend + ' ' + source); return;
   }
   throw new Error('UNKNOWN_AWS_JOB_STAGE');
 }

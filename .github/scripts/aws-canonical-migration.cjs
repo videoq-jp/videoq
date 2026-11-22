@@ -8,10 +8,13 @@ const {migrationTarget}=require('./migration-backend.cjs');
 const {readDeploymentSettings,assertDeploymentPreservesState}=require('./protect-api-deployment.cjs');
 const {assertBackgroundMigrationFence,createBackgroundMigrationReadTransport,backgroundBindingsPresent}=require('./background-migration-fence.cjs');
 const {createCanonicalBackgroundMaintenance}=require('./canonical-background-maintenance.cjs');
+const {verifyBackgroundMaintenance}=require('./background-maintenance-verification.cjs');
 const ACCOUNT='12daec56fdba43f677f2766ee26a5a39';
 const PARAMETER='/videoq/security/prod/d1-migration';
 async function runCanonicalMigration({env=process.env,root=resolve('migration-source'),operatorRoot=resolve(__dirname,'../..'),aws=m.aws,readParameter=m.readParameter,execute=execFileSync,fetcher=fetch,readConfig,now=Date.now,sleep,readMigrations=()=>readdirSync(join(root,'apps/api/drizzle-d1')).filter(n=>n.endsWith('.sql')).sort()}={}) {
   const run=env.MAINTENANCE_RUN_ID,source=env.MAINTENANCE_SOURCE_SHA;
+  if(env.MAINTENANCE_BACKGROUND_VERIFICATION!==undefined&&!['true','false'].includes(env.MAINTENANCE_BACKGROUND_VERIFICATION))throw Error('INVALID_BACKGROUND_VERIFICATION');
+  const verificationOnly=env.MAINTENANCE_BACKGROUND_VERIFICATION==='true';
   if (env.MAINTENANCE_KIND!=='migration'||env.MAINTENANCE_STAGE!=='migration'||env.MAINTENANCE_TABLE!=='videoq-db-maintenance-prod'
     ||!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??'')||env.GITHUB_ACTIONS
     ||!/^arn:aws:codebuild:ap-northeast-1:257240362763:build\/videoq-db-migration-prod:[a-f0-9-]{36}$/.test(env.CODEBUILD_BUILD_ARN??'')) throw Error('AWS_MIGRATION_CONTEXT_REQUIRED');
@@ -24,6 +27,7 @@ async function runCanonicalMigration({env=process.env,root=resolve('migration-so
   }
   const target=migrationTarget(config);
   if(target.backend==='postgres') {
+    if(verificationOnly)throw Error('BACKGROUND_VERIFICATION_D1_REQUIRED');
     execute('python3',[join(operatorRoot,'.github/scripts/with-neon-credentials.py'),'migration','sh','apps/api/scripts/db-migrate.sh'],
       {cwd:root,stdio:['ignore','pipe','pipe'],maxBuffer:8*1024*1024,env:{...env,STRUCTURED_ANSWER_WRITERS_STOPPED:env.MAINTENANCE_WRITERS_STOPPED==='true'?'1':'0'}});
     return {backend:'postgres',source_sha:source};
@@ -35,7 +39,7 @@ async function runCanonicalMigration({env=process.env,root=resolve('migration-so
     const row=get('run#'+run),lock=get('maintenance');
     if(row?.kind?.S!=='migration'||row.execution_arn?.S!==arn||lock?.kind?.S!=='migration'||lock.execution_arn?.S!==arn) throw Error('D1_MIGRATION_OWNERSHIP_REQUIRED');
     let input;try{input=JSON.parse(lock.input.S);}catch{throw Error('D1_MIGRATION_SOURCE_MISMATCH');}
-    if(input.source_sha!==source||input.kind!=='migration'||input.writers_stopped!==(env.MAINTENANCE_WRITERS_STOPPED==='true')) throw Error('D1_MIGRATION_SOURCE_MISMATCH');
+    if(input.source_sha!==source||input.kind!=='migration'||input.writers_stopped!==(env.MAINTENANCE_WRITERS_STOPPED==='true')||(input.background_verification===true)!==verificationOnly) throw Error('D1_MIGRATION_SOURCE_MISMATCH');
   };
   ownership();
   const secret=readParameter(PARAMETER);
@@ -43,6 +47,22 @@ async function runCanonicalMigration({env=process.env,root=resolve('migration-so
   const cf={CLOUDFLARE_ACCOUNT_ID:ACCOUNT,CLOUDFLARE_API_TOKEN:secret.CLOUDFLARE_API_TOKEN};
   const settings=await readDeploymentSettings(cf,fetcher);
   assertDeploymentPreservesState(settings,target.production);
+  if(verificationOnly){
+    if(env.MAINTENANCE_WRITERS_STOPPED!=='false'||env.VIDEOQ_BACKGROUND_MAINTENANCE!=='true'||!backgroundBindingsPresent(target.production,settings))throw Error('BACKGROUND_VERIFICATION_CONTEXT_REQUIRED');
+    const assertProducerAdmissionClosed=async()=>{
+      ownership();const current=await readDeploymentSettings(cf,fetcher);assertDeploymentPreservesState(current,target.production);
+      for(const [name,expected] of [['ACCOUNT_JOB_BACKEND','sqs'],['SEARCH_JOB_BACKEND','sqs'],['DEPLOYMENT_EDITION','cloud'],['PERSISTENCE_BACKEND','d1']]){
+        const values=current.bindings.filter(row=>row.name===name);
+        if(values.length!==1||values[0].type!=='plain_text'||values[0].text!==expected)throw Error('BACKGROUND_VERIFICATION_SQS_ROUTING_REQUIRED');
+      }
+      const traffic=current.bindings.filter(row=>row.name==='MIGRATION_TRAFFIC_STATE');
+      if(traffic.length>1||traffic.length===1&&(traffic[0].type!=='plain_text'||traffic[0].text!=='running'))throw Error('BACKGROUND_VERIFICATION_RUNNING_API_REQUIRED');
+      ownership();
+    };
+    await assertProducerAdmissionClosed();
+    await verifyBackgroundMaintenance({aws,run,source,credential:readParameter('/videoq/security/prod/background-maintenance'),fetcher,assertOwnership:ownership,assertProducerAdmissionClosed,now,sleep});
+    return{backend:'d1',source_sha:source,read_only:true,background_verified:true};
+  }
   if(env.MAINTENANCE_WRITERS_STOPPED==='false'){
     // Ordinary code-only CD may inspect an already active D1. It cannot create
     // or migrate a DB, change backend, or infer a writer stop from an empty diff.

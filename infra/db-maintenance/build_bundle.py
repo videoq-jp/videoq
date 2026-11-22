@@ -20,6 +20,7 @@ SCRIPTS = [
     "aws-canonical-migration.cjs", "migration-backend.cjs", "protect-api-deployment.cjs",
     "background-migration-fence.cjs", "background-queue-admission.cjs", "background-workflow-admission.cjs", "background-maintenance.cjs",
     "background-maintenance-store.cjs", "background-maintenance-transport.cjs", "canonical-background-maintenance.cjs",
+    "background-maintenance-verification.cjs",
     "neon-admin.cjs", "neon-fence-audit.mjs", "neon-policy.cjs", "neon-profiles.json", "with-neon-credentials.py",
     "d1-resource-smoke-guard.cjs", "d1-resource-journal.cjs",
     "production-smoke.mjs", "production-smoke-policy.cjs", "production-smoke-result.cjs", "production-smoke-store.cjs", "aws-production-smoke.cjs", "production-stream-proof.cjs",

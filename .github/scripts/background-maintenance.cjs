@@ -1,11 +1,13 @@
 // One non-blocking reconciliation per call. Caller must hold an exclusive
 // maintenance lease/local operation lock and supply a durable, create-only store.
 // No credentials, lease acquisition, DB mutation or traffic reopening lives here.
+// Schema migration closes API admission. The verification-only caller instead
+// proves both native producers remain routed to SQS and never executes DDL.
 const {resourceDigest}=require('./d1-resource-journal.cjs');
 const {createBackgroundQueueAdmission}=require('./background-queue-admission.cjs');
 const {createBackgroundWorkflowAdmission}=require('./background-workflow-admission.cjs');
 const DRAIN_MS=16*60*1000;
-function createBackgroundMaintenance({request,plans,assertOwnership,assertApiPaused,assertRestoreSafe,now=Date.now}){
+function createBackgroundMaintenance({request,plans,assertOwnership,assertProducerAdmissionClosed,assertApiPaused=assertProducerAdmissionClosed,assertRestoreSafe,now=Date.now}){
  if(typeof request!=='function'||typeof plans?.load!=='function'||typeof plans?.save!=='function'||[assertOwnership,assertApiPaused,assertRestoreSafe,now].some(value=>typeof value!=='function'))throw Error('BACKGROUND_MAINTENANCE_CONTEXT_REQUIRED');
  const owned=async()=>{await assertOwnership();await assertApiPaused();};
  async function save(key,value){

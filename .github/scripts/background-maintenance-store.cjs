@@ -7,16 +7,19 @@ const FIELDS={
  'background-workflows':'background_workflows',
  'background-restore':'background_restore',
  'background-schema-complete':'background_schema_complete',
+ 'background-verification-paused':'background_verification_paused',
+ 'background-verification-complete':'background_verification_complete',
 };
-function createBackgroundMaintenanceStore({aws,run,source,assertOwnership}){
+function createBackgroundMaintenanceStore({aws,run,source,assertOwnership,verificationOnly=false}){
+ if(typeof verificationOnly!=='boolean')throw Error('BACKGROUND_STORE_CONTEXT_REQUIRED');
  if(typeof aws!=='function'||typeof assertOwnership!=='function'||!/^[a-f0-9]{32}$/.test(run??'')||!/^[a-f0-9]{40}$/.test(source??''))throw Error('BACKGROUND_STORE_CONTEXT_REQUIRED');
  const table='videoq-db-maintenance-prod',execution='arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-'+run;
- function field(key){if(!Object.hasOwn(FIELDS,key))throw Error('BACKGROUND_STORE_KEY_REQUIRED');return FIELDS[key];}
+ function field(key){if(!Object.hasOwn(FIELDS,key)||verificationOnly&&key==='background-schema-complete'||!verificationOnly&&key.startsWith('background-verification-'))throw Error('BACKGROUND_STORE_KEY_REQUIRED');return FIELDS[key];}
  async function owned(){
   await assertOwnership();
   const lock=(await aws('dynamodb','get-item',{TableName:table,Key:{pk:{S:'maintenance'}},ConsistentRead:true})).Item;
   let input;try{input=JSON.parse(lock?.input?.S);}catch{throw Error('BACKGROUND_STORE_LOCK_REQUIRED');}
-  if(lock?.kind?.S!=='migration'||lock.execution_arn?.S!==execution||input.kind!=='migration'||input.source_sha!==source||input.writers_stopped!==true)throw Error('BACKGROUND_STORE_LOCK_REQUIRED');
+  if(lock?.kind?.S!=='migration'||lock.execution_arn?.S!==execution||input.kind!=='migration'||input.source_sha!==source||input.writers_stopped!==!verificationOnly||(input.background_verification===true)!==verificationOnly)throw Error('BACKGROUND_STORE_LOCK_REQUIRED');
   return lock.input.S;
  }
  return{
