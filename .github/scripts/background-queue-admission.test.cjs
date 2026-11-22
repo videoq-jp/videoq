@@ -10,8 +10,9 @@ function fixture(){
   if(method==='PATCH'){writes.push({path,body});if(fail==='before')throw Error('lost');Object.assign(row.settings,body.settings);if(fail==='after')throw Error('lost');}
   return structuredClone(row);
  };
- const control=createBackgroundQueueAdmission(request,{assertOwnership:async()=>{if(!owner)throw Error('ownership');},assertRestoreSafe:async()=>{if(!safe)throw Error('fence');}});
- return{rows,writes,request,control,setFail:value=>{fail=value;},setOwner:value=>{owner=value;},setSafe:value=>{safe=value;}};
+ const options={assertOwnership:async()=>{if(!owner)throw Error('ownership');},assertRestoreSafe:async()=>{if(!safe)throw Error('fence');},sleep:async()=>{}};
+ const control=createBackgroundQueueAdmission(request,options);
+ return{rows,writes,request,control,options,setFail:value=>{fail=value;},setOwner:value=>{owner=value;},setSafe:value=>{safe=value;}};
 }
 test('pause and restore preserve a queue that was already paused and all other settings',async()=>{
  const f=fixture(),plan=await f.control.prepare();
@@ -68,4 +69,52 @@ test('live Queue API script metadata supports pause/restore and rejects conflict
  drift.rows[0].consumers[0].script='unrelated';
  await assert.rejects(drift.control.change(original,true),/CONSUMER_DRIFT/);
  assert.equal(drift.writes.length,0);
+});
+
+test('pause and resume tolerate delayed GET visibility with one PATCH per transition',async()=>{
+ const f=fixture();let delayed=0,sleeps=0;
+ const request=async(method,path,body)=>{
+  const result=await f.request(method,path,body);
+  if(method==='PATCH')delayed=3;
+  else if(delayed>0&&path.endsWith('/'+f.rows[0].queue_id)){delayed--;result.settings.delivery_paused=!f.rows[0].settings.delivery_paused;}
+  return result;
+ };
+ const c=createBackgroundQueueAdmission(request,{...f.options,sleep:async ms=>{assert.equal(ms,1000);sleeps++;}}),plan=await c.prepare();
+ assert.equal((await c.change(plan,true)).admissionPaused,true);
+ assert.equal((await c.change(plan,false)).originalAdmissionRestored,true);
+ assert.equal(f.writes.length,2);assert.equal(sleeps,6);assert.equal(plan.queues[0].originalPaused,false);
+});
+test('lost acknowledgement followed by stale reads does not repeat a successful PATCH',async()=>{
+ const f=fixture();let delayed=0;
+ const request=async(method,path,body)=>{
+  if(method==='PATCH'){delayed=2;return f.request(method,path,body);}
+  const result=await f.request(method,path,body);
+  if(delayed>0&&path.endsWith('/'+f.rows[0].queue_id)){delayed--;result.settings.delivery_paused=false;}
+  return result;
+ };
+ const c=createBackgroundQueueAdmission(request,f.options),plan=await c.prepare();f.setFail('after');
+ assert.equal((await c.change(plan,true)).admissionPaused,true);assert.equal(f.writes.length,1);
+});
+test('readback polling is bounded and ownership/configuration drift stops it without another write',async()=>{
+ for(const scenario of ['timeout','owner','configuration']){
+  const f=fixture();let pending=false,sleeps=0;
+  const request=async(method,path,body)=>{
+   const result=await f.request(method,path,body);if(method==='PATCH')pending=true;
+   else if(pending&&path.endsWith('/'+f.rows[0].queue_id))result.settings.delivery_paused=false;
+   return result;
+  };
+  const c=createBackgroundQueueAdmission(request,{...f.options,sleep:async()=>{sleeps++;if(scenario==='owner')f.setOwner(false);if(scenario==='configuration')f.rows[0].settings.delivery_delay=99;}}),plan=await c.prepare();
+  await assert.rejects(c.change(plan,true),scenario==='timeout'?/UPDATE_INCOMPLETE/:scenario==='owner'?/ownership/:/CONFIGURATION_CHANGED/);
+  assert.equal(f.writes.length,1);assert.equal(sleeps,scenario==='timeout'?59:1);
+ }
+});
+test('queue restore rechecks its safety fence while waiting for resume visibility',async()=>{
+ const f=fixture(),plan=await f.control.prepare();await f.control.change(plan,true);let pending=false;
+ const request=async(method,path,body)=>{
+  const result=await f.request(method,path,body);if(method==='PATCH')pending=true;
+  else if(pending&&path.endsWith('/'+f.rows[0].queue_id))result.settings.delivery_paused=true;
+  return result;
+ };
+ const c=createBackgroundQueueAdmission(request,{...f.options,sleep:async()=>f.setSafe(false)});
+ await assert.rejects(c.change(plan,false),/fence/);assert.equal(f.writes.length,2);
 });
