@@ -291,7 +291,7 @@
       "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
       "lastErrorCode": ""
     },
-    "outstanding": "Video 538 and legacy delete backlog completed normally. Recovery workflow 45049764940 is running on CI-verified main; ordinary CD and Cloudflare cutover remain pending.",
+    "outstanding": "API incident recovery and ordinary CD succeeded. Binding rollout on main 2a7136fb remains in CI; infrastructure opt-in, production background verification, routing cutover and retirement remain pending.",
     "recoveryWorkflowRun": 45042542268,
     "recoveryWorkflowConclusion": "failure",
     "recoveryFailureStage": "video-processing",
@@ -313,12 +313,19 @@
       "legacyDeleteBacklogDrained": true,
       "completionMethod": "Normal task scheduler; no forced SQL status changes."
     },
-    "recoveryRetryRun": 45049764940
+    "recoveryRetryRun": 45049764940,
+    "recoveryRetryConclusion": "success",
+    "ordinaryCd": {
+      "runId": 45048337918,
+      "attempt": 2,
+      "conclusion": "success",
+      "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e"
+    }
   },
   "backgroundMaintenanceInfrastructurePlan": {
     "applied": false,
     "stateSerialRead": 27,
-    "planSha256": "2cb0c4352080aa60e9ef4c11056b1c8495b7c400c1f3980190db9b232d0192ec",
+    "planSha256": "a21a651f5f2aa8f383a08233d5d77bb4f646e8064992bc19d02f7e8b4b54c030",
     "changes": [
       {
         "address": "aws_codebuild_project.job[\"migration\"]",
@@ -363,7 +370,8 @@
     "removedGrants": [],
     "createsOrDeletes": false,
     "codeOrLiveAliasesChanged": false,
-    "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required."
+    "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required.",
+    "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a"
   },
   "vectorIngestionFairness": {
     "pullRequest": 1605,
@@ -380,5 +388,22 @@
       "upsertAttempts": 0
     },
     "productionFixDeployed": false
+  },
+  "cloudflareNativeIsolation": {
+    "evidence": "cloudflare-native-background-2026-11-22.json",
+    "searchWorkflow": "complete",
+    "accountDeletion": "completed",
+    "dedicatedCredentialPauseResumeVerified": true,
+    "temporaryResourcesDeleted": true,
+    "productionCutoverVerified": false
+  },
+  "cloudflareBindingsRollout": {
+    "pullRequest": 1603,
+    "mergedMainSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+    "mergeQueueCiRun": 45051295750,
+    "mergeQueueCiConclusion": "success",
+    "mainCiRun": 45052555822,
+    "productionBindingsVerified": false,
+    "productionTransports": "sqs"
   }
 }

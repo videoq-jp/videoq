@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-22",
+  "sourceSha": "0366fc9fa310f6af71a2d70a2f4cd5f77b73d0db",
+  "runtime": "Actual Cloudflare Queues and Workflows with isolated remote D1/R2/Vectorize and real Workers AI",
+  "model": "@cf/google/embeddinggemma-2",
+  "search": {
+    "workflowStatus": "complete",
+    "elapsedSeconds": 185.486,
+    "jobStatus": "completed",
+    "videoStatus": "completed",
+    "scenes": [
+      {
+        "count": 1,
+        "dimensions": 768
+      }
+    ],
+    "pendingVectorTasks": 0
+  },
+  "workflowPauseConfirmed": true,
+  "workflowResumeCompleted": true,
+  "dedicatedCredentialControlsVerified": true,
+  "migrationRoleCredentialReadVerified": false,
+  "queuePauseConfirmed": true,
+  "queueResumeConfirmed": true,
+  "accountDeletion": {
+    "missingAuthorizationFixtureRejected": true,
+    "authorizedFixtureCompleted": true,
+    "remainingUsers": 0,
+    "remainingVideos": 0,
+    "remainingSceneGroups": 0,
+    "duplicateDeliveryUnchanged": true
+  },
+  "unauthenticatedProbeRejected": true,
+  "temporaryResourcesDeleted": true,
+  "productionDataChanged": false,
+  "limitations": [
+    "Isolated harness manually ran scene-index synchronization; production TaskScheduler alarm integration still needs verification.",
+    "Production-specific maintenance ownership/failure recovery and migration-role IAM are not proven by direct isolated controls.",
+    "Temporary account fixture modeled the normal ban/outbox request state; this did not exercise the administrator UI."
+  ]
+}
