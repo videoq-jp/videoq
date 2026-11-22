@@ -123,6 +123,11 @@ Lambda とキューは維持する。API 側がまだ `sqs` なら同じ outbox 
 リポジトリ変数 `CLOUDFLARE_BACKGROUND_JOBS_ENABLED=true` は Terraform と CD の
 両方へ適用され、以後のイメージ更新が撤去済みの関数を対象にしないようにする。
 進行中の CD がないことを確認してから設定し、承認付き Terraform Apply を実行する。
+撤去後に隔離 smoke の本番イメージ基準を確認する場合は、
+`BACKGROUND_JOBS_RUNTIME=cloudflare` を明示する。残るメディア Lambda のイメージを確認し、
+検索・アカウント Lambda は AWS の `ResourceNotFoundException` による不在確認を必須とする。
+残存関数・権限エラー・タイムアウトは拒否する。撤去前は既定の `lambda` モードで
+3 Lambda すべてのイメージが一致することを確認する。
 旧キューと DLQ の撤去は、空であることを再確認した後の別段階で
 `RETIRE_BACKGROUND_QUEUES=true`（Terraform の `retire_background_queues=true`）を使う。履歴ログとメディア用リソースは保持する。
 

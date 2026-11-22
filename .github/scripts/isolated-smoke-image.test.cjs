@@ -11,3 +11,23 @@ test('drift or provider failure refuses image baseline without leaking response 
  for(const patch of [{image:'other'},{update:'InProgress'},{role:'other'}])await assert.rejects(create({imageDigest,execute:async(_program,args)=>({stdout:JSON.stringify({name:args[args.indexOf('--function-name')+1],role:'arn:aws:iam::257240362763:role/videoq-worker-prod',state:'Active',update:'Successful',package:'Image',architectures:['arm64'],image,...patch})})})(),{message:'ISOLATED_DEPLOYED_IMAGE_CHECK_FAILED'});
  await assert.rejects(create({imageDigest,execute:async()=>{throw Error('PRIVATE_PROVIDER_BODY');}})(),{message:'ISOLATED_DEPLOYED_IMAGE_CHECK_FAILED'});assert.throws(()=>create({imageDigest:'tag:latest'}),/DIGEST_REQUIRED/);
 });
+function retiredExecute({failure,code=254,exists=false,mediaMissing=false}={}){
+ return async(_program,args)=>{
+  const name=args[args.indexOf('--function-name')+1];
+  if(name==='videoq-worker-prod'&&!mediaMissing||exists)return{stdout:JSON.stringify({name,role:'arn:aws:iam::257240362763:role/videoq-worker-prod',state:'Active',update:'Successful',package:'Image',architectures:['arm64'],image})};
+  throw Object.assign(Error('private provider body'),{code,stderr:'An error occurred ('+(failure??'ResourceNotFoundException')+') when calling the GetFunction operation: private detail'});
+ };
+}
+test('explicit Cloudflare mode verifies the media image and confirms both retired functions are absent',async()=>{
+ const check=create({imageDigest,env:{BACKGROUND_JOBS_RUNTIME:'cloudflare'},execute:retiredExecute()});
+ assert.deepEqual(await check(),{matchesDeployedWorkerImage:true});
+});
+test('Cloudflare mode refuses existing retired functions, denied reads and a missing media function',async()=>{
+ for(const options of [{exists:true},{failure:'AccessDeniedException'},{code:'ETIMEDOUT'},{mediaMissing:true}]){
+  await assert.rejects(create({imageDigest,env:{BACKGROUND_JOBS_RUNTIME:'cloudflare'},execute:retiredExecute(options)})(),{message:'ISOLATED_DEPLOYED_IMAGE_CHECK_FAILED'});
+ }
+});
+test('legacy mode never accepts missing functions and invalid modes cannot weaken the check',async()=>{
+ await assert.rejects(create({imageDigest,execute:retiredExecute()})(),{message:'ISOLATED_DEPLOYED_IMAGE_CHECK_FAILED'});
+ assert.throws(()=>create({imageDigest,env:{BACKGROUND_JOBS_RUNTIME:'unknown'}}),/RUNTIME_REQUIRED/);
+});

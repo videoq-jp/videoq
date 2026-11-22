@@ -185,5 +185,14 @@
     "terraformMockScenariosPassed": 34,
     "ownedMigrationExecutionIntegrationTestsPassed": 2,
     "ownedDynamoStoreAndMigrationIntegrationPrepared": true
+  },
+  "retiredLambdaImageBaselinePreparation": {
+    "status": "prepared; production still uses three Lambdas",
+    "relatedTestsPassed": 10,
+    "cloudflareModeRequiresRetiredFunctionAbsence": true,
+    "deniedOrTimedOutReadsRefused": true,
+    "liveLegacyThreeLambdaImageBaselinePassed": true,
+    "liveOperation": "read-only",
+    "liveCloudflareTopologyVerified": false
   }
 }
