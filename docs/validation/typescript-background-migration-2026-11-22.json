@@ -164,7 +164,7 @@
   },
   "backgroundMaintenancePreparation": {
     "status": "draft; no production control changes",
-    "deploymentOperationsTestsPassed": 779,
+    "deploymentOperationsTestsPassed": 785,
     "operatorBundleAndTriggerTestsPassed": 3,
     "schemaMigrationFenceIntegrated": true,
     "fenceChecks": [
@@ -175,12 +175,15 @@
       "read-only scoped metadata transport"
     ],
     "remaining": [
-      "durable owned pause/restore executor and recovery",
-      "controlled token read permissions verification",
-      "live isolated integration verification before production routing"
+      "live AWS IAM and dedicated Cloudflare control token scope verification",
+      "live isolated failure/recovery verification before production routing",
+      "enable background maintenance through reviewed infrastructure opt-in"
     ],
     "pauseRestoreCoordinatorTestsPassed": 6,
     "durableStoreContractVerified": true,
-    "productionStoreAndOwnershipIntegrationVerified": false
+    "productionStoreAndOwnershipIntegrationVerified": false,
+    "terraformMockScenariosPassed": 34,
+    "ownedMigrationExecutionIntegrationTestsPassed": 2,
+    "ownedDynamoStoreAndMigrationIntegrationPrepared": true
   }
 }

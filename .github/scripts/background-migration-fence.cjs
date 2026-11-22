@@ -41,4 +41,4 @@ async function assertBackgroundMigrationFence({production,settings,request,now=D
  if(!(await queues.inspect(plan)).admissionPaused)throw Error('BACKGROUND_MIGRATION_QUEUE_PAUSE_CHANGED');
  return{required:true,queueAdmissionPaused:true,consumerDrainWindowElapsed:true,workflowsPaused:true};
 }
-module.exports={assertBackgroundMigrationFence,createBackgroundMigrationReadTransport};
+module.exports={assertBackgroundMigrationFence,createBackgroundMigrationReadTransport,backgroundBindingsPresent};

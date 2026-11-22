@@ -13,7 +13,8 @@ function relevant(path) {
   if (path.startsWith('apps/demo-video/public/lessons/')) return true;
   if (path === 'apps/demo-video/content/course.json' || path === 'infra/sql/neon-security.sql') return true;
   if (['.github/scripts/aws-canonical-migration.cjs','.github/scripts/migration-backend.cjs','.github/scripts/protect-api-deployment.cjs',
-    '.github/scripts/background-migration-fence.cjs','.github/scripts/background-queue-admission.cjs','.github/scripts/background-workflow-admission.cjs','.github/scripts/background-maintenance.cjs'].includes(path)) return true;
+    '.github/scripts/background-migration-fence.cjs','.github/scripts/background-queue-admission.cjs','.github/scripts/background-workflow-admission.cjs','.github/scripts/background-maintenance.cjs',
+    '.github/scripts/background-maintenance-store.cjs','.github/scripts/background-maintenance-transport.cjs','.github/scripts/canonical-background-maintenance.cjs'].includes(path)) return true;
   if (['.github/scripts/cutover-api-traffic.cjs','.github/scripts/cutover-owned-api-traffic.cjs'].includes(path)) return true;
   if (path === '.github/scripts/cutover-consumer-control.cjs') return true;
   if (path === '.github/scripts/cutover-consumer-prepare.cjs') return true;

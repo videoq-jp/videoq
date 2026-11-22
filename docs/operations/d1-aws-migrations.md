@@ -27,7 +27,8 @@ All search Workflow instances must be paused or terminal; `waitingForPause`,
 sleeping, queued and rollback executions are not stopped. Unknown states and read
 failures refuse the migration. These checks do not pause or resume resources.
 
-The migration token additionally needs read access to Queues and Workflow execution
+When using the read fence without managed control, the migration token additionally
+needs read access to Queues and Workflow execution
 metadata. Its transport permits only fixed queue metadata and the fixed Workflow
 instance listing; it cannot retrieve instance parameters/output or write resources.
 Provision those read permissions through the existing controlled credential process
@@ -36,8 +37,43 @@ continues to perform no schema write and does not require a forced background pa
 
 Operators must keep deployment automation and other control-plane writers excluded
 throughout the maintenance window. A timestamp/read check is evidence under that
-exclusion, not a substitute for it. The recoverable pause/restore components still
-need a durable owned operator execution path before production transport cutover.
+exclusion, not a substitute for it. The read fence alone does not restore resources.
+
+### Opt-in owned pause and restoration
+
+`enable_background_maintenance=true` enables the D1-only migration project's
+`VIDEOQ_BACKGROUND_MAINTENANCE` flag. It requires D1 migrations and retired Neon
+maintenance. Provision SecureString `/videoq/security/prod/background-maintenance`
+with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` through the existing
+controlled credential process. This separate token needs Queue metadata/edit and
+Workflow metadata/pause/resume permissions; it is not passed to Wrangler or child
+processes. The API must already be explicitly paused and deployment/control-plane
+writers excluded before requesting a schema migration with stopped writers.
+
+Only the migration role can read this parameter. It can create immutable plan
+attributes on its existing `run#` record, with an atomic condition check on the
+same global migration lock, source and stopped-writer request. Records contain
+original queue/Workflow states, drain timing, restore intent and schema completion
+proof; no credentials. Each record is limited to 64 KB. Oversized plans fail while
+preserving the current pause for operator recovery.
+
+The job pauses queue delivery, waits at least 16 minutes from confirmed pause,
+then pauses Workflows and waits for actual paused/terminal states. The pause
+phase times out after 25 minutes without resuming anything. After the guarded
+Wrangler command succeeds, it records completion durably and restores the
+original background states. Originally paused resources remain paused. API
+traffic remains paused for the operator's post-migration checks and controlled
+resume. Background-enabled builds allow 50 minutes and the D1 state-machine task
+allows 60 minutes; historical PostgreSQL task timing is retained.
+
+Failure retains the global lock and current application/background pause. Redrive
+the same owned execution after diagnosis, preserving its source and records. A
+retry after schema completion reconciles restoration only; a schema failure
+retries the normal idempotent migration command using the original pause plans.
+Do not start a new execution, overwrite records, delete a retained lock or infer
+restore permission from an empty queue. This implementation is disabled by
+default; live IAM, token scope and failure-recovery verification remain required
+before production transport cutover.
 
 
 ## Verification
