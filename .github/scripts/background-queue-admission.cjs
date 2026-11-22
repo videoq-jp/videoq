@@ -16,7 +16,8 @@ function checked(plan){
  if(plan?.version!==1||plan.account!==ACCOUNT||!UUID.test(plan.operationId??'')||!Array.isArray(plan.queues)||plan.queues.length!==2||plan.queues.some((row,i)=>row.name!==NAMES[i]||!ID.test(row.id??'')||typeof row.originalPaused!=='boolean'||!/^[a-f0-9]{64}$/.test(row.configurationHash??''))||new Set(plan.queues.map(row=>row.id)).size!==2)throw Error('INVALID_BACKGROUND_QUEUE_PLAN');
  return plan;
 }
-function createBackgroundQueueAdmission(request,{assertOwnership=async()=>{throw Error('BACKGROUND_QUEUE_OWNERSHIP_REQUIRED');},assertRestoreSafe=async()=>{throw Error('BACKGROUND_QUEUE_RESTORE_FENCE_REQUIRED');}}={}){
+function createBackgroundQueueAdmission(request,{assertOwnership=async()=>{throw Error('BACKGROUND_QUEUE_OWNERSHIP_REQUIRED');},assertRestoreSafe=async()=>{throw Error('BACKGROUND_QUEUE_RESTORE_FENCE_REQUIRED');},sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+ if(typeof sleep!=='function')throw Error('BACKGROUND_QUEUE_OBSERVATION_SLEEP_REQUIRED');
  const base=`accounts/${ACCOUNT}/queues`;
  async function observe(row){
   const state=snapshot(await request('GET',`${base}/${row.id}`),row.name,row.id);
@@ -58,9 +59,17 @@ function createBackgroundQueueAdmission(request,{assertOwnership=async()=>{throw
     if(state.paused===desired)continue;
     await owned();let failure;
     try{await request('PATCH',`${base}/${row.id}`,{settings:{delivery_paused:desired}});}catch(error){failure=error;}
-    // Never resend on a lost acknowledgement. A later coordinator retry first
-    // observes the same queue and the same persisted operation.
-    if((await observe(row)).paused!==desired){if(failure)throw failure;throw Error('BACKGROUND_QUEUE_UPDATE_INCOMPLETE');}
+    // Successful writes can precede GET visibility. Poll only reads, retaining
+    // the original identity/configuration and ownership fences on every poll.
+    // Never resend PATCH to compensate for a delayed or lost acknowledgement.
+    let confirmed=false;const observationDeadline=Date.now()+60_000;
+    for(let attempt=0;attempt<60;attempt++){
+     await owned();
+     if((await observe(row)).paused===desired){confirmed=true;break;}
+     if(attempt===59||Date.now()>=observationDeadline)break;
+     await sleep(1000);
+    }
+    if(!confirmed){if(failure)throw failure;throw Error('BACKGROUND_QUEUE_UPDATE_INCOMPLETE');}
    }
    await owned();return this.inspect(plan);
   },
