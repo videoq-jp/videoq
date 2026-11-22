@@ -152,5 +152,233 @@
       "otherSyncTestsPassed": 25
     },
     "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
+  },
+  "phasedMediaRoutingPreparation": {
+    "status": "prepared; defaults remain false; no production apply",
+    "routingPreservesLegacyConsumers": true,
+    "retirementRequiresRouting": true,
+    "terraformMockTestsPassed": 6,
+    "deploymentPolicyTestsPassed": 45,
+    "terraformValidate": true,
+    "terraformFormat": true
+  },
+  "backgroundMaintenancePreparation": {
+    "status": "draft; no production control changes",
+    "deploymentOperationsTestsPassed": 785,
+    "operatorBundleAndTriggerTestsPassed": 3,
+    "schemaMigrationFenceIntegrated": true,
+    "fenceChecks": [
+      "expected queue identities and consumers",
+      "queue delivery paused and last modification at least 16 minutes old",
+      "all search Workflows paused or terminal",
+      "pre/post schema command recheck",
+      "read-only scoped metadata transport"
+    ],
+    "remaining": [
+      "live AWS IAM and dedicated Cloudflare control token scope verification",
+      "live isolated failure/recovery verification before production routing",
+      "enable background maintenance through reviewed infrastructure opt-in"
+    ],
+    "pauseRestoreCoordinatorTestsPassed": 6,
+    "durableStoreContractVerified": true,
+    "productionStoreAndOwnershipIntegrationVerified": false,
+    "terraformMockScenariosPassed": 34,
+    "ownedMigrationExecutionIntegrationTestsPassed": 2,
+    "ownedDynamoStoreAndMigrationIntegrationPrepared": true,
+    "realDynamoDbLocalIntegrationTestsPassed": 20,
+    "dynamoDbLocalImage": "amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86",
+    "realDynamoDbTransactionChecks": [
+      "immutable plans",
+      "lost acknowledgement read-back",
+      "atomic global-lock replacement rejects write"
+    ],
+    "localTestResourcesCleanedUp": true
+  },
+  "retiredLambdaImageBaselinePreparation": {
+    "status": "prepared; production still uses three Lambdas",
+    "relatedTestsPassed": 10,
+    "cloudflareModeRequiresRetiredFunctionAbsence": true,
+    "deniedOrTimedOutReadsRefused": true,
+    "liveLegacyThreeLambdaImageBaselinePassed": true,
+    "liveOperation": "read-only",
+    "liveCloudflareTopologyVerified": false
+  },
+  "backgroundMaintenanceLiveReadiness": {
+    "date": "2026-11-22",
+    "operations": "read-only SSM metadata, IAM policy simulation and CodeBuild environment metadata",
+    "dedicatedCredentialParameterExists": true,
+    "migrationRoleCredentialReadDecision": "implicitDeny",
+    "codeBuildControlFlagPresent": false,
+    "productionControlEnabled": false,
+    "nextRequirement": "Approve and apply independent migration-role opt-in, deploy bindings, then verify isolated pause/restore before routing cutover.",
+    "credentialProvisioning": {
+      "tokenName": "videoq-background-maintenance-20261123",
+      "expiry": "2027-02-21",
+      "permissions": [
+        "Queues Write",
+        "Workers Scripts Write"
+      ],
+      "accountId": "12daec56fdba43f677f2766ee26a5a39",
+      "ssmReadBackVerified": true,
+      "fourQueueMetadataReadsVerified": true,
+      "temporarySecretFileDeleted": true,
+      "workflowControlVerified": false
+    }
+  },
+  "queuePreparationLiveAttempt": {
+    "runId": 45032757041,
+    "url": "https://github.com/videoq-jp/videoq/actions/runs/45032757041",
+    "headSha": "4c5d19e1890c749077f322598bf07b78300dcb6e",
+    "approval": "explicit user approval submitted; production-infra gate accepted",
+    "conclusion": "success",
+    "credentialSource": "production-infra/CLOUDFLARE_INFRA_TOKEN",
+    "nextRequirement": "Deploy and verify bindings while retaining SQS routing, then perform isolated queue/workflow and maintenance recovery checks before cutover.",
+    "queuesPrepared": true,
+    "initialFailure": "Cloudflare queues request returned HTTP 403 during initial list; create loop not reached",
+    "attempt": 2,
+    "tokenPermissionUpdate": {
+      "tokenName": "videoq-cloudflare-resources-20260918",
+      "addedPermission": "Queues Write",
+      "accountId": "12daec56fdba43f677f2766ee26a5a39",
+      "expiryUnchanged": "2026-12-17",
+      "secretValueRead": false
+    },
+    "createdAndReadBack": [
+      "videoq-account-prod",
+      "videoq-account-dlq-prod",
+      "videoq-search-prod",
+      "videoq-search-dlq-prod"
+    ]
+  },
+  "pythonCleanupCi": {
+    "pullRequest": 1602,
+    "headCommit": "a88a17a1",
+    "runId": 45031283150,
+    "ciSuccess": "success",
+    "lifecycleJobId": 137235268216,
+    "lifecycleConclusion": "success",
+    "lifecycleCompletedAt": "2026-11-22T15:17:11Z",
+    "productionCleanupApplied": false,
+    "mergePrerequisite": "Verified Cloudflare cutover, old queue drain and retirement of background Lambdas."
+  },
+  "approvedApiRecovery": {
+    "sourceSha": "2361b205dccee8f2e3bb03a0894c404893b11b1e",
+    "ciRun": 45040457020,
+    "artifactRun": 45040624482,
+    "artifactId": 14761028496,
+    "apiSha256": "8af18899daf9a277adeae7951d4eecdec48ddf47726cf7bdd4714f277dd09c26",
+    "approval": "explicit user approval for API-only recovery while retaining failed deployment lock",
+    "liveResourceHandoffCheck": true,
+    "liveStatePreservationCheck": true,
+    "d1MigrationLedger": {
+      "applied": 20,
+      "expected": 20,
+      "match": true
+    },
+    "deployedVersion": "578885b2-56a6-4fe1-bb7a-e7b9d457dab3",
+    "ready": {
+      "status": "ready",
+      "db": "ok"
+    },
+    "transportsRemain": "sqs",
+    "newQueueWorkflowBindingsAdded": false,
+    "schemaChanged": false,
+    "testVideo": {
+      "id": 537,
+      "status": "completed",
+      "vectorUpsertAcceptedAt": "2026-11-22T16:08:00.251Z",
+      "completed": true,
+      "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
+      "lastErrorCode": ""
+    },
+    "outstanding": "Video 538 and legacy delete backlog completed normally. Recovery workflow 45049764940 is running on CI-verified main; ordinary CD and Cloudflare cutover remain pending.",
+    "recoveryWorkflowRun": 45042542268,
+    "recoveryWorkflowConclusion": "failure",
+    "recoveryFailureStage": "video-processing",
+    "latestRecoveryAttempt": {
+      "runId": 45048338032,
+      "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+      "codePromotion": "success",
+      "smokeBuild": "videoq-db-smoke-prod:5353bd79-f77b-4411-8927-e3a25b1be823",
+      "conclusion": "failure",
+      "failureStage": "database-and-cleanup",
+      "reason": "Existing synthetic video 538 remains indexing; smoke safely refused another upload."
+    },
+    "backlogRecovery": {
+      "videoId": 538,
+      "videoStatus": "completed",
+      "vectorUpsertAcceptedAt": "2026-11-22T17:27:45.676Z",
+      "vectorTaskCompletedAt": "2026-11-22T17:29:00.328Z",
+      "lastErrorCode": "",
+      "legacyDeleteBacklogDrained": true,
+      "completionMethod": "Normal task scheduler; no forced SQL status changes."
+    },
+    "recoveryRetryRun": 45049764940
+  },
+  "backgroundMaintenanceInfrastructurePlan": {
+    "applied": false,
+    "stateSerialRead": 27,
+    "planSha256": "2cb0c4352080aa60e9ef4c11056b1c8495b7c400c1f3980190db9b232d0192ec",
+    "changes": [
+      {
+        "address": "aws_codebuild_project.job[\"migration\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "build_timeout",
+          "environment"
+        ]
+      },
+      {
+        "address": "aws_codebuild_project.job[\"smoke\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ]
+      },
+      {
+        "address": "aws_iam_role_policy.build[\"migration\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "policy"
+        ]
+      }
+    ],
+    "migrationTimeoutMinutes": {
+      "before": 15,
+      "after": 50
+    },
+    "migrationFlag": "true",
+    "smokeFlag": "false",
+    "addedGrants": [
+      "GetParameter for only /videoq/security/prod/background-maintenance",
+      "GetItem/UpdateItem for run#* records in the maintenance table",
+      "ConditionCheckItem for only the maintenance lock record"
+    ],
+    "removedGrants": [],
+    "createsOrDeletes": false,
+    "codeOrLiveAliasesChanged": false,
+    "remaining": "Reviewed infrastructure approval and fresh plan validation before apply; live pause/restore verification remains required."
+  },
+  "vectorIngestionFairness": {
+    "pullRequest": 1605,
+    "mergedMainSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+    "mainCiRun": 45046621904,
+    "mainCiConclusion": "success",
+    "regressionTestsPassed": 28,
+    "productionObservation": {
+      "observedAt": "2026-11-22T17:03:25Z",
+      "syntheticVideoId": 538,
+      "videoStatus": "indexing",
+      "pendingDeleteTasks": 600,
+      "pendingUpsertTasks": 1,
+      "upsertAttempts": 0
+    },
+    "productionFixDeployed": false
   }
 }

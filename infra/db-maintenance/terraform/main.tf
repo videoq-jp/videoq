@@ -30,6 +30,16 @@ variable "enable_d1_migrations" {
   description = "Allow the fixed migration job to read its D1-only credential and verify existing lock ownership."
 }
 
+variable "enable_background_maintenance" {
+  type        = bool
+  default     = false
+  description = "Allow only the schema migration job to persist owned background pause plans and read its dedicated control credential."
+  validation {
+    condition     = !var.enable_background_maintenance || (var.enable_d1_migrations && var.retire_neon_maintenance)
+    error_message = "Background maintenance requires the owned D1-only migration job."
+  }
+}
+
 variable "enable_cutover_postwrite_recovery" {
   type        = bool
   default     = false
@@ -269,6 +279,12 @@ resource "aws_iam_role_policy" "build" {
       { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.maintenance.arn,
       Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["maintenance", "run#*"] } } }
       ] : permission if each.key == "migration" && var.enable_d1_migrations], [for permission in [
+      { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/background-maintenance" },
+      { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringLike" = { "dynamodb:LeadingKeys" = ["run#*"] } } },
+      { Effect = "Allow", Action = ["dynamodb:ConditionCheckItem"], Resource = aws_dynamodb_table.maintenance.arn,
+      Condition = { "ForAllValues:StringEquals" = { "dynamodb:LeadingKeys" = ["maintenance"] } } }
+      ] : permission if each.key == "migration" && var.enable_background_maintenance], [for permission in [
       { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = [
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/d1-migration",
         "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/security/prod/smoke-identity"
@@ -300,7 +316,7 @@ resource "aws_codebuild_project" "job" {
   for_each               = local.projects
   name                   = each.value
   service_role           = aws_iam_role.build[each.key].arn
-  build_timeout          = each.key == "migration" ? 15 : 40
+  build_timeout          = each.key == "migration" ? (var.enable_background_maintenance ? 50 : 15) : 40
   queued_timeout         = 30
   concurrent_build_limit = 1
   artifacts { type = "NO_ARTIFACTS" }
@@ -317,6 +333,10 @@ resource "aws_codebuild_project" "job" {
     environment_variable {
       name  = "MAINTENANCE_TABLE"
       value = aws_dynamodb_table.maintenance.name
+    }
+    environment_variable {
+      name  = "VIDEOQ_BACKGROUND_MAINTENANCE"
+      value = each.key == "migration" && var.enable_background_maintenance ? "true" : "false"
     }
     environment_variable {
       name  = "VIDEOQ_CUTOVER_FINAL_HANDOFF"

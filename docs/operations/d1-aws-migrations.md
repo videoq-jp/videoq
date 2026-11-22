@@ -14,8 +14,79 @@ This implementation does not provision a credential, apply Terraform, pause prod
 
 A D1 migration failure keeps the application paused and fails the existing state-machine execution. Do not treat a failed execution or partially applied migration history as permission to resume. Inspect the fixed migration history and complete/recover the operation while preserving writer exclusion.
 
+## Cloudflare background workers
+
+When queue/Workflow bindings are present (even while job routing is still `sqs`),
+schema-changing migrations also verify the fixed production account/search queues
+and search Workflow before and after the Wrangler child. Both queue consumers must
+belong to `videoq-api`, retain their expected DLQs, and have delivery paused. The
+queue's last modification must be at least 16 minutes old: the documented
+[consumer wall-time limit](https://developers.cloudflare.com/queues/platform/limits/)
+is 15 minutes, with one additional minute allowed before observing Workflows.
+All search Workflow instances must be paused or terminal; `waitingForPause`,
+sleeping, queued and rollback executions are not stopped. Unknown states and read
+failures refuse the migration. These checks do not pause or resume resources.
+
+When using the read fence without managed control, the migration token additionally
+needs read access to Queues and Workflow execution
+metadata. Its transport permits only fixed queue metadata and the fixed Workflow
+instance listing; it cannot retrieve instance parameters/output or write resources.
+Provision those read permissions through the existing controlled credential process
+before binding deployment. Ordinary code-only CD with an exact migration ledger
+continues to perform no schema write and does not require a forced background pause.
+
+Operators must keep deployment automation and other control-plane writers excluded
+throughout the maintenance window. A timestamp/read check is evidence under that
+exclusion, not a substitute for it. The read fence alone does not restore resources.
+
+### Opt-in owned pause and restoration
+
+`enable_background_maintenance=true` enables the D1-only migration project's
+`VIDEOQ_BACKGROUND_MAINTENANCE` flag. It requires D1 migrations and retired Neon
+maintenance. Provision SecureString `/videoq/security/prod/background-maintenance`
+with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` through the existing
+controlled credential process. This separate token needs Queue metadata/edit and
+Workflow metadata/pause/resume permissions; it is not passed to Wrangler or child
+processes. The API must already be explicitly paused and deployment/control-plane
+writers excluded before requesting a schema migration with stopped writers.
+
+Only the migration role can read this parameter. It can create immutable plan
+attributes on its existing `run#` record, with an atomic condition check on the
+same global migration lock, source and stopped-writer request. Records contain
+original queue/Workflow states, drain timing, restore intent and schema completion
+proof; no credentials. Each record is limited to 64 KB. Oversized plans fail while
+preserving the current pause for operator recovery.
+
+The job pauses queue delivery, waits at least 16 minutes from confirmed pause,
+then pauses Workflows and waits for actual paused/terminal states. The pause
+phase times out after 25 minutes without resuming anything. After the guarded
+Wrangler command succeeds, it records completion durably and restores the
+original background states. Originally paused resources remain paused. API
+traffic remains paused for the operator's post-migration checks and controlled
+resume. Background-enabled builds allow 50 minutes and the D1 state-machine task
+allows 60 minutes; historical PostgreSQL task timing is retained.
+
+Failure retains the global lock and current application/background pause. Redrive
+the same owned execution after diagnosis, preserving its source and records. A
+retry after schema completion reconciles restoration only; a schema failure
+retries the normal idempotent migration command using the original pause plans.
+Do not start a new execution, overwrite records, delete a retained lock or infer
+restore permission from an empty queue. This implementation is disabled by
+default; live IAM, token scope and failure-recovery verification remain required
+before production transport cutover.
+
 
 ## Verification
+
+Background maintenance storage also runs in the existing real DynamoDB Local
+fixture (`d1-resource-hold.integration.cjs`): all 20 tests passed with the added
+immutable-plan, lost-acknowledgement and atomic lock-replacement checks. The
+standalone `background-maintenance-store.integration.cjs` accepts only an explicit
+`VIDEOQ_LOCAL_DYNAMODB_ENDPOINT` on `127.0.0.1` and uses dummy credentials with host
+credential/config files disabled. It fails without modifying an already-existing
+table. This verifies actual DynamoDB transaction semantics, not production IAM or
+Cloudflare control scopes. The CI operations fixture runs it using the existing
+digest-pinned disposable DynamoDB container.
 
 Six parent/selection tests, all 404 Node security tests, 57 infrastructure tests and 10 Terraform mock-provider tests passed. A real allowlisted operator ZIP with no application dependencies applied all 20 SQL migrations to a dedicated remote D1 using separately locked Wrangler 4.151.3; a second execution found no pending migrations. Remote migration-history equality, zero foreign-key errors and empty users/videos were checked. That fixture mocked AWS metadata and Worker settings, so it does not prove live AWS IAM or production pause/drain. The dedicated D1 was deleted and absence verified. No Vectorize index or Worker was created or modified. [Evidence](evidence/d1-aws-migrations-2026-11-16.json).
 

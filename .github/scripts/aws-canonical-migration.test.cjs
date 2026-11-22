@@ -42,6 +42,28 @@ test('ownership and pause are checked again after child completion',async()=>{
   const f=fixture();f.options.execute=(...args)=>{f.calls.push(args);mutate(f);};await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,1);
  }
 });
+test('bound Cloudflare workers cannot migrate with only an API pause and caller acknowledgement',async()=>{
+ const f=fixture();f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+ await assert.rejects(runCanonicalMigration(f.options),/BACKGROUND_QUEUE_LIST/);assert.equal(f.calls.length,0);
+});
+test('migration verifies paused background resources before and after schema execution',async()=>{
+ for(const reopen of [false,true]){
+  const f=fixture();f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+  const queues=['account','search'].map((kind,i)=>({queue_id:String(i+1).repeat(32),queue_name:`videoq-${kind}-prod`,modified_on:'2020-01-01T00:00:00Z',settings:{message_retention_period:345600,delivery_paused:true},consumers:[{type:'worker',script_name:'videoq-api',dead_letter_queue:`videoq-${kind}-dlq-prod`}]}));
+  const workflows=[{id:'job-one',version_id:'11111111-2222-4333-8444-555555555555',status:'paused'}];
+  f.options.fetcher=async(url,options)=>{
+   assert.equal(options.method,'GET');
+   if(url.includes('/workers/'))return Response.json({success:true,result:f.settings});
+   if(url.includes('/workflows/'))return Response.json({success:true,result:workflows});
+   if(url.includes('/queues?'))return Response.json({success:true,result:queues});
+   const row=queues.find(row=>url.endsWith('/'+row.queue_id));assert.ok(row);return Response.json({success:true,result:row});
+  };
+  f.options.execute=(...args)=>{f.calls.push(args);if(reopen)workflows[0].status='running';};
+  if(reopen)await assert.rejects(runCanonicalMigration(f.options),/WORKFLOW_PAUSE_REQUIRED/);
+  else assert.equal((await runCanonicalMigration(f.options)).application_paused,true);
+  assert.equal(f.calls.length,1);
+ }
+});
 
 function noOpFixture(names=['0000_initial.sql']){
  const f=fixture();f.env.MAINTENANCE_WRITERS_STOPPED='false';f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false});f.production.vars.MIGRATION_TRAFFIC_STATE='running';
@@ -50,6 +72,10 @@ function noOpFixture(names=['0000_initial.sql']){
 }
 test('ordinary D1 code deployment with an exact applied ledger performs no schema write or forced pause',async()=>{
  const f=noOpFixture(),r=await runCanonicalMigration(f.options);assert.equal(r.read_only,true);assert.equal(r.migrations_pending,false);assert.equal(f.calls.length,0);assert.equal(f.settings.bindings.find(b=>b.name==='MIGRATION_TRAFFIC_STATE').text,'running');
+});
+test('ordinary CD never reads the dedicated control credential even with background maintenance opted in',async()=>{
+ const f=noOpFixture();f.env.VIDEOQ_BACKGROUND_MAINTENANCE='true';f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+ assert.equal((await runCanonicalMigration(f.options)).read_only,true);assert.deepEqual(f.parameters,['/videoq/security/prod/d1-migration']);assert.equal(f.calls.length,0);
 });
 test('pending, duplicate or unknown migration ledgers cannot authorize an unpaused schema change',async()=>{
  for(const names of [[],['0000_initial.sql','9999_future.sql'],['0000_initial.sql','0000_initial.sql']]){const f=noOpFixture(names);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.calls.length,0);}
@@ -88,4 +114,95 @@ test('canonical native production migration requires active 768 and supports ret
  p.vectorize=[{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}];
  assert.equal(migrationTarget(config).backend,'d1');
  config.env.production.vectorize=[];assert.throws(()=>migrationTarget(config),/CONFIGURATION/);
+});
+
+function managedFixture(){
+ const f=fixture();let time=Date.parse('2026-11-22T15:00:00Z');
+ f.env.VIDEOQ_BACKGROUND_MAINTENANCE='true';f.production.workflows=[{binding:'SEARCH_INDEX_WORKFLOW',name:'videoq-search-index-prod'}];
+ const queues=['account','search'].map((kind,i)=>({queue_id:String(i+1).repeat(32),queue_name:`videoq-${kind}-prod`,modified_on:'2020-01-01T00:00:00Z',settings:{message_retention_period:345600,delivery_paused:i===1},consumers:[{type:'worker',script_name:'videoq-api',dead_letter_queue:`videoq-${kind}-dlq-prod`}]}));
+ const workflows=['running','paused'].map((status,i)=>({id:'job-'+i,version_id:'11111111-2222-4333-8444-555555555555',status})),mutations=[];
+ f.options.now=()=>time;f.options.sleep=async ms=>{time+=ms;};
+ f.options.readParameter=name=>{f.parameters.push(name);return{CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:name.endsWith('background-maintenance')?'background-control-token-0123456789':'d1-migration-token-0123456789'};};
+ f.options.aws=(service,command,input)=>{
+  assert.equal(service,'dynamodb');
+  if(command==='get-item')return{Item:structuredClone(input.Key.pk.S==='maintenance'?f.state.lock:f.state.row)};
+  assert.equal(command,'transact-write-items');const [check,update]=input.TransactItems;
+  assert.equal(check.ConditionCheck.ExpressionAttributeValues[':input'].S,f.state.lock.input.S);
+  assert.equal(check.ConditionCheck.ExpressionAttributeValues[':execution'].S,f.state.lock.execution_arn.S);
+  const field=update.Update.ExpressionAttributeNames['#record'];assert.equal(f.state.row[field],undefined);
+  f.state.row[field]=structuredClone(update.Update.ExpressionAttributeValues[':record']);return{};
+ };
+ f.options.fetcher=async(url,options)=>{
+  if(url.includes('/workers/')){assert.equal(options.method,'GET');return Response.json({success:true,result:f.settings});}
+  assert.equal(options.headers.authorization,'Bearer background-control-token-0123456789');
+  if(options.method==='GET')return Response.json({success:true,result:url.includes('/workflows/')?workflows:url.includes('/queues?')?queues:queues.find(row=>url.endsWith('/'+row.queue_id))});
+  assert.equal(options.method,'PATCH');const body=JSON.parse(options.body);mutations.push({url,body});
+  if(url.includes('/workflows/'))workflows.find(row=>url.endsWith('/'+row.id+'/status')).status=body.status==='pause'?'paused':'running';
+  else{const row=queues.find(row=>url.endsWith('/'+row.queue_id));Object.assign(row.settings,body.settings);row.modified_on=new Date(time).toISOString();}
+  return Response.json({success:true});
+ };
+ return{...f,queues,workflows,mutations};
+}
+test('opt-in migration persists originals, drains consumers, pauses Workflows and restores only after schema success',async()=>{
+ const f=managedFixture();await runCanonicalMigration(f.options);assert.equal(f.calls.length,1);
+ assert.deepEqual(f.queues.map(row=>row.settings.delivery_paused),[false,true]);assert.deepEqual(f.workflows.map(row=>row.status),['running','paused']);
+ assert.ok(f.state.row.background_schema_complete);assert.ok(f.state.row.background_restore);
+ assert.equal(f.calls[0][2].env.CLOUDFLARE_API_TOKEN,'d1-migration-token-0123456789');
+ const count=f.mutations.length;await runCanonicalMigration(f.options);assert.equal(f.calls.length,1);assert.equal(f.mutations.length,count);
+});
+test('schema failure preserves pause and the same run can retry and restore its saved originals',async()=>{
+ const f=managedFixture(),execute=f.options.execute;f.options.execute=()=>{throw Error('schema failed');};
+ await assert.rejects(runCanonicalMigration(f.options),/schema failed/);assert.ok(f.queues.every(row=>row.settings.delivery_paused));assert.ok(f.workflows.every(row=>row.status==='paused'));assert.equal(f.state.row.background_schema_complete,undefined);
+ const original=f.state.row.background_queues.S;f.options.execute=execute;await runCanonicalMigration(f.options);
+ assert.equal(f.state.row.background_queues.S,original);assert.deepEqual(f.queues.map(row=>row.settings.delivery_paused),[false,true]);
+});
+
+function verificationFixture(){
+ const f=managedFixture();
+ Object.assign(f.env,{MAINTENANCE_BACKGROUND_VERIFICATION:'true',MAINTENANCE_WRITERS_STOPPED:'false'});
+ f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false,background_verification:true});
+ Object.assign(f.production.vars,{MIGRATION_TRAFFIC_STATE:'running',ACCOUNT_JOB_BACKEND:'sqs',SEARCH_JOB_BACKEND:'sqs'});
+ f.settings.bindings=[...Object.entries(f.production.vars).map(([name,text])=>({name,type:'plain_text',text})),{name:'DB',type:'d1',id:f.production.d1_databases[0].database_id},...f.production.vectorize.map(row=>({name:row.binding,type:'vectorize',index_name:row.index_name}))];
+ return f;
+}
+test('AWS verification deliberately fails after native pause, then restores the same plans without schema work',async()=>{
+ const f=verificationFixture();
+ await assert.rejects(runCanonicalMigration(f.options),/BACKGROUND_VERIFICATION_RECOVERY_REQUIRED/);
+ assert.equal(f.calls.length,0);assert.ok(f.queues.every(row=>row.settings.delivery_paused));assert.ok(f.workflows.every(row=>row.status==='paused'));
+ assert.ok(f.state.row.background_verification_paused);assert.equal(f.state.row.background_schema_complete,undefined);
+ const original=f.state.row.background_queues.S;
+ const result=await runCanonicalMigration(f.options);assert.equal(result.background_verified,true);assert.equal(result.read_only,true);
+ assert.deepEqual(f.queues.map(row=>row.settings.delivery_paused),[false,true]);assert.deepEqual(f.workflows.map(row=>row.status),['running','paused']);
+ assert.equal(f.state.row.background_queues.S,original);assert.ok(f.state.row.background_verification_complete);assert.equal(f.calls.length,0);
+ const writes=f.mutations.length;await runCanonicalMigration(f.options);assert.equal(f.mutations.length,writes);
+ assert.equal(f.settings.bindings.find(row=>row.name==='MIGRATION_TRAFFIC_STATE').text,'running');
+});
+test('verification refuses routing drift, wrong owned input, missing opt-in and a paused API before control writes',async()=>{
+ for(const mutate of [
+  f=>{f.settings.bindings.find(row=>row.name==='SEARCH_JOB_BACKEND').text='cloudflare';},
+  f=>{f.settings.bindings.push({name:'ACCOUNT_JOB_BACKEND',type:'plain_text',text:'sqs'});},
+  f=>{f.state.lock.input.S=JSON.stringify({source_sha:SOURCE,kind:'migration',writers_stopped:false});},
+  f=>{f.env.VIDEOQ_BACKGROUND_MAINTENANCE='false';},
+  f=>{f.production.vars.MIGRATION_TRAFFIC_STATE='paused';f.settings.bindings.find(row=>row.name==='MIGRATION_TRAFFIC_STATE').text='paused';},
+  f=>{f.env.MAINTENANCE_WRITERS_STOPPED='true';},
+ ]){
+  const f=verificationFixture();mutate(f);await assert.rejects(runCanonicalMigration(f.options));assert.equal(f.mutations.length,0);assert.equal(f.calls.length,0);
+ }
+ const f=verificationFixture();await assert.rejects(runCanonicalMigration(f.options),/RECOVERY_REQUIRED/);
+ const writes=f.mutations.length;f.settings.bindings.find(row=>row.name==='ACCOUNT_JOB_BACKEND').text='cloudflare';
+ await assert.rejects(runCanonicalMigration(f.options),/SQS_ROUTING_REQUIRED/);assert.equal(f.mutations.length,writes);assert.equal(f.state.row.background_verification_complete,undefined);
+});
+test('ordinary schema work cannot inherit a verification-only lock or opt into verification on PostgreSQL',async()=>{
+ const f=verificationFixture();delete f.env.MAINTENANCE_BACKGROUND_VERIFICATION;await assert.rejects(runCanonicalMigration(f.options),/SOURCE_MISMATCH/);assert.equal(f.calls.length,0);
+ const p=verificationFixture();p.production.vars={ENVIRONMENT:'production'};await assert.rejects(runCanonicalMigration(p.options),/D1_REQUIRED/);assert.equal(p.calls.length,0);assert.equal(p.parameters.length,0);
+});
+test('verification rechecks SQS routing between control writes instead of relying on its initial observation',async()=>{
+ const f=verificationFixture(),fetcher=f.options.fetcher;
+ f.options.fetcher=async(url,options)=>{
+  const result=await fetcher(url,options);
+  if(options.method==='PATCH')f.settings.bindings.find(row=>row.name==='SEARCH_JOB_BACKEND').text='cloudflare';
+  return result;
+ };
+ await assert.rejects(runCanonicalMigration(f.options),/SQS_ROUTING_REQUIRED/);
+ assert.equal(f.mutations.length,1);assert.ok(f.state.row.background_queues);assert.equal(f.state.row.background_verification_paused,undefined);assert.equal(f.calls.length,0);
 });

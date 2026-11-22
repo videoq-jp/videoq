@@ -81,6 +81,7 @@ function definition({table, projects, neonRetired = false}) {
     Migrate: job('migration', 'migration', 'Release', [
       variable('MAINTENANCE_SOURCE_SHA', '$.source_sha'),
       variable('MAINTENANCE_WRITERS_STOPPED', "States.Format('{}', $.writers_stopped)"),
+      variable('MAINTENANCE_BACKGROUND_VERIFICATION', "States.Format('{}', $.background_verification)"),
     ]),
     BackupStandalone: job('backup', 'backup', 'Release'),
     SmokeStandalone: job('smoke', 'smoke', 'Release', [variable('VERIFY_AI_ANSWERS', "States.Format('{}', $.verify_ai_answers)")]),
@@ -122,6 +123,9 @@ function definition({table, projects, neonRetired = false}) {
     active.Operation = {Type: 'Choice', Choices: states.Operation.Choices.filter(choice =>
       ['migration', 'smoke', 'deploy', 'd1-resource-hold'].includes(choice.StringEquals)), Default: 'RetiredOperation'};
     active.RetiredOperation = {Type: 'Fail', Error: 'RETIRED_NEON_OPERATION'};
+    // The opt-in background fence may wait 16 minutes before schema work.
+    // Retain the historical PostgreSQL graph's timeout below.
+    active.Migrate.TimeoutSeconds = 3600;
     return {Comment: 'AWS-only D1 maintenance; retained archives are outside the job lifecycle',
       StartAt: 'Operation', TimeoutSeconds: 7200, States: active};
   }

@@ -195,7 +195,46 @@
       },
       "triggers": {
         "crons": ["17 3 * * *"]
-      }
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "ACCOUNT_JOBS",
+            "queue": "videoq-account-prod"
+          },
+          {
+            "binding": "SEARCH_JOBS",
+            "queue": "videoq-search-prod"
+          },
+          {
+            "binding": "SEARCH_FAILURES",
+            "queue": "videoq-search-dlq-prod"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "videoq-account-prod",
+            "max_batch_size": 1,
+            "max_retries": 8,
+            "dead_letter_queue": "videoq-account-dlq-prod",
+            "max_concurrency": 2
+          },
+          {
+            "queue": "videoq-search-prod",
+            "max_batch_size": 1,
+            "max_retries": 8,
+            "dead_letter_queue": "videoq-search-dlq-prod",
+            "max_concurrency": 4
+          }
+        ]
+      },
+      "workflows": [
+        {
+          "binding": "SEARCH_INDEX_WORKFLOW",
+          "name": "videoq-search-index-prod",
+          "class_name": "SearchIndexWorkflow"
+        }
+      ]
     }
   }
 }

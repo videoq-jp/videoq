@@ -160,6 +160,9 @@ Environment and uses OIDC authentication for validated main commits.
   approval is not required; deployment follows the CI validation above.
 - `production-infra`: Infrastructure and Cloudflare resource sync. Preserve manual
   approval and restrict deployments to the main branch.
+  The preflight summary lists resource declarations, instance counts, actions,
+  and changed top-level attributes. It omits values, instance keys and output names.
+  A private saved plan is inspected and deleted on the runner; it is not uploaded.
 - Require approval for Actions from all external contributors' forks.
 - Pin Actions to full commit SHAs and update them through Dependabot.
 
@@ -176,7 +179,7 @@ trusted workflow revision. Lambda deployment and database jobs receive separate,
 | `AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN` | Migration, backup, smoke and maintenance `production-db-*` Environments | Invoke only the fixed AWS starter alias; no DB credential access |
 | `AWS_GITHUB_ACTIONS_NEON_ROLE_ARN` | Demo/audit `production-db-*` Environments | Read only the dedicated scoped operations parameter |
 
-| `CLOUDFLARE_INFRA_TOKEN` | Environment secrets in `production-infra` | Hyperdrive and R2 CORS updates in the target account |
+| `CLOUDFLARE_INFRA_TOKEN` | Environment secrets in `production-infra` | Hyperdrive, R2 CORS updates, and background queue preparation in the target account |
 | `CLOUDFLARE_ACCOUNT_ID` | Repository secrets (non-sensitive ID) | Cloudflare account ID |
 
 The Workers deployment token grants `Workers Scripts Write` for the target account
@@ -193,8 +196,17 @@ Once Cloudflare support is confirmed, retest deployment with permissions for the
 individual Worker and narrow the scope. Deploying a Worker with R2 or Hyperdrive
 bindings does not require permission to edit those resources themselves.
 
-Restrict the resource-sync token to `Hyperdrive Write` and `Workers R2 Storage Write`
-in the target account. Do not use the Global API Key. Set a 90-day lifetime and
+Restrict the resource-sync token to `Hyperdrive Write`, `Workers R2 Storage Write`,
+and `Queues Write` in the target account. `Queues Write` is required by the
+`prepare_background_queues` operation to list, create, and read back the four
+background queues; see the [Queues API permissions](https://developers.cloudflare.com/api/resources/queues/methods/create/).
+A token configured with only the earlier Hyperdrive/R2 permissions fails the queue
+list request with HTTP 403 before creating any queues. Update the
+`production-infra` Environment secret `CLOUDFLARE_INFRA_TOKEN` through the token
+rotation procedure, retaining the existing account restriction and expiry tracking,
+then rerun queue preparation through its manual approval gate. This operation must
+leave both background backends on SQS until the separate cutover is verified.
+Do not use the Global API Key. Set a 90-day lifetime and
 rotate tokens with the same permissions before expiry. Record expiry dates in the
 [monitoring JSON](../.github/cloudflare-token-expiry.json); GitHub Actions begins
 notifications 30 days before expiry. Follow the

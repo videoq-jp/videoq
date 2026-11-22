@@ -74,8 +74,90 @@ node --test .github/scripts/embedding-migration-metrics.test.cjs
 `production-infra` 承認ゲートを通して4つの Cloudflare キュー（検索・アカウントと各 DLQ）を
 作成する。その後、準備済みの binding を本番 Wrangler 設定へ反映した変更をレビューし、
 Workflows を含む API を配送先 `sqs` で配備する。隔離したデータで登録・再試行・
-途中再開・権限境界を検証してから、新規投入を止めて既存 SQS の可視・処理中・
-遅延メッセージと DLQ を確認する。既存処理が残る間は旧 consumer を撤去しない。
+途中再開・権限境界を検証する。
+
+配送先の切り替え前に、DB メンテナンスの停止・復元処理を新しい実行環境へ対応させる。
+現在の停止処理と smoke イメージ確認には旧3 Lambda の固定参照が残っている。
+`background-queue-admission.cjs` は本番の検索・アカウントキューだけを対象に、
+元の停止状態を保存する計画、設定・consumer の同一性確認、配送停止と元の状態への復元を提供する。
+メンテナンス所有権と復元可能な状態の検証は呼び出し元に必須とし、通常の CI でテストする。
+`background-workflow-admission.cjs` は検索 Workflow の実行一覧を cursor で走査し、
+元の停止状態と実行バージョンを保存して停止・復元する。`waitingForPause` は未完了とし、
+追加された実行やバージョンの変化は停止確認を拒否する。通信応答を失った場合も同じ実行を
+読み直し、停止済みの実行へ要求を重複送信しない。もともと停止していた実行は再開しない。
+`background-maintenance.cjs` は元の計画・停止確認時刻・復元開始を create-only の
+永続ストアに保存し、キュー停止→16分の排出待ち→Workflow 停止→復元を調停する。
+各呼び出しは待機せず状態を返す。再実行時は保存済みの計画を使い、復元開始後の再停止は拒否する。
+停止・復元部品は `canonical-background-maintenance.cjs` を経由し、既存の移行実行の
+全体ロックと DynamoDB の実行記録へ接続した。計画の create-only 書き込み時に、
+同一実行・ソース SHA・停止確認付きの全体ロックをトランザクションで検証する。
+`enable_background_maintenance=true` のオプトイン時だけ移行ジョブが専用資格情報を読み、
+停止→スキーマ移行→成功記録→元の停止状態への復元を行う。API の全体停止は解除しない。
+失敗時は停止を維持し、同一実行の再試行では保存済みの計画から復旧する。
+2026-11-23 に承認済みのインフラ更新3件を適用し、本番のオプトイン、移行ジョブの
+実行上限50分、専用 SSM 資格情報と実行記録への IAM 権限を確認した。
+IAM シミュレーションは実際の CodeBuild 実行による読取・復旧の証明とは分けて扱う。
+専用トークンによる隔離 Queue/Workflow の実停止・再開と、実 TaskScheduler による
+自動ベクトル同期は検証済みだが、本番の AWS 所有権を伴う停止・復元は未検証である。
+検証に用いた一時 Cloudflare リソースは撤去し、API で不在を確認した。
+
+現在の通常 CD は、スキーマの適用済み台帳が一致すると読み取りだけで終了し、
+専用制御資格情報の読取や停止・復元を実行しない。したがって通常 CD の成功を
+停止・復旧の受け入れ証跡として扱わない。スキーマ変更を伴う経路は、同じ migration
+実行の全体ロックと API 停止を要求する。別の resource hold の所有権を転用したり、
+`writers_stopped` の値だけで停止を主張したり、検証のためだけの DDL を追加しない。
+
+切り替え前の実制御検証には、migration 要求の `background_verification: true` を使う。
+要求は現在の main の SHA と `writers_stopped: false` を持ち、既存の migration starter、
+全体ロック、固定 CodeBuild、専用トークン、実行記録を通る。`enable_background_maintenance`
+が有効で、稼働中の D1 API の検索・アカウント配送先が両方とも `sqs` の場合だけ許可する。
+この配送先確認を制御操作のたびに繰り返し、ネイティブ処理への新規配送が閉じていることを
+確認する。API 全体の停止やスキーマ変更は行わない。
+
+最初の実行は、元の状態を保存して Queue の配送を止め、実時間で16分の排出待ちを行い、
+Workflow の停止を確認する。その証跡を DynamoDB に不変保存した後、意図的に
+`BACKGROUND_VERIFICATION_RECOVERY_REQUIRED` で失敗する。失敗した migration の
+全体ロックは、新しい maintenance 要求でも削除しない。実行が終了し子 build が全て
+終了したこと、同じロック・SHA・停止計画を保持すること、AWS 操作者の
+`states:RedriveExecution` 権限を事前に確認してから、**同じ execution ARN** を
+[AWS の native redrive](https://docs.aws.amazon.com/step-functions/latest/apireference/API_RedriveExecution.html)
+で再開する。別の run、手動 CodeBuild override、全体ロックの削除で代用しない。
+redrive は保存済み証跡から元の停止状態へ戻し、復元完了を記録する。元から停止していた
+Queue/Workflow は再開せず、スキーマ移行の完了証明も生成しない。通常のスキーマ移行と
+検証専用の記録は、要求フラグと実行入力により相互に流用できない。
+
+専用資格情報は `/videoq/security/prod/background-maintenance` に保存し、
+`CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` を持つ JSON とする。
+Queue 制御には `Queues Write`、Workflow の pause/resume には公式 API が要求する
+`Workers Scripts Write` が必要になる（[Workflow status API の権限](https://developers.cloudflare.com/api/resources/workflows/subresources/instances/subresources/status/methods/edit/)）。
+後者は Workflow 操作だけに限定された権限ではなく、対象アカウントの Worker コードを
+更新できる権限でもある。トークンの実効権限と、アダプターが許可する操作範囲を混同しない。
+本番アカウントだけにスコープを限定し、専用トークン・期限・所有者を記録する。
+SSM の読取権限はオプトインした移行ジョブの実行ロールだけへ付与し、GitHub の要求用
+ロールや通常 CD へトークンを渡さない。発行後は秘密値を出力せず、キュー一覧と
+Workflow メタデータの読取、隔離した実行の停止・復元で実効権限を検証する。
+
+スキーマ移行の実行前後の読み取りガードは `aws-canonical-migration.cjs` へ接続済みで、
+キューと Workflow の停止が確認できなければスキーマ変更を拒否する。
+キュー停止だけでは配送済み handler や起動済み Workflows の停止を証明できないため、
+実行中 Workflows の停止確認・再開、処理中 handler の排出確認、保存済み計画からの復旧、
+撤去後の Lambda 構成確認を含む統合検証が済むまで配送先を切り替えない。
+Queue の配送制御は [Cloudflare Queue PATCH API](https://developers.cloudflare.com/api/resources/queues/methods/edit/)、
+Workflow の停止・再開は [公式の実行制御](https://developers.cloudflare.com/workflows/build/trigger-workflows/) を参照する。
+
+運用制御の統合検証後、進行中の CD がないことを確認し、
+`CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED=true` を設定して承認付き Terraform
+Apply で `cloudflare_background_jobs_routing_enabled=true` を反映する。この段階は
+メディア Lambda の検索ジョブを署名付き API へ渡す変更だけで、旧検索・アカウント
+Lambda とキューは維持する。API 側がまだ `sqs` なら同じ outbox から旧 SQS へ配送する。
+
+次に API の `SEARCH_JOB_BACKEND` と `ACCOUNT_JOB_BACKEND` を `cloudflare` へ
+切り替え、実際の登録・検索・削除を確認する。メディア Lambda の配送先更新から
+更新前の実行が終わる最大タイムアウト（本番では900秒）以上が経過してから、旧 SQS の
+可視・処理中・遅延メッセージと各 DLQ が継続して0件であることを確認する。
+元のメディア用キューと DLQ にも旧混在メッセージが残っていないことを確認する。
+更新前の処理が残る間は旧 consumer を撤去しない。これにより内部 API と保守処理を
+止めずに排出でき、DB 移行用の全トラフィック停止フラグを排出手段として使わない。
 
 切り替え後の確認が完了したら Terraform の
 `cloudflare_background_jobs_enabled=true` で検索・アカウント Lambda とその
@@ -83,6 +165,11 @@ Workflows を含む API を配送先 `sqs` で配備する。隔離したデー�
 リポジトリ変数 `CLOUDFLARE_BACKGROUND_JOBS_ENABLED=true` は Terraform と CD の
 両方へ適用され、以後のイメージ更新が撤去済みの関数を対象にしないようにする。
 進行中の CD がないことを確認してから設定し、承認付き Terraform Apply を実行する。
+撤去後に隔離 smoke の本番イメージ基準を確認する場合は、
+`BACKGROUND_JOBS_RUNTIME=cloudflare` を明示する。残るメディア Lambda のイメージを確認し、
+検索・アカウント Lambda は AWS の `ResourceNotFoundException` による不在確認を必須とする。
+残存関数・権限エラー・タイムアウトは拒否する。撤去前は既定の `lambda` モードで
+3 Lambda すべてのイメージが一致することを確認する。
 旧キューと DLQ の撤去は、空であることを再確認した後の別段階で
 `RETIRE_BACKGROUND_QUEUES=true`（Terraform の `retire_background_queues=true`）を使う。履歴ログとメディア用リソースは保持する。
 

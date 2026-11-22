@@ -7,7 +7,7 @@ const KINDS = Object.freeze([HOLD_KIND, D1_HOLD_KIND, 'rotate', 'rollback', 'aud
 function input(event, allowedKinds) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) throw new Error('INVALID_REQUEST');
   const control = ['release-cutover-hold','recover-cutover-hold','prepare-cutover-consumers','pause-cutover-consumers','resume-cutover-consumers','retry-cutover-consumers','inspect-cutover-activity','retry-cutover-activity','install-cutover-fence','release-cutover-fence'].includes(event.action);
-  const permitted = event.action === 'status' || control ? ['action', 'run_id'] : ['action', 'kind', 'force', 'source_sha', 'writers_stopped', 'verify_ai_answers', 'client_token', 'inspection'];
+  const permitted = event.action === 'status' || control ? ['action', 'run_id'] : ['action', 'kind', 'force', 'source_sha', 'writers_stopped', 'verify_ai_answers', 'client_token', 'inspection', 'background_verification'];
   if (Object.keys(event).some(key => !permitted.includes(key))) throw new Error('UNEXPECTED_INPUT');
   if (event.action === 'status' || control) {
     if (control && !allowedKinds.includes(HOLD_KIND)) throw new Error('OPERATION_NOT_ALLOWED');
@@ -24,11 +24,13 @@ function input(event, allowedKinds) {
   if (event.verify_ai_answers !== undefined && (event.kind !== 'smoke' || typeof event.verify_ai_answers !== 'boolean')) throw new Error('INVALID_SMOKE_OPTION');
   if (event.inspection !== undefined && (event.kind !== 'audit' || event.inspection !== 'postgres-login-fence')) throw new Error('INVALID_AUDIT_INSPECTION');
   if (event.client_token !== undefined && !/^[a-f0-9]{32}$/.test(event.client_token)) throw new Error('INVALID_CLIENT_TOKEN');
+  if (event.background_verification !== undefined && (typeof event.background_verification !== 'boolean' || event.kind !== 'migration' || event.background_verification && event.writers_stopped !== false)) throw new Error('INVALID_BACKGROUND_VERIFICATION');
   return {action: 'start', kind: event.kind, force: event.force === true,
     ...(event.kind === 'migration' ? {source_sha: event.source_sha, writers_stopped: event.writers_stopped} : {}),
     ...(['deploy', HOLD_KIND, D1_HOLD_KIND].includes(event.kind) ? {source_sha: event.source_sha} : {}),
     ...(event.kind === 'smoke' ? {verify_ai_answers: event.verify_ai_answers === true} : {}),
     ...(event.inspection ? {inspection: event.inspection} : {}),
+    ...(event.background_verification === true ? {background_verification: true} : {}),
     ...(event.client_token ? {client_token: event.client_token} : {})};
 }
 function executionArn(machine, name) {

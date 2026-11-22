@@ -16,12 +16,13 @@ const MACHINE='arn:aws:states:ap-northeast-1:257240362763:stateMachine:videoq-db
 const IMAGE='amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86';
 const name='videoq-d1-hold-'+randomUUID().replaceAll('-',''),execute=promisify(execFile),label='d1-resource-hold-fixture';
 const docker=args=>execute('docker',args,{timeout:120000,maxBuffer:1024*1024});
-let client;
+let client,localEndpoint;
 before(async()=>{
  await docker(['run','--detach','--name',name,'--label','videoq-purpose='+label,'--memory','512m','-p','127.0.0.1::8000','--entrypoint','java','--workdir','/home/dynamodblocal',IMAGE,'-Xmx256m','-Djava.library.path=./DynamoDBLocal_lib','-jar','DynamoDBLocal.jar','-inMemory','-sharedDb']);
  const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],label);
  const port=Number(info.NetworkSettings.Ports['8000/tcp'][0].HostPort);assert.ok(Number.isInteger(port)&&port>0&&port<65536);
- client=new sdk.DynamoDBClient({region:'ap-northeast-1',endpoint:'http://127.0.0.1:'+port,credentials:{accessKeyId:'DUMMYIDEXAMPLE',secretAccessKey:'DUMMYEXAMPLEKEY'},maxAttempts:1,requestHandler:new NodeHttpHandler({connectionTimeout:1000,socketTimeout:2000})});
+ localEndpoint='http://127.0.0.1:'+port;
+ client=new sdk.DynamoDBClient({region:'ap-northeast-1',endpoint:localEndpoint,credentials:{accessKeyId:'DUMMYIDEXAMPLE',secretAccessKey:'DUMMYEXAMPLEKEY'},maxAttempts:1,requestHandler:new NodeHttpHandler({connectionTimeout:1000,socketTimeout:2000})});
  const until=Date.now()+60000;let ready=false;
  while(Date.now()<until){try{await client.send(new sdk.ListTablesCommand({Limit:1}));ready=true;break;}catch{await new Promise(r=>setTimeout(r,500));}}
  assert.ok(ready);
@@ -31,6 +32,9 @@ after(async()=>{
  try{const info=JSON.parse((await docker(['inspect',name])).stdout)[0];assert.equal(info.Config.Labels['videoq-purpose'],label);await docker(['rm','--force','--volumes',name]);}
  catch(e){if(!String(e.stderr||'').includes('No such object'))throw e;}
 },{timeout:30000});
+test('background maintenance plans and process-replacement recovery use real DynamoDB transactions',async()=>{
+ await require('./background-maintenance-store.integration.cjs').verifyBackgroundStoreTransactions({endpoint:localEndpoint});
+});
 async function fixture(){
  const table='videoq_d1_hold_'+randomUUID().replaceAll('-','');
  await client.send(new sdk.CreateTableCommand({TableName:table,BillingMode:'PAY_PER_REQUEST',KeySchema:[{AttributeName:'pk',KeyType:'HASH'}],AttributeDefinitions:[{AttributeName:'pk',AttributeType:'S'}]}));

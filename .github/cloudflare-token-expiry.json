@@ -14,7 +14,17 @@
       "id": "cloudflare-resources",
       "name": "videoq-cloudflare-resources-20260918",
       "expiresOn": "2026-12-17",
-      "secrets": ["production-infra.CLOUDFLARE_INFRA_TOKEN"]
+      "secrets": [
+        "production-infra.CLOUDFLARE_INFRA_TOKEN"
+      ]
+    },
+    {
+      "id": "background-maintenance",
+      "name": "videoq-background-maintenance-20261123",
+      "expiresOn": "2027-02-21",
+      "secrets": [
+        "ssm:/videoq/security/prod/background-maintenance"
+      ]
     }
   ]
 }

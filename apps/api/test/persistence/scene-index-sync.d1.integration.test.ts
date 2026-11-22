@@ -302,9 +302,13 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     const pending = new Promise<void>(resolve => { release = resolve; });
     const entered = new Promise<void>(resolve => { started = resolve; });
     deleteHook = () => { started(); return pending; };
+    // Hold the new upsert until the old delete is in flight; ingestion now has
+    // a reserved claim slot and would otherwise run before this race begins.
+    await fixture.database.prepare("UPDATE scene_index_tasks SET available_at='2099-01-01T00:00:00.000Z' WHERE operation='upsert' AND completed_at IS NULL").run();
     const oldDelete = sync(1);
     await entered;
     deleteHook = undefined;
+    await fixture.database.prepare("UPDATE scene_index_tasks SET available_at='2000-01-01T00:00:00.000Z' WHERE operation='upsert' AND completed_at IS NULL").run();
     expect((await sync(1)).completed).toBe(1);
     const newId = [...vectors.keys()].find(id => id !== oldId)!;
     expect(newId).toBeTruthy();
@@ -334,6 +338,18 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     expect((await sync()).completed).toBe(1);
     expect(vectors.size).toBe(0);
     expect(await tasks.reconcileObsolete()).toBe(0);
+  });
+  it("reserves ingestion capacity while older deletion work still progresses", async () => {
+    await fixture.database.prepare(`WITH RECURSIVE rows(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM rows WHERE n<20)
+      INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions,available_at)
+      SELECT 'delete-backlog-'||n,'delete','old-vector-'||n,'old-scene-'||n,'obsolete',1,'owner',1536,
+        '2020-01-01T00:00:00.000Z' FROM rows`).run();
+    await publish("new-ingestion");
+    const result = await sync(10);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(deleteByIds).toHaveBeenCalledTimes(9);
+    expect(result.completed).toBe(10);
+    expect(await fixture.database.prepare("SELECT count(*) AS count FROM scene_index_tasks WHERE operation='delete' AND completed_at IS NULL").first("count")).toBe(11);
   });
   it("reconciles more than 100 obsolete vectors within D1's parameter limit", async () => {
     await publish("active"); await sync();

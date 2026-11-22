@@ -106,7 +106,7 @@ export function createD1SceneIndexTaskRepository(
         .where(eq(receipts.token, token)),
     );
   return {
-    async claim() {
+    async claim(options = {}) {
       const candidate = db
         .select({ id: tasks.id })
         .from(tasks)
@@ -120,7 +120,7 @@ export function createD1SceneIndexTaskRepository(
             ),
           ),
         )
-        .orderBy(tasks.availableAt, tasks.createdAt, tasks.id)
+        .orderBy(...(options.preferUpserts ? [sql`CASE WHEN ${tasks.operation}='upsert' THEN 0 ELSE 1 END`] : []), tasks.availableAt, tasks.createdAt, tasks.id)
         .limit(1);
       const row = await db
         .update(tasks)

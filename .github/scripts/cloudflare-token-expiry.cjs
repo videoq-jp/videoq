@@ -25,8 +25,9 @@ function validateConfig(config) {
     if (!/^[a-zA-Z0-9_-]+$/.test(entry.name ?? '')) throw new Error('Invalid token name');
     dateMillis(entry.expiresOn);
     if (!Array.isArray(entry.secrets) || !entry.secrets.length ||
-        entry.secrets.some(value => !/^[a-z0-9-]+\.[A-Z0-9_]+$/.test(value))) {
-      throw new Error('Environment secret destinations are required');
+        entry.secrets.some(value => !/^[a-z0-9-]+\.[A-Z0-9_]+$/.test(value) &&
+          !/^ssm:\/videoq\/security\/prod\/[a-z0-9-]+$/.test(value))) {
+      throw new Error('Environment secret or production SSM destinations are required');
     }
   }
 }

@@ -307,3 +307,31 @@ test('build completion inventory uses default descending order across every page
  assert.deepEqual(pages,[{projectName:'rotation'},{projectName:'rotation',nextToken:'older'},{projectName:'migration'},{projectName:'migration',nextToken:'older'}]);
  assert.equal(calls.filter(c=>c.command==='BatchGetBuilds').length,4);
 });
+
+test('background verification is an explicit SQS-only migration request carried into the fixed build',async()=>{
+ const event={action:'start',kind:'migration',source_sha:SHA,writers_stopped:false,background_verification:true};
+ assert.equal(input(event,['migration']).background_verification,true);
+ for(const bad of [{...event,kind:'deploy',writers_stopped:undefined},{...event,writers_stopped:true},{...event,background_verification:'true'}])assert.throws(()=>input(bad,['migration','deploy']),/BACKGROUND_VERIFICATION/);
+ const f=fixture();await f.broker(event);
+ const payload=JSON.parse(f.calls.find(call=>call.command==='StartExecution').value.input);assert.equal(payload.background_verification,true);assert.equal(payload.writers_stopped,false);
+ const spec=definition({table:'metadata',projects:{migration:'fixed'},neonRetired:true});
+ const field=spec.States.Migrate.Parameters.EnvironmentVariablesOverride.find(row=>row.Name==='MAINTENANCE_BACKGROUND_VERIFICATION');assert.equal(field['Value.$'],"States.Format('{}', $.background_verification)");
+});
+test('failed migrations retain their exact owner for native redrive instead of allowing a new maintenance run',async()=>{
+ for(const status of ['FAILED','TIMED_OUT','ABORTED']){
+  const lock={...terminal(),kind:{S:'migration'}};
+  for(const request of [{action:'start',kind:'migration',source_sha:SHA,writers_stopped:false},{action:'start',kind:'deploy',source_sha:SHA},{action:'start',kind:'smoke'}]){
+   const f=fixture({lock,status});await assert.rejects(f.broker(request),/MIGRATION_RECOVERY_REQUIRED/);
+   assert.equal(f.calls.filter(call=>['DeleteItem','TransactWriteItems','StartExecution'].includes(call.command)).length,0);
+  }
+ }
+});
+test('verification idempotency cannot silently reuse an ordinary migration or another source',async()=>{
+ const event={action:'start',kind:'migration',source_sha:SHA,writers_stopped:false,background_verification:true,client_token:'d'.repeat(32)};
+ const row={kind:{S:'migration'},execution_arn:{S:executionArn(MACHINE,'db-'+RUN)},source_sha:{S:SHA},writers_stopped:{BOOL:false},background_verification:{BOOL:true}};
+ for(const change of [r=>{r.source_sha.S='e'.repeat(40);},r=>{r.writers_stopped.BOOL=true;},r=>{r.background_verification.BOOL=false;},r=>{delete r.background_verification;}]){
+  const value=structuredClone(row);change(value);const f=fixture({lock:value,status:'SUCCEEDED'});await assert.rejects(f.broker(event),/MIGRATION_REQUEST_CHANGED/);assert.equal(f.calls.length,1);
+ }
+ const f=fixture({lock:row,status:'FAILED'});assert.equal((await f.broker(event)).status,'FAILED');assert.equal(f.calls.filter(call=>call.command==='StartExecution').length,0);
+ await assert.rejects(f.broker({...event,background_verification:false}),/MIGRATION_REQUEST_CHANGED/);
+});
