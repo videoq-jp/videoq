@@ -24,12 +24,17 @@ function assertDeploymentPreservesState(settings, target) {
     const db = settings.bindings.filter(binding => binding.type === 'd1' && binding.name === 'DB');
     const next = (target.d1_databases ?? []).filter(binding => binding.binding === 'DB');
     if (db.length !== 1 || next.length !== 1 || !db[0].id || db[0].id !== next[0].database_id) throw Error('D1_TARGET_REQUIRES_CONTROLLED_MIGRATION');
+    const currentEmbedding = key => { const rows = settings.bindings.filter(b => b.name === key); return rows.length === 1 && rows[0].type === 'plain_text' ? rows[0].text : undefined; };
     for (const name of ['SCENE_VECTORIZE_1536','SCENE_VECTORIZE_768']) {
       const index = settings.bindings.filter(binding => binding.name === name);
       const replacement = (target.vectorize ?? []).filter(binding => binding.binding === name);
-      // The optional 768-dimensional index may be retired out of band.
+      // Retired bindings must already be absent on both sides. Native Workers AI
+      // may retire 1536; it must retain its active 768 binding.
       // Ordinary CD must still preserve every active binding and cannot add one.
-      if (name === 'SCENE_VECTORIZE_768' && index.length === 0 && replacement.length === 0) continue;
+      const native = ['EMBEDDING_PROVIDER','EMBEDDING_PROFILE','EMBEDDING_MODEL'].every((key,i) =>
+        currentEmbedding(key) === ['workers-ai','embeddinggemma2','@cf/google/embeddinggemma-2'][i] &&
+        target.vars[key] === ['workers-ai','embeddinggemma2','@cf/google/embeddinggemma-2'][i]);
+      if (index.length === 0 && replacement.length === 0 && (native ? name === 'SCENE_VECTORIZE_1536' : name === 'SCENE_VECTORIZE_768')) continue;
       if (index.length !== 1 || replacement.length !== 1 || index[0].type !== 'vectorize' || !index[0].index_name || index[0].index_name !== replacement[0].index_name) throw Error('VECTOR_TARGET_REQUIRES_CONTROLLED_MIGRATION');
     }
   }
