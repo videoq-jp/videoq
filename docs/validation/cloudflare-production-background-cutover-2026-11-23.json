@@ -219,5 +219,58 @@
     "jobAttempts": 1,
     "jobCompletedAt": "2026-11-22T21:49:12.807Z",
     "databaseStatusMutation": false
+  },
+  "postNativeTestsHealth": {
+    "observedAt": "2026-11-22T22:03:02.795Z",
+    "public": {
+      "health": {
+        "http": 200,
+        "status": "ok"
+      },
+      "ready": {
+        "http": 200,
+        "status": "ready",
+        "db": "ok"
+      }
+    }
+  },
+  "postNativeQueueMetrics": {
+    "observedAt": "2026-11-22T22:03:21.480021+00:00",
+    "queues": {
+      "account": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      },
+      "accountDlq": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      },
+      "search": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      },
+      "searchDlq": {
+        "backlog_count": 0,
+        "backlog_bytes": 0,
+        "oldest_message_timestamp_ms": 0
+      }
+    }
+  },
+  "onpremCleanupValidation": {
+    "pullRequest": 1602,
+    "sourceSha": "c87f1642fa3be2d1d6950fe7c51f9b5395801d55",
+    "ciRunId": 45069462317,
+    "conclusion": "success",
+    "scope": [
+      "production image HTTP tests",
+      "source builds with real CPU models and public egress blocked",
+      "single-server lifecycle",
+      "registry updates",
+      "failed migration recovery"
+    ],
+    "productionPythonCleanupDeployed": false
   }
 }
