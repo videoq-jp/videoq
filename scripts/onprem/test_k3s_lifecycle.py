@@ -189,7 +189,7 @@ class KubernetesLifecycleTests(unittest.TestCase):
         (chart / 'Chart.yaml').write_text('apiVersion: v2\nname: lifecycle-fixture\nversion: 0.1.0\n')
         image = INFRA['postgres']
         deployment = []
-        for name in ('api', 'worker', 'web'):
+        for name in ('api', 'worker', 'background-worker', 'web'):
             deployment.append({'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'videoq-' + name},
                 'spec': {'replicas': 1, 'selector': {'matchLabels': {'fixture': name}}, 'template': {
                 'metadata': {'labels': {'fixture': name}}, 'spec': {'terminationGracePeriodSeconds': 1, 'containers': [{'name': name, 'image': image,

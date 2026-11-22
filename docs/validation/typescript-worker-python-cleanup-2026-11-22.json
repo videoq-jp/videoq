@@ -36,9 +36,10 @@
     "lint": true
   },
   "onpremInstallerUnitTests": {
-    "tests": 84,
+    "tests": 85,
     "skipped": 5,
-    "failed": 0
+    "failed": 0,
+    "coversBackgroundWorkerRestoreFence": true
   },
   "apiTypecheck": true,
   "apiLint": true,
