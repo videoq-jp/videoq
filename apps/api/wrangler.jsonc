@@ -30,6 +30,19 @@
 
   "ai": { "binding": "AI" },
 
+  "queues": {
+    "producers": [
+      { "binding": "ACCOUNT_JOBS", "queue": "videoq-account-dev" },
+      { "binding": "SEARCH_JOBS", "queue": "videoq-search-dev" },
+      { "binding": "SEARCH_FAILURES", "queue": "videoq-search-dlq-dev" }
+    ],
+    "consumers": [
+      { "queue": "videoq-account-dev", "max_batch_size": 1, "max_retries": 8 },
+      { "queue": "videoq-search-dev", "max_batch_size": 1, "max_retries": 8 }
+    ]
+  },
+  "workflows": [{ "binding": "SEARCH_INDEX_WORKFLOW", "name": "videoq-search-index-dev", "class_name": "SearchIndexWorkflow" }],
+
   "vars": {
     "ENVIRONMENT": "development",
     "USE_S3_STORAGE": "true",
@@ -111,6 +124,9 @@
       },
       "ai": { "binding": "AI" },
       "vars": {
+        // Keep legacy delivery until drained and the new execution paths are verified.
+        "ACCOUNT_JOB_BACKEND": "sqs",
+        "SEARCH_JOB_BACKEND": "sqs",
         "ENVIRONMENT": "production",
         "DEPLOYMENT_EDITION": "cloud",
         "PERSISTENCE_BACKEND": "d1",

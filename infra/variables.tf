@@ -152,3 +152,23 @@ variable "worker_groups" {
     error_message = "Exactly search/account must be configured with integer Lambda memory (128–10240), storage (512–10240), timeout (1–900), and concurrency (2–1000)."
   }
 }
+
+variable "cloudflare_background_jobs_enabled" {
+  description = "Retire the search/account Lambdas after Cloudflare consumers are verified and legacy deliveries are drained."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.cloudflare_background_jobs_enabled || var.env_name == "prod"
+    error_message = "Cloudflare background cutover currently requires the production signed API environment."
+  }
+}
+
+variable "retire_background_queues" {
+  description = "Explicit final cleanup of drained legacy search/account SQS queues and DLQs; never enable while messages remain."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.retire_background_queues || var.cloudflare_background_jobs_enabled
+    error_message = "Legacy queues can be retired only after Cloudflare background processing is enabled."
+  }
+}

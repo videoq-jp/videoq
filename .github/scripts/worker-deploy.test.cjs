@@ -7,7 +7,7 @@ const {spawnSync} = require('node:child_process');
 const workflow = readFileSync('.github/workflows/cd.yml', 'utf8');
 const run = workflow.split('      - name: Push prebuilt image and update Lambda\n')[1]
   .split('        run: |\n')[1].split('\n').map(line => line.slice(10)).join('\n');
-function deploy(fail = '') {
+function deploy(fail = '', runtime = 'lambda') {
   return spawnSync('bash', ['-e', '-o', 'pipefail', '-c', `
     docker() { :; }
     aws() {
@@ -18,7 +18,7 @@ function deploy(fail = '') {
     ${run}
   `], {encoding: 'utf8', env: {
     ...process.env, SOURCE_SHA: 'test-sha', IMAGE_REPOSITORY: 'example/worker',
-    FUNCTION_NAME: 'videoq-worker-prod', FAIL_FUNCTION: fail,
+    FUNCTION_NAME: 'videoq-worker-prod', FAIL_FUNCTION: fail, BACKGROUND_JOBS_RUNTIME: runtime,
   }});
 }
 test('CD deploys and waits for search/account before media with one immutable image', () => {
@@ -35,4 +35,18 @@ test('failed search deployment stops rollout before account/media are updated', 
   const result = deploy('videoq-worker-search-prod');
   assert.equal(result.status, 1);
   assert.equal(result.stdout.trim().split('\n').length, 1);
+});
+
+test('Cloudflare mode deploys only the remaining media Lambda', () => {
+  const result = deploy('', 'cloudflare');
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.trim().split('\n'), [
+    'lambda update-function-code --function-name videoq-worker-prod --image-uri example/worker:test-sha',
+    'lambda wait function-updated --function-name videoq-worker-prod',
+  ]);
+});
+test('invalid runtime fails before any Lambda update', () => {
+  const result = deploy('', 'invalid');
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout.trim(), '');
 });

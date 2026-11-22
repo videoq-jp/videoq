@@ -61,6 +61,14 @@
         "region": {
           "type": "string",
           "minLength": 1
+        },
+        "searchUrl": {
+          "type": "string",
+          "pattern": "^(https?://.+)?$"
+        },
+        "accountUrl": {
+          "type": "string",
+          "pattern": "^(https?://.+)?$"
         }
       }
     },
@@ -190,6 +198,18 @@
         "terminationGracePeriodSeconds": {
           "type": "integer",
           "minimum": 900
+        }
+      }
+    },
+    "backgroundWorker": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     }

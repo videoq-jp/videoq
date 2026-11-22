@@ -23,6 +23,10 @@ concurrency:
   group: terraform-apply
   cancel-in-progress: false
 
+env:
+  TF_VAR_cloudflare_background_jobs_enabled: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ENABLED || 'false' }}
+  TF_VAR_retire_background_queues: ${{ vars.RETIRE_BACKGROUND_QUEUES || 'false' }}
+
 jobs:
   scope:
     name: Classify infrastructure update

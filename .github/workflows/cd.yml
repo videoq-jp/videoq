@@ -485,6 +485,7 @@ jobs:
           SOURCE_SHA: ${{ needs.changes.outputs.sha }}
           IMAGE_REPOSITORY: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY_WORKER }}
           FUNCTION_NAME: ${{ secrets.LAMBDA_WORKER_FUNCTION_NAME }}
+          BACKGROUND_JOBS_RUNTIME: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ENABLED == 'true' && 'cloudflare' || 'lambda' }}
         run: |
           docker tag "videoq-worker:$SOURCE_SHA" "$IMAGE_REPOSITORY:$SOURCE_SHA"
           docker tag "videoq-worker:$SOURCE_SHA" "$IMAGE_REPOSITORY:latest"
@@ -494,7 +495,12 @@ jobs:
           # before the environment suffix for the other two consumers.
           prefix="${FUNCTION_NAME%-*}"
           environment="${FUNCTION_NAME##*-}"
-          for function in "$prefix-search-$environment" "$prefix-account-$environment" "$FUNCTION_NAME"; do
+          case "${BACKGROUND_JOBS_RUNTIME:-lambda}" in
+            lambda) functions=("$prefix-search-$environment" "$prefix-account-$environment" "$FUNCTION_NAME") ;;
+            cloudflare) functions=("$FUNCTION_NAME") ;;
+            *) echo "Invalid BACKGROUND_JOBS_RUNTIME" >&2; exit 1 ;;
+          esac
+          for function in "${functions[@]}"; do
             aws lambda update-function-code --function-name "$function" --image-uri "$IMAGE_REPOSITORY:$SOURCE_SHA"
             aws lambda wait function-updated --function-name "$function"
           done

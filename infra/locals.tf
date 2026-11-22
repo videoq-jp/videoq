@@ -17,9 +17,10 @@ locals {
     USE_S3_STORAGE                  = "true"
     SQS_QUEUE_NAME                  = aws_sqs_queue.main.name
     SQS_QUEUE_URL                   = aws_sqs_queue.main.id
+    SEARCH_JOB_BACKEND              = var.cloudflare_background_jobs_enabled ? "cloudflare" : "sqs"
     SQS_MEDIA_QUEUE_URL             = aws_sqs_queue.main.url
-    SQS_SEARCH_QUEUE_URL            = aws_sqs_queue.group["search"].url
-    SQS_ACCOUNT_QUEUE_URL           = aws_sqs_queue.group["account"].url
+    SQS_SEARCH_QUEUE_URL            = try(aws_sqs_queue.group["search"].url, "")
+    SQS_ACCOUNT_QUEUE_URL           = try(aws_sqs_queue.group["account"].url, "")
     FRONTEND_URL                    = "https://videoq.jp"
     OPENAI_BASE_URL                 = "https://openrouter.ai/api/v1"
     EMBEDDING_MODEL                 = "openai/text-embedding-3-small"

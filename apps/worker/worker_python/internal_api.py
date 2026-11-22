@@ -65,7 +65,7 @@ def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     visual_action = action.startswith("visual/")
     reindex_action = action == "reindex/page"
     embedding_action = action == "embeddings/generate"
-    if action not in {"claim", "complete", "fail", "heartbeat", "account-delete/step",
+    if action not in {"claim", "complete", "fail", "heartbeat", "enqueue", "account-delete/step",
                       "scene-index/source", "scene-index/start", "scene-index/stage", "scene-index/publish", "scene-index/finish", "processing/reserve", "transcription/source", "transcription/begin", "transcription/finish", "checkpoints/load", "checkpoints/initialize", "checkpoints/pending",
                       "checkpoints/state", "checkpoints/save", "checkpoints/failure", "checkpoints/segments", "checkpoints/reject", "checkpoints/finish", "visual/load", "visual/initialize", "visual/pending", "visual/chunks",
                       "visual/publish", "visual/ready", "visual/failure", "visual/begin-object", "reindex/page", "embeddings/generate"}:

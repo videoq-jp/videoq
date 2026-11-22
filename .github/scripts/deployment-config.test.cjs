@@ -84,3 +84,19 @@ test('the production API exposes the signed worker persistence path through its 
   assert.deepEqual(result.routes, expected);
   assert.equal(result.workers_dev, false);
 });
+
+test('prebuilt API uploads retain production queues and Workflows without inheriting development ones', () => {
+  const queues = { producers: [{ binding: 'SEARCH_JOBS', queue: 'search-prod' }], consumers: [{ queue: 'search-prod' }] };
+  const workflows = [{ binding: 'SEARCH_INDEX_WORKFLOW', name: 'search-prod', class_name: 'SearchIndexWorkflow' }];
+  const original = { name: 'videoq-api-dev', queues: { producers: [{ binding: 'DEV_QUEUE', queue: 'dev' }] },
+    workflows: [{ binding: 'DEV_WORKFLOW', name: 'dev', class_name: 'Dev' }],
+    env: { production: { name: 'videoq-api', queues, workflows } } };
+  const result = deploymentConfig(original, 'api', '/artifacts');
+  assert.deepEqual(result.queues, queues);
+  assert.deepEqual(result.workflows, workflows);
+  delete original.env.production.queues;
+  delete original.env.production.workflows;
+  const omitted = deploymentConfig(original, 'api', '/artifacts');
+  assert.equal(omitted.queues, undefined);
+  assert.equal(omitted.workflows, undefined);
+});

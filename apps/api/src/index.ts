@@ -1,3 +1,4 @@
+import { consumeBackgroundJobs } from "./integrations/background-jobs/queue";
 import { applicationTrafficPaused, migrationPausedResponse } from "./lib/migration-traffic";
 import { createApp, type AppType } from "./app";
 import { runScheduledMaintenance } from "./lib/scheduled-maintenance";
@@ -15,6 +16,7 @@ export default {
     if (isChatExecutionRequest(request)) return dispatchChatExecution(request, env);
     return app.fetch(request, env, ctx);
   },
+  queue: consumeBackgroundJobs,
   async scheduled(
     controller: ScheduledController,
     env: Bindings,
@@ -28,3 +30,5 @@ export default {
 export { RateLimiter } from "./durable-objects/rate-limiter";
 export { TaskScheduler } from "./durable-objects/task-scheduler";
 export { ChatExecution } from "./durable-objects/chat-execution";
+
+export { SearchIndexWorkflow } from "./workflows/search-index";

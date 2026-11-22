@@ -135,7 +135,7 @@ services:
     container_name: videoq-api
     env_file:
       - .env
-    environment:
+    environment: &api-environment
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-only-auth-jwt-secret-change-me}
       USER_SECRET_ENCRYPTION_KEY: ${USER_SECRET_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -148,6 +148,8 @@ services:
       R2_BUCKET_NAME: ${GARAGE_BUCKET:-videoq-media}
       R2_S3_REGION: garage
       SQS_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-jobs
+      SQS_SEARCH_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-search
+      SQS_ACCOUNT_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-account
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
@@ -175,6 +177,26 @@ services:
       - videoq-network
     restart: unless-stopped
 
+  # TypeScript search/account processing; media remains in the Python worker.
+  background-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: [.env]
+    environment:
+      <<: *api-environment
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-${AUTH_JWT_SECRET:-dev-only-background-auth-secret-change-me}}
+      BETTER_AUTH_URL: http://localhost
+      USER_SECRET_ENCRYPTION_KEY: ${USER_SECRET_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      BACKGROUND_WORKER_GROUPS: account,search
+    command: ["node", "dist/background-worker.mjs"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      elasticmq: { condition: service_started }
+    networks: [videoq-network]
+    restart: unless-stopped
+
   # Async job worker (SQS long-poll)
   worker:
     <<: *worker-image
@@ -184,6 +206,9 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
       SQS_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-jobs
+      SQS_SEARCH_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-search
+      SQS_ACCOUNT_QUEUE_URL: http://elasticmq:9324/000000000000/videoq-account
+      WORKER_JOB_GROUP: media
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local

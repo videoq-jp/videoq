@@ -38,8 +38,12 @@ export function providerModel(model: string, baseURL: string): string {
     ? `openai/${model}` : model;
 }
 
-export const openAiBaseUrl = (env: Pick<Bindings, "OPENAI_BASE_URL" | "OPENROUTER_API_KEY" | "OPENROUTER_FEDERATION_POLICY_ID">): string =>
-  (env.OPENAI_BASE_URL || ((env.OPENROUTER_API_KEY || env.OPENROUTER_FEDERATION_POLICY_ID) ? OPENROUTER_BASE_URL : DEFAULT_BASE_URL)).replace(/\/+$/, "");
+export const openAiBaseUrl = (env: Pick<Bindings, "OPENAI_BASE_URL" | "OPENROUTER_API_KEY" | "OPENROUTER_FEDERATION_POLICY_ID">): string => {
+  const value = env.OPENAI_BASE_URL || ((env.OPENROUTER_API_KEY || env.OPENROUTER_FEDERATION_POLICY_ID) ? OPENROUTER_BASE_URL : DEFAULT_BASE_URL);
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+};
 
 /** Shared credentials follow the selected endpoint; explicit purpose keys take precedence. */
 export function resolveOpenAiKey(env: ConnectionSettings, purpose: string, baseURL = openAiBaseUrl(env)): ProviderCredential {

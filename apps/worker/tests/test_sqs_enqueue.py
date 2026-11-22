@@ -65,3 +65,26 @@ def test_domain_message_validates_before_allocating_identity_and_reuses_explicit
     new_id.assert_not_called()
     assert domain_message('transcribe_video', payload, new_id=new_id) == {'type': 'transcribe_video', 'payload': payload, 'job_id': 'generated-id'}
     new_id.assert_called_once()
+
+
+def test_cloud_search_handoff_uses_signed_durable_api_before_sqs(monkeypatch):
+    from unittest.mock import MagicMock
+    from worker_python import sqs_enqueue, internal_api
+    monkeypatch.setenv('SEARCH_JOB_BACKEND', 'cloudflare')
+    api = MagicMock(return_value={'messageId': 'stable-search-id'})
+    sqs = MagicMock()
+    monkeypatch.setattr(internal_api, 'call_internal_api', api)
+    monkeypatch.setattr(sqs_enqueue, 'create_sqs_client', sqs)
+    assert sqs_enqueue.enqueue_job('index_video_transcript', {'video_id': 42}, job_id='stable-search-id') == 'stable-search-id'
+    api.assert_called_once_with('enqueue', {'type': 'index_video_transcript', 'job_id': 'stable-search-id', 'payload': {'video_id': 42}})
+    sqs.assert_not_called()
+
+
+def test_cloud_search_handoff_failure_never_falls_back_to_inline_python(monkeypatch):
+    import pytest
+    from unittest.mock import MagicMock
+    from worker_python import sqs_enqueue, internal_api
+    monkeypatch.setenv('SEARCH_JOB_BACKEND', 'cloudflare')
+    monkeypatch.setattr(internal_api, 'call_internal_api', MagicMock(side_effect=RuntimeError('API unavailable')))
+    with pytest.raises(RuntimeError, match='API unavailable'):
+        sqs_enqueue.enqueue_job('index_video_transcript', {'video_id': 42})

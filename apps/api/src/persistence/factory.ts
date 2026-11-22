@@ -472,7 +472,11 @@ export async function createAdminUserRepository(env:Bindings,headers?:Headers):P
 }
 
 export async function stepWorkerAccountDeletion(env:Bindings,lease:import('./contracts/worker-account-deletion').AccountDeletionLease){
- if(persistenceBackend(env)!=='d1'||!env.DB)throw new Error('Internal account deletion requires D1');
+ if(persistenceBackend(env)==='postgres'){
+  const {createPostgresWorkerAccountDeletion}=await import('./postgres/worker-account-deletion');
+  return createPostgresWorkerAccountDeletion(env).step(lease);
+ }
+ if(!env.DB)throw new Error('Internal account deletion requires D1');
  const {createD1WorkerAccountDeletion}=await import('./d1/worker-account-deletion');
  const {armMaintenance}=await import('../lib/task-scheduler');
  return createD1WorkerAccountDeletion(env.DB,async()=>{await armMaintenance(env,Date.now()+1000);}).step(lease);

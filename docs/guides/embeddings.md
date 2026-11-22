@@ -150,3 +150,33 @@ For a new deployment, initialize the database with the chosen model settings.
 When changing models later, stop Q&A/indexing and rebuild the scene vectors
 before resuming searches. Do not mix vectors from different model versions.
 The default profile uses 1536 dimensions; `embeddinggemma2` uses its separate 768-dimensional storage.
+
+## TypeScript background processing
+
+Search indexing and account deletion now have shared TypeScript implementations.
+Cloud deployments can use Cloudflare Queues and `SearchIndexWorkflow`; on-premises
+runs `node dist/background-worker.mjs` from the API image against dedicated
+SQS-compatible search and account queues. Video/audio preparation remains in the
+Python media worker.
+
+The PostgreSQL writer uses `@yukiharada1228/langchain-postgres` with a pinned
+transaction client. Provider calls finish before the write transaction. The
+writer rechecks ownership and the exact subtitle snapshot under a row lock,
+replaces all scenes atomically, and rolls back every change on failure.
+
+Cloud indexing retains the existing revision-fenced D1 staging and Vectorize
+publication. Workflows saves source snapshots and exact embedding batches under
+`internal/search-index/` in R2; durable step outputs carry references rather than
+whole transcripts or vectors. Successful jobs delete those intermediate objects.
+Failed jobs retain them for recovery; do not delete them while a workflow is live.
+Exhausted workflows send their original job identity and workflow ID to
+`SEARCH_FAILURES` (the search DLQ), separately from queue-delivery failures.
+Scene-splitting embedding batches are checkpointed separately as well, so long
+subtitles do not require repeating every model call after interruption.
+
+Cloud transport remains gated by `ACCOUNT_JOB_BACKEND` and `SEARCH_JOB_BACKEND`.
+The default is `sqs` during rollout; switching a group to `cloudflare` requires
+its queue binding and verified consumers. Delivery failures stay in the durable
+outbox and never silently fall back to a different transport. The Python media
+worker uses the signed `/internal/worker/jobs/enqueue` endpoint when
+`SEARCH_JOB_BACKEND=cloudflare`, preserving its stable child job identity.

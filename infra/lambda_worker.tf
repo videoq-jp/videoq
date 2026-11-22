@@ -108,6 +108,7 @@ resource "aws_lambda_function" "worker" {
 
   environment {
     variables = merge(local.common_lambda_environment, {
+      WORKER_JOB_GROUP                        = var.cloudflare_background_jobs_enabled ? "media" : ""
       MEDIA_PROCESS_MEMORY_LIMIT_MB           = "2048"
       MEDIA_PROCESS_CPU_TIME_LIMIT_SECONDS    = "300"
       FFMPEG_PROCESS_TIMEOUT_SECONDS          = "600"

@@ -136,3 +136,17 @@ def test_embedding_http_error_retains_status_without_response_body(monkeypatch):
         internal_api.call_internal_api("embeddings/generate", {})
     assert error.value.status == 409
     assert "private" not in str(error.value)
+
+
+def test_internal_enqueue_operation_is_allowlisted(monkeypatch):
+    from unittest.mock import MagicMock
+    from worker_python import internal_api
+    monkeypatch.setattr(internal_api, '_settings', lambda: ('https://api.example.test', 'synthetic-secret-at-least-32-bytes'))
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.read.return_value = b'{"messageId":"stable"}'
+    opener = MagicMock()
+    opener.open.return_value = response
+    monkeypatch.setattr(internal_api, 'build_opener', lambda *_: opener)
+    assert internal_api.call_internal_api('enqueue', {'type':'index_video_transcript','job_id':'stable','payload':{'video_id':1}}) == {'messageId':'stable'}
+    assert opener.open.call_args.args[0].full_url == 'https://api.example.test/internal/worker/jobs/enqueue'

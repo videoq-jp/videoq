@@ -1,0 +1,156 @@
+{
+  "date": "2026-11-22",
+  "status": "implementation and verification in progress; production transport unchanged",
+  "focusedPostgresAndNodeE2E": {
+    "passed": 26,
+    "failed": 0,
+    "realPostgres": true,
+    "realElasticMQ": true,
+    "builtNodeProcess": true,
+    "model": "synthetic OpenAI-compatible server"
+  },
+  "cloudNativeLive": {
+    "date": "2026-11-22",
+    "runtime": "native local workerd Workflows + local D1/R2 + real remote Workers AI and temporary remote Vectorize",
+    "model": "@cf/google/embeddinggemma-2",
+    "workflowStatus": "complete",
+    "elapsedSeconds": 156.33,
+    "videoStatus": "completed",
+    "jobStatus": "completed",
+    "pendingVectorTasks": 0,
+    "scenes": 3,
+    "maintenancePasses": 148,
+    "productionDataChanged": false,
+    "temporaryVectorizeDeleted": true
+  },
+  "terraformMockTests": {
+    "passed": 4,
+    "failed": 0,
+    "productionInfrastructureChanged": false
+  },
+  "limitations": [
+    "Local D1/R2 and a temporary remote Vectorize index were used; no production application data was modified.",
+    "Local workerd HMR interrupted an earlier pending retry; pause/resume recovered the same instance. The reported clean run had no HMR or recovery intervention.",
+    "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark.",
+    "The first streaming probe stalled in a local step past its deadline and completed after pause/resume. A subsequent fresh instance on the same runtime completed without intervention in 1.90 seconds. The local stall cause is not established."
+  ],
+  "remaining": [
+    "Complete production review, rollout, draining and retirement of legacy consumers.",
+    "Remove superseded Python search/account execution paths after cutover."
+  ],
+  "cloudNativeGenerationWithSplittingCheckpoints": {
+    "date": "2026-11-22",
+    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+    "model": "@cf/google/embeddinggemma-2",
+    "workflowStatus": "complete",
+    "elapsedSeconds": 2.39,
+    "jobStatus": "completed",
+    "scenes": [
+      {
+        "count": 3,
+        "dimensions": 768
+      }
+    ],
+    "vectorDelivery": [
+      {
+        "pending": 3
+      }
+    ],
+    "productionDataChanged": false
+  },
+  "workflowRecoveryTests": {
+    "passed": 13,
+    "failed": 0,
+    "scope": "Real D1 migrations and persistence; step simulator injects lost acknowledgements and transient artifact reads"
+  },
+  "workerRuntimeTests": {
+    "passed": 100,
+    "failed": 0,
+    "files": 16
+  },
+  "checks": {
+    "apiLint": true,
+    "apiTypecheck": true,
+    "nodeBuild": true,
+    "workerDryRun": true,
+    "productionWorkerDryRun": true,
+    "helmLint": true,
+    "terraformValidate": true,
+    "terraformApplyExecuted": false
+  },
+  "cloudNativeStreamingSplitting": {
+    "workflowId": "streaming-clean-ab4493e7-5b6e-4e04-88e6-37beebf77a44",
+    "status": "complete",
+    "elapsedSeconds": 1.9042747500000001,
+    "database": [
+      [
+        {
+          "status": "completed",
+          "count": 2
+        }
+      ],
+      [
+        {
+          "dimensions": 768,
+          "count": 3
+        }
+      ]
+    ],
+    "intervention": false,
+    "productionDataChanged": false,
+    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+    "model": "@cf/google/embeddinggemma-2",
+    "scope": "Streaming Otsu splitting, 768-dimensional generation and D1 staging; Vectorize not bound in this run"
+  },
+  "followupChecks": {
+    "typecheck": true,
+    "lint": true,
+    "workflowRecoveryTestsPassed": 13,
+    "focusedKernelEmbeddingsCancellationTestsPassed": 13,
+    "queueProvisioningTestsPassed": 4,
+    "workerRuntimeTestsPassed": 100,
+    "nodeBuild": true
+  },
+  "defaultApiSuiteFinal": {
+    "passed": 3463,
+    "failed": 0,
+    "skipped": 1555,
+    "files": 459,
+    "maxWorkers": 2,
+    "scope": "Final default environment; PostgreSQL-dependent tests skipped without a configured test connection"
+  },
+  "apiSuite": {
+    "passed": 4110,
+    "failed": 0,
+    "skipped": 886,
+    "files": 455,
+    "maxWorkers": 2,
+    "scope": "Earlier complete suite with PostgreSQL test connection configured; final follow-up checks recorded separately"
+  },
+  "finalPostgresNodeAndD1DeletionChecks": {
+    "passed": 39,
+    "failed": 0,
+    "files": 4,
+    "realPostgres": true,
+    "realElasticMQ": true,
+    "builtNodeProcess": true,
+    "model": "synthetic OpenAI-compatible server"
+  },
+  "productionPreflightReconciliationFinding": {
+    "status": "fix prepared; production recovery not yet verified",
+    "pendingSyntheticUpload": 1,
+    "obsoleteReconciliationParametersBefore": 104,
+    "parametersAfter": 5,
+    "documentedD1Limit": 100,
+    "reference": "https://developers.cloudflare.com/d1/platform/limits/",
+    "diagnosis": "Existing synthetic operations-smoke upload has one unattempted vector task; production alarm reports scene-index maintenance failure. Read-only production SQL compilation proves the reconciliation statement exceeds the parameter limit.",
+    "regression": {
+      "obsoleteVectors": 105,
+      "activeIndexPreserved": true,
+      "previousCodeFailed": true,
+      "fixedReconciliationTestsPassed": 2,
+      "otherSyncTestsPassed": 25
+    },
+    "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
+  }
+}
