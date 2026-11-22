@@ -286,5 +286,143 @@
     "sourceSha": "3faf603e55e50df1a63f7f3d83baac3221d89e02",
     "ciRunId": 45075951731,
     "statusAtCapture": "in_progress"
+  },
+  "postFixCitedSmoke": {
+    "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
+    "runId": 45079965423,
+    "conclusion": "success",
+    "codeBuildId": "videoq-db-smoke-prod:9f52dcd4-cb93-404b-a92c-67c453ad339c",
+    "scope": [
+      "fresh upload",
+      "transcription",
+      "native search workflow and vector readiness",
+      "cited answers",
+      "course and unscoped streaming answers",
+      "browser checks",
+      "normal synthetic cleanup"
+    ]
+  },
+  "postFixWorkflowSettlement": {
+    "observedAt": "2026-11-22T22:56:04.959025+00:00",
+    "totalCount": 7,
+    "allComplete": true,
+    "instances": [
+      {
+        "id": "a6345893be75e51b841cd5ebc61356e9242e1fbed9b60320827ed6603778f960",
+        "status": "complete",
+        "created_on": "2026-11-22T22:54:19.969Z",
+        "started_on": "2026-11-22T22:54:22.000Z",
+        "ended_on": "2026-11-22T22:54:25.000Z",
+        "modified_on": "2026-11-22T22:54:25.449Z",
+        "version_id": "d081c294-b4cc-4d65-9bc1-8a043c9851a1",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "b4a3604f01c4d85428fc25935886571acc6b5568471741c0e6b2a397dc9361c5",
+        "status": "complete",
+        "created_on": "2026-11-22T22:52:50.164Z",
+        "started_on": "2026-11-22T22:52:51.000Z",
+        "ended_on": "2026-11-22T22:55:32.000Z",
+        "modified_on": "2026-11-22T22:55:32.698Z",
+        "version_id": "d081c294-b4cc-4d65-9bc1-8a043c9851a1",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "2c0922ed5d62f3f8753987fcaceeae3d8beddff058cfc44c5d267cda3a8f91e2",
+        "status": "complete",
+        "created_on": "2026-11-22T22:48:14.768Z",
+        "started_on": "2026-11-22T22:48:17.000Z",
+        "ended_on": "2026-11-22T22:48:19.000Z",
+        "modified_on": "2026-11-22T22:48:19.947Z",
+        "version_id": "d081c294-b4cc-4d65-9bc1-8a043c9851a1",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "6dd1c1b766883fd293ba97637c86f4ee4f43422391814e8de33413168959557c",
+        "status": "complete",
+        "created_on": "2026-11-22T22:46:39.492Z",
+        "started_on": "2026-11-22T22:46:41.000Z",
+        "ended_on": "2026-11-22T22:48:35.000Z",
+        "modified_on": "2026-11-22T22:48:35.201Z",
+        "version_id": "d081c294-b4cc-4d65-9bc1-8a043c9851a1",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "7f7c4b98622f07601261b53463858507f50663408069a72bb35cad2f1312df26",
+        "status": "complete",
+        "created_on": "2026-11-22T21:49:10.683Z",
+        "started_on": "2026-11-22T21:49:11.000Z",
+        "ended_on": "2026-11-22T21:49:13.000Z",
+        "modified_on": "2026-11-22T21:49:13.377Z",
+        "version_id": "d93434a5-ce68-4040-90b1-1dd0d8c83250",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "2081e501256c90629f497a710f6181f9e9b08a42c970289eae7565aaedd8e6ee",
+        "status": "complete",
+        "created_on": "2026-11-22T21:42:54.926Z",
+        "started_on": "2026-11-22T21:42:55.000Z",
+        "ended_on": "2026-11-22T21:42:57.000Z",
+        "modified_on": "2026-11-22T21:42:57.404Z",
+        "version_id": "d93434a5-ce68-4040-90b1-1dd0d8c83250",
+        "trigger_source": "binding"
+      },
+      {
+        "id": "d30418ca69f5bf275cfd56c4486f0e822b8f5a5b4b90fb784d47f6945961624b",
+        "status": "complete",
+        "created_on": "2026-11-22T21:39:45.703Z",
+        "started_on": "2026-11-22T21:39:48.000Z",
+        "ended_on": "2026-11-22T21:39:51.000Z",
+        "modified_on": "2026-11-22T21:39:51.144Z",
+        "version_id": "d93434a5-ce68-4040-90b1-1dd0d8c83250",
+        "trigger_source": "binding"
+      }
+    ]
+  },
+  "legacyProducerActivity": {
+    "observedAt": "2026-11-22T22:20:56.785937+00:00",
+    "startTime": "2026-11-22T21:35:00Z",
+    "periodSeconds": 60,
+    "queues": {
+      "videoq-worker-search-prod": {
+        "NumberOfMessagesSent": {
+          "reportedDatapoints": 45,
+          "nonzero": [
+            {
+              "timestamp": "2026-11-23T06:38:00+09:00",
+              "sum": 1.0
+            }
+          ]
+        },
+        "NumberOfMessagesReceived": {
+          "reportedDatapoints": 45,
+          "nonzero": [
+            {
+              "timestamp": "2026-11-23T06:38:00+09:00",
+              "sum": 1.0
+            },
+            {
+              "timestamp": "2026-11-23T07:06:00+09:00",
+              "sum": 1.0
+            },
+            {
+              "timestamp": "2026-11-23T07:14:00+09:00",
+              "sum": 1.0
+            }
+          ]
+        }
+      },
+      "videoq-worker-account-prod": {
+        "NumberOfMessagesSent": {
+          "reportedDatapoints": 45,
+          "nonzero": []
+        },
+        "NumberOfMessagesReceived": {
+          "reportedDatapoints": 45,
+          "nonzero": []
+        }
+      }
+    },
+    "scopeLimit": "Reported CloudWatch observations only; missing datapoints are not treated as zero or a guarantee about future sends."
   }
 }
