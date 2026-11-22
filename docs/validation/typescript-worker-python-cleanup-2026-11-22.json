@@ -43,5 +43,11 @@
   },
   "apiTypecheck": true,
   "apiLint": true,
-  "productionChanged": false
+  "productionChanged": false,
+  "onpremQueueDiagnostics": {
+    "realElasticMQ": true,
+    "queuesVerified": 3,
+    "distinctDeadLetterQueues": true,
+    "sharedQueueConfigurationRejected": true
+  }
 }

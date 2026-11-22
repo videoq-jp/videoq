@@ -11,6 +11,24 @@ import boto3
 from botocore.config import Config
 
 
+def verify_queues(client, environment):
+    urls = [environment.get("SQS_MEDIA_QUEUE_URL") or environment["SQS_QUEUE_URL"],
+            environment["SQS_SEARCH_QUEUE_URL"], environment["SQS_ACCOUNT_QUEUE_URL"]]
+    if not all(urls) or len(set(urls)) != 3:
+        raise ValueError("Media, search and account queues must be distinct")
+    dead_letters = []
+    for url in urls:
+        attributes = client.get_queue_attributes(QueueUrl=url, AttributeNames=["All"])["Attributes"]
+        if int(attributes["VisibilityTimeout"]) < 900:
+            raise ValueError("Queue visibility is shorter than the execution lease")
+        policy = json.loads(attributes["RedrivePolicy"])
+        if not policy["deadLetterTargetArn"] or int(policy["maxReceiveCount"]) < 1:
+            raise ValueError("Missing queue dead-letter policy")
+        dead_letters.append(policy["deadLetterTargetArn"])
+    if len(set(dead_letters)) != 3:
+        raise ValueError("Each workload group requires its own dead-letter queue")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ai", action="store_true")
@@ -44,13 +62,10 @@ def main():
         with closing(boto3.client("sqs", endpoint_url="http://queue:9324", region_name=os.environ["AWS_REGION"],
                           aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
                           aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"], config=config)) as client:
-            attributes = client.get_queue_attributes(QueueUrl=os.environ["SQS_QUEUE_URL"], AttributeNames=["All"])["Attributes"]
-            assert int(attributes["VisibilityTimeout"]) >= 900, "visibility timeout"
-            policy = json.loads(attributes["RedrivePolicy"])
-            assert policy["deadLetterTargetArn"] and int(policy["maxReceiveCount"]) >= 1, "DLQ"
+            verify_queues(client, os.environ)
 
     check("S3認証・バケット・ブラウザー用CORS", storage)
-    check("キュー接続・実行リース・デッドレター設定", queue)
+    check("メディア・検索・アカウントのキュー接続・実行リース・デッドレター設定", queue)
     check("API /ready", lambda: urlopen("http://api:8787/ready", timeout=10).close())
     if args.ai:
         for label, endpoint, key, model in (
