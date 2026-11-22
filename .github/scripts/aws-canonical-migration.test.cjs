@@ -83,8 +83,9 @@ test('production configuration and read-only migration support retirement of the
 });
 
 test('canonical native production migration requires active 768 and supports retired 1536',()=>{
- const fs=require('fs'),{parse}=require('../deploy-tools/node_modules/jsonc-parser');
- const config=parse(fs.readFileSync('apps/api/wrangler.jsonc','utf8'));
+ const f=fixture();const config=f.options.readConfig();
+ const p=config.env.production;Object.assign(p.vars,{EMBEDDING_PROVIDER:'workers-ai',EMBEDDING_PROFILE:'embeddinggemma2',EMBEDDING_MODEL:'@cf/google/embeddinggemma-2'});
+ p.vectorize=[{binding:'SCENE_VECTORIZE_768',index_name:'videoq-prod-scenes-embeddinggemma2-768'}];
  assert.equal(migrationTarget(config).backend,'d1');
  config.env.production.vectorize=[];assert.throws(()=>migrationTarget(config),/CONFIGURATION/);
 });
