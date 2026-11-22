@@ -74,8 +74,19 @@ node --test .github/scripts/embedding-migration-metrics.test.cjs
 `production-infra` 承認ゲートを通して4つの Cloudflare キュー（検索・アカウントと各 DLQ）を
 作成する。その後、準備済みの binding を本番 Wrangler 設定へ反映した変更をレビューし、
 Workflows を含む API を配送先 `sqs` で配備する。隔離したデータで登録・再試行・
-途中再開・権限境界を検証してから、新規投入を止めて既存 SQS の可視・処理中・
-遅延メッセージと DLQ を確認する。既存処理が残る間は旧 consumer を撤去しない。
+途中再開・権限境界を検証する。その後、リポジトリ変数
+進行中の CD がないことを確認し、`CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED=true` を設定して承認付き Terraform
+Apply で `cloudflare_background_jobs_routing_enabled=true` を反映する。この段階は
+メディア Lambda の検索ジョブを署名付き API へ渡す変更だけで、旧検索・アカウント
+Lambda とキューは維持する。API 側がまだ `sqs` なら同じ outbox から旧 SQS へ配送する。
+
+次に API の `SEARCH_JOB_BACKEND` と `ACCOUNT_JOB_BACKEND` を `cloudflare` へ
+切り替え、実際の登録・検索・削除を確認する。メディア Lambda の配送先更新から
+更新前の実行が終わる最大タイムアウト（本番では900秒）以上が経過してから、旧 SQS の
+可視・処理中・遅延メッセージと各 DLQ が継続して0件であることを確認する。
+元のメディア用キューと DLQ にも旧混在メッセージが残っていないことを確認する。
+更新前の処理が残る間は旧 consumer を撤去しない。これにより内部 API と保守処理を
+止めずに排出でき、DB 移行用の全トラフィック停止フラグを排出手段として使わない。
 
 切り替え後の確認が完了したら Terraform の
 `cloudflare_background_jobs_enabled=true` で検索・アカウント Lambda とその

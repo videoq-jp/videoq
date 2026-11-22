@@ -152,5 +152,14 @@
       "otherSyncTestsPassed": 25
     },
     "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
+  },
+  "phasedMediaRoutingPreparation": {
+    "status": "prepared; defaults remain false; no production apply",
+    "routingPreservesLegacyConsumers": true,
+    "retirementRequiresRouting": true,
+    "terraformMockTestsPassed": 6,
+    "deploymentPolicyTestsPassed": 45,
+    "terraformValidate": true,
+    "terraformFormat": true
   }
 }
