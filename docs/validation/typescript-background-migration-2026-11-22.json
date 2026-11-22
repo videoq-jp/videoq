@@ -247,5 +247,35 @@
     "lifecycleCompletedAt": "2026-11-22T15:17:11Z",
     "productionCleanupApplied": false,
     "mergePrerequisite": "Verified Cloudflare cutover, old queue drain and retirement of background Lambdas."
+  },
+  "approvedApiRecovery": {
+    "sourceSha": "2361b205dccee8f2e3bb03a0894c404893b11b1e",
+    "ciRun": 45040457020,
+    "artifactRun": 45040624482,
+    "artifactId": 14761028496,
+    "apiSha256": "8af18899daf9a277adeae7951d4eecdec48ddf47726cf7bdd4714f277dd09c26",
+    "approval": "explicit user approval for API-only recovery while retaining failed deployment lock",
+    "liveResourceHandoffCheck": true,
+    "liveStatePreservationCheck": true,
+    "d1MigrationLedger": {
+      "applied": 20,
+      "expected": 20,
+      "match": true
+    },
+    "deployedVersion": "578885b2-56a6-4fe1-bb7a-e7b9d457dab3",
+    "ready": {
+      "status": "ready",
+      "db": "ok"
+    },
+    "transportsRemain": "sqs",
+    "newQueueWorkflowBindingsAdded": false,
+    "schemaChanged": false,
+    "testVideo": {
+      "id": 537,
+      "status": "indexing",
+      "vectorUpsertAcceptedAt": "2026-11-22T16:08:00.251Z",
+      "completed": false
+    },
+    "outstanding": "Drain existing vector task backlog, verify video completion, rerun maintenance deployment/smoke, then restore ordinary CD."
   }
 }
