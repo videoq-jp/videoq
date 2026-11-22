@@ -4,11 +4,67 @@ import { AnswerCostLedger } from "../src/lib/answer-cost-ledger";
 import { createChatModel } from "../src/lib/chat-model";
 import { generateReply, streamReply } from "../src/lib/llm";
 import type { Bindings } from "../src/types/bindings";
+import { createSceneSearchTool } from "../src/tools/scene-search";
+import { answerResponseFormat } from "../src/lib/structured-answer";
 
 const answer = { segments: [{ text: "画像の回答", sourceIds: [] }] };
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Workers AI native transport", () => {
+  const searchTool = { type: "function" as const, function: { name: "search_scenes", parameters: {
+    type: "object", properties: { query: { type: "string" }, video_ids: {
+      anyOf: [{ type: "array", items: { type: "integer" } }, { type: "null" }],
+    } }, required: ["query", "video_ids"], additionalProperties: false,
+  } } };
+  const toolCompletion = (args: string, name = "search_scenes") => ({
+    id: "native-tool", model: WORKERS_AI_LLM_MODEL, object: "chat.completion", created: 0,
+    choices: [{ index: 0, finish_reason: "tool_calls", message: { role: "assistant", content: null,
+      tool_calls: [{ id: "call-search", type: "function", function: { name, arguments: args } }],
+    } }], usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+  });
+  it.each([false, true])("repairs the observed null before LangChain validates and executes search (stream=%s)", async streaming => {
+    const run = vi.fn(async () => Response.json(toolCompletion('{"query":"nullについて SIFT","video_ids":"null"}')));
+    const ledger = new AnswerCostLedger();
+    const model = createChatModel({ AI: { run }, LLM_MODEL: WORKERS_AI_LLM_MODEL,
+      LLM_SEPARATE_TOOL_SCHEMA: "true" } as Bindings, { timeoutMs: 1000, costLedger: ledger });
+    const options = { tools: [searchTool], response_format: answerResponseFormat };
+    const calls = [];
+    if (streaming) {
+      for await (const chunk of await model.stream("SIFTとは", options)) calls.push(...(chunk.tool_calls ?? []));
+    } else calls.push(...((await model.invoke("SIFTとは", options)).tool_calls ?? []));
+    expect(calls).toHaveLength(1);
+    const search = vi.fn(async () => []);
+    const definition = createSceneSearchTool({ search, close: async () => undefined }, [42]);
+    const args = definition.schema.parse(calls[0].args);
+    await definition.invoke(args, { signal: new AbortController().signal });
+    expect(search).toHaveBeenCalledWith("nullについて SIFT", undefined, expect.any(AbortSignal));
+    expect(ledger.calls).toMatchObject([{ status: "completed", usage: { total_tokens: 18 } }]);
+  });
+  it.each([
+    ['{"query":"null","video_ids":null}', "search_scenes"],
+    ['{"query":"null","video_ids":[42]}', "search_scenes"],
+    ['{"query":"null","video_ids":"NULL"}', "search_scenes"],
+    ['{"query":"null","video_ids":"[]"}', "search_scenes"],
+    ['{"query":"null","video_ids":"null"}', "other_tool"],
+    ['not JSON', "search_scenes"],
+  ])("preserves unrelated or invalid arguments: %s (%s)", async (args, name) => {
+    const completion = toolCompletion(args, name);
+    const run = vi.fn(async () => Response.json(completion));
+    const response = await workersAiFetch({ run })("https://workers-ai.internal/v1/chat/completions", {
+      method: "POST", body: JSON.stringify({ model: WORKERS_AI_LLM_MODEL, messages: [], tools: [searchTool] }),
+    });
+    expect(await response.json()).toEqual(completion);
+  });
+  it.each([false, true])("passes provider errors and streaming bodies through without reading (stream=%s)", async streaming => {
+    const response = new Response(streaming ? "data: [DONE]\n\n" : '{"error":"unavailable"}', {
+      status: streaming ? 200 : 503,
+    });
+    const run = vi.fn(async () => response);
+    expect(await workersAiFetch({ run })("https://workers-ai.internal/v1/chat/completions", {
+      method: "POST", body: JSON.stringify({ model: WORKERS_AI_LLM_MODEL, messages: [], tools: [searchTool], stream: streaming }),
+    })).toBe(response);
+    expect(response.bodyUsed).toBe(false);
+  });
   it("shares the binding between answers and summaries without external credentials", async () => {
     const external = vi.fn();
     vi.stubGlobal("fetch", external);

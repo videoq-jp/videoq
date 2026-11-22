@@ -1,4 +1,26 @@
+import type OpenAI from "openai";
+
 export const WORKERS_AI_LLM_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+
+/** Workers AI's Gemma auto-tool parser turns bare null into the string "null".
+ * Repair only the known nullable scene-search field, before SDK/LangChain
+ * validation. Never coerce query text, arbitrary tools or other invalid values.
+ * https://github.com/vllm-project/vllm/pull/39679
+ */
+function repairSceneSearchNull(completion: OpenAI.Chat.Completions.ChatCompletion): void {
+  for (const choice of completion.choices ?? []) {
+    for (const call of choice.message?.tool_calls ?? []) {
+      if (call.type !== "function" || call.function.name !== "search_scenes") continue;
+      let args: unknown;
+      try { args = JSON.parse(call.function.arguments); }
+      catch { continue; } // Leave malformed arguments to the existing validator.
+      if (args && typeof args === "object" && !Array.isArray(args) &&
+          "video_ids" in args && args.video_ids === "null") {
+        call.function.arguments = JSON.stringify({ ...args, video_ids: null });
+      }
+    }
+  }
+}
 
 /** Preserve the SDK's OpenAI protocol while sending inference through a binding. */
 export function workersAiFetch(binding: Pick<Ai, "run">): typeof fetch {
@@ -13,9 +35,19 @@ export function workersAiFetch(binding: Pick<Ai, "run">): typeof fetch {
     if (body.model !== WORKERS_AI_LLM_MODEL || !Array.isArray(body.messages)) {
       return Response.json({ error: { message: "Unsupported Workers AI model or messages" } }, { status: 400 });
     }
-    return binding.run(WORKERS_AI_LLM_MODEL, body, {
+    const response = await binding.run(WORKERS_AI_LLM_MODEL, body, {
       returnRawResponse: true,
       signal: request.signal,
     });
+    // Production tool decisions are non-streaming (LLM_SEPARATE_TOOL_SCHEMA).
+    // Answer/vision streams and provider failures remain untouched and unbuffered.
+    if (!response.ok || body.stream || !body.tools?.some(tool =>
+      tool.type === "function" && tool.function.name === "search_scenes")) return response;
+    const completion = await response.json<OpenAI.Chat.Completions.ChatCompletion>();
+    repairSceneSearchNull(completion);
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    headers.delete("content-encoding");
+    return Response.json(completion, { status: response.status, statusText: response.statusText, headers });
   };
 }
