@@ -8,6 +8,9 @@ import {
   LlmProviderError,
   resolveLlmConnection,
   providerModel,
+  llmMaxTokens,
+  llmModelKwargs,
+  llmReasoningEffort,
 } from "./openai";
 import type { Bindings } from "../types/bindings";
 
@@ -33,6 +36,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
   costLedger?: AnswerCostLedger;
   purpose: "answer_model" | "conversation_summary" = "answer_model";
   separateToolSchema = false;
+  nativeWorkersAi = false;
   preserveToolReasoning = false;
   // Scoped to this answer's model instance. LangChain's Chat Completions
   // converter drops provider reasoning fields when replaying tool messages.
@@ -94,12 +98,25 @@ class AnswerChatModel extends ChatOpenAICompletions {
         const remember = (ids: string[], reasoning: Record<string, string>) => {
           if (this.preserveToolReasoning) for (const id of ids) this.toolReasoning.set(id, { ...reasoning });
         };
+        const nativeWorkersAi = this.nativeWorkersAi;
         return (async function* () {
           let usage: unknown;
           const ids: string[] = [];
           const reasoning: Record<string, string> = {};
           try {
-            for await (const chunk of chunks) {
+            for await (const received of chunks) {
+              let chunk = received;
+              if (nativeWorkersAi) {
+                // Native binding streams end with a usage envelope outside the
+                // OpenAI choices schema. Earlier usage fields are per-delta,
+                // not totals; only the final aggregate belongs in the ledger.
+                if (!received.choices) {
+                  if (!received.usage || (received as typeof received & { response?: string }).response !== "") {
+                    throw new LlmProviderError("Invalid Workers AI stream envelope.");
+                  }
+                  chunk = { ...received, choices: [] };
+                } else chunk = { ...received, usage: undefined };
+              }
               // Core's native completions events currently omit refusal deltas.
               // Reject at the boundary; do not reimplement message conversion.
               if (chunk.choices.some(choice => choice.delta?.refusal)) {
@@ -151,24 +168,25 @@ export function createChatModel(
   env: Bindings,
   opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "conversation_summary"; callbacks?: Callbacks },
 ): ChatOpenAICompletions {
-  const { apiKey, baseURL } = resolveLlmConnection(env);
+  const { apiKey, baseURL, fetch: inferenceFetch } = resolveLlmConnection(env);
   const model = providerModel(env.LLM_MODEL || DEFAULT_LLM_MODEL, baseURL);
   // useResponsesApi: false でも ChatOpenAI はモデル名で /responses を選ぶ。
   // 互換サーバーでも /chat/completions を使うため、専用クラスで固定する。
-  const reasoningEffort = env.LLM_REASONING_EFFORT || (["gpt-6-luna", "openai/gpt-6-luna"].includes(model) ? "none" : undefined);
+  const reasoningEffort = llmReasoningEffort(env, model);
   const chatModel = new AnswerChatModel({
     model,
     apiKey,
-    configuration: { baseURL },
+    configuration: { baseURL, fetch: inferenceFetch },
     temperature: 0,
     reasoning: reasoningEffort ? { effort: reasoningEffort } : undefined,
     // Send the field explicitly for OpenRouter slugs and custom compatible aliases.
-    modelKwargs: reasoningEffort ? { reasoning_effort: reasoningEffort } : undefined,
-    maxTokens: opts.maxTokens,
+    modelKwargs: { ...llmModelKwargs(model), ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}) },
+    maxTokens: llmMaxTokens(env, opts.maxTokens),
     timeout: opts.timeoutMs,
     maxRetries: MAX_RETRIES,
     callbacks: opts.callbacks,
   });
+  chatModel.nativeWorkersAi = baseURL === "https://workers-ai.internal/v1";
   chatModel.costLedger = opts.costLedger;
   chatModel.purpose = opts.purpose ?? "answer_model";
   chatModel.separateToolSchema = env.LLM_SEPARATE_TOOL_SCHEMA === "true";

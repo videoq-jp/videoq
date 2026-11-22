@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-22",
+  "worker": "videoq-api",
+  "accountId": "12daec56fdba43f677f2766ee26a5a39",
+  "versionId": "bf85aca3-5de1-4836-9baf-f6eeea89a761",
+  "trafficPercent": 100,
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "transport": "native AI binding",
+  "changedBindings": [
+    "AI",
+    "LLM_MODEL",
+    "LLM_MAX_TOKENS",
+    "LLM_SEPARATE_TOOL_SCHEMA",
+    "LLM_PRESERVE_TOOL_REASONING"
+  ],
+  "otherBindingsPreserved": true,
+  "health": {
+    "status": 200,
+    "production": "ok"
+  },
+  "ready": {
+    "status": 200,
+    "database": "ok"
+  },
+  "syntheticImageNativeRagTests": {
+    "normal": "passed",
+    "streaming": "passed"
+  },
+  "productionUserVideoInferenceTested": false
+}

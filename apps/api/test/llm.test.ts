@@ -1,6 +1,8 @@
 import { requestBodyText } from "./helpers/request-body";
 import { embedding as testEmbedding } from "./helpers/embedding";
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { createChatModel } from "../src/lib/chat-model";
+import { AnswerCostLedger } from "../src/lib/answer-cost-ledger";
 import { generateReply, streamReply, LLM_STREAM_TIMEOUT_MS, llmTimeoutMs } from "../src/lib/llm";
 import { stalledChatResponse } from "./helpers/stalled-chat-response";
 import { embedQuery } from "../src/lib/embeddings";
@@ -43,6 +45,48 @@ const frame = (content: string, finish_reason: string | null = null) => `data: $
 const frames = () => [frame(JSON.stringify(modelAnswer)), frame("", "stop"), "data: [DONE]\n\n"];
 
 describe("native structured LLM output", () => {
+  it("shares Workers AI between answers and summaries while leaving embeddings unchanged", async () => {
+    const env = { ...ENV, LLM_BASE_URL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1",
+      LLM_API_KEY: "workers-token", LLM_MODEL: "@cf/google/gemma-4-26b-a4b-it", LLM_REASONING_EFFORT: "none" as const };
+    const ledger = new AnswerCostLedger();
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      const body = JSON.parse(requestBodyText(init.body));
+      if (String(url).endsWith("/embeddings")) {
+        expect(String(url)).toBe("https://openai.test/v1/embeddings");
+        expect(new Headers(init.headers).get("authorization")).toBe("Bearer sk-test");
+        return jsonResponse({ data: [{ index: 0, embedding: testEmbedding(1) }] });
+      }
+      expect(String(url)).toBe(`${env.LLM_BASE_URL}/chat/completions`);
+      expect(new Headers(init.headers).get("authorization")).toBe("Bearer workers-token");
+      expect(body).toMatchObject({ model: env.LLM_MODEL, max_tokens: 4096, chat_template_kwargs: { enable_thinking: false } });
+      expect(body).not.toHaveProperty("reasoning_effort");
+      const usage = { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 };
+      return body.stream ? sseResponse([...frames().slice(0, -1),
+        `data: ${JSON.stringify({ choices: [], usage })}\n\n`, "data: [DONE]\n\n"])
+        : jsonResponse({ ...completion(), usage });
+    });
+    expect(await generateReply(env, "S", "Q", ledger)).toEqual(modelAnswer);
+    const chunks = [];
+    for await (const chunk of streamReply(env, "S", "Q", undefined, ledger)) chunks.push(chunk);
+    expect(chunks.at(-1)).toEqual({ answer: modelAnswer });
+    await createChatModel(env, { timeoutMs: 1000, purpose: "conversation_summary", costLedger: ledger }).invoke("Summarize");
+    expect(ledger.calls).toHaveLength(3);
+    for (const call of ledger.calls) expect(call).toMatchObject({ model: env.LLM_MODEL,
+      status: "completed", usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } });
+    expect(ledger.calls[2].kind).toBe("conversation_summary");
+    await embedQuery(env, "Q");
+  });
+  it.each(["0", "1023", "32769", "NaN", "1.5"])("rejects invalid shared token budget %s", async value => {
+    await expect(generateReply({ ...ENV, LLM_MAX_TOKENS: value }, "S", "Q")).rejects.toThrow(LlmConfigurationError);
+  });
+  it("requires dedicated Workers AI credentials instead of forwarding legacy keys", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(generateReply({ ...ENV, LLM_BASE_URL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1",
+      LLM_MODEL: "@cf/google/gemma-4-26b-a4b-it" }, "S", "Q")).rejects.toThrow(LlmConfigurationError);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("falls back endpoint and credentials independently, and supports an LLM-only key", () => {
     expect(resolveLlmConnection({ LLM_API_KEY: "router", LLM_BASE_URL: "https://openrouter.ai/api/v1/" }))
       .toEqual({ apiKey: "router", baseURL: "https://openrouter.ai/api/v1" });

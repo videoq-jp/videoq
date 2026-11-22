@@ -11,12 +11,13 @@ test('production bindings survive while build hooks and arbitrary entrypoints do
     containers: [{ image: 'attacker' }], compatibility_date: '2026-08-20',
     migrations: [{ tag: 'v1', new_sqlite_classes: ['Example'] }],
     env: { production: { name: 'videoq-api', vars: { ENVIRONMENT: 'production' },
-      hyperdrive: [{ binding: 'HYPERDRIVE', id: 'trusted' }], build: { command: 'evil' } } },
+      ai: { binding: 'AI' }, hyperdrive: [{ binding: 'HYPERDRIVE', id: 'trusted' }], build: { command: 'evil' } } },
   }, 'api', '/artifacts');
   assert.equal(result.main, '/artifacts/api/worker/index.js');
   assert.equal(result.no_bundle, true);
   assert.equal(result.vars.ENVIRONMENT, 'production');
   assert.equal(result.hyperdrive[0].id, 'trusted');
+  assert.deepEqual(result.ai, { binding: 'AI' });
   assert.equal(result.migrations[0].tag, 'v1');
   assert.equal(result.build, undefined);
   assert.equal(result.containers, undefined);
@@ -61,13 +62,13 @@ test('D1 cutover upload carries the exact production database and both vector in
 });
 
 test('omitted production bindings do not inherit development data stores or variables', () => {
-  const original = { name: 'videoq-api-dev', vars: { ENVIRONMENT: 'development' },
+  const original = { name: 'videoq-api-dev', ai: { binding: 'DEV_AI' }, vars: { ENVIRONMENT: 'development' },
     d1_databases: [{ binding: 'DB', database_id: 'development' }], vectorize: [{ binding: 'SCENE_VECTORIZE_1536', index_name: 'development' }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: 'development' }], r2_buckets: [{ binding: 'VIDEO_BUCKET', bucket_name: 'development' }],
     durable_objects: { bindings: [{ name: 'TASK_SCHEDULER', class_name: 'DevOnly' }] },
     env: { production: { name: 'videoq-api' } } };
   const result = deploymentConfig(original, 'api', '/artifacts');
-  for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects']) assert.equal(result[key], undefined);
+  for (const key of ['vars', 'd1_databases', 'vectorize', 'hyperdrive', 'r2_buckets', 'durable_objects', 'ai']) assert.equal(result[key], undefined);
 });
 
 test('the production API exposes the signed worker persistence path through its narrowly scoped route', () => {
