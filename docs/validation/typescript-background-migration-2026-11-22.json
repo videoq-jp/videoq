@@ -164,7 +164,7 @@
   },
   "backgroundMaintenancePreparation": {
     "status": "draft; no production control changes",
-    "deploymentOperationsTestsPassed": 773,
+    "deploymentOperationsTestsPassed": 779,
     "operatorBundleAndTriggerTestsPassed": 3,
     "schemaMigrationFenceIntegrated": true,
     "fenceChecks": [
@@ -178,6 +178,9 @@
       "durable owned pause/restore executor and recovery",
       "controlled token read permissions verification",
       "live isolated integration verification before production routing"
-    ]
+    ],
+    "pauseRestoreCoordinatorTestsPassed": 6,
+    "durableStoreContractVerified": true,
+    "productionStoreAndOwnershipIntegrationVerified": false
   }
 }
