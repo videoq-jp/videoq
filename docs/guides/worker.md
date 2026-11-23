@@ -1,35 +1,41 @@
 ---
 title: Change asynchronous video processing
-description: Job entry points, pipeline implementation, retries, and local verification.
+description: Media workers, TypeScript background jobs, retries, and local verification.
 ---
 
 # Change asynchronous video processing
 
-Transcription and indexing take time, so the Python worker runs them without blocking API responses. The API submits a job requesting that a video be processed, and the worker consumes it from the queue.
+Python handles media processing: transcription, visual preparation, chunks, and finalizers. Search indexing and account deletion use shared TypeScript processors in `apps/api`. API operations save a durable delivery intent before dispatching a job.
 
 ## Processing entry points
 
 | What you want to change | Main location |
 |---|---|
-| Job types and payloads | `apps/worker/worker_python/contracts.py` |
-| Mapping job names to functions | `worker_python/tasks/registry.py` |
-| State updates and dispatching the next job | `worker_python/tasks/` |
-| Transcription and search implementation | `worker_python/pipeline/` |
-| Duplicate execution control | `worker_python/job_execution.py` |
-| AWS Lambda entry point | `worker_python/lambda_handler.py` |
+| Media job types and dispatch | `apps/worker/worker_python/contracts.py`, `tasks/registry.py` |
+| Media lifecycle and provider adapters | `apps/worker/worker_python/use_cases/`, `tasks/`, `pipeline/` |
+| Media execution leases and Lambda entry point | `apps/worker/worker_python/job_execution.py`, `lambda_handler.py` |
+| Search and account job validation | `apps/api/src/application/background-job.ts` |
+| Shared TypeScript background execution | `apps/api/src/integrations/background-jobs/execute.ts` |
+| Cloudflare transport and consumers | `apps/api/src/integrations/background-jobs/delivery.ts`, `queue.ts` |
+| Durable cloud search indexing | `apps/api/src/workflows/search-index.ts` |
+| On-prem background worker | `apps/api/src/runtime/background-worker.ts` |
+| PostgreSQL vector replacement | `apps/api/src/persistence/postgres/transcript-index-writer.ts` |
 
-All of these files are under `apps/worker/`. Also check the API's message format in [job-message.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/job-message.ts).
+The common message format is defined in [job-message.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/job-message.ts).
 
 ## Hosted execution groups
 
-Hosted deployments isolate media, search, and account deletion into separate SQS
-queues and Lambda functions, each with a DLQ, concurrency limit and alarms.
-The original queue/function remains the media consumer and drains older jobs.
-API and Python producers choose the queue by job type using `SQS_MEDIA_QUEUE_URL`,
-`SQS_SEARCH_QUEUE_URL`, and `SQS_ACCOUNT_QUEUE_URL`; unset overrides fall back to
-`SQS_QUEUE_URL` for local/on-prem installations. Code, image and IAM identity are
-shared. See the worker README for settings and the infrastructure deployment
-guide for rollout order.
+The media Lambda consumes its existing SQS queue and DLQ. Media persists search indexing intent through the signed internal API; Python does not compute search embeddings or write search vectors inline.
+
+Cloudflare Queues deliver account jobs to the API Worker's queue handler and search jobs to `SearchIndexWorkflow`. The workflow uses Workers AI, D1, R2 checkpoints, and Vectorize. The queue consumer acknowledges search delivery after a durable workflow instance exists. Queue delivery and workflow completion are separate events.
+
+Keep legacy search/account Lambda consumers and their queues until the production transport cutover, maximum old execution window, and visible/in-flight/delayed message and DLQ drain checks have passed. See the [worker README](https://github.com/videoq-jp/videoq/blob/main/apps/worker/README.md) and [deployment instructions](https://github.com/videoq-jp/videoq/blob/main/infra/DEPLOY.md) for rollout gates.
+
+## On-prem execution groups
+
+The Node `background-worker` service consumes dedicated search and account SQS-compatible queues. The Python `worker` service consumes media jobs. Compose includes both; Helm requires the Node worker and separate queue URLs.
+
+Search uses PostgreSQL with `@yukiharada1228/langchain-postgres`. Embeddings use the configured OpenAI-compatible endpoint through `@langchain/openai`. Local inference services can provide that endpoint without public egress. Cloudflare storage bindings are not required on-prem.
 
 ## Message format
 
@@ -41,58 +47,36 @@ guide for rollout order.
 }
 ```
 
-This illustrates the format. Normally, API operations create jobs; you do not need to submit queue messages manually.
+Normally, API operations create jobs; you do not need to submit queue messages manually.
 
-For an uploaded file, `transcribe_video` creates an interval plan, `transcribe_video_chunk` saves each interval, and `finish_video_transcription` joins them, then starts `index_video_transcript` and the visual-cache jobs (`build_video_visual_chunk` → `finish_video_visuals`). YouTube imports have no interval jobs. See [video states](../design/state-diagram.md).
-
-Each task checks its entry status, and conditional database updates recheck the
-stored status before changing it. Transcription starts for pending/error videos,
-resumes processing videos, hands indexing videos to the index task, and skips
-completed duplicates. Uploading or unknown statuses are rejected before writes
-or provider calls.
+For an uploaded file, `transcribe_video` creates an interval plan, `transcribe_video_chunk` saves each interval, and `finish_video_transcription` joins them. Indexing is then handed to TypeScript, while visual-cache jobs remain in Python. YouTube imports have no interval jobs. See [video states](../design/state-diagram.md).
 
 ## Design for retries
 
-SQS may deliver the same message more than once. The worker uses execution records keyed by `job_id` and time-limited leases to avoid repeating completed work. Follow-up job IDs are also derived from the parent job.
+Queues can deliver a message more than once. Both runtimes use `job_executions`, stable job IDs, and time-limited leases. Completed jobs are skipped. Every mutation must still preserve its own revision or ownership fence: a lease does not make arbitrary provider operations execute exactly once.
 
-When adding processing, check whether retrying after a partial failure could duplicate data or downstream jobs. This property is called **idempotency**. Swallowing an exception can prevent retries and leave a job in an intermediate state.
+Cloud search checkpoints durable steps and stores large subtitles and vector artifacts in R2. Vector publication and readiness are separate; completing dispatch does not mean the video is searchable yet. Account deletion rechecks its live job lease, permanent user ban, and matching outbox intent during cleanup.
 
-Tasks return no result payload. The dispatcher records successful execution after
-the task returns; exceptions trigger the existing retry handling. With SQS configured, full reindexing dispatches at most 25 video IDs per job and
-enqueues a continuation for the next page. Every nonempty page checks embedding
-storage before sending any messages; a failed preflight leaves the parent retryable.
-Each video reindexes and retries
-independently; dispatcher success confirms delivery, not completion of all videos.
-Without SQS, the local helper runs inline and raises if any video fails.
+Full reindexing dispatches at most 25 video IDs per job and persists a continuation for the next page. Each video completes and retries independently. Dispatcher success confirms delivery, not completion of all child jobs.
 
 ## Database transaction boundaries
 
-Use `with db_connection() as conn` for a database unit of work. Normal exit commits,
-an exception rolls back, and the connection is closed even if committing fails.
-Keep AI provider calls outside this block so they do not hold a database connection
-or transaction open. Helpers receiving a connection execute SQL within the
-caller's transaction; the caller owns when it commits.
+For Python media operations on PostgreSQL, use `with db_connection() as conn`. Normal exit commits, an exception rolls back, and the connection is closed even if committing fails. Keep provider calls outside the transaction.
 
-Explicit intermediate commits remain necessary when a connection serves several
-transactions. Account deletion commits each completed step and uses a separate
-transaction per video, allowing retries after a storage failure without losing
-the remaining cleanup work.
+TypeScript PostgreSQL indexing replaces a video's vectors atomically after validating the transcript snapshot and storage dimensions. Its `PGVectorStore` engine stays on the transaction's pinned client. D1 indexing stages an immutable scene revision, publishes it conditionally, and waits for Vectorize readiness. Preserve these boundaries when changing either adapter.
 
 ## Trace processing locally
 
-Restart a running worker after editing Python code so it reloads the changes. Rebuild the image if dependencies changed.
+Restart the affected service after changing its runtime code. Rebuild the image if dependencies changed.
 
 ```bash
-docker compose restart worker
+docker compose restart worker background-worker
+docker compose logs --tail=100 worker background-worker
+docker compose logs -f worker background-worker
 ```
 
-```bash
-docker compose logs --tail=100 worker
-docker compose logs -f worker
-```
+Upload a short video through the UI and follow its video ID in the logs. `Ctrl+C` stops log streaming but leaves the services running. Check the configured inference endpoint when investigating transcription or embedding failures.
 
-Upload a short video through the UI and follow its video ID in the logs. `Ctrl+C` stops log streaming but leaves the worker running. Transcription and embeddings call the configured external APIs.
-
-See [tests and verification commands](testing.md) for the Python test environment. Connection and model settings are documented in the [worker README](https://github.com/videoq-jp/videoq/blob/main/apps/worker/README.md).
+See [tests and verification commands](testing.md) for API, worker, and on-prem verification. Connection and model settings are documented in the [worker README](https://github.com/videoq-jp/videoq/blob/main/apps/worker/README.md).
 
 **Related:** [Job delivery and recovery](../architecture/flowchart.md).
