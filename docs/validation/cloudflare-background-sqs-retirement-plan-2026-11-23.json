@@ -1,0 +1,129 @@
+{
+  "preparedAt": "2026-11-23T03:48:27.827974+00:00",
+  "sourceSha": "415c066a8ba0c6b8e908df591a6570c35f63afa8",
+  "planSha256": "d5e3ced26be85d3c874f5f289b3535d03c89c7d67631a2397af6ebd6b734aa6a",
+  "added": 0,
+  "changed": 2,
+  "destroyed": 14,
+  "changes": [
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_dlq_depth[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_dlq_depth[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_queue_depth[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_queue_depth[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_queue_waiting[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_queue_waiting[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_iam_role_policy.worker",
+      "actions": [
+        "update"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.worker",
+      "actions": [
+        "update"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue.group[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue.group[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue.group_dlq[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue.group_dlq[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue_policy.group_require_tls[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue_policy.group_require_tls[\"account_dlq\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue_policy.group_require_tls[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_sqs_queue_policy.group_require_tls[\"search_dlq\"]",
+      "actions": [
+        "delete"
+      ]
+    }
+  ],
+  "mediaEnvironmentChangedKeys": [
+    "SQS_ACCOUNT_QUEUE_URL",
+    "SQS_SEARCH_QUEUE_URL"
+  ],
+  "mediaEnvironmentAfter": "Both legacy queue URLs empty; all other values unchanged",
+  "workerIamPolicyChange": "Remove only the two retired search/account SQS ARNs; retain media SQS and all other statements",
+  "iamJsonResolvedAtApply": true,
+  "iamStatementInputsInspectedAndKnown": true,
+  "repositoryVariableChange": {
+    "name": "RETIRE_BACKGROUND_QUEUES",
+    "value": "true",
+    "applied": false
+  },
+  "mediaQueueAndDlqRetained": true,
+  "mediaCodeImageAndRoleIdentityRetained": true,
+  "lambdaLogsRetained": true,
+  "cloudflareResourcesRetained": true,
+  "manualApprovalGranted": false,
+  "applied": false,
+  "remainingGates": [
+    "Manual infrastructure approval",
+    "Fresh main, identical scope, idle deployment/maintenance and all legacy queue drain checks immediately before apply"
+  ]
+}
