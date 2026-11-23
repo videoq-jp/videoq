@@ -1,0 +1,250 @@
+{
+  "sourceSha": "415c066a8ba0c6b8e908df591a6570c35f63afa8",
+  "preparedAt": "2026-11-23T03:45:15.279180+00:00",
+  "planSha256": "31df27776688c6a4d01c12da5f17462b5812d91cf7220de7828ef5ae6b302589",
+  "changes": [
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_duration[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_duration[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_errors[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_errors[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_throttles[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.group_throttles[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_event_source_mapping.group[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_event_source_mapping.group[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.group[\"account\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.group[\"search\"]",
+      "actions": [
+        "delete"
+      ]
+    },
+    {
+      "address": "aws_lambda_function.worker",
+      "actions": [
+        "update"
+      ],
+      "changedKeys": [
+        "environment"
+      ],
+      "environmentChangedKeys": [
+        "WORKER_JOB_GROUP"
+      ],
+      "workerJobGroupBefore": "",
+      "workerJobGroupAfter": "media"
+    }
+  ],
+  "added": 0,
+  "changed": 1,
+  "destroyed": 12,
+  "retainedMediaCodeOrImageChanged": false,
+  "sqsQueuesAndDlqsRetained": true,
+  "sqsAlarmsRetained": true,
+  "logGroupsRetained": true,
+  "manualApprovalGranted": true,
+  "applied": true,
+  "remainingGates": [],
+  "supersedesEarlierTargetOnlyPreview": "Final scope includes the eight dependent Lambda alarms, which were omitted from the earlier targeted preview.",
+  "readyForApply": false,
+  "readyForManualApproval": true,
+  "drainGate": {
+    "observedAt": "2026-11-23T03:45:42.015122+00:00",
+    "latestObservation": "2026-11-23T03:45:37.985585+00:00",
+    "latestAgeSeconds": 4.03,
+    "latestAllEmpty": true,
+    "sustainedEmptySeconds": 61.42,
+    "emptySamples": 3,
+    "requiredEmptySamples": 3,
+    "requiredEmptyObservationSpanSeconds": 60,
+    "oldConfigGraceStartedAt": "2026-11-22T21:35:18.452000+00:00",
+    "oldConfigGraceElapsedSeconds": 22223.56,
+    "requiredOldConfigGraceSeconds": 900,
+    "oldConfigGraceSatisfied": true,
+    "drainGateSatisfied": true,
+    "scope": "Legacy media/mixed queue, search/account queues and all three DLQs; all visible/in-flight/delayed counts; 30-second samples."
+  },
+  "idlePreflight": {
+    "verifiedAt": "2026-11-23T03:45:36.442818+00:00",
+    "sourceSha": "415c066a8ba0c6b8e908df591a6570c35f63afa8",
+    "globalMaintenanceLockAbsent": true,
+    "productionDeploymentsIdle": true,
+    "projects": {
+      "videoq-db-deploy-prod": {
+        "buildsChecked": 50,
+        "activeBuilds": 0
+      },
+      "videoq-db-migration-prod": {
+        "buildsChecked": 71,
+        "activeBuilds": 0
+      },
+      "videoq-db-smoke-prod": {
+        "buildsChecked": 234,
+        "activeBuilds": 0
+      }
+    }
+  },
+  "repositoryVariablePersisted": true,
+  "approvalReceivedAt": "2026-11-23T03:45:52.964407+00:00",
+  "appliedAt": "2026-11-23T03:47:02.146353+00:00",
+  "readback": {
+    "verifiedAt": "2026-11-23T03:46:43.101590+00:00",
+    "changes": [
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_duration[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_duration[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_errors[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_errors[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_job_failures[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_throttles[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_cloudwatch_metric_alarm.group_throttles[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_lambda_event_source_mapping.group[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_lambda_event_source_mapping.group[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_lambda_function.group[\"account\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_lambda_function.group[\"search\"]",
+        "absent": true
+      },
+      {
+        "address": "aws_lambda_function.worker",
+        "state": "Active",
+        "lastUpdateStatus": "Successful",
+        "codeAndImageAndRoleUnchanged": true,
+        "environmentMatchesPlan": true
+      }
+    ],
+    "retained": [
+      {
+        "type": "aws_cloudwatch_log_group",
+        "name": "/aws/lambda/videoq-worker-account-prod"
+      },
+      {
+        "type": "aws_cloudwatch_log_group",
+        "name": "/aws/lambda/videoq-worker-search-prod"
+      },
+      {
+        "type": "aws_cloudwatch_log_group",
+        "name": "/aws/lambda/videoq-worker-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-dlq-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-account-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-search-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-account-dlq-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-search-dlq-prod"
+      },
+      {
+        "type": "aws_sqs_queue",
+        "name": "videoq-worker-prod"
+      }
+    ],
+    "repositoryVariable": "true"
+  },
+  "sqsAlarmsRetainedReadback": true,
+  "repositoryVariableChange": {
+    "name": "CLOUDFLARE_BACKGROUND_JOBS_ENABLED",
+    "value": "true",
+    "applied": true
+  }
+}

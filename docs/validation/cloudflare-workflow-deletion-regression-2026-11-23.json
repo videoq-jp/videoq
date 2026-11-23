@@ -1,0 +1,80 @@
+{
+  "sourceSha": "49ee9b527deae649ed696775e7606140f6aa834d",
+  "cdRunId": 45079205140,
+  "startedAt": "2026-11-22T22:46:08.871Z",
+  "updatedAt": "2026-11-22T22:48:41.506Z",
+  "videoId": 549,
+  "workflowId": "6dd1c1b766883fd293ba97637c86f4ee4f43422391814e8de33413168959557c",
+  "message": {
+    "type": "index_video_transcript",
+    "job_id": "c3a677ab-4132-4eb5-9b4d-4c823f1d3e9f",
+    "payload": {
+      "video_id": 549
+    }
+  },
+  "pauseRequestedAt": "2026-11-22T22:46:49.945Z",
+  "resumeRequestedAt": "2026-11-22T22:48:24.621Z",
+  "resumeAcceptedAt": "2026-11-22T22:48:25.028Z",
+  "deletedWhileWorkflowPaused": true,
+  "job": {
+    "status": "completed",
+    "attempts": 1,
+    "last_error": ""
+  },
+  "workflowStatus": "complete",
+  "artifactCleanupStepSucceeded": true,
+  "syntheticUserRemoved": true,
+  "phase": "completed",
+  "mainCiRunId": 45077541871,
+  "mainCiConclusion": "success",
+  "productionCdConclusion": "success",
+  "workflowVersionId": "d081c294-b4cc-4d65-9bc1-8a043c9851a1",
+  "workflowSourceSha256": "184ebb2f2bcd76add275efd26c5c8a99d6e65ca52757fa8e6267faf86bad6f8a",
+  "observedWorkflowStates": [
+    "complete",
+    "paused",
+    "queued",
+    "running"
+  ],
+  "timeline": [
+    {
+      "phase": "signed-fixture-created",
+      "at": "2026-11-22T22:46:10.308Z"
+    },
+    {
+      "phase": "uploaded",
+      "at": "2026-11-22T22:46:18.699Z"
+    },
+    {
+      "phase": "own-published-workflow-paused",
+      "at": "2026-11-22T22:46:51.106Z"
+    },
+    {
+      "phase": "video-deleted-through-normal-api",
+      "at": "2026-11-22T22:48:24.611Z"
+    },
+    {
+      "phase": "own-workflow-resumed",
+      "at": "2026-11-22T22:48:25.028Z"
+    },
+    {
+      "phase": "deletion-race-verified",
+      "at": "2026-11-22T22:48:38.274Z"
+    },
+    {
+      "phase": "completed",
+      "at": "2026-11-22T22:48:41.506Z"
+    }
+  ],
+  "scope": [
+    "Owned HMAC-marked synthetic fixture",
+    "Real upload and media transcription",
+    "Published search index through the production workflow",
+    "Pause only the owned workflow",
+    "Delete video through normal authenticated API while workflow paused",
+    "Resume same workflow; complete job and R2 artifact cleanup",
+    "Normal guarded synthetic user cleanup"
+  ],
+  "manualCheckpointRestartUsed": false,
+  "rawCredentialsPersisted": false
+}

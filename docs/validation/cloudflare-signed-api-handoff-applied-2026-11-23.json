@@ -1,0 +1,128 @@
+{
+  "sourceSha": "4d00b5cbac9ad8508219b237c61256bc91bc7548",
+  "preparedAt": "2026-11-22T20:42:02.405676+00:00",
+  "planSha256": "fce2255cb5bb63b69ed3854f9d3192a693f3e228b13970ef6226ce317b631d88",
+  "changes": [
+    {
+      "address": "aws_lambda_function.group[\"account\"]",
+      "actions": [
+        "update"
+      ],
+      "changedKeys": [
+        "environment"
+      ],
+      "environmentChangedKeys": [
+        "SEARCH_JOB_BACKEND"
+      ],
+      "searchBackendBefore": null,
+      "searchBackendAfter": "cloudflare"
+    },
+    {
+      "address": "aws_lambda_function.group[\"search\"]",
+      "actions": [
+        "update"
+      ],
+      "changedKeys": [
+        "environment"
+      ],
+      "environmentChangedKeys": [
+        "SEARCH_JOB_BACKEND"
+      ],
+      "searchBackendBefore": null,
+      "searchBackendAfter": "cloudflare"
+    },
+    {
+      "address": "aws_lambda_function.worker",
+      "actions": [
+        "update"
+      ],
+      "changedKeys": [
+        "environment"
+      ],
+      "environmentChangedKeys": [
+        "SEARCH_JOB_BACKEND",
+        "WORKER_JOB_GROUP"
+      ],
+      "searchBackendBefore": null,
+      "searchBackendAfter": "cloudflare"
+    }
+  ],
+  "manualApprovalGranted": true,
+  "approvedAt": "2026-11-22T20:38:15.854289+00:00",
+  "approvedScope": "Three existing Lambda environment updates for signed search-job API handoff, retaining all legacy Lambda/SQS and API SQS routing; no creates/deletes/code/image changes.",
+  "applied": true,
+  "verifiedAt": "2026-11-22T20:42:43.571965+00:00",
+  "lambdaReadback": [
+    {
+      "functionName": "videoq-worker-account-prod",
+      "lastUpdateStatus": "Successful",
+      "lastModified": "2026-11-22T20:42:23.000+0000",
+      "searchBackend": "cloudflare",
+      "codeUnchanged": true
+    },
+    {
+      "functionName": "videoq-worker-search-prod",
+      "lastUpdateStatus": "Successful",
+      "lastModified": "2026-11-22T20:42:23.000+0000",
+      "searchBackend": "cloudflare",
+      "codeUnchanged": true
+    },
+    {
+      "functionName": "videoq-worker-prod",
+      "lastUpdateStatus": "Successful",
+      "lastModified": "2026-11-22T20:42:23.000+0000",
+      "searchBackend": "cloudflare",
+      "codeUnchanged": true
+    }
+  ],
+  "terraformResult": {
+    "added": 0,
+    "changed": 3,
+    "destroyed": 0
+  },
+  "repositoryRoutingVariable": true,
+  "apiBackends": {
+    "ACCOUNT_JOB_BACKEND": "sqs",
+    "SEARCH_JOB_BACKEND": "sqs"
+  },
+  "controlDeployment": {
+    "verifiedAt": "2026-11-22T20:44:05.473699+00:00",
+    "sourceSha": "4d00b5cbac9ad8508219b237c61256bc91bc7548",
+    "operatorS3Version": "G3uzTM0WF3zW02bWWz5ahiYDJglKepwt",
+    "operatorZipSha256": "0f4bc598df3976114c49e16f1bc50817593f8a79eaf14886b03fb9d5b7738dac",
+    "exactModules": [
+      ".github/scripts/background-queue-admission.cjs",
+      ".github/scripts/background-workflow-admission.cjs",
+      ".github/scripts/canonical-background-maintenance.cjs",
+      ".github/scripts/background-maintenance-store.cjs"
+    ],
+    "delayedControlReadbackFixDeployed": true
+  },
+  "legacyDlqRecovery": {
+    "jobId": "9ade993b-4f6e-45b5-905d-ccceafb708eb",
+    "videoId": 537,
+    "videoMissing": true,
+    "normalSqsRedrive": true,
+    "moved": 1,
+    "jobStatusAfter": "completed",
+    "attemptsAfter": 6,
+    "completedAt": "2026-11-22T20:45:41.486Z"
+  },
+  "productionSmoke": {
+    "githubRunId": 45068027853,
+    "executionArn": "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-804efe5c413fe761fe894a13086b967f",
+    "statusAtCapture": "SUCCEEDED",
+    "githubConclusion": "success",
+    "completedAt": "2026-11-22T20:46:52Z",
+    "verifyAiAnswers": true,
+    "scope": [
+      "fresh upload",
+      "media transcription",
+      "signed search enqueue API handoff",
+      "legacy SQS search execution",
+      "cited AI answers",
+      "synthetic cleanup"
+    ]
+  },
+  "migrationComplete": false
+}

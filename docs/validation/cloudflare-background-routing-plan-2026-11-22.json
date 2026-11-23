@@ -1,0 +1,130 @@
+{
+  "status": "preview-only; not applied or approved",
+  "sourceSha": "8a545f6b0869ae214b7d968468c6694e9321a054",
+  "planSha256": "807cacff6b1272a2ebab5bc8b671014c1b1db61394753d168f80195482918d80",
+  "targetedPlan": {
+    "targets": [
+      "aws_lambda_function.worker",
+      "aws_lambda_function.group"
+    ],
+    "changes": [
+      {
+        "address": "aws_lambda_function.group[\"account\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      },
+      {
+        "address": "aws_lambda_function.group[\"search\"]",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      },
+      {
+        "address": "aws_lambda_function.worker",
+        "actions": [
+          "update"
+        ],
+        "changedKeys": [
+          "environment"
+        ],
+        "environmentChangedKeys": [
+          "SEARCH_JOB_BACKEND",
+          "WORKER_JOB_GROUP"
+        ],
+        "searchBackendBefore": null,
+        "searchBackendAfter": "cloudflare"
+      }
+    ],
+    "dependencyGraphRefreshed": true,
+    "openaiManagementIncluded": false
+  },
+  "fullPreflight": {
+    "runId": 45061089280,
+    "sourceSha": "4c9c8c8fe4bd31b65b9dcb59b2d9d6a1b58bff49",
+    "conclusion": "read-only preflight succeeded; apply waiting for approval",
+    "changes": [
+      {
+        "resource": "aws_lambda_function.group",
+        "instances": 2,
+        "actions": [
+          "update"
+        ],
+        "attributes": [
+          "environment"
+        ]
+      },
+      {
+        "resource": "aws_lambda_function.worker",
+        "instances": 1,
+        "actions": [
+          "update"
+        ],
+        "attributes": [
+          "environment"
+        ]
+      }
+    ],
+    "routingFlagEnabled": false
+  },
+  "intendedEffect": "Existing Lambda search child jobs use the signed enqueue API; API backend remains SQS until its separate cutover. All legacy Lambda consumers and SQS queues remain.",
+  "defaultSemantics": {
+    "missingSearchBackendBefore": "sqs",
+    "mediaGroupBefore": "absent; default empty group",
+    "mediaGroupAfter": "explicit empty group"
+  },
+  "ownedRehearsal": {
+    "pullRequest": 1608,
+    "headSha": "d7eab843834e45c9d63d45c0a97f06b7a8c5f8c5",
+    "nodeTestsPassed": 801,
+    "actualDynamoDbLocalIntegrationTestsPassed": 20,
+    "bundleAndDeployTestsPassed": 10,
+    "productionExecutionCompleted": true,
+    "remaining": "Readback delay fix PR 1610 is validated and queued; deploy before native transport cutover.",
+    "executionArn": "arn:aws:states:ap-northeast-1:257240362763:execution:videoq-db-maintenance-prod:db-34116b425cfc7023e9cfb6379c862cac",
+    "conclusion": "SUCCEEDED; original states restored and global lock released"
+  },
+  "onpremRealModels": {
+    "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+    "releaseRunId": 45053926447,
+    "conclusion": "success",
+    "cpuJobId": 137310859348,
+    "startedAt": "2026-11-22T18:34:45Z",
+    "completedAt": "2026-11-22T18:56:58Z",
+    "publicEgressBlocked": true
+  },
+  "remainingBeforeApply": [
+    "Manual infrastructure approval",
+    "No active deployment or maintenance",
+    "Recheck current main and the same reviewed three-update scope"
+  ],
+  "preparedAt": "2026-11-22T20:27:37.915383+00:00",
+  "retainedResources": [
+    "videoq-worker-prod",
+    "videoq-worker-search-prod",
+    "videoq-worker-account-prod",
+    "all existing SQS queues and DLQs"
+  ],
+  "apiJobBackendsAfterThisPhase": {
+    "search": "sqs",
+    "account": "sqs"
+  },
+  "applied": false,
+  "manualApprovalGranted": false
+}

@@ -1,0 +1,36 @@
+{
+  "verifiedAt": "2026-11-23T13:23:01.002880+00:00",
+  "sourceSha": "9919dfc4674f0da495fdd03eb6d3ad936a0a5631",
+  "productionCleanupCdRunId": 45129261750,
+  "postRetirementSmoke": {
+    "runId": 45182455052,
+    "conclusion": "success",
+    "codeBuildId": "videoq-db-smoke-prod:368077f8-b446-4b45-9971-30150750dc58",
+    "codeBuildStatus": "SUCCEEDED",
+    "verifyAiAnswers": true,
+    "scope": [
+      "fresh upload",
+      "media transcription",
+      "native Cloudflare search indexing",
+      "cited answers",
+      "course and unscoped streaming",
+      "browser checks",
+      "normal synthetic cleanup"
+    ]
+  },
+  "workflowReadback": {
+    "observedAt": "2026-11-23T13:22:36.977117+00:00",
+    "total": 25,
+    "complete": 25,
+    "incomplete": 0,
+    "paginationComplete": true
+  },
+  "retirementEvidence": [
+    "cloudflare-background-lambda-retirement-applied-2026-11-23.json",
+    "cloudflare-background-sqs-retirement-applied-2026-11-23.json"
+  ],
+  "onpremReleaseEvidence": "typescript-background-final-onprem-release-2026-11-23.json",
+  "remaining": [],
+  "operatorGuideEvidence": "typescript-background-public-guides-2026-11-23.json",
+  "consolidatedEvidencePullRequest": 1606
+}

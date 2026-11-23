@@ -1,0 +1,128 @@
+{
+  "observedAt": "2026-11-22T18:24:03.903Z",
+  "sourceSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+  "mainCiRun": 45052555822,
+  "mainCiConclusion": "success",
+  "ordinaryCdRun": 45053926394,
+  "ordinaryCdConclusion": "success",
+  "maintenanceCdRun": 45053926426,
+  "maintenanceCdConclusion": "success",
+  "bindings": [
+    {
+      "name": "ACCOUNT_JOB_BACKEND",
+      "text": "sqs",
+      "type": "plain_text"
+    },
+    {
+      "name": "ACCOUNT_JOBS",
+      "queue_name": "videoq-account-prod",
+      "type": "queue"
+    },
+    {
+      "name": "SEARCH_FAILURES",
+      "queue_name": "videoq-search-dlq-prod",
+      "type": "queue"
+    },
+    {
+      "class_name": "SearchIndexWorkflow",
+      "name": "SEARCH_INDEX_WORKFLOW",
+      "type": "workflow",
+      "workflow_name": "videoq-search-index-prod"
+    },
+    {
+      "name": "SEARCH_JOB_BACKEND",
+      "text": "sqs",
+      "type": "plain_text"
+    },
+    {
+      "name": "SEARCH_JOBS",
+      "queue_name": "videoq-search-prod",
+      "type": "queue"
+    }
+  ],
+  "queues": [
+    {
+      "name": "videoq-account-dlq-prod",
+      "settings": {
+        "delivery_delay": 0,
+        "message_retention_period": 1209600
+      },
+      "consumers": []
+    },
+    {
+      "name": "videoq-account-prod",
+      "settings": {
+        "delivery_delay": 0,
+        "message_retention_period": 345600
+      },
+      "consumers": [
+        {
+          "script": "videoq-api",
+          "dead_letter_queue": "videoq-account-dlq-prod",
+          "settings": {
+            "batch_size": 1,
+            "max_retries": 8,
+            "max_wait_time_ms": 5000,
+            "max_concurrency": 2,
+            "retry_delay": 0
+          },
+          "type": "worker"
+        }
+      ]
+    },
+    {
+      "name": "videoq-search-dlq-prod",
+      "settings": {
+        "delivery_delay": 0,
+        "message_retention_period": 1209600
+      },
+      "consumers": []
+    },
+    {
+      "name": "videoq-search-prod",
+      "settings": {
+        "delivery_delay": 0,
+        "message_retention_period": 345600
+      },
+      "consumers": [
+        {
+          "script": "videoq-api",
+          "dead_letter_queue": "videoq-search-dlq-prod",
+          "settings": {
+            "batch_size": 1,
+            "max_retries": 8,
+            "max_wait_time_ms": 5000,
+            "max_concurrency": 4,
+            "retry_delay": 0
+          },
+          "type": "worker"
+        }
+      ]
+    }
+  ],
+  "workflow": {
+    "name": "videoq-search-index-prod",
+    "script_name": "videoq-api",
+    "class_name": "SearchIndexWorkflow",
+    "instances": {
+      "queued": 0,
+      "running": 0,
+      "paused": 0,
+      "errored": 0,
+      "terminated": 0,
+      "complete": 0,
+      "unknown": 0,
+      "waitingForPause": 0,
+      "waiting": 0,
+      "rollingBack": 0
+    }
+  },
+  "d1MigrationTaskTimeoutSeconds": 3600,
+  "backgroundMaintenanceOptInApplied": false,
+  "queueAdmissionReadOnlyCheck": "passed with PR1607 adapter fix; deployed adapter fix still pending",
+  "workflowInstancesReadOnlyCheck": {
+    "instances": 0,
+    "cursor": null
+  },
+  "productionTransportCutover": false
+}

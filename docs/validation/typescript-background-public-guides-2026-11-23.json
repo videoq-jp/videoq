@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-11-23T13:33:08.798330+00:00",
+  "pullRequest": 1613,
+  "mergedMainSha": "4108fcfc905a32e16f69abf755d051e124205a99",
+  "mainCiRunId": 45183708383,
+  "mainCiConclusion": "success",
+  "productionCdRunId": 45184101890,
+  "productionCdConclusion": "success",
+  "browserVerification": {
+    "verifiedAt": "2026-11-23T13:32:33.072Z",
+    "browser": "ego-browser",
+    "guides": [
+      {
+        "url": "https://docs.videoq.jp/ja/guides/worker/",
+        "cloud": true,
+        "postgres": true,
+        "langchain": true
+      },
+      {
+        "url": "https://docs.videoq.jp/guides/worker/",
+        "cloud": true,
+        "postgres": true,
+        "langchain": true
+      }
+    ],
+    "diagrams": [
+      {
+        "url": "https://docs.videoq.jp/ja/architecture/flowchart/",
+        "renderedSearchDiagram": true,
+        "mermaidError": false
+      },
+      {
+        "url": "https://docs.videoq.jp/architecture/flowchart/",
+        "renderedSearchDiagram": true,
+        "mermaidError": false
+      }
+    ]
+  },
+  "applicationWorkerInfraDiffFromRuntimeAcceptance": "none"
+}

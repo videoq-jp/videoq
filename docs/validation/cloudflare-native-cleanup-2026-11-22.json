@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-11-22T18:28:31.503Z",
+  "resources": [
+    {
+      "kind": "d1",
+      "remaining": 0
+    },
+    {
+      "kind": "vectorize",
+      "remaining": 0
+    },
+    {
+      "kind": "r2",
+      "remaining": 0
+    },
+    {
+      "kind": "queue",
+      "remaining": 0
+    },
+    {
+      "kind": "workflow",
+      "remaining": 0
+    },
+    {
+      "kind": "durable-object",
+      "remaining": 0
+    },
+    {
+      "kind": "worker",
+      "remaining": 0
+    }
+  ],
+  "operation": "read-only"
+}
