@@ -114,8 +114,8 @@ On 2026-11-24 JST, the separately approved cutover completed on main
   the previous D1 smoke wrapper did. `db-smoke` is a legacy Postgres credential
   and was not transferred. Background control uses `background-maintenance`;
   synthetic identity uses `smoke-identity`. Source SSM values remain intact.
-- All three `videoq-db-start-{migration,smoke,deploy}-prod` functions now have
-  reserved concurrency **0**. Their previous state was unreserved. After waiting
+- At cutover, all three `videoq-db-start-{migration,smoke,deploy}-prod` functions
+  were set to reserved concurrency **0** (subsequently deleted below). Their previous state was unreserved. After waiting
   beyond their 60-second timeout, CodeBuild, Step Functions and the DynamoDB
   global owner were all empty. No function code or alias was deleted.
 - [Activation deployment](https://github.com/videoq-jp/videoq/actions/runs/45254778154)
@@ -134,9 +134,9 @@ On 2026-11-24 JST, the separately approved cutover completed on main
 
 Normal CD and Operations are active. Obsolete DB Maintenance CD remains disabled.
 AWS maintenance execution was subsequently retired under the approved cleanup;
-historical records and archives remain preserved as recorded below. Do not restore old starter admission while the
-Cloudflare path is active; rollback requires both owners idle and a coordinated
-switch back before removing the recorded concurrency limits.
+historical records and archives remain preserved as recorded below. The old
+AWS execution path can no longer be restored by changing the switch or concurrency.
+
 
 ## AWS retirement verification
 
