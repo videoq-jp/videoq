@@ -38,3 +38,18 @@ test('cron observations reject malformed or duplicate schedules',()=>{
  assert.throws(()=>crons({}),/INVALID_CRON/);
  assert.throws(()=>crons({schedules:[{cron:'17 3 * * *'},{cron:'17 3 * * *'}]}),/DUPLICATE_CRON/);
 });
+test('source maps are uploaded only when the trusted release configuration enables them',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'cf-release-sourcemaps-'));
+ try {
+  fs.writeFileSync(path.join(root,'index.js'),'export default {}');
+  const sourceMap=JSON.stringify({version:3,sources:['src/index.ts'],mappings:''});
+  fs.writeFileSync(path.join(root,'index.js.map'),sourceMap);
+  const config={main:path.join(root,'index.js'),upload_source_maps:true};
+  const enabled=releaseVersion(config,{bindings:[]},'version');
+  const map=enabled.modules.find(m=>m.name==='index.js.map');
+  assert.equal(map.content_type,'application/source-map');
+  assert.equal(Buffer.from(map.content_base64,'base64').toString(),sourceMap);
+  const disabled=releaseVersion({...config,upload_source_maps:false},{bindings:[]},'version');
+  assert.equal(disabled.modules.some(m=>m.name.endsWith('.map')),false);
+ } finally {fs.rmSync(root,{recursive:true,force:true});}
+});

@@ -5,6 +5,10 @@ resources are imported; adopting D1, R2, Vectorize or Durable Objects must never
 replace their storage. Other applications in the shared cloud accounts are out
 of scope.
 
+Use HashiCorp's official Terraform MCP Server and Agent Skills for Terraform
+work. See [Cloudflare provider gaps](CLOUDFLARE-PROVIDER-GAPS.md) for the pinned
+provider's limitations, alternatives and official source links.
+
 ## State roots
 
 All active state uses the S3-compatible backend at the **R2** endpoint and the
