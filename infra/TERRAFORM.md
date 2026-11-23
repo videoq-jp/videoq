@@ -83,6 +83,9 @@ publish raw state, plans, provider responses or secret values as Actions artifac
   drift. Vector index definitions and metadata types are immutable and protected
   from destruction. Initial REST imports were adapted only after exact API reads;
   refresh plans must be clean before any future apply.
+- The API daily cron remains `17 3 * * *`. Provider 5.29 does not refresh
+  cron schedules; an independent read-only API observation validates every
+  Worker schedule and blocks silent drift.
 - Queues' `delivery_paused` is deliberately owned by the maintenance admission
   protocol; Terraform owns queue existence and retention. Do not undo a live
   maintenance lease with an infrastructure apply.

@@ -28,7 +28,9 @@ function releaseVersion(config, settings, versionId, migrationTag) {
   if (config.ai) add({type:'ai',name:config.ai.binding});
   if (config.assets?.binding) add({type:'assets',name:config.assets.binding});
   if (config.hyperdrive?.length || config.services?.length || config.kv_namespaces?.length) throw Error('UNREVIEWED_BINDING_TYPE');
-  if ((config.triggers?.crons || []).length) throw Error('CRON_DEFINITIONS_BELONG_TO_TERRAFORM_FOUNDATION');
+  const crons=config.triggers?.crons || [];
+  const expected=config.name==='videoq-api'?['17 3 * * *']:[];
+  if(JSON.stringify(crons)!==JSON.stringify(expected))throw Error('CRON_DEFINITIONS_BELONG_TO_TERRAFORM_FOUNDATION');
   const lastMigration=config.migrations?.at(-1)?.tag;
   if (lastMigration && lastMigration !== migrationTag) throw Error('DURABLE_OBJECT_MIGRATION_TAG_REQUIRES_REVIEW');
   const result={compatibility_date:config.compatibility_date,compatibility_flags:config.compatibility_flags || [],bindings:[...bindings.values()]};

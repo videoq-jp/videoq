@@ -32,3 +32,9 @@ test('prebuilt JavaScript and static header modules are preserved without bundli
   assert.throws(()=>releaseVersion({main:path.join(root,'worker','index.js')},{bindings:[]},'version'),/SYMLINK/);
  } finally {fs.rmSync(root,{recursive:true,force:true});}
 });
+test('cron observations reject malformed or duplicate schedules',()=>{
+ const {crons}=require('../../infra/bin/read-worker-schedules.cjs');
+ assert.deepEqual(crons({schedules:[{cron:'17 3 * * *'}]}),['17 3 * * *']);
+ assert.throws(()=>crons({}),/INVALID_CRON/);
+ assert.throws(()=>crons({schedules:[{cron:'17 3 * * *'},{cron:'17 3 * * *'}]}),/DUPLICATE_CRON/);
+});

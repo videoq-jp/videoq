@@ -4,7 +4,7 @@ variable "email_addresses" {
 }
 resource "cloudflare_workers_cron_trigger" "videoq_api" {
   account_id  = "12daec56fdba43f677f2766ee26a5a39"
-  schedules   = []
+  schedules   = [{ cron = "17 3 * * *" }]
   script_name = "videoq-api"
 }
 

@@ -15,6 +15,7 @@ terraform {
     use_lockfile                = true
   }
   required_providers {
+    external = { source = "hashicorp/external", version = "~> 2.4.2" }
     restapi = {
       source  = "Mastercard/restapi"
       version = "~> 3.0.0"
