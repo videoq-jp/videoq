@@ -83,6 +83,22 @@ its read-only receipt and releases ownership. Confirm the owner is empty again.
 This tests actual GitHub attempt recovery without inducing a schema failure or
 changing customer data. A new run is not a recovery mechanism.
 
+## Disabled bootstrap verification
+
+On 2026-11-24 JST, [deployment 45211143404](https://github.com/videoq-jp/videoq/actions/runs/45211143404)
+completed from main `996c40b0a7e60ab1da1f9620c4725e311dcf21e9`, after successful
+push CI. PR #1627 repaired artifact output paths; the deployed Worker and its
+configuration remained identical to approved PR #1625.
+
+Readback confirmed one Worker and one SQLite Durable Object namespace, only the
+maintenance binding and disabled flag, `/health` returning
+`{"status":"ok","enabled":false}`, and operation requests returning
+`503 MAINTENANCE_DISABLED`. The five existing Lambda revisions/code hashes and
+three maintenance CodeBuild configurations matched the predeployment snapshot.
+The two temporarily paused CD workflows were restored to active. No runtime
+credential transfer, maintenance activation or AWS retirement occurred in this
+bootstrap. Status and recovery support below remains a separate deployment.
+
 ## Controlled deployment and cutover
 
 1. Use the existing `production-infra` environment's `CLOUDFLARE_API_TOKEN`
