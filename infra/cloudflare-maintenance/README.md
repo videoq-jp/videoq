@@ -1,8 +1,9 @@
 # Production maintenance coordinator
 
 Status: implementation prepared; production cutover and AWS retirement have not
-been performed. The committed Worker configuration rejects maintenance requests
-until `MAINTENANCE_ENABLED=true`. An absent repository variable keeps both existing
+been performed. The committed Worker configuration rejects operation requests
+until `MAINTENANCE_ENABLED=true`. A separately authorized read-only status route
+works while admission is disabled; it never acquires or clears ownership. An absent repository variable keeps both existing
 GitHub workflows on their AWS execution paths.
 
 The replacement runs D1 migration checks and the existing guarded production
@@ -15,7 +16,8 @@ public dependency installation and signature verification.
 ## Ownership and recovery
 
 Only this repository's main-branch `cd.yml` migration job and `operations.yml`
-smoke job, in their respective production environments, may acquire ownership.
+smoke job, plus the fixed read-only `database-migrate.yml` verification job,
+in their respective production environments, may acquire ownership.
 The Worker verifies GitHub's signature, repository numeric IDs, environment,
 workflow, source SHA, hosted runner and live run attempt. New ownership also
 requires current main and successful push CI. An existing owner may recover its
@@ -51,6 +53,36 @@ GitHub metadata; it proves persistence after eviction, exclusion, failed-attempt
 recovery, immutable plans and idempotent release. It does not prove production
 GitHub OIDC claims or production token permissions.
 
+## Live identity and ownership inspection
+
+Dispatch **Inspect Cloudflare Maintenance** on current main after successful push
+CI. It runs in both protected purpose environments using only GitHub OIDC and a
+read-only GitHub token. It installs no packages and receives no Cloudflare or
+synthetic-identity credentials. Its signed workflow identity is accepted only by
+`/v1/status/migration` and `/v1/status/smoke`, including while operation admission
+is disabled. The same identity is rejected by the operation endpoints. A missing
+or malformed owner response is an error, never evidence of idleness.
+
+The report identifies any held owner by GitHub run, source and attempt. Inspection
+does not alter a running or failed owner. A successful empty report is a snapshot;
+recheck just before a controlled change and continue monitoring new operations.
+
+## Controlled read-only recovery rehearsal
+
+**Verify Production Migration Ledger** has no writer-stop input and never receives
+background-control credentials. Its ordinary path verifies that the live D1
+migration ledger exactly matches the reviewed source; pending migrations fail
+closed without applying schema.
+
+For the reviewed live recovery rehearsal, dispatch with `exercise_recovery=true`.
+The first attempt deliberately omits runtime credentials: after genuine OIDC
+admission it fails before any database request and retains the failed owner.
+Inspect that owner, then use **Re-run failed jobs** on the same run. The later
+attempt uses the migration environment's credential, verifies the ledger, records
+its read-only receipt and releases ownership. Confirm the owner is empty again.
+This tests actual GitHub attempt recovery without inducing a schema failure or
+changing customer data. A new run is not a recovery mechanism.
+
 ## Controlled deployment and cutover
 
 1. Use the existing `production-infra` environment's `CLOUDFLARE_API_TOKEN`
@@ -61,7 +93,9 @@ GitHub OIDC claims or production token permissions.
    requires `production-infra` approval, revalidates current main, and uploads
    only this run's prebuilt artifact. With the repository switch absent/false,
    this creates a disabled coordinator; existing AWS execution continues.
-2. Review the trust-boundary change before supplying credentials: approved main
+2. Deploy the reviewed status/verification support with admission still disabled.
+   Prove live GitHub OIDC in both purpose environments and verify empty ownership.
+   Review the trust-boundary change before supplying credentials: approved main
    runners now receive maintenance credentials, replacing the previous AWS-only
    execution boundary. Keep `production-db-migration` and `production-db-smoke`
    main-only, with their existing protection rules. Provision environment-scoped
@@ -71,16 +105,21 @@ GitHub OIDC claims or production token permissions.
    the Worker, command arguments, artifacts or logs.
 3. During an idle, reviewed window, verify no running/queued CodeBuild project,
    Step Functions execution, active DynamoDB owner, application deployment or
-   maintenance operation. Suspend new old-path admissions before changing the
-   switch. Disable all three AWS starter Lambdas and verify the actual setting;
+   maintenance operation. Record and temporarily suspend the CD, Operations and DB Maintenance CD
+   workflow admission states before changing the switch. Disable all three AWS starter Lambdas and verify the actual setting;
    ensure existing aliases/invocation paths cannot start work. Recheck idle state.
-   Do not rely only on GitHub concurrency: it cannot serialize two coordinators.
+   Allow existing starter invocations to finish after throttling, then recheck
+   CodeBuild, Step Functions and ownership. Do not rely only on GitHub concurrency:
+   it cannot serialize two coordinators.
 4. Activate the Worker and repository `CLOUDFLARE_MAINTENANCE_ENABLED=true` in a
    controlled sequence with admissions held. The switch selects the new migration
    and smoke paths and suppresses the obsolete AWS code-deployment job. Never
    enable it while old AWS admission is available.
-5. Prove real GitHub OIDC admission, live read-only migration, guarded production
-   smoke with cleanup, and reviewed failure/retry recovery before retiring AWS.
+5. With the old AWS path quiesced, prove live read-only migration and the
+   controlled same-run failure/recovery rehearsal above. Restore only the app CD
+   and Operations admission states needed for normal work and guarded production
+   smoke. Keep obsolete AWS code deployment disabled. Prove smoke cleanup before
+   retiring AWS.
    Native fixture success alone is insufficient. Rollback requires both owners
    idle and AWS resources still intact; changing the flag cannot clear a lock.
 6. Prepare a fresh Terraform retirement plan only after these checks pass.
@@ -92,7 +131,13 @@ GitHub OIDC claims or production token permissions.
 
 Retirement candidates are the three maintenance CodeBuild projects, three starter
 Lambdas/aliases, maintenance Step Functions, DynamoDB ownership table and private
-executable-bundle bucket, plus their exclusive roles/policies. Historical logs
+executable-bundle bucket, plus their exclusive roles/policies. The three separate GitHub invocation
+roles each have one Lambda-invoke-only inline policy and no attached policies in
+the observed inventory; verify those exact boundaries again before retiring them.
+The current retained-only Terraform candidate has 31 deletions and no additions
+or updates; it is not an apply authorization. Preserve DynamoDB recovery records before deleting the table. Inventory every
+version of the executable-bundle bucket and refuse unknown keys; only reviewed
+`operator.zip` and `broker.zip` code artifacts may be purged. Historical logs
 may remain for audit retention. Resource counts must come from a fresh plan.
 
 Keep the media Lambda, media SQS/DLQ, active ECR images, media SSM credentials,

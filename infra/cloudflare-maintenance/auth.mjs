@@ -3,7 +3,7 @@ export const ISSUER = 'https://token.actions.githubusercontent.com';
 export const AUDIENCE = 'videoq-maintenance-prod';
 export const REPOSITORY = 'videoq-jp/videoq';
 const purposes = {
-  migration: { environment: 'production-db-migration', workflows: ['cd.yml'] },
+  migration: { environment: 'production-db-migration', workflows: ['cd.yml', 'database-migrate.yml'] },
   smoke: { environment: 'production-db-smoke', workflows: ['operations.yml'] },
 };
 export async function boundedJson(response, limit = 128 * 1024) {
@@ -23,7 +23,7 @@ function decode(value) {
   if (!/^[A-Za-z0-9_-]+$/.test(value)) throw Error('OIDC_REQUIRED');
   return Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
 }
-export async function verifyIdentity(token, kind, { fetcher = fetch, now = Date.now, cryptoProvider = crypto } = {}) {
+export async function verifyIdentity(token, kind, { fetcher = fetch, now = Date.now, cryptoProvider = crypto, statusOnly = false } = {}) {
   const purpose = purposes[kind];
   if (!purpose || typeof token !== 'string' || token.length > 20000) throw Error('OIDC_REQUIRED');
   const parts = token.split('.'); if (parts.length !== 3) throw Error('OIDC_REQUIRED');
@@ -42,11 +42,11 @@ export async function verifyIdentity(token, kind, { fetcher = fetch, now = Date.
   if (c.iss !== ISSUER || c.aud !== AUDIENCE || c.repository !== REPOSITORY || c.repository_id !== '1083911938' || c.repository_owner_id !== '349188820'
     || c.ref !== 'refs/heads/main' || c.ref_type !== 'branch' || c.environment !== purpose.environment || c.runner_environment !== 'github-hosted'
     || c.sub !== `repo:${REPOSITORY}:environment:${purpose.environment}` || !['workflow_run', 'workflow_dispatch', 'schedule'].includes(c.event_name)
-    || !purpose.workflows.some(file => c.workflow_ref === `${REPOSITORY}/.github/workflows/${file}@refs/heads/main`)
+    || !(statusOnly ? c.workflow_ref === `${REPOSITORY}/.github/workflows/maintenance-status.yml@refs/heads/main` : purpose.workflows.some(file => c.workflow_ref === `${REPOSITORY}/.github/workflows/${file}@refs/heads/main`))
     || !/^[a-f0-9]{40}$/.test(c.sha ?? '') || !/^[a-f0-9]{40}$/.test(c.workflow_sha ?? '') || c.workflow_sha !== c.sha
     || !/^[1-9][0-9]{0,19}$/.test(c.run_id ?? '') || !/^[1-9][0-9]{0,5}$/.test(c.run_attempt ?? '')
     || ![c.exp,c.iat,c.nbf].every(Number.isSafeInteger) || c.exp <= seconds || c.nbf > seconds + 30 || c.iat > seconds + 30 || c.exp - c.iat > 600 || c.iat < seconds - 600) throw Error('OIDC_REQUIRED');
-  return { kind, runId: c.run_id, attempt: Number(c.run_attempt), source: c.sha, workflow: c.workflow_ref.slice(`${REPOSITORY}/.github/workflows/`.length).split('@')[0] };
+  return { access: statusOnly ? 'status' : 'operate', kind, runId: c.run_id, attempt: Number(c.run_attempt), source: c.sha, workflow: c.workflow_ref.slice(`${REPOSITORY}/.github/workflows/`.length).split('@')[0] };
 }
 export async function verifyStart(identity, githubToken, { fetcher = fetch, recovery = false } = {}) {
   if (typeof githubToken !== 'string' || githubToken.length < 20 || /[\r\n\0]/.test(githubToken)) throw Error('GITHUB_METADATA_REQUIRED');

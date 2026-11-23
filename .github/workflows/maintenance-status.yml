@@ -1,0 +1,35 @@
+name: Inspect Cloudflare Maintenance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  status:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        include:
+          - kind: migration
+            environment: production-db-migration
+          - kind: smoke
+            environment: production-db-smoke
+    environment: ${{ matrix.environment }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Verify signed identity and read ownership without database credentials
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          MAINTENANCE_KIND: ${{ matrix.kind }}
+        run: node .github/scripts/maintenance-status.cjs "$MAINTENANCE_KIND"
