@@ -156,5 +156,7 @@
     "value": "true",
     "purpose": "Keep subsequent deployments aligned with retired legacy search/account Lambda consumers",
     "applied": false
-  }
+  },
+  "subsequentAppliedEvidence": "cloudflare-background-lambda-retirement-applied-2026-11-23.json",
+  "snapshotNote": "Historical pre-approval plan; subsequent applied report is authoritative for current status"
 }
