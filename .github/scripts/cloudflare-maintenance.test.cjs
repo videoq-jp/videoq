@@ -53,3 +53,24 @@ test('maintenance admission refuses a newer failed or running CI rather than usi
   await assert.rejects(verifyStart(one,'x'.repeat(30),{fetcher}),/MAIN_CI_REQUIRED/);
  }
 });
+test('status workflow identity has read-only authority and cannot authenticate as an operation',async()=>{
+ const {verifyIdentity}=await auth,signed=await signer(),fetcher=async()=>Response.json({keys:[signed.jwk]});
+ const token=await signed.token({workflow_ref:'videoq-jp/videoq/.github/workflows/maintenance-status.yml@refs/heads/main'});
+ assert.equal((await verifyIdentity(token,'smoke',{fetcher,cryptoProvider:webcrypto,statusOnly:true})).access,'status');
+ await assert.rejects(verifyIdentity(token,'smoke',{fetcher,cryptoProvider:webcrypto}),/OIDC_REQUIRED/);
+ await assert.rejects(verifyIdentity(await signed.token(),'smoke',{fetcher,cryptoProvider:webcrypto,statusOnly:true}),/OIDC_REQUIRED/);
+});
+test('global status reads the failed owner without taking, releasing or rewriting ownership',async()=>{
+ const {CoordinatorStore,runKey}=await core,s=storage(),store=new CoordinatorStore(s),one=identity(),id=await runKey(one);
+ assert.deepEqual(store.status(),{owner:null});await store.operate(id,one,{action:'acquire',writersStopped:true});await store.operate(id,one,{action:'fail'});
+ const expected={owner:{run:id,kind:'migration',source:one.source,attempt:1,state:'failed',writersStopped:true,githubRun:'123'}};
+ assert.deepEqual(store.status(),expected);assert.deepEqual(store.status(),expected);assert.equal(store.owner(),id);s.db.close();
+});
+test('global status refuses an orphaned owner rather than reporting an idle database',async()=>{
+ const {CoordinatorStore}=await core,s=storage(),store=new CoordinatorStore(s);s.sql.exec('INSERT INTO maintenance_owner VALUES(1,?)','missing-run');assert.throws(()=>store.status(),/OWNERSHIP_REQUIRED/);s.db.close();
+});
+test('fixed ledger verification workflow authenticates only in the migration purpose environment',async()=>{
+ const {verifyIdentity}=await auth,signed=await signer(),options={fetcher:async()=>Response.json({keys:[signed.jwk]}),cryptoProvider:webcrypto};
+ const token=await signed.token({environment:'production-db-migration',sub:'repo:videoq-jp/videoq:environment:production-db-migration',workflow_ref:'videoq-jp/videoq/.github/workflows/database-migrate.yml@refs/heads/main'});
+ assert.equal((await verifyIdentity(token,'migration',options)).workflow,'database-migrate.yml');await assert.rejects(verifyIdentity(token,'smoke',options),/OIDC_REQUIRED/);
+});

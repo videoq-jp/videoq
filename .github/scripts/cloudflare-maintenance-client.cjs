@@ -16,7 +16,7 @@ async function createClient({kind,env=process.env,fetcher=fetch,sleep=ms=>new Pr
     tokenUrl.searchParams.set('audience',AUDIENCE);
     const token=await boundedJson(await fetcher(tokenUrl,{headers:{authorization:'Bearer '+env.ACTIONS_ID_TOKEN_REQUEST_TOKEN},redirect:'error',signal:AbortSignal.timeout(10000)}),24000);
     if(typeof token.value!=='string'||token.value.length>20000)throw Error('GITHUB_OIDC_UNAVAILABLE');
-    const response=await fetcher(URL+'/v1/'+kind,{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{authorization:'Bearer '+token.value,'x-github-token':env.GH_MAINTENANCE_READ_TOKEN,'content-type':'application/json'},body:JSON.stringify(body)});
+    const response=await fetcher(URL+(body.action==='status'?'/v1/status/':'/v1/')+kind,{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{authorization:'Bearer '+token.value,'x-github-token':env.GH_MAINTENANCE_READ_TOKEN,'content-type':'application/json'},body:JSON.stringify(body)});
     if(response.status>=500)throw Error('MAINTENANCE_UNAVAILABLE');
     const value=await boundedJson(new Response(response.body),70000);
     if(!response.ok){const code=/^[A-Z_]{1,80}$/.test(value.error??'')?value.error:'MAINTENANCE_REFUSED';throw Object.assign(Error(code),{terminal:true});}
@@ -25,6 +25,7 @@ async function createClient({kind,env=process.env,fetcher=fetch,sleep=ms=>new Pr
   }
  };
  return{...identity,request,
+  status:()=>request({action:'status'}),
   acquire:writersStopped=>request({action:'acquire',writersStopped}),
   assert:()=>request({action:'assert'}),
   plans:{async load(key){return(await request({action:'load',key})).value;},async save(key,value){await request({action:'save',key,value});}},

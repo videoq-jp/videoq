@@ -13,6 +13,13 @@ export class CoordinatorStore {
   }
   row(id) { return this.sql.exec('SELECT * FROM maintenance_runs WHERE id=?', id).toArray()[0]; }
   owner() { return this.sql.exec('SELECT run FROM maintenance_owner WHERE singleton=1').toArray()[0]?.run; }
+  status() {
+    const owner = this.owner();
+    if (!owner) return { owner:null };
+    const row = this.row(owner);
+    if (!row || row.state === 'released') throw Error('MAINTENANCE_OWNERSHIP_REQUIRED');
+    return { owner:{...this.metadata(row), githubRun:row.github_run} };
+  }
   recovery(id, identity) {
     const row = this.row(id);
     return Boolean(row && this.owner() === id && row.source === identity.source && row.kind === identity.kind && row.github_run === identity.runId);
