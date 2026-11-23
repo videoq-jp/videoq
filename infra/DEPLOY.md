@@ -57,5 +57,6 @@ and any `OPENAI_SPEND_ALERT_EMAIL` aligned with the confirmed destination.
 The old AWS state bucket, database archives, maintenance logs and retained control
 parameter metadata are protected Terraform resources. Their continued presence is
 intentional recovery/audit retention. The old search/account Lambdas, SQS queues
-and AWS maintenance executors have already been retired. Other projects sharing
-Cloudflare/AWS accounts are outside VideoQ deployment and cleanup scope.
+and AWS maintenance executors have already been retired. The active RateLimiter, TaskScheduler, ChatExecution and MaintenanceCoordinator
+SQLite namespaces retain application state and are protected. Other projects
+sharing Cloudflare/AWS accounts are outside VideoQ deployment and cleanup scope.
