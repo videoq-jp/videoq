@@ -53,9 +53,8 @@ GitHub OIDC claims or production token permissions.
 
 ## Controlled deployment and cutover
 
-1. Provision `CLOUDFLARE_MAINTENANCE_DEPLOY_TOKEN` in `production-infra` with
-   the target account's Workers Scripts Write deployment permission and required
-   account metadata read access. The existing Hyperdrive/R2 infrastructure token
+1. Use the existing `production-infra` environment's `CLOUDFLARE_API_TOKEN`
+   Worker deployment credential. The separate Hyperdrive/R2 infrastructure token
    is not a Worker deployment credential; do not broaden it implicitly.
    Merge reviewed source with successful push CI. Dispatch **Deploy Cloudflare
    Maintenance** on current main. It builds without production credentials,
