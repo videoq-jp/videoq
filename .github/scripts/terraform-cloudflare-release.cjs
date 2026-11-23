@@ -41,8 +41,8 @@ function releaseVersion(config, settings, versionId, migrationTag) {
         const filename=path.join(dir,entry.name);
         if (entry.isSymbolicLink()) throw Error('ARTIFACT_SYMLINK_REJECTED');
         if (entry.isDirectory()) {walk(filename);continue;}
-        if (entry.name.endsWith('.map') || entry.name === 'README.md') continue;
-        const type=/\.(?:js|mjs)$/.test(entry.name)?'application/javascript+module':entry.name.endsWith('.wasm')?'application/wasm':'text/plain';
+        if ((!config.upload_source_maps && entry.name.endsWith('.map')) || entry.name === 'README.md') continue;
+        const type=/\.(?:js|mjs)$/.test(entry.name)?'application/javascript+module':entry.name.endsWith('.wasm')?'application/wasm':entry.name.endsWith('.map')?'application/source-map':'text/plain';
         modules.push({name:path.relative(directory,filename).split(path.sep).join('/'),content_type:type,content_base64:fs.readFileSync(filename).toString('base64')});
       }
     }
