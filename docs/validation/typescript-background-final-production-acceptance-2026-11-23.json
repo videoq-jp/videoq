@@ -31,7 +31,7 @@
   ],
   "onpremReleaseEvidence": "typescript-background-final-onprem-release-2026-11-23.json",
   "remaining": [
-    "Publish English/Japanese guide PR1613 and verify public pages",
-    "Merge consolidated evidence PR1606"
-  ]
+    "Merge consolidated validation evidence PR1606"
+  ],
+  "operatorGuideEvidence": "typescript-background-public-guides-2026-11-23.json"
 }

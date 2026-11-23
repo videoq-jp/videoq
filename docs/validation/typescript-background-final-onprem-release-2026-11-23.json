@@ -44,5 +44,12 @@
   "releaseConclusion": "success",
   "publishedAnonymousSignedDownloads": true,
   "architecture": "amd64",
-  "playbackPassed": true
+  "playbackPassed": true,
+  "anonymousManifestReadback": {
+    "url": "https://github.com/videoq-jp/videoq/releases/download/onprem-9919dfc4674f0da495fdd03eb6d3ad936a0a5631-45129261920-1/release.json",
+    "status": 200,
+    "sourceSha": "9919dfc4674f0da495fdd03eb6d3ad936a0a5631",
+    "schemaVersion": 5,
+    "authenticationUsed": false
+  }
 }

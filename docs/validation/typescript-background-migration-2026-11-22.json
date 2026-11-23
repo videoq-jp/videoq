@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-23T13:15:08.338418+00:00",
-  "status": "Cloud and on-prem rollout verified; old Lambda/SQS and Python background tasks retired; guide publication and evidence merge pending",
-  "migrationComplete": false,
+  "updatedAt": "2026-11-23T13:33:08.798330+00:00",
+  "status": "Cloud and on-prem migration, retirement, production acceptance and public operator guides verified; consolidated evidence ready for publication",
+  "migrationComplete": true,
   "runtime": {
     "cloudSearchAccount": "TypeScript on Cloudflare Queues and Workflows; Workers AI / D1 / Vectorize",
     "onpremSearchAccount": "Node shared TypeScript processors; PostgreSQL; langchain-postgres and LangChain OpenAI-compatible embeddings",
@@ -16,7 +16,8 @@
     "lambdaRetirement": "cloudflare-background-lambda-retirement-applied-2026-11-23.json",
     "onpremFinalRelease": "typescript-background-final-onprem-release-2026-11-23.json",
     "sqsRetirement": "cloudflare-background-sqs-retirement-applied-2026-11-23.json",
-    "finalProductionAcceptance": "typescript-background-final-production-acceptance-2026-11-23.json"
+    "finalProductionAcceptance": "typescript-background-final-production-acceptance-2026-11-23.json",
+    "publicOperatorGuides": "typescript-background-public-guides-2026-11-23.json"
   },
   "pythonCleanup": {
     "pullRequest": 1602,
@@ -25,8 +26,7 @@
     "conclusion": "success"
   },
   "remaining": [
-    "Publish English/Japanese guide PR1613 and verify public pages",
-    "Merge consolidated evidence PR1606"
+    "Merge consolidated validation evidence PR1606"
   ],
   "historicalPreparationSnapshot": {
     "date": "2026-11-22",

@@ -240,5 +240,14 @@
       "videoq-worker-prod"
     ],
     "repositoryVariable": "true"
+  },
+  "postApplyTopologyPlan": {
+    "verifiedAt": "2026-11-23T13:29:28.488881+00:00",
+    "scope": "Approved Lambda retirement, SQS retirement, media environment and worker IAM resource graph only; excludes unrelated root infrastructure",
+    "managedChanges": 0,
+    "repositoryVariables": {
+      "CLOUDFLARE_BACKGROUND_JOBS_ENABLED": "true",
+      "RETIRE_BACKGROUND_QUEUES": "true"
+    }
   }
 }
