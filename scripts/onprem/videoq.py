@@ -110,6 +110,12 @@ def compose(refs, public_url, storage_url, bind_address=None):
                                "queue": {"condition": "service_healthy"},
                                "storage-init": {"condition": "service_completed_successfully"}}},
         "worker": {**runtime, "image": refs["worker"], "init": True, "stop_grace_period": "960s",
+                   "environment": {"R2_S3_ENDPOINT": "http://garage:3900", "WORKER_JOB_GROUP": "media"},
+                   "depends_on": {"migrate": {"condition": "service_completed_successfully"},
+                                  "queue": {"condition": "service_healthy"},
+                                  "storage-init": {"condition": "service_completed_successfully"}}},
+        "background-worker": {**runtime, "image": refs["api"], "init": True, "stop_grace_period": "960s",
+                   "command": ["node", "dist/background-worker.mjs"],
                    "environment": {"R2_S3_ENDPOINT": "http://garage:3900"},
                    "depends_on": {"migrate": {"condition": "service_completed_successfully"},
                                   "queue": {"condition": "service_healthy"},
@@ -174,6 +180,8 @@ def initialize(args):
         "R2_S3_ENDPOINT": storage_url, "R2_S3_INTERNAL_ENDPOINT": "http://garage:3900",
         "R2_ACCESS_KEY_ID": access_key, "R2_SECRET_ACCESS_KEY": storage_secret,
         "SQS_QUEUE_URL": "http://queue:9324/000000000000/videoq-jobs",
+        "SQS_SEARCH_QUEUE_URL": "http://queue:9324/000000000000/videoq-search",
+        "SQS_ACCOUNT_QUEUE_URL": "http://queue:9324/000000000000/videoq-account",
         "AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": secrets.token_hex(16), "AWS_SECRET_ACCESS_KEY": secrets.token_hex(32),
         "SQS_VISIBILITY_TIMEOUT": "900", "SQS_MAX_MESSAGES": "1", "ENABLE_HEAVY_PIPELINE": "1",
         "OPENROUTER_API_KEY": key, "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
@@ -322,7 +330,7 @@ def status(args):
 
 def stop(args):
     directory = Path(args.directory).resolve()
-    docker(directory, "stop", "gateway", "api", "worker", "scheduler", "web")
+    docker(directory, "stop", "gateway", "api", "worker", "background-worker", "scheduler", "web")
     docker(directory, "stop")
 
 
@@ -385,7 +393,7 @@ def backup_directory(directory, destination, resume=True):
     running = docker(directory, "ps", "--status", "running", "--quiet", capture_output=True, text=True).stdout.split()
     complete = False
     try:
-        docker(directory, "stop", "gateway", "api", "worker", "scheduler", "web")
+        docker(directory, "stop", "gateway", "api", "worker", "background-worker", "scheduler", "web")
         docker(directory, "stop")
         config = destination / "configuration"
         config.mkdir(mode=0o700)
@@ -462,8 +470,10 @@ def update(args):
     directory = Path(args.directory).resolve()
     refs = image_refs(json.loads(Path(args.images).read_text()))
     current = json.loads((directory / "compose.json").read_text())
+    if "background-worker" not in current["services"]:
+        raise ValueError("旧構成は先にキューを排出し、TypeScript background-worker と専用 search/account キューへ移行してください")
     candidate = json.loads(json.dumps(current))
-    for component, services in {"api": ("api", "migrate", "scheduler", "maintenance", "retention"),
+    for component, services in {"api": ("api", "background-worker", "migrate", "scheduler", "maintenance", "retention"),
                                 "worker": ("worker", "storage-init", "diagnostics"), "web": ("web",)}.items():
         for service in services:
             candidate["services"][service]["image"] = refs[component]
@@ -480,7 +490,7 @@ def update(args):
         start(argparse.Namespace(**{**vars(args), "offline": True}))
     except (OSError, ValueError, subprocess.CalledProcessError):
         # SQL migrations may already have changed data. Never silently revert images.
-        docker(directory, "stop", "gateway", "api", "worker", "scheduler", "web")
+        docker(directory, "stop", "gateway", "api", "worker", "background-worker", "scheduler", "web")
         print(f"更新に失敗しました。ログを確認して再試行するか、{args.backup} を新規ディレクトリへrestoreしてください。", file=sys.stderr)
         raise
 
@@ -531,7 +541,7 @@ def main():
     commands.add_parser("status", help="コンテナの状態を確認")
     commands.add_parser("stop", help="データを保持して全サービスを停止")
     journal = commands.add_parser("logs", help="直近のログを確認")
-    journal.add_argument("--service", choices=("api", "web", "worker", "scheduler", "postgres", "garage", "queue", "gateway", "migrate"))
+    journal.add_argument("--service", choices=("api", "web", "worker", "background-worker", "scheduler", "postgres", "garage", "queue", "gateway", "migrate"))
     administrator = commands.add_parser("admin", help="管理者のセットアップURLを発行")
     administrator.add_argument("--username", required=True)
     administrator.add_argument("--email", required=True)

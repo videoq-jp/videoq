@@ -98,8 +98,8 @@ class LocalAI:
         if getattr(self.args, 'command', 'install') == 'update':
             live = json.loads(self.kube('get', 'deployments', '-o', 'json', capture=True))['items']
             recorded = self.state.get('pending_update', {}).get('runtime', {}).get('deployments', {})
-            for component in ('api', 'web', 'worker'):
-                name = 'videoq-' + component
+            for component, suffix in [('api', 'api'), ('web', 'web'), ('worker', 'worker'), ('backgroundWorker', 'background-worker')]:
+                name = 'videoq-' + suffix
                 current = next((d for d in live if d['metadata']['name'] == name), None)
                 if name in recorded or current:
                     app_values.setdefault(component, {})['replicas'] = (recorded[name]['replicas'] if name in recorded else current['spec'].get('replicas', 1))

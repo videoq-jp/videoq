@@ -13,7 +13,7 @@ import pytest
 from worker_python.contracts import JOB_DELETE_ACCOUNT_DATA, JOB_INDEX_VIDEO_TRANSCRIPT, JOB_TRANSCRIBE_VIDEO
 from worker_python.lambda_handler import _execute_task
 from worker_python.lambda_handler import handler
-from worker_python.tasks import indexing, transcription
+from worker_python.tasks import transcription
 
 
 def test_failed_task_diagnostics_do_not_reach_logs_or_delivery_records(caplog) -> None:
@@ -199,17 +199,15 @@ def test_execute_task_skips_completed_duplicate_job_id() -> None:
     get_task.assert_not_called()
 
 
-@pytest.mark.parametrize("job_type, task", [(JOB_TRANSCRIBE_VIDEO, transcription), (JOB_INDEX_VIDEO_TRANSCRIPT, indexing)])
+@pytest.mark.parametrize("job_type, task", [(JOB_TRANSCRIBE_VIDEO, transcription)])
 def test_deleted_video_delivery_completes_without_retry_or_provider_work(monkeypatch, job_type, task):
     monkeypatch.setattr(task, "db_connection", lambda: nullcontext(MagicMock()))
     monkeypatch.setattr(task, "get_video_for_task", MagicMock(return_value=None))
-    monkeypatch.setattr(indexing, "video_vector_write_lock", lambda _id: nullcontext())
     transcribe = MagicMock()
     embed = MagicMock()
     enqueue = MagicMock()
     monkeypatch.setattr(transcription, "run_transcription", transcribe)
     monkeypatch.setattr(transcription, "enqueue_job", enqueue)
-    monkeypatch.setattr(indexing.vector_index, "index_video_transcript", embed)
     body = json.dumps({"type": job_type, "job_id": "deleted-video-job", "payload": {"video_id": 42}})
     with (
         patch("worker_python.lambda_handler.claim_job_execution", return_value="lease-deleted"),

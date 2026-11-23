@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Trigger local pending/indexing videos. Uploaded transcription requires SQS.
+Enqueue local pending/indexing videos for the media and TypeScript workers.
 
 Usage (from apps/worker/):
   export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/postgres
-  export EMBEDDING_MODEL=gte-qwen2-1.5b-q4km-124fbdad
-  export EMBEDDING_BASE_URL=http://127.0.0.1:8001/v1 EMBEDDING_API_KEY=local-inference
-  # optional real transcription:
-  # export ENABLE_HEAVY_PIPELINE=1 OPENAI_API_KEY=... SQS_QUEUE_URL=...
+  export SQS_QUEUE_URL=http://127.0.0.1:9324/000000000000/videoq-jobs
+  export SQS_SEARCH_QUEUE_URL=http://127.0.0.1:9324/000000000000/videoq-search
+  export AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local AWS_REGION=us-east-1
   python scripts/process_pending.py
   python scripts/process_pending.py --video-id 83
 """
@@ -23,8 +22,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from worker_python.db import db_connection
-from worker_python.tasks.indexing import index_video_transcript
-from worker_python.tasks.transcription import transcribe_video
+from worker_python.sqs_enqueue import enqueue_job
+from worker_python.contracts import JOB_INDEX_VIDEO_TRANSCRIPT, JOB_TRANSCRIBE_VIDEO
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("process_pending")
@@ -66,10 +65,9 @@ def main() -> int:
     for vid, status in targets:
         logger.info("Processing video %d (status=%s)", vid, status)
         try:
-            if status in {"pending", "error"}:
-                transcribe_video(vid)
-            elif status == "indexing":
-                index_video_transcript(vid)
+            job_type = JOB_INDEX_VIDEO_TRANSCRIPT if status == "indexing" else JOB_TRANSCRIBE_VIDEO
+            if not enqueue_job(job_type, {"video_id": vid}):
+                raise RuntimeError("Queue is unavailable; no inline processing is supported")
         except Exception:
             logger.exception("Failed video %d", vid)
     return 0

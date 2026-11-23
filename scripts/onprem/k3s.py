@@ -112,7 +112,9 @@ def site_values(url):
             'worker': {'replicas': 1, 'resources': {'requests': {'cpu': '250m', 'memory': '256Mi'},
                                                  'limits': {'cpu': '1', 'memory': '1536Mi'}}},
             'storage': {'endpoint': url, 'internalEndpoint': 'http://garage:3900', 'bucket': 'videoq-media', 'region': 'garage'},
-            'queue': {'url': 'http://queue:9324/000000000000/videoq-jobs', 'region': 'us-east-1'}, 'ingress': {'enabled': False}}
+            'queue': {'url': 'http://queue:9324/000000000000/videoq-jobs', 'region': 'us-east-1',
+                      'searchUrl': 'http://queue:9324/000000000000/videoq-search',
+                      'accountUrl': 'http://queue:9324/000000000000/videoq-account'}, 'ingress': {'enabled': False}}
 
 
 def new_credentials(key, url, ai='openrouter'):
@@ -381,8 +383,8 @@ class Installer(Lifecycle, LocalAI):
         values = self.directory / 'site-public.json'
         desired = self.desired_application_values()
         if replicas:
-            for component in ('api', 'web', 'worker'):
-                desired.setdefault(component, {})['replicas'] = replicas['deployments']['videoq-' + component]['replicas']
+            for component, suffix in [('api', 'api'), ('web', 'web'), ('worker', 'worker'), ('backgroundWorker', 'background-worker')]:
+                desired.setdefault(component, {})['replicas'] = replicas['deployments']['videoq-' + suffix]['replicas']
         private_json(values, desired)
         self.run('helm', 'upgrade', '--install', 'videoq', str(self.chart), '--kubeconfig', str(self.kubeconfig), '-n', 'videoq',
                  '-f', str(values), *self.ai_application_values(), '-f', str(self.images), '--wait', '--timeout', '15m')

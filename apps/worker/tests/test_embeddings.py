@@ -13,9 +13,6 @@ from worker_python.pipeline.embedding_contract import (
     EMBEDDING_DIMENSIONS, EmbeddingContractError, resolve_embedding_config, validate_embedding,
 )
 from worker_python.pipeline.embedding_schema import assert_embedding_schema
-from worker_python.pipeline.scene_otsu import apply_scene_splitting
-from worker_python.pipeline.scene_otsu import embedders as scene_embedders
-from worker_python.tasks import reindexing
 
 VECTOR = [1.0] + [0.0] * (1536 - 1)
 
@@ -125,62 +122,6 @@ def test_declared_schema_rejects_incompatible_empty_tables(row):
     with pytest.raises(EmbeddingContractError) as caught:
         assert_embedding_schema(conn, resolve_embedding_config({}))
     assert caught.value.reason == "EMBEDDING_SCHEMA_MISMATCH"
-
-
-def test_config_errors_are_not_hidden_by_scene_fallback(monkeypatch):
-    error = EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "bad config")
-    splitter = MagicMock()
-    splitter.process.side_effect = error
-    monkeypatch.setattr("worker_python.pipeline.scene_otsu.SceneSplitter", MagicMock(return_value=splitter))
-    with pytest.raises(EmbeddingContractError):
-        apply_scene_splitting("subtitle")
-
-
-def test_reindex_schema_failure_stops_before_indexing(monkeypatch):
-    error = EmbeddingContractError("EMBEDDING_OUTPUT_INVALID", "bad dimensions")
-    index = MagicMock()
-    monkeypatch.setattr(reindexing.vector_index, "check_embedding_storage", MagicMock(side_effect=error))
-    monkeypatch.setattr(reindexing.vector_index, "index_video_transcript", index)
-    with pytest.raises(EmbeddingContractError):
-        reindexing._run_reindex([object()])
-    index.assert_not_called()
-
-
-@pytest.mark.parametrize("status", [400, 401, 403, 404, 422])
-def test_provider_request_rejection_propagates_through_scene(monkeypatch, caplog, status):
-    monkeypatch.setenv("EMBEDDING_MODEL", "model")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    body = "private input / credentials"
-    responses = []
-    http = MagicMock(side_effect=lambda *_args, **_kwargs: reject())
-
-    def reject():
-        response = BytesIO(body.encode())
-        responses.append(response)
-        raise HTTPError("http://example.invalid", status, body, {}, response)
-
-    monkeypatch.setattr(embeddings.urllib.request, "urlopen", http)
-    # Three cues require a semantic boundary choice; two have only one boundary.
-    encoding = MagicMock()
-    encoding.encode_ordinary.return_value = list(range(300))
-    monkeypatch.setattr(scene_embedders, "_resolve_encoding", lambda: encoding)
-
-    operations = [
-        lambda: apply_scene_splitting(
-            "1\n00:00:00,000 --> 00:00:01,000\nWater evaporates.\n\n"
-            "2\n00:00:01,000 --> 00:00:02,000\nSteam condenses.\n\n"
-            "3\n00:00:02,000 --> 00:00:03,000\nWater freezes.\n"
-        ),
-    ]
-    for operation in operations:
-        with pytest.raises(EmbeddingContractError) as caught:
-            operation()
-        assert caught.value.reason == "EMBEDDING_CONFIG_INVALID"
-        assert f"HTTP {status}" in str(caught.value)
-        assert body not in str(caught.value)
-        assert responses[-1].closed
-    assert body not in caplog.text
-    assert http.call_count == len(operations)  # No retries without dimensions.
 
 
 def test_separate_embedding_endpoint_and_credential(monkeypatch):

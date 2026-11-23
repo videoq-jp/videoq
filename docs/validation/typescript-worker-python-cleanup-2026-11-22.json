@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-22",
+  "status": "post-cutover cleanup prepared; not deployed",
+  "requires": [
+    "Production Cloudflare queue/workflow rollout and verification",
+    "Legacy search/account consumer drain and retirement before merge"
+  ],
+  "python": {
+    "passed": 778,
+    "skipped": 1,
+    "realPostgres": true,
+    "dependenciesSyncedFromLock": true
+  },
+  "typescriptPostgresStorage": {
+    "passed": 2,
+    "profiles": [
+      "openai",
+      "embeddinggemma2"
+    ],
+    "realPostgres": true
+  },
+  "restrictedMoodleWorker": {
+    "passed": 5,
+    "realPostgres": true,
+    "worker": "TypeScript",
+    "covers": [
+      "API-produced explicit clear",
+      "restricted database role",
+      "atomic rollback",
+      "idempotent retry",
+      "no embedding calls"
+    ]
+  },
+  "helm": {
+    "passed": 10,
+    "lint": true
+  },
+  "onpremInstallerUnitTests": {
+    "tests": 85,
+    "skipped": 5,
+    "failed": 0,
+    "coversBackgroundWorkerRestoreFence": true
+  },
+  "apiTypecheck": true,
+  "apiLint": true,
+  "productionChanged": false,
+  "onpremQueueDiagnostics": {
+    "realElasticMQ": true,
+    "queuesVerified": 3,
+    "distinctDeadLetterQueues": true,
+    "sharedQueueConfigurationRejected": true
+  },
+  "kindLifecycleFixtureRepair": {
+    "status": "fixed; full lifecycle CI rerun required",
+    "failedCiJob": "https://github.com/videoq-jp/videoq/actions/runs/45024592485/job/137214878217",
+    "cause": "lab Helm values and ElasticMQ fixture still used only the media queue",
+    "dedicatedQueueUrlsPrepared": true,
+    "realElasticMqFixtureQueuesVerified": 3,
+    "visibilitySeconds": 960,
+    "separateDeadLetterQueues": true,
+    "backgroundWorkerStoppedBeforeBackup": true,
+    "localInferenceNetworkPolicyAllowsBackgroundWorker": true,
+    "helmAndInferenceTestsPassed": 28,
+    "cpuAcceptanceSafetyTestsPassed": 17,
+    "bothChartsLintPassed": true,
+    "temporaryQueueContainerRemoved": true
+  }
+}

@@ -14,7 +14,7 @@ from common import INFRA, private_json
 
 RELEASE_KEYS = ('run_id', 'source_sha', 'run_attempt')
 DATA_PVCS = ('postgres-data', 'garage-data', 'queue-data', 'caddy-data')
-WRITERS = ('videoq-gateway', 'videoq-api', 'videoq-worker', 'videoq-web')
+WRITERS = ('videoq-gateway', 'videoq-api', 'videoq-worker', 'videoq-background-worker', 'videoq-web')
 BACKENDS = ('postgres', 'garage', 'queue')
 
 

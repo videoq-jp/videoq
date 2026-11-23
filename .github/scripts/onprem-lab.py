@@ -23,6 +23,15 @@ CLUSTER = "videoq-onprem-lab"
 NAMESPACE = "videoq-validation"
 
 
+def lab_values():
+    return {"fullnameOverride":"videoq", "publicUrl":"http://127.0.0.1:18787", "storage":{"endpoint":"http://127.0.0.1:19000","internalEndpoint":"http://garage:3900","bucket":"videoq-media","region":"garage"},
+            "queue":{"url":"http://queue:9324/000000000000/videoq-jobs",
+                     "searchUrl":"http://queue:9324/000000000000/videoq-search",
+                     "accountUrl":"http://queue:9324/000000000000/videoq-account"},
+            "ai":{"openaiBaseUrl":"http://inference:8080/v1","llmModel":"lab-model","whisperBackend":"local","whisperLocalUrl":"http://inference:8080/v1"},
+            "config":{"videoVisualEnabled":False}}
+
+
 def prepare_fixtures(data, image_tag=None):
     """Keep original immutable identities while using explicit offline aliases.
 
@@ -142,10 +151,7 @@ def main():
         secret = {key:base64.b64decode(value).decode() for key,value in json.loads(k("get","secret","videoq-runtime","-o","json"))["data"].items()}
     else:
         apply_secret()
-    values = {"fullnameOverride":"videoq", "publicUrl":"http://127.0.0.1:18787", "storage":{"endpoint":"http://127.0.0.1:19000","internalEndpoint":"http://garage:3900","bucket":"videoq-media","region":"garage"},
-              "queue":{"url":"http://queue:9324/000000000000/videoq-jobs"},
-              "ai":{"openaiBaseUrl":"http://inference:8080/v1","llmModel":"lab-model","whisperBackend":"local","whisperLocalUrl":"http://inference:8080/v1"},
-              "config":{"videoVisualEnabled":False}}
+    values = lab_values()
     if args.real_models:
         values["networkPolicy"] = {"localEgressOnly":True}
         values["ai"].update({"openaiBaseUrl":"http://videoq-inference-chat:8000/v1", "llmModel":"videoq-chat",
@@ -253,8 +259,8 @@ print('S3 object backup/delete/restore checksum passed')'''
         print(k("exec","deployment/videoq-worker","--","python","-c",storage_test),flush=True)
         for cron in ["videoq-maintenance","videoq-retention"]:
             k("patch","cronjob",cron,"--type=merge","-p",'{"spec":{"suspend":true}}')
-        k("scale","deployment/videoq-api","deployment/videoq-worker","--replicas=0")
-        for label in ["api", "worker"]:
+        k("scale","deployment/videoq-api","deployment/videoq-worker","deployment/videoq-background-worker","--replicas=0")
+        for label in ["api", "worker", "background-worker"]:
             k("wait","--for=delete","pod","-l","app.kubernetes.io/component="+label,"--timeout=180s")
         backup = k("exec","deployment/postgres","--","pg_dump","-U","postgres","-Fc","postgres",binary=True)
         (output/"database.dump").write_bytes(backup)

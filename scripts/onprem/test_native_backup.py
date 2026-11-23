@@ -46,6 +46,19 @@ class NativeBackupTests(unittest.TestCase):
                     module.restore_cold_data(instance, folder)
             instance.apply.assert_not_called()
 
+    def test_live_background_worker_prevents_restoring_any_data(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.archive(folder).rename(Path(folder) / "volumes.tar.gz")
+            instance = Mock()
+            deployments = [{'metadata': {'name': name}, 'spec': {'replicas': int(name == 'videoq-background-worker'),
+                            'selector': {'matchLabels': {'app': name}}}} for name in WRITERS + BACKENDS]
+            self.assertIn('videoq-background-worker', [d['metadata']['name'] for d in deployments])
+            instance.kube.side_effect = lambda *args, **kwargs: json.dumps({'items': deployments if args[:2] == ('get', 'deployments') else []})
+            with patch.object(module, 'verify_backup', return_value={}):
+                with self.assertRaisesRegex(ValueError, 'must be stopped'):
+                    module.restore_cold_data(instance, folder)
+            instance.apply.assert_not_called()
+
     def test_terminating_writer_pods_also_prevent_any_data_deletion(self):
         with tempfile.TemporaryDirectory() as folder:
             self.archive(folder).rename(Path(folder) / 'volumes.tar.gz')

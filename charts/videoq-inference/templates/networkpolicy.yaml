@@ -25,7 +25,7 @@ spec:
               app.kubernetes.io/name: videoq
               app.kubernetes.io/instance: {{ .Values.networkPolicy.clientRelease | quote }}
             matchExpressions:
-              - { key: app.kubernetes.io/component, operator: In, values: [api, worker] }
+              - { key: app.kubernetes.io/component, operator: In, values: [api, worker, background-worker] }
       ports:
         - { protocol: TCP, port: 8000 }
         - { protocol: TCP, port: 8080 }

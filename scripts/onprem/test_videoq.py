@@ -81,6 +81,11 @@ class InstallerTests(unittest.TestCase):
                     self.assertNotIn("ports", service)
             self.assertIn("queue_data:/data", services["queue"]["volumes"])
             self.assertEqual(services["worker"]["environment"]["R2_S3_ENDPOINT"], "http://garage:3900")
+            self.assertEqual(services["worker"]["environment"]["WORKER_JOB_GROUP"], "media")
+            self.assertEqual(services["background-worker"]["image"], services["api"]["image"])
+            self.assertEqual(services["background-worker"]["command"], ["node", "dist/background-worker.mjs"])
+            self.assertIn("SQS_SEARCH_QUEUE_URL=", previous.decode())
+            self.assertIn("SQS_ACCOUNT_QUEUE_URL=", previous.decode())
             self.assertIn("enabled = true", (target / "elasticmq.conf").read_text())
 
     def test_credentials_cannot_inject_env_lines(self):
@@ -169,8 +174,8 @@ class InstallerTests(unittest.TestCase):
                 with patch.object(videoq, "start", side_effect=ValueError("migration failed")), patch.object(videoq, "docker") as docker:
                     with self.assertRaisesRegex(ValueError, "migration failed"):
                         videoq.update(args)
-                    snapshot.assert_called_once_with(root, Path(args.backup), resume=False)
-                    docker.assert_called_once_with(root, "stop", "gateway", "api", "worker", "scheduler", "web")
+                    snapshot.assert_called_once_with(root.resolve(), Path(args.backup).resolve(), resume=False)
+                    docker.assert_called_once_with(root.resolve(), "stop", "gateway", "api", "worker", "background-worker", "scheduler", "web")
             self.assertTrue((root / "compose.json").is_file())
 
 

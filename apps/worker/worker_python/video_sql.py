@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
 from typing import Any
 
 import psycopg
 
 from worker_python.video_status import VideoStatus
 from worker_python.domain.video_processing import (
-    VideoRow, ProcessingReservationResult, indexing_completion, processing_quota_allowed,
+    VideoRow, ProcessingReservationResult, processing_quota_allowed,
     processing_reservation_denied, processing_reservation_reused, processing_usage,
     require_transcription_fingerprint, transcription_completion, validate_processing_seconds,
 )
 from worker_python.video_policy_sql import VIDEO_POLICY_SQL
-
-logger = logging.getLogger(__name__)
 
 
 def _row_to_video(row: dict[str, Any]) -> VideoRow:
@@ -137,18 +132,6 @@ def transition_video_status(
     return cur.rowcount > 0
 
 
-def finish_video_indexing(conn: psycopg.Connection[Any], video: VideoRow) -> bool:
-    """Complete only the indexed snapshot; a concurrent edit remains pending."""
-    completion = indexing_completion("status = 'indexing'", "COALESCE(transcript, '') = %s",
-                                     "NULLIF(file, '') IS NOT DISTINCT FROM %s", VIDEO_POLICY_SQL)
-    result = conn.execute(
-        f"""UPDATE videos SET status = {completion.status}, error_message = {completion.error}
-             WHERE id = %s AND user_id = %s AND {completion.allowed}""",
-        (video.id, video.user_id, video.transcript or '', video.file_key),
-    )
-    return result.rowcount > 0
-
-
 def finish_transcription(
     conn: psycopg.Connection[Any],
     video: VideoRow,
@@ -189,37 +172,3 @@ def finish_transcription(
         },
     ).fetchone()
     return row["status"] if row else None
-
-
-@contextmanager
-def stream_completed_videos_with_transcript(
-    conn: psycopg.Connection[Any],
-) -> Iterator[Iterator[VideoRow]]:
-    """Stream bounded batches of transcripts while the caller owns the cursor."""
-    with conn.cursor(name="videoq_reindex_videos") as cursor:
-        cursor.itersize = 10
-        cursor.execute(
-            """
-            SELECT id, user_id, title, transcript, status, source_type,
-                   file, youtube_video_id
-              FROM videos
-             WHERE status = %s
-               AND transcript IS NOT NULL
-               AND transcript <> ''
-             ORDER BY id
-            """,
-            (VideoStatus.COMPLETED.value,),
-        )
-        yield (_row_to_video(row) for row in cursor)
-
-
-def delete_video_cascade(
-    conn: psycopg.Connection[Any], video_id: int, user_id: str
-) -> None:
-    """Delete an owned video; foreign keys cascade to tags and membership rows."""
-    deleted = conn.execute(
-        "DELETE FROM videos WHERE id = %s AND user_id = %s",
-        (video_id, user_id),
-    ).rowcount
-    if deleted:
-        logger.info("Deleted video %d (user %s) and related rows", video_id, user_id)
