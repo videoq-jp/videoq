@@ -91,6 +91,7 @@ async function main() {
     }
     await assertActive();
     const release={version:releaseVersion(config,await api('settings'),version.id,version.migration_tag)};
+    if(/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA||''))release.version.annotations={workers_tag:process.env.GITHUB_SHA,workers_message:'VideoQ reviewed main '+process.env.GITHUB_SHA};
     const variables=path.join(work,'release.tfvars.json');fs.writeFileSync(variables,JSON.stringify({release}),{mode:0o600});
     const plan=path.join(work,'release.tfplan');
     tf(['plan','-json','-input=false','-var-file='+variables,'-out='+plan]);
