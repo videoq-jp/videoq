@@ -301,13 +301,21 @@ jobs:
           path: deploy-artifacts
       - name: Generate upload-only config from trusted main
         run: node .github/scripts/deployment-config.cjs web deploy-artifacts deployment.json
-      - name: Upload prebuilt Worker and assets
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.15.1
+          terraform_wrapper: false
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+      - name: Apply prebuilt Worker and assets through Terraform
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
-          node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config deployment.json --no-bundle --no-autoconfig --env-file /dev/null
+          node .github/scripts/terraform-cloudflare-release.cjs web deployment.json
 
   docs-deploy:
     name: Deploy docs (prebuilt Cloudflare artifact)
@@ -343,13 +351,21 @@ jobs:
           path: deploy-artifacts
       - name: Generate upload-only config from trusted main
         run: node .github/scripts/deployment-config.cjs docs deploy-artifacts deployment.json
-      - name: Upload prebuilt Worker and assets
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.15.1
+          terraform_wrapper: false
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+      - name: Apply prebuilt Worker and assets through Terraform
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
-          node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config deployment.json --no-bundle --no-autoconfig --env-file /dev/null
+          node .github/scripts/terraform-cloudflare-release.cjs docs deployment.json
 
   api-deploy:
     name: Deploy api (prebuilt Cloudflare artifact)
@@ -386,7 +402,15 @@ jobs:
           path: deploy-artifacts
       - name: Generate upload-only config from trusted main
         run: node .github/scripts/deployment-config.cjs api deploy-artifacts deployment.json
-      - name: Upload prebuilt Worker and assets
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.15.1
+          terraform_wrapper: false
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+      - name: Apply prebuilt Worker and assets through Terraform
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -394,7 +418,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
           node .github/scripts/d1-resource-deployment-config.cjs deployment.json
           node .github/scripts/protect-api-deployment.cjs deployment.json
-          node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config deployment.json --no-bundle --no-autoconfig --env-file /dev/null
+          node .github/scripts/terraform-cloudflare-release.cjs api deployment.json
 
   db-migrate:
     name: Drizzle DB Migrate

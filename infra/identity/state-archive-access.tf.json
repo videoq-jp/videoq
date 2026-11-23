@@ -1,0 +1,23 @@
+{
+  "resource": {
+    "aws_iam_policy": {
+      "videoq_tfstate_access": {
+        "name": "videoq-tfstate-access",
+        "path": "/",
+        "policy": "{\"Version\": \"2012-10-17\", \"Statement\": [{\"Sid\": \"TfStateBucketList\", \"Effect\": \"Allow\", \"Action\": [\"s3:ListBucket\"], \"Resource\": \"arn:aws:s3:::videoq-terraform-state-257240362763\"}, {\"Sid\": \"TfStateObjectRW\", \"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\"], \"Resource\": [\"arn:aws:s3:::videoq-terraform-state-257240362763/videoq/prod/terraform.tfstate\", \"arn:aws:s3:::videoq-terraform-state-257240362763/videoq/prod/terraform.tfstate.tflock\"]}, {\"Sid\": \"CallerIdentity\", \"Effect\": \"Allow\", \"Action\": [\"sts:GetCallerIdentity\"], \"Resource\": \"*\"}]}",
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      },
+      "videoq_tfstate_plan": {
+        "name": "videoq-tfstate-plan",
+        "path": "/",
+        "policy": "{\"Version\": \"2012-10-17\", \"Statement\": [{\"Sid\": \"TfStateBucketList\", \"Effect\": \"Allow\", \"Action\": [\"s3:ListBucket\"], \"Resource\": \"arn:aws:s3:::videoq-terraform-state-257240362763\", \"Condition\": {\"StringLike\": {\"s3:prefix\": [\"videoq/prod/terraform.tfstate\", \"videoq/prod/terraform.tfstate.tflock\"]}}}, {\"Sid\": \"TfStateRead\", \"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\"], \"Resource\": \"arn:aws:s3:::videoq-terraform-state-257240362763/videoq/prod/terraform.tfstate\"}, {\"Sid\": \"TfStateLock\", \"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\"], \"Resource\": \"arn:aws:s3:::videoq-terraform-state-257240362763/videoq/prod/terraform.tfstate.tflock\"}, {\"Sid\": \"CallerIdentity\", \"Effect\": \"Allow\", \"Action\": [\"sts:GetCallerIdentity\"], \"Resource\": \"*\"}]}",
+        "lifecycle": {
+          "prevent_destroy": true
+        },
+        "description": "Read Terraform state and manage only the lock file for VideoQ plans"
+      }
+    }
+  }
+}

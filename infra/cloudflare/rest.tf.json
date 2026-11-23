@@ -1,0 +1,270 @@
+{
+  "variable": {
+    "cloudflare_api_token": {
+      "type": "string",
+      "sensitive": true,
+      "ephemeral": true
+    }
+  },
+  "provider": {
+    "restapi": {
+      "uri": "https://api.cloudflare.com/client/v4",
+      "headers": {
+        "Authorization": "Bearer ${var.cloudflare_api_token}"
+      },
+      "write_returns_object": false
+    }
+  },
+  "resource": {
+    "restapi_object": {
+      "videoq_eval_eg2_c9_mwrj1gtt": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes",
+        "id_attribute": "name",
+        "data": "{\"name\": \"videoq-eval-eg2-c9-mwrj1gtt\", \"description\": \"Isolated EmbeddingGemma 2 comparison for course 9, 2026-11-22\", \"config\": {\"dimensions\": 768, \"metric\": \"cosine\"}}",
+        "read_search": {
+          "results_key": "result",
+          "search_key": "name",
+          "search_value": "{id}"
+        },
+        "object_id": "videoq-eval-eg2-c9-mwrj1gtt",
+        "ignore_server_additions": true,
+        "force_new": [
+          "name",
+          "config",
+          "description"
+        ],
+        "lifecycle": {
+          "prevent_destroy": true
+        },
+        "debug": false
+      },
+      "videoq_prod_scenes_embeddinggemma2_768": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes",
+        "id_attribute": "name",
+        "data": "{\"name\": \"videoq-prod-scenes-embeddinggemma2-768\", \"description\": \"VideoQ EmbeddingGemma 2 scene search; isolated from legacy vectors\", \"config\": {\"dimensions\": 768, \"metric\": \"cosine\"}}",
+        "read_search": {
+          "results_key": "result",
+          "search_key": "name",
+          "search_value": "{id}"
+        },
+        "object_id": "videoq-prod-scenes-embeddinggemma2-768",
+        "ignore_server_additions": true,
+        "force_new": [
+          "name",
+          "config",
+          "description"
+        ],
+        "lifecycle": {
+          "prevent_destroy": true
+        },
+        "debug": false
+      },
+      "videoq_account_prod_consumer": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/7e5e78c1e0ac4d178eddfc040a0ee075/consumers",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/7e5e78c1e0ac4d178eddfc040a0ee075/consumers",
+        "id_attribute": "consumer_id",
+        "data": "{\"dead_letter_queue\": \"videoq-account-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 2, \"retry_delay\": 0}, \"type\": \"worker\", \"script_name\": \"videoq-api\"}",
+        "read_search": {
+          "results_key": "result",
+          "search_key": "consumer_id",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"move\", \"from\": \"/script\", \"path\": \"/script_name\"}]"
+        },
+        "object_id": "c2a977ed04be4349969ed12ee555ddaa",
+        "ignore_server_additions": true,
+        "lifecycle": {
+          "prevent_destroy": true
+        },
+        "debug": false
+      },
+      "videoq_search_prod_consumer": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/e2937c3b2f39461b879f9aef5e8f8f2c/consumers",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/e2937c3b2f39461b879f9aef5e8f8f2c/consumers",
+        "id_attribute": "consumer_id",
+        "data": "{\"dead_letter_queue\": \"videoq-search-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 4, \"retry_delay\": 0}, \"type\": \"worker\", \"script_name\": \"videoq-api\"}",
+        "read_search": {
+          "results_key": "result",
+          "search_key": "consumer_id",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"move\", \"from\": \"/script\", \"path\": \"/script_name\"}]"
+        },
+        "object_id": "ae7fee6583de49ca92afc5ed54bfa6bc",
+        "ignore_server_additions": true,
+        "lifecycle": {
+          "prevent_destroy": true
+        },
+        "debug": false
+      },
+      "metadata_production_user_id": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index",
+        "create_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/create",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list",
+        "destroy_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/delete",
+        "destroy_method": "POST",
+        "destroy_data": "{\"propertyName\": \"user_id\"}",
+        "id_attribute": "propertyName",
+        "object_id": "user_id",
+        "data": "{\"propertyName\": \"user_id\", \"indexType\": \"string\"}",
+        "force_new": [
+          "propertyName",
+          "indexType"
+        ],
+        "ignore_server_additions": true,
+        "debug": false,
+        "read_search": {
+          "results_key": "result/metadataIndexes",
+          "search_key": "propertyName",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"test\", \"path\": \"/indexType\", \"value\": \"String\"}, {\"op\": \"replace\", \"path\": \"/indexType\", \"value\": \"string\"}]"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      },
+      "metadata_production_video_id": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index",
+        "create_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/create",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list",
+        "destroy_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/delete",
+        "destroy_method": "POST",
+        "destroy_data": "{\"propertyName\": \"video_id\"}",
+        "id_attribute": "propertyName",
+        "object_id": "video_id",
+        "data": "{\"propertyName\": \"video_id\", \"indexType\": \"number\"}",
+        "force_new": [
+          "propertyName",
+          "indexType"
+        ],
+        "ignore_server_additions": true,
+        "debug": false,
+        "read_search": {
+          "results_key": "result/metadataIndexes",
+          "search_key": "propertyName",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"test\", \"path\": \"/indexType\", \"value\": \"Number\"}, {\"op\": \"replace\", \"path\": \"/indexType\", \"value\": \"number\"}]"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      },
+      "metadata_production_vector_id": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index",
+        "create_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/create",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list",
+        "destroy_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/delete",
+        "destroy_method": "POST",
+        "destroy_data": "{\"propertyName\": \"vector_id\"}",
+        "id_attribute": "propertyName",
+        "object_id": "vector_id",
+        "data": "{\"propertyName\": \"vector_id\", \"indexType\": \"string\"}",
+        "force_new": [
+          "propertyName",
+          "indexType"
+        ],
+        "ignore_server_additions": true,
+        "debug": false,
+        "read_search": {
+          "results_key": "result/metadataIndexes",
+          "search_key": "propertyName",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"test\", \"path\": \"/indexType\", \"value\": \"String\"}, {\"op\": \"replace\", \"path\": \"/indexType\", \"value\": \"string\"}]"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      },
+      "metadata_evaluation_user_id": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index",
+        "create_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/create",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/list",
+        "destroy_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/delete",
+        "destroy_method": "POST",
+        "destroy_data": "{\"propertyName\": \"user_id\"}",
+        "id_attribute": "propertyName",
+        "object_id": "user_id",
+        "data": "{\"propertyName\": \"user_id\", \"indexType\": \"string\"}",
+        "force_new": [
+          "propertyName",
+          "indexType"
+        ],
+        "ignore_server_additions": true,
+        "debug": false,
+        "read_search": {
+          "results_key": "result/metadataIndexes",
+          "search_key": "propertyName",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"test\", \"path\": \"/indexType\", \"value\": \"String\"}, {\"op\": \"replace\", \"path\": \"/indexType\", \"value\": \"string\"}]"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      },
+      "metadata_evaluation_video_id": {
+        "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index",
+        "create_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/create",
+        "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/list",
+        "destroy_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/delete",
+        "destroy_method": "POST",
+        "destroy_data": "{\"propertyName\": \"video_id\"}",
+        "id_attribute": "propertyName",
+        "object_id": "video_id",
+        "data": "{\"propertyName\": \"video_id\", \"indexType\": \"number\"}",
+        "force_new": [
+          "propertyName",
+          "indexType"
+        ],
+        "ignore_server_additions": true,
+        "debug": false,
+        "read_search": {
+          "results_key": "result/metadataIndexes",
+          "search_key": "propertyName",
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"test\", \"path\": \"/indexType\", \"value\": \"Number\"}, {\"op\": \"replace\", \"path\": \"/indexType\", \"value\": \"number\"}]"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      }
+    }
+  },
+  "import": [
+    {
+      "to": "restapi_object.videoq_eval_eg2_c9_mwrj1gtt",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt"
+    },
+    {
+      "to": "restapi_object.videoq_prod_scenes_embeddinggemma2_768",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768"
+    },
+    {
+      "to": "restapi_object.videoq_account_prod_consumer",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/7e5e78c1e0ac4d178eddfc040a0ee075/consumers/c2a977ed04be4349969ed12ee555ddaa"
+    },
+    {
+      "to": "restapi_object.videoq_search_prod_consumer",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/e2937c3b2f39461b879f9aef5e8f8f2c/consumers/ae7fee6583de49ca92afc5ed54bfa6bc"
+    },
+    {
+      "to": "restapi_object.metadata_production_user_id",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list"
+    },
+    {
+      "to": "restapi_object.metadata_production_video_id",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list"
+    },
+    {
+      "to": "restapi_object.metadata_production_vector_id",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-prod-scenes-embeddinggemma2-768/metadata_index/list"
+    },
+    {
+      "to": "restapi_object.metadata_evaluation_user_id",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/list"
+    },
+    {
+      "to": "restapi_object.metadata_evaluation_video_id",
+      "id": "/accounts/12daec56fdba43f677f2766ee26a5a39/vectorize/v2/indexes/videoq-eval-eg2-c9-mwrj1gtt/metadata_index/list"
+    }
+  ]
+}

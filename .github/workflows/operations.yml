@@ -192,17 +192,24 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
           role-session-name: videoq-drift-readonly
           aws-region: ${{ secrets.AWS_REGION }}
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
       - name: Initialize with the reviewed lockfile
         working-directory: infra
-        env:
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-        run: terraform init -lockfile=readonly -input=false -backend-config="bucket=$TF_STATE_BUCKET" > /dev/null 2>&1
+        run: terraform init -lockfile=readonly -input=false > /dev/null 2>&1
       - name: Read-only plan with the backend mutex and no attribute output
         working-directory: infra
         env:
           OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
           TF_VAR_openai_spend_alert_email: ${{ secrets.OPENAI_SPEND_ALERT_EMAIL }}
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
+          TF_VAR_cloudflare_background_jobs_routing_enabled: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED || 'false' }}
+          TF_VAR_cloudflare_background_jobs_enabled: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ENABLED || 'false' }}
+          TF_VAR_retire_background_queues: ${{ vars.RETIRE_BACKGROUND_QUEUES || 'false' }}
+          TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
+          TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
         run: python ../.github/scripts/terraform-drift.py
       - uses: ./.github/actions/report-operations
         if: always()

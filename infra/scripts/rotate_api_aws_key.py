@@ -15,7 +15,7 @@ from retire_ai_credentials import API_POLICY, verify_router
 USER = 'videoq-workers-api'
 USER_ARN = 'arn:aws:iam::257240362763:user/'+USER
 QUEUE_ARNS = ['arn:aws:sqs:ap-northeast-1:257240362763:'+name for name in
-              ('videoq-worker-prod', 'videoq-worker-search-prod', 'videoq-worker-account-prod')]
+              ('videoq-worker-prod',)]
 JOURNAL = '/videoq/prod/api-key-rotation'
 REPO = 'videoq-jp/videoq'
 

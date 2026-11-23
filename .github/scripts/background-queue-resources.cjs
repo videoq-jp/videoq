@@ -34,6 +34,7 @@ async function ensureQueues(plan,request){
 }
 
 if(require.main===module){
+  throw Error("Queue resources are managed by infra/cloudflare; use the Cloudflare Infrastructure workflow.");
   (async()=>{
     const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
     if(!/^[a-f0-9]{32}$/.test(account||'')||!token)throw new Error('Cloudflare infrastructure credentials are required');

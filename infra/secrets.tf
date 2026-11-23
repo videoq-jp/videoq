@@ -2,7 +2,8 @@
 #
 # External service credentials (Neon / Cloudflare R2) are set manually via CLI
 # after the initial apply. Terraform manages the parameter shells only;
-# `value` is ignored after create so apply never overwrites live secrets.
+# the write-only value version is ignored after create so apply never overwrites live secrets.
+# Write-only values are not retained in Terraform state.
 
 # Neon PostgreSQL connection string.
 # Format: {"DATABASE_URL": "postgresql://...?sslmode=require"}
@@ -10,10 +11,12 @@ resource "aws_ssm_parameter" "db" {
   name        = "/${local.name_prefix}/${var.env_name}/db"
   description = "Neon PostgreSQL DATABASE_URL (pooler endpoint)"
   type        = "SecureString"
-  value       = jsonencode({ DATABASE_URL = "REPLACE_ME" })
+  value_wo    = jsonencode({ DATABASE_URL = "REPLACE_ME" })
+
+  value_wo_version = 0
 
   lifecycle {
-    ignore_changes  = [value]
+    ignore_changes  = [value_wo_version]
     prevent_destroy = true
   }
 }
@@ -38,7 +41,7 @@ resource "aws_ssm_parameter" "app" {
   name        = "/${local.name_prefix}/${var.env_name}/app"
   description = "App secrets + R2 credentials (use R2_* key names, never AWS_ACCESS_KEY_ID)"
   type        = "SecureString"
-  value = jsonencode({
+  value_wo = jsonencode({
     USER_SECRET_ENCRYPTION_KEY = "REPLACE_ME"
     R2_ACCESS_KEY_ID           = "REPLACE_ME"
     R2_SECRET_ACCESS_KEY       = "REPLACE_ME"
@@ -47,8 +50,10 @@ resource "aws_ssm_parameter" "app" {
     R2_S3_REGION               = "auto"
   })
 
+  value_wo_version = 0
+
   lifecycle {
-    ignore_changes  = [value]
+    ignore_changes  = [value_wo_version]
     prevent_destroy = true
   }
 }

@@ -6,9 +6,7 @@
       "Effect": "Allow",
       "Action": "sqs:SendMessage",
       "Resource": [
-        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod",
-        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-search-prod",
-        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-account-prod"
+        "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod"
       ]
     }
   ]

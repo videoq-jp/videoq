@@ -1,0 +1,296 @@
+{
+  "resource": {
+    "aws_ssm_parameter": {
+      "retained_secret_2": {
+        "name": "/videoq/prod/worker-db",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "description": "Neon least-privilege Lambda worker DATABASE_URL",
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_3": {
+        "name": "/videoq/security/prod/d1-migration",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "tags": {
+          "purpose": "videoq-production-d1-migrations"
+        },
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_4": {
+        "name": "/videoq/security/prod/db-admin",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_5": {
+        "name": "/videoq/security/prod/db-audit",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_6": {
+        "name": "/videoq/security/prod/db-demo",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_7": {
+        "name": "/videoq/security/prod/db-rotation",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_8": {
+        "name": "/videoq/security/prod/db-smoke",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_9": {
+        "name": "/videoq/security/prod/worker-internal-api",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_10": {
+        "name": "/videoq/security/prod/background-maintenance",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "description": "Dedicated Cloudflare background maintenance credential; owner yukiharada1228; expires 2027-02-21",
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_11": {
+        "name": "/videoq/security/prod/cutover-control",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "tags": {
+          "purpose": "videoq-production-cutover"
+        },
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_12": {
+        "name": "/videoq/security/prod/db-backup",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_13": {
+        "name": "/videoq/security/prod/db-migration",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_14": {
+        "name": "/videoq/security/prod/hyperdrive-credentials",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      },
+      "retained_secret_15": {
+        "name": "/videoq/security/prod/smoke-identity",
+        "type": "SecureString",
+        "tier": "Standard",
+        "data_type": "text",
+        "lifecycle": {
+          "ignore_changes": [
+            "value_wo_version"
+          ],
+          "prevent_destroy": true
+        },
+        "description": "Persistent synthetic VideoQ smoke identity HMAC; not a user authentication key",
+        "key_id": "alias/aws/ssm",
+        "value_wo": "EXTERNALLY_MANAGED",
+        "value_wo_version": 0
+      }
+    },
+    "aws_cloudwatch_log_group": {
+      "legacy_api": {
+        "name": "/aws/lambda/videoq-api-prod",
+        "retention_in_days": 30,
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      }
+    }
+  },
+  "import": [
+    {
+      "to": "aws_ssm_parameter.retained_secret_2",
+      "id": "/videoq/prod/worker-db"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_3",
+      "id": "/videoq/security/prod/d1-migration"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_4",
+      "id": "/videoq/security/prod/db-admin"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_5",
+      "id": "/videoq/security/prod/db-audit"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_6",
+      "id": "/videoq/security/prod/db-demo"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_7",
+      "id": "/videoq/security/prod/db-rotation"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_8",
+      "id": "/videoq/security/prod/db-smoke"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_9",
+      "id": "/videoq/security/prod/worker-internal-api"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_10",
+      "id": "/videoq/security/prod/background-maintenance"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_11",
+      "id": "/videoq/security/prod/cutover-control"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_12",
+      "id": "/videoq/security/prod/db-backup"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_13",
+      "id": "/videoq/security/prod/db-migration"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_14",
+      "id": "/videoq/security/prod/hyperdrive-credentials"
+    },
+    {
+      "to": "aws_ssm_parameter.retained_secret_15",
+      "id": "/videoq/security/prod/smoke-identity"
+    },
+    {
+      "to": "aws_cloudwatch_log_group.legacy_api",
+      "id": "/aws/lambda/videoq-api-prod"
+    }
+  ]
+}

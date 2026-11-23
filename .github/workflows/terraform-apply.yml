@@ -102,10 +102,15 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
+          terraform_version: 1.15.1
           terraform_wrapper: false
 
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
       - name: Terraform init
-        run: terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+        run: terraform init -input=false
 
       - name: Terraform apply
         env:
@@ -155,10 +160,15 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
+          terraform_version: 1.15.1
           terraform_wrapper: false
 
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
       - name: Terraform init
-        run: terraform init -lockfile=readonly -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+        run: terraform init -lockfile=readonly -input=false
 
       - name: Terraform apply
         env:
@@ -194,6 +204,7 @@ jobs:
           python-version-file: .python-version
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
+          terraform_version: 1.15.1
           terraform_wrapper: false
       - name: Configure read-only AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
@@ -201,10 +212,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
           role-session-name: videoq-terraform-preflight
           aws-region: ${{ secrets.AWS_REGION }}
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
       - name: Initialize with the reviewed lockfile
-        env:
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-        run: terraform init -lockfile=readonly -input=false -backend-config="bucket=$TF_STATE_BUCKET" > /dev/null 2>&1
+        run: terraform init -lockfile=readonly -input=false > /dev/null 2>&1
       - name: Plan without publishing state or attribute values
         id: plan
         env:

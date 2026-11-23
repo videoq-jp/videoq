@@ -1,0 +1,33 @@
+name: Configure Terraform R2 backend
+description: Isolate R2 backend credentials from AWS provider credentials and snapshot state before apply.
+inputs:
+  access-key-id:
+    required: true
+    description: Bucket-scoped R2 access key ID
+  secret-access-key:
+    required: true
+    description: Bucket-scoped R2 secret access key
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        R2_ACCESS_KEY: ${{ inputs.access-key-id }}
+        R2_SECRET_KEY: ${{ inputs.secret-access-key }}
+      run: |
+        set -euo pipefail
+        test -n "$R2_ACCESS_KEY"
+        test -n "$R2_SECRET_KEY"
+        terraform_binary="$(command -v terraform)"
+        shim_directory="$(mktemp -d "$RUNNER_TEMP/terraform-r2.XXXXXX")"
+        cat > "$shim_directory/terraform" <<'SHIM'
+        #!/usr/bin/env bash
+        exec node "$GITHUB_WORKSPACE/infra/bin/terraform-r2.cjs" "$@"
+        SHIM
+        chmod 700 "$shim_directory/terraform"
+        printf '%s\n' "$shim_directory" >> "$GITHUB_PATH"
+        {
+          printf 'TERRAFORM_BINARY=%s\n' "$terraform_binary"
+          printf 'TF_STATE_R2_ACCESS_KEY_ID=%s\n' "$R2_ACCESS_KEY"
+          printf 'TF_STATE_R2_SECRET_ACCESS_KEY=%s\n' "$R2_SECRET_KEY"
+        } >> "$GITHUB_ENV"

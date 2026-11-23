@@ -174,14 +174,15 @@ test('error reporting never forwards arbitrary messages or SDK/SQL error bodies'
   assert.equal(safeError(new Error('password=private-value')), 'MAINTENANCE_REQUEST_FAILED');
   assert.equal(safeError(new Error('KNOWN_FAILURE')), 'KNOWN_FAILURE');
 });
-test('existing GitHub infrastructure roles cannot write the independent maintenance state', () => {
-  const policy = JSON.parse(readFileSync('infra/iam/videoq-tfstate-access.json', 'utf8'));
-  const writes = policy.Statement.filter(s => s.Effect === 'Allow' && s.Action.includes('s3:PutObject'));
-  assert.equal(writes.length, 1);
-  assert.deepEqual(writes[0].Resource, [
-    'arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate',
-    'arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate.tflock',
-  ]);
+test('GitHub infrastructure roles retain only read access to the retired AWS state backend', () => {
+  for (const file of ['videoq-tfstate-access.json', 'videoq-tfstate-plan.json']) {
+    const policy = JSON.parse(readFileSync('infra/iam/' + file, 'utf8'));
+    const allows = policy.Statement.filter(s => s.Effect === 'Allow');
+    assert.ok(allows.some(s => s.Action.includes('s3:GetObject')));
+    for (const statement of allows) for (const action of statement.Action) {
+      assert.ok(!['s3:PutObject', 's3:DeleteObject', 's3:DeleteObjectVersion'].includes(action));
+    }
+  }
 });
 test('routine infrastructure updates cannot remove the worker ceiling or recreate its role', () => {
   const policy = JSON.parse(readFileSync('infra/iam/videoq-terraform-deploy.json', 'utf8'));
