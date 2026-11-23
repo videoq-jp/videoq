@@ -41,7 +41,7 @@ export async function verifyIdentity(token, kind, { fetcher = fetch, now = Date.
   const c = parse(parts[1]), seconds = Math.floor(now() / 1000);
   if (c.iss !== ISSUER || c.aud !== AUDIENCE || c.repository !== REPOSITORY || c.repository_id !== '1083911938' || c.repository_owner_id !== '349188820'
     || c.ref !== 'refs/heads/main' || c.ref_type !== 'branch' || c.environment !== purpose.environment || c.runner_environment !== 'github-hosted'
-    || c.sub !== `repo:${REPOSITORY}:environment:${purpose.environment}` || !['workflow_run', 'workflow_dispatch', 'schedule'].includes(c.event_name)
+    || c.sub !== `repo:videoq-jp@349188820/videoq@1083911938:environment:${purpose.environment}` || !['workflow_run', 'workflow_dispatch', 'schedule'].includes(c.event_name)
     || !(statusOnly ? c.workflow_ref === `${REPOSITORY}/.github/workflows/maintenance-status.yml@refs/heads/main` : purpose.workflows.some(file => c.workflow_ref === `${REPOSITORY}/.github/workflows/${file}@refs/heads/main`))
     || !/^[a-f0-9]{40}$/.test(c.sha ?? '') || !/^[a-f0-9]{40}$/.test(c.workflow_sha ?? '') || c.workflow_sha !== c.sha
     || !/^[1-9][0-9]{0,19}$/.test(c.run_id ?? '') || !/^[1-9][0-9]{0,5}$/.test(c.run_attempt ?? '')
