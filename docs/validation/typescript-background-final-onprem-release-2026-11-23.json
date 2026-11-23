@@ -1,0 +1,48 @@
+{
+  "sourceSha": "9919dfc4674f0da495fdd03eb6d3ad936a0a5631",
+  "uploadTranscriptionIndexingAndQa": "passed",
+  "inference": "real CPU llama.cpp chat/embeddings and whisper.cpp ASR; public Japanese FLEURS fixture",
+  "objectRestore": "passed; SHA256 identical",
+  "databaseRestore": "passed; restored to a separate database and app switched",
+  "upgrade": "passed; two API replicas and migration hook",
+  "rollback": "passed; one API replica, restored DB and data retained",
+  "helmTest": "passed",
+  "retention": "passed",
+  "publicEgress": "blocked by dedicated node IPv4/IPv6 firewall; public DNS forwarding disabled; worker Pod probe passed",
+  "networkBoundary": "Dedicated node OUTPUT/FORWARD IPv4/IPv6 firewall plus CoreDNS without external forwarding; not a CNI enforcement test",
+  "verification": "Signed release manifest, both charts and all five VideoQ image indexes verified before rehearsal",
+  "imageReferences": {
+    "api": "ghcr.io/videoq-jp/videoq-api@sha256:3ac75a2c552efd9a4ebb71069fcf9cc8704d4637ec527f059bcd73262f42217f",
+    "worker": "ghcr.io/videoq-jp/videoq-worker@sha256:aa77196209dbebd83e8e96b745536d888f8d76d8b71549503f8a0d82e415760c",
+    "web": "ghcr.io/videoq-jp/videoq-web@sha256:b72e8b97cdb498910138ef07b7eba9fea059842dd477628b9e840daf5491ef74",
+    "whisper": "ghcr.io/videoq-jp/videoq-transcription-gateway@sha256:68493b7cba5e5d42559e533206b3a3fcc988478b48dca562fa4ef737210e6e9c",
+    "llamacpp": "ghcr.io/ggml-org/llama.cpp@sha256:01c2bc28d51291536df2ccebe5c6af1cdec9ea9b2bd98ac59556408caf96d3f8",
+    "whispercpp": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73"
+  },
+  "models": {
+    "chat": {
+      "modelRepo": "Qwen/Qwen3-4B-GGUF",
+      "modelRevision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+      "modelFile": "Qwen3-4B-Q4_K_M.gguf",
+      "modelSha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5"
+    },
+    "embedding": {
+      "modelRepo": "second-state/gte-Qwen2-1.5B-instruct-GGUF",
+      "modelRevision": "124fbdad7d80e987f3a4d8cd201f721ca37fe9b8",
+      "modelFile": "gte-Qwen2-1.5B-instruct-Q4_K_M.gguf",
+      "modelSha256": "a40df5cabb8c70f2fa144bc6a8674c2c987bfe3b4571134c767832aae1d246b9"
+    },
+    "whisper": {
+      "modelRepo": "ggerganov/whisper.cpp",
+      "modelRevision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+      "modelFile": "ggml-large-v3-turbo-q5_0.bin",
+      "modelSha256": "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"
+    }
+  },
+  "elapsedSeconds": 1038.522797177,
+  "releaseRunId": 45129261920,
+  "releaseConclusion": "success",
+  "publishedAnonymousSignedDownloads": true,
+  "architecture": "amd64",
+  "playbackPassed": true
+}

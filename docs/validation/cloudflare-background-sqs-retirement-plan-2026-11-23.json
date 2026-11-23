@@ -1,7 +1,7 @@
 {
-  "preparedAt": "2026-11-23T03:48:27.827974+00:00",
-  "sourceSha": "415c066a8ba0c6b8e908df591a6570c35f63afa8",
-  "planSha256": "d5e3ced26be85d3c874f5f289b3535d03c89c7d67631a2397af6ebd6b734aa6a",
+  "preparedAt": "2026-11-23T13:11:51.602471+00:00",
+  "sourceSha": "9919dfc4674f0da495fdd03eb6d3ad936a0a5631",
+  "planSha256": "1d92e181940f394a335a87e6875c772cf20b1ad0f1f495338a50eaca400ace66",
   "added": 0,
   "changed": 2,
   "destroyed": 14,
@@ -125,5 +125,7 @@
   "remainingGates": [
     "Manual infrastructure approval",
     "Fresh main, identical scope, idle deployment/maintenance and all legacy queue drain checks immediately before apply"
-  ]
+  ],
+  "snapshotNote": "Historical reviewed pre-approval plan; subsequent applied report is authoritative",
+  "subsequentAppliedEvidence": "cloudflare-background-sqs-retirement-applied-2026-11-23.json"
 }

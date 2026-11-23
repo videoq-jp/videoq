@@ -1,448 +1,480 @@
 {
-  "date": "2026-11-22",
-  "status": "implementation and verification in progress; production transport unchanged",
-  "focusedPostgresAndNodeE2E": {
-    "passed": 26,
-    "failed": 0,
-    "realPostgres": true,
-    "realElasticMQ": true,
-    "builtNodeProcess": true,
-    "model": "synthetic OpenAI-compatible server"
+  "updatedAt": "2026-11-23T13:15:08.338418+00:00",
+  "status": "Cloudflare and Python cleanup deployed; legacy Lambda/SQS retired; signed on-prem release verified; final cloud acceptance and guide publication pending",
+  "migrationComplete": false,
+  "runtime": {
+    "cloudSearchAccount": "TypeScript on Cloudflare Queues and Workflows; Workers AI / D1 / Vectorize",
+    "onpremSearchAccount": "Node shared TypeScript processors; PostgreSQL; langchain-postgres and LangChain OpenAI-compatible embeddings",
+    "media": "Python media/audio retained"
   },
-  "cloudNativeLive": {
-    "date": "2026-11-22",
-    "runtime": "native local workerd Workflows + local D1/R2 + real remote Workers AI and temporary remote Vectorize",
-    "model": "@cf/google/embeddinggemma-2",
-    "workflowStatus": "complete",
-    "elapsedSeconds": 156.33,
-    "videoStatus": "completed",
-    "jobStatus": "completed",
-    "pendingVectorTasks": 0,
-    "scenes": 3,
-    "maintenancePasses": 148,
-    "productionDataChanged": false,
-    "temporaryVectorizeDeleted": true
+  "currentEvidence": {
+    "signedApiHandoff": "cloudflare-signed-api-handoff-applied-2026-11-23.json",
+    "nativeCutover": "cloudflare-production-background-cutover-2026-11-23.json",
+    "accountDeletionAndIdempotence": "cloudflare-production-account-queue-2026-11-23.json",
+    "deletedSourceRegression": "cloudflare-workflow-deletion-regression-2026-11-23.json",
+    "maintenanceRecovery": "cloudflare-owned-maintenance-2026-11-22.json",
+    "lambdaRetirement": "cloudflare-background-lambda-retirement-applied-2026-11-23.json",
+    "onpremFinalRelease": "typescript-background-final-onprem-release-2026-11-23.json",
+    "sqsRetirement": "cloudflare-background-sqs-retirement-applied-2026-11-23.json"
   },
-  "terraformMockTests": {
-    "passed": 4,
-    "failed": 0,
-    "productionInfrastructureChanged": false
+  "pythonCleanup": {
+    "pullRequest": 1602,
+    "mergedMainSha": "9919dfc4674f0da495fdd03eb6d3ad936a0a5631",
+    "productionCdRunId": 45129261750,
+    "conclusion": "success"
   },
-  "limitations": [
-    "Local D1/R2 and a temporary remote Vectorize index were used; no production application data was modified.",
-    "Local workerd HMR interrupted an earlier pending retry; pause/resume recovered the same instance. The reported clean run had no HMR or recovery intervention.",
-    "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark.",
-    "The first streaming probe stalled in a local step past its deadline and completed after pause/resume. A subsequent fresh instance on the same runtime completed without intervention in 1.90 seconds. The local stall cause is not established."
-  ],
   "remaining": [
-    "Complete production review, rollout, draining and retirement of legacy consumers.",
-    "Remove superseded Python search/account execution paths after cutover."
+    "Final cited cloud smoke after infrastructure cleanup",
+    "Publish guides PR1613 and verify public docs",
+    "Merge consolidated validation evidence PR1606"
   ],
-  "cloudNativeGenerationWithSplittingCheckpoints": {
+  "historicalPreparationSnapshot": {
     "date": "2026-11-22",
-    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
-    "model": "@cf/google/embeddinggemma-2",
-    "workflowStatus": "complete",
-    "elapsedSeconds": 2.39,
-    "jobStatus": "completed",
-    "scenes": [
-      {
-        "count": 3,
-        "dimensions": 768
-      }
-    ],
-    "vectorDelivery": [
-      {
-        "pending": 3
-      }
-    ],
-    "productionDataChanged": false
-  },
-  "workflowRecoveryTests": {
-    "passed": 13,
-    "failed": 0,
-    "scope": "Real D1 migrations and persistence; step simulator injects lost acknowledgements and transient artifact reads"
-  },
-  "workerRuntimeTests": {
-    "passed": 100,
-    "failed": 0,
-    "files": 16
-  },
-  "checks": {
-    "apiLint": true,
-    "apiTypecheck": true,
-    "nodeBuild": true,
-    "workerDryRun": true,
-    "productionWorkerDryRun": true,
-    "helmLint": true,
-    "terraformValidate": true,
-    "terraformApplyExecuted": false
-  },
-  "cloudNativeStreamingSplitting": {
-    "workflowId": "streaming-clean-ab4493e7-5b6e-4e04-88e6-37beebf77a44",
-    "status": "complete",
-    "elapsedSeconds": 1.9042747500000001,
-    "database": [
-      [
-        {
-          "status": "completed",
-          "count": 2
-        }
-      ],
-      [
-        {
-          "dimensions": 768,
-          "count": 3
-        }
-      ]
-    ],
-    "intervention": false,
-    "productionDataChanged": false,
-    "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
-    "model": "@cf/google/embeddinggemma-2",
-    "scope": "Streaming Otsu splitting, 768-dimensional generation and D1 staging; Vectorize not bound in this run"
-  },
-  "followupChecks": {
-    "typecheck": true,
-    "lint": true,
-    "workflowRecoveryTestsPassed": 13,
-    "focusedKernelEmbeddingsCancellationTestsPassed": 13,
-    "queueProvisioningTestsPassed": 4,
-    "workerRuntimeTestsPassed": 100,
-    "nodeBuild": true
-  },
-  "defaultApiSuiteFinal": {
-    "passed": 3463,
-    "failed": 0,
-    "skipped": 1555,
-    "files": 459,
-    "maxWorkers": 2,
-    "scope": "Final default environment; PostgreSQL-dependent tests skipped without a configured test connection"
-  },
-  "apiSuite": {
-    "passed": 4110,
-    "failed": 0,
-    "skipped": 886,
-    "files": 455,
-    "maxWorkers": 2,
-    "scope": "Earlier complete suite with PostgreSQL test connection configured; final follow-up checks recorded separately"
-  },
-  "finalPostgresNodeAndD1DeletionChecks": {
-    "passed": 39,
-    "failed": 0,
-    "files": 4,
-    "realPostgres": true,
-    "realElasticMQ": true,
-    "builtNodeProcess": true,
-    "model": "synthetic OpenAI-compatible server"
-  },
-  "productionPreflightReconciliationFinding": {
-    "status": "fix prepared; production recovery not yet verified",
-    "pendingSyntheticUpload": 1,
-    "obsoleteReconciliationParametersBefore": 104,
-    "parametersAfter": 5,
-    "documentedD1Limit": 100,
-    "reference": "https://developers.cloudflare.com/d1/platform/limits/",
-    "diagnosis": "Existing synthetic operations-smoke upload has one unattempted vector task; production alarm reports scene-index maintenance failure. Read-only production SQL compilation proves the reconciliation statement exceeds the parameter limit.",
-    "regression": {
-      "obsoleteVectors": 105,
-      "activeIndexPreserved": true,
-      "previousCodeFailed": true,
-      "fixedReconciliationTestsPassed": 2,
-      "otherSyncTestsPassed": 25
+    "status": "implementation and verification in progress; production transport unchanged",
+    "focusedPostgresAndNodeE2E": {
+      "passed": 26,
+      "failed": 0,
+      "realPostgres": true,
+      "realElasticMQ": true,
+      "builtNodeProcess": true,
+      "model": "synthetic OpenAI-compatible server"
     },
-    "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
-  },
-  "phasedMediaRoutingPreparation": {
-    "status": "prepared; defaults remain false; no production apply",
-    "routingPreservesLegacyConsumers": true,
-    "retirementRequiresRouting": true,
-    "terraformMockTestsPassed": 6,
-    "deploymentPolicyTestsPassed": 45,
-    "terraformValidate": true,
-    "terraformFormat": true
-  },
-  "backgroundMaintenancePreparation": {
-    "status": "draft; no production control changes",
-    "deploymentOperationsTestsPassed": 785,
-    "operatorBundleAndTriggerTestsPassed": 3,
-    "schemaMigrationFenceIntegrated": true,
-    "fenceChecks": [
-      "expected queue identities and consumers",
-      "queue delivery paused and last modification at least 16 minutes old",
-      "all search Workflows paused or terminal",
-      "pre/post schema command recheck",
-      "read-only scoped metadata transport"
+    "cloudNativeLive": {
+      "date": "2026-11-22",
+      "runtime": "native local workerd Workflows + local D1/R2 + real remote Workers AI and temporary remote Vectorize",
+      "model": "@cf/google/embeddinggemma-2",
+      "workflowStatus": "complete",
+      "elapsedSeconds": 156.33,
+      "videoStatus": "completed",
+      "jobStatus": "completed",
+      "pendingVectorTasks": 0,
+      "scenes": 3,
+      "maintenancePasses": 148,
+      "productionDataChanged": false,
+      "temporaryVectorizeDeleted": true
+    },
+    "terraformMockTests": {
+      "passed": 4,
+      "failed": 0,
+      "productionInfrastructureChanged": false
+    },
+    "limitations": [
+      "Local D1/R2 and a temporary remote Vectorize index were used; no production application data was modified.",
+      "Local workerd HMR interrupted an earlier pending retry; pause/resume recovered the same instance. The reported clean run had no HMR or recovery intervention.",
+      "Model response dimensions and end-to-end publication were verified; this is not a search quality benchmark.",
+      "The first streaming probe stalled in a local step past its deadline and completed after pause/resume. A subsequent fresh instance on the same runtime completed without intervention in 1.90 seconds. The local stall cause is not established."
     ],
     "remaining": [
-      "live AWS IAM and dedicated Cloudflare control token scope verification",
-      "live isolated failure/recovery verification before production routing",
-      "enable background maintenance through reviewed infrastructure opt-in"
+      "Complete production review, rollout, draining and retirement of legacy consumers.",
+      "Remove superseded Python search/account execution paths after cutover."
     ],
-    "pauseRestoreCoordinatorTestsPassed": 6,
-    "durableStoreContractVerified": true,
-    "productionStoreAndOwnershipIntegrationVerified": false,
-    "terraformMockScenariosPassed": 34,
-    "ownedMigrationExecutionIntegrationTestsPassed": 2,
-    "ownedDynamoStoreAndMigrationIntegrationPrepared": true,
-    "realDynamoDbLocalIntegrationTestsPassed": 20,
-    "dynamoDbLocalImage": "amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86",
-    "realDynamoDbTransactionChecks": [
-      "immutable plans",
-      "lost acknowledgement read-back",
-      "atomic global-lock replacement rejects write"
-    ],
-    "localTestResourcesCleanedUp": true
-  },
-  "retiredLambdaImageBaselinePreparation": {
-    "status": "prepared; production still uses three Lambdas",
-    "relatedTestsPassed": 10,
-    "cloudflareModeRequiresRetiredFunctionAbsence": true,
-    "deniedOrTimedOutReadsRefused": true,
-    "liveLegacyThreeLambdaImageBaselinePassed": true,
-    "liveOperation": "read-only",
-    "liveCloudflareTopologyVerified": false
-  },
-  "backgroundMaintenanceLiveReadiness": {
-    "date": "2026-11-22",
-    "operations": "read-only SSM metadata, IAM policy simulation and CodeBuild environment metadata",
-    "dedicatedCredentialParameterExists": true,
-    "migrationRoleCredentialReadDecision": "implicitDeny",
-    "codeBuildControlFlagPresent": false,
-    "productionControlEnabled": false,
-    "nextRequirement": "Approve and apply independent migration-role opt-in, deploy bindings, then verify isolated pause/restore before routing cutover.",
-    "credentialProvisioning": {
-      "tokenName": "videoq-background-maintenance-20261123",
-      "expiry": "2027-02-21",
-      "permissions": [
-        "Queues Write",
-        "Workers Scripts Write"
+    "cloudNativeGenerationWithSplittingCheckpoints": {
+      "date": "2026-11-22",
+      "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+      "model": "@cf/google/embeddinggemma-2",
+      "workflowStatus": "complete",
+      "elapsedSeconds": 2.39,
+      "jobStatus": "completed",
+      "scenes": [
+        {
+          "count": 3,
+          "dimensions": 768
+        }
       ],
-      "accountId": "12daec56fdba43f677f2766ee26a5a39",
-      "ssmReadBackVerified": true,
-      "fourQueueMetadataReadsVerified": true,
-      "temporarySecretFileDeleted": true,
-      "workflowControlVerified": false
-    }
-  },
-  "queuePreparationLiveAttempt": {
-    "runId": 45032757041,
-    "url": "https://github.com/videoq-jp/videoq/actions/runs/45032757041",
-    "headSha": "4c5d19e1890c749077f322598bf07b78300dcb6e",
-    "approval": "explicit user approval submitted; production-infra gate accepted",
-    "conclusion": "success",
-    "credentialSource": "production-infra/CLOUDFLARE_INFRA_TOKEN",
-    "nextRequirement": "Deploy and verify bindings while retaining SQS routing, then perform isolated queue/workflow and maintenance recovery checks before cutover.",
-    "queuesPrepared": true,
-    "initialFailure": "Cloudflare queues request returned HTTP 403 during initial list; create loop not reached",
-    "attempt": 2,
-    "tokenPermissionUpdate": {
-      "tokenName": "videoq-cloudflare-resources-20260918",
-      "addedPermission": "Queues Write",
-      "accountId": "12daec56fdba43f677f2766ee26a5a39",
-      "expiryUnchanged": "2026-12-17",
-      "secretValueRead": false
+      "vectorDelivery": [
+        {
+          "pending": 3
+        }
+      ],
+      "productionDataChanged": false
     },
-    "createdAndReadBack": [
-      "videoq-account-prod",
-      "videoq-account-dlq-prod",
-      "videoq-search-prod",
-      "videoq-search-dlq-prod"
-    ]
-  },
-  "pythonCleanupCi": {
-    "pullRequest": 1602,
-    "headCommit": "a88a17a1",
-    "runId": 45031283150,
-    "ciSuccess": "success",
-    "lifecycleJobId": 137235268216,
-    "lifecycleConclusion": "success",
-    "lifecycleCompletedAt": "2026-11-22T15:17:11Z",
-    "productionCleanupApplied": false,
-    "mergePrerequisite": "Verified Cloudflare cutover, old queue drain and retirement of background Lambdas."
-  },
-  "approvedApiRecovery": {
-    "sourceSha": "2361b205dccee8f2e3bb03a0894c404893b11b1e",
-    "ciRun": 45040457020,
-    "artifactRun": 45040624482,
-    "artifactId": 14761028496,
-    "apiSha256": "8af18899daf9a277adeae7951d4eecdec48ddf47726cf7bdd4714f277dd09c26",
-    "approval": "explicit user approval for API-only recovery while retaining failed deployment lock",
-    "liveResourceHandoffCheck": true,
-    "liveStatePreservationCheck": true,
-    "d1MigrationLedger": {
-      "applied": 20,
-      "expected": 20,
-      "match": true
+    "workflowRecoveryTests": {
+      "passed": 13,
+      "failed": 0,
+      "scope": "Real D1 migrations and persistence; step simulator injects lost acknowledgements and transient artifact reads"
     },
-    "deployedVersion": "578885b2-56a6-4fe1-bb7a-e7b9d457dab3",
-    "ready": {
-      "status": "ready",
-      "db": "ok"
+    "workerRuntimeTests": {
+      "passed": 100,
+      "failed": 0,
+      "files": 16
     },
-    "transportsRemain": "sqs",
-    "newQueueWorkflowBindingsAdded": false,
-    "schemaChanged": false,
-    "testVideo": {
-      "id": 537,
-      "status": "completed",
-      "vectorUpsertAcceptedAt": "2026-11-22T16:08:00.251Z",
-      "completed": true,
-      "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
-      "lastErrorCode": ""
+    "checks": {
+      "apiLint": true,
+      "apiTypecheck": true,
+      "nodeBuild": true,
+      "workerDryRun": true,
+      "productionWorkerDryRun": true,
+      "helmLint": true,
+      "terraformValidate": true,
+      "terraformApplyExecuted": false
     },
-    "outstanding": "API recovery, SQS-preserving Cloudflare bindings, Queue metadata adapter fix and approved maintenance infrastructure are deployed. Actual owned production pause/restore recovery verification, routing cutover, queue drain and Lambda/Python retirement remain incomplete.",
-    "recoveryWorkflowRun": 45042542268,
-    "recoveryWorkflowConclusion": "failure",
-    "recoveryFailureStage": "video-processing",
-    "latestRecoveryAttempt": {
-      "runId": 45048338032,
-      "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
-      "codePromotion": "success",
-      "smokeBuild": "videoq-db-smoke-prod:5353bd79-f77b-4411-8927-e3a25b1be823",
-      "conclusion": "failure",
-      "failureStage": "database-and-cleanup",
-      "reason": "Existing synthetic video 538 remains indexing; smoke safely refused another upload."
-    },
-    "backlogRecovery": {
-      "videoId": 538,
-      "videoStatus": "completed",
-      "vectorUpsertAcceptedAt": "2026-11-22T17:27:45.676Z",
-      "vectorTaskCompletedAt": "2026-11-22T17:29:00.328Z",
-      "lastErrorCode": "",
-      "legacyDeleteBacklogDrained": true,
-      "completionMethod": "Normal task scheduler; no forced SQL status changes."
-    },
-    "recoveryRetryRun": 45049764940,
-    "recoveryRetryConclusion": "success",
-    "ordinaryCd": {
-      "runId": 45048337918,
-      "attempt": 2,
-      "conclusion": "success",
-      "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e"
-    }
-  },
-  "backgroundMaintenanceInfrastructurePlan": {
-    "applied": true,
-    "stateSerialRead": 27,
-    "planSha256": "f7e080d4da8607c03645cea2bffbefb0a39564fb279933f444f7782195341068",
-    "changes": [
-      {
-        "address": "aws_codebuild_project.job[\"migration\"]",
-        "actions": [
-          "update"
+    "cloudNativeStreamingSplitting": {
+      "workflowId": "streaming-clean-ab4493e7-5b6e-4e04-88e6-37beebf77a44",
+      "status": "complete",
+      "elapsedSeconds": 1.9042747500000001,
+      "database": [
+        [
+          {
+            "status": "completed",
+            "count": 2
+          }
         ],
-        "changedKeys": [
-          "build_timeout",
-          "environment"
+        [
+          {
+            "dimensions": 768,
+            "count": 3
+          }
         ]
+      ],
+      "intervention": false,
+      "productionDataChanged": false,
+      "runtime": "native local workerd Workflows with local D1/R2 and real remote Workers AI",
+      "model": "@cf/google/embeddinggemma-2",
+      "scope": "Streaming Otsu splitting, 768-dimensional generation and D1 staging; Vectorize not bound in this run"
+    },
+    "followupChecks": {
+      "typecheck": true,
+      "lint": true,
+      "workflowRecoveryTestsPassed": 13,
+      "focusedKernelEmbeddingsCancellationTestsPassed": 13,
+      "queueProvisioningTestsPassed": 4,
+      "workerRuntimeTestsPassed": 100,
+      "nodeBuild": true
+    },
+    "defaultApiSuiteFinal": {
+      "passed": 3463,
+      "failed": 0,
+      "skipped": 1555,
+      "files": 459,
+      "maxWorkers": 2,
+      "scope": "Final default environment; PostgreSQL-dependent tests skipped without a configured test connection"
+    },
+    "apiSuite": {
+      "passed": 4110,
+      "failed": 0,
+      "skipped": 886,
+      "files": 455,
+      "maxWorkers": 2,
+      "scope": "Earlier complete suite with PostgreSQL test connection configured; final follow-up checks recorded separately"
+    },
+    "finalPostgresNodeAndD1DeletionChecks": {
+      "passed": 39,
+      "failed": 0,
+      "files": 4,
+      "realPostgres": true,
+      "realElasticMQ": true,
+      "builtNodeProcess": true,
+      "model": "synthetic OpenAI-compatible server"
+    },
+    "productionPreflightReconciliationFinding": {
+      "status": "fix prepared; production recovery not yet verified",
+      "pendingSyntheticUpload": 1,
+      "obsoleteReconciliationParametersBefore": 104,
+      "parametersAfter": 5,
+      "documentedD1Limit": 100,
+      "reference": "https://developers.cloudflare.com/d1/platform/limits/",
+      "diagnosis": "Existing synthetic operations-smoke upload has one unattempted vector task; production alarm reports scene-index maintenance failure. Read-only production SQL compilation proves the reconciliation statement exceeds the parameter limit.",
+      "regression": {
+        "obsoleteVectors": 105,
+        "activeIndexPreserved": true,
+        "previousCodeFailed": true,
+        "fixedReconciliationTestsPassed": 2,
+        "otherSyncTestsPassed": 25
       },
-      {
-        "address": "aws_codebuild_project.job[\"smoke\"]",
-        "actions": [
-          "update"
+      "productionDiagnosis": "One normal signed finish request scoped to the existing synthetic upload re-armed maintenance; diagnostic SQL compilation blocked all writes. No direct SQL writes or resource changes."
+    },
+    "phasedMediaRoutingPreparation": {
+      "status": "prepared; defaults remain false; no production apply",
+      "routingPreservesLegacyConsumers": true,
+      "retirementRequiresRouting": true,
+      "terraformMockTestsPassed": 6,
+      "deploymentPolicyTestsPassed": 45,
+      "terraformValidate": true,
+      "terraformFormat": true
+    },
+    "backgroundMaintenancePreparation": {
+      "status": "draft; no production control changes",
+      "deploymentOperationsTestsPassed": 785,
+      "operatorBundleAndTriggerTestsPassed": 3,
+      "schemaMigrationFenceIntegrated": true,
+      "fenceChecks": [
+        "expected queue identities and consumers",
+        "queue delivery paused and last modification at least 16 minutes old",
+        "all search Workflows paused or terminal",
+        "pre/post schema command recheck",
+        "read-only scoped metadata transport"
+      ],
+      "remaining": [
+        "live AWS IAM and dedicated Cloudflare control token scope verification",
+        "live isolated failure/recovery verification before production routing",
+        "enable background maintenance through reviewed infrastructure opt-in"
+      ],
+      "pauseRestoreCoordinatorTestsPassed": 6,
+      "durableStoreContractVerified": true,
+      "productionStoreAndOwnershipIntegrationVerified": false,
+      "terraformMockScenariosPassed": 34,
+      "ownedMigrationExecutionIntegrationTestsPassed": 2,
+      "ownedDynamoStoreAndMigrationIntegrationPrepared": true,
+      "realDynamoDbLocalIntegrationTestsPassed": 20,
+      "dynamoDbLocalImage": "amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86",
+      "realDynamoDbTransactionChecks": [
+        "immutable plans",
+        "lost acknowledgement read-back",
+        "atomic global-lock replacement rejects write"
+      ],
+      "localTestResourcesCleanedUp": true
+    },
+    "retiredLambdaImageBaselinePreparation": {
+      "status": "prepared; production still uses three Lambdas",
+      "relatedTestsPassed": 10,
+      "cloudflareModeRequiresRetiredFunctionAbsence": true,
+      "deniedOrTimedOutReadsRefused": true,
+      "liveLegacyThreeLambdaImageBaselinePassed": true,
+      "liveOperation": "read-only",
+      "liveCloudflareTopologyVerified": false
+    },
+    "backgroundMaintenanceLiveReadiness": {
+      "date": "2026-11-22",
+      "operations": "read-only SSM metadata, IAM policy simulation and CodeBuild environment metadata",
+      "dedicatedCredentialParameterExists": true,
+      "migrationRoleCredentialReadDecision": "implicitDeny",
+      "codeBuildControlFlagPresent": false,
+      "productionControlEnabled": false,
+      "nextRequirement": "Approve and apply independent migration-role opt-in, deploy bindings, then verify isolated pause/restore before routing cutover.",
+      "credentialProvisioning": {
+        "tokenName": "videoq-background-maintenance-20261123",
+        "expiry": "2027-02-21",
+        "permissions": [
+          "Queues Write",
+          "Workers Scripts Write"
         ],
-        "changedKeys": [
-          "environment"
-        ]
-      },
-      {
-        "address": "aws_iam_role_policy.build[\"migration\"]",
-        "actions": [
-          "update"
-        ],
-        "changedKeys": [
-          "policy"
-        ]
+        "accountId": "12daec56fdba43f677f2766ee26a5a39",
+        "ssmReadBackVerified": true,
+        "fourQueueMetadataReadsVerified": true,
+        "temporarySecretFileDeleted": true,
+        "workflowControlVerified": false
       }
-    ],
-    "migrationTimeoutMinutes": {
-      "before": 15,
-      "after": 50
     },
-    "migrationFlag": "true",
-    "smokeFlag": "false",
-    "addedGrants": [
-      "GetParameter for only /videoq/security/prod/background-maintenance",
-      "GetItem/UpdateItem for run#* records in the maintenance table",
-      "ConditionCheckItem for only the maintenance lock record"
-    ],
-    "removedGrants": [],
-    "createsOrDeletes": false,
-    "codeOrLiveAliasesChanged": false,
-    "remaining": "Infrastructure applied and live configuration verified. Actual owned production pause/restore and recovery verification remain required before routing cutover.",
-    "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
-    "applyResult": {
-      "added": 0,
-      "changed": 3,
-      "destroyed": 0
+    "queuePreparationLiveAttempt": {
+      "runId": 45032757041,
+      "url": "https://github.com/videoq-jp/videoq/actions/runs/45032757041",
+      "headSha": "4c5d19e1890c749077f322598bf07b78300dcb6e",
+      "approval": "explicit user approval submitted; production-infra gate accepted",
+      "conclusion": "success",
+      "credentialSource": "production-infra/CLOUDFLARE_INFRA_TOKEN",
+      "nextRequirement": "Deploy and verify bindings while retaining SQS routing, then perform isolated queue/workflow and maintenance recovery checks before cutover.",
+      "queuesPrepared": true,
+      "initialFailure": "Cloudflare queues request returned HTTP 403 during initial list; create loop not reached",
+      "attempt": 2,
+      "tokenPermissionUpdate": {
+        "tokenName": "videoq-cloudflare-resources-20260918",
+        "addedPermission": "Queues Write",
+        "accountId": "12daec56fdba43f677f2766ee26a5a39",
+        "expiryUnchanged": "2026-12-17",
+        "secretValueRead": false
+      },
+      "createdAndReadBack": [
+        "videoq-account-prod",
+        "videoq-account-dlq-prod",
+        "videoq-search-prod",
+        "videoq-search-dlq-prod"
+      ]
     },
-    "liveReadback": {
-      "verifiedAt": "2026-11-22T18:47:09.204927+00:00",
-      "migrationTimeoutMinutes": 50,
+    "pythonCleanupCi": {
+      "pullRequest": 1602,
+      "headCommit": "a88a17a1",
+      "runId": 45031283150,
+      "ciSuccess": "success",
+      "lifecycleJobId": 137235268216,
+      "lifecycleConclusion": "success",
+      "lifecycleCompletedAt": "2026-11-22T15:17:11Z",
+      "productionCleanupApplied": false,
+      "mergePrerequisite": "Verified Cloudflare cutover, old queue drain and retirement of background Lambdas."
+    },
+    "approvedApiRecovery": {
+      "sourceSha": "2361b205dccee8f2e3bb03a0894c404893b11b1e",
+      "ciRun": 45040457020,
+      "artifactRun": 45040624482,
+      "artifactId": 14761028496,
+      "apiSha256": "8af18899daf9a277adeae7951d4eecdec48ddf47726cf7bdd4714f277dd09c26",
+      "approval": "explicit user approval for API-only recovery while retaining failed deployment lock",
+      "liveResourceHandoffCheck": true,
+      "liveStatePreservationCheck": true,
+      "d1MigrationLedger": {
+        "applied": 20,
+        "expected": 20,
+        "match": true
+      },
+      "deployedVersion": "578885b2-56a6-4fe1-bb7a-e7b9d457dab3",
+      "ready": {
+        "status": "ready",
+        "db": "ok"
+      },
+      "transportsRemain": "sqs",
+      "newQueueWorkflowBindingsAdded": false,
+      "schemaChanged": false,
+      "testVideo": {
+        "id": 537,
+        "status": "completed",
+        "vectorUpsertAcceptedAt": "2026-11-22T16:08:00.251Z",
+        "completed": true,
+        "vectorTaskCompletedAt": "2026-11-22T16:12:02.397Z",
+        "lastErrorCode": ""
+      },
+      "outstanding": "API recovery, SQS-preserving Cloudflare bindings, Queue metadata adapter fix and approved maintenance infrastructure are deployed. Actual owned production pause/restore recovery verification, routing cutover, queue drain and Lambda/Python retirement remain incomplete.",
+      "recoveryWorkflowRun": 45042542268,
+      "recoveryWorkflowConclusion": "failure",
+      "recoveryFailureStage": "video-processing",
+      "latestRecoveryAttempt": {
+        "runId": 45048338032,
+        "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+        "codePromotion": "success",
+        "smokeBuild": "videoq-db-smoke-prod:5353bd79-f77b-4411-8927-e3a25b1be823",
+        "conclusion": "failure",
+        "failureStage": "database-and-cleanup",
+        "reason": "Existing synthetic video 538 remains indexing; smoke safely refused another upload."
+      },
+      "backlogRecovery": {
+        "videoId": 538,
+        "videoStatus": "completed",
+        "vectorUpsertAcceptedAt": "2026-11-22T17:27:45.676Z",
+        "vectorTaskCompletedAt": "2026-11-22T17:29:00.328Z",
+        "lastErrorCode": "",
+        "legacyDeleteBacklogDrained": true,
+        "completionMethod": "Normal task scheduler; no forced SQL status changes."
+      },
+      "recoveryRetryRun": 45049764940,
+      "recoveryRetryConclusion": "success",
+      "ordinaryCd": {
+        "runId": 45048337918,
+        "attempt": 2,
+        "conclusion": "success",
+        "sourceSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e"
+      }
+    },
+    "backgroundMaintenanceInfrastructurePlan": {
+      "applied": true,
+      "stateSerialRead": 27,
+      "planSha256": "f7e080d4da8607c03645cea2bffbefb0a39564fb279933f444f7782195341068",
+      "changes": [
+        {
+          "address": "aws_codebuild_project.job[\"migration\"]",
+          "actions": [
+            "update"
+          ],
+          "changedKeys": [
+            "build_timeout",
+            "environment"
+          ]
+        },
+        {
+          "address": "aws_codebuild_project.job[\"smoke\"]",
+          "actions": [
+            "update"
+          ],
+          "changedKeys": [
+            "environment"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.build[\"migration\"]",
+          "actions": [
+            "update"
+          ],
+          "changedKeys": [
+            "policy"
+          ]
+        }
+      ],
+      "migrationTimeoutMinutes": {
+        "before": 15,
+        "after": 50
+      },
       "migrationFlag": "true",
-      "smokeTimeoutMinutes": 40,
       "smokeFlag": "false",
-      "migrationRoleSsmGetParameterSimulation": "allowed",
-      "migrationRoleRunGetItemSimulation": "allowed",
-      "migrationRoleRunUpdateItemSimulation": "allowed",
-      "actualOwnedPauseRestoreRehearsalCompleted": false,
-      "migrationRoleMaintenanceConditionCheckSimulation": "allowed"
+      "addedGrants": [
+        "GetParameter for only /videoq/security/prod/background-maintenance",
+        "GetItem/UpdateItem for run#* records in the maintenance table",
+        "ConditionCheckItem for only the maintenance lock record"
+      ],
+      "removedGrants": [],
+      "createsOrDeletes": false,
+      "codeOrLiveAliasesChanged": false,
+      "remaining": "Infrastructure applied and live configuration verified. Actual owned production pause/restore and recovery verification remain required before routing cutover.",
+      "sourceSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
+      "applyResult": {
+        "added": 0,
+        "changed": 3,
+        "destroyed": 0
+      },
+      "liveReadback": {
+        "verifiedAt": "2026-11-22T18:47:09.204927+00:00",
+        "migrationTimeoutMinutes": 50,
+        "migrationFlag": "true",
+        "smokeTimeoutMinutes": 40,
+        "smokeFlag": "false",
+        "migrationRoleSsmGetParameterSimulation": "allowed",
+        "migrationRoleRunGetItemSimulation": "allowed",
+        "migrationRoleRunUpdateItemSimulation": "allowed",
+        "actualOwnedPauseRestoreRehearsalCompleted": false,
+        "migrationRoleMaintenanceConditionCheckSimulation": "allowed"
+      }
+    },
+    "vectorIngestionFairness": {
+      "pullRequest": 1605,
+      "mergedMainSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
+      "mainCiRun": 45046621904,
+      "mainCiConclusion": "success",
+      "regressionTestsPassed": 28,
+      "productionObservation": {
+        "observedAt": "2026-11-22T17:03:25Z",
+        "syntheticVideoId": 538,
+        "videoStatus": "indexing",
+        "pendingDeleteTasks": 600,
+        "pendingUpsertTasks": 1,
+        "upsertAttempts": 0
+      },
+      "productionFixDeployed": false
+    },
+    "cloudflareNativeIsolation": {
+      "evidence": "cloudflare-native-background-2026-11-22.json",
+      "searchWorkflow": "complete",
+      "accountDeletion": "completed",
+      "dedicatedCredentialPauseResumeVerified": true,
+      "temporaryResourcesDeleted": true,
+      "productionCutoverVerified": false,
+      "automaticSchedulerEvidence": "cloudflare-scheduler-background-2026-11-22.json",
+      "automaticSchedulerCompleted": true
+    },
+    "cloudflareBindingsRollout": {
+      "pullRequest": 1603,
+      "mergedMainSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
+      "mergeQueueCiRun": 45051295750,
+      "mergeQueueCiConclusion": "success",
+      "mainCiRun": 45052555822,
+      "productionBindingsVerified": true,
+      "productionTransports": "sqs",
+      "mainCiConclusion": "success",
+      "ordinaryCdRun": 45053926394,
+      "ordinaryCdConclusion": "success",
+      "maintenanceCdRun": 45053926426,
+      "maintenanceCdConclusion": "success",
+      "evidence": "cloudflare-background-bindings-2026-11-22.json"
+    },
+    "queueConsumerMetadataFix": {
+      "pullRequest": 1607,
+      "mergedMainSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
+      "mainCiRun": 45055404344,
+      "mainCiConclusion": "success",
+      "maintenanceCdRun": 45055635271,
+      "maintenanceCdConclusion": "success",
+      "ordinaryCdRun": 45055635258,
+      "ordinaryCdConclusion": "success",
+      "liveMigrationBundleMatchesMain": true,
+      "adapterSha256": "e3ed9b64a6cbf01d3dd8fc53f6ab44a3b41402796c60d148b6139e2a8e02f09b",
+      "readOnlyProductionQueueAdmissionCheck": "passed",
+      "productionControlMutations": 0
     }
   },
-  "vectorIngestionFairness": {
-    "pullRequest": 1605,
-    "mergedMainSha": "9c73cf9893710b911d44b1f5a3a4269d4265ce8e",
-    "mainCiRun": 45046621904,
-    "mainCiConclusion": "success",
-    "regressionTestsPassed": 28,
-    "productionObservation": {
-      "observedAt": "2026-11-22T17:03:25Z",
-      "syntheticVideoId": 538,
-      "videoStatus": "indexing",
-      "pendingDeleteTasks": 600,
-      "pendingUpsertTasks": 1,
-      "upsertAttempts": 0
-    },
-    "productionFixDeployed": false
-  },
-  "cloudflareNativeIsolation": {
-    "evidence": "cloudflare-native-background-2026-11-22.json",
-    "searchWorkflow": "complete",
-    "accountDeletion": "completed",
-    "dedicatedCredentialPauseResumeVerified": true,
-    "temporaryResourcesDeleted": true,
-    "productionCutoverVerified": false,
-    "automaticSchedulerEvidence": "cloudflare-scheduler-background-2026-11-22.json",
-    "automaticSchedulerCompleted": true
-  },
-  "cloudflareBindingsRollout": {
-    "pullRequest": 1603,
-    "mergedMainSha": "2a7136fbdda36f26cf2a72cf0652a2361129b97a",
-    "mergeQueueCiRun": 45051295750,
-    "mergeQueueCiConclusion": "success",
-    "mainCiRun": 45052555822,
-    "productionBindingsVerified": true,
-    "productionTransports": "sqs",
-    "mainCiConclusion": "success",
-    "ordinaryCdRun": 45053926394,
-    "ordinaryCdConclusion": "success",
-    "maintenanceCdRun": 45053926426,
-    "maintenanceCdConclusion": "success",
-    "evidence": "cloudflare-background-bindings-2026-11-22.json"
-  },
-  "queueConsumerMetadataFix": {
-    "pullRequest": 1607,
-    "mergedMainSha": "c66431939516b9d845a8e01d6e0049c1982919a1",
-    "mainCiRun": 45055404344,
-    "mainCiConclusion": "success",
-    "maintenanceCdRun": 45055635271,
-    "maintenanceCdConclusion": "success",
-    "ordinaryCdRun": 45055635258,
-    "ordinaryCdConclusion": "success",
-    "liveMigrationBundleMatchesMain": true,
-    "adapterSha256": "e3ed9b64a6cbf01d3dd8fc53f6ab44a3b41402796c60d148b6139e2a8e02f09b",
-    "readOnlyProductionQueueAdmissionCheck": "passed",
-    "productionControlMutations": 0
-  }
+  "historicalSnapshotNote": "The nested preparation snapshot records earlier observations; current status and evidence above supersede its pending rollout descriptions."
 }
