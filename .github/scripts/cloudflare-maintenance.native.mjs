@@ -4,8 +4,9 @@ import {createRequire} from 'node:module';
 import {webcrypto} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join,resolve,relative} from 'node:path';
 import assert from 'node:assert/strict';
+const {buildMaintenance}=createRequire(import.meta.url)('./maintenance-build.cjs');
 const require=createRequire(new URL('../deploy-tools/package.json',import.meta.url));
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),{build}=require('esbuild');
 const source='a'.repeat(40),attempts=new Map([['123',1],['124',1]]);
@@ -15,6 +16,7 @@ async function token(run,attempt){const now=Math.floor(Date.now()/1000),encode=o
 const bundle=await build({entryPoints:[resolve('infra/cloudflare-maintenance/worker.mjs')],bundle:true,format:'esm',platform:'neutral',external:['cloudflare:workers'],write:false});
 const persist=await mkdtemp(join(tmpdir(),'videoq-maintenance-native-'));let mf;
 try{
+ buildMaintenance({outdir:relative(resolve('.'),join(persist,'artifact'))});
  mf=new Miniflare(convertV4MiniflareOptions({name:'maintenance',modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-11-23',compatibilityFlags:['nodejs_compat'],durableObjects:{MAINTENANCE:{className:'MaintenanceCoordinator',useSQLite:true}},durableObjectsPersist:persist,bindings:{MAINTENANCE_ENABLED:'true'},outboundService:async request=>{
   const u=new URL(request.url);
   if(u.href==='https://token.actions.githubusercontent.com/.well-known/jwks')return Response.json({keys:[publicKey]});
