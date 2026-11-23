@@ -1,0 +1,28 @@
+name: Prepare Cloudflare maintenance tools
+description: Install locked public tools before supplying production maintenance credentials.
+inputs:
+  purpose:
+    description: Fixed maintenance operation
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .node-version
+    - uses: ./.github/actions/setup-package-manager
+      with:
+        manager: npm
+    - shell: bash
+      env:
+        MAINTENANCE_PURPOSE: ${{ inputs.purpose }}
+      run: |
+        case "$MAINTENANCE_PURPOSE" in migration|smoke) ;; *) exit 1 ;; esac
+        npm ci --ignore-scripts --prefix .github/deploy-tools
+        npm run audit:signatures -- --prefix .github/deploy-tools
+    - if: inputs.purpose == 'smoke'
+      shell: bash
+      run: |
+        npm ci --ignore-scripts --prefix .github/operations-tools
+        npm run audit:signatures -- --prefix .github/operations-tools
+        node .github/operations-tools/node_modules/playwright/cli.js install --with-deps chromium

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "videoq-maintenance-prod",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": { "MAINTENANCE_ENABLED": "false" },
+  "durable_objects": {
+    "bindings": [{ "name": "MAINTENANCE", "class_name": "MaintenanceCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MaintenanceCoordinator"] }]
+}
