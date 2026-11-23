@@ -253,6 +253,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read
     env:
       AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
     steps:
@@ -261,10 +262,24 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
       - uses: ./.github/actions/aws-db-invocation
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED != 'true'
       - name: Request the production smoke test in AWS
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED != 'true'
         env:
           VERIFY_AI_ANSWERS: ${{ inputs.verify_ai_answers && 'true' || 'false' }}
         run: python3 .github/scripts/run-aws-db.py smoke
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED == 'true'
+        with:
+          purpose: smoke
+      - name: Run production smoke with Cloudflare ownership
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED == 'true'
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_MAINTENANCE_TOKEN: ${{ secrets.CLOUDFLARE_MAINTENANCE_TOKEN }}
+          SMOKE_IDENTITY_KEY: ${{ secrets.SMOKE_IDENTITY_KEY }}
+          VERIFY_AI_ANSWERS: ${{ inputs.verify_ai_answers && 'true' || 'false' }}
+        run: node .github/scripts/github-maintenance.cjs smoke
       - uses: ./.github/actions/report-operations
         if: always()
         with:

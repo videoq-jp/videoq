@@ -20,14 +20,6 @@ async function runProductionSmoke({env=process.env,root=resolve(__dirname,'../..
   execute('python3',[join(root,'.github/scripts/with-neon-credentials.py'),'smoke','node',join(root,'.github/scripts/production-smoke.mjs')],{cwd:root,stdio:['ignore','pipe','pipe'],maxBuffer:8*1024*1024,env:{...env,VIDEOQ_SMOKE_BACKEND:'postgres',OPERATION:'audit',GITHUB_REF:'refs/heads/main',GITHUB_REPOSITORY:'videoq-jp/videoq',VIDEOQ_BUNDLED_CHROMIUM:'true'}});
   return{backend:'postgres'};
  }
- await guard.assert();
- const identity=readParameter('/videoq/security/prod/smoke-identity');
- if(!/^[a-f0-9]{64}$/.test(identity.key??''))throw Error('INVALID_SMOKE_IDENTITY_KEY');
- const child=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>env[k]).map(k=>[k,env[k]]));
- Object.assign(child,{VIDEOQ_SMOKE_BACKEND:'d1',VIDEOQ_SMOKE_D1_DATABASE_ID:backend.databaseId,VIDEOQ_SMOKE_IDENTITY_KEY:identity.key,CLOUDFLARE_ACCOUNT_ID:cf.CLOUDFLARE_ACCOUNT_ID,CLOUDFLARE_API_TOKEN:cf.CLOUDFLARE_API_TOKEN,VIDEOQ_BUNDLED_CHROMIUM:'true',VERIFY_AI_ANSWERS:env.VERIFY_AI_ANSWERS==='true'?'true':'false'});
- await guard.assert();
- execute(process.execPath,[join(root,'.github/scripts/production-smoke.mjs')],{cwd:root,env:child,stdio:['ignore','pipe','pipe'],maxBuffer:8*1024*1024,timeout:20*60*1000});
- await guard.assert();
- return{backend:'d1'};
+ return require('./owned-production-smoke.cjs').runOwnedD1Smoke({env,root,cf,backend,readIdentity:()=>readParameter('/videoq/security/prod/smoke-identity'),assertOwnership:()=>guard.assert(),execute});
 }
 module.exports={runProductionSmoke};

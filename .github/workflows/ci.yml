@@ -199,6 +199,15 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/workflows/terraform-apply.yml'
             operations:
+              - '.github/workflows/cloudflare-maintenance.yml'
+              - '.github/scripts/maintenance-deployment*'
+              - 'infra/cloudflare-maintenance/**'
+              - '.github/actions/cloudflare-maintenance-tools/**'
+              - '.github/deploy-tools/**'
+              - '.github/scripts/cloudflare-maintenance*'
+              - '.github/scripts/github-maintenance*'
+              - '.github/scripts/owned-d1-migration.cjs'
+              - '.github/scripts/owned-production-smoke.cjs'
               - '.github/scripts/cutover-final-*'
               - '.github/scripts/cutover-backend-*'
               - '.github/scripts/run-cutover-backend*'
@@ -941,6 +950,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-operations-tools
+      - name: Verify Cloudflare maintenance in the native Workers runtime
+        run: |
+          npm ci --ignore-scripts --prefix .github/deploy-tools
+          npm run audit:signatures -- --prefix .github/deploy-tools
+          node .github/scripts/cloudflare-maintenance.native.mjs
       - run: node --test .github/scripts/production-stream-proof.integration.cjs
       - name: Verify private backup retention and failure handling
         run: node --test .github/scripts/backup-archive.test.mjs .github/scripts/backup-d1-run.test.mjs .github/scripts/backup-download.test.mjs

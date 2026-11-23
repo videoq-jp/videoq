@@ -39,7 +39,7 @@ jobs:
             core.setOutput('deploy', context.eventName === 'workflow_dispatch' || await selected({github, context}));
   deploy:
     needs: source
-    if: needs.source.outputs.deploy == 'true'
+    if: needs.source.outputs.deploy == 'true' && vars.CLOUDFLARE_MAINTENANCE_ENABLED != 'true'
     environment: production-db-deploy
     runs-on: ubuntu-latest
     timeout-minutes: 125

@@ -9,7 +9,7 @@
     "jsonc-parser": "3.3.1",
     "pg": "8.23.1",
     "tsx": "4.23.15",
-    "wrangler": "4.151.3"
+    "wrangler": "4.166.0"
   },
   "overrides": {
     "undici@7": "^7.30.1"

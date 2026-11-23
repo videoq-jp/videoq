@@ -2,9 +2,9 @@ const {resourceDigest}=require('./d1-resource-journal.cjs');
 const {createBackgroundMaintenanceStore}=require('./background-maintenance-store.cjs');
 const {createBackgroundMaintenanceTransport}=require('./background-maintenance-transport.cjs');
 const {createBackgroundMaintenance}=require('./background-maintenance.cjs');
-function createCanonicalBackgroundMaintenance({aws,run,source,credential,fetcher,assertOwnership,assertApiPaused,now=Date.now,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
+function createCanonicalBackgroundMaintenance({aws,run,source,credential,store,fetcher,assertOwnership,assertApiPaused,now=Date.now,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
  if(credential?.CLOUDFLARE_ACCOUNT_ID!=='12daec56fdba43f677f2766ee26a5a39')throw Error('BACKGROUND_MAINTENANCE_ACCOUNT_REQUIRED');
- const plans=createBackgroundMaintenanceStore({aws,run,source,assertOwnership});
+ const plans=store??createBackgroundMaintenanceStore({aws,run,source,assertOwnership});
  const request=createBackgroundMaintenanceTransport({token:credential.CLOUDFLARE_API_TOKEN,fetcher});
  const proof={version:1,source,run,schemaCommandCompleted:true};
  async function completed(){

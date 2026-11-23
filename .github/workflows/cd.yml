@@ -408,6 +408,7 @@ jobs:
     if: needs.changes.outputs.migrate == 'true'
     permissions:
       contents: read
+      actions: read
       id-token: write
     env:
       AWS_DB_REQUEST_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN }}
@@ -417,10 +418,25 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/aws-db-invocation
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED != 'true'
       - name: Request the canonical-main migration in AWS
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED != 'true'
         env:
           STRUCTURED_ANSWER_WRITERS_STOPPED: ${{ vars.STRUCTURED_ANSWER_WRITERS_STOPPED }}
         run: python3 .github/scripts/run-aws-db.py migration
+
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED == 'true'
+        with:
+          purpose: migration
+      - name: Run the canonical-main migration with Cloudflare ownership
+        if: vars.CLOUDFLARE_MAINTENANCE_ENABLED == 'true'
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_MAINTENANCE_TOKEN: ${{ secrets.CLOUDFLARE_MAINTENANCE_TOKEN }}
+          CLOUDFLARE_BACKGROUND_TOKEN: ${{ secrets.CLOUDFLARE_BACKGROUND_TOKEN }}
+          STRUCTURED_ANSWER_WRITERS_STOPPED: ${{ vars.STRUCTURED_ANSWER_WRITERS_STOPPED }}
+        run: node .github/scripts/github-maintenance.cjs migration
 
   worker-build:
     name: Build Lambda image without AWS credentials
