@@ -133,10 +133,44 @@ On 2026-11-24 JST, the separately approved cutover completed on main
   confirmed empty ownership in both purpose environments. AWS was idle too.
 
 Normal CD and Operations are active. Obsolete DB Maintenance CD remains disabled.
-AWS maintenance resources, historical records and archives remain intact pending
-separately reviewed retirement. Do not restore old starter admission while the
+AWS maintenance execution was subsequently retired under the approved cleanup;
+historical records and archives remain preserved as recorded below. Do not restore old starter admission while the
 Cloudflare path is active; rollback requires both owners idle and a coordinated
 switch back before removing the recorded concurrency limits.
+
+## AWS retirement verification
+
+On 2026-11-24 JST, [PR #1632](https://github.com/videoq-jp/videoq/pull/1632)
+merged as `331e20f019ec53d13334678b16eca94999d2daa1` and passed
+[main push CI](https://github.com/videoq-jp/videoq/actions/runs/45260339546).
+The operator applied the reviewed saved Terraform plan: **0 added, 0 changed,
+31 destroyed**, with 18 retained resources. A subsequent refreshed plan reported
+**no changes**. Successful AWS inventories confirmed absence of the old three
+CodeBuild projects, three starter functions/aliases, Step Functions state machine,
+DynamoDB table, executable-bundle bucket and their Terraform-owned execution IAM.
+
+Before deletion, a consistent snapshot of 341 DynamoDB metadata records and its
+manifest were saved to the private archive with AES256 encryption, conditional
+create-only writes, and SHA256 readback verification. All 13 pre-existing data
+object versions remain unchanged; two additional metadata archive versions were
+added. Only the 107 reviewed `operator.zip`/`broker.zip` versions in the separate
+executable bucket were purged. No archive expiration or delete permission was
+introduced.
+
+The three external GitHub starter roles and their three Lambda-invoke-only inline
+policies were independently scope-checked and removed. Their stale
+`AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN` environment secrets were removed too.
+The historical provisioner now refuses to recreate these roles. In total, 37
+obsolete AWS resources/policies were removed, excluding object-version cleanup.
+
+Readback confirmed unchanged revisions/code hashes for the media and independent
+search-evaluation Lambdas, the media SQS/DLQ pair, and the attached media permission
+boundary. Historical logs, archive configuration and Terraform state remain.
+[Final signed status](https://github.com/videoq-jp/videoq/actions/runs/45261757387)
+succeeded in both purpose environments with empty ownership; Worker health was
+`enabled:true`. Normal CD and Operations were restored to active; obsolete DB
+Maintenance CD remains disabled. Old AWS execution rollback is no longer available;
+recovery uses the current coordinator and preserved records.
 
 ## Controlled deployment and cutover
 

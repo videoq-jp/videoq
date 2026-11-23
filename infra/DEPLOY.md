@@ -42,8 +42,8 @@ D1, R2, Vectorize or Durable Object storage by replacing live resources.
 
 The 2026-11-24 inventory found the active production D1 database, four background
 queues, one search-index Workflow and four SQLite Durable Object namespaces.
-Older API namespaces retain state and are not disposable merely because their
-bindings changed. The available read credential cannot list R2, Vectorize or
+The API namespaces are active rate-limiting, task-scheduling and chat state;
+preserve them. The available read credential cannot list R2, Vectorize or
 Hyperdrive (HTTP 403); that is incomplete coverage, not evidence of absence.
 Other applications sharing the Cloudflare account are outside VideoQ cleanup.
 
