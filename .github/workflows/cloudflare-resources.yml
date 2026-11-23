@@ -1,123 +1,13 @@
+# Compatibility entry point; Terraform is the sole resource owner.
 name: Sync Cloudflare Resources
-
 on:
   workflow_dispatch:
-    inputs:
-      prepare_background_queues:
-        description: Create missing TypeScript background queues and DLQs only (requires Queues Edit on the infrastructure token)
-        required: false
-        type: boolean
-        default: false
-      worker_search_queue_url:
-        description: Search queue URL from Terraform worker_queue_urls (supply both URLs to sync routing only)
-        required: false
-        type: string
-      worker_account_queue_url:
-        description: Account queue URL from Terraform worker_queue_urls
-        required: false
-        type: string
-
 permissions:
   contents: read
-
-concurrency:
-  group: cloudflare-resources-production
-  cancel-in-progress: false
-
+  actions: read
 jobs:
-  sync:
-    name: Sync Hyperdrive and R2 settings
-    runs-on: ubuntu-latest
-    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
-    timeout-minutes: 15
-    environment: production-infra
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-      - uses: ./.github/actions/setup-package-manager
-        with:
-          manager: npm
-      - name: Install separately locked deployment tools
-        run: npm ci --ignore-scripts --prefix .github/deploy-tools
-      - name: Verify deployment tool signatures
-        working-directory: .github/deploy-tools
-        run: npm audit signatures
-      - name: Prepare background queues and DLQs
-        if: inputs.prepare_background_queues == true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_INFRA_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WORKER_SEARCH_QUEUE_URL: ${{ inputs.worker_search_queue_url }}
-          WORKER_ACCOUNT_QUEUE_URL: ${{ inputs.worker_account_queue_url }}
-        run: |
-          if [ -n "${WORKER_SEARCH_QUEUE_URL}${WORKER_ACCOUNT_QUEUE_URL}" ]; then
-            echo "::error::Prepare background queues separately from SQS routing changes"
-            exit 1
-          fi
-          node .github/scripts/background-queue-resources.cjs
-      - name: Sync worker queue routing
-        if: inputs.prepare_background_queues != true && (inputs.worker_search_queue_url != '' || inputs.worker_account_queue_url != '')
-        working-directory: apps/api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WORKER_SEARCH_QUEUE_URL: ${{ inputs.worker_search_queue_url }}
-          WORKER_ACCOUNT_QUEUE_URL: ${{ inputs.worker_account_queue_url }}
-        run: |
-          node "$GITHUB_WORKSPACE/.github/scripts/worker-queue-secrets.cjs" "$RUNNER_TEMP/worker-queue-secrets.json"
-          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" secret bulk "$RUNNER_TEMP/worker-queue-secrets.json" --env production
-      - name: Verify production Worker secrets
-        if: inputs.prepare_background_queues != true
-        working-directory: apps/api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required"
-            exit 1
-          fi
-          secret_json="$(node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" secret list --env production --format json)"
-          for secret_name in \
-            BETTER_AUTH_SECRET \
-            USER_SECRET_ENCRYPTION_KEY \
-            MAILGUN_API_KEY \
-            R2_ACCESS_KEY_ID \
-            R2_SECRET_ACCESS_KEY \
-            SQS_QUEUE_URL \
-            SQS_SEARCH_QUEUE_URL \
-            SQS_ACCOUNT_QUEUE_URL \
-            AWS_ACCESS_KEY_ID \
-            AWS_SECRET_ACCESS_KEY \
-            STRIPE_SECRET_KEY \
-            STRIPE_WEBHOOK_SECRET
-          do
-            if ! jq -e --arg name "$secret_name" 'any(.[]; .name == $name)' <<<"$secret_json" >/dev/null; then
-              echo "::error::Missing production Worker secret: $secret_name"
-              exit 1
-            fi
-          done
-          federation_policy_id="$(node -e 'const {createRequire}=require("node:module"); const deploymentRequire=createRequire(process.env.GITHUB_WORKSPACE+"/.github/deploy-tools/package.json"); const {unstable_readConfig}=deploymentRequire("wrangler"); process.stdout.write(unstable_readConfig({config:"wrangler.jsonc",env:"production"}).vars?.OPENROUTER_FEDERATION_POLICY_ID||"");')"
-          if [ -z "$federation_policy_id" ] && ! jq -e 'any(.[]; .name == "OPENROUTER_API_KEY")' <<<"$secret_json" >/dev/null; then
-            echo "::error::Configure an OpenRouter federation policy in production vars or supply OPENROUTER_API_KEY"
-            exit 1
-          fi
-      - name: Apply and verify production resource settings
-        if: inputs.prepare_background_queues != true && inputs.worker_search_queue_url == '' && inputs.worker_account_queue_url == ''
-        working-directory: apps/api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_INFRA_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "::error::CLOUDFLARE_INFRA_TOKEN and CLOUDFLARE_ACCOUNT_ID are required"
-            exit 1
-          fi
-          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" hyperdrive update d69ecb01a493415197e52552db2990f8 --caching-disabled
-          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" r2 bucket cors set videoq-media-prod --file r2-cors.production.json --force
-          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" hyperdrive get d69ecb01a493415197e52552db2990f8
-          node "$GITHUB_WORKSPACE/.github/deploy-tools/node_modules/wrangler/bin/wrangler.js" r2 bucket cors list videoq-media-prod
+  infrastructure:
+    uses: ./.github/workflows/cloudflare-infrastructure.yml
+    with:
+      apply: true
+    secrets: inherit

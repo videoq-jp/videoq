@@ -25,11 +25,12 @@ test('unexpected resources, identities or retention fail without altering existi
  await assert.rejects(ensureQueues(plan,f.request),/retention requires explicit review/);assert.equal(f.writes.length,0);
  await assert.rejects(ensureQueues(plan,async()=>[{queue_name:plan[0].queue_name,queue_id:'one'},{queue_name:plan[0].queue_name,queue_id:'two'}]),/unexpected scope/);
 });
-test('resource preparation uses the existing production-infra approval gate and does not sync unrelated resources',()=>{
+test('legacy resource preparation delegates to Terraform and cannot mutate queues or secrets directly',()=>{
  const workflow=readFileSync('.github/workflows/cloudflare-resources.yml','utf8');
- assert.match(workflow,/environment: production-infra/);
- assert.match(workflow,/if: inputs.prepare_background_queues == true/);
- assert.match(workflow,/inputs.prepare_background_queues != true/);
+ assert.match(workflow,/uses: \.\/.github\/workflows\/cloudflare-infrastructure\.yml/);
+ assert.doesNotMatch(workflow,/background-queue-resources\.cjs|secret bulk|hyperdrive update|cors set/);
+ const owner=readFileSync('.github/workflows/cloudflare-infrastructure.yml','utf8');
+ assert.match(owner,/environment: production-infra/);
 });
 
 test('pagination finds existing target queues after unrelated queues without recreating them',async()=>{

@@ -4,7 +4,9 @@
     {
       "Sid": "TfStateBucketList",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
+      "Action": [
+        "s3:ListBucket"
+      ],
       "Resource": "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>",
       "Condition": {
         "StringLike": {
@@ -18,19 +20,25 @@
     {
       "Sid": "TfStateRead",
       "Effect": "Allow",
-      "Action": ["s3:GetObject"],
+      "Action": [
+        "s3:GetObject"
+      ],
       "Resource": "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate"
     },
     {
       "Sid": "TfStateLock",
       "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Action": [
+        "s3:GetObject"
+      ],
       "Resource": "arn:aws:s3:::videoq-terraform-state-<ACCOUNT_ID>/videoq/prod/terraform.tfstate.tflock"
     },
     {
       "Sid": "CallerIdentity",
       "Effect": "Allow",
-      "Action": ["sts:GetCallerIdentity"],
+      "Action": [
+        "sts:GetCallerIdentity"
+      ],
       "Resource": "*"
     }
   ]

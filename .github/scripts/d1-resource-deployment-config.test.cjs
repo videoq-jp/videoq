@@ -34,7 +34,7 @@ test('handoff metadata is fixed-account GET only and independent guard remains i
   reads++;assert.equal(options.method,'GET');assert.equal(options.redirect,'error');assert.ok(url.endsWith('/workers/scripts/videoq-api/settings'));return Response.json({success:true,result:f.settings});
  });assert.equal(reads,1);assert.equal(result.d1_databases[0].database_id,dbs[1]);
  const workflow=require('node:fs').readFileSync('.github/workflows/cd.yml','utf8');
- assert.match(workflow,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/deploy-tools\/node_modules\/wrangler\/bin\/wrangler\.js deploy/);
+ assert.match(workflow,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/scripts\/terraform-cloudflare-release\.cjs api deployment\.json/);
 });
 
 test('completed production deployment preserves the retired 768 index without permitting source or partial retirement',()=>{

@@ -123,7 +123,8 @@ test('Cloudflare uploads never install application dependencies or build applica
   for (const name of ['api-deploy', 'web-deploy', 'docs-deploy']) {
     const body = job(name).body;
     assert.match(body, /needs: \[changes, application-build/);
-    assert.match(body, /--no-bundle --no-autoconfig --env-file \/dev\/null/);
+    assert.match(body, /terraform-cloudflare-release\.cjs (api|web|docs) deployment\.json/);
+    assert.doesNotMatch(body, /wrangler\.js deploy/);
     assert.match(body, /deployment-config\.cjs/);
     assert.doesNotMatch(body, /npm run|npm ci(?! --ignore-scripts --prefix \.github\/deploy-tools)|docker build/);
   }

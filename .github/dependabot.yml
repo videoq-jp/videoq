@@ -148,6 +148,15 @@ updates:
     directories:
       - /infra
       - /infra/bootstrap
+      - /infra/db-maintenance/terraform
+      - /infra/r2-state
+      - /infra/cloudflare
+      - /infra/cloudflare-releases/api
+      - /infra/cloudflare-releases/web
+      - /infra/cloudflare-releases/docs
+      - /infra/cloudflare-releases/maintenance
+      - /infra/identity
+      - /infra/search-evaluation
     schedule:
       interval: weekly
       day: monday

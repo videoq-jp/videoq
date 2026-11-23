@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:worker": "wrangler dev",
-    "deploy": "wrangler deploy --env production",
+    "deploy": "node ../../.github/scripts/request-terraform-deployment.cjs web",
     "cf-typegen": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler types worker/env.d.ts --env-interface WebEnv --include-runtime=false",
     "typecheck": "tsc -p tsconfig.application.json && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.storybook.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "test:worker": "node --test scripts/test-worker.mjs",
