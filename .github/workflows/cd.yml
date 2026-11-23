@@ -479,7 +479,7 @@ jobs:
           role-session-name: videoq-worker-deploy
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2
       - name: Push prebuilt image and update Lambda
         env:
           SOURCE_SHA: ${{ needs.changes.outputs.sha }}
