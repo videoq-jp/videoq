@@ -5,8 +5,8 @@ roles, policies, existing IAM users/access-key metadata, the shared GitHub OIDC
 provider, retained control SSM parameter metadata and legacy API logs.
 
 Use the [R2 runbook](../TERRAFORM.md). Production identity/storage has
-`prevent_destroy`. Imported access-key IDs are retained; Terraform never
-recovers their secret halves. SSM placeholder values are ignored after import;
+`prevent_destroy`. Access keys are observed with data sources; their lifecycle belongs to credential
+rotation. Terraform never regenerates a retired key or recovers its secret half. SSM placeholder values are ignored after import;
 credential rotation owns the actual values. Do not apply placeholders to an
 existing parameter through another tool.
 

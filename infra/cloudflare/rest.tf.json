@@ -65,11 +65,12 @@
         "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/7e5e78c1e0ac4d178eddfc040a0ee075/consumers",
         "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/7e5e78c1e0ac4d178eddfc040a0ee075/consumers",
         "id_attribute": "consumer_id",
-        "data": "{\"script\": \"videoq-api\", \"dead_letter_queue\": \"videoq-account-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 2, \"retry_delay\": 0}, \"type\": \"worker\"}",
+        "data": "{\"dead_letter_queue\": \"videoq-account-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 2, \"retry_delay\": 0}, \"type\": \"worker\", \"script_name\": \"videoq-api\"}",
         "read_search": {
           "results_key": "result",
           "search_key": "consumer_id",
-          "search_value": "{id}"
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"move\", \"from\": \"/script\", \"path\": \"/script_name\"}]"
         },
         "object_id": "c2a977ed04be4349969ed12ee555ddaa",
         "ignore_server_additions": true,
@@ -82,11 +83,12 @@
         "path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/e2937c3b2f39461b879f9aef5e8f8f2c/consumers",
         "read_path": "/accounts/12daec56fdba43f677f2766ee26a5a39/queues/e2937c3b2f39461b879f9aef5e8f8f2c/consumers",
         "id_attribute": "consumer_id",
-        "data": "{\"script\": \"videoq-api\", \"dead_letter_queue\": \"videoq-search-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 4, \"retry_delay\": 0}, \"type\": \"worker\"}",
+        "data": "{\"dead_letter_queue\": \"videoq-search-dlq-prod\", \"settings\": {\"batch_size\": 1, \"max_retries\": 8, \"max_wait_time_ms\": 5000, \"max_concurrency\": 4, \"retry_delay\": 0}, \"type\": \"worker\", \"script_name\": \"videoq-api\"}",
         "read_search": {
           "results_key": "result",
           "search_key": "consumer_id",
-          "search_value": "{id}"
+          "search_value": "{id}",
+          "search_patch": "[{\"op\": \"move\", \"from\": \"/script\", \"path\": \"/script_name\"}]"
         },
         "object_id": "ae7fee6583de49ca92afc5ed54bfa6bc",
         "ignore_server_additions": true,

@@ -32,7 +32,7 @@ resource "aws_iam_user_policy" "videoq_workers_api_videoq_sqs_send" {
     Statement = [{
       Action   = "sqs:SendMessage"
       Effect   = "Allow"
-      Resource = ["arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod", "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-search-prod", "arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-account-prod"]
+      Resource = ["arn:aws:sqs:ap-northeast-1:257240362763:videoq-worker-prod"]
       Sid      = "SendVideoqJobs"
     }]
     Version = "2012-10-17"
@@ -371,14 +371,4 @@ resource "aws_iam_role" "videoq_github_actions_plan" {
     Project = "videoq"
     Purpose = "github-actions-plan"
   }
-}
-resource "aws_iam_access_key" "videoq_github_actions_cd_6WGMT7" {
-  user   = "videoq-github-actions-cd"
-  status = "Active"
-  lifecycle { prevent_destroy = true }
-}
-resource "aws_iam_access_key" "videoq_workers_api_M7D4GX" {
-  user   = "videoq-workers-api"
-  status = "Active"
-  lifecycle { prevent_destroy = true }
 }
