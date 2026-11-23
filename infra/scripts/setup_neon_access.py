@@ -58,32 +58,7 @@ def ensure_environment(environment):
 
 
 def main():
-    account=aws("sts","get-caller-identity")["Account"]
-    if account!="257240362763":
-        raise SystemExit("Unexpected AWS account")
-    for purpose in ["migration", "smoke", "deploy"]:
-        alias=aws("lambda","get-alias","--region",REGION,"--function-name",
-            "videoq-db-start-"+purpose+"-prod","--name","live")
-        if not alias.get("FunctionVersion", "").isdigit():
-            raise SystemExit("Deploy and verify the immutable AWS starters before provisioning invokers")
-    for filename, command, option in [
-        ("videoq-neon-plan-deny.json", "put-role-policy", "--policy-document"),
-        ("videoq-github-actions-plan-trust.json", "update-assume-role-policy", "--policy-document"),
-    ]:
-        document=(ROOT/"infra/iam"/filename).read_text().replace("<ACCOUNT_ID>",account)
-        args=[AWS,"iam",command,"--role-name","videoq-github-actions-plan",option,document]
-        if command=="put-role-policy":args.extend(["--policy-name","deny-protected-neon-credentials"])
-        subprocess.run(args,check=True,capture_output=True)
-    print("Production planning role restricted to main and denied protected DB secrets")
-    for purpose in ["migration", "smoke", "deploy"]:
-        environment="production-db-"+purpose
-        ensure_environment(environment)
-        policy={"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"lambda:InvokeFunction",
-            "Resource":f"arn:aws:lambda:{REGION}:{account}:function:videoq-db-start-{purpose}-prod:live"}]}
-        install(account,"videoq-github-actions-db-start-"+purpose,environment,policy,7200,
-            secret_name="AWS_GITHUB_ACTIONS_DB_REQUEST_ROLE_ARN")
-        print("AWS-only operation request access configured: "+purpose)
-    print("D1 invokers configured; retired Neon roles and starters must not be recreated")
+    raise SystemExit("AWS database invokers are retired after verified Cloudflare cutover; this historical provisioner must not recreate them.")
 
 
 if __name__=="__main__":

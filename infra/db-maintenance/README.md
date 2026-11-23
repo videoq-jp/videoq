@@ -1,3 +1,12 @@
+> Production AWS maintenance execution was replaced by the verified Cloudflare
+> coordinator on 2026-11-24. The Terraform module now retains archives, historical
+> logs and the media IAM boundary only; use `-var=retire_aws_maintenance=true` after
+> the reviewed retirement preflight. Old execution/provisioning instructions below
+> are historical and must not recreate retired AWS paths. The actual archive
+> inventory contains 13 existing data versions; preserve every version. See
+> [Cloudflare cutover evidence](../cloudflare-maintenance/README.md) and
+> [management coverage](../DEPLOY.md#infrastructure-management-coverage).
+
 # AWS database maintenance
 
 Production uses Cloudflare D1 and Vectorize after the verified 2026-11-17

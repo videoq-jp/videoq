@@ -18,15 +18,45 @@ retiring the old address. Keep GitHub's `OPERATIONS_ALERT_EMAIL` and any configu
 `OPENAI_SPEND_ALERT_EMAIL` aligned with the domain alert address.
 
 
+## Infrastructure management coverage
+
+Production is **not entirely managed by Terraform**. The current ownership is:
+
+| Scope | Management | State / source |
+|---|---|---|
+| AWS media Lambda, SQS/DLQ, IAM, monitoring, ECR and application SSM metadata | Terraform | `infra/`, S3 backend |
+| Terraform state bucket | Terraform | `infra/bootstrap/`, separate S3 state |
+| Retained DB archives, historical maintenance logs and media permission boundary | Terraform | `infra/db-maintenance/terraform/`, separate S3 state |
+| Manual search-evaluation Lambda | Terraform, independent operator state | `infra/search-evaluation/`; disabled by default |
+| Cloudflare API, web, docs and maintenance Workers, routes, bindings, Durable Object migrations and Workflow declarations | Wrangler and protected GitHub deployment workflows | `apps/*/wrangler.jsonc`, `infra/cloudflare-maintenance/wrangler.jsonc` |
+| Cloudflare background queues/DLQs and R2 CORS | Dedicated scripts and configuration | `cloudflare-resources.yml`, background queue script and R2 CORS JSON |
+| Existing D1, R2, Vectorize and legacy Hyperdrive resources | Existing resource IDs referenced by Wrangler; not Terraform-owned | Creation/import and lifecycle are separate from Worker deployment |
+| DNS, Email Routing, API tokens, GitHub environments/secrets and some OIDC IAM bootstrap | Service configuration / provisioning scripts | Not fully Terraform-managed |
+
+No Cloudflare Terraform provider or Cloudflare Terraform state is currently
+configured. Code-defined Wrangler configuration does not imply Terraform
+ownership. To consolidate later, inventory and import existing resources first,
+produce a no-change plan, and assign one owner per setting. Avoid having Terraform
+and Wrangler both manage Worker bindings or deployments. Never recreate/import
+D1, R2, Vectorize or Durable Object storage by replacing live resources.
+
+The 2026-11-24 inventory found the active production D1 database, four background
+queues, one search-index Workflow and four SQLite Durable Object namespaces.
+Older API namespaces retain state and are not disposable merely because their
+bindings changed. The available read credential cannot list R2, Vectorize or
+Hyperdrive (HTTP 403); that is incomplete coverage, not evidence of absence.
+Other applications sharing the Cloudflare account are outside VideoQ cleanup.
+
 ## Production architecture
 
 - Frontend: Cloudflare Worker + Static Assets `videoq-web` (`apps/web`, public URL: `https://videoq.jp`)
 - Docs: Cloudflare Workers Static Assets `videoq-docs` (public URL: `https://docs.videoq.jp`, Japanese: `/ja/`)
 - Web API: Cloudflare Workers `videoq-api` (`apps/api`, Hono)
-- DB: Neon PostgreSQL + Hyperdrive
+- DB: Cloudflare D1 (production); PostgreSQL remains the on-premises edition
 - Object storage: Cloudflare R2
-- Async queue: Amazon SQS
-- Async compute: Python worker on AWS Lambda
+- Async queues: Cloudflare Queues for search/account; Amazon SQS for media
+- Async compute: TypeScript on Cloudflare for search/account; Python media worker on AWS Lambda
+- Database maintenance: GitHub Actions with Cloudflare Worker + SQLite Durable Object ownership
 
 ## 1. Database and R2
 
