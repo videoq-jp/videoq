@@ -28,7 +28,7 @@ jobs:
       - name: Verify native ownership and build without production credentials
         run: |
           node .github/scripts/cloudflare-maintenance.native.mjs
-          node .github/deploy-tools/node_modules/wrangler/bin/wrangler.js deploy --config infra/cloudflare-maintenance/wrangler.jsonc --dry-run --outdir maintenance-artifact --env-file /dev/null
+          node .github/scripts/maintenance-build.cjs "$GITHUB_WORKSPACE/maintenance-artifact"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: maintenance-${{ github.sha }}
