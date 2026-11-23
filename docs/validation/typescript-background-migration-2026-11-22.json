@@ -1,6 +1,6 @@
 {
   "updatedAt": "2026-11-23T13:15:08.338418+00:00",
-  "status": "Cloudflare and Python cleanup deployed; legacy Lambda/SQS retired; signed on-prem release verified; final cloud acceptance and guide publication pending",
+  "status": "Cloud and on-prem rollout verified; old Lambda/SQS and Python background tasks retired; guide publication and evidence merge pending",
   "migrationComplete": false,
   "runtime": {
     "cloudSearchAccount": "TypeScript on Cloudflare Queues and Workflows; Workers AI / D1 / Vectorize",
@@ -15,7 +15,8 @@
     "maintenanceRecovery": "cloudflare-owned-maintenance-2026-11-22.json",
     "lambdaRetirement": "cloudflare-background-lambda-retirement-applied-2026-11-23.json",
     "onpremFinalRelease": "typescript-background-final-onprem-release-2026-11-23.json",
-    "sqsRetirement": "cloudflare-background-sqs-retirement-applied-2026-11-23.json"
+    "sqsRetirement": "cloudflare-background-sqs-retirement-applied-2026-11-23.json",
+    "finalProductionAcceptance": "typescript-background-final-production-acceptance-2026-11-23.json"
   },
   "pythonCleanup": {
     "pullRequest": 1602,
@@ -24,9 +25,8 @@
     "conclusion": "success"
   },
   "remaining": [
-    "Final cited cloud smoke after infrastructure cleanup",
-    "Publish guides PR1613 and verify public docs",
-    "Merge consolidated validation evidence PR1606"
+    "Publish English/Japanese guide PR1613 and verify public pages",
+    "Merge consolidated evidence PR1606"
   ],
   "historicalPreparationSnapshot": {
     "date": "2026-11-22",
