@@ -21,7 +21,7 @@ it does not refer to AWS S3. Terraform 1.15.1 is the reviewed runtime.
 | `infra/bootstrap/` | `videoq/bootstrap/terraform.tfstate` | Retained historical AWS state bucket |
 | `infra/db-maintenance/terraform/` | `videoq/prod/db-maintenance.tfstate` | Retained archive, historical logs and worker boundary |
 | `infra/r2-state/` | `videoq/bootstrap/r2.tfstate` | Private state bucket and immutable recovery history |
-| `infra/cloudflare/` | `videoq/prod/cloudflare.tfstate` | Zone/DNS, email rules, Workers metadata, routes/domains, D1, R2/CORS/lifecycle, queues/consumers, Workflow and Vectorize/indexed metadata |
+| `infra/cloudflare/` | `videoq/prod/cloudflare.tfstate` | Zone/DNS, Email Routing settings/rules/verified destination, Workers metadata, routes/domains, D1, R2/CORS/lifecycle, queues/consumers, Workflow and Vectorize/indexed metadata |
 | `infra/cloudflare-releases/api/` | `videoq/prod/workers/api.tfstate` | API code, bindings, Durable Object declarations and active deployment |
 | `infra/cloudflare-releases/web/` | `videoq/prod/workers/web.tfstate` | Web code, bindings, assets and active deployment |
 | `infra/cloudflare-releases/docs/` | `videoq/prod/workers/docs.tfstate` | Docs assets and active deployment |

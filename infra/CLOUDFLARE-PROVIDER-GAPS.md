@@ -10,6 +10,7 @@ Cloudflare全製品の未対応API一覧ではなく、この本番構成に関�
 | 既存Queue consumer（2件） | `cloudflare_queue_consumer`は作成・更新できるが、5.29.0はimport非対応 | REST Providerで既存consumerを取り込み。APIの`script`応答を`script_name`に正規化して差分を検知 |
 | Cronのドリフト検知 | resourceはあるが、`schedules`に`no_refresh`が指定され、外部変更を通常refreshで読み戻せない | 定義・適用は公式Provider。別の読み取り専用API照合をTerraform external data/preconditionで必須化 |
 | Terraform Searchによる一覧発見 | 5.29.0のschemaには`list_resource_schemas`がない | 公式APIで一覧取得し、対応するresourceを通常のimportで取り込み |
+| Email Routingの有効状態の指定 | settings resourceの`enabled`と`status`は読み取り専用。外部で無効化されても通常の更新差分にならない | settingsと確認済み転送先を公式Providerへ取り込み、postconditionで有効・ready・転送先確認済みを検証。外部で無効化された場合は処理を止め、復旧方法をレビューする |
 
 これらの代替もTerraformのstateに記録される。REST ProviderはCloudflare公式Providerではないため、公式resource/importが対応した際は、既存リソースを再作成せずstateの所有権を移す。
 
@@ -33,4 +34,5 @@ Terraformの調査にはHashiCorp公式 [terraform-mcp-server](https://github.co
 - [Cloudflare Provider 5.29.0 resources](https://github.com/cloudflare/terraform-provider-cloudflare/tree/v5.29.0/docs/resources)
 - [Queue consumer import制約](https://github.com/cloudflare/terraform-provider-cloudflare/blob/v5.29.0/docs/resources/queue_consumer.md#import)
 - [Cron modelのno_refresh指定](https://github.com/cloudflare/terraform-provider-cloudflare/blob/v5.29.0/internal/services/workers_cron_trigger/model.go)
+- [Email Routing settingsの読み取り専用属性](https://github.com/cloudflare/terraform-provider-cloudflare/blob/v5.29.0/docs/resources/email_routing_settings.md)
 - ローカルの固定Providerで `terraform providers schema -json` を確認: Vectorize resource / list resourceなし。

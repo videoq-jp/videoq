@@ -1,6 +1,7 @@
 variable "email_addresses" {
-  type      = list(string)
-  sensitive = true
+  description = "Private routing aliases and the existing verified forwarding destination."
+  type        = list(string)
+  sensitive   = true
 }
 resource "cloudflare_workers_cron_trigger" "videoq_api" {
   account_id  = "12daec56fdba43f677f2766ee26a5a39"
