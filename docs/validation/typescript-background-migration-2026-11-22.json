@@ -1,6 +1,6 @@
 {
   "updatedAt": "2026-11-23T13:33:08.798330+00:00",
-  "status": "Cloud and on-prem migration, retirement, production acceptance and public operator guides verified; consolidated evidence ready for publication",
+  "status": "Cloud and on-prem migration, legacy retirement, production acceptance and public operator guides verified",
   "migrationComplete": true,
   "runtime": {
     "cloudSearchAccount": "TypeScript on Cloudflare Queues and Workflows; Workers AI / D1 / Vectorize",
@@ -25,9 +25,7 @@
     "productionCdRunId": 45129261750,
     "conclusion": "success"
   },
-  "remaining": [
-    "Merge consolidated validation evidence PR1606"
-  ],
+  "remaining": [],
   "historicalPreparationSnapshot": {
     "date": "2026-11-22",
     "status": "implementation and verification in progress; production transport unchanged",
@@ -476,5 +474,6 @@
       "productionControlMutations": 0
     }
   },
-  "historicalSnapshotNote": "The nested preparation snapshot records earlier observations; current status and evidence above supersede its pending rollout descriptions."
+  "historicalSnapshotNote": "The nested preparation snapshot records earlier observations; current status and evidence above supersede its pending rollout descriptions.",
+  "consolidatedEvidencePullRequest": 1606
 }

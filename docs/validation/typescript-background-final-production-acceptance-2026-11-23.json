@@ -30,8 +30,7 @@
     "cloudflare-background-sqs-retirement-applied-2026-11-23.json"
   ],
   "onpremReleaseEvidence": "typescript-background-final-onprem-release-2026-11-23.json",
-  "remaining": [
-    "Merge consolidated validation evidence PR1606"
-  ],
-  "operatorGuideEvidence": "typescript-background-public-guides-2026-11-23.json"
+  "remaining": [],
+  "operatorGuideEvidence": "typescript-background-public-guides-2026-11-23.json",
+  "consolidatedEvidencePullRequest": 1606
 }
