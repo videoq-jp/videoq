@@ -4,26 +4,6 @@
 
 
 
-# __generated__ by Terraform from "16f30b629ba107705212b367d51e66c1/94bd7af43d2f6df71b54756808ccd5ce"
-resource "cloudflare_dns_record" "record_94bd7af43d2f6df71b54756808ccd5ce" {
-  comment                 = null
-  content                 = "_c39a02ab40eb8a6f842134cb5e18fc1a.jkddzztszm.acm-validations.aws"
-  data                    = null
-  include_shadow_metadata = false
-  name                    = "_7910cc23e08e306a742f463e56e6a946.videoq.jp"
-  priority                = null
-  private_routing         = null
-  proxied                 = false
-  settings = {
-    flatten_cname = false
-    ipv4_only     = false
-    ipv6_only     = false
-  }
-  tags    = []
-  ttl     = 1
-  type    = "CNAME"
-  zone_id = "16f30b629ba107705212b367d51e66c1"
-}
 
 # __generated__ by Terraform from "16f30b629ba107705212b367d51e66c1/69c7233e987abe072ba8b7911b998612"
 resource "cloudflare_dns_record" "record_69c7233e987abe072ba8b7911b998612" {
