@@ -99,6 +99,45 @@ The two temporarily paused CD workflows were restored to active. No runtime
 credential transfer, maintenance activation or AWS retirement occurred in this
 bootstrap. Status and recovery support below remains a separate deployment.
 
+## Production cutover verification
+
+On 2026-11-24 JST, the separately approved cutover completed on main
+`40a605141783ab949210314de434b78f9444510b`:
+
+- [Disabled identity deployment](https://github.com/videoq-jp/videoq/actions/runs/45253951638)
+  and [live OIDC proof](https://github.com/videoq-jp/videoq/actions/runs/45254272813)
+  succeeded for migration and smoke. PR #1630 pins the repository's actual
+  immutable subject prefix, `repo:videoq-jp@349188820/videoq@1083911938`, in
+  addition to independent repository/owner ID checks. Legacy subjects fail closed.
+- Four environment secrets were copied through stdin from existing SSM sources.
+  Migration and smoke both use the existing `d1-migration` credential, exactly as
+  the previous D1 smoke wrapper did. `db-smoke` is a legacy Postgres credential
+  and was not transferred. Background control uses `background-maintenance`;
+  synthetic identity uses `smoke-identity`. Source SSM values remain intact.
+- All three `videoq-db-start-{migration,smoke,deploy}-prod` functions now have
+  reserved concurrency **0**. Their previous state was unreserved. After waiting
+  beyond their 60-second timeout, CodeBuild, Step Functions and the DynamoDB
+  global owner were all empty. No function code or alias was deleted.
+- [Activation deployment](https://github.com/videoq-jp/videoq/actions/runs/45254778154)
+  succeeded, `/health` reports `enabled:true`, and
+  `CLOUDFLARE_MAINTENANCE_ENABLED=true` is saved in repository variables.
+- [Recovery rehearsal](https://github.com/videoq-jp/videoq/actions/runs/45255205384)
+  deliberately failed attempt 1 with `MAINTENANCE_CREDENTIAL_REQUIRED` before
+  database access. Signed status confirmed the failed owner. Attempt 2 of the
+  same run succeeded with `read_only:true` and `migrations_pending:false`;
+  [status](https://github.com/videoq-jp/videoq/actions/runs/45255658394) confirmed
+  ownership released. No schema was applied.
+- [Cloudflare-owned production smoke](https://github.com/videoq-jp/videoq/actions/runs/45255769471)
+  succeeded with `syntheticCleanupComplete:true`; paid AI-answer checks were
+  disabled. [Final signed status](https://github.com/videoq-jp/videoq/actions/runs/45256925046)
+  confirmed empty ownership in both purpose environments. AWS was idle too.
+
+Normal CD and Operations are active. Obsolete DB Maintenance CD remains disabled.
+AWS maintenance resources, historical records and archives remain intact pending
+separately reviewed retirement. Do not restore old starter admission while the
+Cloudflare path is active; rollback requires both owners idle and a coordinated
+switch back before removing the recorded concurrency limits.
+
 ## Controlled deployment and cutover
 
 1. Use the existing `production-infra` environment's `CLOUDFLARE_API_TOKEN`
