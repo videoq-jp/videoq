@@ -566,6 +566,22 @@ describe('generated API key copy', () => {
     expect(screen.getByText('fixture-secret-second')).toBeInTheDocument()
   })
 
+  it('clears temporary copy feedback after two seconds while retaining the one-time secret', async () => {
+    render(<SettingsPage />)
+    await generateKey('timed')
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.copy' }))
+        await Promise.resolve()
+      })
+      expect(screen.getByRole('button', { name: 'settings.integrationApiKeys.copyDone' })).toBeEnabled()
+      await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+      expect(screen.getByRole('button', { name: 'settings.integrationApiKeys.copy' })).toBeEnabled()
+      expect(screen.getByText('fixture-secret-timed')).toBeInTheDocument()
+    } finally { vi.useRealTimers() }
+  })
+
   it('reports clipboard unavailability without claiming the key was copied', async () => {
     Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
     render(<SettingsPage />)
@@ -574,5 +590,87 @@ describe('generated API key copy', () => {
     expect(await screen.findByText('settings.integrationApiKeys.errorCopying')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'settings.integrationApiKeys.copyDone' })).not.toBeInTheDocument()
     expect(writeText).not.toHaveBeenCalled()
+  })
+})
+
+describe('integration key dialog recovery', () => {
+  const key: IntegrationApiKey = {
+    id: 'recovery-key', config_id: 'read-write', name: 'Recovery notes', prefix: 'vq_recovery',
+    access_level: 'all', last_used_at: null, created_at: '2026-09-01T00:00:00Z',
+  }
+
+  beforeEach(() => {
+    vi.mocked(apiClient.createIntegrationApiKey).mockReset()
+    vi.mocked(apiClient.revokeIntegrationApiKey).mockReset()
+    globalThis.__setTrpcHandler('account.searchApiKeyStatus', () => ({ has_api_key: false }))
+  })
+
+  it.each(['escape', 'button'])('discards a cancelled create form through %s without creating a key', async method => {
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.create' }))
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.createDialogCta' }))
+    expect(screen.getByText('settings.integrationApiKeys.errorEmpty')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('settings.integrationApiKeys.nameLabel'), { target: { value: 'Discard me' } })
+    fireEvent.click(screen.getByRole('button', { name: /settings.integrationApiKeys.permissions.readOnlyTitle/ }))
+    if (method === 'escape') fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    else fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.integrationApiKeys.cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.create' }))
+    expect(screen.getByLabelText('settings.integrationApiKeys.nameLabel')).toHaveValue('')
+    expect(screen.getByRole('button', { name: /settings.integrationApiKeys.permissions.allTitle/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText('settings.integrationApiKeys.errorEmpty')).not.toBeInTheDocument()
+    expect(apiClient.createIntegrationApiKey).not.toHaveBeenCalled()
+  })
+
+  it.each([new Error('Creation unavailable'), 'non-error rejection'])('keeps the create form during a request and permits retry after %s', async failure => {
+    let reject!: (reason: unknown) => void
+    vi.mocked(apiClient.createIntegrationApiKey).mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
+      .mockResolvedValueOnce({ ...key, api_key: 'fixture-recovery-secret' })
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.create' }))
+    fireEvent.change(screen.getByLabelText('settings.integrationApiKeys.nameLabel'), { target: { value: '  Recovery notes  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.createDialogCta' }))
+    await waitFor(() => expect(apiClient.createIntegrationApiKey).toHaveBeenCalledTimes(1))
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.integrationApiKeys.cancel' })).toBeDisabled()
+    await act(async () => { reject(failure) })
+    await screen.findByText(failure instanceof Error ? failure.message : 'settings.integrationApiKeys.errorCreating')
+    expect(screen.getByLabelText('settings.integrationApiKeys.nameLabel')).toHaveValue('  Recovery notes  ')
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.createDialogCta' }))
+    await screen.findByText('fixture-recovery-secret')
+    expect(apiClient.createIntegrationApiKey).toHaveBeenCalledTimes(2)
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    expect(screen.queryByText('fixture-recovery-secret')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it.each(['escape', 'button'])('cancels revocation through %s without changing the list', async method => {
+    listApiKeys.mockResolvedValueOnce([key])
+    render(<SettingsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'settings.integrationApiKeys.revoke: Recovery notes' }))
+    if (method === 'escape') fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    else fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.integrationApiKeys.cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText(key.name)).toBeInTheDocument()
+    expect(apiClient.revokeIntegrationApiKey).not.toHaveBeenCalled()
+  })
+
+  it('keeps a pending revocation open and permits cancellation after a failure', async () => {
+    let reject!: (reason: unknown) => void
+    listApiKeys.mockResolvedValueOnce([key])
+    vi.mocked(apiClient.revokeIntegrationApiKey).mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
+    render(<SettingsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'settings.integrationApiKeys.revoke: Recovery notes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'settings.integrationApiKeys.revokeConfirmCta' }))
+    await waitFor(() => expect(apiClient.revokeIntegrationApiKey).toHaveBeenCalledTimes(1))
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'settings.integrationApiKeys.cancel' })).toBeDisabled()
+    await act(async () => { reject('non-error rejection') })
+    await screen.findByText('settings.integrationApiKeys.errorRevoking')
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText(key.name)).toBeInTheDocument()
   })
 })

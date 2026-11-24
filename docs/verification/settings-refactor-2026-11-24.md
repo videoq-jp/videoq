@@ -70,3 +70,23 @@ Reading the ownership comment and the existing race tests is the onboarding
 exercise. No delivery date or learning-time allocation is changed. Broad page
 splitting, DI-container introduction, CI reconstruction, and speculative install
 caching are deferred until measured costs justify them.
+
+## Coverage gate follow-up
+
+The first combined PR coverage report exposed 27 untested lines in the extracted
+component (82.91% patch coverage, target 94.46%). The original page file had been
+excluded from the coverage report, so moving it into a component made existing
+gaps visible. No exclusion or threshold was changed.
+
+Added eight behavior cases to the existing page tests: cancelling creation and
+revocation by Escape or button; blank-name validation and discarded form state;
+blocking Escape during creation/revocation; preserving input and retrying after
+creation failure (Error and non-Error rejection); clearing the one-time secret on
+Escape; and expiring copy success feedback after two seconds. These use user
+visible state and API calls, rather than invoking component internals.
+
+The focused coverage run now passes 41 tests and covers 113/114 component
+statements; the remaining defensive early return requires invoking a callback
+without its rendered button. It was not tested through an artificial call.
+The same UI states already exist, so the 11 existing stories remain applicable.
+This is test-only follow-up to the extraction; runtime behavior did not change.
