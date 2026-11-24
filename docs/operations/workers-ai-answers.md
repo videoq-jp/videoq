@@ -52,7 +52,7 @@ On 2026-11-22 the VideoQ Workers AI account passed the Gemma preflight and both 
 
 The Workers deployment needs the `AI` binding and the checked-in Gemma `LLM_*` vars. No new inference secret is needed. The probes do not themselves deploy production. Before upload, the deployment resource handoff and state checks must confirm the existing D1/Vectorize targets and traffic state are preserved. The Node runtime still needs its own Workers AI REST service token.
 
-To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. Gemma ignores legacy `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
+To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. Gemma ignores `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
 
 References:
 

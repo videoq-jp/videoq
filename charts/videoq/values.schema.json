@@ -101,7 +101,6 @@
         "whisperBackend": {
           "enum": [
             "openai",
-            "openai",
             "local"
           ]
         },
