@@ -26,6 +26,8 @@ The frontend fetches state from the API. Once the worker saves transcripts and i
 | API | Authentication, access control, business logic, and job requests | `apps/api/src/` |
 | Python worker | Transcription and indexing | `apps/worker/worker_python/` |
 
+See the [logical ownership and release contract](https://github.com/videoq-jp/videoq/blob/main/docs/architecture/responsibility-and-release-contract.md) for shared-state invariants and staged consumer changes.
+
 Web and API share operation names and input/output types through `packages/trpc`. SQS JSON messages and the database form the boundary with Python.
 
 ## Local and production equivalents
@@ -34,10 +36,10 @@ Web and API share operation names and input/output types through `packages/trpc`
 |---|---|---|
 | Frontend | Static nginx build or Vite | Cloudflare Workers Static Assets |
 | API | Wrangler development server | Cloudflare Workers |
-| Database | PostgreSQL + pgvector | Neon PostgreSQL + pgvector |
-| API-to-DB connection | Local connection string | Hyperdrive |
+| Database | PostgreSQL + pgvector | Cloudflare D1 |
+| API-to-DB connection | Local connection string | D1 binding; media worker uses the signed internal API |
 | Video, subtitle, and other storage | Garage | Cloudflare R2 |
-| Job queue | ElasticMQ | Amazon SQS |
+| Job queue | ElasticMQ (media/search/account) | SQS media; Cloudflare Queues search/account |
 | Python worker | Container continuously polling the queue | AWS Lambda triggered by SQS |
 | Temporary API state | Local Durable Objects | Cloudflare Durable Objects |
 
@@ -49,19 +51,22 @@ Locally, Caddy routes `http://localhost` to the frontend and API. Development Vi
 flowchart TB
     User[Browser] --> Web[Cloudflare Workers Static Assets]
     User --> API[Cloudflare Workers / Hono]
-    API --> HD[Hyperdrive] --> DB[(Neon PostgreSQL)]
+    API --> DB[(Cloudflare D1)]
+    API --> Search[Cloudflare search/account queues]
+    Search --> API
+    API --> Vectors[Vectorize]
     API --> R2[(Videos and subtitles: R2)]
     API --> DO[Durable Objects]
     API --> Queue[Amazon SQS]
     Queue --> Worker[Python / AWS Lambda]
-    Worker --> DB
+    Worker --> Internal[Signed internal API] --> API
     Worker --> R2
     API --> AI[AI services]
     Worker --> AI
     API --> Mail[Mailgun]
 ```
 
-The API reaches the shared database through Hyperdrive; the Python worker uses a PostgreSQL connection. Check both when changing database columns.
+The cloud API uses D1; the media worker reaches shared mutations through the signed internal API. On-premises API and Python/Node workers share PostgreSQL. Check both persistence backends and message contracts when changing shared state.
 
 Cloud AI inference uses Workers AI bindings. The media Lambda requests transcription through the signed internal API; the Worker executes inference. On-premises deployments can use OpenAI-compatible servers.
 
