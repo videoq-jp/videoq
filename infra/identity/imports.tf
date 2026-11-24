@@ -75,10 +75,6 @@ import {
   id = "videoq-workers-api"
 }
 import {
-  to = aws_iam_user_policy.videoq_workers_api_videoq_openrouter_federation
-  id = "videoq-workers-api:videoq-openrouter-federation"
-}
-import {
   to = aws_iam_user_policy.videoq_workers_api_videoq_sqs_send
   id = "videoq-workers-api:videoq-sqs-send"
 }

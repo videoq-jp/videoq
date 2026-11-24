@@ -21,7 +21,7 @@ description: 単一の Linux サーバー、または既存の Kubernetes に Vi
 **以下は Kubernetes への配置を説明します。**
 
 LLM・埋め込み生成・Whisper も社内で動かす場合は、[ローカル推論](local-inference.md)
-の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenRouter です。
+の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenAI です。
 ローカル構成では、推論用 Chart と接続先を切り替える設定を明示的に適用します。
 
 VideoQ の Web・Node.js API・Python ワーカーを、既存の Kubernetes に配置できます。

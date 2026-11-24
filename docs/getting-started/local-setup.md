@@ -16,7 +16,7 @@ For documentation-only changes, go to [Update the documentation](../guides/docum
 | Git and repository access | Get the source code |
 | Docker and Docker Compose | Run the database, API, video processing, and related services |
 | Node.js and npm (the version in `.node-version`) | Install dependencies and configure a local account |
-| An OpenRouter API key for development | Transcription, search data generation, and AI answers |
+| An OpenAI API key for development | Transcription, search data generation, and AI answers |
 
 The video processing and AI answers in this guide incur external API usage charges. Use a development key and a short test video. A separate TranscriptAPI key is needed only for YouTube imports.
 
@@ -33,19 +33,19 @@ Run subsequent commands from the repository root, `videoq/`, unless stated other
 
 ## 2. Configure AI services for development
 
-Edit the matching entries in `.env` to use these values. Set `OPENROUTER_API_KEY` to your own development key.
+Edit the matching entries in `.env` to use these values. Set `OPENAI_API_KEY` to your own development key.
 
 ```dotenv
-OPENROUTER_API_KEY=your-development-key
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=openai/gpt-6-luna
-EMBEDDING_MODEL=openai/text-embedding-3-small
-WHISPER_BACKEND=openrouter
+OPENAI_API_KEY=your-development-key
+OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-6-luna
+EMBEDDING_MODEL=text-embedding-3-small
+WHISPER_BACKEND=openai
 ```
 
 These are the values already in `.env.example`, so you normally only add the key. `WHISPER_BACKEND=openai` is the legacy direct route and would need a separate `OPENAI_API_KEY`.
 
-Answer generation and image inspection share `LLM_MODEL`, set here to GPT-6 Luna through OpenRouter. With visual Q&A enabled, choose a model that supports image input, tool calling, and strict JSON output. See [model settings](../architecture/prompt-engineering.md#model-settings-and-limits).
+Answer generation and image inspection share `LLM_MODEL`, set here to GPT-6 Luna through OpenAI. With visual Q&A enabled, choose a model that supports image input, tool calling, and strict JSON output. See [model settings](../architecture/prompt-engineering.md#model-settings-and-limits).
 
 The templates already use these embedding defaults. Dimensions are fixed at 1536; no dimension environment variable is needed. The API and worker must use the same provider and model. For private llama.cpp/vLLM endpoints and diagnostic commands, see [embedding configuration](../guides/embeddings.md).
 

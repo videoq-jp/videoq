@@ -65,7 +65,7 @@ def test_audio_is_bounded_before_encoding_or_network_calls(monkeypatch, audio, s
     infer.assert_not_called()
 
 
-def test_inference_failure_never_falls_back_to_openrouter(monkeypatch, audio):
+def test_inference_failure_never_falls_back_to_another_provider(monkeypatch, audio):
     monkeypatch.setenv("WHISPER_BACKEND", "workers-ai")
     monkeypatch.setattr(transcription, "_ffprobe_duration", lambda _: 30)
     client = MagicMock(side_effect=AssertionError("provider fallback"))

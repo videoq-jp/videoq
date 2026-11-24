@@ -15,15 +15,15 @@ from worker_python import search_evaluation as evaluation
 def inputs(tmp_path, monkeypatch):
     # Never inherit developer credentials or model overrides into these tests.
     for key in list(os.environ):
-        if key.startswith(("EMBEDDING_", "OPENAI_", "OPENROUTER_", "AWS_")):
+        if key.startswith(("EMBEDDING_", "OPENAI_", "AWS_")):
             monkeypatch.delenv(key)
     monkeypatch.setenv("EMBEDDING_MODEL", "openai/text-embedding-3-small")
-    monkeypatch.setenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
-    monkeypatch.setenv("OPENROUTER_API_KEY", "synthetic-configured-key")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://inference.example/api/v1")
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-configured-key")
     tmp_path.chmod(0o700)
     manifest = {"version": 1, "cohort": "production-rehearsal", "corpusSha256": "a" * 64,
                 "embedding": {"provider": "openai", "profile": "openai", "model": "openai/text-embedding-3-small", "dimensions": 1536,
-                              "baseUrl": "https://openrouter.ai/api/v1", "authentication": "configured"},
+                              "baseUrl": "https://inference.example/api/v1", "authentication": "configured"},
                 "samples": 2, "cases": [
                     {"id": "q1", "question": "比較の質問 🌸", "userId": "owner", "videoIds": [2, 1, 2], "limit": 20},
                     {"id": "q2", "question": "比較の質問 🌸", "userId": "peer", "videoIds": [3], "limit": 10}]}
@@ -74,7 +74,8 @@ def test_reuses_query_vectors_across_scopes_and_preserves_provenance_privately(i
     lambda x: x["cases"][0].update(unexpected="private-token"),
     lambda x: x["cases"][1].update(id="q1"),
     lambda x: x["embedding"].update(dimensions=768),
-    lambda x: x["embedding"].update(baseUrl="https://token:secret@openrouter.ai/api/v1"),
+    lambda x: x["embedding"].update(baseUrl="https://token:secret@inference.example/api/v1"),
+    lambda x: x["embedding"].update(authentication="unsupported"),
 ])
 def test_rejects_invalid_manifests_before_model_calls(inputs, change):
     manifest, source, destination, save, provider = inputs
@@ -86,7 +87,7 @@ def test_rejects_invalid_manifests_before_model_calls(inputs, change):
     assert not destination.exists()
 
 
-@pytest.mark.parametrize("field,value", [("model", "a-different-model"), ("baseUrl", "https://other.example/v1"), ("authentication", "workload-federation")])
+@pytest.mark.parametrize("field,value", [("model", "a-different-model"), ("baseUrl", "https://other.example/v1")])
 def test_rejects_configuration_drift_without_changing_environment(inputs, field, value):
     manifest, source, destination, save, provider = inputs
     manifest["embedding"][field] = value
@@ -95,20 +96,6 @@ def test_rejects_configuration_drift_without_changing_environment(inputs, field,
     with pytest.raises(evaluation.EvaluationError, match="configuration_mismatch"):
         evaluation.prepare(source, destination, execute=True)
     assert dict(os.environ) == before
-    provider.assert_not_called()
-
-
-def test_workload_federation_preflight_does_not_exchange_credentials(inputs, monkeypatch):
-    manifest, source, destination, save, provider = inputs
-    manifest["embedding"]["authentication"] = "workload-federation"
-    save()
-    monkeypatch.delenv("OPENROUTER_API_KEY")
-    monkeypatch.setenv("OPENROUTER_FEDERATION_POLICY_ID", "synthetic-policy")
-    monkeypatch.setenv("AWS_REGION", "ap-northeast-1")
-    token = Mock(side_effect=AssertionError("Must not exchange identity during preflight"))
-    monkeypatch.setattr("worker_python.pipeline.ai_connection.openrouter_token", token)
-    assert evaluation.prepare(source, destination)["status"] == "ready"
-    token.assert_not_called()
     provider.assert_not_called()
 
 
@@ -179,7 +166,7 @@ def test_cli_preflight_and_configuration_failure_never_print_private_content(inp
 
 def test_onprem_768_profile_uses_current_configuration_without_cloud_bindings(inputs, monkeypatch):
     manifest, source, destination, save, provider = inputs
-    monkeypatch.delenv("OPENROUTER_API_KEY")
+    monkeypatch.delenv("OPENAI_API_KEY")
     monkeypatch.setenv("EMBEDDING_PROFILE", "embeddinggemma2")
     monkeypatch.setenv("EMBEDDING_MODEL", "existing-local-embedding-model")
     monkeypatch.setenv("EMBEDDING_BASE_URL", "http://127.0.0.1:8000/v1")

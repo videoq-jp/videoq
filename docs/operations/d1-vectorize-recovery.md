@@ -1,3 +1,5 @@
+> Historical record: the provider-specific runtime and commands described below have been retired. Do not execute these instructions. Current production inference uses Workers AI; see [transcription](workers-ai-transcription.md) and [answers](workers-ai-answers.md).
+
 # D1・Vectorizeの通常復旧
 
 現行クラウド版はD1を正本とし、Vectorizeは再生成可能な検索索引として扱う。旧Neonと27個の旧Django/OAuthテーブルは復旧対象外。2026-11-17にWorkers Paidへ変更し、無料枠の日次読み取り上限で止まったD1クエリと本番処理smokeの回復を確認した。基本料金は月額5米ドル、含まれる枠を超えた利用は別途課金される。

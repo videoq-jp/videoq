@@ -70,14 +70,12 @@ def main():
     if args.ai:
         for label, endpoint, key, model in (
             ("チャット", os.environ.get("LLM_BASE_URL") or os.environ["OPENAI_BASE_URL"],
-             os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"), os.environ["LLM_MODEL"]),
+             os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY"), os.environ["LLM_MODEL"]),
             ("埋め込み", os.environ.get("EMBEDDING_BASE_URL") or os.environ["OPENAI_BASE_URL"],
-             os.environ.get("EMBEDDING_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"), os.environ["EMBEDDING_MODEL"]),
+             os.environ.get("EMBEDDING_API_KEY") or os.environ.get("OPENAI_API_KEY"), os.environ["EMBEDDING_MODEL"]),
         ):
             def models(endpoint=endpoint, key=key, model=model, label=label):
-                # OpenRouter lists embeddings separately; local OpenAI-compatible
-                # servers expose the usual /models endpoint.
-                suffix = "/embeddings/models" if label == "埋め込み" and urlsplit(endpoint).hostname == "openrouter.ai" else "/models"
+                suffix = "/models"
                 request = Request(endpoint.rstrip("/") + suffix, headers={"Authorization": f"Bearer {key}"})
                 with urlopen(request, timeout=20) as response:
                     available = json.load(response)

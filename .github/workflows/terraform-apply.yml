@@ -115,8 +115,6 @@ jobs:
       - name: Terraform apply
         env:
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
-          TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
-          TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
         run: terraform apply -auto-approve -input=false
 
   terraform-dependency-apply:
@@ -170,8 +168,6 @@ jobs:
       - name: Terraform apply
         env:
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
-          TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
-          TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
         run: terraform apply -auto-approve -input=false
 
   preflight:
@@ -216,6 +212,4 @@ jobs:
         id: plan
         env:
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
-          TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
-          TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
         run: python scripts/terraform_preflight.py

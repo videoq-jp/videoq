@@ -129,6 +129,5 @@ The old `videoq-prod` OpenAI project is archived after revoking its last API key
 and destroying its Terraform-managed model permissions and spend alert. OpenAI
 retains archived project history for billing; projects cannot be fully deleted.
 The OpenAI provider, administration secrets and one-time retirement workflows are
-removed after verification. Production inference uses Workers AI, with
-transcription through OpenRouter. OpenAI-compatible SDKs remain application
+removed after verification. Production inference, including transcription, uses Workers AI. OpenAI-compatible SDKs remain application
 clients and do not require an OpenAI administration credential.

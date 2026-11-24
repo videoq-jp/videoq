@@ -8,7 +8,7 @@ description: Run VideoQ chat, embeddings and Whisper inside the on-premises netw
 VideoQ can run chat, embeddings and Whisper on site alongside its web, API and
 worker workloads. Initial container/model downloads can use the internet;
 uploaded video, audio and AI requests use private services during processing.
-The application's default Helm values still select hosted OpenRouter. Applying
+The application's default Helm values still select hosted OpenAI. Applying
 the local overlay explicitly switches all three AI functions.
 
 | Recipe | LLM / embedding runtime | Application overlay |
@@ -100,7 +100,7 @@ recognition/answer quality require acceptance on the actual site.
 The [signed public release](on-premises-releases.md) includes the CPU Whisper
 image, amd64 NVIDIA vLLM image and inference chart. The verifier produces
 `verified-inference.json` for the inference chart and `verified-images.json` for
-the application. No hosted AI key is needed (neither OpenRouter nor OpenAI):
+the application. No hosted AI key is needed (neither OpenAI nor OpenAI):
 `OPENAI_API_KEY=local-inference` is an SDK placeholder. Retain the other runtime
 Secret values from the [application installation](on-premises.md).
 

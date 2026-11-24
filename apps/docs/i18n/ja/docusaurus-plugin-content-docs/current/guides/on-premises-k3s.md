@@ -11,7 +11,7 @@ description: 1つのコマンドで VideoQ を導入し、VPS の443番ポート
 
 ## 準備する
 
-Linux amd64 / arm64 の VPS に Docker Engine・Python 3.9 以降・curl・tar・coreutils を用意し、リポジトリのルートで実行します。アプリに加えて K3s のリソースも確保します。AI は標準で OpenRouter を使います。単一ノードにはホスト障害に対する冗長性がないため、データと鍵は別ホストにもバックアップします。
+Linux amd64 / arm64 の VPS に Docker Engine・Python 3.9 以降・curl・tar・coreutils を用意し、リポジトリのルートで実行します。アプリに加えて K3s のリソースも確保します。AI は標準で OpenAI を使います。単一ノードにはホスト障害に対する冗長性がないため、データと鍵は別ホストにもバックアップします。
 
 VPS 事業者のファイアウォールとホスト側のファイアウォールで、外部からの **TCP 443** を許可します。SSH の接続経路は維持してください。インストーラーはファイアウォールの規則を変更しません。公開するのは HTTPS ゲートウェイです。Kubernetes API はループバック限定で、DB・キュー・ストレージ API はクラスタ内部に置きます。
 
@@ -41,7 +41,7 @@ python3 scripts/onprem/k3s.py install --url https://videoq.example.com
 5. Helm 導入・マイグレーション・組み込みの疎通テスト。
 6. 公開 HTTPS の準備確認と、初期管理者の作成。
 
-ソース SHA は GitHub の成功した実行から自動取得し、その SHA に対して配布物の署名を検証します。SHA の入力は不要です。OpenRouter を使う場合だけキー（非表示）を入力し、必要に応じて管理者情報を入力します。GitHub 認証と Docker の権限も必要です。認証を求められた場合はターミナルの案内に従います。
+ソース SHA は GitHub の成功した実行から自動取得し、その SHA に対して配布物の署名を検証します。SHA の入力は不要です。OpenAI を使う場合だけキー（非表示）を入力し、必要に応じて管理者情報を入力します。GitHub 認証と Docker の権限も必要です。認証を求められた場合はターミナルの案内に従います。
 
 アプリと S3 のアップロードは、同じ HTTPS オリジンの443番を使います。`/videoq-media/*` は署名付きパスを書き換えずに Garage へ、それ以外のアプリ・API のパスは VideoQ へ振り分けます。動画側の応答には sandbox CSP を付け、アップロードされた文書がアプリのオリジンでスクリプトを実行できないようにします。
 
@@ -49,7 +49,7 @@ python3 scripts/onprem/k3s.py install --url https://videoq.example.com
 
 ## ローカル AI を選ぶ
 
-初回の `install` に `--ai` を指定すると、Whisper・埋め込み・LLM をまとめて選べます。標準は `openrouter` です。
+初回の `install` に `--ai` を指定すると、Whisper・埋め込み・LLM をまとめて選べます。標準は `openai` です。
 
 ```sh
 # CPU でローカル推論する
@@ -61,11 +61,11 @@ python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai loca
 
 | オプション | LLM・埋め込み | Whisper |
 |---|---|---|
-| `--ai openrouter`（省略可） | OpenRouter | OpenRouter |
+| `--ai openai`（省略可） | OpenAI | OpenAI |
 | `--ai local-cpu` | llama.cpp の CPU イメージ | 署名済みゲートウェイ + whisper.cpp の CPU イメージ |
 | `--ai local-gpu` | 署名済み NVIDIA vLLM イメージ | 署名済みゲートウェイ + 同じ NVIDIA vLLM イメージ |
 
-ローカル構成は OpenRouter キーを要求せず、推論 API はクラスタ内部にだけ配置します。アプリの接続先とモデル名も自動設定し、テキスト用モデルに合わせて画像を使う Q&A を無効にします。プロファイルは検証済みリリースの Chart から読み込み、検証済みイメージ指定を最後に重ねます。CPU は amd64/arm64、GPU は amd64 に対応します。
+ローカル構成は OpenAI キーを要求せず、推論 API はクラスタ内部にだけ配置します。アプリの接続先とモデル名も自動設定し、テキスト用モデルに合わせて画像を使う Q&A を無効にします。プロファイルは検証済みリリースの Chart から読み込み、検証済みイメージ指定を最後に重ねます。CPU は amd64/arm64、GPU は amd64 に対応します。
 
 ローカルモデルの常駐には追加のリソースが必要です。確認した配布設定では、**推論だけで** CPU 版は 5.25 CPU・7.5 GiB RAM、GPU 版は 6.25 CPU・24.5 GiB RAM・割り当て可能な NVIDIA GPU 3基を要求します。別途アプリ・DB・クラスタの分を確保してください。インストーラーは実際の Chart の要求量とノードの空きを比較し、不足時はモデルを取得せず停止します。約4 GBの VPS にはこの CPU プロファイルを配置できません。
 

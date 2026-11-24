@@ -186,11 +186,8 @@ results. Checkpoints are deleted by foreign-key cascade when the video is delete
 | `DATABASE_URL` | PostgreSQL |
 | `SQS_QUEUE_URL` | Default / legacy queue; also used by the local poller |
 | `SQS_MEDIA_QUEUE_URL`, `SQS_SEARCH_QUEUE_URL`, `SQS_ACCOUNT_QUEUE_URL` | Optional per-group routing overrides (API and Python producers) |
-| `OPENROUTER_FEDERATION_POLICY_ID` | Preferred: OpenRouter policy for AWS STS workload identity |
-| `OPENROUTER_FEDERATION_AUDIENCE` | Defaults to `https://openrouter.ai` |
-| `OPENROUTER_API_KEY` | Optional fixed-key development fallback when no policy is set |
 | `OPENAI_API_KEY` | Legacy direct OpenAI / local SDK placeholder |
-| `WHISPER_BACKEND` | `openrouter` (hosted profile), `openai` (legacy direct) or `local` (on-premises) |
+| `WHISPER_BACKEND` | `workers-ai` (cloud), `openai` (direct) or `local` (on-premises) |
 | `WHISPER_LOCAL_URL` | Private API base for `local`: native Mac whisper.cpp has no `/v1` suffix with the documented launch command; the Kubernetes gateway includes `/v1` |
 | `EMBEDDING_MODEL` | Defaults to `text-embedding-3-small`; set the actual served alias for a private model |
 | `USE_S3_STORAGE` | Enable S3-compatible object storage |
@@ -216,7 +213,7 @@ default 300). The CPU profile uses 30 seconds. GPU dynamic batching is separate:
 the gateway forwards speech spans concurrently to vLLM, without waiting for a
 batch of uploaded videos.
 
-Cloud transcription uses OpenRouter's `openai/whisper-large-v3-turbo` model with real segment timestamps. See
+Cloud transcription uses Workers AI’s `@cf/openai/whisper-large-v3-turbo` model with real segment timestamps. See
 [the switch runbook](../../docs/operations/openai-transcription.md).
 
 Dedicated storage credentials are selected from `R2_ACCESS_KEY_ID` /
@@ -328,7 +325,7 @@ See the [visual evidence guide](../../docs/guides/visual-evidence.md) for settin
 storage usage, deletion, and accuracy comparisons.
 
 OpenAI-compatible embeddings can use `EMBEDDING_BASE_URL` and a separate
-`EMBEDDING_API_KEY`. Unset values retain the shared provider base URL/key; `OPENROUTER_API_KEY` selects OpenRouter when no base URL is specified. Use the
+`EMBEDDING_API_KEY`. Unset values retain the shared provider base URL/key; `OPENAI_API_KEY` supplies the shared credential for OpenAI-compatible servers. Use the
 same model and embedding endpoint in the API and worker. Local llama.cpp/vLLM
 recipes and their common acceptance commands are in `charts/videoq-inference/README.md`.
 

@@ -1,6 +1,6 @@
 # Workers AI: unified Gemma chat and vision
 
-VideoQ uses `@cf/google/gemma-4-26b-a4b-it` for answer generation, conversation summaries, and image inspection inside video tools. GPT-OSS and a separate OpenRouter vision model are not required for this profile. Embeddings and transcription retain their independent providers; no reindexing is needed for this change.
+VideoQ uses `@cf/google/gemma-4-26b-a4b-it` for answer generation, conversation summaries, and image inspection inside video tools. Embeddings and transcription also use Workers AI through their dedicated model bindings.
 
 The API continues to use its existing LangChain Chat Completions agent and OpenAI vision SDK. In Cloudflare Workers these send requests through the native `AI` binding; Node can use Workers AI's OpenAI-compatible endpoint. This retains the existing tool protocol, citations, deadlines, cancellation, structured output validation, and usage ledger in both Workers and Node runtimes.
 
@@ -52,7 +52,7 @@ On 2026-11-22 the VideoQ Workers AI account passed the Gemma preflight and both 
 
 The Workers deployment needs the `AI` binding and the checked-in Gemma `LLM_*` vars. No new inference secret is needed. The probes do not themselves deploy production. Before upload, the deployment resource handoff and state checks must confirm the existing D1/Vectorize targets and traffic state are preserved. The Node runtime still needs its own Workers AI REST service token.
 
-To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. The previous hosted profile uses `LLM_MODEL=openai/gpt-6-luna` and the shared OpenRouter connection (remove the dedicated `LLM_BASE_URL`/`LLM_API_KEY` overrides to use federation). Gemma ignores legacy `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
+To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. Gemma ignores `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
 
 References:
 

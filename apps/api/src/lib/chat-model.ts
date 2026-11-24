@@ -7,7 +7,6 @@ import {
   LlmConfigurationError,
   LlmProviderError,
   resolveLlmConnection,
-  providerModel,
   llmMaxTokens,
   llmModelKwargs,
   llmReasoningEffort,
@@ -169,7 +168,7 @@ export function createChatModel(
   opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "conversation_summary"; callbacks?: Callbacks },
 ): ChatOpenAICompletions {
   const { apiKey, baseURL, fetch: inferenceFetch } = resolveLlmConnection(env);
-  const model = providerModel(env.LLM_MODEL || DEFAULT_LLM_MODEL, baseURL);
+  const model = env.LLM_MODEL || DEFAULT_LLM_MODEL;
   // useResponsesApi: false でも ChatOpenAI はモデル名で /responses を選ぶ。
   // 互換サーバーでも /chat/completions を使うため、専用クラスで固定する。
   const reasoningEffort = llmReasoningEffort(env, model);
@@ -179,7 +178,7 @@ export function createChatModel(
     configuration: { baseURL, fetch: inferenceFetch },
     temperature: 0,
     reasoning: reasoningEffort ? { effort: reasoningEffort } : undefined,
-    // Send the field explicitly for OpenRouter slugs and custom compatible aliases.
+    // Send the field explicitly for custom compatible aliases.
     modelKwargs: { ...llmModelKwargs(model), ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}) },
     maxTokens: llmMaxTokens(env, opts.maxTokens),
     timeout: opts.timeoutMs,
@@ -218,7 +217,7 @@ export function toLlmError(error: unknown): unknown {
   const status = statusOf(error);
   if (status === 401) {
     return new LlmConfigurationError(
-      "Invalid LLM API key. Please check LLM_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY in the server environment.",
+      "Invalid LLM API key. Please check LLM_API_KEY or OPENAI_API_KEY in the server environment.",
     );
   }
   const message = error instanceof Error ? error.message : String(error);
