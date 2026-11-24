@@ -49,7 +49,7 @@ Create a separate Moodle-managed VideoQ video for each canonical source, even if
 another course or native owner video uses the same YouTube ID. Reuse the existing
 native YouTube feature policy and durable transcription outbox conventions.
 Provider/queue calls occur after commit. The existing worker fetches provider
-transcripts through the owner's SearchAPI configuration and reserves processing
+transcripts through the owner's TranscriptAPI configuration and reserves processing
 duration; it does not download a source video file or reserve a File upload.
 Keep those native processing quota and job lease checks. On-prem deployments
 retain their existing YouTube feature denial.

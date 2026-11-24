@@ -419,11 +419,11 @@ export default function SettingsPage() {
                 <SupportText>
                   {t('settings.searchApiKey.getApiKeyMessage')}{' '}
                   <DaLink
-                    href="https://www.searchapi.io/"
+                    href="https://transcriptapi.com/"
                     target="_blank"
                     rel="noreferrer"
                   >
-                    SearchAPI
+                    TranscriptAPI
                   </DaLink>
                 </SupportText>
               </div>

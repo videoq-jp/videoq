@@ -98,7 +98,7 @@ CPU の基本構成では、テキスト専用モデルを使うため映像の�
 実際に適用する CNI が必要です。埋め込みのモデル・量子化・pooling・前処理を切り替えると、同じ 1536 次元でも既存動画の
 埋め込み再生成が必要です。llama.cpp の CPU 構成は元の出力が 1536 次元の gte-Qwen2、
 vLLM は Qwen3-Embedding-4B の Matryoshka 出力を 1536 次元に指定します。
-オンプレ版では外部メール・Google ログイン・Stripe・YouTube/SearchAPI を無効にし、
+オンプレ版では外部メール・Google ログイン・Stripe・YouTube/TranscriptAPI を無効にし、
 管理者がローカルアカウントと初期設定リンクを発行します。
 
 ## Mac で whisper.cpp を使う

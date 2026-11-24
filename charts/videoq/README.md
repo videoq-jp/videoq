@@ -48,7 +48,7 @@ through the same authentication, permissions, quota and streaming routes.
   optional Ingress does this routing, preserving paths without rewriting.
 - OpenRouter access or separately deployed compatible inference services. For a
   closed network, configure all three: chat, embeddings and Whisper.
-  The on-prem edition disables Google sign-in, YouTube/SearchAPI, Mailgun and
+  The on-prem edition disables Google sign-in, YouTube/TranscriptAPI, Mailgun and
   Stripe. Chat models must support the existing tool/JSON contract and,
   when visual Q&A is enabled, image input. Validate these before rollout.
 
@@ -287,9 +287,9 @@ On-prem builds exclude the LP, pricing, SaaS legal/refund pages, public signup,
 email-verification/forgot-password pages, demo media, sitemap and remote Google
 Fonts. `/` leads signed-out users to login and signed-in users to their dashboard.
 Billing and upgrade controls, Google sign-in, YouTube import/player/thumbnail
-requests and SearchAPI settings are removed. The API rejects their operations
+requests and TranscriptAPI settings are removed. The API rejects their operations
 with `FEATURE_DISABLED`, even if old provider credentials remain in the Secret.
-Do not add Stripe, Google, SearchAPI or Mailgun credentials to the on-prem Secret.
+Do not add Stripe, Google, TranscriptAPI or Mailgun credentials to the on-prem Secret.
 Mail-dependent self-service email changes and public password recovery are disabled.
 
 The bootstrap command prints an account setup URL. Send it privately to the

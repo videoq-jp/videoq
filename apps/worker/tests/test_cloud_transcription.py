@@ -92,3 +92,20 @@ def test_segmented_quota_recovery_maps_safe_code_and_preserves_source_fence(setu
     assert 'private quota detail' not in str(calls)
     if accepted:
         assert calls[-1][1] == {'videoId': 1, 'userId': 'owner', 'sourceRevision': 'revision', 'fileKey': 'file.mp4', 'transcript': None, 'errorCode': 'PROCESSING_QUOTA_EXCEEDED'}
+
+
+@pytest.mark.parametrize("override", [True, False])
+def test_youtube_transcriptapi_key_reaches_pipeline_in_cloud_mode(setup, monkeypatch, override):
+    source, _ = setup
+    source["searchapiKeyEncrypted"] = "encrypted-transcript-key"
+    monkeypatch.delenv("TRANSCRIPTAPI_API_KEY", raising=False)
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "old-search-key")
+    monkeypatch.setattr(task, "try_decrypt", lambda value: "saved-transcript-key" if value == "encrypted-transcript-key" else None)
+    if override:
+        monkeypatch.setenv("TRANSCRIPTAPI_API_KEY", "override-transcript-key")
+    pipeline = MagicMock(return_value="Generated")
+    monkeypatch.setattr(task, "run_transcription", pipeline)
+    task.transcribe_cloud_video(1)
+    assert pipeline.call_args.kwargs["searchapi_key"] == (
+        "override-transcript-key" if override else "saved-transcript-key"
+    )

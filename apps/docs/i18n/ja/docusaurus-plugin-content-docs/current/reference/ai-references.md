@@ -44,7 +44,7 @@ VideoQは、モデルがツールを選択し、実行結果を読み、制限�
 
 Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. **“Robust Speech Recognition via Large-Scale Weak Supervision.”** *ICML*, PMLR 202, pp. 28492–28518, 2023。プレプリント初公開は2022年。[論文集と出版社のBibTeX](https://proceedings.mlr.press/v202/radford23a.html)。BibTeXキー: `radford2023whisper`。
 
-ホスト型の構成では、アップロードした音声を OpenRouter 経由の `openai/whisper-large-v3-turbo` へ送ります（`WHISPER_BACKEND=openrouter`）。旧来の直接接続（`WHISPER_BACKEND=openai`）では `whisper-1` を使います。ローカル経路ではWhisper互換サーバーを呼び、重みはサーバー起動時に選びます。READMEの `large-v3-turbo` には[公式モデルカード](https://huggingface.co/openai/whisper-large-v3-turbo)もあります。モデル系列の出典にWhisper論文を引用し、ローカル実験では実際のチェックポイントも記録してください。YouTube登録はSearchAPIで既存字幕を取得し、VideoQのWhisper経路は使いません。
+ホスト型の構成では、アップロードした音声を OpenRouter 経由の `openai/whisper-large-v3-turbo` へ送ります（`WHISPER_BACKEND=openrouter`）。旧来の直接接続（`WHISPER_BACKEND=openai`）では `whisper-1` を使います。ローカル経路ではWhisper互換サーバーを呼び、重みはサーバー起動時に選びます。READMEの `large-v3-turbo` には[公式モデルカード](https://huggingface.co/openai/whisper-large-v3-turbo)もあります。モデル系列の出典にWhisper論文を引用し、ローカル実験では実際のチェックポイントも記録してください。YouTube登録はTranscriptAPIで既存字幕を取得し、VideoQのWhisper経路は使いません。
 
 対応実装: [transcription.py](https://github.com/videoq-jp/videoq/blob/main/apps/worker/worker_python/pipeline/transcription.py)。任意のローカル推論ソフトウェアは[whisper.cpp](https://github.com/ggml-org/whisper.cpp)です。
 
