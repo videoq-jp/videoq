@@ -114,9 +114,6 @@ jobs:
 
       - name: Terraform apply
         env:
-          # Used to manage OpenAI projects with the openai/openai provider.
-          OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
-          TF_VAR_openai_spend_alert_email: ${{ secrets.OPENAI_SPEND_ALERT_EMAIL }}
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
           TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
           TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
@@ -172,9 +169,6 @@ jobs:
 
       - name: Terraform apply
         env:
-          # Used to manage OpenAI projects with the openai/openai provider.
-          OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
-          TF_VAR_openai_spend_alert_email: ${{ secrets.OPENAI_SPEND_ALERT_EMAIL }}
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
           TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
           TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
@@ -221,8 +215,6 @@ jobs:
       - name: Plan without publishing state or attribute values
         id: plan
         env:
-          OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
-          TF_VAR_openai_spend_alert_email: ${{ secrets.OPENAI_SPEND_ALERT_EMAIL }}
           TF_VAR_operations_alert_email: ${{ secrets.OPERATIONS_ALERT_EMAIL }}
           TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
           TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}

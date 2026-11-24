@@ -18,7 +18,6 @@ mock_provider "aws" {
     defaults = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
   }
 }
-mock_provider "openai" {}
 
 override_resource {
   target = aws_cloudwatch_log_group.worker
@@ -28,10 +27,6 @@ override_resource {
   target = aws_ssm_parameter.app
   values = { arn = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/test/app" }
 }
-variables {
-  manage_openai_project = false
-}
-
 run "production_workers_cannot_read_the_retired_database" {
   command = apply
   assert {

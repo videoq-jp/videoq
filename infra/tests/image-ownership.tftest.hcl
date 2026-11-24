@@ -15,7 +15,6 @@ mock_provider "aws" {
     }
   }
 }
-mock_provider "openai" {}
 
 override_resource {
   target = aws_cloudwatch_log_group.worker
@@ -29,10 +28,6 @@ override_resource {
   values = {
     arn = "arn:aws:sqs:ap-northeast-1:123456789012:test-dlq"
   }
-}
-
-variables {
-  manage_openai_project = false
 }
 
 run "bootstrap_image" {

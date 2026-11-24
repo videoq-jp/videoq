@@ -1,7 +1,7 @@
 """Weekly read-only rotation reminder; no credentials are created or modified."""
 import json
 import sys
-from audit_ai_credentials import error_summary
+from credential_http import error_summary
 from audit_api_iam import audit_api_iam
 
 def rotation_due(keys):
