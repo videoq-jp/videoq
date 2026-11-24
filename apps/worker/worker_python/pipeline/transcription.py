@@ -149,7 +149,7 @@ def transcribe_audio_interval(
     source: Path | ObjectMediaSource, start_seconds: float, duration_seconds: float,
     *, language: str | None = None,
 ) -> list[dict[str, Any]]:
-    """A bounded input range and one Whisper call; timestamps remain source-relative."""
+    """A bounded input range and one recognition call; timestamps stay source-relative."""
     max_duration = 300
     if not math.isfinite(start_seconds) or start_seconds < 0 or not 0 < duration_seconds <= max_duration:
         raise ValueError("Invalid transcription interval")
@@ -162,9 +162,14 @@ def transcribe_audio_interval(
             "-acodec", "mp3", "-ab", "64k", "-ar", "16000", "-ac", "1", str(audio),
         ], max_output_bytes=16 * 1024 * 1024, timeout_seconds=300)
         _check_extracted_audio(result, audio)
-        client, model = _whisper_client()
-        with client:
-            segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
+        if env_str("WHISPER_BACKEND") == "workers-ai":
+            segments = _workers_ai_transcribe(audio, language=language)
+            segments = [{**segment, "start": segment["start"] + start_seconds,
+                         "end": segment["end"] + start_seconds} for segment in segments]
+        else:
+            client, model = _whisper_client()
+            with client:
+                segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
     return segments_within_interval(segments, start_seconds, duration_seconds)
 
 
@@ -199,6 +204,8 @@ def _whisper_client():
 
 
 def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> list[dict[str, Any]]:
+    if env_str("WHISPER_BACKEND") == "workers-ai":
+        return _workers_ai_transcribe(audio_path, language=language)
     client, model = _whisper_client()
     with client:
         # Whisper API soft limit ~25MB; split longer audio into ~10min chunks if needed.
@@ -213,6 +220,20 @@ def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> lis
                     _whisper_file(client, chunk_path, model, offset=offset, **({"language": language} if language else {}))
                 )
         return all_segments
+
+
+def _workers_ai_transcribe(audio_path: Path, *, language: str | None = None) -> list[dict[str, Any]]:
+    from .workers_ai_transcription import transcribe_file
+
+    duration = _ffprobe_duration(audio_path)
+    if duration <= 300.5:
+        return transcribe_file(audio_path, duration, language=language)
+    segments = []
+    with closing(_split_audio_chunks(audio_path, chunk_seconds=300)) as chunks:
+        for offset, chunk in chunks:
+            for segment in transcribe_file(chunk, _ffprobe_duration(chunk), language=language):
+                segments.append({**segment, "start": segment["start"] + offset, "end": segment["end"] + offset})
+    return segments_within_interval(segments, 0, duration)
 
 
 def _whisper_file(
