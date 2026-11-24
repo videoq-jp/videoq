@@ -1,3 +1,5 @@
+> Historical record: the provider-specific runtime and commands described below have been retired. Do not execute these instructions. Current production inference uses Workers AI; see [transcription](workers-ai-transcription.md) and [answers](workers-ai-answers.md).
+
 # 隔離した検索評価Lambdaの実行境界
 
 ## 現在の状態

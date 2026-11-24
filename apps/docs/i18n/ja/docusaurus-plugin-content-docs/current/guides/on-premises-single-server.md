@@ -17,7 +17,7 @@ description: 1台の Linux サーバーで VideoQ を導入・評価し、バッ
 | ソースコードのチェックアウト | `scripts/onprem/videoq.py` と設定テンプレート |
 | 検証済みの `verified-images.json` | 使用する配布イメージの固定 |
 | アプリとストレージの公開 URL | ブラウザーからログイン・アップロード・再生する経路 |
-| OpenRouter のキー、または既存のローカル推論サービス | チャット・埋め込み・文字起こし |
+| OpenAI のキー、または既存のローカル推論サービス | チャット・埋め込み・文字起こし |
 
 [リリースの取得と署名検証](on-premises-releases.md)を先に行い、生成された `verified-images.json` を使います。イメージの自前ビルドは不要です。リリースの検証に必要なツールは、リリースガイドで確認してください。
 
@@ -45,7 +45,7 @@ python3 scripts/onprem/videoq.py --directory /secure/videoq-server install \
   --username site_admin --email admin@example.com
 ```
 
-標準構成では OpenRouter のキーを非表示で入力します。`install` は設定・秘密鍵の生成、基盤とアプリの起動、接続診断、初期管理者の設定リンク発行まで進めます。リンクを管理者本人が開き、パスワードを設定してください。オンプレ版には公開サインアップがありません。
+標準構成では OpenAI のキーを非表示で入力します。`install` は設定・秘密鍵の生成、基盤とアプリの起動、接続診断、初期管理者の設定リンク発行まで進めます。リンクを管理者本人が開き、パスワードを設定してください。オンプレ版には公開サインアップがありません。
 
 設定生成後に失敗した場合は、同じ保存先で `init` をやり直さず、以下の診断・再開手順を使います。既存の保存先への初期化は拒否され、暗号鍵は上書きされません。
 
@@ -69,7 +69,7 @@ python3 scripts/onprem/videoq.py --directory /secure/videoq-server admin \
 
 起動エラーには `logs --service api`、マイグレーションには `logs --service migrate`、動画処理には `logs --service worker` を使います。いずれも `--directory` はサブコマンドの前に指定します。Docker に管理者権限が必要な環境では `VIDEOQ_DOCKER_SUDO=1` を設定します。CLI は `sudo -n docker` を使用し、パスワード入力は要求しません。
 
-自動化では `VIDEOQ_OPENROUTER_API_KEY` で標準構成のキーを渡せます。設定とバックアップには秘密情報が含まれます。`runtime.env` の暗号鍵は既存のユーザー設定の復号に必要です。共有ログには、認証情報を展開する `docker compose config` の出力を載せないでください。構成チェックには `--quiet` を使います。
+自動化では `VIDEOQ_OPENAI_API_KEY` で標準構成のキーを渡せます。設定とバックアップには秘密情報が含まれます。`runtime.env` の暗号鍵は既存のユーザー設定の復号に必要です。共有ログには、認証情報を展開する `docker compose config` の出力を載せないでください。構成チェックには `--quiet` を使います。
 
 ## バックアップと復元
 

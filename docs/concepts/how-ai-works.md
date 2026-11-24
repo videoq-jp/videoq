@@ -25,7 +25,7 @@ The former Study mode and PLOG learning graph have been removed. Current Q&A sup
 
 ## What does the AI actually read?
 
-For an uploaded file, the worker extracts **audio** and transcribes it with Whisper. For a YouTube import, it retrieves existing subtitles through SearchAPI. Both paths produce text with timestamps.
+For an uploaded file, the worker extracts **audio** and transcribes it with Whisper. For a YouTube import, it retrieves existing subtitles through TranscriptAPI. Both paths produce text with timestamps.
 
 By default, answers use subtitles. `overview_video` surveys a video's timeline, `skim_video` narrows a candidate interval, and `read_video_window` reads surrounding subtitle context. Image tools are enabled by default for uploads: overview and skim can check cached stills, `inspect_clip` reads coarse stills at higher image detail, and `focus_clip` checks short clips using approximately one-second frame intervals. Set `VIDEO_VISUAL_ENABLED=false` to opt out. The ReAct agent selects only the tools needed for the question. YouTube imports and uploads without a cache remain subtitle-only. Sparse frames can miss brief actions or illegible text. See [configuration and limits](../guides/visual-evidence.md).
 
@@ -122,7 +122,7 @@ Instructions ask the model to stay within the retrieved evidence and acknowledge
 
 ## Where the data goes
 
-Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which are reached through OpenRouter in the hosted profile. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
+Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which use Cloudflare Workers AI in the cloud edition. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
 
 This describes the application's data flow. It does not establish a provider's retention or training policy. No production credentials or account identifiers are needed to understand or configure the flow.
 

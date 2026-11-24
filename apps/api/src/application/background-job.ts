@@ -1,20 +1,23 @@
 import type { JobRepository } from './job-execution-port';
+import type { JobMessage } from './job-message';
 
-export type BackgroundJob =
-  | { type: 'delete_account_data'; job_id: string; payload: { user_id: string } }
-  | { type: 'reindex_video_transcript'; job_id: string; payload: { video_id: number } }
-  | { type: 'index_video_transcript'; job_id: string; payload: { video_id: number; allow_empty?: boolean } }
-  | { type: 'reindex_all_videos_embeddings'; job_id: string; payload: { after_id?: number; root_job_id?: string } };
+export type BackgroundJob = Extract<JobMessage, { type:
+  'delete_account_data' | 'reindex_video_transcript' | 'index_video_transcript' | 'reindex_all_videos_embeddings'
+}>;
 function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function positive(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value > 0; }
+function wireString(value: unknown, maxLength: number): value is string {
+  // Reject unpaired UTF-16 surrogates: they cannot have the same UTF-8 identity in Python.
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength && !/[\uD800-\uDFFF]/u.test(value);
+}
 export function parseBackgroundJob(value: unknown): BackgroundJob {
   if (!record(value) || Object.keys(value).some(k => !['type','job_id','payload'].includes(k)) ||
-      typeof value.job_id !== 'string' || !value.job_id || value.job_id.length > 128 || !record(value.payload)) throw new Error('Invalid background job');
+      !wireString(value.job_id, 128) || !record(value.payload)) throw new Error('Invalid background job');
   const payload = value.payload;
   const fields = Object.keys(payload);
   switch (value.type) {
     case 'delete_account_data':
-      if (fields.length === 1 && typeof payload.user_id === 'string' && payload.user_id.trim() && payload.user_id.length <= 128) {
+      if (fields.length === 1 && wireString(payload.user_id, 128) && payload.user_id.trim()) {
         return { type: value.type, job_id: value.job_id, payload: { user_id: payload.user_id } };
       }
       break;
@@ -30,7 +33,7 @@ export function parseBackgroundJob(value: unknown): BackgroundJob {
     case 'reindex_all_videos_embeddings':
       if (fields.every(k => ['after_id','root_job_id'].includes(k)) &&
           (payload.after_id === undefined || typeof payload.after_id === 'number' && Number.isSafeInteger(payload.after_id) && payload.after_id >= 0) &&
-          (payload.root_job_id === undefined || payload.after_id !== undefined && typeof payload.root_job_id === 'string' && !!payload.root_job_id.trim() && payload.root_job_id.length <= 128)) {
+          (payload.root_job_id === undefined || payload.after_id !== undefined && wireString(payload.root_job_id, 128) && !!payload.root_job_id.trim())) {
         return { type: value.type, job_id: value.job_id, payload: {
           ...(typeof payload.after_id === 'number' ? { after_id: payload.after_id } : {}),
           ...(typeof payload.root_job_id === 'string' ? { root_job_id: payload.root_job_id } : {}),
@@ -52,13 +55,16 @@ export interface BackgroundJobDependencies {
 export class BackgroundJobBusyError extends Error {
   constructor() { super('Background job busy'); }
 }
+export class BackgroundJobConflictError extends Error {
+  constructor() { super('Background job conflict'); }
+}
 
 export async function executeBackgroundJob(input: unknown, deps: BackgroundJobDependencies): Promise<void> {
   const job = parseBackgroundJob(input);
   const claim = await deps.repository.claim({ jobId: job.job_id, jobType: job.type, payloadSha256: await deps.sha256(canonicalBackgroundJob(job)) });
   if (claim.status === 'completed') return;
   if (claim.status === 'busy') throw new BackgroundJobBusyError();
-  if (claim.status !== 'claimed') throw new Error(`Background job ${claim.status}`);
+  if (claim.status !== 'claimed') throw new BackgroundJobConflictError();
   try {
     await deps.execute(job, claim.leaseToken);
     if (!await deps.repository.complete(job.job_id, claim.leaseToken)) throw new Error('Background job lease was lost');

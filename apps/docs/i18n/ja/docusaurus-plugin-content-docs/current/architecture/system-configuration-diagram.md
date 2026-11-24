@@ -26,6 +26,8 @@ flowchart LR
 | API | 認証・アクセス権、業務処理、ジョブの依頼 | `apps/api/src/` |
 | Python worker | 文字起こし、索引 | `apps/worker/worker_python/` |
 
+[論理責務とリリース互換契約](https://github.com/videoq-jp/videoq/blob/main/docs/architecture/responsibility-and-release-contract.md)に、共有状態の不変条件とconsumerの段階移行手順を記録しています。
+
 WebとAPIは `packages/trpc` で操作名・入力・出力の型を共有します。Pythonとの境界はSQSのJSONメッセージとDBです。
 
 ## ローカルと本番の対応
@@ -34,10 +36,10 @@ WebとAPIは `packages/trpc` で操作名・入力・出力の型を共有しま
 |---|---|---|
 | 画面 | nginxの静的ビルド、またはVite | Cloudflare Workers Static Assets |
 | API | Wranglerの開発サーバー | Cloudflare Workers |
-| DB | PostgreSQL + pgvector | Neon PostgreSQL + pgvector |
-| APIからDBへの接続 | ローカル接続文字列 | Hyperdrive |
+| DB | PostgreSQL + pgvector | Cloudflare D1 |
+| APIからDBへの接続 | ローカル接続文字列 | D1 binding。media workerは署名付き内部API |
 | 動画・字幕などの保管 | Garage | Cloudflare R2 |
-| ジョブキュー | ElasticMQ | Amazon SQS |
+| ジョブキュー | ElasticMQ（media/search/account） | mediaはSQS、search/accountはCloudflare Queues |
 | Python worker | キューを継続的に取得するコンテナ | SQSを契機に動くAWS Lambda |
 | APIが持つ一時状態 | ローカルのDurable Objects | Cloudflare Durable Objects |
 
@@ -49,21 +51,24 @@ WebとAPIは `packages/trpc` で操作名・入力・出力の型を共有しま
 flowchart TB
     User[ブラウザ] --> Web[Cloudflare Workers Static Assets]
     User --> API[Cloudflare Workers / Hono]
-    API --> HD[Hyperdrive] --> DB[(Neon PostgreSQL)]
+    API --> DB[(Cloudflare D1)]
+    API --> Search[Cloudflare search/account queues]
+    Search --> API
+    API --> Vectors[Vectorize]
     API --> R2[(動画・字幕: R2)]
     API --> DO[Durable Objects]
     API --> Queue[Amazon SQS]
     Queue --> Worker[Python / AWS Lambda]
-    Worker --> DB
+    Worker --> Internal[署名付き内部API] --> API
     Worker --> R2
     API --> AI[AIサービス]
     Worker --> AI
     API --> Mail[Mailgun]
 ```
 
-APIはHyperdrive経由、Python workerはPostgreSQL接続で同じDBを利用します。DBの列を変更するときは両方への影響を確認します。
+クラウドAPIはD1を使い、media workerは署名付き内部APIを通して共有状態を更新します。オンプレ版ではAPIとPython/Node workerがPostgreSQLを共有します。共有状態の変更では両DBとメッセージ契約への影響を確認します。
 
-ホスト型のAI呼び出しは、APIとworkerのどちらもOpenRouterを経由します。本番の認証にはAWSのワークロードIDフェデレーションを使います。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照してください。オンプレでDurable Objectsとホスト型サービスを置き換える構成は[オンプレで動かす](../guides/on-premises.md)で説明しています。
+クラウド版のAI推論はWorkers AIのbindingで実行します。media Lambdaは署名付き内部APIを通して文字起こしを依頼し、Workerが推論を実行します。オンプレ版はOpenAI互換サーバーを利用できます。
 
 ## Durable Objectsの役割
 

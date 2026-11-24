@@ -13,12 +13,6 @@ def unique_cases(manifest: dict) -> list[dict]:
     return list(by_question.values())
 
 
-def remote_chunks(manifest: dict, chunk_size: int) -> list[dict]:
-    cases = unique_cases(manifest)
-    return [{**manifest, 'samples': 1, 'cases': cases[offset:offset + chunk_size]}
-            for offset in range(0, len(cases), chunk_size)]
-
-
 def prepare_local_vectors(queries: list[str], batch_size: int, *, recheck: Callable[[], object],
                           embed: Callable[[list[str]], object], validate: Callable[[object], list[float]]) -> dict:
     vectors = {}
@@ -37,24 +31,11 @@ def prepare_local_vectors(queries: list[str], batch_size: int, *, recheck: Calla
     return vectors
 
 
-def prepare_remote_vectors(chunks: list[dict], invoke: Callable[[dict], dict]) -> dict:
-    vectors = {}
-    # No retries: a missing reply can already have incurred model cost.
-    for chunk in chunks:
-        vectors.update(invoke(chunk))
-    return vectors
-
-
 def evaluation_payload(manifest: dict, vectors: dict, *, model: str, dimensions: int,
-                       manifest_sha256: str, unique_queries: int,
-                       runtime: dict | None = None, invocations: int | None = None) -> dict:
+                       manifest_sha256: str, unique_queries: int) -> dict:
     generation = {'version': 1, 'manifest_sha256': manifest_sha256,
                   'embedding': manifest['embedding'], 'case_ids': [case['id'] for case in manifest['cases']]}
-    if runtime is None:
-        generation.update(unique_queries=unique_queries, input_type='query', quality_evaluated=False)
-    else:
-        generation.update(input_type='query', unique_queries=unique_queries, runtime=runtime,
-                          invocations=invocations, quality_evaluated=False)
+    generation.update(unique_queries=unique_queries, input_type='query', quality_evaluated=False)
     return {
         'version': 1, 'cohort': manifest['cohort'], 'corpusSha256': manifest['corpusSha256'],
         'model': model, 'dimensions': dimensions, 'samples': manifest['samples'],

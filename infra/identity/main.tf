@@ -134,31 +134,6 @@ resource "aws_iam_user_policy_attachment" "videoq_github_actions_cd_videoq_terra
   user       = "videoq-github-actions-cd"
 }
 
-# __generated__ by Terraform from "videoq-workers-api:videoq-openrouter-federation"
-resource "aws_iam_user_policy" "videoq_workers_api_videoq_openrouter_federation" {
-  name = "videoq-openrouter-federation"
-  policy = jsonencode({
-    Statement = [{
-      Action = "sts:GetWebIdentityToken"
-      Condition = {
-        "ForAllValues:StringEquals" = {
-          "sts:IdentityTokenAudience" = ["https://openrouter.ai"]
-        }
-        NumericLessThanEquals = {
-          "sts:DurationSeconds" = "900"
-        }
-        StringEquals = {
-          "sts:SigningAlgorithm" = "RS256"
-        }
-      }
-      Effect   = "Allow"
-      Resource = "*"
-    }]
-    Version = "2012-10-17"
-  })
-  user = "videoq-workers-api"
-}
-
 # __generated__ by Terraform from "videoq-github-actions-plan:deny-protected-neon-credentials"
 resource "aws_iam_role_policy" "videoq_github_actions_plan_deny_protected_neon_credentials" {
   name = "deny-protected-neon-credentials"

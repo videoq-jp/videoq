@@ -26,7 +26,6 @@
     "user:admin": "node scripts/create-admin.mjs",
     "rate-limit:reset": "sh scripts/reset-rate-limit.sh",
     "workers-ai:check": "tsx scripts/check-workers-ai.ts",
-    "openrouter:check": "tsx scripts/check-openrouter.ts",
     "embeddings:check": "tsx scripts/check-embeddings.ts",
     "demo:students": "tsx scripts/prepare-student-demo.ts",
     "build:node": "node scripts/build-node.mjs",

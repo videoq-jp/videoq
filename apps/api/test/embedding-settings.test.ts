@@ -31,13 +31,10 @@ describe.each([undefined, "production"])("Wrangler embedding settings (%s)", (en
         EMBEDDING_MODEL: String(bindings.EMBEDDING_MODEL?.value ?? ""),
         OPENAI_BASE_URL: String(bindings.OPENAI_BASE_URL?.value ?? ""),
         EMBEDDING_BASE_URL: String(bindings.EMBEDDING_BASE_URL?.value ?? ""),
-        OPENROUTER_API_KEY: String(bindings.OPENROUTER_API_KEY?.value ?? ""),
       };
       expect(resolveEmbeddingConfig(settings)).toEqual({
         ...testCase.expected,
-        // Wrangler selects the hosted OpenRouter profile even without a dev override.
-        model: testCase.expected.model === "text-embedding-3-small"
-          ? "openai/text-embedding-3-small" : testCase.expected.model,
+
       });
     } finally {
       rmSync(directory, { recursive: true, force: true });

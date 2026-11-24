@@ -30,6 +30,47 @@ _PAYLOAD_FIELDS = {
     JOB_FINISH_VIDEO_VISUALS: "video_id",
 }
 
+# ECMAScript String.trim, not Python str.strip (which also strips U+0085).
+_WIRE_WHITESPACE = '\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'
+
+
+def _wire_string(value: object, maximum: int, *, nonblank: bool = False) -> bool:
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        length = len(value.encode('utf-16-le')) // 2
+    except UnicodeEncodeError:
+        return False
+    return length <= maximum and (not nonblank or bool(value.strip(_WIRE_WHITESPACE)))
+
+
+def parse_job_message(message: object) -> dict[str, Any]:
+    """Validate the wire envelope and normalize JSON safe integers before hashing.
+
+    JSON's 42, 42.0 and 4.2e1 have one identity in JavaScript. Native task
+    arguments stay strict; normalization happens only at this wire boundary.
+    """
+    if not isinstance(message, dict):
+        raise ValueError('Job message must be an object')
+    if set(message) != {'type', 'job_id', 'payload'}:
+        raise ValueError('Job message must contain exactly type, job_id and payload')
+    kind, job_id, payload = message['type'], message['job_id'], message['payload']
+    if not _wire_string(kind, 64):
+        raise ValueError('type must be a non-empty string of at most 64 UTF-16 units')
+    if not _wire_string(job_id, 128):
+        raise ValueError('job_id must be a non-empty string of at most 128 UTF-16 units')
+    if not isinstance(payload, dict):
+        raise ValueError('payload must be an object')
+    body = dict(payload)
+    # Preserve explicit retirement acknowledgement for queued historical jobs.
+    if kind not in {'build_plog', 'evaluate_chat_log'}:
+        for field in ('video_id', 'after_id', 'chunk_index'):
+            value = body.get(field)
+            if type(value) is float and value.is_integer() and abs(value) <= 2**53 - 1:
+                body[field] = int(value)
+        validate_job_payload(kind, body)
+    return {'type': kind, 'job_id': job_id, 'payload': body}
+
 
 def validate_job_payload(job_type: str, payload: dict) -> None:
     """Validate native task arguments without coercing one resource ID to another."""
@@ -54,15 +95,15 @@ def validate_job_payload(job_type: str, payload: dict) -> None:
     if field is None:
         if "after_id" in expected and (type(payload["after_id"]) is not int or not 0 <= payload["after_id"] <= 2**53 - 1):
             raise ValueError("after_id must be a non-negative safe integer")
-        if "root_job_id" in expected and (not isinstance(payload["root_job_id"], str) or not payload["root_job_id"].strip() or len(payload["root_job_id"]) > 128):
+        if "root_job_id" in expected and not _wire_string(payload["root_job_id"], 128, nonblank=True):
             raise ValueError("root_job_id must be a non-empty string of at most 128 characters")
         return
     if "allow_empty" in expected and type(payload["allow_empty"]) is not bool:
         raise ValueError("allow_empty must be a boolean")
     value = payload[field]
     if field == "user_id":
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("user_id must be a non-empty string")
+        if not _wire_string(value, 128, nonblank=True):
+            raise ValueError("user_id must be a non-empty string of at most 128 UTF-16 units")
     elif type(value) is not int or not 0 < value <= 2**53 - 1:
         # Match the API's positive safe integer IDs. bool is an int subclass;
         # int(float/string/bool) would silently change the queued operation.

@@ -2,7 +2,7 @@
 import datetime
 import json
 from contextlib import closing
-from audit_ai_credentials import error_summary
+from credential_http import error_summary
 
 USER = "videoq-workers-api"
 ARN = "arn:aws:iam::257240362763:user/" + USER

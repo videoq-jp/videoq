@@ -9,6 +9,7 @@ import { persistenceBackend } from '../../persistence/backend';
 import { databaseConnectionString } from '../../db/pool';
 import { replacePostgresTranscriptIndex, validateTranscriptVectorStorage, clearPostgresTranscriptIndex } from '../../persistence/postgres/transcript-index-writer';
 import { splitTranscriptForIndex } from './scene-splitter';
+import { sceneIndexCount } from './outcome';
 import type { Bindings } from '../../types/bindings';
 
 export async function indexTranscript(env: Bindings, videoId: number, options: { finishIndexing?: boolean; allowEmpty?: boolean } = {}, signal?: AbortSignal): Promise<number> {
@@ -22,12 +23,12 @@ export async function indexTranscript(env: Bindings, videoId: number, options: {
   if (persistenceBackend(env) === 'd1') {
     const { writer, readSource, finish } = await createWorkerScenePersistence(env);
     if (env.TASK_SCHEDULER) await armMaintenance(env, Date.now() + 1000);
-    return executeSceneIndex(videoId, {
+    return sceneIndexCount(await executeSceneIndex(videoId, {
       load: readSource, finish: source => finish({ ...source, dimensions }),
       newRunId: () => crypto.randomUUID(), dimensions, embed, split,
       start: input => writer.start(input), stage: (run, user, scenes) => writer.stage(run, user, scenes),
       publish: (run, user) => writer.publish(run, user),
-    }, options);
+    }, options));
   }
   const ownPool = !env.DATABASE_POOL;
   const pool = env.DATABASE_POOL ?? new pg.Pool({ connectionString: databaseConnectionString(env), max: 2 });

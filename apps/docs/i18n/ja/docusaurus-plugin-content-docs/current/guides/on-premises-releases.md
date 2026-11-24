@@ -50,7 +50,7 @@ helm upgrade --install videoq /secure/videoq-release/videoq-0.1.0-sha.$SOURCE_SH
 helm test videoq -n videoq --timeout 2m
 ```
 
-完全オンプレでは、[ローカル AI 推論](local-inference.md)に従い、推論用 Chart に `verified-inference.json` を最後に重ねます。NVIDIA のチャット・埋め込み・文字起こしは、署名付き Chart 内でダイジェスト固定した同じ上流 vLLM イメージを使います。vLLM の再ビルド・再配布は行いません。アプリ用 Chart は対応するローカル設定の後に `verified-images.json` を重ねます。標準設定はホスト型の OpenRouter のため、ローカル設定の適用が必要です。
+完全オンプレでは、[ローカル AI 推論](local-inference.md)に従い、推論用 Chart に `verified-inference.json` を最後に重ねます。NVIDIA のチャット・埋め込み・文字起こしは、署名付き Chart 内でダイジェスト固定した同じ上流 vLLM イメージを使います。vLLM の再ビルド・再配布は行いません。アプリ用 Chart は対応するローカル設定の後に `verified-images.json` を重ねます。標準設定はホスト型の OpenAI のため、ローカル設定の適用が必要です。
 
 Chart が強制するのはダイジェスト指定です。署名確認は導入側のスクリプトで行うため、クラスタ管理者による回避も防ぐ必要があれば、同じ署名者を条件とする admission policy を導入先で設定します。
 

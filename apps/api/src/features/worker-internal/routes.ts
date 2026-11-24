@@ -1,3 +1,4 @@
+import { WORKERS_AI_TRANSCRIPTION_MODEL, transcriptionAudioRequest, transcribeWorkersAi } from "../../lib/workers-ai-transcription";
 import { parseBackgroundJob } from '../../application/background-job';
 import { createJobTask } from '../../repositories/external-task-repository';
 import { processExternalTaskById } from '../../lib/external-tasks';
@@ -364,5 +365,24 @@ workerInternalRoutes.post("/embeddings/generate", async c => {
     return c.json({ model: config.model, profile: config.profile, dimensions: 768, embeddings });
   } catch {
     return c.json({ error: "EMBEDDING_UNAVAILABLE" }, 503);
+  }
+});
+
+// The media worker sends bounded MP3 chunks over the existing signed channel.
+// Raw audio and provider errors must never be logged or persisted here.
+workerInternalRoutes.use("/audio/*", bodyLimit({ maxSize: 4_100_000, onError: c => c.json({ error: "BODY_TOO_LARGE" }, 413) }));
+workerInternalRoutes.post("/audio/transcribe", async c => {
+  c.header("Cache-Control", "no-store");
+  const body = await c.req.text();
+  if (!await verifyWorkerRequest(c.req.raw, c.env.WORKER_INTERNAL_API_SECRET, body)) return c.json({ error: "UNAUTHORIZED" }, 401);
+  let input: unknown;
+  try { input = JSON.parse(body); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
+  const parsed = transcriptionAudioRequest.safeParse(input);
+  if (!parsed.success) return c.json({ error: "INVALID_REQUEST" }, 400);
+  try {
+    const segments = await transcribeWorkersAi(c.env.AI, parsed.data, c.req.raw.signal);
+    return c.json({ model: WORKERS_AI_TRANSCRIPTION_MODEL, segments });
+  } catch {
+    return c.json({ error: "TRANSCRIPTION_UNAVAILABLE" }, 503);
   }
 });

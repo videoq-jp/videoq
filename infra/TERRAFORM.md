@@ -5,6 +5,10 @@ resources are imported; adopting D1, R2, Vectorize or Durable Objects must never
 replace their storage. Other applications in the shared cloud accounts are out
 of scope.
 
+Use HashiCorp's official Terraform MCP Server and Agent Skills for Terraform
+work. See [Cloudflare provider gaps](CLOUDFLARE-PROVIDER-GAPS.md) for the pinned
+provider's limitations, alternatives and official source links.
+
 ## State roots
 
 All active state uses the S3-compatible backend at the **R2** endpoint and the
@@ -17,13 +21,13 @@ it does not refer to AWS S3. Terraform 1.15.1 is the reviewed runtime.
 | `infra/bootstrap/` | `videoq/bootstrap/terraform.tfstate` | Retained historical AWS state bucket |
 | `infra/db-maintenance/terraform/` | `videoq/prod/db-maintenance.tfstate` | Retained archive, historical logs and worker boundary |
 | `infra/r2-state/` | `videoq/bootstrap/r2.tfstate` | Private state bucket and immutable recovery history |
-| `infra/cloudflare/` | `videoq/prod/cloudflare.tfstate` | Zone/DNS, email rules, Workers metadata, routes/domains, D1, R2/CORS/lifecycle, queues/consumers, Workflow and Vectorize/indexed metadata |
+| `infra/cloudflare/` | `videoq/prod/cloudflare.tfstate` | Zone/DNS, Email Routing settings/rules/verified destination, Workers metadata, routes/domains, D1, R2/CORS/lifecycle, queues/consumers, Workflow and Vectorize/indexed metadata |
 | `infra/cloudflare-releases/api/` | `videoq/prod/workers/api.tfstate` | API code, bindings, Durable Object declarations and active deployment |
 | `infra/cloudflare-releases/web/` | `videoq/prod/workers/web.tfstate` | Web code, bindings, assets and active deployment |
 | `infra/cloudflare-releases/docs/` | `videoq/prod/workers/docs.tfstate` | Docs assets and active deployment |
 | `infra/cloudflare-releases/maintenance/` | `videoq/prod/workers/maintenance.tfstate` | Coordinator code, Durable Object binding and active deployment |
 | `infra/identity/` | `videoq/prod/identity.tfstate` | OIDC roles/policies, legacy credential metadata, retained control parameters and API logs |
-| `infra/search-evaluation/` | `videoq/prod/search-evaluation.tfstate` | Independent, disabled evaluation Lambda and logs |
+| `infra/search-evaluation/` | `videoq/prod/search-evaluation.tfstate` | Retirement state and recovery history for the removed evaluation Lambda and logs |
 
 The old AWS state bucket retains its original versions for recovery. It is not
 an active backend. Do not resume an older checkout against its former S3 state.
@@ -118,3 +122,12 @@ are retained for audit and controlled recovery, not automatically removed.
 `CLOUDFLARE_BACKGROUND_JOBS_ENABLED`, and `RETIRE_BACKGROUND_QUEUES`. All are true
 after the completed migration. Omitting them would propose retired AWS resources.
 The maintenance-archive root also requires `retire_aws_maintenance=true`.
+
+## Retired direct OpenAI project
+
+The old `videoq-prod` OpenAI project is archived after revoking its last API key
+and destroying its Terraform-managed model permissions and spend alert. OpenAI
+retains archived project history for billing; projects cannot be fully deleted.
+The OpenAI provider, administration secrets and one-time retirement workflows are
+removed after verification. Production inference, including transcription, uses Workers AI. OpenAI-compatible SDKs remain application
+clients and do not require an OpenAI administration credential.

@@ -49,8 +49,7 @@ Use `alerts@videoq.jp` for operational notifications and `support@videoq.jp` for
 customer-facing support. Terraform owns DNS records and Email Routing rules;
 forwarding destinations are private infrastructure inputs in GitHub Secrets.
 Confirm delivery before changing a published address. Confirm a replacement SNS
-email subscription before retiring its predecessor. Keep `OPERATIONS_ALERT_EMAIL`
-and any `OPENAI_SPEND_ALERT_EMAIL` aligned with the confirmed destination.
+email subscription before retiring its predecessor. Keep `OPERATIONS_ALERT_EMAIL` aligned with the confirmed destination.
 
 ## Historical resources
 

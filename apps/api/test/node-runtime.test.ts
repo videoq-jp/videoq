@@ -39,11 +39,11 @@ describe("Node runtime configuration and proxy boundary", () => {
   });
   it("uses production auth protections and configurable local inference without CF resources", () => {
     const env = nodeBindings({ ...runtimeEnvironment,
-      OPENROUTER_API_KEY: "shared-router-key", LLM_BASE_URL: "https://openrouter.ai/api/v1", LLM_API_KEY: "router-key",
+      LLM_BASE_URL: "https://inference.example/v1", LLM_API_KEY: "router-key",
       EMBEDDING_MODEL: "gte-qwen2-1.5b-q4km-124fbdad",
       OPENAI_BASE_URL: "http://llm:8000/v1", EMBEDDING_BASE_URL: "http://embedding:8000/v1", EMBEDDING_API_KEY: "embedding-key", LLM_REASONING_EFFORT: "none" });
     expect(env).toMatchObject({ RUNTIME: "node", ENVIRONMENT: "production", USE_S3_STORAGE: "true",
-      OPENROUTER_API_KEY: "shared-router-key", LLM_BASE_URL: "https://openrouter.ai/api/v1", LLM_API_KEY: "router-key",
+      LLM_BASE_URL: "https://inference.example/v1", LLM_API_KEY: "router-key",
       CORS_ALLOW_ORIGIN: runtimeEnvironment.BETTER_AUTH_URL,
       OPENAI_BASE_URL: "http://llm:8000/v1", EMBEDDING_BASE_URL: "http://embedding:8000/v1", EMBEDDING_API_KEY: "embedding-key", LLM_REASONING_EFFORT: "none" });
     expect(env.HYPERDRIVE).toBeUndefined();

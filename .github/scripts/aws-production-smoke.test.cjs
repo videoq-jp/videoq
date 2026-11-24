@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {runProductionSmoke}=require('./aws-production-smoke.cjs');
-const context={MAINTENANCE_KIND:'smoke',MAINTENANCE_STAGE:'smoke',MAINTENANCE_TABLE:'videoq-db-maintenance-prod',MAINTENANCE_RUN_ID:'a'.repeat(32),CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-smoke-prod:00000000-0000-4000-8000-000000000001',VIDEOQ_D1_PRODUCTION_SMOKE:'true',PATH:'/synthetic/bin',HOME:'/synthetic/home',AWS_SECRET_ACCESS_KEY:'must-not-forward',DATABASE_URL:'must-not-forward',NODE_OPTIONS:'must-not-forward',OPENROUTER_API_KEY:'must-not-forward',PGOPTIONS:'must-not-forward',VERIFY_AI_ANSWERS:'true'};
+const context={MAINTENANCE_KIND:'smoke',MAINTENANCE_STAGE:'smoke',MAINTENANCE_TABLE:'videoq-db-maintenance-prod',MAINTENANCE_RUN_ID:'a'.repeat(32),CODEBUILD_BUILD_ARN:'arn:aws:codebuild:ap-northeast-1:257240362763:build/videoq-db-smoke-prod:00000000-0000-4000-8000-000000000001',VIDEOQ_D1_PRODUCTION_SMOKE:'true',PATH:'/synthetic/bin',HOME:'/synthetic/home',AWS_SECRET_ACCESS_KEY:'must-not-forward',DATABASE_URL:'must-not-forward',NODE_OPTIONS:'must-not-forward',OPENAI_API_KEY:'must-not-forward',PGOPTIONS:'must-not-forward',VERIFY_AI_ANSWERS:'true'};
 const cf={CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:'synthetic-only-token-'.repeat(2)};
 const settings={bindings:[{name:'DEPLOYMENT_EDITION',type:'plain_text',text:'cloud'},{name:'DB',type:'d1',id:'373d6ca5-2796-460d-8ab1-e644de46bb3c'}]};
 test('D1 child gets only fixed D1 and identity credentials, never PG/AWS/application secrets',async()=>{

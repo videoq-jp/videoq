@@ -9,8 +9,7 @@ from contextlib import closing
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener
-from audit_ai_credentials import NoRedirect, api_json, error_summary
-from retire_ai_credentials import API_POLICY, verify_router
+from credential_http import NoRedirect, api_json, error_summary
 
 USER = 'videoq-workers-api'
 USER_ARN = 'arn:aws:iam::257240362763:user/'+USER
@@ -57,11 +56,6 @@ def require_permissions(iam):
             statements.extend(value if isinstance(value, list) else [value])
     expected = [
         {'Effect': 'Allow', 'Action': 'sqs:SendMessage', 'Resource': QUEUE_ARNS},
-        {'Effect': 'Allow', 'Action': 'sts:GetWebIdentityToken', 'Resource': '*', 'Condition': {
-            'ForAllValues:StringEquals': {'sts:IdentityTokenAudience': ['https://openrouter.ai']},
-            'StringEquals': {'sts:SigningAlgorithm': 'RS256'},
-            'NumericLessThanEquals': {'sts:DurationSeconds': '900'},
-        }},
     ]
     if sorted(map(normalized, statements)) != sorted(map(normalized, expected)):
         raise RotationGuardError('USER_POLICY_MUST_MATCH_REVIEWED_LEAST_PRIVILEGE')
@@ -176,7 +170,10 @@ def rotate(session, environ, operation, proof=''):
     if settings.get('success') is not True:
         raise RotationGuardError('WORKER_SETTINGS_UNAVAILABLE')
     plain = {b['name']: b.get('text', '') for b in settings['result']['bindings'] if b.get('type') == 'plain_text'}
-    verify_router(plain, API_POLICY)
+    if plain.get('LLM_MODEL') != '@cf/google/gemma-4-26b-a4b-it' or plain.get('LLM_BASE_URL') or not any(
+        b.get('type') == 'ai' and b.get('name') == 'AI' for b in settings['result']['bindings']
+    ):
+        raise RotationGuardError('WORKERS_AI_BINDING_CONFIGURATION_REQUIRED')
     if plain.get('AWS_SESSION_TOKEN'):
         raise RotationGuardError('UNEXPECTED_PLAINTEXT_SESSION_TOKEN')
     with closing(session.client('iam')) as iam, closing(session.client('ssm')) as ssm:

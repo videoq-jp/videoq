@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26 AS ffmpeg-build
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS ffmpeg-build
 RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev openssl-4.0-dev pkgconf
 ARG FFMPEG_VERSION=9.0.2
 ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
@@ -35,7 +35,7 @@ RUN uv export --quiet --locked --no-dev --no-emit-project --format requirements-
     && uv venv --python /usr/local/bin/python /opt/venv \
     && uv pip install --python /opt/venv/bin/python --require-hashes --only-binary=:all: -r /tmp/requirements.txt
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26 AS runtime
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS runtime
 # Patched glibc, C++ runtime and SQLite come from one maintained distribution.
 ARG PYTHON_VERSION=3.14.10
 RUN apk add --no-cache python-3.14 zlib sqlite-libs libstdc++ lame-libs \

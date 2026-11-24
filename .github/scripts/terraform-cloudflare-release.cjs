@@ -41,8 +41,8 @@ function releaseVersion(config, settings, versionId, migrationTag) {
         const filename=path.join(dir,entry.name);
         if (entry.isSymbolicLink()) throw Error('ARTIFACT_SYMLINK_REJECTED');
         if (entry.isDirectory()) {walk(filename);continue;}
-        if (entry.name.endsWith('.map') || entry.name === 'README.md') continue;
-        const type=/\.(?:js|mjs)$/.test(entry.name)?'application/javascript+module':entry.name.endsWith('.wasm')?'application/wasm':'text/plain';
+        if ((!config.upload_source_maps && entry.name.endsWith('.map')) || entry.name === 'README.md') continue;
+        const type=/\.(?:js|mjs)$/.test(entry.name)?'application/javascript+module':entry.name.endsWith('.wasm')?'application/wasm':entry.name.endsWith('.map')?'application/source-map':'text/plain';
         modules.push({name:path.relative(directory,filename).split(path.sep).join('/'),content_type:type,content_base64:fs.readFileSync(filename).toString('base64')});
       }
     }
@@ -58,6 +58,15 @@ function releaseVersion(config, settings, versionId, migrationTag) {
     result.assets={directory,config:assetConfig};
   }
   return result;
+}
+// Imported versions may have a null computed tag in Terraform state. Resolve it
+// from the exact deployed version, while retaining state and config drift checks.
+function releaseMigrationTag(stateVersion, deployedVersion) {
+  if (!stateVersion?.id || deployedVersion?.id !== stateVersion.id) throw Error('DEPLOYED_VERSION_ID_MISMATCH');
+  const tag = deployedVersion.resources?.script_runtime?.migration_tag;
+  if (tag !== undefined && (typeof tag !== 'string' || !tag)) throw Error('INVALID_DEPLOYED_MIGRATION_TAG');
+  if (stateVersion.migration_tag != null && stateVersion.migration_tag !== tag) throw Error('DURABLE_OBJECT_MIGRATION_TAG_DRIFT_REQUIRES_REVIEW');
+  return tag;
 }
 async function main() {
   const [component,configPath]=process.argv.slice(2);const name=WORKERS[component];
@@ -83,14 +92,17 @@ async function main() {
   try {
     tf(['init','-lockfile=readonly','-input=false']);
     const state=tf(['state','pull'],{json:true});
-    const version=state.resources.find(resource=>resource.type==='cloudflare_worker_version')?.instances[0].attributes;
+    const versions=state.resources.find(resource=>resource.type==='cloudflare_worker_version')?.instances.filter(instance=>!instance.deposed) || [];
+    if(versions.length!==1)throw Error('TERRAFORM_RELEASE_MUST_HAVE_ONE_CURRENT_VERSION');
+    const version=versions[0].attributes;
     if(!version?.id)throw Error('TERRAFORM_RELEASE_MUST_BE_ADOPTED_FIRST');
     async function assertActive() {
       const live=await api('deployments');const active=live.deployments[0]?.versions;
       if(active?.length!==1 || active[0].version_id!==version.id || active[0].percentage!==100)throw Error('ACTIVE_VERSION_DRIFT_REQUIRES_RECONCILIATION');
     }
     await assertActive();
-    const release={version:releaseVersion(config,await api('settings'),version.id,version.migration_tag)};
+    const migrationTag=releaseMigrationTag(version,await api('versions/'+version.id));
+    const release={version:releaseVersion(config,await api('settings'),version.id,migrationTag)};
     if(/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA||''))release.version.annotations={workers_tag:process.env.GITHUB_SHA,workers_message:'VideoQ reviewed main '+process.env.GITHUB_SHA};
     const variables=path.join(work,'release.tfvars.json');fs.writeFileSync(variables,JSON.stringify({release}),{mode:0o600});
     const plan=path.join(work,'release.tfplan');
@@ -106,4 +118,4 @@ async function main() {
   } finally {fs.rmSync(work,{recursive:true,force:true});}
 }
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});
-module.exports={releaseVersion};
+module.exports={releaseVersion,releaseMigrationTag};

@@ -21,7 +21,7 @@ description: 単一の Linux サーバー、または既存の Kubernetes に Vi
 **以下は Kubernetes への配置を説明します。**
 
 LLM・埋め込み生成・Whisper も社内で動かす場合は、[ローカル推論](local-inference.md)
-の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenRouter です。
+の手順を使います。アプリ用 Chart の標準設定はホスト型の OpenAI です。
 ローカル構成では、推論用 Chart と接続先を切り替える設定を明示的に適用します。
 
 VideoQ の Web・Node.js API・Python ワーカーを、既存の Kubernetes に配置できます。
@@ -74,7 +74,7 @@ Node.js の起動処理は Durable Objects を読み込まず、本番用の認�
 5. Chart をインストールします。先にマイグレーション Job が成功してから、アプリが配置されます。
 6. `/ready` の成功を確認し、API Pod 内で `node dist/provision-user.mjs --admin --username site_admin --email admin@example.com` を実行します。返された一度限りの設定リンクを管理者本人に渡してパスワードを設定し、短い動画の文字起こし・Q&A・引用時刻の再生まで試します。
 
-`registry.example.edu` のイメージは、導入先で作成するイメージの例です。このリポジトリがそのアドレスで配布しているわけではありません。閉域環境ではイメージとパッケージ化した Chart を先に搬入し、チャット・埋め込み・文字起こしの全接続先をローカルサービスに設定します。オンプレ版では Stripe・Google ログイン・YouTube/SearchAPI・Mailgun を無効にします。
+`registry.example.edu` のイメージは、導入先で作成するイメージの例です。このリポジトリがそのアドレスで配布しているわけではありません。閉域環境ではイメージとパッケージ化した Chart を先に搬入し、チャット・埋め込み・文字起こしの全接続先をローカルサービスに設定します。オンプレ版では Stripe・Google ログイン・YouTube/TranscriptAPI・Mailgun を無効にします。
 
 チャットの接続処理は、認証不要の OpenAI 互換サーバーでも空でない `OPENAI_API_KEY` を必要とします。その場合は `local-inference` などのダミー値を Secret に設定します。埋め込みもこのキーを使い、`EMBEDDING_API_KEY` で分けることもできます。
 
@@ -93,7 +93,7 @@ DB・動画データ・暗号鍵はバックアップ対象です。Helm の切�
 オンプレ用 Web イメージと Node API は、オンプレ版の設定で起動します。
 LP・料金・商用サービス向けの法務ページ・公開の新規登録・課金／アップグレード表示は除外し、
 未ログイン時はログイン画面へ移動します。Google ログイン、YouTube の取り込み・再生・サムネイル、
-SearchAPI 設定、外部メール送信も無効です。古い外部サービスのキーが残っていても、対応する API は拒否します。
+TranscriptAPI 設定、外部メール送信も無効です。古い外部サービスのキーが残っていても、対応する API は拒否します。
 
 管理者は管理画面で利用者を追加し、有効期限15分・一度限りのアカウント設定リンクを個別に渡します。
 パスワードを忘れた場合も管理者が再設定リンクを発行できます。初期管理者のアクセスを復旧する場合は、

@@ -1175,7 +1175,7 @@ describe("POST /messages/stream（SSE）", () => {
         type: "error",
         code: "LLM_CONFIGURATION_ERROR",
         message:
-          "API key is required when using LLM. Set OPENROUTER_API_KEY for OpenRouter or OPENAI_API_KEY for OpenAI.",
+          "OPENAI_API_KEY is required when using LLM.",
       },
     ]);
   });

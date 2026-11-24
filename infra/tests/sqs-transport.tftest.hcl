@@ -5,7 +5,6 @@ mock_provider "aws" {
     }
   }
 }
-mock_provider "openai" {}
 
 override_resource {
   target          = aws_sqs_queue.main
@@ -31,10 +30,6 @@ override_resource {
   values = {
     arn = "arn:aws:logs:ap-northeast-1:123456789012:log-group:/aws/lambda/test"
   }
-}
-
-variables {
-  manage_openai_project = false
 }
 
 run "both_queues_require_encrypted_transport" {

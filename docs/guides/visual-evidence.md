@@ -78,7 +78,7 @@ video image tools and cache preparation. These are the Docker `.env` defaults:
 
 ```dotenv
 VIDEO_VISUAL_ENABLED=true
-LLM_MODEL=openai/gpt-6-luna
+LLM_MODEL=gpt-6-luna
 ```
 
 Recreate the API and worker to load them:
@@ -90,7 +90,7 @@ docker compose up -d --force-recreate api worker
 For host-run API development, set the same values in `apps/api/.dev.vars`. The
 Python worker needs `ENABLE_HEAVY_PIPELINE=1` for real video processing.
 Image inspection and answer generation share the API's `LLM_MODEL`,
-`LLM_API_KEY`, and `LLM_BASE_URL` (optional overrides of the shared provider key and `OPENAI_BASE_URL`). Hosted profiles use `OPENROUTER_API_KEY` and `openai/gpt-6-luna`. GPT-6 Luna requests use
+`LLM_API_KEY`, and `LLM_BASE_URL` (optional overrides of the shared provider key and `OPENAI_BASE_URL`). Hosted profiles use `OPENAI_API_KEY` and `gpt-6-luna`. GPT-6 Luna requests use
 `reasoning_effort=none`. The endpoint/model must support image inputs and strict
 JSON-schema output. The normal answer model still needs tool calling. To opt out,
 set `VIDEO_VISUAL_ENABLED=false` on both API and worker. Existing explicit false

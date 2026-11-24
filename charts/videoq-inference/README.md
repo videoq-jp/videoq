@@ -7,7 +7,7 @@ model caches, GPU scheduling and application upgrades have separate lifecycles.
 For new local installations, use the explicit **gpt-oss-20b + EmbeddingGemma 2 +
 Whisper** profile below. The chart's unoverlaid Qwen defaults are retained for
 compatibility with existing CPU deployments.
-The application chart's default still uses hosted OpenRouter; explicitly apply its
+The application chart's default still uses hosted OpenAI; explicitly apply its
 `examples/local-ai-llamacpp.yaml` or `examples/local-ai-vllm.yaml` overlay to select these services.
 
 Mac development runs whisper.cpp natively with Metal, outside this Linux
@@ -63,7 +63,7 @@ local vision model supporting images, tool calls and strict JSON Schema,
 validate it, and change both charts' chat model plus `config.videoVisualEnabled`.
 
 The site provides PostgreSQL/pgvector, S3 and a persistent SQS-compatible queue
-as described in the application chart. No Cloudflare, OpenRouter or OpenAI account
+as described in the application chart. No Cloudflare, OpenAI or OpenAI account
 is required for this local configuration. Initial image/model downloads use the
 internet. During processing, video, audio, prompts and embeddings stay on the
 configured site services.
@@ -329,7 +329,7 @@ helm upgrade inference charts/videoq-inference --namespace videoq \
 Persist these settings in the operator values for future upgrades. Missing
 weights fail startup or keep inference Pods unready. Nodes can still pull container images before Pod
 startup. The on-prem application edition disables external mail, Google OAuth, Stripe
-and YouTube/SearchAPI. This recipe handles uploaded videos and administrator-issued
+and YouTube/TranscriptAPI. This recipe handles uploaded videos and administrator-issued
 local accounts; it does not change an explicitly selected inference endpoint.
 
 ## NVIDIA Whisper engine

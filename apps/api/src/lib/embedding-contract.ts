@@ -1,11 +1,11 @@
-import { DEFAULT_EMBEDDING_MODEL, LlmConfigurationError, LlmProviderError, openAiBaseUrl, providerModel } from "./openai";
+import { DEFAULT_EMBEDDING_MODEL, LlmConfigurationError, LlmProviderError } from "./openai";
 import { EMBEDDING_DIMENSIONS } from "./embedding-dimensions";
 
 export { EMBEDDING_DIMENSIONS };
 
 export type EmbeddingConfig = { provider: "openai" | "workers-ai"; model: string; profile?: "embeddinggemma2" };
 export const WORKERS_AI_EMBEDDING_MODEL = "@cf/google/embeddinggemma-2";
-export type EmbeddingSettings = { EMBEDDING_PROVIDER?: string; EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string; OPENROUTER_API_KEY?: string; OPENROUTER_FEDERATION_POLICY_ID?: string };
+export type EmbeddingSettings = { EMBEDDING_PROVIDER?: string; EMBEDDING_PROFILE?: string; EMBEDDING_MODEL?: string; EMBEDDING_BASE_URL?: string; OPENAI_BASE_URL?: string };
 
 export const embeddingDimensions = (config?: EmbeddingConfig): number => config?.profile === "embeddinggemma2" ? 768 : EMBEDDING_DIMENSIONS;
 export const embeddingTable = (config: EmbeddingConfig): "scene_embeddings" | "scene_embeddings_768" => config.profile === "embeddinggemma2" ? "scene_embeddings_768" : "scene_embeddings";
@@ -63,8 +63,7 @@ export function resolveEmbeddingConfig(env: EmbeddingSettings): EmbeddingConfig 
     throw new EmbeddingConfigurationError("EMBEDDING_CONFIG_INVALID", "EmbeddingGemma 2 requires EMBEDDING_MODEL and a dedicated EMBEDDING_BASE_URL.");
   }
   const model = env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
-  const baseURL = openAiBaseUrl({ ...env, OPENAI_BASE_URL: env.EMBEDDING_BASE_URL || env.OPENAI_BASE_URL });
-  return { provider: "openai", model: providerModel(model, baseURL), ...(profile === "embeddinggemma2" ? { profile } : {}) };
+  return { provider: "openai", model: model, ...(profile === "embeddinggemma2" ? { profile } : {}) };
 }
 
 export function validateEmbedding(

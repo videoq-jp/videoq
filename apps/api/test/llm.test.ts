@@ -88,46 +88,16 @@ describe("native structured LLM output", () => {
   });
 
   it("falls back endpoint and credentials independently, and supports an LLM-only key", () => {
-    expect(resolveLlmConnection({ LLM_API_KEY: "router", LLM_BASE_URL: "https://openrouter.ai/api/v1/" }))
-      .toEqual({ apiKey: "router", baseURL: "https://openrouter.ai/api/v1" });
+    expect(resolveLlmConnection({ LLM_API_KEY: "router", LLM_BASE_URL: "https://inference.example/v1/" }))
+      .toEqual({ apiKey: "router", baseURL: "https://inference.example/v1" });
     expect(resolveLlmConnection({ ...ENV, LLM_API_KEY: "dedicated" }))
       .toEqual({ apiKey: "dedicated", baseURL: ENV.OPENAI_BASE_URL });
     expect(resolveLlmConnection({ ...ENV, LLM_BASE_URL: "https://llm.test/v1" }))
       .toEqual({ apiKey: "sk-test", baseURL: "https://llm.test/v1" });
-    expect(resolveLlmConnection({ ...ENV, OPENROUTER_API_KEY: "router-key" })).toEqual({ apiKey: "sk-test", baseURL: ENV.OPENAI_BASE_URL });
     expect(() => resolveLlmConnection({})).toThrow(LlmConfigurationError);
   });
-  it("shares one OpenRouter key for the current answer and embedding models", async () => {
-    const env = { OPENROUTER_API_KEY: "router-key" } as Bindings;
-    const seen: string[] = [];
-    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
-      seen.push(String(url));
-      expect(new Headers(init.headers).get("authorization")).toBe("Bearer router-key");
-      const body = JSON.parse(requestBodyText(init.body));
-      if (String(url).endsWith("/embeddings")) {
-        expect(body).toMatchObject({ model: "openai/text-embedding-3-small", dimensions: 1536 });
-        return jsonResponse({ data: [{ index: 0, embedding: testEmbedding(1) }] });
-      }
-      expect(body).toMatchObject({ model: "openai/gpt-6-luna", reasoning_effort: "none", response_format: { type: "json_schema", json_schema: { strict: true } } });
-      return body.stream ? sseResponse(frames()) : jsonResponse(completion());
-    });
-    expect(await generateReply(env, "S", "Q")).toEqual(modelAnswer);
-    const chunks = [];
-    for await (const chunk of streamReply(env, "S", "Q")) chunks.push(chunk);
-    expect(chunks.at(-1)).toEqual({ answer: modelAnswer });
-    await embedQuery(env, "Q");
-    expect(seen).toEqual(["https://openrouter.ai/api/v1/chat/completions", "https://openrouter.ai/api/v1/chat/completions", "https://openrouter.ai/api/v1/embeddings"]);
-  });
-  it("does not forward a legacy direct OpenAI key to the OpenRouter endpoint", async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    const env = { ...ENV, OPENAI_BASE_URL: "https://openrouter.ai/api/v1" };
-    await expect(generateReply(env, "S", "Q")).rejects.toThrow(LlmConfigurationError);
-    await expect(embedQuery(env, "Q")).rejects.toThrow(LlmConfigurationError);
-    expect(fetch).not.toHaveBeenCalled();
-  });
   it("routes answer and stream to the dedicated endpoint while keeping embeddings on OpenAI", async () => {
-    const env = { ...ENV, LLM_BASE_URL: "https://openrouter.ai/api/v1/", LLM_API_KEY: "router-key", LLM_MODEL: "vendor/model" };
+    const env = { ...ENV, LLM_BASE_URL: "https://inference.example/v1/", LLM_API_KEY: "router-key", LLM_MODEL: "vendor/model" };
     const seen: string[] = [];
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       const endpoint = String(url);
@@ -138,7 +108,7 @@ describe("native structured LLM output", () => {
         expect(headers.get("authorization")).toBe("Bearer sk-test");
         return jsonResponse({ data: [{ index: 0, embedding: testEmbedding(1) }] });
       }
-      expect(endpoint).toBe("https://openrouter.ai/api/v1/chat/completions");
+      expect(endpoint).toBe("https://inference.example/v1/chat/completions");
       expect(headers.get("authorization")).toBe("Bearer router-key");
       const body = JSON.parse(requestBodyText(init.body));
       expect(body.model).toBe("vendor/model");

@@ -129,3 +129,46 @@ Avoid `--remove-orphans` during migration because the old MinIO services are orp
 in the updated Compose configuration.
 
 Reference: [Garage's official single-node quick start](https://garagehq.deuxfleurs.fr/documentation/quick-start/).
+
+## Browser CORS acceptance across two origins
+
+`doctor` checks public readiness, DNS/TLS and the storage OPTIONS response from
+Python. Browser acceptance is separate. Use an isolated Garage instance with the
+local credentials above and the dedicated bucket `videoq-cors-acceptance`; the
+fixture replaces **that bucket's** CORS policy. Do not point it at the application
+bucket. For example, start the pinned image with the same config and development
+credentials as Compose, but set `GARAGE_DEFAULT_BUCKET=videoq-cors-acceptance`
+and publish S3 on a free loopback port.
+
+From the repository root (install the worker's locked dev environment first):
+
+```sh
+CORS_ACCEPTANCE_ISOLATED=1 \
+CORS_ACCEPTANCE_STORAGE_URL=http://127.0.0.1:53525/ \
+node_modules/.bin/tsx apps/api/scripts/cors-acceptance.mjs /tmp/cors-acceptance.json
+```
+
+The command prints allowed and denied page URLs with different ports. Open each
+in a real browser and click **Run checks**. Use the repository's preferred browser
+workflow; no browser protection override is needed. Both pages must finish, and
+the JSON must show `complete: true` and `allPassed: true`. Use
+`CORS_ACCEPTANCE_PYTHON` to select another Python with boto3 installed.
+
+The ten allowed-origin checks cover cookie omission/inclusion, JSON preflight,
+API 500 readability, signed PUT and readable ETag, signature error readability,
+two multipart parts and completion with assembled-byte SHA-256 verification, and
+MCP challenge visibility with credentials omitted versus included. Five checks
+from the denied origin cover blocked API reads/preflight, blocked storage PUT
+preflight, and the same MCP credential distinction. The server additionally
+checks that denied JSON POST and storage PUT bodies were never received and that
+Garage rejected the denied preflight.
+
+The report records origins, methods, operation categories, requested header names,
+HTTP status and CORS response headers. It excludes signed URLs, object keys,
+cookies, authorization values and payloads. Stop with Ctrl-C to delete fixture
+objects, abort unfinished multipart uploads and close servers; remove the
+isolated container afterward. The committed example is
+[`cors-browser-2026-11-24.json`](../../docs/verification/cors-browser-2026-11-24.json).
+This uses the real Hono CORS middleware and storage adapters with synthetic
+cookie/MCP challenge routes. Full Better Auth/OAuth, production reverse proxies,
+TLS, and deployment-specific origins still require deployment acceptance.

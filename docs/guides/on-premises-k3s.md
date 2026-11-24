@@ -18,7 +18,7 @@ SSH port forwarding is not required.
 
 Use a Linux amd64/arm64 VPS with Docker Engine, Python 3.9+, curl, tar and
 coreutils. Run from this repository's root. Reserve resources for K3s as well
-as the application; inference defaults to hosted OpenRouter. Single-node storage
+as the application; inference defaults to hosted OpenAI. Single-node storage
 has no host-failure redundancy, so keep data and key backups on another host.
 
 Allow inbound **TCP 443** in the VPS provider's firewall and any host firewall.
@@ -63,7 +63,7 @@ The command installs missing operator tools in `$HOME/.local/bin`, then performs
 
 The release commit SHA is obtained automatically from the successful GitHub run
 and used to verify the signed artifacts; no SHA input is required. It prompts for
-an OpenRouter key (without echo) only for hosted AI, and administrator details when needed. GitHub
+an OpenAI key (without echo) only for hosted AI, and administrator details when needed. GitHub
 authentication and Docker permissions must be available; follow any authentication
 prompt in the terminal.
 
@@ -79,7 +79,7 @@ The smoke test alone does not evaluate AI quality or video-processing capacity.
 ## Choose local AI
 
 Select Whisper, embeddings and LLM together with `--ai` on the initial `install`.
-The default is `openrouter`.
+The default is `openai`.
 
 ```sh
 # Local CPU inference
@@ -91,11 +91,11 @@ python3 scripts/onprem/k3s.py install --url https://videoq.example.com --ai loca
 
 | Option | LLM and embeddings | Whisper |
 |---|---|---|
-| `--ai openrouter` (default) | OpenRouter | OpenRouter |
+| `--ai openai` (default) | OpenAI | OpenAI |
 | `--ai local-cpu` | llama.cpp CPU images | Signed gateway + whisper.cpp CPU image |
 | `--ai local-gpu` | Signed NVIDIA vLLM image | Signed gateway + the same NVIDIA vLLM image |
 
-Local profiles do not ask for an OpenRouter key. Inference APIs remain internal;
+Local profiles do not ask for an OpenAI key. Inference APIs remain internal;
 the command configures application endpoints and model names and disables visual
 Q&A for these text models. Profiles come from the verified release charts and
 verified image values are applied last. CPU supports amd64/arm64; GPU supports amd64.

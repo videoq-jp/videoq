@@ -1,3 +1,5 @@
+> Retirement note (2026-11-24): the three-Lambda isolated smoke prototype and its local CLI are retired after search/account jobs moved to TypeScript workers. The sections below are historical evidence, not current execution instructions. Current production smoke checks use the maintained production runner.
+
 > Historical preparation record. For current production names and completed cutover, see [current resource organization](cloudflare-resource-organization.md).
 
 # Cloudflare resources for VideoQ

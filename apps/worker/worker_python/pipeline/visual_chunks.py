@@ -72,6 +72,10 @@ def _extract_visual_chunk(
             *media_input_args(source), "-to", f"{end:.6f}",
             "-map", "0:v:0", "-an", "-vf", filters, "-filter_threads", "1",
             "-fps_mode", "vfr", "-enc_time_base", "1:1000", "-c:v", "mjpeg",
+            # An empty interval (e.g. audio padding after the final video frame)
+            # cannot negotiate a pixel format from decoded frames. Explicitly
+            # select full-range JPEG YUV so MJPEG can initialize at EOF too.
+            "-pix_fmt", "yuvj420p",
             "-threads:v", "1", "-q:v", "8", "-frames:v", str(CHUNK_SECONDS + 1), "-f", "tee",
             f"[f=image2pipe]{images}|[f=framecrc]{timing}",
         ], max_output_bytes=MAX_CHUNK_BYTES, timeout_seconds=300)

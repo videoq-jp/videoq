@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { VideoMutationRepository } from "../../../src/persistence/contracts/video-mutation-repository";
+import { videoDeletionAllowed } from '../../../src/application/video-mutation';
 
 export interface VideoMutationFixture {
   repository: VideoMutationRepository;
   seed(status?: "completed" | "uploading", staleUploadPeriod?: boolean): Promise<number>;
   rejectOutbox(): Promise<void>;
+  setHeartbeat(videoId: number, heartbeat: string | null): Promise<void>;
+  setReservationPeriod(videoId: number, offsetMs: number | null): Promise<void>;
   snapshot(): Promise<{ videos: number; scenes: number; receipts: number; externalTasks: number; uploadBytes: number; storageBytes: number }>;
   dispose(): Promise<void>;
 }
@@ -68,6 +71,23 @@ export function videoMutationContract(backend: string, createFixture: () => Prom
       for (const fallbackStorageBytes of [-1, 0.1, Number.MAX_SAFE_INTEGER + 1]) {
         await expect(f.repository.delete(id, "owner", { fallbackStorageBytes })).rejects.toThrow("Invalid video deletion options");
       }
+    });
+    it.each([null, '2026-11-01T00:00:00.999Z', '2026-11-01T00:00:01.000Z', '2026-11-01T00:00:01.001Z'])(
+      'matches the pure abandonment policy at heartbeat boundary %s', async heartbeat => {
+        const f = current(), id = await f.seed('uploading');
+        await f.setHeartbeat(id, heartbeat);
+        const options = { expectedStatus: 'uploading', inactiveBefore: new Date('2026-11-01T00:00:01.000Z') };
+        const allowed = videoDeletionAllowed({ status: 'uploading', file: '', heartbeat }, options);
+        expect((await f.repository.delete(id, 'owner', options)).deleted).toBe(allowed);
+        expect(await f.snapshot()).toMatchObject({ videos: allowed ? 0 : 1, uploadBytes: allowed ? 0 : 5 });
+      });
+    it.each([null, -1, 0, 1])('refunds only the exact reservation period at month boundary offset %s', async offset => {
+      const f = current(), id = await f.seed('uploading');
+      await f.setReservationPeriod(id, offset);
+      expect((await f.repository.delete(id, 'owner')).deleted).toBe(true);
+      expect((await f.snapshot()).uploadBytes).toBe(offset === 0 ? 0 : 5);
+      expect((await f.repository.delete(id, 'owner')).deleted).toBe(false);
+      expect((await f.snapshot()).uploadBytes).toBe(offset === 0 ? 0 : 5);
     });
   });
 }
