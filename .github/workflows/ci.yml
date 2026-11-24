@@ -586,7 +586,7 @@ jobs:
         run: |
           npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/trpc --include-workspace-root
           npm run cf-typegen:check --workspace @videoq/api
-          npx playwright install --with-deps chromium
+          npm exec --workspace @videoq/api -- playwright install --with-deps chromium
           npm run lint --workspace @videoq/trpc
           npm run lint --workspace @videoq/api
           npm run typecheck --workspace @videoq/trpc
