@@ -2,7 +2,7 @@
 
 The cloud transcription target is `@cf/openai/whisper-large-v3-turbo` on Workers AI.
 The `openai` model namespace identifies the model author; inference uses the
-Cloudflare AI binding and does not require an OpenAI or OpenRouter API key.
+Cloudflare AI binding and does not require a provider API key.
 
 ## Request path
 
@@ -36,7 +36,7 @@ real timestamps is rejected because fabricated times would corrupt video search.
 ## Rollout
 
 1. Deploy the API route and updated media Lambda through normal CI and Terraform
-   release ownership while keeping the production backend on OpenRouter.
+   release ownership. The production backend is `workers-ai`.
 2. Verify the signed route with synthetic Japanese speech and silence, then
    confirm the deployed Lambda image contains the adapter.
 3. Change only the production `WHISPER_BACKEND` environment setting to
