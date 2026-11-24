@@ -80,7 +80,7 @@ withHelm("on-prem Helm distribution", () => {
     expect(config.LLM_API_KEY).toBeUndefined();
     expect(config.OPENAI_API_KEY).toBeUndefined();
     expect(config.WHISPER_BACKEND).toBe("openai");
-    expect(config.EMBEDDING_MODEL).toBe("openai/text-embedding-3-small");
+    expect(config.EMBEDDING_MODEL).toBe("text-embedding-3-small");
   });
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {
     const missing = spawnSync(helm!, ["template", "test", chart], { encoding: "utf8" });
