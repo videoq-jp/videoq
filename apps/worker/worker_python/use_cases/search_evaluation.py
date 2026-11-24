@@ -32,15 +32,10 @@ def prepare_local_vectors(queries: list[str], batch_size: int, *, recheck: Calla
 
 
 def evaluation_payload(manifest: dict, vectors: dict, *, model: str, dimensions: int,
-                       manifest_sha256: str, unique_queries: int,
-                       runtime: dict | None = None, invocations: int | None = None) -> dict:
+                       manifest_sha256: str, unique_queries: int) -> dict:
     generation = {'version': 1, 'manifest_sha256': manifest_sha256,
                   'embedding': manifest['embedding'], 'case_ids': [case['id'] for case in manifest['cases']]}
-    if runtime is None:
-        generation.update(unique_queries=unique_queries, input_type='query', quality_evaluated=False)
-    else:
-        generation.update(input_type='query', unique_queries=unique_queries, runtime=runtime,
-                          invocations=invocations, quality_evaluated=False)
+    generation.update(unique_queries=unique_queries, input_type='query', quality_evaluated=False)
     return {
         'version': 1, 'cohort': manifest['cohort'], 'corpusSha256': manifest['corpusSha256'],
         'model': model, 'dimensions': dimensions, 'samples': manifest['samples'],

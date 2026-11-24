@@ -87,7 +87,7 @@ def validate_manifest(raw):
         if type(config["dimensions"]) is not int or config["dimensions"] != (768 if config["profile"] == "embeddinggemma2" else 1536):
             _fail("invalid_manifest")
         base = urlsplit(config["baseUrl"])
-        if base.scheme not in {"http", "https"} or not base.hostname or base.username or base.password or base.query or base.fragment or config["authentication"] not in {"configured", "workload-federation"}:
+        if base.scheme not in {"http", "https"} or not base.hostname or base.username or base.password or base.query or base.fragment or config["authentication"] != "configured":
             _fail("invalid_manifest")
         if not _integer(raw["samples"], 1, 30) or not isinstance(raw["cases"], list) or not 1 <= len(raw["cases"]) <= 1000:
             _fail("invalid_manifest")
@@ -191,7 +191,7 @@ def cli(argv=None) -> int:
     except Exception as error:
         # Never print paths, questions, vectors, SDK exceptions or credentials.
         allowed = {"invalid_arguments", "private_path_required", "private_input_required", "invalid_manifest", "invalid_private_input",
-                   "configuration_mismatch", "federation_configuration_required", "configured_credentials_required",
+                   "configuration_mismatch", "configured_credentials_required",
                    "invalid_embedding_configuration", "output_exists", "output_locked", "embedding_failed", "output_write_failed"}
         code = str(error) if isinstance(error, EvaluationError) and str(error) in allowed else "evaluation_failed"
         print(json.dumps({"status": "failed", "code": code}), file=sys.stderr)

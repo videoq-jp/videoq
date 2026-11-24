@@ -75,6 +75,7 @@ def test_reuses_query_vectors_across_scopes_and_preserves_provenance_privately(i
     lambda x: x["cases"][1].update(id="q1"),
     lambda x: x["embedding"].update(dimensions=768),
     lambda x: x["embedding"].update(baseUrl="https://token:secret@inference.example/api/v1"),
+    lambda x: x["embedding"].update(authentication="unsupported"),
 ])
 def test_rejects_invalid_manifests_before_model_calls(inputs, change):
     manifest, source, destination, save, provider = inputs
@@ -86,7 +87,7 @@ def test_rejects_invalid_manifests_before_model_calls(inputs, change):
     assert not destination.exists()
 
 
-@pytest.mark.parametrize("field,value", [("model", "a-different-model"), ("baseUrl", "https://other.example/v1"), ("authentication", "workload-federation")])
+@pytest.mark.parametrize("field,value", [("model", "a-different-model"), ("baseUrl", "https://other.example/v1")])
 def test_rejects_configuration_drift_without_changing_environment(inputs, field, value):
     manifest, source, destination, save, provider = inputs
     manifest["embedding"][field] = value
