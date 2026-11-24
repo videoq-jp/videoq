@@ -192,7 +192,7 @@ Issueはマージ前のため開いたままにする。既存のpackage-lock.js
 | 06 | [#1664](https://github.com/videoq-jp/videoq/issues/1664) | 実装・検証済み。9fd20173。想定結果のUnion、I/O失敗の保持、既存D1境界を含む77件成功 |
 | 07 | [#1665](https://github.com/videoq-jp/videoq/issues/1665) | 実装・検証済み。820881a0。各DBで144入力の実UPDATE照合、月/期限境界と二重返金のmutation試験36件成功 |
 | 08 | [#1666](https://github.com/videoq-jp/videoq/issues/1666) | [業務モデル](architecture/bpmn.md)を追記。イベント因果・判断材料・責務・Hot Spotを整理し、未合意を明記 |
-| 09 | [#1667](https://github.com/videoq-jp/videoq/issues/1667) | 未対応。旧readiness文書は11/16時点の歴史。現行cloud設定は既にD1を選択しており、現在の証跡と突合する必要がある |
+| 09 | [#1667](https://github.com/videoq-jp/videoq/issues/1667) | 受入表を現行D1/768次元構成へ更新。比較元SHAとCD、品質/性能の測定条件、未測定のSLO/費用、復旧対象と旧資源の廃止を区別。英日docs build成功 |
 | 10 | [#1668](https://github.com/videoq-jp/videoq/issues/1668) | 未対応。実際の一覧SQLと深いページを計測して判断する |
 | 11 | [#1669](https://github.com/videoq-jp/videoq/issues/1669) | 未対応。ブラウザー受入とdoctor表示の範囲整合 |
 | 12 | [#1670](https://github.com/videoq-jp/videoq/issues/1670) | 未対応。変更コストを測り、一つの効果的な抽出へ絞る |
