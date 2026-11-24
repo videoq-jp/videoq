@@ -16,6 +16,8 @@ if (process.env.CORS_ACCEPTANCE_ISOLATED !== '1' || !storage || !['127.0.0.1', '
   throw new Error('Use CORS_ACCEPTANCE_ISOLATED=1 and a dedicated loopback CORS_ACCEPTANCE_STORAGE_URL');
 }
 const reportPath = process.argv[2]; if (!reportPath) throw new Error('Pass the sanitized result JSON path');
+const storageTarget = new URL(storage);
+if (storageTarget.protocol !== 'http:') throw new Error('The local Garage fixture requires HTTP');
 const bucket = 'videoq-cors-acceptance';
 const prefix = `/cors-${randomUUID()}`;
 const cookieName = `cors_${randomUUID().replaceAll('-', '')}`;
@@ -34,7 +36,8 @@ async function listen(server) {
 const proxy = createServer((req, res) => {
   const url = new URL(req.url, 'http://fixture');
   const operation = url.searchParams.has('partNumber') ? 'upload_part' : req.method === 'PUT' ? 'signed_put' : req.method;
-  const upstream = httpRequest(new URL(req.url, storage), { method: req.method, headers: req.headers }, response => {
+  const upstream = httpRequest({ hostname: storageTarget.hostname, port: storageTarget.port,
+    path: url.pathname + url.search, method: req.method, headers: req.headers }, response => {
     const headers = new Headers(Object.entries(response.headers).flatMap(([name, value]) => value === undefined ? [] : [[name, String(value)]]));
     trace.push({ layer: 'storage', role: req.headers.origin === allowedOrigin ? 'allowed' : req.headers.origin === deniedOrigin ? 'denied' : undefined, method: req.method, operation,
       origin: req.headers.origin ?? null, requestedHeaders: req.headers['access-control-request-headers'] ?? null,
