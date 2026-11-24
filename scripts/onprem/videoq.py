@@ -309,7 +309,7 @@ def doctor(args):
                     raise ValueError("ストレージ公開経路のCORSが一致しません")
         except Exception as error:
             raise ValueError(f"公開URLのDNS・TLS・ルーティング・CORSを確認してください ({type(error).__name__})") from None
-        print("公開API・ストレージのDNS/TLS/アップロード用CORS: OK")
+        print("公開API ready・ストレージOPTIONSのDNS/TLS/許可Origin応答: OK（ブラウザーのPUT・ETag・multipartは別途検証）")
 
 
 def start(args):

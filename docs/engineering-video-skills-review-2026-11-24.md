@@ -194,7 +194,7 @@ Issueはマージ前のため開いたままにする。既存のpackage-lock.js
 | 08 | [#1666](https://github.com/videoq-jp/videoq/issues/1666) | [業務モデル](architecture/bpmn.md)を追記。イベント因果・判断材料・責務・Hot Spotを整理し、未合意を明記 |
 | 09 | [#1667](https://github.com/videoq-jp/videoq/issues/1667) | 受入表を現行D1/768次元構成へ更新。比較元SHAとCD、品質/性能の測定条件、未測定のSLO/費用、復旧対象と旧資源の廃止を区別。英日docs build成功 |
 | 10 | [#1668](https://github.com/videoq-jp/videoq/issues/1668) | 実装・検証済み。実PG RepositoryのSQL/EXPLAIN/60標本を保存。深いページだけID先行取得し、既存順序Indexへidを追加。公開offset・認可・投稿者表現を維持 |
-| 11 | [#1669](https://github.com/videoq-jp/videoq/issues/1669) | 未対応。ブラウザー受入とdoctor表示の範囲整合 |
+| 11 | [#1669](https://github.com/videoq-jp/videoq/issues/1669) | 実装・検証済み。doctor表示をready/OPTIONSへ限定。実ブラウザー15項目とサーバー側の送信有無を保存 |
 | 12 | [#1670](https://github.com/videoq-jp/videoq/issues/1670) | 未対応。変更コストを測り、一つの効果的な抽出へ絞る |
 | 13 | [#1671](https://github.com/videoq-jp/videoq/issues/1671) | 未対応。所有責務・共有DB互換・移行判断を記録する |
 
@@ -266,3 +266,18 @@ node_modules/.bin/tsx apps/api/scripts/benchmark-chat-pagination.mjs /private/af
 
 実行計画の読み方は[PostgreSQL 17 EXPLAIN](https://www.postgresql.org/docs/17/using-explain.html)、
 OFFSETの性質は[同LIMIT/OFFSET](https://www.postgresql.org/docs/17/queries-limit.html)を参照。
+
+## #11 CORS受入の実施結果
+
+専用Garage 2.5.0と実Hono CORS middlewareを使い、異なるportの許可/不許可Originを
+ego-browser（Chromium 156）で検証した。許可10、不許可5項目が成功し、
+不許可JSON POST/署名PUTの本体未送信と、GarageのOPTIONS 403も記録した。
+署名PUTのETag読取り、multipart 2partのETag取得・完了・5,242,917 bytesの
+SHA-256照合、API 500/署名エラー403の読取りを含む。Cookie用のOrigin制限と
+外部MCPのcredentials omit/wildcard/challenge公開を区別した。
+
+[匿名化した通信証跡](verification/cors-browser-2026-11-24.json)と
+[再実行手順](../infra/garage/README.md#browser-cors-acceptance-across-two-origins)を保存。
+doctorの表示はPythonが実際に確認するready・OPTIONSへ合わせた。
+既存のCORS設定変更は不要だった。Cookie/MCPは合成routeであり、完全な認証flowや
+本番TLS/CDN経路の受入完了を意味しない。lintとオンプレCLIの14テストも成功。
