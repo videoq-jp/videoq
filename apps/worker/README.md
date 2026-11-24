@@ -286,6 +286,14 @@ python scripts/process_pending.py --video-id 83
 
 ## Background job failure diagnostics
 
+The on-prem media poller receives exactly one message per execution budget.
+`SQS_MAX_MESSAGES` must be `1` (the default); larger values fail at startup before
+opening a queue client. `SQS_JOB_TIMEOUT_SECONDS` defaults to 840 and must remain
+below both visibility and the 900-second execution lease. A completed delivery
+is deleted before receiving the next job, so a later timeout cannot replay an
+earlier successful delivery merely because they shared a batch. Scale media
+workers as separate consumers rather than increasing the receive batch size.
+
 Python SQS/Lambda, the on-prem Node consumer and the optional Cloudflare queue
 consumer emit structured `background_job_retry` / `background_queue_retry`
 events. Correlate `job_id` with `message_id`; inspect `stage`, `attempts`,

@@ -62,6 +62,8 @@ def _poll(stop: threading.Event) -> int:
     wait = int(os.environ.get("SQS_WAIT_TIME_SECONDS", "20"))
     visibility = int(os.environ.get("SQS_VISIBILITY_TIMEOUT", "900"))
     max_messages = int(os.environ.get("SQS_MAX_MESSAGES", "1"))
+    if max_messages != 1:
+        raise ValueError('SQS_MAX_MESSAGES must be 1: each media job needs its own execution deadline')
     deadline = int(os.environ.get("SQS_JOB_TIMEOUT_SECONDS", "840"))
     if not 1 <= deadline < min(visibility, 900):
         raise ValueError("SQS_JOB_TIMEOUT_SECONDS must be positive and below visibility and the 900s DB lease")
@@ -78,7 +80,7 @@ def _poll(stop: threading.Event) -> int:
             try:
                 resp = client.receive_message(
                     QueueUrl=queue_url,
-                    MaxNumberOfMessages=max(1, min(max_messages, 10)),
+                    MaxNumberOfMessages=1,
                     WaitTimeSeconds=wait,
                     VisibilityTimeout=visibility,
                     MessageSystemAttributeNames=['ApproximateReceiveCount'],
