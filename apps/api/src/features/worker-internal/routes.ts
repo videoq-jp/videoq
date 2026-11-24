@@ -1,5 +1,4 @@
-import { Buffer } from "node:buffer";
-import { transcriptionAudioRequest, transcribeWorkersAi } from "../../lib/workers-ai-transcription";
+import { WORKERS_AI_TRANSCRIPTION_MODEL, transcriptionAudioRequest, transcribeWorkersAi } from "../../lib/workers-ai-transcription";
 import { parseBackgroundJob } from '../../application/background-job';
 import { createJobTask } from '../../repositories/external-task-repository';
 import { processExternalTaskById } from '../../lib/external-tasks';
@@ -25,7 +24,7 @@ const encoder = new TextEncoder();
 
 /** Sign the exact bytes, audience and operation. Credentials expire after 60s;
  * replays are fenced by the job identity and repository lease token. */
-export async function verifyWorkerRequest(request: Request, secret: string | undefined, body: string | Uint8Array, now = Date.now()): Promise<boolean> {
+export async function verifyWorkerRequest(request: Request, secret: string | undefined, body: string, now = Date.now()): Promise<boolean> {
   if (!secret || encoder.encode(secret).length < 32) return false;
   const timestamp = request.headers.get("x-videoq-worker-timestamp") ?? "";
   const signature = request.headers.get("x-videoq-worker-signature") ?? "";
@@ -34,13 +33,10 @@ export async function verifyWorkerRequest(request: Request, secret: string | und
   if (age < -5 || age > 60) return false;
   const url = new URL(request.url);
   if (url.search) return false;
-  const prefix = encoder.encode(`videoq-worker-v1\n${timestamp}\n${request.method}\n${url.origin}\n${url.pathname}\n`);
-  const payload = typeof body === "string" ? encoder.encode(body) : body;
-  const message = new Uint8Array(prefix.length + payload.length);
-  message.set(prefix); message.set(payload, prefix.length);
+  const message = `videoq-worker-v1\n${timestamp}\n${request.method}\n${url.origin}\n${url.pathname}\n${body}`;
   const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
   const bytes = Uint8Array.from(signature.match(/../g)!, value => parseInt(value, 16));
-  return crypto.subtle.verify("HMAC", key, bytes, message);
+  return crypto.subtle.verify("HMAC", key, bytes, encoder.encode(message));
 }
 
 export const workerInternalRoutes = new Hono<AppEnv>();
@@ -372,32 +368,20 @@ workerInternalRoutes.post("/embeddings/generate", async c => {
   }
 });
 
-// OpenAI-compatible multipart transcription, authenticated before parsing audio.
-// Workers AI uses the existing binding; no provider API key or remote URL.
-workerInternalRoutes.use("/audio/*", bodyLimit({ maxSize: 3_100_000, onError: c => c.json({ error: "BODY_TOO_LARGE" }, 413) }));
-workerInternalRoutes.post("/audio/transcriptions", async c => {
+// The media worker sends bounded MP3 chunks over the existing signed channel.
+// Raw audio and provider errors must never be logged or persisted here.
+workerInternalRoutes.use("/audio/*", bodyLimit({ maxSize: 4_100_000, onError: c => c.json({ error: "BODY_TOO_LARGE" }, 413) }));
+workerInternalRoutes.post("/audio/transcribe", async c => {
   c.header("Cache-Control", "no-store");
-  const body = new Uint8Array(await c.req.arrayBuffer());
+  const body = await c.req.text();
   if (!await verifyWorkerRequest(c.req.raw, c.env.WORKER_INTERNAL_API_SECRET, body)) return c.json({ error: "UNAUTHORIZED" }, 401);
-  let input;
+  let input: unknown;
+  try { input = JSON.parse(body); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
+  const parsed = transcriptionAudioRequest.safeParse(input);
+  if (!parsed.success) return c.json({ error: "INVALID_REQUEST" }, 400);
   try {
-    const form = await new Response(body, { headers: { "content-type": c.req.header("content-type") ?? "" } }).formData();
-    const allowed = new Set(["file", "model", "language", "duration_seconds", "response_format", "timestamp_granularities[]"]);
-    for (const key of form.keys()) if (!allowed.has(key) || form.getAll(key).length !== 1) throw new Error("Invalid field");
-    const file = form.get("file");
-    if (!file || typeof file === "string" || !file.size || file.size > 3_000_000 ||
-        form.get("response_format") !== "verbose_json" || form.get("timestamp_granularities[]") !== "segment") throw new Error("Invalid audio");
-    input = transcriptionAudioRequest.parse({
-      model: form.get("model"), audio: Buffer.from(await file.arrayBuffer()).toString("base64"),
-      durationSeconds: Number(form.get("duration_seconds")),
-      ...(form.has("language") ? { language: form.get("language") } : {}),
-    });
-  } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
-  try {
-    const segments = await transcribeWorkersAi(c.env.AI, input, c.req.raw.signal);
-    return c.json({ task: "transcribe", duration: input.durationSeconds,
-      text: segments.map(segment => segment.text).join(""), segments,
-    });
+    const segments = await transcribeWorkersAi(c.env.AI, parsed.data, c.req.raw.signal);
+    return c.json({ model: WORKERS_AI_TRANSCRIPTION_MODEL, segments });
   } catch {
     return c.json({ error: "TRANSCRIPTION_UNAVAILABLE" }, 503);
   }

@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import OpenAI, { toFile } from "openai";
 import { z } from "zod";
 import type { TranscriptSegment } from "../application/transcription-policy";
 
@@ -23,7 +24,35 @@ const output = z.object({
   })).max(2_000).optional(),
 });
 
-/** Inference stays in TypeScript and uses the binding, without provider keys. */
+/** In-process OpenAI protocol adapter. Never calls global fetch or uses API keys. */
+export function workersAiTranscriptionFetch(binding: Pick<Ai, "run">, signal: AbortSignal): typeof fetch {
+  return async (input, init) => {
+    const request = new Request(input, init);
+    const combined = AbortSignal.any([request.signal, signal]);
+    combined.throwIfAborted();
+    if (request.method !== "POST" || request.url !== "https://workers-ai.invalid/v1/audio/transcriptions") {
+      return Response.json({ error: { message: "Unsupported transcription operation" } }, { status: 400 });
+    }
+    // This multipart body is generated locally by our SDK, not an HTTP caller.
+    const form = await request.formData();
+    const file = form.get("file"), language = form.get("language");
+    if (!file || typeof file === "string" || !file.size || file.size > MAX_TRANSCRIPTION_AUDIO_BYTES ||
+        form.get("model") !== WORKERS_AI_TRANSCRIPTION_MODEL || form.get("response_format") !== "verbose_json" ||
+        form.get("timestamp_granularities[]") !== "segment" ||
+        (language !== null && (typeof language !== "string" || !/^[a-z]{2,3}$/.test(language)))) {
+      return Response.json({ error: { message: "Unsupported transcription parameters" } }, { status: 400 });
+    }
+    const result = output.parse(await binding.run(WORKERS_AI_TRANSCRIPTION_MODEL, {
+      audio: Buffer.from(await file.arrayBuffer()).toString("base64"), task: "transcribe",
+      vad_filter: true, condition_on_previous_text: false,
+      ...(typeof language === "string" ? { language } : {}),
+    }, { signal: combined }));
+    combined.throwIfAborted();
+    return Response.json(result);
+  };
+}
+
+/** The SDK call and timestamp policy live in TypeScript; Lambda only sends audio. */
 export async function transcribeWorkersAi(
   binding: Pick<Ai, "run"> | undefined,
   input: z.infer<typeof transcriptionAudioRequest>,
@@ -32,8 +61,14 @@ export async function transcribeWorkersAi(
   if (!binding) throw new Error("Workers AI transcription requires the AI binding");
   const combined = AbortSignal.any([AbortSignal.timeout(110_000), ...(signal ? [signal] : [])]);
   combined.throwIfAborted();
-  const result = output.parse(await binding.run(WORKERS_AI_TRANSCRIPTION_MODEL, {
-    audio: input.audio, task: "transcribe", vad_filter: true, condition_on_previous_text: false,
+  const client = new OpenAI({
+    baseURL: "https://workers-ai.invalid/v1", apiKey: "binding", maxRetries: 0, timeout: 110_000,
+    fetch: workersAiTranscriptionFetch(binding, combined),
+  });
+  const result = output.parse(await client.audio.transcriptions.create({
+    model: input.model,
+    file: await toFile(Buffer.from(input.audio, "base64"), "audio.mp3", { type: "audio/mpeg" }),
+    response_format: "verbose_json", timestamp_granularities: ["segment"],
     ...(input.language ? { language: input.language } : {}),
   }, { signal: combined }));
   combined.throwIfAborted();
