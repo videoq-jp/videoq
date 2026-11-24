@@ -287,7 +287,15 @@ export async function* streamRag(
       ...conversationConfig(params.memory), signal: requestSignal,
       recursionLimit: RECURSION_LIMIT, streamMode: "custom",
     });
-    stopStream = () => events.return();
+    stopStream = async () => {
+      try {
+        await events.return();
+      } catch (error) {
+        // LangGraph reports its own cancellation while closing an interrupted
+        // stream. Errors from next() still pass through the main catch below.
+        if (!(error instanceof Error && error.message === "Abort")) throw error;
+      }
+    };
 
     // Core assembles each model turn from native events, including scalar
     // finish metadata. Forward those events through the graph writer so tool
@@ -301,8 +309,9 @@ export async function* streamRag(
     // LangGraph versions cancel active tools when return() is called; implicit
     // for-await cleanup otherwise surfaces that expected cancellation as an error.
     while (true) {
-      const { value: chunk, done } = await events.next();
-      if (done) break;
+      const next: IteratorResult<unknown> = await events.next();
+      if (next.done) break;
+      const chunk = next.value;
       if (!chunk || typeof chunk !== "object" || !("modelEvent" in chunk)) {
         const progress = searchProgressSchema.safeParse(chunk);
         if (progress.success) yield progress.data;
@@ -350,10 +359,6 @@ export async function* streamRag(
     lifecycle.abort();
     try {
       await stopStream?.();
-    } catch (error) {
-      // LangGraph reports its own cancellation while closing an interrupted
-      // stream. Errors from next() still pass through the main catch above.
-      if (!(error instanceof Error && error.message === "Abort")) throw error;
     } finally {
       await prepared?.close();
     }
