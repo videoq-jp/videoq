@@ -98,7 +98,7 @@ def audit(session, environ):
                 raise ValueError("Invalid page cursor")
         else:
             raise ValueError("Inventory exceeds page limit")
-        result["openaiProject"] = {"projectId": PROJECT_ID, "projectVerified": True, "keyIds": keys, "keyCount": len(keys)}
+        result["openaiProject"] = {"projectId": PROJECT_ID, "projectVerified": True, "projectStatus": project.get("status"), "keyIds": keys, "keyCount": len(keys)}
     except Exception as error:
         result["openaiProject"] = error_summary(error)
     return result
