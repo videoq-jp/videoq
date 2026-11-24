@@ -1,10 +1,11 @@
 export * from '../application/job-message';
-import type { JobType, JobMessage } from '../application/job-message';
+import type { JobType, JobMessage, JobMessageArguments, JobPayloadMap } from '../application/job-message';
 
+export function buildJobMessage(...args: JobMessageArguments): JobMessage;
 export function buildJobMessage(
   type: JobType,
-  payload: Record<string, unknown> = {},
+  payload: JobPayloadMap[JobType] = {},
   jobId: string = crypto.randomUUID(),
-): JobMessage {
+) {
   return { type, job_id: jobId, payload };
 }

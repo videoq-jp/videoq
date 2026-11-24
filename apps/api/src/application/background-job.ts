@@ -1,10 +1,9 @@
 import type { JobRepository } from './job-execution-port';
+import type { JobMessage } from './job-message';
 
-export type BackgroundJob =
-  | { type: 'delete_account_data'; job_id: string; payload: { user_id: string } }
-  | { type: 'reindex_video_transcript'; job_id: string; payload: { video_id: number } }
-  | { type: 'index_video_transcript'; job_id: string; payload: { video_id: number; allow_empty?: boolean } }
-  | { type: 'reindex_all_videos_embeddings'; job_id: string; payload: { after_id?: number; root_job_id?: string } };
+export type BackgroundJob = Extract<JobMessage, { type:
+  'delete_account_data' | 'reindex_video_transcript' | 'index_video_transcript' | 'reindex_all_videos_embeddings'
+}>;
 function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function positive(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value > 0; }
 function wireString(value: unknown, maxLength: number): value is string {
