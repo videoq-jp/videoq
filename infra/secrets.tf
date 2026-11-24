@@ -26,7 +26,7 @@ resource "aws_ssm_parameter" "db" {
 # Expected JSON keys (set via CLI / Console — not Terraform-managed values):
 #
 #   OPENROUTER_API_KEY        # optional fixed-key development; WIF uses a non-secret policy ID
-#   WHISPER_BACKEND           # "openrouter" for the cloud service
+#   WHISPER_BACKEND           # "workers-ai" in production; explicit provider elsewhere
 #   USER_SECRET_ENCRYPTION_KEY
 #   R2_ACCESS_KEY_ID          # Cloudflare R2 S3 API token (NOT Lambda role keys)
 #   R2_SECRET_ACCESS_KEY
