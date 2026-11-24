@@ -23,7 +23,7 @@ LLM_PRESERVE_TOOL_REASONING=true
 
 Local Workers development uses the native binding after Wrangler login. Explicit REST credentials can instead be placed in the ignored `apps/api/.dev.vars`. In Node, all three tasks share `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY`. The earlier experimental `ANSWER_*` settings have been removed; migrate them to `LLM_*` instead of keeping two model profiles.
 
-Keep `OPENAI_BASE_URL`, `OPENROUTER_*`, `EMBEDDING_*`, and media-worker transcription settings in place. These still serve embeddings and transcription. Workers AI REST requires a dedicated `LLM_API_KEY`; native Workers inference requires the `AI` binding. Missing authentication fails before inference instead of forwarding another provider's key. This change does not switch the Python media worker to Workers AI.
+Production embeddings and transcription also use the native `AI` binding. The media Lambda sends signed requests to the API's Workers AI gateway; see [transcription](workers-ai-transcription.md). Remove retired provider-specific federation settings. Supported on-premises OpenAI-compatible deployments retain their own endpoint and credential configuration. Workers AI REST requires a dedicated `LLM_API_KEY`; native Workers inference requires the `AI` binding. Missing authentication fails before inference instead of forwarding another provider's key.
 
 The Gemma profile sends `chat_template_kwargs.enable_thinking=false` for answers, summaries, and image observations. This prevents hidden reasoning from consuming the output budget for these bounded evidence tasks. `LLM_MAX_TOKENS` accepts integers from 1024 through 32768; Gemma and Workers AI REST default to 4096. Other compatible profiles retain their existing default budgets when it is unset.
 
