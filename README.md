@@ -22,7 +22,7 @@ See how students check cited lecture scenes and ask questions, then follow the i
 
 - **Automatic answers across a course** — Students ask in their own words and get answers drawn from your lecture videos.
 - **Check the source** — Follow timestamps from an answer to the relevant video scenes and review them in context.
-- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats with a selectable spoken language, or import YouTube transcripts using your SearchAPI key.
+- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats with a selectable spoken language, or import YouTube transcripts using your TranscriptAPI key.
 - **Organize and share** — Group videos into courses, label them with tags, and give students access through share links (no login needed) or email invitations.
 - **Review student questions** — Explore question history, answer feedback, analytics, and CSV exports.
 - **Use Japanese or English** — Switch between Japanese and English interfaces.
@@ -99,7 +99,7 @@ runtime and private backing services described below.
 | Database | Neon PostgreSQL + pgvector through Hyperdrive (local: PostgreSQL 17 + pgvector) |
 | Object storage | Cloudflare R2 (local: Garage) |
 | Edge state | Durable Objects (rate limits, task recovery scheduling, and chat execution) |
-| External services | OpenRouter (hosted AI) / optional local AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
+| External services | Workers AI (cloud) / OpenAI-compatible on-premises AI, TranscriptAPI for YouTube transcripts, Mailgun email, Stripe billing |
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 
@@ -179,15 +179,15 @@ docker compose stop api
 cp apps/api/.dev.vars.example apps/api/.dev.vars
 ```
 
-Set `BETTER_AUTH_SECRET`, `USER_SECRET_ENCRYPTION_KEY`, and `OPENROUTER_API_KEY` in `apps/api/.dev.vars`. For the hosted setup above, also set:
+Set `BETTER_AUTH_SECRET`, `USER_SECRET_ENCRYPTION_KEY`, and `OPENAI_API_KEY` in `apps/api/.dev.vars`. For the hosted setup above, also set:
 
 ```dotenv
 BETTER_AUTH_URL=http://localhost:3000
 FRONTEND_URL=http://localhost:3000
 OAUTH_ISSUER_URL=http://localhost:3000
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=openai/gpt-6-luna
-EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-6-luna
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Keep the Garage / ElasticMQ settings from `.dev.vars.example`, use the same user-secret encryption key as the Python worker, then run `npm run dev:api` in another terminal. Wrangler's local Hyperdrive connection targets `localhost:55432`; override it if you changed the database credentials. The Compose dependencies and Python worker continue running.

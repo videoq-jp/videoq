@@ -55,7 +55,7 @@ Record the video ID and status, then inspect the `worker` logs.
 | Stuck in `pending` | Whether `worker` and `elasticmq` are running, and API job delivery logs |
 | Failure during `processing` | Audio availability, FFmpeg/Whisper logs, and AI keys |
 | Failure during `indexing` | Embedding model and dimensions, DB connectivity, and worker exceptions |
-| Only YouTube imports fail | The SearchAPI key in settings and subtitles for the requested video |
+| Only YouTube imports fail | The TranscriptAPI key in settings and subtitles for the requested video |
 | Rejected for size or usage | Upload limits, storage capacity, and monthly usage in Admin |
 
 See [video state transitions](../design/state-diagram.md) for the meaning of each state.

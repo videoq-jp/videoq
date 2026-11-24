@@ -1,3 +1,5 @@
+> Historical record: the provider-specific runtime and commands described below have been retired. Do not execute these instructions. Current production inference uses Workers AI; see [transcription](workers-ai-transcription.md) and [answers](workers-ai-answers.md).
+
 # 検索評価Lambdaの作成・接続確認計画
 
 作成日: 2026-11-15。状態: ユーザー承認後、作成・合成質問1件の接続確認・停止まで完了。PR #1444はmainへマージ済みで、CI/CodeQLと[通常CD](https://github.com/videoq-jp/videoq/actions/runs/43608181148)は成功した。既存worker 3関数の更新成功を確認済み。

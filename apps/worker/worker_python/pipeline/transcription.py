@@ -1,4 +1,4 @@
-"""Uploaded (FFmpeg + Whisper) and YouTube (SearchAPI) transcription."""
+"""Uploaded (FFmpeg + Whisper) and YouTube (TranscriptAPI) transcription."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import os
 import logging
 import math
 import tempfile
+import time
+from email.utils import parsedate_to_datetime
 from collections.abc import Callable, Generator
 from contextlib import closing
 from pathlib import Path
@@ -15,7 +17,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from .ai_connection import shared_api_key, OPENROUTER_BASE_URL
 from worker_python.env import env_flag, env_str, heavy_pipeline_enabled
 from worker_python.domain.srt import format_srt_time
 from worker_python.domain.transcription_segments import segments_within_interval
@@ -36,6 +37,29 @@ class NoAudioStreamError(RuntimeError):
 
 
 NO_AUDIO_MESSAGE = "動画に音声トラックがありません。音声付きの動画をアップロードしてください。"
+
+
+class TranscriptApiError(RuntimeError):
+    """Provider status without response bodies, credentials or video URLs."""
+
+    def __init__(self, status: int):
+        super().__init__(f"TranscriptAPI HTTP {status}")
+        self.status = status
+
+
+def _transcript_retry_delay(value: str | None, attempt: int) -> float:
+    """Honor both HTTP Retry-After forms; malformed values use backoff."""
+    if value:
+        try:
+            seconds = float(int(value))
+        except ValueError:
+            try:
+                seconds = parsedate_to_datetime(value).timestamp() - time.time()
+            except (TypeError, ValueError, OverflowError):
+                seconds = 0
+        if math.isfinite(seconds) and seconds > 0:
+            return max(2 ** attempt, seconds)
+    return 2 ** attempt
 
 
 def run_transcription(
@@ -176,7 +200,7 @@ def transcribe_audio_interval(
 def _whisper_client():
     from openai import OpenAI
 
-    backend = (env_str("WHISPER_BACKEND") or ("openrouter" if (env_str("OPENROUTER_API_KEY") or env_str("OPENROUTER_FEDERATION_POLICY_ID")) else "openai")).lower()
+    backend = (env_str("WHISPER_BACKEND") or "openai").lower()
     if backend == "local":
         client = OpenAI(
             api_key=env_str("OPENAI_API_KEY") or "dummy-key-for-local",
@@ -186,12 +210,6 @@ def _whisper_client():
             timeout=660.0, max_retries=2,
         )
         model = "whisper-local"
-    elif backend == "openrouter":
-        api_key = shared_api_key(OPENROUTER_BASE_URL) if env_str("OPENROUTER_FEDERATION_POLICY_ID") else env_str("OPENROUTER_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENROUTER_API_KEY is required for OpenRouter Whisper")
-        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1", timeout=120.0, max_retries=2)
-        model = "openai/whisper-large-v3-turbo"
     elif backend == "openai":
         api_key = env_str("OPENAI_API_KEY")
         if not api_key:
@@ -199,7 +217,7 @@ def _whisper_client():
         client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1", timeout=120.0, max_retries=2)
         model = "whisper-1"
     else:
-        raise RuntimeError("Unsupported WHISPER_BACKEND; configure openrouter, openai or local")
+        raise RuntimeError("Unsupported WHISPER_BACKEND; configure workers-ai, openai or local")
     return client, model
 
 
@@ -239,9 +257,6 @@ def _workers_ai_transcribe(audio_path: Path, *, language: str | None = None) -> 
 def _whisper_file(
     client: Any, audio_path: Path, model: str, *, offset: float, language: str | None = None
 ) -> list[dict[str, Any]]:
-    if model == "openai/whisper-large-v3-turbo" and env_str("OPENROUTER_FEDERATION_POLICY_ID"):
-        # A warm worker can process several chunks after the initial client is created.
-        client.api_key = shared_api_key(OPENROUTER_BASE_URL)
     with audio_path.open("rb") as fh:
         result = client.audio.transcriptions.create(
             model=model,
@@ -342,7 +357,7 @@ def _transcribe_youtube(
     key = (api_key or "").strip()
     if not key:
         raise RuntimeError(
-            "SearchAPI API key is not configured. Set your SearchAPI API key in "
+            "TranscriptAPI API key is not configured. Set your TranscriptAPI API key in "
             "Settings before importing YouTube videos."
         )
     transcript = _fetch_youtube_transcript(youtube_video_id, key)
@@ -369,53 +384,69 @@ def _transcribe_youtube(
 
 def _fetch_youtube_transcript(youtube_video_id: str, api_key: str) -> list[dict]:
     base_url = env_str(
-        "SEARCHAPI_BASE_URL", "https://www.searchapi.io/api/v1/search"
-    )
-    timeout = int(env_str("SEARCHAPI_TIMEOUT_SECONDS", "60") or "60")
-    attempts = [
-        {
-            "video_id": youtube_video_id,
-            "transcript_type": "manual",
-            "only_available": "true",
-        },
-        {
-            "video_id": youtube_video_id,
-            "transcript_type": "auto",
-            "only_available": "true",
-        },
-    ]
-    last_error: RuntimeError | None = None
-    for params in attempts:
-        query = {"engine": "youtube_transcripts", **params}
+        "TRANSCRIPTAPI_BASE_URL", "https://transcriptapi.com/api/v2"
+    ).rstrip("/")
+    timeout = int(env_str("TRANSCRIPTAPI_TIMEOUT_SECONDS", "60") or "60")
+
+    def request(endpoint: str, params: dict) -> dict:
         req = Request(
-            f"{base_url}?{urlencode(query)}",
+            f"{base_url}/youtube/{endpoint}?{urlencode(params)}",
             headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
         )
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except HTTPError as exc:
-            with exc:
-                # At most four UTF-8 bytes per displayed character.
-                detail = exc.read(1200).decode("utf-8", errors="replace")[:300]
-            last_error = RuntimeError(f"SearchAPI HTTP {exc.code}: {detail}")
-            continue
-        except URLError as exc:
-            raise RuntimeError(f"SearchAPI unreachable: {exc}") from exc
+        for attempt in range(3):
+            try:
+                with urlopen(req, timeout=timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except HTTPError as exc:
+                with exc:
+                    status = exc.code
+                    delay = _transcript_retry_delay(exc.headers.get("Retry-After"), attempt)
+                # These statuses explicitly mean retry, not unavailable captions.
+                # Bound inline waiting; longer delays use the existing SQS retry.
+                retry = status in {408, 429, 503} and attempt < 2 and delay <= 60
+                logger.warning("TranscriptAPI failed: operation=%s status=%d attempt=%d retry=%s",
+                               endpoint, status, attempt + 1, retry)
+                if not retry:
+                    raise TranscriptApiError(status) from None
+                time.sleep(delay)
+            except URLError:
+                raise RuntimeError("TranscriptAPI unreachable") from None
 
-        transcripts = payload.get("transcripts") or []
-        if transcripts:
-            return transcripts
-        langs = payload.get("available_languages") or []
-        if langs:
-            last_error = RuntimeError(
-                "No YouTube transcript was returned. Available languages: "
-                + ", ".join(
-                    str(e.get("lang") or e.get("name"))
-                    for e in langs
-                    if isinstance(e, dict)
-                )
-            )
+    # Discover tracks instead of accepting TranscriptAPI's English-first default.
+    # Keep the existing manual-first, then automatic caption selection.
+    info = request("info", {"video_url": youtube_video_id})
+    tracks = [track for track in (info.get("available_languages") or [])
+              if isinstance(track, dict)]
+    manual = [track for track in tracks if track.get("kind") == "manual"]
+    automatic = [track for track in tracks if track.get("kind") == "auto"]
+    last_error: RuntimeError | None = None
+    for candidates in (manual, automatic):
+        # SearchAPI defaulted to English, then the first available track.
+        candidates = sorted(candidates, key=lambda track: (
+            str(track.get("code", "")).removeprefix("asr-").split("-")[0].lower() != "en"
+        ))
+        for track in candidates[:1]:
+            code = track.get("code")
+            if not code:
+                continue
+            if track.get("kind") == "auto" and not code.startswith("asr-"):
+                code = f"asr-{code}"
+            try:
+                payload = request("transcript", {
+                    "video_url": youtube_video_id,
+                    "format": "json",
+                    "include_timestamp": "true",
+                    "language": code,
+                    "language_fallback": "false",
+                })
+            except TranscriptApiError as exc:
+                if exc.status != 404:
+                    raise
+                last_error = exc
+                continue
+            transcript = payload.get("transcript") or []
+            if transcript:
+                return transcript
     if last_error:
         raise last_error
     raise RuntimeError("No transcript available for this YouTube video.")

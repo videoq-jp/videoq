@@ -52,8 +52,8 @@ beforeAll(() => {
   });
   const varsPath = new URL("../.dev.vars", import.meta.url);
   const configured = existsSync(varsPath) ? parse(readFileSync(varsPath)) : {};
-  env = Object.fromEntries(["OPENROUTER_FEDERATION_POLICY_ID", "OPENROUTER_FEDERATION_AUDIENCE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENROUTER_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL"].map(key => [key, process.env[key] ?? configured[key]])) as unknown as Bindings;
-  if (!env.OPENROUTER_FEDERATION_POLICY_ID && !env.LLM_API_KEY && !env.OPENROUTER_API_KEY && !env.OPENAI_API_KEY) throw new Error("OPENROUTER_API_KEY, LLM_API_KEY or OPENAI_API_KEY is required");
+  env = Object.fromEntries(["AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL"].map(key => [key, process.env[key] ?? configured[key]])) as unknown as Bindings;
+  if (!env.LLM_API_KEY && !env.OPENAI_API_KEY) throw new Error("LLM_API_KEY or OPENAI_API_KEY is required");
   output = process.env.VIDEOQ_HIGHLIGHT_OUTPUT ?? root;
   mkdirSync(output, { recursive: true });
 });

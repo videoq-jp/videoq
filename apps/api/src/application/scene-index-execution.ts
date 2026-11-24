@@ -12,34 +12,48 @@ export interface SceneIndexExecutionDependencies {
   publish(runId: string, userId: string): Promise<boolean>;
   dimensions: 768 | 1536;
 }
-export async function executeSceneIndex(videoId: number, deps: SceneIndexExecutionDependencies, options: { finishIndexing?: boolean; allowEmpty?: boolean } = {}): Promise<number> {
+export type SceneIndexOutcome =
+  | { status: 'completed'; sceneCount: number }
+  | { status: 'skipped'; reason: 'missing_source' | 'already_completed' }
+  | { status: 'pending_delivery' }
+  | { status: 'source_changed'; phase: 'start' | 'stage' | 'publish' | 'finish' }
+  | { status: 'not_ready' }
+  | { status: 'invalid_transcript'; reason: 'empty' | 'malformed' | 'split_empty' }
+  | { status: 'invalid_embeddings' };
+
+export async function executeSceneIndex(videoId: number, deps: SceneIndexExecutionDependencies, options: { finishIndexing?: boolean; allowEmpty?: boolean } = {}): Promise<SceneIndexOutcome> {
   const source = await deps.load(videoId);
-  if (!source) return 0;
+  if (!source) return { status: 'skipped', reason: 'missing_source' };
   if (options.finishIndexing) {
-    if (source.status === 'completed') return 0;
-    if (source.status !== 'indexing') throw new Error('Video is not ready for indexing');
+    if (source.status === 'completed') return { status: 'skipped', reason: 'already_completed' };
+    if (source.status !== 'indexing') return { status: 'not_ready' };
     const status = await deps.finish(source);
-    if (status === 'completed') return 0;
-    if (status !== 'missing') throw new Error('Scene index delivery is pending or source changed; retry');
-    if (!source.transcript.trim() && !options.allowEmpty) throw new Error('Video has no transcript');
+    if (status === 'completed') return { status: 'skipped', reason: 'already_completed' };
+    if (status === 'pending') return { status: 'pending_delivery' };
+    if (status === 'stale') return { status: 'source_changed', phase: 'finish' };
+    if (!source.transcript.trim() && !options.allowEmpty) return { status: 'invalid_transcript', reason: 'empty' };
   }
   const transcript = source.transcript.trim();
-  if (transcript && !parseSearchScenes(transcript).length) throw new Error('Transcript contains no valid SRT scenes');
+  if (transcript && !parseSearchScenes(transcript).length) return { status: 'invalid_transcript', reason: 'malformed' };
   const scenes = transcript ? parseSearchScenes(await deps.split(source.transcript)) : [];
-  if (transcript && !scenes.length) throw new Error('Scene splitting produced no valid SRT scenes');
+  if (transcript && !scenes.length) return { status: 'invalid_transcript', reason: 'split_empty' };
   const runId = deps.newRunId();
   if (!await deps.start({ runId, videoId, userId: source.userId, sourceRevision: source.sourceRevision, dimensions: deps.dimensions, expectedScenes: scenes.length })) {
-    throw new Error('Scene source changed before indexing; retry');
+    return { status: 'source_changed', phase: 'start' };
   }
   for (let offset = 0; offset < scenes.length; offset += 20) {
     const chunk = scenes.slice(offset, offset + 20);
     const vectors = await deps.embed(chunk.map(s => s.text));
-    if (vectors.length !== chunk.length) throw new Error('Embedding row count mismatch');
+    if (vectors.length !== chunk.length) return { status: 'invalid_embeddings' };
     if (!await deps.stage(runId, source.userId, chunk.map((scene, i) => ({
       id: `${runId}:${offset + i}`, content: scene.text, startTime: scene.startTime, endTime: scene.endTime, embedding: vectors[i],
-    })))) throw new Error('Scene source changed during indexing; retry');
+    })))) return { status: 'source_changed', phase: 'stage' };
   }
-  if (!await deps.publish(runId, source.userId)) throw new Error('Scene source changed before publication; retry');
-  if (options.finishIndexing && await deps.finish(source) !== 'completed') throw new Error('Scene index delivery is pending or source changed; retry');
-  return scenes.length;
+  if (!await deps.publish(runId, source.userId)) return { status: 'source_changed', phase: 'publish' };
+  if (options.finishIndexing) {
+    const status = await deps.finish(source);
+    if (status === 'stale') return { status: 'source_changed', phase: 'finish' };
+    if (status !== 'completed') return { status: 'pending_delivery' };
+  }
+  return { status: 'completed', sceneCount: scenes.length };
 }

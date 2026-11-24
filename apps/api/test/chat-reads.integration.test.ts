@@ -144,4 +144,33 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     expect(exported[5].citations).toEqual(byId.get(6)?.answer.sources);
     expect(exported[5].answer).toBe("Answer\n\n`a[1]` = 20. ");
   });
+
+  it('preserves deep-page identity, attribution and access across the hydration threshold', async () => {
+    await admin.query("INSERT INTO video_courses VALUES(40,'owner')");
+    try {
+      await admin.query(`INSERT INTO chat_logs(id,course_id,user_id,created_at)
+        SELECT 10000+i,40,'owner','2026-09-23T00:00:00Z'::timestamptz FROM generate_series(1,2005) AS i`);
+      await admin.query("UPDATE chat_logs SET is_shared_origin=true WHERE id=11001; UPDATE chat_logs SET user_id='deleted-user' WHERE id=11002");
+      const classroom = { user_id: 'external', username: 'Participant', email: '' };
+      await admin.query('INSERT INTO lti_chat_log_subjects(chat_log_id,classroom_author) VALUES(11000,$1)', [classroom]);
+      const query = vi.spyOn(pg.Client.prototype, 'query');
+      for (const offset of [999, 1000, 1985]) {
+        query.mockClear();
+        const page = await getCourseChatHistory(env, 40, 'owner', 20, offset);
+        if ('notFound' in page) throw new Error('Expected owned deep history');
+        expect(page.count).toBe(2005);
+        expect(page.results.map(row => row.id)).toEqual(Array.from({ length: 20 }, (_, i) => 12005 - offset - i));
+        expect(query).toHaveBeenCalledTimes(2);
+        if (offset <= 1000) {
+          const byId = new Map(page.results.map(row => [row.id, row]));
+          expect(byId.get(11000)?.asked_by).toEqual(classroom);
+          expect(byId.get(11001)?.asked_by).toBeNull();
+          expect(byId.get(11002)?.asked_by).toBeNull();
+        }
+      }
+      expect(await getCourseChatHistory(env, 40, 'outsider', 20, 1000)).toEqual({ notFound: true });
+    } finally {
+      await admin.query('DELETE FROM lti_chat_log_subjects WHERE chat_log_id>=10000; DELETE FROM chat_logs WHERE course_id=40; DELETE FROM video_courses WHERE id=40');
+    }
+  });
 });

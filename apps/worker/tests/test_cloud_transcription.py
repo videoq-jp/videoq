@@ -92,3 +92,50 @@ def test_segmented_quota_recovery_maps_safe_code_and_preserves_source_fence(setu
     assert 'private quota detail' not in str(calls)
     if accepted:
         assert calls[-1][1] == {'videoId': 1, 'userId': 'owner', 'sourceRevision': 'revision', 'fileKey': 'file.mp4', 'transcript': None, 'errorCode': 'PROCESSING_QUOTA_EXCEEDED'}
+
+
+@pytest.mark.parametrize("override", [True, False])
+def test_youtube_transcriptapi_key_reaches_pipeline_in_cloud_mode(setup, monkeypatch, override):
+    source, _ = setup
+    source["searchapiKeyEncrypted"] = "encrypted-transcript-key"
+    monkeypatch.delenv("TRANSCRIPTAPI_API_KEY", raising=False)
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "old-search-key")
+    monkeypatch.setattr(task, "try_decrypt", lambda value: "saved-transcript-key" if value == "encrypted-transcript-key" else None)
+    if override:
+        monkeypatch.setenv("TRANSCRIPTAPI_API_KEY", "override-transcript-key")
+    pipeline = MagicMock(return_value="Generated")
+    monkeypatch.setattr(task, "run_transcription", pipeline)
+    task.transcribe_cloud_video(1)
+    assert pipeline.call_args.kwargs["searchapi_key"] == (
+        "override-transcript-key" if override else "saved-transcript-key"
+    )
+
+
+def test_provider_408_recovers_before_saving_failure_or_reserving_quota_twice(setup, monkeypatch):
+    from io import BytesIO
+    from urllib.error import HTTPError
+    from worker_python.pipeline import transcription as pipeline
+
+    _, calls = setup
+    monkeypatch.setenv("TRANSCRIPTAPI_API_KEY", "synthetic-key")
+    monkeypatch.setattr(pipeline, "heavy_pipeline_enabled", lambda: True)
+    monkeypatch.setattr(task, "run_transcription", pipeline.run_transcription)
+    reserve = MagicMock(return_value=MagicMock(allowed=True))
+    monkeypatch.setattr(task, "reserve_video_processing", reserve)
+    sleep = MagicMock()
+    monkeypatch.setattr(pipeline.time, "sleep", sleep)
+    http = MagicMock(side_effect=[
+        BytesIO(b'{"available_languages":[{"code":"ja","kind":"auto"},{"code":"asr-ja","kind":"auto"}]}'),
+        HTTPError("https://example.invalid", 408, "Retry", {}, BytesIO()),
+        BytesIO(b'{"transcript":[{"start":0,"duration":2,"text":"Recovered captions"}]}'),
+    ])
+    monkeypatch.setattr(pipeline, "urlopen", http)
+
+    task.transcribe_cloud_video(1)
+
+    assert [action for action, _ in calls] == ["transcription/source", "transcription/begin", "transcription/finish"]
+    assert calls[-1][1]["errorCode"] is None
+    assert "Recovered captions" in calls[-1][1]["transcript"]
+    reserve.assert_called_once_with(1, 2)
+    sleep.assert_called_once_with(1)
+    assert http.call_count == 3

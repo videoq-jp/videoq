@@ -27,7 +27,7 @@ it does not refer to AWS S3. Terraform 1.15.1 is the reviewed runtime.
 | `infra/cloudflare-releases/docs/` | `videoq/prod/workers/docs.tfstate` | Docs assets and active deployment |
 | `infra/cloudflare-releases/maintenance/` | `videoq/prod/workers/maintenance.tfstate` | Coordinator code, Durable Object binding and active deployment |
 | `infra/identity/` | `videoq/prod/identity.tfstate` | OIDC roles/policies, legacy credential metadata, retained control parameters and API logs |
-| `infra/search-evaluation/` | `videoq/prod/search-evaluation.tfstate` | Independent, disabled evaluation Lambda and logs |
+| `infra/search-evaluation/` | `videoq/prod/search-evaluation.tfstate` | Retirement state and recovery history for the removed evaluation Lambda and logs |
 
 The old AWS state bucket retains its original versions for recovery. It is not
 an active backend. Do not resume an older checkout against its former S3 state.
@@ -129,6 +129,5 @@ The old `videoq-prod` OpenAI project is archived after revoking its last API key
 and destroying its Terraform-managed model permissions and spend alert. OpenAI
 retains archived project history for billing; projects cannot be fully deleted.
 The OpenAI provider, administration secrets and one-time retirement workflows are
-removed after verification. Production inference uses Workers AI, with
-transcription through OpenRouter. OpenAI-compatible SDKs remain application
+removed after verification. Production inference, including transcription, uses Workers AI. OpenAI-compatible SDKs remain application
 clients and do not require an OpenAI administration credential.

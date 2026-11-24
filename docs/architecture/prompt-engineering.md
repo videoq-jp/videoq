@@ -61,9 +61,9 @@ These are application defaults, not measurements of production settings or provi
 
 | Setting | Current implementation |
 |---|---|
-| Answer and image model | `LLM_MODEL`, hosted profile `openai/gpt-6-luna` (same GPT-6 Luna model) |
-| Answer endpoint | Chat Completions at `LLM_BASE_URL` (falls back to `OPENAI_BASE_URL`), hosted profile `https://openrouter.ai/api/v1` |
-| Reasoning effort | `none` when the model is `gpt-6-luna` or `openai/gpt-6-luna`, for Chat Completions tool calling |
+| Answer and image model | `LLM_MODEL`, hosted profile `gpt-6-luna` (same GPT-6 Luna model) |
+| Answer endpoint | Chat Completions at `LLM_BASE_URL` (falls back to `OPENAI_BASE_URL`), hosted profile `https://api.openai.com/v1` |
+| Reasoning effort | `none` when the model is `gpt-6-luna` or `gpt-6-luna`, for Chat Completions tool calling |
 | Sampling and output budget | Temperature `0`; at most 1,024 output tokens per model call, including structured output |
 | Request deadline | Course RAG: 2 minutes for non-streaming requests; 5 minutes for streaming requests |
 | Automatic provider retries | Disabled in the API chat-model wrapper |

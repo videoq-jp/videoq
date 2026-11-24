@@ -57,7 +57,7 @@ run "nonproduction_postgres_workers_keep_their_explicit_database_reference" {
   assert {
     condition = alltrue([for fn in concat([aws_lambda_function.worker], values(aws_lambda_function.group)) : (
       fn.environment[0].variables["DB_PARAM_NAME"] == "/videoq/test/worker-db" &&
-      fn.environment[0].variables["WHISPER_BACKEND"] == "openrouter" &&
+      fn.environment[0].variables["WHISPER_BACKEND"] == "openai" &&
       fn.environment[0].variables["PGSSLROOTCERT"] == "/etc/pki/tls/certs/ca-bundle.crt" &&
       !contains(keys(fn.environment[0].variables), "PERSISTENCE_BACKEND")
     )])

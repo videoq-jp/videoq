@@ -55,9 +55,8 @@
     "DEFAULT_PROCESSING_LIMIT_MINUTES": "45",
     "DEFAULT_AI_ANSWERS_LIMIT": "30",
     "STRIPE_AUTOMATIC_TAX": "false",
-    // Chat, summaries and vision share Workers AI; embeddings keep OpenRouter.
-    "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
-    "EMBEDDING_MODEL": "openai/text-embedding-3-small",
+    // Chat, summaries and vision share Workers AI.
+    "EMBEDDING_MODEL": "text-embedding-3-small",
     "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
 
     "LLM_MAX_TOKENS": "4096",
@@ -143,9 +142,6 @@
         "DEFAULT_AI_ANSWERS_LIMIT": "30",
         "STRIPE_AUTOMATIC_TAX": "false",
         // Workers AI chat/vision is independent of the media worker and embeddings.
-        "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
-        "OPENROUTER_FEDERATION_POLICY_ID": "c333bd7c-880a-437c-9fc9-e5825716325e",
-        "OPENROUTER_FEDERATION_AUDIENCE": "https://openrouter.ai",
         "AWS_REGION": "ap-northeast-1",
         "EMBEDDING_PROVIDER": "workers-ai",
         "EMBEDDING_PROFILE": "embeddinggemma2",

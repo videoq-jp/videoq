@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 import unittest
 from unittest.mock import MagicMock, patch
-from rotate_api_aws_key import rotate, verify_smoke, require_permissions, patch_worker, smoke_log, USER_ARN, API_POLICY, JOURNAL, RotationGuardError
+from rotate_api_aws_key import rotate, verify_smoke, require_permissions, patch_worker, smoke_log, USER_ARN, JOURNAL, RotationGuardError
 
 ROOT = Path(__file__).resolve().parents[2]
 OLD = 'AKIA'+'O'*16
@@ -22,8 +22,7 @@ class RotationTests(unittest.TestCase):
         self.journal = None
         self.session, self.iam, self.ssm = MagicMock(), MagicMock(), MagicMock()
         self.session.client.side_effect = lambda name: self.iam if name == 'iam' else self.ssm
-        self.documents = {'sqs': json.loads((ROOT/'infra/iam/videoq-api-sqs-send.json').read_text()),
-                          'sts': json.loads((ROOT/'infra/iam/videoq-openrouter-federation.json').read_text())}
+        self.documents = {'sqs': json.loads((ROOT/'infra/iam/videoq-api-sqs-send.json').read_text())}
         self.iam.get_user.return_value = {'User': {'Arn': USER_ARN}}
         def paginate(name, **kwargs):
             return [{'AccessKeyMetadata': [{'AccessKeyId': key, 'Status': status} for key, status in self.keys.items()]}] if name == 'list_access_keys' else [{'PolicyNames': list(self.documents)}] if name == 'list_user_policies' else []
@@ -53,8 +52,8 @@ class RotationTests(unittest.TestCase):
         self.ssm.delete_parameter.side_effect = delete
         self.env = {'CLOUDFLARE_ACCOUNT_ID': 'a'*32, 'CLOUDFLARE_API_TOKEN': 'PRIVATE_CF', 'GH_TOKEN': 'PRIVATE_GH', 'GITHUB_SHA': 'a'*40}
         self.settings = {'success': True, 'result': {'bindings': [
-            {'type': 'plain_text', 'name': 'OPENROUTER_FEDERATION_POLICY_ID', 'text': API_POLICY},
-            {'type': 'plain_text', 'name': 'OPENAI_BASE_URL', 'text': 'https://openrouter.ai/api/v1'}]}}
+            {'type': 'ai', 'name': 'AI'},
+            {'type': 'plain_text', 'name': 'LLM_MODEL', 'text': '@cf/google/gemma-4-26b-a4b-it'}]}}
         return contextlib.ExitStack()
 
     def patches(self, stack):

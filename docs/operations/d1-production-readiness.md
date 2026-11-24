@@ -1,4 +1,69 @@
-# 本番切り替えの残件と最新候補
+# D1運用の受入条件と移行時の履歴
+
+## 現在の判断入口（2026-11-24）
+
+この節を現在の判断入口とし、後半の2026-11-16の記録は移行前の履歴として読む。
+「Neonを継続」「本番切り替え未実施」という過去の記述を、現在の配備指示として使わない。
+現行リポジトリの本番設定はD1・768次元Vectorize・Workers AIを選択する。
+オンプレミスはPostgreSQL/pgvectorを維持する。
+
+今回確認した比較元mainは `007b4f9668e75405cb85808c6633f78dae444444`。
+このSHAの[通常CD](https://github.com/videoq-jp/videoq/actions/runs/45395076526)は
+2026-11-24 12:36 UTC開始・successである。これはGitHubの配備処理の証跡であり、
+現在の実リソースの設定や全機能を今回再試験した証明ではない。
+[PR #1672](https://github.com/videoq-jp/videoq/pull/1672)は別の変更候補で、
+その最終headのCI・受入結果を比較元の成功で代用しない。
+
+### 構成と証拠の対応表
+
+| 判断対象 | 証拠の日時・条件 | 現在言えること / 適用限界 |
+|---|---|---|
+| 正本と検索基盤 | 上記mainの[本番設定](https://github.com/videoq-jp/videoq/blob/007b4f9668e75405cb85808c6633f78dae444444/apps/api/wrangler.jsonc) | `videoq-prod-db`、`videoq-prod-scenes-embeddinggemma2-768`、`embeddinggemma2` / `@cf/google/embeddinggemma-2`を選択。検索・accountはCloudflare、媒体はPython。配置・実bindingの今回のライブ照合は未実施 |
+| 入力データと検索品質 | [11/22の固定比較](workers-ai-embedding-migration.md)、[集計JSON](../validation/workers-ai-embedding-comparison-2026-11-22.json) | 16動画・420scene、24正例質問・4診断・56owner負例、3反復。事前のHit@5/Hit@20/MRR差と越境0の基準を通過。AI由来の非網羅ラベルで、人手正解や回答全体の保証ではない |
+| 全件展開と索引の世代 | [11/22の展開・旧索引廃止](workers-ai-embedding-migration.md#旧インデックスの廃止) | 展開時80動画・2,190sceneを照合。旧1536次元索引は削除済み、削除後の現行2,191件の不変を確認した記録。これは11/24の現在件数ではない。旧索引へのbinding切戻しは利用不可 |
+| 検索呼出し単体の性能 | 同じ11/22比較、逐次・同一ローカルclient、各質問3反復 | Vectorize API p95は旧238.5ms / 候補236.6ms。Embedding・認可・D1 hydration・回答生成を含まない。cold/同時負荷のE2E改善やSLO合格には使わない |
+| 認証付き参照APIの性能 | [11/16の比較](d1-authenticated-api-performance.md)、NRT、warm・逐次、各scenario 20標本 | Hono全scenario p95はPG519ms / D143ms。別のモデル・配置・候補SHAへの一般化や、RAGのp95への置換は不可 |
+| 現行ASRと回答 | [11/24のASR検証](workers-ai-transcription.md)、[11/22の回答移行](workers-ai-answers.md) | 現行推論の経路と限定された受入証跡。旧OpenRouter/OpenAI専用評価Lambdaは[廃止済み](../../infra/search-evaluation/README.md)。旧runtimeを復旧用に再作成しない |
+| 再試行と原子性 | PR #1672の共通wire契約、実PG/SQS互換障害試験、ローカルD1契約 | job identity、ACK失敗、SIGTERM、quota/返金境界を限定した環境で検証。最終head・本番配置での全E2E、実外部課金やメールの巻戻しを証明しない |
+| 費用と容量 | [11/16の利用量](d1-account-capacity.md)と11/22の構成変更 | 計測期間・旧モデル・廃止資源が異なるため現在の月額総費用へ外挿しない。現在契約、通常/ピーク、復旧再生成、承認済み予算の照合は未測定で、費用削減を合格にしない |
+| 復旧可能な範囲 | [過去の隔離演習](d1-lambda-time-travel-recovery.md)、[旧世代の再構築記録](d1-vectorize-recovery.md) | DBと外部状態は単一transactionでは戻らない。旧1536次元の実証・廃止済み評価runtimeを、現行768次元の再構築成功と扱わない。最新構成の統合復旧と本番RTOは未実証 |
+
+### 次の候補を測る前に固定する受入条件
+
+候補を変更するたびに全履歴を再実行する必要はない。次の表を一つの受入記録として
+候補SHAと設定digestに結び、変更で影響する行を再検証する。モデル、入力形式、次元、
+検索スコープ、DB schema、認可、queue topologyが変わった行の古い成功は継承しない。
+
+| 項目 | 測定前に固定する入力 | 採用条件 / 拒否・中止条件 |
+|---|---|---|
+| 同一性 | 候補SHA、Worker revision、image digest、モデル/profile/prefix/次元、配置、schema、データsnapshot hash、日時 | 検索側・登録側が同じ契約。途中で変わった測定は混ぜず再試験 |
+| 正しさと認可 | 凍結した質問・根拠scene、owner/course負例、更新/削除競合 | 越境0、旧revision非公開。違反時は性能に関係なく公開を止め、同じ操作を無条件にACKしない |
+| RAG | 初回回答までと回答完了までを分離し、cold/warm・逐次/同時負荷別に標本数・p50/p95/p99・失敗率を固定 | 同条件の比較元を超えるp95/失敗率の悪化を承認なしに採用しない。品質の基準も維持。検索API単体値で代用しない |
+| 参照API | 認証込みのroute別計測、tenant規模、浅い/深いpage、cold/warm・並行度 | RAGと独立してp95/失敗率を比較し、同条件の比較元より悪化したrouteは原因を解消してから再判定 |
+| 費用 | 現行契約、保持量、通常/ピークのリクエスト、再試行・索引更新・復旧再生成、承認済み月額上限 | 上限が未設定、または総費用を算出できない場合は費用面を未合格とする。測定後に予算を緩めて合格にしない |
+| 復旧 | 対象DBとbookmark、R2 object世代、索引/モデル、queue/workflow/outbox、停止/drainと照合手順 | 隔離先で対応する世代を復旧し、削除・重複・欠損・権限を照合して再開。対象外を明記。未完了ならその変更の本番復旧可能性を合格にしない |
+
+上記の性能条件は次回比較の回帰ゲートであり、契約上の応答時間SLOではない。
+RAGと参照APIの数値SLO、期間/対象利用者、error budget、RPO/RTO、月額上限は
+プロダクト/運用責任者が測定前に記録する。今回その合意や数値を作っていない。
+未設定を「無制限」や「既存実測で達成」と読み替えない。
+
+### 切り戻しの対象と撤退判断
+
+| 対象 | 復旧時に照合するもの | 併せて戻らないもの / 現在の制限 |
+|---|---|---|
+| D1 | 確定した復旧時点、schema、FK、認証、課金/利用枠、job台帳、公開head | Time TravelはR2、Vectorize、外部課金/メール、queue/workflow状態を同時に巻き戻さない |
+| R2 | 元動画と採用された不変キー/manifest、DBの参照、削除Outbox | DBだけ戻して既に削除されたobjectを復元した扱いにしない |
+| Vectorize | 現行モデル/prefix/768次元で再生成した値、physical ID、owner/video/revision、ANN反映 | 旧1536次元索引は削除済み。過去の再生成ツール/runtimeは現行768次元の実行手段として検証されていない |
+| Queue / Workflow / Outbox | 停止・drain、未配信/処理中/完了、同じjob IDと実行barrier、外部副作用 | DB復旧後に完了済み副作用を無条件再送しない。consumerの変更時は互換payloadと旧実行の排出を確認 |
+| Neon / 旧provider | 過去の移行記録のみ | 廃止済み資源や旧archiveへの単純な接続変更は撤退手段ではない。再作成や本番restoreはこの文書更新では実行しない |
+
+認可/整合性違反は受付・公開を停止して調査する。性能悪化は影響routeの候補を
+採用せず、データ互換な既知のアプリ版へ戻せるかを先に確認する。D1に新しい書込みが
+入った後は接続先だけを戻さず、上表のDB・object・検索・配送を含む復旧計画を実証する。
+継続運用と追加移行の判断を分け、未測定の規模を理由に新しい分散構成を増やさない。
+
+## 2026-11-16の移行前履歴
 
 2026-11-16 JST。目的はクラウド版の本番D1/Vectorize切り替えと、オンプレミスPostgreSQL/pgvectorの維持である。以下は途中の受け入れ監査であり、完了宣言ではない。旧Django/OAuthの27テーブルは完全バックアップに保管し、現行アプリだけをD1へ移す。
 

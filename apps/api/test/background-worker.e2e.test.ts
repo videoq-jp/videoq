@@ -12,7 +12,7 @@ const databaseUrl=process.env.PERSISTENCE_TEST_DATABASE_URL;
 const endpoint=process.env.SQS_TEST_ENDPOINT;
 const enabled=process.env.BACKGROUND_WORKER_E2E==='1'&&!!databaseUrl&&!!endpoint;
 (enabled?describe:describe.skip)('built Node worker with actual PostgreSQL and ElasticMQ',()=>{
-  it('indexes and completes a video, deduplicates delivery, then deletes a permanently banned account',async()=>{
+  it('indexes, deduplicates, deletes an account and leaves SIGTERM-interrupted work for retry',async()=>{
     const admin=new pg.Client({connectionString:databaseUrl});await admin.connect();
     const name=`videoq_background_${crypto.randomUUID().replaceAll('-','')}`;
     await admin.query(`CREATE DATABASE "${name}"`);
@@ -25,12 +25,14 @@ const enabled=process.env.BACKGROUND_WORKER_E2E==='1'&&!!databaseUrl&&!!endpoint
       const text=await response.text();return text?JSON.parse(text):{};
     }
     let modelCalls=0;
+    let holdModel=false;
     let modelError: unknown;
     const model=createServer((req,res)=>{
       void (async()=>{
       const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
       const input=JSON.parse(Buffer.concat(chunks).toString()) as {input:string[]};modelCalls++;
       expect(input.input.every(text=>text.startsWith('title: none | text: '))).toBe(true);
+      if(holdModel){await new Promise<void>(resolve=>res.once('close',resolve));return;}
       res.writeHead(200,{'content-type':'application/json'});
       res.end(JSON.stringify({data:input.input.map((_,index)=>({index,embedding:[1,...Array(767).fill(0)]}))}));
       })().catch(error=>{modelError=error;res.writeHead(500);res.end();});
@@ -42,7 +44,10 @@ const enabled=process.env.BACKGROUND_WORKER_E2E==='1'&&!!databaseUrl&&!!endpoint
     const queues:string[]=[];
     try{
       await migrateDatabase(db,{writersStopped:true});
-      for(const group of ['search','account'])queues.push((await request('CreateQueue',{QueueName:`${name}-${group}`})).QueueUrl);
+      for(const group of ['search','account']){
+        const created=await request('CreateQueue',{QueueName:`${name}-${group}`});
+        queues.push(new URL(new URL(created.QueueUrl).pathname,endpoint).href);
+      }
       await db.query("INSERT INTO users(id,email,username,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES('index-owner','index@example.invalid','index-owner',false,0,0,0),('delete-owner','delete@example.invalid','delete-owner',false,0,0,0)");
       await db.query("UPDATE users SET banned=true,ban_expires=null WHERE id='delete-owner'");
       await db.query("INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id) VALUES(1,'index-owner','Synthetic','','',now(),$1,'indexing','','uploaded','','')",['1\n00:00:00,000 --> 00:00:01,000\n標本化とは信号の離散化です。\n']);
@@ -76,6 +81,23 @@ const enabled=process.env.BACKGROUND_WORKER_E2E==='1'&&!!databaseUrl&&!!endpoint
       await waitFor(async()=> (await db.query("SELECT status FROM job_executions WHERE job_id='node-delete'")).rows[0]?.status==='completed');
       expect((await db.query("SELECT id FROM users ORDER BY id")).rows).toEqual([{id:'index-owner'}]);
       expect(logs).not.toContain('background_job_retry');
+
+      // A real process signal must stop the active provider request without ACK.
+      await db.query("INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id) VALUES(2,'index-owner','Interrupted','','',now(),$1,'indexing','','uploaded','','')",['1\n00:00:00,000 --> 00:00:01,000\nAn interrupted synthetic lesson.\n']);
+      holdModel=true;
+      await request('SendMessage',{QueueUrl:queues[0],MessageBody:JSON.stringify({type:'index_video_transcript',job_id:'node-interrupted',payload:{video_id:2}})});
+      await waitFor(async()=>modelCalls===2);
+      const exited=once(child,'exit');child.kill('SIGTERM');
+      const timeout=new AbortController();
+      try{
+        const result=await Promise.race([exited,delay(10_000,undefined,{signal:timeout.signal}).then(()=>{throw new Error('Worker did not drain after SIGTERM');})]);
+        expect(result).toEqual([0,null]);
+      }finally{timeout.abort();}
+      expect((await db.query("SELECT status FROM job_executions WHERE job_id='node-interrupted'")).rows[0]?.status).toBe('failed');
+      expect((await db.query('SELECT video_id FROM scene_embeddings_768 WHERE video_id=2')).rows).toEqual([]);
+      const interrupted=await request('GetQueueAttributes',{QueueUrl:queues[0],AttributeNames:['ApproximateNumberOfMessages','ApproximateNumberOfMessagesNotVisible']});
+      expect(Number(interrupted.Attributes.ApproximateNumberOfMessages)+Number(interrupted.Attributes.ApproximateNumberOfMessagesNotVisible)).toBe(1);
+      expect(logs).toContain('EXECUTION_ABORTED');
     }finally{
       if(child&&child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await Promise.race([exited,delay(5000)]);if(child.exitCode===null)child.kill('SIGKILL');}
       model.close();

@@ -299,7 +299,7 @@ class Lifecycle:
                     self.kube('scale', 'deployment/videoq-gateway', '--replicas=0')
                 self.run('helm', 'uninstall', 'videoq', '--kubeconfig', str(self.kubeconfig), '-n', 'videoq',
                          '--ignore-not-found', '--wait', '--timeout', '20m')
-                if getattr(self, 'ai', 'openrouter') != 'openrouter':
+                if getattr(self, 'ai', 'openai') != 'openai':
                     self.run('helm', 'uninstall', 'inference', '--kubeconfig', str(self.kubeconfig), '-n', 'videoq',
                              '--ignore-not-found', '--wait', '--timeout', '10m')
                 self.k3d('cluster', 'stop', self.cluster)

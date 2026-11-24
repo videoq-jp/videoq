@@ -83,18 +83,6 @@ variable "worker_visual_enabled" {
   default     = true
 }
 
-variable "openrouter_federation_policy_id" {
-  description = "OpenRouter inference federation policy for the Lambda worker (non-secret); empty retains explicit key compatibility"
-  type        = string
-  default     = ""
-}
-
-variable "openrouter_federation_audience" {
-  description = "Audience registered in the OpenRouter workload identity policy"
-  type        = string
-  default     = "https://openrouter.ai"
-}
-
 variable "worker_media_maximum_concurrency" {
   type    = number
   default = 10

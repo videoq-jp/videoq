@@ -61,8 +61,8 @@ The Compose installer is documented separately in README.md.
 
 `install --ai local-cpu` deploys the signed CPU recipe (llama.cpp for chat/embeddings,
 whisper.cpp for speech). `install --ai local-gpu` deploys the signed NVIDIA vLLM
-recipe on a previously GPU-enabled k3d cluster. The default is `openrouter`.
-No OpenRouter key is requested for local profiles. Matching app/inference profiles
+recipe on a previously GPU-enabled k3d cluster. The default is `openai`.
+No OpenAI key is requested for local profiles. Matching app/inference profiles
 are read from the verified chart archives, not unverified workspace overrides.
 CPU supports amd64/arm64; the GPU recipe requires amd64 and three allocatable GPUs.
 Drivers, NVIDIA runtime, device plugin and GPU passthrough are operator prerequisites.

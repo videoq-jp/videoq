@@ -195,10 +195,10 @@ class LocalAITests(unittest.TestCase):
             instance.url, instance.ai = 'https://videoq.example.com', 'local-cpu'
             instance.kube = lambda *a, **kw: '{"items":[]}'
             instance.apply = lambda *a: None
-            with patch.object(installer.getpass, 'getpass', side_effect=AssertionError('must not ask for OpenRouter')):
+            with patch.object(installer.getpass, 'getpass', side_effect=AssertionError('must not ask for OpenAI')):
                 instance.credentials()
             values = json.loads((instance.directory / 'credentials.json').read_text())['videoq-runtime']
-            self.assertNotIn('OPENROUTER_API_KEY', values)
+            self.assertEqual(values['OPENAI_API_KEY'], 'local-inference')
             self.assertTrue(values['OPENAI_API_KEY'])
 
     def test_existing_profile_cannot_be_changed_silently(self):
