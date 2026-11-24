@@ -35,15 +35,15 @@ function postgresSmokeStore(db){
   hasChatLog:async(user,id)=>(await rows('SELECT id FROM videoq_security.smoke_chat_logs WHERE id=$1 AND user_id=$2',[id,user.id])).length===1,
  };
 }
-function scopedD1SmokeStore({env=process.env,fetcher=fetch}={},isolation=null){
+function scopedD1SmokeStore({env=process.env,fetcher=fetch}={}){
  const key=env.VIDEOQ_SMOKE_IDENTITY_KEY,databaseId=env.VIDEOQ_SMOKE_D1_DATABASE_ID;
  if(env.CLOUDFLARE_ACCOUNT_ID!==ACCOUNT||!/^[a-f0-9]{64}$/.test(key??'')||!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(databaseId??'')||!env.CLOUDFLARE_API_TOKEN)throw Error('SCOPED_D1_SMOKE_CONTEXT_REQUIRED');
- const origin=isolation?.origin??'https://videoq.jp',domain=isolation?'videoq-isolated-smoke:'+isolation.nonce+':v1:':'videoq-production-smoke:v1:';
+ const origin='https://videoq.jp',domain='videoq-production-smoke:v1:';
  const marker=user=>origin+'/favicon.ico?ops_smoke_v1='+createHmac('sha256',Buffer.from(key,'hex')).update(domain+user.id).digest('hex');
  const proven=user=>{if(!synthetic(user)||typeof user.image!=='string')return false;const expected=Buffer.from(marker(user)),actual=Buffer.from(user.image);return actual.length===expected.length&&timingSafeEqual(actual,expected);};
  const predicate="u.id=? AND u.username=? AND u.email=? AND u.name=? AND u.role='user' AND u.quota_source='admin' AND u.image=?";
  const parameters=user=>[user.id,user.username,user.email,user.name,user.image];
- async function assertTarget(){if(isolation){await isolation.assertTarget();return;}const selected=smokeBackend(await readDeploymentSettings(env,fetcher));if(selected.backend!=='d1'||selected.databaseId!==databaseId)throw Error('SMOKE_BACKEND_CHANGED');}
+ async function assertTarget(){const selected=smokeBackend(await readDeploymentSettings(env,fetcher));if(selected.backend!=='d1'||selected.databaseId!==databaseId)throw Error('SMOKE_BACKEND_CHANGED');}
  async function query(sql,params=[]){
   await assertTarget();
   const response=await fetcher('https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/d1/database/'+databaseId+'/query',{method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'},body:JSON.stringify({sql,params})});
@@ -86,9 +86,4 @@ function scopedD1SmokeStore({env=process.env,fetcher=fetch}={},isolation=null){
  };
 }
 function d1SmokeStore(options={}){return scopedD1SmokeStore(options);}
-function isolatedD1SmokeStore({manifest,env=process.env,fetcher=fetch,now=Date.now}){
- const isolation=require('./isolated-smoke-target.cjs').createIsolatedSmokeTarget({manifest,env,fetcher,now});
- if(env.VIDEOQ_SMOKE_D1_DATABASE_ID!==isolation.databaseId)throw Error('ISOLATED_SMOKE_DATABASE_REQUIRED');
- return scopedD1SmokeStore({env,fetcher},isolation);
-}
-module.exports={smokeBackend,postgresSmokeStore,d1SmokeStore,isolatedD1SmokeStore};
+module.exports={smokeBackend,postgresSmokeStore,d1SmokeStore};

@@ -1,3 +1,5 @@
+> Historical security assessment: this document records the former provider connection and its probes. Its setup recommendations are retired. Current inference uses Workers AI bindings; the OpenRouter integration and provider-specific IAM grants are being removed. The API AWS key is retained only for media SQS delivery.
+
 # Production service connection review — 2026-11-01
 
 This is a point-in-time review of the hosted API, worker, queues, database and

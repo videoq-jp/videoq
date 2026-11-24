@@ -18,13 +18,11 @@ mock_provider "aws" {
     defaults = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
   }
 }
-mock_provider "openai" {}
 override_resource {
   target = aws_cloudwatch_log_group.worker
   values = { arn = "arn:aws:logs:ap-northeast-1:123456789012:log-group:/aws/lambda/test-media" }
 }
 variables {
-  manage_openai_project = false
 }
 run "isolated_search_and_account_consumers" {
   command = apply

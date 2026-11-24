@@ -18,7 +18,6 @@ mock_provider "aws" {
     defaults = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
   }
 }
-mock_provider "openai" {}
 
 override_resource {
   target = aws_cloudwatch_log_group.worker
@@ -28,15 +27,12 @@ override_resource {
   target = aws_ssm_parameter.app
   values = { arn = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/test/app" }
 }
-variables {
-  manage_openai_project = false
-}
-
 run "production_workers_cannot_read_the_retired_database" {
   command = apply
   assert {
     condition = alltrue([for fn in concat([aws_lambda_function.worker], values(aws_lambda_function.group)) : (
       fn.environment[0].variables["PERSISTENCE_BACKEND"] == "d1" &&
+      fn.environment[0].variables["WHISPER_BACKEND"] == "workers-ai" &&
       fn.environment[0].variables["WORKER_INTERNAL_API_ORIGIN"] == "https://videoq.jp" &&
       !contains(keys(fn.environment[0].variables), "DB_PARAM_NAME") &&
       !contains(keys(fn.environment[0].variables), "PGSSLROOTCERT") &&
@@ -61,6 +57,7 @@ run "nonproduction_postgres_workers_keep_their_explicit_database_reference" {
   assert {
     condition = alltrue([for fn in concat([aws_lambda_function.worker], values(aws_lambda_function.group)) : (
       fn.environment[0].variables["DB_PARAM_NAME"] == "/videoq/test/worker-db" &&
+      fn.environment[0].variables["WHISPER_BACKEND"] == "openai" &&
       fn.environment[0].variables["PGSSLROOTCERT"] == "/etc/pki/tls/certs/ca-bundle.crt" &&
       !contains(keys(fn.environment[0].variables), "PERSISTENCE_BACKEND")
     )])

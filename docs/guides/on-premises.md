@@ -55,7 +55,7 @@ separate machine; API and video workers call its endpoint.
 
 For a concrete CPU or NVIDIA GPU deployment of local chat, embeddings and
 Whisper, see [local inference](local-inference.md). The default application
-values use hosted OpenRouter; the local overlay is an explicit opt-in.
+values use the OpenAI-compatible hosted endpoint; the local overlay is an explicit opt-in.
 
 ## How it differs from Cloudflare
 
@@ -96,7 +96,7 @@ The repository does not publish images at the `registry.example.edu` addresses;
 these are placeholders for site-built images. For a disconnected network,
 transfer all images and the packaged chart ahead of time. Point chat, embeddings
 and transcription at validated local services. The on-prem edition disables Stripe,
-Google sign-in, YouTube/SearchAPI and Mailgun.
+Google sign-in, YouTube/TranscriptAPI and Mailgun.
 
 The chat adapter requires a nonempty `OPENAI_API_KEY` for local OpenAI-compatible
 servers too. Use a placeholder such as `local-inference` if that server has no

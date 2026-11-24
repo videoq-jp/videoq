@@ -1,6 +1,6 @@
 # Workers AI: unified Gemma chat and vision
 
-VideoQ uses `@cf/google/gemma-4-26b-a4b-it` for answer generation, conversation summaries, and image inspection inside video tools. GPT-OSS and a separate OpenRouter vision model are not required for this profile. Embeddings and transcription retain their independent providers; no reindexing is needed for this change.
+VideoQ uses `@cf/google/gemma-4-26b-a4b-it` for answer generation, conversation summaries, and image inspection inside video tools. Embeddings and transcription also use Workers AI through their dedicated model bindings.
 
 The API continues to use its existing LangChain Chat Completions agent and OpenAI vision SDK. In Cloudflare Workers these send requests through the native `AI` binding; Node can use Workers AI's OpenAI-compatible endpoint. This retains the existing tool protocol, citations, deadlines, cancellation, structured output validation, and usage ledger in both Workers and Node runtimes.
 
@@ -23,7 +23,7 @@ LLM_PRESERVE_TOOL_REASONING=true
 
 Local Workers development uses the native binding after Wrangler login. Explicit REST credentials can instead be placed in the ignored `apps/api/.dev.vars`. In Node, all three tasks share `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY`. The earlier experimental `ANSWER_*` settings have been removed; migrate them to `LLM_*` instead of keeping two model profiles.
 
-Keep `OPENAI_BASE_URL`, `OPENROUTER_*`, `EMBEDDING_*`, and media-worker transcription settings in place. These still serve embeddings and transcription. Workers AI REST requires a dedicated `LLM_API_KEY`; native Workers inference requires the `AI` binding. Missing authentication fails before inference instead of forwarding another provider's key. This change does not switch the Python media worker to Workers AI.
+Production embeddings and transcription also use the native `AI` binding. The media Lambda sends signed requests to the API's Workers AI gateway; see [transcription](workers-ai-transcription.md). Remove retired provider-specific federation settings. Supported on-premises OpenAI-compatible deployments retain their own endpoint and credential configuration. Workers AI REST requires a dedicated `LLM_API_KEY`; native Workers inference requires the `AI` binding. Missing authentication fails before inference instead of forwarding another provider's key.
 
 The Gemma profile sends `chat_template_kwargs.enable_thinking=false` for answers, summaries, and image observations. This prevents hidden reasoning from consuming the output budget for these bounded evidence tasks. `LLM_MAX_TOKENS` accepts integers from 1024 through 32768; Gemma and Workers AI REST default to 4096. Other compatible profiles retain their existing default budgets when it is unset.
 
@@ -52,7 +52,7 @@ On 2026-11-22 the VideoQ Workers AI account passed the Gemma preflight and both 
 
 The Workers deployment needs the `AI` binding and the checked-in Gemma `LLM_*` vars. No new inference secret is needed. The probes do not themselves deploy production. Before upload, the deployment resource handoff and state checks must confirm the existing D1/Vectorize targets and traffic state are preserved. The Node runtime still needs its own Workers AI REST service token.
 
-To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. The previous hosted profile uses `LLM_MODEL=openai/gpt-6-luna` and the shared OpenRouter connection (remove the dedicated `LLM_BASE_URL`/`LLM_API_KEY` overrides to use federation). Gemma ignores legacy `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
+To roll back, use the saved previous Worker version or restore the previous `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and optional `LLM_*` switches/budget together, then redeploy/restart. Gemma ignores `LLM_REASONING_EFFORT` settings and uses its model-specific thinking switch.
 
 References:
 

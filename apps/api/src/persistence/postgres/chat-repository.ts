@@ -10,7 +10,7 @@ import {
   type ChatAnswer,
   type ChatSource,
 } from "@videoq/trpc/chat";
-import { and, asc, desc, eq, gt, or, sql, exists } from "drizzle-orm";
+import { and, asc, desc, eq, gt, or, sql, exists, inArray } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import {
   chatLogs,
@@ -582,6 +582,16 @@ export async function getCourseChatHistory(
     if (!total) return { notFound: true } as const;
     if (offset >= total.count) return { count: total.count, results: [] };
 
+    // Deep pages bound IDs before hydrating wide answers and attribution.
+    // Keep the original plan on shallow pages where that extra work has no gain.
+    const deferHydration = offset >= 1000;
+    const historyPageFilter = deferHydration ? inArray(chatLogs.id, db
+      .select({ id: chatLogs.id })
+      .from(chatLogs)
+      .where(eq(chatLogs.courseId, courseId))
+      .orderBy(desc(chatLogs.createdAt), desc(chatLogs.id))
+      .limit(limit)
+      .offset(offset)) : undefined;
     const rows = await db
       .select({
         id: chatLogs.id,
@@ -602,10 +612,10 @@ export async function getCourseChatHistory(
         ltiChatLogSubjects,
         eq(ltiChatLogSubjects.chatLogId, chatLogs.id),
       )
-      .where(eq(chatLogs.courseId, courseId))
+      .where(and(eq(chatLogs.courseId, courseId), historyPageFilter))
       .orderBy(desc(chatLogs.createdAt), desc(chatLogs.id))
       .limit(limit)
-      .offset(offset);
+      .offset(deferHydration ? 0 : offset);
 
     const results: ChatLogItem[] = rows.map((r) => ({
       id: Number(r.id),

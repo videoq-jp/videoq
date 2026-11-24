@@ -58,7 +58,7 @@ def transcribe_cloud_video(video_id: int) -> None:
     def transcribe(video):
         searchapi_key = None
         if video.source_type == "youtube":
-            searchapi_key = env_str("SEARCHAPI_API_KEY") or try_decrypt(source.get("searchapiKeyEncrypted"))
+            searchapi_key = env_str("TRANSCRIPTAPI_API_KEY") or try_decrypt(source.get("searchapiKeyEncrypted"))
 
         def reserve(seconds: int) -> None:
             if not reserve_video_processing(video_id, seconds).allowed:

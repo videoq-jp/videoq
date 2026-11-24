@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26 AS ffmpeg-build
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS ffmpeg-build
 RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev
 ARG FFMPEG_VERSION=9.0.2
 ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
@@ -24,7 +24,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev && python -m pip uninstall --yes pip && rm /usr/local/bin/uv
 RUN rm -f /usr/local/lib/python3.12/lib-dynload/readline*.so /usr/local/lib/python3.12/lib-dynload/_uuid*.so /usr/local/lib/python3.12/lib-dynload/_tkinter*.so
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b
 RUN apk add --no-cache python-3.12 zlib sqlite-libs libstdc++ libgomp lame-libs \
     && mkdir -p /usr/local/bin \
     && ln -s /usr/bin/python3.12 /usr/local/bin/python \

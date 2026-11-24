@@ -35,9 +35,6 @@ flowchart LR
 | `onprem-release.yml` | Signed public container and chart releases |
 | `seo-monitor.yml` | Read-only daily audit of public pages; see [search engine visibility](../docs/operations/seo.md) |
 | `api-aws-key-rotation.yml` | Weekly read-only key-age audit and staged rotation of the production API AWS key; see [the runbook](../docs/operations/api-aws-key-rotation.md) |
-| `openrouter-identity.yml` | Manual inspection and setup of OpenRouter workload identity; see [cloud AI](../docs/operations/openai-transcription.md) |
-| `ai-credential-audit.yml` | Manual inventory of remaining hosted AI credential copies, without printing values |
-| `retire-ai-credentials.yml` | Manual plan and guarded retirement of reviewed direct AI keys |
 
 `container-validation.yml`, `terraform-plan.yml`, `onprem-validation.yml`, and
 `local-inference-basic.yml` are validation components called from CI and Operations.

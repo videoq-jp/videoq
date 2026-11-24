@@ -51,7 +51,7 @@ npm run user:password:local --workspace @videoq/api -- your-username
 | `pending` のまま | `worker` と `elasticmq` の起動、APIのジョブ配送ログ |
 | `processing` で失敗 | 音声の有無、FFmpeg・Whisperのログ、AIキー |
 | `indexing` で失敗 | 埋め込みモデル・次元、DB接続、workerの例外 |
-| YouTubeだけ失敗 | 設定画面のSearchAPIキーと取得対象の字幕 |
+| YouTubeだけ失敗 | 設定画面のTranscriptAPIキーと取得対象の字幕 |
 | サイズ・利用量で拒否される | Adminのアップロード上限・保存容量・月間利用量 |
 
 状態の意味は[動画の状態遷移](../design/state-diagram.md)で確認できます。

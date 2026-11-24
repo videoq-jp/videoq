@@ -197,17 +197,17 @@ def test_missing_param_refs_still_mark_loaded(monkeypatch):
     assert bootstrap._LOADED is True
 
 
-def test_openrouter_key_is_loaded_from_shared_app_secret(monkeypatch):
+def test_openai_compatible_key_is_loaded_from_shared_app_secret(monkeypatch):
     import json
     from types import SimpleNamespace
 
     monkeypatch.setenv("APP_PARAM_NAME", "/videoq/prod/app")
-    for key in ("OPENROUTER_API_KEY", "DB_PARAM_NAME", "APP_SECRET_ARN", "DB_SECRET_ARN"):
+    for key in ("OPENAI_API_KEY", "DB_PARAM_NAME", "APP_SECRET_ARN", "DB_SECRET_ARN"):
         monkeypatch.delenv(key, raising=False)
     client = SimpleNamespace(
         close=lambda: None,
-        get_parameter=lambda **_: {"Parameter": {"Value": json.dumps({"OPENROUTER_API_KEY": "router-key"})}},
+        get_parameter=lambda **_: {"Parameter": {"Value": json.dumps({"OPENAI_API_KEY": "inference-key"})}},
     )
     monkeypatch.setitem(__import__("sys").modules, "boto3", SimpleNamespace(client=lambda _: client))
     bootstrap.ensure_secrets_loaded()
-    assert os.environ["OPENROUTER_API_KEY"] == "router-key"
+    assert os.environ["OPENAI_API_KEY"] == "inference-key"

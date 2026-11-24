@@ -1,8 +1,7 @@
 # Production API AWS key rotation
 
 The API remains on Cloudflare Workers. Its IAM user must have only
-`sqs:SendMessage` on `videoq-worker-prod` and the existing audience/RS256/900-second
-restricted `sts:GetWebIdentityToken` statement. No API hosting migration or mTLS
+`sqs:SendMessage` on `videoq-worker-prod`. No API hosting migration or mTLS
 integration is part of this procedure.
 
 ## One-time administrator setup
@@ -12,7 +11,7 @@ administrator must perform these two scoped changes using the normal IAM console
 
 1. On IAM user `videoq-workers-api`, replace only inline policy
    `videoq-sqs-send` with [the send-only policy](../../infra/iam/videoq-api-sqs-send.json).
-   Keep `videoq-openrouter-federation` unchanged. The runtime sends messages to an
+   The runtime sends messages to an
    explicit queue URL; it does not use `GetQueueUrl` or `GetQueueAttributes`.
 2. On the deployment role referenced by `AWS_GITHUB_ACTIONS_DEPLOY_ROLE_ARN`
    (normally `videoq-github-actions-deploy`), add

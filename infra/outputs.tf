@@ -19,7 +19,7 @@ output "operations_alert_topic_arn" {
 }
 
 output "worker_identity_role_arn" {
-  description = "Exact AWS workload subject to register in the OpenRouter federation policy"
+  description = "AWS media worker execution role"
   value       = aws_iam_role.worker.arn
 }
 

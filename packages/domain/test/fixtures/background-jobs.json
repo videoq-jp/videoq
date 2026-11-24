@@ -1,0 +1,665 @@
+[
+  {
+    "name": "delete_account_data0",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\u65e5\u672c\u8a9e"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"\u65e5\u672c\u8a9e\"},\"type\":\"delete_account_data\"}",
+    "sha256": "cf4ea9aea4ab5d0aa0a60cade44efd38459fb3c7bcf1600dcd43342c0df935f2"
+  },
+  {
+    "name": "reindex_video_transcript1",
+    "message": {
+      "type": "reindex_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"video_id\":42},\"type\":\"reindex_video_transcript\"}",
+    "sha256": "fe8a6903a3a0042c325d9be5466e7af2ca36d93fa8b67f73896a969bc99057b1"
+  },
+  {
+    "name": "index_video_transcript2",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"video_id\":42},\"type\":\"index_video_transcript\"}",
+    "sha256": "dfbcf31e5c12ce2cac3c028e0b307cef0e215afaecd69091a999fa6875c80109"
+  },
+  {
+    "name": "index_video_transcript3",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42,
+        "allow_empty": false
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"allow_empty\":false,\"video_id\":42},\"type\":\"index_video_transcript\"}",
+    "sha256": "c023b0c91d5d771057ecfc4938e7e875a39de50046b75b333894d848116030aa"
+  },
+  {
+    "name": "index_video_transcript4",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "allow_empty": true,
+        "video_id": 42
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"allow_empty\":true,\"video_id\":42},\"type\":\"index_video_transcript\"}",
+    "sha256": "116b1fd07eb4d84b5552297c580cd125ae344a8d1111d246de474d9843185092"
+  },
+  {
+    "name": "reindex_all_videos_embeddings5",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {}
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{},\"type\":\"reindex_all_videos_embeddings\"}",
+    "sha256": "200c554ed1bb574973ff83ffeffa814bc36e85ee0957574de6d981f30ce7e18a"
+  },
+  {
+    "name": "reindex_all_videos_embeddings6",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 0
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"after_id\":0},\"type\":\"reindex_all_videos_embeddings\"}",
+    "sha256": "423d5401334537e7a342028f6045efdfcd8682e85ac1e6c9f4611cacb904580c"
+  },
+  {
+    "name": "reindex_all_videos_embeddings7",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "root_job_id": "root",
+        "after_id": 42
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"after_id\":42,\"root_job_id\":\"root\"},\"type\":\"reindex_all_videos_embeddings\"}",
+    "sha256": "f12c7df758b9c2e0f3a0fc215566438b361a45bf9a98edcf2581be83ecfc1779"
+  },
+  {
+    "name": "ascii128",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},\"type\":\"delete_account_data\"}",
+    "sha256": "cb3a13d5a23621c6abd98f98ce83bc2ee28300fec2c59da924cc942f09b3c596"
+  },
+  {
+    "name": "unicode",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\u5b66\u7fd2\u8005\ud83d\ude00"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"\u5b66\u7fd2\u8005\ud83d\ude00\"},\"type\":\"delete_account_data\"}",
+    "sha256": "92b5517aa503743d55c618639586098d0e2c9ba23c3dfbd528d2772f31a813e7"
+  },
+  {
+    "name": "emoji64",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\"},\"type\":\"delete_account_data\"}",
+    "sha256": "dadaa8404bf785678bfe0b995e50bfbc84a1abb2d6b40ce0db03672f57f07165"
+  },
+  {
+    "name": "control",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "u\n\t\"\\"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"u\\n\\t\\\"\\\\\"},\"type\":\"delete_account_data\"}",
+    "sha256": "f02e672faf0e1dc34f49ebd1a1d99943a076b6ab58e668a1ddddecf60ba1f299"
+  },
+  {
+    "name": "padded",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": " user "
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\" user \"},\"type\":\"delete_account_data\"}",
+    "sha256": "5db08bbde0b899b54eb80c38a899d457c0a85ef2613f686b84b255f07b57349d"
+  },
+  {
+    "name": "non_js_whitespace",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\u0085"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"\u0085\"},\"type\":\"delete_account_data\"}",
+    "sha256": "e32cf47623fe04baa2689312b2950fc2938902c79f78ea3314350dec42b83c0a"
+  },
+  {
+    "name": "line_separator",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "u\u2028v"
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"user_id\":\"u\u2028v\"},\"type\":\"delete_account_data\"}",
+    "sha256": "9d9d26c812b9586cc54252806401799c5febb7e888b71c4fe5ee13a9e4e7cbb7"
+  },
+  {
+    "name": "invalid-user-ascii129",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-emoji65",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-empty",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": ""
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-spaces",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": " \t\r\n"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-bom",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\ufeff"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-nbsp",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\u00a0"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-unicode_space",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\u3000"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-null",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": null
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-number",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "invalid-user-surrogate",
+    "message": {
+      "type": "delete_account_data",
+      "job_id": "existing-job-1",
+      "payload": {
+        "user_id": "\ud800"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-max",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 9007199254740991
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"video_id\":9007199254740991},\"type\":\"index_video_transcript\"}",
+    "sha256": "94ce9c4719d5596f8467435c2a17847c07a6977d04b38e6376400693a19f40f8"
+  },
+  {
+    "name": "video-one",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 1
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"video_id\":1},\"type\":\"index_video_transcript\"}",
+    "sha256": "cee2bea3fb38b490e323ae66463ceefd50ee77f99b7a5e9d55c607a611fd9402"
+  },
+  {
+    "name": "video-float_integer",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42.0
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"video_id\":42},\"type\":\"index_video_transcript\"}",
+    "sha256": "dfbcf31e5c12ce2cac3c028e0b307cef0e215afaecd69091a999fa6875c80109"
+  },
+  {
+    "name": "video-zero",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 0
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-negative",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": -1
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-fraction",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 1.5
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-unsafe",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 9007199254740992
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-boolean",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": true
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-string",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": "42"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "video-null",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": null
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "after-max",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 9007199254740991
+      }
+    },
+    "accepted": true,
+    "canonical": "{\"payload\":{\"after_id\":9007199254740991},\"type\":\"reindex_all_videos_embeddings\"}",
+    "sha256": "e67ec4383c57939da815c8972343c59dcbe01884f4059d82017b60bd0abd8f5d"
+  },
+  {
+    "name": "after-negative",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": -1
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "after-boolean",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": false
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "after-fraction",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 0.5
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "after-null",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": null
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "extra-envelope",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42
+      },
+      "extra": true
+    },
+    "accepted": false
+  },
+  {
+    "name": "extra-payload",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42,
+        "extra": true
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "missing-id",
+    "message": {
+      "type": "index_video_transcript",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "missing-type",
+    "message": {
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "missing-body",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1"
+    },
+    "accepted": false
+  },
+  {
+    "name": "empty-id",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "long-id",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "unicode-long-id",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "payload": {
+        "video_id": 42
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "payload-array",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": []
+    },
+    "accepted": false
+  },
+  {
+    "name": "no-video-id",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {}
+    },
+    "accepted": false
+  },
+  {
+    "name": "root-without-cursor",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "root_job_id": "root"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "root-long",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 0,
+        "root_job_id": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "root-bom",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 0,
+        "root_job_id": "\ufeff"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "root-emoji-long",
+    "message": {
+      "type": "reindex_all_videos_embeddings",
+      "job_id": "existing-job-1",
+      "payload": {
+        "after_id": 0,
+        "root_job_id": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "null-allow-empty",
+    "message": {
+      "type": "index_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42,
+        "allow_empty": null
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "reindex-allow-empty",
+    "message": {
+      "type": "reindex_video_transcript",
+      "job_id": "existing-job-1",
+      "payload": {
+        "video_id": 42,
+        "allow_empty": false
+      }
+    },
+    "accepted": false
+  },
+  {
+    "name": "null-message",
+    "message": null,
+    "accepted": false
+  },
+  {
+    "name": "array-message",
+    "message": [],
+    "accepted": false
+  }
+]

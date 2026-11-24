@@ -9,7 +9,7 @@ import { privateJsonReport } from "./support/private-report";
 const enabled = process.env.STRUCTURED_ANSWER_LIVE === "1";
 const varsPath = new URL("../.dev.vars", import.meta.url);
 const vars = enabled && existsSync(varsPath) ? parse(readFileSync(varsPath)) : {};
-const env = Object.fromEntries(["OPENROUTER_FEDERATION_POLICY_ID", "OPENROUTER_FEDERATION_AUDIENCE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENROUTER_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL"].map(key =>
+const env = Object.fromEntries(["AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL"].map(key =>
   [key, process.env[key] ?? vars[key]])) as unknown as Bindings;
 const scenes = [
   { videoId: 60, videoTitle: "Rotation", startTime: "00:01:00", endTime: "00:02:00", content: "A two-dimensional rotation matrix is R(theta) = [[cos(theta), -sin(theta)], [sin(theta), cos(theta)]]. It changes direction and preserves length. At 90 degrees, (1,0) becomes (0,1)." },

@@ -18,6 +18,23 @@ def unpack(path):
 
 
 @pytest.mark.skipif(not shutil.which('ffmpeg'), reason='FFmpeg required')
+def test_audio_padding_after_last_video_frame_publishes_an_empty_tail(tmp_path):
+    source = tmp_path / 'audio-tail.mp4'
+    subprocess.run([
+        'ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
+        'color=c=blue:size=160x90:rate=1:duration=60', '-f', 'lavfi', '-i',
+        'sine=duration=60.023242', '-c:v', 'mpeg4', '-c:a', 'aac', str(source),
+    ], check=True)
+    for index, expected_count in [(0, 60), (1, 0)]:
+        with chunks.build_visual_chunk(source, 42, 60.024, index) as (pack, sparse, count):
+            manifest, _ = unpack(pack)
+            assert count == expected_count
+            assert len(manifest['frames']) == expected_count
+            if index == 1:
+                assert json.loads(sparse) == []
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg'), reason='FFmpeg required')
 def test_real_chunks_keep_global_pts_offsets_tail_and_valid_image_ranges(tmp_path):
     source = tmp_path / 'delayed.mp4'
     subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',

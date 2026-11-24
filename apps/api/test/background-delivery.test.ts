@@ -34,9 +34,15 @@ describe('Cloudflare queue acknowledgement',()=>{
     expect(runBackgroundJob).toHaveBeenCalledWith({},account);expect(value.ack).toHaveBeenCalledOnce();expect(value.retry).not.toHaveBeenCalled();
   });
   it('retries failed account work',async()=>{
-    vi.mocked(runBackgroundJob).mockRejectedValueOnce(new Error('failure'));
-    const value=message(account);await consumeBackgroundJobs(batch(value),{} as Bindings);
-    expect(value.ack).not.toHaveBeenCalled();expect(value.retry).toHaveBeenCalledOnce();
+    const log=vi.spyOn(console,'error').mockImplementation(()=>{});
+    try {
+      vi.mocked(runBackgroundJob).mockRejectedValueOnce(Object.assign(new Error('private-token'),{status:429}));
+      const value=message(account);await consumeBackgroundJobs(batch(value),{} as Bindings);
+      expect(value.ack).not.toHaveBeenCalled();expect(value.retry).toHaveBeenCalledOnce();
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toMatchObject({event:'background_queue_retry',error_code:'PROVIDER_RATE_LIMITED',job_id:'delete',attempts:1,stage:'execute'});
+      expect(JSON.stringify(log.mock.calls)).not.toContain('private-token');
+      expect(JSON.stringify(log.mock.calls)).not.toContain('owner');
+    } finally { log.mockRestore(); }
   });
   it('creates one durable search workflow before acknowledging',async()=>{
     const create=vi.fn(async()=>({}));const value=message(search);

@@ -442,6 +442,7 @@ jobs:
               - ".github/scripts/package-managers.py"
             worker:
               - 'apps/worker/**'
+              - 'packages/domain/test/fixtures/**'
               - 'packages/trpc/test-fixtures/**'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cd.yml'
@@ -597,7 +598,7 @@ jobs:
           npm run test:unit --workspace @videoq/api -- --maxWorkers=2
           npm run test:workers --workspace @videoq/api
           npm run build:node --workspace @videoq/api
-          BACKGROUND_WORKER_E2E=1 SQS_TEST_ENDPOINT=http://127.0.0.1:9324/ npm run test:unit --workspace @videoq/api -- --maxWorkers=1 test/background-worker.e2e.test.ts
+          BACKGROUND_WORKER_E2E=1 SQS_TEST_ENDPOINT=http://127.0.0.1:9324/ npm run test:unit --workspace @videoq/api -- --maxWorkers=1 test/background-worker.e2e.test.ts test/sqs-background-consumer.integration.test.ts
           bash .github/scripts/verify-prebuilt-deployment.sh api
 
   worker-test:

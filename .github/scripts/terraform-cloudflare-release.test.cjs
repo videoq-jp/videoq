@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {releaseVersion}=require('./terraform-cloudflare-release.cjs');
+const {releaseVersion,releaseMigrationTag}=require('./terraform-cloudflare-release.cjs');
 const settings={bindings:[{name:'AUTH_SECRET',type:'secret_text'},{name:'STATE',type:'durable_object_namespace',class_name:'State',namespace_id:'existing-namespace'}]};
 const config={compatibility_date:'2026-11-23',vars:{ENVIRONMENT:'production'},durable_objects:{bindings:[{name:'STATE',class_name:'State'}]},migrations:[{tag:'v1',new_sqlite_classes:['State']}]};
 test('secrets inherit from the deployed version and Durable Objects retain their namespace',()=>{
@@ -37,4 +37,46 @@ test('cron observations reject malformed or duplicate schedules',()=>{
  assert.deepEqual(crons({schedules:[{cron:'17 3 * * *'}]}),['17 3 * * *']);
  assert.throws(()=>crons({}),/INVALID_CRON/);
  assert.throws(()=>crons({schedules:[{cron:'17 3 * * *'},{cron:'17 3 * * *'}]}),/DUPLICATE_CRON/);
+});
+test('source maps are uploaded only when the trusted release configuration enables them',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'cf-release-sourcemaps-'));
+ try {
+  fs.writeFileSync(path.join(root,'index.js'),'export default {}');
+  const sourceMap=JSON.stringify({version:3,sources:['src/index.ts'],mappings:''});
+  fs.writeFileSync(path.join(root,'index.js.map'),sourceMap);
+  const config={main:path.join(root,'index.js'),upload_source_maps:true};
+  const enabled=releaseVersion(config,{bindings:[]},'version');
+  const map=enabled.modules.find(m=>m.name==='index.js.map');
+  assert.equal(map.content_type,'application/source-map');
+  assert.equal(Buffer.from(map.content_base64,'base64').toString(),sourceMap);
+  const disabled=releaseVersion({...config,upload_source_maps:false},{bindings:[]},'version');
+  assert.equal(disabled.modules.some(m=>m.name.endsWith('.map')),false);
+ } finally {fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('an imported null state tag is resolved from the exact deployed version',()=>{
+ const state={id:'deployed-version',migration_tag:null};
+ const live={id:state.id,resources:{script_runtime:{migration_tag:'v1'}}};
+ const tag=releaseMigrationTag(state,live);
+ assert.equal(tag,'v1');
+ const result=releaseVersion(config,settings,state.id,tag);
+ assert.equal(result.bindings.find(binding=>binding.name==='STATE').namespace_id,'existing-namespace');
+ assert.equal(result.migrations,undefined);
+ assert.equal(releaseMigrationTag({...state,migration_tag:'v1'},live),'v1');
+});
+test('live tag drift and a different deployed version remain blocked',()=>{
+ const state={id:'deployed-version',migration_tag:'v1'};
+ assert.throws(()=>releaseMigrationTag(state,{id:'other-version'}),/VERSION_ID_MISMATCH/);
+ assert.throws(()=>releaseMigrationTag(state,{id:state.id,resources:{script_runtime:{migration_tag:'v2'}}}),/MIGRATION_TAG_DRIFT/);
+ assert.throws(()=>releaseMigrationTag(state,{id:state.id,resources:{script_runtime:{}}}),/MIGRATION_TAG_DRIFT/);
+ assert.throws(()=>releaseMigrationTag({...state,migration_tag:null},{id:state.id,resources:{script_runtime:{migration_tag:123}}}),/INVALID_DEPLOYED_MIGRATION_TAG/);
+});
+test('missing or different live tags cannot authorize new object migrations',()=>{
+ const state={id:'deployed-version',migration_tag:null};
+ for (const runtime of [{},{migration_tag:'v2'}]) {
+  const tag=releaseMigrationTag(state,{id:state.id,resources:{script_runtime:runtime}});
+  assert.throws(()=>releaseVersion(config,settings,state.id,tag),/MIGRATION_TAG_REQUIRES_REVIEW/);
+ }
+ // Workers without Durable Objects need no migration tag.
+ assert.equal(releaseMigrationTag(state,{id:state.id,resources:{script_runtime:{}}}),undefined);
 });

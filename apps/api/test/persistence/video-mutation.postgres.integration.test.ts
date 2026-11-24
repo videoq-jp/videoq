@@ -36,6 +36,11 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
         },
         rejectOutbox: async () => { await pool.query(`CREATE FUNCTION reject_outbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outbox failure'; END $$;
           CREATE TRIGGER reject_outbox BEFORE INSERT ON external_tasks FOR EACH ROW EXECUTE FUNCTION reject_outbox()`); },
+        setHeartbeat: async (id, heartbeat) => { await pool.query('UPDATE videos SET upload_heartbeat_at=$1 WHERE id=$2', [heartbeat, id]); },
+        setReservationPeriod: async (id, offset) => {
+          await pool.query(`UPDATE videos SET upload_usage_period_start=CASE WHEN $1::integer IS NULL THEN NULL ELSE
+            (SELECT upload_usage_period_start FROM users WHERE id='owner')+($1*interval '1 millisecond') END WHERE id=$2`, [offset, id]);
+        },
         snapshot: async () => {
           const row = (await pool.query(`SELECT (SELECT count(*) FROM videos)::int AS videos,(SELECT count(*) FROM scene_embeddings)::int AS scenes,
             (SELECT count(*) FROM external_tasks)::int AS tasks,used_upload_bytes,used_storage_bytes FROM users WHERE id='owner'`)).rows[0];

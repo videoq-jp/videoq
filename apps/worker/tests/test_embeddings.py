@@ -43,8 +43,6 @@ def test_embeddinggemma_document_and_query_contract(monkeypatch):
 
 
 @pytest.mark.parametrize("environ, model", [
-    ({"OPENROUTER_API_KEY": "router-key"}, "openai/text-embedding-3-small"),
-    ({"EMBEDDING_BASE_URL": "https://openrouter.ai/api/v1"}, "openai/text-embedding-3-small"),
     ({}, "text-embedding-3-small"),
     ({"EMBEDDING_MODEL": "  "}, "text-embedding-3-small"),
     ({"EMBEDDING_MODEL": " CustomModel "}, "CustomModel"),
@@ -133,50 +131,6 @@ def test_separate_embedding_endpoint_and_credential(monkeypatch):
     request = http.call_args.args[0]
     assert request.full_url == "http://embed.test/v1/embeddings"
     assert request.get_header("Authorization") == "Bearer embedding-key"
-
-
-def test_openrouter_shared_key_and_original_embedding_model(monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "router-key")
-    for name in ("EMBEDDING_MODEL", "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY", "OPENAI_BASE_URL"):
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("OPENAI_API_KEY", "old-direct-key")
-
-    def request(req, **kwargs):
-        assert req.full_url == "https://openrouter.ai/api/v1/embeddings"
-        assert req.get_header("Authorization") == "Bearer router-key"
-        assert json.loads(req.data) == {"model": "openai/text-embedding-3-small", "input": ["input"], "encoding_format": "float", "dimensions": 1536}
-        return BytesIO(json.dumps({"data": [{"index": 0, "embedding": VECTOR}]}).encode())
-
-    monkeypatch.setattr(embeddings.urllib.request, "urlopen", request)
-    assert embeddings.embed_texts(["input"]) == [VECTOR]
-
-
-def test_explicit_embedding_endpoint_does_not_receive_router_key(monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "router-key")
-    monkeypatch.setenv("OPENAI_API_KEY", "direct-key")
-    monkeypatch.setenv("EMBEDDING_BASE_URL", "https://api.openai.com/v1")
-    monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
-    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
-
-    def request(req, **kwargs):
-        assert req.get_header("Authorization") == "Bearer direct-key"
-        assert json.loads(req.data)["model"] == "text-embedding-3-small"
-        return BytesIO(json.dumps({"data": [{"index": 0, "embedding": VECTOR}]}).encode())
-
-    monkeypatch.setattr(embeddings.urllib.request, "urlopen", request)
-    assert embeddings.embed_texts(["input"]) == [VECTOR]
-
-
-def test_router_endpoint_never_receives_a_legacy_direct_key(monkeypatch):
-    monkeypatch.setenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
-    monkeypatch.setenv("OPENAI_API_KEY", "direct-only-key")
-    for name in ("OPENROUTER_API_KEY", "OPENROUTER_FEDERATION_POLICY_ID", "EMBEDDING_API_KEY", "EMBEDDING_BASE_URL"):
-        monkeypatch.delenv(name, raising=False)
-    request = MagicMock()
-    monkeypatch.setattr(embeddings.urllib.request, "urlopen", request)
-    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
-        embeddings.embed_texts(["fixture"])
-    request.assert_not_called()
 
 
 def workers_ai_settings(monkeypatch):

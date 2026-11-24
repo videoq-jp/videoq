@@ -186,11 +186,8 @@ results. Checkpoints are deleted by foreign-key cascade when the video is delete
 | `DATABASE_URL` | PostgreSQL |
 | `SQS_QUEUE_URL` | Default / legacy queue; also used by the local poller |
 | `SQS_MEDIA_QUEUE_URL`, `SQS_SEARCH_QUEUE_URL`, `SQS_ACCOUNT_QUEUE_URL` | Optional per-group routing overrides (API and Python producers) |
-| `OPENROUTER_FEDERATION_POLICY_ID` | Preferred: OpenRouter policy for AWS STS workload identity |
-| `OPENROUTER_FEDERATION_AUDIENCE` | Defaults to `https://openrouter.ai` |
-| `OPENROUTER_API_KEY` | Optional fixed-key development fallback when no policy is set |
 | `OPENAI_API_KEY` | Legacy direct OpenAI / local SDK placeholder |
-| `WHISPER_BACKEND` | `openrouter` (hosted profile), `openai` (legacy direct) or `local` (on-premises) |
+| `WHISPER_BACKEND` | `workers-ai` (cloud), `openai` (direct) or `local` (on-premises) |
 | `WHISPER_LOCAL_URL` | Private API base for `local`: native Mac whisper.cpp has no `/v1` suffix with the documented launch command; the Kubernetes gateway includes `/v1` |
 | `EMBEDDING_MODEL` | Defaults to `text-embedding-3-small`; set the actual served alias for a private model |
 | `USE_S3_STORAGE` | Enable S3-compatible object storage |
@@ -216,7 +213,7 @@ default 300). The CPU profile uses 30 seconds. GPU dynamic batching is separate:
 the gateway forwards speech spans concurrently to vLLM, without waiting for a
 batch of uploaded videos.
 
-Cloud transcription uses OpenRouter's `openai/whisper-large-v3-turbo` model with real segment timestamps. See
+Cloud transcription uses Workers AI’s `@cf/openai/whisper-large-v3-turbo` model with real segment timestamps. See
 [the switch runbook](../../docs/operations/openai-transcription.md).
 
 Dedicated storage credentials are selected from `R2_ACCESS_KEY_ID` /
@@ -287,6 +284,50 @@ python scripts/process_pending.py
 python scripts/process_pending.py --video-id 83
 ```
 
+## Background job failure diagnostics
+
+The on-prem media poller receives exactly one message per execution budget.
+`SQS_MAX_MESSAGES` must be `1` (the default); larger values fail at startup before
+opening a queue client. `SQS_JOB_TIMEOUT_SECONDS` defaults to 840 and must remain
+below both visibility and the 900-second execution lease. A completed delivery
+is deleted before receiving the next job, so a later timeout cannot replay an
+earlier successful delivery merely because they shared a batch. Scale media
+workers as separate consumers rather than increasing the receive batch size.
+
+Python SQS/Lambda, the on-prem Node consumer and the optional Cloudflare queue
+consumer emit structured `background_job_retry` / `background_queue_retry`
+events. Correlate `job_id` with `message_id`; inspect `stage`, `attempts`,
+`duration_ms`, `error_code` and `retryable`. Invalid input may have no validated
+job identity, and attempts are unknown when the broker did not supply them.
+The pollers request SQS `ApproximateReceiveCount`; Lambda supplies it in record
+attributes. See [SQS ReceiveMessage](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html).
+
+| Code | Operational meaning |
+|---|---|
+| `INVALID_JOB` | Decode, payload validation or queue-group admission failed |
+| `JOB_BUSY` | A valid execution lease still belongs to another delivery |
+| `JOB_IDENTITY_CONFLICT` | The job ID was reused with different work |
+| `PROVIDER_RATE_LIMITED` | A dependency reported HTTP 429 |
+| `PROVIDER_UNAVAILABLE` | A dependency reported HTTP 5xx |
+| `DATABASE_UNAVAILABLE` | A recognized database connection/availability error |
+| `DEADLINE_EXCEEDED` | The runtime surfaced a timeout exception |
+| `EXECUTION_ABORTED` | The Node runtime surfaced an abort exception |
+| `ACK_FAILED` | Execution finished but acknowledgement failed |
+| `WORKER_EXECUTION_FAILED` | No more specific allowlisted fact was available |
+
+`retryable: false` identifies a message that needs investigation; it does not
+acknowledge or discard it. Existing retry and DLQ behavior remains in force.
+The persisted execution failure marker remains `WORKER_EXECUTION_FAILED` for
+compatibility with the internal API; use the correlated structured event for
+the detailed classification. Wrapped exceptions may lose provider status and
+then use the generic code. A Lambda hard kill cannot emit an application event;
+inspect runtime timeout/error metrics as well.
+
+Logs exclude payloads, user IDs, exception text/stack/causes, signed URLs, tokens,
+receipt handles and provider response bodies. Classification uses only fixed
+codes, recognized exception types and numeric status facts. Exceptions with
+unreadable diagnostic properties fall back to the generic code.
+
 ## Lambda image
 
 Production uses a **linux/arm64** container image in ECR.
@@ -328,7 +369,7 @@ See the [visual evidence guide](../../docs/guides/visual-evidence.md) for settin
 storage usage, deletion, and accuracy comparisons.
 
 OpenAI-compatible embeddings can use `EMBEDDING_BASE_URL` and a separate
-`EMBEDDING_API_KEY`. Unset values retain the shared provider base URL/key; `OPENROUTER_API_KEY` selects OpenRouter when no base URL is specified. Use the
+`EMBEDDING_API_KEY`. Unset values retain the shared provider base URL/key; `OPENAI_API_KEY` supplies the shared credential for OpenAI-compatible servers. Use the
 same model and embedding endpoint in the API and worker. Local llama.cpp/vLLM
 recipes and their common acceptance commands are in `charts/videoq-inference/README.md`.
 
@@ -386,3 +427,31 @@ It discovers the current source through the signed cloud API (or PostgreSQL on
 premises), probes duration, and dispatches only visual chunk jobs. It does not
 rerun transcription or scene embeddings. Repeated deliveries reuse the current
 run and completed chunks. A worker image with this job registered is required.
+
+### YouTube transcript provider
+
+YouTube imports use [TranscriptAPI](https://transcriptapi.com/docs/api/).
+Its HTTP 408 means a temporary upstream failure and requires a retry; it does
+not mean that captions are missing. The worker retries 408, 429 and 503 twice
+within the current job before saving a transcription failure, with one- and
+two-second backoff and support for `Retry-After` seconds or HTTP dates. Delays
+over 60 seconds are left to the existing SQS retry rather than blocking Lambda.
+Only a 404 selects another caption kind. Diagnostic logs include the operation,
+status, attempt and retry decision, without provider response bodies or keys.
+Users save their own TranscriptAPI key in Settings. A deployment-wide
+`TRANSCRIPTAPI_API_KEY` overrides the saved key in both persistence modes.
+Optional `TRANSCRIPTAPI_BASE_URL` (default `https://transcriptapi.com/api/v2`)
+and `TRANSCRIPTAPI_TIMEOUT_SECONDS` (default `60`) configure worker requests.
+
+When upgrading from SearchAPI, replace the saved key in Settings with a
+TranscriptAPI key, or configure `TRANSCRIPTAPI_API_KEY`. SearchAPI credentials
+are not valid with TranscriptAPI; `SEARCHAPI_*` environment variables are no
+longer read. Existing encrypted storage columns, internal worker payload names,
+and account RPC names retain their historical names for compatibility. No
+schema migration or transcript re-indexing is required.
+
+The worker discovers available tracks with `/youtube/info`, tries manual
+captions before automatic captions (English first within each kind, then the
+first available language, matching the previous provider defaults), and converts timestamped segments to the
+same SRT format used by indexing. Existing transcripts and uploaded-file
+transcription are unaffected.

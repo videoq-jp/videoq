@@ -36,7 +36,7 @@ from worker_python.use_cases.transcription import (
 def _load_searchapi_key(user_id: str) -> str | None:
     from worker_python.env import env_str
 
-    override = env_str("SEARCHAPI_API_KEY")
+    override = env_str("TRANSCRIPTAPI_API_KEY")
     if override:
         return override
     with db_connection() as conn:

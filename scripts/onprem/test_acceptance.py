@@ -41,7 +41,7 @@ class AcceptanceTest(unittest.TestCase):
             server = root / "server"
             args = argparse.Namespace(directory=str(server), images=str(root / "images.json"), url="https://localhost:18094",
                                       storage_url="https://localhost:18095", tls_cert=str(certificate), tls_key=str(key))
-            with patch.dict(os.environ, {"VIDEOQ_OPENROUTER_API_KEY": "tls-no-provider-calls"}):
+            with patch.dict(os.environ, {"VIDEOQ_OPENAI_API_KEY": "tls-no-provider-calls"}):
                 videoq.initialize(args)
             config = json.loads((server / "compose.json").read_text())
             gateway = config["services"]["gateway"]
