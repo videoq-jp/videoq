@@ -80,7 +80,7 @@ test('staging verifies signed artifacts before loading or exercising them',()=>{
 test('each registry-writing job installs pinned ORAS before using it and logs out afterwards',()=>{
   for(const name of ['publish','indexes']){
     const text=job(name);
-    const setup=text.indexOf('uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63');
+    const setup=text.search(/uses: oras-project\/setup-oras@[a-f0-9]{40}(?=\s|$)/);
     const login=text.indexOf('oras login --registry-config');
     const sign=text.indexOf('uses: actions/attest@');
     const logout=text.indexOf('oras logout --registry-config');
