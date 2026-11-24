@@ -51,22 +51,6 @@ lambda_log_retention_days = 30
 # confirmation email after the first apply.
 # operations_alert_email = "alerts@videoq.jp"
 
-# --- OpenAI project management -----------------------------------------------
-# Manage OpenAI organization project governance, including allowed models and
-# spend alerts, with Terraform. Management is enabled by default through
-# manage_openai_project=true. Before applying, export the admin API key as
-# OPENAI_ADMIN_KEY and, if needed, OPENAI_ORG_ID. CI reads OPENAI_ADMIN_KEY and
-# OPENAI_SPEND_ALERT_EMAIL from GitHub Secrets; see DEPLOY.md.
-# Note: The provider does not manage the runtime OPENAI_API_KEY. Continue issuing
-#       that key manually from the dashboard and saving it in the Secrets Manager
-#       app secret.
-#
-# Example overrides for a local apply:
-# openai_spend_alert_email   = "alerts@videoq.jp"
-# openai_spend_threshold_usd = 50
-# openai_allowed_models = ["text-embedding-3-small", "gpt-4o-mini", "gpt-4.1-mini", "gpt-6-luna", "whisper-1"]
-# manage_openai_project = false  # Use only to disable management temporarily.
-
 # Visual Q&A caches are enabled by default (set false to opt out; match the API flag).
 worker_visual_enabled = true
 

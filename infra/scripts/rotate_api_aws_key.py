@@ -9,8 +9,8 @@ from contextlib import closing
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener
-from audit_ai_credentials import NoRedirect, api_json, error_summary
-from retire_ai_credentials import API_POLICY, verify_router
+from credential_http import NoRedirect, api_json, error_summary
+from credential_http import API_POLICY, verify_router
 
 USER = 'videoq-workers-api'
 USER_ARN = 'arn:aws:iam::257240362763:user/'+USER
