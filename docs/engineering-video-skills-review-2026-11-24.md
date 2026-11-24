@@ -195,7 +195,7 @@ Issueはマージ前のため開いたままにする。既存のpackage-lock.js
 | 09 | [#1667](https://github.com/videoq-jp/videoq/issues/1667) | 受入表を現行D1/768次元構成へ更新。比較元SHAとCD、品質/性能の測定条件、未測定のSLO/費用、復旧対象と旧資源の廃止を区別。英日docs build成功 |
 | 10 | [#1668](https://github.com/videoq-jp/videoq/issues/1668) | 実装・検証済み。実PG RepositoryのSQL/EXPLAIN/60標本を保存。深いページだけID先行取得し、既存順序Indexへidを追加。公開offset・認可・投稿者表現を維持 |
 | 11 | [#1669](https://github.com/videoq-jp/videoq/issues/1669) | 実装・検証済み。doctor表示をready/OPTIONSへ限定。実ブラウザー15項目とサーバー側の送信有無を保存 |
-| 12 | [#1670](https://github.com/videoq-jp/videoq/issues/1670) | 未対応。変更コストを測り、一つの効果的な抽出へ絞る |
+| 12 | [#1670](https://github.com/videoq-jp/videoq/issues/1670) | 実装・検証済み。APIキーの状態・通信・dialogを抽出。既存33テスト/11storiesと計測記録 |
 | 13 | [#1671](https://github.com/videoq-jp/videoq/issues/1671) | 未対応。所有責務・共有DB互換・移行判断を記録する |
 
 
@@ -281,3 +281,12 @@ SHA-256照合、API 500/署名エラー403の読取りを含む。Cookie用のOr
 doctorの表示はPythonが実際に確認するready・OPTIONSへ合わせた。
 既存のCORS設定変更は不要だった。Cookie/MCPは合成routeであり、完全な認証flowや
 本番TLS/CDN経路の受入完了を意味しない。lintとオンプレCLIの14テストも成功。
+
+## #12 Settingsの責務整理
+
+IntegrationApiKeysSectionへAPIキー管理を抽出。秘密値を親や一覧cacheへ渡さず、
+作成・失効・コピーの状態と非同期競合を一か所に置いた。既存33テスト、
+11stories、型検査、lintが成功。ego-browserで日本語dialogの作成・コピー失敗と
+再試行・閉じた後の秘密値消去を確認し、英語storyも表示した。
+[測定・制約・次の評価期間](verification/settings-refactor-2026-11-24.md)に、
+初回結果待ち、CI待ち、未計測の人の理解時間/手戻りと採用しなかった施策を記録した。
