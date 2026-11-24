@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable
 from worker_python.domain.jobs import (
     JOB_TRANSCRIBE_VIDEO, JOB_REINDEX_ALL_VIDEOS_EMBEDDINGS, JOB_DELETE_ACCOUNT_DATA,
-    validate_job_payload, job_group,
+    parse_job_message, job_group,
 )
 
 
@@ -19,24 +19,14 @@ class JobExecutionDependencies:
 
 
 def execute_job(payload: object, deps: JobExecutionDependencies) -> None:
-    if not isinstance(payload, dict):
-        raise ValueError("Job message must be an object")
-    job_type = payload.get("type")
-    job_id = payload.get("job_id")
-    body = payload.get("payload", {})
-    if not isinstance(job_type, str) or not job_type or len(job_type) > 64:
-        raise ValueError("type must be a non-empty string of at most 64 characters")
-    if not isinstance(job_id, str) or not job_id or len(job_id) > 128:
-        raise ValueError("job_id must be a non-empty string of at most 128 characters")
-    if not isinstance(body, dict):
-        raise ValueError("payload must be an object")
+    message = parse_job_message(payload)
+    job_type, job_id, body = message['type'], message['job_id'], message['payload']
 
     # Retired jobs may still be delivered from SQS or an old outbox.
     if job_type in {"build_plog", "evaluate_chat_log"}:
         deps.report("retired", job_type, job_id)
         return
 
-    validate_job_payload(job_type, body)
     group = deps.worker_group()
     if group and job_group(job_type) != group:
         raise ValueError(f"Job {job_type} does not belong to worker group {group}")

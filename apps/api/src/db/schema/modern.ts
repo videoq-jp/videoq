@@ -672,6 +672,7 @@ export const chatLogs = pgTable(
 			"btree",
 			table.courseId.asc().nullsLast(),
 			table.createdAt.desc().nullsFirst(),
+			table.id.desc().nullsFirst(),
 		),
 		foreignKey({
 			columns: [table.userId],

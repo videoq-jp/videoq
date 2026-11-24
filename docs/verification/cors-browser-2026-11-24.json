@@ -1,0 +1,464 @@
+{
+  "measuredAt": "2026-11-24T14:30:21.269Z",
+  "complete": true,
+  "allPassed": true,
+  "origins": {
+    "allowed": "http://127.0.0.1:55225",
+    "denied": "http://127.0.0.1:55226",
+    "api": "http://127.0.0.1:55224",
+    "storage": "http://127.0.0.1:55223"
+  },
+  "scope": "Actual Hono CORS middleware and Garage storage adapters; synthetic cookie/challenge routes, not full Better Auth/OAuth or production TLS acceptance",
+  "serverChecks": {
+    "deniedApiPostAbsent": true,
+    "deniedStoragePutAbsent": true,
+    "deniedStoragePreflightObserved": true
+  },
+  "results": {
+    "allowed": {
+      "origin": "http://127.0.0.1:55225",
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "rows": [
+        {
+          "name": "cookie-omitted-401-readable",
+          "passed": true,
+          "status": 401
+        },
+        {
+          "name": "cookie-set-cross-origin",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "name": "cookie-included-json-preflight",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "name": "api-error-500-readable",
+          "passed": true,
+          "status": 500
+        },
+        {
+          "name": "signed-put-and-exposed-etag",
+          "passed": true,
+          "status": 200,
+          "etagReadable": true
+        },
+        {
+          "name": "storage-signature-error-403-readable",
+          "passed": true,
+          "status": 403
+        },
+        {
+          "name": "multipart-two-browser-parts",
+          "passed": true,
+          "etagReadable": true,
+          "parts": 2
+        },
+        {
+          "name": "multipart-complete-and-byte-readback",
+          "passed": true,
+          "status": 200,
+          "hashMatches": true,
+          "size": 5242917
+        },
+        {
+          "name": "mcp-without-cookies-401-challenge-readable",
+          "passed": true,
+          "status": 401,
+          "challengeReadable": true
+        },
+        {
+          "name": "mcp-wildcard-does-not-permit-cookie-mode",
+          "passed": true,
+          "browserBlocked": true
+        }
+      ]
+    },
+    "denied": {
+      "origin": "http://127.0.0.1:55226",
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "rows": [
+        {
+          "name": "denied-api-cookie-read-blocked",
+          "passed": true,
+          "browserBlocked": true
+        },
+        {
+          "name": "denied-api-json-preflight-blocked",
+          "passed": true,
+          "browserBlocked": true
+        },
+        {
+          "name": "denied-storage-put-preflight-blocked",
+          "passed": true,
+          "browserBlocked": true
+        },
+        {
+          "name": "mcp-without-cookies-401-challenge-readable",
+          "passed": true,
+          "status": 401,
+          "challengeReadable": true
+        },
+        {
+          "name": "mcp-wildcard-does-not-permit-cookie-mode",
+          "passed": true,
+          "browserBlocked": true
+        }
+      ]
+    }
+  },
+  "trace": [
+    {
+      "layer": "api",
+      "method": "GET",
+      "operation": "/fixture/cookie",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 401,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "GET",
+      "operation": "/fixture/session",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/fixture/write",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-headers": "Content-Type,Authorization,X-API-Key",
+        "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "POST",
+      "operation": "/fixture/write",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "GET",
+      "operation": "/fixture/error",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 500,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "OPTIONS",
+      "operation": "OPTIONS",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "PUT",
+      "operation": "signed_put",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "OPTIONS",
+      "operation": "OPTIONS",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "PUT",
+      "operation": "signed_put",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 403,
+      "responseHeaders": {
+        "access-control-allow-origin": "*"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "OPTIONS",
+      "operation": "upload_part",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "PUT",
+      "operation": "upload_part",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "OPTIONS",
+      "operation": "upload_part",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "allowed",
+      "method": "PUT",
+      "operation": "upload_part",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, HEAD, PUT",
+        "access-control-expose-headers": "ETag",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/fixture/complete",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "content-type",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-headers": "Content-Type,Authorization,X-API-Key",
+        "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "POST",
+      "operation": "/fixture/complete",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:55225",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "Content-Type,Authorization,DPoP,X-API-Key,Accept,Mcp-Session-Id,Mcp-Protocol-Version,Last-Event-ID",
+        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id",
+        "vary": "Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "POST",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": null,
+      "status": 401,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55225",
+      "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "Content-Type,Authorization,DPoP,X-API-Key,Accept,Mcp-Session-Id,Mcp-Protocol-Version,Last-Event-ID",
+        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id",
+        "vary": "Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "GET",
+      "operation": "/fixture/cookie",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": null,
+      "status": 200,
+      "responseHeaders": {
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/fixture/write",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": "content-type",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-headers": "Content-Type,Authorization,X-API-Key",
+        "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+        "access-control-expose-headers": "X-Request-Id",
+        "vary": "Origin, Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "storage",
+      "role": "denied",
+      "method": "OPTIONS",
+      "operation": "OPTIONS",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": "content-type",
+      "status": 403,
+      "responseHeaders": {
+        "access-control-allow-origin": "*"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "Content-Type,Authorization,DPoP,X-API-Key,Accept,Mcp-Session-Id,Mcp-Protocol-Version,Last-Event-ID",
+        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id",
+        "vary": "Access-Control-Request-Headers"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "POST",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": null,
+      "status": 401,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id"
+      }
+    },
+    {
+      "layer": "api",
+      "method": "OPTIONS",
+      "operation": "/api/mcp",
+      "origin": "http://127.0.0.1:55226",
+      "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
+      "status": 204,
+      "responseHeaders": {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "Content-Type,Authorization,DPoP,X-API-Key,Accept,Mcp-Session-Id,Mcp-Protocol-Version,Last-Event-ID",
+        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+        "access-control-expose-headers": "WWW-Authenticate,Mcp-Session-Id,X-Request-Id",
+        "vary": "Access-Control-Request-Headers"
+      }
+    }
+  ]
+}

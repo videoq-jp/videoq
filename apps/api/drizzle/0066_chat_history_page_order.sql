@@ -1,0 +1,2 @@
+DROP INDEX "chat_logs_course_created_idx";--> statement-breakpoint
+CREATE INDEX "chat_logs_course_created_idx" ON "chat_logs" USING btree ("course_id","created_at" DESC NULLS FIRST,"id" DESC NULLS FIRST);
