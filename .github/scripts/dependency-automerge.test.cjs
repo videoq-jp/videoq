@@ -58,6 +58,7 @@ test('Docker, Compose, Python and Terraform files stay scoped to their verified 
     ['docker', 'apps/api/Dockerfile.local'], ['docker_compose', 'docker-compose.yml'],
     ['uv', 'apps/worker/uv.lock'], ['pip', 'apps/worker/pyproject.toml'],
     ['terraform', 'infra/.terraform.lock.hcl'], ['terraform', 'infra/bootstrap/.terraform.lock.hcl'],
+    ['terraform', 'infra/db-maintenance/terraform/.terraform.lock.hcl'],
   ]) {
     assert.equal(policy.autoMergeMetadata(metadata(ecosystem), [file(filename)]), true, ecosystem + ': ' + filename);
     assert.equal(policy.autoMergeMetadata(metadata('npm_and_yarn'), [file(filename)]), false);
@@ -68,6 +69,9 @@ test('Docker, Compose, Python and Terraform files stay scoped to their verified 
   }
   const patch = '-      version = "~> 6.68"\n+      version = "~> 6.69"';
   assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/versions.tf', patch)]), true);
+  assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/db-maintenance/terraform/versions.tf', patch)]), true);
+  assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/db-maintenance/terraform/versions.tf', patch + '\n+  force_destroy = true')]), false);
+  assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/db-maintenance/terraform/main.tf', patch)]), false);
   assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/bootstrap/main.tf', patch)]), true);
   assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/versions.tf')]), false);
   assert.equal(policy.autoMergeMetadata(metadata('terraform'), [file('infra/bootstrap/main.tf', patch + '\n+  force_destroy = true')]), false);

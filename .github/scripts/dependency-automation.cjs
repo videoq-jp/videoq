@@ -30,6 +30,7 @@ const ecosystemFiles = {
   terraform: [
     'infra/versions.tf', 'infra/.terraform.lock.hcl',
     'infra/bootstrap/main.tf', 'infra/bootstrap/.terraform.lock.hcl',
+    'infra/db-maintenance/terraform/versions.tf', 'infra/db-maintenance/terraform/.terraform.lock.hcl',
   ],
 };
 const workflowFile = /^\.github\/workflows\/[a-zA-Z0-9_-]+\.ya?ml$/;
