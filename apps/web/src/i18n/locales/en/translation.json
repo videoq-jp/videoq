@@ -1014,7 +1014,7 @@
         },
         "collect": {
           "title": "2. Data we collect",
-          "body": "We collect account details (email, display name, username), authentication and connected-service information, uploaded videos and metadata, YouTube video IDs, transcripts, questions, answers and chat history, course memberships, shared Q&A posts, replies and votes, usage totals, IP addresses, access times and processing results, technical data about your browser or device, and billing details needed for payment. We also store SearchAPI API keys you choose to provide in encrypted form. Card numbers are processed by Stripe and are not stored on VideoQ servers."
+          "body": "We collect account details (email, display name, username), authentication and connected-service information, uploaded videos and metadata, YouTube video IDs, transcripts, questions, answers and chat history, course memberships, shared Q&A posts, replies and votes, usage totals, IP addresses, access times and processing results, technical data about your browser or device, and billing details needed for payment. We also store TranscriptAPI API keys you choose to provide in encrypted form. Card numbers are processed by Stripe and are not stored on VideoQ servers."
         },
         "stripe": {
           "title": "3. Sharing with Stripe",
@@ -1026,7 +1026,7 @@
         },
         "share": {
           "title": "5. External services and sharing",
-          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues, video processing, database maintenance and backup/restore verification, and operational logs.\n• OpenRouter and the providers that perform inference (such as OpenAI, Microsoft Azure, Amazon Bedrock, DeepInfra, PrimeIntellect and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Answer generation sends the current question and conversation context, including recent messages and summaries of older exchanges.\n• SearchAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation.\nShared videos and course information are shown according to your sharing settings. Questions and replies published to course Q&A, with displayed author information, are visible to users permitted to view them in that course. Private AI chats are not automatically published to shared Q&A. When you authorize an external application, it receives information within the scope you authorize.\nEmail providers such as Mailgun may also process information under their own privacy policies for message transmission, spam and fraud prevention, network security and legal compliance. Do not include passwords, payment card details or sensitive information in emails."
+          "body": "We do not sell personal data. We use the following external services as needed to provide VideoQ.\n• Cloudflare: app delivery, API execution, and storage of videos and images. Neon: database storage of accounts, transcripts, chat history, and other records. AWS: processing queues, video processing, database maintenance and backup/restore verification, and operational logs.\n• OpenRouter and the providers that perform inference (such as OpenAI, Microsoft Azure, Amazon Bedrock, DeepInfra, PrimeIntellect and Groq): Segmented audio extracted from uploaded videos is sent through OpenRouter to the Whisper Large V3 Turbo transcription model, which returns a transcript. The complete video, account email address and chat history are not sent for this transcription. These providers also process embeddings of captions and search queries; answers based on questions, relevant captions, and course information; and, when needed, analysis of still frames extracted from videos. Answer generation sends the current question and conversation context, including recent messages and summaries of older exchanges.\n• TranscriptAPI: YouTube video IDs and related parameters for caption retrieval. Google: authentication if you choose Google sign-in. Mailgun: recipient address, subject, and body for verification, invitation, and other service emails. Stripe's handling of payment data is described in section 3.\nThese providers may process or route data outside Japan, including in the United States. Apart from disclosures required by law, we limit what we share to the data needed for each operation.\nShared videos and course information are shown according to your sharing settings. Questions and replies published to course Q&A, with displayed author information, are visible to users permitted to view them in that course. Private AI chats are not automatically published to shared Q&A. When you authorize an external application, it receives information within the scope you authorize.\nEmail providers such as Mailgun may also process information under their own privacy policies for message transmission, spam and fraud prevention, network security and legal compliance. Do not include passwords, payment card details or sensitive information in emails."
         },
         "retention": {
           "title": "6. Retention",
@@ -1115,7 +1115,7 @@
         },
         "fees": {
           "label": "Charges besides the listed price",
-          "value": "You pay for internet access and similar costs. Importing YouTube captions requires your own SearchAPI subscription, which may charge you separately. Payment processing fees for VideoQ are included in the listed price."
+          "value": "You pay for internet access and similar costs. Importing YouTube captions requires your own TranscriptAPI subscription, which may charge you separately. Payment processing fees for VideoQ are included in the listed price."
         },
         "payment": {
           "label": "Payment method and timing",
@@ -1235,28 +1235,28 @@
     },
     "searchApiKey": {
       "title": "YouTube imports",
-      "description": "Configure SearchAPI to import transcripts from YouTube.",
-      "usageTitle": "SearchAPI charges",
-      "usageDescription": "Transcripts are fetched using your own SearchAPI account. SearchAPI usage is billed separately by SearchAPI and is not included in your VideoQ plan.",
-      "apiKeyLabel": "SearchAPI key",
-      "hasApiKeyMessage": "A SearchAPI key is already configured. Enter a new key to update it.",
-      "noApiKeyMessage": "To import YouTube videos, you need to set your own SearchAPI key first.",
+      "description": "Configure TranscriptAPI to import transcripts from YouTube.",
+      "usageTitle": "TranscriptAPI charges",
+      "usageDescription": "Transcripts are fetched using your own TranscriptAPI account. TranscriptAPI usage is billed separately by TranscriptAPI and is not included in your VideoQ plan.",
+      "apiKeyLabel": "TranscriptAPI key",
+      "hasApiKeyMessage": "A TranscriptAPI key is already configured. Enter a new key to update it.",
+      "noApiKeyMessage": "To import YouTube videos, you need to set your own TranscriptAPI key first.",
       "getApiKeyMessage": "Get your API key from",
       "save": "Save",
       "saving": "Saving...",
       "delete": "Delete key",
       "deleting": "Deleting...",
-      "errorSaving": "Failed to save SearchAPI key",
-      "errorDeleting": "Failed to delete SearchAPI key",
-      "successSaved": "SearchAPI key saved successfully",
-      "successDeleted": "SearchAPI key deleted successfully",
+      "errorSaving": "Failed to save TranscriptAPI key",
+      "errorDeleting": "Failed to delete TranscriptAPI key",
+      "successSaved": "TranscriptAPI key saved successfully",
+      "successDeleted": "TranscriptAPI key deleted successfully",
       "configured": "Configured",
       "notConfigured": "Not configured",
       "show": "Show entered key",
       "hide": "Hide entered key",
-      "errorLoading": "Unable to load SearchAPI settings",
+      "errorLoading": "Unable to load TranscriptAPI settings",
       "edit": "Change key",
-      "deleteConfirmTitle": "Delete your SearchAPI key?",
+      "deleteConfirmTitle": "Delete your TranscriptAPI key?",
       "deleteConfirmDescription": "You will need to set a new key before importing more YouTube videos. Videos already imported will not be deleted."
     },
     "navigation": "Settings sections",

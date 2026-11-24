@@ -196,7 +196,7 @@ describe('SettingsPage interactions', () => {
     expect(screen.queryByLabelText('settings.emailChange.newEmailLabel')).not.toBeInTheDocument()
   })
 
-  it('masks the SearchAPI key and prevents empty saves', async () => {
+  it('masks the TranscriptAPI key and prevents empty saves', async () => {
     render(<SettingsPage />)
     const input = await screen.findByLabelText('settings.searchApiKey.apiKeyLabel')
     expect(input).toHaveAttribute('type', 'password')
@@ -207,7 +207,7 @@ describe('SettingsPage interactions', () => {
     expect(screen.getByRole('button', { name: 'settings.searchApiKey.save' })).toBeEnabled()
   })
 
-  it('confirms SearchAPI deletion before calling the API', async () => {
+  it('confirms TranscriptAPI deletion before calling the API', async () => {
     const remove = vi.fn(() => ({ success: true }))
     globalThis.__setTrpcHandler('account.searchApiKeyStatus', () => ({ has_api_key: true }))
     globalThis.__setTrpcHandler('account.deleteSearchApiKey', remove)
@@ -222,7 +222,7 @@ describe('SettingsPage interactions', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('shows a load error instead of claiming SearchAPI is not configured', async () => {
+  it('shows a load error instead of claiming TranscriptAPI is not configured', async () => {
     globalThis.__setTrpcHandler('account.searchApiKeyStatus', () => { throw new Error('Unavailable') })
     render(<SettingsPage />)
     expect(await screen.findByText('settings.searchApiKey.errorLoading')).toBeInTheDocument()
@@ -248,7 +248,7 @@ describe('SettingsPage interactions', () => {
     expect(read).toHaveBeenCalledTimes(2)
   })
 
-  it.each(['save', 'delete'] as const)('keeps the existing SearchAPI status after a failed %s and permits retry', async (action) => {
+  it.each(['save', 'delete'] as const)('keeps the existing TranscriptAPI status after a failed %s and permits retry', async (action) => {
     const initial = { has_api_key: action === 'delete' }
     const read = vi.fn(() => initial)
     const update = vi.fn().mockRejectedValueOnce(new Error('Please retry')).mockResolvedValue({ success: true })
@@ -276,7 +276,7 @@ describe('SettingsPage interactions', () => {
     expect(read).toHaveBeenCalledTimes(1)
   })
 
-  it('saves a trimmed SearchAPI key and collapses the configured editor', async () => {
+  it('saves a trimmed TranscriptAPI key and collapses the configured editor', async () => {
     let configured = false
     const save = vi.fn(() => { configured = true; return { success: true } })
     const read = vi.fn(() => ({ has_api_key: configured }))
@@ -293,7 +293,7 @@ describe('SettingsPage interactions', () => {
     expect(read).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['save', 'delete'] as const)('keeps SearchAPI %s results when an older status read finishes later', async (action) => {
+  it.each(['save', 'delete'] as const)('keeps TranscriptAPI %s results when an older status read finishes later', async (action) => {
     const initial = { has_api_key: action === 'delete' }
     let finish!: (value: typeof initial) => void
     const pending = new Promise<typeof initial>(resolve => { finish = resolve })

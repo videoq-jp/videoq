@@ -81,7 +81,7 @@
       "shots": ["youtube", "course"],
       "sentences": [
         "VideoQ also supports importing videos from YouTube URLs and connecting with Moodle.",
-        "YouTube imports require your SearchAPI key. Moodle requires the dedicated plugin and connection settings.",
+        "YouTube imports require your TranscriptAPI key. Moodle requires the dedicated plugin and connection settings.",
         "For access without student registration, you can also choose a shared course link."
       ]
     },

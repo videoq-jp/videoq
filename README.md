@@ -22,7 +22,7 @@ See how students check cited lecture scenes and ask questions, then follow the i
 
 - **Automatic answers across a course** — Students ask in their own words and get answers drawn from your lecture videos.
 - **Check the source** — Follow timestamps from an answer to the relevant video scenes and review them in context.
-- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats with a selectable spoken language, or import YouTube transcripts using your SearchAPI key.
+- **Bring your own material** — Upload MP4, MOV, WebM, and other supported formats with a selectable spoken language, or import YouTube transcripts using your TranscriptAPI key.
 - **Organize and share** — Group videos into courses, label them with tags, and give students access through share links (no login needed) or email invitations.
 - **Review student questions** — Explore question history, answer feedback, analytics, and CSV exports.
 - **Use Japanese or English** — Switch between Japanese and English interfaces.
@@ -99,7 +99,7 @@ runtime and private backing services described below.
 | Database | Neon PostgreSQL + pgvector through Hyperdrive (local: PostgreSQL 17 + pgvector) |
 | Object storage | Cloudflare R2 (local: Garage) |
 | Edge state | Durable Objects (rate limits, task recovery scheduling, and chat execution) |
-| External services | OpenRouter (hosted AI) / optional local AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
+| External services | OpenRouter (hosted AI) / optional local AI, TranscriptAPI for YouTube transcripts, Mailgun email, Stripe billing |
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 

@@ -18,7 +18,7 @@ description: Docker Compose で VideoQ を起動し、ローカルアカウン�
 | Node.js と npm（`.node-version` の版） | 依存関係の導入、ローカルアカウントの設定 |
 | 開発用の OpenRouter API キー | 文字起こし、検索用データの生成、AI回答 |
 
-この手順の動画処理・AI回答では外部APIの利用料金が発生します。開発用のキーと短い検証動画を使ってください。YouTube取り込みを試す場合だけ、別途 SearchAPI のキーが必要です。
+この手順の動画処理・AI回答では外部APIの利用料金が発生します。開発用のキーと短い検証動画を使ってください。YouTube取り込みを試す場合だけ、別途 TranscriptAPI のキーが必要です。
 
 ## 1. コードと設定ファイルを用意する
 

@@ -96,7 +96,7 @@ The repository does not publish images at the `registry.example.edu` addresses;
 these are placeholders for site-built images. For a disconnected network,
 transfer all images and the packaged chart ahead of time. Point chat, embeddings
 and transcription at validated local services. The on-prem edition disables Stripe,
-Google sign-in, YouTube/SearchAPI and Mailgun.
+Google sign-in, YouTube/TranscriptAPI and Mailgun.
 
 The chat adapter requires a nonempty `OPENAI_API_KEY` for local OpenAI-compatible
 servers too. Use a placeholder such as `local-inference` if that server has no

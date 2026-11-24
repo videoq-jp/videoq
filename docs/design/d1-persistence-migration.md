@@ -300,7 +300,7 @@ Pythonの既存PostgreSQL文字起こし保存・再開と新クライアント�
 `WorkerTranscriptionRepository` とD1アダプター、署名API
 `/internal/worker/transcription/{source,begin,finish}` を追加した。
 sourceは字幕本文を転送せず、動画情報とsource revisionを返す。
-YouTubeの場合だけ暗号化済みSearchAPI鍵を返し、Python側で既存の復号処理を使用する。
+YouTubeの場合だけ暗号化済みTranscriptAPI鍵を返し、Python側で既存の復号処理を使用する。
 本文・認証情報・providerの例外をログや失敗レコードへ追加しない。
 
 beginは動画所有者・file・revision・開始状態を条件としてprocessingへ遷移する。

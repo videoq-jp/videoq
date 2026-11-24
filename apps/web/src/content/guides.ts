@@ -393,7 +393,7 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
         {
           heading: '動画を質問に使える状態にする',
           paragraphs: [
-            'アップロードした動画は音声を取り出して文字起こしし、時刻付きのテキストにします。そのテキストを場面ごとに分け、意味の近さで検索できるようにします。YouTubeから登録する場合は、音声の文字起こしではなく既存の字幕を取得します。この登録には利用者のSearchAPIキーが必要です。',
+            'アップロードした動画は音声を取り出して文字起こしし、時刻付きのテキストにします。そのテキストを場面ごとに分け、意味の近さで検索できるようにします。YouTubeから登録する場合は、音声の文字起こしではなく既存の字幕を取得します。この登録には利用者のTranscriptAPIキーが必要です。',
           ],
         },
         {
@@ -433,7 +433,7 @@ export const GUIDE_BODIES: Record<string, Record<SiteLocale, GuideBody>> = {
         {
           heading: 'Preparing a video for questions',
           paragraphs: [
-            'For an uploaded video, VideoQ extracts the audio and transcribes it into timestamped text. The text is split into scenes and made searchable by meaning. A YouTube import retrieves existing subtitles rather than transcribing audio, and needs your own SearchAPI key.',
+            'For an uploaded video, VideoQ extracts the audio and transcribes it into timestamped text. The text is split into scenes and made searchable by meaning. A YouTube import retrieves existing subtitles rather than transcribing audio, and needs your own TranscriptAPI key.',
           ],
         },
         {
