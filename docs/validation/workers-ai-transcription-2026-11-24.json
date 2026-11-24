@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-24",
+  "model": "@cf/openai/whisper-large-v3-turbo",
+  "input": "Synthetic Japanese speech at one-minute intervals with long silence; no production recordings",
+  "audioBytes": 2403692,
+  "durationSeconds": 300.336,
+  "singleRunElapsedMs": {
+    "withoutVad": 8777,
+    "withVad": 5974
+  },
+  "withoutVad": {
+    "segments": 11,
+    "unspokenClosingCaptionPresent": true
+  },
+  "withVad": {
+    "segments": 6,
+    "firstConfirmationPresent": true,
+    "lastConfirmationPresent": true,
+    "lastSpeechStartSeconds": 244.58,
+    "unspokenClosingCaptionPresent": false
+  },
+  "silence": {
+    "durationSeconds": 10,
+    "textEmpty": true,
+    "segmentCount": 0
+  },
+  "limitations": [
+    "Single synthetic sample, not a Japanese accuracy benchmark",
+    "Measured time includes network and model inference",
+    "Production signed route and Lambda cutover are verified separately after deployment"
+  ]
+}
