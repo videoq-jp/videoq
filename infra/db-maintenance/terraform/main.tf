@@ -30,11 +30,11 @@ resource "aws_iam_policy" "worker_boundary" {
       "arn:aws:ssm:${local.region}:${local.account}:parameter/videoq/prod/app"
     ] },
     { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"],
-    Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:sqs:${local.region}:${local.account}:${name}"] },
+    Resource = ["arn:aws:sqs:${local.region}:${local.account}:videoq-worker-prod"] },
     { Effect = "Allow", Action = ["kms:Decrypt"], Resource = "arn:aws:kms:${local.region}:${local.account}:key/*",
     Condition = { StringEquals = { "kms:ViaService" = "ssm.${local.region}.amazonaws.com" } } },
     { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-    Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/${name}:*"] }
+    Resource = ["arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/videoq-worker-prod:*"] }
   ] })
 }
 

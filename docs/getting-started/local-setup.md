@@ -38,12 +38,14 @@ Edit the matching entries in `.env` to use these values. Set `OPENAI_API_KEY` to
 ```dotenv
 OPENAI_API_KEY=your-development-key
 OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=
 LLM_MODEL=gpt-6-luna
 EMBEDDING_MODEL=text-embedding-3-small
 WHISPER_BACKEND=openai
 ```
 
-These are the values already in `.env.example`, so you normally only add the key. `WHISPER_BACKEND=openai` is the legacy direct route and would need a separate `OPENAI_API_KEY`.
+This development profile overrides the Workers AI chat example in `.env.example`. Chat, embeddings and direct Whisper share `OPENAI_API_KEY`; the explicit `LLM_BASE_URL` selects the matching chat endpoint.
 
 Answer generation and image inspection share `LLM_MODEL`, set here to GPT-6 Luna through OpenAI. With visual Q&A enabled, choose a model that supports image input, tool calling, and strict JSON output. See [model settings](../architecture/prompt-engineering.md#model-settings-and-limits).
 
