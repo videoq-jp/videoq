@@ -162,14 +162,9 @@ def transcribe_audio_interval(
             "-acodec", "mp3", "-ab", "64k", "-ar", "16000", "-ac", "1", str(audio),
         ], max_output_bytes=16 * 1024 * 1024, timeout_seconds=300)
         _check_extracted_audio(result, audio)
-        if env_str("WHISPER_BACKEND") == "workers-ai":
-            segments = _workers_ai_transcribe(audio, language=language)
-            segments = [{**segment, "start": segment["start"] + start_seconds,
-                         "end": segment["end"] + start_seconds} for segment in segments]
-        else:
-            client, model = _whisper_client()
-            with client:
-                segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
+        client, model = _whisper_client()
+        with client:
+            segments = _whisper_file(client, audio, model, offset=start_seconds, **({"language": language} if language else {}))
     return segments_within_interval(segments, start_seconds, duration_seconds)
 
 
@@ -177,6 +172,9 @@ def _whisper_client():
     from openai import OpenAI
 
     backend = (env_str("WHISPER_BACKEND") or ("openrouter" if (env_str("OPENROUTER_API_KEY") or env_str("OPENROUTER_FEDERATION_POLICY_ID")) else "openai")).lower()
+    if backend == "workers-ai":
+        from .workers_ai_transcription import create_client, MODEL
+        return create_client(), MODEL
     if backend == "local":
         client = OpenAI(
             api_key=env_str("OPENAI_API_KEY") or "dummy-key-for-local",
@@ -199,41 +197,22 @@ def _whisper_client():
         client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1", timeout=120.0, max_retries=2)
         model = "whisper-1"
     else:
-        raise RuntimeError("Unsupported WHISPER_BACKEND; configure openrouter, openai or local")
+        raise RuntimeError("Unsupported WHISPER_BACKEND; configure workers-ai, openrouter, openai or local")
     return client, model
 
 
 def _whisper_transcribe(audio_path: Path, *, language: str | None = None) -> list[dict[str, Any]]:
-    if env_str("WHISPER_BACKEND") == "workers-ai":
-        return _workers_ai_transcribe(audio_path, language=language)
     client, model = _whisper_client()
     with client:
-        # Whisper API soft limit ~25MB; split longer audio into ~10min chunks if needed.
-        size_mb = audio_path.stat().st_size / (1024 * 1024)
-        if size_mb <= 24:
+        workers_ai = env_str("WHISPER_BACKEND") == "workers-ai"
+        duration = _ffprobe_duration(audio_path) if workers_ai else None
+        if (duration <= 300.5 if duration is not None else audio_path.stat().st_size <= 24 * 1024 * 1024):
             return _whisper_file(client, audio_path, model, offset=0.0, **({"language": language} if language else {}))
-
         all_segments: list[dict[str, Any]] = []
-        with closing(_split_audio_chunks(audio_path, chunk_seconds=600)) as chunks:
+        with closing(_split_audio_chunks(audio_path, chunk_seconds=300 if workers_ai else 600)) as chunks:
             for offset, chunk_path in chunks:
-                all_segments.extend(
-                    _whisper_file(client, chunk_path, model, offset=offset, **({"language": language} if language else {}))
-                )
-        return all_segments
-
-
-def _workers_ai_transcribe(audio_path: Path, *, language: str | None = None) -> list[dict[str, Any]]:
-    from .workers_ai_transcription import transcribe_file
-
-    duration = _ffprobe_duration(audio_path)
-    if duration <= 300.5:
-        return transcribe_file(audio_path, duration, language=language)
-    segments = []
-    with closing(_split_audio_chunks(audio_path, chunk_seconds=300)) as chunks:
-        for offset, chunk in chunks:
-            for segment in transcribe_file(chunk, _ffprobe_duration(chunk), language=language):
-                segments.append({**segment, "start": segment["start"] + offset, "end": segment["end"] + offset})
-    return segments_within_interval(segments, 0, duration)
+                all_segments.extend(_whisper_file(client, chunk_path, model, offset=offset, **({"language": language} if language else {})))
+        return segments_within_interval(all_segments, 0, duration) if duration is not None else all_segments
 
 
 def _whisper_file(
@@ -242,14 +221,22 @@ def _whisper_file(
     if model == "openai/whisper-large-v3-turbo" and env_str("OPENROUTER_FEDERATION_POLICY_ID"):
         # A warm worker can process several chunks after the initial client is created.
         client.api_key = shared_api_key(OPENROUTER_BASE_URL)
+    options = {}
+    if env_str("WHISPER_BACKEND") == "workers-ai":
+        from .workers_ai_transcription import validate_audio
+        options["extra_body"] = {"duration_seconds": str(validate_audio(audio_path, _ffprobe_duration(audio_path)))}
     with audio_path.open("rb") as fh:
         result = client.audio.transcriptions.create(
             model=model,
             file=fh,
             response_format="verbose_json",
             timestamp_granularities=["segment"],
+            **options,
             **({"language": language} if language else {}),
         )
+    if env_str("WHISPER_BACKEND") == "workers-ai":
+        from .workers_ai_transcription import validate_segments
+        validate_segments(result, float(options["extra_body"]["duration_seconds"]))
     segments = getattr(result, "segments", None) or []
     out: list[dict[str, Any]] = []
     for seg in segments:

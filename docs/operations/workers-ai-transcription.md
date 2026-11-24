@@ -7,14 +7,21 @@ Cloudflare AI binding and does not require an OpenAI or OpenRouter API key.
 ## Request path
 
 Media Lambda retains FFmpeg extraction and existing resumable five-minute jobs.
-With `WHISPER_BACKEND=workers-ai`, it sends bounded base64 MP3 audio to the HMAC
-signed `POST /internal/worker/audio/transcribe` endpoint. TypeScript invokes the
-AI binding, validates real segment timestamps and returns only normalized
-segments. The media worker adds the source interval offset once. Database
+With `WHISPER_BACKEND=workers-ai`, it uses the same OpenAI SDK `audio.transcriptions.create()` call as the local
+and external providers. The SDK sends multipart MP3 to the HMAC-signed
+`POST /internal/worker/audio/transcriptions` endpoint. TypeScript converts the
+OpenAI-compatible request to the AI binding, validates real segment timestamps
+and returns `verbose_json` with text, duration and normalized segments.
+The SDK transport signs the exact binary multipart bytes, including the boundary.
+It strips the SDK placeholder Authorization header; no OpenAI or Cloudflare API
+key is used. The existing internal signing secret authenticates the request.
+`duration_seconds` is a bounded internal extension; the supported public SDK
+fields are `file`, `model`, optional `language`, `response_format=verbose_json`
+and `timestamp_granularities=["segment"]`. Other formats and fields are rejected. The media worker adds the source interval offset once. Database
 checkpoints, retries and quota reservation keep their existing behavior.
 
 Each request accepts at most 3,000,000 audio bytes and 300.5 seconds (five minutes
-plus encoder padding). The signed body is capped at 4,100,000 bytes; the response
+plus encoder padding). The signed body is capped at 3,100,000 bytes; the response
 is bounded separately. Legacy full-file processing splits longer audio into
 five-minute chunks and deletes each temporary chunk after use or failure.
 No arbitrary remote audio URL is accepted. Provider errors are sanitized and

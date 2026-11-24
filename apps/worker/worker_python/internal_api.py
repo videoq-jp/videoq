@@ -65,16 +65,15 @@ def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     visual_action = action.startswith("visual/")
     reindex_action = action == "reindex/page"
     embedding_action = action == "embeddings/generate"
-    audio_action = action == "audio/transcribe"
     if action not in {"claim", "complete", "fail", "heartbeat", "enqueue", "account-delete/step",
                       "scene-index/source", "scene-index/start", "scene-index/stage", "scene-index/publish", "scene-index/finish", "processing/reserve", "transcription/source", "transcription/begin", "transcription/finish", "checkpoints/load", "checkpoints/initialize", "checkpoints/pending",
                       "checkpoints/state", "checkpoints/save", "checkpoints/failure", "checkpoints/segments", "checkpoints/reject", "checkpoints/finish", "visual/load", "visual/initialize", "visual/pending", "visual/chunks",
-                      "visual/publish", "visual/ready", "visual/failure", "visual/begin-object", "reindex/page", "embeddings/generate", "audio/transcribe"}:
+                      "visual/publish", "visual/ready", "visual/failure", "visual/begin-object", "reindex/page", "embeddings/generate"}:
         raise ValueError("Invalid internal operation")
     origin, secret = _settings()
-    path = f"/internal/worker/{action}" if scene_action or processing_action or transcription_action or checkpoint_action or visual_action or reindex_action or account_action or embedding_action or audio_action else f"/internal/worker/jobs/{action}"
+    path = f"/internal/worker/{action}" if scene_action or processing_action or transcription_action or checkpoint_action or visual_action or reindex_action or account_action or embedding_action else f"/internal/worker/jobs/{action}"
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    request_limit = 4_100_000 if audio_action else 1_900_000 if transcription_action or embedding_action else (1_900_000 if checkpoint_action else (1_000_000 if scene_action else 8192))
+    request_limit = 1_900_000 if transcription_action or embedding_action else (1_900_000 if checkpoint_action else (1_000_000 if scene_action else 8192))
     if len(body) > request_limit:
         raise ValueError("Internal request is too large")
     timestamp = str(int(time.time()))
@@ -87,8 +86,8 @@ def call_internal_api(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     })
     # Never forward credentials across redirects or log provider response bodies.
     try:
-        with build_opener(_NoRedirect()).open(request, timeout=120 if audio_action else 30) as response:
-            response_limit = 1_000_000 if audio_action else 2_100_000 if action in {"scene-index/source", "checkpoints/segments", "embeddings/generate"} else (100_000 if action in {"visual/chunks", "visual/pending"} else 8192)
+        with build_opener(_NoRedirect()).open(request, timeout=30) as response:
+            response_limit = 2_100_000 if action in {"scene-index/source", "checkpoints/segments", "embeddings/generate"} else (100_000 if action in {"visual/chunks", "visual/pending"} else 8192)
             raw = response.read(response_limit + 1)
             if len(raw) > response_limit:
                 raise ValueError("Internal response is too large")
