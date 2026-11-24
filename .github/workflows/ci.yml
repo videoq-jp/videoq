@@ -442,6 +442,7 @@ jobs:
               - ".github/scripts/package-managers.py"
             worker:
               - 'apps/worker/**'
+              - 'packages/domain/test/fixtures/**'
               - 'packages/trpc/test-fixtures/**'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cd.yml'
