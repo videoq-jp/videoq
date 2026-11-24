@@ -82,3 +82,18 @@ def test_deadline_does_not_acknowledge_unfinished_work(monkeypatch):
     assert run_worker.main() == 0
     client.delete_message.assert_not_called()
     assert signal.getitimer(signal.ITIMER_REAL)[0] == 0
+
+
+def test_poller_requests_and_forwards_receive_count(monkeypatch):
+    monkeypatch.setenv('SQS_QUEUE_URL', 'http://queue/test')
+    client = MagicMock()
+    client.receive_message.side_effect = [{'Messages': [{
+        'MessageId': 'one', 'Body': '{}', 'ReceiptHandle': 'receipt',
+        'Attributes': {'ApproximateReceiveCount': '3'},
+    }]}, KeyboardInterrupt()]
+    monkeypatch.setattr(run_worker, 'create_sqs_client', lambda: client)
+    handler = MagicMock(return_value={})
+    monkeypatch.setattr(run_worker, 'handler', handler)
+    assert run_worker.main() == 0
+    assert client.receive_message.call_args.kwargs['MessageSystemAttributeNames'] == ['ApproximateReceiveCount']
+    assert handler.call_args.args[0]['Records'][0]['attributes'] == {'ApproximateReceiveCount': '3'}

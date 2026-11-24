@@ -56,13 +56,16 @@ export interface BackgroundJobDependencies {
 export class BackgroundJobBusyError extends Error {
   constructor() { super('Background job busy'); }
 }
+export class BackgroundJobConflictError extends Error {
+  constructor() { super('Background job conflict'); }
+}
 
 export async function executeBackgroundJob(input: unknown, deps: BackgroundJobDependencies): Promise<void> {
   const job = parseBackgroundJob(input);
   const claim = await deps.repository.claim({ jobId: job.job_id, jobType: job.type, payloadSha256: await deps.sha256(canonicalBackgroundJob(job)) });
   if (claim.status === 'completed') return;
   if (claim.status === 'busy') throw new BackgroundJobBusyError();
-  if (claim.status !== 'claimed') throw new Error(`Background job ${claim.status}`);
+  if (claim.status !== 'claimed') throw new BackgroundJobConflictError();
   try {
     await deps.execute(job, claim.leaseToken);
     if (!await deps.repository.complete(job.job_id, claim.leaseToken)) throw new Error('Background job lease was lost');

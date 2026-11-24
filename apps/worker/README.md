@@ -284,6 +284,42 @@ python scripts/process_pending.py
 python scripts/process_pending.py --video-id 83
 ```
 
+## Background job failure diagnostics
+
+Python SQS/Lambda, the on-prem Node consumer and the optional Cloudflare queue
+consumer emit structured `background_job_retry` / `background_queue_retry`
+events. Correlate `job_id` with `message_id`; inspect `stage`, `attempts`,
+`duration_ms`, `error_code` and `retryable`. Invalid input may have no validated
+job identity, and attempts are unknown when the broker did not supply them.
+The pollers request SQS `ApproximateReceiveCount`; Lambda supplies it in record
+attributes. See [SQS ReceiveMessage](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html).
+
+| Code | Operational meaning |
+|---|---|
+| `INVALID_JOB` | Decode, payload validation or queue-group admission failed |
+| `JOB_BUSY` | A valid execution lease still belongs to another delivery |
+| `JOB_IDENTITY_CONFLICT` | The job ID was reused with different work |
+| `PROVIDER_RATE_LIMITED` | A dependency reported HTTP 429 |
+| `PROVIDER_UNAVAILABLE` | A dependency reported HTTP 5xx |
+| `DATABASE_UNAVAILABLE` | A recognized database connection/availability error |
+| `DEADLINE_EXCEEDED` | The runtime surfaced a timeout exception |
+| `EXECUTION_ABORTED` | The Node runtime surfaced an abort exception |
+| `ACK_FAILED` | Execution finished but acknowledgement failed |
+| `WORKER_EXECUTION_FAILED` | No more specific allowlisted fact was available |
+
+`retryable: false` identifies a message that needs investigation; it does not
+acknowledge or discard it. Existing retry and DLQ behavior remains in force.
+The persisted execution failure marker remains `WORKER_EXECUTION_FAILED` for
+compatibility with the internal API; use the correlated structured event for
+the detailed classification. Wrapped exceptions may lose provider status and
+then use the generic code. A Lambda hard kill cannot emit an application event;
+inspect runtime timeout/error metrics as well.
+
+Logs exclude payloads, user IDs, exception text/stack/causes, signed URLs, tokens,
+receipt handles and provider response bodies. Classification uses only fixed
+codes, recognized exception types and numeric status facts. Exceptions with
+unreadable diagnostic properties fall back to the generic code.
+
 ## Lambda image
 
 Production uses a **linux/arm64** container image in ECR.

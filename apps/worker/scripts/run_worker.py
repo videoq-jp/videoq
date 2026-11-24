@@ -81,6 +81,7 @@ def _poll(stop: threading.Event) -> int:
                     MaxNumberOfMessages=max(1, min(max_messages, 10)),
                     WaitTimeSeconds=wait,
                     VisibilityTimeout=visibility,
+                    MessageSystemAttributeNames=['ApproximateReceiveCount'],
                 )
             except KeyboardInterrupt:
                 logger.info("Stopped")
@@ -98,7 +99,8 @@ def _poll(stop: threading.Event) -> int:
 
             event = {
                 "Records": [
-                    {"messageId": m["MessageId"], "body": m["Body"]} for m in messages
+                    {"messageId": m["MessageId"], "body": m["Body"],
+                     **({'attributes': m['Attributes']} if 'Attributes' in m else {})} for m in messages
                 ]
             }
 

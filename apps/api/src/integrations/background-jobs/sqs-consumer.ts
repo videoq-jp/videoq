@@ -1,7 +1,8 @@
 import { AwsClient } from 'aws4fetch';
-import { BackgroundJobBusyError, parseBackgroundJob } from '../../application/background-job';
+import { BackgroundJobBusyError, parseBackgroundJob, type BackgroundJob } from '../../application/background-job';
 import type { Bindings } from '../../types/bindings';
 import { runBackgroundJob } from './execute';
+import { logJobFailure, receiveAttempts, type JobStage } from './diagnostics';
 
 export class SqsBackgroundConsumer {
   private readonly aws: AwsClient;
@@ -20,19 +21,26 @@ export class SqsBackgroundConsumer {
     return (text ? JSON.parse(text) : {}) as T;
   }
   async poll(signal: AbortSignal): Promise<void> {
-    const result = await this.request<{Messages?:{MessageId:string;ReceiptHandle:string;Body:string}[]}>('ReceiveMessage',{
-      MaxNumberOfMessages:1,WaitTimeSeconds:20,VisibilityTimeout:960,
+    const result = await this.request<{Messages?:{MessageId:string;ReceiptHandle:string;Body:string;Attributes?:{ApproximateReceiveCount?:string}}[]}>('ReceiveMessage',{
+      MaxNumberOfMessages:1,WaitTimeSeconds:20,VisibilityTimeout:960,MessageSystemAttributeNames:['ApproximateReceiveCount'],
     },signal);
     for (const message of result.Messages ?? []) {
       if(signal.aborted) return;
+      const started = performance.now();
+      let stage: JobStage = 'decode';
+      let job: BackgroundJob | undefined;
       try {
         const input: unknown = JSON.parse(message.Body);
-        const job = parseBackgroundJob(input);
+        stage = 'validate';
+        job = parseBackgroundJob(input);
         if ((job.type==='delete_account_data'?'account':'search')!==this.group) throw new Error('Wrong background queue group');
+        stage = 'execute';
         await runBackgroundJob(this.env,job,AbortSignal.any([signal,AbortSignal.timeout(780_000)]));
+        stage = 'ack';
         await this.request('DeleteMessage',{ReceiptHandle:message.ReceiptHandle});
       } catch (error) {
-        console.error(JSON.stringify({event:'background_job_retry',group:this.group}));
+        logJobFailure(error, {event:'background_job_retry',group:this.group,stage,started,
+          message_id:message.MessageId,job_id:job?.job_id,job_type:job?.type,attempts:receiveAttempts(message.Attributes?.ApproximateReceiveCount)});
         // The execution repository releases failed work. Do not delete messages
         // after failures, process termination or a lost execution lease.
         await this.request('ChangeMessageVisibility',{ReceiptHandle:message.ReceiptHandle,VisibilityTimeout:error instanceof BackgroundJobBusyError ? 960 : 30}).catch(()=>undefined);
