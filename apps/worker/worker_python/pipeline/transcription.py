@@ -7,6 +7,8 @@ import os
 import logging
 import math
 import tempfile
+import time
+from email.utils import parsedate_to_datetime
 from collections.abc import Callable, Generator
 from contextlib import closing
 from pathlib import Path
@@ -35,6 +37,29 @@ class NoAudioStreamError(RuntimeError):
 
 
 NO_AUDIO_MESSAGE = "動画に音声トラックがありません。音声付きの動画をアップロードしてください。"
+
+
+class TranscriptApiError(RuntimeError):
+    """Provider status without response bodies, credentials or video URLs."""
+
+    def __init__(self, status: int):
+        super().__init__(f"TranscriptAPI HTTP {status}")
+        self.status = status
+
+
+def _transcript_retry_delay(value: str | None, attempt: int) -> float:
+    """Honor both HTTP Retry-After forms; malformed values use backoff."""
+    if value:
+        try:
+            seconds = float(int(value))
+        except ValueError:
+            try:
+                seconds = parsedate_to_datetime(value).timestamp() - time.time()
+            except (TypeError, ValueError, OverflowError):
+                seconds = 0
+        if math.isfinite(seconds) and seconds > 0:
+            return max(2 ** attempt, seconds)
+    return 2 ** attempt
 
 
 def run_transcription(
@@ -368,15 +393,24 @@ def _fetch_youtube_transcript(youtube_video_id: str, api_key: str) -> list[dict]
             f"{base_url}/youtube/{endpoint}?{urlencode(params)}",
             headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
         )
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except HTTPError as exc:
-            with exc:
-                detail = exc.read(1200).decode("utf-8", errors="replace")[:300]
-            raise RuntimeError(f"TranscriptAPI HTTP {exc.code}: {detail}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"TranscriptAPI unreachable: {exc}") from exc
+        for attempt in range(3):
+            try:
+                with urlopen(req, timeout=timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except HTTPError as exc:
+                with exc:
+                    status = exc.code
+                    delay = _transcript_retry_delay(exc.headers.get("Retry-After"), attempt)
+                # These statuses explicitly mean retry, not unavailable captions.
+                # Bound inline waiting; longer delays use the existing SQS retry.
+                retry = status in {408, 429, 503} and attempt < 2 and delay <= 60
+                logger.warning("TranscriptAPI failed: operation=%s status=%d attempt=%d retry=%s",
+                               endpoint, status, attempt + 1, retry)
+                if not retry:
+                    raise TranscriptApiError(status) from None
+                time.sleep(delay)
+            except URLError:
+                raise RuntimeError("TranscriptAPI unreachable") from None
 
     # Discover tracks instead of accepting TranscriptAPI's English-first default.
     # Keep the existing manual-first, then automatic caption selection.
@@ -405,8 +439,8 @@ def _fetch_youtube_transcript(youtube_video_id: str, api_key: str) -> list[dict]
                     "language": code,
                     "language_fallback": "false",
                 })
-            except RuntimeError as exc:
-                if isinstance(exc.__cause__, URLError) and not isinstance(exc.__cause__, HTTPError):
+            except TranscriptApiError as exc:
+                if exc.status != 404:
                     raise
                 last_error = exc
                 continue
