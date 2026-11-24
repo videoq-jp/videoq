@@ -17,7 +17,7 @@ const enabled = process.env.EMBEDDING_LIVE === "1";
 const varsPath = new URL("../.dev.vars", import.meta.url);
 const configured = enabled && existsSync(varsPath) ? parse(readFileSync(varsPath)) : {};
 const settings = Object.fromEntries(
-  ["OPENROUTER_FEDERATION_POLICY_ID", "OPENROUTER_FEDERATION_AUDIENCE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENROUTER_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY", "EMBEDDING_MODEL"].map((key) =>
+  ["AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY", "EMBEDDING_MODEL"].map((key) =>
     [key, process.env[key] ?? configured[key]]),
 );
 
@@ -25,7 +25,7 @@ describe.skipIf(!enabled)("real embedding providers", () => {
   it("indexes a short transcript and answers Q&A", async () => {
     const model = settings.EMBEDDING_MODEL || "text-embedding-3-small";
     const databaseUrl = process.env.EMBEDDING_TEST_DATABASE_URL;
-    if (!databaseUrl || (!settings.OPENROUTER_FEDERATION_POLICY_ID && !settings.OPENROUTER_API_KEY && !settings.OPENAI_API_KEY)) throw new Error("Live tests require EMBEDDING_TEST_DATABASE_URL and OPENROUTER_API_KEY or OPENAI_API_KEY.");
+    if (!databaseUrl || (!settings.OPENAI_API_KEY)) throw new Error("Live tests require EMBEDDING_TEST_DATABASE_URL and OPENAI_API_KEY.");
     const name = `videoq_live_${crypto.randomUUID().replaceAll("-", "")}`;
     const admin = new Pool({ connectionString: databaseUrl });
     admin.on("error", () => {});

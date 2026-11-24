@@ -206,8 +206,6 @@ jobs:
           TF_VAR_cloudflare_background_jobs_routing_enabled: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ROUTING_ENABLED || 'false' }}
           TF_VAR_cloudflare_background_jobs_enabled: ${{ vars.CLOUDFLARE_BACKGROUND_JOBS_ENABLED || 'false' }}
           TF_VAR_retire_background_queues: ${{ vars.RETIRE_BACKGROUND_QUEUES || 'false' }}
-          TF_VAR_openrouter_federation_policy_id: ${{ vars.OPENROUTER_WORKER_FEDERATION_POLICY_ID }}
-          TF_VAR_openrouter_federation_audience: ${{ vars.OPENROUTER_FEDERATION_AUDIENCE || 'https://openrouter.ai' }}
         run: python ../.github/scripts/terraform-drift.py
       - uses: ./.github/actions/report-operations
         if: always()

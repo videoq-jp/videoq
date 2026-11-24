@@ -34,11 +34,7 @@ resource "aws_iam_policy" "worker_boundary" {
     { Effect = "Allow", Action = ["kms:Decrypt"], Resource = "arn:aws:kms:${local.region}:${local.account}:key/*",
     Condition = { StringEquals = { "kms:ViaService" = "ssm.${local.region}.amazonaws.com" } } },
     { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-    Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/${name}:*"] },
-    { Effect = "Allow", Action = ["sts:GetWebIdentityToken"], Resource = "*", Condition = {
-      "ForAllValues:StringEquals" = { "sts:IdentityTokenAudience" = ["https://openrouter.ai"] },
-      StringEquals                = { "sts:SigningAlgorithm" = "RS256" }, NumericLessThanEquals = { "sts:DurationSeconds" = "900" }
-    } }
+    Resource = [for name in ["videoq-worker-prod", "videoq-worker-search-prod", "videoq-worker-account-prod"] : "arn:aws:logs:${local.region}:${local.account}:log-group:/aws/lambda/${name}:*"] }
   ] })
 }
 

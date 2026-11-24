@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 from worker_python.use_cases.search_evaluation import unique_cases, prepare_local_vectors, evaluation_payload, EvaluationEmbeddingFailed
 from worker_python.env import env_str
-from worker_python.pipeline.ai_connection import is_openrouter, shared_base_url
+from worker_python.pipeline.ai_connection import shared_base_url
 from worker_python.pipeline.embedding_contract import resolve_embedding_config, validate_embedding
 from worker_python.pipeline.embeddings import embed_texts
 
@@ -113,15 +113,11 @@ def _configuration(expected):
     try:
         actual = resolve_embedding_config()
         base = (env_str("EMBEDDING_BASE_URL") or shared_base_url()).rstrip("/")
-        federation = is_openrouter(base) and bool(env_str("OPENROUTER_FEDERATION_POLICY_ID"))
-        if (actual.provider, actual.model, actual.profile, actual.dimensions, base, "workload-federation" if federation else "configured") != (
+        if (actual.provider, actual.model, actual.profile, actual.dimensions, base, "configured") != (
             expected["provider"], expected["model"], expected["profile"], expected["dimensions"], expected["baseUrl"].rstrip("/"), expected["authentication"]
         ):
             _fail("configuration_mismatch")
-        if federation:
-            if not base.startswith("https://") or not (env_str("AWS_REGION") or env_str("AWS_DEFAULT_REGION")):
-                _fail("federation_configuration_required")
-        elif not (env_str("EMBEDDING_API_KEY") or env_str("OPENROUTER_API_KEY" if is_openrouter(base) else "OPENAI_API_KEY")):
+        if not (env_str("EMBEDDING_API_KEY") or env_str("OPENAI_API_KEY")):
             _fail("configured_credentials_required")
         return actual
     except EvaluationError:

@@ -8,7 +8,6 @@ import math
 import os
 import struct
 
-from urllib.parse import urlsplit
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -63,9 +62,6 @@ def resolve_embedding_config(environ: Mapping[str, str] | None = None) -> Embedd
     if profile == "embeddinggemma2" and not (env.get("EMBEDDING_MODEL", "").strip() and env.get("EMBEDDING_BASE_URL", "").strip()):
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EmbeddingGemma 2 requires EMBEDDING_MODEL and a dedicated EMBEDDING_BASE_URL.")
     model = env.get("EMBEDDING_MODEL", "").strip() or "text-embedding-3-small"
-    base = env.get("EMBEDDING_BASE_URL") or env.get("OPENAI_BASE_URL") or ("https://openrouter.ai/api/v1" if (env.get("OPENROUTER_API_KEY") or env.get("OPENROUTER_FEDERATION_POLICY_ID")) else "https://api.openai.com/v1")
-    if urlsplit(base).hostname == "openrouter.ai" and model == "text-embedding-3-small":
-        model = f"openai/{model}"
     return EmbeddingConfig("openai", model, profile)
 
 

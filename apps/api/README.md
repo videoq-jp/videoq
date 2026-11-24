@@ -628,7 +628,7 @@ docker compose up -d postgres garage garage-init elasticmq worker
 
 For separately hosted OpenAI-compatible embeddings, set `EMBEDDING_BASE_URL` and
 optionally `EMBEDDING_API_KEY`; unset values reuse `OPENAI_BASE_URL` and the key for
-that endpoint (`OPENROUTER_API_KEY` on OpenRouter, otherwise `OPENAI_API_KEY`). Embeddings always use the OpenAI-compatible protocol, including
+that endpoint (`OPENAI_API_KEY`). Embeddings always use the OpenAI-compatible protocol, including
 private llama.cpp/vLLM services. The worker must use the same model and endpoint.
 
 Workers AI Gemma による回答・要約・画像認識の共通設定・検証・切り戻しは [運用手順](../../docs/operations/workers-ai-answers.md) を参照してください。

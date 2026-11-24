@@ -30,8 +30,6 @@ data:
   SQS_VISIBILITY_TIMEOUT: "900"
   SQS_MAX_MESSAGES: "1"
   ENABLE_HEAVY_PIPELINE: "1"
-  OPENROUTER_FEDERATION_POLICY_ID: {{ .Values.ai.federationPolicyId | quote }}
-  OPENROUTER_FEDERATION_AUDIENCE: {{ .Values.ai.federationAudience | quote }}
   OPENAI_BASE_URL: {{ .Values.ai.openaiBaseUrl | quote }}
   LLM_BASE_URL: {{ .Values.ai.llmBaseUrl | quote }}
   LLM_MODEL: {{ .Values.ai.llmModel | quote }}

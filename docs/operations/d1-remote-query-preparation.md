@@ -1,3 +1,5 @@
+> Historical record: the provider-specific runtime and commands described below have been retired. Do not execute these instructions. Current production inference uses Workers AI; see [transcription](workers-ai-transcription.md) and [answers](workers-ai-answers.md).
+
 # 評価専用Lambdaの私有起動クライアント
 
 `python -m worker_python.remote_search_evaluation`は、評価専用関数へ質問を送り、返却されたベクトルを既存のPG/D1比較入力へまとめる。2026-11-15にユーザー承認の下で合成質問1件の実接続を確認し、関数を停止した。[実行結果と次段階](search-evaluation-deployment-plan.md)を参照する。実質問40件の送信は未実施である。

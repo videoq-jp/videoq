@@ -1,3 +1,5 @@
+> Historical record: the provider-specific runtime and commands described below have been retired. Do not execute these instructions. Current production inference uses Workers AI; see [transcription](workers-ai-transcription.md) and [answers](workers-ai-answers.md).
+
 # Cloud AI: OpenRouter
 
 The hosted profiles use OpenRouter for all AI calls. The preferred authentication

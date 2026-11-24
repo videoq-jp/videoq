@@ -71,15 +71,15 @@ withHelm("on-prem Helm distribution", () => {
     expect(resources.find(resource => resource.metadata.name === "test-videoq-api" && resource.kind === "Deployment").spec.replicas).toBe(3);
     expect(resources.find(resource => resource.metadata.name === "test-videoq-worker").spec.replicas).toBe(4);
   });
-  it("routes LLM overrides independently of shared OpenRouter services", () => {
-    const resources = render("--set", "ai.llmBaseUrl=https://openrouter.ai/api/v1", "--set", "ai.llmModel=vendor/model");
+  it("routes LLM overrides independently of shared inference services", () => {
+    const resources = render("--set", "ai.llmBaseUrl=https://inference.example/v1", "--set", "ai.llmModel=vendor/model");
     const config = resources.find(resource => resource.kind === "ConfigMap").data;
-    expect(config.LLM_BASE_URL).toBe("https://openrouter.ai/api/v1");
+    expect(config.LLM_BASE_URL).toBe("https://inference.example/v1");
     expect(config.LLM_MODEL).toBe("vendor/model");
-    expect(config.OPENAI_BASE_URL).toBe("https://openrouter.ai/api/v1");
+    expect(config.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(config.LLM_API_KEY).toBeUndefined();
-    expect(config.OPENROUTER_API_KEY).toBeUndefined();
-    expect(config.WHISPER_BACKEND).toBe("openrouter");
+    expect(config.OPENAI_API_KEY).toBeUndefined();
+    expect(config.WHISPER_BACKEND).toBe("openai");
     expect(config.EMBEDDING_MODEL).toBe("openai/text-embedding-3-small");
   });
   it("rejects incomplete configuration and invalid proxy/pool settings", () => {

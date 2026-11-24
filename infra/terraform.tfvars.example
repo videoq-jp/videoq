@@ -54,13 +54,6 @@ lambda_log_retention_days = 30
 # Visual Q&A caches are enabled by default (set false to opt out; match the API flag).
 worker_visual_enabled = true
 
-# --- OpenRouter workload identity --------------------------------------------
-# Enable AWS outbound identity federation and register its issuer in OpenRouter first.
-# Use the worker role's own OpenRouter inference policy (not the API principal's).
-# CI reads repository/environment variables OPENROUTER_WORKER_FEDERATION_POLICY_ID
-# and OPENROUTER_FEDERATION_AUDIENCE, using the same values for plan and apply.
-# openrouter_federation_policy_id = "<worker-policy-id>"
-# openrouter_federation_audience  = "https://openrouter.ai"
 
 # Independent search/account consumers (media keeps worker_lambda_* settings).
 worker_media_maximum_concurrency = 10

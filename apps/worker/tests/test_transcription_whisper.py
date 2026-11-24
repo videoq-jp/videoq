@@ -140,7 +140,7 @@ def test_local_gateway_has_time_for_multiple_cpu_speech_spans(monkeypatch):
 @pytest.mark.parametrize("backend", ["modal", "whisper.cpp", "typo"])
 def test_retired_or_unknown_backend_is_rejected(monkeypatch, backend):
     monkeypatch.setenv("WHISPER_BACKEND", backend)
-    with pytest.raises(RuntimeError, match="configure openrouter, openai or local"):
+    with pytest.raises(RuntimeError, match="configure workers-ai, openai or local"):
         transcription._whisper_client()
 
 
@@ -159,46 +159,6 @@ def test_silent_audio_can_return_no_segments(tmp_path):
     client = MagicMock()
     client.audio.transcriptions.create.return_value = SimpleNamespace(segments=[], text="")
     assert _whisper_file(client, audio, "whisper-1", offset=600) == []
-
-
-def test_openrouter_key_unifies_whisper_and_preserves_model_and_timeouts(monkeypatch, tmp_path):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "router-key")
-    monkeypatch.delenv("WHISPER_BACKEND", raising=False)
-    monkeypatch.setenv("OPENAI_API_KEY", "old-direct-key")
-    seen = []
-
-    def respond(request):
-        assert str(request.url) == "https://openrouter.ai/api/v1/audio/transcriptions"
-        assert request.headers["authorization"] == "Bearer router-key"
-        body = request.read()
-        assert b"openai/whisper-large-v3-turbo" in body
-        assert b"verbose_json" in body
-        assert b'timestamp_granularities[]' in body
-        assert b"segment" in body
-        seen.append(request.url)
-        return httpx.Response(200, json={"text": "Caption", "segments": [{"start": 1.25, "end": 2.5, "text": "Caption"}]})
-
-    original = openai.OpenAI
-    with httpx.Client(transport=httpx.MockTransport(respond)) as transport:
-        monkeypatch.setattr(openai, "OpenAI", lambda **kw: original(**kw, http_client=transport))
-        client, model = transcription._whisper_client()
-        audio = tmp_path / "clip.mp3"
-        audio.write_bytes(b"audio")
-        with client:
-            assert model == "openai/whisper-large-v3-turbo"
-            assert transcription._whisper_file(client, audio, model, offset=300) == [
-                {"start": 301.25, "end": 302.5, "text": "Caption"},
-            ]
-        assert client.is_closed()
-    assert len(seen) == 1
-
-
-def test_openrouter_backend_requires_its_own_key(monkeypatch):
-    monkeypatch.setenv("WHISPER_BACKEND", "openrouter")
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.setenv("OPENAI_API_KEY", "direct-only")
-    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
-        transcription._whisper_client()
 
 
 @pytest.mark.parametrize("language", [None, "ja", "en"])

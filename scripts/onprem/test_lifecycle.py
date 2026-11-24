@@ -34,7 +34,7 @@ class LifecycleTest(unittest.TestCase):
             images.write_text(json.dumps(values))
             args = argparse.Namespace(directory=str(target), images=str(images),
                                       url="http://localhost:18090", storage_url="http://localhost:18091", offline=True)
-            with patch.dict(os.environ, {"VIDEOQ_OPENROUTER_API_KEY": "lifecycle-no-live-provider"}):
+            with patch.dict(os.environ, {"VIDEOQ_OPENAI_API_KEY": "lifecycle-no-live-provider"}):
                 videoq.initialize(args)
             config_path = target / "compose.json"
             config = json.loads(config_path.read_text())

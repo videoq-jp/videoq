@@ -22,7 +22,7 @@ has one replica; backups on another host are required for host-loss recovery.
 | Repository checkout | Installer and configuration templates |
 | Verified `verified-images.json` | Pin the reviewed application images |
 | Public application and storage URLs | Browser login, upload and playback |
-| OpenRouter key or existing local inference services | Chat, embeddings and transcription |
+| OpenAI key or existing local inference services | Chat, embeddings and transcription |
 
 Use Python 3.9+, Docker Engine and Docker Compose on the Linux server. The installer generates a separate private
 directory, uses production application images pinned by digest, generates unique
@@ -57,7 +57,7 @@ cd videoq
 
 Run all following commands from the repository root. Keep the verified release
 and generated configuration outside the checkout. For the default hosted AI
-configuration, the installer prompts for an OpenRouter key without echoing it.
+configuration, the installer prompts for an OpenAI key without echoing it.
 Local AI connection options are described below.
 
 ```sh
@@ -160,8 +160,8 @@ For an existing dataset, changing the embedding model requires reindexing, even
 when the dimensions match. This CLI does not install a host firewall or enforce
 private-only egress.
 
-The OpenRouter key is prompted without terminal echo. Automation can provide it
-through `VIDEOQ_OPENROUTER_API_KEY`. Keep the generated directory and backups
+The OpenAI key is prompted without terminal echo. Automation can provide it
+through `VIDEOQ_OPENAI_API_KEY`. Keep the generated directory and backups
 private: `runtime.env` includes the encryption key needed to recover user secrets.
 Initialization refuses an existing destination and never silently replaces keys.
 Do not use `docker compose config` without `--quiet` in shared logs because its

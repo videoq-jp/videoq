@@ -122,7 +122,7 @@ Instructions ask the model to stay within the retrieved evidence and acknowledge
 
 ## Where the data goes
 
-Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which are reached through OpenRouter in the hosted profile. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
+Audio transcription, embeddings, image inspection, and answer generation call their configured model services, which use Cloudflare Workers AI in the cloud edition. These services receive the audio, images, or text needed for their respective step. Choosing local transcription or local embeddings alone does not make all AI processing local; Q&A has its own calls.
 
 This describes the application's data flow. It does not establish a provider's retention or training policy. No production credentials or account identifiers are needed to understand or configure the flow.
 

@@ -99,7 +99,7 @@ runtime and private backing services described below.
 | Database | Neon PostgreSQL + pgvector through Hyperdrive (local: PostgreSQL 17 + pgvector) |
 | Object storage | Cloudflare R2 (local: Garage) |
 | Edge state | Durable Objects (rate limits, task recovery scheduling, and chat execution) |
-| External services | OpenRouter (hosted AI) / optional local AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
+| External services | Workers AI (cloud) / OpenAI-compatible on-premises AI, SearchAPI for YouTube transcripts, Mailgun email, Stripe billing |
 
 Locally, `docker compose` runs Postgres, Garage, ElasticMQ, the Hono API (`wrangler dev`), the Python worker, a static frontend build, and a Caddy gateway on port 80.
 
@@ -179,15 +179,15 @@ docker compose stop api
 cp apps/api/.dev.vars.example apps/api/.dev.vars
 ```
 
-Set `BETTER_AUTH_SECRET`, `USER_SECRET_ENCRYPTION_KEY`, and `OPENROUTER_API_KEY` in `apps/api/.dev.vars`. For the hosted setup above, also set:
+Set `BETTER_AUTH_SECRET`, `USER_SECRET_ENCRYPTION_KEY`, and `OPENAI_API_KEY` in `apps/api/.dev.vars`. For the hosted setup above, also set:
 
 ```dotenv
 BETTER_AUTH_URL=http://localhost:3000
 FRONTEND_URL=http://localhost:3000
 OAUTH_ISSUER_URL=http://localhost:3000
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=openai/gpt-6-luna
-EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-6-luna
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Keep the Garage / ElasticMQ settings from `.dev.vars.example`, use the same user-secret encryption key as the Python worker, then run `npm run dev:api` in another terminal. Wrangler's local Hyperdrive connection targets `localhost:55432`; override it if you changed the database credentials. The Compose dependencies and Python worker continue running.

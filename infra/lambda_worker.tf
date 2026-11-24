@@ -14,29 +14,6 @@ resource "aws_iam_role_policy_attachment" "worker_basic_execution" {
 }
 
 data "aws_iam_policy_document" "worker_permissions" {
-  dynamic "statement" {
-    for_each = var.openrouter_federation_policy_id != "" ? [1] : []
-    content {
-      effect    = "Allow"
-      actions   = ["sts:GetWebIdentityToken"]
-      resources = ["*"]
-      condition {
-        test     = "ForAllValues:StringEquals"
-        variable = "sts:IdentityTokenAudience"
-        values   = [var.openrouter_federation_audience]
-      }
-      condition {
-        test     = "StringEquals"
-        variable = "sts:SigningAlgorithm"
-        values   = ["RS256"]
-      }
-      condition {
-        test     = "NumericLessThanEquals"
-        variable = "sts:DurationSeconds"
-        values   = ["900"]
-      }
-    }
-  }
 
   statement {
     effect = "Allow"

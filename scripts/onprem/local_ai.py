@@ -70,7 +70,7 @@ def embedding_contract(objects):
 
 class LocalAI:
     def prepare_inference(self):
-        if self.ai == 'openrouter':
+        if self.ai == 'openai':
             return
         files = PROFILES[self.ai]
         folder = self.inference_chart.parent / ('profile-' + self.ai)
@@ -143,7 +143,7 @@ class LocalAI:
                                  ('NVIDIA runtime/device plugin と3つの割り当て可能な GPU が必要です' if resource == 'nvidia.com/gpu' else 'このモデル構成を配置できる CPU・メモリを用意してください'))
 
     def local_inference(self):
-        if self.ai == 'openrouter':
+        if self.ai == 'openai':
             return
         if not hasattr(self, 'ai_plan'):
             self.prepare_inference()
@@ -155,7 +155,7 @@ class LocalAI:
         private_json(self.directory / 'inference-plan.json', {'apiVersion': 'v1', 'kind': 'List', 'items': self.ai_plan})
 
     def ai_application_values(self):
-        if self.ai == 'openrouter':
+        if self.ai == 'openai':
             return []
         if not hasattr(self, 'ai_app_overlay'):
             self.prepare_inference()

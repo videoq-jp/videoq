@@ -7,7 +7,7 @@ description: LLM・埋め込み生成・Whisper をオンプレのネットワ�
 
 Web・API・ワーカーに加えて、LLM・埋め込み生成・Whisper も社内に配置できます。
 導入時はコンテナイメージとモデルをダウンロードし、運用中の動画・音声・AI リクエストは
-社内のサービスで処理します。アプリ用 Helm Chart の標準設定はホスト型の OpenRouter のため、
+社内のサービスで処理します。アプリ用 Helm Chart の標準設定はホスト型の OpenAI のため、
 ローカル用の設定を明示的に適用します。
 
 | 構成 | LLM・埋め込み生成 | アプリ側の設定 |
@@ -89,7 +89,7 @@ CPU の基本構成では、テキスト専用モデルを使うため映像の�
 
 [署名付き Public 配布](on-premises-releases.md)に CPU 用 Whisper、amd64 用 NVIDIA vLLM、推論用 Chart を含めます。
 検証スクリプトが推論用の `verified-inference.json` とアプリ用の `verified-images.json` を生成します。
-導入先での Whisper ビルドは不要です。外部の AI サービス（OpenRouter・OpenAI）の API キーは不要で、SDK 向けの仮の値として
+導入先での Whisper ビルドは不要です。外部の AI サービス（OpenAI・OpenAI）の API キーは不要で、SDK 向けの仮の値として
 `OPENAI_API_KEY=local-inference` を設定します。その他の Secret は
 [アプリの導入手順](on-premises.md)に従います。
 

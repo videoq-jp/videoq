@@ -13,12 +13,6 @@ def unique_cases(manifest: dict) -> list[dict]:
     return list(by_question.values())
 
 
-def remote_chunks(manifest: dict, chunk_size: int) -> list[dict]:
-    cases = unique_cases(manifest)
-    return [{**manifest, 'samples': 1, 'cases': cases[offset:offset + chunk_size]}
-            for offset in range(0, len(cases), chunk_size)]
-
-
 def prepare_local_vectors(queries: list[str], batch_size: int, *, recheck: Callable[[], object],
                           embed: Callable[[list[str]], object], validate: Callable[[object], list[float]]) -> dict:
     vectors = {}
@@ -34,14 +28,6 @@ def prepare_local_vectors(queries: list[str], batch_size: int, *, recheck: Calla
                 vectors[question] = validate(vector)
         except Exception:
             raise EvaluationEmbeddingFailed() from None
-    return vectors
-
-
-def prepare_remote_vectors(chunks: list[dict], invoke: Callable[[dict], dict]) -> dict:
-    vectors = {}
-    # No retries: a missing reply can already have incurred model cost.
-    for chunk in chunks:
-        vectors.update(invoke(chunk))
     return vectors
 
 

@@ -21,8 +21,6 @@ BETTER_AUTH_URL="http://localhost:8787"
 # Base64url-encoded 32-byte AES-GCM key.
 USER_SECRET_ENCRYPTION_KEY=""
 
-# OpenRouter: shared by answers, image inspection and embeddings. Set the same key on the worker.
-# OPENROUTER_API_KEY=""
 
 # Local llama.cpp / vLLM (the model must support tool calling and JSON Schema).
 # OPENAI_API_KEY="local-inference"
@@ -74,15 +72,7 @@ VIDEO_VISUAL_ENABLED="true"
 
 # Optional endpoint/key for answer generation and image inspection only.
 # Empty values reuse the shared endpoint / provider key independently.
-# OpenRouter: also set LLM_MODEL to an available provider/model slug.
-# LLM_BASE_URL=https://openrouter.ai/api/v1
-# LLM_API_KEY=your-openrouter-api-key
 
-# Preferred hosted auth: OpenRouter Business/Enterprise WIF via AWS STS.
-# Set policy ID after enabling AWS outbound federation and configuring OpenRouter trust.
-# This uses AWS workload credentials and takes precedence over old OpenRouter keys.
-# OPENROUTER_FEDERATION_POLICY_ID=
-# OPENROUTER_FEDERATION_AUDIENCE=https://openrouter.ai
 
 # Workers AI: one Gemma model for answers, summaries and image tools.
 # Embeddings/transcription keep their existing independent settings.

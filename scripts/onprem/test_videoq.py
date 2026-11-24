@@ -65,7 +65,7 @@ class InstallerTests(unittest.TestCase):
             images.write_text(json.dumps(self.values()))
             target = root / "installation"
             args = argparse.Namespace(images=str(images), directory=str(target), url="https://videoq.example.org", storage_url="https://s3.example.org")
-            with patch.dict(os.environ, {"VIDEOQ_OPENROUTER_API_KEY": "test-only"}):
+            with patch.dict(os.environ, {"VIDEOQ_OPENAI_API_KEY": "test-only"}):
                 videoq.initialize(args)
                 previous = (target / "runtime.env").read_bytes()
                 with self.assertRaises(FileExistsError):
@@ -160,7 +160,7 @@ class InstallerTests(unittest.TestCase):
             with patch.object(videoq.getpass, "getpass", side_effect=AssertionError("unexpected prompt")):
                 videoq.initialize(args)
             environment = (root / "local/runtime.env").read_text()
-            self.assertNotIn("openrouter", environment.lower())
+            self.assertNotIn("api.openai.com", environment.lower())
             self.assertIn("WHISPER_BACKEND='local'", environment)
             self.assertIn("LLM_SEPARATE_TOOL_SCHEMA='true'", environment)
 

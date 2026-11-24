@@ -61,9 +61,9 @@ Q&Aは、必要に応じてツールで情報を取得し、回答を組み立�
 
 | 項目 | 現在の実装 |
 |---|---|
-| 回答・画像モデル | `LLM_MODEL`。ホスト型の構成は `openai/gpt-6-luna`（同じGPT-6 Lunaモデル） |
-| 回答の接続先 | `LLM_BASE_URL`（未設定なら `OPENAI_BASE_URL`）のChat Completions。ホスト型の構成は `https://openrouter.ai/api/v1` |
-| 推論の設定 | `gpt-6-luna` または `openai/gpt-6-luna` では `none`。Chat Completionsでのツール呼び出しに対応するため |
+| 回答・画像モデル | `LLM_MODEL`。ホスト型の構成は `gpt-6-luna`（同じGPT-6 Lunaモデル） |
+| 回答の接続先 | `LLM_BASE_URL`（未設定なら `OPENAI_BASE_URL`）のChat Completions。ホスト型の構成は `https://api.openai.com/v1` |
+| 推論の設定 | `gpt-6-luna` または `gpt-6-luna` では `none`。Chat Completionsでのツール呼び出しに対応するため |
 | 生成設定と出力上限 | temperatureは `0`。構造化出力を含め、モデル呼び出し1回あたり最大1,024出力トークン |
 | リクエストの期限 | 講座RAGは非ストリーミングが2分、ストリーミングが5分 |
 | プロバイダーの自動再試行 | APIのチャットモデルでは無効 |

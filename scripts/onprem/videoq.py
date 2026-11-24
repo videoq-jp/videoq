@@ -165,9 +165,9 @@ def initialize(args):
         raise ValueError("ストレージにはVideoQとは別のオリジンが必要です")
     refs = image_refs(json.loads(Path(args.images).read_text()))
     ai = getattr(args, "ai", "hosted")
-    key = (os.environ.get("VIDEOQ_OPENROUTER_API_KEY") or getpass.getpass("OpenRouter API key: ")) if ai == "hosted" else "local-inference"
+    key = (os.environ.get("VIDEOQ_OPENAI_API_KEY") or getpass.getpass("OpenAI API key: ")) if ai == "hosted" else "local-inference"
     if not key.strip():
-        raise ValueError("OpenRouter API keyが必要です")
+        raise ValueError("OpenAI API keyが必要です")
     password = secrets.token_hex(32)
     access_key, storage_secret = "GK" + secrets.token_hex(16), secrets.token_hex(32)
     runtime = {
@@ -184,9 +184,9 @@ def initialize(args):
         "SQS_ACCOUNT_QUEUE_URL": "http://queue:9324/000000000000/videoq-account",
         "AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": secrets.token_hex(16), "AWS_SECRET_ACCESS_KEY": secrets.token_hex(32),
         "SQS_VISIBILITY_TIMEOUT": "900", "SQS_MAX_MESSAGES": "1", "ENABLE_HEAVY_PIPELINE": "1",
-        "OPENROUTER_API_KEY": key, "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
-        "LLM_MODEL": "openai/gpt-6-luna", "EMBEDDING_MODEL": "openai/text-embedding-3-small",
-        "EMBEDDING_PROFILE": "openai", "WHISPER_BACKEND": "openrouter", "WHISPER_CHUNK_SECONDS": "300",
+        "OPENAI_API_KEY": key, "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "LLM_MODEL": "gpt-6-luna", "EMBEDDING_MODEL": "text-embedding-3-small",
+        "EMBEDDING_PROFILE": "openai", "WHISPER_BACKEND": "openai", "WHISPER_CHUNK_SECONDS": "300",
         "VIDEO_VISUAL_ENABLED": "true", "TRUST_PROXY_HOPS": "1",
     }
     if ai != "hosted":
@@ -200,7 +200,7 @@ def initialize(args):
             if parsed.query or parsed.fragment or any(c.isspace() for c in value):
                 raise ValueError("AIエンドポイントにクエリー・フラグメント・空白は指定できません")
             return value.rstrip("/")
-        runtime.pop("OPENROUTER_API_KEY")
+        runtime.pop("OPENAI_API_KEY")
         runtime.update({
             "OPENAI_API_KEY": os.environ.get("VIDEOQ_LOCAL_AI_KEY", "local-inference"),
             "OPENAI_BASE_URL": endpoint(args.chat_url), "EMBEDDING_BASE_URL": endpoint(args.embedding_url),

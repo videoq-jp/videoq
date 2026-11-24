@@ -15,7 +15,7 @@ The answer/image model settings and their reference were updated on **2026-10-14
 |---|---|---|
 | Retrieve course evidence before answering | [RAG: Lewis et al., 2020](#rag) | Uses the retrieval-and-generation pattern; does not train the paper's RAG models |
 | Select tools and act on their results | [ReAct: Yao et al., 2023](#react) | Uses a ReAct-style tool loop through LangChain |
-| Transcribe uploaded audio | [Whisper: Radford et al., 2023](#whisper) | Uses a pretrained model via OpenRouter, direct OpenAI, or a local Whisper server |
+| Transcribe uploaded audio | [Whisper: Radford et al., 2023](#whisper) | Uses a pretrained model via Workers AI, direct OpenAI, or a local Whisper server |
 | Split long subtitle ranges | [Otsu, 1979](#otsu) | Adapts the between-class variance criterion to ordered text embeddings |
 | Explore a video at different time scales | [VideoSeek: Lin et al., 2026](#videoseek) | Adapts the overview / skim / focus tool design |
 | Embed subtitle scenes and queries | [OpenAI embeddings](#openai-embeddings); optionally [Qwen3 Embedding](#qwen3-embedding) | Calls the configured pretrained embedding model |
@@ -44,7 +44,7 @@ Implementation: [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/
 
 Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. **“Robust Speech Recognition via Large-Scale Weak Supervision.”** *ICML*, PMLR 202, pp. 28492–28518, 2023; preprint first posted in 2022. [Proceedings and publisher BibTeX](https://proceedings.mlr.press/v202/radford23a.html). BibTeX key: `radford2023whisper`.
 
-The hosted profile sends uploaded audio to `openai/whisper-large-v3-turbo` through OpenRouter (`WHISPER_BACKEND=openrouter`). The legacy direct route uses `whisper-1` with `WHISPER_BACKEND=openai`. The local path calls a Whisper-compatible server; the weights are selected when starting that server. The README's `large-v3-turbo` example also has an [official model card](https://huggingface.co/openai/whisper-large-v3-turbo). Cite the Whisper paper for the model family and record the actual checkpoint for a local experiment. YouTube imports retrieve existing subtitles through SearchAPI and do not run VideoQ's Whisper path.
+Cloud transcription uses `WHISPER_BACKEND=workers-ai` and `@cf/openai/whisper-large-v3-turbo`. On-premises deployments select `openai` (`whisper-1`) or a `local` compatible server. YouTube imports retrieve existing subtitles through SearchAPI.
 
 Implementation: [transcription.py](https://github.com/videoq-jp/videoq/blob/main/apps/worker/worker_python/pipeline/transcription.py). The optional inference software is [whisper.cpp](https://github.com/ggml-org/whisper.cpp).
 
@@ -80,7 +80,7 @@ Implementation: [API embeddings](https://github.com/videoq-jp/videoq/blob/main/a
 
 OpenAI. **“GPT-6 Luna.”** [Official model documentation](https://developers.openai.com/api/docs/models/gpt-6-luna), accessed October 14, 2026; no publication date is specified. BibTeX key: `openaiGpt6Luna`.
 
-Answer generation and image inspection share `LLM_MODEL`, which defaults to `gpt-6-luna`; the development and production Wrangler configuration set `openai/gpt-6-luna` for OpenRouter. When visual Q&A is enabled, the model must support image input, tool calling, and strict JSON output. VideoQ sets `reasoning_effort=none` for GPT-6 Luna answer and image calls; the official documentation requires this setting for tool calling through Chat Completions. Record any model override or snapshot separately; the repository default does not prove which model a deployed service used.
+Cloud answers and image inspection use `@cf/google/gemma-4-26b-a4b-it` through the AI binding with thinking disabled. On-premises deployments configure `LLM_MODEL` and an OpenAI-compatible endpoint. Visual inspection requires image input; Q&A requires tool calling and strict JSON output.
 
 Implementation: [openai.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/openai.ts), [chat-model.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/chat-model.ts), [visual-inspection.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/src/lib/visual-inspection.ts), [wrangler.jsonc](https://github.com/videoq-jp/videoq/blob/main/apps/api/wrangler.jsonc).
 

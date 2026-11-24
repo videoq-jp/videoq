@@ -63,7 +63,7 @@ flowchart TB
 
 APIはHyperdrive経由、Python workerはPostgreSQL接続で同じDBを利用します。DBの列を変更するときは両方への影響を確認します。
 
-ホスト型のAI呼び出しは、APIとworkerのどちらもOpenRouterを経由します。本番の認証にはAWSのワークロードIDフェデレーションを使います。[クラウドAIの手順書](https://github.com/videoq-jp/videoq/blob/main/docs/operations/openai-transcription.md)を参照してください。オンプレでDurable Objectsとホスト型サービスを置き換える構成は[オンプレで動かす](../guides/on-premises.md)で説明しています。
+クラウド版のAI推論はWorkers AIのbindingで実行します。media Lambdaは署名付き内部APIを通して文字起こしを依頼し、Workerが推論を実行します。オンプレ版はOpenAI互換サーバーを利用できます。
 
 ## Durable Objectsの役割
 

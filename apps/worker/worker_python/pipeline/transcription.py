@@ -15,7 +15,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from .ai_connection import shared_api_key, OPENROUTER_BASE_URL
 from worker_python.env import env_flag, env_str, heavy_pipeline_enabled
 from worker_python.domain.srt import format_srt_time
 from worker_python.domain.transcription_segments import segments_within_interval
@@ -176,7 +175,7 @@ def transcribe_audio_interval(
 def _whisper_client():
     from openai import OpenAI
 
-    backend = (env_str("WHISPER_BACKEND") or ("openrouter" if (env_str("OPENROUTER_API_KEY") or env_str("OPENROUTER_FEDERATION_POLICY_ID")) else "openai")).lower()
+    backend = (env_str("WHISPER_BACKEND") or "openai").lower()
     if backend == "local":
         client = OpenAI(
             api_key=env_str("OPENAI_API_KEY") or "dummy-key-for-local",
@@ -186,12 +185,6 @@ def _whisper_client():
             timeout=660.0, max_retries=2,
         )
         model = "whisper-local"
-    elif backend == "openrouter":
-        api_key = shared_api_key(OPENROUTER_BASE_URL) if env_str("OPENROUTER_FEDERATION_POLICY_ID") else env_str("OPENROUTER_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENROUTER_API_KEY is required for OpenRouter Whisper")
-        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1", timeout=120.0, max_retries=2)
-        model = "openai/whisper-large-v3-turbo"
     elif backend == "openai":
         api_key = env_str("OPENAI_API_KEY")
         if not api_key:
@@ -199,7 +192,7 @@ def _whisper_client():
         client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1", timeout=120.0, max_retries=2)
         model = "whisper-1"
     else:
-        raise RuntimeError("Unsupported WHISPER_BACKEND; configure openrouter, openai or local")
+        raise RuntimeError("Unsupported WHISPER_BACKEND; configure workers-ai, openai or local")
     return client, model
 
 
@@ -239,9 +232,6 @@ def _workers_ai_transcribe(audio_path: Path, *, language: str | None = None) -> 
 def _whisper_file(
     client: Any, audio_path: Path, model: str, *, offset: float, language: str | None = None
 ) -> list[dict[str, Any]]:
-    if model == "openai/whisper-large-v3-turbo" and env_str("OPENROUTER_FEDERATION_POLICY_ID"):
-        # A warm worker can process several chunks after the initial client is created.
-        client.api_key = shared_api_key(OPENROUTER_BASE_URL)
     with audio_path.open("rb") as fh:
         result = client.audio.transcriptions.create(
             model=model,
