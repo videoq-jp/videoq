@@ -1,4 +1,5 @@
 import { BackgroundJobBusyError, BackgroundJobConflictError } from '../../application/background-job';
+import { SceneIndexOutcomeError } from '../search-index/outcome';
 
 export type JobStage = 'decode' | 'validate' | 'execute' | 'handoff' | 'ack';
 interface Failure { error_code: string; retryable: boolean }
@@ -10,6 +11,7 @@ export function jobFailure(error: unknown, stage: JobStage): Failure {
   if (stage === 'ack') return { error_code: 'ACK_FAILED', retryable: true };
   if (error instanceof BackgroundJobBusyError) return { error_code: 'JOB_BUSY', retryable: true };
   if (error instanceof BackgroundJobConflictError) return { error_code: 'JOB_IDENTITY_CONFLICT', retryable: false };
+  if (error instanceof SceneIndexOutcomeError) return { error_code: error.code, retryable: error.retryable };
   try {
     if (error && typeof error === 'object') {
       const facts = error as Record<string, unknown>;
