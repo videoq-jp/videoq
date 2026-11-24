@@ -20,6 +20,13 @@ videoMutationContract("D1 (workerd)", async () => {
       return uploaded.videoId;
     },
     rejectOutbox: async () => { await database.prepare("CREATE TRIGGER reject_outbox BEFORE INSERT ON external_tasks BEGIN SELECT RAISE(ABORT,'test outbox failure'); END").run(); },
+    setHeartbeat: async (id, heartbeat) => { await database.prepare('UPDATE videos SET upload_heartbeat_at=? WHERE id=?').bind(heartbeat, id).run(); },
+    setReservationPeriod: async (id, offset) => {
+      const period = await database.prepare("SELECT upload_usage_period_start FROM users WHERE id='owner'").first<string>('upload_usage_period_start');
+      if (!period) throw new Error('Missing fixture period');
+      await database.prepare('UPDATE videos SET upload_usage_period_start=? WHERE id=?')
+        .bind(offset === null ? null : new Date(new Date(period).getTime() + offset).toISOString(), id).run();
+    },
     snapshot: async () => {
       const counts = await database.prepare(`SELECT (SELECT count(*) FROM videos) AS videos,(SELECT count(*) FROM scenes) AS scenes,
         (SELECT count(*) FROM external_tasks) AS externalTasks,(SELECT count(*) FROM mutation_receipts) AS receipts,
