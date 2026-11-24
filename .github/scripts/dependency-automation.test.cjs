@@ -37,6 +37,18 @@ test('opt-out labels independently control repair and merge', () => {
   assert.equal(policy.eligiblePull(pr, files(), 'no-automerge'), true);
 });
 
+test('DB maintenance Terraform dependency files qualify without admitting resource changes', () => {
+  const pr = pull();
+  pr.head.ref = 'dependabot/terraform/infra/db-maintenance/terraform/terraform-minor-patch';
+  const files = ['versions.tf', '.terraform.lock.hcl'].map(name => ({
+    filename: `infra/db-maintenance/terraform/${name}`, status: 'modified',
+  }));
+  assert.equal(policy.eligiblePull(pr, files, 'no-automerge'), true);
+  assert.equal(policy.eligiblePull(pr, [...files, {
+    filename: 'infra/db-maintenance/terraform/main.tf', status: 'modified',
+  }], 'no-automerge'), false);
+});
+
 
 test('historical automated repair notices do not veto newly verified automatic updates', () => {
   const notice = { user: { login: 'github-actions[bot]' }, body: '<!-- videoq-codex-repair-request -->' };
