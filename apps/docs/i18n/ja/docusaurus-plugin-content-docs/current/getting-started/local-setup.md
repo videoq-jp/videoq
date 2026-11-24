@@ -38,12 +38,14 @@ npm ci
 ```dotenv
 OPENAI_API_KEY=ここに開発用キーを入力
 OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=
 LLM_MODEL=gpt-6-luna
 EMBEDDING_MODEL=text-embedding-3-small
 WHISPER_BACKEND=openai
 ```
 
-いずれも `.env.example` の値と同じなので、通常はキーを追加するだけです。`WHISPER_BACKEND=openai` は旧来の直接接続で、別途 `OPENAI_API_KEY` が必要です。
+この開発用プロファイルは、`.env.example` の Workers AI 用チャット設定を上書きします。チャット・埋め込み・直接接続の Whisper は `OPENAI_API_KEY` を共用し、`LLM_BASE_URL` で対応するチャット接続先を明示します。
 
 回答生成と画像確認は共通の `LLM_MODEL` を使い、ここでは OpenAI 経由の GPT-6 Luna を指定しています。映像確認を有効にする場合は、画像入力・ツール呼び出し・厳密なJSON出力に対応したモデルを指定してください。[モデル設定](../architecture/prompt-engineering.md#モデル設定と処理の上限)も参照してください。
 
