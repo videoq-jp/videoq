@@ -387,6 +387,13 @@ run and completed chunks. A worker image with this job registered is required.
 ### YouTube transcript provider
 
 YouTube imports use [TranscriptAPI](https://transcriptapi.com/docs/api/).
+Its HTTP 408 means a temporary upstream failure and requires a retry; it does
+not mean that captions are missing. The worker retries 408, 429 and 503 twice
+within the current job before saving a transcription failure, with one- and
+two-second backoff and support for `Retry-After` seconds or HTTP dates. Delays
+over 60 seconds are left to the existing SQS retry rather than blocking Lambda.
+Only a 404 selects another caption kind. Diagnostic logs include the operation,
+status, attempt and retry decision, without provider response bodies or keys.
 Users save their own TranscriptAPI key in Settings. A deployment-wide
 `TRANSCRIPTAPI_API_KEY` overrides the saved key in both persistence modes.
 Optional `TRANSCRIPTAPI_BASE_URL` (default `https://transcriptapi.com/api/v2`)
