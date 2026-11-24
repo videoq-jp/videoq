@@ -193,7 +193,76 @@ Issueはマージ前のため開いたままにする。既存のpackage-lock.js
 | 07 | [#1665](https://github.com/videoq-jp/videoq/issues/1665) | 実装・検証済み。820881a0。各DBで144入力の実UPDATE照合、月/期限境界と二重返金のmutation試験36件成功 |
 | 08 | [#1666](https://github.com/videoq-jp/videoq/issues/1666) | [業務モデル](architecture/bpmn.md)を追記。イベント因果・判断材料・責務・Hot Spotを整理し、未合意を明記 |
 | 09 | [#1667](https://github.com/videoq-jp/videoq/issues/1667) | 受入表を現行D1/768次元構成へ更新。比較元SHAとCD、品質/性能の測定条件、未測定のSLO/費用、復旧対象と旧資源の廃止を区別。英日docs build成功 |
-| 10 | [#1668](https://github.com/videoq-jp/videoq/issues/1668) | 未対応。実際の一覧SQLと深いページを計測して判断する |
+| 10 | [#1668](https://github.com/videoq-jp/videoq/issues/1668) | 実装・検証済み。実PG RepositoryのSQL/EXPLAIN/60標本を保存。深いページだけID先行取得し、既存順序Indexへidを追加。公開offset・認可・投稿者表現を維持 |
 | 11 | [#1669](https://github.com/videoq-jp/videoq/issues/1669) | 未対応。ブラウザー受入とdoctor表示の範囲整合 |
 | 12 | [#1670](https://github.com/videoq-jp/videoq/issues/1670) | 未対応。変更コストを測り、一つの効果的な抽出へ絞る |
 | 13 | [#1671](https://github.com/videoq-jp/videoq/issues/1671) | 未対応。所有責務・共有DB互換・移行判断を記録する |
+
+
+## 10の実測と採用判断（2026-11-24）
+
+[比較前の全SQL・計画・集計](verification/chat-pagination-2026-11-24-before.json)と
+[比較後](verification/chat-pagination-2026-11-24-after.json)を保存した。PostgreSQL 17.11の
+専用loopbackコンテナを使い、実際の`createPostgresChatRepository().history()`を呼ぶ。
+各規模で対象講座と同数の無関係な講座の行を入れ、同じ時刻が3行続く合成データとした。
+250件は小規模、1万/10万件は成長時のストレス条件であり、現在の本番分布を取得したものではない。
+本文は合成で、講義・利用者の実データや資格情報は記録していない。
+
+VACUUM ANALYZE、ページごと2回のwarmup後、浅い/中間/深いページを順序反転して交互に
+各60回測定した。1回2 SQL（owner/count確認とpage取得）を維持。p95はnearest-rank、
+p99はこの標本数では最大値。常時warm・逐次・ローカルpoolのRepository時間であり、
+本番・cold・同時負荷・認証middleware・画面応答のSLOではない。Mac上の他の負荷は制御していない。
+
+| 対象講座の件数 | offset | 比較前p95 ms | 比較後p95 ms |
+|---|---:|---:|---:|
+| 250 | 0 | 2.11 | 1.11 |
+| 250 | 125 | 2.49 | 1.76 |
+| 250 | 230 | 3.27 | 1.48 |
+| 10,000 | 0 | 1.52 | 2.83 |
+| 10,000 | 1,000 | 2.97 | 3.17 |
+| 10,000 | 5,000 | 5.72 | 2.61 |
+| 10,000 | 9,980 | 14.02 | 3.39 |
+| 100,000 | 0 | 5.77 | 5.74 |
+| 100,000 | 1,000 | 6.83 | 5.44 |
+| 100,000 | 50,000 | 46.35 | 7.53 |
+| 100,000 | 99,980 | 110.45 | 9.38 |
+
+採用した変更は次の組み合わせである。
+
+- offset 1000未満は従来のSQL形状を保つ。深いページは先にIDのページを確定し、回答本文・投稿者・LTI attributionを取得する。
+- 既存の`chat_logs_course_created_idx`を`(course_id, created_at DESC, id DESC)`へ置換する。既存の安定順序へ合わせ、ID取得をIndex Only Scanにする。Index本数は増やさない。
+- 本文等のJOINを行う行数は、10万件の最終ページで10万行から20行へ減った。前はwide rowのexternal merge、後はページIDのIndex Only Scanと20行のquicksortを実行計画で確認した。
+- 先にIDを読むだけの試作も比較したが、中間ページに不安定な悪化があった。Indexの順序を合わせた上で採用し、試作の最良値だけを採用根拠にしていない。
+
+小さいページのp95には悪化もあり、全経路の一律な高速化は主張しない。一方、10万件の
+最終ページは110.45→9.38ms、中間は46.35→7.53msとなり、JOIN/sort量の削減も確認できた。
+公開のoffset/limit/count、所有者確認、同時刻のID順、投稿者匿名性、LTI attribution、
+CSVの既存cursor契約は維持する。全件countとOFFSET自体は残るので、計算量が定数になったわけではない。
+
+### 書込み・容量・配備への影響
+
+同じ合成データで、計測後に20行ずつのINSERTを60回実行した。10万件講座+無関係10万件で、
+当該Indexは7,061,504→14,491,648 bytes。20行INSERTのp50は0.44→0.73ms、
+p95は1.45→1.84msであり、読取りの改善には容量と書込みの増加が伴う。
+他規模の結果もJSONへ保存した。これは単独・短期の合成測定で、実アプリの書込み負荷や月額費用へ外挿しない。
+
+変更はPostgreSQLのこの履歴経路と順序Indexに限る。D1・コース一覧・MCP契約を一括変更しない。
+DDLはDrizzleから生成した`0066_chat_history_page_order.sql`を使用する。
+既存IndexのDROP/CREATEを含むため、オンプレ更新時は既存の移行手順で書込みを止め、
+データ量に応じた移行時間を確認する。本番DBで今回DDL・負荷試験を実行していない。
+実PGの履歴/投稿者/深いページと全migration適用の30テスト、型検査、lint、db:check/db:verifyで検証する。
+
+再計測（専用のloopback PostgreSQLだけを指定する。生成schemaはfinallyで削除される）:
+
+```sh
+PAGINATION_BENCH_DATABASE_URL=postgresql://...@127.0.0.1:PORT/postgres \
+PAGINATION_BENCH_INDEX=ordered PAGINATION_BENCH_SAMPLES=60 \
+node_modules/.bin/tsx apps/api/scripts/benchmark-chat-pagination.mjs /private/after.json
+```
+
+旧SHAのRepositoryと`PAGINATION_BENCH_INDEX=legacy`が比較前条件。
+記録の`repositorySha256`と`scriptSha256`で実際に測定したソースを識別する。
+公開結果を再現するために稼働中のDBや旧providerを利用する必要はない。
+
+実行計画の読み方は[PostgreSQL 17 EXPLAIN](https://www.postgresql.org/docs/17/using-explain.html)、
+OFFSETの性質は[同LIMIT/OFFSET](https://www.postgresql.org/docs/17/queries-limit.html)を参照。
