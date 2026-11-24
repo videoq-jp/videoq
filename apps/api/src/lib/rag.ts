@@ -297,7 +297,12 @@ export async function* streamRag(
     let toolTurn = false;
     let emittedAnswer = false;
     let sentSources = 0;
-    for await (const chunk of events) {
+    // Abort our request before closing the graph iterator in finally. Recent
+    // LangGraph versions cancel active tools when return() is called; implicit
+    // for-await cleanup otherwise surfaces that expected cancellation as an error.
+    while (true) {
+      const { value: chunk, done } = await events.next();
+      if (done) break;
       if (!chunk || typeof chunk !== "object" || !("modelEvent" in chunk)) {
         const progress = searchProgressSchema.safeParse(chunk);
         if (progress.success) yield progress.data;
@@ -343,7 +348,14 @@ export async function* streamRag(
   } finally {
     // 送信失敗などで consumer が途中終了した場合も、検索の通信を止める。
     lifecycle.abort();
-    await stopStream?.();
-    await prepared?.close();
+    try {
+      await stopStream?.();
+    } catch (error) {
+      // LangGraph reports its own cancellation while closing an interrupted
+      // stream. Errors from next() still pass through the main catch above.
+      if (!(error instanceof Error && error.message === "Abort")) throw error;
+    } finally {
+      await prepared?.close();
+    }
   }
 }
