@@ -37,6 +37,7 @@ locals {
     EMBEDDING_PROVIDER         = "workers-ai"
     EMBEDDING_PROFILE          = "embeddinggemma2"
     EMBEDDING_MODEL            = "@cf/google/embeddinggemma-2"
+    WHISPER_BACKEND            = "workers-ai"
     } : {
     DB_PARAM_NAME = "/${local.name_prefix}/${var.env_name}/worker-db"
     PGSSLROOTCERT = "/etc/pki/tls/certs/ca-bundle.crt"
