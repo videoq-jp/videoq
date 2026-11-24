@@ -1,4 +1,5 @@
 import base64
+from unittest.mock import MagicMock
 from contextlib import nullcontext
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -29,7 +30,7 @@ def test_load_searchapi_key_reads_and_decrypts_encrypted_column(monkeypatch) -> 
             return {"searchapi_api_key_encrypted": envelope}
 
     connection = Connection()
-    monkeypatch.delenv("SEARCHAPI_API_KEY", raising=False)
+    monkeypatch.delenv("TRANSCRIPTAPI_API_KEY", raising=False)
     monkeypatch.setenv("USER_SECRET_ENCRYPTION_KEY", _base64url(key))
     monkeypatch.setattr(
         transcription, "db_connection", lambda: nullcontext(connection)
@@ -38,3 +39,12 @@ def test_load_searchapi_key_reads_and_decrypts_encrypted_column(monkeypatch) -> 
     assert transcription._load_searchapi_key(7) == "search-api-key"
     assert "SELECT searchapi_api_key_encrypted FROM users" in connection.query
     assert connection.params == (7,)
+
+
+def test_transcriptapi_environment_key_overrides_saved_key(monkeypatch):
+    monkeypatch.setenv("TRANSCRIPTAPI_API_KEY", "transcript-key")
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "old-key")
+    connection = MagicMock()
+    monkeypatch.setattr(transcription, "db_connection", connection)
+    assert transcription._load_searchapi_key("owner") == "transcript-key"
+    connection.assert_not_called()

@@ -383,3 +383,24 @@ It discovers the current source through the signed cloud API (or PostgreSQL on
 premises), probes duration, and dispatches only visual chunk jobs. It does not
 rerun transcription or scene embeddings. Repeated deliveries reuse the current
 run and completed chunks. A worker image with this job registered is required.
+
+### YouTube transcript provider
+
+YouTube imports use [TranscriptAPI](https://transcriptapi.com/docs/api/).
+Users save their own TranscriptAPI key in Settings. A deployment-wide
+`TRANSCRIPTAPI_API_KEY` overrides the saved key in both persistence modes.
+Optional `TRANSCRIPTAPI_BASE_URL` (default `https://transcriptapi.com/api/v2`)
+and `TRANSCRIPTAPI_TIMEOUT_SECONDS` (default `60`) configure worker requests.
+
+When upgrading from SearchAPI, replace the saved key in Settings with a
+TranscriptAPI key, or configure `TRANSCRIPTAPI_API_KEY`. SearchAPI credentials
+are not valid with TranscriptAPI; `SEARCHAPI_*` environment variables are no
+longer read. Existing encrypted storage columns, internal worker payload names,
+and account RPC names retain their historical names for compatibility. No
+schema migration or transcript re-indexing is required.
+
+The worker discovers available tracks with `/youtube/info`, tries manual
+captions before automatic captions (English first within each kind, then the
+first available language, matching the previous provider defaults), and converts timestamped segments to the
+same SRT format used by indexing. Existing transcripts and uploaded-file
+transcription are unaffected.

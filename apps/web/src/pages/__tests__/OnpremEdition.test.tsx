@@ -33,7 +33,7 @@ describe('on-prem user flows', () => {
       expect(document.querySelector(`a[href="/${page}"]`), page).toBeNull();
     }
   });
-  it('keeps account and local API settings while avoiding billing and SearchAPI requests', async () => {
+  it('keeps account and local API settings while avoiding billing and TranscriptAPI requests', async () => {
     const external = vi.fn(() => { throw new Error('Disabled API was requested'); });
     globalThis.__setTrpcHandler('account.searchApiKeyStatus', external);
     render(<SettingsPage />);

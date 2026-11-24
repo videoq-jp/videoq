@@ -25,7 +25,7 @@ The former Study mode and PLOG learning graph have been removed. Current Q&A sup
 
 ## What does the AI actually read?
 
-For an uploaded file, the worker extracts **audio** and transcribes it with Whisper. For a YouTube import, it retrieves existing subtitles through SearchAPI. Both paths produce text with timestamps.
+For an uploaded file, the worker extracts **audio** and transcribes it with Whisper. For a YouTube import, it retrieves existing subtitles through TranscriptAPI. Both paths produce text with timestamps.
 
 By default, answers use subtitles. `overview_video` surveys a video's timeline, `skim_video` narrows a candidate interval, and `read_video_window` reads surrounding subtitle context. Image tools are enabled by default for uploads: overview and skim can check cached stills, `inspect_clip` reads coarse stills at higher image detail, and `focus_clip` checks short clips using approximately one-second frame intervals. Set `VIDEO_VISUAL_ENABLED=false` to opt out. The ReAct agent selects only the tools needed for the question. YouTube imports and uploads without a cache remain subtitle-only. Sparse frames can miss brief actions or illegible text. See [configuration and limits](../guides/visual-evidence.md).
 

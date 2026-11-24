@@ -329,7 +329,7 @@ helm upgrade inference charts/videoq-inference --namespace videoq \
 Persist these settings in the operator values for future upgrades. Missing
 weights fail startup or keep inference Pods unready. Nodes can still pull container images before Pod
 startup. The on-prem application edition disables external mail, Google OAuth, Stripe
-and YouTube/SearchAPI. This recipe handles uploaded videos and administrator-issued
+and YouTube/TranscriptAPI. This recipe handles uploaded videos and administrator-issued
 local accounts; it does not change an explicitly selected inference endpoint.
 
 ## NVIDIA Whisper engine

@@ -44,7 +44,7 @@ VideoQは、モデルがツールを選択し、実行結果を読み、制限�
 
 Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. **“Robust Speech Recognition via Large-Scale Weak Supervision.”** *ICML*, PMLR 202, pp. 28492–28518, 2023。プレプリント初公開は2022年。[論文集と出版社のBibTeX](https://proceedings.mlr.press/v202/radford23a.html)。BibTeXキー: `radford2023whisper`。
 
-クラウド版は `WHISPER_BACKEND=workers-ai` と `@cf/openai/whisper-large-v3-turbo` を使います。オンプレ版は `openai`（`whisper-1`）または `local` の互換サーバーを選択します。YouTube登録はSearchAPIで既存字幕を取得します。
+クラウド版は `WHISPER_BACKEND=workers-ai` と `@cf/openai/whisper-large-v3-turbo` を使います。オンプレ版は `openai`（`whisper-1`）または `local` の互換サーバーを選択します。YouTube登録はTranscriptAPIで既存字幕を取得します。
 
 対応実装: [transcription.py](https://github.com/videoq-jp/videoq/blob/main/apps/worker/worker_python/pipeline/transcription.py)。任意のローカル推論ソフトウェアは[whisper.cpp](https://github.com/ggml-org/whisper.cpp)です。
 

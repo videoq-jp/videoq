@@ -44,7 +44,7 @@ Implementation: [rag.ts](https://github.com/videoq-jp/videoq/blob/main/apps/api/
 
 Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. **“Robust Speech Recognition via Large-Scale Weak Supervision.”** *ICML*, PMLR 202, pp. 28492–28518, 2023; preprint first posted in 2022. [Proceedings and publisher BibTeX](https://proceedings.mlr.press/v202/radford23a.html). BibTeX key: `radford2023whisper`.
 
-Cloud transcription uses `WHISPER_BACKEND=workers-ai` and `@cf/openai/whisper-large-v3-turbo`. On-premises deployments select `openai` (`whisper-1`) or a `local` compatible server. YouTube imports retrieve existing subtitles through SearchAPI.
+Cloud transcription uses `WHISPER_BACKEND=workers-ai` and `@cf/openai/whisper-large-v3-turbo`. On-premises deployments select `openai` (`whisper-1`) or a `local` compatible server. YouTube imports retrieve existing subtitles through TranscriptAPI.
 
 Implementation: [transcription.py](https://github.com/videoq-jp/videoq/blob/main/apps/worker/worker_python/pipeline/transcription.py). The optional inference software is [whisper.cpp](https://github.com/ggml-org/whisper.cpp).
 

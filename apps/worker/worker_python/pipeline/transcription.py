@@ -1,4 +1,4 @@
-"""Uploaded (FFmpeg + Whisper) and YouTube (SearchAPI) transcription."""
+"""Uploaded (FFmpeg + Whisper) and YouTube (TranscriptAPI) transcription."""
 
 from __future__ import annotations
 
@@ -332,7 +332,7 @@ def _transcribe_youtube(
     key = (api_key or "").strip()
     if not key:
         raise RuntimeError(
-            "SearchAPI API key is not configured. Set your SearchAPI API key in "
+            "TranscriptAPI API key is not configured. Set your TranscriptAPI API key in "
             "Settings before importing YouTube videos."
         )
     transcript = _fetch_youtube_transcript(youtube_video_id, key)
@@ -359,53 +359,60 @@ def _transcribe_youtube(
 
 def _fetch_youtube_transcript(youtube_video_id: str, api_key: str) -> list[dict]:
     base_url = env_str(
-        "SEARCHAPI_BASE_URL", "https://www.searchapi.io/api/v1/search"
-    )
-    timeout = int(env_str("SEARCHAPI_TIMEOUT_SECONDS", "60") or "60")
-    attempts = [
-        {
-            "video_id": youtube_video_id,
-            "transcript_type": "manual",
-            "only_available": "true",
-        },
-        {
-            "video_id": youtube_video_id,
-            "transcript_type": "auto",
-            "only_available": "true",
-        },
-    ]
-    last_error: RuntimeError | None = None
-    for params in attempts:
-        query = {"engine": "youtube_transcripts", **params}
+        "TRANSCRIPTAPI_BASE_URL", "https://transcriptapi.com/api/v2"
+    ).rstrip("/")
+    timeout = int(env_str("TRANSCRIPTAPI_TIMEOUT_SECONDS", "60") or "60")
+
+    def request(endpoint: str, params: dict) -> dict:
         req = Request(
-            f"{base_url}?{urlencode(query)}",
+            f"{base_url}/youtube/{endpoint}?{urlencode(params)}",
             headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
         )
         try:
             with urlopen(req, timeout=timeout) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+                return json.loads(resp.read().decode("utf-8"))
         except HTTPError as exc:
             with exc:
-                # At most four UTF-8 bytes per displayed character.
                 detail = exc.read(1200).decode("utf-8", errors="replace")[:300]
-            last_error = RuntimeError(f"SearchAPI HTTP {exc.code}: {detail}")
-            continue
+            raise RuntimeError(f"TranscriptAPI HTTP {exc.code}: {detail}") from exc
         except URLError as exc:
-            raise RuntimeError(f"SearchAPI unreachable: {exc}") from exc
+            raise RuntimeError(f"TranscriptAPI unreachable: {exc}") from exc
 
-        transcripts = payload.get("transcripts") or []
-        if transcripts:
-            return transcripts
-        langs = payload.get("available_languages") or []
-        if langs:
-            last_error = RuntimeError(
-                "No YouTube transcript was returned. Available languages: "
-                + ", ".join(
-                    str(e.get("lang") or e.get("name"))
-                    for e in langs
-                    if isinstance(e, dict)
-                )
-            )
+    # Discover tracks instead of accepting TranscriptAPI's English-first default.
+    # Keep the existing manual-first, then automatic caption selection.
+    info = request("info", {"video_url": youtube_video_id})
+    tracks = [track for track in (info.get("available_languages") or [])
+              if isinstance(track, dict)]
+    manual = [track for track in tracks if track.get("kind") == "manual"]
+    automatic = [track for track in tracks if track.get("kind") == "auto"]
+    last_error: RuntimeError | None = None
+    for candidates in (manual, automatic):
+        # SearchAPI defaulted to English, then the first available track.
+        candidates = sorted(candidates, key=lambda track: (
+            str(track.get("code", "")).removeprefix("asr-").split("-")[0].lower() != "en"
+        ))
+        for track in candidates[:1]:
+            code = track.get("code")
+            if not code:
+                continue
+            if track.get("kind") == "auto" and not code.startswith("asr-"):
+                code = f"asr-{code}"
+            try:
+                payload = request("transcript", {
+                    "video_url": youtube_video_id,
+                    "format": "json",
+                    "include_timestamp": "true",
+                    "language": code,
+                    "language_fallback": "false",
+                })
+            except RuntimeError as exc:
+                if isinstance(exc.__cause__, URLError) and not isinstance(exc.__cause__, HTTPError):
+                    raise
+                last_error = exc
+                continue
+            transcript = payload.get("transcript") or []
+            if transcript:
+                return transcript
     if last_error:
         raise last_error
     raise RuntimeError("No transcript available for this YouTube video.")

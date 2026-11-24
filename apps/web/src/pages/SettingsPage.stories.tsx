@@ -46,14 +46,14 @@ export const Configured: Story = {
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/設定済み|Configured/)).toBeVisible();
-    await expect(canvas.queryByLabelText(/SearchAPIキー|SearchAPI key/)).not.toBeInTheDocument();
+    await expect(canvas.queryByLabelText(/TranscriptAPIキー|TranscriptAPI key/)).not.toBeInTheDocument();
   },
 };
 export const LoadFailed: Story = {
   parameters: { api: { ...api, trpc: [...api.trpc.slice(1), trpcQuery('account.searchApiKeyStatus', failure())] } },
   async play({ canvasElement }) {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(/設定状態を取得できませんでした|Unable to load SearchAPI settings/)).toBeVisible();
+    await expect(await canvas.findByText(/設定状態を取得できませんでした|Unable to load TranscriptAPI settings/)).toBeVisible();
   },
 };
 export const EditUsernameMobile: Story = {

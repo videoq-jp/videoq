@@ -16,7 +16,7 @@ Whisper's model-family reference is [Radford et al. (ICML 2023)](../reference/ai
 | Source | Current processing | When it cannot proceed |
 |---|---|---|
 | Uploaded video | Read the stored file with HTTP range requests (local media is read in place), extract mono audio with FFmpeg, transcribe through the selected Whisper backend, and convert the segments to SRT | Missing file/audio, transcription failure, or an empty transcript |
-| YouTube | Request subtitles through SearchAPI, trying manual subtitles first and automatic subtitles next, then convert them to SRT | Missing SearchAPI configuration or no usable subtitles |
+| YouTube | Request subtitles through TranscriptAPI, trying manual subtitles first and automatic subtitles next, then convert them to SRT | Missing TranscriptAPI configuration or no usable subtitles |
 
 The file upload form lets users select the spoken language, initially using the frontend display language. The selection is saved in `videos.transcription_language` and sent to Whisper for every interval, including retries. Selecting automatic detection leaves this field null; existing videos also keep automatic detection. This setting controls recognition of the source audio, not translation of the transcript.
 

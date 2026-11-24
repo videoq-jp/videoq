@@ -112,7 +112,7 @@ rebuilding existing scene embeddings, even when both models output 1536 dimensio
 The llama.cpp CPU recipe uses native 1536-dimensional gte-Qwen2 embeddings;
 vLLM uses Qwen3-Embedding-4B with Matryoshka output set to 1536 dimensions.
 The on-prem edition disables external mail, Google login, Stripe and
-YouTube/SearchAPI; administrators issue local accounts and private setup links.
+YouTube/TranscriptAPI; administrators issue local accounts and private setup links.
 
 ## Mac development with whisper.cpp
 

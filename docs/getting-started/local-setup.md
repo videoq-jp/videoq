@@ -18,7 +18,7 @@ For documentation-only changes, go to [Update the documentation](../guides/docum
 | Node.js and npm (the version in `.node-version`) | Install dependencies and configure a local account |
 | An OpenAI API key for development | Transcription, search data generation, and AI answers |
 
-The video processing and AI answers in this guide incur external API usage charges. Use a development key and a short test video. A separate SearchAPI key is needed only for YouTube imports.
+The video processing and AI answers in this guide incur external API usage charges. Use a development key and a short test video. A separate TranscriptAPI key is needed only for YouTube imports.
 
 ## 1. Get the code and configuration
 

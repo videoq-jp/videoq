@@ -24,8 +24,12 @@ const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
 type ConnectionSettings = Pick<Bindings, "OPENAI_API_KEY" | "OPENAI_BASE_URL">;
 
-export const openAiBaseUrl = (env: Pick<Bindings, "OPENAI_BASE_URL">): string =>
-  (env.OPENAI_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
+export const openAiBaseUrl = (env: Pick<Bindings, "OPENAI_BASE_URL">): string => {
+  const value = env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+};
 
 export function resolveOpenAiKey(env: ConnectionSettings, purpose: string): string {
   if (!env.OPENAI_API_KEY) throw new LlmConfigurationError(`OPENAI_API_KEY is required when using ${purpose}.`);
