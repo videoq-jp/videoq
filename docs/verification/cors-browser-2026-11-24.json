@@ -1,12 +1,12 @@
 {
-  "measuredAt": "2026-11-24T14:22:06.810Z",
+  "measuredAt": "2026-11-24T14:30:21.269Z",
   "complete": true,
   "allPassed": true,
   "origins": {
-    "allowed": "http://127.0.0.1:54375",
-    "denied": "http://127.0.0.1:54376",
-    "api": "http://127.0.0.1:54374",
-    "storage": "http://127.0.0.1:54373"
+    "allowed": "http://127.0.0.1:55225",
+    "denied": "http://127.0.0.1:55226",
+    "api": "http://127.0.0.1:55224",
+    "storage": "http://127.0.0.1:55223"
   },
   "scope": "Actual Hono CORS middleware and Garage storage adapters; synthetic cookie/challenge routes, not full Better Auth/OAuth or production TLS acceptance",
   "serverChecks": {
@@ -16,7 +16,7 @@
   },
   "results": {
     "allowed": {
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
       "rows": [
         {
@@ -77,7 +77,7 @@
       ]
     },
     "denied": {
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
       "rows": [
         {
@@ -114,11 +114,11 @@
       "layer": "api",
       "method": "GET",
       "operation": "/fixture/cookie",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 401,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-expose-headers": "X-Request-Id",
         "vary": "Origin"
@@ -128,11 +128,11 @@
       "layer": "api",
       "method": "GET",
       "operation": "/fixture/session",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-expose-headers": "X-Request-Id",
         "vary": "Origin"
@@ -142,11 +142,11 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/fixture/write",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 204,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-allow-headers": "Content-Type,Authorization,X-API-Key",
         "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
@@ -158,11 +158,11 @@
       "layer": "api",
       "method": "POST",
       "operation": "/fixture/write",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-expose-headers": "X-Request-Id",
         "vary": "Origin"
@@ -172,11 +172,11 @@
       "layer": "api",
       "method": "GET",
       "operation": "/fixture/error",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 500,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-expose-headers": "X-Request-Id",
         "vary": "Origin"
@@ -187,11 +187,11 @@
       "role": "allowed",
       "method": "OPTIONS",
       "operation": "OPTIONS",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -203,11 +203,11 @@
       "role": "allowed",
       "method": "PUT",
       "operation": "signed_put",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -219,11 +219,11 @@
       "role": "allowed",
       "method": "OPTIONS",
       "operation": "OPTIONS",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -235,7 +235,7 @@
       "role": "allowed",
       "method": "PUT",
       "operation": "signed_put",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 403,
       "responseHeaders": {
@@ -247,11 +247,11 @@
       "role": "allowed",
       "method": "OPTIONS",
       "operation": "upload_part",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -263,11 +263,11 @@
       "role": "allowed",
       "method": "PUT",
       "operation": "upload_part",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -279,11 +279,11 @@
       "role": "allowed",
       "method": "OPTIONS",
       "operation": "upload_part",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -295,11 +295,11 @@
       "role": "allowed",
       "method": "PUT",
       "operation": "upload_part",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-headers": "*",
         "access-control-allow-methods": "GET, HEAD, PUT",
         "access-control-expose-headers": "ETag",
@@ -310,11 +310,11 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/fixture/complete",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "content-type",
       "status": 204,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-allow-headers": "Content-Type,Authorization,X-API-Key",
         "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
@@ -326,11 +326,11 @@
       "layer": "api",
       "method": "POST",
       "operation": "/fixture/complete",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
-        "access-control-allow-origin": "http://127.0.0.1:54375",
+        "access-control-allow-origin": "http://127.0.0.1:55225",
         "access-control-allow-credentials": "true",
         "access-control-expose-headers": "X-Request-Id",
         "vary": "Origin"
@@ -340,7 +340,7 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
       "status": 204,
       "responseHeaders": {
@@ -355,7 +355,7 @@
       "layer": "api",
       "method": "POST",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": null,
       "status": 401,
       "responseHeaders": {
@@ -367,7 +367,7 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54375",
+      "origin": "http://127.0.0.1:55225",
       "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
       "status": 204,
       "responseHeaders": {
@@ -382,7 +382,7 @@
       "layer": "api",
       "method": "GET",
       "operation": "/fixture/cookie",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": null,
       "status": 200,
       "responseHeaders": {
@@ -395,7 +395,7 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/fixture/write",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": "content-type",
       "status": 204,
       "responseHeaders": {
@@ -411,7 +411,7 @@
       "role": "denied",
       "method": "OPTIONS",
       "operation": "OPTIONS",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": "content-type",
       "status": 403,
       "responseHeaders": {
@@ -422,7 +422,7 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
       "status": 204,
       "responseHeaders": {
@@ -437,7 +437,7 @@
       "layer": "api",
       "method": "POST",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": null,
       "status": 401,
       "responseHeaders": {
@@ -449,7 +449,7 @@
       "layer": "api",
       "method": "OPTIONS",
       "operation": "/api/mcp",
-      "origin": "http://127.0.0.1:54376",
+      "origin": "http://127.0.0.1:55226",
       "requestedHeaders": "authorization,content-type,dpop,mcp-protocol-version",
       "status": 204,
       "responseHeaders": {
