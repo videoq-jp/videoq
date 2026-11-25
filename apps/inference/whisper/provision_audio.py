@@ -22,6 +22,11 @@ def sha256(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+PATCHED_AV_FILENAME = 'av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl'
+PATCHED_AV_URL = ('https://github.com/videoq-jp/videoq/releases/download/'
+                  'videoq-audio-wheel-20261126-v1/' + PATCHED_AV_FILENAME)
+
+
 def validate_manifest(manifest):
     if manifest.get('schemaVersion') != 1 or manifest.get('platform') != 'linux/amd64' or manifest.get('python') != '3.12':
         raise ValueError('Unsupported wheel manifest')
@@ -31,8 +36,12 @@ def validate_manifest(manifest):
         raise ValueError('Only the reviewed Whisper audio additions are permitted')
     for package in manifest['packages']:
         url = urllib.parse.urlsplit(package['url'])
-        if url.scheme != 'https' or url.netloc != 'files.pythonhosted.org' or url.query or url.fragment:
-            raise ValueError('Wheels must come from PyPI')
+        if package['name'] == 'av':
+            if (package['url'], package['version'], package['filename'], package.get('ffmpegVersion')) != (
+                    PATCHED_AV_URL, '19.0.2', PATCHED_AV_FILENAME, '9.1'):
+                raise ValueError('PyAV must use the exact reviewed FFmpeg 9.1 release asset')
+        elif url.scheme != 'https' or url.netloc != 'files.pythonhosted.org' or url.query or url.fragment:
+            raise ValueError('Companion wheels must come from PyPI')
         if Path(url.path).name != package['filename'] or Path(package['filename']).name != package['filename'] or not package['filename'].endswith('.whl'):
             raise ValueError('Unexpected wheel filename')
         if not re.fullmatch(r'[a-f0-9]{64}', package['sha256']) or not 0 < package['size'] <= 100 * 1024**2:

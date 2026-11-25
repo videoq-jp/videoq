@@ -142,7 +142,16 @@ container mounts that volume read-only at `/opt/videoq-audio` and imports it via
 unchanged. The locked DNS wheel takes precedence over the vulnerable base-image
 copy; inspection must verify its actual import path/version and reject the
 upstream bounded WKS parser reproducer. The supported target is Linux amd64 /
-Python 3.12.
+Python 3.12. PyAV 19.0.2 is built against genuine signed FFmpeg 9.1 and
+uses the exact reviewed release asset in `videoq-jp/videoq`, rather than the
+unpatched PyPI wheel with the same Python version. Its immutable consumer
+SHA256 and size bind the tested bytes; only this specific asset URL is allowed
+for PyAV, while the other four wheels remain PyPI-only. Source authentication,
+235 wheel file members, 227 installed members, native codec/Whisper preprocessing
+and the zero-finding unsuppressed overlay scan were independently verified before
+publication. Full normal image/native gates remain required after lock adoption;
+this overlay does not establish GPU/model execution or clear unrelated base-image
+findings. The original failed native candidate is not adoption evidence.
 
 With `downloadModels=false`, this init container remains but never downloads:
 it verifies the cached wheels and populates a fresh runtime volume. Pre-populated
