@@ -9,7 +9,7 @@ import { createD1SceneSearchRepository } from '../../src/persistence/d1/scene-se
 import { embeddingFingerprint, embeddingIdentity, resolveEmbeddingConfig } from '../../src/lib/embedding-contract';
 
 let fixture: Awaited<ReturnType<typeof createD1Fixture>>;
-beforeAll(async () => { fixture = await createD1Fixture({ beforeMigration: '0020_embedding_fingerprint.sql' }); });
+beforeAll(async () => { fixture = await createD1Fixture({ beforeMigration: '0021_embedding_fingerprint.sql' }); });
 afterAll(async () => { await fixture?.dispose(); });
 const config = resolveEmbeddingConfig({ EMBEDDING_MODEL: 'same-model', EMBEDDING_REVISION: 'weights-1' });
 const vector = Array(1536).fill(.25);
@@ -44,7 +44,7 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   await expect(releaseCheck()).rejects.toThrow(); // Missing provenance schema blocks release too.
   expect(await releaseCheck(false, true)).toEqual(expect.objectContaining({ serving: false }));
   // The old binary still reads its existing columns after this additive migration.
-  const migration = readFileSync(new URL('../../drizzle-d1/0020_embedding_fingerprint.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../../drizzle-d1/0021_embedding_fingerprint.sql', import.meta.url), 'utf8');
   await db.batch(migration.split('--> statement-breakpoint').map(sql => db.prepare(sql)));
   expect(await db.prepare("SELECT embedding_fingerprint FROM scene_index_runs WHERE id='legacy'").first('embedding_fingerprint')).toBeNull();
   expect(await db.prepare("SELECT content FROM scenes").first('content')).toBe('old');

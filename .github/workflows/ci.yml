@@ -833,6 +833,8 @@ jobs:
         run: |
           npm run cf-typegen --workspace @videoq/web
           git diff --exit-code -- apps/web/worker/env.d.ts
+      - name: Test skill installer
+        run: npm run test:skills --workspace @videoq/web
       - name: Test frontend Worker and static assets
         env:
           VERIFY_PRERENDER_HYDRATION: "true"

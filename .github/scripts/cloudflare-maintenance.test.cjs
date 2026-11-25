@@ -74,3 +74,27 @@ test('fixed ledger verification workflow authenticates only in the migration pur
  const token=await signed.token({environment:'production-db-migration',sub:'repo:videoq-jp@349188820/videoq@1083911938:environment:production-db-migration',workflow_ref:'videoq-jp/videoq/.github/workflows/database-migrate.yml@refs/heads/main'});
  assert.equal((await verifyIdentity(token,'migration',options)).workflow,'database-migrate.yml');await assert.rejects(verifyIdentity(token,'smoke',options),/OIDC_REQUIRED/);
 });
+
+test('a queued aggregate run requires the exact current-attempt maintenance job to be running',async()=>{
+ const {verifyStart}=await auth;
+ for(const [workflow,kind,name] of [['cd.yml','migration','Drizzle DB Migrate'],['database-migrate.yml','migration','verify'],['operations.yml','smoke','production-smoke'],['maintenance-status.yml','migration','status (migration, production-db-migration)'],['maintenance-status.yml','smoke','status (smoke, production-db-smoke)']]){
+  const one={...identity('123',kind),workflow};
+  const run={id:123,run_attempt:1,head_sha:one.source,head_branch:'main',status:'queued',path:'.github/workflows/'+workflow,repository:{id:1083911938}};
+  const job={name,status:'in_progress',conclusion:null,run_id:123,head_sha:one.source,completed_at:null};
+  let jobs={total_count:1,jobs:[job]};let requestedAttempt=false;
+  const fetcher=async url=>{
+   if(url.endsWith('/attempts/1/jobs?per_page=100')){requestedAttempt=true;return Response.json(jobs);}
+   if(url.includes('/actions/runs/'))return Response.json(run);
+   if(url.includes('/git/ref/'))return Response.json({object:{sha:one.source}});
+   return Response.json({workflow_runs:[{id:900,head_repository:{id:1083911938},head_sha:one.source,head_branch:'main',event:'push',status:'completed',conclusion:'success',repository:{id:1083911938}}]});
+  };
+  for(const status of ['queued','waiting','pending']){run.status=status;await verifyStart(one,'x'.repeat(30),{fetcher});assert.equal(requestedAttempt,true);}
+  for(const change of [{status:'queued'},{status:'completed',conclusion:'success'},{name:'unrelated'},{run_id:124},{head_sha:'b'.repeat(40)},{completed_at:'2026-11-25T00:00:00Z'}]){
+   jobs={total_count:1,jobs:[{...job,...change}]};await assert.rejects(verifyStart(one,'x'.repeat(30),{fetcher}),/GITHUB_RUN_REQUIRED/);
+  }
+  for(const invalid of [{total_count:0,jobs:[]},{total_count:101,jobs:[job]},{total_count:2,jobs:[job,job]}]){
+   jobs=invalid;await assert.rejects(verifyStart(one,'x'.repeat(30),{fetcher}),/GITHUB_RUN_REQUIRED/);
+  }
+  jobs={total_count:1,jobs:[job]};run.status='completed';await assert.rejects(verifyStart(one,'x'.repeat(30),{fetcher}),/GITHUB_RUN_REQUIRED/);
+ }
+});

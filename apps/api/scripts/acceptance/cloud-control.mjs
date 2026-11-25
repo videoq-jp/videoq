@@ -101,7 +101,7 @@ else if(command==='pause') {
  result={queuePaused:true,pauseReceiptSha256:hash(paused),newTrafficStatus:stopped.status,activeWorkflows:active.length,workerVersion:deployment.match(/Current Version ID: ([a-f0-9-]+)/)?.[1]};
 }
 else if(command==='refresh-policy-triggers') {
- const migration=readFileSync(new URL('../../drizzle-d1/0021_policy_observation.sql',import.meta.url),'utf8');
+ const migration=readFileSync(new URL('../../drizzle-d1/0022_policy_observation.sql',import.meta.url),'utf8');
  const triggerSql='CREATE TRIGGER'+migration.split('CREATE TRIGGER').slice(1).join('CREATE TRIGGER');const names=[...triggerSql.matchAll(/CREATE TRIGGER (policy_[a-z_]+)/g)].map(match=>match[1]);assert.equal(names.length,7);
  const columns=(await sql('PRAGMA table_info(policy_readiness)')).results.map(row=>row.name);
  for(const [column,type] of [['ready_fingerprint','TEXT'],['ready_dimensions','INTEGER'],['ready_run_id','TEXT']]) if(!columns.includes(column)) await sql('ALTER TABLE policy_readiness ADD COLUMN '+column+' '+type);

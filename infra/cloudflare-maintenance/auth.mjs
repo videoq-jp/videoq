@@ -55,7 +55,18 @@ export async function verifyStart(identity, githubToken, { fetcher = fetch, reco
   }));
   const run = await get('actions/runs/' + identity.runId);
   if (String(run.id) !== identity.runId || run.run_attempt !== identity.attempt || run.head_sha !== identity.source || run.head_branch !== 'main'
-    || run.status !== 'in_progress' || run.path !== `.github/workflows/${identity.workflow}` || run.repository?.id !== 1083911938) throw Error('GITHUB_RUN_REQUIRED');
+    || !['in_progress', 'queued', 'waiting', 'pending'].includes(run.status) || run.path !== `.github/workflows/${identity.workflow}` || run.repository?.id !== 1083911938) throw Error('GITHUB_RUN_REQUIRED');
+  // A parallel job awaiting a runner or environment approval can leave the
+  // aggregate run queued/waiting while this OIDC-authenticated job is executing.
+  // Admit that case only with independent proof of the exact maintenance job.
+  if (run.status !== 'in_progress') {
+    const jobName = { 'cd.yml': 'Drizzle DB Migrate', 'database-migrate.yml': 'verify', 'operations.yml': 'production-smoke', 'maintenance-status.yml': `status (${identity.kind}, production-db-${identity.kind})` }[identity.workflow];
+    const result = await get(`actions/runs/${identity.runId}/attempts/${identity.attempt}/jobs?per_page=100`);
+    if (!jobName || !Array.isArray(result.jobs) || !Number.isSafeInteger(result.total_count) || result.total_count < 1
+      || result.total_count > 100 || result.jobs.length !== result.total_count
+      || result.jobs.filter(job => job.name === jobName && job.status === 'in_progress' && job.conclusion === null
+        && String(job.run_id) === identity.runId && job.head_sha === identity.source && job.completed_at === null).length !== 1) throw Error('GITHUB_RUN_REQUIRED');
+  }
   const commits = await get('git/ref/heads/main');
   if (!recovery && commits.object?.sha !== identity.source) throw Error('CANONICAL_MAIN_REQUIRED');
   const ci = await get(`actions/workflows/ci.yml/runs?branch=main&head_sha=${identity.source}&event=push&per_page=1`);

@@ -99,14 +99,14 @@
     "welcome": {
       "badge": "ホーム",
       "greeting": "{{username}}さん",
-      "dailyMotivation": "動画を登録すると自動で文字起こしされます。講座にまとめると、その内容について質問できます。"
+      "dailyMotivation": "動画を講座にまとめて、AIに質問できます。"
     },
     "gettingStarted": {
       "title": "はじめかた",
       "dismiss": "ガイドを閉じる",
       "stepLabel": "ステップ",
       "completed": "完了",
-      "processing": "文字起こしの処理中です。完了するとこの画面で次のステップに進めます。",
+      "processing": "文字起こし中…",
       "steps": {
         "upload": {
           "title": "動画を登録する",
@@ -115,18 +115,18 @@
         },
         "transcribe": {
           "title": "文字起こしの完了を待つ",
-          "description": "登録後、自動で文字起こしが始まります。かかる時間は動画の長さによって変わります。",
+          "description": "文字起こしは自動で進みます。",
           "action": "ライブラリで確認"
         },
         "course": {
           "title": "講座を作成する",
-          "description": "講座を作成し、ライブラリから動画を追加します。質問は講座ごとに行います。",
+          "description": "ライブラリの動画を講座に追加します。",
           "action": "講座を作成",
           "addVideosAction": "講座に動画を追加"
         },
         "ask": {
           "title": "講座で質問する",
-          "description": "講座を開き、チャット欄に質問を入力します。回答に表示される時刻を選ぶと、その位置から再生します。",
+          "description": "回答の時刻から、元の場面を再生できます。",
           "action": "講座を開く"
         }
       }
@@ -134,16 +134,15 @@
     "actions": {
       "sectionTitle": "利用メニュー",
       "upload": {
-        "title": "動画を登録",
-        "descriptionLong": "授業・研修動画を登録し、自動文字起こしを開始します。"
+        "title": "動画を登録"
       },
       "library": {
         "title": "ライブラリ",
-        "descriptionLong": "登録済みの動画（{{count}}本）を確認・編集・共有できます。"
+        "descriptionLong": "動画 {{count}}本"
       },
       "courses": {
         "title": "講座管理",
-        "descriptionLong": "講座（{{count}}件）を管理します。"
+        "descriptionLong": "{{count}}講座"
       }
     },
     "stats": {
@@ -388,10 +387,10 @@
       "manageTags": "タグ管理",
       "managingCount": "{{count}}本の動画を管理中",
       "noVideos": "動画がありません",
-      "noVideosHint": "「動画をアップロード」からライブラリに追加できます。講座に入れるときは、講座画面でライブラリから選びます。",
+      "noVideosHint": "動画を登録して、講座に追加しましょう。",
       "loadingMore": "読み込み中...",
       "emptyTitle": "動画がまだありません",
-      "emptyDescription": "動画を登録すると自動で文字起こしされます。講座にまとめると、その内容について質問できます。",
+      "emptyDescription": "動画を登録すると、自動で文字起こしされます。",
       "emptyFormats": "対応形式：MP4、MOV、WebM など",
       "noMatch": "条件に一致する動画はありません",
       "noMatchHint": "検索語や絞り込み条件を変更してください。",
@@ -484,7 +483,7 @@
     "courses": {
       "title": "講座",
       "subtitle": "ライブラリの動画を講座にまとめて、管理・共有できます",
-      "emptyDescription": "講座は、ライブラリの動画を選んでまとめたものです。講座を作成すると、次のことができます。",
+      "emptyDescription": "動画をまとめて、質問・共有できる講座を作りましょう。",
       "optional": "（任意）",
       "create": "新しい講座を作成",
       "createTitle": "新しい講座を作成",
@@ -503,15 +502,7 @@
       "retryLoad": "講座を再読み込み",
       "loadingMore": "読み込み中...",
       "videoCount_one": "{{count}}個の動画",
-      "videoCount_other": "{{count}}個の動画",
-      "emptyBenefits": {
-        "bullets": [
-          "複数の動画にまたがって質問できる",
-          "共有リンクや招待で受講者に共有できる",
-          "受講者の質問とフィードバックを確認できる"
-        ]
-      },
-      "emptyNeedsVideos": "講座に入れる動画は、ライブラリに登録したものから選びます。"
+      "videoCount_other": "{{count}}個の動画"
     },
     "courseDetail": {
       "pickFromLibrary": "ライブラリから選ぶ",
@@ -711,9 +702,9 @@
     "checkEmail": {
       "badge": "アカウント登録",
       "title": "メールをご確認ください",
-      "description": "ご登録いただいたメールアドレス宛に確認メールを送信しました。受信トレイまたは迷惑メールフォルダーをご確認のうえ、記載のリンクをクリックして登録を完了してください。",
+      "description": "確認メールを送りました。メールのリンクを開いて登録を完了してください。",
       "alert": "確認リンクの有効期限が切れる前にメールを開いてください。",
-      "help": "メールが届かない場合は、しばらく待ってから再度お試しください。それでも届かない場合はサポートまでご連絡ください。",
+      "help": "届かない場合は迷惑メールを確認してください。",
       "backToLogin": "ログイン画面に戻る"
     },
     "forgotPassword": {
@@ -721,7 +712,7 @@
       "noAccount": "アカウントをお持ちでないですか？",
       "signUp": "新規登録",
       "title": "パスワードをお忘れですか？",
-      "description": "登録済みのメールアドレスを入力すると、パスワード再設定用のリンクをメールでお送りします。",
+      "description": "登録したメールアドレスに再設定リンクを送ります。",
       "success": "パスワードリセット用のメールを送信しました。数分待っても届かない場合は迷惑メールフォルダをご確認ください。",
       "submit": "リセットリンクを送信",
       "submitting": "送信中...",
@@ -1145,7 +1136,7 @@
     "usernameChange": {
       "title": "ユーザー名",
       "newUsernameLabel": "新しいユーザー名",
-      "help": "3〜150文字の英数字、アンダースコア、ピリオドが使えます。大文字は小文字として保存されます。ユーザー名はログインにも使われます。",
+      "help": "3〜150文字の英数字・_・. が使えます。大文字は小文字で保存され、ログインにも使います。",
       "submit": "ユーザー名を変更",
       "submitting": "変更中...",
       "success": "ユーザー名を変更しました",
@@ -1160,50 +1151,48 @@
     "emailChange": {
       "title": "メールアドレス",
       "newEmailLabel": "新しいメールアドレス",
-      "help": "まず現在のメールアドレスへ承認リンクを送信します。承認後、新しいメールアドレスに届く確認リンクを開いてください。",
+      "help": "現在のメールで承認後、新しいメールで確認します。",
       "submit": "確認メールを送信",
       "submitting": "送信中...",
-      "success": "確認メールを送信しました。現在のメールアドレスで変更を承認した後、新しいメールアドレスの確認を完了してください。",
+      "success": "現在のメールに承認リンクを送りました。",
       "errorEmpty": "新しいメールアドレスを入力してください",
       "errorSubmitting": "メールアドレス変更のリクエストに失敗しました",
       "edit": "メールアドレスを変更する"
     },
     "integrationApiKeys": {
       "title": "開発者向けAPIキー",
-      "description": "自作のアプリやシステムからVideoQにアクセスするためのキーを管理します。",
+      "description": "外部アプリからVideoQに接続します。",
       "nameLabel": "キー名",
-      "nameHelp": "この名前は一覧にだけ表示されます。あとで見て分かる連携名にしてください。",
+      "nameHelp": "例：Claude Code",
       "create": "APIキーを作成",
       "createDialogTitle": "新しいシークレットキーを作成",
-      "createDialogDescription": "キー名を付けて、最初の権限を選択してください。",
       "createDialogCta": "シークレットキーを作成",
       "creating": "発行中...",
       "generatedTitle": "このキーは今だけ表示されます。必ず安全な場所に保存してください。",
       "generatedDialogTitle": "シークレットキーを保存してください",
-      "generatedDialogDescription": "このキーはあとから再表示できません。安全な場所に保存してください。このキーを知っている人は、あなたの代わりにAPIを実行できます。",
+      "generatedDialogDescription": "再表示できません。安全に保存し、他の人に渡さないでください。",
       "generatedDoneCta": "保存しました",
       "copy": "コピー",
       "copyDone": "コピー済み",
       "empty": "APIキーはまだありません。",
       "neverUsed": "未使用",
       "permissionsLabel": "権限",
-      "permissionsHelp": "書き込みを含めて使うなら All、読み取りだけに制限したいなら Read only を選んでください。",
       "secretKeyLabel": "シークレットキー",
       "columns": {
         "permissions": "権限",
         "lastUsed": "最終使用"
       },
       "permissions": {
-        "allTitle": "All",
-        "allDescription": "利用可能な連携APIに対して、読み取りと書き込みの両方を許可します。",
-        "readOnlyTitle": "Read only",
-        "readOnlyDescription": "データの登録・更新・削除を行わない、読み取り系のAPIだけを使う連携向けです。"
+        "allTitle": "読み取り・書き込み",
+        "allDescription": "データの取得・登録・変更・削除",
+        "readOnlyTitle": "読み取りのみ",
+        "readOnlyDescription": "データの取得のみ"
       },
       "revoke": "キーを無効化",
       "revoking": "無効化中...",
       "revokeConfirmTitle": "APIキーを無効化しますか？",
       "revokeConfirmDescription": "このキーは、既存の連携ですぐに使えなくなります。",
-      "revokeConfirmWarning": "この操作は元に戻せません。このキーを使っているシステムは、新しいキーに差し替えるまで失敗します。",
+      "revokeConfirmWarning": "元に戻せません。利用中の連携には新しいキーが必要です。",
       "revokeConfirmCta": "キーを無効化",
       "cancel": "キャンセル",
       "errorEmpty": "キー名を入力してください",
@@ -1229,16 +1218,14 @@
       "successRevoked": "アプリとの連携を解除しました",
       "revoking": "解除中...",
       "confirmTitle": "アプリとの連携を解除しますか？",
-      "confirmDescription": "このアプリからVideoQへのアクセスができなくなります。アクセス停止まで数分かかる場合があります。再び利用するには、アプリ側で連携し直してください。"
+      "confirmDescription": "このアプリからのアクセスを停止します。反映に数分かかる場合があります。"
     },
     "searchApiKey": {
       "title": "YouTube取り込み",
-      "description": "YouTubeの字幕を取り込むためのTranscriptAPIを設定します。",
-      "usageTitle": "TranscriptAPIの利用料金について",
-      "usageDescription": "字幕の取得には、ご自身のTranscriptAPIアカウントを使用します。TranscriptAPIの利用料金はVideoQの料金に含まれず、TranscriptAPIから別途請求されます。",
+      "usageDescription": "字幕取得にはTranscriptAPIの別途料金がかかります。",
       "apiKeyLabel": "TranscriptAPIキー",
-      "hasApiKeyMessage": "すでに TranscriptAPI キーが設定されています。新しいキーを入力すると更新されます。",
-      "noApiKeyMessage": "YouTube 動画を取り込むには、先に自分の TranscriptAPI キーを設定してください。",
+      "hasApiKeyMessage": "新しいキーを保存すると置き換わります。",
+      "noApiKeyMessage": "ご自身のTranscriptAPIキーを入力してください。",
       "getApiKeyMessage": "キーの取得先：",
       "save": "保存",
       "saving": "保存中...",
@@ -1290,7 +1277,7 @@
     "dateRange": "期間: {{first}} 〜 {{last}}",
     "empty": {
       "title": "データがありません",
-      "description": "この講座にはまだ質問がありません。チャットで質問すると分析データが表示されます。"
+      "description": "質問が集まると、ここに分析結果が表示されます。"
     },
     "timeSeries": {
       "title": "質問の推移",
@@ -1483,5 +1470,56 @@
     "empty": "まだ質問がありません。最初の質問を投稿しましょう。",
     "previous": "前へ",
     "next": "次へ"
+  },
+  "skills": {
+    "keepOpen": "生成が終わるまで、この画面を開いておいてください。",
+    "details": "利用条件",
+    "limits": "上限：30動画・字幕18万文字・12skills。",
+    "usageDetails": "完了したAI呼び出しごとに1回分の枠を使います。照合で不整合があれば各skillを最大2回自動修正します。",
+    "updateDetails": "字幕や講座構成の変更後は再生成が必要です。導入済みのskillsは自動更新・上書きされません。",
+    "keyPrompt": "APIキーを求められたら入力してください。",
+    "open": "skillsを導入",
+    "title": "skillsを導入",
+    "description": "講座からCodex・Claude Code用のskillsを自動生成します。",
+    "agent": "導入先",
+    "global": "すべてのプロジェクトで使う",
+    "key": "APIキーを取得",
+    "runProject": "プロジェクトのターミナルで実行",
+    "runGlobal": "ターミナルで実行",
+    "invoke": "導入後は新しいエージェントセッションでskillを選べます。",
+    "command": "インストールコマンド",
+    "copy": "コマンドをコピー",
+    "copied": "コピーしました",
+    "copyError": "コピーできませんでした。上のコマンドを選択してコピーしてください。",
+    "requirements": "Node.js 22以上（npm / npx）が必要です。",
+    "snapshot": "講座の引用も保存されます。共有・コミット前に確認してください。",
+    "generationCost": "生成にはAI利用枠を使います。",
+    "generate": "skillsを生成",
+    "generateNew": "再生成",
+    "resume": "生成を再開",
+    "pause": "中断する",
+    "paused": "中断しました。「生成を再開」で続けられます。",
+    "failed": "生成に失敗しました。保存された進行を確認して再試行してください。",
+    "loading": "保存されたskillを読み込んでいます…",
+    "preview": "内容を見る",
+    "evidence": "出典を見る",
+    "publish": "内容を確認して導入を有効にする",
+    "stages": {
+      "extracting": "講座を読み取り中",
+      "synthesizing": "skillsを生成中",
+      "auditing": "出典と照合中",
+      "review": "生成完了：内容の確認待ち",
+      "published": "導入の準備ができました",
+      "rejected": "生成できませんでした",
+      "planning": "用途ごとに整理中"
+    },
+    "repairing": "照合結果をもとに自動修正中",
+    "memberCount": "生成したskills（{{count}}）",
+    "memberStatuses": {
+      "pending": "生成待ち",
+      "auditing": "根拠照合中",
+      "passed": "根拠照合済み",
+      "rejected": "品質チェック不合格"
+    }
   }
 }

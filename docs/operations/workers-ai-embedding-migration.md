@@ -204,7 +204,7 @@ cutover. No migration copies today's settings onto historical vectors.
    `SELECT dimensions, embedding_fingerprint, count(*) FROM scene_index_runs WHERE status='published' GROUP BY dimensions, embedding_fingerprint` after the additive migration.
    Before migration, all existing provenance is unknown. In PostgreSQL inspect
    `langchain_metadata->>'embedding_fingerprint'` on both vector tables.
-2. Apply D1 `0020_embedding_fingerprint.sql` before the new application. It adds
+2. Apply D1 `0021_embedding_fingerprint.sql` before the new application. It adds
    nullable fields only: old code can continue using its old columns. Existing
    rows remain NULL. Old code must not write after strict activation because it
    cannot declare trustworthy provenance. Backups and migrated archives also

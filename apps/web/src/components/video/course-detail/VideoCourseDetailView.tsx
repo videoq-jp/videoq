@@ -1,3 +1,4 @@
+import { InstallSkillDialog } from '@/components/video/InstallSkillDialog';
 import { ViewerPlayerLoading } from '@/components/video/ViewerPlayerLoading';
 import { canManageCourse } from '@/application/course-access';
 import { ViewerPlayerFrame } from '@/components/video/ViewerPlayerFrame';
@@ -27,6 +28,7 @@ import {
   Plus,
   Save,
   Share2,
+  Terminal,
   Trash2,
   Users,
   LogOut,
@@ -410,6 +412,7 @@ export function VideoCourseDetailView({
   const [playerExpanded, setPlayerExpanded] = useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isSkillOpen, setIsSkillOpen] = useState(false);
   const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
   const panelId = useId();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -493,6 +496,8 @@ export function VideoCourseDetailView({
             />
           )}
 
+          {canManage && courseId ? <InstallSkillDialog kind="course" resourceId={courseId} open={isSkillOpen} onOpenChange={setIsSkillOpen} /> : null}
+
           {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
 
           <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
@@ -515,6 +520,12 @@ export function VideoCourseDetailView({
                       <MenuListItemButton type="box" size="regular" onClick={() => setIsDashboardOpen(true)}>
                         <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>{t('dashboard.button')}</span>
+                      </MenuListItemButton>
+                    </MenuListItem> : null}
+                    {courseId ? <MenuListItem>
+                      <MenuListItemButton type="box" size="regular" onClick={() => setIsSkillOpen(true)}>
+                        <Terminal className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{t('skills.open')}</span>
                       </MenuListItemButton>
                     </MenuListItem> : null}
                     <MenuListItem>

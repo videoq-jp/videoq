@@ -1,4 +1,4 @@
-import { defineConfig, type PluginOption } from 'vite'
+import { defineConfig, type PluginOption, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { readFileSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -25,6 +25,13 @@ export default defineConfig({
   publicDir: onprem ? false : 'public',
   plugins: [reactPlugin, ...(onprem ? [{
     name: 'videoq-onprem-assets',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use('/skills/install.mjs', (request, response, next) => {
+        if (request.method !== 'GET' && request.method !== 'HEAD') return next()
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8')
+        response.end(request.method === 'HEAD' ? undefined : readFileSync(path.resolve(__dirname, 'public/skills/install.mjs')))
+      })
+    },
     transformIndexHtml: {
       order: 'pre' as const,
       handler: () => readFileSync(path.resolve(__dirname, 'index.onprem.html'), 'utf8'),
@@ -32,7 +39,8 @@ export default defineConfig({
     writeBundle(options: { dir?: string }) {
       const output = options.dir || path.resolve(__dirname, 'dist')
       mkdirSync(path.join(output, 'licenses'), { recursive: true })
-      for (const file of ['favicon.ico', 'apple-touch-icon.png', 'logo192.png', 'logo512.png', 'licenses/mediabunny.txt']) {
+      mkdirSync(path.join(output, 'skills'), { recursive: true })
+      for (const file of ['favicon.ico', 'apple-touch-icon.png', 'logo192.png', 'logo512.png', 'licenses/mediabunny.txt', 'skills/install.mjs']) {
         copyFileSync(path.resolve(__dirname, 'public', file), path.join(output, file))
       }
       writeFileSync(path.join(output, 'robots.txt'), 'User-agent: *\nDisallow: /\n')

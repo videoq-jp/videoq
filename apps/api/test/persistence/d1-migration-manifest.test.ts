@@ -5,7 +5,7 @@ const snapshot=(folder:string)=>{const base=new URL('../../'+folder+'/',import.m
 it('accounts for every current schema table and column without declaring data migration complete',()=>{
  const result=buildMigrationManifest(snapshot('drizzle'),snapshot('drizzle-d1'));
  expect(result.issues).toEqual([]);expect(result.mapping_complete).toBe(true);expect(result.execution_complete).toBe(false);
- expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(56);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(14);
+ expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(57);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(14);
  expect(result.target_only).toEqual(expect.arrayContaining([
   {target:'policy_readiness',policy:'initialize_empty_no_historical_acceptance_backfill'},
   {target:'policy_cleanup',policy:'initialize_empty_observe_future_logical_deletions'},
@@ -37,4 +37,19 @@ it.each([
 });
 it('keeps SQL NULL separate from JSON null and rejects missing required values',()=>{
  expect(convertMigrationValue(null,'json_text',true)).toBeNull();expect(convertMigrationValue('null','json_text',true)).toBe('null');expect(()=>convertMigrationValue(null,'text',false)).toThrow('NULL');expect(()=>convertMigrationValue(9007199254740992,'safe_integer',false)).toThrow('text output');
+});
+
+it('appends undeployed index migrations after the published skills schema with continuous snapshots',()=>{
+ const base=new URL('../../drizzle-d1/',import.meta.url);
+ const journal=JSON.parse(readFileSync(new URL('meta/_journal.json',base),'utf8')) as {entries:{idx:number;tag:string}[]};
+ expect(journal.entries.slice(-3).map(entry=>entry.tag)).toEqual(['0020_agent_skills','0021_embedding_fingerprint','0022_policy_observation']);
+ const read=(idx:number)=>JSON.parse(readFileSync(new URL(`meta/${String(idx).padStart(4,'0')}_snapshot.json`,base),'utf8'));
+ const skills=read(20),embedding=read(21),policy=read(22);
+ expect(embedding.prevId).toBe(skills.id);expect(policy.prevId).toBe(embedding.id);
+ expect(new Set([skills.id,embedding.id,policy.id]).size).toBe(3);
+ for(const current of [embedding,policy])expect(current.tables.agent_skills).toEqual(skills.tables.agent_skills);
+ expect(skills.tables.scene_index_runs.columns.embedding_fingerprint).toBeUndefined();
+ expect(embedding.tables.scene_index_runs.columns.embedding_fingerprint).toBeDefined();
+ expect(embedding.tables.policy_readiness).toBeUndefined();expect(policy.tables.policy_readiness).toBeDefined();
+ for(const entry of journal.entries)expect(readFileSync(new URL(`${entry.tag}.sql`,base),'utf8').length).toBeGreaterThan(0);
 });

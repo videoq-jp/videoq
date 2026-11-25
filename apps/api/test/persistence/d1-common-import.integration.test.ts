@@ -43,7 +43,7 @@ describe.skipIf(!url)('offline common table imports',()=>{
  const run=(database=target.database)=>importCommonTables(database,path,manifest,{offlineStaging:true,batchRows:1});
  const rows=async(table:string)=>(await target.database.prepare('SELECT * FROM '+table).all<Record<string,unknown>>()).results;
  it('imports authentication rows in FK order and reconciles values on repeated runs',async()=>{
-  expect(await run()).toMatchObject({common_import_complete:true,execution_complete:false,pending_sequence_restore:false,pending_special_rows:'0',scene_import_complete:true,pending_vectorize_rows:'1',vectorize_delivery_complete:false,tables:56});
+  expect(await run()).toMatchObject({common_import_complete:true,execution_complete:false,pending_sequence_restore:false,pending_special_rows:'0',scene_import_complete:true,pending_vectorize_rows:'1',vectorize_delivery_complete:false,tables:manifest.tables.filter(table=>table.policy==='convert_rows').length});
   expect(await rows('users')).toHaveLength(3);expect((await rows('session'))[0]).toMatchObject({user_id:'alice',token:'private-import-token'});expect((await rows('account'))[0].password).toBe('private-import-password');expect((await rows('migration_imports'))[0]).toMatchObject({status:'common_imported',imported_rows:10});
   expect(await run()).toMatchObject({common_import_complete:true});expect(await rows('users')).toHaveLength(3);expect((await rows('course_questions'))[0].body).toBe('字幕');expect(await rows('course_question_replies')).toHaveLength(1);expect(await rows('scenes')).toHaveLength(1);
  });

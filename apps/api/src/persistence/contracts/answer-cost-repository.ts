@@ -1,4 +1,4 @@
-export type ProviderCallKind = "answer_model" | "conversation_summary" | "visual_inspection" | "query_embedding";
+export type ProviderCallKind = "answer_model" | "skill_generation" | "conversation_summary" | "visual_inspection" | "query_embedding";
 export type ProviderCallStatus = "completed" | "failed" | "interrupted";
 export type AnswerAttemptStatus = "completed" | "failed" | "interrupted";
 export type ProviderCallRecord = {

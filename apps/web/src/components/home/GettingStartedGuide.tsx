@@ -118,9 +118,9 @@ export function GettingStartedGuide({ userId, progress, courseHref, onUpload }: 
                   </StepNavigationNumber>
                   <StepNavigationTitle>{t(`home.gettingStarted.steps.${key}.title`)}</StepNavigationTitle>
                 </StepNavigationStepHeader>
-                <StepNavigationDescription className="text-solid-gray-700">
+                {isCurrent && <StepNavigationDescription className="text-solid-gray-700">
                   {t(`home.gettingStarted.steps.${key}.description`)}
-                </StepNavigationDescription>
+                </StepNavigationDescription>}
                 {isCurrent ? (
                   <div className="mt-4 pl-[calc(var(--step-number-size)+var(--step-number-margin)*2+1rem)]">
                     {isWaiting ? (
