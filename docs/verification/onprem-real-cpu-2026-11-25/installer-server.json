@@ -1,0 +1,84 @@
+{
+  "installation": "server",
+  "containers": [
+    {
+      "Service": "api",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "background-worker",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "garage",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "gateway",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "inference",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 137
+    },
+    {
+      "Service": "migrate",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "postgres",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "queue",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 143
+    },
+    {
+      "Service": "unknown",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "scheduler",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "storage-init",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "web",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    },
+    {
+      "Service": "worker",
+      "State": "exited",
+      "Health": "",
+      "ExitCode": 0
+    }
+  ],
+  "apiAdmissionCodes": []
+}
