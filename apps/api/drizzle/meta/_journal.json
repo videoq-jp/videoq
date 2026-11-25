@@ -470,6 +470,13 @@
       "when": 1795529495255,
       "tag": "0066_chat_history_page_order",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795562412949,
+      "tag": "0067_agent_skills",
+      "breakpoints": true
     }
   ]
 }

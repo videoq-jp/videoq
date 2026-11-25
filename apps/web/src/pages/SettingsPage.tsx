@@ -33,8 +33,6 @@ import { trpc } from '@/lib/trpc';
 
 const SETTINGS_SECTION_CLASS =
   'scroll-mt-28';
-const SETTINGS_CALLOUT_CLASS =
-  'rounded-8 bg-solid-gray-50 p-4 text-std-17N-170 text-solid-gray-700';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -102,7 +100,6 @@ export default function SettingsPage() {
     <div>
       <AppPageHeader
         title={t('settings.title')}
-        description={t(features.billing ? 'settings.subtitle' : 'onprem.settingsSubtitle')}
       />
 
       <nav aria-label={t('settings.navigation')} className="mb-6 flex flex-wrap gap-x-6 gap-y-2 pb-4">
@@ -164,9 +161,6 @@ export default function SettingsPage() {
                   </ChipLabel>
                 )}
               </div>
-              <p className="text-std-17N-170 text-solid-gray-600">
-                {t('settings.searchApiKey.description')}
-              </p>
             </div>
 
             {searchApiStatusMessage && (
@@ -187,12 +181,7 @@ export default function SettingsPage() {
               </div>
             )}
             {searchApiKeyStatusQuery.isSuccess && <div className="space-y-4">
-              <div className={SETTINGS_CALLOUT_CLASS}>
-                <div className="font-bold text-solid-gray-800 mb-1">
-                  {t('settings.searchApiKey.usageTitle')}
-                </div>
-                <p>{t('settings.searchApiKey.usageDescription')}</p>
-              </div>
+              <p className="text-sm text-solid-gray-700">{t('settings.searchApiKey.usageDescription')}</p>
 
               {searchApiKeyStatusQuery.data.has_api_key && !editingSearchApiKey ? (
                 <div className="flex flex-wrap gap-3">

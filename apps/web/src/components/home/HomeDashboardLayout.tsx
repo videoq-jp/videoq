@@ -108,7 +108,7 @@ export function HomeDashboardLayout({ currentUser, username, isLoading, data, st
   const actionItems = [
     {
       title: t('home.actions.upload.title'),
-      description: t('home.actions.upload.descriptionLong'),
+      description: null,
       onClick: () => navigate('/videos?upload=true'),
     },
     {
@@ -197,9 +197,7 @@ export function HomeDashboardLayout({ currentUser, username, isLoading, data, st
                 <span className="text-std-17B-170 text-solid-gray-800 group-hover/menu-list-item:underline">
                   {item.title}
                 </span>
-                <div className="min-h-8 text-std-17N-170 text-solid-gray-700">
-                  {item.description}
-                </div>
+                {item.description && <div className="text-std-17N-170 text-solid-gray-700">{item.description}</div>}
               </MenuListItemButton>
             </MenuListItem>
           ))}

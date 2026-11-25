@@ -33,7 +33,7 @@ const MAX_RETRIES = 0;
  */
 class AnswerChatModel extends ChatOpenAICompletions {
   costLedger?: AnswerCostLedger;
-  purpose: "answer_model" | "conversation_summary" = "answer_model";
+  purpose: "answer_model" | "skill_generation" | "conversation_summary" = "answer_model";
   separateToolSchema = false;
   nativeWorkersAi = false;
   preserveToolReasoning = false;
@@ -165,7 +165,7 @@ class AnswerChatModel extends ChatOpenAICompletions {
 
 export function createChatModel(
   env: Bindings,
-  opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "conversation_summary"; callbacks?: Callbacks },
+  opts: { maxTokens?: number; timeoutMs: number; costLedger?: AnswerCostLedger; purpose?: "answer_model" | "skill_generation" | "conversation_summary"; callbacks?: Callbacks },
 ): ChatOpenAICompletions {
   const { apiKey, baseURL, fetch: inferenceFetch } = resolveLlmConnection(env);
   const model = env.LLM_MODEL || DEFAULT_LLM_MODEL;

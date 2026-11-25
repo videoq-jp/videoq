@@ -1,0 +1,82 @@
+{
+  "syntheticSource": true,
+  "generationTransport": "Codex CLI using production prompt/schema/validation",
+  "providerIntegration": "mocked quota and persistence; production provider credentials were unavailable",
+  "stages": [
+    {
+      "stage": "extract",
+      "passed": true
+    },
+    {
+      "stage": "extract",
+      "passed": true
+    },
+    {
+      "stage": "plan",
+      "passed": true
+    },
+    {
+      "stage": "synthesize",
+      "passed": true
+    },
+    {
+      "stage": "audit",
+      "passed": true
+    },
+    {
+      "stage": "synthesize",
+      "passed": true
+    },
+    {
+      "stage": "audit",
+      "passed": true
+    }
+  ],
+  "skillNames": [
+    "videoq-lab-request-concurrency-retry-f2b86319",
+    "videoq-diagnose-slow-sql-index-f2b86319"
+  ],
+  "results": {
+    "codex": {
+      "passed": true,
+      "checks": [
+        "429 defers using Retry-After after one request",
+        "401 never retries",
+        "POST without idempotency never retries",
+        "at most two in-flight requests",
+        "six queued requests complete"
+      ],
+      "maxConcurrency": 2
+    },
+    "claude": {
+      "passed": true,
+      "checks": [
+        "429 defers using Retry-After after one request",
+        "401 never retries",
+        "POST without idempotency never retries",
+        "at most two in-flight requests",
+        "six queued requests complete"
+      ],
+      "maxConcurrency": 2
+    }
+  },
+  "automatic": true,
+  "humanObjectiveSupplied": false,
+  "humanPublicationRequired": false,
+  "memberCount": 2,
+  "memberAttempts": [
+    1,
+    1
+  ],
+  "coverageLimit": "Synthetic two-video course, subtitle-derived. No production provider, production database, deployment or real user course was exercised. Agent behavioral checks cover the client skill; the SQL skill was generated and audited, not behaviorally evaluated.",
+  "validation": {
+    "apiFeatureTests": "22 passed across generation, quota, MCP, D1 persistence, and tRPC surface checks",
+    "webUnitTests": "50 passed across skill dialog and course page",
+    "storybook": "8 passed in Chromium, including English/mobile and interruption",
+    "installer": "10 passed, including real CLI multi-skill installation and conflict handling",
+    "frontendWorker": "20 passed, 2 skipped",
+    "typecheck": "API and web passed",
+    "productionWebBuild": "passed",
+    "automaticAuditRepair": "Unit-tested with up to two repairs; successful live model generation needed no repair."
+  }
+}

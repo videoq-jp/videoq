@@ -32,6 +32,7 @@ const meta = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/未設定|Not configured/)).toBeVisible();
     await expect(canvas.getByText('yuki')).toBeVisible();
+    await expect(canvas.getByText(i18n.t('settings.searchApiKey.usageDescription'))).toBeVisible();
     await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
   },
 } satisfies Meta<typeof SettingsPage>;
@@ -82,7 +83,7 @@ export const EmailConfirmation: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, 'new@example.test');
     await userEvent.click(canvas.getByRole('button', { name: /確認メールを送信|Send confirmation email/ }));
-    await expect(await canvas.findByText(/確認メールを送信しました|Confirmation email sent/)).toBeVisible();
+    await expect(await canvas.findByText(i18n.t('settings.emailChange.success'))).toBeVisible();
     await expect(canvas.getByText(regularUser.email)).toBeVisible();
     await expect(canvas.queryByLabelText(/新しいメールアドレス|New email address/)).not.toBeInTheDocument();
   },

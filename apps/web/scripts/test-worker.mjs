@@ -355,3 +355,11 @@ test('known legacy use cases reach their matching guides in one redirect', async
     assert.equal((await worker.fetch(path, { redirect: 'manual' })).status, 404, path);
   }
 });
+
+
+test('serves the skill installer as JavaScript rather than the SPA shell', async () => {
+  const response = await worker.fetch('/skills/install.mjs');
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /javascript/);
+  assert.equal(await response.text(), await readFile('public/skills/install.mjs', 'utf8'));
+});

@@ -91,7 +91,7 @@ try{
  async function run(output,overrides={}){return execute(process.execPath,['--import',loader,entry,'--output',output],{cwd:bundle,env:{...env,...overrides},timeout:120000,maxBuffer:1000000});}
  async function output(){const parent=await mkdtemp(join(directory,'output-'));return join(parent,'d1-source.videoq-export.ndjson');}
  const positive=await output(),result=await run(positive),report=JSON.parse(result.stdout.trim());
- assert.equal(report.event,'restored_backup_d1_archive_verified');assert.equal(report.tables,58);assert.equal(report.rows,'4');assert.equal(report.execution_complete,false);
+ assert.equal(report.event,'restored_backup_d1_archive_verified');assert.equal(report.tables,tables.length);assert.equal(report.rows,'4');assert.equal(report.execution_complete,false);
  assert.equal(await privateMode(positive)&0o777,0o600);
  const bytes=await readFile(positive,'utf8');assert.ok(bytes.includes('Synthetic restored backup evidence'));
  const rerun=await run(positive).then(()=>null,error=>error);assert.equal(rerun.code,1);
@@ -143,7 +143,7 @@ try{
  const verifyCode="import{verifyPostgresArchive}from'./apps/api/scripts/migrations/d1/verify-archive.ts';import{buildMigrationManifest}from'./apps/api/scripts/migrations/d1/manifest.ts';import{loadMigrationSnapshot}from'./apps/api/scripts/d1-migration-manifest.ts';const m=buildMigrationManifest(await loadMigrationSnapshot('apps/api/drizzle'),await loadMigrationSnapshot('apps/api/drizzle-d1'));const v=await verifyPostgresArchive(process.argv[1],m);console.log(JSON.stringify({hash:v.archive_sha256,tables:v.tables,rows:v.rows}));";
  const checked=await execute(process.execPath,['--import',loader,'--input-type=module','--eval',verifyCode,join(downloaded,'d1-source.videoq-export.ndjson')],
   {cwd:bundle,env:Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(key=>process.env[key]).map(key=>[key,process.env[key]])),timeout:120000,maxBuffer:1000000});
- assert.deepEqual(JSON.parse(checked.stdout.trim()),{hash:archiveHash,tables:58,rows:'4'});
+ assert.deepEqual(JSON.parse(checked.stdout.trim()),{hash:archiveHash,tables:tables.length,rows:'4'});
  await restored.client.query('CREATE DATABASE recovered_download');
  const recoveredUrl=new URL(restored.url);recoveredUrl.pathname='/recovered_download';
  const recovered=new Client({connectionString:recoveredUrl.toString()});recovered.on('error',()=>undefined);await recovered.connect();clients.push(recovered);
@@ -175,7 +175,7 @@ try{
   const failed=JSON.parse(await readFile(join(bundle,'operations-report.json'),'utf8'));assert.equal(failed.status,'error');assert.equal(failed.d1_archive,'failed');assert.equal(objects.size,3);
  }finally{process.chdir(previous);}
  await assert.rejects(access(handoff),{code:'ENOENT'});
- console.log(JSON.stringify({synthetic_restored_backup_export_verified:true,packaged_operator_used:true,tables:58,rows:4,
+ console.log(JSON.stringify({synthetic_restored_backup_export_verified:true,packaged_operator_used:true,tables:tables.length,rows:4,
   no_application_dependencies_loaded:true,overwrite_refused:true,non_loopback_and_query_override_refused:true,unmapped_legacy_table_refused:true,
   full_backup_export_handoff_parent_retention_bridge_verified:true,version_pinned_download_verified:true,
   downloaded_archive_format_verified:true,downloaded_dump_restored_and_counts_verified:true,

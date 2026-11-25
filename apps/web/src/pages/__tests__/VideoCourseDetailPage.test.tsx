@@ -99,6 +99,23 @@ describe('VideoCourseDetailPage', () => {
     globalThis.__setMockLanguage('en')
   })
 
+  it('opens skill-set generation from the course management menu without starting paid generation', async () => {
+    const start = vi.fn()
+    globalThis.__setTrpcHandler('skills.start', start)
+    localStorage.removeItem('videoq:skill-job:course:1')
+    render(<VideoCourseDetailPage />)
+    expect(screen.queryByRole('button', { name: 'skills.open' })).not.toBeInTheDocument()
+    const trigger = await openCourseManagement()
+    fireEvent.click(screen.getByRole('button', { name: 'skills.open' }))
+    const dialog = await screen.findByRole('dialog', { name: 'skills.title' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(within(dialog).getByRole('button', { name: 'skills.generate' })).toBeEnabled()
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(start).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.actions.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
   it('opens analytics from the management menu and only fetches it on demand', async () => {
     const analytics = vi.fn().mockResolvedValue({
       summary: { total_questions: 0, date_range: { first: null, last: null } },
