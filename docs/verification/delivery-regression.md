@@ -100,8 +100,9 @@ No image is rebuilt between final measurement, smoke test and scan.
 Compare cold and warm groups separately, retaining individual samples and
 failures; compare runner seconds as the cost unit, plus minimum memory/disk and
 load. Actual currency cost requires the repository's billed runner rate and
-must not be invented. Two repetitions are a small initial sample: expand the
-sample if variance or any resource/failure regression makes the choice unclear.
+must not be invented. Two repetitions are a small initial sample: additional comparable samples would
+be necessary before adopting a variant whose benefit remains unclear. Retaining
+the existing default does not require another expensive exploratory run.
 Adopt bounded parallelism only after both successful repeated cold/warm groups
 and the unchanged security/runtime checks support it. Never choose a faster
 variant that fails or exhausts runner resources.
@@ -118,5 +119,45 @@ then passed the full compatibility matrix, negative controls and all 15 browser
 checks, including server no-body assertions and 5,242,917 assembled multipart
 bytes with matching hash. The [receipt](delivery-ci-2026-11-25.json) distinguishes
 PR head `88cf47de` from tested merge source `1620d1a2` and records checksums of the
-unaltered anonymized reports. Successful repeated builds and cost/failure
-comparison remain required for #1678; no speedup is claimed yet.
+unaltered anonymized reports. The completed repeated build comparison below
+retains the sequential default; no speedup is claimed.
+
+
+The [frozen build experiment](https://github.com/videoq-jp/videoq/actions/runs/45531656614)
+tested merge source `c3cd6b1220df9d5ecea1ccabb56e0f990311d68a` (PR head
+`debc7cb9`). All four application smoke/security jobs passed; all 24 component
+builds passed. The [receipt and four unaltered timing reports](onprem-build-comparison-2026-11-25/receipt.json)
+retain artifact IDs, report checksums, per-component timings, cache controls,
+resource samples and twelve final image IDs matched to the actual Syft scan
+inputs. No post-measurement rebuild supplied the scans.
+
+| Strategy | Cold seconds, two runners | Warm seconds, two runners | Build runner seconds | Full job runner seconds | Decision |
+| --- | --- | --- | --- | --- | --- |
+| Sequential (default) | 1858.669, 1845.679 | 0.651, 0.658 | 3705.659 | 4194 | Retain |
+| At most two builds | 2061.648, 1622.402 | 0.818, 1.502 | 3686.372 | 4299 | Do not adopt |
+
+This is a nominal hosted-runner exploratory comparison, not exact hardware
+control: all runners use Ubuntu 24.04, four CPUs, the same source and amd64
+platform, but MemTotal differs by 1.798%. The strict summary command correctly
+exits 1 on this difference; its comparability rule remains unchanged. CPU model
+was not captured. Even ignoring that limitation, the candidate's cold mean
+advantage is only 10.149 seconds (0.55%), against a 439.246-second candidate
+range. Its warm mean is slower and complete-job runner time is 105 seconds
+higher. This does not establish a material latency or cost benefit.
+
+No memory or disk exhaustion occurred: minimum available memory was 12.90 GiB
+sequential / 13.20 GiB parallel, minimum disk 93.21 / 87.98 GiB, and maximum
+one-minute load 6.05 / 7.92. Both strategies had zero failed builds and zero
+failed full jobs in this small sample. All same-input cache reuse and
+changed-input invalidation controls passed. Runner-local warm caches explain
+subsecond sequential repeats; no cache crosses a runner or trust boundary.
+The experiment used four disposable runner jobs. Runner seconds are a cost
+proxy; no account-specific monetary saving is asserted. The historical 29m57s
+build is context only, not another controlled sample. Kubernetes lifecycle and
+unchanged upstream images were outside this application-build experiment;
+normal CI retains their existing selection and security gates.
+
+The engineering decision is to keep `build_parallelism: 1`, retain the measured
+bounded option for deliberate future experiments, and make no performance
+improvement claim. A future adoption needs comparable evidence with a benefit
+larger than the observed variability; no extra run was spent to force a win.
