@@ -1,5 +1,6 @@
 """Stage an isolated candidate audio overlay; never edit production wheel locks."""
 import argparse
+from email.parser import BytesParser
 import hashlib
 import importlib.util
 import json
@@ -34,8 +35,17 @@ def candidate_wheel(candidate):
     if len(wheels) != 1:
         raise ValueError('Exactly one candidate wheel is required')
     wheel = wheels[0]
-    if wheel.is_symlink() or not re.fullmatch(r'av-19\.0\.2-cp312-cp312-manylinux_2_28_x86_64\.whl', wheel.name):
+    match = re.fullmatch(r'av-19\.0\.2-cp312-abi3-([a-z0-9_.]+)\.whl', wheel.name)
+    if wheel.is_symlink() or not match:
         raise ValueError('Only the reviewed native CPython 3.12 amd64 PyAV wheel is permitted')
+    platforms = match[1].split('.')
+    if len(platforms) != len(set(platforms)) or 'manylinux_2_28_x86_64' not in platforms:
+        raise ValueError('The reviewed manylinux 2.28 platform is required')
+    for platform in platforms:
+        version = re.fullmatch(r'manylinux_2_([0-9]+)_x86_64', platform)
+        if platform not in {'manylinux1_x86_64', 'manylinux2010_x86_64', 'manylinux2014_x86_64'} and not (
+                version and 5 <= int(version[1]) <= 28):
+            raise ValueError('Unexpected wheel platform alias')
     if not 0 < wheel.stat().st_size <= 100 * 1024**2:
         raise ValueError('Candidate wheel exceeds the reviewed archive bound')
     with zipfile.ZipFile(wheel) as archive:
@@ -45,6 +55,9 @@ def candidate_wheel(candidate):
         for name in names:
             if name.split('/')[0] not in {'av', 'av.libs', 'av-19.0.2.dist-info'}:
                 raise ValueError('Unexpected candidate wheel member root')
+        metadata = BytesParser().parsebytes(archive.read('av-19.0.2.dist-info/WHEEL'))
+        if set(metadata.get_all('Tag', [])) != {f'cp312-abi3-{platform}' for platform in platforms}:
+            raise ValueError('Wheel metadata tags differ from the filename')
     return wheel
 
 
@@ -53,9 +66,11 @@ def stage(candidate, lock, cache, output, receipt, download=False):
         raise ValueError('Candidate output and receipt must be fresh')
     wheel = candidate_wheel(candidate)
     candidate_files = files(candidate)
-    for name in ['provenance.json', 'build-smoke.json', 'verify.py', 'ffmpeg-config.log']:
+    for name in ['provenance.json', 'source-lock.json', 'build-smoke.json', 'verify.py', 'ffmpeg-config.log']:
         if name not in candidate_files:
             raise ValueError('Missing candidate provenance or verifier')
+    if not any(name.startswith('fixtures/') for name in candidate_files):
+        raise ValueError('Missing real codec fixtures')
     manifest = json.loads(lock.read_bytes())
     LOCKED.validate_manifest(manifest)
     av = next(package for package in manifest['packages'] if package['name'] == 'av')
