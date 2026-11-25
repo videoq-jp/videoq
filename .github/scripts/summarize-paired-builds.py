@@ -1,7 +1,33 @@
 """Fail closed on unmatched same-runner controls; keep cold/warm effects separate."""
 import json
+import re
+from pathlib import PurePosixPath
 from pathlib import Path
 import sys
+
+
+def corresponding_ancestry(controls):
+    """Map only the selected container's exact scope; retain all other paths/limits."""
+    container = controls['containerId']
+    if not re.fullmatch(r'[0-9a-f]{64}', container):
+        raise ValueError('Invalid selected container identity')
+    envelope = controls['builderHostCgroupEnvelope']
+    membership = PurePosixPath(envelope['membership'])
+    scope = 'docker-' + container + '.scope'
+    if (not membership.is_absolute() or '..' in membership.parts
+            or membership.parts.count(scope) != 1 or membership.name != 'init'
+            or membership.parent.name != scope
+            or str(membership) != envelope['membership']):
+        raise ValueError('Unverified selected container membership topology')
+    expected = list(membership.parents)
+    parents = envelope['parentLimits']
+    if [entry.get('path') for entry in parents] != [str(path) for path in expected]:
+        raise ValueError('Incomplete or mismatched actual ancestry topology')
+    def mapped(path):
+        return str(PurePosixPath(*('docker-<selected-container>.scope' if part == scope else part
+                                  for part in PurePosixPath(path).parts)))
+    return {**envelope, 'membership': mapped(str(membership)),
+            'parentLimits': [{**entry, 'path': mapped(entry['path'])} for entry in parents]}
 
 
 def summarize(root):
@@ -33,9 +59,8 @@ def summarize(root):
             raise ValueError('Unmatched effective limits: '+key)
     if ca['containerId'] == cb['containerId']:
         raise ValueError('Pair must use distinct fresh builders')
-    for key in ['parentLimits','cpuQuotaCpus','memoryMaxBytes']:
-        if ca['builderHostCgroupEnvelope'][key] != cb['builderHostCgroupEnvelope'][key]:
-            raise ValueError('Unmatched actual builder ancestry: '+key)
+    if corresponding_ancestry(ca) != corresponding_ancestry(cb):
+        raise ValueError('Unmatched actual builder ancestry')
     inventories = {}
     for component in ['api', 'worker', 'web']:
         versions = {}
