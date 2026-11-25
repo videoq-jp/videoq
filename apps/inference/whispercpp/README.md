@@ -11,7 +11,7 @@ license are copied. Wolfi supplies the dynamic loader, libc, libstdc++ and libgo
 runtime closure. The build traces the actual executable's dependencies and runs
 `--help`, failing if any library is missing. It does not copy Ubuntu packages,
 APT, SDL development packages, headers, compilers, CMake, git, source, or models.
-The runtime removes its busybox and apk-tools packages and runs as UID/GID 10001.
+The runtime explicitly retains wolfi-baselayout/OS metadata and runtime libraries, removes the empty wolfi-base metapackage that otherwise retains tool dependencies, and removes busybox and apk-tools packages and runs as UID/GID 10001.
 The chart-compatible executable path stays `/app/build/bin/whisper-server`.
 
 This source is a candidate, not a scan result or a verified published image.

@@ -13,7 +13,7 @@ import uuid
 ROOT = Path(__file__).resolve().parent
 PROVENANCE = json.loads((ROOT / 'provenance.json').read_text())
 PROBE_IMAGE = 'python:3.12.16-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b'
-FORBIDDEN_PACKAGES = {'busybox', 'apk-tools', 'linux-headers', 'linux-libc-dev', 'gcc', 'g++', 'build-base', 'binutils', 'make', 'cmake', 'git', 'wget', 'curl', 'ffmpeg'}
+FORBIDDEN_PACKAGES = {'wolfi-base', 'busybox', 'apk-tools', 'linux-headers', 'linux-libc-dev', 'gcc', 'g++', 'build-base', 'binutils', 'make', 'cmake', 'git', 'wget', 'curl', 'ffmpeg'}
 FORBIDDEN_FILES = {'bin/sh', 'bin/bash', 'bin/busybox', 'usr/bin/busybox', 'sbin/apk', 'usr/bin/apk', 'usr/bin/gcc', 'usr/bin/g++', 'usr/bin/cc', 'usr/bin/cmake', 'usr/bin/git', 'usr/bin/make', 'usr/bin/wget', 'usr/bin/curl', 'usr/bin/ffmpeg'}
 
 def docker(*args: str, timeout: int = 180) -> str:

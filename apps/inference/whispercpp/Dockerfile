@@ -10,7 +10,7 @@ RUN case "$TARGETARCH:$UPSTREAM_IMAGE" in \
       arm64:ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0) ;; \
       *) echo 'Unapproved upstream platform/digest' >&2; exit 1 ;; \
     esac \
-    && apk add --no-cache libstdc++ libgomp
+    && apk add --no-cache wolfi-baselayout glibc libstdc++ libgomp
 COPY --from=upstream /app/build/bin/whisper-server /app/build/bin/whisper-server
 COPY --from=upstream /app/build/bin/*.so* /app/build/bin/
 COPY --from=upstream /app/LICENSE /usr/share/licenses/whispercpp/LICENSE
@@ -34,11 +34,11 @@ LABEL org.opencontainers.image.source="https://github.com/videoq-jp/videoq" \
       io.videoq.whisper.upstream.image="${UPSTREAM_IMAGE}"
 # Remove packages, rather than deleting their files while leaving false SBOM
 # records. No source, development headers, build tools, models or apt are copied.
-# Wolfi baselayout may own compatibility symlinks separately from the packages.
-# Keep a transient cleanup executable within this single layer, remove those
-# tool links after uninstall, then remove the cleanup executable itself.
+# wolfi-base is an empty metapackage requiring busybox/apk-tools; remove it
+# too, while explicitly retaining baselayout/OS metadata and runtime libraries.
+# Keep a transient cleanup executable in this layer for any compatibility links.
 RUN cp "$(command -v busybox)" /tmp/runtime-cleanup \
-    && apk del --purge busybox apk-tools \
+    && apk del --purge wolfi-base busybox apk-tools \
     && /tmp/runtime-cleanup rm -f /usr/bin/apk /sbin/apk /bin/sh /bin/ash /bin/bash /bin/busybox /usr/bin/busybox /tmp/runtime-cleanup
 WORKDIR /app
 USER 10001:10001

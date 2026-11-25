@@ -9,7 +9,7 @@
     "arm64": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0"
   },
   "runtimeBase": "cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b",
-  "runtimePackages": ["libstdc++", "libgomp"],
+  "runtimePackages": ["wolfi-baselayout", "glibc", "libstdc++", "libgomp"],
   "runtimeExecutable": "/app/build/bin/whisper-server",
   "runtimeIdentity": "10001:10001",
   "verificationRequired": ["native amd64 and arm64", "exact server and shared-library hashes", "dynamic loader dependency closure", "non-root server execution", "no development/header/tool packages", "full final-image security scans without VEX or waivers", "immutable published digest before consumer pin change"]
