@@ -162,4 +162,4 @@ Original scope: 30 checkboxes; 25 proved, 4 pending, 1 missing at this snapshot.
 - Customer-installed on-prem version census and full OAuth/TLS/CDN acceptance are not required by #1681/#1682 source-pinned wire/browser regression scope.
 - #1677 approved RPO/RTO comparison and #1678 same-condition actual shortening are explicit requirements, not optional future rollout caveats.
 
-RPO/RTO approval is pending; the coordinator has requested an explicit decision. No proposed numeric target is treated as approved by this audit.
+At the original snapshot, RPO/RTO approval was pending. Subsequently the owner explicitly approved RPO15min/RTO60min; the [approved-target comparison](../operations/recovery-target-approval-2026-11-25.md) and [issue decision](https://github.com/videoq-jp/videoq/issues/1677#issuecomment-7152556566) supply #1677 checkbox 3 within the recorded isolated scope. The raw receipt remains unchanged. This advances the cumulative audit to 26 proved, 4 pending, 0 missing; pending CI/build and DB-read evidence still prevent overall completion.
