@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts/onprem'))
 import public_release
 from native import application_values, backing_plan
+from local_ai import embedding_runtime_identity, validate_embedding_overrides
 from repository import validate_repository
 
 
@@ -123,6 +124,9 @@ def compile_videoq(directory, manifest, verified, public_url, storage_gib, liste
     objects += [order(item, 10) for item in models]
     values = deep_merge(application_values(public_url), yaml.safe_load((ROOT / 'charts/videoq/examples/local-ai-gpt-oss.yaml').read_text()))
     values = deep_merge(values, application)
+    identity=embedding_runtime_identity(models, values.get('ai',{}).get('embeddingProfile','openai'))
+    validate_embedding_overrides(values,identity)
+    values = deep_merge(values, {'ai':identity})
     objects += [order(item, 30) for item in render(directory / charts['application']['name'], 'videoq', values)]
     validate_resources(objects)
     return objects
