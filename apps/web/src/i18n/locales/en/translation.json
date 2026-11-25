@@ -1476,7 +1476,7 @@
   "skills": {
     "keepOpen": "Keep this dialog open until generation finishes.",
     "details": "Requirements and usage",
-    "limits": "Limits: 30 videos, 180,000 subtitle characters, 12 skills.",
+    "limits": "Processes the full course in batches. Paused generation can resume.",
     "usageDetails": "Each completed AI call uses one unit. Audit issues receive up to two automatic repairs per skill.",
     "updateDetails": "Regenerate after changing subtitles or course contents. Installed skills are not automatically updated or overwritten.",
     "keyPrompt": "Enter your API key when prompted.",

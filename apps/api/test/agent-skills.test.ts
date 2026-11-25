@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { skillViewSchema, skillBundleSchema } from '@videoq/trpc/skills';
 import { createSkillService, type SkillDependencies } from '../src/features/skills/service';
 import { skillChunks, checkedPlan, checkedFacts, checkedDraft, auditIssues, draftClaims } from '../src/features/skills/core';
 import type { AgentSkillRecord, AgentSkillRepository } from '../src/persistence/contracts/agent-skill-repository';
@@ -7,6 +8,7 @@ import { skillMaterial, extractedSkillFacts, generatedSkillDraft, skillFixtureId
 function setup() {
   const records = new Map<string, AgentSkillRecord>(), leases = new Map<string, string>();
   const repository: AgentSkillRepository = {
+    async sources() { return []; },
     async create(record) { records.set(record.id, structuredClone(record)); },
     async get(id, ownerId) { const record = records.get(id); return record?.ownerId === ownerId ? structuredClone(record) : null; },
     async claim(id, ownerId, token) { if (leases.has(id) || records.get(id)?.ownerId !== ownerId) return false; leases.set(id, token); return true; },
@@ -160,3 +162,45 @@ describe('generated agent skills', () => {
     expect(() => auditIssues({ routingAppropriate: true, checks: [{ claimId: 'step-0', grounded: true, actionable: true, reason: 'OK' }] }, generatedSkillDraft)).toThrow(/every skill claim/);
   });
 });
+
+it('processes 177 videos and over 180 facts into more than 12 skills with bounded, resumable calls', async () => {
+  const { service, deps, records } = setup();
+  const quote = 'Preserve every qualification.';
+  vi.mocked(deps.material).mockResolvedValue({ title: 'Large course', sources: Array.from({ length: 177 }, (_, i) => ({ id: i + 1, title: `Lesson ${i + 1}`, transcript: `${quote}\n${'Source context. '.repeat(100)}` })) });
+  vi.mocked(deps.extract).mockImplementation(async (_owner, _objective, _language, cues) => ({ facts: [0, 1].map(index => ({ kind: 'principle', claim: `Rule ${index}: ${'Keep source conditions. '.repeat(40)}`, appliesWhen: 'Following this source task.', evidence: [{ cueId: cues[0].id, quote }] })) }));
+  vi.mocked(deps.plan).mockImplementation(async (_owner, _language, facts) => ({ skills: [{ objective: `Apply source task ${facts[0].id}`, factIds: facts.map(fact => fact.id) }] }));
+  vi.mocked(deps.synthesize).mockImplementation(async (_owner, _objective, _language, facts) => {
+    const factIds = [facts[0].id];
+    return { ...generatedSkillDraft, slug: 'source-task', criteria: [{ decision: 'Preserve the source conditions.', factIds }], steps: [{ action: 'Apply the source rule.', expectedResult: 'Its conditions remain present.', factIds }], exceptions: [], examples: [], checks: [{ check: 'Confirm every source condition.', factIds }] };
+  });
+  vi.mocked(deps.audit).mockImplementation(async (_owner, _objective, draft) => ({ routingAppropriate: true, checks: draftClaims(draft).map(claim => ({ claimId: claim.id, grounded: true, actionable: true, reason: 'Supported.' })) }));
+  let view = await service.start('owner', { kind: 'course', resourceId: 42, language: 'en' });
+  expect(view.sourceVideos).toBe(177);
+  for (let step = 0; step < 2000 && view.stage !== 'published'; step++) {
+    view = await service.advance('owner', view.id);
+    expect(view.stage).not.toBe('rejected');
+  }
+  expect(view.stage).toBe('published'); expect(view.completedChunks).toBe(177);
+  expect(view.members!.length).toBeGreaterThan(12);
+  expect(skillViewSchema.parse(view).members!.length).toBe(view.members!.length);
+  const state = records.get(view.id)!.state;
+  expect(state.facts).toHaveLength(354); expect(JSON.stringify(state.facts).length).toBeGreaterThan(120_000);
+  expect(state.plannedFacts).toBe(354);
+  expect(vi.mocked(deps.plan).mock.calls.flatMap(call => call[2].map(fact => fact.id))).toEqual(state.facts.map(fact => fact.id));
+  for (const call of vi.mocked(deps.plan).mock.calls) {
+    expect(call[2].length).toBeLessThanOrEqual(80);
+    expect(call[2].reduce((size, fact) => size + JSON.stringify(fact).length, 0)).toBeLessThanOrEqual(24_000);
+  }
+  const first = await service.bundle('owner', view.id, { offset: 0, limit: 1 });
+  expect(first.skills).toHaveLength(1); expect(first.nextOffset).toBe(1); expect(first.totalSkills).toBe(view.members!.length);
+  const last = await service.bundle('owner', view.id, { offset: view.members!.length - 1, limit: 1 });
+  expect(last.nextOffset).toBeNull();
+  const bundle = await service.bundle('owner', view.id);
+  expect(new Set(bundle.skills!.map(skill => skill.name)).size).toBe(view.members!.length);
+  expect(skillBundleSchema.parse(bundle).skills!.length).toBe(view.members!.length);
+  for (const member of state.members!) {
+    const contexts = vi.mocked(deps.audit).mock.calls.filter(call => call[1] === member.objective).flatMap(call => call[5]!.map(fact => fact.id));
+    expect(contexts).toEqual(state.facts.map(fact => fact.id));
+  }
+  expect(bundle.skills!.every(skill => skill.name.length <= 63)).toBe(true);
+}, 30_000);

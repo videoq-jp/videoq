@@ -2,11 +2,10 @@ import { z } from 'zod';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { extractedFactsSchema, skillDraftSchema, skillPlanSchema, skillAuditSchema } from '@videoq/trpc/skills';
 import { createSkillService, type SkillDependencies } from '../features/skills/service';
-import { SKILL_MAX_VIDEOS, draftClaims } from '../features/skills/core';
+import { draftClaims } from '../features/skills/core';
 import type { SkillTarget, SkillMaterial } from '../persistence/contracts/agent-skill-repository';
 import { createAgentSkillRepository } from '../persistence/factory';
 import { getCourseDetail } from '../repositories/course-repository';
-import { getVideoDetail } from '../repositories/video-repository';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../repositories/quota-repository';
 import { createChatModel, toLlmError } from '../lib/chat-model';
 import { assertCompletedAnswer } from '../lib/structured-answer';
@@ -15,24 +14,38 @@ import { deadlineSignal } from '../lib/request-timeout';
 import { LlmConfigurationError } from '../lib/openai';
 import { sha256Hex } from '../shared/crypto';
 import { ApiError } from '../shared/errors';
-import { notFound, validationFailure, tooLarge } from '../application/errors';
+import { notFound, validationFailure, conflict } from '../application/errors';
 import type { Bindings } from '../types/bindings';
 
 export async function readSkillMaterial(env: Bindings, ownerId: string, target: SkillTarget): Promise<SkillMaterial> {
-  let title = '', ids: number[];
+  let title = '', ids: number[] = [];
   if (target.kind === 'course') {
-    const course = await getCourseDetail(env, target.resourceId, ownerId, { includeFileUrls: false, includeTags: false, videoLimit: SKILL_MAX_VIDEOS + 1, videoOffset: 0 });
-    if (!course || course.access_role !== 'owner') throw notFound('Owned course not found.');
-    if (course.video_count > SKILL_MAX_VIDEOS || course.videos.length !== course.video_count) throw tooLarge(`Choose a course with at most ${SKILL_MAX_VIDEOS} videos.`);
-    title = course.name; ids = course.videos.map(video => video.id);
+    let offset = 0, expected = -1;
+    do {
+      const course = await getCourseDetail(env, target.resourceId, ownerId, { includeFileUrls: false, includeTags: false, videoLimit: 100, videoOffset: offset });
+      if (!course || course.access_role !== 'owner') throw notFound('Owned course not found.');
+      if (expected !== -1 && (course.video_count !== expected || course.name !== title)) throw conflict('Source videos changed. Retry generation.');
+      title = course.name; expected = course.video_count;
+      const page = course.videos.map(video => video.id);
+      if (page.some(id => ids.includes(id)) || (!page.length && offset < expected)) throw conflict('Source videos changed. Retry generation.');
+      ids.push(...page); offset += page.length;
+    } while (offset < expected);
+    if (ids.length !== expected) throw conflict('Source videos changed. Retry generation.');
   } else ids = [target.resourceId];
   const sources: SkillMaterial['sources'] = [];
-  for (const id of ids) {
-    const video = await getVideoDetail(env, id, ownerId, { includeFileUrl: false });
-    if (!video) throw notFound('An owned source video is no longer available.');
-    if (video.status !== 'completed' || !video.transcript?.trim()) throw validationFailure(`Finish analysis for video ${id} before generating a skill.`);
-    sources.push({ id: video.id, title: video.title, transcript: video.transcript });
-    if (sources.reduce((length, source) => length + source.transcript.length, 0) > 180_000) throw tooLarge('Use a smaller course: skill generation supports 180000 subtitle characters.');
+  const repository = await createAgentSkillRepository(env);
+  // A bounded number of parameters/queries per page replaces one detailed
+  // multi-query video read for every course member.
+  for (let offset = 0; offset < ids.length; offset += 90) {
+    const page = ids.slice(offset, offset + 90);
+    const rows = await repository.sources(ownerId, page);
+    const byId = new Map(rows.map(row => [row.id, row]));
+    for (const id of page) {
+      const video = byId.get(id);
+      if (!video) throw notFound('An owned source video is no longer available.');
+      if (video.status !== 'completed' || !video.transcript.trim()) throw validationFailure(`Finish analysis for video ${id} before generating a skill.`);
+      sources.push({ id: video.id, title: video.title, transcript: video.transcript });
+    }
   }
   return { title: title || sources[0]?.title || '', sources };
 }
@@ -88,7 +101,7 @@ export function skillGenerators(env: Bindings, call: typeof skillModelCall = ski
     extract: (ownerId, objective, language, cues, signal) => call(env, ownerId, extractedFactsSchema, 'extract',
       `Read ALL supplied cues. If objective is empty, discover all reusable tasks taught in the cues without asking the user for a purpose. Otherwise extract only knowledge relevant to the objective. Extract: concrete principles, procedures, exceptions, worked examples and ways to verify results. Return at most 12 concise facts covering the distinct reusable tasks, or an empty facts array when none is relevant. For each fact, give its applicability conditions and exact verbatim source quotes with the supplied cueIds. Preserve negative conditions and exceptions. Never fabricate a quote.`, { objective, language, cues }, signal),
     plan: (ownerId, language, facts, signal) => call(env, ownerId, skillPlanSchema, 'plan',
-      `Automatically discover independently reusable tasks from ALL facts. Partition them into 1 to 12 focused Agent Skills with concrete objectives; the user supplies no objective. Group by actual task/decision, not by video, chapter or lecturer. Merge overlapping tasks; separate unrelated capabilities to avoid broad skill activation. A coherent course may need only one skill; do not manufacture a quota. Assign EVERY factId to at least one skill. Shared facts may appear in multiple skills where needed. Keep each rule together with its qualifying conditions, exceptions and examples, even across video boundaries. Each skill must have enough facts for concrete criteria, a workflow and checks; at most 80 factIds per skill. Preserve course-specific limitations. Return only objectives and existing factIds, never new claims.`, { language, facts }, signal),
+      `Automatically discover independently reusable tasks from ALL supplied facts. This may be one batch of a larger course; never treat its end as the end of the course. Partition this request-sized batch into focused Agent Skills (at most 12 per batch; the course continues in further batches) with concrete objectives; the user supplies no objective. Group by actual task/decision, not by video, chapter or lecturer. Merge overlapping tasks; separate unrelated capabilities to avoid broad skill activation. A coherent course may need only one skill; do not manufacture a quota. Assign EVERY factId to at least one skill. Shared facts may appear in multiple skills where needed. Keep each rule together with its qualifying conditions, exceptions and examples, even across video boundaries. Each skill must have enough facts for concrete criteria, a workflow and checks; at most 80 factIds per skill. Preserve course-specific limitations. Return only objectives and existing factIds, never new claims.`, { language, facts }, signal),
     synthesize: (ownerId, objective, language, facts, signal, revision) => call(env, ownerId, skillDraftSchema, 'synthesize',
       `Build ONE focused skill for the objective from the extracted facts. Description must name the capability and concrete triggering tasks, not just the course title. Give narrow useWhen/doNotUseWhen routing, evidence-backed decision criteria, actionable workflow with observable expected results, qualifications and exceptions, checks and source-derived examples. Every criterion, step, exception, check and example must cite existing factIds. Preserve source exceptions and examples when supplied. Do not invent tests, numerical thresholds, code or procedures absent from the facts; if no verification procedure was taught, describe how to check adherence to a cited criterion. Preserve logical strength exactly: a necessary condition (only if) is not a sufficient condition (if), and permission is not a recommendation or obligation. Distinguish uncertain or conflicting evidence instead of resolving it by invention. Do not ask the agent to derive the skill again from transcripts. When revision is supplied, correct its listed audit issues in the previous draft using only the cited evidence; preserve its slug and objective. Do not broaden the conditions or invent fixes. Keep it compact. slug must be lowercase English letters/digits/hyphens.`, { objective, language, facts, ...(revision ? { revision } : {}) }, signal),
     audit: (ownerId, objective, draft, facts, signal, courseFacts) => call(env, ownerId, skillAuditSchema, 'audit',

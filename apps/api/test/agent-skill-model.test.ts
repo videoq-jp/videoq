@@ -6,17 +6,18 @@ import { createChatModel } from '../src/lib/chat-model';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../src/repositories/quota-repository';
 import { startAnswerCostLedger, finishAnswerCostLedger } from '../src/lib/answer-cost-ledger';
 import { getCourseDetail } from '../src/repositories/course-repository';
-import { getVideoDetail } from '../src/repositories/video-repository';
+import { createAgentSkillRepository } from '../src/persistence/factory';
 import type { Bindings } from '../src/types/bindings';
 vi.mock('../src/lib/chat-model', async original => ({ ...await original<typeof import('../src/lib/chat-model')>(), createChatModel: vi.fn() }));
 vi.mock('../src/repositories/quota-repository', () => ({ reserveAiAnswerUsage: vi.fn(), releaseAiAnswerReservation: vi.fn() }));
 vi.mock('../src/lib/answer-cost-ledger', async original => ({ ...await original<typeof import('../src/lib/answer-cost-ledger')>(), startAnswerCostLedger: vi.fn(), finishAnswerCostLedger: vi.fn() }));
 vi.mock('../src/repositories/course-repository', () => ({ getCourseDetail: vi.fn() }));
-vi.mock('../src/repositories/video-repository', () => ({ getVideoDetail: vi.fn() }));
+vi.mock('../src/persistence/factory', () => ({ createAgentSkillRepository: vi.fn() }));
+const sources = vi.fn();
 const env = {} as Bindings;
 const reservation = { userId: 'owner', usagePeriodStart: '2026-11-25', planCode: 'test', quotaSource: 'test' };
 beforeEach(() => {
-  vi.clearAllMocks(); vi.mocked(reserveAiAnswerUsage).mockResolvedValue({ reservation });
+  vi.clearAllMocks(); vi.mocked(createAgentSkillRepository).mockResolvedValue({ sources } as never); vi.mocked(reserveAiAnswerUsage).mockResolvedValue({ reservation });
   vi.mocked(startAnswerCostLedger).mockResolvedValue(); vi.mocked(finishAnswerCostLedger).mockResolvedValue();
 });
 it('reserves AI allowance before a model call and records completed invalid output as spent', async () => {
@@ -39,7 +40,21 @@ it('refunds a provider failure and does not invoke a model without allowance', a
 it('rejects non-owner courses before reading any private video and requires completed analysis', async () => {
   vi.mocked(getCourseDetail).mockResolvedValue({ access_role: 'member' } as never);
   await expect(readSkillMaterial(env, 'member', { kind: 'course', resourceId: 42 })).rejects.toThrow(/Owned course/);
-  expect(getVideoDetail).not.toHaveBeenCalled();
-  vi.mocked(getVideoDetail).mockResolvedValue({ id: 7, status: 'processing', transcript: 'Old transcript' } as never);
+  expect(sources).not.toHaveBeenCalled();
+  sources.mockResolvedValue([{ id: 7, status: 'processing', transcript: 'Old transcript' }]);
   await expect(readSkillMaterial(env, 'owner', { kind: 'video', resourceId: 7 })).rejects.toThrow(/Finish analysis/);
+});
+
+it('reads all 177 course videos in pages without a subtitle character cap', async () => {
+  const ids = Array.from({ length: 177 }, (_, index) => index + 1);
+  vi.mocked(getCourseDetail).mockImplementation(async (_env, _id, _owner, options) => ({
+    access_role: 'owner', name: 'Large course', video_count: ids.length,
+    videos: ids.slice(options?.videoOffset ?? 0, (options?.videoOffset ?? 0) + (options?.videoLimit ?? 0)).map(id => ({ id })),
+  }) as never);
+  sources.mockImplementation(async (_owner, page: number[]) => page.map(id => ({ id, title: `Video ${id}`, status: 'completed', transcript: '字幕'.repeat(1000) })).reverse());
+  const material = await readSkillMaterial(env, 'owner', { kind: 'course', resourceId: 42 });
+  expect(material.sources.map(source => source.id)).toEqual(ids);
+  expect(material.sources.reduce((sum, source) => sum + source.transcript.length, 0)).toBe(354_000);
+  expect(getCourseDetail).toHaveBeenCalledTimes(2); expect(sources).toHaveBeenCalledTimes(2);
+  expect(sources.mock.calls.every(([, page]) => page.length <= 90)).toBe(true);
 });

@@ -39,7 +39,7 @@ export const skillMemberViewSchema = z.object({
 export const skillTargetSchema = z.object({ kind: z.enum(['course', 'video']), resourceId: z.number().int().positive().safe() });
 export const skillStageSchema = z.enum(['extracting', 'planning', 'synthesizing', 'auditing', 'review', 'published', 'rejected']);
 export const skillViewSchema = z.object({
-  id: z.uuid(), automatic: z.boolean().optional(), members: z.array(skillMemberViewSchema).max(12).optional(), stage: skillStageSchema, objective: z.string(), language: z.enum(['ja', 'en']),
+  id: z.uuid(), automatic: z.boolean().optional(), members: z.array(skillMemberViewSchema).optional(), stage: skillStageSchema, objective: z.string(), language: z.enum(['ja', 'en']),
   resourceTitle: z.string(), completedChunks: z.number().int(), totalChunks: z.number().int(),
   sourceVideos: z.number().int(), issues: z.array(z.string()), sourcesMarkdown: z.string().nullable(), draft: skillDraftSchema.nullable(),
   skillName: z.string().nullable(), markdown: z.string().nullable(),
@@ -50,7 +50,7 @@ const skillArtifactSchema = z.object({
   files: z.object({ 'SKILL.md': z.string().min(1).max(80_000), 'references/sources.md': z.string().min(1).max(250_000) }),
 });
 // The first artifact stays at the root for older single-skill consumers.
-export const skillBundleSchema = skillArtifactSchema.extend({ skills: z.array(skillArtifactSchema).min(1).max(12).optional() });
+export const skillBundleSchema = skillArtifactSchema.extend({ skills: z.array(skillArtifactSchema).min(1).optional(), nextOffset: z.number().int().nonnegative().nullable().optional(), totalSkills: z.number().int().positive().optional() });
 export type SkillBundle = z.infer<typeof skillBundleSchema>;
 export const skillInputSchemas = {
   'skills.start': skillTargetSchema.extend({ objective: z.string().trim().min(5).max(500).optional(), language: z.enum(['ja', 'en']) }),

@@ -1,5 +1,6 @@
 import type { SkillAudit, SkillDraft, ExtractedFacts, SkillPlan } from '@videoq/trpc/skills';
 import type { AgentSkillRepository, SkillTarget, SkillMaterial, SkillCue, SkillFact, AgentSkillRecord } from '../../persistence/contracts/agent-skill-repository';
+import { nextFactBatch } from './batches';
 import { conflict, notFound, validationFailure } from '../../application/errors';
 import { skillChunks, checkedPlan, checkedFacts, checkedDraft, auditIssues, renderSkill, skillView } from './core';
 
@@ -41,7 +42,7 @@ export function createSkillService(deps: SkillDependencies, origin: string) {
       const material = await deps.material(ownerId, input);
       const chunks = skillChunks(material);
       const record: AgentSkillRecord = { id: deps.newId(), ownerId, state: {
-        version: 1, target: { kind: input.kind, resourceId: input.resourceId }, objective: input.objective ?? '', automatic: !input.objective, language: input.language,
+        version: 1, plannedFacts: 0, target: { kind: input.kind, resourceId: input.resourceId }, objective: input.objective ?? '', automatic: !input.objective, language: input.language,
         resourceTitle: material.title, fingerprint: await deps.fingerprint(material), stage: 'extracting', chunks,
         completedChunks: 0, sourceVideos: material.sources.length, facts: [], draft: null, issues: [],
       } };
@@ -57,30 +58,39 @@ export function createSkillService(deps: SkillDependencies, origin: string) {
           const cues = state.chunks[state.completedChunks];
           const facts = checkedFacts(await deps.extract(ownerId, state.objective, state.language, cues, signal), cues, state.completedChunks);
           state.facts.push(...facts);
-          if (state.facts.length > (state.automatic ? 180 : 80) || JSON.stringify(state.facts).length > (state.automatic ? 120_000 : 24_000)) {
-            state.stage = 'rejected'; state.issues = ['The source exceeds the knowledge budget for this generation. Select a smaller course or video set.'];
-            await persist(record, token); return;
-          }
           state.completedChunks++;
           if (state.completedChunks === state.chunks.length) {
             if (!state.facts.length) { state.stage = 'rejected'; state.issues = ['No actionable knowledge for this task was found in the source material.']; }
-            else state.stage = state.automatic ? 'planning' : 'synthesizing';
+            else {
+              if (nextFactBatch(state.facts, 0).length < state.facts.length) state.automatic = true;
+              state.stage = state.automatic ? 'planning' : 'synthesizing';
+            }
           }
         } else if (state.stage === 'planning') {
-          const plan = checkedPlan(await deps.plan(ownerId, state.language, state.facts, signal), state.facts);
-          state.members = plan.skills.map(skill => ({ ...skill, draft: null, status: 'pending', issues: [] }));
-          state.stage = 'synthesizing';
+          const offset = state.plannedFacts ?? 0;
+          const batch = nextFactBatch(state.facts, offset);
+          const plan = checkedPlan(await deps.plan(ownerId, state.language, batch, signal), batch);
+          state.members ??= [];
+          for (const skill of plan.skills) state.members.push({ ...skill, key: (state.members.length + 1).toString(36), draft: null, status: 'pending', issues: [] });
+          state.plannedFacts = offset + batch.length;
+          if (state.plannedFacts === state.facts.length) state.stage = 'synthesizing';
         } else if (state.automatic && (state.stage === 'synthesizing' || state.stage === 'auditing')) {
           const member = state.members?.find(item => item.status === 'pending' || item.status === 'auditing');
           if (!member) throw validationFailure('Missing skill plan.');
           const facts = state.facts.filter(fact => member.factIds.includes(fact.id));
           if (member.status === 'pending') {
             const draft = checkedDraft(await deps.synthesize(ownerId, member.objective, state.language, facts, signal, member.draft && member.issues.length ? { draft: member.draft, issues: member.issues } : undefined), facts);
-            if (state.members?.some(other => other !== member && other.draft?.slug === draft.slug)) throw validationFailure('Generated skills have duplicate names. Retry synthesis.');
-            member.draft = draft; member.attempts = (member.attempts ?? 0) + 1; member.issues = []; member.status = 'auditing'; state.stage = 'auditing';
+            if (!member.key && state.members?.some(other => other !== member && other.draft?.slug === draft.slug)) throw validationFailure('Generated skills have duplicate names. Retry synthesis.');
+            member.draft = draft; member.attempts = (member.attempts ?? 0) + 1; member.issues = []; member.auditCursor = 0; member.status = 'auditing'; state.stage = 'auditing';
           } else {
             if (!member.draft) throw validationFailure('Missing generated draft.');
-            member.issues = auditIssues(await deps.audit(ownerId, member.objective, member.draft, facts, signal, state.facts), member.draft);
+            const offset = member.auditCursor ?? 0;
+            const context = nextFactBatch(state.facts, offset);
+            member.issues.push(...auditIssues(await deps.audit(ownerId, member.objective, member.draft, facts, signal, context), member.draft));
+            member.auditCursor = offset + context.length;
+            if (member.auditCursor < state.facts.length && !member.issues.length) {
+              await persist(record, token); return;
+            }
             member.status = member.issues.length ? ((member.attempts ?? 1) < 3 ? 'pending' : 'rejected') : 'passed';
             if (state.members?.some(item => item.status === 'pending')) state.stage = 'synthesizing';
             else {
@@ -109,14 +119,16 @@ export function createSkillService(deps: SkillDependencies, origin: string) {
         await persist(record, token);
       });
     },
-    async bundle(ownerId: string, id: string) {
+    async bundle(ownerId: string, id: string, page?: { offset: number; limit: number }) {
       const record = await current(ownerId, id);
       if (record.state.stage !== 'published') throw conflict('Generate and publish a checked skill set in VideoQ before installing it.');
       if (record.state.automatic) {
         const members = record.state.members;
         if (!members?.length || members.some(member => member.status !== 'passed' || !member.draft)) throw conflict('The skill set has not passed every source check.');
-        const skills = members.map(member => renderSkill({ ...record, state: { ...record.state, draft: member.draft } }, origin));
-        return { ...skills[0], skills };
+        const offset = page?.offset ?? 0, end = Math.min(members.length, offset + (page?.limit ?? members.length));
+        if (offset >= members.length) throw validationFailure('Invalid skill page.');
+        const skills = members.slice(offset, end).map(member => renderSkill({ ...record, state: { ...record.state, draft: member.draft } }, origin, member.key));
+        return { ...skills[0], skills, ...(page ? { nextOffset: end < members.length ? end : null, totalSkills: members.length } : {}) };
       }
       return renderSkill(record, origin);
     },
