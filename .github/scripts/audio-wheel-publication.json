@@ -1,0 +1,16 @@
+{
+  "status": "awaiting-corrected-native-proof",
+  "repository": "videoq-jp/videoq",
+  "publisherTag": "videoq-audio-wheel-publisher-20261126-v1",
+  "releaseTag": "videoq-audio-wheel-20261126-v1",
+  "asset": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+  "run": null,
+  "attempt": null,
+  "head": null,
+  "source": null,
+  "artifact": null,
+  "archiveSha256": null,
+  "wheelSha256": null,
+  "wheelSize": null,
+  "evidenceHashes": {}
+}
