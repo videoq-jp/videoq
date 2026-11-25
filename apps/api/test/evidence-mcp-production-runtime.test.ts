@@ -31,7 +31,8 @@ it("uses internal MCP in a production-like Worker without unsafe eval", async ()
     compatibilityDate: "2026-08-20", compatibilityFlags: ["nodejs_compat"],
     outboundService: async request => {
       expect(new URL(request.url).href).toBe("https://provider.test/v1/chat/completions");
-      const input = await request.json() as { messages: { role: string }[] };
+      const input = await request.json() as { response_format?: unknown; messages: { role: string }[] };
+      if (!input.response_format) return Response.json({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier course evidence." } }] });
       modelCalls++;
       const searched = input.messages.some(message => message.role === "tool");
       return Response.json({ choices: [{ finish_reason: searched ? "stop" : "tool_calls", message: searched

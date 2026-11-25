@@ -184,6 +184,7 @@ export function createChatModel(
     timeout: opts.timeoutMs,
     maxRetries: MAX_RETRIES,
     callbacks: opts.callbacks,
+    tags: opts.purpose === "conversation_summary" ? ["videoq:conversation-summary"] : [],
   });
   chatModel.nativeWorkersAi = baseURL === "https://workers-ai.internal/v1";
   chatModel.costLedger = opts.costLedger;

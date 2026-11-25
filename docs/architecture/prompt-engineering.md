@@ -156,25 +156,27 @@ See [tests and verification commands](../guides/testing.md) for live-model tests
 
 ## Comparison with the LangChain/LangGraph APIs
 
-Checked on 2026-11-02 against the installed JavaScript packages: `langchain` 1.5.19, `@langchain/langgraph` 1.6.0 and `@langchain/langgraph-checkpoint-postgres` 1.1.2.
+OptChat integration checked on 2026-11-25 with `@videoq-jp/langchainjs-optchat` 0.3.0, `langchain` 1.6.8 and `@langchain/langgraph` 1.7.5.
 
 | Concern | Public framework mechanism used by VideoQ |
 |---|---|
 | Conversation state | Native `createAgent` message state; `RemoveMessage(REMOVE_ALL_MESSAGES)` resets an uncommitted first run |
-| Persistence | Official `PostgresSaver` passed directly to `createAgent`, keyed by `configurable.thread_id` |
+| Persistence | Existing `PostgresSaver` / `D1CheckpointSaver` passed directly to `createAgent`, keyed by `configurable.thread_id` |
 | Resume after application persistence fails | Pass the last committed `configurable.checkpoint_id`; do not rewrite or delete library snapshots |
 | Checkpoint frequency | Unset; LangGraph default `async` writes each step while the next step runs |
-| Summarization | Built-in `summarizationMiddleware`; a separate `createMiddleware` guard checks a public model callback for failed/empty summaries |
+| Summarization | `createOptChatMiddleware` with `createLangChainCompressor`; originals and incremental summary tree share the official checkpoint |
 | Streaming | Answering agent `streamMode: "custom"` and the runtime `writer`; public model callbacks adapt native model events into the structured SSE protocol |
 | Per-answer retrieval | Native agent history retains tool calls and results; a middleware state extension persists stable citation metadata |
 
 Sources: [checkpointers and durability](https://docs.langchain.com/oss/javascript/langgraph/checkpointers), [short-term memory](https://docs.langchain.com/oss/javascript/langchain/short-term-memory), [custom streaming](https://docs.langchain.com/oss/javascript/langgraph/streaming).
 
-Application policy remains explicit: the committed checkpoint ID is stored with the UI transcript/course log transaction; account/course/share access is checked outside the graph; conversation leases serialize writes. The 6,000-token summarization trigger and 30-day conversation expiry are VideoQ settings, not framework defaults. Omitting the trigger disables summarization. Retained history uses the default of 20 messages. Absolute token budgets support custom compatible model endpoints without assuming a model profile.
+Application policy remains explicit: the committed checkpoint ID is stored with the UI transcript/course log transaction; account/course/share access is checked outside the graph; conversation leases serialize writes. OptChat retains its upstream 128,000 → 64,000-byte view budget, 512-byte leaf summaries and 16 KB previous-exchange replay. VideoQ limits compaction concurrency to two jobs; the 30-day conversation expiry remains application policy.
 
 The installed JavaScript Postgres saver exposes `deleteThread` for whole-thread deletion, but no shallow saver or generation-pruning API. VideoQ therefore leaves checkpoint history intact. Database ownership FKs remove an entire thread when its application-owned conversation is deleted or expires, including course/account cascades; these ownership relationships are an application integration, not part of `PostgresSaver`. No per-generation cleanup, blob-version rewriting, or private async-context manipulation is used. Active conversations can accumulate historical checkpoints; the default `async` behavior does not cap their count. The conversation UI does not expose checkpoint time travel.
 
-Conversation summarization uses the built-in prompt, summary prefix and input trimming defaults of `summarizationMiddleware`. Only the model and trigger are configured by the application; retention uses the default 20 messages and the summary model has no application output-token cap. A callback-based failure guard remains because the installed middleware converts summarizer errors into summary text; a failed or empty summary must not replace the committed conversation.
+Conversation summarization uses OptChat's upstream prompts and binary summary tree. Original messages are retained and only missing tree nodes are built, including when reading a legacy checkpoint without an `optchat` field. A fresh uncommitted run clears the `optchat` field alongside messages and citation state. The model receives the OptChat view/navigation together with trusted VideoQ instructions and can use `optchat_zoom` / `optchat_date` within the existing per-answer tool-round limit. Exact-text search is disabled. Retrieval accesses only the current authorized conversation's checkpoint state; it does not grant course access or register new citation sources.
+
+Summary calls use the configured model, record `conversation_summary` costs and emit the existing `summarizing` progress event. Summary model events are excluded from answer text. Summary errors retain upstream retry/clipped-source behavior rather than replacing original messages. Historical checkpoints still grow until deletion/expiry.
 
 There is no parent conversation graph, conversation-extraction pass or custom stream queue. Citation validation, nonempty/completed-answer validation and source metadata are application contracts; validation runs in the public `afterAgent` hook. Existing message history remains readable; new checkpoints retain the native structured assistant responses and tool history.
 
