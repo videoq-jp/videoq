@@ -70,7 +70,7 @@ describe("D1 + LangChain Vectorize scene search", () => {
       expect(filter.user_id).toBe(userId);
       const owner = JSON.stringify(userId).replace(/[^\x20-\x7e]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
       const normalized = `{"user_id": ${owner}, "video_id": {"$in": [${ids.map(id => `${id}.0`).join(", ")}]}}`;
-      expect(new TextEncoder().encode(normalized).length).toBeLessThan(2048);
+      expect(new TextEncoder().encode(normalized).length).toBeLessThan(1536);
       observed.push(...ids);
       return Promise.resolve({ matches: [] });
     }) } as unknown as Vectorize;
@@ -78,6 +78,27 @@ describe("D1 + LangChain Vectorize scene search", () => {
     expect(await current.search({ queryEmbedding: Array.from({ length: 768 }, () => .1), userId, videoIds: [...selected, selected[0]], limit: 20 })).toEqual([]);
     expect(observed).toEqual(selected);
     expect(new Set(observed).size).toBe(selected.length);
+  });
+  it.each([100, 101, 125])("searches all %i selected videos within the provider's list limit", async (count) => {
+    query.mockReset();
+    const selected = [1, ...Array.from({ length: count - 2 }, (_, i) => i + 6), 3];
+    query.mockImplementation(async (_vector, options) => {
+      const ids: number[] = options.filter.video_id.$in;
+      if (ids.length > 100) throw new Error("When using $in and $nin filter clauses, the length of the filter list must not exceed 100");
+      return { matches: [
+        ...(ids.includes(1) ? [match("scene-1", "r1", 0.8)] : []),
+        ...(ids.includes(3) ? [match("scene-3", "r1", 0.9)] : []),
+      ] };
+    });
+    try {
+      const hits = await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: selected, limit: 1 });
+      expect(hits.map(hit => hit.videoId)).toEqual([3]);
+      expect(query).toHaveBeenCalledTimes(Math.ceil(count / 100));
+      expect(query.mock.calls.flatMap(([, options]) => options.filter.video_id.$in)).toEqual(selected);
+      for (const [, options] of query.mock.calls) expect(options.filter.user_id).toBe("owner");
+    } finally {
+      query.mockReset();
+    }
   });
   it("rejects invalid dimensions and limits before querying, and skips empty selections", async () => {
     query.mockClear();

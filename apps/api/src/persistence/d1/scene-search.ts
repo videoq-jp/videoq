@@ -29,7 +29,7 @@ function filters(userId: string, videoIds: readonly number[]): VectorizeVectorMe
   const budget = 1536; // Below the observed service ceiling, including normalization margin.
   for (const id of new Set(videoIds)) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid video ID");
-    if (ids.length === 100 || bytes([...ids, id]) >= budget) {
+    if (ids.length >= 100 || bytes([...ids, id]) >= budget) {
       if (!ids.length) throw new Error("Vectorize scope exceeds the metadata filter size limit");
       result.push(filter(ids));
       ids = [];
