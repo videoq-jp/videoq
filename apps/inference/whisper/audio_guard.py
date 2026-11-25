@@ -26,8 +26,12 @@ def local_audio_open(file, mode='r', format=None, options=None, container_option
     # A WAV demuxer can advertise codecs other than PCM. Reject those too,
     # before callers can open/decode an unsupported stream.
     try:
-        if not container.streams or any(stream.type != 'audio' or stream.codec_context.name not in _ALLOWED_CODECS
-                                        for stream in container.streams):
+        # PyAV leaves codec_context unset when the demuxed codec has no
+        # compiled decoder (for example A-law in the minimal audio build).
+        if not container.streams or any(
+                stream.type != 'audio' or stream.codec_context is None or
+                stream.codec_context.name not in _ALLOWED_CODECS
+                for stream in container.streams):
             raise ValueError('VideoQ PyAV rejects unsupported audio codecs')
     except BaseException:
         container.close()
