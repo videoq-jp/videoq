@@ -141,7 +141,16 @@ jobs:
         timeout-minutes: 15
         env:
           VIDEOQ_ONPREM_ACCEPTANCE: '1'
+          VIDEOQ_ONPREM_DIAGNOSTICS: ${{ runner.temp }}/installer-diagnostics
         run: python3 -m unittest discover -s scripts/onprem -p test_acceptance.py -v
+      - name: Retain sanitized installer lifecycle diagnostics
+        if: ${{ !cancelled() && inputs.validate_lifecycle }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-diagnostics-${{ github.sha }}
+          path: ${{ runner.temp }}/installer-diagnostics/*.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Exercise production API image over HTTP
         working-directory: apps/api
         run: node scripts/smoke-node.mjs videoq-api:onprem-ci
@@ -240,10 +249,12 @@ jobs:
           npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
           node node_modules/playwright/cli.js install --with-deps chromium
       - name: Exercise source builds with real CPU models and blocked public egress
+        id: real_cpu
         if: inputs.validate_lifecycle && inputs.validate_real_cpu
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
+          echo "started=true" >> "$GITHUB_OUTPUT"
           export PATH="$RUNNER_TEMP:$PATH"
           df -h "$RUNNER_TEMP"
           python3 - <<'PY'
@@ -260,7 +271,7 @@ jobs:
           acceptance.release.write_atomic(output/'result.json', result)
           PY
       - name: Retain real CPU source-build evidence
-        if: ${{ !cancelled() && inputs.validate_lifecycle && inputs.validate_real_cpu }}
+        if: ${{ !cancelled() && steps.real_cpu.outputs.started == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-cpu-preflight-${{ github.sha }}

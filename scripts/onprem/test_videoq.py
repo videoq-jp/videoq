@@ -156,13 +156,38 @@ class InstallerTests(unittest.TestCase):
             args = argparse.Namespace(directory=str(root / "local"), images=str(root / "images.json"),
                                       url="https://v.example", storage_url="https://s.example", ai="local-cpu",
                                       chat_url="http://chat:8000/v1", embedding_url="http://embedding:8000/v1",
-                                      transcription_url="http://whisper:8080/v1")
+                                      transcription_url="http://whisper:8080/v1", embedding_revision="sha256:"+"a"*64, embedding_preprocessing="raw-text-v1")
             with patch.object(videoq.getpass, "getpass", side_effect=AssertionError("unexpected prompt")):
                 videoq.initialize(args)
             environment = (root / "local/runtime.env").read_text()
             self.assertNotIn("api.openai.com", environment.lower())
             self.assertIn("WHISPER_BACKEND='local'", environment)
             self.assertIn("LLM_SEPARATE_TOOL_SCHEMA='true'", environment)
+
+    def test_startup_diagnostics_exclude_credentials_and_arbitrary_output(self):
+        spec=importlib.util.spec_from_file_location('acceptance',Path(__file__).with_name('test_acceptance.py'))
+        acceptance=importlib.util.module_from_spec(spec);spec.loader.exec_module(acceptance)
+        rows=[{'Service':'api','State':'running','Health':'unhealthy','ExitCode':1,'Environment':'SECRET','Output':'SECRET'}, {'Service':'SECRET','State':'SECRET','Health':'SECRET','ExitCode':'SECRET'}]
+        result=acceptance.safe_container_states(rows)
+        self.assertNotIn('SECRET',json.dumps(result))
+        self.assertEqual(result[0],{'Service':'api','State':'running','Health':'unhealthy','ExitCode':1})
+
+    def test_public_cli_private_identity_is_required_before_mutation_and_forwarded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary); images=root/'images.json'; images.write_text(json.dumps(self.values()))
+            target=root/'installation'
+            command=[os.sys.executable,str(Path(__file__).with_name('videoq.py')),'--directory',str(target),'init','--images',str(images),'--url','https://v.example','--storage-url','https://s.example','--ai','local-cpu','--chat-url','http://chat:8000/v1','--embedding-url','http://embedding:8000/v1','--transcription-url','http://whisper:8080/v1']
+            for flags in [[],['--embedding-revision','immutable'],['--embedding-revision','provider-managed','--embedding-preprocessing','raw-text-v1']]:
+                result=subprocess.run(command+flags,capture_output=True,text=True)
+                self.assertNotEqual(result.returncode,0)
+                self.assertFalse(target.exists())
+            subprocess.run(command+['--embedding-revision','sha256:'+'a'*64,'--embedding-preprocessing','raw-text-v1'],check=True,capture_output=True,text=True)
+            environment=(target/'runtime.env').read_text()
+            self.assertIn("EMBEDDING_REVISION='sha256:"+'a'*64+"'",environment)
+            self.assertIn("EMBEDDING_PREPROCESSING='raw-text-v1'",environment)
+            config=json.loads((target/'compose.json').read_text())
+            for service in ['api','worker','background-worker']:
+                self.assertIn('runtime.env',str(config['services'][service]['env_file']))
 
     def test_failed_update_preserves_snapshot_and_stops_application(self):
         with tempfile.TemporaryDirectory() as temporary:
