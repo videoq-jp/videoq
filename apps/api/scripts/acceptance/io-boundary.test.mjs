@@ -4,6 +4,7 @@ import {mkdtempSync,chmodSync,writeFileSync,readFileSync,symlinkSync,statSync,re
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {withPrivateWorkspace,cloudflareUrl,applicationUrl,databaseId,acceptanceAccount,acceptanceOrigin} from './io-boundary.mjs';
+const mockModule=new URL('../../test/helpers/acceptance-fetch-mock.mjs',import.meta.url).pathname;
 const fixture=()=>{const dir=mkdtempSync(tmpdir()+'/videoq-io-test-');chmodSync(dir,0o700);return dir;};
 test('atomic replacement cannot follow a destination symlink and serialized writers cannot lose updates',async()=>{
  const dir=fixture(),outside=fixture();try{
@@ -33,8 +34,7 @@ test('actual driver records a mocked fixed-target status atomically without real
   const name='videoq-acceptance-20261125-c33d',id='11111111-2222-3333-4444-555555555555';
   const config={name,account_id:acceptanceAccount,main:new URL('./deployed.worker.ts',import.meta.url).pathname,d1_databases:[{database_name:name,database_id:id}],r2_buckets:[{bucket_name:name}],vectorize:[{index_name:name}],workflows:[{name}],vars:{BETTER_AUTH_URL:acceptanceOrigin,OPERATIONAL_POLICY_WEBHOOK_URL:'https://'+name+'-sink.yukiharada1228.workers.dev/'}};
   writeFileSync(dir+'/wrangler.json',JSON.stringify(config));writeFileSync(dir+'/private.json',JSON.stringify({cookie:'fixture-private-cookie'}));
-  writeFileSync(dir+'/mock.mjs',`import{writeFileSync}from'node:fs';const calls=[];globalThis.fetch=async(url,init)=>{if(!String(url).startsWith('https://api.cloudflare.com/client/v4/accounts/${acceptanceAccount}/'))throw Error('Unexpected network destination');calls.push({url:String(url),method:init.method,redirect:init.redirect});writeFileSync(${JSON.stringify(dir+'/requests.json')},JSON.stringify(calls));return Response.json({success:true,result:String(url).includes('/d1/database/')?{name:${JSON.stringify(name)}}:{id:'synthetic',status:'complete'}});};`);
-  const stdout=execFileSync(process.execPath,['--import',dir+'/mock.mjs',new URL('./cloud-control.mjs',import.meta.url).pathname,'status'],{encoding:'utf8',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,ACCEPTANCE_REPORT_PATH:dir+'/receipt.json',CLOUDFLARE_API_TOKEN:'fixture-private-token'}});
+  const stdout=execFileSync(process.execPath,['--import',mockModule,new URL('./cloud-control.mjs',import.meta.url).pathname,'status'],{encoding:'utf8',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,ACCEPTANCE_REPORT_PATH:dir+'/receipt.json',ACCEPTANCE_MOCK_MODE:'status',CLOUDFLARE_API_TOKEN:'fixture-private-token'}});
   const report=JSON.parse(readFileSync(dir+'/receipt.json','utf8'));assert.equal(report.operations.length,1);assert.equal(report.operations[0].result.status,'complete');assert.equal(statSync(dir+'/receipt.json').mode&0o777,0o600);
   assert(!stdout.includes('fixture-private'));assert(!readFileSync(dir+'/receipt.json','utf8').includes('fixture-private'));assert(JSON.parse(readFileSync(dir+'/requests.json')).every(row=>row.redirect==='error'));assert(!readdirSync(dir).some(name=>name.startsWith('.acceptance-')));
  }finally{rmSync(dir,{recursive:true,force:true});}
@@ -42,17 +42,14 @@ test('actual driver records a mocked fixed-target status atomically without real
 test('actual analytics collector whitelists bounded metrics and writes credentials/SQL only to private evidence',()=>{
  const dir=fixture();try{
   const database='ca70322e-c692-44b2-9052-de5d01a60e61';writeFileSync(dir+'/wrangler.json',JSON.stringify({name:'videoq-acceptance-20261125-c33d',account_id:acceptanceAccount,d1_databases:[{database_id:database}]}));
-  const response={data:{viewer:{accounts:[{d1QueriesAdaptiveGroups:[{dimensions:{databaseId:database,query:'SELECT fixture-private-sql'},count:1,sum:{queryDurationMs:2,rowsRead:3,rowsWritten:0,rowsReturned:1,unexpected:'private-not-public'},avg:{queryDurationMs:2,rowsRead:3,rowsWritten:0,rowsReturned:1}}]}]}}};
-  writeFileSync(dir+'/mock.mjs',`globalThis.fetch=async(url,init)=>{if(url!=='https://api.cloudflare.com/client/v4/graphql'||init.redirect!=='error')throw Error('Unexpected destination');return Response.json(${JSON.stringify(response)});};`);
-  const stdout=execFileSync(process.execPath,['--import',dir+'/mock.mjs',new URL('./collect-d1-insights.mjs',import.meta.url).pathname],{encoding:'utf8',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,CLOUDFLARE_API_TOKEN:'fixture-private-token'}});
+  const stdout=execFileSync(process.execPath,['--import',mockModule,new URL('./collect-d1-insights.mjs',import.meta.url).pathname],{encoding:'utf8',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,ACCEPTANCE_MOCK_MODE:'analytics',CLOUDFLARE_API_TOKEN:'fixture-private-token'}});
   const report=readFileSync(dir+'/d1-insights-exact.json','utf8');assert.equal(JSON.parse(report).coverage.providerReportedRowsReadInSelectedGroups,3);assert(!report.includes('fixture-private'));assert(!report.includes('private-not-public'));assert(!stdout.includes('private'));assert.equal(statSync(dir+'/d1-insights-exact-private.json').mode&0o777,0o600);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('actual cleanup verifier rejects a substituted resource before any request',()=>{
  const dir=fixture();try{
   writeFileSync(dir+'/read-replay-schema-failure.json',JSON.stringify({account:acceptanceAccount,name:'videoq-acceptance-20261125-c33d-reads',database:'11111111-2222-3333-4444-555555555555'}));
-  writeFileSync(dir+'/mock.mjs',`import{writeFileSync}from'node:fs';globalThis.fetch=()=>{writeFileSync(${JSON.stringify(dir+'/network-attempt')},'unexpected');throw Error('Network forbidden');};`);
-  assert.throws(()=>execFileSync(process.execPath,['--import',dir+'/mock.mjs',new URL('./verify-read-replay-cleanup.mjs',import.meta.url).pathname],{stdio:'pipe',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,CLOUDFLARE_API_TOKEN:'fixture-token'}}));
+  assert.throws(()=>execFileSync(process.execPath,['--import',mockModule,new URL('./verify-read-replay-cleanup.mjs',import.meta.url).pathname],{stdio:'pipe',env:{...process.env,ACCEPTANCE_PRIVATE_DIR:dir,ACCEPTANCE_MOCK_MODE:'forbid',CLOUDFLARE_API_TOKEN:'fixture-token'}}));
   assert(!readdirSync(dir).includes('network-attempt'));assert(!readdirSync(dir).includes('read-replay-independent-cleanup.json'));assert(!readdirSync(dir).includes('.acceptance-io.lock'));
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
