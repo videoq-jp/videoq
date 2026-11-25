@@ -74,9 +74,20 @@ function createCloudflareTrafficTransport(token,{fetcher=fetch}={}){
  const send=async(method,path,settings)=>{
   const match=new RegExp('^accounts/'+account+'/workers/scripts/(videoq-api|videoq-cutover-api-[a-f0-9]{16})/(settings|deployments|versions\\?per_page=1)$').exec(path);
   if(!match||!['GET','PATCH'].includes(method)||method==='PATCH'&&match[2]!=='settings')throw Error('INVALID_API_TRAFFIC_REQUEST');
-  if(method==='PATCH' && !settings?.bindings?.some(b=>b.name===flag&&b.type==='plain_text'&&b.text==='paused')){
+  if(method==='PATCH'){
    const current=await send('GET',path);
-   await preflightSettings(current,{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token},fetcher);
+   if(!Array.isArray(current?.bindings)||settings?.bindings!==undefined&&!Array.isArray(settings.bindings))throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   const bindings=settings.bindings===undefined?current.bindings:settings.bindings.map(binding=>{
+    if(binding.type!=='inherit')return binding;
+    const existing=current.bindings.find(value=>value.name===binding.name);
+    if(!existing)throw Error('INVALID_API_TRAFFIC_SETTINGS');return existing;
+   });
+   if(new Set(bindings.map(binding=>binding.name)).size!==bindings.length)throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   const traffic=bindings.find(binding=>binding.name===flag);
+   if(traffic&&(traffic.type!=='plain_text'||!['paused','running'].includes(traffic.text)))throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   // Evaluate the effective target, including changed model/DB bindings. A
+   // paused metadata edit never authorizes serving and needs no provenance scan.
+   if(traffic?.text!=='paused')await preflightSettings({...current,bindings},{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token},fetcher);
   }
   let body;if(method==='PATCH'){body=new FormData();body.set('settings',new Blob([JSON.stringify(settings)],{type:'application/json'}));}
   const response=await fetcher('https://api.cloudflare.com/client/v4/'+path,{method,headers:{authorization:'Bearer '+token},body,redirect:'error',signal:AbortSignal.timeout(20000)});

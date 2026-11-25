@@ -29,9 +29,9 @@ test('ownership loss, unverified restore and invalid target plans cannot write',
 });
 test('Cloudflare transport uses fixed HTTPS multipart settings and refuses other targets/methods',async()=>{
  const {createCloudflareTrafficTransport}=require('./cutover-api-traffic.cjs');const calls=[];
- const send=createCloudflareTrafficTransport('synthetic-token-0123456789',{fetcher:async(url,options)=>{calls.push({url,options});return Response.json({success:true,result:{ok:true}});}});
- const base='accounts/12daec56fdba43f677f2766ee26a5a39/workers/scripts/videoq-api/';await send('PATCH',base+'settings',{bindings:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'}]});assert.equal(calls[0].options.redirect,'error');assert.equal(calls[0].options.headers['content-type'],undefined);assert.ok(calls[0].options.body instanceof FormData);assert.deepEqual(JSON.parse(await calls[0].options.body.get('settings').text()),{bindings:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'}]});await send('GET',base+'versions?per_page=1');
- for(const [method,path] of [['DELETE',base+'settings'],['PATCH',base+'deployments'],['GET',base.replace('videoq-api','other')+'settings'],['GET','https://evil.invalid']])await assert.rejects(send(method,path),/REQUEST/);assert.equal(calls.length,2);
+ const send=createCloudflareTrafficTransport('synthetic-token-0123456789',{fetcher:async(url,options)=>{calls.push({url,options});return Response.json({success:true,result:options.method==='GET'?{bindings:[]}:{ok:true}});}});
+ const base='accounts/12daec56fdba43f677f2766ee26a5a39/workers/scripts/videoq-api/';await send('PATCH',base+'settings',{bindings:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'}]});assert.equal(calls[1].options.redirect,'error');assert.equal(calls[1].options.headers['content-type'],undefined);assert.ok(calls[1].options.body instanceof FormData);assert.deepEqual(JSON.parse(await calls[1].options.body.get('settings').text()),{bindings:[{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'}]});await send('GET',base+'versions?per_page=1');
+ for(const [method,path] of [['DELETE',base+'settings'],['PATCH',base+'deployments'],['GET',base.replace('videoq-api','other')+'settings'],['GET','https://evil.invalid']])await assert.rejects(send(method,path),/REQUEST/);assert.equal(calls.length,3);
 });
 test('Cloudflare errors are sanitized and oversized responses are rejected',async()=>{
  const {createCloudflareTrafficTransport}=require('./cutover-api-traffic.cjs'),path='accounts/12daec56fdba43f677f2766ee26a5a39/workers/scripts/videoq-api/settings';
@@ -70,4 +70,21 @@ test('actual restore transport checks deployed D1 fingerprint before every traff
  assert.equal(patches,1);assert.equal(checks,2);
  incompatible=1;await assert.rejects(send('PATCH',path,{bindings:[{name:'DB',type:'inherit'},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'running'}]}),/REBUILD_REQUIRED/);
  assert.equal(patches,1);
+});
+
+test('transport resolves inherited target bindings and permits paused metadata edits without certifying them',async()=>{
+ const {createCloudflareTrafficTransport}=require('./cutover-api-traffic.cjs');
+ const first='11111111-2222-4333-8444-555555555555',next='11111111-2222-4333-8444-666666666666';
+ let patches=0,checked=[];
+ const settings={bindings:[{name:'DB',type:'d1',id:first},{name:'EMBEDDING_MODEL',type:'plain_text',text:'old-model'},{name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'}]};
+ const send=createCloudflareTrafficTransport('synthetic-token-0123456789',{fetcher:async(url,options)=>{
+  if(url.includes('/d1/database/')){checked.push({url,params:JSON.parse(options.body).params});return Response.json({success:true,result:[{success:true,results:[{incompatible_runs:1,incompatible_scenes:0,incompatible_writes:0}]}]});}
+  if(options.method==='GET')return Response.json({success:true,result:settings});patches++;return Response.json({success:true,result:{}});
+ }});
+ const path='accounts/12daec56fdba43f677f2766ee26a5a39/workers/scripts/videoq-api/settings';
+ await send('PATCH',path,{bindings:[{name:'DB',type:'d1',id:next},{name:'MIGRATION_TRAFFIC_STATE',type:'inherit'}]});
+ assert.equal(checked.length,0);assert.equal(patches,1);
+ await assert.rejects(send('PATCH',path,{bindings:[{name:'DB',type:'d1',id:next},{name:'EMBEDDING_MODEL',type:'plain_text',text:'new-model'}]}),/REBUILD_REQUIRED/);
+ assert.equal(patches,1);assert.ok(checked[0].url.includes(next));
+ assert.equal(checked[0].params[1],require('./embedding-release-preflight.cjs').identity({EMBEDDING_MODEL:'new-model'}).fingerprint);
 });

@@ -51,7 +51,7 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   await expect(releaseCheck()).rejects.toThrow('REBUILD_REQUIRED');
   await expect(releaseCheck(true, true)).rejects.toThrow('REBUILD_REQUIRED');
   const fingerprint = await embeddingFingerprint(config);
-  const writer = createD1SceneIndexWriter(db, fingerprint, embeddingIdentity(config));
+  const writer = createD1SceneIndexWriter(db, fingerprint, embeddingIdentity(config), 1536);
   const query = vi.fn().mockResolvedValue({ matches: [] });
   const search = createD1SceneSearchRepository(db, { query } as unknown as Vectorize, 1536, fingerprint);
   const input = { queryEmbedding: vector, userId: 'owner', videoIds: [1], limit: 5 };
@@ -60,6 +60,7 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   await expect(writer.stage('legacy', 'owner', [])).rejects.toThrow('FINGERPRINT_MISMATCH');
   const run = { runId: 'new', videoId: 1, userId: 'owner', sourceRevision: 'source', dimensions: 1536 as const, expectedScenes: 1 };
   await expect(writer.start({ ...run, embeddingFingerprint: 'a'.repeat(64) })).rejects.toThrow('FINGERPRINT_MISMATCH');
+  await expect(writer.start({ ...run, dimensions: 768, embeddingFingerprint: fingerprint })).rejects.toThrow('FINGERPRINT_MISMATCH');
   expect(await writer.start({ ...run, embeddingFingerprint: fingerprint })).toBe(true);
   expect(await db.prepare('SELECT content FROM scenes').first('content')).toBe('old');
   await expect(search.search(input)).rejects.toThrow('FINGERPRINT_MISMATCH');

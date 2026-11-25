@@ -122,7 +122,9 @@ describe("signed scene ingestion with D1", () => {
     const source = (await call("source", { videoId: 5 })).source as { sourceRevision: string };
     expect(source.sourceRevision).toBe(revision);
     const snapshot = { videoId: 5, userId: "owner", sourceRevision: revision };
+    const previousEnv = env;
     for (const dimensions of [1536, 768]) {
+      env = { ...env, EMBEDDING_PROFILE: dimensions === 768 ? "embeddinggemma2" : "openai", EMBEDDING_MODEL: dimensions === 768 ? "synthetic-gemma" : "text-embedding-3-small", EMBEDDING_BASE_URL: dimensions === 768 ? "https://synthetic.invalid/v1" : undefined };
       const run = { ...snapshot, runId: crypto.randomUUID(), dimensions, expectedScenes: 1 };
       expect(await call("start", { ...run, userId: "foreign" })).toEqual({ accepted: false });
       expect(await call("start", { ...run, sourceRevision: "b".repeat(64) })).toEqual({ accepted: false });
@@ -141,6 +143,7 @@ describe("signed scene ingestion with D1", () => {
     expect(await fixture.database.prepare("SELECT revision FROM video_index_versions WHERE video_id=5").first("revision")).toBe(revision);
     expect(await fixture.database.prepare("SELECT transcript FROM videos WHERE id=5").first("transcript")).toBe("original");
     expect(await fixture.database.prepare("SELECT count(*) n FROM video_index_heads WHERE video_id=5").first("n")).toBe(2);
+    env = previousEnv;
   });
 
   it("reserves processing through the signed API exactly once", async () => {

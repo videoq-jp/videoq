@@ -167,11 +167,11 @@ export async function createWorkerScenePersistence(env: Bindings) {
   if (persistenceBackend(env) !== "d1") throw new Error("Worker scene API requires D1");
   if (!env.DB) throw new Error("D1 DB binding is required");
   const { createD1SceneIndexWriter, readD1WorkerSceneSource, finishD1WorkerSceneIndex } = await import("./d1/scene-index-writer");
-  const { embeddingIdentity, embeddingFingerprint, resolveEmbeddingConfig } = await import("../lib/embedding-contract");
+  const { embeddingDimensions, embeddingIdentity, embeddingFingerprint, resolveEmbeddingConfig } = await import("../lib/embedding-contract");
   const fingerprint = await embeddingFingerprint(resolveEmbeddingConfig(env));
   const database = env.DB;
   return { finish: (input: import("./contracts/scene-index").FinishSceneIndexInput) => finishD1WorkerSceneIndex(database, input, fingerprint),
-    writer: createD1SceneIndexWriter(database, fingerprint, embeddingIdentity(resolveEmbeddingConfig(env))), readSource: (videoId: number) => readD1WorkerSceneSource(database, videoId) };
+    writer: createD1SceneIndexWriter(database, fingerprint, embeddingIdentity(resolveEmbeddingConfig(env)), embeddingDimensions(resolveEmbeddingConfig(env)) as 768 | 1536), readSource: (videoId: number) => readD1WorkerSceneSource(database, videoId) };
 }
 
 export async function createProcessingQuotaRepository(env: Bindings): Promise<import("./contracts/processing-quota").ProcessingQuotaRepository> {

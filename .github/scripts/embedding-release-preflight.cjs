@@ -68,7 +68,7 @@ async function preflightSettings(settings, env = process.env, fetcher = fetch) {
   if (!Array.isArray(settings?.bindings) || new Set(settings.bindings.map(b => b.name)).size !== settings.bindings.length) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
   const vars = Object.fromEntries(settings.bindings.filter(b => b.type === 'plain_text').map(b => [b.name, b.text]));
   const databases = settings.bindings.filter(b => b.type === 'd1' && b.name === 'DB');
-  if (!databases.length && vars.PERSISTENCE_BACKEND !== 'd1' && vars.DEPLOYMENT_EDITION !== 'cloud') return { serving: true, backend: 'postgres' };
+  if (!databases.length && (vars.PERSISTENCE_BACKEND === 'postgres' || vars.DEPLOYMENT_EDITION === 'onprem')) return { serving: true, backend: 'postgres' };
   return preflight({ vars, d1_databases: databases.map(b => ({ binding: b.name, database_id: b.id })) }, env, fetcher, { resume: true });
 }
 module.exports = { identity, SQL, assertCounts, preflight, preflightSettings };

@@ -1,4 +1,4 @@
-import { assertEmbeddingFingerprint } from "../../lib/embedding-contract";
+import { EmbeddingCompatibilityError, assertEmbeddingFingerprint } from "../../lib/embedding-contract";
 import {
   and,
   eq,
@@ -175,6 +175,7 @@ export function createD1SceneIndexWriter(
   database: D1Database,
   fingerprint?: string,
   identity?: string,
+  expectedDimensions?: 768 | 1536,
 ): SceneIndexWriter {
   const db = createD1Connection(database),
     r = sceneIndexRuns,
@@ -255,6 +256,7 @@ export function createD1SceneIndexWriter(
     async start(input: SceneIndexRunInput) {
       validateSceneIndexRun(input);
       if (fingerprint) assertEmbeddingFingerprint(input.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && input.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const token = crypto.randomUUID();
       const result = await db.batch([
         db
@@ -393,6 +395,7 @@ export function createD1SceneIndexWriter(
         .get();
       if (!run) return false;
       if (fingerprint) assertEmbeddingFingerprint(run.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && run.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const ids = new Set<string>();
       let size = 0;
       const encoded = [];
@@ -507,6 +510,7 @@ export function createD1SceneIndexWriter(
         .get();
       if (!run) return false;
       if (fingerprint) assertEmbeddingFingerprint(run.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && run.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const token = crypto.randomUUID(),
         count = db
           .select({ count: sql<number>`count(*)` })
