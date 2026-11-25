@@ -249,6 +249,59 @@ def loaded_ffmpeg_libraries(audio_root, maps_path="/proc/self/maps"):
     return sorted(paths)
 
 
+def ffmpeg_mapping_snapshot(maps_path="/proc/self/maps"):
+    """Diagnostic paths only, never library approval or a replacement for hashes."""
+    paths = set()
+    for line in Path(maps_path).read_text().splitlines():
+        fields = line.split(maxsplit=5)
+        if len(fields) == 6 and Path(fields[5]).name.startswith(
+                ("libavcodec", "libavformat", "libavfilter", "libavutil",
+                 "libavdevice", "libswresample", "libswscale")):
+            paths.add(fields[5])
+    return sorted(paths)
+
+
+def reference_pyav_decode(native, raw, target_rate=16000):
+    """Record the exact emitted prefix and flushed reference independently."""
+    import io
+    import numpy as np
+
+    prefix = []
+    tail = []
+    with native.open(io.BytesIO(raw)) as container:
+        stream = container.streams.audio[0]
+        resampler = (native.AudioResampler(format="fltp", layout="mono", rate=target_rate)
+                     if stream.rate != target_rate else None)
+        for frame in container.decode(stream):
+            frames = resampler.resample(frame) if resampler else [frame]
+            prefix.extend(output.to_ndarray() for output in frames)
+        if resampler:
+            tail.extend(output.to_ndarray() for output in resampler.resample(None))
+    def mono(chunks):
+        array = np.concatenate(chunks, axis=-1).astype(np.float32)
+        return np.mean(array, axis=0) if array.ndim > 1 else array
+    emitted = mono(prefix)
+    complete = mono(prefix + tail)
+    return emitted, complete
+
+
+def verify_pyav_prefix(waveform, decoded_rate, emitted, complete):
+    import numpy as np
+
+    if (decoded_rate != 16000 or waveform.ndim != 1 or waveform.dtype != np.float32
+            or not np.isfinite(waveform).all() or complete.ndim != 1
+            or complete.size != 1600 or not np.isfinite(complete).all()
+            or emitted.size == 0 or emitted.size > complete.size or waveform.shape != emitted.shape
+            or not np.allclose(waveform, emitted, rtol=0, atol=1e-6)
+            or not np.allclose(emitted, complete[:emitted.size], rtol=0, atol=1e-6)):
+        raise ValueError(f"Actual PyAV reference mismatch: rate={decoded_rate}, "
+                         f"shape={waveform.shape}, emitted={emitted.size}, full={complete.size}")
+    return {"decodedRate": decoded_rate, "emittedSamples": int(emitted.size),
+            "fullReferenceSamples": int(complete.size),
+            "bufferedTailSamples": int(complete.size - emitted.size),
+            "upstreamFallbackFlushesResampler": False}
+
+
 def inspect_serving_audio_boundary(audio_root):
     import io
     from types import SimpleNamespace
@@ -257,7 +310,9 @@ def inspect_serving_audio_boundary(audio_root):
     import numpy as np
     import soundfile
     import sitecustomize
+    stages = {"beforeVllmImport": ffmpeg_mapping_snapshot()}
     import vllm
+    stages["afterVllmImport"] = ffmpeg_mapping_snapshot()
 
     if getattr(av.open, "__videoq_audio_guard__", None) != "local-audio-only-v2":
         raise ValueError("Refusing native probes without the installed local-input guard")
@@ -270,7 +325,9 @@ def inspect_serving_audio_boundary(audio_root):
     sources = verify_reviewed_files(package_root, REVIEWED_VLLM_SOURCES)
     members = verify_reviewed_files(audio_root, REVIEWED_PYAV_MEMBERS)
     import vllm.multimodal.audio as audio_utils
+    stages["afterMultimodalAudioImport"] = ffmpeg_mapping_snapshot()
     import vllm.multimodal.media.audio as loader
+    stages["afterMediaAudioImport"] = ffmpeg_mapping_snapshot()
     from vllm.entrypoints.speech_to_text.base.serving import SpeechToTextBaseServing
     boundary = AudioBoundary(av)
     # No engine/model/weights. Execute the actual installed unbound serving
@@ -285,16 +342,27 @@ def inspect_serving_audio_boundary(audio_root):
         for fmt in ("WAV", "FLAC"):
             for rate, channels in ((16000, 1), (48000, 2)):
                 buf = io.BytesIO()
-                soundfile.write(buf, np.zeros((rate // 10, channels), dtype=np.float32),
-                                rate, format=fmt, subtype="PCM_16")
+                time = np.arange(rate // 10, dtype=np.float32) / rate
+                tones = [0.2 * np.sin(2 * np.pi * (440 + 220 * channel) * time)
+                         for channel in range(channels)]
+                soundfile.write(buf, np.stack(tones, axis=1), rate, format=fmt, subtype="PCM_16")
                 raw = buf.getvalue()
                 waveform, decoded_rate = loader.load_audio_pyav(io.BytesIO(raw), sr=16000)
-                if decoded_rate != 16000 or waveform.size != 1600:
-                    raise ValueError("Actual PyAV decode/resample shape mismatch")
+                emitted, complete = reference_pyav_decode(av, raw)
+                fallback = verify_pyav_prefix(waveform, decoded_rate, emitted, complete)
+                stages[f"beforeAutoServing-{fmt}-{rate}-{channels}"] = ffmpeg_mapping_snapshot()
                 chunks, duration = SpeechToTextBaseServing._decode_and_chunk_speech(server, raw)
-                if len(chunks) != 1 or chunks[0].size != 1600 or abs(duration - .1) > .001:
-                    raise ValueError("Actual serving preprocessing shape mismatch")
-                cases.append({"format": fmt, "rate": rate, "channels": channels})
+                stages[f"afterAutoServing-{fmt}-{rate}-{channels}"] = ffmpeg_mapping_snapshot()
+                if (len(chunks) != 1 or chunks[0].ndim != 1 or chunks[0].size != 1600
+                        or not np.isfinite(chunks[0]).all() or not np.isfinite(duration)
+                        or abs(duration - .1) > .001):
+                    raise ValueError(f"Actual serving preprocessing shape mismatch: format={fmt}, "
+                                     f"inputRate={rate}, channels={channels}, duration={duration}, "
+                                     f"chunkShapes={[chunk.shape for chunk in chunks]}; "
+                                     f"fallbackReference={json.dumps(fallback, sort_keys=True)}; "
+                                     f"diagnosticImportMaps={json.dumps(stages, sort_keys=True)}")
+                cases.append({"format": fmt, "rate": rate, "channels": channels,
+                              "fallbackReference": fallback})
         for backend in ("azmq", "dynaudnorm", "rtmp"):
             try:
                 loader.AudioMediaIO(audio_backend=backend)
@@ -331,9 +399,14 @@ def inspect_serving_audio_boundary(audio_root):
             rejected.append(label)
         else:
             raise ValueError(f"Forbidden native boundary accepted: {label}")
-    libraries = loaded_ffmpeg_libraries(audio_root)
+    try:
+        libraries = loaded_ffmpeg_libraries(audio_root)
+    except ValueError as error:
+        raise ValueError(f"{error}; completedAudioCases={json.dumps(cases, sort_keys=True)}; "
+                         f"diagnosticImportMaps={json.dumps(stages, sort_keys=True)}") from error
     return {
         "loadedFfmpegLibraries": libraries,
+        "diagnosticImportMaps": stages,
         "guardSha256": hashlib.sha256(guard.read_bytes()).hexdigest(),
         "vllmSources": sources, "pyavWheelMembers": members,
         "validCases": cases, "calls": boundary.calls, "guardDenials": rejected,

@@ -182,6 +182,63 @@ class MaskDenialTests(unittest.TestCase):
                              ["empty_namespace_only", "not_found", "empty_namespace_only"])
 
 
+class DecodeReferenceTests(unittest.TestCase):
+    def test_exact_unflushed_prefix_and_full_reference_tail_are_recorded(self):
+        import numpy as np
+        complete = np.linspace(-0.2, 0.2, 1600, dtype=np.float32)
+        for count in (1600, 1584):
+            prefix = complete[:count]
+            result = PROBE.verify_pyav_prefix(prefix.copy(), 16000, prefix, complete)
+            self.assertEqual(result["bufferedTailSamples"], 1600 - count)
+            self.assertEqual(result["fullReferenceSamples"], 1600)
+        #1584 is synthetic, not a claim about an observed native receipt.
+
+    def test_reference_collects_native_emitted_prefix_and_flushes_buffered_tail(self):
+        import numpy as np
+        complete = np.linspace(-0.2, 0.2, 1600, dtype=np.float32).reshape(1, -1)
+        def frame(samples):
+            return SimpleNamespace(to_ndarray=lambda: samples)
+        resampler = Mock()
+        resampler.resample.side_effect = [[frame(complete[:, :-16])], [frame(complete[:, -16:])]]
+        container = SimpleNamespace(streams=SimpleNamespace(audio=[SimpleNamespace(rate=48000)]),
+                                    decode=lambda stream: ["native frame"])
+        context = Mock()
+        context.__enter__ = Mock(return_value=container)
+        context.__exit__ = Mock(return_value=False)
+        native = SimpleNamespace(open=Mock(return_value=context), AudioResampler=Mock(return_value=resampler))
+        prefix, full = PROBE.reference_pyav_decode(native, b"fixture")
+        np.testing.assert_array_equal(prefix, complete[0, :-16])
+        np.testing.assert_array_equal(full, complete[0])
+        self.assertEqual(resampler.resample.call_args_list,
+                         [unittest.mock.call("native frame"), unittest.mock.call(None)])
+        native.AudioResampler.assert_called_once_with(format="fltp", layout="mono", rate=16000)
+
+    def test_mapping_snapshot_is_diagnostic_and_does_not_approve_unknown_library(self):
+        with tempfile.TemporaryDirectory() as directory:
+            maps = Path(directory) / "maps"
+            unknown = "/usr/lib/x86_64-linux-gnu/libswscale.so.7.5.100"
+            maps.write_text(f"1000-2000 r-xp 0 00:00 0 {unknown}\n")
+            self.assertEqual(PROBE.ffmpeg_mapping_snapshot(maps), [unknown])
+            with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
+                PROBE.loaded_ffmpeg_libraries(directory, maps)
+
+    def test_rate_channels_nonfinite_corrupt_prefix_or_incomplete_reference_fail(self):
+        import numpy as np
+        complete = np.linspace(-0.2, 0.2, 1600, dtype=np.float32)
+        for waveform, rate, prefix, full in [
+            (complete, 48000, complete, complete),
+            (complete.reshape(1, -1), 16000, complete, complete),
+            (complete.astype(np.float64), 16000, complete, complete),
+            (complete * np.nan, 16000, complete, complete),
+            (complete + 0.1, 16000, complete, complete),
+            (complete[:-1], 16000, complete, complete),
+            (complete, 16000, complete, complete[:-1]),
+            (complete, 16000, complete, complete[::-1]),
+        ]:
+            with self.subTest(rate=rate, shape=waveform.shape), self.assertRaises(ValueError):
+                PROBE.verify_pyav_prefix(waveform, rate, prefix, full)
+
+
 class NativeBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.native = SimpleNamespace(open=Mock(return_value="container"), AudioResampler=Mock(return_value="resampler"),
