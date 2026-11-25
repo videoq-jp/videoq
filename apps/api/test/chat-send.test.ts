@@ -43,7 +43,7 @@ vi.mock("pg", () => {
       });
     }
   }
-  // vector-repository.ts (@yukiharada1228/langchain-postgres の PGEngine.fromPool) 用。
+  // vector-repository.ts (@videoq-jp/langchainjs-postgres の PGEngine.fromPool) 用。
   class FakePool {
     on() { return this; }
     async query(sqlOrConfig: unknown, args: unknown[] = []) {
@@ -296,6 +296,7 @@ function stubOpenAi(opts: {
       return jsonBody({ data: [{ index: 0, embedding: testEmbedding(0.1, 0.2) }] });
     }
 
+    if (!body.response_format) return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier course evidence." } }] }, false);
     const enc = new TextEncoder();
     const messages = (body.messages ?? []) as { role?: string }[];
     if (Array.isArray(body.tools) && !messages.some((m) => m.role === "tool")) {
@@ -641,7 +642,7 @@ describe("POST /messages（非ストリーミング）", () => {
       (chatRequests[0].body.tools as { function: { name: string } }[]).map(
         (t) => t.function.name,
       ),
-    ).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info"]);
+    ).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info", "optchat_zoom", "optchat_date"]);
 
     // 参照シーンは構造化したツール結果として渡す。
     const second = chatRequests[1].body.messages as { role: string; content: string }[];
@@ -1126,7 +1127,7 @@ describe("POST /messages/stream（SSE）", () => {
     expect(response.headers.get("content-type")).toBe("text/event-stream");
     expect(response.headers.get("cache-control")).toBe("no-cache");
     expect(response.headers.get("x-accel-buffering")).toBe("no");
-    expect(sseEvents(await response.text())).toEqual([
+    expect(sseEvents(await response.text()).filter(event => !(event.type === "generation_progress" && event.phase === "summarizing"))).toEqual([
       ...(generationProgress ? [{ type: "generation_progress", phase: "thinking" }] : []),
       ...(toolProgress ? [{ type: "tool_progress", call_id: 1, tool: "search_scenes", status: "running" }] : []),
       { type: "searching", query: "scene", search_id: 1 },

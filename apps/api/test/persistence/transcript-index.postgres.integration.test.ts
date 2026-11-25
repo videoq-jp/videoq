@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { isolatedPostgres } from './isolated-postgres';
 import { replacePostgresTranscriptIndex, validateTranscriptVectorStorage, clearPostgresTranscriptIndex } from '../../src/persistence/postgres/transcript-index-writer';
 import { parseSearchScenes } from '../../src/application/search-scene-splitting';
-import { PGEngine, PGVectorStore } from '@yukiharada1228/langchain-postgres';
+import { PGEngine, PGVectorStore } from '@videoq-jp/langchainjs-postgres';
 import { assertPostgresEmbeddingProvenance, createPostgresSceneSearchRepository } from '../../src/persistence/postgres/scene-search';
 
 const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;

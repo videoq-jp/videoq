@@ -70,7 +70,7 @@ describe("RAG agent in the Workers runtime", () => {
       ownerUserId: "00000000-0000-4000-8000-000000000005", videoIds: null, locale: null,
     });
     try {
-      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "answering" } });
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "thinking" } });
       expect((await stream.next()).value).toEqual({ part: { type: "text", segmentIndex: 0, text: "First" } });
       await stream.return();
       expect(upstream?.aborted).toBe(true);
@@ -84,7 +84,9 @@ describe("RAG agent in the Workers runtime", () => {
     let call = 0;
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       expect(url).toBe("https://openai.test/v1/chat/completions");
-      expect(JSON.parse(requestBodyText(init.body)).stream).toBe(streaming);
+      const body = JSON.parse(requestBodyText(init.body));
+      if (!body.response_format) return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier course evidence." } }] }, false);
+      expect(body.stream).toBe(streaming);
       call += 1;
       const metadataTurn = mode !== "search" && call === 1;
       const searchTurn = mode === "search" ? call === 1 : mode === "metadata-search" && call === 2;
@@ -131,7 +133,7 @@ describe("RAG agent in the Workers runtime", () => {
       const result = streaming
         ? await (async () => {
             for await (const chunk of streamRag(ENV, params)) chunks.push(chunk);
-            expect(chunks.filter(chunk => "generationProgress" in chunk)).toEqual([
+            expect(chunks.filter(chunk => "generationProgress" in chunk && chunk.generationProgress.phase !== "summarizing")).toEqual([
               { generationProgress: { type: "generation_progress", phase: "thinking" } },
               { generationProgress: { type: "generation_progress", phase: "reviewing" } },
               ...(mode === "metadata-search" ? [{ generationProgress: { type: "generation_progress", phase: "reviewing" } }] : []),

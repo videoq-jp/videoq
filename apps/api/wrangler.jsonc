@@ -113,8 +113,6 @@
   "env": {
     "production": {
       "name": "videoq-api",
-      // Resolve public frontend assets through its Worker, not the zone origin.
-      "compatibility_flags": ["nodejs_compat", "enable_request_signal", "global_fetch_strictly_public"],
       // 公開経路は下の routes だけ。workers.dev を開けると CORS も
       // Cookie ドメインも効かない第二の入口ができてしまう。
       "workers_dev": false,

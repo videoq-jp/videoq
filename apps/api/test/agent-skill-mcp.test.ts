@@ -24,7 +24,9 @@ it('exposes a read-only published artifact and preserves review/source errors ov
     expect(tools[0]).toMatchObject({ name: 'get_skill', annotations: { readOnlyHint: true, destructiveHint: false } });
     const result = await client.callTool({ name: 'get_skill', arguments: { skill_id: skillFixtureId } });
     expect(result.structuredContent).toMatchObject({ skill: { name: 'videoq-lab-3dc4072c', skills: [{ name: first.name }, { name: 'videoq-sql-3dc4072c' }] } });
-    expect(bundle).toHaveBeenCalledWith('owner', skillFixtureId);
+    expect(bundle).toHaveBeenCalledWith('owner', skillFixtureId, undefined);
+    await client.callTool({ name: 'get_skill', arguments: { skill_id: skillFixtureId, offset: 2, limit: 1 } });
+    expect(bundle).toHaveBeenCalledWith('owner', skillFixtureId, { offset: 2, limit: 1 });
     bundle.mockRejectedValueOnce(conflict('Review and publish first.'));
     expect(await client.callTool({ name: 'get_skill', arguments: { skill_id: skillFixtureId } })).toMatchObject({ isError: true });
   } finally { await client.close(); await server.close(); }

@@ -160,7 +160,7 @@ runs `node dist/background-worker.mjs` from the API image against dedicated
 SQS-compatible search and account queues. Video/audio preparation remains in the
 Python media worker.
 
-The PostgreSQL writer uses `@yukiharada1228/langchain-postgres` with a pinned
+The PostgreSQL writer uses `@videoq-jp/langchainjs-postgres` with a pinned
 transaction client. Provider calls finish before the write transaction. The
 writer rechecks ownership and the exact subtitle snapshot under a row lock,
 replaces all scenes atomically, and rolls back every change on failure.

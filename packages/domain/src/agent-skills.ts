@@ -13,4 +13,4 @@ export type SkillDraft = {
 
 /** A course is partitioned by reusable task, not by video/chapter boundaries. */
 export type SkillPlan = { skills: { objective: string; factIds: string[] }[] };
-export type SkillMember = { objective: string; factIds: string[]; draft: SkillDraft | null; attempts?: number; status: 'pending' | 'auditing' | 'passed' | 'rejected'; issues: string[] };
+export type SkillMember = { key?: string; auditCursor?: number; objective: string; factIds: string[]; draft: SkillDraft | null; attempts?: number; status: 'pending' | 'auditing' | 'passed' | 'rejected'; issues: string[] };

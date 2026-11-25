@@ -110,8 +110,6 @@ export async function connect(origin, token, fetcher = fetch) {
 }
 
 export async function downloadSkill(client, config) {
-  const { skill } = await client.call('get_skill', { skill_id: config.skill });
-  if (!skill || skill.id !== config.skill) throw new Error('Invalid published skill set.');
   const validate = (artifact) => {
     if (!artifact || artifact.id !== config.skill || typeof artifact.name !== 'string' || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(artifact.name)) throw new Error('Invalid published skill.');
     const paths = ['SKILL.md', 'references/sources.md'];
@@ -119,12 +117,31 @@ export async function downloadSkill(client, config) {
     if (!artifact.files['SKILL.md'].startsWith(`---\nname: ${artifact.name}\n`)) throw new Error('Skill identity does not match its entrypoint.');
     return { name: artifact.name, files: new Map(paths.map(path => [path, artifact.files[path]])) };
   };
-  const first = validate(skill);
-  if (skill.skills === undefined) return first;
-  if (!Array.isArray(skill.skills) || !skill.skills.length || skill.skills.length > 12) throw new Error('Invalid skill set.');
-  const skills = skill.skills.map(validate);
-  if (new Set(skills.map(item => item.name)).size !== skills.length || skills[0].name !== first.name || [...first.files].some(([path, content]) => skills[0].files.get(path) !== content)) throw new Error('Invalid skill set identities.');
-  return { ...first, skills };
+  let offset = 0, first, expectedTotal;
+  const skills = [], names = new Set();
+  for (;;) {
+    const { skill } = await client.call('get_skill', { skill_id: config.skill, offset, limit: 1 });
+    if (!skill || skill.id !== config.skill) throw new Error('Invalid published skill set.');
+    const root = validate(skill);
+    if (skill.skills !== undefined && (!Array.isArray(skill.skills) || !skill.skills.length)) throw new Error('Invalid skill set.');
+    const page = skill.skills === undefined ? [root] : skill.skills.map(validate);
+    if (page[0].name !== root.name || [...root.files].some(([path, content]) => page[0].files.get(path) !== content)) throw new Error('Invalid skill set identities.');
+    for (const item of page) {
+      if (names.has(item.name)) throw new Error('Invalid skill set identities.');
+      names.add(item.name); skills.push(item);
+    }
+    first ??= root;
+    if (skill.totalSkills !== undefined) {
+      if (!Number.isSafeInteger(skill.totalSkills) || skill.totalSkills < skills.length || (expectedTotal !== undefined && expectedTotal !== skill.totalSkills)) throw new Error('Invalid skill set total.');
+      expectedTotal = skill.totalSkills;
+    }
+    if (skill.nextOffset === null || skill.nextOffset === undefined) break;
+    if (!Number.isSafeInteger(skill.nextOffset) || skill.nextOffset !== offset + page.length) throw new Error('Invalid skill page.');
+    offset = skill.nextOffset;
+  }
+  if (expectedTotal !== undefined && skills.length !== expectedTotal) throw new Error('Incomplete skill set.');
+  return skills.length === 1 ? first : { ...first, skills };
+
 }
 
 export async function install(bundle, config, { cwd = process.cwd(), home = homedir() } = {}) {

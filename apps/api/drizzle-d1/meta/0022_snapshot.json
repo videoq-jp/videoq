@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "033faaf2-0837-44c8-9a60-8133b31a162a",
-  "prevId": "ccabe999-5c2d-427a-9450-b59f2212cfc8",
+  "id": "ccabe999-5c2d-427a-9450-b59f2212cfc8",
+  "prevId": "00d26022-81e2-410c-8068-20abbc1cdd96",
   "tables": {
     "account_deletion_requests": {
       "name": "account_deletion_requests",
@@ -6796,20 +6796,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "embedding_identity": {
-          "name": "embedding_identity",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "embedding_fingerprint": {
-          "name": "embedding_fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "expected_scenes": {
           "name": "expected_scenes",
           "type": "integer",
@@ -6840,6 +6826,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
+        },
+        "embedding_fingerprint": {
+          "name": "embedding_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "embedding_identity": {
+          "name": "embedding_identity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -7621,191 +7621,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "policy_cleanup": {
-      "name": "policy_cleanup",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "scope": {
-          "name": "scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "logical_deleted_at": {
-          "name": "logical_deleted_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "policy_cleanup_scope_check": {
-          "name": "policy_cleanup_scope_check",
-          "value": "\"policy_cleanup\".\"scope\" IN ('active-object','active-index')"
-        }
-      }
-    },
-    "policy_notifications": {
-      "name": "policy_notifications",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "severity": {
-          "name": "severity",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "state": {
-          "name": "state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "lease_until": {
-          "name": "lease_until",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "delivered_at": {
-          "name": "delivered_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "policy_readiness": {
-      "name": "policy_readiness",
-      "columns": {
-        "video_id": {
-          "name": "video_id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "source_revision": {
-          "name": "source_revision",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "transcript_accepted_at": {
-          "name": "transcript_accepted_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "ready_at": {
-          "name": "ready_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ready_fingerprint": {
-          "name": "ready_fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ready_dimensions": {
-          "name": "ready_dimensions",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ready_run_id": {
-          "name": "ready_run_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "policy_readiness_video_id_videos_id_fk": {
-          "name": "policy_readiness_video_id_videos_id_fk",
-          "tableFrom": "policy_readiness",
-          "tableTo": "videos",
-          "columnsFrom": [
-            "video_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "agent_skills": {
       "name": "agent_skills",
       "columns": {
@@ -7877,6 +7692,67 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "agent_skill_state_parts": {
+      "name": "agent_skill_state_parts",
+      "columns": {
+        "skill_id": {
+          "name": "skill_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "part": {
+          "name": "part",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agent_skill_state_parts_skill_id_agent_skills_id_fk": {
+          "name": "agent_skill_state_parts_skill_id_agent_skills_id_fk",
+          "tableFrom": "agent_skill_state_parts",
+          "tableTo": "agent_skills",
+          "columnsFrom": [
+            "skill_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "agent_skill_state_parts_skill_id_revision_part_pk": {
+          "columns": [
+            "skill_id",
+            "revision",
+            "part"
+          ],
+          "name": "agent_skill_state_parts_skill_id_revision_part_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     }

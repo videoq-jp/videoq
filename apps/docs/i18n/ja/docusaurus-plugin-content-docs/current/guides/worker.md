@@ -35,7 +35,7 @@ Cloudflare Queuesから、アカウントジョブはAPI Workerのキューハ�
 
 Nodeの `background-worker` サービスが、検索とアカウント用の専用SQS互換キューを受信します。Pythonの `worker` サービスはメディアジョブを受信します。Composeには両方のサービスがあり、HelmではNode workerと用途別のキューURLが必要です。
 
-検索にはPostgreSQLと `@yukiharada1228/langchain-postgres` を使います。埋め込みは `@langchain/openai` を通して設定済みのOpenAI互換エンドポイントを呼び出します。ローカル推論サービスを使えば外部通信なしで実行できます。オンプレではCloudflareのストレージバインディングは不要です。
+検索にはPostgreSQLと `@videoq-jp/langchainjs-postgres` を使います。埋め込みは `@langchain/openai` を通して設定済みのOpenAI互換エンドポイントを呼び出します。ローカル推論サービスを使えば外部通信なしで実行できます。オンプレではCloudflareのストレージバインディングは不要です。
 
 ## メッセージの形
 

@@ -1,4 +1,7 @@
-import {afterEach,beforeEach,describe,expect,it} from "vitest";
+import { runRag } from '../../src/lib/rag';
+import { chatCompletionResponse } from '../helpers/chat-completion-response';
+import { requestBodyText } from '../helpers/request-body';
+import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
 import {StateGraph,StateSchema,MessagesValue,START,END,interrupt,Command} from "@langchain/langgraph";
 import {HumanMessage,AIMessage} from "@langchain/core/messages";
 import {emptyCheckpoint,type CheckpointMetadata} from "@langchain/langgraph-checkpoint";
@@ -15,7 +18,7 @@ beforeEach(async()=>{
   await f.database.prepare("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES ('owner','owner','owner@example.test',0,0,0,0)").run();
   await f.database.prepare("INSERT INTO chat_conversations(thread_id,conversation_id,owner_user_id,lease_id,leased_until,expires_at) VALUES (?,?,?,?,'2099-01-01T00:00:00Z','2099-01-01T00:00:00Z')").bind(threadId,crypto.randomUUID(),'owner',leaseId).run();
 });
-afterEach(async()=>{await f?.dispose();});
+afterEach(async()=>{vi.unstubAllGlobals();await f?.dispose();});
 const saver=()=>new D1CheckpointSaver(f.database,{threadId,leaseId});
 describe('actual LangGraph on D1',()=>{
   const schema=new StateSchema({messages:MessagesValue,question:z.string()});
@@ -65,4 +68,31 @@ describe('actual LangGraph on D1',()=>{
     expect(await f.database.prepare('SELECT count(*) AS n FROM conversation_checkpoint_writes').first('n')).toBe(0);
     expect(await f.database.prepare('SELECT count(*) AS n FROM mutation_receipts').first('n')).toBe(0);
   });
+});
+
+
+it('restores OptChat originals and tree through a new D1 saver and agent instance', async () => {
+  const requests: Array<{ response_format?: unknown; messages: unknown[] }> = [];
+  vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
+    const body = JSON.parse(requestBodyText(init.body)); requests.push(body);
+    return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: {
+      role: 'assistant', content: body.response_format
+        ? JSON.stringify({ segments: [{ text: 'Remembered.', sourceIds: [] }] }) : 'Earlier conversation about vectors.',
+    } }] }, false, crypto.randomUUID()));
+  });
+  const env = { OPENAI_API_KEY: 'fixture', OPENAI_BASE_URL: 'https://provider.test/v1' } as import('../../src/types/bindings').Bindings;
+  const params = { ownerUserId: 'owner', videoIds: null, locale: 'en',
+    messages: [{ role: 'user', content: 'Remember vectors. '.repeat(80) }] };
+  const first = await runRag(env, { ...params, memory: { saver: saver(), threadId, checkpointId: null } });
+  const checkpoint = await saver().get({ configurable: { thread_id: threadId, checkpoint_id: first.checkpointId } });
+  const tree = checkpoint!.channel_values.optchat as { saved: { tree: unknown[] } };
+  expect(tree.saved.tree.length).toBeGreaterThan(0);
+  const summaries = requests.filter(request => !request.response_format).length;
+  const second = await runRag(env, { ...params, messages: [{ role: 'user', content: 'Continue.' }],
+    memory: { saver: saver(), threadId, checkpointId: first.checkpointId! } });
+  expect(second.checkpointId).not.toBe(first.checkpointId);
+  expect(requests.filter(request => !request.response_format)).toHaveLength(summaries);
+  const restored = await saver().get({ configurable: { thread_id: threadId, checkpoint_id: second.checkpointId } });
+  expect((restored!.channel_values.messages as HumanMessage[])[0].text).toBe(params.messages[0].content);
+  for (const node of tree.saved.tree) expect((restored!.channel_values.optchat as typeof tree).saved.tree).toContainEqual(node);
 });

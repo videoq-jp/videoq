@@ -152,15 +152,22 @@
     {
       "idx": 21,
       "version": "6",
-      "when": 1795564800000,
-      "tag": "0021_embedding_fingerprint",
+      "when": 1795600734264,
+      "tag": "0021_agent_skill_state_parts",
       "breakpoints": true
     },
     {
       "idx": 22,
       "version": "6",
-      "when": 1795572944199,
-      "tag": "0022_policy_observation",
+      "when": 1795600734265,
+      "tag": "0022_embedding_fingerprint",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1795600734266,
+      "tag": "0023_policy_observation",
       "breakpoints": true
     }
   ]

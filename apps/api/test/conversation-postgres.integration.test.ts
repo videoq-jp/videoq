@@ -315,7 +315,15 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       context = messages.map(message => message.text); return respond(messages, question);
     }));
     await chat.close();
-    expect(context).toContain('Question 0');
+    expect(context).toContain('Question 15');
+    const restored = await openConversation(env, scope, id, true);
+    try {
+      const checkpoint = await restored.saver.get({ configurable: { thread_id: restored.threadId, checkpoint_id: restored.checkpointId } });
+      expect((checkpoint!.channel_values.messages as BaseMessage[]).some(message => message.text === 'Question 0')).toBe(true);
+      const memory = checkpoint!.channel_values.optchat as { saved: { entries: Array<{ text: string }>; tree: unknown[] } };
+      expect(JSON.stringify(memory.saved.entries)).toContain('Question 0');
+      expect(memory.saved.tree.length).toBeGreaterThan(0);
+    } finally { await restored.close(); }
     expect(context.at(-1)).toBe('Still remember?');
   });
 
@@ -512,7 +520,11 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     const bodies: Array<{ messages: Array<{ role: string; content: unknown }> }> = [];
     let calls = 0;
     vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
-      const body = JSON.parse(requestBodyText(init.body)); bodies.push(body);
+      const body = JSON.parse(requestBodyText(init.body));
+      if (!body.response_format) return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop',
+        message: { role: 'assistant', content: 'Evidence for first is source 1; evidence for second is source 2.' },
+      }] }, false, crypto.randomUUID()));
+      bodies.push(body);
       const call = ++calls;
       const query = call === 1 ? 'first' : call === 4 ? 'second' : null;
       const message = query ? { role: 'assistant', content: null, tool_calls: [{ id: `call_${call}`, type: 'function' as const,
@@ -531,7 +543,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       } else await runChatRag(modelEnv, params, request);
     }
     expect(search).toHaveBeenCalledTimes(2);
-    expect(JSON.stringify(bodies[2].messages.filter(message => message.role === 'tool'))).toContain('Evidence for first');
+    expect(JSON.stringify(bodies[2].messages)).toContain('Evidence for first');
     const detail = await getConversation(env, scope, { conversationId: id, limit: 50 });
     expect(detail.turns[1].answer.segments[0].sourceIds).toEqual([1]);
     expect(detail.turns[2].answer.segments[0].sourceIds).toEqual([1, 2]);
@@ -542,6 +554,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       const messages = snapshot!.channel_values.messages as BaseMessage[];
       expect(messages.filter(message => message.type === 'tool')).toHaveLength(2);
       expect(snapshot!.channel_values.evidenceSources).toHaveLength(2);
+      expect(snapshot!.channel_values.optchat).toBeDefined();
     } finally { await chat.close(); }
   });
 

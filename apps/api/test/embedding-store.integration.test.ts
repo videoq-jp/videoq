@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
-import { HNSWIndex, PGEngine, PGVectorStore } from "@yukiharada1228/langchain-postgres";
+import { HNSWIndex, PGEngine, PGVectorStore } from "@videoq-jp/langchainjs-postgres";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertEmbeddingSchema } from "../src/lib/embedding-schema";
 import { embeddingFingerprint, embeddingIdentity, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
