@@ -40,6 +40,7 @@ try {
       emitted = vectors.map(vector => ({ ...vector, message: vector.accepted
         ? buildJobMessage(vector.message.type, vector.message.payload, vector.message.job_id) : vector.message }));
     }
+    assert.ok(emitted.length >= 58, `Producer fixture coverage shrank: ${producerVersion}`);
     const wire = `${output}.${producerVersion}-wire.json`;
     await writeFile(wire, JSON.stringify(emitted));
     for (const [consumerVersion, consumerRoot] of Object.entries(versions)) {
