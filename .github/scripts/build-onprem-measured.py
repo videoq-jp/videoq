@@ -75,7 +75,8 @@ def host_cgroup_limits(membership, cgroup_root=Path('/sys/fs/cgroup'), require_l
         raise ValueError('Unresolved host cgroup membership')
     if require_leaf and not all((current / name).is_file() for name in ['cpu.max', 'memory.max']):
         raise ValueError('Actual builder cgroup controllers are not inspectable')
-    quotas, memories = [], []
+    quotas, memories, parents = [], [], []
+    leaf = current
     while True:
         # The actual host root cgroup has no limit files; its absence is unlimited.
         # Child controllers can also be disabled while a parent remains limited.
@@ -89,12 +90,16 @@ def host_cgroup_limits(membership, cgroup_root=Path('/sys/fs/cgroup'), require_l
             memory = (current / 'memory.max').read_text().strip()
             if memory != 'max':
                 memories.append(int(memory))
+        if current != leaf:
+            parents.append({'path': '/' + str(current.relative_to(root)) if current != root else '/',
+                'cpuMax': (current / 'cpu.max').read_text().strip() if (current / 'cpu.max').is_file() else None,
+                'memoryMax': (current / 'memory.max').read_text().strip() if (current / 'memory.max').is_file() else None})
         if current == root:
             break
         current = current.parent
     return {'cpuQuotaCpus': min(quotas) if quotas else None,
             'memoryMaxBytes': min(memories) if memories else None,
-            'membership': entries[0]}
+            'membership': entries[0], 'parentLimits': parents}
 
 
 def host_cpu_envelope(cgroup_root=Path('/sys/fs/cgroup'), membership=Path('/proc/self/cgroup')):
@@ -142,6 +147,11 @@ def inspect_builder_limits(builder, cpus, memory_bytes):
         raise ValueError('BuildKit memory/swap limits differ from the protocol')
     host_allowed, host_quota = host_cpu_envelope()
     builder_ancestors = builder_cgroup_envelope(info['State'].get('Pid'))
+    if not re.fullmatch('[a-f0-9]{64}', info.get('Id', '')) or info['Id'] not in builder_ancestors['membership']:
+        raise ValueError('Host PID membership does not identify the selected BuildKit container')
+    boot = subprocess.check_output(['docker', 'exec', container, 'cat', '/proc/sys/kernel/random/boot_id'], text=True).strip()
+    if boot != Path('/proc/sys/kernel/random/boot_id').read_text().strip():
+        raise ValueError('Selected Docker daemon is not on this measured Linux kernel')
     if ((builder_ancestors['cpuQuotaCpus'] is not None and builder_ancestors['cpuQuotaCpus'] < cpus) or
             (builder_ancestors['memoryMaxBytes'] is not None and builder_ancestors['memoryMaxBytes'] < memory_bytes)):
         raise ValueError('Actual builder ancestor CPU/memory limit is below the protocol')
