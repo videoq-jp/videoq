@@ -13,6 +13,22 @@ type FixtureOptions = {
     httpsCert: string;
   };
 };
+/** Miniflare's host proxy can finalize statement handles before an async batch
+ * reaches workerd. Keep only in-flight arguments alive; do not serialize/retry
+ * database operations or change the real D1 transaction semantics. */
+export function retainD1BatchStatements(database: D1Database): D1Database {
+  const pending = new Set<{ statements: D1PreparedStatement[] }>();
+  const batch = async <T = unknown>(statements: D1PreparedStatement[]) => {
+    const operation = { statements };
+    pending.add(operation);
+    try { return await database.batch<T>(statements); }
+    finally { pending.delete(operation); }
+  };
+  return new Proxy(database, {
+    get(target, key) { return key === "batch" ? batch : Reflect.get(target, key); },
+  });
+}
+
 export async function createD1Fixture(options: FixtureOptions = {}) {
   let outboundRequests=0;
   const runtime = new Miniflare(convertV4MiniflareOptions({
@@ -34,7 +50,7 @@ export async function createD1Fixture(options: FixtureOptions = {}) {
     r2Buckets:options.r2?["VIDEO_BUCKET"]:[],
   }));
   try {
-    const database = await runtime.getD1Database("DB");
+    const database = retainD1BatchStatements(await runtime.getD1Database("DB"));
     const directory = new URL("../../drizzle-d1/", import.meta.url);
     const migrations = readdirSync(directory).filter(name => name.endsWith(".sql")).sort();
     if (options.beforeMigration && !migrations.includes(options.beforeMigration)) throw new Error("Unknown fixture migration boundary");
