@@ -118,6 +118,7 @@ jobs:
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
+              - '.github/scripts/embedding-release-preflight.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -135,6 +136,7 @@ jobs:
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
+              - '.github/scripts/embedding-release-preflight.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -193,6 +195,7 @@ jobs:
               - '.github/scripts/validate-deployment.cjs'
               - '.github/scripts/deployment-config.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
+              - '.github/scripts/embedding-release-preflight.cjs'
               - '.github/deploy-tools/**'
               - ".github/runtime-versions.json"
               - ".node-version"
@@ -418,6 +421,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
           node .github/scripts/d1-resource-deployment-config.cjs deployment.json
           node .github/scripts/protect-api-deployment.cjs deployment.json
+          node .github/scripts/embedding-release-preflight.cjs deployment.json
           node .github/scripts/terraform-cloudflare-release.cjs api deployment.json
 
   db-migrate:
