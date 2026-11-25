@@ -16,7 +16,10 @@ function equivalentVersion(before,after){
  if(!Array.isArray(a.bindings)||!Array.isArray(b.bindings)||!isDeepStrictEqual(bindings(a),bindings(b)))throw Error('RECONCILE_BINDINGS_CHANGED');
  const traffic=b.bindings.filter(v=>v.name==='MIGRATION_TRAFFIC_STATE');
  if(traffic.length!==1||traffic[0].type!=='plain_text'||traffic[0].text!=='running')throw Error('RECONCILE_RUNNING_TRAFFIC_REQUIRED');
- if(!isDeepStrictEqual(before.annotations,after.annotations))throw Error('RECONCILE_SOURCE_ANNOTATIONS_CHANGED');
+ // Cloudflare changes its computed trigger when PATCH creates a version.
+ // Retain every user/source annotation; ignore only this provider-owned field.
+ const annotations=v=>Object.fromEntries(Object.entries(v.annotations??{}).filter(([key])=>key!=='workers/triggered_by'));
+ if(!isDeepStrictEqual(annotations(before),annotations(after)))throw Error('RECONCILE_SOURCE_ANNOTATIONS_CHANGED');
 }
 function stateResources(state){
  if(!state?.lineage||!Number.isSafeInteger(state.serial)||!Array.isArray(state.resources)||state.resources.length!==2)throw Error('RECONCILE_UNEXPECTED_STATE');
