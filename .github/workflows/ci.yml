@@ -100,6 +100,12 @@ jobs:
           manager: npm
       - name: Test production deployment policy
         run: node --test .github/scripts/*.test.cjs
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.2.0
+        with:
+          python-version-file: .python-version
+      - name: Install hash-locked security test numerical dependency
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r .github/scripts/security-test-requirements.txt
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
       - name: Require consistent interpreter and package manager pins
         run: python3 .github/scripts/runtime-versions.py check
