@@ -1522,7 +1522,8 @@
   "maskedNativeDirectories": [
     "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec",
     "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs",
-    "/usr/local/lib/python3.12/dist-packages/mooncake"
+    "/usr/local/lib/python3.12/dist-packages/mooncake",
+    "/usr/local/lib/python3.12/dist-packages/torchcodec"
   ],
   "audioGuardSha256": "ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a",
   "audioAssessments": [

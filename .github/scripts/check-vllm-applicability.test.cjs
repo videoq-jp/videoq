@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {createHash} = require('node:crypto');
-const {assess} = require('./check-vllm-applicability.cjs');
+const {assess, verifyWorkload, nativeMasks} = require('./check-vllm-applicability.cjs');
 const hash = text => createHash('sha256').update(text).digest('hex');
 const image = 'vllm/vllm-openai@sha256:' + 'a'.repeat(64);
 const now = new Date('2026-11-12T00:00:00Z');
@@ -14,6 +14,7 @@ function fixture() {
     reviewedAt: '2026-11-01T00:00:00Z', expiresAt: '2026-11-30T00:00:00Z', image, os: {ID: 'ubuntu', VERSION_ID: '24.04'},
     osPackages: packages, kernelHeaderInventorySha256: headerHash, kernelHeaderCount: 1, pipVendorBomSha256: 'reviewed-bom',
     runtimePython: {msgpack: '1.2.4'}, audioLockSha256: hash(audio), allowedArgs: [['/models/reviewed']],
+    maskedNativeDirectories: [...nativeMasks],
     groups: [{type: 'ubuntu', origin: 'unused-tools', status: 'not_affected', impactStatement: 'APT acquisition is not performed by this serving command', references: ['https://example.test/advisory'],
       vulnerabilities: ['CVE-reviewed'], packages: {apt: {version: '2.8.3', purl: 'pkg:deb/ubuntu/apt@2.8.3?arch=amd64&distro=ubuntu-24.04'}}}]};
   const native = {status: 'passed', inventory: {os: policy.os, packages, kernelHeaders: {inventorySha256: headerHash, count: 1, kernelBinariesOrModules: false, files: [file]},
@@ -21,11 +22,12 @@ function fixture() {
   const container = {image, command: ['vllm', 'serve'], args: ['/models/reviewed'],
     securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ['ALL']}},
     env: [{name: 'HF_HUB_OFFLINE', value: '1'}, {name: 'HOME', value: '/tmp'}, {name: 'PYTHONPATH', value: '/opt/videoq-audio'}],
-    volumeMounts: [{name: 'models', mountPath: '/models', readOnly: true}, {name: 'tmp', mountPath: '/tmp'}, {name: 'shm', mountPath: '/dev/shm'}, {name: 'vllm-audio', mountPath: '/opt/videoq-audio', readOnly: true}]};
+    volumeMounts: [{name: 'models', mountPath: '/models', readOnly: true}, {name: 'tmp', mountPath: '/tmp'}, {name: 'shm', mountPath: '/dev/shm'}, {name: 'vllm-audio', mountPath: '/opt/videoq-audio', readOnly: true},
+      ...nativeMasks.map(mountPath => ({name: 'unused-native', mountPath, readOnly: true}))]};
   const documents = [{kind: 'ConfigMap', data: {'wheels.json': audio}}, {kind: 'Deployment', spec: {template: {
     metadata: {annotations: {'videoq.io/audio-lock': hash(audio)}}, spec: {automountServiceAccountToken: false,
       securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: 'RuntimeDefault'}},
-      containers: [container], volumes: [{name: 'tmp', emptyDir: {sizeLimit: '4Gi'}}]}}}}];
+      containers: [container], volumes: [{name: 'tmp', emptyDir: {sizeLimit: '4Gi'}}, {name: 'unused-native', emptyDir: {sizeLimit: '1Mi'}}]}}}}];
   const report = {Metadata: {RepoDigests: [image]}, Results: [{Type: 'ubuntu', Vulnerabilities: [{PkgName: 'apt', InstalledVersion: '2.8.3', Severity: 'HIGH', VulnerabilityID: 'CVE-reviewed', PkgIdentifier: {PURL: policy.groups[0].packages.apt.purl}}]}]};
   return {policy, native, profiles: Array.from({length: 10}, () => structuredClone(documents)), report};
 }
@@ -93,18 +95,12 @@ test('native findings require exact empty read-only masks and actual runtime pro
   const f = fixture();
   const directory = '/usr/local/lib/python3.12/dist-packages/mooncake';
   const locations = [directory + '/libetcd_wrapper.so'];
-  f.policy.maskedNativeDirectories = [directory];
   f.policy.groups.push({type: 'go-module', origin: 'masked-native', status: 'not_affected',
     impactStatement: 'Native code is hidden by mandatory empty read-only mounts', references: ['review'],
     vulnerabilities: ['GO-reviewed'], packages: {stdlib: {version: 'go1.25.10', purl: 'pkg:golang/stdlib@1.25.10', locations}}});
   f.report.Results.push({Type: 'go-module', Vulnerabilities: [{PkgName: 'stdlib', InstalledVersion: 'go1.25.10',
     Severity: 'HIGH', VulnerabilityID: 'GO-reviewed', PkgIdentifier: {PURL: 'pkg:golang/stdlib@1.25.10'}, Locations: locations}]});
-  for (const documents of f.profiles) {
-    const pod = documents[1].spec.template.spec;
-    pod.volumes.push({name: 'unused-native', emptyDir: {sizeLimit: '1Mi'}});
-    pod.containers[0].volumeMounts.push({name: 'unused-native', mountPath: directory, readOnly: true});
-  }
-  const runtime = {status: 'passed', checks: {'security.maskedNative': {status: 'passed', details: [directory]}}};
+  const runtime = {status: 'passed', checks: {'security.maskedNative': {status: 'passed', details: [...nativeMasks]}}};
   const evaluate = (value = f, proof = runtime) => assess(value.report, value.policy, value.native, value.profiles, now, proof);
   assert.equal(evaluate().blocking.length, 0);
   assert.throws(() => evaluate(f, null));
@@ -116,4 +112,36 @@ test('native findings require exact empty read-only masks and actual runtime pro
   }
   const copy = structuredClone(f); copy.report.Results[1].Vulnerabilities[0].VulnerabilityID = 'GO-new';
   assert.equal(evaluate(copy).blocking.length, 1);
+});
+
+
+test('mask schema rejects omission, relocation, write access and unreviewed native paths', () => {
+  for (const mutate of [f => delete f.policy.maskedNativeDirectories,
+    f => f.policy.maskedNativeDirectories.pop(),
+    f => f.policy.maskedNativeDirectories.push('/usr/lib'),
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).readOnly = false,
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).mountPath += '/nested',
+    f => f.profiles[0][1].spec.template.spec.volumes.at(-1).emptyDir = {medium: 'Memory'},
+    f => f.profiles[0][1].spec.template.spec.containers[0].args = ['/models/video-unreviewed']]) {
+    const f = fixture(); mutate(f); assert.throws(() => run(f));
+  }
+});
+
+test('all actual supported Helm profiles and both native workflows retain identical four masks', () => {
+  const {execFileSync} = require('node:child_process');
+  const {readFileSync} = require('node:fs');
+  const {parseAllDocuments} = require('yaml');
+  const policy = JSON.parse(readFileSync('apps/inference/vllm/security/runtime-assessment.json'));
+  for (const profile of ['gpt-oss-embeddinggemma', 'vllm-nvidia', 'whisper-nvidia', 'rtx4090', 'rtx4090-gpt-oss-embeddinggemma']) {
+    for (const extra of [[], ['--set', 'downloadModels=false', '--set', 'networkPolicy.denyEgress=true']]) {
+      const text = execFileSync(process.env.HELM_BIN || 'helm', ['template', 'assessment', 'charts/videoq-inference',
+        '-f', 'charts/videoq-inference/examples/' + profile + '.yaml', ...extra], {encoding: 'utf8'});
+      const docs = parseAllDocuments(text).map(doc => {assert.equal(doc.errors.length, 0); return doc.toJSON();}).filter(Boolean);
+      verifyWorkload(docs, policy);
+    }
+  }
+  for (const workflow of ['upstream-vllm.yml', 'patched-audio-candidate.yml']) {
+    const text = readFileSync('.github/workflows/' + workflow, 'utf8');
+    for (const directory of nativeMasks) assert.ok(text.includes('--tmpfs ' + directory + ':ro,size=1m'));
+  }
 });
