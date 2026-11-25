@@ -181,3 +181,72 @@ test('required actual-render gate has locked dependency and Helm prerequisites b
     for (const directory of nativeMasks) assert.ok(text.includes('--tmpfs ' + directory + ':ro,size=1m'));
   }
 });
+
+function exactMaskedFixture() {
+  const policy = structuredClone(require('../../apps/inference/vllm/security/runtime-assessment.json'));
+  const evidence = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
+  const f = fixture();
+  f.policy = policy;
+  f.native = {status: 'passed', inventory: structuredClone(evidence.nativeInventory)};
+  f.runtime = {status: 'passed', checks: structuredClone(evidence.requiredRuntimeChecks)};
+  const documents = f.profiles[0];
+  documents[0].data['wheels.json'] = require('node:fs').readFileSync('charts/videoq-inference/files/vllm-audio-wheels.json', 'utf8');
+  const pod = documents[1].spec.template.spec, container = pod.containers[0];
+  documents[1].spec.template.metadata.annotations['videoq.io/audio-lock'] = policy.audioLockSha256;
+  container.image = policy.image; container.args = policy.allowedArgs[0];
+  container.env = [{name: 'HF_HUB_OFFLINE', value: '1'}, {name: 'HOME', value: '/tmp'}, {name: 'PYTHONPATH', value: '/opt/videoq-audio'}];
+  container.volumeMounts = [{name: 'models', mountPath: '/models', readOnly: true}, {name: 'tmp', mountPath: '/tmp'},
+    {name: 'shm', mountPath: '/dev/shm'}, {name: 'vllm-audio', mountPath: '/opt/videoq-audio', readOnly: true},
+    ...nativeMasks.map(mountPath => ({name: 'unused-native', mountPath, readOnly: true}))];
+  pod.volumes.push({name: 'unused-native', emptyDir: {sizeLimit: '1Mi'}});
+  f.profiles = Array.from({length: 10}, () => structuredClone(documents));
+  f.report = {Metadata: {RepoDigests: [policy.image], ImageConfig: {architecture: 'amd64', os: 'linux'}}, Results: [{Type: 'binary',
+    Vulnerabilities: evidence.rows.map(row => ({Severity: 'CRITICAL', VulnerabilityID: row.cve, PkgName: row.package,
+      InstalledVersion: row.version, PkgIdentifier: {PURL: row.purl}, Locations: [...row.locations]}))}]};
+  return f;
+}
+const runMasked = f => assess(f.report, f.policy, f.native, f.profiles, new Date('2026-11-26T00:00:00Z'), f.runtime);
+test('exact11 masked image tuples require the fresh complete native evidence; separate audio is untouched', () => {
+  const f = exactMaskedFixture();
+  assert.equal(runMasked(f).accepted.length, 11);
+  const audioPolicy = require('../../apps/inference/vllm/security/runtime-assessment.json').audioAssessments;
+  assert.ok(Array.isArray(audioPolicy));
+  assert.ok(!JSON.stringify(audioPolicy).includes('CVE-2026-135736'));
+  const evidence = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
+  const audioResult = require('./check-vllm-scan.cjs').assessAudioRuntime({blocking: evidence.rows.map(row => ({
+    VulnerabilityID: row.cve, PkgName: 'ffmpeg', InstalledVersion: '9.0.2',
+    PkgIdentifier: {PURL: 'pkg:generic/ffmpeg@9.0.2'}, Locations: f.runtime.checks['security.servingAudioBoundary'].details.loadedFfmpegLibraries,
+  }))}, f.policy, f.runtime);
+  assert.equal(audioResult.blocking.length, 11); assert.equal(audioResult.accepted.length, 0);
+  for (const mutate of [f => f.report.Results[0].Vulnerabilities[0].VulnerabilityID = 'CVE-unreviewed',
+    f => f.report.Results[0].Vulnerabilities[0].InstalledVersion = '9.0.2',
+    f => f.report.Results[0].Vulnerabilities[0].PkgIdentifier.PURL = 'pkg:generic/ffmpeg@9.0.2']) {
+    const changed = exactMaskedFixture(); mutate(changed); assert.equal(runMasked(changed).blocking.length, 1);
+  }
+});
+test('masked review rejects missing, forged and mutated native/source/location/profile evidence', () => {
+  for (const mutate of [
+    f => f.runtime = undefined, f => f.runtime.status = 'failed', f => f.runtime.checks = {},
+    f => delete f.runtime.checks['security.maskedNativeDenial'],
+    f => f.runtime.checks['security.maskedNativeDenial'].details.absoluteLoadsDenied.pop(),
+    f => f.runtime.checks['security.maskedNativeDenial'].details.imports[0].result = 'code_imported',
+    f => f.runtime.checks['security.maskedNativeDenial'].details.torchcodec.importsDenied.pop(),
+    f => f.runtime.checks['security.maskedNative'].details.pop(),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.loadedFfmpegLibraries.push('/usr/lib/libavcodec.so'),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.diagnosticImportMaps.afterMediaAudioImport = [],
+    f => f.runtime.checks['security.servingAudioBoundary'].details.pyavWheelMembers['av/filter/graph.abi3.so'] = '0'.repeat(64),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.validCases.pop(),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.calls = [],
+    f => f.runtime.checks['security.servingAudioBoundary'].details.nativeFilterTraceComplete = true,
+    f => f.native.inventory.kernelHeaders.files[0].sha256 = '0'.repeat(64),
+    f => f.policy.runtimeProbeSourceSha256 = '0'.repeat(64),
+    f => f.policy.maskedFfmpegReview.sha256 = '0'.repeat(64),
+    f => f.policy.maskedFfmpegReview.file = '../runtime-assessment.json',
+    f => delete f.policy.groups.find(g => g.exactFindingReview).exactFindingReview,
+    f => f.report.Metadata.ImageConfig.architecture = 'arm64',
+    f => f.report.Results[0].Vulnerabilities[0].Locations.push('/unmasked/libavcodec.so'),
+    f => { const v = f.report.Results[0].Vulnerabilities[0]; v.Aliases = [v.VulnerabilityID]; v.VulnerabilityID = 'forged-alias'; },
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.pop(),
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).readOnly = false,
+  ]) { const f = exactMaskedFixture(); mutate(f); assert.throws(() => runMasked(f)); }
+});

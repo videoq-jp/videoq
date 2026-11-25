@@ -1393,7 +1393,18 @@
         "CVE-2026-70628",
         "CVE-2026-70632",
         "CVE-2026-8461",
-        "CVE-2026-96611"
+        "CVE-2026-96611",
+        "CVE-2026-135736",
+        "CVE-2026-135742",
+        "CVE-2026-135743",
+        "CVE-2026-135739",
+        "CVE-2026-135722",
+        "CVE-2026-135725",
+        "CVE-2026-135734",
+        "CVE-2026-135740",
+        "CVE-2026-135737",
+        "CVE-2026-135738",
+        "CVE-2026-135723"
       ],
       "packages": {
         "ffmpeg": {
@@ -1429,11 +1440,25 @@
           ]
         }
       },
-      "impactStatement": "These exact native libraries remain visible in the upstream-image scan but are absent from the serving filesystem namespace: mandatory empty, read-only volume mounts mask their directories. The workload evaluator checks every mount and the actual-image runtime probe checks the directories are empty and read-only. Any changed location, removed/writable mask or different image invalidates the assessment. This is not an upstream patch claim.",
+      "impactStatement": "These exact native libraries remain visible in the upstream-image scan but are absent from the serving filesystem namespace: mandatory empty, read-only volume mounts mask their directories. The workload evaluator checks every mount and the actual-image runtime probe checks the directories are empty and read-only. Any changed location, removed/writable mask or different image invalidates the assessment. This is not an upstream patch claim. The additional11 CVE-2026-135xxx tuples require the separately hash-bound masked-ffmpeg-20261126 review, including exact source/native inventory, four masks, import and26 absolute-load denials, normalized automatic serving checks and seven reviewed overlay ELF mappings at every recorded stage; this does not assess the audio overlay findings.",
       "references": [
         "charts/videoq-inference/templates/_helpers.tpl",
         ".github/scripts/check-vllm-runtime.py",
-        "apps/inference/vllm/security/native-codec-cve-review.json"
+        "apps/inference/vllm/security/native-codec-cve-review.json",
+        "apps/inference/vllm/security/masked-ffmpeg-20261126-review.json"
+      ],
+      "exactFindingReview": [
+        "CVE-2026-135736",
+        "CVE-2026-135742",
+        "CVE-2026-135743",
+        "CVE-2026-135739",
+        "CVE-2026-135722",
+        "CVE-2026-135725",
+        "CVE-2026-135734",
+        "CVE-2026-135740",
+        "CVE-2026-135737",
+        "CVE-2026-135738",
+        "CVE-2026-135723"
       ]
     },
     {
@@ -2307,5 +2332,10 @@
     "file": "kernel-20261126-review.json",
     "sha256": "e19a60bc7743855cd1ff9eb2e7713af8611ad28d57769b291ac7103184029e0c",
     "count": 75
+  },
+  "maskedFfmpegReview": {
+    "file": "masked-ffmpeg-20261126-review.json",
+    "sha256": "92c1a5eb3848dc77178b439e4be47e274b576170106af10f2ca556c373effc63",
+    "count": 11
   }
 }

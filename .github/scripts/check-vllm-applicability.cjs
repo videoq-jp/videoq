@@ -106,6 +106,63 @@ function verifyKernelReview(policy, files) {
   return evidence.rows;
 }
 
+const maskedFfmpegCves = Object.freeze(['135736', '135742', '135743', '135739', '135722', '135725', '135734', '135740', '135737', '135738', '135723'].map(id => 'CVE-2026-' + id));
+function verifyMaskedFfmpegReview(policy, report, native, runtime) {
+  const reference = policy.maskedFfmpegReview;
+  assert.equal(reference?.file, 'masked-ffmpeg-20261126-review.json');
+  assert.equal(reference.count, 11);
+  const bytes = readFileSync(join(__dirname, '../../apps/inference/vllm/security', reference.file));
+  assert.equal(checksum(bytes), reference.sha256);
+  const evidence = JSON.parse(bytes);
+  assert.equal(evidence.image, policy.image);
+  assert.equal(evidence.platform, 'linux/amd64');
+  assert.equal(report.Metadata.ImageConfig.architecture, 'amd64');
+  assert.equal(report.Metadata.ImageConfig.os, 'linux');
+  assert.equal(evidence.probeSourceSha256, policy.runtimeProbeSourceSha256);
+  assert.equal(evidence.inventoryProbeSourceSha256, policy.inventoryProbeSourceSha256);
+  assert.equal(checksum(readFileSync(join(__dirname, 'check-vllm-runtime.py'))), evidence.probeSourceSha256);
+  assert.equal(checksum(readFileSync(join(__dirname, 'check-vllm-inventory.py'))), evidence.inventoryProbeSourceSha256);
+  assert.equal(native.status, 'passed');
+  assert.deepEqual(native.inventory, evidence.nativeInventory);
+  assert.equal(runtime?.status, 'passed');
+  // Pin the complete actual check set, including source/member hashes,
+  // normalized auto waveforms, flushed references, all staged mappings and
+  // namespace/absolute-load denials. A copied JSON file is not authentication:
+  // the caller must obtain it from the trusted native workflow artifact.
+  assert.deepEqual(runtime.checks, evidence.requiredRuntimeChecks);
+  assert.equal(evidence.rows.length, 11);
+  assert.equal(new Set(evidence.rows.map(row => row.cve)).size, 11);
+  const group = policy.groups.find(group => group.exactFindingReview);
+  assert.deepEqual(group.exactFindingReview, maskedFfmpegCves);
+  assert.deepEqual(evidence.rows.map(row => row.cve), maskedFfmpegCves);
+  const denial = runtime.checks['security.maskedNativeDenial'].details;
+  const boundary = runtime.checks['security.servingAudioBoundary'].details;
+  assert.deepEqual(runtime.checks['security.maskedNative'].details, nativeMasks);
+  assert.equal(boundary.nativeFilterTraceComplete, false);
+  assert.deepEqual(boundary.loadedFfmpegLibraries, denial.loadedFfmpeg);
+  assert.equal(denial.loadedFfmpeg.length, 7);
+  assert.ok(Object.values(boundary.diagnosticImportMaps).every(paths =>
+    JSON.stringify(paths) === JSON.stringify(denial.loadedFfmpeg)));
+  for (const path of denial.loadedFfmpeg) {
+    assert.ok(path.startsWith('/opt/videoq-audio/'));
+    assert.match(boundary.pyavWheelMembers[path.slice('/opt/videoq-audio/'.length)], /^[a-f0-9]{64}$/);
+  }
+  for (const row of evidence.rows) {
+    assert.equal(row.package, 'ffmpeg');
+    assert.equal(row.version, '8.1.1');
+    assert.equal(row.purl, 'pkg:generic/ffmpeg@8.1.1');
+    assert.equal(checksum(row.primaryRecord), row.primarySha256);
+    const record = JSON.parse(row.primaryRecord);
+    assert.equal(record.cveMetadata.cveId, row.cve);
+    assert.equal(record.cveMetadata.state, 'PUBLISHED');
+    assert.equal(row.primaryUrl, `https://raw.githubusercontent.com/CVEProject/cvelistV5/7e4de3c1bcb5d5a1818ac5b96c2cf5370cad98b8/cves/2026/135xxx/${row.cve}.json`);
+    assert.equal(row.locations.length, 26);
+    assert.deepEqual([...row.locations].sort(), [...denial.absoluteLoadsDenied].sort());
+    assert.ok(row.locations.every(path => nativeMasks.slice(0, 2).some(mask => path.startsWith(mask + '/'))));
+  }
+  return evidence.rows;
+}
+
 function assess(report, policy, native, profiles, now = new Date(), runtime) {
   assert.equal(policy.status, 'not_affected');
   assert.ok(policy.owner && policy.scope && policy.references.length);
@@ -140,6 +197,7 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   assert.equal(profiles.length, 10, 'Review all five NVIDIA profiles before and after offline provisioning');
   profiles.forEach(documents => verifyWorkload(documents, policy));
   const accepted = [], blocking = [];
+  let maskedFfmpegRows;
   for (const result of report.Results) {
     assert.ok(!result.ModifiedFindings?.length && !result.ExperimentalModifiedFindings?.length, 'Use unsuppressed raw findings');
     for (const finding of result.Vulnerabilities || []) {
@@ -159,6 +217,15 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
         assert.equal(finding.InstalledVersion, row.version);
         assert.equal(finding.PkgIdentifier.PURL, row.normalizedPurl);
         assert.deepEqual([...finding.Locations].sort(), row.locations);
+      }
+      if (group && maskedFfmpegCves.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id))) {
+        maskedFfmpegRows ||= verifyMaskedFfmpegReview(policy, report, native, runtime);
+        const row = maskedFfmpegRows.find(row => row.cve === finding.VulnerabilityID);
+        assert.ok(row, 'Exact reviewed CVE required; aliases cannot extend masked-library review');
+        assert.equal(finding.PkgName, row.package);
+        assert.equal(finding.InstalledVersion, row.version);
+        assert.equal(finding.PkgIdentifier.PURL, row.purl);
+        assert.deepEqual([...finding.Locations].sort(), [...row.locations].sort());
       }
       if (group?.origin === 'masked-native') {
         assert.equal(runtime?.status, 'passed');
@@ -191,4 +258,4 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   }
   return {image: policy.image, reviewedAt: policy.reviewedAt, expiresAt: policy.expiresAt, scope: policy.scope, accepted, blocking};
 }
-module.exports = {assess, verifyWorkload, verifyKernelReview, nativeMasks};
+module.exports = {assess, verifyWorkload, verifyKernelReview, nativeMasks, verifyMaskedFfmpegReview};

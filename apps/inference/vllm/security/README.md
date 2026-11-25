@@ -148,3 +148,30 @@ image/overlay findings remain blocking and are reviewed independently. A retaine
 same-image artifact can test this evaluator; final acceptance still requires a
 fresh native probe and full unsuppressed scan of the immutable serving image
 and audio overlay with all ten rendered workload configurations checked.
+
+## 2026-11-26 exact masked image-library findings
+
+`masked-ffmpeg-20261126-review.json` retains the 11 pinned primary CNA records
+and their hashes, exact FFmpeg 8.1.1 image tuples and 26 locations, plus the
+reviewed native inventory and complete check set from artifact `15063904804`
+(source `eec22a49`, immutable amd64 image unchanged). The evaluator requires
+this evidence for these exact CVEs; aliases, other versions, locations and
+platforms cannot extend it. All raw HIGH/CRITICAL findings remain visible.
+
+The observed four empty read-only masks, absent executable module imports,
+26 denied absolute native loads, blocked TorchCodec decoder/core imports and
+seven exact hash-verified overlay ELF mappings establish physical exclusion
+of these image copies in the reviewed workloads. Every staged import/serving
+mapping and normalized automatic waveform/reference check is bound to the
+reviewed receipt. The existing owner, expiry, ten rendered profile gates and
+kernel inventory checks remain unchanged. An incomplete or changed proof,
+probe source, model command, mount or dependency requires fresh review.
+
+The check-set comparison deliberately pins the currently reviewed overlay and
+probe; a future patched audio wheel needs its own native receipt and review.
+These 11 image findings do **not** approve the separate 11 audio-overlay findings.
+`nativeFilterTraceComplete=false` remains explicit: this is physical code
+exclusion, not complete native filter tracing or an upstream patch claim.
+The proof covers CPU imports/preprocessing, not GPU/full-model execution or the
+host kernel. JSON equality is not artifact authentication: the caller must use
+the protected trusted native workflow and verify its source/run provenance.
