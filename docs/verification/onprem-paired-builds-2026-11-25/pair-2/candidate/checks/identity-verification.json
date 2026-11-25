@@ -1,0 +1,27 @@
+{
+  "source": "04dcbaae033402c30623775a9e41b21aa4124636",
+  "dockerfileVariant": "candidate",
+  "images": [
+    {
+      "component": "api",
+      "imageId": "sha256:b8558809c2085ab71d049d2a9bd7825bc63448d8caf84f33fb7486522770af8c",
+      "smokeMatches": true,
+      "scanMatches": true,
+      "unchangedAfterChecks": true
+    },
+    {
+      "component": "worker",
+      "imageId": "sha256:c456bccbfd78b20f3a393096eb5e4903a329d21f45c226054d6a6f218f840106",
+      "smokeMatches": true,
+      "scanMatches": true,
+      "unchangedAfterChecks": true
+    },
+    {
+      "component": "web",
+      "imageId": "sha256:fa88c929e8367ade4d682313ef55521b9ba85554469b71ed416ca3f4a176ff4b",
+      "smokeMatches": true,
+      "scanMatches": true,
+      "unchangedAfterChecks": true
+    }
+  ]
+}
