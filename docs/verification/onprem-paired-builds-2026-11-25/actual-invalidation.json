@@ -1,0 +1,36 @@
+[
+  {
+    "control": "api-source",
+    "compilerReused": true,
+    "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+    "changedImageId": "sha256:4d1aabf48a834033b0ac8eb817929c829e12154cc738a557e32f464fba957a5e"
+  },
+  {
+    "control": "vite-input",
+    "compilerReused": true,
+    "originalImageId": "sha256:83fcc1cc2c4812af72f9a10666e95760be66c24e65c7e264540dea296f042f1c",
+    "changedImageId": "sha256:39d786a1ceee7327648e561e19ceb1853b9e8aaefccbdb4c8d615843ebfb9018"
+  },
+  {
+    "control": "patch-integrity",
+    "expectedChecksumRejection": true
+  },
+  {
+    "control": "recipe-rebuild",
+    "compilerReused": false,
+    "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+    "changedImageId": "sha256:a1a70d5dfd8061c005140b2702aa2749892950a2bd7d220d487f792d293df2f5"
+  },
+  {
+    "control": "security-parent-refresh",
+    "compilerReused": false,
+    "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+    "changedImageId": "sha256:20e6c672a19f0fb266f0656ca562b26bc5e7d08a2042287418093ade71b26bc3"
+  },
+  {
+    "control": "compiler-flags",
+    "compilerReused": false,
+    "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+    "changedImageId": "sha256:ab511d171f57788fdf0bc9eaffff970b33758e2b74df3d05c0aadf2ecf7e5b0e"
+  }
+]
