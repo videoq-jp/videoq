@@ -13,7 +13,9 @@ skillInstallerRoutes.get('/:id', async c => {
   // Use the configured frontend, never a request-controlled host or redirect.
   const origin = new URL(c.env.FRONTEND_URL || c.env.BETTER_AUTH_URL).origin;
   const source = await fetch(new URL('/skills/install.mjs', origin), { redirect: 'error', signal: AbortSignal.timeout(10_000) }).catch(() => null);
-  if (!source?.ok || !source.body || !source.headers.get('content-type')?.includes('javascript')) {
+  // Nginx's stock MIME map serves .mjs downloads as application/octet-stream.
+  const mediaType = source?.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  if (!source?.ok || !source.body || !['text/javascript', 'application/javascript', 'application/octet-stream'].includes(mediaType ?? '')) {
     await source?.body?.cancel(); return c.text('Installer unavailable.', 503);
   }
   const reader = source.body.getReader(), chunks: Uint8Array[] = [];

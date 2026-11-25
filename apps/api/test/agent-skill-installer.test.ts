@@ -21,6 +21,9 @@ it('serves only a bounded installer package and binds it to the configured servi
   expect(String(fetcher.mock.calls[0][0])).toBe('https://videoq.example/skills/install.mjs');
   expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(100);
   expect((await skillInstallerRoutes.request('/invalid.tgz', {}, env)).status).toBe(404);
+  fetcher.mockResolvedValueOnce(new Response('// Nginx installer download', { headers: { 'content-type': 'application/octet-stream' } }));
+  const nginx = await skillInstallerRoutes.request(`/${skillFixtureId}.tgz`, {}, env);
+  expect(nginx.status).toBe(200); await nginx.arrayBuffer();
   fetcher.mockResolvedValueOnce(new Response('x'.repeat(64_001), { headers: { 'content-type': 'text/javascript' } }));
   expect((await skillInstallerRoutes.request(`/${skillFixtureId}.tgz`, {}, env)).status).toBe(503);
   fetcher.mockResolvedValueOnce(new Response('<html>wrong asset</html>', { headers: { 'content-type': 'text/html' } }));
