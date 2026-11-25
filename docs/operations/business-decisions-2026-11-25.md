@@ -31,3 +31,23 @@ Existing current revisions are deliberately not assigned invented historical acc
 Isolated D1 tests cover receipt gating/reset, current readiness, deletion-origin association, physical completion, concurrent delivery, persistent deduplication, error retry, privacy, invalid target rejection and threshold boundaries. Production deployment, configured operator destination, and acknowledgement remain unverified; #1684 is **policy decided / runtime implemented / production routing not accepted** until those are evidenced.
 
 RPO/RTO, production RAG SLO, backup retention duration, and transcribe completion guarantees are not established by these decisions. Keep their acceptance cells open. Review records must include the responsible account, decision/effective date, evidence link, changed promise, affected state display/monitor/test, and next review date; do not silently replace these targets with observed synthetic timings.
+
+## Migration and recovery of observations
+
+The PG-to-D1 migration manifest treats all three policy tables as target-only:
+readiness starts empty without historical acceptance backfill; cleanup starts
+empty and observes future logical deletions; delivery deduplication starts empty
+for those new facts. Creating empty tables is not evidence that existing sources
+met a target or that historical deletions were physically cleaned. Same-D1
+backup/restore must preserve all three tables together with source and outbox
+state; dropping the notification ledger while retaining old facts can resend
+operator notifications. D1-to-PG rollback has no equivalent source-fact adapter:
+retain these facts and delivery receipts as a protected operational artifact,
+and explicitly reconcile them before enabling a different monitoring adapter.
+
+An intentional empty/ASCII-whitespace-only transcript has no searchable-content
+expectation: an accepted clear removes its previous readiness clock atomically.
+An empty successful worker transcript has the same monitoring treatment. A
+nonempty accepted transcript, including malformed input that fails indexing,
+keeps its current clock and remains observable as failure/overdue; this does not
+promise that invalid content becomes searchable.

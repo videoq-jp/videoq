@@ -10,6 +10,7 @@ it('records only accepted source receipts, resets current clock, and preserves d
  await db.prepare("INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id) VALUES(1,'o','Synthetic','private-key','','2026-11-25','','completed','','upload','','')").run();
  await db.prepare("INSERT INTO video_index_versions(video_id,revision) VALUES(1,'unaccepted')").run();
  expect(await db.prepare('SELECT * FROM policy_readiness').all()).toMatchObject({results:[]});
+ await db.prepare("UPDATE videos SET transcript='accepted nonempty fixture transcript' WHERE id=1").run();
  await db.batch([db.prepare("INSERT INTO mutation_receipts(token,kind,resource_id) VALUES('accepted','video_transcript_update',1)"),db.prepare("UPDATE video_index_versions SET revision='r1' WHERE video_id=1"),db.prepare("DELETE FROM mutation_receipts")]);
  expect(await db.prepare('SELECT source_revision,ready_at FROM policy_readiness').first()).toEqual({source_revision:'r1',ready_at:null});
  await db.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
@@ -83,5 +84,26 @@ it('schedules completed late cleanup without pending jobs, while successful deli
  expect((await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null})).nextAt!.getTime()).toBeLessThan(Date.now());
  await observeOperationalPolicy(env,new Date(),async()=>new Response(null,{status:204}));
  expect(await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null})).toEqual({nextAt:null,nextFutureAt:null});
+ }finally{await f.dispose();}
+},60000);
+it('real manual clear and empty worker result remove the searchable expectation while invalid nonempty input remains observable',async()=>{
+ const f=await createD1Fixture();try {
+ const db=f.database;
+ const {createD1VideoMutationRepository}=await import('../../src/persistence/d1/video-mutation-repository');
+ const {createD1WorkerTranscriptionRepository}=await import('../../src/persistence/d1/worker-transcription');
+ await db.prepare("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES('o','o','o@example.test',0,0,0,0)").run();
+ await db.prepare("INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id) VALUES(1,'o','Synthetic','file','','2026-11-25','original','completed','','upload','','')").run();
+ const edits=createD1VideoMutationRepository(db);
+ await edits.update(1,'o',{transcript:'invalid but nonempty accepted content'});
+ expect(await db.prepare('SELECT source_revision FROM policy_readiness').first('source_revision')).toBeTruthy();
+ await edits.update(1,'o',{transcript:''});
+ expect((await db.prepare('SELECT * FROM policy_readiness').all()).results).toEqual([]);
+ await edits.update(1,'o',{transcript:'\n\t  \r'});
+ expect((await db.prepare('SELECT * FROM policy_readiness').all()).results).toEqual([]);
+ await db.prepare("UPDATE videos SET status='pending',transcript='old' WHERE id=1").run();
+ const worker=createD1WorkerTranscriptionRepository(db),source=await worker.readSource(1);expect(source).not.toBeNull();
+ expect(await worker.begin(source!,'pending')).toBe(true);
+ await worker.finish(source!,'',null);
+ expect((await db.prepare('SELECT * FROM policy_readiness').all()).results).toEqual([]);
  }finally{await f.dispose();}
 },60000);

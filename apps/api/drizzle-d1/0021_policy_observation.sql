@@ -29,14 +29,18 @@ CREATE TABLE `policy_readiness` (
 CREATE TRIGGER policy_source_accepted_insert AFTER INSERT ON video_index_versions
 WHEN EXISTS (SELECT 1 FROM mutation_receipts WHERE resource_id=NEW.video_id AND kind IN ('transcription_saved','video_transcript_update'))
 BEGIN
- INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at) VALUES(NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+ DELETE FROM policy_readiness WHERE video_id=NEW.video_id AND EXISTS(SELECT 1 FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')='');
+ INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at)
+ SELECT NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')<>''
  ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL;
 END;
 --> statement-breakpoint
 CREATE TRIGGER policy_source_accepted_update AFTER UPDATE OF revision ON video_index_versions
 WHEN OLD.revision<>NEW.revision AND EXISTS (SELECT 1 FROM mutation_receipts WHERE resource_id=NEW.video_id AND kind IN ('transcription_saved','video_transcript_update'))
 BEGIN
- INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at) VALUES(NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+ DELETE FROM policy_readiness WHERE video_id=NEW.video_id AND EXISTS(SELECT 1 FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')='');
+ INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at)
+ SELECT NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')<>''
  ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL;
 END;
 --> statement-breakpoint
