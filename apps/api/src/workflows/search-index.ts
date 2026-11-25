@@ -101,7 +101,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
             if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
             return null;
           }
-          if (status !== 'missing') throw new Error('Scene index delivery is pending or source changed');
+          if (status !== 'missing') throw new Error('Scene source changed before indexing completion');
           if (!source.transcript.trim() && !job.payload.allow_empty) throw new Error('Video has no transcript');
         }
         if (source.transcript.trim() && !parseSearchScenes(source.transcript).length) throw new Error('Invalid SRT source');
@@ -206,7 +206,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
               // wakes up. A removed source has no remaining indexing work;
               // existing sources must still pass the revision/readiness fence.
               if (await persistence.readSource(prepared.source.videoId) !== null) {
-                throw new Error('Scene index delivery is pending or source changed');
+                throw new Error('Scene source changed before indexing completion');
               }
             }
           });
