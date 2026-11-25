@@ -36,6 +36,17 @@ function assertCounts(row) {
   if (!row || !['incompatible_runs','incompatible_scenes','incompatible_writes'].every(key => Number.isSafeInteger(row[key]) && row[key] >= 0)) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
   if (Object.values(row).some(value => value !== 0)) throw Error('EMBEDDING_RELEASE_REBUILD_REQUIRED');
 }
+// Deployment files may select a resource, never a credential destination. Keep
+// the origin literal and accept only canonical identifiers (not URL fragments).
+// Credentials come exclusively from the caller's environment; redirects fail.
+function queryEndpoint(account, database) {
+  if (typeof account !== 'string' || !/^[a-f0-9]{32}$/.test(account) ||
+      typeof database !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(database)) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
+  const endpoint = new URL('https://api.cloudflare.com/client/v4/');
+  endpoint.pathname += `accounts/${account}/d1/database/${database}/query`;
+  if (endpoint.origin !== 'https://api.cloudflare.com' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
+  return endpoint.href;
+}
 async function preflight(target, env = process.env, fetcher = fetch, { resume = false } = {}) {
   if (!target?.vars || !Array.isArray(target.d1_databases)) throw Error('INVALID_EMBEDDING_RELEASE_CONFIG');
   const config = identity(target.vars);
@@ -44,11 +55,13 @@ async function preflight(target, env = process.env, fetcher = fetch, { resume = 
   // A paused candidate cannot admit HTTP work. This does not authorize resume.
   if (state === 'paused' && !resume) return { serving: false, ...config };
   const databases = target.d1_databases.filter(binding => binding.binding === 'DB');
-  if (databases.length !== 1 || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(databases[0].database_id || '') ||
-      !/^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID || '') || !env.CLOUDFLARE_API_TOKEN) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
-  const response = await fetcher(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${databases[0].database_id}/query`, {
+  if (databases.length !== 1) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
+  const endpoint = queryEndpoint(env.CLOUDFLARE_ACCOUNT_ID, databases[0].database_id);
+  const token = env.CLOUDFLARE_API_TOKEN;
+  if (typeof token !== 'string' || !token || /[\s\x00-\x1f\x7f]/.test(token)) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
+  const response = await fetcher(endpoint, {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
-    headers: { authorization: 'Bearer ' + env.CLOUDFLARE_API_TOKEN, 'content-type': 'application/json' },
+    headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
     body: JSON.stringify({ sql: SQL, params: [config.dimensions, config.fingerprint] }),
   });
   if (!response.ok || !response.body) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');

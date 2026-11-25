@@ -31,3 +31,28 @@ test('paused candidate never authorizes serving, and explicit resume rechecks pr
   assert.equal((await preflight(paused, env, async () => response([valid]), { resume: true })).serving, true);
   await assert.rejects(preflight({ ...target, vars: { ...target.vars, MIGRATION_TRAFFIC_STATE: 'typo' } }, env), /TRAFFIC_STATE/);
 });
+test('file data cannot select the credential destination or inject a resource path', async () => {
+  const never = () => { throw Error('unexpected network request'); };
+  for (const id of ['https://evil.example', '../other', target.d1_databases[0].database_id + '?redirect=https://evil.example', target.d1_databases[0].database_id + '\n', 123, null]) {
+    await assert.rejects(preflight({ ...target, d1_databases: [{ binding: 'DB', database_id: id }] }, env, never), /UNAVAILABLE/);
+  }
+  for (const account of ['https://evil.example', 'a'.repeat(32) + '/../../', 'a'.repeat(32) + '\n', 123, null]) {
+    await assert.rejects(preflight(target, { ...env, CLOUDFLARE_ACCOUNT_ID: account }, never), /UNAVAILABLE/);
+  }
+  for (const token of ['', 'token\r\nHost: evil.example', 'token with spaces', 123, null]) {
+    await assert.rejects(preflight(target, { ...env, CLOUDFLARE_API_TOKEN: token }, never), /UNAVAILABLE/);
+  }
+  const file = JSON.parse(JSON.stringify({ ...target, url: 'https://evil.example', CLOUDFLARE_API_TOKEN: 'file-token', vars: {
+    ...target.vars, EMBEDDING_BASE_URL: 'https://evil.example/private-secret', EMBEDDING_PREPROCESSING: 'raw-text-v1',
+  } }));
+  await preflight(file, env, async (url, options) => {
+    const parsed = new URL(url);
+    assert.equal(parsed.origin, 'https://api.cloudflare.com');
+    assert.equal(parsed.pathname, `/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${target.d1_databases[0].database_id}/query`);
+    assert.equal(options.headers.authorization, 'Bearer synthetic-test');
+    assert.equal(options.redirect, 'error');
+    assert.doesNotMatch(options.body, /evil|private-secret|file-token|synthetic-test/);
+    assert.deepEqual(JSON.parse(options.body).params, [1536, identity(file.vars).fingerprint]);
+    return response([valid]);
+  });
+});
