@@ -22,8 +22,10 @@ try{
   if(u.href==='https://token.actions.githubusercontent.com/.well-known/jwks')return Response.json({keys:[publicKey]});
   if(u.origin!=='https://api.github.com')return new Response('Unexpected fixture request',{status:500});
   if(u.pathname.endsWith('/git/ref/heads/main'))return Response.json({object:{sha:source}});
+  const jobRun=/\/actions\/runs\/(\d+)\/attempts\/(\d+)\/jobs$/.exec(u.pathname);
+  if(jobRun){const names=jobRun[1]==='125'?['status (migration, production-db-migration)','status (smoke, production-db-smoke)']:['production-smoke'];return Response.json({total_count:names.length,jobs:names.map(name=>({name,status:'in_progress',conclusion:null,run_id:Number(jobRun[1]),head_sha:source,completed_at:null}))});}
   const run=/\/actions\/runs\/(\d+)$/.exec(u.pathname)?.[1];
-  if(run)return Response.json({id:Number(run),run_attempt:attempts.get(run),head_sha:source,head_branch:'main',status:'in_progress',path:run==='125'?'.github/workflows/maintenance-status.yml':'.github/workflows/operations.yml',repository:{id:1083911938}});
+  if(run)return Response.json({id:Number(run),run_attempt:attempts.get(run),head_sha:source,head_branch:'main',status:'queued',path:run==='125'?'.github/workflows/maintenance-status.yml':'.github/workflows/operations.yml',repository:{id:1083911938}});
   if(u.pathname.endsWith('/actions/workflows/ci.yml/runs'))return Response.json({workflow_runs:[{id:900,head_repository:{id:1083911938},head_sha:source,head_branch:'main',event:'push',status:'completed',conclusion:'success',repository:{id:1083911938}}]});
   return new Response('Unexpected fixture request',{status:500});
  }});
