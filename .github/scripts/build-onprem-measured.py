@@ -65,28 +65,48 @@ def cpu_set(value):
     return result
 
 
-def host_cpu_envelope(cgroup_root=Path('/sys/fs/cgroup'), membership=Path('/proc/self/cgroup')):
-    if not hasattr(os, 'sched_getaffinity'):
-        raise ValueError('Controlled protocol requires Linux effective affinity')
-    allowed = os.sched_getaffinity(0)
+def host_cgroup_limits(membership, cgroup_root=Path('/sys/fs/cgroup'), require_leaf=False):
     entries = [line[3:] for line in membership.read_text().splitlines() if line.startswith('0::')]
     if len(entries) != 1:
         raise ValueError('Controlled protocol requires cgroup v2 membership')
     root = cgroup_root.resolve()
     current = (root / entries[0].lstrip('/')).resolve()
-    if not current.is_relative_to(root):
+    if not current.is_relative_to(root) or not current.is_dir():
         raise ValueError('Unresolved host cgroup membership')
-    quotas = []
+    if require_leaf and not all((current / name).is_file() for name in ['cpu.max', 'memory.max']):
+        raise ValueError('Actual builder cgroup controllers are not inspectable')
+    quotas, memories = [], []
     while True:
-        quota, period = (current / 'cpu.max').read_text().split()
-        if int(period) <= 0:
-            raise ValueError('Invalid inherited CPU quota period')
-        if quota != 'max':
-            quotas.append(int(quota) / int(period))
+        # The actual host root cgroup has no limit files; its absence is unlimited.
+        # Child controllers can also be disabled while a parent remains limited.
+        if (current / 'cpu.max').is_file():
+            quota, period = (current / 'cpu.max').read_text().split()
+            if int(period) <= 0:
+                raise ValueError('Invalid inherited CPU quota period')
+            if quota != 'max':
+                quotas.append(int(quota) / int(period))
+        if (current / 'memory.max').is_file():
+            memory = (current / 'memory.max').read_text().strip()
+            if memory != 'max':
+                memories.append(int(memory))
         if current == root:
             break
         current = current.parent
-    return allowed, min(quotas) if quotas else None
+    return {'cpuQuotaCpus': min(quotas) if quotas else None,
+            'memoryMaxBytes': min(memories) if memories else None,
+            'membership': entries[0]}
+
+
+def host_cpu_envelope(cgroup_root=Path('/sys/fs/cgroup'), membership=Path('/proc/self/cgroup')):
+    if not hasattr(os, 'sched_getaffinity'):
+        raise ValueError('Controlled protocol requires Linux effective affinity')
+    return os.sched_getaffinity(0), host_cgroup_limits(membership, cgroup_root)['cpuQuotaCpus']
+
+
+def builder_cgroup_envelope(pid, proc_root=Path('/proc'), cgroup_root=Path('/sys/fs/cgroup')):
+    if type(pid) is not int or pid <= 0:
+        raise ValueError('Missing actual BuildKit host PID')
+    return host_cgroup_limits(proc_root / str(pid) / 'cgroup', cgroup_root, require_leaf=True)
 
 
 def inspect_builder_limits(builder, cpus, memory_bytes):
@@ -121,6 +141,10 @@ def inspect_builder_limits(builder, cpus, memory_bytes):
     if config.get('Memory') != memory_bytes or config.get('MemorySwap') != memory_bytes:
         raise ValueError('BuildKit memory/swap limits differ from the protocol')
     host_allowed, host_quota = host_cpu_envelope()
+    builder_ancestors = builder_cgroup_envelope(info['State'].get('Pid'))
+    if ((builder_ancestors['cpuQuotaCpus'] is not None and builder_ancestors['cpuQuotaCpus'] < cpus) or
+            (builder_ancestors['memoryMaxBytes'] is not None and builder_ancestors['memoryMaxBytes'] < memory_bytes)):
+        raise ValueError('Actual builder ancestor CPU/memory limit is below the protocol')
     status = subprocess.check_output(['docker', 'exec', container, 'cat', '/proc/self/status'], text=True)
     matches = re.findall(r'^Cpus_allowed_list:\s*(.+)$', status, re.MULTILINE)
     if len(matches) != 1:
@@ -144,6 +168,7 @@ def inspect_builder_limits(builder, cpus, memory_bytes):
             'memorySwapBytes': config['MemorySwap'], 'cpusetCpus': config.get('CpusetCpus', ''),
             'hostAllowedCpus': sorted(host_allowed), 'containerAllowedCpus': sorted(container_allowed),
             'hostInheritedQuotaCpus': host_quota, 'actualCgroupLimits': cgroup,
+            'builderHostPid': info['State']['Pid'], 'builderHostCgroupEnvelope': builder_ancestors,
             'effectiveCpus': cpus, 'verifiedBeforeBuild': True}
 
 
