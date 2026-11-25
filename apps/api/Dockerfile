@@ -1,27 +1,18 @@
 # Production on-prem Node runtime. The Cloudflare entrypoint remains separate.
-FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS base
+# BEGIN shared OpenSSL security
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS openssl-security-base
+ARG OPENSSL_SECURITY_REFRESH=2026-11-25
+# Bump this epoch for a trusted repository refresh on a reused local builder.
+# CI discards the entire runner-local builder after the job; scans always run.
 # The pinned base predates the Alpine zlib security update.
-RUN apk upgrade --no-cache zlib
+RUN test -n "$OPENSSL_SECURITY_REFRESH" && apk upgrade --no-cache zlib
 # Alpine stable still ships OpenSSL 3.5.9-r0. The official r1 backports fix
 # CVE-2026-88823, CVE-2026-95691, CVE-2026-95692 and CVE-2026-107496.
 RUN apk add --no-cache --upgrade \
     --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
     'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
 
-# BEGIN managed npm
-ARG NPM_VERSION=12.2.3
-ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz
-ARG NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q==
-RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import {writeFileSync} from "node:fs"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error("npm download failed"); const b=Buffer.from(await r.arrayBuffer()); if("sha512-"+createHash("sha512").update(b).digest("base64")!==process.env.NPM_INTEGRITY) throw new Error("npm integrity mismatch"); writeFileSync("/tmp/npm.tgz",b)' \
-    && mkdir -p /opt/verified-npm \
-    && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1 \
-    && ln -sf /opt/verified-npm/bin/npm-cli.js /usr/local/bin/npm \
-    && ln -sf /opt/verified-npm/bin/npx-cli.js /usr/local/bin/npx \
-    && rm /tmp/npm.tgz \
-    && test "$(npm --version)" = "$NPM_VERSION"
-# END managed npm
-
-FROM base AS openssl-security
+FROM openssl-security-base AS openssl-security
 # Compile checksum-pinned upstream fixes until Alpine publishes these backports.
 RUN apk add --no-cache abuild build-base perl linux-headers
 COPY apps/security/openssl /build/openssl
@@ -35,6 +26,22 @@ RUN abuild-keygen -a -n \
     && cp /root/.abuild/*.pub /security-packages/ \
     && test -f /security-packages/libssl3-3.5.9-r100.apk \
     && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+
+# END shared OpenSSL security
+
+FROM openssl-security-base AS base
+# BEGIN managed npm
+ARG NPM_VERSION=12.2.3
+ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz
+ARG NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q==
+RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import {writeFileSync} from "node:fs"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error("npm download failed"); const b=Buffer.from(await r.arrayBuffer()); if("sha512-"+createHash("sha512").update(b).digest("base64")!==process.env.NPM_INTEGRITY) throw new Error("npm integrity mismatch"); writeFileSync("/tmp/npm.tgz",b)' \
+    && mkdir -p /opt/verified-npm \
+    && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1 \
+    && ln -sf /opt/verified-npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf /opt/verified-npm/bin/npx-cli.js /usr/local/bin/npx \
+    && rm /tmp/npm.tgz \
+    && test "$(npm --version)" = "$NPM_VERSION"
+# END managed npm
 
 FROM base AS build
 WORKDIR /workspace
