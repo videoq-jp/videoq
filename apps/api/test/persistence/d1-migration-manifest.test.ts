@@ -5,7 +5,12 @@ const snapshot=(folder:string)=>{const base=new URL('../../'+folder+'/',import.m
 it('accounts for every current schema table and column without declaring data migration complete',()=>{
  const result=buildMigrationManifest(snapshot('drizzle'),snapshot('drizzle-d1'));
  expect(result.issues).toEqual([]);expect(result.mapping_complete).toBe(true);expect(result.execution_complete).toBe(false);
- expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(56);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(11);
+ expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(56);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(14);
+ expect(result.target_only).toEqual(expect.arrayContaining([
+  {target:'policy_readiness',policy:'initialize_empty_no_historical_acceptance_backfill'},
+  {target:'policy_cleanup',policy:'initialize_empty_observe_future_logical_deletions'},
+  {target:'policy_notifications',policy:'initialize_empty_delivery_ledger_for_new_facts'},
+ ]));
  expect(result.auxiliary_sources[0]).toMatchObject({schema:'chat_memory',tables:expect.arrayContaining(['checkpoints','checkpoint_blobs','checkpoint_writes'])});
  expect(result.target_insert_order.indexOf('users')).toBeLessThan(result.target_insert_order.indexOf('videos'));
  expect(result.target_insert_order.indexOf('videos')).toBeLessThan(result.target_insert_order.indexOf('scenes'));

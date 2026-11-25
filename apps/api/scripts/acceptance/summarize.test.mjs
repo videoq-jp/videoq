@@ -1,4 +1,5 @@
-import {test} from 'node:test';
+// Keep the node --test entry point and register with Vitest discovery.
+const { test } = await import(process.env.VITEST === 'true' ? 'vitest' : 'node:test');
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';

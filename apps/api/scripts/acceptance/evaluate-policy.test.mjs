@@ -1,4 +1,5 @@
-import { test } from 'node:test';
+// Keep the documented node --test entry point and register with Vitest discovery.
+const { test } = await import(process.env.VITEST === 'true' ? 'vitest' : 'node:test');
 import assert from 'node:assert/strict';
 import { evaluatePolicy } from './evaluate-policy.mjs';
 const at='2026-11-25T12:00:00Z';
