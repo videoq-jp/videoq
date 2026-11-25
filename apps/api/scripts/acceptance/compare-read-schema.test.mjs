@@ -1,4 +1,6 @@
-import {test}from'node:test';import assert from'node:assert/strict';
+// Keep the node --test entry point and register with Vitest discovery.
+const { test } = await import(process.env.VITEST === 'true' ? 'vitest' : 'node:test');
+import assert from 'node:assert/strict';
 import{compareReadSchema}from'./compare-read-schema.mjs';
 const expected=[{type:'table',name:'a',tbl_name:'a',sql:'CREATE TABLE a (id INTEGER PRIMARY KEY, parent INTEGER REFERENCES a(id), value TEXT NOT NULL DEFAULT 1)'},{type:'index',name:'idx',tbl_name:'a',sql:'CREATE INDEX idx ON a(lower(value))'},{type:'trigger',name:'trg',tbl_name:'a',sql:'CREATE TRIGGER trg AFTER INSERT ON a BEGIN UPDATE a SET value=2; END'}];
 test('only documented provider table is excluded; exact application definitions preserve all constraints/expressions/trigger semantics',()=>{
