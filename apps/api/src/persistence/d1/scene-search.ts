@@ -13,21 +13,29 @@ import { createD1Connection } from "../../db/d1/connection";
 import { scenes, videos, users, sceneIndexRuns } from "../../db/schema/sqlite";
 import type { SceneSearchRepository } from "../contracts/scene-search";
 
-/** Split large course selections by the serialized filter size, preserving scope. */
+/** Preserve scope across provider limits: <=100 list values and normalized bytes.
+ * The service normalizes integer values/spacing before its 2048-byte check;
+ * compact JS JSON alone undercounts that representation. Keep explicit headroom.
+ */
 function filters(userId: string, videoIds: readonly number[]): VectorizeVectorMetadataFilter[] {
   const result: VectorizeVectorMetadataFilter[] = [];
   let ids: number[] = [];
   const filter = (values: number[]) => ({ user_id: userId, video_id: { $in: values } });
-  const bytes = (values: number[]) => new TextEncoder().encode(JSON.stringify(filter(values))).length;
+  const quotedOwner = JSON.stringify(userId).replace(/[^\x20-\x7e]/g, character =>
+    "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"));
+  const bytes = (values: number[]) => new TextEncoder().encode(
+    `{"user_id": ${quotedOwner}, "video_id": {"$in": [${values.map(id => `${id}.0`).join(", ")}]}}`,
+  ).length;
+  const budget = 1536; // Below the observed service ceiling, including normalization margin.
   for (const id of new Set(videoIds)) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid video ID");
-    if (bytes([...ids, id]) >= 2048) {
+    if (ids.length === 100 || bytes([...ids, id]) >= budget) {
       if (!ids.length) throw new Error("Vectorize scope exceeds the metadata filter size limit");
       result.push(filter(ids));
       ids = [];
     }
     ids.push(id);
-    if (bytes(ids) >= 2048) throw new Error("Vectorize scope exceeds the metadata filter size limit");
+    if (bytes(ids) >= budget) throw new Error("Vectorize scope exceeds the metadata filter size limit");
   }
   if (ids.length) result.push(filter(ids));
   return result;
