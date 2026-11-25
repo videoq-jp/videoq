@@ -1,0 +1,110 @@
+{
+  "candidate": "af8129274aa77fff749f2b33b43f26f02ad16909",
+  "deployed": {
+    "apiSource": "1d97335bec786c5a626cd848dfe1f30a5747735f",
+    "apiReceipt": "https://github.com/videoq-jp/videoq/actions/runs/45519843216/job/138890369579",
+    "apiDeployment": 8044929726,
+    "pythonSource": "12a5e668daf1e5e608a971dfd4bd428688e359b6",
+    "pythonReceipt": "https://github.com/videoq-jp/videoq/actions/runs/45448577612/job/138643359543",
+    "scope": "Successful cloud deployment receipts, not proof of customer on-prem installation or current live runtime revision"
+  },
+  "passed": true,
+  "combinations": [
+    {
+      "producer": "api-old",
+      "consumer": "api-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-old",
+      "consumer": "python-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-old",
+      "consumer": "api-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-old",
+      "consumer": "python-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-new",
+      "consumer": "api-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-new",
+      "consumer": "python-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-new",
+      "consumer": "api-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "api-new",
+      "consumer": "python-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-old",
+      "consumer": "api-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-old",
+      "consumer": "python-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-old",
+      "consumer": "api-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-old",
+      "consumer": "python-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-new",
+      "consumer": "api-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-new",
+      "consumer": "python-old",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-new",
+      "consumer": "api-new",
+      "cases": 58,
+      "passed": true
+    },
+    {
+      "producer": "python-new",
+      "consumer": "python-new",
+      "cases": 58,
+      "passed": true
+    }
+  ]
+}

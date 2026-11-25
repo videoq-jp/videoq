@@ -1,0 +1,10 @@
+{
+  "image": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+  "architecture": "arm64",
+  "mode": "strict-no-exceptions",
+  "accepted": [],
+  "preAssessed": [],
+  "blocking": [],
+  "nativeRuntimeChecked": true,
+  "sourceRevision": "48d69177d7dfc675c13870457ad172b90c907529"
+}
