@@ -1,0 +1,26 @@
+{
+  "run": "https://github.com/videoq-jp/videoq/actions/runs/45532474239",
+  "job": "https://github.com/videoq-jp/videoq/actions/runs/45532474239/job/138931090671",
+  "artifact": "https://github.com/videoq-jp/videoq/actions/runs/45532474239/artifacts/14984988146",
+  "pullRequestHead": "88cf47de07eeb964013d463ee072a8b6cafc47ab",
+  "testedMergeSource": "1620d1a29eca5bf1fc762876deff95020f7b5758",
+  "conclusion": "success",
+  "compatibility": {
+    "report": "release-compatibility-ci-2026-11-25.json",
+    "sha256": "8ee56b6ed219c2b074445be8e7536f79285c89e2d091dcd134a03e2ddc13590e",
+    "combinations": 16,
+    "vectorsPerCombination": 58,
+    "negativeControls": ["wrong hash", "completed replay", "invalid acceptance"]
+  },
+  "cors": {
+    "report": "cors-browser-ci-2026-11-25.json",
+    "sha256": "55849e1274ef3cb2380bfbf52cec9ce0b3a0dfbc9983605daa59e3f427557ee2",
+    "allowed": 10,
+    "denied": 5,
+    "serverDeniedPostAbsent": true,
+    "serverDeniedPutAbsent": true,
+    "multipartBytes": 5242917,
+    "assembledHashMatches": true,
+    "scope": "Hono middleware and Garage adapters with synthetic cookie/MCP routes; not full OAuth, deployed TLS/CDN or production-origin acceptance"
+  }
+}
