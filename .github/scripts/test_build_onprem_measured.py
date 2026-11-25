@@ -15,12 +15,12 @@ class ResourceProtocolTest(unittest.TestCase):
     def fixture(self):
         builder = {'Name': 'owned', 'Driver': 'docker-container', 'Nodes': [{'Name': 'owned0', 'Status': 'running', 'Version': 'v0.35.1', 'Endpoint': 'unix:///var/run/docker.sock'}]}
         context = {'Name': 'default', 'Endpoints': {'docker': {'Host': 'unix:///var/run/docker.sock'}}}
-        container = {'Id': 'a' * 64, 'Name': '/buildx_buildkit_owned0', 'Config': {'Image': measured.CONTROLLED_BUILDKIT_IMAGE}, 'State': {'Running': True}, 'HostConfig': {'CpuPeriod': 100000, 'CpuQuota': 400000, 'Memory': 8 * 1024**3, 'MemorySwap': 8 * 1024**3, 'CpusetCpus': ''}}
+        container = {'Id': 'a' * 64, 'Name': '/buildx_buildkit_owned0', 'Config': {'Image': measured.CONTROLLED_BUILDKIT_IMAGE}, 'State': {'Running': True, 'Pid':123}, 'HostConfig': {'CpuPeriod': 100000, 'CpuQuota': 400000, 'Memory': 8 * 1024**3, 'MemorySwap': 8 * 1024**3, 'CpusetCpus': ''}}
         return builder, context, container
 
     def check(self, fixture):
         b,c,i=fixture
-        with patch.dict(measured.os.environ, {}, clear=True), patch.object(measured, 'host_cpu_envelope', return_value=({0,1,2,3},None)), patch.object(measured.subprocess, 'check_output', side_effect=[json.dumps(b),json.dumps([c]),json.dumps([i]), 'Cpus_allowed_list: 0-3\n', '400000 100000\n8589934592\n0\n']) as execute:
+        with patch.dict(measured.os.environ, {}, clear=True), patch.object(measured, 'host_cpu_envelope', return_value=({0,1,2,3},None)), patch.object(measured, 'builder_cgroup_envelope',return_value={'cpuQuotaCpus':4,'memoryMaxBytes':8*1024**3,'membership':'/docker/owned'}), patch.object(measured.subprocess, 'check_output', side_effect=[json.dumps(b),json.dumps([c]),json.dumps([i]), 'Cpus_allowed_list: 0-3\n', '400000 100000\n8589934592\n0\n']) as execute:
             result = measured.inspect_builder_limits('owned', 4, 8 * 1024**3)
             self.assertEqual(execute.call_args_list[2].args[0], ['docker','container','inspect','buildx_buildkit_owned0'])
             return result
@@ -47,7 +47,7 @@ class ResourceProtocolTest(unittest.TestCase):
     def test_inherited_host_quota_and_actual_container_affinity(self):
         b,c,i=self.fixture()
         for host,affinity,cgroup in [(({0,1,2,3},2),'0-3','400000 100000\n8589934592\n0\n'), (({0,1},None),'0-3','400000 100000\n8589934592\n0\n'), (({0,1,2,3},None),'0','400000 100000\n8589934592\n0\n'), (({0,1,2,3},None),'0-3','200000 100000\n8589934592\n0\n')]:
-            with patch.dict(measured.os.environ, {}, clear=True), patch.object(measured,'host_cpu_envelope',return_value=host), patch.object(measured.subprocess,'check_output',side_effect=[json.dumps(b),json.dumps([c]),json.dumps([i]),'Cpus_allowed_list: '+affinity+'\n',cgroup]), self.assertRaises(ValueError):
+            with patch.dict(measured.os.environ, {}, clear=True), patch.object(measured,'host_cpu_envelope',return_value=host), patch.object(measured,'builder_cgroup_envelope',return_value={'cpuQuotaCpus':4,'memoryMaxBytes':8*1024**3,'membership':'/docker/owned'}), patch.object(measured.subprocess,'check_output',side_effect=[json.dumps(b),json.dumps([c]),json.dumps([i]),'Cpus_allowed_list: '+affinity+'\n',cgroup]), self.assertRaises(ValueError):
                 measured.inspect_builder_limits('owned',4,8*1024**3)
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory); (root/'cpu.max').write_text('max 100000')
@@ -57,3 +57,20 @@ class ResourceProtocolTest(unittest.TestCase):
             member=root/'membership'; member.write_text('0::/parent/child\n')
             with patch.object(measured.os,'sched_getaffinity',return_value={0,1,2,3},create=True):
                 self.assertEqual(measured.host_cpu_envelope(root,member),({0,1,2,3},2.0))
+
+    def test_actual_builder_ancestors_distinct_from_runner_are_enforced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); group=root/'cgroup'; proc=root/'proc'
+            (group/'runner').mkdir(parents=True); (group/'docker/builder').mkdir(parents=True)
+            (group/'runner/cpu.max').write_text('max 100000')
+            (group/'docker/cpu.max').write_text('200000 100000')
+            (group/'docker/memory.max').write_text(str(4*1024**3))
+            (group/'docker/builder/cpu.max').write_text('400000 100000')
+            (group/'docker/builder/memory.max').write_text(str(8*1024**3))
+            (proc/'123').mkdir(parents=True); (proc/'123/cgroup').write_text('0::/docker/builder\n')
+            limits=measured.builder_cgroup_envelope(123,proc,group)
+            self.assertEqual(limits['cpuQuotaCpus'],2)
+            self.assertEqual(limits['memoryMaxBytes'],4*1024**3)
+            b,c,i=self.fixture()
+            with patch.dict(measured.os.environ,{},clear=True), patch.object(measured,'host_cpu_envelope',return_value=({0,1,2,3},None)), patch.object(measured,'builder_cgroup_envelope',return_value=limits), patch.object(measured.subprocess,'check_output',side_effect=[json.dumps(b),json.dumps([c]),json.dumps([i])]), self.assertRaisesRegex(ValueError,'Actual builder ancestor'):
+                measured.inspect_builder_limits('owned',4,8*1024**3)
