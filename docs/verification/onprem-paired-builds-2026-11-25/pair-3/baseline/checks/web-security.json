@@ -35,7 +35,7 @@
         ],
         "WorkingDir": "/",
         "Labels": {
-          "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+          "maintainer": "NGINX Docker Maintainers <[redacted-upstream-maintainer-email]>"
         },
         "StopSignal": "SIGQUIT"
       },
@@ -54,7 +54,7 @@
         },
         {
           "created": "2026-11-18T16:34:34.829698266Z",
-          "created_by": "LABEL maintainer=NGINX Docker Maintainers <docker-maint@nginx.com>",
+          "created_by": "LABEL maintainer=NGINX Docker Maintainers <[redacted-upstream-maintainer-email]>",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
