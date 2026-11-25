@@ -1,19 +1,12 @@
 import { iterSrtCues } from '@videoq/domain/transcript';
 import { skillDraftSchema, skillPlanSchema, extractedFactsSchema, skillAuditSchema, type SkillDraft, type SkillAudit, type SkillView, type SkillBundle } from '@videoq/trpc/skills';
 import type { AgentSkillRecord, AgentSkillState, SkillCue, SkillMaterial, SkillFact } from '../../persistence/contracts/agent-skill-repository';
-import { tooLarge, validationFailure } from '../../application/errors';
+import { validationFailure } from '../../application/errors';
 
 export const SKILL_CHUNK_CHARS = 12_000;
-export const SKILL_SOURCE_MAX_CHARS = 180_000;
-export const SKILL_MAX_VIDEOS = 30;
-
 /** Traverse all subtitle text. Oversized cues keep their original timestamps. */
 export function skillChunks(material: SkillMaterial): SkillCue[][] {
   if (!material.sources.length) throw validationFailure('Add analyzed videos before generating a skill.');
-  if (material.sources.length > SKILL_MAX_VIDEOS) throw tooLarge(`A skill can use at most ${SKILL_MAX_VIDEOS} videos.`);
-  if (material.sources.reduce((n, source) => n + source.transcript.length, 0) > SKILL_SOURCE_MAX_CHARS) {
-    throw tooLarge(`Use a smaller course: skill generation supports ${SKILL_SOURCE_MAX_CHARS} subtitle characters.`);
-  }
   const chunks: SkillCue[][] = [];
   for (const source of material.sources) {
     if (!source.transcript.trim()) throw validationFailure(`Video ${source.id} has no transcript.`);
@@ -87,13 +80,13 @@ export function auditIssues(value: unknown, draft: SkillDraft): string[] {
     ...audit.checks.filter(check => !check.grounded || !check.actionable).map(check => `${check.claimId}: ${check.reason}`)];
 }
 
-export const skillName = (record: AgentSkillRecord) => record.state.draft ? `videoq-${record.state.draft.slug}-${record.id.slice(0, 8)}` : null;
+export const skillName = (record: AgentSkillRecord, key?: string) => record.state.draft ? `videoq-${record.state.draft.slug}-${record.id.slice(0, 8)}${key ? `-${key}` : ''}` : null;
 const plain = (value: string) => value.replace(/\p{Cc}/gu, ' ');
 const line = (value: string) => plain(value).replace(/[\\[\]]/g, '\\$&');
 
 /** Only this renderer produces executable instructions; models cannot add scripts or paths. */
-export function renderSkill(record: AgentSkillRecord, origin: string): SkillBundle {
-  const state = record.state, draft = state.draft, name = skillName(record);
+export function renderSkill(record: AgentSkillRecord, origin: string, key?: string): SkillBundle {
+  const state = record.state, draft = state.draft, name = skillName(record, key);
   if (!draft || !name) throw validationFailure('The skill has no generated content.');
   const cited = new Set(draftClaims(draft).flatMap(claim => claim.factIds));
   const facts = state.facts.filter(fact => cited.has(fact.id));
@@ -127,7 +120,7 @@ function timeSeconds(value: string) { const [h, m, s] = value.replace(',', '.').
 export function skillView(record: AgentSkillRecord, origin: string): SkillView {
   const state: AgentSkillState = record.state;
   const members = state.members?.map(member => {
-    const artifact = member.draft ? renderSkill({ ...record, state: { ...state, draft: member.draft } }, origin) : null;
+    const artifact = member.draft ? renderSkill({ ...record, state: { ...state, draft: member.draft } }, origin, member.key) : null;
     return { objective: member.objective, status: member.status, issues: member.issues, title: member.draft?.title ?? null,
       description: member.draft?.description ?? null, skillName: artifact?.name ?? null,
       markdown: artifact?.files['SKILL.md'] ?? null, sourcesMarkdown: artifact?.files['references/sources.md'] ?? null };

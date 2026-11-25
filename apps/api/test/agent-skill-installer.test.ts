@@ -29,8 +29,9 @@ it('serves the bundled installer without a frontend subrequest and binds it to t
 
 it('runs the short npx URL command and installs an authenticated multi-skill set without touching project dependencies', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'videoq-npx-test-'));
-  const skills = ['videoq-client-fixture', 'videoq-sql-fixture'].map(name => ({ id: skillFixtureId, name, files: { 'SKILL.md': `---\nname: ${name}\ndescription: Use this source-derived fixture.\n---\nFollow the source policy.`, 'references/sources.md': '# Source evidence' } }));
+  const skills = Array.from({ length: 17 }, (_, index) => `videoq-fixture-${index}`).map(name => ({ id: skillFixtureId, name, files: { 'SKILL.md': `---\nname: ${name}\ndescription: Use this source-derived fixture.\n---\nFollow the source policy.`, 'references/sources.md': '# Source evidence' } }));
   let origin = '';
+  const pages: number[] = [];
   const server = createServer((request, response) => {
     void (async () => {
     if (request.url?.endsWith('.tgz')) {
@@ -43,7 +44,9 @@ it('runs the short npx URL command and installs an authenticated multi-skill set
     let body = ''; for await (const chunk of request) body += chunk;
     const rpc = JSON.parse(body);
     if (rpc.method === 'notifications/initialized') { response.writeHead(202).end(); return; }
-    const result = rpc.method === 'initialize' ? { protocolVersion: '2025-03-26' } : { structuredContent: { skill: { ...skills[0], skills } } };
+    const offset = rpc.params?.arguments?.offset ?? 0;
+    if (rpc.method === 'tools/call') pages.push(offset);
+    const result = rpc.method === 'initialize' ? { protocolVersion: '2025-03-26' } : { structuredContent: { skill: { ...skills[offset], skills: skills.slice(offset, offset + 1), totalSkills: skills.length, nextOffset: offset + 1 < skills.length ? offset + 1 : null } } };
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }));
     })().catch(error => { response.writeHead(500).end(String(error)); });
   });
@@ -52,10 +55,11 @@ it('runs the short npx URL command and installs an authenticated multi-skill set
   origin = `http://127.0.0.1:${address.port}`;
   try {
     await writeFile(join(directory, 'package.json'), '{"name":"fixture-project","private":true}');
-    const result = await execute('npx', ['--yes', '--allow-remote=all', `${origin}/api/skills/${skillFixtureId}.tgz`, '--agent', 'codex'], { cwd: directory,
+    const result = await execute('npx', ['--yes', '--allow-remote=all', `${origin}/api/skills/${skillFixtureId}.tgz`], { cwd: directory,
       env: { ...process.env, VIDEOQ_API_KEY: 'fixture-key', npm_config_cache: join(directory, 'npm-cache'), npm_config_audit: 'false', npm_config_fund: 'false', npm_config_update_notifier: 'false' }, timeout: 30_000 });
-    expect(result.stdout).toContain('Installed published skills (2)'); expect(result.stdout).not.toContain('fixture-key');
-    for (const skill of skills) expect(await readFile(join(directory, '.agents/skills', skill.name, 'SKILL.md'), 'utf8')).toBe(skill.files['SKILL.md']);
+    expect(result.stdout).toContain('Installed published skills (17)');
+    expect(pages).toEqual(Array.from({ length: 17 }, (_, index) => index)); expect(result.stdout).not.toContain('fixture-key');
+    for (const skill of skills) for (const folder of ['.agents/skills', '.claude/skills']) expect(await readFile(join(directory, folder, skill.name, 'SKILL.md'), 'utf8')).toBe(skill.files['SKILL.md']);
     expect(await readFile(join(directory, 'package.json'), 'utf8')).toBe('{"name":"fixture-project","private":true}');
     await expect(readFile(join(directory, 'package-lock.json'))).rejects.toThrow();
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); await rm(directory, { recursive: true, force: true }); }

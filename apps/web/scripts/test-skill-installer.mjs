@@ -25,7 +25,7 @@ test('requires a published skill ID and rejects insecure origins and legacy tran
 test('downloads the published artifact without deriving instructions or calling a model', async () => {
   const requests = [];
   const downloaded = await downloadSkill({ async call(name, args) { requests.push({ name, args }); return { skill }; } }, config);
-  assert.deepEqual(requests, [{ name: 'get_skill', args: { skill_id: skillId } }]);
+  assert.deepEqual(requests, [{ name: 'get_skill', args: { skill_id: skillId, offset: 0, limit: 1 } }]);
   assert.deepEqual(Object.fromEntries(downloaded.files), skill.files);
 });
 
@@ -116,7 +116,7 @@ test('real CLI downloads and installs a published skill set through the read-onl
     let body = ''; for await (const chunk of request) body += chunk;
     const rpc = JSON.parse(body);
     if (rpc.method === 'notifications/initialized') { response.writeHead(202).end(); return; }
-    if (rpc.method === 'tools/call') { assert.equal(rpc.params.name, 'get_skill'); assert.deepEqual(rpc.params.arguments, { skill_id: skillId }); }
+    if (rpc.method === 'tools/call') { assert.equal(rpc.params.name, 'get_skill'); assert.deepEqual(rpc.params.arguments, { skill_id: skillId, offset: 0, limit: 1 }); }
     const result = rpc.method === 'initialize' ? { protocolVersion: '2025-03-26' } : { structuredContent: { skill: set } };
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }));
   });
@@ -132,3 +132,28 @@ test('real CLI downloads and installs a published skill set through the read-onl
     for (const agent of ['.agents', '.claude']) assert.equal(await readFile(join(cwd, agent, 'skills', second.name, 'SKILL.md'), 'utf8'), second.files['SKILL.md']);
   } finally { await new Promise(accept => server.close(accept)); }
 }));
+
+test('downloads more than 12 skills and over 2 MB of evidence in complete pages', async () => {
+  const artifacts = Array.from({ length: 17 }, (_, index) => {
+    const name = `videoq-page-${index}`;
+    return { ...skill, name, files: { ...skill.files, 'SKILL.md': skill.files['SKILL.md'].replaceAll(skill.name, name), 'references/sources.md': '証拠'.repeat(80_000) } };
+  });
+  const offsets = [];
+  const downloaded = await downloadSkill({ async call(_name, args) {
+    offsets.push(args.offset);
+    const artifact = artifacts[args.offset];
+    return { skill: { ...artifact, skills: [artifact], totalSkills: artifacts.length, nextOffset: args.offset + 1 < artifacts.length ? args.offset + 1 : null } };
+  } }, config);
+  assert.equal(downloaded.skills.length, 17);
+  assert.deepEqual(offsets, Array.from({ length: 17 }, (_, index) => index));
+  assert.ok(downloaded.skills.reduce((bytes, item) => bytes + Buffer.byteLength(item.files.get('references/sources.md')), 0) > 2_000_000);
+});
+
+test('refuses missing pages, repeated identities and inconsistent pagination totals', async () => {
+  for (const value of [
+    { ...skill, skills: [skill], totalSkills: 2, nextOffset: null },
+    { ...skill, skills: [skill], totalSkills: 2, nextOffset: 0 },
+    { ...skill, skills: [skill], totalSkills: 2, nextOffset: 3 },
+  ]) await assert.rejects(downloadSkill({ async call() { return { skill: value }; } }, config), /Incomplete|Invalid/);
+  await assert.rejects(downloadSkill({ async call() { return { skill: { ...skill, skills: [skill], totalSkills: 2, nextOffset: 1 } }; } }, config), /Invalid/);
+});
