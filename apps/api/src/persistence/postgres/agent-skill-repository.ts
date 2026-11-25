@@ -21,6 +21,7 @@ export function createPostgresAgentSkillRepository(env: Bindings): AgentSkillRep
         const [row] = await db.select().from(agentSkills).where(and(eq(agentSkills.id, id), eq(agentSkills.ownerId, ownerId))).limit(1);
         if (!row) return null;
         if (!isSkillStatePointer(row.state)) return { id: row.id, ownerId: row.ownerId, state: row.state };
+        if (row.state.pending) return null;
         const rows = await db.select({ part: agentSkillStateParts.part, content: agentSkillStateParts.content }).from(agentSkillStateParts)
           .where(and(eq(agentSkillStateParts.skillId, id), eq(agentSkillStateParts.revision, row.state.revision))).orderBy(asc(agentSkillStateParts.part));
         const state = decodeSkillParts(row.state, rows);
