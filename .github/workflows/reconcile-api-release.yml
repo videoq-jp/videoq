@@ -1,0 +1,56 @@
+name: Reconcile API release ownership
+on:
+  workflow_dispatch:
+    inputs:
+      state_version:
+        description: Exact version currently owned by the API Terraform release state
+        required: true
+        type: string
+      active_version:
+        description: Exact equivalent version produced by completed maintenance
+        required: true
+        type: string
+      active_deployment:
+        description: Exact current single-version deployment
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main'
+    environment: production-app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .node-version
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: await require('./.github/scripts/validate-deployment.cjs')({github, context});
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.15.1
+          terraform_wrapper: false
+      - uses: ./.github/actions/terraform-r2
+        with:
+          access-key-id: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+      - name: Adopt equivalent maintenance version without changing application resources
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          EXPECTED_STATE_VERSION: ${{ inputs.state_version }}
+          EXPECTED_ACTIVE_VERSION: ${{ inputs.active_version }}
+          EXPECTED_ACTIVE_DEPLOYMENT: ${{ inputs.active_deployment }}
+        run: node .github/scripts/reconcile-api-release.cjs
