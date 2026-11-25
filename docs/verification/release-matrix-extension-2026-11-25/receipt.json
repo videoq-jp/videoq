@@ -1,0 +1,31 @@
+{
+  "scope": "Point-in-time successful source deployment receipt; no runtime inspection/current-live/customer-installation assertion",
+  "verifiedAt": "2026-11-25T05:36:21.991779+00:00",
+  "deployment": {
+    "id": 8048504029,
+    "source": "0790f016f724e75d52903989344fbc4d8a007b19",
+    "environment": "production-app",
+    "createdAt": "2026-11-25T04:36:04Z",
+    "status": "success",
+    "statusAt": "2026-11-25T04:36:53Z",
+    "run": 45547431599,
+    "job": 138981776751,
+    "url": "https://github.com/videoq-jp/videoq/actions/runs/45547431599/job/138981776751"
+  },
+  "implementationCommits": [
+    "0535cfe1fadfd77413781f627f3070e4dd3f9545",
+    "6f3ee15635f79eb6573694cdcec41e8081efdbf3"
+  ],
+  "localVerification": {
+    "node": "26.13.1",
+    "python": "3.14.9",
+    "fixtureDependencies": "Existing locked delivery Python environment site-packages reused via PYTHONPATH; no dependency installation or production access",
+    "combinations": 25,
+    "casesPerCombination": 58,
+    "allHistorical16CombinationsRetained": true,
+    "actualHashAcceptanceReplayNegativeControls": "pass",
+    "candidateSource": "6f3ee15635f79eb6573694cdcec41e8081efdbf3",
+    "matrixSha256": "5ab9d0a03462e0fb5a5fd2680b925a8d5f3fc22363114150e6fa9d93f8b5e2c8"
+  },
+  "remaining": "Independent source/matrix review and hosted extended gate on final integration source; local proof does not establish hosted/current-live acceptance."
+}
