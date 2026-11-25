@@ -50,7 +50,7 @@ it('stores state larger than a D1 row across parts and preserves snapshots again
     expect(sizes!.size).toBeLessThan(256_000); expect(sizes!.count).toBeGreaterThan(1);
     expect(await repository.claim(skillFixtureId, 'large-owner', 'first', 1000, 2000)).toBe(true);
     expect(await repository.save(skillFixtureId, 'large-owner', 'first', { ...state, completedChunks: 1 })).toBe(true);
-    await database.prepare("CREATE TRIGGER fail_skill_part BEFORE INSERT ON agent_skill_state_parts WHEN NEW.part = 1 BEGIN SELECT RAISE(ABORT, 'injected part failure'); END").run();
+    await database.prepare("CREATE TRIGGER fail_skill_part BEFORE INSERT ON agent_skill_state_parts WHEN NEW.part = 9 BEGIN SELECT RAISE(ABORT, 'injected part failure'); END").run();
     await expect(repository.save(skillFixtureId, 'large-owner', 'first', { ...state, completedChunks: 99 })).rejects.toThrow();
     expect((await repository.get(skillFixtureId, 'large-owner'))?.state.completedChunks).toBe(1);
     await database.prepare('DROP TRIGGER fail_skill_part').run();
@@ -62,5 +62,103 @@ it('stores state larger than a D1 row across parts and preserves snapshots again
     expect((await database.prepare('SELECT COUNT(DISTINCT revision) AS count FROM agent_skill_state_parts').first<{ count: number }>())!.count).toBe(1);
     await database.prepare('DELETE FROM users WHERE id = ?').bind('large-owner').run();
     expect((await database.prepare('SELECT COUNT(*) AS count FROM agent_skill_state_parts').first<{ count: number }>())!.count).toBe(0);
+  } finally { await dispose(); }
+}, 30_000);
+
+
+/** Model the remote D1 RPC envelope, which Miniflare does not limit itself. */
+function rpcBounded(database: D1Database, onBatch?: () => Promise<void>) {
+  const statements = new WeakMap<D1PreparedStatement, { statement: D1PreparedStatement; parameters: unknown[] }>();
+  let maximumBytes = 0;
+  const check = (value: unknown) => {
+    const bytes = new TextEncoder().encode(JSON.stringify(value)).length;
+    maximumBytes = Math.max(maximumBytes, bytes);
+    if (bytes > 32 * 1024 * 1024) throw new Error('D1_ERROR: Serialized RPC arguments or return values are limited to 32MiB');
+  };
+  const wrap = (statement: D1PreparedStatement, parameters: unknown[] = []): D1PreparedStatement => {
+    const proxy = new Proxy(statement, { get(target, key) {
+      if (key === 'bind') return (...args: unknown[]) => wrap(target.bind(...args), args);
+      const value: unknown = Reflect.get(target, key);
+      if (typeof value !== 'function') return value;
+      if (['raw', 'all', 'first'].includes(String(key))) return async (...args: unknown[]) => {
+        const result: unknown = await value.apply(target, args); check(result); return result;
+      };
+      return value.bind(target);
+    } });
+    statements.set(proxy, { statement, parameters }); return proxy;
+  };
+  return { maximumBytes: () => maximumBytes, database: new Proxy(database, { get(target, key) {
+    if (key === 'prepare') return (query: string) => wrap(target.prepare(query));
+    if (key === 'batch') return async (batch: D1PreparedStatement[]) => {
+      check(batch.map(statement => statements.get(statement)?.parameters ?? []));
+      const result = await target.batch(batch.map(statement => statements.get(statement)?.statement ?? statement));
+      check(result); await onBatch?.(); return result;
+    };
+    const value: unknown = Reflect.get(target, key); return typeof value === 'function' ? value.bind(target) : value;
+  } }) };
+}
+
+it('uploads and reads a course snapshot beyond the remote 32MiB RPC envelope without exposing partial revisions', async () => {
+  const { database, dispose } = await createD1Fixture();
+  try {
+    await database.prepare("INSERT INTO users (id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES ('rpc-owner','rpc-owner','rpc@example.test',0,0,0,0)").run();
+    const state = { version: 1 as const, target: { kind: 'course' as const, resourceId: 51 }, objective: '', automatic: true, language: 'ja' as const,
+      resourceTitle: 'Large course', fingerprint: 'rpc', stage: 'extracting' as const,
+      chunks: Array.from({ length: 282 }, (_, chunk) => Array.from({ length: 333 }, (_, cue) => ({ id: `v${chunk}-c${cue}`, videoId: chunk, title: '講座から学ぶ具体的なエンジニアリングの意思決定', start: '00:01:00.000', end: '00:01:05.000', text: '講師が説明する手順と適用条件。'.repeat(5) }))),
+      completedChunks: 0, sourceVideos: 177, facts: [], draft: null, issues: [] };
+    expect(new TextEncoder().encode(JSON.stringify(state)).length).toBeGreaterThan(32 * 1024 * 1024);
+    const raw = createD1AgentSkillRepository(database);
+    let phase: 'create' | 'save' | 'done' = 'create', observedCreate = false, observedSave = false;
+    const bounded = rpcBounded(database, async () => {
+      if (phase === 'create' && !observedCreate) { observedCreate = true; expect(await raw.get(skillFixtureId, 'rpc-owner')).toBeNull(); }
+      if (phase === 'save' && !observedSave) { observedSave = true; expect((await raw.get(skillFixtureId, 'rpc-owner'))?.state.completedChunks).toBe(0); }
+    });
+    const repository = createD1AgentSkillRepository(bounded.database);
+    await repository.create({ id: skillFixtureId, ownerId: 'rpc-owner', state });
+    phase = 'done';
+    expect((await repository.get(skillFixtureId, 'rpc-owner'))?.state.chunks).toEqual(state.chunks);
+    expect(await repository.claim(skillFixtureId, 'rpc-owner', 'lease', 1000, 2000)).toBe(true);
+    phase = 'save';
+    await database.prepare('INSERT INTO agent_skill_state_parts(skill_id,revision,part,content) VALUES(?,?,0,?)').bind(skillFixtureId, 'abandoned-upload', 'not published').run();
+    expect(await repository.save(skillFixtureId, 'rpc-owner', 'lease', { ...state, completedChunks: 1 })).toBe(true);
+    phase = 'done';
+    expect((await repository.get(skillFixtureId, 'rpc-owner'))?.state.completedChunks).toBe(1);
+    expect(observedCreate && observedSave).toBe(true);
+    expect(bounded.maximumBytes()).toBeLessThan(4 * 1024 * 1024);
+    expect((await database.prepare('SELECT COUNT(DISTINCT revision) AS count FROM agent_skill_state_parts').first<{count:number}>())?.count).toBe(1);
+  } finally { await dispose(); }
+}, 60_000);
+
+it('cleans an interrupted initial upload and fences a writer whose lease changes between part batches', async () => {
+  const { database, dispose } = await createD1Fixture();
+  try {
+    await database.prepare("INSERT INTO users (id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES ('staged-owner','staged-owner','staged@example.test',0,0,0,0)").run();
+    const state = { version: 1 as const, target: { kind: 'course' as const, resourceId: 42 }, objective: '', automatic: true, language: 'ja' as const,
+      resourceTitle: 'Staged', fingerprint: 'staged', stage: 'extracting' as const, chunks: skillChunks({ title: 'Staged', sources: [{id: 1, title: 'Source', transcript: '講座の字幕'.repeat(150_000)}] }),
+      completedChunks: 0, sourceVideos: 1, facts: [], draft: null, issues: [] };
+    const raw = createD1AgentSkillRepository(database);
+    await database.prepare("CREATE TRIGGER fail_staged_part BEFORE INSERT ON agent_skill_state_parts WHEN NEW.part = 9 BEGIN SELECT RAISE(ABORT, 'later upload failed'); END").run();
+    await expect(raw.create({ id: skillFixtureId, ownerId: 'staged-owner', state })).rejects.toThrow();
+    expect(await raw.get(skillFixtureId, 'staged-owner')).toBeNull();
+    expect(await database.prepare('SELECT COUNT(*) AS count FROM agent_skill_state_parts').first('count')).toBe(0);
+    await database.prepare('DROP TRIGGER fail_staged_part').run();
+    await raw.create({ id: skillFixtureId, ownerId: 'staged-owner', state });
+    expect(await raw.claim(skillFixtureId, 'staged-owner', 'old', 1000, 2000)).toBe(true);
+    let replaced = false;
+    const wrapped = rpcBounded(database, async () => {
+      if (replaced) return; replaced = true;
+      expect((await raw.get(skillFixtureId, 'staged-owner'))?.state.completedChunks).toBe(0);
+      expect(await raw.claim(skillFixtureId, 'staged-owner', 'new', 2001, 3000)).toBe(true);
+      expect(await raw.save(skillFixtureId, 'staged-owner', 'new', {...state, completedChunks: 2})).toBe(true);
+    });
+    expect(await createD1AgentSkillRepository(wrapped.database).save(skillFixtureId, 'staged-owner', 'old', {...state, completedChunks: 1})).toBe(false);
+    expect((await raw.get(skillFixtureId, 'staged-owner'))?.state.completedChunks).toBe(2);
+    expect(await database.prepare('SELECT COUNT(DISTINCT revision) AS count FROM agent_skill_state_parts').first('count')).toBe(1);
+    const lostAcknowledgement = rpcBounded(database, async () => {
+      if ((await raw.get(skillFixtureId, 'staged-owner'))?.state.completedChunks === 3) throw new Error('lost commit acknowledgement');
+    });
+    await expect(createD1AgentSkillRepository(lostAcknowledgement.database).save(skillFixtureId, 'staged-owner', 'new', {...state, completedChunks: 3})).rejects.toThrow('lost commit acknowledgement');
+    expect((await raw.get(skillFixtureId, 'staged-owner'))?.state.completedChunks).toBe(3);
+    expect(await database.prepare('SELECT COUNT(DISTINCT revision) AS count FROM agent_skill_state_parts').first('count')).toBe(1);
   } finally { await dispose(); }
 }, 30_000);
