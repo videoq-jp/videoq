@@ -5,6 +5,7 @@ test('deployment includes runtime, locked dependencies, operations fixtures and 
   for (const path of ['infra/db-maintenance/runtime/broker.cjs','infra/db-maintenance/runtime/package-lock.json',
     'infra/db-maintenance/state-machine.cjs','.github/scripts/canonical-background-maintenance.cjs','.github/scripts/protect-api-deployment.cjs','.github/scripts/migration-backend.cjs','.github/scripts/neon-admin.cjs','.github/scripts/backup-archive.mjs','.github/scripts/backup-download.mjs',
     'infra/db-maintenance/build_bundle.py','infra/db-maintenance/deploy.py','infra/db-maintenance/fetch_migration.py',
+    '.github/scripts/embedding-release-preflight.cjs',
     '.github/operations-tools/package-lock.json','.github/operations-tools/Dockerfile',
     '.github/scripts/cutover-postgres-fence.mjs','.github/operations-tools/fixtures/smoke.mp4','apps/demo-video/public/lessons/math.mp4',
     'apps/api/scripts/d1-production-recovery.ts','apps/api/scripts/migrations/d1/recovery-authorization.ts',
