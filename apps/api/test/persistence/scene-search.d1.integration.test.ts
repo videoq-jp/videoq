@@ -52,9 +52,31 @@ describe("D1 + LangChain Vectorize scene search", () => {
     expect(query.mock.calls.length).toBeGreaterThan(1);
     for (const [, options] of query.mock.calls) {
       expect(new TextEncoder().encode(JSON.stringify(options.filter)).length).toBeLessThan(2048);
+      expect(options.filter.video_id.$in.length).toBeLessThanOrEqual(100);
       expect(options.filter.user_id).toBe("owner");
       expect(options.returnMetadata).toBe("all");
       expect(options.returnValues).toBe(false);
+    }
+  });
+  it.each([100, 101, 125])("searches all %i selected videos within the provider's list limit", async (count) => {
+    query.mockReset();
+    const selected = [1, ...Array.from({ length: count - 2 }, (_, i) => i + 6), 3];
+    query.mockImplementation(async (_vector, options) => {
+      const ids: number[] = options.filter.video_id.$in;
+      if (ids.length > 100) throw new Error("When using $in and $nin filter clauses, the length of the filter list must not exceed 100");
+      return { matches: [
+        ...(ids.includes(1) ? [match("scene-1", "r1", 0.8)] : []),
+        ...(ids.includes(3) ? [match("scene-3", "r1", 0.9)] : []),
+      ] };
+    });
+    try {
+      const hits = await repository().search({ queryEmbedding: embedding, userId: "owner", videoIds: selected, limit: 1 });
+      expect(hits.map(hit => hit.videoId)).toEqual([3]);
+      expect(query).toHaveBeenCalledTimes(Math.ceil(count / 100));
+      expect(query.mock.calls.flatMap(([, options]) => options.filter.video_id.$in)).toEqual(selected);
+      for (const [, options] of query.mock.calls) expect(options.filter.user_id).toBe("owner");
+    } finally {
+      query.mockReset();
     }
   });
   it("rejects invalid dimensions and limits before querying, and skips empty selections", async () => {

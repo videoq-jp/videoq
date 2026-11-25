@@ -67,7 +67,8 @@ class ModelStreamHandler extends BaseCallbackHandler {
 
   constructor(private readonly writer: ((chunk: unknown) => void) | undefined) { super(); }
 
-  handleChatModelStreamEvent(modelEvent: ChatModelStreamEvent) {
+  handleChatModelStreamEvent(modelEvent: ChatModelStreamEvent, _runId: string, _parentRunId?: string, tags?: string[]) {
+    if (tags?.includes("videoq:conversation-summary")) return;
     this.writer?.({ modelEvent });
   }
 }
@@ -166,8 +167,8 @@ async function prepareAgent(
           } satisfies RagGenerationProgress);
           return handler({
             ...request,
-            // Summarization replaces graph messages; always restore trusted instructions.
-            messages: [new SystemMessage(systemPrompt), ...request.messages.filter(message => message.type !== "system")],
+            // Preserve OptChat navigation/context and prepend trusted application instructions.
+            messages: [new SystemMessage(systemPrompt), ...request.messages],
             modelSettings: {
               ...request.modelSettings,
               ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
@@ -183,7 +184,7 @@ async function prepareAgent(
     agent,
     input: {
       messages: params.scope.memory?.checkpointId === null ? [new RemoveMessage({ id: REMOVE_ALL_MESSAGES }), ...inputMessages] : inputMessages,
-      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined } : {}),
+      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined, optchat: undefined } : {}),
     },
     result: () => {
       if (!completedResult) throw new Error("Missing completed agent answer");

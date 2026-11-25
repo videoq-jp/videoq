@@ -58,6 +58,7 @@ describe.each([false, true].flatMap(streaming =>
           content: JSON.stringify({ observations: [{ frame_index: 1, observation: "OBSERVATION_ONLY: the red curve rises." }] }),
         } }] });
       }
+      if (!request.response_format) return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier video evidence." } }] }, false);
       const turn = agentTurns++;
       if (turn < 3) {
         const name = (navigation ? ["overview_video", "skim_video", navigation === "focus" ? "focus_clip" : "inspect_clip"] : ["search_scenes", "read_video_window", "inspect_clip"])[turn];

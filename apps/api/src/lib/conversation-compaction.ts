@@ -1,42 +1,25 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import type { LLMResult } from '@langchain/core/outputs';
-import { createMiddleware, summarizationMiddleware } from 'langchain';
-import { LlmProviderError } from './openai';
+import { createLangChainCompressor } from '@videoq-jp/langchainjs-optchat';
+import { createOptChatMiddleware } from '@videoq-jp/langchainjs-optchat/middleware';
 import { createChatModel } from './chat-model';
 import type { Bindings } from '../types/bindings';
 import type { AnswerCostLedger } from './answer-cost-ledger';
 
-export const SUMMARY_TRIGGER_TOKENS = 6_000;
-
-class SummaryResultObserver extends BaseCallbackHandler {
-  name = 'conversationSummaryResult';
+class SummaryProgressObserver extends BaseCallbackHandler {
+  name = 'conversationSummaryProgress';
   awaitHandlers = true;
-  error: Error | undefined;
   constructor(private readonly onStart?: () => void) { super(); }
   handleChatModelStart() { this.onStart?.(); }
-  handleLLMError(error: Error) { this.error = error; }
-  handleLLMEnd(result: LLMResult) {
-    if (!result.generations[0]?.[0]?.text.trim()) this.error = new Error('Empty conversation summary.');
-  }
 }
 
+/** Keep originals and the incremental OptChat tree in the existing LangGraph checkpoint. */
 export function conversationCompaction(env: Bindings, timeoutMs: number, costLedger?: AnswerCostLedger, onSummaryStart?: () => void) {
-  const observer = new SummaryResultObserver(onSummaryStart);
-  const middleware = summarizationMiddleware({
-    model: createChatModel(env, { timeoutMs, costLedger, purpose: 'conversation_summary', callbacks: [observer] }),
-    // No trigger means summarization never runs. Other options use library defaults.
-    trigger: { tokens: SUMMARY_TRIGGER_TOKENS },
-  });
-  // Compose hooks through the public middleware API rather than replacing the
-  // built-in hook (which also owns the middleware's state/context definitions).
-  const validateSummary = createMiddleware({
-    name: 'validateConversationSummary',
-    beforeModel(_state, runtime) {
-      runtime.signal?.throwIfAborted();
-      // Observe failures via the public model callback API. Do not depend on
-      // the built-in middleware's error-string wording or summary metadata.
-      if (observer.error) throw new LlmProviderError('Conversation summarization failed.');
-    },
-  });
-  return [middleware, validateSummary] as const;
+  return [createOptChatMiddleware({
+    compressor: createLangChainCompressor(createChatModel(env, {
+      timeoutMs, costLedger, purpose: 'conversation_summary',
+      callbacks: [new SummaryProgressObserver(onSummaryStart)],
+    })),
+    // Bound concurrent summary requests on Workers; retain upstream byte budgets.
+    memoryOptions: { jobs: 2 },
+  })] as const;
 }

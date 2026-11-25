@@ -90,7 +90,7 @@ type Turn =
   | { content: string; sourceIds?: number[] }
   | { status: number };
 
-const jsonTurn = (turn: Exclude<Turn, { status: number }>) =>
+const jsonTurn = (turn: Exclude<Turn, { status: number }>, id = `call_${"toolCall" in turn ? turn.toolCall.name : "answer"}`) =>
   "toolCall" in turn
     ? {
         choices: [
@@ -101,7 +101,7 @@ const jsonTurn = (turn: Exclude<Turn, { status: number }>) =>
               content: turn.preamble ?? null,
               tool_calls: [
                 {
-                  id: `call_${turn.toolCall.name}`,
+                  id,
                   type: "function",
                   function: {
                     name: turn.toolCall.name,
@@ -129,22 +129,22 @@ function stubOpenAi(turns: Turn[], duplicateFinish = false) {
       });
     }
     const body = JSON.parse(requestBodyText(init.body));
-    bodies.push(body);
     if (!body.response_format) {
       return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: {
         role: "assistant", content: "Earlier course-info calls had invalid arguments; answer with the available information.",
       } }] }, false);
     }
+    bodies.push(body);
     const turn = turns[Math.min(index++, turns.length - 1)];
     if ("status" in turn) {
       return new Response("upstream failed", { status: turn.status });
     }
     if (body.stream && duplicateFinish) {
-      const frames = chatCompletionFrames(jsonTurn(turn), `chatcmpl-${index}`);
+      const frames = chatCompletionFrames(jsonTurn(turn, `call_${index}`), `chatcmpl-${index}`);
       frames.splice(-2, 0, frames.at(-3)!);
       return new Response(frames.join(""), { headers: { "content-type": "text/event-stream" } });
     }
-    return chatCompletionResponse(jsonTurn(turn), body.stream, `chatcmpl-${index}`);
+    return chatCompletionResponse(jsonTurn(turn, `call_${index}`), body.stream, `chatcmpl-${index}`);
   });
   return bodies;
 }
@@ -178,8 +178,7 @@ describe.each([false, true])("Q&A conversation contract (stream=%s)", (stream) =
       await runRag(ENV, params);
     }
     expect(bodies).toHaveLength(1);
-    expect(bodies[0].messages).toEqual([
-      expect.objectContaining({ role: "developer" }),
+    expect((bodies[0].messages as { role: string }[]).filter(message => message.role !== "developer")).toEqual([
       expect.objectContaining({ role: "user", content: "内積とは？" }),
       expect.objectContaining({ role: "assistant", content: "The dot product is…" }),
       expect.objectContaining({ role: "user", content: "具体例を教えて" }),
@@ -201,7 +200,7 @@ describe.each([false, true])("検索障害（stream=%s）", (stream) => {
       started.resolve();
       return pending.promise;
     };
-    const upstream = vi.fn(async () => chatCompletionResponse({
+    const upstream = vi.fn(async (_url: unknown, _init: RequestInit) => chatCompletionResponse({
       choices: [{ finish_reason: "tool_calls", message: {
         role: "assistant", content: null,
         tool_calls: ["fail", "pending"].map((query) => ({
@@ -218,7 +217,7 @@ describe.each([false, true])("検索障害（stream=%s）", (stream) => {
       };
       await expect(execute()).rejects.toThrow(LlmProviderError);
       expect(searchSignal?.aborted).toBe(true);
-      expect(upstream).toHaveBeenCalledOnce();
+      expect(upstream.mock.calls.filter(([, init]) => JSON.parse(requestBodyText(init.body)).response_format)).toHaveLength(1);
       expect(closed).toBe(1);
     } finally {
       pending.resolve([]);
@@ -382,7 +381,7 @@ describe.each([false, true])("プライベート OpenAI 互換 API（stream=%s�
       expect(result.answer.sources).toHaveLength(1);
     }
 
-    expect(fetchStub).toHaveBeenCalledTimes(2);
+    expect(fetchStub.mock.calls.filter(([, init]) => JSON.parse(requestBodyText(init!.body)).response_format)).toHaveLength(2);
     for (const [url, init] of fetchStub.mock.calls) {
       expect(url).toBe("http://127.0.0.1:11434/v1/chat/completions");
       expect(new Headers(init?.headers).get("authorization")).toBe("Bearer local-inference");
@@ -419,7 +418,7 @@ describe("RAG エージェント（非ストリーミング）", () => {
 
     // 1 通目に search_scenes がツールとして渡っている。
     const tools = bodies[0].tools as { function: { name: string; parameters: unknown } }[];
-    expect(tools.map((t) => t.function.name)).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip"]);
+    expect(tools.map((t) => t.function.name)).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "optchat_zoom", "optchat_date"]);
     // 所有者スコープは非公開。動画IDは講座内でのみ指定できる。
     expect(JSON.stringify(tools[0].function.parameters)).not.toContain("user_id");
     expect(JSON.stringify(tools[0].function.parameters)).toContain("video_ids");
@@ -472,7 +471,7 @@ describe("RAG エージェント（非ストリーミング）", () => {
     expect(searchCalls).toEqual([]);
     expect(closed).toBe(0);
     expect(result.answer.sources).toEqual([]);
-    expect(bodies[0].tools).toBeUndefined();
+    expect((bodies[0].tools as { function: { name: string } }[]).map(tool => tool.function.name)).toEqual(["optchat_zoom", "optchat_date"]);
   });
 });
 
@@ -698,7 +697,7 @@ describe("RAG エージェント（ストリーミング）", () => {
     const searching = chunks.filter((c) => typeof c === "object" && c !== null && "searching" in c);
     expect(searching).toEqual([{ searching: "検索語", searchId: 1 }]);
     expect(chunks).toContainEqual({ searchCompleted: { id: 1, query: "検索語", count: 1 } });
-    expect(chunks.filter(chunk => "generationProgress" in chunk)).toEqual([
+    expect(chunks.filter(chunk => "generationProgress" in chunk && chunk.generationProgress.phase !== "summarizing")).toEqual([
       { generationProgress: { type: "generation_progress", phase: "thinking" } },
       { generationProgress: { type: "generation_progress", phase: "reviewing" } },
     ]);
