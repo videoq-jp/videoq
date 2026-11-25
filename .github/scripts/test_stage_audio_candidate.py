@@ -12,6 +12,13 @@ SPEC.loader.exec_module(MODULE)
 
 
 class CandidateOverlayTest(unittest.TestCase):
+    def test_workflow_host_pin_does_not_change_native_wheel_target(self):
+        workflow = (MODULE.ROOT / '.github/workflows/patched-audio-candidate.yml').read_text()
+        self.assertIn('python-version-file: .python-version', workflow)
+        self.assertNotIn("python-version: '3.12'", workflow)
+        self.stage()
+        self.assertTrue((self.output / 'av/__init__.py').is_file())
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
