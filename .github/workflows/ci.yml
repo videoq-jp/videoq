@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [changes, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
+    needs: [changes, delivery-regression, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
     steps:
       - name: Require every selected CI job to pass
         env:
@@ -107,7 +107,7 @@ jobs:
           node <<'NODE'
           const jobs = JSON.parse(process.env.JOB_RESULTS);
           const failed = Object.entries(jobs).filter(([name, job]) =>
-            (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
+            (['changes', 'delivery-regression', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
               (name === 'lab-gitops' && jobs.changes.outputs.lab === 'true') ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
               (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
@@ -121,6 +121,11 @@ jobs:
             process.exit(1);
           }
           NODE
+
+  # Always required: message producers/storage policy can change outside narrow
+  # path lists, and a skipped compatibility gate must never authorize rollout.
+  delivery-regression:
+    uses: ./.github/workflows/delivery-regression.yml
 
   lab-gitops:
     needs: changes
@@ -268,6 +273,7 @@ jobs:
               - '.github/scripts/background-workflow-admission.cjs'
               - '.github/scripts/migration-backend.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
+              - '.github/scripts/embedding-release-preflight.cjs'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-package-manager/**'
               - '.github/operations-tools/**'
