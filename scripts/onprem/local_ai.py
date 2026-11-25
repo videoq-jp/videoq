@@ -68,6 +68,52 @@ def embedding_contract(objects):
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
 
 
+def validate_served_model(pod, provisioner, revision, filename):
+    server=pod['containers'][0]
+    expected='/models/'+revision+('/'+filename if filename else '')
+    def model_mount(container):
+        if any(m.get('mountPath','').startswith('/models/') for m in container.get('volumeMounts',[])):
+            raise ValueError('Nested mount overrides provisioned model path')
+        mounts=[m for m in container.get('volumeMounts',[]) if m.get('mountPath')=='/models']
+        if len(mounts)!=1 or any(m.get('subPath') or m.get('subPathExpr') for m in mounts):
+            raise ValueError('Ambiguous model volume mount')
+        return mounts[0]
+    source,target=model_mount(provisioner),model_mount(server)
+    if source['name']!=target['name'] or target.get('readOnly') is not True:
+        raise ValueError('Server model mount differs from provisioned volume')
+    if len([v for v in pod.get('volumes',[]) if v['name']==source['name']])!=1:
+        raise ValueError('Missing or ambiguous provisioned volume')
+    if provisioner.get('command')!=['python','provision.py'] or provisioner.get('args'):
+        raise ValueError('Unverified model provisioner command')
+    args=server.get('args',[])
+    if not all(isinstance(arg,str) for arg in args):raise ValueError('Malformed server arguments')
+    llama=bool(filename)
+    if llama:
+        if server.get('command'):raise ValueError('Unexpected GGUF server command')
+        remaining=args
+        allowed={'--model','--alias','--host','--port','--ctx-size','--threads','--parallel','--gpu-layers','--pooling'}
+        switches={'--offline','--embedding'}
+    else:
+        if server.get('command')!=['vllm','serve'] or not args or args[0]!=expected:
+            raise ValueError('Server snapshot target differs from provisioned revision')
+        remaining=args[1:]
+        allowed={'--served-model-name','--host','--port','--max-model-len','--gpu-memory-utilization','--max-num-seqs','--dtype','--cpu-offload-gb','--generation-config','--runner','--limit-mm-per-prompt','--attention-backend','--pooler-config','--convert','--hf-overrides'}
+        switches={'--enforce-eager'}
+    parsed={}; index=0
+    while index<len(remaining):
+        flag=remaining[index]
+        if flag in parsed or flag not in allowed|switches:
+            raise ValueError('Duplicate or unsupported model/runtime selector: '+flag)
+        if flag in switches:parsed[flag]=True;index+=1;continue
+        if index+1>=len(remaining) or remaining[index+1].startswith('-'):
+            raise ValueError('Missing model/runtime argument')
+        parsed[flag]=remaining[index+1];index+=2
+    if llama and (parsed.get('--model')!=expected or parsed.get('--pooling')!='last' or not parsed.get('--embedding') or not parsed.get('--offline')):
+        raise ValueError('GGUF model target or embedding contract differs')
+    if not llama and parsed.get('--runner')!='pooling':raise ValueError('Expected embedding pooling runner')
+    return hashlib.sha256(json.dumps({'command':server.get('command',[]),'args':args,'env':server.get('env',[])},sort_keys=True).encode()).hexdigest()
+
+
 def embedding_runtime_identity(objects, profile):
     deployments=[o for o in objects if o['kind']=='Deployment' and o['metadata']['name'].endswith('-embedding')]
     if len(deployments)!=1:
@@ -93,12 +139,16 @@ def embedding_runtime_identity(objects, profile):
         raise ValueError('Unsupported or mismatched embedding model/profile/dimension contract')
     if repo=='second-state/gte-Qwen2-1.5B-instruct-GGUF' and not env['MODEL_FILE']:
         raise ValueError('GGUF embedding requires actual served model file')
+    if env['MODEL_FILE'] and (env['MODEL_FILE'].startswith('/') or '..' in Path(env['MODEL_FILE']).parts):
+        raise ValueError('Model file escapes provisioned revision')
     identity=repo+'@'+revision
     if env.get('MODEL_FILE'):
         checksum=env.get('MODEL_SHA256','')
         if not re.fullmatch(r'[0-9a-f]{64}',checksum):
             raise ValueError('GGUF embedding identity requires actual model checksum')
         identity+=':sha256:'+checksum
+    runtime_hash=validate_served_model(pod,provisioners[0],revision,env['MODEL_FILE'])
+    identity+=':runtime-sha256:'+runtime_hash
     args=pod['containers'][0].get('args',[])
     if repo=='Qwen/Qwen3-Embedding-4B':
         if args.count('--hf-overrides')!=1:
