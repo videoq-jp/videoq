@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -56,14 +57,63 @@ def verify_inputs(directory, signature=True):
 
 
 def extract_regular(archive_path, destination):
-    destination = Path(destination).resolve()
-    destination.mkdir(parents=True, exist_ok=False)
+    """Copy only validated regular members using pinned directory descriptors.
+
+    Never delegate archive paths, links, ownership or modes to tarfile's write
+    APIs. O_EXCL/O_NOFOLLOW prevent replacement and symlink following even if a
+    path is injected after validation. Archive executable bits are needed by
+    configure; privileged/write-for-others bits and ownership are never restored.
+    """
+    destination = Path(destination).absolute()
+    destination.mkdir(parents=True, mode=0o700, exist_ok=False)
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     with tarfile.open(archive_path) as archive:
+        members = []
+        names = {}
         for member in archive.getmembers():
-            target = (destination / member.name).resolve()
-            if not target.is_relative_to(destination) or not (member.isdir() or member.isfile()):
-                raise ValueError('Archive contains an escaping path or nonregular member')
-        archive.extractall(destination)  # all paths/types checked before any writes
+            name = member.name[:-1] if member.isdir() and member.name.endswith('/') else member.name
+            parts = name.split('/')
+            if (not name or '\\' in name or '\0' in name or
+                    any(part in ('', '.', '..') for part in parts) or
+                    member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE) or
+                    member.sparse is not None or name in names):
+                raise ValueError('Archive contains an unsafe path, duplicate or nonregular member')
+            names[name] = member.isdir()
+            members.append((member, parts))
+        for _, parts in members:
+            if any(names.get('/'.join(parts[:i])) is False for i in range(1, len(parts))):
+                raise ValueError('Archive file conflicts with a parent directory')
+        root_fd = os.open(destination, directory_flags)
+        try:
+            for member, parts in members:
+                parent_fd = os.dup(root_fd)
+                try:
+                    for component in parts[:-1]:
+                        try:
+                            os.mkdir(component, mode=0o700, dir_fd=parent_fd)
+                        except FileExistsError:
+                            pass
+                        child_fd = os.open(component, directory_flags, dir_fd=parent_fd)
+                        os.close(parent_fd)
+                        parent_fd = child_fd
+                    if member.isdir():
+                        try:
+                            os.mkdir(parts[-1], mode=0o700, dir_fd=parent_fd)
+                        except FileExistsError:
+                            # Validate an existing implicit parent without following links.
+                            existing_fd = os.open(parts[-1], directory_flags, dir_fd=parent_fd)
+                            os.close(existing_fd)
+                    else:
+                        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                        fd = os.open(parts[-1], flags, 0o600, dir_fd=parent_fd)
+                        with os.fdopen(fd, 'wb') as output, archive.extractfile(member) as source:
+                            shutil.copyfileobj(source, output, length=1024 * 1024)
+                            # Owner-only permissions; preserve only whether owner may execute.
+                            os.fchmod(output.fileno(), 0o700 if member.mode & 0o100 else 0o600)
+                finally:
+                    os.close(parent_fd)
+        finally:
+            os.close(root_fd)
 
 
 def prepare(directory):

@@ -3,6 +3,7 @@ import ctypes
 import hashlib
 import importlib.util
 import io
+import os
 from pathlib import Path
 import tarfile
 import tempfile
@@ -114,6 +115,78 @@ class RecipeTests(unittest.TestCase):
                     recipe.extract_regular(archive, root / 'output')
                 self.assertFalse((root / 'output/good').exists())
                 self.assertFalse((root / 'escape').exists())
+
+    def test_hostile_member_types_names_duplicates_and_parent_conflicts(self):
+        cases = [('/absolute', tarfile.REGTYPE), ('a/../escape', tarfile.REGTYPE),
+                 ('a//alias', tarfile.REGTYPE), ('a/./alias', tarfile.REGTYPE),
+                 ('a\\escape', tarfile.REGTYPE), ('hard', tarfile.LNKTYPE),
+                 ('fifo', tarfile.FIFOTYPE), ('device', tarfile.CHRTYPE),
+                 ('good', tarfile.REGTYPE), ('good/child', tarfile.REGTYPE)]
+        for name, kind in cases:
+            with self.subTest(name=name, kind=kind), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                archive = root / 'hostile.tar'
+                with tarfile.open(archive, 'w') as output:
+                    good = tarfile.TarInfo('good')
+                    good.size = 4
+                    output.addfile(good, io.BytesIO(b'good'))
+                    bad = tarfile.TarInfo(name)
+                    bad.type = kind
+                    bad.linkname = '/outside'
+                    output.addfile(bad)
+                with self.assertRaises(ValueError):
+                    recipe.extract_regular(archive, root / 'output')
+                self.assertEqual(list((root / 'output').iterdir()), [])
+
+    def test_symlink_injection_after_validation_does_not_write_outside(self):
+        for injected in ('source', 'parent'):
+            with self.subTest(injected=injected), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                outside = root / 'outside'
+                outside.mkdir()
+                marker = outside / 'source'
+                marker.write_bytes(b'preserve')
+                archive = root / 'valid.tar'
+                with tarfile.open(archive, 'w') as output:
+                    info = tarfile.TarInfo('parent/source')
+                    info.size = 4
+                    output.addfile(info, io.BytesIO(b'evil'))
+                original_open = os.open
+                fired = []
+
+                def inject(name, flags, *args, **kwargs):
+                    if name == injected and not fired:
+                        fired.append(name)
+                        parent = kwargs['dir_fd']
+                        if name == 'parent':
+                            os.rmdir(name, dir_fd=parent)
+                            target = outside
+                        else:
+                            target = marker
+                        os.symlink(str(target), name, dir_fd=parent)
+                    return original_open(name, flags, *args, **kwargs)
+
+                with patch.object(recipe.os, 'open', side_effect=inject):
+                    with self.assertRaises(OSError):
+                        recipe.extract_regular(archive, root / 'output')
+                self.assertEqual(fired, [injected])
+                self.assertEqual(marker.read_bytes(), b'preserve')
+                self.assertEqual(list(outside.iterdir()), [marker])
+
+    def test_archive_privileged_modes_are_not_restored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / 'mode.tar'
+            with tarfile.open(archive, 'w') as output:
+                for name, mode in (('configure', 0o6777), ('source', 0o666)):
+                    info = tarfile.TarInfo(name)
+                    info.mode = mode
+                    info.size = 4
+                    output.addfile(info, io.BytesIO(b'data'))
+            recipe.extract_regular(archive, root / 'output')
+            self.assertEqual((root / 'output').stat().st_mode & 0o7777, 0o700)
+            self.assertEqual((root / 'output/configure').stat().st_mode & 0o7777, 0o700)
+            self.assertEqual((root / 'output/source').stat().st_mode & 0o7777, 0o600)
 
     def test_regular_archive_and_existing_output(self):
         with tempfile.TemporaryDirectory() as directory:
