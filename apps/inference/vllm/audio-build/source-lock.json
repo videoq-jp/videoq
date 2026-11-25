@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-not-built-or-approved",
+  "builder": "quay.io/pypa/manylinux_2_28_x86_64@sha256:55a36963bc0504cdf004011001c1072306402f0b8b83be5a5eba7068f93eec53",
+  "python": "/opt/python/cp312-cp312/bin/python",
+  "platform": "linux/amd64",
+  "sourceDateEpoch": 1795133016,
+  "ffmpegRelease": "9.1",
+  "ffmpegCommit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+  "ffmpegSigningFingerprint": "FCF986EA15E6E293A5644F10B4322F04D67658D8",
+  "sources": [
+    {
+      "filename": "ffmpeg-9.1.tar.xz",
+      "url": "https://ffmpeg.org/releases/ffmpeg-9.1.tar.xz",
+      "sha256": "1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433",
+      "size": 12557532
+    },
+    {
+      "filename": "ffmpeg-9.1.tar.xz.asc",
+      "url": "https://ffmpeg.org/releases/ffmpeg-9.1.tar.xz.asc",
+      "sha256": "8c0bf6017492434e11766c6cc841b30e4a6b31e896eaf813de0acd05757fd50e",
+      "size": 520
+    },
+    {
+      "filename": "ffmpeg-devel.asc",
+      "url": "https://ffmpeg.org/ffmpeg-devel.asc",
+      "sha256": "397b3becedcd5a98769967ff1ff8501ddc89f8368b8f766e4701377d7dbaabe5",
+      "size": 1709
+    },
+    {
+      "filename": "av-19.0.2.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/source/a/av/av-19.0.2.tar.gz",
+      "sha256": "bebbc52598886480f4d861c575dc2b020785d6c04e1308680ddcc545e1b94c66",
+      "size": 4277157
+    },
+    {
+      "filename": "extra_overread.mp3",
+      "url": "https://fate-suite.ffmpeg.org/mpegaudio/extra_overread.mp3",
+      "sha256": "68355987ed1b08ab0633414b04744ff0fc7fd06ec510c8c3ef9a661880f8fe3f",
+      "size": 239970
+    },
+    {
+      "filename": "luckynight.flac",
+      "url": "https://samples.ffmpeg.org/A-codecs/lossless/luckynight.flac",
+      "sha256": "920a6baa4f19ada7c8ed59383b22fa452612b555c9636c4f125ab798bebe2566",
+      "size": 6663512
+    }
+  ],
+  "buildTools": [
+    {
+      "name": "pip",
+      "version": "26.3",
+      "filename": "pip-26.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/07/25/ee8c38ae72d66b844ce8eb9711ba905dba21ca1a8a0c960057c41cd23337/pip-26.3-py3-none-any.whl",
+      "sha256": "f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13",
+      "size": 1950951
+    },
+    {
+      "name": "setuptools",
+      "version": "84.2.1",
+      "filename": "setuptools-84.2.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/55/6dc6d6bb953bdfc52519a0059592c52b6e3b8ad51cf8256dffceb55b0610/setuptools-84.2.1-py3-none-any.whl",
+      "sha256": "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2",
+      "size": 876263
+    },
+    {
+      "name": "wheel",
+      "version": "0.48.0",
+      "filename": "wheel-0.48.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl",
+      "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+      "size": 33320
+    },
+    {
+      "name": "Cython",
+      "version": "3.3.2",
+      "filename": "cython-3.3.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/27/c1/b51acd1bb1f807c6a8b7ac3b2f1cd9b65bdea8a54daa4423e4bd4060c66d/cython-3.3.2-py3-none-any.whl",
+      "sha256": "93ebae3f7d1cd0ce5e49cdc8df2e83c54596fe2f1971767738efb78f43e4032b",
+      "size": 1350368
+    },
+    {
+      "name": "auditwheel",
+      "version": "6.8.2",
+      "filename": "auditwheel-6.8.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/78/33/475398f5eb069aa20910ec8486bdc62a87deadd8229494cbc80a1ddbf740/auditwheel-6.8.2-py3-none-any.whl",
+      "sha256": "05fd2dd4b743217cd5f66066adc95b03a079424b1f0a878ad1e40fe2cdea4704",
+      "size": 65324
+    },
+    {
+      "name": "packaging",
+      "version": "26.4",
+      "filename": "packaging-26.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ba/7b/5504f91c9c2733f693d7759e50ede5d27119d4da7e5836c46d3b5ff81d56/packaging-26.4-py3-none-any.whl",
+      "sha256": "81383611a09c1bc0b08b76e0fd5829d7c6824c65b27a6aee339da133f4233ea2",
+      "size": 140049
+    },
+    {
+      "name": "pyelftools",
+      "version": "0.33",
+      "filename": "pyelftools-0.33-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/46/2a/f9697576603dae937727827505a6126a066affb227034e77e6f9068910da/pyelftools-0.33-py3-none-any.whl",
+      "sha256": "f215ad5f47d3f1373a21496a6c9e0707c622840d0622f23ff7ce08678b020036",
+      "size": 201178
+    },
+    {
+      "name": "numpy",
+      "version": "2.2.6",
+      "filename": "numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/8c/3d/1e1db36cfd41f895d266b103df00ca5b3cbe965184df824dec5c08c6b803/numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "fd83c01228a688733f1ded5201c678f0c53ecc1006ffbc404db9f7a899ac6249",
+      "size": 16527618
+    }
+  ],
+  "fixes": [
+    {
+      "cve": "CVE-2026-135722",
+      "commit": "0b1c279b62af82e422e3fc21ba6cc2fc3154dc76",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/0b1c279b62af82e422e3fc21ba6cc2fc3154dc76",
+      "releaseFiles": [
+        {
+          "path": "libavformat/wavenc.c",
+          "sha256": "eac00ea17eb61ca637432c7e76c6dcd453dedbf0f76b2fceb42e56259244482b",
+          "fixAddedLines": [
+            "if (par->ch_layout.nb_channels <= 0 ||",
+            "par->ch_layout.nb_channels > INT_MAX / (wav->peak_bps * wav->peak_ppv))"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135723",
+      "commit": "301a611370a0ba81f4a71d3b7ccd064623606c1b",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/301a611370a0ba81f4a71d3b7ccd064623606c1b",
+      "releaseFiles": [
+        {
+          "path": "libavformat/imf_cpl.c",
+          "sha256": "ef1b00199c286a57b5556ed1bd0ee167b5d92c39f6b16ea3550d17672c4a0acd",
+          "fixAddedLines": [
+            "if (!marker->scope_utf8)"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135725",
+      "commit": "041098a1a3bee481a1c8e905257ba04dad0c60a1",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/041098a1a3bee481a1c8e905257ba04dad0c60a1",
+      "releaseFiles": [
+        {
+          "path": "libavformat/rtmppkt.c",
+          "sha256": "89c18b829de6d9394d66ce3e9d5662973353606b497f2a3751442997d90533b7",
+          "fixAddedLines": [
+            "uint8_t pkt_hdr[18], *p = pkt_hdr;"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135734",
+      "commit": "fa10042f748f20fad0cc0ee8fdcebe96b76603af",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/fa10042f748f20fad0cc0ee8fdcebe96b76603af",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_deflicker.c",
+          "sha256": "4ab735c2a4ac1b2a593a0dfaffdcc4cf7ecac5c0a24cf4f266b1c7603981b340",
+          "fixAddedLines": [
+            "s->histogram = av_calloc(1 << (s->depth > 8 ? 16 : 8), sizeof(*s->histogram));"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135736",
+      "commit": "24ad423d908cd595c983b6c503ddb0ee94901ba2",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/24ad423d908cd595c983b6c503ddb0ee94901ba2",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_deband.c",
+          "sha256": "b4a1adf98a5c68abfd551941b1fdd32b31c7bae6147c717f97e7f5307e955d0f",
+          "fixAddedLines": [
+            "DebandContext *s = ctx->priv;",
+            "if (s->coupling && (s->shift[0] || s->shift[1])) {",
+            "av_log(ctx, AV_LOG_ERROR, \"coupling needs a pixel format without chroma subsampling\\n\");",
+            "s->coupling = 0;",
+            "return AVERROR(EINVAL);",
+            "}"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135737",
+      "commit": "1e1e424bd8d7a50a8213da1e95a92f524e9b801d",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/1e1e424bd8d7a50a8213da1e95a92f524e9b801d",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_tmidequalizer.c",
+          "sha256": "cb916d710b87d8656478a6861084e65de1454bc524748ffbbfff1f91083e607e",
+          "fixAddedLines": [
+            "int w, int h, float *change, float *orig,",
+            "size_t hsize);",
+            "int w, int h, float *change, float *orig,",
+            "size_t hsize)",
+            "int w, int h, float *change, float *orig,",
+            "size_t hsize)",
+            "dst[x] = lrintf(change[FFMIN(src[x], hsize - 1)]);",
+            "s->change[p], s->histogram[p][idx],",
+            "s->histogram_size);",
+            "histogram[FFMIN(src[x], hsize - 1)] += 1;"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135738",
+      "commit": "04955e8b148fa3e7ab022cbb9f5e35c49165ae21",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/04955e8b148fa3e7ab022cbb9f5e35c49165ae21",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_signalstats.c",
+          "sha256": "465a118a6ee574f9da2c508a0dcf01967da546af4d7b0b238f16e9da537a6620",
+          "fixAddedLines": [
+            "s->histy = av_calloc(1 << (s->depth > 8 ? 16 : 8), sizeof(*s->histy));",
+            "s->histu = av_calloc(1 << (s->depth > 8 ? 16 : 8), sizeof(*s->histu));",
+            "s->histv = av_calloc(1 << (s->depth > 8 ? 16 : 8), sizeof(*s->histv));",
+            "s->histsat = av_calloc(1 << (s->depth > 8 ? 16 : 8), sizeof(*s->histsat));",
+            "p_sat[i] = (int)hypotf(yuvu - mid, yuvv - mid); // int or round?"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135739",
+      "commit": "dd1b4e4ba5c3280638fed06a88bf25690564170b",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/dd1b4e4ba5c3280638fed06a88bf25690564170b",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_scale.c",
+          "sha256": "d2ea7d756d4c19f2c4b0111fb741057ff4ddfe3f24fafb398c8d71c62d9717d7",
+          "fixAddedLines": [
+            "int ret, is_inited = 0, old_uses_ref = scale->uses_ref;",
+            "if (is_inited && scale->uses_ref && ctx->nb_inputs == 1) {",
+            "av_log(ctx, AV_LOG_ERROR, \"Expressions with ref variables need the ref input, a command cannot add it.\\n\");",
+            "ret = AVERROR(EINVAL);",
+            "goto revert;",
+            "}",
+            "scale->uses_ref = old_uses_ref;"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135740",
+      "commit": "df1ddf75db9a1ff36a35019511e17f795cf20c55",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/df1ddf75db9a1ff36a35019511e17f795cf20c55",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/vf_readeia608.c",
+          "sha256": "f3b059c736c7d3f260f07893c307de2d40bccd67a7fbe19cef1a7b8617064642",
+          "fixAddedLines": [
+            "scan->histogram[FFMIN(line[i].input, s->max)]++;"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135742",
+      "commit": "78afb1d6e99ba2d3264f053ae4c0e4487a9c824c",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/78afb1d6e99ba2d3264f053ae4c0e4487a9c824c",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/f_zmq.c",
+          "sha256": "dd29ae7c56c0f2dc06d9f8c2707f9a5285ded927473532d8a35bd51a69a270f2",
+          "fixAddedLines": [
+            "static int recv_msg(AVFilterContext *ctx, char **buf)",
+            "*buf = av_strndup(zmq_msg_data(&msg), zmq_msg_size(&msg));",
+            "if (!*buf)",
+            "if (recv_msg(ctx, &recv_buf) < 0)"
+          ]
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2026-135743",
+      "commit": "3dd257f99b5cdc1bf38e1cadff1e34ec559c7b7c",
+      "url": "https://github.com/FFmpeg/FFmpeg/commit/3dd257f99b5cdc1bf38e1cadff1e34ec559c7b7c",
+      "releaseFiles": [
+        {
+          "path": "libavfilter/af_dynaudnorm.c",
+          "sha256": "742d2b5d392ce2f8cbe3d3e3534144d10c8a0804a1b25614c368051190cf7c0e",
+          "fixAddedLines": [
+            "if (!cqueue_empty(q) && new_size > q->size) {",
+            "const int side = (new_size - q->size) / 2;",
+            "q->nb_elements += side;",
+            "} else if (!cqueue_empty(q)) {"
+          ]
+        }
+      ]
+    }
+  ],
+  "servingSources": {
+    "vllm/multimodal/audio.py": "5a3f5c492e5ec6f9c213d0c2898b83573e39179a8cb8b6c9b920347e55ebf476",
+    "vllm/multimodal/media/audio.py": "cd88790d50e7feac9b94b89721cbf58e16dcf569020e4b08fa91da0efd6474e6",
+    "vllm/entrypoints/speech_to_text/base/serving.py": "ea060ce1e3612ea056e1d6a3ef7bbd6291632290f10d48760520e9df22eb9299",
+    "vllm/entrypoints/speech_to_text/transcription/protocol.py": "354579ac9a05b28760f3c5401c367994bf9e84daf9ca833aa383f178efdcbe70",
+    "vllm/entrypoints/speech_to_text/transcription/api_router.py": "a9da965953b4dc1e4e9f40b27c89b2683db0f300a748fbabf84bb278dfe6ec0f",
+    "vllm/entrypoints/speech_to_text/base/utils.py": "ab18a6bdf91d92bd87b86f9df90c8b81ed660b831416db41f3d8c2e80e2096e9"
+  }
+}
