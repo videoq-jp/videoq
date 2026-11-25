@@ -47,6 +47,14 @@ class RenderedIdentity(unittest.TestCase):
                     if overlay!='vllm-nvidia.yaml':continue
                     args=pod['containers'][0]['args'];args[args.index('--hf-overrides')+1]='{"matryoshka_dimensions":[768]}'
                 with self.assertRaises(ValueError,msg=mutation):embedding_runtime_identity(changed,profile)
+            operational=copy.deepcopy(objects)
+            server=next(row for row in operational if row['kind']=='Deployment' and row['metadata']['name'].endswith('-embedding'))['spec']['template']['spec']['containers'][0]
+            server['args'][server['args'].index('--host')+1]='127.0.0.1'
+            server['args'][server['args'].index('--port')+1]='9000'
+            server['env'].append({'name':'API_KEY','value':'different-credential'})
+            self.assertEqual(identity['embeddingRevision'],embedding_runtime_identity(operational,profile)['embeddingRevision'])
+            server['env'].append({'name':'UNKNOWN_VECTOR_TRANSFORM','value':'changed'})
+            with self.assertRaises(ValueError):embedding_runtime_identity(operational,profile)
             for override in [['--model','/models/unreviewed.gguf'],['-m','/models/unreviewed.gguf'],['--model=/models/unreviewed.gguf'],['/models/unreviewed'],['--pooling','mean']]:
                 if overlay=='llamacpp-cpu.yaml' or override==['/models/unreviewed']:
                     invalid_raw=subprocess.check_output([helm,'template','inference',str(root/'charts/videoq-inference'),'-f',str(root/'charts/videoq-inference/examples'/overlay),'--set-json','servers.embedding.extraArgs='+json.dumps(override)],text=True)
