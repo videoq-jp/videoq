@@ -112,6 +112,11 @@ vectors, negative controls for hash/rejection/completed-replay corruption,
 (7 existing environment-dependent skips). An exploratory local baseline failed
 after 132.898s (all three builds failed, including BuildKit's
 `metadata_v2.db: read-only file system`); it is not a valid timing comparison.
-The Docker daemon subsequently became unavailable. Successful repeated builds,
-cost/failure comparison and a successful automated browser run remain required
-before closing #1678/#1682; no successful result or speedup is claimed here.
+The Docker daemon subsequently became unavailable. The isolated hosted
+[delivery job](https://github.com/videoq-jp/videoq/actions/runs/45532474239/job/138931090671)
+then passed the full compatibility matrix, negative controls and all 15 browser
+checks, including server no-body assertions and 5,242,917 assembled multipart
+bytes with matching hash. The [receipt](delivery-ci-2026-11-25.json) distinguishes
+PR head `88cf47de` from tested merge source `1620d1a2` and records checksums of the
+unaltered anonymized reports. Successful repeated builds and cost/failure
+comparison remain required for #1678; no speedup is claimed yet.
