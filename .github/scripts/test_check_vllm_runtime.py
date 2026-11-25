@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 SPEC = importlib.util.spec_from_file_location("vllm_runtime_probe", Path(__file__).with_name("check-vllm-runtime.py"))
 PROBE = importlib.util.module_from_spec(SPEC)
@@ -41,17 +41,53 @@ class SourceIdentityTests(unittest.TestCase):
 
     def test_loaded_library_mappings_reject_an_alternate_copy(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             maps = root / "maps"
             good = root / "av.libs/libavcodec-reviewed.so.63"
+            good.parent.mkdir()
+            good.write_bytes(b"reviewed native fixture")
+            expected = {"av.libs/" + good.name: hashlib.sha256(good.read_bytes()).hexdigest()}
             maps.write_text(f"1000-2000 r-xp 0 00:00 0 {good}\n")
-            self.assertEqual(PROBE.loaded_ffmpeg_libraries(root, maps), [str(good)])
+            with patch.dict(PROBE.REVIEWED_PYAV_MEMBERS, expected, clear=True):
+                self.assertEqual(PROBE.loaded_ffmpeg_libraries(root, maps), [str(good)])
             maps.write_text("1000-2000 r-xp 0 00:00 0 /base/torchcodec/libavcodec.so.63\n")
             with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
                 PROBE.loaded_ffmpeg_libraries(root, maps)
             maps.write_text("1000-2000 r-xp 0 00:00 0 /lib/libc.so.6\n")
             with self.assertRaisesRegex(ValueError, "No actual FFmpeg"):
                 PROBE.loaded_ffmpeg_libraries(root, maps)
+
+    def test_mapped_members_require_existing_regular_exact_reviewed_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            libs = root / "av.libs"
+            libs.mkdir()
+            good = libs / "libavcodec-reviewed.so.63"
+            good.write_bytes(b"reviewed fixture")
+            expected = {"av.libs/" + good.name: hashlib.sha256(good.read_bytes()).hexdigest()}
+            maps = root / "maps"
+            unknown = libs / "libavcodec-unreviewed.so.999"
+            unknown.write_bytes(good.read_bytes())
+            alias = libs / "libavcodec-alias.so.63"
+            alias.symlink_to(good)
+            folder = libs / "libavcodec-directory.so"
+            folder.mkdir()
+            cases = [str(unknown), str(libs / "libavcodec-missing.so"), str(good) + " (deleted)",
+                     str(alias), str(folder), str(libs) + "/../av.libs/" + good.name]
+            with patch.dict(PROBE.REVIEWED_PYAV_MEMBERS, expected, clear=True):
+                for value in cases:
+                    with self.subTest(value=value):
+                        maps.write_text(f"1000-2000 r-xp 0 00:00 0 {value}\n")
+                        with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
+                            PROBE.loaded_ffmpeg_libraries(root, maps)
+                maps.write_text(f"1000-2000 r-xp 0 00:00 0 {good}\n")
+                good.write_bytes(b"changed hash")
+                with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
+                    PROBE.loaded_ffmpeg_libraries(root, maps)
+                good.unlink()
+                good.symlink_to(unknown)
+                with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
+                    PROBE.loaded_ffmpeg_libraries(root, maps)
 
     def test_pins_include_native_extensions_and_reviewed_source(self):
         for name in ("audio/resampler", "filter/graph", "filter/context", "container/core"):

@@ -157,7 +157,8 @@ class AudioBoundary:
 
 def loaded_ffmpeg_libraries(audio_root, maps_path="/proc/self/maps"):
     """Detect an alternate loaded FFmpeg copy in the offline Linux native job."""
-    approved = (Path(audio_root) / "av.libs").resolve()
+    root = Path(audio_root).absolute()
+    approved = root / "av.libs"
     paths = set()
     for line in Path(maps_path).read_text().splitlines():
         fields = line.split(maxsplit=5)
@@ -166,9 +167,20 @@ def loaded_ffmpeg_libraries(audio_root, maps_path="/proc/self/maps"):
         path = Path(fields[5])
         if path.name.startswith(("libavcodec", "libavformat", "libavfilter", "libavutil",
                                  "libavdevice", "libswresample", "libswscale")):
-            if not path.resolve().is_relative_to(approved):
-                raise ValueError(f"Unreviewed loaded FFmpeg library: {path}")
-            paths.add(str(path))
+            try:
+                resolved = path.resolve(strict=True)
+                relative = resolved.relative_to(root).as_posix()
+                # A maps entry must name the exact existing reviewed member,
+                # not a deleted mapping, symlink alias or same-directory copy.
+                if (str(resolved) != fields[5] or not resolved.is_relative_to(approved)
+                        or not resolved.is_file() or relative not in REVIEWED_PYAV_MEMBERS
+                        or any(part.is_symlink() for part in (path, *path.parents))):
+                    raise ValueError("Mapped path is not an exact regular reviewed member")
+                if hashlib.sha256(resolved.read_bytes()).hexdigest() != REVIEWED_PYAV_MEMBERS[relative]:
+                    raise ValueError("Mapped member hash drift")
+            except (OSError, ValueError) as error:
+                raise ValueError(f"Unreviewed loaded FFmpeg library: {path}") from error
+            paths.add(str(resolved))
     if not paths:
         raise ValueError("No actual FFmpeg library mapping observed")
     return sorted(paths)
@@ -232,7 +244,7 @@ def inspect_serving_audio_boundary(audio_root):
                                    options={"filter": "azmq"}, mode="w")
         media.load_bytes(raw)
         for malicious in (b"", b"<CompositionPlaylist><MarkerList/></CompositionPlaylist>",
-                          b"rtmp://127.0.0.1/rejected", b"azmq=bind_address=tcp\://*:5555"):
+                          b"rtmp://127.0.0.1/rejected", rb"azmq=bind_address=tcp\://*:5555"):
             try:
                 SpeechToTextBaseServing._decode_and_chunk_speech(server, malicious)
             except (ValueError, av.error.FFmpegError):
