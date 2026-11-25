@@ -37,7 +37,7 @@ it('automatically generates multiple skills without purpose input or confirmatio
   fireEvent.click(screen.getByRole('checkbox', { name: 'skills.global' }));
   fireEvent.click(screen.getByRole('button', { name: 'skills.copy' })); await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
   const command = writeText.mock.calls[0][0] as string;
-  expect(command).toBe(`npx --yes ${window.location.origin}/api/skills/${skillFixtureId}.tgz --agent claude --global`);
+  expect(command).toBe(`npx --yes --allow-remote=all ${window.location.origin}/api/skills/${skillFixtureId}.tgz --agent claude --global`);
   expect(command).not.toMatch(/mktemp|curl|\$\(|;|&&/); expect(command).not.toMatch(/Bearer|vq_|API_KEY=/);
 });
 

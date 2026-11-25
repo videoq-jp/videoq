@@ -275,7 +275,7 @@ Choose Codex, Claude Code, or both, copy the command, run it in your project ter
 The copied command downloads a small dependency-free npm tarball from your own VideoQ deployment. It binds the service origin and skill-set ID, so neither needs a separate flag. No npm registry publication is required, and the project’s dependencies are unchanged:
 
 ```bash
-npx --yes https://your-domain.example.com/api/skills/YOUR-SKILL-UUID.tgz
+npx --yes --allow-remote=all https://your-domain.example.com/api/skills/YOUR-SKILL-UUID.tgz
 ```
 
 The default installs into both Codex and Claude Code. Add `--agent codex` or `--agent claude` to select one, or `--global` for all projects. The tarball contains only installer code and the target ID; course content still requires the owner's API key and is downloaded through `get_skill`. The API obtains the canonical installer from the configured `FRONTEND_URL` static asset, with no redirects and a 64 KB size limit. Earlier direct `install.mjs --origin … --skill …` invocations remain supported.

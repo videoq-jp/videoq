@@ -26,7 +26,7 @@ export const GenerateAndInstall: Story = {
     await userEvent.click(canvas.getByRole('button', { name: i18n.t('skills.open') }));
     await userEvent.click(canvas.getByRole('button', { name: i18n.t('skills.generate') }));
     const command = await canvas.findByLabelText<HTMLTextAreaElement>(i18n.t('skills.command'));
-    await expect(command.value).toContain('npx --yes');
+    await expect(command.value).toContain('npx --yes --allow-remote=all');
     await expect(canvas.getByText(i18n.t('skills.limits'))).not.toBeVisible();
     await userEvent.click(canvas.getByText(i18n.t('skills.memberCount', { count: 2 })));
     await expect(canvas.getByText('SQLの実行計画を診断する')).toBeVisible();

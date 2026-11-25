@@ -76,10 +76,11 @@ describe.skipIf(!url)('private PostgreSQL migration archives',()=>{
    await client.query(statements.map(sql=>sql.replaceAll('"public".','')).join('\n'));
    await client.query("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,used_upload_bytes) VALUES('user','export-user','export@example.test',false,0,0,0,0); INSERT INTO session(id,user_id,token,expires_at) VALUES('session','user','private-session-canary','2099-01-01'); INSERT INTO account(id,account_id,user_id,provider_id,password) VALUES('account','user','user','credential','private-password-canary')");
   }finally{client.release();}
+  const tableCount=Object.keys(generateDrizzleJson(sourceSchema).tables).length;
   const result=await promisify(execFile)(process.execPath,['--import','tsx','scripts/d1-export.ts','--output',output,'--schema',schema,'--fetch-rows','2'],{env:{...process.env,DATABASE_URL:url}});
-  expect(result.stdout+result.stderr).not.toMatch(/private-.*canary|postgresql:\/\//);expect(JSON.parse(result.stdout)).toMatchObject({event:'d1_archive_written',tables:58,rows:'3',execution_complete:false});
-  const verified=await promisify(execFile)(process.execPath,['--import','tsx','scripts/d1-verify-archive.ts','--input',output]);expect(JSON.parse(verified.stdout)).toMatchObject({verified:true,tables:58,rows:'3',execution_complete:false});expect(verified.stdout+verified.stderr).not.toMatch(/private-.*canary/);
-  const archive=await records();expect(archive.filter(row=>row.kind==='table_start')).toHaveLength(58);
+  expect(result.stdout+result.stderr).not.toMatch(/private-.*canary|postgresql:\/\//);expect(JSON.parse(result.stdout)).toMatchObject({event:'d1_archive_written',tables:tableCount,rows:'3',execution_complete:false});
+  const verified=await promisify(execFile)(process.execPath,['--import','tsx','scripts/d1-verify-archive.ts','--input',output]);expect(JSON.parse(verified.stdout)).toMatchObject({verified:true,tables:tableCount,rows:'3',execution_complete:false});expect(verified.stdout+verified.stderr).not.toMatch(/private-.*canary/);
+  const archive=await records();expect(archive.filter(row=>row.kind==='table_start')).toHaveLength(tableCount);
   expect(archive.some(row=>row.kind==='row'&&JSON.stringify(row.values).includes('private-session-canary'))).toBe(true);
   expect(archive.some(row=>row.kind==='row'&&JSON.stringify(row.values).includes('private-password-canary'))).toBe(true);
   await writeFile(output,(await readFile(output,'utf8')).replace('private-session-canary','damaged-session-canary'));

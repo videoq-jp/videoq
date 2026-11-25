@@ -54,7 +54,7 @@ it('runs the short npx URL command and installs an authenticated multi-skill set
   origin = `http://127.0.0.1:${address.port}`;
   try {
     await writeFile(join(directory, 'package.json'), '{"name":"fixture-project","private":true}');
-    const result = await execute('npx', ['--yes', `${origin}/api/skills/${skillFixtureId}.tgz`, '--agent', 'codex'], { cwd: directory,
+    const result = await execute('npx', ['--yes', '--allow-remote=all', `${origin}/api/skills/${skillFixtureId}.tgz`, '--agent', 'codex'], { cwd: directory,
       env: { ...process.env, VIDEOQ_API_KEY: 'fixture-key', npm_config_cache: join(directory, 'npm-cache'), npm_config_audit: 'false', npm_config_fund: 'false', npm_config_update_notifier: 'false' }, timeout: 30_000 });
     expect(result.stdout).toContain('Installed published skills (2)'); expect(result.stdout).not.toContain('fixture-key');
     for (const skill of skills) expect(await readFile(join(directory, '.agents/skills', skill.name, 'SKILL.md'), 'utf8')).toBe(skill.files['SKILL.md']);
