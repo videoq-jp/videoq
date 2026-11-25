@@ -1,0 +1,122 @@
+name: Paired OpenSSL build experiment
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  pair:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'delivery-paired-benchmark'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair: 1
+            first: baseline
+            second: candidate
+          - pair: 2
+            first: candidate
+            second: baseline
+          - pair: 3
+            first: baseline
+            second: candidate
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      ONPREM_SMOKE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 .github/scripts/configure-onprem-ci-dns.py
+      - run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: ./.github/actions/setup-package-manager
+        with:
+          manager: npm
+      - run: npm ci --ignore-scripts --workspace @videoq/api
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.39.1
+          install: true
+      - name: Require pinned Buildx and a local daemon
+        run: |
+          docker buildx version
+          test "$(docker buildx version | awk '{print $2}')" = v0.39.1
+      - name: Create separate disposable variant databases
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE baseline;'
+          psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE candidate;'
+      - name: Measure first fresh builder, cold and warm
+        env:
+          VARIANT: ${{ matrix.first }}
+        run: |
+          builder="paired-${{ matrix.pair }}-$VARIANT"
+          docker buildx create --name "$builder" --driver docker-container --driver-opt image=moby/buildkit@sha256:7583a0667093d941826bcd1d2878d6a360dfd08a82c93e6d6a6f6cce78801e12 --driver-opt cpu-period=100000 --driver-opt cpu-quota=400000 --driver-opt memory=8g --driver-opt memory-swap=8g --bootstrap
+          python3 .github/scripts/build-onprem-measured.py --builder "$builder" --required-builder-cpus 4 --required-builder-memory 8589934592 --dockerfile-variant "$VARIANT" --parallelism 1 --repetitions 2 --output "artifacts/paired/$VARIANT/build"
+          python3 .github/scripts/check-openssl-cache.py "artifacts/paired/$VARIANT/build" "$VARIANT" > "artifacts/paired/$VARIANT/compiler-cache.json"
+      - name: Check exact first measured images
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.first }}
+          QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.first }}
+          ONPREM_SMOKE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.first }}
+        uses: ./.github/actions/check-measured-application-images
+        with:
+          evidence-directory: artifacts/paired/${{ matrix.first }}/checks
+          build-report: artifacts/paired/${{ matrix.first }}/build/result.json
+      - name: Run real invalidation controls on candidate warm builder
+        if: matrix.pair == 1 && matrix.first == 'candidate'
+        run: python3 .github/scripts/openssl-cache-invalidation.py --builder paired-1-candidate --output artifacts/paired/invalidation
+      - name: Dispose only the owned first builder
+        if: ${{ !cancelled() }}
+        env:
+          VARIANT: ${{ matrix.first }}
+        run: docker buildx rm "paired-${{ matrix.pair }}-$VARIANT"
+      - name: Measure second fresh builder, cold and warm
+        env:
+          VARIANT: ${{ matrix.second }}
+        run: |
+          builder="paired-${{ matrix.pair }}-$VARIANT"
+          docker buildx create --name "$builder" --driver docker-container --driver-opt image=moby/buildkit@sha256:7583a0667093d941826bcd1d2878d6a360dfd08a82c93e6d6a6f6cce78801e12 --driver-opt cpu-period=100000 --driver-opt cpu-quota=400000 --driver-opt memory=8g --driver-opt memory-swap=8g --bootstrap
+          python3 .github/scripts/build-onprem-measured.py --builder "$builder" --required-builder-cpus 4 --required-builder-memory 8589934592 --dockerfile-variant "$VARIANT" --parallelism 1 --repetitions 2 --output "artifacts/paired/$VARIANT/build"
+          python3 .github/scripts/check-openssl-cache.py "artifacts/paired/$VARIANT/build" "$VARIANT" > "artifacts/paired/$VARIANT/compiler-cache.json"
+      - name: Check exact second measured images
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.second }}
+          QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.second }}
+          ONPREM_SMOKE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/${{ matrix.second }}
+        uses: ./.github/actions/check-measured-application-images
+        with:
+          evidence-directory: artifacts/paired/${{ matrix.second }}/checks
+          build-report: artifacts/paired/${{ matrix.second }}/build/result.json
+      - name: Run real invalidation controls on candidate warm builder
+        if: matrix.pair == 1 && matrix.second == 'candidate'
+        run: python3 .github/scripts/openssl-cache-invalidation.py --builder paired-1-candidate --output artifacts/paired/invalidation
+      - name: Dispose only the owned second builder
+        if: ${{ !cancelled() }}
+        env:
+          VARIANT: ${{ matrix.second }}
+        run: docker buildx rm "paired-${{ matrix.pair }}-$VARIANT"
+      - name: Verify same-runner paired controls
+        run: python3 .github/scripts/summarize-paired-builds.py artifacts/paired artifacts/paired/comparison.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: paired-build-${{ matrix.pair }}-${{ github.sha }}
+          path: artifacts/paired/
+          retention-days: 30
+          if-no-files-found: error
