@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {createHash} = require('node:crypto');
-const {assess, verifyWorkload, nativeMasks} = require('./check-vllm-applicability.cjs');
+const {assess, nativeMasks} = require('./check-vllm-applicability.cjs');
 const hash = text => createHash('sha256').update(text).digest('hex');
 const image = 'vllm/vllm-openai@sha256:' + 'a'.repeat(64);
 const now = new Date('2026-11-12T00:00:00Z');
@@ -164,21 +164,20 @@ test('mask schema rejects omission, relocation, write access and unreviewed nati
   }
 });
 
-test('all actual supported Helm profiles and both native workflows retain identical four masks', () => {
-  const {execFileSync} = require('node:child_process');
+test('required actual-render gate has locked dependency and Helm prerequisites before native execution', () => {
   const {readFileSync} = require('node:fs');
-  const {parseAllDocuments} = require('yaml');
-  const policy = JSON.parse(readFileSync('apps/inference/vllm/security/runtime-assessment.json'));
-  for (const profile of ['gpt-oss-embeddinggemma', 'vllm-nvidia', 'whisper-nvidia', 'rtx4090', 'rtx4090-gpt-oss-embeddinggemma']) {
-    for (const extra of [[], ['--set', 'downloadModels=false', '--set', 'networkPolicy.denyEgress=true']]) {
-      const text = execFileSync(process.env.HELM_BIN || 'helm', ['template', 'assessment', 'charts/videoq-inference',
-        '-f', 'charts/videoq-inference/examples/' + profile + '.yaml', ...extra], {encoding: 'utf8'});
-      const docs = parseAllDocuments(text).map(doc => {assert.equal(doc.errors.length, 0); return doc.toJSON();}).filter(Boolean);
-      verifyWorkload(docs, policy);
-    }
-  }
-  for (const workflow of ['upstream-vllm.yml', 'patched-audio-candidate.yml']) {
-    const text = readFileSync('.github/workflows/' + workflow, 'utf8');
+  const workflow = readFileSync('.github/workflows/upstream-vllm.yml', 'utf8');
+  const install = workflow.indexOf('npm ci --ignore-scripts --workspace @videoq/api');
+  const helm = workflow.indexOf('name: Install the reviewed Helm renderer');
+  const gate = workflow.indexOf('name: Validate all supported native profiles and mandatory masks');
+  const runtime = workflow.indexOf('name: Verify upstream audio imports');
+  assert.ok(install >= 0 && helm > install && gate > helm && runtime > gate);
+  const gateBlock = workflow.slice(gate, workflow.indexOf('      - ', gate));
+  assert.ok(gateBlock.includes('HELM_BIN: ${{ runner.temp }}/helm/helm'));
+  assert.ok(gateBlock.includes('node .github/scripts/check-vllm-render.cjs'));
+  assert.ok(!gateBlock.includes('continue-on-error') && !gateBlock.includes('if:'));
+  for (const name of ['upstream-vllm.yml', 'patched-audio-candidate.yml']) {
+    const text = readFileSync('.github/workflows/' + name, 'utf8');
     for (const directory of nativeMasks) assert.ok(text.includes('--tmpfs ' + directory + ':ro,size=1m'));
   }
 });
