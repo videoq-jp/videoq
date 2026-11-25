@@ -50,6 +50,45 @@ def verify_cache(output, builder=None):
 CONTROLLED_BUILDKIT_IMAGE = 'moby/buildkit@sha256:7583a0667093d941826bcd1d2878d6a360dfd08a82c93e6d6a6f6cce78801e12'
 
 
+def cpu_set(value):
+    result = set()
+    for part in value.strip().split(','):
+        if not part:
+            continue
+        if not re.fullmatch(r'\d+(?:-\d+)?', part):
+            raise ValueError('Invalid effective CPU affinity')
+        bounds = [int(item) for item in part.split('-')]
+        first, last = bounds[0], bounds[-1]
+        if last < first or last > 65535:
+            raise ValueError('Invalid effective CPU range')
+        result.update(range(first, last + 1))
+    return result
+
+
+def host_cpu_envelope(cgroup_root=Path('/sys/fs/cgroup'), membership=Path('/proc/self/cgroup')):
+    if not hasattr(os, 'sched_getaffinity'):
+        raise ValueError('Controlled protocol requires Linux effective affinity')
+    allowed = os.sched_getaffinity(0)
+    entries = [line[3:] for line in membership.read_text().splitlines() if line.startswith('0::')]
+    if len(entries) != 1:
+        raise ValueError('Controlled protocol requires cgroup v2 membership')
+    root = cgroup_root.resolve()
+    current = (root / entries[0].lstrip('/')).resolve()
+    if not current.is_relative_to(root):
+        raise ValueError('Unresolved host cgroup membership')
+    quotas = []
+    while True:
+        quota, period = (current / 'cpu.max').read_text().split()
+        if int(period) <= 0:
+            raise ValueError('Invalid inherited CPU quota period')
+        if quota != 'max':
+            quotas.append(int(quota) / int(period))
+        if current == root:
+            break
+        current = current.parent
+    return allowed, min(quotas) if quotas else None
+
+
 def inspect_builder_limits(builder, cpus, memory_bytes):
     """Bind the inspected container to the selected single local BuildKit node."""
     rows = subprocess.check_output(['docker', 'buildx', 'ls', '--format=json'], text=True)
@@ -81,12 +120,31 @@ def inspect_builder_limits(builder, cpus, memory_bytes):
         raise ValueError('BuildKit CPU limit is missing or differs from the protocol')
     if config.get('Memory') != memory_bytes or config.get('MemorySwap') != memory_bytes:
         raise ValueError('BuildKit memory/swap limits differ from the protocol')
+    host_allowed, host_quota = host_cpu_envelope()
+    status = subprocess.check_output(['docker', 'exec', container, 'cat', '/proc/self/status'], text=True)
+    matches = re.findall(r'^Cpus_allowed_list:\s*(.+)$', status, re.MULTILINE)
+    if len(matches) != 1:
+        raise ValueError('Missing effective container CPU affinity')
+    container_allowed = cpu_set(matches[0])
+    declared = config.get('CpusetCpus', '')
+    if (len(host_allowed) < cpus or len(container_allowed) < cpus or
+            not container_allowed.issubset(host_allowed) or
+            (declared and len(cpu_set(declared)) < cpus) or
+            (host_quota is not None and host_quota < cpus)):
+        raise ValueError('Effective or inherited CPU affinity/quota is below the protocol')
+    cgroup = subprocess.check_output(['docker', 'exec', container, 'cat',
+        '/sys/fs/cgroup/cpu.max', '/sys/fs/cgroup/memory.max',
+        '/sys/fs/cgroup/memory.swap.max'], text=True).splitlines()
+    if len(cgroup) != 3 or cgroup[0].split() != [str(quota), str(period)] or cgroup[1:] != [str(memory_bytes), '0']:
+        raise ValueError('Actual BuildKit cgroup limits differ from the protocol')
     return {'builder': builder, 'driver': selected[0]['Driver'], 'node': node['Name'],
             'endpoint': endpoint, 'container': container, 'containerId': info['Id'],
             'buildkitImage': info['Config']['Image'], 'buildkitVersion': node.get('Version'),
             'cpus': cpus, 'memoryBytes': memory_bytes, 'cpuPeriod': period, 'cpuQuota': quota,
             'memorySwapBytes': config['MemorySwap'], 'cpusetCpus': config.get('CpusetCpus', ''),
-            'verifiedBeforeBuild': True}
+            'hostAllowedCpus': sorted(host_allowed), 'containerAllowedCpus': sorted(container_allowed),
+            'hostInheritedQuotaCpus': host_quota, 'actualCgroupLimits': cgroup,
+            'effectiveCpus': cpus, 'verifiedBeforeBuild': True}
 
 
 def resources():
