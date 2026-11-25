@@ -36,10 +36,15 @@ LABEL org.opencontainers.image.source="https://github.com/videoq-jp/videoq" \
 # records. No source, development headers, build tools, models or apt are copied.
 # wolfi-base is an empty metapackage requiring busybox/apk-tools; remove it
 # too, while explicitly retaining baselayout/OS metadata and runtime libraries.
-# Keep a transient cleanup executable in this layer for any compatibility links.
-RUN cp "$(command -v busybox)" /tmp/runtime-cleanup \
+# Preserve BusyBox's required basename and run the glibc post-commit hook
+# explicitly after shell removal; restore the owned hook unchanged afterwards.
+RUN mkdir /tmp/runtime-cleanup \
+    && cp "$(command -v busybox)" /tmp/runtime-cleanup/busybox \
+    && mv /etc/apk/commit_hooks.d/ldconfig-commit.sh /tmp/runtime-cleanup/ldconfig-commit.sh \
     && apk del --purge wolfi-base busybox apk-tools \
-    && /tmp/runtime-cleanup rm -f /usr/bin/apk /sbin/apk /bin/sh /bin/ash /bin/bash /bin/busybox /usr/bin/busybox /tmp/runtime-cleanup
+    && /tmp/runtime-cleanup/busybox sh /tmp/runtime-cleanup/ldconfig-commit.sh post-commit \
+    && /tmp/runtime-cleanup/busybox mv /tmp/runtime-cleanup/ldconfig-commit.sh /etc/apk/commit_hooks.d/ldconfig-commit.sh \
+    && /tmp/runtime-cleanup/busybox rm -rf /usr/bin/apk /sbin/apk /bin/sh /bin/ash /bin/bash /bin/busybox /usr/bin/busybox /tmp/runtime-cleanup
 WORKDIR /app
 USER 10001:10001
 ENTRYPOINT ["/app/build/bin/whisper-server"]
