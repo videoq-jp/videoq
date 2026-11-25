@@ -1,0 +1,86 @@
+name: Whisper Runtime Candidate
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - apps/inference/whispercpp/**
+      - .github/workflows/whisper-runtime-candidate.yml
+      - .github/scripts/whisper-candidate-artifact.py
+      - .github/actions/scan-image/**
+permissions:
+  contents: read
+concurrency:
+  group: whisper-runtime-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    name: Native runtime ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            upstream: ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            upstream: ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure this disposable runner
+        run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build one native image with loaded and immutable OCI exports
+        env:
+          ARCH: ${{ matrix.arch }}
+          UPSTREAM_IMAGE: ${{ matrix.upstream }}
+        run: |
+          mkdir -p artifact
+          docker buildx build --provenance=false --platform "linux/$ARCH" \
+            --build-arg "UPSTREAM_IMAGE=$UPSTREAM_IMAGE" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --output type=docker \
+            --output type=oci,dest=artifact/image,tar=false,compression=gzip,force-compression=true \
+            -f apps/inference/whispercpp/Dockerfile -t videoq-whispercpp:candidate .
+          python3 .github/scripts/whisper-candidate-artifact.py artifact/image videoq-whispercpp:candidate "$ARCH" > artifact/identity.json
+          printf '%s\n' "$UPSTREAM_IMAGE" > artifact/upstream.txt
+          printf '%s\n' "$GITHUB_SHA" > artifact/source.txt
+      - name: Verify native ELF provenance and isolated non-root server health
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          python3 apps/inference/whispercpp/verify_runtime.py \
+            --candidate videoq-whispercpp:candidate --architecture "$ARCH" \
+            --receipt artifact/runtime-receipt.json
+          python3 .github/scripts/whisper-candidate-artifact.py artifact/image videoq-whispercpp:candidate "$ARCH" > artifact/identity.json
+      - name: Scan the full exact candidate including unfixed vulnerabilities
+        id: scan
+        uses: ./.github/actions/scan-image
+        with:
+          source: oci-dir:artifact/image
+          output: artifact/security.json
+          platform: linux/${{ matrix.arch }}
+      - name: Retain findings even when the strict gate fails
+        if: ${{ !cancelled() && (steps.scan.outcome == 'success' || steps.scan.outcome == 'failure') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: whisper-runtime-evidence-${{ matrix.arch }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifact/*.json*
+            artifact/*.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Export only the verified artifact for a future isolated publisher
+        run: syft convert artifact/security.json.syft.json -o cyclonedx-json=artifact/sbom.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: whisper-runtime-image-${{ matrix.arch }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifact
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
