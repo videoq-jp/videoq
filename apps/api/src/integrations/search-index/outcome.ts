@@ -14,11 +14,11 @@ export class SceneIndexOutcomeError extends SafeJobError {
 
 function failureDetails(outcome: FailureOutcome): { message: string; code: ConstructorParameters<typeof SafeJobError>[0]; retryable: boolean } {
   switch (outcome.status) {
-    case 'pending_delivery': return { message: 'Scene index delivery is pending or source changed; retry', code: 'INDEX_DELIVERY_PENDING', retryable: true };
+    case 'pending_delivery': return { message: 'Scene index delivery is awaiting search visibility; retry', code: 'INDEX_DELIVERY_PENDING', retryable: true };
     case 'source_changed': return {
       message: {
         start: 'Scene source changed before indexing; retry', stage: 'Scene source changed during indexing; retry',
-        publish: 'Scene source changed before publication; retry', finish: 'Scene index delivery is pending or source changed; retry',
+        publish: 'Scene source changed before publication; retry', finish: 'Scene source changed before indexing completion; retry',
       }[outcome.phase], code: 'INDEX_SOURCE_CHANGED', retryable: true,
     };
     case 'not_ready': return { message: 'Video is not ready for indexing', code: 'INDEX_NOT_READY', retryable: true };

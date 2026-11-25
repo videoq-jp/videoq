@@ -5,6 +5,7 @@ import { createD1Fixture } from "./d1-fixture";
 import { createD1SceneIndexWriter, finishD1WorkerSceneIndex } from "../../src/persistence/d1/scene-index-writer";
 import { createD1SceneIndexTaskRepository } from "../../src/persistence/d1/scene-index-tasks";
 import { synchronizeD1SceneIndex } from "../../src/persistence/d1/scene-index-sync";
+import { maintainD1SceneIndex } from "../../src/persistence/d1/scene-index-maintenance";
 import { reconcileMissingSceneVectors } from "../../src/persistence/d1/scene-index-reconciliation";
 import { createD1MaintenanceRepository } from "../../src/persistence/d1/maintenance-repository";
 import { createD1SceneSearchRepository } from "../../src/persistence/d1/scene-search";
@@ -59,6 +60,63 @@ afterEach(async () => { await fixture?.dispose(); });
 const search = () => createD1SceneSearchRepository(fixture.database, index, 1536).search({ queryEmbedding: embedding, userId: "owner", videoIds: [1], limit: 20 });
 
 describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
+  it("finishes a propagated video while older bulk delivery and deletion backlogs both make progress", async () => {
+    await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
+    await publish("awaiting-propagation");
+    queryById.mockResolvedValue({ matches: [] });
+    expect(await sync(1)).toMatchObject({ pending: 1 });
+    await fixture.database.prepare("UPDATE scene_index_tasks SET available_at='2001-01-01T00:00:00.000Z'").run();
+    await fixture.database.prepare(`INSERT INTO videos(id,user_id,file,title,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id)
+      VALUES (2,'owner','','Bulk','','2020-01-01','Source','indexing','','uploaded','','')`).run();
+    const bulkSource = (await writer.readSource(2, "owner"))!;
+    expect(await writer.start({ runId: "bulk", userId: "owner", videoId: 2, sourceRevision: bulkSource.sourceRevision, dimensions: 1536, expectedScenes: 20 })).toBe(true);
+    expect(await writer.stage("bulk", "owner", Array.from({ length: 20 }, (_, i) => ({ ...scene(), id: "bulk-" + i })))).toBe(true);
+    expect(await writer.publish("bulk", "owner")).toBe(true);
+    await fixture.database.prepare("UPDATE scene_index_tasks SET available_at='2000-01-01T00:00:00.000Z' WHERE video_id=2").run();
+    await fixture.database.prepare(`WITH RECURSIVE rows(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM rows WHERE n<20)
+      INSERT INTO scene_index_tasks(id,operation,vector_id,scene_id,revision,video_id,user_id,dimensions,available_at)
+      SELECT 'delete-backlog-'||n,'delete','old-vector-'||n,'old-scene-'||n,'obsolete',1,'owner',1536,
+        '1999-01-01T00:00:00.000Z' FROM rows`).run();
+    queryById.mockImplementation(async id => ({ matches: vectors.has(id) ? [{ ...vectors.get(id)!, score: 1 }] : [] }));
+    upsert.mockClear();
+    expect(await synchronizeD1SceneIndex(fixture.database, { 1536: index }, 3, { concurrency: 3 })).toMatchObject({ claimed: 3, completed: 3, failed: 0, leaseLost: 0 });
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(deleteByIds).toHaveBeenCalledTimes(1);
+    expect(await finishD1WorkerSceneIndex(fixture.database, { videoId: 1, userId: "owner", sourceRevision, fileKey: "", dimensions: 1536 })).toBe("completed");
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE video_id=2 AND attempts=0").first("n")).toBe(19);
+  });
+
+  it("retains the active fingerprint gate when scheduled maintenance drains a bulk page", async () => {
+    await publish("legacy-maintenance");
+    const result = await maintainD1SceneIndex(fixture.database, { 1536: index }, 1536, "a".repeat(64));
+    expect(result).toMatchObject({ claimed: 1, completed: 0, failed: 1 });
+    expect(upsert).not.toHaveBeenCalled();
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE completed_at IS NOT NULL").first("n")).toBe(0);
+  });
+
+  it("drains a bulk page concurrently with unique D1 leases and awaits every provider write", async () => {
+    const count = 16;
+    expect(await writer.start({ runId: "parallel-bulk", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: count })).toBe(true);
+    expect(await writer.stage("parallel-bulk", "owner", Array.from({ length: count }, (_, i) => ({ ...scene(), id: "bulk-" + i })))).toBe(true);
+    expect(await writer.publish("parallel-bulk", "owner")).toBe(true);
+    let active = 0, maximum = 0;
+    let release!: () => void;
+    const firstPage = new Promise<void>(resolve => { release = resolve; });
+    upsertHook = async () => {
+      active++;
+      maximum = Math.max(maximum, active);
+      if (active === 2) release();
+      await firstPage;
+      active--;
+    };
+    expect(await maintainD1SceneIndex(fixture.database, { 1536: index }, 1536)).toMatchObject({ claimed: count, completed: count, failed: 0, leaseLost: 0 });
+    expect(maximum).toBeGreaterThan(1);
+    expect(maximum).toBeLessThanOrEqual(8);
+    expect(active).toBe(0);
+    expect(new Set(upsert.mock.calls.flatMap(([rows]) => rows.map(row => row.id))).size).toBe(count);
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE attempts=1 AND completed_at IS NOT NULL").first("n")).toBe(count);
+  }, 30_000);
+
   it("publishes an already-queryable staging run without a negative counter or a redundant completion job", async () => {
     await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
     expect(await writer.start({ runId: "ready-before-publish", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: 2 })).toBe(true);

@@ -21,7 +21,7 @@ export type SceneIndexTask = {
   leaseToken: string;
 };
 export interface SceneIndexTaskRepository {
-  claim(options?: { preferUpserts?: boolean }): Promise<SceneIndexTask | null>;
+  claim(options?: { prefer?: "delivery" | "readiness" | "cleanup" }): Promise<SceneIndexTask | null>;
   isDesired(taskId: string): Promise<boolean>;
   accept(task: SceneIndexTask): Promise<boolean>;
   complete(task: SceneIndexTask): Promise<boolean>;

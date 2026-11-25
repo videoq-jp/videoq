@@ -9,10 +9,12 @@ import assert from 'node:assert/strict';
 const {buildMaintenance}=createRequire(import.meta.url)('./maintenance-build.cjs');
 const require=createRequire(new URL('../deploy-tools/package.json',import.meta.url));
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),{build}=require('esbuild');
-const source='a'.repeat(40),attempts=new Map([['123',1],['124',1],['125',1]]);
+const source='a'.repeat(40),attempts=new Map([['123',1],['124',1],['125',1],['126',1],['127',1]]);
+const terminal=new Set();
+const workflows=run=>run==='125'?'maintenance-status.yml':run==='126'?'cd.yml':run==='127'?'schema-maintenance.yml':'operations.yml';
 const keys=await webcrypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
 const publicKey={...await webcrypto.subtle.exportKey('jwk',keys.publicKey),kid:'native-fixture',alg:'RS256',use:'sig'};
-async function token(run,attempt,{kind='smoke',status=false}={}){const now=Math.floor(Date.now()/1000),encode=o=>Buffer.from(JSON.stringify(o)).toString('base64url');const text=encode({alg:'RS256',typ:'JWT',kid:publicKey.kid})+'.'+encode({iss:'https://token.actions.githubusercontent.com',aud:'videoq-maintenance-prod',sub:'repo:videoq-jp@349188820/videoq@1083911938:environment:production-db-'+kind,repository:'videoq-jp/videoq',repository_id:'1083911938',repository_owner_id:'349188820',ref:'refs/heads/main',ref_type:'branch',environment:'production-db-'+kind,runner_environment:'github-hosted',event_name:'workflow_dispatch',workflow_ref:'videoq-jp/videoq/.github/workflows/'+(status?'maintenance-status.yml':kind==='migration'?'cd.yml':'operations.yml')+'@refs/heads/main',sha:source,workflow_sha:source,run_id:run,run_attempt:String(attempt),iat:now,nbf:now,exp:now+300});return text+'.'+Buffer.from(await webcrypto.subtle.sign('RSASSA-PKCS1-v1_5',keys.privateKey,Buffer.from(text))).toString('base64url');}
+async function token(run,attempt,{kind='smoke',status=false,workflow,environment='production-db-'+kind}={}){const now=Math.floor(Date.now()/1000),encode=o=>Buffer.from(JSON.stringify(o)).toString('base64url');const text=encode({alg:'RS256',typ:'JWT',kid:publicKey.kid})+'.'+encode({iss:'https://token.actions.githubusercontent.com',aud:'videoq-maintenance-prod',sub:'repo:videoq-jp@349188820/videoq@1083911938:environment:'+environment,repository:'videoq-jp/videoq',repository_id:'1083911938',repository_owner_id:'349188820',ref:'refs/heads/main',ref_type:'branch',environment,runner_environment:'github-hosted',event_name:'workflow_dispatch',workflow_ref:'videoq-jp/videoq/.github/workflows/'+(workflow??(status?'maintenance-status.yml':kind==='migration'?'cd.yml':'operations.yml'))+'@refs/heads/main',sha:source,workflow_sha:source,run_id:run,run_attempt:String(attempt),iat:now,nbf:now,exp:now+300});return text+'.'+Buffer.from(await webcrypto.subtle.sign('RSASSA-PKCS1-v1_5',keys.privateKey,Buffer.from(text))).toString('base64url');}
 const bundle=await build({entryPoints:[resolve('infra/cloudflare-maintenance/worker.mjs')],bundle:true,format:'esm',platform:'neutral',external:['cloudflare:workers'],write:false});
 const persist=await mkdtemp(join(tmpdir(),'videoq-maintenance-native-'));let mf;
 try{
@@ -23,14 +25,14 @@ try{
   if(u.origin!=='https://api.github.com')return new Response('Unexpected fixture request',{status:500});
   if(u.pathname.endsWith('/git/ref/heads/main'))return Response.json({object:{sha:source}});
   const jobRun=/\/actions\/runs\/(\d+)\/attempts\/(\d+)\/jobs$/.exec(u.pathname);
-  if(jobRun){const names=jobRun[1]==='125'?['status (migration, production-db-migration)','status (smoke, production-db-smoke)']:['production-smoke'];return Response.json({total_count:names.length,jobs:names.map(name=>({name,status:'in_progress',conclusion:null,run_id:Number(jobRun[1]),head_sha:source,completed_at:null}))});}
+  if(jobRun){const names=jobRun[1]==='125'?['status (migration, production-db-migration)','status (smoke, production-db-smoke)']:jobRun[1]==='126'?['Drizzle DB Migrate']:jobRun[1]==='127'?['admit']:['production-smoke'];return Response.json({total_count:names.length,jobs:names.map(name=>({name,status:'in_progress',conclusion:null,run_id:Number(jobRun[1]),head_sha:source,completed_at:null}))});}
   const run=/\/actions\/runs\/(\d+)$/.exec(u.pathname)?.[1];
-  if(run)return Response.json({id:Number(run),run_attempt:attempts.get(run),head_sha:source,head_branch:'main',status:'queued',path:run==='125'?'.github/workflows/maintenance-status.yml':'.github/workflows/operations.yml',repository:{id:1083911938}});
+  if(run)return Response.json({id:Number(run),run_attempt:attempts.get(run),head_sha:source,head_branch:'main',status:terminal.has(run)?'completed':'queued',conclusion:terminal.has(run)?'failure':null,path:'.github/workflows/'+workflows(run),repository:{id:1083911938},head_repository:{id:1083911938}});
   if(u.pathname.endsWith('/actions/workflows/ci.yml/runs'))return Response.json({workflow_runs:[{id:900,head_repository:{id:1083911938},head_sha:source,head_branch:'main',event:'push',status:'completed',conclusion:'success',repository:{id:1083911938}}]});
   return new Response('Unexpected fixture request',{status:500});
  }});
  mf=new Miniflare(options('false'));
- const call=async(run,attempt,body,{kind='smoke',status=false,identityStatus=status}={})=>{const r=await mf.dispatchFetch('https://maintenance.invalid/v1/'+(status?'status/':'')+kind,{method:'POST',headers:{authorization:'Bearer '+await token(run,attempt,{kind,status:identityStatus}),'x-github-token':'fixture-read-token-with-no-authority','content-type':'application/json'},body:JSON.stringify(body)});return{status:r.status,body:await r.json()};};
+ const call=async(run,attempt,body,{kind='smoke',status=false,identityStatus=status,workflow,environment}={})=>{const r=await mf.dispatchFetch('https://maintenance.invalid/v1/'+(status?'status/':'')+kind,{method:'POST',headers:{authorization:'Bearer '+await token(run,attempt,{kind,status:identityStatus,workflow,environment}),'x-github-token':'fixture-read-token-with-no-authority','content-type':'application/json'},body:JSON.stringify(body)});return{status:r.status,body:await r.json()};};
  for(const kind of ['migration','smoke'])assert.deepEqual((await call('125',1,{action:'status'},{kind,status:true})).body,{owner:null});
  assert.equal((await call('123',1,{action:'acquire',writersStopped:false})).status,503);
  assert.equal((await call('125',1,{action:'acquire',writersStopped:false},{status:true})).body.error,'INVALID_MAINTENANCE_ACTION');
@@ -54,5 +56,27 @@ try{
  assert.equal((await call('123',2,{action:'release'})).body.state,'released');
  assert.deepEqual((await call('125',1,{action:'status'},{status:true})).body,{owner:null});
  assert.equal((await call('124',1,{action:'acquire',writersStopped:false})).body.state,'running');
- console.log('Native maintenance verification passed: read-only identity while disabled, isolated status authority, RSA identity, DO eviction persistence, exclusion, immutable plans, failed-attempt recovery, stale-owner rejection and idempotent release.');
+ const second=await call('124',1,{action:'assert'});
+ await call('124',1,{action:'save',key:'operation-result',value:{version:1,kind:'smoke',run:second.body.run,source,syntheticCleanupComplete:true}});
+ assert.equal((await call('124',1,{action:'complete'})).status,200);assert.equal((await call('124',1,{action:'release'})).status,200);
+ const migration={kind:'migration'},schema={kind:'migration',workflow:'schema-maintenance.yml'};
+ assert.equal((await call('126',1,{action:'acquire',writersStopped:false},migration)).status,200);
+ assert.equal((await call('126',1,{action:'fail'},migration)).body.state,'failed');
+ const recover={action:'recover-readonly',previous:{runId:'126',source,attempt:1}};
+ assert.equal((await call('127',1,recover,schema)).body.error,'MAINTENANCE_RECOVERY_REQUIRED');
+ terminal.add('126');
+ assert.equal((await call('127',1,recover,{...schema,environment:'production-app'})).status,403);
+ assert.equal((await call('125',1,recover,{kind:'migration',status:true})).status,403);
+ const recovered=await call('127',1,recover,schema);assert.equal(recovered.status,200,JSON.stringify(recovered));assert.equal(recovered.body.writersStopped,true);
+ await mf.unsafeEvictDurableObject('maintenance','MaintenanceCoordinator',{name:'videoq-prod-db'});
+ assert.equal((await call('125',1,{action:'status'},{kind:'migration',status:true})).body.owner.githubRun,'127');
+ assert.equal((await call('127',1,recover,schema)).status,200);
+ assert.equal((await call('127',1,{action:'complete'},schema)).body.error,'MAINTENANCE_COMPLETION_PROOF_REQUIRED');
+ await call('127',1,{action:'save',key:'schema-maintenance-result',value:{version:1,run:recovered.body.run,source,schemaCompleted:true,backgroundRestored:true}},schema);
+ await call('127',1,{action:'save',key:'api-traffic-resumed',value:{version:1,run:recovered.body.run,source,applicationReadyVerified:true}},schema);
+ await call('127',1,{action:'save',key:'operation-result',value:{version:1,kind:'migration',run:recovered.body.run,source,backgroundRestored:true,apiTrafficRestored:true}},schema);
+ assert.equal((await call('127',1,{action:'complete'},schema)).body.state,'completed');
+ assert.equal((await call('127',1,{action:'release'},schema)).body.state,'released');
+ assert.deepEqual((await call('125',1,{action:'status'},{kind:'migration',status:true})).body,{owner:null});
+ console.log('Native maintenance verification passed: read-only identity while disabled, isolated status authority, RSA identity, DO eviction persistence, exclusion, immutable plans, failed-attempt recovery, stale-owner rejection, atomic read-only handoff across eviction, schema/readiness receipts and idempotent release.');
 }finally{if(mf)await mf.dispose();await rm(persist,{recursive:true,force:true});}

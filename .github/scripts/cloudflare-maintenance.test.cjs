@@ -98,3 +98,53 @@ test('a queued aggregate run requires the exact current-attempt maintenance job 
   jobs={total_count:1,jobs:[job]};run.status='completed';await assert.rejects(verifyStart(one,'x'.repeat(30),{fetcher}),/GITHUB_RUN_REQUIRED/);
  }
 });
+
+test('read-only failure recovery atomically records the handoff, preserves history and keeps one owner',async()=>{
+ const {CoordinatorStore,runKey}=await core,s=storage(),store=new CoordinatorStore(s),old=identity(),oldId=await runKey(old);
+ await store.operate(oldId,old,{action:'acquire',writersStopped:false});await store.operate(oldId,old,{action:'fail'});
+ const next={...identity('456'),workflow:'schema-maintenance.yml',environment:'production-db-migration',source:'b'.repeat(40)},id=await runKey(next),previous={runId:old.runId,source:old.source,attempt:old.attempt};
+ assert.equal((await store.recoverReadonly(next,previous)).writersStopped,true);assert.equal(store.owner(),id);assert.equal(store.row(oldId).state,'released');
+ const receipt=s.db.prepare('SELECT value FROM maintenance_plans WHERE run=? AND name=?').get(oldId,'read-only-recovery');assert.equal(JSON.parse(receipt.value).run,id);
+ assert.deepEqual(await store.recoverReadonly(next,previous),store.metadata(store.row(id)));
+ await store.operate(id,next,{action:'fail'});await assert.rejects(store.recoverReadonly(next,previous),/RECOVERY_REQUIRED/);
+ assert.equal((await store.recoverReadonly({...next,attempt:2},previous)).state,'running');assert.equal(store.owner(),id);
+ await assert.rejects(store.recoverReadonly({...next,runId:'789'},previous),/RECOVERY_REQUIRED/);
+ await assert.rejects(store.recoverReadonly({...next,attempt:2},{...previous,source:'c'.repeat(40)}),/RUN_CHANGED/);s.db.close();
+});
+test('recovery refuses running, writer-enabled, planned, mismatched and unauthorized owners',async()=>{
+ const {CoordinatorStore,runKey}=await core;
+ for(const change of ['running','writers','plan','source','attempt','workflow','environment']){
+  const s=storage(),store=new CoordinatorStore(s),old=identity(),oldId=await runKey(old);
+  await store.operate(oldId,old,{action:'acquire',writersStopped:change==='writers'});
+  if(change==='plan')await store.operate(oldId,old,{action:'save',key:'background-queues',value:{synthetic:true}});
+  if(change!=='running')await store.operate(oldId,old,{action:'fail'});
+  const next={...identity('456'),workflow:change==='workflow'?'cd.yml':'schema-maintenance.yml',environment:change==='environment'?'production-app':'production-db-migration'},previous={runId:old.runId,source:change==='source'?'b'.repeat(40):old.source,attempt:change==='attempt'?2:1};
+  await assert.rejects(store.recoverReadonly(next,previous));assert.equal(store.owner(),oldId);assert.equal(s.db.prepare('SELECT count(*) AS count FROM maintenance_runs').get().count,1);s.db.close();
+ }
+});
+test('recovery requires the original terminal GitHub attempt, repository and canonical workflow',async()=>{
+ const {verifyReadonlyFailure}=await auth,previous={runId:'123',source:'a'.repeat(40),attempt:1};
+ const run={id:123,run_attempt:1,head_sha:previous.source,head_branch:'main',status:'completed',conclusion:'failure',repository:{id:1083911938},head_repository:{id:1083911938},path:'.github/workflows/cd.yml'};
+ assert.deepEqual(await verifyReadonlyFailure(previous,'x'.repeat(30),{fetcher:async()=>Response.json(run)}),previous);
+ for(const change of [{status:'in_progress'},{conclusion:'success'},{run_attempt:2},{head_sha:'b'.repeat(40)},{head_branch:'dev'},{repository:{id:999}},{head_repository:{id:999}},{path:'.github/workflows/evil.yml'}])await assert.rejects(verifyReadonlyFailure(previous,'x'.repeat(30),{fetcher:async()=>Response.json({...run,...change})}),/RECOVERY_REQUIRED/);
+ for(const value of [{...previous,attempt:0},{...previous,runId:'../123'},{...previous,extra:true}])await assert.rejects(verifyReadonlyFailure(value,'x'.repeat(30)),/INVALID_MAINTENANCE_REQUEST/);
+});
+test('schema workflow identity is restricted to the two required protected environments',async()=>{
+ const {verifyIdentity}=await auth,signed=await signer(),options={fetcher:async()=>Response.json({keys:[signed.jwk]}),cryptoProvider:webcrypto};
+ for(const environment of ['production-db-migration','production-app']){
+  const claims={environment,sub:'repo:videoq-jp@349188820/videoq@1083911938:environment:'+environment,workflow_ref:'videoq-jp/videoq/.github/workflows/schema-maintenance.yml@refs/heads/main'};
+  assert.equal((await verifyIdentity(await signed.token(claims),'migration',options)).environment,environment);
+  await assert.rejects(verifyIdentity(await signed.token({...claims,workflow_ref:'videoq-jp/videoq/.github/workflows/operations.yml@refs/heads/main'}),'migration',options),/OIDC_REQUIRED/);
+  await assert.rejects(verifyIdentity(await signed.token(claims),'smoke',options),/OIDC_REQUIRED/);
+ }
+});
+test('schema ownership cannot complete until both schema restoration and public readiness are recorded',async()=>{
+ const {CoordinatorStore,runKey}=await core,s=storage(),store=new CoordinatorStore(s),one={...identity('555'),workflow:'schema-maintenance.yml',environment:'production-db-migration'},id=await runKey(one);
+ await store.operate(id,one,{action:'acquire',writersStopped:true});
+ await store.operate(id,one,{action:'save',key:'operation-result',value:{version:1,kind:'migration',run:id,source:one.source,backgroundRestored:true,apiTrafficRestored:true}});
+ await assert.rejects(store.operate(id,one,{action:'complete'}),/COMPLETION_PROOF/);
+ await store.operate(id,one,{action:'save',key:'schema-maintenance-result',value:{version:1,run:id,source:one.source,schemaCompleted:true,backgroundRestored:true}});
+ await assert.rejects(store.operate(id,one,{action:'complete'}),/COMPLETION_PROOF/);
+ await store.operate(id,one,{action:'save',key:'api-traffic-resumed',value:{version:1,run:id,source:one.source,applicationReadyVerified:true}});
+ assert.equal((await store.operate(id,one,{action:'complete'})).state,'completed');s.db.close();
+});

@@ -107,6 +107,17 @@ export function createD1SceneIndexTaskRepository(
     );
   return {
     async claim(options = {}) {
+      // Reserve capacity for all three kinds of work. In particular, an ANN
+      // check that was deferred after an accepted write must not rejoin the
+      // tail of a large ingestion backlog. Fall back to oldest-first when the
+      // preferred lane is empty so capacity is never stranded.
+      const preferred = options.prefer === "delivery"
+        ? and(eq(tasks.operation, "upsert"), isNull(tasks.acceptedAt))
+        : options.prefer === "readiness"
+          ? and(eq(tasks.operation, "upsert"), isNotNull(tasks.acceptedAt))
+          : options.prefer === "cleanup"
+            ? eq(tasks.operation, "delete")
+            : undefined;
       const candidate = db
         .select({ id: tasks.id })
         .from(tasks)
@@ -120,7 +131,7 @@ export function createD1SceneIndexTaskRepository(
             ),
           ),
         )
-        .orderBy(...(options.preferUpserts ? [sql`CASE WHEN ${tasks.operation}='upsert' THEN 0 ELSE 1 END`] : []), tasks.availableAt, tasks.createdAt, tasks.id)
+        .orderBy(...(preferred ? [sql`CASE WHEN ${preferred} THEN 0 ELSE 1 END`] : []), tasks.availableAt, tasks.createdAt, tasks.id)
         .limit(1);
       const row = await db
         .update(tasks)
