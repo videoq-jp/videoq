@@ -1,0 +1,56 @@
+{
+  "kind": "new-isolated-D1-only-read-replay",
+  "createdAt": "2026-11-25T04:17:57.831Z",
+  "toolSourceSha": "c1996adcf1d60533781b8578db31cb6bf70a8a1f",
+  "toolSha256": "833c99d52f223c0e32e865e60ead6d8ded5c0d4d6698267a23c532590a1051e7",
+  "account": "12daec56fdba43f677f2766ee26a5a39",
+  "name": "videoq-acceptance-20261125-c33d-reads",
+  "originalMeasurementIdentity": {
+    "sourceSha": "176ce1d1576fdb40d299d9ed7d2591b35dffd52d",
+    "configSha256": "86f9c785c2616a474a79ce90149641549793723fd9f8037750598909f0a3d296",
+    "workerSourceSha256": "4e8f7aff286a1b5505fcc86b249363e971c653842e82f9a2a237225cda905631",
+    "account": "12daec56fdba43f677f2766ee26a5a39",
+    "worker": "videoq-acceptance-20261125-c33d",
+    "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+    "index": "videoq-acceptance-20261125-c33d",
+    "bucket": "videoq-acceptance-20261125-c33d",
+    "workflow": "videoq-acceptance-20261125-c33d",
+    "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+    "model": "@cf/google/embeddinggemma-2",
+    "dimensions": 768,
+    "productionModified": false
+  },
+  "snapshotSha256": "7a2eaaee04d5843efa117ed4101c866b5640abab9aacdddc36d5b0f7412fb501",
+  "expectedSchemaSha256": "1bdf63859811503debbadd7a77b2c34a2241531219ee54a3882202348db5a250",
+  "data": {
+    "videos": 1000,
+    "scenes": 2,
+    "indexes": 174
+  },
+  "modelCalls": 0,
+  "originalHistoricalRowsUnchanged": true,
+  "cells": [],
+  "cleanup": {
+    "deletedAt": "2026-11-25T04:18:02.702Z",
+    "deleteStatus": 200,
+    "verifyStatus": 404,
+    "providerCodes": [
+      7404
+    ],
+    "absent": true
+  },
+  "limits": [
+    "New D1-only SQL replay, not recovery of historical request metadata or replacement latency measurement",
+    "Same SQL hashes/call profiles for all30 original requests; parameters reconstructed through actual auth/search against pre-resume snapshot",
+    "Snapshot has1000metadata videos and2scenes but precedes final Workflow publication and genuine-model reindex: physical scene/run IDs differ; equal original post-Workflow physical layout/read counts not asserted",
+    "Native admin authentication SQL and actual scene-search repository generate the catalog; Vectorize matches are deterministic snapshot candidates, no new semantic quality/provider claims",
+    "D1 raw REST returns positional results and rows_read/rows_written metadata; provider counts include index reads, not returned-result row counts",
+    "Read replay excludes uninstrumented provenance-validation queries just as original310query traces did; setup/schema verification reads separately excluded",
+    "Concurrency1/2 matched, but HTTP API placement/latency differs from Worker binding; no new end-to-end performance claim"
+  ],
+  "database": "73d00d53-f32b-455f-80ad-4f37bb259c87",
+  "resourceCreatedAt": "2026-11-25T04:17:58.567Z",
+  "actualSchemaSha256": "7bb84fb6f17d4eed93cdbe1e8ee7dc5530ca6f307680e1e996675723d14c3031",
+  "failed": true,
+  "failure": "Imported schema/index definition mismatch\n+ actual - expected\n\n+ '7bb84fb6f17d4eed93cdbe1e8ee7dc5530ca6f307680e1e996675723d14c3031'\n- '1bdf63859811503debbadd7a77b2c34a2241531219ee54a3882202348db5a250'\n"
+}

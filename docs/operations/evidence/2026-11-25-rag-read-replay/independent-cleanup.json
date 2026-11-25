@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-11-25T04:21:49.851Z",
+  "account": "12daec56fdba43f677f2766ee26a5a39",
+  "readOnly": true,
+  "databases": [
+    {
+      "name": "videoq-acceptance-20261125-c33d-reads",
+      "database": "73d00d53-f32b-455f-80ad-4f37bb259c87",
+      "status": 404,
+      "codes": [
+        7404
+      ],
+      "absent": true
+    },
+    {
+      "name": "videoq-acceptance-20261125-c33d-reads2",
+      "database": "81c12ff9-bf91-4924-9e7a-219bab7ad399",
+      "status": 404,
+      "codes": [
+        7404
+      ],
+      "absent": true
+    }
+  ],
+  "allAbsent": true
+}
