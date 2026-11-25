@@ -10,12 +10,16 @@ function identity(vars) {
   const model = value('EMBEDDING_MODEL') || (provider === 'workers-ai' ? '@cf/google/embeddinggemma-2' : 'text-embedding-3-small');
   if (provider === 'workers-ai' && (profile !== 'embeddinggemma2' || model !== '@cf/google/embeddinggemma-2')) throw Error('INVALID_EMBEDDING_RELEASE_CONFIG');
   if (provider === 'openai' && profile === 'embeddinggemma2' && (!value('EMBEDDING_MODEL') || !value('EMBEDDING_BASE_URL'))) throw Error('INVALID_EMBEDDING_RELEASE_CONFIG');
+  if (provider === 'openai' && (value('EMBEDDING_BASE_URL') || (value('OPENAI_BASE_URL') && value('OPENAI_BASE_URL').replace(/\/+$/, '') !== 'https://api.openai.com/v1')) && (!value('EMBEDDING_REVISION') || value('EMBEDDING_REVISION') === 'provider-managed' || !value('EMBEDDING_PREPROCESSING'))) throw Error('INVALID_EMBEDDING_RELEASE_CONFIG');
   const gemma = profile === 'embeddinggemma2', dimensions = gemma ? 768 : 1536;
   const canonical = JSON.stringify(['videoq-embedding-v1', provider, model, value('EMBEDDING_REVISION') || 'provider-managed', profile, dimensions,
     gemma ? 'task: search result | query: ' : '', gemma ? 'title: none | text: ' : '',
     value('EMBEDDING_PREPROCESSING') || 'raw-text-v1', 'float32-nonzero-v1', 'preserve-newlines']);
   return { dimensions, fingerprint: createHash('sha256').update(canonical).digest('hex') };
 }
+// A head is the authoritative writer fence. start() never reinstalls a head
+// for an existing run, and stage/publish require that exact head. Unheaded
+// staging history cannot resume; the real D1 regression proves all three gates.
 const SQL = `WITH incompatible_runs AS (
  SELECT r.id FROM scene_index_runs r JOIN video_index_heads h ON h.run_id=r.id AND h.video_id=r.video_id AND h.dimensions=r.dimensions
  WHERE r.dimensions=?1 AND (r.embedding_fingerprint IS NULL OR r.embedding_fingerprint<>?2)
@@ -60,7 +64,14 @@ async function preflight(target, env = process.env, fetcher = fetch, { resume = 
   assertCounts(data.result[0].results[0]);
   return { serving: true, ...config };
 }
-module.exports = { identity, SQL, assertCounts, preflight };
+async function preflightSettings(settings, env = process.env, fetcher = fetch) {
+  if (!Array.isArray(settings?.bindings) || new Set(settings.bindings.map(b => b.name)).size !== settings.bindings.length) throw Error('EMBEDDING_RELEASE_PREFLIGHT_UNAVAILABLE');
+  const vars = Object.fromEntries(settings.bindings.filter(b => b.type === 'plain_text').map(b => [b.name, b.text]));
+  const databases = settings.bindings.filter(b => b.type === 'd1' && b.name === 'DB');
+  if (!databases.length && vars.PERSISTENCE_BACKEND !== 'd1' && vars.DEPLOYMENT_EDITION !== 'cloud') return { serving: true, backend: 'postgres' };
+  return preflight({ vars, d1_databases: databases.map(b => ({ binding: b.name, database_id: b.id })) }, env, fetcher, { resume: true });
+}
+module.exports = { identity, SQL, assertCounts, preflight, preflightSettings };
 if (require.main === module) {
   const [file, mode, ...rest] = process.argv.slice(2);
   Promise.resolve().then(() => {

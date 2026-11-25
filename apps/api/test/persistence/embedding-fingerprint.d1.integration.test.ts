@@ -87,6 +87,16 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   // An old writer still understands the additive schema, but cannot silently
   // certify new provenance. A mixed-version producer must block strict cutover.
   const oldWriter = createD1SceneIndexWriter(db);
+  // Superseded unheaded runs are immutable history, not resumable writers.
+  // Neither a retry of start nor stage/publish can recreate their head.
+  for (const [id, declared] of [['orphan-null', null], ['orphan-mismatch', 'a'.repeat(64)]] as const) {
+    await db.prepare("INSERT INTO scene_index_runs(id,video_id,user_id,source_revision,dimensions,expected_scenes,status,embedding_fingerprint) VALUES(?,1,'owner','source',1536,0,'staging',?)").bind(id, declared).run();
+    expect(await oldWriter.start({ ...run, runId: id, expectedScenes: 0 })).toBe(false);
+    expect(await oldWriter.stage(id, 'owner', [])).toBe(false);
+    expect(await oldWriter.publish(id, 'owner')).toBe(false);
+    expect(await releaseCheck()).toEqual(expect.objectContaining({ serving: true }));
+  }
+
   expect(await oldWriter.start({ ...run, runId: 'old-binary', expectedScenes: 0 })).toBe(true);
   await expect(releaseCheck()).rejects.toThrow('REBUILD_REQUIRED');
   expect(await oldWriter.publish('old-binary', 'owner')).toBe(true);

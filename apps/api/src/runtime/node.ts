@@ -1,3 +1,4 @@
+import { assertPostgresEmbeddingAdmission } from "./embedding-admission";
 import { sql, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { runtimeRateLimits } from "../db/schema";
@@ -38,7 +39,27 @@ env.RATE_LIMIT_BACKEND = postgresRateLimitBackend(ratePool);
 const closePools = () => Promise.all([pool.end(), ratePool.end()]);
 
 const command = process.argv[2] || "serve";
-if (command === "maintenance" || command === "retention") {
+if (command === "embedding-preflight") {
+  try { console.log(JSON.stringify(await assertPostgresEmbeddingAdmission(pool, env, { resume: true }))); }
+  finally { await closePools(); }
+} else if (command === "rebuild-embedding-index") {
+  try {
+    if (env.MIGRATION_TRAFFIC_STATE !== "paused") throw new Error("Embedding rebuild requires paused HTTP admission and drained producers");
+    const { requiresEmbeddingDeploymentIdentity, resolveEmbeddingConfig } = await import("../lib/embedding-contract");
+    if (requiresEmbeddingDeploymentIdentity(resolveEmbeddingConfig(env), env) && (!env.EMBEDDING_REVISION?.trim() || !env.EMBEDDING_PREPROCESSING?.trim() || env.EMBEDDING_REVISION === "provider-managed")) {
+      throw new Error("Operator-controlled embedding rebuild requires explicit revision and preprocessing identity");
+    }
+    const { indexTranscript } = await import("../integrations/search-index/index-transcript");
+    let after = 0, rebuilt = 0;
+    while (true) {
+      const { rows } = await pool.query<{ id: number }>("SELECT id FROM videos WHERE id>$1 ORDER BY id LIMIT 100", [after]);
+      if (!rows.length) break;
+      for (const row of rows) { await indexTranscript(env, row.id); after = row.id; rebuilt++; }
+    }
+    await assertPostgresEmbeddingAdmission(pool, env, { resume: true });
+    console.log(JSON.stringify({ event: "embedding_rebuild_completed", rebuilt }));
+  } finally { await closePools(); }
+} else if (command === "maintenance" || command === "retention") {
   const client = await pool.connect();
   try {
     const lock = command === "retention" ? 2 : 1;
@@ -71,6 +92,8 @@ if (command === "maintenance" || command === "retention") {
     .select({ key: runtimeRateLimits.key })
     .from(runtimeRateLimits)
     .limit(0);
+  try { await assertPostgresEmbeddingAdmission(pool, env); }
+  catch (error) { await closePools(); throw error; }
   const app = createNodeApp(
     env,
     integerSetting(process.env, "TRUST_PROXY_HOPS", 0, 0, 10),

@@ -265,3 +265,56 @@ restore the old matched storage pair; a paused candidate is not a compatibility
 bypass. The real D1 test also demonstrates that a schema-compatible old writer
 creates NULL provenance and blocks the new release until its generation is
 replaced, so mixed old/new producer operation is not an approved rollout.
+
+### On-prem PostgreSQL lifecycle
+
+The Node `serve` entrypoint checks all vectors in the active profile table once,
+before opening its HTTP listener. Unknown or differing metadata prevents startup;
+ordinary `/ready` calls do not repeat a full provenance scan. A paused instance
+may start with HTTP admission closed. Keep old replicas and all indexing producers
+stopped/drained during the maintenance transition (or retain the old matched
+storage environment behind the old service until a separate rebuilt target is
+ready). For an operator-controlled embedding endpoint, admission and the rebuild
+command require explicit `EMBEDDING_REVISION` and `EMBEDDING_PREPROCESSING`.
+
+With the new built Node artifact and the intended database/model configuration:
+
+```sh
+# While HTTP ingress and ordinary indexing consumers are stopped:
+MIGRATION_TRAFFIC_STATE=paused node apps/api/dist/node.mjs rebuild-embedding-index
+# Independent read-only validation; also runs despite the paused flag:
+MIGRATION_TRAFFIC_STATE=paused node apps/api/dist/node.mjs embedding-preflight
+```
+
+The rebuild reads authoritative videos in bounded pages, replacing each video's
+vectors atomically with declared provenance; any failed video stops the command.
+It validates the complete active table at the end. It does not relabel historical
+vectors. A restart can rebuild already-completed videos safely. Only after the
+command and preflight succeed should the operator start the unpaused API and
+ordinary producers. Rolling deployment must preserve an old ready replica until
+the candidate has passed startup admission; do not replace a working old service
+with an unready strict container. After model replacement, rollback requires the
+old matched database/index pair or another actual rebuild, never a flag bypass.
+Cloudflare controlled traffic restores additionally run the same D1 preflight in
+the shared management transport immediately before the traffic-restoring PATCH,
+covering the owned admission and D1-resource adapters rather than only CD.
+
+The checked-in synthetic receipt is
+`docs/validation/embedding-fingerprint-onprem-2026-11-25.json`. Reproduce the
+built-node lifecycle probe against a disposable PostgreSQL instance whose test
+role may create databases (the helper creates and drops its own random database):
+
+```sh
+npm run build:node --workspace @videoq/api
+PERSISTENCE_TEST_DATABASE_URL="$ISOLATED_TEST_DATABASE_URL" \
+  node apps/api/test/helpers/embedding-lifecycle-probe.mjs
+```
+
+It uses a local synthetic embedding server, checks rejection before listening,
+executes the actual paused rebuild/preflight commands, checks changed-revision
+rejection, and requests the compatible HTTP health endpoint. It never contacts a
+model provider or a production database. For D1, unheaded historical staging
+runs are excluded deliberately: an existing run cannot recreate a head through
+`start`, and `stage`/`publish` require its exact current head. The real D1
+regression proves these three refusals for NULL and mismatched orphan identities;
+current-head staging and all incomplete incompatible upserts still block release.

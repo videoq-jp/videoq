@@ -7,6 +7,7 @@ const response = rows => Response.json({ success: true, result: [{ success: true
 const valid = { incompatible_runs: 0, incompatible_scenes: 0, incompatible_writes: 0 };
 test('release identity matches the TS/Python golden vector and tracks same-dimension replacement', () => {
   assert.equal(identity(target.vars).fingerprint, '72c3a9b62f132cd1730ade65f15d69e79d91c1122c97650bfceaa79f99ee439d');
+  for (const endpoint of ['EMBEDDING_BASE_URL', 'OPENAI_BASE_URL']) assert.throws(() => identity({ ...target.vars, [endpoint]: 'https://private.example/v1' }), /INVALID_EMBEDDING_RELEASE_CONFIG/);
   for (const change of [{ EMBEDDING_REVISION: 'weights-2' }, { EMBEDDING_PREPROCESSING: 'normalize-v2' }, { EMBEDDING_MODEL: 'different' }]) assert.notEqual(identity({ ...target.vars, ...change }).fingerprint, identity(target.vars).fingerprint);
 });
 test('strict release is read-only, exact-target scoped, bounded and fail closed', async () => {

@@ -58,7 +58,7 @@ export function createD1SceneSearchRepository(
         for (let offset = 0; offset < videoIds.length; offset += 80) {
         const provenance = await db.selectDistinct({ fingerprint: sceneIndexRuns.embeddingFingerprint })
           .from(scenes).innerJoin(videos, eq(videos.id, scenes.videoId))
-          .leftJoin(sceneIndexRuns, eq(sceneIndexRuns.id, scenes.revision))
+          .leftJoin(sceneIndexRuns, and(eq(sceneIndexRuns.id, scenes.revision), eq(sceneIndexRuns.videoId, scenes.videoId), eq(sceneIndexRuns.dimensions, scenes.dimensions), eq(sceneIndexRuns.userId, videos.userId)))
           .where(and(eq(videos.userId, userId), inArray(scenes.videoId, videoIds.slice(offset, offset + 80)), eq(scenes.dimensions, dimensions)));
         for (const row of provenance) assertEmbeddingFingerprint(row.fingerprint, fingerprint);
         }
@@ -85,7 +85,7 @@ export function createD1SceneSearchRepository(
           endTime: scenes.endTime, evidenceType: scenes.evidenceType,
         }).from(scenes).innerJoin(videos, eq(scenes.videoId, videos.id))
           .innerJoin(users, eq(videos.userId, users.id))
-          .leftJoin(sceneIndexRuns, eq(sceneIndexRuns.id, scenes.revision)).where(and(
+          .leftJoin(sceneIndexRuns, and(eq(sceneIndexRuns.id, scenes.revision), eq(sceneIndexRuns.videoId, scenes.videoId), eq(sceneIndexRuns.dimensions, scenes.dimensions), eq(sceneIndexRuns.userId, videos.userId))).where(and(
             fingerprint ? eq(sceneIndexRuns.embeddingFingerprint, fingerprint) : undefined,
             inArray(scenes.id, chunk.map(candidate => candidate.sceneId)), eq(scenes.dimensions, dimensions),
             sceneOwnerVisible({ mediaAllowed: learningVideoAllowed(eq(videos.userId, userId), videos.status, mediaDrizzleLogic),

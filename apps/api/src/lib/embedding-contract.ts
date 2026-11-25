@@ -102,3 +102,11 @@ export class EmbeddingCompatibilityError extends LlmConfigurationError {
 export function assertEmbeddingFingerprint(actual: string | null | undefined, expected: string): void {
   if (!actual || actual !== expected) throw new EmbeddingCompatibilityError();
 }
+
+/** Hosted aliases remain provider-managed; private serving must declare its deployment. */
+export function requiresEmbeddingDeploymentIdentity(config: EmbeddingConfig, env: EmbeddingSettings): boolean {
+  if (config.provider !== "openai") return false;
+  if (env.EMBEDDING_BASE_URL?.trim()) return true;
+  const shared = env.OPENAI_BASE_URL?.trim().replace(/\/+$/, "");
+  return Boolean(shared && shared !== "https://api.openai.com/v1");
+}
