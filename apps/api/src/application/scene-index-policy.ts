@@ -4,7 +4,7 @@ export type SceneEmbedding = {
 };
 export type SceneIndexRunInput = {
   runId: string; videoId: number; userId: string; sourceRevision: string;
-  dimensions: 768 | 1536; expectedScenes: number;
+  embeddingFingerprint?: string; dimensions: 768 | 1536; expectedScenes: number;
 };
 export type SceneIndexSource = {
   videoId: number; userId: string; sourceRevision: string; fileKey: string; transcript: string; status: string;

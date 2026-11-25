@@ -9,7 +9,8 @@ const secret = "worker-test-key-0123456789-abcdefghijklmnop";
 const path = "/internal/worker/embeddings/generate";
 const origin = "https://api.example.test";
 const model = "@cf/google/embeddinggemma-2";
-const input = { model, profile: "embeddinggemma2", dimensions: 768, inputType: "document", texts: ["標本化", "量子化"] };
+const fingerprint = "0a375ebc476e05bc175924a26d7e36a0558ffe2b3a40cdbd9467eb505c012f9d";
+const input = { fingerprint, model, profile: "embeddinggemma2", dimensions: 768, inputType: "document", texts: ["標本化", "量子化"] };
 function request(payload: unknown, signed = true) {
   const body = JSON.stringify(payload), timestamp = String(Math.floor(Date.now() / 1000));
   const signature = createHmac("sha256", secret).update(`videoq-worker-v1\n${timestamp}\nPOST\n${origin}\n${path}\n${body}`).digest("hex");
@@ -29,7 +30,7 @@ describe("signed worker embeddings using the actual LangChain adapter", () => {
     const { env, run } = environment();
     const result = await app.fetch(request(input), env);
     expect(result.status).toBe(200);
-    expect(await result.json()).toEqual({ model, profile: "embeddinggemma2", dimensions: 768, embeddings: [vector, vector] });
+    expect(await result.json()).toEqual({ model, profile: "embeddinggemma2", dimensions: 768, fingerprint, embeddings: [vector, vector] });
     expect(run.mock.calls[0][1]).toMatchObject({ input: ["title: none | text: 標本化", "title: none | text: 量子化"], dimensions: 768 });
     expect(result.headers.get("cache-control")).toBe("no-store");
   });

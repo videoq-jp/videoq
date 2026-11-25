@@ -18,6 +18,8 @@ import type { UsageRecorder } from "../tools/usage";
 const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export type EmbeddingEnv = {
+  EMBEDDING_REVISION?: string;
+  EMBEDDING_PREPROCESSING?: string;
   EMBEDDING_PROFILE?: string;
   EMBEDDING_PROVIDER?: string;
   AI?: Pick<Ai, "run">;

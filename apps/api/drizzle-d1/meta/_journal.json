@@ -141,6 +141,13 @@
       "when": 1794692648616,
       "tag": "0019_scene_search_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1795564800000,
+      "tag": "0020_embedding_fingerprint",
+      "breakpoints": true
     }
   ]
 }

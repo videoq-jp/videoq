@@ -175,3 +175,66 @@ Lambda とキューは維持する。API 側がまだ `sqs` なら同じ outbox 
 
 [実装時の検証記録](../validation/typescript-background-migration-2026-11-22.json)
 には、本番切り替え前の結果と未完了項目を分けて記録する。
+
+## Fingerprint rollout (issue #1676)
+
+The `videoq-embedding-v1` identity is an ordered JSON array containing provider,
+model, revision, profile, dimensions, exact query and document task prefixes,
+preprocessing identity, float32 validation contract, and newline preservation.
+Its UTF-8 SHA-256 is the generation fingerprint. TS and Python share a golden
+vector test. Endpoint addresses and credentials are excluded: routing changes
+alone do not change the mathematical space. Provider changes conservatively do.
+`EMBEDDING_REVISION` must name the actual deployed immutable weights revision for
+operator-controlled models; change it whenever weights change, even under the
+same model alias. `EMBEDDING_PREPROCESSING` defaults to `raw-text-v1`; change it
+when upstream normalization/tokenization/preprocessing changes. These settings
+identify the server deployment, they do not instruct a remote server to load
+weights or transform input. Verify the deployment independently. The default
+`provider-managed` explicitly means the provider supplies no immutable revision;
+it cannot detect an unannounced weights change behind that alias. A fingerprint
+proves equality of declared contracts, not provider attestation.
+
+Do not deploy the strict readers onto an unprepared existing index. Use a planned
+maintenance window or an isolated rebuilt environment with an atomic traffic
+cutover. No migration copies today's settings onto historical vectors.
+
+1. Record the old app/config versions, database backup, and index bindings; stop
+   indexing producers and drain in-flight jobs before changing model settings.
+   Inventory D1 published provenance with
+   `SELECT dimensions, embedding_fingerprint, count(*) FROM scene_index_runs WHERE status='published' GROUP BY dimensions, embedding_fingerprint` after the additive migration.
+   Before migration, all existing provenance is unknown. In PostgreSQL inspect
+   `langchain_metadata->>'embedding_fingerprint'` on both vector tables.
+2. Apply D1 `0020_embedding_fingerprint.sql` before the new application. It adds
+   nullable fields only: old code can continue using its old columns. Existing
+   rows remain NULL. Old code must not write after strict activation because it
+   cannot declare trustworthy provenance. Backups and migrated archives also
+   retain unknown identities; importing them does not certify compatibility.
+3. In the maintenance environment deploy the new API/Workflow and worker
+   together, with the same provider/model/revision/preprocessing settings.
+   The signed embedding API now requires and echoes `fingerprint`, and scene
+   start requires `embeddingFingerprint`. Old workers fail closed; upgrade them
+   before enabling producers. Rebuild every affected video using new reindex
+   jobs, from authoritative transcripts/media, never by relabeling old vectors.
+4. D1 replacement runs stage independently. Old published scene rows remain
+   until publication, then the existing atomic publication replaces that video's
+   scene projection. PostgreSQL replaces one video's vectors and their provenance
+   within one transaction. Unknown or differing generations reject search; a
+   mixed selected scope also rejects rather than silently excluding old videos.
+   Thus rolling per-video rebuilds require keeping traffic paused until the
+   entire intended searchable scope passes preflight, or rebuilding a separate
+   environment and cutting traffic over only after validation.
+5. Verify no searchable unknown/mismatched generations remain, run compatible
+   search and mismatched model/revision/preprocessing probes, verify vector
+   delivery readiness, then enable traffic/producers. Preserve old resources
+   until the rollback decision is made; do not claim a zero-downtime migration
+   for an in-place rebuild.
+
+Before cutover rollback means restore the old app/config and untouched old index
+resources. After replacement, rolling back config alone is unsafe: the strict
+reader correctly rejects the new space. Restore the matched database/index
+backup pair in isolation or rebuild with the old declared identity, validate,
+then cut traffic back. Never bypass checks, fill NULL provenance from environment,
+or point old and new workers at the same writable generation. The isolated D1
+migration test proves legacy rejection, staged preservation, compatible publish,
+and rejection after a same-model/same-dimension revision change; it is synthetic
+validation, not a production recovery claim.

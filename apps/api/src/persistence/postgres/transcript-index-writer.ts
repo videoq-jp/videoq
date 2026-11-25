@@ -10,6 +10,8 @@ export interface PostgresTranscriptSnapshot {
 export interface TranscriptVectorStorage {
   table: 'scene_embeddings' | 'scene_embeddings_768';
   dimensions: 768 | 1536;
+  fingerprint?: string;
+  identity?: string;
   /** Explicit schema is useful for isolated integration tests. */
   schema?: string;
 }
@@ -81,6 +83,7 @@ export async function replacePostgresTranscriptIndex(
     await store.addVectors(vectors, scenes.map(scene => ({
       pageContent: scene.text,
       metadata: {
+        ...(storage.fingerprint ? { embedding_fingerprint: storage.fingerprint, embedding_identity: storage.identity } : {}),
         user_id: snapshot.userId, video_id: snapshot.videoId, video_title: rows[0].title,
         start_time: scene.startTime, end_time: scene.endTime, start_sec: scene.startSeconds, end_sec: scene.endSeconds, scene_index: scene.index,
       },

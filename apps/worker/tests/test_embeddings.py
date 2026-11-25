@@ -48,7 +48,7 @@ def test_embeddinggemma_document_and_query_contract(monkeypatch):
     ({"EMBEDDING_MODEL": " CustomModel "}, "CustomModel"),
 ])
 def test_settings(environ, model):
-    assert asdict(resolve_embedding_config(environ)) == {"provider": "openai", "model": model, "profile": "openai"}
+    assert asdict(resolve_embedding_config(environ)) == {"provider": "openai", "model": model, "profile": "openai", "revision": "provider-managed", "preprocessing": "raw-text-v1"}
 
 
 @pytest.mark.parametrize("vector", [
@@ -145,7 +145,7 @@ def test_workers_ai_config_and_batch_contract(monkeypatch):
     vector = [1.0] + [0.0] * 767
     api = MagicMock(side_effect=lambda action, payload: {
         "model": payload["model"], "profile": payload["profile"], "dimensions": 768,
-        "embeddings": [vector for _ in payload["texts"]],
+        "embeddings": [vector for _ in payload["texts"]], "fingerprint": resolve_embedding_config().fingerprint,
     })
     monkeypatch.setattr(embeddings, "call_internal_api", api)
     http = MagicMock(side_effect=AssertionError("Direct provider request must not be used"))
@@ -155,7 +155,7 @@ def test_workers_ai_config_and_batch_contract(monkeypatch):
     assert api.call_count == 2
     assert api.call_args_list[0].args == ("embeddings/generate", {
         "model": "@cf/google/embeddinggemma-2", "profile": "embeddinggemma2", "dimensions": 768,
-        "inputType": "document", "texts": texts[:32],
+        "inputType": "document", "texts": texts[:32], "fingerprint": resolve_embedding_config().fingerprint,
     })
     embeddings.embed_texts(["質問"], input_type="query")
     assert api.call_args.args[1]["inputType"] == "query"
@@ -195,3 +195,11 @@ def test_workers_ai_permanent_errors_are_not_scene_fallbacks(monkeypatch):
 def test_workers_ai_invalid_settings(settings):
     with pytest.raises(EmbeddingContractError):
         resolve_embedding_config(settings)
+
+
+def test_embedding_fingerprint_cross_language_golden_and_changes():
+    from dataclasses import replace
+    config = resolve_embedding_config({"EMBEDDING_MODEL": "same-model", "EMBEDDING_REVISION": "weights-1"})
+    assert config.fingerprint == "72c3a9b62f132cd1730ade65f15d69e79d91c1122c97650bfceaa79f99ee439d"
+    for change in [{"model": "different"}, {"revision": "weights-2"}, {"preprocessing": "normalize-v2"}, {"provider": "workers-ai"}]:
+        assert replace(config, **change).fingerprint != config.fingerprint

@@ -1,3 +1,4 @@
+import { embeddingFingerprint, resolveEmbeddingConfig } from "../../src/lib/embedding-contract";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHmac } from "node:crypto";
@@ -74,7 +75,7 @@ describe("signed scene ingestion with D1", () => {
   });
   afterAll(async () => { await fixture?.dispose(); });
   const call = async (action: string, input: unknown) => {
-    const res = await app.fetch(signed(`scene-index/${action}`, input), env);
+    const res = await app.fetch(signed(`scene-index/${action}`, action === "start" ? { ...(input as object), embeddingFingerprint: await embeddingFingerprint(resolveEmbeddingConfig(env)) } : input), env);
     expect(res.status).toBe(200);
     return res.json<Record<string, unknown>>();
   };

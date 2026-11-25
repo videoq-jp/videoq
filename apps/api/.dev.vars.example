@@ -82,3 +82,7 @@ VIDEO_VISUAL_ENABLED="true"
 # LLM_MAX_TOKENS=4096
 # LLM_SEPARATE_TOOL_SCHEMA=true
 # LLM_PRESERVE_TOOL_REASONING=true
+# Identity of the actual deployed weights and upstream text preprocessing.
+# Change both API and worker consistently; changing identity requires index rebuild.
+# EMBEDDING_REVISION="immutable-model-revision"
+# EMBEDDING_PREPROCESSING="raw-text-v1"

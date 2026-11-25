@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { embedTexts } from "../../lib/embeddings";
-import { resolveEmbeddingConfig } from "../../lib/embedding-contract";
+import { embeddingFingerprint, resolveEmbeddingConfig } from "../../lib/embedding-contract";
 import { armMaintenance } from "../../lib/task-scheduler";
 import type { AppEnv } from "../../types/bindings";
 import { createJobRepository, createWorkerScenePersistence, createProcessingQuotaRepository, createWorkerTranscriptionRepository, createTranscriptionCheckpoints, finishWorkerTranscriptionRun, createVisualCheckpoints, readWorkerReindexPage } from "../../persistence/factory";
@@ -85,6 +85,7 @@ const sourceRevisionToken = z.union([z.string().uuid(), z.string().regex(/^[a-f0
 const sourceRequest = z.object({ videoId: z.number().int().positive().safe() }).strict();
 const startRequest = sourceRequest.extend({
   runId, userId, sourceRevision: sourceRevisionToken, dimensions: z.union([z.literal(768), z.literal(1536)]),
+  embeddingFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   expectedScenes: z.number().int().min(0).max(1_000_000),
 }).strict();
 const finishRequest = sourceRequest.extend({ userId, sourceRevision: sourceRevisionToken, fileKey: z.string().max(4096),
@@ -353,16 +354,17 @@ workerInternalRoutes.post("/embeddings/generate", async c => {
   try { input = JSON.parse(body); } catch { return c.json({ error: "INVALID_REQUEST" }, 400); }
   const parsed = z.object({
     model: z.literal("@cf/google/embeddinggemma-2"), profile: z.literal("embeddinggemma2"), dimensions: z.literal(768),
+    fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     inputType: z.enum(["query", "document"]), texts: z.array(z.string().min(1).max(16_000)).min(1).max(32),
   }).strict().safeParse(input);
   if (!parsed.success) return c.json({ error: "INVALID_REQUEST" }, 400);
   try {
     const config = resolveEmbeddingConfig(c.env);
-    if (config.provider !== "workers-ai" || config.model !== parsed.data.model || config.profile !== parsed.data.profile) {
+    if (config.provider !== "workers-ai" || config.model !== parsed.data.model || config.profile !== parsed.data.profile || await embeddingFingerprint(config) !== parsed.data.fingerprint) {
       return c.json({ error: "EMBEDDING_CONFIG_MISMATCH" }, 409);
     }
     const embeddings = await embedTexts(c.env, parsed.data.texts, parsed.data.inputType, c.req.raw.signal);
-    return c.json({ model: config.model, profile: config.profile, dimensions: 768, embeddings });
+    return c.json({ model: config.model, profile: config.profile, dimensions: 768, fingerprint: await embeddingFingerprint(config), embeddings });
   } catch {
     return c.json({ error: "EMBEDDING_UNAVAILABLE" }, 503);
   }

@@ -1,3 +1,4 @@
+import { assertEmbeddingFingerprint } from "../../lib/embedding-contract";
 import { validateSceneSearchLimit, SceneCandidateRanking, sceneCandidateCurrent, sceneOwnerVisible } from '../../application/scene-retrieval';
 import { learningVideoAllowed } from '../../application/media-eligibility';
 import { mediaDrizzleLogic } from '../media-eligibility-sql';
@@ -9,7 +10,7 @@ import type { Vectorize, VectorizeVectorMetadataFilter } from "@cloudflare/worke
 import type { EmbeddingsInterface } from "@langchain/core/embeddings";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
-import { scenes, videos, users } from "../../db/schema/sqlite";
+import { scenes, videos, users, sceneIndexRuns } from "../../db/schema/sqlite";
 import type { SceneSearchRepository } from "../contracts/scene-search";
 
 /** Split large course selections by the serialized filter size, preserving scope. */
@@ -36,6 +37,7 @@ export function createD1SceneSearchRepository(
   database: D1Database,
   index: Vectorize,
   dimensions: 768 | 1536,
+  fingerprint?: string,
 ): SceneSearchRepository {
   const db = createD1Connection(database);
   // Search receives an already-generated embedding; never change the existing model.
@@ -52,6 +54,15 @@ export function createD1SceneSearchRepository(
           !queryEmbedding.some(value => Math.fround(value) !== 0)) throw new Error("Invalid query embedding");
       const selections = filters(userId, videoIds);
       if (!selections.length) return [];
+      if (fingerprint) {
+        for (let offset = 0; offset < videoIds.length; offset += 80) {
+        const provenance = await db.selectDistinct({ fingerprint: sceneIndexRuns.embeddingFingerprint })
+          .from(scenes).innerJoin(videos, eq(videos.id, scenes.videoId))
+          .leftJoin(sceneIndexRuns, eq(sceneIndexRuns.id, scenes.revision))
+          .where(and(eq(videos.userId, userId), inArray(scenes.videoId, videoIds.slice(offset, offset + 80)), eq(scenes.dimensions, dimensions)));
+        for (const row of provenance) assertEmbeddingFingerprint(row.fingerprint, fingerprint);
+        }
+      }
       const candidates = new SceneCandidateRanking();
       for (const filter of selections) {
         const matches = await store.similaritySearchVectorWithScore(queryEmbedding, 50, filter);
@@ -73,7 +84,9 @@ export function createD1SceneSearchRepository(
           videoId: scenes.videoId, videoTitle: videos.title, startTime: scenes.startTime,
           endTime: scenes.endTime, evidenceType: scenes.evidenceType,
         }).from(scenes).innerJoin(videos, eq(scenes.videoId, videos.id))
-          .innerJoin(users, eq(videos.userId, users.id)).where(and(
+          .innerJoin(users, eq(videos.userId, users.id))
+          .leftJoin(sceneIndexRuns, eq(sceneIndexRuns.id, scenes.revision)).where(and(
+            fingerprint ? eq(sceneIndexRuns.embeddingFingerprint, fingerprint) : undefined,
             inArray(scenes.id, chunk.map(candidate => candidate.sceneId)), eq(scenes.dimensions, dimensions),
             sceneOwnerVisible({ mediaAllowed: learningVideoAllowed(eq(videos.userId, userId), videos.status, mediaDrizzleLogic),
               notDeactivated: isNull(users.deactivatedAt), notBanned: sql`${users.banned} IS NOT TRUE`,

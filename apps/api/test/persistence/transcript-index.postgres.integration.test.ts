@@ -3,7 +3,7 @@ import { isolatedPostgres } from './isolated-postgres';
 import { replacePostgresTranscriptIndex, validateTranscriptVectorStorage, clearPostgresTranscriptIndex } from '../../src/persistence/postgres/transcript-index-writer';
 import { parseSearchScenes } from '../../src/application/search-scene-splitting';
 import { PGEngine, PGVectorStore } from '@yukiharada1228/langchain-postgres';
-import { createPostgresSceneSearchRepository } from '../../src/persistence/postgres/scene-search';
+import { assertPostgresEmbeddingProvenance, createPostgresSceneSearchRepository } from '../../src/persistence/postgres/scene-search';
 
 const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
 (databaseUrl ? describe : describe.skip).each([768, 1536] as const)('atomic TypeScript pgvector writer (%i)', dimensions => {
@@ -41,6 +41,19 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
     expect(hits.every(h => h.videoTitle === 'Current title')).toBe(true);
     expect(await search.search({ queryEmbedding: vector, userId: 'other', videoIds: [1], limit: 20 })).toEqual([]);
     expect((await fixture.pool.query(`SELECT count(*)::int AS n FROM ${table} WHERE video_id=2`)).rows[0].n).toBe(1);
+  });
+  it('rejects unknown and same-dimensional mismatched provenance, and atomically replaces it', async () => {
+    const params = { userId: 'owner', videoIds: [1] };
+    const fingerprint = 'a'.repeat(64), changed = 'b'.repeat(64);
+    await expect(assertPostgresEmbeddingProvenance(fixture.pool, table, params, fingerprint, schema)).rejects.toThrow('FINGERPRINT_MISMATCH');
+    expect(await replacePostgresTranscriptIndex(fixture.pool, { ...storage(), fingerprint, identity: 'declared-identity' }, snapshot, scenes, [vector, vector])).toBe(2);
+    await expect(assertPostgresEmbeddingProvenance(fixture.pool, table, params, fingerprint, schema)).resolves.toBeUndefined();
+    await expect(assertPostgresEmbeddingProvenance(fixture.pool, table, params, changed, schema)).rejects.toThrow('FINGERPRINT_MISMATCH');
+    const store = await PGVectorStore.initialize(PGEngine.fromPool(fixture.pool), {
+      embedQuery: async () => { throw new Error('precomputed only'); }, embedDocuments: async () => { throw new Error('precomputed only'); },
+    }, table, { schemaName: schema, metadataColumns: ['user_id','video_id'] });
+    expect(await createPostgresSceneSearchRepository(store, dimensions, fingerprint).search({ queryEmbedding: vector, ...params, limit: 20 })).toHaveLength(2);
+    expect(await createPostgresSceneSearchRepository(store, dimensions, changed).search({ queryEmbedding: vector, ...params, limit: 20 })).toEqual([]);
   });
   it('rolls back both deletion and successful earlier inserts if a later insert fails', async () => {
     await expect(replacePostgresTranscriptIndex(fixture.pool,storage(),snapshot,[scenes[0],{...scenes[1],text:'reject'}],[vector,vector])).rejects.toThrow();

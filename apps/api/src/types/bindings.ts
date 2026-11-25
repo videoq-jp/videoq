@@ -70,6 +70,8 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     LLM_MAX_TOKENS?: string;
     EMBEDDING_BASE_URL?: string;
     EMBEDDING_API_KEY?: string;
+    EMBEDDING_REVISION?: string;
+    EMBEDDING_PREPROCESSING?: string;
     EMBEDDING_PROFILE?: string;
     EMBEDDING_PROVIDER?: string;
     LLM_REASONING_EFFORT?: "none" | "minimal" | "low" | "medium" | "high";

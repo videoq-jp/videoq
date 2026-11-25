@@ -139,8 +139,13 @@ The worker propagates permanent provider rejections, including unsupported model
 
 All stored vectors and query vectors must use the same weights, revision,
 quantization, pooling and preprocessing. Equal dimensions do not establish a
-shared vector space. Saved rows do not record this provenance, so record the
-chosen configuration and verify API/worker diagnostics together.
+shared vector space. New D1 generations persist a SHA-256 fingerprint and the
+canonical identity; PostgreSQL vectors carry the same provenance in metadata.
+Search and registration reject unknown or mismatched identities. Declare actual
+weights using `EMBEDDING_REVISION` and upstream preprocessing using
+`EMBEDDING_PREPROCESSING` consistently on API and worker. Provider-managed aliases
+cannot attest immutable weights. Existing vectors are never automatically adopted;
+follow the [staged rollout and rollback procedure](../operations/workers-ai-embedding-migration.md#fingerprint-rollout-issue-1676) before deploying strict readers.
 
 For a new deployment, initialize the database with the chosen model settings.
 When changing models later, stop Q&A/indexing and rebuild the scene vectors

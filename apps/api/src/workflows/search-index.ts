@@ -5,7 +5,7 @@ import { parseSearchScenes } from '../application/search-scene-splitting';
 import type { SceneIndexSource } from '../application/scene-index-policy';
 import { createJobRepository, createWorkerScenePersistence } from '../persistence/factory';
 import { embedTexts } from '../lib/embeddings';
-import { embeddingDimensions, resolveEmbeddingConfig } from '../lib/embedding-contract';
+import { embeddingFingerprint, embeddingDimensions, resolveEmbeddingConfig } from '../lib/embedding-contract';
 import { splitTranscriptForIndex } from '../integrations/search-index/scene-splitter';
 import { runBackgroundJob, sha256 } from '../integrations/background-jobs/execute';
 import { armMaintenance } from '../lib/task-scheduler';
@@ -46,6 +46,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
     const bucket = this.env.VIDEO_BUCKET;
     if (!bucket) throw new Error('Search workflow requires R2');
     const config = resolveEmbeddingConfig(this.env);
+    const fingerprint = await embeddingFingerprint(config);
     const dimensions = embeddingDimensions(config) as 768 | 1536;
     const repository = await createJobRepository(this.env);
     const root = `internal/search-index/${await sha256(job.job_id)}/`;
@@ -100,9 +101,9 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         if (source.transcript.trim() && !parseSearchScenes(source.transcript).length) throw new Error('Invalid SRT source');
         const runId = crypto.randomUUID();
         await bucket.put(sourceKey, JSON.stringify(source), { httpMetadata: { contentType: 'application/json' } });
-        return { runId, source: { ...source, transcript: '' }, model: config.model, profile: config.profile ?? 'openai', dimensions };
+        return { fingerprint, runId, source: { ...source, transcript: '' }, model: config.model, profile: config.profile ?? 'openai', dimensions };
       });
-      if (snapshot && (snapshot.model !== config.model || snapshot.profile !== (config.profile ?? 'openai') || snapshot.dimensions !== dimensions)) {
+      if (snapshot && (snapshot.fingerprint !== fingerprint || snapshot.model !== config.model || snapshot.profile !== (config.profile ?? 'openai') || snapshot.dimensions !== dimensions)) {
         throw new Error('Embedding configuration changed during workflow');
       }
       let prepared: (NonNullable<typeof snapshot> & { count: number }) | null = null;
@@ -156,11 +157,11 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         });
       }
       if (prepared) {
-        if (prepared.model !== config.model || prepared.profile !== (config.profile ?? 'openai') || prepared.dimensions !== dimensions) throw new Error('Embedding configuration changed during workflow');
+        if (prepared.fingerprint !== fingerprint || prepared.model !== config.model || prepared.profile !== (config.profile ?? 'openai') || prepared.dimensions !== dimensions) throw new Error('Embedding configuration changed during workflow');
         await step.do('start-scene-run', retry, async () => {
           await renew();
           if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
-          if (!await persistence.writer.start({ runId: prepared.runId, videoId: prepared.source.videoId, userId: prepared.source.userId, sourceRevision: prepared.source.sourceRevision, dimensions, expectedScenes: prepared.count })) throw new Error('Scene source changed');
+          if (!await persistence.writer.start({ runId: prepared.runId, videoId: prepared.source.videoId, userId: prepared.source.userId, sourceRevision: prepared.source.sourceRevision, embeddingFingerprint: fingerprint, dimensions, expectedScenes: prepared.count })) throw new Error('Scene source changed');
         });
         for (let offset = 0; offset < prepared.count; offset += 20) {
           await step.do(`embed-stage-${offset}`, retry, async () => {

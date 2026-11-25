@@ -97,6 +97,7 @@ const defaultRows = (sql: MatchableSql, args: unknown[] = []): Record<string, un
       { column_name: "video_id", data_type: "bigint" },
       { column_name: "langchain_metadata", data_type: "json" },
     ];
+  if (sql.includes("IS DISTINCT FROM") && sql.includes("embedding_fingerprint")) return { rows: [] };
   if (sql.includes("scene_embeddings"))
     return [
       {
