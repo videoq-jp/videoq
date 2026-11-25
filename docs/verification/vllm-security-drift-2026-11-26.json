@@ -1,0 +1,1603 @@
+{
+  "scope": "Read-only diagnosis of a strict NVIDIA inspection failure; no assessment additions, suppressions, replacement pins, image rebuilds or production mutation. Scanner-reported fixes are evidence, not independent proof that replacement artifacts exist or are compatible.",
+  "candidateHead": "419be351d9b12e572466c770665d32a1c5502b62",
+  "testedMerge": "a1b391c04833e7e722d05e45617d5320f5ec93fd",
+  "failedJob": "https://github.com/videoq-jp/videoq/actions/runs/45680648078/job/139440095818",
+  "image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
+  "artifacts": {
+    "current": {
+      "id": 15054927567,
+      "zipSha256": "fa4551f6502b279c3ad18bf9286e92c4b0e9c0119fea2271a1f193fc5f519f97"
+    },
+    "priorPassing": {
+      "id": 14999972943,
+      "jobRun": 45565124344,
+      "zipSha256": "5a3a0914cae47b89f16d66c085477fb94a841146ba365ed72a3a628a5345130a"
+    }
+  },
+  "drift": {
+    "sameImageConfig": true,
+    "sameImagePackageInventory": true,
+    "imagePackageCount": 1890,
+    "sameAudioPackageInventory": true,
+    "priorScanner": {
+      "scanner": "0.122.0",
+      "database": {
+        "schemaVersion": "v6.1.10",
+        "from": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-11-24T00:20:31Z_1795501325.tar.zst?checksum=sha256%3Afdf0cdec0b112f6769c3fd38cd5f992a3bb6162a4ab2fe30d639d14ae41ea8a9",
+        "built": "2026-11-24T06:22:05Z",
+        "path": "/home/runner/.cache/grype/db/6/vulnerability.db",
+        "valid": true
+      },
+      "scanTimestamp": "2026-11-25T07:08:46.282952575Z"
+    },
+    "currentScanner": {
+      "scanner": "0.122.0",
+      "database": {
+        "schemaVersion": "v6.1.10",
+        "from": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-11-24T00:23:39Z_1795587741.tar.zst?checksum=sha256%3A8a5df903f7a5362233738dbf4f4b1066e6b121e4da881e596f2fc7ec81fdd3aa",
+        "built": "2026-11-25T06:22:21Z",
+        "path": "/home/runner/.cache/grype/db/6/vulnerability.db",
+        "valid": true
+      },
+      "scanTimestamp": "2026-11-25T19:08:33.603405955Z"
+    },
+    "priorBlocking": [
+      0,
+      0
+    ],
+    "currentBlocking": [
+      86,
+      11
+    ],
+    "existingAcceptedUnchanged": true
+  },
+  "identicalSourceHashes": {
+    "apps/inference/vllm/security/runtime-assessment.json": {
+      "419be351": "fefc2130f7a28cd88f65fc98a33d9740c30c6002b006fbb3ae1e6fee044dc2dc",
+      "c2045": "fefc2130f7a28cd88f65fc98a33d9740c30c6002b006fbb3ae1e6fee044dc2dc",
+      "75c5c46c": "fefc2130f7a28cd88f65fc98a33d9740c30c6002b006fbb3ae1e6fee044dc2dc"
+    },
+    "charts/videoq-inference/files/vllm-audio-wheels.json": {
+      "419be351": "4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e",
+      "c2045": "4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e",
+      "75c5c46c": "4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e"
+    },
+    ".github/scripts/check-vllm-scan.cjs": {
+      "419be351": "1ec5c9a8e9384ce3b70cf9dd42547b18e930032f18f2aa5b2e0a9601dd658f12",
+      "c2045": "1ec5c9a8e9384ce3b70cf9dd42547b18e930032f18f2aa5b2e0a9601dd658f12",
+      "75c5c46c": "1ec5c9a8e9384ce3b70cf9dd42547b18e930032f18f2aa5b2e0a9601dd658f12"
+    },
+    ".github/scripts/check-vllm-applicability.cjs": {
+      "419be351": "a2611cf9396d25226d37eab4bf020cd5ada36558fd46f3fa2487a18053e6bf23",
+      "c2045": "a2611cf9396d25226d37eab4bf020cd5ada36558fd46f3fa2487a18053e6bf23",
+      "75c5c46c": "a2611cf9396d25226d37eab4bf020cd5ada36558fd46f3fa2487a18053e6bf23"
+    }
+  },
+  "mainComparison": {
+    "source": "c2045e96902f02c9ec1079e04e68f977e933ee48",
+    "ciRun": 45628302906,
+    "workflowConclusion": "success",
+    "nvidiaJob": 139254461840,
+    "nvidiaConclusion": "skipped",
+    "limit": "Main green does not demonstrate a fresh successful NVIDIA scan."
+  },
+  "policy": {
+    "reviewedAt": "2026-11-20T19:36:35.346250+00:00",
+    "expiresAt": "2026-12-10T21:05:42.246607+00:00",
+    "scope": "Only the exact-image, numeric UID 10001, read-only VideoQ vLLM serving workloads rendered from the reviewed NVIDIA profiles; not a blanket upstream image approval. No image changes, installer operations, arbitrary hooks, downloaded Python model code or host-kernel claims. Includes the reviewed RTX 4090 profiles, their fixed memory fractions and eager configuration; site overrides still require review. Native video/Mooncake directories are masked by verified empty read-only mounts; the audio overlay includes a manifest-hashed local-input startup guard. Also includes the pinned Gemma 4 BF16 / EmbeddingGemma 2 / Whisper profile with gemma4 parsers, thinking disabled and bounded image input. This extension reviews command/filesystem applicability only; it does not attest GPU execution or model quality. Includes the RTX 4090 Gemma 4 BF16 command with 40 GiB CPU weight offload, eager execution, disabled processor cache and bounded multimodal input; GPU capacity and performance remain unverified."
+  },
+  "groups": [
+    {
+      "scope": "image",
+      "package": "ffmpeg",
+      "version": "8.1.1",
+      "count": 11,
+      "severityCounts": {
+        "CRITICAL": 2,
+        "HIGH": 9
+      },
+      "locations": [
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6",
+        "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101",
+        "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101",
+        "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101",
+        "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101",
+        "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101"
+      ],
+      "findings": [
+        {
+          "cve": "CVE-2026-135736",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135736",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_deband.c#L212",
+            "https://github.com/FFmpeg/FFmpeg/commit/24ad423d908cd595c983b6c503ddb0ee94901ba2",
+            "https://www.vulncheck.com/advisories/ffmpeg-4.4-before-9.1-heap-out-of-bounds-write-via-deband-filter-coupling-command"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135742",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135742",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/f_zmq.c#L138",
+            "https://github.com/FFmpeg/FFmpeg/commit/78afb1d6e99ba2d3264f053ae4c0e4487a9c824c",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-integer-truncation-via-zmq-filter-recv-msg"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135743",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135743",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/af_dynaudnorm.c#L261",
+            "https://github.com/FFmpeg/FFmpeg/commit/3dd257f99b5cdc1bf38e1cadff1e34ec559c7b7c",
+            "https://www.vulncheck.com/advisories/ffmpeg-4.3-before-9.1-heap-out-of-bounds-read-write-via-dynaudnorm-filter"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135739",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135739",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_scale.c#L578",
+            "https://github.com/FFmpeg/FFmpeg/commit/dd1b4e4ba5c3280638fed06a88bf25690564170b",
+            "https://www.vulncheck.com/advisories/ffmpeg-7.1-before-9.1-out-of-bounds-read-via-scale-filter-process-command"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135722",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135722",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24932",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/wavenc.c#L391",
+            "https://github.com/FFmpeg/FFmpeg/commit/0b1c279b62af82e422e3fc21ba6cc2fc3154dc76",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-buffer-overflow-via-wav-muxer-peak-envelope-writer"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135725",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135725",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24916",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/rtmppkt.c#L317",
+            "https://github.com/FFmpeg/FFmpeg/commit/041098a1a3bee481a1c8e905257ba04dad0c60a1",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-stack-based-buffer-overflow-via-ff-rtmp-packet-write"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135734",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135734",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_deflicker.c#L193",
+            "https://github.com/FFmpeg/FFmpeg/commit/fa10042f748f20fad0cc0ee8fdcebe96b76603af",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-deflicker-filter-histogram"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135740",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135740",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_readeia608.c#L176",
+            "https://github.com/FFmpeg/FFmpeg/commit/df1ddf75db9a1ff36a35019511e17f795cf20c55",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-readeia608-filter-histogram"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135737",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135737",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_tmidequalizer.c#L312",
+            "https://github.com/FFmpeg/FFmpeg/commit/1e1e424bd8d7a50a8213da1e95a92f524e9b801d",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-tmidequalizer-filter"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135738",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135738",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_signalstats.c#L620",
+            "https://github.com/FFmpeg/FFmpeg/commit/04955e8b148fa3e7ab022cbb9f5e35c49165ae21",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-signalstats-filter-histograms"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135723",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135723",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24917",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/imf_cpl.c#L315",
+            "https://github.com/FFmpeg/FFmpeg/commit/301a611370a0ba81f4a71d3b7ccd064623606c1b",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-double-free-in-imf-cpl-parser-fill-marker"
+          ],
+          "namespace": "nvd:cpe"
+        }
+      ]
+    },
+    {
+      "scope": "image",
+      "package": "linux-libc-dev",
+      "version": "6.8.0-147.147",
+      "count": 75,
+      "severityCounts": {
+        "CRITICAL": 9,
+        "HIGH": 66
+      },
+      "locations": [
+        "/usr/share/doc/linux-libc-dev/copyright",
+        "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+        "/var/lib/dpkg/status"
+      ],
+      "findings": [
+        {
+          "cve": "CVE-2026-99362",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99362",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99366",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99366",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99590",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99590",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99388",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99388",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99355",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99355",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99460",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99460",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99383",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99383",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99540",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99540",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99389",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99389",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99356",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99356",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99432",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99432",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99441",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99441",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99549",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99549",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99380",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99380",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99386",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99386",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99556",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99556",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99313",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "6.8.0-149.149"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "6.8.0-149.149",
+                "date": "2026-11-10",
+                "kind": "advisory"
+              }
+            ]
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99313",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99454",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99454",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99451",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99451",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99344",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99344",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99352",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99352",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99361",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99361",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99377",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99377",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99396",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99396",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99423",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99423",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99384",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99384",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99320",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99320",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99526",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99526",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99489",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99489",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99357",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99357",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99575",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99575",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99532",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99532",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99531",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99531",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99369",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99369",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99350",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99350",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99395",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99395",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99435",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99435",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99539",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99539",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99535",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99535",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99578",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99578",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99577",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99577",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99554",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99554",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99565",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99565",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99400",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99400",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99573",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99573",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99574",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99574",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99429",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99429",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99424",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99424",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99507",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99507",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99343",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99343",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99312",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99312",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99317",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99317",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99448",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99448",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99599",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99599",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99582",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99582",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99601",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99601",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99471",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99471",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99522",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99522",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99544",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99544",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99510",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99510",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99425",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99425",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99602",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99602",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99484",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99484",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99528",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99528",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99542",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99542",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99506",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99506",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99345",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99345",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99546",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99546",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99586",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99586",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99477",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99477",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99468",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99468",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99591",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99591",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99422",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99422",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99473",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99473",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        },
+        {
+          "cve": "CVE-2026-99583",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [],
+            "state": "not-fixed"
+          },
+          "databaseSource": "https://ubuntu.com/security/CVE-2026-99583",
+          "references": [],
+          "namespace": "ubuntu:distro:ubuntu:24.04"
+        }
+      ]
+    },
+    {
+      "scope": "audio",
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "count": 11,
+      "severityCounts": {
+        "CRITICAL": 2,
+        "HIGH": 9
+      },
+      "locations": [
+        "/av.libs/libavcodec-d61378e8.so.63.1.102",
+        "/av.libs/libavdevice-c9c4901c.so.63.1.102",
+        "/av.libs/libavfilter-6a4661f8.so.12.1.102",
+        "/av.libs/libavformat-7f5186bf.so.63.1.102",
+        "/av.libs/libavutil-8f0ab4ee.so.61.1.102",
+        "/av.libs/libswresample-d0a74e06.so.7.1.102"
+      ],
+      "findings": [
+        {
+          "cve": "CVE-2026-135736",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135736",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_deband.c#L212",
+            "https://github.com/FFmpeg/FFmpeg/commit/24ad423d908cd595c983b6c503ddb0ee94901ba2",
+            "https://www.vulncheck.com/advisories/ffmpeg-4.4-before-9.1-heap-out-of-bounds-write-via-deband-filter-coupling-command"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135742",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135742",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/f_zmq.c#L138",
+            "https://github.com/FFmpeg/FFmpeg/commit/78afb1d6e99ba2d3264f053ae4c0e4487a9c824c",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-integer-truncation-via-zmq-filter-recv-msg"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135743",
+          "severity": "CRITICAL",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135743",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/af_dynaudnorm.c#L261",
+            "https://github.com/FFmpeg/FFmpeg/commit/3dd257f99b5cdc1bf38e1cadff1e34ec559c7b7c",
+            "https://www.vulncheck.com/advisories/ffmpeg-4.3-before-9.1-heap-out-of-bounds-read-write-via-dynaudnorm-filter"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135739",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135739",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26081",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_scale.c#L578",
+            "https://github.com/FFmpeg/FFmpeg/commit/dd1b4e4ba5c3280638fed06a88bf25690564170b",
+            "https://www.vulncheck.com/advisories/ffmpeg-7.1-before-9.1-out-of-bounds-read-via-scale-filter-process-command"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135722",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135722",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24932",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/wavenc.c#L391",
+            "https://github.com/FFmpeg/FFmpeg/commit/0b1c279b62af82e422e3fc21ba6cc2fc3154dc76",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-buffer-overflow-via-wav-muxer-peak-envelope-writer"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135725",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135725",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24916",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/rtmppkt.c#L317",
+            "https://github.com/FFmpeg/FFmpeg/commit/041098a1a3bee481a1c8e905257ba04dad0c60a1",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-stack-based-buffer-overflow-via-ff-rtmp-packet-write"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135734",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135734",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_deflicker.c#L193",
+            "https://github.com/FFmpeg/FFmpeg/commit/fa10042f748f20fad0cc0ee8fdcebe96b76603af",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-deflicker-filter-histogram"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135740",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135740",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_readeia608.c#L176",
+            "https://github.com/FFmpeg/FFmpeg/commit/df1ddf75db9a1ff36a35019511e17f795cf20c55",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-readeia608-filter-histogram"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135737",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135737",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_tmidequalizer.c#L312",
+            "https://github.com/FFmpeg/FFmpeg/commit/1e1e424bd8d7a50a8213da1e95a92f524e9b801d",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-tmidequalizer-filter"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135738",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135738",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/26121",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavfilter/vf_signalstats.c#L620",
+            "https://github.com/FFmpeg/FFmpeg/commit/04955e8b148fa3e7ab022cbb9f5e35c49165ae21",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-heap-out-of-bounds-write-via-signalstats-filter-histograms"
+          ],
+          "namespace": "nvd:cpe"
+        },
+        {
+          "cve": "CVE-2026-135723",
+          "severity": "HIGH",
+          "reportedFix": {
+            "versions": [
+              "9.1"
+            ],
+            "state": "fixed",
+            "available": [
+              {
+                "version": "9.1",
+                "date": "2026-11-25",
+                "kind": "first-observed"
+              }
+            ]
+          },
+          "databaseSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-135723",
+          "references": [
+            "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24917",
+            "https://github.com/FFmpeg/FFmpeg",
+            "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/imf_cpl.c#L315",
+            "https://github.com/FFmpeg/FFmpeg/commit/301a611370a0ba81f4a71d3b7ccd064623606c1b",
+            "https://www.vulncheck.com/advisories/ffmpeg-before-9.1-double-free-in-imf-cpl-parser-fill-marker"
+          ],
+          "namespace": "nvd:cpe"
+        }
+      ]
+    }
+  ],
+  "runtimeDistinction": {
+    "linuxLibcDev": "75 findings identify the development UAPI/header package through dpkg metadata; they are not proof that a vulnerable kernel is running inside the container or host. Per-CVE affected program files and exact native inventory must be reviewed before any scoped non-applicability conclusion.",
+    "baseFfmpeg": "11 findings identify actual shared libraries in PyNvVideoCodec; existing verified empty read-only directory masks may exclude these libraries only within the exact rendered serving workload. An installed-package scan remains true and cannot be waived for arbitrary image use.",
+    "audioFfmpeg": "11 findings identify actual shared libraries in the mounted PyAV audio overlay. Decoder allowlisting alone does not establish exclusion of audio/video filters, filter commands, encoders or network protocols. In particular dynaudnorm and azmq require exact call-path evidence.",
+    "runtimeProbe": "Both retained runtime reports say passed; these are isolated command/filesystem/codec guard probes, not GPU inference or model quality proof."
+  },
+  "correctiveOptions": [
+    {
+      "option": "Fresh exact-image and wheel remediation",
+      "requirements": "Find independently verified upstream immutable image and exact audio wheel artifacts whose bundled FFmpeg fixes all relevant findings; preserve ABI/model/codec compatibility, provenance and full native runtime/inventory/scans. No replacement artifact is authorized by this report."
+    },
+    {
+      "option": "Per-CVE scoped applicability review",
+      "requirements": "For all 75 header findings compare primary affected program files against exact UAPI inventory; for each of 11 FFmpeg CVEs review primary conditions against actual masks and no-filter/no-command/codec paths, then retain existing real native probes and refreshed full scans. Unknown or reachable cases remain blocking; no wildcard/version/severity waiver."
+    }
+  ],
+  "rawReportSha256": {
+    "prior/vllm-security-assessed.json": "e4cfcf145f3931883b144e90e511d8c2a712c6ac7e08edc0171cd91a85c351ec",
+    "prior/vllm-security-raw.json": "42f45d455cf145bbcea3be354601c0baa4d989f571247f9e1d21d1856c4a49ec",
+    "prior/vllm-audio-security-raw.json": "4c99823fbe358ba6ff56bd8eddbf0a74e0a27c1b40677bac5c2c5d4589227340",
+    "prior/vllm-native-inventory.json": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
+    "prior/vllm-runtime.json": "03748895cc80f2103ce45761c7c6db6605b2854fd59aa66a502c49ebf362026b",
+    "current/vllm-security-assessed.json": "4c239fefd8213e20a48d670e12660d849701a11b62703e4d50860e10dae080f0",
+    "current/vllm-security-raw.json": "85109972e6f53e7d7e7f9bb45d77d558b00503b091f6cd26bd5af3b6fc0d8cfd",
+    "current/vllm-audio-security-raw.json": "273a99cc20b5a26e60c7ed81d1f5e98a4bbd6d430589ea147702160862ef0cf0",
+    "current/vllm-native-inventory.json": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
+    "current/vllm-runtime.json": "03748895cc80f2103ce45761c7c6db6605b2854fd59aa66a502c49ebf362026b"
+  }
+}
