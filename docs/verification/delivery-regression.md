@@ -48,6 +48,7 @@ Install API/web locked npm dependencies, the worker's locked Python dependencies
 and Playwright Chromium. Run:
 
 ```sh
+node apps/api/scripts/cors-regression.mjs --install-browser
 CORS_ACCEPTANCE_PYTHON=<locked-worker-python> node apps/api/scripts/cors-regression.mjs
 ```
 

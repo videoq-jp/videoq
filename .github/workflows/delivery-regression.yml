@@ -44,7 +44,9 @@ jobs:
         run: node --test .github/scripts/release-compatibility.test.cjs
       - name: Install Chromium with browser protections enabled
         if: ${{ !cancelled() }}
-        run: node node_modules/playwright/cli.js install --with-deps chromium
+        # Use the same workspace-resolved Playwright as cors-regression.mjs.
+        # The root package can have a different locked Chromium revision.
+        run: node apps/api/scripts/cors-regression.mjs --install-browser
       - name: Gate actual-browser CORS and multipart integrity
         if: ${{ !cancelled() }}
         env:

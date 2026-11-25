@@ -3,9 +3,17 @@ import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { readFile, mkdir, writeFile, rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { chromium } from 'playwright';
+
+if (process.argv[2] === '--install-browser') {
+  const require = createRequire(import.meta.url);
+  const cli = resolve(dirname(require.resolve('playwright/package.json')), 'cli.js');
+  execFileSync(process.execPath, [cli, 'install', ...(process.platform === 'linux' ? ['--with-deps'] : []), 'chromium'], { stdio: 'inherit' });
+  process.exit(0);
+}
 
 const output = resolve(process.argv[2] ?? 'artifacts/cors-browser.json');
 await mkdir(resolve(output, '..'), { recursive: true });
@@ -40,7 +48,8 @@ try {
     const timer = setTimeout(() => reject(new Error('CORS fixture startup timed out')), 60000);
     fixture.once('exit', () => { clearTimeout(timer); reject(new Error('CORS fixture exited before readiness')); });
     createInterface({ input: fixture.stdout }).on('line', line => {
-      try { const value = JSON.parse(line); if (value.allowed && value.denied) { clearTimeout(timer); resolve(value); } } catch {}
+      try { const value = JSON.parse(line); if (value.allowed && value.denied) { clearTimeout(timer); resolve(value); } }
+      catch { /* Ignore fixture startup lines that are not the readiness record. */ }
     });
   });
   stage = 'chromium-start';
@@ -71,5 +80,6 @@ try {
     const timer = setTimeout(() => fixture.kill('SIGKILL'), 15000);
     await exited; clearTimeout(timer);
   }
-  try { docker('rm', '--force', name); } catch {}
+  try { docker('rm', '--force', name); }
+  catch { /* A failed start or --rm may have already removed this owned container. */ }
 }
