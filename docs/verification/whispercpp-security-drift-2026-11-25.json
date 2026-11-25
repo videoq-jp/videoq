@@ -1,0 +1,1817 @@
+{
+  "scope": "Read-only diagnosis; no vulnerability waiver, image change or verified replacement",
+  "run": 45533632945,
+  "source": "3688c44dd79830b69af8af7aa5141a7645455b63",
+  "baseline": "ae9f9ce429f89ebac5e8b008a1b2753681176136",
+  "sourceComparison": "Image pins, whispercpp security policy and scanner sources unchanged from baseline",
+  "baselineCI": {
+    "run": 45528150071,
+    "conclusion": "success",
+    "upstreamImageScans": "skipped; green aggregate does not establish fresh upstream scan success"
+  },
+  "reports": [
+    {
+      "architecture": "amd64",
+      "artifactId": 14986351666,
+      "image": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73",
+      "acceptedRuntimeCount": 2,
+      "assessedHeaderCount": 489,
+      "blocking": [
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99999",
+          "Aliases": [
+            "CVE-2026-99999"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-203.213"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99153",
+          "Aliases": [
+            "CVE-2026-99153"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99288",
+          "Aliases": [
+            "CVE-2026-99288"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99152",
+          "Aliases": [
+            "CVE-2026-99152"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99154",
+          "Aliases": [
+            "CVE-2026-99154"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99306",
+          "Aliases": [
+            "CVE-2026-99306"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99310",
+          "Aliases": [
+            "CVE-2026-99310"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98964",
+          "Aliases": [
+            "CVE-2026-98964"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98870",
+          "Aliases": [
+            "CVE-2026-98870"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99304",
+          "Aliases": [
+            "CVE-2026-99304"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99270",
+          "Aliases": [
+            "CVE-2026-99270"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99083",
+          "Aliases": [
+            "CVE-2026-99083"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99292",
+          "Aliases": [
+            "CVE-2026-99292"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99287",
+          "Aliases": [
+            "CVE-2026-99287"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2023-7356",
+          "Aliases": [
+            "CVE-2023-7356"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99284",
+          "Aliases": [
+            "CVE-2026-99284"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98890",
+          "Aliases": [
+            "CVE-2026-98890"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99027",
+          "Aliases": [
+            "CVE-2026-99027"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99128",
+          "Aliases": [
+            "CVE-2026-99128"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99166",
+          "Aliases": [
+            "CVE-2026-99166"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99138",
+          "Aliases": [
+            "CVE-2026-99138"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99126",
+          "Aliases": [
+            "CVE-2026-99126"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99039",
+          "Aliases": [
+            "CVE-2026-99039"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99015",
+          "Aliases": [
+            "CVE-2026-99015"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99274",
+          "Aliases": [
+            "CVE-2026-99274"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99282",
+          "Aliases": [
+            "CVE-2026-99282"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99272",
+          "Aliases": [
+            "CVE-2026-99272"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99275",
+          "Aliases": [
+            "CVE-2026-99275"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98901",
+          "Aliases": [
+            "CVE-2026-98901"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99302",
+          "Aliases": [
+            "CVE-2026-99302"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98996",
+          "Aliases": [
+            "CVE-2026-98996"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98930",
+          "Aliases": [
+            "CVE-2026-98930"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99260",
+          "Aliases": [
+            "CVE-2026-99260"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98993",
+          "Aliases": [
+            "CVE-2026-98993"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-100081",
+          "Aliases": [
+            "CVE-2026-100081"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99053",
+          "Aliases": [
+            "CVE-2026-99053"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99167",
+          "Aliases": [
+            "CVE-2026-99167"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99109",
+          "Aliases": [
+            "CVE-2026-99109"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99056",
+          "Aliases": [
+            "CVE-2026-99056"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99002",
+          "Aliases": [
+            "CVE-2026-99002"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99236",
+          "Aliases": [
+            "CVE-2026-99236"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99239",
+          "Aliases": [
+            "CVE-2026-99239"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99213",
+          "Aliases": [
+            "CVE-2026-99213"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99218",
+          "Aliases": [
+            "CVE-2026-99218"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99032",
+          "Aliases": [
+            "CVE-2026-99032"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99054",
+          "Aliases": [
+            "CVE-2026-99054"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99117",
+          "Aliases": [
+            "CVE-2026-99117"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99203",
+          "Aliases": [
+            "CVE-2026-99203"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99212",
+          "Aliases": [
+            "CVE-2026-99212"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:amd64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=amd64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        }
+      ],
+      "sha256": {
+        "upstream-cpu-assessed.json": "bf4dabeda5f493d27c7c765c8dfdfbe70870d5931c2fad4f341929a28175c4d1",
+        "upstream-cpu-security.json.grype.json": "467507f1a48e9b1e97e9774bd1cb25ba80d1999a4816a6fa95fc79a99da9231b",
+        "header-inventory.json": "355a59b6721690d72a8ab7e4739f7a58e8ada6864925f46800a23853e1e4cc59"
+      }
+    },
+    {
+      "architecture": "arm64",
+      "artifactId": 14986671017,
+      "image": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+      "acceptedRuntimeCount": 2,
+      "assessedHeaderCount": 489,
+      "blocking": [
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99999",
+          "Aliases": [
+            "CVE-2026-99999"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-203.213"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99153",
+          "Aliases": [
+            "CVE-2026-99153"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99288",
+          "Aliases": [
+            "CVE-2026-99288"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99152",
+          "Aliases": [
+            "CVE-2026-99152"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99154",
+          "Aliases": [
+            "CVE-2026-99154"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99306",
+          "Aliases": [
+            "CVE-2026-99306"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99310",
+          "Aliases": [
+            "CVE-2026-99310"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98964",
+          "Aliases": [
+            "CVE-2026-98964"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98870",
+          "Aliases": [
+            "CVE-2026-98870"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99304",
+          "Aliases": [
+            "CVE-2026-99304"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99270",
+          "Aliases": [
+            "CVE-2026-99270"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99083",
+          "Aliases": [
+            "CVE-2026-99083"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99292",
+          "Aliases": [
+            "CVE-2026-99292"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "CRITICAL",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99287",
+          "Aliases": [
+            "CVE-2026-99287"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2023-7356",
+          "Aliases": [
+            "CVE-2023-7356"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99284",
+          "Aliases": [
+            "CVE-2026-99284"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98890",
+          "Aliases": [
+            "CVE-2026-98890"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99027",
+          "Aliases": [
+            "CVE-2026-99027"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99128",
+          "Aliases": [
+            "CVE-2026-99128"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99166",
+          "Aliases": [
+            "CVE-2026-99166"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99138",
+          "Aliases": [
+            "CVE-2026-99138"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99126",
+          "Aliases": [
+            "CVE-2026-99126"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99039",
+          "Aliases": [
+            "CVE-2026-99039"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99015",
+          "Aliases": [
+            "CVE-2026-99015"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99274",
+          "Aliases": [
+            "CVE-2026-99274"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99282",
+          "Aliases": [
+            "CVE-2026-99282"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99272",
+          "Aliases": [
+            "CVE-2026-99272"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99275",
+          "Aliases": [
+            "CVE-2026-99275"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98901",
+          "Aliases": [
+            "CVE-2026-98901"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99302",
+          "Aliases": [
+            "CVE-2026-99302"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98996",
+          "Aliases": [
+            "CVE-2026-98996"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98930",
+          "Aliases": [
+            "CVE-2026-98930"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99260",
+          "Aliases": [
+            "CVE-2026-99260"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-98993",
+          "Aliases": [
+            "CVE-2026-98993"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-100081",
+          "Aliases": [
+            "CVE-2026-100081"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99053",
+          "Aliases": [
+            "CVE-2026-99053"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99167",
+          "Aliases": [
+            "CVE-2026-99167"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99109",
+          "Aliases": [
+            "CVE-2026-99109"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99056",
+          "Aliases": [
+            "CVE-2026-99056"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99002",
+          "Aliases": [
+            "CVE-2026-99002"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99236",
+          "Aliases": [
+            "CVE-2026-99236"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99239",
+          "Aliases": [
+            "CVE-2026-99239"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99213",
+          "Aliases": [
+            "CVE-2026-99213"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99218",
+          "Aliases": [
+            "CVE-2026-99218"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99032",
+          "Aliases": [
+            "CVE-2026-99032"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99054",
+          "Aliases": [
+            "CVE-2026-99054"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99117",
+          "Aliases": [
+            "CVE-2026-99117"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99203",
+          "Aliases": [
+            "CVE-2026-99203"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        },
+        {
+          "Severity": "HIGH",
+          "PkgName": "linux-libc-dev",
+          "InstalledVersion": "5.15.0-202.212",
+          "VulnerabilityID": "CVE-2026-99212",
+          "Aliases": [
+            "CVE-2026-99212"
+          ],
+          "Locations": [
+            "/usr/share/doc/linux-libc-dev/copyright",
+            "/var/lib/dpkg/info/linux-libc-dev:arm64.md5sums",
+            "/var/lib/dpkg/status"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/linux-libc-dev@5.15.0-202.212?arch=arm64&distro=ubuntu-22.04"
+          },
+          "FixedVersion": "5.15.0-204.214"
+        }
+      ],
+      "sha256": {
+        "upstream-cpu-assessed.json": "8ecd62e8243289be0e09e0ba47f03de429b6b0f22e0572c12b7c03954e7db521",
+        "upstream-cpu-security.json.grype.json": "f198a2f448a2b73233cc0365f70de086218de660f5259e9600edaa5469b77c46",
+        "header-inventory.json": "4c8317b96f764c14a1ddeb27622ad2a369642c67895d3898dbe9ca3c2eae747f"
+      }
+    }
+  ],
+  "remediationAssessment": {
+    "package": "linux-libc-dev",
+    "installed": "5.15.0-202.212",
+    "blockingPerArchitecture": 49,
+    "fixedInNewerPackage": 25,
+    "withoutFixedVersion": 24,
+    "upgradeAloneInsufficient": true,
+    "candidateNotVerified": "Build a minimal native multi-stage runtime without development/header packages; preserve whisper-server and required runtime libraries, test both architectures, scan full final images, publish and pin immutable digests only after all existing checks pass",
+    "upstreamDockerfile": "https://github.com/ggml-org/whisper.cpp/blob/c1a24047871444999b79f5e8612828f45881ae12/.devops/main.Dockerfile",
+    "upstreamRuntimeInstalls": "libsdl2-dev, cmake and git remain installed in upstream runtime; latest Dockerfile alone is not a verified patched image"
+  }
+}
