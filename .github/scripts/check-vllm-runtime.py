@@ -155,6 +155,69 @@ class AudioBoundary:
         raise ValueError(f"Unexpected PyAV API at serving boundary: {name}")
 
 
+REVIEWED_MASKED_FFMPEG_PATHS = ('/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101')
+REVIEWED_NATIVE_MASKS = ('/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs', '/usr/local/lib/python3.12/dist-packages/mooncake')
+
+
+def verify_native_masks():
+    for value in REVIEWED_NATIVE_MASKS:
+        path = Path(value)
+        if path.is_symlink() or not path.is_dir() or list(path.iterdir()):
+            raise ValueError(f"Unused native library directory is not masked: {value}")
+        if os.access(path, os.W_OK):
+            raise ValueError(f"Native mask must be read-only: {value}")
+    return list(REVIEWED_NATIVE_MASKS)
+
+
+def verify_masked_native_denial(audio_root):
+    """Only constant reviewed paths are probed; no report-provided code is loaded."""
+    import ctypes
+    import importlib.util
+
+    verify_native_masks()
+    before = loaded_ffmpeg_libraries(audio_root)
+    imports = []
+    for name, directory in (("PyNvVideoCodec", REVIEWED_NATIVE_MASKS[0]),
+                            ("opencv_python_headless", None),
+                            ("mooncake", REVIEWED_NATIVE_MASKS[2])):
+        spec = importlib.util.find_spec(name)
+        if spec is not None:
+            # Empty masked directories can produce namespace packages. They
+            # contain no executable module and may not merge an unmasked path.
+            locations = list(spec.submodule_search_locations or [])
+            if (spec.origin is not None or locations != [directory]
+                    or (spec.loader is not None
+                        and not isinstance(spec.loader, importlib.machinery.NamespaceLoader))):
+                raise ValueError(f"Executable or alternate masked module import: {name}")
+        try:
+            module = importlib.import_module(name)
+        except ModuleNotFoundError as error:
+            if error.name != name:
+                raise ValueError(f"Masked module executed dependency imports: {name}") from error
+            imports.append({"module": name, "result": "not_found"})
+        else:
+            if (spec is None or getattr(module, "__file__", None) is not None
+                    or list(getattr(module, "__path__", [])) != [directory]):
+                raise ValueError(f"Masked executable module imported: {name}")
+            imports.append({"module": name, "result": "empty_namespace_only"})
+    denied = []
+    for value in REVIEWED_MASKED_FFMPEG_PATHS:
+        if not any(value.startswith(mask + "/") for mask in REVIEWED_NATIVE_MASKS):
+            raise ValueError("Reviewed native load target outside masks")
+        try:
+            ctypes.CDLL(value)
+        except OSError:
+            denied.append(value)
+        else:
+            raise ValueError(f"Masked native library loaded: {value}")
+    after = loaded_ffmpeg_libraries(audio_root)
+    if before != after:
+        raise ValueError("Loaded FFmpeg mappings changed during denied-load probe")
+    verify_native_masks()
+    return {"imports": imports, "absoluteLoadsDenied": denied, "loadedFfmpeg": after,
+            "nativeFilterTraceComplete": False}
+
+
 def loaded_ffmpeg_libraries(audio_root, maps_path="/proc/self/maps"):
     """Detect an alternate loaded FFmpeg copy in the offline Linux native job."""
     root = Path(audio_root).absolute()
@@ -395,16 +458,8 @@ def inspect_runtime():
 
     check('security.audio', audio_security)
 
-    def native_masks():
-        paths = ['/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs', '/usr/local/lib/python3.12/dist-packages/mooncake']
-        for path in paths:
-            if not Path(path).is_dir() or list(Path(path).iterdir()):
-                raise ValueError(f'Unused native library directory is not masked: {path}')
-            if os.access(path, os.W_OK):
-                raise ValueError(f'Native mask must be read-only: {path}')
-        return paths
-
-    check('security.maskedNative', native_masks)
+    check('security.maskedNative', verify_native_masks)
+    check('security.maskedNativeDenial', lambda: verify_masked_native_denial(audio_root))
 
     def registry():
         from vllm.model_executor.models import ModelRegistry
