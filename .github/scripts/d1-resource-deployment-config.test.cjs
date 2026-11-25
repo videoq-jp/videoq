@@ -27,14 +27,14 @@ test('mixed, unknown, duplicated, conflicting or non-D1 state cannot retarget a 
  ]){const f=fixture(true);change(f);assert.throws(()=>deploymentHandoff(f.settings,f.config),/HANDOFF_REQUIRED/);}
  const paused=fixture(true);paused.settings.bindings.push({name:'MIGRATION_TRAFFIC_STATE',type:'plain_text',text:'paused'});assert.throws(()=>deploymentHandoff(paused.settings,paused.config),/CONTROLLED_RESUME/);
 });
-test('handoff metadata is fixed-account GET only and independent guard remains immediately before upload',async()=>{
+test('handoff metadata is fixed-account GET only and all independent release guards precede upload',async()=>{
  const f=fixture(true);let reads=0;
  await assert.rejects(prepare(f.config,{CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32)},()=>assert.fail('network ran')),/ACCOUNT_REQUIRED/);
  const result=await prepare(f.config,{CLOUDFLARE_ACCOUNT_ID:'12daec56fdba43f677f2766ee26a5a39',CLOUDFLARE_API_TOKEN:'synthetic'},async(url,options)=>{
   reads++;assert.equal(options.method,'GET');assert.equal(options.redirect,'error');assert.ok(url.endsWith('/workers/scripts/videoq-api/settings'));return Response.json({success:true,result:f.settings});
  });assert.equal(reads,1);assert.equal(result.d1_databases[0].database_id,dbs[1]);
  const workflow=require('node:fs').readFileSync('.github/workflows/cd.yml','utf8');
- assert.match(workflow,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/scripts\/terraform-cloudflare-release\.cjs api deployment\.json/);
+ assert.match(workflow,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/scripts\/embedding-release-preflight\.cjs deployment\.json\s+node \.github\/scripts\/terraform-cloudflare-release\.cjs api deployment\.json/);
 });
 
 test('completed production deployment preserves the retired 768 index without permitting source or partial retirement',()=>{
